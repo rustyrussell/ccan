@@ -1,5 +1,5 @@
 #include "check_type/check_type.h"
-#include "tap/tap.h"
+#include "tap.h"
 
 int main(int argc, char *argv[])
 {

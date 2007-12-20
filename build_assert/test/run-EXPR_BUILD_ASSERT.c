@@ -1,5 +1,5 @@
 #include "build_assert/build_assert.h"
-#include "tap/tap.h"
+#include "tap.h"
 
 int main(int argc, char *argv[])
 {

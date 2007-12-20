@@ -1,0 +1,11 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: talloc 
+Description: A hierarchical pool based memory system with destructors
+Version: 1.1.0
+Libs: -L${libdir} -ltalloc
+Cflags: -I${includedir} 
+URL: http://talloc.samba.org/

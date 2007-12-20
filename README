@@ -1,0 +1,8 @@
+ccan_tools:
+	This is currently a bootstrap junkyard for ccan tools.
+
+	It is expected that some of this code, being generally useful, will be
+	shuffled out to their own modules over time.
+
+other:
+	The beginnings of a ccan repository.
