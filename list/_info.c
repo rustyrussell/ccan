@@ -1,0 +1,63 @@
+#include <stdio.h>
+#include <string.h>
+#include "config.h"
+
+/**
+ * list - double linked list routines
+ *
+ * The list header contains routines for manipulating double linked lists.
+ * It defined two types: struct list_head used for anchoring lists, and
+ * struct list_node which is usually embedded in the structure which is placed
+ * in the list.
+ *
+ * Example:
+ *	#include <err.h>
+ *	#include "list/list.h"
+ *
+ *	struct parent {
+ *		const char *name;
+ *		struct list_head children;
+ *		unsigned int num_children;
+ *	};
+ *
+ *	struct child {
+ *		const char *name;
+ *		struct list_node list;
+ *	};
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		struct parent p;
+ *		struct child *c;
+ *		unsigned int i;
+ *
+ *		if (argc < 2)
+ *			errx(1, "Usage: %s parent children...", argv[0]);
+ *
+ *		p.name = argv[1];
+ *		for (i = 2; i < argc, i++) {
+ *			c = malloc(sizeof(*c));
+ *			c->name = argv[i];
+ *			list_add(&p.children, &c->list);
+ *			p.num_children++;
+ *		}
+ *
+ *		printf("%s has %u children:", p.name, p.num_children);
+ *		list_for_each(&p.children, c, list)
+ *			printf("%s ", c->name);
+ *		printf("\n");
+ *		return 0;
+ *	}
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("container_of\n");
+		return 0;
+	}
+
+	return 1;
+}
