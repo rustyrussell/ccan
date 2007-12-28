@@ -12,6 +12,7 @@ int main(int argc, char *argv[])
 	int *intp = &foo.a;
 
 #ifdef FAIL
+	/* b is a char, but intp is an int * */
 	foop = container_of(intp, struct foo, b);
 #else
 	foop = NULL;

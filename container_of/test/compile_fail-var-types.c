@@ -8,15 +8,14 @@ struct foo {
 
 int main(int argc, char *argv[])
 {
-	struct foo foo = { .a = 1, .b = 2 };
+	struct foo foo = { .a = 1, .b = 2 }, *foop;
 	int *intp = &foo.a;
-	char *p;
 
 #ifdef FAIL
-	/* p is a char *, but this gives a struct foo * */
-	p = container_of(intp, struct foo, a);
+	/* b is a char, but intp is an int * */
+	foop = container_of_var(intp, foop, b);
 #else
-	p = (char *)intp;
+	foop = NULL;
 #endif
-	return p == NULL;
+	return intp == NULL;
 }
