@@ -13,7 +13,10 @@
 #include "talloc/talloc.h"
 
 #define CFLAGS "-O3 -Wall -Wundef -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Werror -I. -Iccan_tools/libtap/src/"
-#define CFLAGS_HDR "-Wall -Wundef -Wstrict-prototypes -Wold-style-definition -Werror -I."
+
+#define IDENT_CHARS	"ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
+			"abcdefghijklmnopqrstuvwxyz" \
+			"01234567889_"
 
 static bool verbose = false;
 static int indent = 0;
@@ -166,20 +169,6 @@ lines_from_cmd(const void *ctx, char *format, ...)
 	return split(ctx, buffer, "\n", NULL);
 }
 
-static char *build_obj(const char *cfile)
-{
-	char *cmd;
-	char *ofile = talloc_strdup(cfile, cfile);
-
-	ofile[strlen(ofile)-1] = 'c';
-
-	cmd = talloc_asprintf(ofile, "gcc " CFLAGS " -o %s -c %s",
-			      ofile, cfile);
-	if (system(cmd) != 0)
-		errx(1, "Failed to compile %s", cfile);
-	return ofile;
-}
-
 struct replace
 {
 	struct replace *next;
@@ -200,15 +189,27 @@ static void __attribute__((noreturn)) usage(void)
 
 static void add_replace(struct replace **repl, const char *str)
 {
-	struct replace *new;
+	struct replace *new, *i;
 
-	/* Don't replace things already CCAN-ized (eg. idempotent wrappers) */
-	if (strstarts(str, "CCAN_") || strstarts(str, "ccan_"))
-		return;
+	/* Avoid duplicates. */
+	for (i = *repl; i; i = i->next)
+		if (streq(i->string, str))
+			return;
 
 	new = talloc(*repl, struct replace);
 	new->next = *repl;
 	new->string = talloc_strdup(new, str);
+	*repl = new;
+}
+
+static void add_replace_tok(struct replace **repl, const char *s)
+{
+	struct replace *new;
+	unsigned int len = strspn(s, IDENT_CHARS);
+
+	new = talloc(*repl, struct replace);
+	new->next = *repl;
+	new->string = talloc_strndup(new, s, len);
 	*repl = new;
 }
 
@@ -221,20 +222,11 @@ static char *basename(const void *ctx, const char *dir)
 	return talloc_strdup(ctx, p+1);
 }
 
-/* FIXME: Only does main header, should chase local includes. */ 
-static void analyze_headers(const char *dir, struct replace **repl)
+static void look_for_macros(char *contents, struct replace **repl)
 {
-	char *hdr, *contents, *p;
+	char *p;
 	enum { LINESTART, HASH, DEFINE, NONE } state = LINESTART;
 
-	/* Get hold of header, assume that's it. */
-	hdr = talloc_asprintf(dir, "%s/%s.h", dir, basename(dir, dir));
-	contents = grab_file(dir, hdr);
-	if (!contents)
-		err(1, "Reading %s", hdr);
-
-	verbose("Looking in %s\n", hdr);
-	verbose_indent();
 	/* Look for lines of form #define X */
 	for (p = contents; *p; p++) {
 		if (*p == '\n')
@@ -248,79 +240,160 @@ static void analyze_headers(const char *dir, struct replace **repl)
 			} else if (state == DEFINE) {
 				unsigned int len;
 
-				len = strspn(p, "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-					     "abcdefghijklmnopqrstuvwxyz"
-					     "01234567889_");
+				len = strspn(p, IDENT_CHARS);
 				if (len) {
 					char *s;
 					s = talloc_strndup(contents, p, len);
-					verbose("Found %s\n", s);
-					add_replace(repl, s);
+					/* Don't wrap idempotent wrappers */
+					if (!strstarts(s, "CCAN_")) {
+						verbose("Found %s\n", s);
+						add_replace(repl, s);
+					}
 				}
 				state = NONE;
 			} else
 				state = NONE;
 		}
 	}
-	verbose_unindent();
 }
 
-static void add_extern_symbols(const char *ofile, struct replace **repl)
+/* Blank out preprocessor lines, and eliminate \ */
+static void preprocess(char *p)
 {
-	/* Should actually read the elf: this is a hack. */
-	char **line;
+	char *s;
 
-	line = lines_from_cmd(ofile, "nm --defined-only --extern %s", ofile);
+	/* We assume backslashes are only used for macros. */
+	while ((s = strstr(p, "\\\n")) != NULL)
+		s[0] = s[1] = ' ';
 
-	/* nm output is of form [hexaddr] [char] [name]\n */
-	for (; *line; line++) {
-		unsigned int cols;
-		char **names = split(ofile, *line, " \t", &cols);
-		if (cols != 3)
-			errx(1, "Unexpected nm line '%s' (%i cols)", *line, cols);
-
-		verbose("Found %s\n", names[2]);
-		add_replace(repl, names[2]);
+	/* Now eliminate # lines. */
+	if (p[0] == '#') {
+		unsigned int i;
+		for (i = 0; p[i] != '\n'; i++)
+			p[i] = ' ';
+	}
+	while ((s = strstr(p, "\n#")) != NULL) {
+		unsigned int i;
+		for (i = 1; s[i] != '\n'; i++)
+			s[i] = ' ';
 	}
 }
 
-static void get_header_symbols(const char *dir, struct replace **repl)
+static char *get_statement(const void *ctx, char **p)
 {
-	char *cmd;
-	char *hfile = talloc_asprintf(dir, "%s/%s.h", dir, basename(dir, dir));
-	char *ofile = talloc_asprintf(dir, "%s.o", hfile);
+	unsigned brackets = 0;
+	bool seen_brackets = false;
+	char *answer = talloc_strdup(ctx, "");
 
-	/* Horrible hack to get static inlines. */
-	cmd = talloc_asprintf(dir, "gcc " CFLAGS_HDR
-			      " -Dstatic= -include %s -o %s -c -x c /dev/null",
-			      hfile, ofile);
-	if (system(cmd) != 0)
-		errx(1, "Failed to compile %s", hfile);
+	for (;;) {
+		if ((*p)[0] == '/' && (*p)[1] == '/')
+			*p += strcspn(*p, "\n");
+		else if ((*p)[0] == '/' && (*p)[1] == '*')
+			*p = strstr(*p, "*/") + 1;
+		else {
+			char c = **p;
+			if (c == ';' && !brackets) {
+				(*p)++;
+				return answer;
+			}
+			/* Compress whitespace into a single ' ' */
+			if (isspace(c)) {
+				c = ' ';
+				while (isspace((*p)[1]))
+					(*p)++;
+			} else if (c == '{' || c == '(' || c == '[') {
+				if (c == '(')
+					seen_brackets = true;
+				brackets++;
+			} else if (c == '}' || c == ')' || c == ']')
+				brackets--;
 
-	add_extern_symbols(ofile, repl);
+			if (answer[0] != '\0' || c != ' ') {
+				answer = talloc_realloc(NULL, answer, char,
+							strlen(answer) + 2);
+				answer[strlen(answer)+1] = '\0';
+				answer[strlen(answer)] = c;
+			}
+			if (c == '}' && seen_brackets && brackets == 0) {
+				(*p)++;
+				return answer;
+			}
+		}
+		(*p)++;
+		if (**p == '\0')
+			return NULL;
+	}
 }
 
-/* FIXME: Better to analyse headers in more depth, rather than recompile. */
-static void get_exposed_symbols(const char *dir, struct replace **repl)
+/* This hack should handle well-formatted code. */
+static void look_for_definitions(char *contents, struct replace **repl)
 {
-	char **files;
-	unsigned int i;
+	char *stmt, *p = contents;
 
-	files = get_dir(dir);
-	for (i = 0; files[i]; i++) {
-		char *ofile;
-		if (!strends(files[i], ".c") || strends(files[i], "/_info.c"))
+	preprocess(contents);
+
+	while ((stmt = get_statement(contents, &p)) != NULL) {
+		int i, len;
+
+		/* Definition of struct/union? */
+		if ((strncmp(stmt, "struct", 5) == 0
+		     || strncmp(stmt, "union", 5) == 0)
+		    && strchr(stmt, '{') && stmt[7] != '{')
+			add_replace_tok(repl, stmt+7);
+
+		/* Definition of var or typedef? */
+		for (i = strlen(stmt)-1; i >= 0; i--)
+			if (strspn(stmt+i, IDENT_CHARS) == 0)
+				break;
+
+		if (i != strlen(stmt)-1) {
+			add_replace_tok(repl, stmt+i+1);
 			continue;
+		}
 
-		/* This produces file.c -> file.o */
-		ofile = build_obj(files[i]);
-		verbose("Looking in %s\n", ofile);
-		verbose_indent();
-		add_extern_symbols(ofile, repl);
-		unlink(ofile);
-		verbose_unindent();
+		/* function or array declaration? */
+		len = strspn(stmt, IDENT_CHARS "* ");
+		if (len > 0 && (stmt[len] == '(' || stmt[len] == '[')) {
+			if (strspn(stmt + len + 1, IDENT_CHARS) != 0) {
+				for (i = len-1; i >= 0; i--)
+					if (strspn(stmt+i, IDENT_CHARS) == 0)
+						break;
+				if (i != len-1) {
+					add_replace_tok(repl, stmt+i+1);
+					continue;
+				}
+			} else {
+				/* Pointer to function? */
+				len++;
+				len += strspn(stmt + len, " *");
+				i = strspn(stmt + len, IDENT_CHARS);
+				if (i > 0 && stmt[len + i] == ')')
+					add_replace_tok(repl, stmt+len);
+			}
+		}
 	}
-	get_header_symbols(dir, repl);
+}
+
+/* FIXME: Only does main header, should chase local includes. */ 
+static void analyze_headers(const char *dir, struct replace **repl)
+{
+	char *hdr, *contents;
+
+	/* Get hold of header, assume that's it. */
+	hdr = talloc_asprintf(dir, "%s/%s.h", dir, basename(dir, dir));
+	contents = grab_file(dir, hdr);
+	if (!contents)
+		err(1, "Reading %s", hdr);
+
+	verbose("Looking in %s for macros\n", hdr);
+	verbose_indent();
+	look_for_macros(contents, repl);
+	verbose_unindent();
+
+	verbose("Looking in %s for symbols\n", hdr);
+	verbose_indent();
+	look_for_definitions(contents, repl);
+	verbose_unindent();
 }
 
 static void write_replacement_file(const char *dir, struct replace **repl)
@@ -472,7 +545,6 @@ static void convert_dir(const char *dir)
 		name[strlen(name)-1] = '\0';
 
 	analyze_headers(name, &replace);
-	get_exposed_symbols(name, &replace);
 	write_replacement_file(name, &replace);
 	setup_adjust_files(name, replace, &adj);
 	rename_files(adj);
