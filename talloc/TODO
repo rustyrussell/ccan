@@ -1,0 +1,2 @@
+- Remove talloc.h cruft
+- Restore errno around (successful) talloc_free.
