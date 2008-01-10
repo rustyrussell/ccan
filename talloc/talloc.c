@@ -1102,7 +1102,7 @@ char *talloc_strdup(const void *t, const char *p)
 /*
  append to a talloced string 
 */
-char *talloc_append_string(const void *t, char *orig, const char *append)
+char *talloc_append_string(char *orig, const char *append)
 {
 	char *ret;
 	size_t olen = strlen(orig);
@@ -1113,7 +1113,7 @@ char *talloc_append_string(const void *t, char *orig, const char *append)
 
 	alenz = strlen(append) + 1;
 
-	ret = talloc_realloc(t, orig, char, olen + alenz);
+	ret = talloc_realloc(NULL, orig, char, olen + alenz);
 	if (!ret)
 		return NULL;
 
