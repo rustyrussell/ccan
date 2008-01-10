@@ -730,7 +730,11 @@ void *talloc_named_const(const void *context, size_t size, const char *name)
 */
 int talloc_free(void *ptr)
 {
-	return _talloc_free(ptr);
+	int saved_errno = errno, ret;
+	ret = _talloc_free(ptr);
+	if (ret == 0)
+		errno = saved_errno;
+	return ret;
 }
 
 

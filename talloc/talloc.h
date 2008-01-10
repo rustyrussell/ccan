@@ -100,6 +100,7 @@
  * returned for success and -1 for failure. The only possible failure condition
  * is if the pointer had a destructor attached to it and the destructor
  * returned -1. See talloc_set_destructor() for details on destructors.
+ * errno will be preserved unless the talloc_free fails.
  *
  * If this pointer has an additional parent when talloc_free() is called then
  * the memory is not actually released, but instead the most recently
