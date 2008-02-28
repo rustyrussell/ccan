@@ -18,5 +18,5 @@ int main(int argc, char *argv[])
 	ok1(check_types_match(x++, y++) == 0);
 	ok(x == 0 && y == 0, "check_types_match does not evaluate expressions");
 
-	return 0;
+	return exit_status();
 }
