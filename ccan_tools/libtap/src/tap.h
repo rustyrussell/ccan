@@ -54,10 +54,12 @@
 
 # define skip_end } while(0)
 
+#ifndef PRINTF_ATTRIBUTE
 #ifdef __GNUC__
 #define PRINTF_ATTRIBUTE(a1, a2) __attribute__ ((format (__printf__, a1, a2)))
 #else
 #define PRINTF_ATTRIBUTE(a1, a2)
+#endif
 #endif
 
 unsigned int _gen_result(int, const char *, char *, unsigned int, char *, ...)
