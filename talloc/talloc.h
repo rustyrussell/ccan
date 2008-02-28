@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include "config.h"
+#include "typesafe_cb/typesafe_cb.h"
 
 /*
   this uses a little trick to allow __LINE__ to be stringified
@@ -171,10 +172,7 @@ int talloc_free(void *ptr);
  *	talloc, talloc_free
  */
 #define talloc_set_destructor(ptr, function)				      \
-	do {								      \
-		int (*_talloc_destructor_fn)(_TALLOC_TYPEOF(ptr)) = (function);	      \
-		_talloc_set_destructor((ptr), (int (*)(void *))_talloc_destructor_fn); \
-	} while(0)
+	_talloc_set_destructor((ptr), typesafe_cb(int, (function), (ptr)))
 
 /**
  * talloc_zero - allocate zeroed dynamic memory for a type
