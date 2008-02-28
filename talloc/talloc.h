@@ -1,9 +1,6 @@
 #ifndef CCAN_TALLOC_H
 #define CCAN_TALLOC_H
 /* 
-   Unix SMB/CIFS implementation.
-   Samba temporary memory allocation functions
-
    Copyright (C) Andrew Tridgell 2004-2005
    Copyright (C) Stefan Metzmacher 2006
    
