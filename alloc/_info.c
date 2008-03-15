@@ -1,0 +1,102 @@
+#include <stdio.h>
+#include <string.h>
+#include "config.h"
+
+/**
+ * alloc - memory allocator routines
+ *
+ * The alloc module implements a simple allocator which you can use to
+ * dynamically allocate space within a region of memory.  This can be useful
+ * for suballocations within a given region, or a memory-mapped file.
+ *
+ * All metadata is kept within the memory handed to the allocator: you only
+ * need hand the pointer and the size of the memory to each call.
+ *
+ * The region contents is always in offsets, so it can be mapped in different
+ * places, but is not endian-safe.
+ *
+ * Example:
+ *	#include <sys/mman.h>
+ *	#include <unistd.h>
+ *	#include <sys/types.h>
+ *	#include <err.h>
+ *	#include "alloc/alloc.h"
+ *
+ *	static void usage(const char *name)
+ *	{
+ *		errx(1, "Usage: %s --create <mapfile>\n"
+ *		     " %s --check <mapfile>\n"
+ *		     " %s --alloc <mapfile>\n"
+ *		     " %s --free=<offset> <mapfile>\n", name, name, name);
+ *	}
+ *
+ *	// Create a memory mapped file, and allocate from within it
+ *	int main(int argc, char *argv[])
+ *	{
+ *		void *a, *p;
+ *		int fd;
+ *		enum { CREATE, CHECK, ALLOC, FREE } cmd;
+ *
+ *		if (argc != 3)
+ *			usage(argv[0]);
+ *
+ *		if (strcmp(argv[1], "--create") == 0)
+ *			cmd = CREATE;
+ *		else if (strcmp(argv[1], "--check") == 0)
+ *			cmd = CHECK;
+ *		else if (strcmp(argv[1], "--alloc") == 0)
+ *			cmd = ALLOC;
+ *		else if (strncmp(argv[1], "--free=", strlen("--free=")) == 0)
+ *			cmd = FREE;
+ *		else
+ *			usage(argv[0]);
+ *
+ *		if (cmd == CREATE) {
+ *			fd = open(argv[2], O_RDWR|O_CREAT|O_EXCL, 0600);
+ *			if (fd < 0)
+ *				err(1, "Could not create %s", argv[2]);
+ *			if (ftruncate(fd, 1048576) != 0)
+ *				err(1, "Could not set length on %s", argv[2]);
+ *		} else {
+ *			fd = open(argv[2], O_RDWR);
+ *			if (fd < 0)
+ *				err(1, "Could not open %s", argv[2]);
+ *		}
+ *
+ *		a = mmap(NULL, 1048576, PROT_READ|PROT_WRITE, MAP_SHARED, fd,0);
+ *		if (a == MAP_FAILED)
+ *			err(1, "Could not map %s", argv[2]);
+ *
+ *		switch (cmd) {
+ *		case CREATE:
+ *			alloc_init(a, 1048576);
+ *			break;
+ *		case CHECK:
+ *			if (!alloc_check(a, 1048576))
+ *				err(1, "Region is corrupt");
+ *			break;
+ *		case ALLOC:
+ *			p = alloc_get(a, 1048576, 1024, 16);
+ *			if (!p)
+ *				errx(1, "Could not allocate");
+ *			printf("%zu\n", (char *)p - (char *)a);
+ *			break;
+ *		case FREE:
+ *			p = (char *)a + atol(argv[1] + strlen("--free="));
+ *			alloc_free(a, 1048576, p);
+ *			break;
+ *		}
+ *		return 0;
+ *	}
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		return 0;
+	}
+
+	return 1;
+}
