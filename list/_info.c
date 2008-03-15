@@ -6,7 +6,7 @@
  * list - double linked list routines
  *
  * The list header contains routines for manipulating double linked lists.
- * It defined two types: struct list_head used for anchoring lists, and
+ * It defines two types: struct list_head used for anchoring lists, and
  * struct list_node which is usually embedded in the structure which is placed
  * in the list.
  *
