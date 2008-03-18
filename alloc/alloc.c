@@ -48,7 +48,8 @@ static unsigned long metadata_length(void *pool, unsigned long poolsize)
 void *alloc_get(void *pool, unsigned long poolsize,
 		unsigned long size, unsigned long align)
 {
-	unsigned long i, free, want, metalen;
+	long i;
+	unsigned long free, want, metalen;
 
 	if (poolsize < MIN_SIZE)
 		return NULL;
@@ -61,20 +62,22 @@ void *alloc_get(void *pool, unsigned long poolsize,
 	metalen = metadata_length(pool, poolsize);
 
 	free = 0;
-	for (i = 0; i < (poolsize - metalen) / getpagesize(); i++) {
+	/* We allocate from far end, to increase ability to expand metadata. */
+	for (i = (poolsize - metalen) / getpagesize() - 1; i >= 0; i--) {
 		switch (get_page_state(pool, i)) {
 		case FREE:
 			if (++free >= want) {
-				unsigned int j;
+				unsigned long j;
 				char *ret = (char *)pool + metalen
-					+ (i - want + 1) * getpagesize();
+					+ i * getpagesize();
 
+				/* They might ask for multi-page alignment. */
 				if ((unsigned long)ret % align)
 					continue;
 
-				for (j = i; j > i - want + 1; j--)
+				for (j = i+1; j < i + want; j++)
 					set_page_state(pool, j, TAKEN);
-				set_page_state(pool, i - want + 1, TAKEN_START);
+				set_page_state(pool, i, TAKEN_START);
 				return ret;
 			}
 			break;
