@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 	unsigned int i, num, max_size;
 	void *p[POOL_SIZE];
 
-	plan_tests(133);
+	plan_tests(139);
 
 	/* FIXME: Needs to be page aligned for now. */
 	posix_memalign(&mem, getpagesize(), POOL_SIZE);
@@ -92,6 +92,12 @@ int main(int argc, char *argv[])
 		if (!p[i])
 			break;
 	}
+
+	/* Uncomment this for a more intuitive view of what the
+	 * allocator looks like after all these 1 byte allocs. */
+#if 0
+	alloc_visualize(stderr, mem, POOL_SIZE);
+#endif
 
 	num = i;
 	/* Can't allocate this many. */
@@ -147,6 +153,42 @@ int main(int argc, char *argv[])
 	p[0] = alloc_get(mem, POOL_SIZE, 0, 1 << (POOL_ORD - 1));
 	ok1(alloc_check(mem, POOL_SIZE));
 	alloc_free(mem, POOL_SIZE, p[0]);
+	ok1(alloc_check(mem, POOL_SIZE));
+
+	/* Force the testing of split metadata. */
+	alloc_init(mem, POOL_SIZE);
+	for (i = 0; i < POOL_SIZE; i++) {
+		p[i] = alloc_get(mem, POOL_SIZE, getpagesize(), getpagesize());
+		if (!p[i])
+			break;
+	}
+	ok1(alloc_check(mem, POOL_SIZE));
+
+	/* Sort them. */
+	sort(p, i-1, addr_cmp);
+
+	/* Free all but the one next to the metadata. */
+	for (i = 1; p[i]; i++)
+		alloc_free(mem, POOL_SIZE, p[i]);
+	ok1(alloc_check(mem, POOL_SIZE));
+
+	/* Now do a whole heap of subpage allocs. */
+	for (i = 1; i < POOL_SIZE; i++) {
+		p[i] = alloc_get(mem, POOL_SIZE, 1, 1);
+		if (!p[i])
+			break;
+	}
+	ok1(alloc_check(mem, POOL_SIZE));
+
+	/* Free up our page next to metadata, and should be able to alloc */
+	alloc_free(mem, POOL_SIZE, p[0]);
+	ok1(alloc_check(mem, POOL_SIZE));
+	p[0] = alloc_get(mem, POOL_SIZE, 1, 1);
+	ok1(p[0]);
+
+	/* Clean up. */
+	for (i = 0; p[i]; i++)
+		alloc_free(mem, POOL_SIZE, p[i]);
 	ok1(alloc_check(mem, POOL_SIZE));
 
 	return exit_status();
