@@ -42,16 +42,6 @@ struct metaheader
 	/* Bits start here. */
 };
 
-#define BITS_PER_PAGE 2
-/* FIXME: Don't use page states for bitblock.  It's tacky and confusing. */
-enum page_state
-{
-	FREE,
-	TAKEN,
-	TAKEN_START,
-	SUBPAGE,
-};
-
 /* Assumes a is a power of two. */
 static unsigned long align_up(unsigned long x, unsigned long a)
 {
@@ -63,29 +53,61 @@ static unsigned long div_up(unsigned long x, unsigned long a)
 	return (x + a - 1) / a;
 }
 
+/* It turns out that we spend a lot of time dealing with bit pairs.
+ * These routines manipulate them.
+ */
+static uint8_t get_bit_pair(const uint8_t *bits, unsigned long index)
+{
+	return bits[index * 2 / CHAR_BIT] >> (index * 2 % CHAR_BIT) & 3;
+}
+
+static void set_bit_pair(uint8_t *bits, unsigned long index, uint8_t val)
+{
+	bits[index * 2 / CHAR_BIT] &= ~(3 << (index * 2 % CHAR_BIT));
+	bits[index * 2 / CHAR_BIT] |= (val << (index * 2 % CHAR_BIT));
+}
+
+/* This is used for page states and subpage allocations */
+enum alloc_state
+{
+	FREE,
+	TAKEN,
+	TAKEN_START,
+	SPECIAL,	/* Sub-page allocation for page states. */
+};
+
+/* The types for subpage metadata. */
+enum sub_metadata_type
+{
+	/* FREE is same as alloc state */
+	BITMAP = 1,
+};
+
+/* Page states are represented by bitpairs, at the start of the pool. */
+#define BITS_PER_PAGE 2
+
+static enum alloc_state get_page_state(const void *pool, unsigned long page)
+{
+	return get_bit_pair(pool, page);
+}
+
+static void set_page_state(void *pool, unsigned long page, enum alloc_state s)
+{
+	set_bit_pair(pool, page, s);
+}
+
 /* The offset of metadata for a subpage allocation is found at the end
  * of the subpage */
 #define SUBPAGE_METAOFF (getpagesize() - sizeof(unsigned long))
 
 /* This is the length of metadata in bits.  It consists of two bits
  * for every BITMAP_GRANULARITY of usable bytes in the page, then two
- * bits for the TAKEN tailer.. */
+ * bits for the tailer.. */
 #define BITMAP_METABITLEN						\
     ((div_up(SUBPAGE_METAOFF, BITMAP_GRANULARITY) + 1) * BITS_PER_PAGE)
 
 /* This is the length in bytes. */
 #define BITMAP_METALEN (div_up(BITMAP_METABITLEN, CHAR_BIT))
-
-static enum page_state get_page_state(const uint8_t *bits, unsigned long page)
-{
-	return bits[page * 2 / CHAR_BIT] >> (page * 2 % CHAR_BIT) & 3;
-}
-
-static void set_page_state(uint8_t *bits, unsigned long page, enum page_state s)
-{
-	bits[page * 2 / CHAR_BIT] &= ~(3 << (page * 2 % CHAR_BIT));
-	bits[page * 2 / CHAR_BIT] |= ((uint8_t)s << (page * 2 % CHAR_BIT));
-}
 
 static struct metaheader *first_mheader(void *pool, unsigned long poolsize)
 {
@@ -146,7 +168,7 @@ static long alloc_from_bitmap(uint8_t *bits, unsigned long elems,
 	free = 0;
 	/* We allocate from far end, to increase ability to expand metadata. */
 	for (i = elems - 1; i >= 0; i--) {
-		switch (get_page_state(bits, i)) {
+		switch (get_bit_pair(bits, i)) {
 		case FREE:
 			if (++free >= want) {
 				unsigned long j;
@@ -156,12 +178,12 @@ static long alloc_from_bitmap(uint8_t *bits, unsigned long elems,
 					continue;
 
 				for (j = i+1; j < i + want; j++)
-					set_page_state(bits, j, TAKEN);
-				set_page_state(bits, i, TAKEN_START);
+					set_bit_pair(bits, j, TAKEN);
+				set_bit_pair(bits, i, TAKEN_START);
 				return i;
 			}
 			break;
-		case SUBPAGE:
+		case SPECIAL:
 		case TAKEN_START:
 		case TAKEN:
 			free = 0;
@@ -198,7 +220,7 @@ static unsigned long alloc_get_pages(void *pool, unsigned long poolsize,
 				return i;
 			}
 			break;
-		case SUBPAGE:
+		case SPECIAL:
 		case TAKEN_START:
 		case TAKEN:
 			free = 0;
@@ -233,8 +255,7 @@ static unsigned long sub_page_alloc(void *pool, unsigned long page,
 	long i;
 
 	/* TAKEN at end means a bitwise alloc. */
-	assert(get_page_state(bits, getpagesize()/BITMAP_GRANULARITY - 1)
-	       == TAKEN);
+	assert(get_bit_pair(bits, getpagesize()/BITMAP_GRANULARITY-1) == TAKEN);
 
 	/* Our bits are the same as the page bits. */
 	i = alloc_from_bitmap(bits, SUBPAGE_METAOFF/BITMAP_GRANULARITY,
@@ -256,7 +277,7 @@ static uint8_t *alloc_metaspace(struct metaheader *mh, unsigned long bytes)
 
 	/* TAKEN tags end a subpage alloc. */
 	for (i = mh->metalen * CHAR_BIT / BITS_PER_PAGE - 1; i >= 0; i -= len) {
-		switch (get_page_state(meta, i)) {
+		switch (get_bit_pair(meta, i)) {
 		case FREE:
 			len = 1;
 			free++;
@@ -266,7 +287,7 @@ static uint8_t *alloc_metaspace(struct metaheader *mh, unsigned long bytes)
 				return meta + i / (CHAR_BIT / BITS_PER_PAGE);
 			}
 			break;
-		case TAKEN:
+		case BITMAP:
 			/* Skip over this allocated part. */
 			len = BITMAP_METALEN * CHAR_BIT / BITS_PER_PAGE;
 			free = 0;
@@ -348,7 +369,7 @@ static unsigned long alloc_sub_page(void *pool, unsigned long poolsize,
 	/* Look for partial page. */
 	for (i = 0; i < poolsize / getpagesize(); i++) {
 		unsigned long ret;
-		if (get_page_state(pool, i) != SUBPAGE)
+		if (get_page_state(pool, i) != SPECIAL)
 			continue;
 
 		ret = sub_page_alloc(pool, i, size, align);
@@ -368,8 +389,8 @@ static unsigned long alloc_sub_page(void *pool, unsigned long poolsize,
 		return 0;
 	}
 
-	/* Actually, this is a SUBPAGE page now. */
-	set_page_state(pool, i, SUBPAGE);
+	/* Actually, this is a subpage page now. */
+	set_page_state(pool, i, SPECIAL);
 
 	/* Set metadata pointer for page. */
 	set_page_metadata(pool, i, metadata);
@@ -387,7 +408,7 @@ static bool clean_empty_subpages(void *pool, unsigned long poolsize)
 	for (i = 0; i < poolsize/getpagesize(); i++) {
 		uint8_t *meta;
 		unsigned int j;
-		if (get_page_state(pool, i) != SUBPAGE)
+		if (get_page_state(pool, i) != SPECIAL)
 			continue;
 
 		meta = get_page_metadata(pool, i);
@@ -519,7 +540,7 @@ void alloc_free(void *pool, unsigned long poolsize, void *free)
 
 	pagenum = pool_offset(pool, free) / getpagesize();
 
-	if (get_page_state(pool, pagenum) == SUBPAGE)
+	if (get_page_state(pool, pagenum) == SPECIAL)
 		subpage_free(pool, pagenum, free);
 	else {
 		assert((unsigned long)free % getpagesize() == 0);
@@ -548,7 +569,7 @@ static bool check_subpage(void *pool, unsigned long poolsize,
 {
 	unsigned long *mhoff = metadata_off(pool, page);
 	unsigned int i;
-	enum page_state last_state = FREE;
+	enum alloc_state last_state = FREE;
 
 	if (*mhoff + sizeof(struct metaheader) > poolsize)
 		return false;
@@ -561,16 +582,16 @@ static bool check_subpage(void *pool, unsigned long poolsize,
 		return false;
 
 	/* Marker at end of subpage allocation is "taken" */
-	if (get_page_state((uint8_t *)pool + *mhoff,
-			   getpagesize()/BITMAP_GRANULARITY - 1) != TAKEN)
+	if (get_bit_pair((uint8_t *)pool + *mhoff,
+			 getpagesize()/BITMAP_GRANULARITY - 1) != TAKEN)
 		return false;
 
 	for (i = 0; i < SUBPAGE_METAOFF / BITMAP_GRANULARITY; i++) {
-		enum page_state state;
+		enum alloc_state state;
 
-		state = get_page_state((uint8_t *)pool + *mhoff, i);
+		state = get_bit_pair((uint8_t *)pool + *mhoff, i);
 		switch (state) {
-		case SUBPAGE:
+		case SPECIAL:
 			return false;
 		case TAKEN:
 			if (last_state == FREE)
@@ -588,7 +609,7 @@ bool alloc_check(void *pool, unsigned long poolsize)
 {
 	unsigned long i;
 	struct metaheader *mh;
-	enum page_state last_state = FREE;
+	enum alloc_state last_state = FREE;
 	bool was_metadata = false;
 
 	if (poolsize < MIN_SIZE)
@@ -621,7 +642,7 @@ bool alloc_check(void *pool, unsigned long poolsize)
 	}
 
 	for (i = 0; i < poolsize / getpagesize(); i++) {
-		enum page_state state = get_page_state(pool, i);
+		enum alloc_state state = get_page_state(pool, i);
 		bool is_metadata = is_metadata_page(pool, poolsize,i);
 
 		switch (state) {
@@ -638,7 +659,7 @@ bool alloc_check(void *pool, unsigned long poolsize)
 			if (is_metadata != was_metadata)
 				return false;
 			break;
-		case SUBPAGE:
+		case SPECIAL:
 			/* Check metadata pointer etc. */
 			if (!check_subpage(pool, poolsize, i))
 				return false;
@@ -716,7 +737,7 @@ void alloc_visualize(FILE *out, void *pool, unsigned long poolsize)
 	for (i = 0; i < poolsize / getpagesize(); i++) {
 		uint8_t *meta;
 		unsigned int j;
-		if (get_page_state(pool, i) != SUBPAGE)
+		if (get_page_state(pool, i) != SPECIAL)
 			continue;
 
 		memset(count, 0, sizeof(count));
