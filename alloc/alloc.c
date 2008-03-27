@@ -35,7 +35,7 @@
  */
 struct metaheader
 {
-	/* Length (after this header).  (FIXME: Could be in pages). */
+	/* Length (after this header).  (FIXME: implied by page bits!). */
 	unsigned long metalen;
 	/* Next meta header, or 0 */
 	unsigned long next;
@@ -136,9 +136,9 @@ void alloc_init(void *pool, unsigned long poolsize)
 		set_page_state(pool, i, TAKEN);
 }
 
-/* Two bits per element, representing page states.  Returns 0 on fail. */
-static unsigned long alloc_from_bitmap(uint8_t *bits, unsigned long elems,
-				       unsigned long want, unsigned long align)
+/* Two bits per element, representing page states.  Returns -1 on fail. */
+static long alloc_from_bitmap(uint8_t *bits, unsigned long elems,
+			      unsigned long want, unsigned long align)
 {
 	long i;
 	unsigned long free;
@@ -169,7 +169,7 @@ static unsigned long alloc_from_bitmap(uint8_t *bits, unsigned long elems,
 		}
 	}
 
-	return 0;
+	return -1;
 }
 
 static unsigned long alloc_get_pages(void *pool, unsigned long poolsize,
@@ -226,11 +226,11 @@ static void set_page_metadata(void *pool, unsigned long page, uint8_t *meta)
 	*metadata_off(pool, page) = meta - (uint8_t *)pool;
 }
 
-static void *sub_page_alloc(void *pool, unsigned long page,
-			    unsigned long size, unsigned long align)
+static unsigned long sub_page_alloc(void *pool, unsigned long page,
+				    unsigned long size, unsigned long align)
 {
 	uint8_t *bits = get_page_metadata(pool, page);
-	unsigned long i;
+	long i;
 
 	/* TAKEN at end means a bitwise alloc. */
 	assert(get_page_state(bits, getpagesize()/BITMAP_GRANULARITY - 1)
@@ -242,10 +242,10 @@ static void *sub_page_alloc(void *pool, unsigned long page,
 			      align / BITMAP_GRANULARITY);
 
 	/* Can't allocate? */
-	if (i == 0)
-		return NULL;
+	if (i < 0)
+		return 0;
 
-	return (char *)pool + page*getpagesize() + i*BITMAP_GRANULARITY;
+	return page*getpagesize() + i*BITMAP_GRANULARITY;
 }
 
 static uint8_t *alloc_metaspace(struct metaheader *mh, unsigned long bytes)
@@ -326,7 +326,7 @@ static uint8_t *new_metadata(void *pool, unsigned long poolsize,
 	/* Sew it into linked list */
 	mh = first_mheader(pool,poolsize);
 	newmh->next = mh->next;
-	mh->next = (char *)newmh - (char *)pool;
+	mh->next = pool_offset(pool, newmh);
 
 	return alloc_metaspace(newmh, bytes);
 }
@@ -339,15 +339,15 @@ static void alloc_free_pages(void *pool, unsigned long pagenum)
 		set_page_state(pool, pagenum, FREE);
 }
 
-static void *alloc_sub_page(void *pool, unsigned long poolsize,
-			    unsigned long size, unsigned long align)
+static unsigned long alloc_sub_page(void *pool, unsigned long poolsize,
+				    unsigned long size, unsigned long align)
 {
 	unsigned long i;
 	uint8_t *metadata;
 
 	/* Look for partial page. */
 	for (i = 0; i < poolsize / getpagesize(); i++) {
-		void *ret;
+		unsigned long ret;
 		if (get_page_state(pool, i) != SUBPAGE)
 			continue;
 
@@ -359,13 +359,13 @@ static void *alloc_sub_page(void *pool, unsigned long poolsize,
 	/* Create new SUBPAGE page. */
 	i = alloc_get_pages(pool, poolsize, 1, 1);
 	if (i == 0)
-		return NULL;
+		return 0;
 
 	/* Get metadata for page. */
 	metadata = new_metadata(pool, poolsize, BITMAP_METALEN);
 	if (!metadata) {
 		alloc_free_pages(pool, i);
-		return NULL;
+		return 0;
 	}
 
 	/* Actually, this is a SUBPAGE page now. */
@@ -378,23 +378,111 @@ static void *alloc_sub_page(void *pool, unsigned long poolsize,
 	return sub_page_alloc(pool, i, size, align);
 }
 
+/* Returns true if we cleaned any pages. */
+static bool clean_empty_subpages(void *pool, unsigned long poolsize)
+{
+	unsigned long i;
+	bool progress = false;
+
+	for (i = 0; i < poolsize/getpagesize(); i++) {
+		uint8_t *meta;
+		unsigned int j;
+		if (get_page_state(pool, i) != SUBPAGE)
+			continue;
+
+		meta = get_page_metadata(pool, i);
+		for (j = 0; j < SUBPAGE_METAOFF/BITMAP_GRANULARITY; j++)
+			if (get_page_state(meta, j) != FREE)
+				break;
+
+		/* So, is this page totally empty? */
+		if (j == SUBPAGE_METAOFF/BITMAP_GRANULARITY) {
+			set_page_state(pool, i, FREE);
+			progress = true;
+		}
+	}
+	return progress;
+}
+
+/* Returns true if we cleaned any pages. */
+static bool clean_metadata(void *pool, unsigned long poolsize)
+{
+	struct metaheader *mh, *prev_mh = NULL;
+	bool progress = false;
+
+	for (mh = first_mheader(pool,poolsize); mh; mh = next_mheader(pool,mh)){
+		uint8_t *meta;
+		long i;
+
+		meta = (uint8_t *)(mh + 1);
+		BUILD_ASSERT(FREE == 0);
+		for (i = mh->metalen - 1; i > 0; i--)
+			if (meta[i] != 0)
+				break;
+
+		/* Completely empty? */
+		if (prev_mh && i == mh->metalen) {
+			alloc_free_pages(pool,
+					 pool_offset(pool, mh)/getpagesize());
+			prev_mh->next = mh->next;
+			mh = prev_mh;
+			progress = true;
+		} else {
+			uint8_t *p;
+
+			/* Some pages at end are free? */
+			for (p = (uint8_t *)(mh+1)+mh->metalen - getpagesize();
+			     p > meta + i;
+			     p -= getpagesize()) {
+				set_page_state(pool,
+					       pool_offset(pool, p)
+					       / getpagesize(),
+					       FREE);
+				progress = true;
+			}
+		}
+	}
+
+	return progress;
+}
+
 void *alloc_get(void *pool, unsigned long poolsize,
 		unsigned long size, unsigned long align)
 {
+	bool subpage_clean = false, metadata_clean = false;
+	unsigned long ret;
+
 	if (poolsize < MIN_SIZE)
 		return NULL;
 
-	/* Sub-page allocations have an overhead of 25%. */
-	if (size + size/4 >= getpagesize() || align >= getpagesize()) {
-		unsigned long ret, pages = div_up(size, getpagesize());
+again:
+	/* Sub-page allocations have an overhead of ~12%. */
+	if (size + size/8 >= getpagesize() || align >= getpagesize()) {
+		unsigned long pages = div_up(size, getpagesize());
 
-		ret = alloc_get_pages(pool, poolsize, pages, align);
-		if (ret == 0)
-			return NULL;
-		return (char *)pool + ret * getpagesize();
+		ret = alloc_get_pages(pool, poolsize, pages, align)
+			* getpagesize();
+	} else
+		ret = alloc_sub_page(pool, poolsize, size, align);
+
+	if (ret != 0)
+		return (char *)pool + ret;
+
+	/* Allocation failed: garbage collection. */
+	if (!subpage_clean) {
+		subpage_clean = true;
+		if (clean_empty_subpages(pool, poolsize))
+			goto again;
 	}
 
-	return alloc_sub_page(pool, poolsize, size, align);
+	if (!metadata_clean) {
+		metadata_clean = true;
+		if (clean_metadata(pool, poolsize))
+			goto again;
+	}
+
+	/* FIXME: Compact metadata? */
+	return NULL;
 }
 
 static void subpage_free(void *pool, unsigned long pagenum, void *free)
@@ -413,8 +501,6 @@ static void subpage_free(void *pool, unsigned long pagenum, void *free)
 	while (off < SUBPAGE_METAOFF / BITMAP_GRANULARITY
 	       && get_page_state(metadata, off) == TAKEN)
 		set_page_state(metadata, off++, FREE);
-
-	/* FIXME: If whole page free, free page and metadata. */
 }
 
 void alloc_free(void *pool, unsigned long poolsize, void *free)
