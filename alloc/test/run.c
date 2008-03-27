@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
 	plan_tests(139);
 
 	/* FIXME: Needs to be page aligned for now. */
-	posix_memalign(&mem, getpagesize(), POOL_SIZE);
+	posix_memalign(&mem, 1 << POOL_ORD, POOL_SIZE);
 
 	/* Small pool, all allocs fail, even 0-length. */
 	alloc_init(mem, 0);
