@@ -35,8 +35,6 @@
  */
 struct metaheader
 {
-	/* Length (after this header).  (FIXME: implied by page bits!). */
-	unsigned long metalen;
 	/* Next meta header, or 0 */
 	unsigned long next;
 	/* Bits start here. */
@@ -149,9 +147,6 @@ void alloc_init(void *pool, unsigned long poolsize)
 	BUILD_ASSERT(FREE == 0);
 	memset(pool, 0, len);
 
-	/* Set up metalen */
-	mh->metalen = len - pool_offset(pool, mh + 1);
-
 	/* Mark the pagestate and metadata page(s) allocated. */
 	set_page_state(pool, 0, TAKEN_START);
 	for (i = 1; i < div_up(len, getpagesize()); i++)
@@ -244,15 +239,31 @@ static unsigned long sub_page_alloc(void *pool, unsigned long page,
 	return page*getpagesize() + (i-1)*BITMAP_GRANULARITY;
 }
 
-static uint8_t *alloc_metaspace(struct metaheader *mh, unsigned long bytes,
+/* We look at the page states to figure out where the allocation for this
+ * metadata ends. */
+static unsigned long get_metalen(void *pool, unsigned long poolsize,
+				 struct metaheader *mh)
+{
+	unsigned long i, first, pages = poolsize / getpagesize();
+
+	first = pool_offset(pool, mh + 1)/getpagesize();
+
+	for (i = first + 1; i < pages && get_page_state(pool,i) == TAKEN; i++);
+
+	return i * getpagesize() - pool_offset(pool, mh + 1);
+}
+
+static uint8_t *alloc_metaspace(void *pool, unsigned long poolsize,
+				struct metaheader *mh, unsigned long bytes,
 				enum sub_metadata_type type)
 {
 	uint8_t *meta = (uint8_t *)(mh + 1);
-	unsigned long free = 0, len;
-	unsigned long i;
+	unsigned long free = 0, len, i, metalen;
+
+	metalen = get_metalen(pool, poolsize, mh);
 
 	/* TAKEN tags end a subpage alloc. */
-	for (i = 0; i < mh->metalen * CHAR_BIT / BITS_PER_PAGE; i += len) {
+	for (i = 0; i < metalen * CHAR_BIT / BITS_PER_PAGE; i += len) {
 		switch (get_bit_pair(meta, i)) {
 		case FREE:
 			len = 1;
@@ -285,7 +296,7 @@ static uint8_t *new_metadata(void *pool, unsigned long poolsize,
 	unsigned long page;
 
 	for (mh = first_mheader(pool,poolsize); mh; mh = next_mheader(pool,mh)){
-		uint8_t *meta = alloc_metaspace(mh, bytes, type);
+		uint8_t *meta = alloc_metaspace(pool, poolsize, mh, bytes,type);
 
 		if (meta)
 			return meta;
@@ -293,22 +304,22 @@ static uint8_t *new_metadata(void *pool, unsigned long poolsize,
 
 	/* No room for metadata?  Can we expand an existing one? */
 	for (mh = first_mheader(pool,poolsize); mh; mh = next_mheader(pool,mh)){
-		/* It should end on a page boundary. */
 		unsigned long nextpage;
 
-		nextpage = pool_offset(pool, (char *)(mh + 1) + mh->metalen);
-		assert(nextpage % getpagesize() == 0);
+		/* We start on this page. */
+		nextpage = pool_offset(pool, (char *)(mh+1))/getpagesize();
+		/* Iterate through any other pages we own. */
+		while (get_page_state(pool, ++nextpage) == TAKEN)
 
 		/* Now, can we grab that page? */
-		if (get_page_state(pool, nextpage / getpagesize()) != FREE)
+		if (get_page_state(pool, nextpage) != FREE)
 			continue;
 
 		/* OK, expand metadata, do it again. */
-		set_page_state(pool, nextpage / getpagesize(), TAKEN);
+		set_page_state(pool, nextpage, TAKEN);
 		BUILD_ASSERT(FREE == 0);
-		memset((char *)pool + nextpage, 0, getpagesize());
-		mh->metalen += getpagesize();
-		return alloc_metaspace(mh, bytes, type);
+		memset((char *)pool + nextpage*getpagesize(), 0, getpagesize());
+		return alloc_metaspace(pool, poolsize, mh, bytes, type);
 	}
 
 	/* No metadata left at all? */
@@ -317,16 +328,15 @@ static uint8_t *new_metadata(void *pool, unsigned long poolsize,
 		return NULL;
 
 	newmh = (struct metaheader *)((char *)pool + page * getpagesize());
-	newmh->metalen = getpagesize() - sizeof(*mh);
 	BUILD_ASSERT(FREE == 0);
-	memset(newmh + 1, 0, newmh->metalen);
+	memset(newmh + 1, 0, getpagesize() - sizeof(*mh));
 
 	/* Sew it into linked list */
 	mh = first_mheader(pool,poolsize);
 	newmh->next = mh->next;
 	mh->next = pool_offset(pool, newmh);
 
-	return alloc_metaspace(newmh, bytes, type);
+	return alloc_metaspace(pool, poolsize, newmh, bytes, type);
 }
 
 static void alloc_free_pages(void *pool, unsigned long pagenum)
@@ -412,15 +422,16 @@ static bool clean_metadata(void *pool, unsigned long poolsize)
 	for (mh = first_mheader(pool,poolsize); mh; mh = next_mheader(pool,mh)){
 		uint8_t *meta;
 		long i;
+		unsigned long metalen = get_metalen(pool, poolsize, mh);
 
 		meta = (uint8_t *)(mh + 1);
 		BUILD_ASSERT(FREE == 0);
-		for (i = mh->metalen - 1; i > 0; i--)
+		for (i = metalen - 1; i > 0; i--)
 			if (meta[i] != 0)
 				break;
 
 		/* Completely empty? */
-		if (prev_mh && i == mh->metalen) {
+		if (prev_mh && i == metalen) {
 			alloc_free_pages(pool,
 					 pool_offset(pool, mh)/getpagesize());
 			prev_mh->next = mh->next;
@@ -430,7 +441,7 @@ static bool clean_metadata(void *pool, unsigned long poolsize)
 			uint8_t *p;
 
 			/* Some pages at end are free? */
-			for (p = (uint8_t *)(mh+1)+mh->metalen - getpagesize();
+			for (p = (uint8_t *)(mh+1) + metalen - getpagesize();
 			     p > meta + i;
 			     p -= getpagesize()) {
 				set_page_state(pool,
@@ -516,7 +527,7 @@ void alloc_free(void *pool, unsigned long poolsize, void *free)
 	assert(poolsize >= MIN_SIZE);
 
 	mh = first_mheader(pool, poolsize);
-	assert((char *)free >= (char *)(mh + 1) + mh->metalen);
+	assert((char *)free >= (char *)(mh + 1));
 	assert((char *)pool + poolsize > (char *)free);
 
 	pagenum = pool_offset(pool, free) / getpagesize();
@@ -538,7 +549,8 @@ static bool is_metadata_page(void *pool, unsigned long poolsize,
 		unsigned long start, end;
 
 		start = pool_offset(pool, mh);
-		end = pool_offset(pool, (char *)(mh+1) + mh->metalen);
+		end = pool_offset(pool, (char *)(mh+1)
+				  + get_metalen(pool, poolsize, mh));
 		if (page >= start/getpagesize() && page < end/getpagesize())
 			return true;
 	}
@@ -608,7 +620,8 @@ bool alloc_check(void *pool, unsigned long poolsize)
 		if (start + sizeof(*mh) > poolsize)
 			return false;
 
-		end = pool_offset(pool, (char *)(mh+1) + mh->metalen);
+		end = pool_offset(pool, (char *)(mh+1)
+				  + get_metalen(pool, poolsize, mh));
 		if (end > poolsize)
 			return false;
 
@@ -676,14 +689,13 @@ void alloc_visualize(FILE *out, void *pool, unsigned long poolsize)
 
 	/* Now do each metadata page. */
 	for (; mh; mh = next_mheader(pool,mh)) {
-		unsigned long free = 0, subpageblocks = 0, len = 0;
+		unsigned long free = 0, subpageblocks = 0, len = 0, metalen;
 		uint8_t *meta = (uint8_t *)(mh + 1);
 
-		metadata_pages += (sizeof(*mh) + mh->metalen) / getpagesize();
+		metalen = get_metalen(pool, poolsize, mh);
+		metadata_pages += (sizeof(*mh) + metalen) / getpagesize();
 
-		for (i = 0;
-		     i < mh->metalen * CHAR_BIT / BITS_PER_PAGE;
-		     i += len) {
+		for (i = 0; i < metalen * CHAR_BIT / BITS_PER_PAGE; i += len) {
 			switch (get_page_state(meta, i)) {
 			case FREE:
 				len = 1;
@@ -701,7 +713,7 @@ void alloc_visualize(FILE *out, void *pool, unsigned long poolsize)
 
 		fprintf(out, "Metadata %lu-%lu: %lu free, %lu subpageblocks, %lu%% density\n",
 			pool_offset(pool, mh),
-			pool_offset(pool, (char *)(mh+1) + mh->metalen),
+			pool_offset(pool, (char *)(mh+1) + metalen),
 			free, subpageblocks,
 			subpageblocks * BITMAP_METALEN * 100
 			/ (free + subpageblocks * BITMAP_METALEN));
