@@ -52,6 +52,7 @@ int main(int argc, char *argv[])
 	int stdoutfd;
 
 	printf("1..1\n");
+	fflush(stdout);
 	stderrfd = dup(STDERR_FILENO);
 	if (stderrfd < 0)
 		err(1, "dup of stderr failed");
@@ -74,21 +75,21 @@ int main(int argc, char *argv[])
 
 	ok(0, "msg2");
 	expect(p[0], "not ok 2 - msg2\n"
-	       "#     Failed test (tap/test/run.c:main() at line 75)\n");
+	       "#     Failed test (tap/test/run.c:main() at line 76)\n");
 
 	ok1(true);
 	expect(p[0], "ok 3 - true\n");
 
 	ok1(false);
  	expect(p[0], "not ok 4 - false\n"
-	       "#     Failed test (tap/test/run.c:main() at line 82)\n");
+	       "#     Failed test (tap/test/run.c:main() at line 83)\n");
 
 	pass("passed");
  	expect(p[0], "ok 5 - passed\n");
 
 	fail("failed");
  	expect(p[0], "not ok 6 - failed\n"
-	       "#     Failed test (tap/test/run.c:main() at line 89)\n");
+	       "#     Failed test (tap/test/run.c:main() at line 90)\n");
 
 	skip(2, "skipping %s", "test");
  	expect(p[0], "ok 7 # skip skipping test\n"
@@ -97,7 +98,7 @@ int main(int argc, char *argv[])
 	todo_start("todo");
 	ok1(false);
 	expect(p[0], "not ok 9 - false # TODO todo\n"
-	       "#     Failed (TODO) test (tap/test/run.c:main() at line 98)\n");
+	       "#     Failed (TODO) test (tap/test/run.c:main() at line 99)\n");
 	ok1(true);
 	expect(p[0], "ok 10 - true # TODO todo\n");
 	todo_end();
