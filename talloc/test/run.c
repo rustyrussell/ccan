@@ -27,7 +27,7 @@
 
 #include "talloc/talloc.c"
 #include <stdbool.h>
-#include "tap.h"
+#include "tap/tap.h"
 
 #define torture_assert(test, expr, str)					\
 	ok(expr, "failure: %s [\n%s: Expression %s failed: %s\n]\n",	\

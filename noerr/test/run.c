@@ -1,5 +1,5 @@
 #include "noerr/noerr.h"
-#include "tap.h"
+#include "tap/tap.h"
 #include "noerr/noerr.c"
 #include <sys/types.h>
 #include <sys/stat.h>
