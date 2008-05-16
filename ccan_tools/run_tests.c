@@ -4,11 +4,11 @@
 #include <dirent.h>
 #include <assert.h>
 #include <unistd.h>
-#include "libtap/src/tap.h"
+#include "tap/tap.h"
 #include "talloc/talloc.h"
 #include "../string/string.h"
 
-#define CFLAGS "-O3 -Wall -Wundef -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Werror -I. -Iccan_tools/libtap/src/"
+#define CFLAGS "-O3 -Wall -Wundef -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Werror -I."
 
 /* FIXME: Use build bug later. */
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
@@ -56,7 +56,7 @@ static char *obj_list(void)
 		list = talloc_asprintf_append(list, "%s ", i->name);
 
 	/* FIXME */
-	list = talloc_asprintf_append(list, "ccan_tools/libtap/src/tap.o");
+	list = talloc_asprintf_append(list, "tap/tap.o");
 	return list;
 }
 

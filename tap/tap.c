@@ -357,7 +357,7 @@ skip(unsigned int n, char *fmt, ...)
 	LOCK;
 
 	va_start(ap, fmt);
-	asprintf(&skip_msg, fmt, ap);
+	vasprintf(&skip_msg, fmt, ap);
 	va_end(ap);
 
 	while(n-- > 0) {
