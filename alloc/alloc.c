@@ -6,16 +6,11 @@
 #include <stdlib.h>
 #include "alloc.h"
 #include "build_assert/build_assert.h"
+#include "alignof/alignof.h"
 #include "config.h"
 
 /* FIXME: We assume getpagesize() doesnt change.  Remapping file with
  * different pagesize should still work. */
-#if HAVE_ALIGNOF
-#define ALIGNOF(t) __alignof__(t)
-#else
-/* Alignment by measuring structure padding. */
-#define ALIGNOF(t) (sizeof(struct { char c; t _h; }) - 1 - sizeof(t))
-#endif
 
 /* FIXME: Doesn't handle non-page-aligned poolsize. */
 
