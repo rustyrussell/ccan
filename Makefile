@@ -20,6 +20,8 @@ test-%: ccan_tools/run_tests
 	@echo Testing $*...
 	@if ccan_tools/run_tests $(V) $* | grep ^'not ok'; then exit 1; else exit 0; fi
 
+ccanlint: ccan_tools/ccanlint/ccanlint
+
 clean: ccan_tools-clean
 	rm -f `find . -name '*.o'`
 
