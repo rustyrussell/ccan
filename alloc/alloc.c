@@ -102,6 +102,9 @@ enum sub_metadata_type
 /* Page states are represented by bitpairs, at the start of the pool. */
 #define BITS_PER_PAGE 2
 
+/* How much metadata info per byte? */
+#define METADATA_PER_BYTE (CHAR_BIT / 2)
+
 static uint8_t *get_page_statebits(const void *pool)
 {
 	return (uint8_t *)pool + sizeof(struct uniform_cache);
@@ -291,7 +294,7 @@ static unsigned int uniform_metalen(unsigned int usize)
 
 	/* Two bits for the header, 14 bits for size, then one bit for each
 	 * element the page can hold.  Round up to number of bytes. */
-	metalen = div_up(2*CHAR_BIT + SUBPAGE_METAOFF / usize, CHAR_BIT);
+	metalen = div_up(2 + 14 + SUBPAGE_METAOFF / usize, CHAR_BIT);
 
 	/* To ensure metaheader is always aligned, round bytes up. */
 	metalen = align_up(metalen, ALIGNOF(struct metaheader));
@@ -320,27 +323,26 @@ static uint8_t *alloc_metaspace(void *pool, unsigned long poolsize,
 	metalen = get_metalen(pool, poolsize, mh);
 
 	/* Walk through metadata looking for free. */
-	for (i = 0; i < metalen * CHAR_BIT / BITS_PER_PAGE; i += len) {
+	for (i = 0; i < metalen * METADATA_PER_BYTE; i += len) {
 		switch (get_bit_pair(meta, i)) {
 		case FREE:
 			len = 1;
 			free++;
-			if (free == bytes * CHAR_BIT / BITS_PER_PAGE) {
+			if (free == bytes * METADATA_PER_BYTE) {
 				/* Mark this as a bitmap. */
 				set_bit_pair(meta, i - free + 1, type);
-				return meta + (i - free + 1)
-					/ (CHAR_BIT / BITS_PER_PAGE);
+				return meta + (i - free + 1)/METADATA_PER_BYTE;
 			}
 			break;
 		case BITMAP:
 			/* Skip over this allocated part. */
-			len = BITMAP_METALEN * CHAR_BIT / BITS_PER_PAGE;
+			len = BITMAP_METALEN * METADATA_PER_BYTE;
 			free = 0;
 			break;
 		case UNIFORM:
 			/* Figure metalen given usize. */
-			len = decode_usize(meta + i * BITS_PER_PAGE / CHAR_BIT);
-			len = uniform_metalen(len) * CHAR_BIT / BITS_PER_PAGE;
+			len = decode_usize(meta + i / METADATA_PER_BYTE);
+			len = uniform_metalen(len) * METADATA_PER_BYTE;
 			free = 0;
 			break;
 		default:
@@ -1043,7 +1045,7 @@ void alloc_visualize(FILE *out, void *pool, unsigned long poolsize)
 		metalen = get_metalen(pool, poolsize, mh);
 		metadata_pages += (sizeof(*mh) + metalen) / getpagesize();
 
-		for (i = 0; i < metalen * CHAR_BIT / BITS_PER_PAGE; i += len) {
+		for (i = 0; i < metalen * METADATA_PER_BYTE; i += len) {
 			switch (get_bit_pair(meta, i)) {
 			case FREE:
 				len = 1;
@@ -1057,8 +1059,8 @@ void alloc_visualize(FILE *out, void *pool, unsigned long poolsize)
 				break;
 			case UNIFORM:
 				/* Skip over this part. */
-				len = decode_usize(meta + i * BITS_PER_PAGE / CHAR_BIT);
-				len = uniform_metalen(len) * CHAR_BIT / BITS_PER_PAGE;
+				len = decode_usize(meta + i/METADATA_PER_BYTE);
+				len = uniform_metalen(len) * METADATA_PER_BYTE;
 				uniformblocks++;
 				uniformlen += len;
 				break;
