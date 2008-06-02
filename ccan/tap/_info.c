@@ -51,8 +51,5 @@ int main(int argc, char *argv[])
 	if (strcmp(argv[1], "depends") == 0)
 		return 0;
 
-	if (strcmp(argv[1], "license") == 0)
-		return "BSD";
-
 	return 1;
 }

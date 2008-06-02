@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
-		printf("typesafe_cb\n");
+		printf("ccan/typesafe_cb\n");
 		return 0;
 	}
 

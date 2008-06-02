@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
-		printf("check_type\n");
+		printf("ccan/check_type\n");
 		return 0;
 	}
 

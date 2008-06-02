@@ -1,9 +1,9 @@
 # Hacky makefile to compile everything and run the tests in some kind of sane order.
 # V=--verbose for verbose tests.
 
-CFLAGS=-O3 -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Werror -I.
+CFLAGS=-O3 -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Werror -Iccan -I.
 
-ALL=$(patsubst %/test, %, $(wildcard */test))
+ALL=$(patsubst ccan/%/test, ccan/%, $(wildcard ccan/*/test))
 ALL_DEPENDS=$(patsubst %, %/.depends, $(ALL))
 
 test-all: $(ALL_DEPENDS)
@@ -16,13 +16,13 @@ distclean: clean
 $(ALL_DEPENDS): %/.depends: %/_info
 	@$< depends > $@ || ( rm -f $@; exit 1 )
 
-test-%: ccan_tools/run_tests
+test-ccan/%: tools/run_tests
 	@echo Testing $*...
-	@if ccan_tools/run_tests $(V) $* | grep ^'not ok'; then exit 1; else exit 0; fi
+	@if tools/run_tests $(V) ccan/$* | grep ^'not ok'; then exit 1; else exit 0; fi
 
-ccanlint: ccan_tools/ccanlint/ccanlint
+ccanlint: tools/ccanlint/ccanlint
 
-clean: ccan_tools-clean
-	rm -f `find . -name '*.o'`
+clean: tools-clean
+	rm -f `find . -name '*.o'` `find . -name '.depends'`
 
-include ccan_tools/Makefile
+include tools/Makefile

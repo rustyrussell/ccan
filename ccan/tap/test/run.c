@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <stdbool.h>
+#include <fnmatch.h>
 
 /* We dup stderr to here. */
 static int stderrfd;
@@ -32,18 +33,18 @@ static void failmsg(const char *fmt, ...)
 	_exit(1);
 }
 
-static void expect(int fd, const char *str)
+static void expect(int fd, const char *pattern)
 {
- 	char buffer[PIPE_BUF];
+ 	char buffer[PIPE_BUF+1];
 	int r;
 
-	r = read(fd, buffer, sizeof(buffer));
+	r = read(fd, buffer, sizeof(buffer)-1);
 	if (r < 0)
 		failmsg("reading from pipe");
+	buffer[r] = '\0';
 
-	if (strlen(str) != r || strncmp(str, buffer, r) != 0)
-		failmsg("Expected '%s' got '%.*s'",
-			str, r, buffer);
+	if (fnmatch(pattern, buffer, 0) != 0)
+		failmsg("Expected '%s' got '%s'", pattern, buffer);
 }
 
 int main(int argc, char *argv[])
@@ -75,21 +76,21 @@ int main(int argc, char *argv[])
 
 	ok(0, "msg2");
 	expect(p[0], "not ok 2 - msg2\n"
-	       "#     Failed test (tap/test/run.c:main() at line 76)\n");
+	       "#     Failed test (*tap/test/run.c:main() at line 77)\n");
 
 	ok1(true);
 	expect(p[0], "ok 3 - true\n");
 
 	ok1(false);
  	expect(p[0], "not ok 4 - false\n"
-	       "#     Failed test (tap/test/run.c:main() at line 83)\n");
+	       "#     Failed test (*tap/test/run.c:main() at line 84)\n");
 
 	pass("passed");
  	expect(p[0], "ok 5 - passed\n");
 
 	fail("failed");
  	expect(p[0], "not ok 6 - failed\n"
-	       "#     Failed test (tap/test/run.c:main() at line 90)\n");
+	       "#     Failed test (*tap/test/run.c:main() at line 91)\n");
 
 	skip(2, "skipping %s", "test");
  	expect(p[0], "ok 7 # skip skipping test\n"
@@ -98,7 +99,7 @@ int main(int argc, char *argv[])
 	todo_start("todo");
 	ok1(false);
 	expect(p[0], "not ok 9 - false # TODO todo\n"
-	       "#     Failed (TODO) test (tap/test/run.c:main() at line 99)\n");
+	       "#     Failed (TODO) test (*tap/test/run.c:main() at line 100)\n");
 	ok1(true);
 	expect(p[0], "ok 10 - true # TODO todo\n");
 	todo_end();

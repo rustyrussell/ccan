@@ -9,7 +9,7 @@
  * the standard string.h.
  *
  * Example:
- *	#include "ccan/string.h"
+ *	#include "string/string.h"
  *
  *	int main(int argc, char *argv[])
  *	{

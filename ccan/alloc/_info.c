@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
-		printf("build_assert\n");
+		printf("ccan/build_assert\n");
 		return 0;
 	}
 

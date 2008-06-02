@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
 
 	if (strcmp(argv[1], "depends") == 0) {
 #if !HAVE_TYPEOF
-		printf("build_assert\n");
+		printf("ccan/build_assert\n");
 #endif
 		return 0;
 	}
