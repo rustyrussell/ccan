@@ -24,7 +24,7 @@ tools/ccanlint/ccanlint: \
 	tools/ccanlint/ccanlint.o \
 	tools/ccanlint/get_file_lines.o \
 	tools/ccanlint/file_analysis.o \
-	talloc/talloc.o noerr/noerr.o
+	ccan/talloc/talloc.o ccan/noerr/noerr.o
 
 ccanlint-clean:
 	$(RM) tools/ccanlint/generated-init-tests
