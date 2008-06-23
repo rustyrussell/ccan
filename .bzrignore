@@ -1,3 +1,8 @@
 _info
 .depends
 *~
+tools/doc_extract
+tools/namespacize
+tools/run_tests
+tools/ccanlint/ccanlint
+tools/ccanlint/generated-init-tests
