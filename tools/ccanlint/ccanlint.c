@@ -149,8 +149,9 @@ int main(int argc, char *argv[])
 	if (verbose)
 		printf("Compulsory tests:\n");
 	list_for_each(&tests, i, list)
-		if (!i->total_score && !run_test(i, summary, NULL, NULL, m))
-			exit(1);
+		if (!i->total_score)
+			if (!run_test(i, summary, &score, &total_score, m))
+				exit(1);
 
 	if (verbose)
 		printf("\nNormal tests:\n");
