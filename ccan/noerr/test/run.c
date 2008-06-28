@@ -12,8 +12,9 @@ int main(int argc, char *argv[])
 	/* tempnam(3) is generally a bad idea, but OK here. */
 	char *name = tempnam(NULL, "noerr");
 	int fd;
+	FILE *fp;
 
-	plan_tests(12);
+	plan_tests(15);
 	/* Should fail to unlink. */
 	ok1(unlink(name) != 0);
 	ok1(errno == ENOENT);
@@ -42,6 +43,20 @@ int main(int argc, char *argv[])
 
 	errno = 100;
 	ok1(unlink_noerr(name) == 0);
+	ok1(errno == 100);
+
+	/* Test failing fclose */
+	fp = fopen(name, "wb");
+	assert(fp);
+	close(fileno(fp));
+	ok1(fclose_noerr(fp) == EBADF);
+
+	/* Test successful fclose */
+	fp = fopen(name, "wb");
+	assert(fp);
+
+	errno = 100;
+	ok1(fclose_noerr(fp) == 0);
 	ok1(errno == 100);
 
 	return exit_status();

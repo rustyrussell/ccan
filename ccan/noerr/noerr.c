@@ -15,6 +15,19 @@ int close_noerr(int fd)
 	return ret;
 }
 
+int fclose_noerr(FILE *fp)
+{
+	int saved_errno = errno, ret;
+
+	if (fclose(fp) != 0)
+		ret = errno;
+	else
+		ret = 0;
+
+	errno = saved_errno;
+	return ret;
+}
+
 int unlink_noerr(const char *pathname)
 {
 	int saved_errno = errno, ret;
