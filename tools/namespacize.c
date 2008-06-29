@@ -1,18 +1,17 @@
 /* Code to move a ccan module into the ccan_ namespace. */
 #include <err.h>
 #include <errno.h>
-#include <unistd.h>
 #include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <stdbool.h>
 #include <ctype.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "talloc/talloc.h"
-
-#define CFLAGS "-O3 -Wall -Wundef -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Werror -I. -Iccan_tools/libtap/src/"
+#include "tools.h"
 
 #define IDENT_CHARS	"ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
 			"abcdefghijklmnopqrstuvwxyz" \
@@ -30,8 +29,6 @@ static int indent = 0;
 #define verbose_indent() (indent += 2)
 #define verbose_unindent() (indent -= 2)
 
-#define streq(a,b) (strcmp((a),(b)) == 0)
-
 #define strstarts(str,prefix) (strncmp((str),(prefix),strlen(prefix)) == 0)
 
 static inline bool strends(const char *str, const char *postfix)
@@ -42,15 +39,6 @@ static inline bool strends(const char *str, const char *postfix)
 	return streq(str + strlen(str) - strlen(postfix), postfix);
 }
 
-static int close_no_errno(int fd)
-{
-	int ret = 0, serrno = errno;
-	if (close(fd) < 0)
-		ret = errno;
-	errno = serrno;
-	return ret;
-}
-
 static int unlink_no_errno(const char *filename)
 {
 	int ret = 0, serrno = errno;
@@ -58,71 +46,6 @@ static int unlink_no_errno(const char *filename)
 		ret = errno;
 	errno = serrno;
 	return ret;
-}
-
-static void *grab_fd(const void *ctx, int fd)
-{
-	int ret;
-	unsigned int max = 16384, size = 0;
-	char *buffer;
-
-	buffer = talloc_array(ctx, char, max+1);
-	while ((ret = read(fd, buffer + size, max - size)) > 0) {
-		size += ret;
-		if (size == max)
-			buffer = talloc_realloc(ctx, buffer, char, max*=2 + 1);
-	}
-	if (ret < 0) {
-		talloc_free(buffer);
-		buffer = NULL;
-	} else
-		buffer[size] = '\0';
-
-	return buffer;
-}
-
-/* This version adds one byte (for nul term) */
-static void *grab_file(const void *ctx, const char *filename)
-{
-	int fd;
-	char *buffer;
-
-	if (streq(filename, "-"))
-		fd = dup(STDIN_FILENO);
-	else
-		fd = open(filename, O_RDONLY, 0);
-
-	if (fd < 0)
-		return NULL;
-
-	buffer = grab_fd(ctx, fd);
-	close_no_errno(fd);
-	return buffer;
-}
-
-/* This is a dumb one which copies.  We could mangle instead. */
-static char **split(const void *ctx, const char *text, const char *delims,
-		    unsigned int *nump)
-{
-	char **lines = NULL;
-	unsigned int max = 64, num = 0;
-
-	lines = talloc_array(ctx, char *, max+1);
-
-	while (*text != '\0') {
-		unsigned int len = strcspn(text, delims);
-		lines[num] = talloc_array(lines, char, len + 1);
-		memcpy(lines[num], text, len);
-		lines[num][len] = '\0';
-		text += len;
-		text += strspn(text, delims);
-		if (++num == max)
-			lines = talloc_realloc(ctx, lines, char *, max*=2 + 1);
-	}
-	lines[num] = NULL;
-	if (nump)
-		*nump = num;
-	return lines;
 }
 
 static char **get_dir(const char *dir)
@@ -144,29 +67,6 @@ static char **get_dir(const char *dir)
 	names[size++] = NULL;
 	closedir(d);
 	return names;
-}
-
-static char ** __attribute__((format(printf, 2, 3)))
-lines_from_cmd(const void *ctx, char *format, ...)
-{
-	va_list ap;
-	char *cmd, *buffer;
-	FILE *p;
-
-	va_start(ap, format);
-	cmd = talloc_vasprintf(ctx, format, ap);
-	va_end(ap);
-
-	p = popen(cmd, "r");
-	if (!p)
-		err(1, "Executing '%s'", cmd);
-
-	buffer = grab_fd(ctx, fileno(p));
-	if (!buffer)
-		err(1, "Reading from '%s'", cmd);
-	pclose(p);
-
-	return split(ctx, buffer, "\n", NULL);
 }
 
 struct replace
@@ -568,30 +468,6 @@ static struct replace *read_replacement_file(const char *depdir)
 	for (line = split(file, file, "\n", NULL); *line; line++)
 		add_replace(&repl, *line);
 	return repl;
-}
-
-static char *build_info(const void *ctx, const char *dir)
-{
-	char *file, *cfile, *cmd;
-
-	cfile = talloc_asprintf(ctx, "%s/%s", dir, "_info.c");
-	file = talloc_asprintf(cfile, "%s/%s", dir, "_info");
-	cmd = talloc_asprintf(file, "gcc " CFLAGS " -o %s %s", file, cfile);
-	if (system(cmd) != 0)
-		errx(1, "Failed to compile %s", file);
-
-	return file;
-}
-
-static char **get_deps(const void *ctx, const char *dir)
-{
-	char **deps, *cmd;
-
-	cmd = talloc_asprintf(ctx, "%s depends", build_info(ctx, dir));
-	deps = lines_from_cmd(cmd, cmd);
-	if (!deps)
-		err(1, "Could not run '%s'", cmd);
-	return deps;
 }
 
 static char *parent_dir(const void *ctx, const char *dir)
