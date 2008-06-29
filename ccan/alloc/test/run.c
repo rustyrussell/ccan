@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 	unsigned int i, num, max_size;
 	void *p[POOL_SIZE];
 
-	plan_tests(139);
+	plan_tests(178);
 
 	/* FIXME: Needs to be page aligned for now. */
 	posix_memalign(&mem, 1 << POOL_ORD, POOL_SIZE);
@@ -75,6 +75,7 @@ int main(int argc, char *argv[])
 	ok1(max_size < POOL_SIZE);
 	ok1(max_size > 0);
 	ok1(alloc_check(mem, POOL_SIZE));
+	ok1(alloc_size(mem, POOL_SIZE, p[0]) >= max_size);
 
 	/* Free it, should be able to reallocate it. */
 	alloc_free(mem, POOL_SIZE, p[0]);
@@ -82,6 +83,7 @@ int main(int argc, char *argv[])
 
 	p[0] = alloc_get(mem, POOL_SIZE, max_size, 1);
 	ok1(p[0]);
+	ok1(alloc_size(mem, POOL_SIZE, p[0]) >= max_size);
 	ok1(alloc_check(mem, POOL_SIZE));
 	alloc_free(mem, POOL_SIZE, p[0]);
 	ok1(alloc_check(mem, POOL_SIZE));
@@ -117,12 +119,14 @@ int main(int argc, char *argv[])
 	p[0] = alloc_get(mem, POOL_SIZE, max_size, 1);
 	ok1(p[0]);
 	ok1(alloc_check(mem, POOL_SIZE));
+	ok1(alloc_size(mem, POOL_SIZE, p[0]) >= max_size);
 
 	/* Re-initializing should be the same as freeing everything */
 	alloc_init(mem, POOL_SIZE);
 	ok1(alloc_check(mem, POOL_SIZE));
 	p[0] = alloc_get(mem, POOL_SIZE, max_size, 1);
 	ok1(p[0]);
+	ok1(alloc_size(mem, POOL_SIZE, p[0]) >= max_size);
 	ok1(alloc_check(mem, POOL_SIZE));
 	alloc_free(mem, POOL_SIZE, p[0]);
 	ok1(alloc_check(mem, POOL_SIZE));
@@ -133,6 +137,7 @@ int main(int argc, char *argv[])
 		ok1(p[i]);
 		ok1(((unsigned long)p[i] % (1 << i)) == 0);
 		ok1(alloc_check(mem, POOL_SIZE));
+		ok1(alloc_size(mem, POOL_SIZE, p[i]) >= i);
 	}
 
 	for (i = 0; i < POOL_ORD-1; i++) {
@@ -145,6 +150,7 @@ int main(int argc, char *argv[])
 		p[0] = alloc_get(mem, POOL_SIZE, 1, 1 << i);
 		ok1(p[0]);
 		ok1(alloc_check(mem, POOL_SIZE));
+		ok1(alloc_size(mem, POOL_SIZE, p[i]) >= 1);
 		alloc_free(mem, POOL_SIZE, p[0]);
 		ok1(alloc_check(mem, POOL_SIZE));
 	}
@@ -152,6 +158,7 @@ int main(int argc, char *argv[])
 	/* Alignment check for a 0-byte allocation.  Corner case. */
 	p[0] = alloc_get(mem, POOL_SIZE, 0, 1 << (POOL_ORD - 1));
 	ok1(alloc_check(mem, POOL_SIZE));
+	ok1(alloc_size(mem, POOL_SIZE, p[0]) < POOL_SIZE);
 	alloc_free(mem, POOL_SIZE, p[0]);
 	ok1(alloc_check(mem, POOL_SIZE));
 
@@ -163,6 +170,7 @@ int main(int argc, char *argv[])
 			break;
 	}
 	ok1(alloc_check(mem, POOL_SIZE));
+	ok1(alloc_size(mem, POOL_SIZE, p[i-1]) >= getpagesize());
 
 	/* Sort them. */
 	sort(p, i-1, addr_cmp);
@@ -171,6 +179,7 @@ int main(int argc, char *argv[])
 	for (i = 1; p[i]; i++)
 		alloc_free(mem, POOL_SIZE, p[i]);
 	ok1(alloc_check(mem, POOL_SIZE));
+	ok1(alloc_size(mem, POOL_SIZE, p[0]) >= getpagesize());
 
 	/* Now do a whole heap of subpage allocs. */
 	for (i = 1; i < POOL_SIZE; i++) {
@@ -185,6 +194,7 @@ int main(int argc, char *argv[])
 	ok1(alloc_check(mem, POOL_SIZE));
 	p[0] = alloc_get(mem, POOL_SIZE, 1, 1);
 	ok1(p[0]);
+	ok1(alloc_size(mem, POOL_SIZE, p[0]) >= 1);
 
 	/* Clean up. */
 	for (i = 0; p[i]; i++)

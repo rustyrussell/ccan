@@ -822,6 +822,53 @@ void alloc_free(void *pool, unsigned long poolsize, void *free)
 	}
 }
 
+unsigned long alloc_size(void *pool, unsigned long poolsize, void *p)
+{
+	unsigned long len, pagenum;
+	struct metaheader *mh;
+
+	assert(poolsize >= MIN_SIZE);
+
+	mh = first_mheader(pool, poolsize);
+	assert((char *)p >= (char *)(mh + 1));
+	assert((char *)pool + poolsize > (char *)p);
+
+	pagenum = pool_offset(pool, p) / getpagesize();
+
+	if (get_page_state(pool, pagenum) == SPECIAL) {
+		unsigned long off = (unsigned long)p % getpagesize();
+		uint8_t *metadata = get_page_metadata(pool, pagenum);
+		enum sub_metadata_type type = get_bit_pair(metadata, 0);
+
+		assert(off < SUBPAGE_METAOFF);
+
+		switch (type) {
+		case BITMAP:
+			assert(off % BITMAP_GRANULARITY == 0);
+			off /= BITMAP_GRANULARITY;
+
+			/* Offset by one because first bit used for header. */
+			off++;
+			len = BITMAP_GRANULARITY;
+			while (++off < SUBPAGE_METAOFF / BITMAP_GRANULARITY
+			       && get_bit_pair(metadata, off) == TAKEN)
+				len += BITMAP_GRANULARITY;
+			break;
+		case UNIFORM:
+			len = decode_usize(metadata);
+			break;
+		default:
+			assert(0);
+		}
+	} else {
+		len = getpagesize();
+		while (get_page_state(pool, ++pagenum) == TAKEN)
+			len += getpagesize();
+	}
+
+	return len;
+}
+
 static bool is_metadata_page(void *pool, unsigned long poolsize,
 			     unsigned long page)
 {
