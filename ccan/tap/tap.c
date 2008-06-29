@@ -28,6 +28,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "tap.h"
 
@@ -41,6 +42,7 @@ static char *todo_msg = NULL;
 static char *todo_msg_fixed = "libtap malloc issue";
 static int todo = 0;
 static int test_died = 0;
+static int test_pid;
 
 /* Encapsulate the pthread code in a conditional.  In the absence of
    libpthread the code does nothing */
@@ -185,6 +187,9 @@ _gen_result(int ok, const char *func, char *file, unsigned int line,
 static void
 _cleanup(void)
 {
+	/* If we forked, don't do cleanup in child! */
+	if (getpid() != test_pid)
+		return;
 
 	LOCK;
 
@@ -245,6 +250,7 @@ _tap_init(void)
 	static int run_once = 0;
 
 	if(!run_once) {
+		test_pid = getpid();
 		atexit(_cleanup);
 
 		/* stdout needs to be unbuffered so that the output appears
