@@ -1,11 +1,11 @@
 #include "tools.h"
 #include "talloc/talloc.h"
+#include "string/string.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
-#include <string.h>
 
 static int close_no_errno(int fd)
 {

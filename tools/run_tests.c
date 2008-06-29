@@ -7,8 +7,7 @@
 #include "ccan/tap/tap.h"
 #include "ccan/talloc/talloc.h"
 #include "ccan/string/string.h"
-
-#define CFLAGS "-O3 -Wall -Wundef -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Werror -Iccan -I."
+#include "tools.h"
 
 /* FIXME: Use build bug later. */
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
