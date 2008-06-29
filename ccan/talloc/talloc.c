@@ -45,6 +45,7 @@
 #define TALLOC_MAGIC 0xe814ec70
 #define TALLOC_FLAG_FREE 0x01
 #define TALLOC_FLAG_LOOP 0x02
+#define TALLOC_FLAG_EXT_ALLOC 0x04
 #define TALLOC_MAGIC_REFERENCE ((const char *)1)
 
 /* by default we abort when given a bad pointer (such as when talloc_free() is called 
@@ -78,6 +79,10 @@
 */
 static void *null_context;
 static void *autofree_context;
+
+static void *(*tc_external_alloc)(void *parent, size_t size);
+static void (*tc_external_free)(void *ptr, void *parent);
+static void *(*tc_external_realloc)(void *ptr, void *parent, size_t size);
 
 struct talloc_reference_handle {
 	struct talloc_reference_handle *next, *prev;
@@ -181,6 +186,8 @@ const char *talloc_parent_name(const void *ptr)
 static inline void *__talloc(const void *context, size_t size)
 {
 	struct talloc_chunk *tc;
+	struct talloc_chunk *parent = NULL; /* Prevent spurious gcc warning */
+	unsigned flags = TALLOC_MAGIC;
 
 	if (unlikely(context == NULL)) {
 		context = null_context;
@@ -190,19 +197,28 @@ static inline void *__talloc(const void *context, size_t size)
 		return NULL;
 	}
 
+	if (likely(context)) {
+		parent = talloc_chunk_from_ptr(context);
+		if (unlikely(parent->flags & TALLOC_FLAG_EXT_ALLOC)) {
+			tc = tc_external_alloc(TC_PTR_FROM_CHUNK(parent),
+					       TC_HDR_SIZE+size);
+			flags |= TALLOC_FLAG_EXT_ALLOC;
+			goto alloc_done;
+		}
+	}
+
 	tc = (struct talloc_chunk *)malloc(TC_HDR_SIZE+size);
+alloc_done:
 	if (unlikely(tc == NULL)) return NULL;
 
 	tc->size = size;
-	tc->flags = TALLOC_MAGIC;
+	tc->flags = flags;
 	tc->destructor = NULL;
 	tc->child = NULL;
 	tc->name = NULL;
 	tc->refs = NULL;
 
 	if (likely(context)) {
-		struct talloc_chunk *parent = talloc_chunk_from_ptr(context);
-
 		if (parent->child) {
 			parent->child->parent = NULL;
 			tc->next = parent->child;
@@ -319,6 +335,7 @@ void *_talloc_reference(const void *context, const void *ptr)
 static inline int _talloc_free(void *ptr)
 {
 	struct talloc_chunk *tc;
+	void *oldparent = NULL;
 
 	if (unlikely(ptr == NULL)) {
 		return -1;
@@ -362,6 +379,7 @@ static inline int _talloc_free(void *ptr)
 	}
 
 	if (tc->parent) {
+		oldparent = TC_PTR_FROM_CHUNK(tc->parent);
 		_TLIST_REMOVE(tc->parent->child, tc);
 		if (tc->parent->child) {
 			tc->parent->child->parent = tc->parent;
@@ -395,7 +413,12 @@ static inline int _talloc_free(void *ptr)
 	}
 
 	tc->flags |= TALLOC_FLAG_FREE;
-	free(tc);
+
+	if (unlikely(tc->flags & TALLOC_FLAG_EXT_ALLOC))
+		tc_external_free(tc, oldparent);
+	else
+		free(tc);
+
 	return 0;
 }
 
@@ -771,18 +794,26 @@ void *_talloc_realloc(const void *context, void *ptr, size_t size, const char *n
 		return NULL;
 	}
 
-	/* by resetting magic we catch users of the old memory */
-	tc->flags |= TALLOC_FLAG_FREE;
+	if (unlikely(tc->flags & TALLOC_FLAG_EXT_ALLOC)) {
+		/* need to get parent before setting free flag. */
+		void *parent = talloc_parent(ptr);
+		tc->flags |= TALLOC_FLAG_FREE;
+		new_ptr = tc_external_realloc(tc, parent, size + TC_HDR_SIZE);
+	} else {
+		/* by resetting magic we catch users of the old memory */
+		tc->flags |= TALLOC_FLAG_FREE;
 
 #if ALWAYS_REALLOC
-	new_ptr = malloc(size + TC_HDR_SIZE);
-	if (new_ptr) {
-		memcpy(new_ptr, tc, tc->size + TC_HDR_SIZE);
-		free(tc);
-	}
+		new_ptr = malloc(size + TC_HDR_SIZE);
+		if (new_ptr) {
+			memcpy(new_ptr, tc, tc->size + TC_HDR_SIZE);
+			free(tc);
+		}
 #else
-	new_ptr = realloc(tc, size + TC_HDR_SIZE);
+		new_ptr = realloc(tc, size + TC_HDR_SIZE);
 #endif
+	}
+
 	if (unlikely(!new_ptr)) {	
 		tc->flags &= ~TALLOC_FLAG_FREE; 
 		return NULL; 
@@ -1400,4 +1431,25 @@ int talloc_is_parent(const void *context, const void *ptr)
 		}
 	}
 	return 0;
+}
+
+void talloc_external_enable(void *(*alloc)(void *parent, size_t size),
+			    void (*free)(void *ptr, void *parent),
+			    void *(*realloc)(void *ptr, void *parent, size_t))
+{
+	tc_external_alloc = alloc;
+	tc_external_free = free;
+	tc_external_realloc = realloc;
+}
+
+void talloc_mark_external(void *context)
+{
+	struct talloc_chunk *tc;
+
+	if (unlikely(context == NULL)) {
+		context = null_context;
+	}
+
+	tc = talloc_chunk_from_ptr(context);
+	tc->flags |= TALLOC_FLAG_EXT_ALLOC;
 }

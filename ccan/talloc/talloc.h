@@ -928,6 +928,32 @@ size_t talloc_get_size(const void *ctx);
  */
 void *talloc_find_parent_byname(const void *ctx, const char *name);
 
+/**
+ * talloc_external_enable - set external allocators for some nodes
+ * @alloc: the malloc() equivalent
+ * @free: the free() equivalent
+ * @realloc: the realloc() equivalent
+ *
+ * talloc_mark_external() can be used to mark nodes whose children should
+ * use separate allocators.  Currently the set of allocators is global, not
+ * per-node, and is set with this function.
+ *
+ * The parent pointers is the talloc pointer of the parent.
+ */
+void talloc_external_enable(void *(*alloc)(void *parent, size_t size),
+			    void (*free)(void *ptr, void *parent),
+			    void *(*realloc)(void *ptr, void *parent, size_t));
+
+/**
+ * talloc_mark_external - children of this note must use external allocators
+ * @p: the talloc pointer
+ *
+ * This function indicates that all children (and children's children etc)
+ * should use the allocators set up wth talloc_external_enable() rather than
+ * normal malloc/free.
+ */
+void talloc_mark_external(void *ptr);
+
 /* The following definitions come from talloc.c  */
 void *_talloc(const void *context, size_t size);
 void _talloc_set_destructor(const void *ptr, int (*destructor)(void *));
