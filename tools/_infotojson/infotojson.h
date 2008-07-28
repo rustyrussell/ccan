@@ -25,13 +25,13 @@
  };
  
  /* Function for storing json structure to file given struct json*/ 
-int storejsontofile(struct json *jsonobj, char *jsonfile);
+static int storejsontofile(const struct json *jsonobj, const char *jsonfile);
 
 /*Function to store in database*/
-int storejsontodb(struct json *jsonobj, char *db);
+static int storejsontodb(const struct json *jsonobj, const char *db);
 
 /*create json structure*/
-struct json * createjson(char **infofile, char *author);
+static struct json *createjson(char **infofile, char *author);
 
 /*Extract info from file*/
-char ** extractinfo(char **file);
+static char **extractinfo(char **file);
