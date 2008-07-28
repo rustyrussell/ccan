@@ -59,9 +59,9 @@
  * a 32-bit hash.
  *
  * This hash will have the same results on different machines, so can
- * be used for external hashes (ie. not hashes sent across the network
- * or saved to disk).  The results will not change in future versions
- * of this package.
+ * be used for external hashes (ie. hashes sent across the network or
+ * saved to disk).  The results will not change in future versions of
+ * this module.
  *
  * Example:
  *	#include "hash/hash.h"
@@ -96,6 +96,31 @@
  * network or saved to disk).
  */
 uint32_t hash_u32(const uint32_t *key, size_t num, uint32_t base);
+
+/**
+ * hash_string - very fast hash of an ascii string
+ * @str: the nul-terminated string
+ *
+ * The string is hashed, using a hash function optimized for ASCII and
+ * similar strings.  It's weaker than the other hash functions.
+ *
+ * This hash may have different results on different machines, so is
+ * only useful for internal hashes (ie. not hashes sent across the
+ * network or saved to disk).  The results will be different from the
+ * other hash functions in this module, too.
+ */
+static inline uint32_t hash_string(const char *string)
+{
+	/* This is Karl Nelson <kenelson@ece.ucdavis.edu>'s X31 hash.
+	 * It's a little faster than the (much better) lookup3 hash(): 56ns vs
+	 * 84ns on my 2GHz Intel Core Duo 2 laptop for a 10 char string. */
+	uint32_t ret;
+
+	for (ret = 0; *string; string++)
+		ret = (ret << 5) - ret + *string;
+
+	return ret;
+}
 
 /* Our underlying operations. */
 uint32_t hash_any(const void *key, size_t length, uint32_t base);
@@ -153,7 +178,7 @@ static inline uint32_t hash_pointer(const void *p, uint32_t base)
 		} u;
 		u.p = p;
 		return hash_u32(u.u32, sizeof(p) / sizeof(uint32_t), base);
-	}
-	return hash(&p, 1, base);
+	} else
+		return hash(&p, 1, base);
 }
 #endif /* HASH_H */

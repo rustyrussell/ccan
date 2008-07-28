@@ -1,3 +1,5 @@
+#include <string.h>
+
 /**
  * hash - routines for hashing bytes
  *

@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
 	for (i = 0; i < ARRAY_WORDS; i++)
 		array[i] = i;
 
-	plan_tests(53);
+	plan_tests(55);
 
 	/* hash_stable is guaranteed. */
 	ok1(hash_stable(array, ARRAY_WORDS, 0) == 0x13305f8c);
@@ -107,6 +107,43 @@ int main(int argc, char *argv[])
 		/* Expect within 20% */
 		ok(lowest > 800, "hash_pointer byte %i lowest %i", i, lowest);
 		ok(highest < 1200, "hash_pointer byte %i highest %i",
+		   i, highest);
+		diag("hash_pointer byte %i, range %u-%u", i, lowest, highest);
+	}
+
+	/* String hash: weak, so only test bottom byte */
+	for (i = 0; i < 1; i++) {
+		unsigned int num = 0, cursor, lowest = -1U, highest = 0;
+		char p[5];
+
+		memset(results, 0, sizeof(results));
+
+		memset(p, 'A', sizeof(p));
+		p[sizeof(p)-1] = '\0';
+
+		for (;;) {
+			for (cursor = 0; cursor < sizeof(p)-1; cursor++) {
+				p[cursor]++;
+				if (p[cursor] <= 'z')
+					break;
+				p[cursor] = 'A';
+			}
+			if (cursor == sizeof(p)-1)
+				break;
+
+			results[(hash_string(p) >> i*8)&0xFF]++;
+			num++;
+		}
+
+		for (j = 0; j < 256; j++) {
+			if (results[j] < lowest)
+				lowest = results[j];
+			if (results[j] > highest)
+				highest = results[j];
+		}
+		/* Expect within 20% */
+		ok(lowest > 35000, "hash_pointer byte %i lowest %i", i, lowest);
+		ok(highest < 53000, "hash_pointer byte %i highest %i",
 		   i, highest);
 		diag("hash_pointer byte %i, range %u-%u", i, lowest, highest);
 	}
