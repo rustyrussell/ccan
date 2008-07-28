@@ -9,12 +9,7 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include "talloc/talloc.h"
-
-/* Is A == B ? */
-#define streq(a,b) (strcmp((a),(b)) == 0)
-
-/* Does A start with B ? */
-#define strstarts(a,b) (strncmp((a),(b),strlen(b)) == 0)
+#include "string/string.h"
 
 /* This version adds one byte (for nul term) */
 static void *grab_file(void *ctx, const char *filename)
@@ -46,27 +41,6 @@ static void *grab_file(void *ctx, const char *filename)
 	return buffer;
 }
 
-/* This is a dumb one which copies.  We could mangle instead. */
-static char **split(const char *text)
-{
-	char **lines = NULL;
-	unsigned int max = 64, num = 0;
-
-	lines = talloc_array(text, char *, max+1);
-
-	while (*text != '\0') {
-		unsigned int len = strcspn(text, "\n");
-		lines[num] = talloc_array(lines, char, len + 1);
-		memcpy(lines[num], text, len);
-		lines[num][len] = '\0';
-		text += len + 1;
-		if (++num == max)
-			lines = talloc_realloc(text, lines, char *, max*=2 + 1);
-	}
-	lines[num] = NULL;
-	return lines;
-}
-
 int main(int argc, char *argv[])
 {
 	unsigned int i, j;
@@ -79,7 +53,7 @@ int main(int argc, char *argv[])
 		file = grab_file(NULL, argv[i]);
 		if (!file)
 			err(1, "Reading file %s", argv[i]);
-		lines = split(file);
+		lines = strsplit(file, file, "\n", NULL);
 
 		for (j = 0; lines[j]; j++) {
 			if (streq(lines[j], "/**")) {

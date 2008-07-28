@@ -24,7 +24,7 @@ lines_from_cmd(const void *ctx, unsigned int *num, char *format, ...)
 		err(1, "Reading from '%s'", cmd);
 	pclose(p);
 
-	return split(ctx, buffer, "\n", num);
+	return strsplit(ctx, buffer, "\n", num);
 }
 
 static char **get_one_deps(const void *ctx, const char *dir, unsigned int *num)

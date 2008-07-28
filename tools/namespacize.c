@@ -10,8 +10,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include "string/string.h"
-#include "talloc/talloc.h"
+#include "ccan/string/string.h"
+#include "ccan/talloc/talloc.h"
 #include "tools.h"
 
 #define IDENT_CHARS	"ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
@@ -29,16 +29,6 @@ static int indent = 0;
 	} while(0)
 #define verbose_indent() (indent += 2)
 #define verbose_unindent() (indent -= 2)
-
-#define strstarts(str,prefix) (strncmp((str),(prefix),strlen(prefix)) == 0)
-
-static inline bool strends(const char *str, const char *postfix)
-{
-	if (strlen(str) < strlen(postfix))
-		return false;
-
-	return streq(str + strlen(str) - strlen(postfix), postfix);
-}
 
 static int unlink_no_errno(const char *filename)
 {
@@ -466,7 +456,7 @@ static struct replace *read_replacement_file(const char *depdir)
 		return NULL;
 	}
 
-	for (line = split(file, file, "\n", NULL); *line; line++)
+	for (line = strsplit(file, file, "\n", NULL); *line; line++)
 		add_replace(&repl, *line);
 	return repl;
 }
