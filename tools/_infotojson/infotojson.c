@@ -1,12 +1,6 @@
 /* This extract info from _info.c and create json file and also optionally store to db */
 #include "infotojson.h"
 
-/* Is A == B ? */
-#define streq(a,b) (strcmp((a),(b)) == 0)
-
-/* Does A start with B ? */
-#define strstarts(a,b) (strncmp((a),(b),strlen(b)) == 0)
-
 /* This version adds one byte (for nul term) */
 static void *grab_file(void *ctx, const char *filename)
 {
@@ -35,47 +29,6 @@ static void *grab_file(void *ctx, const char *filename)
 		buffer[size] = '\0';
 	close(fd);
 	return buffer;
-}
-
-/* This is a dumb one which copies.  We could mangle instead. */
-static char **split(const char *text)
-{
-	char **lines = NULL;
-	unsigned int max = 64, num = 0;
-
-	lines = talloc_array(text, char *, max+1);
-
-	while (*text != '\0') {
-		unsigned int len = strcspn(text, "\n");
-		lines[num] = talloc_array(lines, char, len + 1);
-		memcpy(lines[num], text, len);
-		lines[num][len] = '\0';
-		text += len + 1;
-		if (++num == max)
-			lines = talloc_realloc(text, lines, char *, max*=2 + 1);
-	}
-	lines[num] = NULL;
-	return lines;
-}
-
-/*combin desc into an array to write to db*/
-static char *combinedesc(char **desc)
-{
-	unsigned int i = 0, size = 0;;
-	char *combine;
-	
-	for(i = 0; desc[i]; i++)
-		size += strlen(desc[i]);
-
-	combine = (char *)palloc((size + i)* sizeof(char));
-	strcpy(combine, desc[0]);
-
-	for(i = 1; desc[i]; i++) {
-		strcat(combine, "\n");
-		strcat(combine, desc[i]);
-	}
-	strreplace(combine,'\'',' ');
-	return combine;
 }
 
 /*creating json structure for storing to file/db*/
@@ -168,10 +121,10 @@ int storejsontodb(struct json *jsonobj, char *db)
 	q = db_query(handle, query);
 	if (!q->num_rows)
 		cmd = aprintf("INSERT INTO search VALUES(\"%s\",\"%s\",\"%s\",'%s\');",
-			jsonobj->module, jsonobj->author, jsonobj->title, combinedesc(jsonobj->desc));
+			jsonobj->module, jsonobj->author, jsonobj->title, strjoin(NULL,jsonobj->desc,"\n"));
 	else
 		cmd = aprintf("UPDATE search set author=\"%s\", title=\"%s\", desc='%s\' where module=\"%s\";",
-			jsonobj->author, jsonobj->title, combinedesc(jsonobj->desc), jsonobj->module);
+			jsonobj->author, jsonobj->title, strjoin(NULL,jsonobj->desc,"\n"), jsonobj->module);
 	
 	db_command(handle, cmd);	
 	db_close(handle);
@@ -195,7 +148,7 @@ int main(int argc, char *argv[])
 	if (!file)
 		err(1, "Reading file %s", argv[1]);
 
-	lines = split(file);		
+	lines = strsplit(NULL, file, "\n", NULL);		
 	
 	//extract info from lines
 	infofile = extractinfo(lines);

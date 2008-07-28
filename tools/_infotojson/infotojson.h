@@ -13,6 +13,7 @@
 #include <sqlite3.h>
 #include "database.h"
 #include "ccan/talloc/talloc.h"
+#include "ccan/string/string.h"
 #include "utils.h"
 
  struct json
