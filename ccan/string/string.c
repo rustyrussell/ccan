@@ -30,4 +30,15 @@ char **strsplit(const void *ctx, const char *string, const char *delims,
 		*nump = num;
 	return lines;
 }
-	
+
+char *strjoin(const void *ctx, char *strings[], const char *delim)
+{
+	unsigned int i;
+	char *ret = talloc_strdup(ctx, "");
+
+	for (i = 0; strings[i]; i++) {
+		ret = talloc_append_string(ret, strings[i]);
+		ret = talloc_append_string(ret, delim);
+	}
+	return ret;
+}

@@ -7,7 +7,9 @@
 /* FIXME: ccanize */
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
-static char *substrings[] = { "far", "bar", "baz", "b", "ba", "z", "ar" };
+static char *substrings[] = { "far", "bar", "baz", "b", "ba", "z", "ar", NULL };
+
+#define NUM_SUBSTRINGS (ARRAY_SIZE(substrings) - 1)
 
 static char *strdup_rev(const char *s)
 {
@@ -22,13 +24,13 @@ static char *strdup_rev(const char *s)
 int main(int argc, char *argv[])
 {
 	unsigned int i, j, n;
-	char **split;
+	char **split, *str;
 	void *ctx;
-	char *strings[ARRAY_SIZE(substrings) * ARRAY_SIZE(substrings)];
+	char *strings[NUM_SUBSTRINGS * NUM_SUBSTRINGS];
 
 	n = 0;
-	for (i = 0; i < ARRAY_SIZE(substrings); i++) {
-		for (j = 0; j < ARRAY_SIZE(substrings); j++) {
+	for (i = 0; i < NUM_SUBSTRINGS; i++) {
+		for (j = 0; j < NUM_SUBSTRINGS; j++) {
 			strings[n] = malloc(strlen(substrings[i])
 					    + strlen(substrings[j]) + 1);
 			sprintf(strings[n++], "%s%s",
@@ -36,7 +38,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	plan_tests(n * n * 5 + 16);
+	plan_tests(n * n * 5 + 19);
 	for (i = 0; i < n; i++) {
 		for (j = 0; j < n; j++) {
 			unsigned int k, identical = 0;
@@ -104,6 +106,16 @@ int main(int argc, char *argv[])
 	split = strsplit(ctx, "hello  world", "o ", NULL);
 	ok1(talloc_parent(split) == ctx);
 	talloc_free(ctx);
+
+	str = strjoin(NULL, substrings, ", ");
+	ok1(streq(str, "far, bar, baz, b, ba, z, ar, "));
+	ctx = str;
+	str = strjoin(ctx, substrings, "");
+	ok1(streq(str, "farbarbazbbazar"));
+	ok1(talloc_parent(str) == ctx);
+	talloc_free(ctx);
+
+
 	
 	return exit_status();
 }				

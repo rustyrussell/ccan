@@ -54,7 +54,8 @@ static inline bool strends(const char *str, const char *postfix)
  * This function splits a single string into multiple strings.  The
  * original string is untouched: an array is allocated (using talloc)
  * pointing to copies of each substring.  Multiple delimiters result
- * in empty substrings.
+ * in empty substrings.  By definition, no delimiters will appear in
+ * the substrings.
  *
  * The final char * in the array will be NULL, so you can use this or
  * @nump to find the array length.
@@ -76,4 +77,29 @@ static inline bool strends(const char *str, const char *postfix)
  */
 char **strsplit(const void *ctx, const char *string, const char *delims,
 		 unsigned int *nump);
+
+/**
+ * strjoin - Join an array of substrings into one long string
+ * @ctx: the context to tallocate from (often NULL)
+ * @strings: the NULL-terminated array of strings to join
+ * @delim: the delimiter to insert between the strings
+ *
+ * This function joins an array of strings into a single string.  The
+ * return value is allocated using talloc.  Each string in @strings is
+ * followed by a copy of @delim.
+ *
+ * Example:
+ *	// Append the string "--EOL" to each line.
+ *	char *append_to_all_lines(const char *string)
+ *	{
+ *		char **lines, *ret;
+ *		unsigned int i, num, newnum;
+ *
+ *		lines = strsplit(NULL, string, "\n", NULL);
+ *		ret = strjoin(NULL, lines, "-- EOL\n");
+ *		talloc_free(lines);
+ *		return ret;
+ *	}
+ */
+char *strjoin(const void *ctx, char *strings[], const char *delim);
 #endif /* CCAN_STRING_H */
