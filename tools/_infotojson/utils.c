@@ -1,11 +1,13 @@
-#include "utils.h"
+#define _GNU_SOURCE
 #include <stdio.h>
+#include "utils.h"
 #include <string.h>
 #include <limits.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
+#include <err.h>
 #include <assert.h>
 #include "utils.h"
 
@@ -31,7 +33,7 @@ char *aprintf(const char *fmt, ...)
 	return ret;
 }
 
-int strreplace(char * str, char src, char dest)
+void strreplace(char * str, char src, char dest)
 {
 	int i;
 	for(i = 0; str[i]; i++)
@@ -51,5 +53,5 @@ void *realloc_nofail(void *ptr, size_t size)
         ptr = realloc(ptr, size);
 	if (ptr)
 		return ptr;
-	printf("realloc of %zu failed", size);
+	err(1, "realloc of %zu failed", size);
 }

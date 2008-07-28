@@ -14,4 +14,4 @@ void * palloc(int size);
 
 char *aprintf(const char *fmt, ...);
 
-int strreplace(char * str, char src, char dest);
+void strreplace(char * str, char src, char dest);

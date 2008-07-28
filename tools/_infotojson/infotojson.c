@@ -112,7 +112,6 @@ int storejsontodb(struct json *jsonobj, char *db)
 {
 	char *cmd, *query;
 	sqlite3 *handle;
-	char *errstr;
 	struct db_query *q;
 	
 	handle = db_open(db);

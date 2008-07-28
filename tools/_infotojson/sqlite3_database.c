@@ -70,31 +70,6 @@ void db_command(void *h, const char *command)
 		printf("Failed sqlite3 command '%s': %s", command, err);
 }
 
-/* Starts transaction.  Doesn't need to nest. */
-/*void db_transaction_start(void *h)
-{
-	char *err;
-	if (sqlite3_exec(h, "BEGIN EXCLUSIVE TRANSACTION", NULL, NULL, &err)!=SQLITE_OK)
-		printf("Starting sqlite3 transaction: %s\n", err);
-}
-
-/* Finishes transaction, or rolls it back and caller needs to start again. */
-/*
-bool db_transaction_finish(void *h)
-{
-	switch (sqlite3_exec(h, "COMMIT TRANSACTION;", NULL, NULL, NULL)) {
-	case SQLITE_OK:
-		return true;
-	case SQLITE_BUSY:
-		if (sqlite3_exec(h, "ROLLBACK TRANSACTION;", NULL, NULL, NULL)
-		    != SQLITE_OK)
-			printf("Ending sqlite3 busy rollback failed");
-		return false;
-	default:
-		printf("Strange sqlite3 error return from COMMIT");
-	}
-}*/
-
 /* Closes database (only called when everything OK). */
 void db_close(void *h)
 {
