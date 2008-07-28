@@ -5,7 +5,7 @@
 /**
  * string - string helper routines
  *
- * This is a grab bag of modules for string comparisons, designed to enhance
+ * This is a grab bag of modules for string operations, designed to enhance
  * the standard string.h.
  *
  * Example:
@@ -27,9 +27,10 @@ int main(int argc, char *argv[])
 	if (argc != 2)
 		return 1;
 
-	if (strcmp(argv[1], "depends") == 0)
-		/* Nothing. */
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/talloc\n");
 		return 0;
+	}
 
 	return 1;
 }

@@ -43,4 +43,37 @@ static inline bool strends(const char *str, const char *postfix)
 
 	return streq(str + strlen(str) - strlen(postfix), postfix);
 }
+
+/**
+ * strsplit - Split string into an array of substrings
+ * @ctx: the context to tallocate from (often NULL)
+ * @string: the string to split
+ * @delims: delimiters where lines should be split.
+ * @nump: optional pointer to place resulting number of lines
+ *
+ * This function splits a single string into multiple strings.  The
+ * original string is untouched: an array is allocated (using talloc)
+ * pointing to copies of each substring.  Multiple delimiters result
+ * in empty substrings.
+ *
+ * The final char * in the array will be NULL, so you can use this or
+ * @nump to find the array length.
+ *
+ * Example:
+ *	unsigned int count_long_lines(const char *text)
+ *	{
+ *		char **lines;
+ *		unsigned int i, long_lines = 0;
+ *
+ *		// Can only fail on out-of-memory.
+ *		lines = strsplit(NULL, string, "\n", NULL);
+ *		for (i = 0; lines[i] != NULL; i++)
+ *			if (strlen(lines[i]) > 80)
+ *				long_lines++;
+ *		talloc_free(lines);
+ *		return long_lines;
+ *	}
+ */
+char **strsplit(const void *ctx, const char *string, const char *delims,
+		 unsigned int *nump);
 #endif /* CCAN_STRING_H */
