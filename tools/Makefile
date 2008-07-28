@@ -12,3 +12,4 @@ tools-clean: ccanlint-clean
 	rm -f run_tests doc_extract namespacize
 
 include tools/ccanlint/Makefile
+include tools/_infotojson/Makefile
