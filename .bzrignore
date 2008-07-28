@@ -1,8 +1,12 @@
 _info
 .depends
 *~
+tools/ccan_depends
 tools/doc_extract
 tools/namespacize
 tools/run_tests
 tools/ccanlint/ccanlint
 tools/ccanlint/generated-init-tests
+inter-depends
+test-depends
+lib-depends

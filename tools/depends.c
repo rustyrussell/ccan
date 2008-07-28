@@ -1,9 +1,11 @@
 #include "talloc/talloc.h"
+#include "string/string.h"
 #include "tools.h"
 #include <err.h>
+#include <stdbool.h>
 
-static char ** __attribute__((format(printf, 2, 3)))
-lines_from_cmd(const void *ctx, char *format, ...)
+static char ** __attribute__((format(printf, 3, 4)))
+lines_from_cmd(const void *ctx, unsigned int *num, char *format, ...)
 {
 	va_list ap;
 	char *cmd, *buffer;
@@ -22,30 +24,55 @@ lines_from_cmd(const void *ctx, char *format, ...)
 		err(1, "Reading from '%s'", cmd);
 	pclose(p);
 
-	return split(ctx, buffer, "\n", NULL);
+	return split(ctx, buffer, "\n", num);
 }
 
-static char *build_info(const void *ctx, const char *dir)
-{
-	char *file, *cfile, *cmd;
-
-	cfile = talloc_asprintf(ctx, "%s/%s", dir, "_info.c");
-	file = talloc_asprintf(cfile, "%s/%s", dir, "_info");
-	cmd = talloc_asprintf(file, "gcc " CFLAGS " -o %s %s", file, cfile);
-	if (system(cmd) != 0)
-		errx(1, "Failed to compile %s", file);
-
-	return file;
-}
-
-char **get_deps(const void *ctx, const char *dir)
+static char **get_one_deps(const void *ctx, const char *dir, unsigned int *num)
 {
 	char **deps, *cmd;
 
-	cmd = talloc_asprintf(ctx, "%s depends", build_info(ctx, dir));
-	deps = lines_from_cmd(cmd, cmd);
+	cmd = talloc_asprintf(ctx, "%s/_info depends", dir);
+	deps = lines_from_cmd(cmd, num, "%s", cmd);
 	if (!deps)
 		err(1, "Could not run '%s'", cmd);
 	return deps;
 }
 
+static bool have_dep(char **deps, unsigned int num, const char *dep)
+{
+	unsigned int i;
+
+	for (i = 0; i < num; i++)
+		if (streq(deps[i], dep))
+			return true;
+	return false;
+}
+
+/* Gets all the dependencies, recursively. */
+char **get_deps(const void *ctx, const char *dir)
+{
+	char **deps;
+	unsigned int i, num;
+
+	deps = get_one_deps(ctx, dir, &num);
+	for (i = 0; i < num; i++) {
+		char **newdeps;
+		unsigned int j, newnum;
+
+		if (!strstarts(deps[i], "ccan/"))
+			continue;
+
+		newdeps = get_one_deps(ctx, deps[i], &newnum);
+
+		/* Should be short, so brute-force out dups. */
+		for (j = 0; j < newnum; j++) {
+			if (have_dep(deps, num, newdeps[j]))
+				continue;
+
+			deps = talloc_realloc(NULL, deps, char *, num + 2);
+			deps[num++] = newdeps[j];
+			deps[num] = NULL;
+		}
+	}
+	return deps;
+}

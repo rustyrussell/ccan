@@ -19,7 +19,7 @@ static int verbose;
 struct test_type
 {
 	const char *name;
-	void (*testfn)(struct test_type *t, const char *name);
+	void (*testfn)(const char *dir, struct test_type *t, const char *name);
 };
 
 struct test
@@ -98,14 +98,27 @@ static void add_obj(const char *testdir, const char *name)
 	objs = obj;
 }
 
-static int build(const char *name, int fail)
+static int build(const char *dir, const char *name, int fail)
 {
 	const char *cmd;
 	int ret;
+	char *externals = talloc_strdup(name, "");
+	char **deps;
 
-	cmd = talloc_asprintf(name, "gcc " CFLAGS " %s -o %s %s %s%s",
+	for (deps = get_deps(objs, dir); *deps; deps++) {
+		char *end;
+		if (!strstarts(*deps, "ccan/"))
+			continue;
+
+		end = strrchr(*deps, '/') + 1;
+		/* ccan/foo -> ccan/libfoo.a */
+		externals = talloc_asprintf_append(externals,
+						   " ccan/lib%s.a", end);
+	}
+
+	cmd = talloc_asprintf(name, "gcc " CFLAGS " %s -o %s %s %s%s%s",
 			      fail ? "-DFAIL" : "",
-			      output_name(name), name, obj_list(),
+			      output_name(name), name, obj_list(), externals,
 			      verbose ? "" : "> /dev/null 2>&1");
 
 	if (verbose)
@@ -118,17 +131,17 @@ static int build(const char *name, int fail)
 	return ret;
 }
 
-static void compile_ok(struct test_type *t, const char *name)
+static void compile_ok(const char *dir, struct test_type *t, const char *name)
 {
-	ok(build(name, 0) == 0, "%s %s", t->name, name);
+	ok(build(dir, name, 0) == 0, "%s %s", t->name, name);
 }
 
-static void compile_fail(struct test_type *t, const char *name)
+static void compile_fail(const char *dir, struct test_type *t, const char *name)
 {
-	if (build(name, 0) != 0)
+	if (build(dir, name, 0) != 0)
 		fail("non-FAIL build %s", name);
 	else
-		ok(build(name, 1) > 0, "%s %s", t->name, name);
+		ok(build(dir, name, 1) > 0, "%s %s", t->name, name);
 }
 
 static void run(const char *name)
@@ -188,13 +201,13 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	plan_tests(num_tests + num_objs);
+	plan_tests(num_tests + num_objs + (num_objs ? 1 : 0));
 	/* First all the extra object compilations. */
 	compile_objs();
 
 	/* Do all the test compilations. */
 	for (test = tests; test; test = test->next)
-		test->type->testfn(test->type, test->name);
+		test->type->testfn(argv[1], test->type, test->name);
 
 	cleanup_objs();
 

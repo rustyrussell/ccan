@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include "string/string.h"
 #include "talloc/talloc.h"
 #include "tools.h"
 

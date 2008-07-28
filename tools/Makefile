@@ -1,3 +1,5 @@
+tools/ccan_depends: tools/ccan_depends.o tools/depends.o tools/split.o tools/grab_file.o ccan/talloc/talloc.o
+
 tools/run_tests: tools/run_tests.o tools/depends.o tools/split.o tools/grab_file.o ccan/tap/tap.o ccan/talloc/talloc.o
 
 tools/doc_extract: tools/doc_extract.c ccan/talloc/talloc.o
