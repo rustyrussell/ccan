@@ -1061,7 +1061,7 @@ void alloc_visualize(FILE *out, void *pool, unsigned long poolsize)
 			if (meta[j / 8] & (1 << (j % 8)))
 				total++;
 
-		printf("  %u: %u/%u (%u%% density)\n",
+		printf("  %u: %u/%zu (%zu%% density)\n",
 		       uc->size[j], total, SUBPAGE_METAOFF / uc->size[i],
 		       (total * 100) / (SUBPAGE_METAOFF / uc->size[i]));
 	}
