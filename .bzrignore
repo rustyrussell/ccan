@@ -10,3 +10,4 @@ tools/ccanlint/generated-init-tests
 inter-depends
 test-depends
 lib-depends
+tools/_infotojson/infotojson
