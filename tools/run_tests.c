@@ -106,14 +106,11 @@ static int build(const char *dir, const char *name, int fail)
 	char **deps;
 
 	for (deps = get_deps(objs, dir); *deps; deps++) {
-		char *end;
 		if (!strstarts(*deps, "ccan/"))
 			continue;
 
-		end = strrchr(*deps, '/') + 1;
-		/* ccan/foo -> ccan/libfoo.a */
-		externals = talloc_asprintf_append(externals,
-						   " ccan/lib%s.a", end);
+		/* ccan/foo -> ccan/foo.o */
+		externals = talloc_asprintf_append(externals, " %s.o", *deps);
 	}
 
 	cmd = talloc_asprintf(name, "gcc " CFLAGS " %s -o %s %s %s%s%s",
