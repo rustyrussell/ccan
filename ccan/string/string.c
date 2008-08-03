@@ -47,6 +47,15 @@ char *strjoin(const void *ctx, char *strings[], const char *delim)
 	return ret;
 }
 
+static int close_no_errno(int fd)
+{
+	int ret = 0, serrno = errno;
+	if (close(fd) < 0)
+		ret = errno;
+	errno = serrno;
+	return ret;
+}
+
 void *grab_fd(const void *ctx, int fd)
 {
 	int ret;
@@ -65,5 +74,23 @@ void *grab_fd(const void *ctx, int fd)
 	} else
 		buffer[size] = '\0';
 
+	return buffer;
+}
+
+void *grab_file(const void *ctx, const char *filename)
+{
+	int fd;
+	char *buffer;
+
+	if (streq(filename, "-"))
+		fd = dup(STDIN_FILENO);
+	else
+		fd = open(filename, O_RDONLY, 0);
+
+	if (fd < 0)
+		return NULL;
+
+	buffer = grab_fd(ctx, fd);
+	close_no_errno(fd);
 	return buffer;
 }

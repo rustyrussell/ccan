@@ -7,14 +7,14 @@
 #include <unistd.h>
 #include <errno.h>
 
-static int close_no_errno(int fd)
+/*static int close_no_errno(int fd)
 {
 	int ret = 0, serrno = errno;
 	if (close(fd) < 0)
 		ret = errno;
 	errno = serrno;
 	return ret;
-}
+}*/
 
 /*void *grab_fd(const void *ctx, int fd)
 {
@@ -38,7 +38,7 @@ static int close_no_errno(int fd)
 }*/
 
 /* This version adds one byte (for nul term) */
-void *grab_file(const void *ctx, const char *filename)
+/*void *grab_file(const void *ctx, const char *filename)
 {
 	int fd;
 	char *buffer;
@@ -54,5 +54,5 @@ void *grab_file(const void *ctx, const char *filename)
 	buffer = grab_fd(ctx, fd);
 	close_no_errno(fd);
 	return buffer;
-}
+}*/
 
