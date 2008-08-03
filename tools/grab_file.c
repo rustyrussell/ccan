@@ -16,7 +16,7 @@ static int close_no_errno(int fd)
 	return ret;
 }
 
-void *grab_fd(const void *ctx, int fd)
+/*void *grab_fd(const void *ctx, int fd)
 {
 	int ret;
 	unsigned int max = 16384, size = 0;
@@ -35,7 +35,7 @@ void *grab_fd(const void *ctx, int fd)
 		buffer[size] = '\0';
 
 	return buffer;
-}
+}*/
 
 /* This version adds one byte (for nul term) */
 void *grab_file(const void *ctx, const char *filename)

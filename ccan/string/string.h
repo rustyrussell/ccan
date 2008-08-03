@@ -102,4 +102,8 @@ char **strsplit(const void *ctx, const char *string, const char *delims,
  *	}
  */
 char *strjoin(const void *ctx, char *strings[], const char *delim);
+
+void *grab_fd(const void *ctx, int fd);
+
+void *grab_file(const void *ctx, const char *filename);
 #endif /* CCAN_STRING_H */

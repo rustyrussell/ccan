@@ -6,6 +6,10 @@
 #include <stdlib.h>
 #include "string.h"
 #include "talloc/talloc.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
 
 char **strsplit(const void *ctx, const char *string, const char *delims,
 		 unsigned int *nump)
@@ -41,4 +45,25 @@ char *strjoin(const void *ctx, char *strings[], const char *delim)
 		ret = talloc_append_string(ret, delim);
 	}
 	return ret;
+}
+
+void *grab_fd(const void *ctx, int fd)
+{
+	int ret;
+	unsigned int max = 16384, size = 0;
+	char *buffer;
+
+	buffer = talloc_array(ctx, char, max+1);
+	while ((ret = read(fd, buffer + size, max - size)) > 0) {
+		size += ret;
+		if (size == max)
+			buffer = talloc_realloc(ctx, buffer, char, max*=2 + 1);
+	}
+	if (ret < 0) {
+		talloc_free(buffer);
+		buffer = NULL;
+	} else
+		buffer[size] = '\0';
+
+	return buffer;
 }
