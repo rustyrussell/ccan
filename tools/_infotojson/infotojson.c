@@ -1,36 +1,6 @@
 /* This extract info from _info.c and create json file and also optionally store to db */
 #include "infotojson.h"
 
-/* This version adds one byte (for nul term) */
-static void *grab_file(void *ctx, const char *filename)
-{
-	unsigned int max = 16384, size = 0;
-	int ret, fd;
-	char *buffer;
-
-	if (streq(filename, "-"))
-		fd = dup(STDIN_FILENO);
-	else
-		fd = open(filename, O_RDONLY, 0);
-
-	if (fd < 0)
-		return NULL;
-
-	buffer = talloc_array(ctx, char, max+1);
-	while ((ret = read(fd, buffer + size, max - size)) > 0) {
-		size += ret;
-		if (size == max)
-			buffer = talloc_realloc(ctx, buffer, char, max*=2 + 1);
-	}
-	if (ret < 0) {
-		talloc_free(buffer);
-		buffer = NULL;
-	} else
-		buffer[size] = '\0';
-	close(fd);
-	return buffer;
-}
-
 /*creating json structure for storing to file/db*/
 static struct json *createjson(char **infofile, char *author)
 {
@@ -56,10 +26,6 @@ static struct json *createjson(char **infofile, char *author)
 	 if (!jsonobj->module)
 		errx(1, "talloc error");
 		
-	//jsonobj->module = (char *)palloc(sizeof(char) * (modulename - 1));
-	//strncpy(jsonobj->module, infofile[0], modulename - 1);
-	//jsonobj->module[modulename - 1] = '\0';
-
 	jsonobj->title = infofile[0];
 	jsonobj->desc = &infofile[1];
 	

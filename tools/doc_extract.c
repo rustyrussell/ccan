@@ -11,35 +11,6 @@
 #include "talloc/talloc.h"
 #include "string/string.h"
 
-/* This version adds one byte (for nul term) */
-static void *grab_file(void *ctx, const char *filename)
-{
-	unsigned int max = 16384, size = 0;
-	int ret, fd;
-	char *buffer;
-
-	if (streq(filename, "-"))
-		fd = dup(STDIN_FILENO);
-	else
-		fd = open(filename, O_RDONLY, 0);
-
-	if (fd < 0)
-		return NULL;
-
-	buffer = talloc_array(ctx, char, max+1);
-	while ((ret = read(fd, buffer + size, max - size)) > 0) {
-		size += ret;
-		if (size == max)
-			buffer = talloc_realloc(ctx, buffer, char, max*=2 + 1);
-	}
-	if (ret < 0) {
-		talloc_free(buffer);
-		buffer = NULL;
-	} else
-		buffer[size] = '\0';
-	close(fd);
-	return buffer;
-}
 
 int main(int argc, char *argv[])
 {
