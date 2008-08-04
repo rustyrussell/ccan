@@ -442,12 +442,12 @@ void talloc_free_children(void *ptr);
 #define talloc_zero_array(ctx, type, count) (type *)_talloc_zero_array(ctx, sizeof(type), count, #type)
 
 /**
- * talloc_zero_array - allocate an array of zeroed types
+ * talloc_array_size - allocate an array of elements of the given size
  * @ctx: context to be parent of this allocation, or NULL.
- * @type: the type to be allocated.
+ * @size: the size of each element
  * @count: the number of elements to be allocated.
  *
- * Just like talloc_array, but zeroes the memory.
+ * Typeless form of talloc_array.
  */
 #define talloc_array_size(ctx, size, count) _talloc_array(ctx, size, count, __location__)
 

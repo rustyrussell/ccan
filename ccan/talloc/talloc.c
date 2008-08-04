@@ -35,6 +35,8 @@
 #include <string.h>
 #include <stdint.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 /* use this to force every realloc to change the pointer, to stress test
    code that might not cope */
@@ -78,7 +80,7 @@
    NULL
 */
 static void *null_context;
-static void *autofree_context;
+static pid_t *autofree_context;
 
 static void *(*tc_external_alloc)(void *parent, size_t size);
 static void (*tc_external_free)(void *ptr, void *parent);
@@ -378,8 +380,10 @@ static inline int _talloc_free(void *ptr)
 		tc->destructor = NULL;
 	}
 
+	if (unlikely(tc->flags & TALLOC_FLAG_EXT_ALLOC))
+		oldparent = talloc_parent(ptr);
+
 	if (tc->parent) {
-		oldparent = TC_PTR_FROM_CHUNK(tc->parent);
 		_TLIST_REMOVE(tc->parent->child, tc);
 		if (tc->parent->child) {
 			tc->parent->child->parent = tc->parent;
@@ -1334,7 +1338,8 @@ static int talloc_autofree_destructor(void *ptr)
 
 static void talloc_autofree(void)
 {
-	_talloc_free(autofree_context);
+	if (autofree_context && *autofree_context == getpid())
+		_talloc_free(autofree_context);
 }
 
 /*
@@ -1343,8 +1348,11 @@ static void talloc_autofree(void)
 */
 void *talloc_autofree_context(void)
 {
-	if (autofree_context == NULL) {
-		autofree_context = _talloc_named_const(NULL, 0, "autofree_context");
+	if (autofree_context == NULL || *autofree_context != getpid()) {
+		autofree_context = talloc(NULL, pid_t);
+		*autofree_context = getpid();
+		talloc_set_name_const(autofree_context, "autofree_context");
+		
 		talloc_set_destructor(autofree_context, talloc_autofree_destructor);
 		atexit(talloc_autofree);
 	}
