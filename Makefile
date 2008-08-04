@@ -32,7 +32,7 @@ test-ccan/%: tools/run_tests ccan/%.o
 ccanlint: tools/ccanlint/ccanlint
 
 clean: tools-clean
-	$(RM) `find . -name '*.o'` `find . -name '.depends'` `find . -name '*.a'`
+	$(RM) `find . -name '*.o'` `find . -name '.depends'` `find . -name '*.a'`  `find . -name _info`
 	$(RM) inter-depends lib-depends test-depends
 
 inter-depends: $(ALL_DEPENDS)
