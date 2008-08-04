@@ -5,8 +5,5 @@
 
 char **get_deps(const void *ctx, const char *dir);
 
-void *grab_fd(const void *ctx, int fd);
-void *grab_file(const void *ctx, const char *filename);
-
 #endif /* CCAN_TOOLS_H */
 
