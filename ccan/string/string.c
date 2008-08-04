@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include "noerr/noerr.h"
 
 char **strsplit(const void *ctx, const char *string, const char *delims,
 		 unsigned int *nump)
@@ -44,15 +45,6 @@ char *strjoin(const void *ctx, char *strings[], const char *delim)
 		ret = talloc_append_string(ret, strings[i]);
 		ret = talloc_append_string(ret, delim);
 	}
-	return ret;
-}
-
-static int close_no_errno(int fd)
-{
-	int ret = 0, serrno = errno;
-	if (close(fd) < 0)
-		ret = errno;
-	errno = serrno;
 	return ret;
 }
 
@@ -91,6 +83,6 @@ void *grab_file(const void *ctx, const char *filename)
 		return NULL;
 
 	buffer = grab_fd(ctx, fd);
-	close_no_errno(fd);
+	close_noerr(fd);
 	return buffer;
 }
