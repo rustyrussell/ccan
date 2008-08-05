@@ -15,12 +15,14 @@
 #include "ccan/talloc/talloc.h"
 #include "ccan/string/string.h"
 #include "utils.h"
+#include "tools/tools.h"
 
  struct json
  {
  	char *module;
  	char *title;
  	char *author;
+	char **depends;
  	char **desc;
  };
  
@@ -31,7 +33,7 @@ static int storejsontofile(const struct json *jsonobj, const char *jsonfile);
 static int storejsontodb(const struct json *jsonobj, const char *db);
 
 /*create json structure*/
-static struct json *createjson(char **infofile, char *author);
+static struct json *createjson(char **infofile, const char *author, const char *directory);
 
 /*Extract info from file*/
 static char **extractinfo(char **file);

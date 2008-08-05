@@ -2,7 +2,7 @@
 #include "infotojson.h"
 
 /*creating json structure for storing to file/db*/
-static struct json *createjson(char **infofile, char *author)
+static struct json *createjson(char **infofile, const char *author, const char *directory)
 {
 	struct json *jsonobj;
 	unsigned int modulename;
@@ -12,12 +12,11 @@ static struct json *createjson(char **infofile, char *author)
 		exit(1);
 	}
 
-	//jsonobj = (struct json *)palloc(sizeof(struct json));
         jsonobj = talloc(NULL, struct json);
         if (!jsonobj)
 		errx(1, "talloc error");
 		
-	jsonobj->author = author;
+	jsonobj->author = talloc_strdup(jsonobj, author);
 
         /* First line should be module name and short description */
 	modulename =  strchr(infofile[0], '-') - infofile[0];
@@ -28,7 +27,7 @@ static struct json *createjson(char **infofile, char *author)
 		
 	jsonobj->title = infofile[0];
 	jsonobj->desc = &infofile[1];
-	
+	jsonobj->depends = get_deps(jsonobj, directory);
 	return jsonobj;
 }
 
@@ -41,7 +40,6 @@ static char **extractinfo(char **file)
 	
 	while (file[num_lines++]);
 	infofile = talloc_array(NULL, char *, num_lines);
-	//(char **) palloc(size * sizeof(char *));
 	
 	for (j = 0; j < num_lines - 1; j++) {
 		if (streq(file[j], "/**")) {
@@ -73,6 +71,13 @@ static int storejsontofile(const struct json *jsonobj, const char *file)
 	fprintf(fp,"\"Module\":\"%s\",\n",jsonobj->module);
 	fprintf(fp,"\"Title\":\"%s\",\n",jsonobj->title);
 	fprintf(fp,"\"Author\":\"%s\",\n",jsonobj->author);
+
+	fprintf(fp,"\"Dependencies\":[\n");	
+	for (j = 0; jsonobj->depends[j]; j++)
+		fprintf(fp,"{\n\"depends\":\"%s\"\n},\n",jsonobj->depends[j]);
+	fprintf(fp,"]\n");
+
+
 	fprintf(fp,"\"Description\":[\n");	
 	for (j = 0; jsonobj->desc[j]; j++)
 		fprintf(fp,"{\n\"str\":\"%s\"\n},\n",jsonobj->desc[j]);
@@ -84,7 +89,7 @@ static int storejsontofile(const struct json *jsonobj, const char *file)
 /*storing json structure to db*/
 static int storejsontodb(const struct json *jsonobj, const char *db)
 {
-	char *cmd, *query, *desc;
+	char *cmd, *query, *desc, *depends;
 	sqlite3 *handle;
 	struct db_query *q;
 	
@@ -92,17 +97,20 @@ static int storejsontodb(const struct json *jsonobj, const char *db)
 	query = talloc_asprintf(NULL, "SELECT module from search where module=\"%s\";", jsonobj->module);
 	q = db_query(handle, query);
 	
-	desc = strjoin(NULL,jsonobj->desc,"\n");
+	desc = strjoin(NULL, jsonobj->desc,"\n");
 	strreplace(desc, '\'', ' ');
+
+	depends = strjoin(NULL, jsonobj->depends,"\n");
 	if (!q->num_rows)
-		cmd = talloc_asprintf(NULL, "INSERT INTO search VALUES(\"%s\",\"%s\",\"%s\",'%s\');",
-			jsonobj->module, jsonobj->author, jsonobj->title, desc);
+		cmd = talloc_asprintf(NULL, "INSERT INTO search VALUES(\"%s\",\"%s\",\"%s\", \'%s\', \'%s\', 0);",
+			jsonobj->module, jsonobj->author, jsonobj->title, depends, desc);
 	else
-		cmd = talloc_asprintf(NULL, "UPDATE search set author=\"%s\", title=\"%s\", desc='%s\' where module=\"%s\";",
-			jsonobj->author, jsonobj->title, desc, jsonobj->module);
+		cmd = talloc_asprintf(NULL, "UPDATE search set author=\"%s\", title=\"%s\", desc=\'%s\' depends=\'%s\' where module=\"%s\";",
+			jsonobj->author, jsonobj->title, desc, depends, jsonobj->module);
 
 	db_command(handle, cmd);	
 	db_close(handle);
+	talloc_free(depends);
 	talloc_free(query);
 	talloc_free(desc);
 	talloc_free(cmd);
@@ -117,14 +125,13 @@ int main(int argc, char *argv[])
 	struct json *jsonobj;
 	
 	talloc_enable_leak_report();
-	if (argc < 4) {
-		errx(1, "usage: infotojson infofile jsonfile author [sqlitedb]\n");
-		return 1;
-	}
+	if (argc < 5)
+		errx(1, "usage: infotojson dir_of_module info_filename target_json_file author [sqlitedb]\n"
+				 "Convert _info.c file to json file and optionally store to database");
 		
-	file = grab_file(NULL, argv[1]);
+	file = grab_file(NULL, argv[2]);
 	if (!file)
-		err(1, "Reading file %s", argv[1]);
+		err(1, "Reading file %s", argv[2]);
 
 	lines = strsplit(NULL, file, "\n", NULL);		
 	
@@ -132,13 +139,13 @@ int main(int argc, char *argv[])
 	infofile = extractinfo(lines);
 	
 	//create json obj
-	jsonobj = createjson(infofile, argv[3]);
+	jsonobj = createjson(infofile, argv[4], argv[1]);
 	
 	//store to file
-	storejsontofile(jsonobj, argv[2]);
+	storejsontofile(jsonobj, argv[3]);
 	
-	if (argv[4] != NULL)
-		storejsontodb(jsonobj, argv[4]);
+	if (argv[5] != NULL)
+		storejsontodb(jsonobj, argv[5]);
 		
 	talloc_free(file);
 	talloc_free(jsonobj);
