@@ -82,9 +82,7 @@
 static void *null_context;
 static pid_t *autofree_context;
 
-static void *(*tc_external_alloc)(void *parent, size_t size);
-static void (*tc_external_free)(void *ptr, void *parent);
-static void *(*tc_external_realloc)(void *ptr, void *parent, size_t size);
+static void *(*tc_external_realloc)(const void *parent, void *ptr, size_t size);
 
 struct talloc_reference_handle {
 	struct talloc_reference_handle *next, *prev;
@@ -182,45 +180,23 @@ const char *talloc_parent_name(const void *ptr)
 	return tc? tc->name : NULL;
 }
 
-/* 
-   Allocate a bit of memory as a child of an existing pointer
-*/
-static inline void *__talloc(const void *context, size_t size)
+static void *init_talloc(struct talloc_chunk *parent,
+			 struct talloc_chunk *tc,
+			 size_t size, int external)
 {
-	struct talloc_chunk *tc;
-	struct talloc_chunk *parent = NULL; /* Prevent spurious gcc warning */
-	unsigned flags = TALLOC_MAGIC;
-
-	if (unlikely(context == NULL)) {
-		context = null_context;
-	}
-
-	if (unlikely(size >= MAX_TALLOC_SIZE)) {
+	if (unlikely(tc == NULL))
 		return NULL;
-	}
-
-	if (likely(context)) {
-		parent = talloc_chunk_from_ptr(context);
-		if (unlikely(parent->flags & TALLOC_FLAG_EXT_ALLOC)) {
-			tc = tc_external_alloc(TC_PTR_FROM_CHUNK(parent),
-					       TC_HDR_SIZE+size);
-			flags |= TALLOC_FLAG_EXT_ALLOC;
-			goto alloc_done;
-		}
-	}
-
-	tc = (struct talloc_chunk *)malloc(TC_HDR_SIZE+size);
-alloc_done:
-	if (unlikely(tc == NULL)) return NULL;
 
 	tc->size = size;
-	tc->flags = flags;
+	tc->flags = TALLOC_MAGIC;
+	if (external)
+		tc->flags |= TALLOC_FLAG_EXT_ALLOC;
 	tc->destructor = NULL;
 	tc->child = NULL;
 	tc->name = NULL;
 	tc->refs = NULL;
 
-	if (likely(context)) {
+	if (likely(parent)) {
 		if (parent->child) {
 			parent->child->parent = NULL;
 			tc->next = parent->child;
@@ -236,6 +212,38 @@ alloc_done:
 	}
 
 	return TC_PTR_FROM_CHUNK(tc);
+}
+
+/* 
+   Allocate a bit of memory as a child of an existing pointer
+*/
+static inline void *__talloc(const void *context, size_t size)
+{
+	struct talloc_chunk *tc;
+	struct talloc_chunk *parent = NULL;
+	int external = 0;
+
+	if (unlikely(context == NULL)) {
+		context = null_context;
+	}
+
+	if (unlikely(size >= MAX_TALLOC_SIZE)) {
+		return NULL;
+	}
+
+	if (likely(context)) {
+		parent = talloc_chunk_from_ptr(context);
+		if (unlikely(parent->flags & TALLOC_FLAG_EXT_ALLOC)) {
+			tc = tc_external_realloc(context, NULL,
+						 TC_HDR_SIZE+size);
+			external = 1;
+			goto alloc_done;
+		}
+	}
+
+	tc = (struct talloc_chunk *)malloc(TC_HDR_SIZE+size);
+alloc_done:
+	return init_talloc(parent, tc, size, external);
 }
 
 /*
@@ -419,7 +427,7 @@ static inline int _talloc_free(void *ptr)
 	tc->flags |= TALLOC_FLAG_FREE;
 
 	if (unlikely(tc->flags & TALLOC_FLAG_EXT_ALLOC))
-		tc_external_free(tc, oldparent);
+		tc_external_realloc(oldparent, tc, 0);
 	else
 		free(tc);
 
@@ -802,7 +810,7 @@ void *_talloc_realloc(const void *context, void *ptr, size_t size, const char *n
 		/* need to get parent before setting free flag. */
 		void *parent = talloc_parent(ptr);
 		tc->flags |= TALLOC_FLAG_FREE;
-		new_ptr = tc_external_realloc(tc, parent, size + TC_HDR_SIZE);
+		new_ptr = tc_external_realloc(parent, tc, size + TC_HDR_SIZE);
 	} else {
 		/* by resetting magic we catch users of the old memory */
 		tc->flags |= TALLOC_FLAG_FREE;
@@ -1441,23 +1449,21 @@ int talloc_is_parent(const void *context, const void *ptr)
 	return 0;
 }
 
-void talloc_external_enable(void *(*alloc)(void *parent, size_t size),
-			    void (*free)(void *ptr, void *parent),
-			    void *(*realloc)(void *ptr, void *parent, size_t))
+void *talloc_add_external(const void *ctx,
+			  void *(*realloc)(const void *, void *, size_t))
 {
-	tc_external_alloc = alloc;
-	tc_external_free = free;
+	struct talloc_chunk *tc, *parent;
+
+	if (tc_external_realloc && tc_external_realloc != realloc)
+		TALLOC_ABORT("talloc_add_external realloc replaced");
 	tc_external_realloc = realloc;
-}
 
-void talloc_mark_external(void *context)
-{
-	struct talloc_chunk *tc;
+	if (unlikely(ctx == NULL)) {
+		ctx = null_context;
+		parent = NULL;
+	} else
+		parent = talloc_chunk_from_ptr(ctx);	
 
-	if (unlikely(context == NULL)) {
-		context = null_context;
-	}
-
-	tc = talloc_chunk_from_ptr(context);
-	tc->flags |= TALLOC_FLAG_EXT_ALLOC;
+	tc = tc_external_realloc(ctx, NULL, TC_HDR_SIZE);
+	return init_talloc(parent, tc, 0, 1);
 }
