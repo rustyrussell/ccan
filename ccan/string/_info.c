@@ -29,6 +29,7 @@ int main(int argc, char *argv[])
 
 	if (strcmp(argv[1], "depends") == 0) {
 		printf("ccan/talloc\n");
+		printf("ccan/noerr\n");
 		return 0;
 	}
 
