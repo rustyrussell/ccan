@@ -3,6 +3,7 @@
 #include "tools.h"
 #include <err.h>
 #include <stdbool.h>
+#include <unistd.h>
 
 static char ** __attribute__((format(printf, 3, 4)))
 lines_from_cmd(const void *ctx, unsigned int *num, char *format, ...)
@@ -27,11 +28,34 @@ lines_from_cmd(const void *ctx, unsigned int *num, char *format, ...)
 	return strsplit(ctx, buffer, "\n", num);
 }
 
+static int unlink_info(char *infofile)
+{
+	unlink(infofile);
+	return 0;
+}
+
+/* Be careful about trying to compile over running programs (parallel make) */
+static char *compile_info(const void *ctx, const char *dir)
+{
+	char *infofile = talloc_asprintf(ctx, "%s/_info.%u", dir, getpid());
+	char *cmd = talloc_asprintf(ctx, "cc " CFLAGS " -o %s %s/_info.c",
+				    infofile, dir);
+	talloc_set_destructor(infofile, unlink_info);
+	if (system(cmd) != 0)
+		return NULL;
+
+	return infofile;
+}
+
 static char **get_one_deps(const void *ctx, const char *dir, unsigned int *num)
 {
-	char **deps, *cmd;
+	char **deps, *cmd, *infofile;
 
-	cmd = talloc_asprintf(ctx, "%s/_info depends", dir);
+	infofile = compile_info(ctx, dir);
+	if (!infofile)
+		errx(1, "Could not compile _info for '%s'", dir);
+
+	cmd = talloc_asprintf(ctx, "%s depends", infofile);
 	deps = lines_from_cmd(cmd, num, "%s", cmd);
 	if (!deps)
 		err(1, "Could not run '%s'", cmd);

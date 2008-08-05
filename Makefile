@@ -14,10 +14,7 @@ libccan.a: $(ALL_LIBS)
 check: $(ALL_DIRS:%=test-%)
 
 distclean: clean
-	rm -f */_info
 	rm -f $(ALL_DEPENDS)
-
-$(ALL_DEPENDS): $(ALL_DIRS:=/_info)
 
 $(ALL_DEPENDS): %/.depends: tools/ccan_depends
 	tools/ccan_depends $* > $@ || ( rm -f $@; exit 1 )

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "string/string.h"
+#include "talloc/talloc.h"
 
 int main(int argc, char *argv[])
 {
@@ -13,7 +14,7 @@ int main(int argc, char *argv[])
 		errx(1, "Usage: ccan_depends <dir>\n"
 		        "Spits out all the ccan dependencies (recursively)");
 
-	deps = get_deps(NULL, argv[1]);
+	deps = get_deps(talloc_autofree_context(), argv[1]);
 	for (i = 0; deps[i]; i++)
 		if (strstarts(deps[i], "ccan/"))
 			printf("%s\n", deps[i]);
