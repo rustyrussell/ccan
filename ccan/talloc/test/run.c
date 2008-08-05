@@ -861,11 +861,31 @@ static bool torture_local_talloc(struct torture_context *tctx)
 	return ret;
 }
 
+static int lock_failed = 0, unlock_failed = 0;
+static void test_lock(int *locked)
+{
+	if (*locked)
+		lock_failed++;
+	*locked = 1;
+}
+
+static void test_unlock(int *locked)
+{
+	if (!*locked)
+		unlock_failed++;
+	*locked = 0;
+}
+
 int main(void)
 {
-	plan_tests(134);
+	int locked = 0;
+
+	plan_tests(136);
+	talloc_locksafe(test_lock, test_unlock, &locked);
 
 	torture_local_talloc(NULL);
+	ok(!lock_failed, "lock_failed count %u should be zero", lock_failed);
+	ok(!unlock_failed, "unlock_failed count %u should be zero", unlock_failed);
 	return exit_status();
 }
 

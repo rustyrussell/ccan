@@ -399,21 +399,6 @@ void talloc_report(const void *ptr, FILE *f);
 #define talloc_ptrtype(ctx, ptr) (_TALLOC_TYPEOF(ptr))talloc_size(ctx, sizeof(*(ptr)))
 
 /**
- * talloc_free_children - free talloc'ed memory's children only
- * @ptr: the talloced pointer whose children we want to free
- *
- * talloc_free_children() walks along the list of all children of a talloc
- * context @ptr and talloc_free()s only the children, not the context itself.
- * Example:
- *	unsigned int *a, *b;
- *	a = talloc(NULL, unsigned int);
- *	b = talloc(a, unsigned int);
- *	// Frees b
- *	talloc_free_children(a);
- */
-void talloc_free_children(void *ptr);
-
-/**
  * talloc_new - create a new context
  * @ctx: the context to use as a parent.
  *
@@ -945,6 +930,24 @@ void *talloc_add_external(const void *ctx,
 			  void *(*realloc)(const void *parent,
 					   void *ptr, size_t));
 
+/**
+ * talloc_locksafe - set locking for talloc on shared memory
+ * @lock: function to use to lock memory
+ * @unlock: function to use to unlock memory
+ * @data: pointer to hand to @lock and @unlock
+ *
+ * If talloc is actually dealing with shared memory (threads or shared
+ * memory using talloc_add_external()) then locking is required on
+ * allocation and free to avoid corruption.
+ *
+ * These hooks allow a very course-grained locking scheme: @lock is
+ * called before any internal alloc or free, and @unlock is called
+ * after. */
+#define talloc_locksafe(lock, unlock, data)			\
+	_talloc_locksafe(typesafe_cb(void, lock, data),		\
+			 typesafe_cb(void, unlock, data),	\
+			 data)
+
 /* The following definitions come from talloc.c  */
 void *_talloc(const void *context, size_t size);
 void _talloc_set_destructor(const void *ptr, int (*destructor)(void *));
@@ -964,5 +967,6 @@ void *_talloc_realloc_array(const void *ctx, void *ptr, size_t el_size, unsigned
 void *talloc_realloc_fn(const void *context, void *ptr, size_t size);
 void talloc_show_parents(const void *context, FILE *file);
 int talloc_is_parent(const void *context, const void *ptr);
+void _talloc_locksafe(void (*lock)(void *), void (*unlock)(void *), void *);
 
 #endif /* CCAN_TALLOC_H */
