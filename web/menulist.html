@@ -1,0 +1,30 @@
+<?php
+session_start();
+?>
+<table align="center" width="100%" cellpadding="4" cellspacing="1" border="0" bgcolor="lightblue">
+ <tr align="left" bgcolor="CCFFCC" ><td>Welcome <?=$_SESSION['susername']?>! </td>
+  <td align="center">
+	<a href="login.php">	Login</a>
+  </td>
+  <td align="center">	
+	<a href="requestid.php">
+	Request CCAN account</a>
+  </td>	
+  <td align="center">
+	<a href="changedetail.php">
+	Change CCAN account detail</a>
+  </td>
+  <td align="center">
+	<a href="upload.php">
+	Upload Code</a>
+  </td>
+  <td align="center">
+	<a href="search.php">
+	Search CCAN</a>
+  </td>
+  <td align="center"> 
+	<a href="logout.php">
+	Logout</a>
+  </td>
+</table>
+<hr>

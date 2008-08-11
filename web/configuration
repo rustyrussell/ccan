@@ -1,0 +1,36 @@
+<?php
+//path for db
+$db = "db/ccan.db";
+
+//path for repository
+$repopath = "testrepo/";
+
+//ccanlint
+$ccanlint = "tools/ccanlint -d ";
+
+//infotojson 
+$infotojson = "tools/infotojson ";
+
+//create tar of all dependencies
+$create_dep_tar = "../tools/create_dep_tar ";
+
+//junk code
+$junkcode = "junkcode/";
+
+//temp folder
+$tempfolder = "temp/";
+
+//infofile
+$infofile = '/_info.c';
+
+//temp repo
+$temprepo = "temprepo/";
+
+//email from 
+$frommail = "ccan@ozlabs.org";
+
+//email for admins
+$ccan_admin = "g.dinesh.cse@gmail.com";
+
+$ccan_home_dir = "ccan/";
+?>

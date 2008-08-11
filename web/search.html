@@ -1,0 +1,27 @@
+		<form method="post" action="search.php">
+	  	<table align="center">
+ 		<tr align="left">
+ 		<td>
+ 			Search ccan repository:
+ 		</td>
+ 		<td>
+		 		<p><input name="searchtext" type="text"/></p>
+		</td>
+		<td>
+				<p> <select name="searchmenu">
+						<option value="all">All  </option>
+						<option value="author">Author   </option>
+						<option value="module">Module title   </option>
+					 </select>
+				</p>
+		</td>
+		</tr>
+		<tr align="center">
+ 		<td></td>
+ 		<td align="right">
+ 			 	<input type="submit" name="search" value="Search"/>
+		</td>
+		<td align="left"><a href=search.php?disp=all>Display all</a></td>
+		</tr>
+		</table>
+		</form>
