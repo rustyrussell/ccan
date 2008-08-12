@@ -27,6 +27,8 @@ int main(int argc, char *argv[])
 	char **split, *str;
 	void *ctx;
 	char *strings[NUM_SUBSTRINGS * NUM_SUBSTRINGS];
+	int length;
+	struct stat st;
 
 	n = 0;
 	for (i = 0; i < NUM_SUBSTRINGS; i++) {
@@ -115,7 +117,16 @@ int main(int argc, char *argv[])
 	ok1(talloc_parent(str) == ctx);
 	talloc_free(ctx);
 
-
-	
+	str = grab_file(NULL, "ccan/string/test/run-grab.c");
+	split = strsplit(NULL, str, "\n", NULL);
+	length = strlen(split[0]);
+	ok1(streq(split[0], "/* This is test for grab_file() function */"));
+	for(i = 1; split[i]; i++)	
+		length += strlen(split[i]);
+	ok1(streq(split[i-1], "/* End of grab_file() test */"));
+	if (stat("ccan/string/test/run-grab.c", &st) != 0) 
+		err(1, "Could not stat self");
+	ok1(st.st_size == length);
+		
 	return exit_status();
 }				
