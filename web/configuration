@@ -9,10 +9,10 @@ $repopath = "testrepo/";
 $ccanlint = "tools/ccanlint -d ";
 
 //infotojson 
-$infotojson = "tools/infotojson ";
+$infotojson = "../../tools/infotojson ";
 
 //create tar of all dependencies
-$create_dep_tar = "../tools/create_dep_tar ";
+$create_dep_tar = "../../tools/create_dep_tar ";
 
 //junk code
 $junkcode = "junkcode/";
@@ -32,5 +32,12 @@ $frommail = "ccan@ozlabs.org";
 //email for admins
 $ccan_admin = "g.dinesh.cse@gmail.com";
 
+//ccan home 
 $ccan_home_dir = "ccan/";
+
+//bzr clone 
+$bzr_clone = 'bzr clone /home/dinesh/testwebsite/ ';
+
+//bzr push 
+$bzr_push = 'bzr push /home/dinesh/testwebsite/ ';
 ?>

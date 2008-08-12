@@ -28,16 +28,8 @@ if($_FILES["uploadedfile"]["type"] == "application/x-gzip"
 	else {
 		exec('tar -xf '.$tempfolder.$_FILES["uploadedfile"]["name"].' -C '.$tempfolder, $op, $status);
 	}
-	checkerror($status[0],"Error: cannot extract(tar error).");	
+	checkerror($status,"Error: cannot extract(tar error).");	
 
-	//chmod
-	exec('chmod -R 0777 '. $tempfolder.$folder, $status);
-	checkerror($status[0],"Error: chmod execution error.");	
-	
-	//running ccanlint
-	exec($ccanlint.$tempfolder.$folder, $score, $status);
-	//checkerror($status,"Error: ccanlint execution error.");	
-	
 	//if user not logged in
 	if($_SESSION["slogged"] == false) {
 		//move to temp folder 
@@ -48,8 +40,6 @@ if($_FILES["uploadedfile"]["type"] == "application/x-gzip"
 		//send mail for review to admins 
 		$subject = "Review: code upload at temporary repository"; 
 		$message = "Some developer has uploaded code who has not logged in.\n\nModule is stored in ".$temprepo.$folder.".\n\nOutput of ccanlint: \n";
-		foreach($score as $disp)
-			$message = $message.$disp."\n";
 			
     	$toaddress = getccanadmin($db);
    	mail($toaddress, $subject, $message, "From: $frommail");
@@ -58,45 +48,83 @@ if($_FILES["uploadedfile"]["type"] == "application/x-gzip"
    	exit();
 	} 
 
+	//running ccanlint
+	exec($ccanlint.$tempfolder.$folder, $score, $status);
+		
 	//if not junk code 
 	if($status == 0) {
 		$rename = $folder;
+		$exactpath = $repopath . $_SESSION['susername'] .'/';
+		
+		if (file_exists($exactpath)) {
+			echo "<div align=\"center\"> Your another upload is in progress please wait...</div>";
+			exit();
+		}
+		
+		//bzr local repo for commit
+		chdir($repopath);
+		unset($op); exec($bzr_clone . $_SESSION['susername'], $op, $status);
+		checkerror($status, "Error: bzr local repo.");
+		chdir('..');
+				
 		//if module already exist 
-		if (file_exists($repopath.$ccan_home_dir . $folder)) {
+		if (file_exists($exactpath . $ccan_home_dir . $folder)) {
+
 			// if owner is not same 
-			if(!(getowner($repopath.$ccan_home_dir.$folder, $db) == $_SESSION['susername'])) {	
-				if(!file_exists($repopath . $ccan_home_dir. $folder.'-'.$_SESSION['susername']))   			
-	   			echo "<div align=\"center\">".$repopath . $ccan_home_dir. $folder . " already exists. Renaming to ". $folder."-".$_SESSION['susername']."</div>";
+			if(!(getowner($ccan_home_dir . $folder, $db) == $_SESSION['susername'])) {	
+				if(!file_exists($repopath . $ccan_home_dir . $folder . '-' . $_SESSION['susername']))   			
+	   			echo "<div align=\"center\">". $ccan_home_dir . $folder . " already exists. Renaming to " . $folder . "-" . $_SESSION['susername'] . "</div>";
       		else
-	   			echo "<div align=\"center\">".$repopath . $ccan_home_dir. $folder."-".$_SESSION['susername'] . " already exists. Overwriting ". $folder."-".$_SESSION['susername']."</div>";
+	   			echo "<div align=\"center\">". $ccan_home_dir . $folder . "-" . $_SESSION['susername'] . " already exists. Overwriting " . $folder. "-" . $_SESSION['susername'] . "</div>";
 	   		$rename = $folder."-".$_SESSION['susername'];
 	   	}
+	   	
 	   	else
-	   		echo "<div align=\"center\">".$repopath. $ccan_home_dir. $folder. " already exists(uploaded by you). Overwriting ". $repopath. $folder."</div>";	
+	   		echo "<div align=\"center\">".$repopath. $ccan_home_dir. $folder. " already exists(uploaded by you). Overwriting ". $repopath. $folder."</div>";
+	   			
   		}
+
   		//module not exist. store author to db 
   		else {
-  			storefileowner($repopath . $ccan_home_dir. $folder, $_SESSION['susername'], $db);
+  			storefileowner($ccan_home_dir . $folder, $_SESSION['susername'], $db);
   		}
-  		rmdirr($repopath. $ccan_home_dir. $rename);
-      rename($tempfolder.$folder, $repopath. $ccan_home_dir. $rename);
-      echo "<div align=\"center\"> Stored to ".$repopath . $ccan_home_dir. $rename . "</div>";
+
+  		rmdirr($exactpath . $ccan_home_dir . $rename);
+	   rename($tempfolder . $folder, $exactpath . $ccan_home_dir . $rename);
+   		
+   	chdir($exactpath);
+		unset($op); exec($infotojson . $ccan_home_dir . $rename . " " . $ccan_home_dir. $rename."/_info.c ". $ccan_home_dir . $rename . "/json_" . $rename . " " . $_SESSION['susername']. " ../../" . $db, $op, $status);
+		checkerror($status,"Error: In infotojson.");
 		
-		exec($infotojson . $repopath. $ccan_home_dir. $rename."/_info.c ". $repopath. $ccan_home_dir. $rename."/json_".$rename. " ". $_SESSION['susername']." ".$db, $status);
-		checkerror($status[0],"Error: In infotojson.");	
-		//createsearchindex($rename, $repopath.$rename, $infofile, $db, $_SESSION['susername']);
+		unset($op); exec('bzr add', $op, $status);
+		checkerror($status,"Error: bzr add error.");
+		
+		unset($op); exec('bzr commit --unchanged -m "commiting from ccan web ' . $rename . " " . $_SESSION['susername'] . '"', $op, $status);
+		checkerror($status,"Error: bzr commit error.");	
+			
+		unset($op); exec($bzr_push, $op, $status);
+		checkerror($status,"Error: bzr push error.");
+		
+		chdir('../..');
+		rmdirr($exactpath);
+   	echo "<div align=\"center\"> Stored to ". $ccan_home_dir . $rename . "</div>";
 	}
 	
 	//if junk code (no _info.c etc)	
 	else {
+	
 		rmdirr($junkcode.$folder.'-'.$_SESSION['susername']);
 		rename($tempfolder.$folder, $junkcode.$folder.'-'.$_SESSION['susername']);
+		
 		if($score == '')
 			$msg =  'Below is details for test.';
+			
 		echo "<div align=\"center\"><table><tr><td> Score for code is low. Cannot copy to repository. Moving to ". $junkcode.$folder.'-'.$_SESSION['susername']."... </br></br>". $msg ." </br></br></td></tr><tr><td>";
+
 		foreach($score as $disp)
 			echo "$disp</br>";
 		echo "</td></tr></table></div>";
+		
 	}
   	unlink($tempfolder.$_FILES["uploadedfile"]["name"]);
 }
