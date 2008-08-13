@@ -40,4 +40,7 @@ $bzr_clone = 'bzr clone /home/dinesh/testwebsite/ ';
 
 //bzr push 
 $bzr_push = 'bzr push /home/dinesh/testwebsite/ ';
+
+//tar home dir
+$tar_dir = 'tarball/';
 ?>
