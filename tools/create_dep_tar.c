@@ -53,7 +53,7 @@ create_tar(char **deps, const char *dir, const char *targetdir)
 	
 	if (deps != NULL) {
 		cmd_args = strjoin(NULL, deps, " ");	
-		cmd = talloc_asprintf(NULL, TAR_CMD "%s/%s_dependencies.tar %s %s", targetdir, module, cmd_args, dir);
+		cmd = talloc_asprintf(NULL, TAR_CMD "%s/%s_with_deps.tar %s %s", targetdir, module, cmd_args, dir);
 	} else 
 		cmd = talloc_asprintf(NULL, TAR_CMD "%s/%s.tar %s", targetdir, module, dir);
 			
