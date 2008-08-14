@@ -19,7 +19,7 @@ $row = sqlite3_fetch_array($result);
 <td>
 	<?php 
 		if(file_exists($tar_dir . $_GET['module']."_dependencies.tar"))
-			echo '<a href='. $tar_dir . $_GET['module'] . '_dependencies.tar>Download Dependencies</a>';
+			echo '<a href='. $tar_dir . $_GET['module'] . '_with_deps.tar>Download Dependencies</a>';
 	?>
 </td>
 </tr>
