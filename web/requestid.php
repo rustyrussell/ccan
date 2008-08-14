@@ -3,6 +3,7 @@ session_start();
 include('logo.html');
 include('menulist.html');
 include('configuration');
+include('functions.php');
 
 if(isset($_POST['submit'])) {
 	$name = $_REQUEST['name'];
@@ -80,7 +81,7 @@ $result = sqlite3_exec($handle, $query) or die("Error in query: ".sqlite3_error(
 
 $subject = "Approval of ccan account";
 $message = "There is new request for ccan account id.\n\n Please use the following link to approve http://ccan.ozlabs.org/dinesh/approval.php?accountid=".$accountid;
-mail($ccan_admin, $subject, $message, "From: $email");
+mail(getccanadmin($db), $subject, $message, "From: $email");
 ?>
 	</br><div>Thank you for registering with CCAN. You will get the password to your mail after approval.</div>
 <?php
