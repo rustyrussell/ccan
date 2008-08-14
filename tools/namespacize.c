@@ -476,7 +476,7 @@ static char *parent_dir(const void *ctx, const char *dir)
 
 static void adjust_dir(const char *dir)
 {
-	char *parent = parent_dir(NULL, dir);
+	char *parent = parent_dir(talloc_autofree_context(), dir);
 	char **deps;
 
 	verbose("Adjusting %s\n", dir);
@@ -497,6 +497,7 @@ static void adjust_dir(const char *dir)
 		talloc_free(depdir);
 	}
 	verbose_unindent();
+	talloc_free(parent);
 }
 
 static void adjust_dependents(const char *dir)

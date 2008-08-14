@@ -106,7 +106,7 @@ static int build(const char *dir, const char *name, int fail)
 	char *externals = talloc_strdup(name, "");
 	char **deps;
 
-	for (deps = get_deps(objs, dir); *deps; deps++) {
+	for (deps = get_deps(talloc_autofree_context(), dir); *deps; deps++) {
 		if (!strstarts(*deps, "ccan/"))
 			continue;
 

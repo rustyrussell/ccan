@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 	printf("creating tar ball of \"%s\"\n", argv[1]);	
 
 	/* creating tar of the module dependencies */
-	deps = get_deps(NULL, argv[1]);
+	deps = get_deps(talloc_autofree_context(), argv[1]);
 	if (deps != NULL)
 		create_tar(deps, argv[1], argv[2]);
 	talloc_free(deps);
