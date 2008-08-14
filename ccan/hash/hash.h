@@ -55,13 +55,19 @@
  * @num: the number of elements to hash
  * @base: the base number to roll into the hash (usually 0)
  *
- * The memory region pointed to by p is combined with the base to form
- * a 32-bit hash.
+ * The array of simple integer types pointed to by p is combined with
+ * the base to form a 32-bit hash.
  *
  * This hash will have the same results on different machines, so can
  * be used for external hashes (ie. hashes sent across the network or
  * saved to disk).  The results will not change in future versions of
  * this module.
+ *
+ * Note that it is only legal to hand an array of simple integer types
+ * to this hash (ie. char, uint16_t, int64_t, etc).  In these cases,
+ * the same values will have the same hash result, even though the
+ * memory representations of integers depend on the machine
+ * endianness.
  *
  * Example:
  *	#include "hash/hash.h"
@@ -78,8 +84,12 @@
  *		return 0;
  *	}
  */
-#define hash_stable(p, num, base) \
-	hash_any_stable((p), (num)*sizeof(*(p)), (base))
+#define hash_stable(p, num, base)					\
+	(sizeof(*(p)) == 8 ? hash_stable_64((p), (num), (base))		\
+	 : sizeof(*(p)) == 4 ? hash_stable_32((p), (num), (base))	\
+	 : sizeof(*(p)) == 2 ? hash_stable_16((p), (num), (base))	\
+	 : sizeof(*(p)) == 1 ? hash_stable_8((p), (num), (base))	\
+	 : hash_stable_fail((p), (num), sizeof(*(p)), (base)))
 
 /**
  * hash_u32 - fast hash an array of 32-bit values for internal use
@@ -124,7 +134,11 @@ static inline uint32_t hash_string(const char *string)
 
 /* Our underlying operations. */
 uint32_t hash_any(const void *key, size_t length, uint32_t base);
-uint32_t hash_any_stable(const void *key, size_t length, uint32_t base);
+uint32_t hash_stable_64(const void *key, size_t n, uint32_t base);
+uint32_t hash_stable_32(const void *key, size_t n, uint32_t base);
+uint32_t hash_stable_16(const void *key, size_t n, uint32_t base);
+uint32_t hash_stable_8(const void *key, size_t n, uint32_t base);
+uint32_t hash_stable_fail(const void *key, size_t n, size_t len, uint32_t base);
 
 /**
  * hash_pointer - hash a pointer for internal use

@@ -17,43 +17,7 @@ int main(int argc, char *argv[])
 	for (i = 0; i < ARRAY_WORDS; i++)
 		array[i] = i;
 
-	plan_tests(55);
-
-	/* hash_stable is guaranteed. */
-	ok1(hash_stable(array, ARRAY_WORDS, 0) == 0x13305f8c);
-	ok1(hash_stable(array, ARRAY_WORDS, 1) == 0x171abf74);
-	ok1(hash_stable(array, ARRAY_WORDS, 2) == 0x7646fcc7);
-	ok1(hash_stable(array, ARRAY_WORDS, 4) == 0xa758ed5);
-	ok1(hash_stable(array, ARRAY_WORDS, 8) == 0x2dedc2e4);
-	ok1(hash_stable(array, ARRAY_WORDS, 16) == 0x28e2076b);
-	ok1(hash_stable(array, ARRAY_WORDS, 32) == 0xb73091c5);
-	ok1(hash_stable(array, ARRAY_WORDS, 64) == 0x87daf5db);
-	ok1(hash_stable(array, ARRAY_WORDS, 128) == 0xa16dfe20);
-	ok1(hash_stable(array, ARRAY_WORDS, 256) == 0x300c63c3);
-	ok1(hash_stable(array, ARRAY_WORDS, 512) == 0x255c91fc);
-	ok1(hash_stable(array, ARRAY_WORDS, 1024) == 0x6357b26);
-	ok1(hash_stable(array, ARRAY_WORDS, 2048) == 0x4bc5f339);
-	ok1(hash_stable(array, ARRAY_WORDS, 4096) == 0x1301617c);
-	ok1(hash_stable(array, ARRAY_WORDS, 8192) == 0x506792c9);
-	ok1(hash_stable(array, ARRAY_WORDS, 16384) == 0xcd596705);
-	ok1(hash_stable(array, ARRAY_WORDS, 32768) == 0xa8713cac);
-	ok1(hash_stable(array, ARRAY_WORDS, 65536) == 0x94d9794);
-	ok1(hash_stable(array, ARRAY_WORDS, 131072) == 0xac753e8);
-	ok1(hash_stable(array, ARRAY_WORDS, 262144) == 0xcd8bdd20);
-	ok1(hash_stable(array, ARRAY_WORDS, 524288) == 0xd44faf80);
-	ok1(hash_stable(array, ARRAY_WORDS, 1048576) == 0x2547ccbe);
-	ok1(hash_stable(array, ARRAY_WORDS, 2097152) == 0xbab06dbc);
-	ok1(hash_stable(array, ARRAY_WORDS, 4194304) == 0xaac0e882);
-	ok1(hash_stable(array, ARRAY_WORDS, 8388608) == 0x443f48d0);
-	ok1(hash_stable(array, ARRAY_WORDS, 16777216) == 0xdff49fcc);
-	ok1(hash_stable(array, ARRAY_WORDS, 33554432) == 0x9ce0fd65);
-	ok1(hash_stable(array, ARRAY_WORDS, 67108864) == 0x9ddb1def);
-	ok1(hash_stable(array, ARRAY_WORDS, 134217728) == 0x86096f25);
-	ok1(hash_stable(array, ARRAY_WORDS, 268435456) == 0xe713b7b5);
-	ok1(hash_stable(array, ARRAY_WORDS, 536870912) == 0x5baeffc5);
-	ok1(hash_stable(array, ARRAY_WORDS, 1073741824) == 0xde874f52);
-	ok1(hash_stable(array, ARRAY_WORDS, 2147483648U) == 0xeca13b4e);
-
+	plan_tests(22);
 	/* Hash should be the same, indep of memory alignment. */
 	val = hash(array, sizeof(array), 0);
 	for (i = 0; i < sizeof(uint32_t); i++) {

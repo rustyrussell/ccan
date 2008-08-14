@@ -63,8 +63,7 @@ on 1 byte), but shoehorning those bytes into integers efficiently is messy.
 # define HASH_LITTLE_ENDIAN 0
 # define HASH_BIG_ENDIAN 1
 #else
-# define HASH_LITTLE_ENDIAN 0
-# define HASH_BIG_ENDIAN 0
+# error Unknown endian
 #endif
 
 #define hashsize(n) ((uint32_t)1<<(n))
@@ -772,10 +771,119 @@ static uint32_t hashbig( const void *key, size_t length, uint32_t initval)
   return c;
 }
 
-uint32_t hash_any_stable(const void *key, size_t length, uint32_t base)
+/* I basically use hashlittle here, but use native endian within each
+ * element.  This delivers least-surprise: hash such as "int arr[] = {
+ * 1, 2 }; hash_stable(arr, 2, 0);" will be the same on big and little
+ * endian machines, even though a bytewise hash wouldn't be. */
+uint32_t hash_stable_64(const void *key, size_t n, uint32_t base)
 {
-	/* We use hashlittle as our stable hash. */
-	return hashlittle(key, length, base);
+	const uint64_t *k = key;
+	uint32_t a,b,c;
+
+	/* Set up the internal state */
+	a = b = c = 0xdeadbeef + ((uint32_t)n*8) + base;
+
+	while (n > 3) {
+		a += (uint32_t)k[0];
+		b += (uint32_t)(k[0] >> 32);
+		c += (uint32_t)k[1];
+		mix(a,b,c);
+		a += (uint32_t)(k[1] >> 32);
+		b += (uint32_t)k[2];
+		c += (uint32_t)(k[2] >> 32);
+		mix(a,b,c);
+		n -= 3;
+		k += 3;
+	}
+	switch (n) {
+	case 2:
+		a += (uint32_t)k[0];
+		b += (uint32_t)(k[0] >> 32);
+		c += (uint32_t)k[1];
+		mix(a,b,c);
+		a += (uint32_t)(k[1] >> 32);
+		break;
+	case 1:
+		a += (uint32_t)k[0];
+		b += (uint32_t)(k[0] >> 32);
+		break;
+	case 0:
+		return c;
+	}
+	final(a,b,c);
+	return c;
+}
+
+uint32_t hash_stable_32(const void *key, size_t n, uint32_t base)
+{
+	const uint32_t *k = key;
+	uint32_t a,b,c;
+
+	/* Set up the internal state */
+	a = b = c = 0xdeadbeef + ((uint32_t)n*4) + base;
+
+	while (n > 3) {
+		a += k[0];
+		b += k[1];
+		c += k[2];
+		mix(a,b,c);
+
+		n -= 3;
+		k += 3;
+	}
+	switch (n) {
+	case 2:
+		b += (uint32_t)k[1];
+	case 1:
+		a += (uint32_t)k[0];
+ 		break;
+	case 0:
+		return c;
+	}
+	final(a,b,c);
+	return c;
+}
+
+uint32_t hash_stable_16(const void *key, size_t n, uint32_t base)
+{
+	const uint16_t *k = key;
+	uint32_t a,b,c;
+
+	/* Set up the internal state */
+	a = b = c = 0xdeadbeef + ((uint32_t)n*2) + base;
+
+	while (n > 6) {
+		a += (uint32_t)k[0] + ((uint32_t)k[1] << 16);
+		b += (uint32_t)k[2] + ((uint32_t)k[3] << 16);
+		c += (uint32_t)k[4] + ((uint32_t)k[5] << 16);
+		mix(a,b,c);
+
+		n -= 6;
+		k += 6;
+	}
+
+	switch (n) {
+	case 5:
+		c += (uint32_t)k[4];
+	case 4:
+		b += ((uint32_t)k[3] << 16);
+	case 3:
+		b += (uint32_t)k[2];
+	case 2:
+		a += ((uint32_t)k[1] << 16);
+	case 1:
+		a += (uint32_t)k[0];
+		break;
+	case 0:
+		return c;
+	}
+	final(a,b,c);
+	return c;
+}
+	
+uint32_t hash_stable_8(const void *key, size_t n, uint32_t base)
+{
+	return hashlittle(key, n, base);
 }
 
 uint32_t hash_any(const void *key, size_t length, uint32_t base)
@@ -783,9 +891,7 @@ uint32_t hash_any(const void *key, size_t length, uint32_t base)
 	if (HASH_BIG_ENDIAN)
 		return hashbig(key, length, base);
 	else
-		/* We call hash_any_stable not hashlittle.  This way we know
-		 * that hashlittle will be inlined in hash_any_stable. */
-		return hash_any_stable(key, length, base);
+		return hashlittle(key, length, base);
 }
 
 #ifdef SELF_TEST
