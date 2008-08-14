@@ -19,7 +19,8 @@ static int verbose;
 struct test_type
 {
 	const char *name;
-	void (*testfn)(const char *dir, struct test_type *t, const char *name);
+	void (*buildfn)(const char *dir, struct test_type *t, const char *name);
+	void (*runfn)(const char *name);
 };
 
 struct test
@@ -141,6 +142,10 @@ static void compile_fail(const char *dir, struct test_type *t, const char *name)
 		ok(build(dir, name, 1) > 0, "%s %s", t->name, name);
 }
 
+static void no_run(const char *name)
+{
+}
+
 static void run(const char *name)
 {
 	if (system(output_name(name)) == -1)
@@ -153,9 +158,10 @@ static void cleanup(const char *name)
 }
 
 static struct test_type test_types[] = {
-	{ "compile_ok", compile_ok },
-	{ "compile_fail", compile_fail },
-	{ "run", compile_ok },
+	{ "compile_ok", compile_ok, no_run },
+	{ "compile_fail", compile_fail, no_run },
+	{ "run", compile_ok, run },
+	{ "api", compile_ok, run },
 };
 
 int main(int argc, char *argv[])
@@ -204,14 +210,13 @@ int main(int argc, char *argv[])
 
 	/* Do all the test compilations. */
 	for (test = tests; test; test = test->next)
-		test->type->testfn(argv[1], test->type, test->name);
+		test->type->buildfn(argv[1], test->type, test->name);
 
 	cleanup_objs();
 
 	/* Now run all the ones which wanted to run. */
 	for (test = tests; test; test = test->next) {
-		if (streq(test->type->name, "run"))
-			run(test->name);
+		test->type->runfn(test->name);
 		cleanup(test->name);
 	}
 
