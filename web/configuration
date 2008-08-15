@@ -29,9 +29,6 @@ $temprepo = "temprepo/";
 //email from 
 $frommail = "ccan@ozlabs.org";
 
-//email for admins
-$ccan_admin = "g.dinesh.cse@gmail.com";
-
 //ccan home 
 $ccan_home_dir = "ccan/";
 

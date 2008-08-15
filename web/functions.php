@@ -36,7 +36,7 @@ function getccanadmin($db)
 	$result = sqlite3_query($handle, $query) or die("Error in query: ".sqlite3_error($handle));
 
 	while ($row = sqlite3_fetch_array($result))
-   	 $admin = $admin.$row[0].",";
+   	 $admin = $admin.$row['email'].",";
    return $admin; 
 }
 ?>
