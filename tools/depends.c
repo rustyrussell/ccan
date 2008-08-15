@@ -20,7 +20,7 @@ lines_from_cmd(const void *ctx, unsigned int *num, char *format, ...)
 	if (!p)
 		err(1, "Executing '%s'", cmd);
 
-	buffer = grab_fd(ctx, fileno(p));
+	buffer = grab_fd(ctx, fileno(p), NULL);
 	if (!buffer)
 		err(1, "Reading from '%s'", cmd);
 	pclose(p);

@@ -61,7 +61,7 @@ create_tar(char **deps, const char *dir, const char *targetdir)
 	if (!p)
 		err(1, "Executing '%s'", cmd);
 
-	buffer = grab_fd(NULL, fileno(p));
+	buffer = grab_fd(NULL, fileno(p), NULL);
 	if (!buffer)
 		err(1, "Reading from '%s'", cmd);
 	pclose(p);

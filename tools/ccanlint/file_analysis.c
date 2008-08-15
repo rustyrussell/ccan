@@ -13,8 +13,12 @@
 
 char **get_ccan_file_lines(struct ccan_file *f)
 {
-	if (!f->lines)
-		f->lines = get_file_lines(f, f->name, &f->num_lines);
+	if (!f->lines) {
+		char *buffer = grab_file(f, f->name, NULL);
+		if (!buffer)
+			err(1, "Getting file %s", f->name);
+		f->lines = strsplit(f, buffer, "\n", &f->num_lines);
+	}
 	return f->lines;
 }
 

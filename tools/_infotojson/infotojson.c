@@ -129,7 +129,7 @@ int main(int argc, char *argv[])
 		errx(1, "usage: infotojson dir_of_module info_filename target_json_file author [sqlitedb]\n"
 				 "Convert _info.c file to json file and optionally store to database");
 		
-	file = grab_file(NULL, argv[2]);
+	file = grab_file(NULL, argv[2], NULL);
 	if (!file)
 		err(1, "Reading file %s", argv[2]);
 

@@ -22,7 +22,6 @@ tools/ccanlint/ccanlint.o: tools/ccanlint/generated-init-tests
 tools/ccanlint/ccanlint: \
 	$(OBJS)			\
 	tools/ccanlint/ccanlint.o \
-	tools/ccanlint/get_file_lines.o \
 	tools/ccanlint/file_analysis.o \
 	ccan/string/string.o ccan/talloc/talloc.o ccan/noerr/noerr.o
 

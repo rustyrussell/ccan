@@ -1,24 +1,4 @@
 /* This is test for grab_file() function
- *
- * Example:
- * 
- * void *grab_file(const void *ctx, const char *filename)
- *	{
- *	int fd; 
- *	char *buffer;
- * 
- *	if (streq(filename, "-"))
- *		fd = dup(STDIN_FILENO);
- *	else
- *		fd = open(filename, O_RDONLY, 0); 
- *
- *	if (fd < 0)
- *		return NULL; 
- *
- *	buffer = grab_fd(ctx, fd);
- *	close_noerr(fd);
- *	return buffer;
- *	}
  */
 
 #include 	<stdlib.h>
@@ -37,7 +17,7 @@ main(int argc, char *argv[])
 	int 		length;
 	struct 		stat st;
 
-	str = grab_file(NULL, "ccan/string/test/run-grab.c");
+	str = grab_file(NULL, "ccan/string/test/run-grab.c", NULL);
 	split = strsplit(NULL, str, "\n", NULL);
 	length = strlen(split[0]);
 	ok1(streq(split[0], "/* This is test for grab_file() function"));
