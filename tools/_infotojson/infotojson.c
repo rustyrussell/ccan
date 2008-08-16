@@ -94,20 +94,23 @@ static int storejsontodb(const struct json *jsonobj, const char *db)
 	struct db_query *q;
 	
 	handle = db_open(db);
-	query = talloc_asprintf(NULL, "SELECT module from search where module=\"%s\";", jsonobj->module);
+	query = talloc_asprintf(NULL, "SELECT module, author from search where module=\"%s\";", jsonobj->module);
 	q = db_query(handle, query);
 	
 	desc = strjoin(NULL, jsonobj->desc,"\n");
 	strreplace(desc, '\'', ' ');
 
 	depends = strjoin(NULL, jsonobj->depends,"\n");
-	if (!q->num_rows)
+	if (q->num_rows && streq(jsonobj->author, q->rows[0][1]))		
+		cmd = talloc_asprintf(NULL, "UPDATE search set author=\"%s\", title=\"%s\", desc=\'%s\' depends=\'%s\' where module=\"%s\";",
+			jsonobj->author, jsonobj->title, desc, depends, jsonobj->module);
+	else if (!q->num_rows)
 		cmd = talloc_asprintf(NULL, "INSERT INTO search VALUES(\"%s\",\"%s\",\"%s\", \'%s\', \'%s\', 0);",
 			jsonobj->module, jsonobj->author, jsonobj->title, depends, desc);
 	else
-		cmd = talloc_asprintf(NULL, "UPDATE search set author=\"%s\", title=\"%s\", desc=\'%s\' depends=\'%s\' where module=\"%s\";",
-			jsonobj->author, jsonobj->title, desc, depends, jsonobj->module);
-
+		cmd = talloc_asprintf(NULL, "INSERT INTO search VALUES(\"%s-%s\",\"%s\",\"%s\", \'%s\', \'%s\', 0);",
+			jsonobj->module, jsonobj->author, jsonobj->author, jsonobj->title, depends, desc);
+		
 	db_command(handle, cmd);	
 	db_close(handle);
 	talloc_free(depends);
