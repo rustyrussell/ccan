@@ -13,12 +13,12 @@ $row = sqlite3_fetch_array($result);
 <tr align="center" bgcolor="FFFFCC">
 <td width="50%">
 	<?php 
-		if(file_exists($tar_dir . $_GET['module']."_dependencies.tar"))
+		if(file_exists($tar_dir . $_GET['module'].".tar"))
 			echo '<a href='. $tar_dir . $_GET['module'] . '.tar>Download</a>';
 	?>
 <td>
 	<?php 
-		if(file_exists($tar_dir . $_GET['module']."_dependencies.tar"))
+		if(file_exists($tar_dir . $_GET['module']."_with_deps.tar"))
 			echo '<a href='. $tar_dir . $_GET['module'] . '_with_deps.tar>Download Dependencies</a>';
 	?>
 </td>
