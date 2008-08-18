@@ -12,16 +12,22 @@ if(isset($_POST['search'])) {
 	if(trim($searchtext) == '') { 
 		echo '<div align="center"><font color="RED">Please enter some keyword to search</font></div>';
 		exit();
-	}
+	} 
+	$searchtext = '%'.$searchtext.'%';
 }
 else if($_GET['author'] != '') {
-	$searchtext = $_GET['author'];
+	$searchtext = '%'.$_GET['author'].'%';
 	$in = "author";
 }	
 else if ($_GET['disp'] == 'all') {
-	$searchtext = "";
+	$searchtext = "%";
+	$in = "module";
+}
+else if ($_GET['disp'] != '') {
+	$searchtext = $_GET['disp'].'%';
 	$in = "module";
 }	
+	
 else 
 	exit();
 	
@@ -29,12 +35,14 @@ $result = searchdb($searchtext, $in, $db);
 echo '<table align="left" border="0" cellpadding="8" cellspacing="1">';
 if($row = sqlite3_fetch_array($result)) 
 	echo "<tr><td><a href=\"dispmoduleinfo.php?module=".$row['module']."\">".$row["module"]."</a></br>".
-		 "<a href=\"search.php?author=".$row["author"]."\">".$row["author"]."</a> : ". $row["title"]." </br> </br></td></tr>";
+		 		"<a href=\"search.php?author=".$row["author"]."\">".$row["author"]."</a> : ". $row["title"].
+		 			" </br> </br></td></tr>";
 else
 	echo '<div align="center"><font color="RED"> No results found</font></div>';
 while($row = sqlite3_fetch_array($result)) {	
 	echo "<tr><td><a href=\"dispmoduleinfo.php?module=".$row['module']."\">".$row["module"]."</a></br>".
-		 "<a href=\"search.php?author=".$row["author"]."\">".$row["author"]."</a> : ". $row["title"]." </br> </br></td></tr>";
+		 		"<a href=\"search.php?author=".$row["author"]."\">".$row["author"]."</a> : ". $row["title"].
+		 			" </br> </br></td></tr>";
 }
 echo '</table>';
 ?>

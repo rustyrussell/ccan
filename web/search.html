@@ -24,4 +24,15 @@
 		<td align="left"><a href=search.php?disp=all>Display all</a></td>
 		</tr>
 		</table>
+		<table align="center">
+ 				<tr align="left">
+ 				<?php
+ 					for ($i = "a"; $i != "aa"; $i++) {
+ 						echo '<td><a href=search.php?disp='. $i . '>'. $i .'</a></td>';
+ 					}
+ 				?>
+				</tr> 					
+ 			</td>
+ 		</tr>
+		</table>
 		</form>
