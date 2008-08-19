@@ -62,6 +62,76 @@ static char **get_one_deps(const void *ctx, const char *dir, unsigned int *num)
 	return deps;
 }
 
+/* Make copy of src, replacing "from" with "to". */
+static char *replace(const void *ctx, const char *src,
+		     const char *from, const char *to)
+{
+	char *ret = talloc_strdup(ctx, "");
+	unsigned int rlen, len, add;
+
+	rlen = len = 0;
+	for (;;) {
+		const char *next = strstr(src+len, from);
+		if (!next)
+			add = strlen(src+len) + 1;
+		else
+			add = next - (src+len);
+
+		ret = talloc_realloc(ctx, ret, char, rlen + add + strlen(to)+1);
+		memcpy(ret+rlen, src+len, add);
+		if (!next)
+			return ret;
+		len += add;
+		rlen += add;
+		strcpy(ret+rlen, to);
+		rlen += strlen(to);
+		len += strlen(from);
+	}
+}
+
+/* This is a terrible hack.  We scan for ccan/ strings. */
+static char **get_one_safe_deps(const void *ctx,
+				const char *dir, unsigned int *num)
+{
+	char **deps, **lines, *raw, *fname;
+	unsigned int i, n = 0;
+
+	fname = talloc_asprintf(ctx, "%s/_info.c", dir);
+	raw = grab_file(fname, fname, NULL);
+	if (!raw)
+		errx(1, "Could not open %s", fname);
+
+	/* Replace \n by actual line breaks, and split it. */
+	lines = strsplit(raw, replace(raw, raw, "\\n", "\n"), "\n", &n);
+
+	deps = talloc_array(ctx, char *, n+1);
+
+	for (n = i = 0; lines[i]; i++) {
+		char *str;
+		unsigned int len;
+
+		/* Start of line, or after ". */
+		if (strstarts(lines[i], "ccan/"))
+			str = lines[i];
+		else {
+			str = strstr(lines[i], "\"ccan/");
+			if (!str)
+				continue;
+			str++;
+		}
+		
+		len = strspn(str, "/abcdefghijklmnopqrstuvxwyz12345678980_");
+		if (len == 5)
+			continue;
+		deps[n++] = talloc_strndup(deps, str, len);
+	}
+	deps[n] = NULL;
+	talloc_free(fname);
+	if (num)
+		*num = n;
+	return deps;
+}
+
 static bool have_dep(char **deps, unsigned int num, const char *dep)
 {
 	unsigned int i;
@@ -73,12 +143,14 @@ static bool have_dep(char **deps, unsigned int num, const char *dep)
 }
 
 /* Gets all the dependencies, recursively. */
-char **get_deps(const void *ctx, const char *dir)
+static char **
+get_all_deps(const void *ctx, const char *dir,
+	     char **(*get_one)(const void *, const char *, unsigned int *))
 {
 	char **deps;
 	unsigned int i, num;
 
-	deps = get_one_deps(ctx, dir, &num);
+	deps = get_one(ctx, dir, &num);
 	for (i = 0; i < num; i++) {
 		char **newdeps;
 		unsigned int j, newnum;
@@ -86,7 +158,7 @@ char **get_deps(const void *ctx, const char *dir)
 		if (!strstarts(deps[i], "ccan/"))
 			continue;
 
-		newdeps = get_one_deps(ctx, deps[i], &newnum);
+		newdeps = get_one(ctx, deps[i], &newnum);
 
 		/* Should be short, so brute-force out dups. */
 		for (j = 0; j < newnum; j++) {
@@ -100,3 +172,14 @@ char **get_deps(const void *ctx, const char *dir)
 	}
 	return deps;
 }
+
+char **get_deps(const void *ctx, const char *dir)
+{
+	return get_all_deps(ctx, dir, get_one_deps);
+}
+
+char **get_safe_ccan_deps(const void *ctx, const char *dir)
+{
+	return get_all_deps(ctx, dir, get_one_safe_deps);
+}
+	
