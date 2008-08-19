@@ -10,20 +10,27 @@ int main(int argc, char *argv[])
 	char **deps;
 	unsigned int i;
 	bool compile = false;
+	bool recurse = true;
 
+	if (argv[1] && streq(argv[1], "--direct")) {
+		argv++;
+		argc--;
+		recurse = false;
+	}
 	if (argv[1] && streq(argv[1], "--compile")) {
 		argv++;
 		argc--;
 		compile = true;
 	}
 	if (argc != 2)
-		errx(1, "Usage: ccan_depends [--compile] <dir>\n"
-		        "Spits out all the ccan dependencies (recursively)");
+		errx(1, "Usage: ccan_depends [--direct] [--compile] <dir>\n"
+		        "Spits out all the ccan dependencies (recursively unless --direct)");
 
 	if (compile)
-		deps = get_deps(talloc_autofree_context(), argv[1]);
+		deps = get_deps(talloc_autofree_context(), argv[1], recurse);
 	else
-		deps = get_safe_ccan_deps(talloc_autofree_context(), argv[1]);
+		deps = get_safe_ccan_deps(talloc_autofree_context(), argv[1],
+					  recurse);
 
 	for (i = 0; deps[i]; i++)
 		if (strstarts(deps[i], "ccan/"))

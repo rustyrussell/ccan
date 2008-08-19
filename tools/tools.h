@@ -1,13 +1,14 @@
 #ifndef CCAN_TOOLS_H
 #define CCAN_TOOLS_H
+#include <stdbool.h>
 
 #define CFLAGS "-O3 -Wall -Wundef -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Werror -Iccan/ -I."
 
 /* This actually compiles and runs the _info.c file to get dependencies. */
-char **get_deps(const void *ctx, const char *dir);
+char **get_deps(const void *ctx, const char *dir, bool recurse);
 
 /* This is safer: just looks for ccan/ strings in _info.c */
-char **get_safe_ccan_deps(const void *ctx, const char *dir);
+char **get_safe_ccan_deps(const void *ctx, const char *dir, bool recurse);
 
 #endif /* CCAN_TOOLS_H */
 
