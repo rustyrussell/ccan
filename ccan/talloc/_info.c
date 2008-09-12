@@ -88,6 +88,8 @@
  *		talloc_free(cmd);
  *		return 0;
  *	}
+ *
+ * Licence: GPL (2 or any later version)
  */
 int main(int argc, char *argv[])
 {

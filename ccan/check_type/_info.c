@@ -13,6 +13,8 @@
  * On compilers which don't support typeof() these routines are less effective,
  * since they have to use sizeof() which can only distiguish between types of
  * different size.
+ *
+ * Licence: LGPL (2 or any later version)
  */
 int main(int argc, char *argv[])
 {

@@ -11,6 +11,8 @@
  * may change if we find better or faster hash algorithms in future.
  * The stable ones will always give the same results on any computer,
  * and on any version of this package.
+ *
+ * Licence: Public Domain
  */
 int main(int argc, char *argv[])
 {

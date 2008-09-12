@@ -6,6 +6,8 @@
  * antithread - Accelerated Native Technology Implementation of "threads"
  *
  * Threads suck.  Antithreads try not to.  FIXME.
+ *
+ * Licence: LGPL (2 or any later version)
  */
 int main(int argc, char *argv[])
 {

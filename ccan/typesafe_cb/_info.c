@@ -45,6 +45,8 @@
  * On compilers which don't support the extensions required
  * cast_if_type() and friend become an unconditional cast, so your
  * code will compile but you won't get type checking.
+ *
+ * Licence: LGPL (2 or any later version)
  */
 int main(int argc, char *argv[])
 {

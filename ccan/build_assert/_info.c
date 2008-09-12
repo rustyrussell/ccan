@@ -24,6 +24,8 @@
  *		BUILD_ASSERT(offsetof(struct foo, string) == 0);
  *		return (char *)foo;
  *	}
+ *
+ * Licence: LGPL (2 or any later version)
  */
 int main(int argc, char *argv[])
 {
