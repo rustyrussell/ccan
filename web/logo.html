@@ -1,3 +1,8 @@
+<?php
+session_start();
+// Pages created in subdirs need ../ appended.
+$url_prefix = getenv("URLPREFIX");
+?>
 <html>
 <head>
 <title>ccan</title>
@@ -6,7 +11,7 @@
 <table align="center" width="100%" bgcolor="FFFFFF">
  <tr>
   <th>
-	<img src="ccan.jpg" width="250" height="80">
+	<img src="<?=$url_prefix?>ccan.jpg" width="250" height="80">
   </th>
   <th>
 	<h1>Comprehensive C Archieve Network <h1>

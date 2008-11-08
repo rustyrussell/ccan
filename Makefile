@@ -1,26 +1,73 @@
 # Hacky makefile to compile everything and run the tests in some kind of sane order.
 # V=--verbose for verbose tests.
 
+# This can be overridden on cmdline to generate pages elsewhere.
+WEBDIR=webpages/
+
 CFLAGS=-g -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Werror -Iccan -I.
 
 ALL=$(patsubst ccan/%/test, %, $(wildcard ccan/*/test))
 ALL_DIRS=$(patsubst %, ccan/%, $(ALL))
 ALL_DEPENDS=$(patsubst %, ccan/%/.depends, $(ALL))
-ALL_LIBS=$(patsubst %, ccan/%.o, $(ALL))
+ALL_PAGES=$(patsubst ccan/%, $(WEBDIR)/info/%.html, $(ALL_DIRS))
+DIRECT_TARBALLS=$(patsubst ccan/%, $(WEBDIR)/tarballs/%.tar.bz2, $(ALL_DIRS))
+DEPEND_TARBALLS=$(patsubst ccan/%, $(WEBDIR)/tarballs/with-deps/%.tar.bz2, $(ALL_DIRS))
+WEB_SUBDIRS=$(WEBDIR)/tarballs $(WEBDIR)/tarballs/with-deps $(WEBDIR)/info
 
-libccan.a: $(ALL_LIBS)
-	$(AR) r $@ $^
+include Makefile-ccan
 
 check: $(ALL_DIRS:%=test-%)
 
 distclean: clean
 	rm -f $(ALL_DEPENDS)
+	rm -rf $(WEBDIR)
+
+webpages: $(WEB_SUBDIRS) $(WEBDIR)/junkcode $(ALL_PAGES) $(WEBDIR)/list.html $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/example-config.h $(WEBDIR)/ccan.jpg $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan
+
+$(WEB_SUBDIRS):
+	mkdir -p $@
+
+$(WEBDIR)/junkcode:
+	cp -a junkcode $@
+
+# Override implicit attempt to link directory.
+$(ALL_DIRS):
+	@touch $@
+
+$(WEBDIR)/ccan.tar.bz2:
+	tar cvfj $@ `bzr ls --versioned --kind=file ccan`
+
+$(ALL_PAGES): tools/doc_extract web/staticmoduleinfo.php
+
+$(WEBDIR)/list.html: web/staticall.php tools/doc_extract $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2
+	php5 web/staticall.php ccan/ $(WEBDIR) > $@
+
+$(WEBDIR)/upload.html: web/staticupload.php
+	php5 web/staticupload.php > $@
+
+$(WEBDIR)/index.html: web/staticindex.php
+	php5 web/staticindex.php > $@
+
+$(WEBDIR)/example-config.h: config.h
+	cp $< $@
+
+$(WEBDIR)/Makefile-ccan: Makefile-ccan
+	cp $< $@
+
+$(WEBDIR)/ccan.jpg: web/ccan.jpg
+	cp $< $@
+
+$(WEBDIR)/info/%.html: ccan/% ccan/%/test $(WEBDIR)/tarballs/%.tar.bz2 $(WEBDIR)/tarballs/with-deps/%.tar.bz2
+	URLPREFIX=../ php5 web/staticmoduleinfo.php ccan/$* > $@
+
+$(WEBDIR)/tarballs/%.tar.bz2: ccan/% ccan/%/test
+	tar -c -v -j -f $@ `bzr ls --versioned --kind=file ccan/$*`
+
+$(WEBDIR)/tarballs/with-deps/%.tar.bz2: ccan/% ccan/%/test tools/ccan_depends
+	tar cvfj $@ $$(echo ccan/$* $$(tools/ccan_depends ccan/$*) | xargs -n 1 bzr ls --versioned --kind=file)
 
 $(ALL_DEPENDS): %/.depends: tools/ccan_depends
 	tools/ccan_depends $* > $@ || ( rm -f $@; exit 1 )
-
-$(ALL_LIBS):
-	$(LD) -r -o $@ $^ /dev/null
 
 test-ccan/%: tools/run_tests ccan/%.o
 	@echo Testing $*...
@@ -38,10 +85,6 @@ inter-depends: $(ALL_DEPENDS)
 test-depends: $(ALL_DEPENDS)
 	for f in $(ALL_DEPENDS); do echo test-ccan/`basename \`dirname $$f\``: `sed -n 's,ccan/\(.*\),test-ccan/\1,p' < $$f`; done > $@
 
-lib-depends: $(foreach D,$(ALL),$(wildcard $D/*.[ch]))
-	for c in $(ALL); do echo ccan/$$c.o: `ls ccan/$$c/*.c | grep -v /_info.c | sed 's/.c$$/.o/'`; done > $@
-
 include tools/Makefile
 -include inter-depends
 -include test-depends
--include lib-depends

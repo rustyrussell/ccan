@@ -1,0 +1,11 @@
+# Example makefile which makes a "libccan.a" of everything under ccan/
+# You could just do:
+#	SRCFILES += $(shell find ccan/ -name '[a-z]*.c')
+
+CFLAGS=-g -O2 -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Werror -Iccan -I.
+
+CFILES=$(wildcard ccan/*/[a-z]*.c)
+OBJFILES=$(CFILES:.c=.o)
+
+libccan.a: $(OBJFILES)
+	$(AR) r $@ $^

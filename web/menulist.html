@@ -1,30 +1,26 @@
 <?php
 session_start();
+// Pages created in subdirs need ../ appended.
+$url_prefix = getenv("URLPREFIX");
 ?>
 <table align="center" width="100%" cellpadding="4" cellspacing="1" border="0" bgcolor="lightblue">
- <tr align="left" bgcolor="CCFFCC" ><td>Welcome <?=$_SESSION['susername']?>! </td>
+ <tr align="left" bgcolor="CCFFCC" >
   <td align="center">
-	<a href="login.php">	Login</a>
-  </td>
-  <td align="center">	
-	<a href="requestid.php">
-	Request CCAN account</a>
-  </td>	
-  <td align="center">
-	<a href="changedetail.php">
-	Change CCAN account detail</a>
+	<a href="<?=$url_prefix?>upload.html">Upload Code</a>
   </td>
   <td align="center">
-	<a href="upload.php">
-	Upload Code</a>
+	<a href="<?=$url_prefix?>list.html">Download Code</a>
   </td>
   <td align="center">
-	<a href="search.php">
-	Search CCAN</a>
+	<a href="<?=$url_prefix?>index.html">About</a>
   </td>
-  <td align="center"> 
-	<a href="logout.php">
-	Logout</a>
+  <td align="center">
+    <form method="get" action="http://www.google.com/search">
+      <input type="text"   name="q" size="25"
+	     maxlength="255" value="" />
+      <input type="hidden" name="sitesearch" value="ccan.ozlabs.org"/>
+      <input type="submit" value="Search CCAN (Google)" />
+    </form>
   </td>
 </table>
 <hr>

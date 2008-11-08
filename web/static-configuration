@@ -1,0 +1,74 @@
+<?php
+//temp folder for uploads
+$tempfolder = "/home/ccan/upload-temp/";
+
+//location of upload script (for posting uploads)
+$uploadscript = "http://ccan.ozlabs.org/uploader.php";
+
+//infofile
+$infofile = '/_info.c';
+
+//ccan admin
+$ccanadmin = "rusty@rustcorp.com.au";
+
+//email from 
+$frommail = "ccan@ozlabs.org";
+
+//tar home dir
+$tar_dir = 'tarballs';
+
+//where bzr repo is: attach module name to browse
+$repo_base = 'http://ccan.ozlabs.org/repo/?cmd=inventory;path=';
+
+function extract_field($field,$module)
+{
+   return htmlspecialchars(shell_exec('tools/doc_extract '.$field.' '.$module.'/_info.c'));
+}
+
+# Convert double line breaks into paragraphs, and blank spaces into preformat.
+function htmlize_field($field,$module)
+{
+   $state="inpara";
+   $result="<p>";
+   $raw=extract_field($field,$module);
+   foreach (explode("\n", $raw) as $line) {
+      if ($line == "") {
+         switch ($state) {
+	 case "inpara":
+	    $state="endpara";
+	    $result .= "</p>";
+	    break;
+	 }
+      } else if ($line[0] == " " || $line[0] == "\t") {
+         switch ($state) {
+	 case "literal":
+	    break;
+	 case "inpara":
+	    $result .= "</p>";
+	 case "endpara":
+	    $result .= "<pre>";
+	    $state = "literal";
+	 }
+      } else {
+         switch ($state) {
+	 case "literal":
+	    $result .= "</pre>";
+	 case "endpara":
+	    $result .= "<p>";
+	    $state = "inpara";
+	 }
+      }
+      $result .= $line . "\n";
+   }
+
+   switch ($state) {
+      case "literal":
+         $result .= "</pre>";
+         break;
+      case "inpara":
+	 $result .= "</p>";
+         break;
+   }
+   return $result;
+}   
+?>
