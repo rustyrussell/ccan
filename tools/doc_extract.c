@@ -51,7 +51,7 @@ static bool is_blank(const char *line)
 	return line && line[strspn(line, " \t\n")] == '\0';
 }
 
-static bool is_section(const char *line)
+static bool is_section(const char *line, bool maybe_one_liner)
 {
 	unsigned int len;
 
@@ -59,21 +59,29 @@ static bool is_section(const char *line)
 	if (len == 0)
 		return false;
 
+	if (line[len] != ':')
+		return false;
+
+	/* If it can be a one-liner, a space is sufficient.*/
+	if (maybe_one_liner && (line[len+1] == ' ' || line[len+1] == '\t'))
+		return true;
+
 	return line[len] == ':' && is_blank(line+len+1);
 }
 
 
 static bool end_section(const char *line)
 {
-	return !line || is_section(line);
+	return !line || is_section(line, true);
 }
 
-static unsigned int find_section(char **lines, const char *name)
+static unsigned int find_section(char **lines, const char *name,
+				 bool maybe_one_liner)
 {
 	unsigned int i;
 
 	for (i = 0; lines[i]; i++) {
-		if (!is_section(lines[i]))
+		if (!is_section(lines[i], maybe_one_liner))
 			continue;
 		if (strncasecmp(lines[i], name, strlen(name)) != 0)
 			continue;
@@ -104,12 +112,17 @@ int main(int argc, char *argv[])
 		if (streq(type, "author")
 		    || streq(type, "maintainer")
 		    || streq(type, "licence")) {
-			line = find_section(lines, type);
+			line = find_section(lines, type, true);
 			if (lines[line]) {
-				if (!lines[line+1])
-					errx(1, "Malformed %s, end of file",
-					     type);
-				puts(lines[line+1]);
+				const char *p = strchr(lines[line], ':') + 1;
+				p += strspn(p, " \t\n");
+				if (p[0] == '\0') {
+					/* Must be on next line. */
+					if (end_section(lines[line+1]))
+						errx(1, "Malformed %s", type);
+					puts(lines[line+1]);
+				} else
+					puts(p);
 			}
 		} else if (streq(type, "summary")) {
 			/* Summary comes after - on first line. */
@@ -128,7 +141,7 @@ int main(int argc, char *argv[])
 			while (!end_section(lines[line]))
 				puts(lines[line++]);
 		} else if (streq(type, "example")) {
-			line = find_section(lines, type);
+			line = find_section(lines, type, false);
 			if (lines[line]) {
 				unsigned int strip;
 				line++;
