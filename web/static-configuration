@@ -25,7 +25,7 @@ function extract_field($field,$module)
    return htmlspecialchars(shell_exec('tools/doc_extract '.$field.' '.$module.'/_info.c'));
 }
 
-# Convert double line breaks into paragraphs, and blank spaces into preformat.
+// Convert double line breaks into paragraphs, and blank spaces into preformat.
 function htmlize_field($field,$module)
 {
    $state="inpara";

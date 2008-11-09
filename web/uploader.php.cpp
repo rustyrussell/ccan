@@ -1,8 +1,10 @@
 <?php
 session_start();
-include('logo.html');
-include('menulist.html');
-include('static-configuration');
+?>
+#include "logo.html"
+#include "menulist.html"
+#include "static-configuration"
+<?php
 
 // We just email notification for now.  Auto-analysis RSN.
 if ($_FILES["uploadedfile"]["error"] > 0) {
@@ -20,6 +22,6 @@ $message = "File type: ".$_FILES["uploadedfile"]["type"]."\n".
 	"File destination: ".$dest."\n";
 
 mail($ccanadmin, $subject, $message, "From: $frommail");
-echo "<div align=\"center\"> Thanks!<br>Stored to temporary location. 
-	Mail will be send to admin to get verification of the code.<//div>";
+echo "<div align=\"center\"> Thanks!<br>
+	Mail will be send to admin to publish the code.<//div>";
 ?>

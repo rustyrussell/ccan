@@ -2,7 +2,7 @@
 # V=--verbose for verbose tests.
 
 # This can be overridden on cmdline to generate pages elsewhere.
-WEBDIR=webpages/
+WEBDIR=~/www/html/ccan/
 
 CFLAGS=-g -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Werror -Iccan -I.
 
@@ -22,7 +22,7 @@ distclean: clean
 	rm -f $(ALL_DEPENDS)
 	rm -rf $(WEBDIR)
 
-webpages: $(WEB_SUBDIRS) $(WEBDIR)/junkcode $(ALL_PAGES) $(WEBDIR)/list.html $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/example-config.h $(WEBDIR)/ccan.jpg $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan
+webpages: $(WEB_SUBDIRS) $(WEBDIR)/junkcode $(ALL_PAGES) $(WEBDIR)/list.html $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.jpg $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan
 
 $(WEB_SUBDIRS):
 	mkdir -p $@
@@ -44,6 +44,10 @@ $(WEBDIR)/list.html: web/staticall.php tools/doc_extract $(DIRECT_TARBALLS) $(DE
 
 $(WEBDIR)/upload.html: web/staticupload.php
 	php5 web/staticupload.php > $@
+
+# cpp inserts gratuitous linebreaks at start of file, makes for php problems.
+$(WEBDIR)/uploader.php: web/uploader.php.cpp
+	cpp -w -C -P $< | grep . > $@
 
 $(WEBDIR)/index.html: web/staticindex.php
 	php5 web/staticindex.php > $@
