@@ -483,7 +483,7 @@ static void adjust_dir(const char *dir)
 
 	verbose("Adjusting %s\n", dir);
 	verbose_indent();
-	for (deps = get_deps(parent, dir); *deps; deps++) {
+	for (deps = get_deps(parent, dir, false); *deps; deps++) {
 		char *depdir;
 		struct adjusted *adj = NULL;
 		struct replace *repl;
@@ -521,7 +521,7 @@ static void adjust_dependents(const char *dir)
 		if (access(infoc, R_OK) != 0)
 			continue;
 
-		for (deps = get_deps(*file, *file); *deps; deps++) {
+		for (deps = get_deps(*file, *file, false); *deps; deps++) {
 			if (streq(*deps, base))
 				isdep = true;
 		}
