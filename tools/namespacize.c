@@ -10,7 +10,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include "ccan/string/string.h"
+#include "ccan/str/str.h"
+#include "ccan/str_talloc/str_talloc.h"
+#include "ccan/grab_file/grab_file.h"
 #include "ccan/talloc/talloc.h"
 #include "tools.h"
 

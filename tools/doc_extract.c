@@ -9,7 +9,9 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include "talloc/talloc.h"
-#include "string/string.h"
+#include "str/str.h"
+#include "str_talloc/str_talloc.h"
+#include "grab_file/grab_file.h"
 
 static char **grab_doc(const char *fname)
 {

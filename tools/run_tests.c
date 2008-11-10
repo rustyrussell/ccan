@@ -6,7 +6,7 @@
 #include <unistd.h>
 #include "ccan/tap/tap.h"
 #include "ccan/talloc/talloc.h"
-#include "ccan/string/string.h"
+#include "ccan/str/str.h"
 #include "tools.h"
 
 /* FIXME: Use build bug later. */

@@ -1,0 +1,51 @@
+#include <stdio.h>
+#include <string.h>
+#include "config.h"
+
+/**
+ * grab_file - file helper routines
+ *
+ * This contains simple functions for getting the contents of a file.
+ *
+ * Example:
+ *	#include "grab_file/grab_file.h"
+ *	#include <err.h>
+ *	#include <stdio.h>
+ *	#include <string.h>
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		size_t len;
+ *		char *file;
+ *
+ *		file = grab_file(NULL, argv[1], &len);
+ *		if (!file)
+ *			err(1, "Could not read file %s", argv[1]);
+ *		if (strlen(file) != len)
+ *			printf("File contains NUL characters\n");
+ *		else if (len == 0)
+ *			printf("File contains nothing\n");
+ *		else if (strchr(file, '\n'))
+ *			printf("File contains multiple lines\n");
+ *		else
+ *			printf("File contains one line\n");
+ *		talloc_free(file);
+ *
+ *		return 0;
+ *	}
+ *
+ * Licence: LGPL (2 or any later version)
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/talloc\n");
+		printf("ccan/noerr\n");
+		return 0;
+	}
+
+	return 1;
+}

@@ -1,6 +1,6 @@
 #include "ccanlint.h"
 #include <talloc/talloc.h>
-#include <string/string.h>
+#include <str/str.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>

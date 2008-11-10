@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <err.h>
-#include <string/string.h>
+#include <str/str.h>
 #include <talloc/talloc.h>
 #include <noerr/noerr.h>
 

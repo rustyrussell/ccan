@@ -4,7 +4,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <sqlite3.h>
-#include "ccan/string/string.h"
+#include "ccan/grab_file/grab_file.h"
+#include "ccan/str_talloc/str_talloc.h"
 #include "ccan/talloc/talloc.h"
 #include "tools/_infotojson/database.h"
 

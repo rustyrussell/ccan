@@ -8,9 +8,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <err.h>
-#include <string/string.h>
 #include <talloc/talloc.h>
-#include <noerr/noerr.h>
 
 static char test_is_not_dir[] = "test is not a directory";
 

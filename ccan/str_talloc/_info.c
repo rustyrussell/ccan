@@ -1,0 +1,52 @@
+#include <stdio.h>
+#include <string.h>
+#include "config.h"
+
+/**
+ * str_talloc - string helper routines which use talloc
+ *
+ * This is a grab bag of fnctions for string operations, designed to enhance
+ * the standard string.h; these are separated from the non-talloc-needing
+ * string utilities in "str.h".
+ *
+ * Example:
+ *	#include "str_talloc/str_talloc.h"
+ *	#include "talloc/talloc.h"
+ *	#include "grab_file/grab_file.h"
+ *	#include <err.h>
+ *	
+ *	// Dumb demo program to double-linespace a file.
+ *	int main(int argc, char *argv[])
+ *	{
+ *		char *textfile;
+ *		char **lines;
+ *	
+ *		// Grab lines in file.
+ *		textfile = grab_file(NULL, argv[1], NULL);
+ *		if (!textfile)
+ *			err(1, "Failed reading %s", argv[1]);
+ *		lines = strsplit(textfile, textfile, "\n", NULL);
+ *	
+ *		// Join them back together with two linefeeds.
+ *		printf("%s", strjoin(textfile, lines, "\n\n"));
+ *
+ *		// Free everything, just because we can.
+ *		talloc_free(textfile);
+ *		return 0;
+ *	}
+ *
+ * Licence: LGPL (2 or any later version)
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/talloc\n");
+		printf("ccan/noerr\n");
+		return 0;
+	}
+
+	return 1;
+}

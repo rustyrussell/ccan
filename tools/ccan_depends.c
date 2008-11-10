@@ -2,7 +2,7 @@
 #include <err.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "string/string.h"
+#include "str/str.h"
 #include "talloc/talloc.h"
 
 int main(int argc, char *argv[])

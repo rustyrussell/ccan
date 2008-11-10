@@ -1,5 +1,7 @@
 #include "talloc/talloc.h"
-#include "string/string.h"
+#include "str/str.h"
+#include "grab_file/grab_file.h"
+#include "str_talloc/str_talloc.h"
 #include "tools.h"
 #include <err.h>
 #include <stdbool.h>

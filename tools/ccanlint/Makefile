@@ -23,7 +23,8 @@ tools/ccanlint/ccanlint: \
 	$(OBJS)			\
 	tools/ccanlint/ccanlint.o \
 	tools/ccanlint/file_analysis.o \
-	ccan/string/string.o ccan/talloc/talloc.o ccan/noerr/noerr.o
+	ccan/str_talloc/str_talloc.o ccan/grab_file/grab_file.o \
+	ccan/talloc/talloc.o ccan/noerr/noerr.o
 
 ccanlint-clean:
 	$(RM) tools/ccanlint/generated-init-tests

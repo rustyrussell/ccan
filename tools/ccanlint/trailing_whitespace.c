@@ -1,7 +1,7 @@
 /* Trailing whitespace test.  Almost embarrassing, but trivial. */
 #include "ccanlint.h"
 #include <talloc/talloc.h>
-#include <string/string.h>
+#include <str/str.h>
 
 static char *report_on_trailing_whitespace(const char *line)
 {

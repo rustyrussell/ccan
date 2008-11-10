@@ -3,13 +3,13 @@
 #include "config.h"
 
 /**
- * string - string helper routines
+ * str - string helper routines
  *
- * This is a grab bag of modules for string operations, designed to enhance
+ * This is a grab bag of functions for string operations, designed to enhance
  * the standard string.h.
  *
  * Example:
- *	#include "string/string.h"
+ *	#include "str/str.h"
  *
  *	int main(int argc, char *argv[])
  *	{
@@ -30,8 +30,6 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
-		printf("ccan/talloc\n");
-		printf("ccan/noerr\n");
 		return 0;
 	}
 
