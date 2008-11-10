@@ -5,8 +5,8 @@
 #include <assert.h>
 #include <stdlib.h>
 #include "alloc.h"
-#include "build_assert/build_assert.h"
-#include "alignof/alignof.h"
+#include <ccan/build_assert/build_assert.h>
+#include <ccan/alignof/alignof.h>
 #include "config.h"
 
 /* FIXME: We assume getpagesize() doesnt change.  Remapping file with

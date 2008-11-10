@@ -4,8 +4,6 @@
 # This can be overridden on cmdline to generate pages elsewhere.
 WEBDIR=~/www/html/ccan/
 
-CFLAGS=-g -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Werror -Iccan -I.
-
 ALL=$(patsubst ccan/%/test, %, $(wildcard ccan/*/test))
 ALL_DIRS=$(patsubst %, ccan/%, $(ALL))
 ALL_DEPENDS=$(patsubst %, ccan/%/.depends, $(ALL))

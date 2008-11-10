@@ -4,7 +4,7 @@
 #include <limits.h>
 #include <stdlib.h>
 #include "str_talloc.h"
-#include "talloc/talloc.h"
+#include <ccan/talloc/talloc.h>
 
 char **strsplit(const void *ctx, const char *string, const char *delims,
 		 unsigned int *nump)

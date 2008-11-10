@@ -1,6 +1,6 @@
 #include "grab_file.h"
-#include "talloc/talloc.h"
-#include "noerr/noerr.h"
+#include <ccan/talloc/talloc.h>
+#include <ccan/noerr/noerr.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>

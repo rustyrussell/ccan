@@ -8,10 +8,10 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <stdbool.h>
-#include "talloc/talloc.h"
-#include "str/str.h"
-#include "str_talloc/str_talloc.h"
-#include "grab_file/grab_file.h"
+#include <ccan/talloc/talloc.h>
+#include <ccan/str/str.h>
+#include <ccan/str_talloc/str_talloc.h>
+#include <ccan/grab_file/grab_file.h>
 
 static char **grab_doc(const char *fname)
 {

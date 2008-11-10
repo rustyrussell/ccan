@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "list/list.h"
+#include "list.h"
 
 struct list_head *list_check(struct list_head *h, const char *abortstr)
 {

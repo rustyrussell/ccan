@@ -2,7 +2,7 @@
 # You could just do:
 #	SRCFILES += $(shell find ccan/ -name '[a-z]*.c')
 
-CFLAGS=-g -O2 -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Werror -Iccan -I.
+CFLAGS=-g -O2 -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Werror -I.
 
 CFILES=$(wildcard ccan/*/[a-z]*.c)
 OBJFILES=$(CFILES:.c=.o)

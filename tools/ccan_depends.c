@@ -2,8 +2,8 @@
 #include <err.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "str/str.h"
-#include "talloc/talloc.h"
+#include <ccan/str/str.h>
+#include <ccan/talloc/talloc.h>
 
 int main(int argc, char *argv[])
 {

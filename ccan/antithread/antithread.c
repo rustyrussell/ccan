@@ -9,9 +9,9 @@
 #include <errno.h>
 #include <err.h>
 #include "antithread.h"
-#include "noerr/noerr.h"
-#include "talloc/talloc.h"
-#include "alloc/alloc.h"
+#include <ccan/noerr/noerr.h>
+#include <ccan/talloc/talloc.h>
+#include <ccan/alloc/alloc.h>
 
 /* FIXME: Valgrind support should be possible for some cases.  Tricky
  * case is where another process allocates for you, but at worst we

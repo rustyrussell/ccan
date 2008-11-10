@@ -42,7 +42,7 @@ on 1 byte), but shoehorning those bytes into integers efficiently is messy.
 #include <sys/param.h>  /* attempt to define endianness */
 #endif
 
-#include "hash/hash.h"
+#include "hash.h"
 #ifdef linux
 # include <endian.h>    /* attempt to define endianness */
 #endif

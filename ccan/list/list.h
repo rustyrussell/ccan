@@ -1,7 +1,7 @@
 #ifndef CCAN_LIST_H
 #define CCAN_LIST_H
 #include <stdbool.h>
-#include "container_of/container_of.h"
+#include <ccan/container_of/container_of.h>
 
 /**
  * struct list_node - an entry in a doubly-linked list
