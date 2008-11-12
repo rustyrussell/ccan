@@ -12,13 +12,14 @@
 #include <ccan/str/str.h>
 #include <ccan/str_talloc/str_talloc.h>
 #include <ccan/grab_file/grab_file.h>
+#include "tools.h"
 
 static char **grab_doc(const char *fname)
 {
 	char *file;
 	char **lines, **ret;
 	unsigned int i, num;
-	bool printing = false, printed = false;
+	bool printing = false;
 
 	file = grab_file(NULL, fname, NULL);
 	if (!file)
@@ -30,8 +31,8 @@ static char **grab_doc(const char *fname)
 	for (i = 0; lines[i]; i++) {
 		if (streq(lines[i], "/**")) {
 			printing = true;
-			if (printed++)
-				talloc_append_string(ret[num], "\n");
+			if (num != 0)
+				talloc_append_string(ret[num-1], "\n");
 		} else if (streq(lines[i], " */")) 
 			printing = false;
 		else if (printing) {
@@ -71,10 +72,23 @@ static bool is_section(const char *line, bool maybe_one_liner)
 	return line[len] == ':' && is_blank(line+len+1);
 }
 
+/* Summary line is form '<identifier> - ' */
+static bool is_summary_line(const char *line)
+{
+	unsigned int id_len;
+
+	id_len = strspn(line, IDENT_CHARS);
+	if (id_len == 0)
+		return false;
+	if (!strstarts(line + id_len, " - "))
+		return false;
+
+	return true;
+}
 
 static bool end_section(const char *line)
 {
-	return !line || is_section(line, true);
+	return !line || is_section(line, true) || is_summary_line(line);
 }
 
 static unsigned int find_section(char **lines, const char *name,
@@ -93,14 +107,41 @@ static unsigned int find_section(char **lines, const char *name,
 	return i;
 }
 
+/* function is NULL if we don't care. */
+static unsigned int find_summary(char **lines, const char *function)
+{
+	unsigned int i;
+
+	for (i = 0; lines[i]; i++) {
+		if (!is_summary_line(lines[i]))
+			continue;
+		if (function) {
+			if (!strstarts(lines[i], function))
+				continue;
+			if (!strstarts(lines[i] + strlen(function), " - "))
+				continue;
+		}
+		break;
+	}
+	return i;
+}
+
+
 int main(int argc, char *argv[])
 {
 	unsigned int i;
 	const char *type;
+	const char *function = NULL;
 
 	if (argc < 3)
-		errx(1, "Usage: doc_extract TYPE <file>...\n"
-		     "Where TYPE is author|licence|maintainer|summary|description|example|all");
+		errx(1, "Usage: doc_extract [--function=<funcname>] TYPE <file>...\n"
+		     "Where TYPE is functions|author|licence|maintainer|summary|description|example|all");
+
+	if (strstarts(argv[1], "--function=")) {
+		function = argv[1] + strlen("--function=");
+		argv++;
+		argc--;
+	}
 
 	type = argv[1];
 	for (i = 2; i < argc; i++) {
@@ -108,8 +149,18 @@ int main(int argc, char *argv[])
 		char **lines = grab_doc(argv[i]);
 
 		if (!lines[0])
-			errx(1, "No documentation in file");
+			errx(1, "No documentation in file %s", argv[i]);
 
+		if (function) {
+			/* Allow us to trawl multiple files for a function */
+			line = find_summary(lines, function);
+			if (!lines[line])
+				continue;
+
+			/* Trim to just this function then. */
+			lines += line;
+			lines[find_summary(lines+1, NULL)] = NULL;
+		}
 		/* Simple one-line fields. */
 		if (streq(type, "author")
 		    || streq(type, "maintainer")
@@ -164,16 +215,18 @@ int main(int argc, char *argv[])
 					line++;
 				}
 			}
+		} else if (streq(type, "functions")) {
+			while (lines[line = find_summary(lines, NULL)]) {
+				const char *dash = strstr(lines[line], " - ");
+				printf("%.*s\n",
+				       dash - lines[line], lines[line]);
+				lines += line+1;
+			}
 		} else if (streq(type, "all")) {
 			for (line = 0; lines[line]; line++)
 				puts(lines[line]);
 		} else
 			errx(1, "Unknown type '%s'", type);
-			
-		talloc_free(lines);
 	}
 	return 0;
 }
-
-		
-		

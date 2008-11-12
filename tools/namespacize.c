@@ -16,10 +16,6 @@
 #include "ccan/talloc/talloc.h"
 #include "tools.h"
 
-#define IDENT_CHARS	"ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
-			"abcdefghijklmnopqrstuvwxyz" \
-			"01234567889_"
-
 static bool verbose = false;
 static int indent = 0;
 #define verbose(args...)						\

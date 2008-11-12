@@ -2,6 +2,10 @@
 #define CCAN_TOOLS_H
 #include <stdbool.h>
 
+#define IDENT_CHARS	"ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
+			"abcdefghijklmnopqrstuvwxyz" \
+			"01234567889_"
+
 #define CFLAGS "-O3 -Wall -Wundef -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Werror -Iccan/ -I."
 
 /* This actually compiles and runs the _info.c file to get dependencies. */
