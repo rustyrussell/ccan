@@ -38,8 +38,8 @@ foreach ($modules as $module) {
 	$summary=extract_field('summary',$argv[1].$module);
 	$with_deps="$tar_dir/with-deps/$module.tar.bz2";
 	$no_deps="$tar_dir/$module.tar.bz2";
-	$with_dep_size = round((filesize($argv[2]."/".$with_deps) + 1023) / 1024);
-	$no_dep_size = round((filesize($argv[2]."/".$no_deps) + 1023) / 1024);
+	$with_dep_size = round((filesize($argv[3]."/".$with_deps) + 1023) / 1024);
+	$no_dep_size = round((filesize($argv[3]."/".$no_deps) + 1023) / 1024);
 	?>
 	<tr>
 	  <td><?=$module?></td>
@@ -60,18 +60,19 @@ $d->close();
 <table align="center" width="80%" border="0" cellpadding="3" cellspacing="1">
 
 <?php
-$d = dir($argv[2]."/junkcode");
-$files = array();
+$d = dir($argv[2]);
+$dirs = array();
 while (false !== ($entry = $d->read())) {
 	if ($entry[0] != '.') {
-		array_push($files, $entry);
+		array_push($dirs, $entry);
 	}
 }
 
-sort($files);
-foreach ($files as $file) {
-	$size = round((filesize($argv[2]."/junkcode/".$file) + 1023) / 1024);
-	echo "<tr><td><a href=\"junkcode/$file\">$file (${size}K)</a></td><tr>\n";
+sort($dirs);
+foreach ($dirs as $dir) {
+	$size = round((filesize($argv[3]."/junkcode/".$dir.".tar.bz2") + 1023) / 1024);
+	echo "<tr><td><a href=\"junkcode/$dir.tar.bz2\">$dir.tar.bz2 (${size}K)</a></td>\n";
+	echo "<td><a href=\"junkcode/$dir.html\">Browse contents...</a></td><tr>\n";
 }
 $d->close();
 ?>
