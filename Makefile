@@ -10,7 +10,10 @@ ALL_DEPENDS=$(patsubst %, ccan/%/.depends, $(ALL))
 ALL_PAGES=$(patsubst ccan/%, $(WEBDIR)/info/%.html, $(ALL_DIRS))
 DIRECT_TARBALLS=$(patsubst ccan/%, $(WEBDIR)/tarballs/%.tar.bz2, $(ALL_DIRS))
 DEPEND_TARBALLS=$(patsubst ccan/%, $(WEBDIR)/tarballs/with-deps/%.tar.bz2, $(ALL_DIRS))
-WEB_SUBDIRS=$(WEBDIR)/tarballs $(WEBDIR)/tarballs/with-deps $(WEBDIR)/info
+WEB_SUBDIRS=$(WEBDIR)/tarballs $(WEBDIR)/junkcode $(WEBDIR)/tarballs/with-deps $(WEBDIR)/info
+JUNKDIRS=$(wildcard junkcode/*)
+JUNKPAGES=$(JUNKDIRS:%=$(WEBDIR)/%.html)
+JUNKBALLS=$(JUNKDIRS:%=$(WEBDIR)/%.tar.bz2)
 
 include Makefile-ccan
 
@@ -20,13 +23,17 @@ distclean: clean
 	rm -f $(ALL_DEPENDS)
 	rm -rf $(WEBDIR)
 
-webpages: $(WEB_SUBDIRS) $(WEBDIR)/junkcode $(ALL_PAGES) $(WEBDIR)/list.html $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.jpg $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan
+webpages: $(WEB_SUBDIRS) $(WEBDIR)/junkcode $(ALL_PAGES) $(WEBDIR)/list.html $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.jpg $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan $(JUNKPAGES) $(JUNKBALLS)
 
 $(WEB_SUBDIRS):
 	mkdir -p $@
 
-$(WEBDIR)/junkcode:
-	cp -a junkcode $@
+$(WEBDIR)/junkcode/%.tar.bz2: junkcode/% $(WEBDIR)/junkcode
+	tar cvfj $@ `bzr ls --versioned --kind=file $<`
+
+$(WEBDIR)/junkcode/%.html: $(WEBDIR)/junkcode/%.tar.bz2
+	cd $(WEBDIR) && tar xfj junkcode/$*.tar.bz2
+	php5 web/staticjunkcode.php junkcode/$* $* > $@
 
 # Override implicit attempt to link directory.
 $(ALL_DIRS):
@@ -37,8 +44,8 @@ $(WEBDIR)/ccan.tar.bz2:
 
 $(ALL_PAGES): tools/doc_extract web/staticmoduleinfo.php
 
-$(WEBDIR)/list.html: web/staticall.php tools/doc_extract $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2
-	php5 web/staticall.php ccan/ $(WEBDIR) > $@
+$(WEBDIR)/list.html: web/staticall.php tools/doc_extract $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(JUNKBALLS)
+	php5 web/staticall.php ccan/ junkcode/ $(WEBDIR) > $@
 
 $(WEBDIR)/upload.html: web/staticupload.php
 	php5 web/staticupload.php > $@
