@@ -20,7 +20,7 @@
  *
  * Example:
  *	#include <string.h>
- *	#include "tap/tap.h"
+ *	#include <ccan/tap/tap.h>
  *
  *	// Run some simple (but overly chatty) tests on strcmp().
  *	int main(int argc, char *argv[])

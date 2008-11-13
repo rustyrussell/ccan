@@ -16,7 +16,8 @@
  *
  * Example:
  *	#include <stdio.h>
- *	#include "alignof/alignof.h"
+ *	#include <stdlib.h>
+ *	#include <ccan/alignof/alignof.h>
  *
  *	int main(int argc, char *argv[])
  *	{

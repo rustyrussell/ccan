@@ -18,6 +18,14 @@
  * you would catch such changes in your code like so:
  *
  * Example:
+ *	#include <stddef.h>
+ *	#include <ccan/build_assert/build_assert.h>
+ *
+ *	struct foo {
+ *		char string[5];
+ *		int x;
+ *	};
+ *
  *	char *foo_string(struct foo *foo)
  *	{
  *		// This trick requires that the string be first in the structure

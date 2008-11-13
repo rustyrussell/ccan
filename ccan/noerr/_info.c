@@ -14,6 +14,10 @@
  *	#include <sys/types.h>
  *	#include <sys/stat.h>
  *	#include <fcntl.h>
+ *	#include <stdbool.h>
+ *	#include <string.h>
+ *	#include <errno.h>
+ *	#include <ccan/noerr/noerr.h>
  *
  *	bool write_string_to_file(const char *file, const char *string)
  *	{

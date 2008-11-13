@@ -20,14 +20,17 @@
  *	#include <unistd.h>
  *	#include <sys/types.h>
  *	#include <err.h>
- *	#include "alloc/alloc.h"
+ *	#include <sys/stat.h>
+ *	#include <fcntl.h>
+ *	#include <string.h>
+ *	#include <ccan/alloc/alloc.h>
  *
  *	static void usage(const char *name)
  *	{
  *		errx(1, "Usage: %s --create <mapfile>\n"
  *		     " %s --check <mapfile>\n"
  *		     " %s --alloc <mapfile>\n"
- *		     " %s --free=<offset> <mapfile>\n", name, name, name);
+ *		     " %s --free=<offset> <mapfile>\n", name, name, name, name);
  *	}
  *
  *	// Create a memory mapped file, and allocate from within it

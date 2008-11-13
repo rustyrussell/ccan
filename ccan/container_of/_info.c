@@ -14,8 +14,14 @@
  * callback.
  *
  * Example:
- *	struct info
- *	{
+ *	#include <stdio.h>
+ *	#include <ccan/container_of/container_of.h>
+ *
+ *	struct timer {
+ *		void *members;
+ *	};
+ *
+ *	struct info {
  *		int my_stuff;
  *		struct timer timer;
  *	};
@@ -31,7 +37,9 @@
  *		struct info info = { .my_stuff = 1 };
  *
  *		register_timer(&info.timer);
- *		...
+ *		// ...
+ *		return 0;
+ *	}
  *
  * Licence: LGPL (2 or any later version)
  */

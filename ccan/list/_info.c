@@ -12,7 +12,9 @@
  *
  * Example:
  *	#include <err.h>
- *	#include "list/list.h"
+ *	#include <stdio.h>
+ *	#include <stdlib.h>
+ *	#include <ccan/list/list.h>
  *
  *	struct parent {
  *		const char *name;
@@ -35,7 +37,8 @@
  *			errx(1, "Usage: %s parent children...", argv[0]);
  *
  *		p.name = argv[1];
- *		for (i = 2; i < argc, i++) {
+ *		list_head_init(&p.children);
+ *		for (i = 2; i < argc; i++) {
  *			c = malloc(sizeof(*c));
  *			c->name = argv[i];
  *			list_add(&p.children, &c->list);

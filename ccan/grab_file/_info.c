@@ -8,10 +8,11 @@
  * This contains simple functions for getting the contents of a file.
  *
  * Example:
- *	#include "grab_file/grab_file.h"
  *	#include <err.h>
  *	#include <stdio.h>
  *	#include <string.h>
+ *	#include <ccan/grab_file/grab_file.h>
+ *	#include <ccan/talloc/talloc.h>	// For talloc_free()
  *
  *	int main(int argc, char *argv[])
  *	{

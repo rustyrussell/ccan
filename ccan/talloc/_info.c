@@ -31,9 +31,9 @@
  *	#include <stdio.h>
  *	#include <stdarg.h>
  *	#include <err.h>
- *	#include "talloc/talloc.h"
+ *	#include <ccan/talloc/talloc.h>
  *
- *	// A structure containing a popened comman.
+ *	// A structure containing a popened command.
  *	struct command
  *	{
  *		FILE *f;
@@ -79,7 +79,7 @@
  *		struct command *cmd;
  *
  *		if (argc != 2)
- *			errx(1, "Usage: %s <command>\n");
+ *			errx(1, "Usage: %s <command>\n", argv[0]);
  *
  *		cmd = open_output_cmd(NULL, "%s hello", argv[1]);
  *		if (!cmd)

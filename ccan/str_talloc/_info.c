@@ -10,9 +10,9 @@
  * string utilities in "str.h".
  *
  * Example:
- *	#include "str_talloc/str_talloc.h"
- *	#include "talloc/talloc.h"
- *	#include "grab_file/grab_file.h"
+ *	#include <ccan/str_talloc/str_talloc.h>
+ *	#include <ccan/talloc/talloc.h>
+ *	#include <ccan/grab_file/grab_file.h>
  *	#include <err.h>
  *	
  *	// Dumb demo program to double-linespace a file.
