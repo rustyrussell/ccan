@@ -8,9 +8,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <err.h>
-#include <str/str.h>
-#include <talloc/talloc.h>
-#include <noerr/noerr.h>
+#include <ccan/str/str.h>
+#include <ccan/talloc/talloc.h>
+#include <ccan/noerr/noerr.h>
 
 static void *check_has_main_header(struct manifest *m)
 {

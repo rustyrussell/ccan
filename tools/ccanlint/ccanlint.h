@@ -1,7 +1,8 @@
 #ifndef CCAN_LINT_H
 #define CCAN_LINT_H
-#include <list/list.h>
+#include <ccan/list/list.h>
 #include <stdbool.h>
+#include "../doc_extract.h"
 
 struct manifest {
 	char *basename;
@@ -54,10 +55,15 @@ struct ccan_file {
 
 	unsigned int num_lines;
 	char **lines;
+
+	struct list_head *doc_sections;
 };
 
 /* Use this rather than accessing f->lines directly: loads on demand. */
 char **get_ccan_file_lines(struct ccan_file *f);
+
+/* Similarly for ->doc_sections */
+struct list_head *get_ccan_file_docs(struct ccan_file *f);
 
 /* Call the reporting on every line in the file.  sofar contains
  * previous results. */

@@ -23,6 +23,7 @@ tools/ccanlint/ccanlint: \
 	$(OBJS)			\
 	tools/ccanlint/ccanlint.o \
 	tools/ccanlint/file_analysis.o \
+	tools/doc_extract-core.o \
 	ccan/str_talloc/str_talloc.o ccan/grab_file/grab_file.o \
 	ccan/talloc/talloc.o ccan/noerr/noerr.o
 

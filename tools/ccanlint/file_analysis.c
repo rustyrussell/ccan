@@ -1,10 +1,9 @@
 #include "ccanlint.h"
-#include "get_file_lines.h"
-#include <talloc/talloc.h>
-#include <str/str.h>
-#include <str_talloc/str_talloc.h>
-#include <grab_file/grab_file.h>
-#include <noerr/noerr.h>
+#include <ccan/talloc/talloc.h>
+#include <ccan/str/str.h>
+#include <ccan/str_talloc/str_talloc.h>
+#include <ccan/grab_file/grab_file.h>
+#include <ccan/noerr/noerr.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -22,6 +21,15 @@ char **get_ccan_file_lines(struct ccan_file *f)
 		f->lines = strsplit(f, buffer, "\n", &f->num_lines);
 	}
 	return f->lines;
+}
+
+struct list_head *get_ccan_file_docs(struct ccan_file *f)
+{
+	if (!f->doc_sections) {
+		get_ccan_file_lines(f);
+		f->doc_sections = extract_doc_sections(f->lines, f->num_lines);
+	}
+	return f->doc_sections;
 }
 
 static void add_files(struct manifest *m, const char *dir)
@@ -47,6 +55,7 @@ static void add_files(struct manifest *m, const char *dir)
 
 		f = talloc(m, struct ccan_file);
 		f->lines = NULL;
+		f->doc_sections = NULL;
 		f->name = talloc_asprintf(f, "%s%s", dir, ent->d_name);
 		if (lstat(f->name, &st) != 0)
 			err(1, "lstat %s", f->name);

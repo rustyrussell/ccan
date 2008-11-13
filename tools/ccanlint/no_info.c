@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <err.h>
 #include <string.h>
-#include <noerr/noerr.h>
+#include <ccan/noerr/noerr.h>
 
 static void *check_no_info(struct manifest *m)
 {
