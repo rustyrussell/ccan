@@ -11,6 +11,7 @@
 #include "antithread.h"
 #include <ccan/noerr/noerr.h>
 #include <ccan/talloc/talloc.h>
+#include <ccan/read_write_all/read_write_all.h>
 #include <ccan/alloc/alloc.h>
 
 /* FIXME: Valgrind support should be possible for some cases.  Tricky
@@ -290,7 +291,7 @@ struct athread *at_spawn(struct at_pool *pool, void *arg, char *cmdline[])
 		execvp(argv[0], argv);
 
 		err = errno;
-		write(pool->parent_wfd, &err, sizeof(err));
+		write_all(pool->parent_wfd, &err, sizeof(err));
 		exit(1);
 	}
 
