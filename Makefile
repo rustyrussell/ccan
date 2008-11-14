@@ -78,7 +78,7 @@ $(WEBDIR)/tarballs/with-deps/%.tar.bz2: ccan/% ccan/%/test tools/ccan_depends
 $(ALL_DEPENDS): %/.depends: tools/ccan_depends
 	tools/ccan_depends $* > $@ || ( rm -f $@; exit 1 )
 
-test-ccan/%: tools/run_tests ccan/%.o
+test-ccan/%: tools/run_tests libccan.a(%.o)
 	@echo Testing $*...
 	@if tools/run_tests $(V) ccan/$* | grep ^'not ok'; then exit 1; else exit 0; fi
 
@@ -88,8 +88,9 @@ clean: tools-clean
 	$(RM) `find . -name '*.o'` `find . -name '.depends'` `find . -name '*.a'`  `find . -name _info`
 	$(RM) inter-depends lib-depends test-depends
 
+# Only list a dependency if there are object files to build.
 inter-depends: $(ALL_DEPENDS)
-	for f in $(ALL_DEPENDS); do echo test-ccan/`basename \`dirname $$f\``: `sed -n 's,ccan/\(.*\),ccan/\1.o,p' < $$f`; done > $@
+	for f in $(ALL_DEPENDS); do echo test-ccan/$$(basename $$(dirname $$f) ): $$(for dir in $$(cat $$f); do [ "$$(echo $$dir/[a-z]*.c)" = "$$dir/[a-z]*.c" ] || echo libccan.a\("$$(basename $$dir)".o\); done); done > $@
 
 test-depends: $(ALL_DEPENDS)
 	for f in $(ALL_DEPENDS); do echo test-ccan/`basename \`dirname $$f\``: `sed -n 's,ccan/\(.*\),test-ccan/\1,p' < $$f`; done > $@
