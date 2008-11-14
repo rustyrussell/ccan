@@ -39,6 +39,8 @@ int main(int argc, char *argv[])
 	child = fork();
 
 	if (!child) {
+		close(p2c[1]);
+		close(c2p[0]);
 		/* Child.  Make sure parent ready, then write in two parts. */
 		if (read(p2c[0], &c, 1) != 1)
 			exit(1);
@@ -50,13 +52,15 @@ int main(int argc, char *argv[])
 		/* Make sure they get signal. */
 		if (read(p2c[0], &c, 1) != 1)
 			exit(4);
-		if (write(c2p[1], buffer, PIPE_BUF) != PIPE_BUF)
+		if (write(c2p[1], buffer, BUFSZ) != BUFSZ)
 			exit(5);
 		exit(0);
 	}
 	if (child == -1)
 		err(1, "forking");
 
+	close(p2c[0]);
+	close(c2p[1]);
 	signal(SIGUSR1, got_signal);
 	ok1(write(p2c[1], &c, 1) == 1);
 	ok1(read_all(c2p[0], buffer, sizeof(buffer)));

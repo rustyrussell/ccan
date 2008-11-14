@@ -37,6 +37,7 @@ int main(int argc, char *argv[])
 	child = fork();
 
 	if (!child) {
+		close(p2c[1]);
 		/* Make sure they started writing. */
 		if (read(p2c[0], buffer, 1) != 1)
 			exit(1);
@@ -54,6 +55,7 @@ int main(int argc, char *argv[])
 	if (child == -1)
 		err(1, "forking");
 
+	close(p2c[0]);
 	memset(buffer, 0xff, sizeof(buffer));
 	signal(SIGUSR1, got_signal);
 	ok1(write_all(p2c[1], buffer, sizeof(buffer)));
