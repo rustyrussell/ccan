@@ -198,15 +198,22 @@ static inline bool list_empty(struct list_head *h)
  *	first = list_top(&parent->children, struct child, list);
  */
 #define list_top(h, type, member) \
-	list_entry(_list_top(h), type, member)	
+	(list_empty(h) ? NULL : list_entry((h)->n.next, type, member))
 
-static inline struct list_node *_list_top(struct list_head *h)
-{
-	(void)debug_list(h);
-	if (list_empty(h))
-		return NULL;
-	return h->n.next;
-}
+/**
+ * list_tail - get the last entry in a list
+ * @h: the list_head
+ * @type: the type of the entry
+ * @member: the list_node member of the type
+ *
+ * If the list is empty, returns NULL.
+ *
+ * Example:
+ *	struct child *last;
+ *	last = list_tail(&parent->children, struct child, list);
+ */
+#define list_tail(h, type, member) \
+	(list_empty(h) ? NULL : list_entry((h)->n.prev, type, member))
 
 /**
  * list_for_each - iterate through a list.

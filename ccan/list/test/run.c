@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
 	struct child c1, c2, c3, *c, *n;
 	unsigned int i;
 
-	plan_tests(41);
+	plan_tests(44);
 	/* Test LIST_HEAD, list_empty and check_list */
 	ok1(list_empty(&static_list));
 	ok1(list_check(&static_list, NULL));
@@ -74,6 +74,9 @@ int main(int argc, char *argv[])
 	/* Test list_top */
 	ok1(list_top(&parent.children, struct child, list) == &c1);
 
+	/* Test list_tail */
+	ok1(list_tail(&parent.children, struct child, list) == &c3);
+
 	/* Test list_for_each. */
 	i = 0;
 	list_for_each(&parent.children, c, list) {
@@ -114,5 +117,9 @@ int main(int argc, char *argv[])
 	}
 	ok1(i == 3);
 	ok1(list_empty(&parent.children));
+
+	/* Test list_top/list_tail on empty list. */
+	ok1(list_top(&parent.children, struct child, list) == NULL);
+	ok1(list_tail(&parent.children, struct child, list) == NULL);
 	return exit_status();
 }
