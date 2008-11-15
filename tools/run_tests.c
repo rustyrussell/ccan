@@ -4,6 +4,8 @@
 #include <dirent.h>
 #include <assert.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <errno.h>
 #include "ccan/tap/tap.h"
 #include "ccan/talloc/talloc.h"
 #include "ccan/str/str.h"
@@ -107,11 +109,19 @@ static int build(const char *dir, const char *name, int fail)
 	char **deps;
 
 	for (deps = get_deps(talloc_autofree_context(), dir, true); *deps; deps++) {
+		char *newobj;
+		struct stat st;
+
 		if (!strstarts(*deps, "ccan/"))
 			continue;
 
 		/* ccan/foo -> ccan/foo.o */
-		externals = talloc_asprintf_append(externals, " %s.o", *deps);
+		newobj = talloc_asprintf(name, "%s.o", *deps);
+
+		/* Only if it exists.  Makefile sorts this out. */
+		if (stat(newobj, &st) == 0 || errno != ENOENT)
+			externals = talloc_asprintf_append(externals,
+							   " %s", newobj);
 	}
 
 	cmd = talloc_asprintf(name, "gcc " CFLAGS " %s -o %s %s %s%s%s",
