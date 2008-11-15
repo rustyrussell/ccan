@@ -3,6 +3,7 @@ OBJS := tools/ccanlint/no_info.o \
 	tools/ccanlint/has_tests.o \
 	tools/ccanlint/trailing_whitespace.o \
 	tools/ccanlint/idempotent.o \
+	tools/ccanlint/has_info_documentation.o \
 
 FUTURE:=tools/ccanlint/if_have_not_ifdef.o \
 	tools/ccanlint/needs_depends.o \
