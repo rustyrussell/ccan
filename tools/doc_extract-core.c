@@ -79,15 +79,41 @@ static bool is_summary_line(const char *line)
 	return true;
 }
 
+static bool empty_section(struct doc_section *d)
+{
+	unsigned int i;
+
+	for (i = 0; i < d->num_lines; i++)
+		if (!is_blank(d->lines[i]))
+			return false;
+	return true;
+}
+
 static struct doc_section *new_section(struct list_head *list,
 				       const char *function,
 				       const char *type)
 {
-	struct doc_section *d = talloc(list, struct doc_section);
+	struct doc_section *d;
+	char *lowertype;
+	unsigned int i;
+
+	/* If previous section was empty, delete it. */
+	d = list_tail(list, struct doc_section, list);
+	if (d && empty_section(d)) {
+		list_del(&d->list);
+		talloc_free(d);
+	}
+
+	d = talloc(list, struct doc_section);
 	d->function = function;
-	d->type = type;
+	lowertype = talloc_size(d, strlen(type) + 1);
+	/* Canonicalize type to lower case. */
+	for (i = 0; i < strlen(type)+1; i++)
+		lowertype[i] = tolower(type[i]);
+	d->type = lowertype;
 	d->lines = NULL;
 	d->num_lines = 0;
+
 	list_add_tail(list, &d->list);
 	return d;
 }

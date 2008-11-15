@@ -59,9 +59,9 @@ int main(int argc, char *argv[])
 					if (!streq(d->function, function))
 						continue;
 				}
-				if (strcasecmp(type, "all") == 0)
+				if (streq(type, "all"))
 					printf("%s:\n", d->type);
-				else if (strcasecmp(d->type, type) != 0)
+				else if (!streq(d->type, type))
 					continue;
 
 				for (j = 0; j < d->num_lines; j++)
