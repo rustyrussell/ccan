@@ -16,6 +16,20 @@
 /* We dup stderr to here. */
 static int stderrfd;
 
+/* write_all inlined here to avoid circular dependency. */
+static void write_all(int fd, const void *data, size_t size)
+{
+	while (size) {
+		ssize_t done;
+
+		done = write(fd, data, size);
+		if (done <= 0)
+			_exit(1);
+		data += done;
+		size -= done;
+	}
+}
+
 /* Simple replacement for err() */
 static void failmsg(const char *fmt, ...)
 {
@@ -27,9 +41,9 @@ static void failmsg(const char *fmt, ...)
 	vsprintf(buf, fmt, ap);
 	va_end(ap);
 
-	write(stderrfd, "# ", 2);
-	write(stderrfd, buf, strlen(buf));
-	write(stderrfd, "\n", 1);
+	write_all(stderrfd, "# ", 2);
+	write_all(stderrfd, buf, strlen(buf));
+	write_all(stderrfd, "\n", 1);
 	_exit(1);
 }
 
@@ -113,6 +127,7 @@ int main(int argc, char *argv[])
 	expect(p[0], "# Looks like you failed 2 tests of 9.\n");
 #endif
 
-	write(stdoutfd, "ok 1 - All passed\n", strlen("ok 1 - All passed\n"));
+	write_all(stdoutfd, "ok 1 - All passed\n",
+		  strlen("ok 1 - All passed\n"));
 	_exit(0);
 }

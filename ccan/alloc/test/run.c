@@ -2,6 +2,7 @@
 #include "tap/tap.h"
 #include "alloc/alloc.c"
 #include <stdlib.h>
+#include <err.h>
 
 #define POOL_ORD 16
 #define POOL_SIZE (1 << POOL_ORD)
@@ -52,7 +53,8 @@ int main(int argc, char *argv[])
 	plan_tests(178);
 
 	/* FIXME: Needs to be page aligned for now. */
-	posix_memalign(&mem, 1 << POOL_ORD, POOL_SIZE);
+	if (posix_memalign(&mem, 1 << POOL_ORD, POOL_SIZE) != 0)
+		errx(1, "Failed allocating aligned memory"); 
 
 	/* Small pool, all allocs fail, even 0-length. */
 	alloc_init(mem, 0);
