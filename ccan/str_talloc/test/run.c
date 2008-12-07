@@ -3,13 +3,18 @@
 #include <stdio.h>
 #include "str_talloc/str_talloc.c"
 #include "tap/tap.h"
+#include "str/str.h"
 
 /* FIXME: ccanize */
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
+static char *substrings[] = { "far", "bar", "baz", "b", "ba", "z", "ar", NULL };
+
 int main(int argc, char *argv[])
 {
-	unsigned int i, j, n;
+	unsigned int n;
+	char **split, *str;
+	void *ctx;
 
 	plan_tests(19);
 	split = strsplit(NULL, "hello  world", " ", &n);
