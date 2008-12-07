@@ -105,28 +105,10 @@ static int build(const char *dir, const char *name, int fail)
 {
 	const char *cmd;
 	int ret;
-	char *externals = talloc_strdup(name, "");
-	char **deps;
 
-	for (deps = get_deps(talloc_autofree_context(), dir, true); *deps; deps++) {
-		char *newobj;
-		struct stat st;
-
-		if (!strstarts(*deps, "ccan/"))
-			continue;
-
-		/* ccan/foo -> ccan/foo.o */
-		newobj = talloc_asprintf(name, "%s.o", *deps);
-
-		/* Only if it exists.  Makefile sorts this out. */
-		if (stat(newobj, &st) == 0 || errno != ENOENT)
-			externals = talloc_asprintf_append(externals,
-							   " %s", newobj);
-	}
-
-	cmd = talloc_asprintf(name, "gcc " CFLAGS " %s -o %s %s %s%s%s",
+	cmd = talloc_asprintf(name, "gcc " CFLAGS " %s -o %s %s %s -L. -lccan %s",
 			      fail ? "-DFAIL" : "",
-			      output_name(name), name, obj_list(), externals,
+			      output_name(name), name, obj_list(),
 			      verbose ? "" : "> /dev/null 2>&1");
 
 	if (verbose)
@@ -158,8 +140,8 @@ static void no_run(const char *name)
 
 static void run(const char *name)
 {
-	if (system(output_name(name)) == -1)
-		fail("running %s had error %m", name);
+	if (system(output_name(name)) != 0)
+		fail("running %s had error", name);
 }
 
 static void cleanup(const char *name)
