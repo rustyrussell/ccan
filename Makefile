@@ -18,6 +18,7 @@ JUNKBALLS=$(JUNKDIRS:%=$(WEBDIR)/%.tar.bz2)
 include Makefile-ccan
 
 check: $(ALL_DIRS:%=test-%)
+	echo $(ALL_DIRS)
 
 distclean: clean
 	rm -f $(ALL_DEPENDS)
@@ -79,6 +80,11 @@ $(ALL_DEPENDS): %/.depends: tools/ccan_depends
 	tools/ccan_depends $* > $@ || ( rm -f $@; exit 1 )
 
 test-ccan/%: tools/run_tests libccan.a(%.o)
+	@echo Testing $*...
+	@if tools/run_tests $(V) ccan/$* | grep ^'not ok'; then exit 1; else exit 0; fi
+
+# Some don't have object files.
+test-ccan/%:: tools/run_tests
 	@echo Testing $*...
 	@if tools/run_tests $(V) ccan/$* | grep ^'not ok'; then exit 1; else exit 0; fi
 

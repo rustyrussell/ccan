@@ -1,7 +1,6 @@
-#include "string/string.h"
+#include "str/str.h"
 #include <stdlib.h>
 #include <stdio.h>
-#include "string/string.c"
 #include "tap/tap.h"
 
 /* FIXME: ccanize */
@@ -24,8 +23,6 @@ static char *strdup_rev(const char *s)
 int main(int argc, char *argv[])
 {
 	unsigned int i, j, n;
-	char **split, *str;
-	void *ctx;
 	char *strings[NUM_SUBSTRINGS * NUM_SUBSTRINGS];
 	
 	n = 0;
