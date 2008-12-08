@@ -17,4 +17,3 @@ tools-clean: ccanlint-clean
 	rm -f $(ALL_TOOLS)
 
 include tools/ccanlint/Makefile
-include tools/_infotojson/Makefile
