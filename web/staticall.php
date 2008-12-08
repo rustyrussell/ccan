@@ -16,7 +16,7 @@ download.
 </p>
 
 <p>
-Or you can just download the <a href="ccan.tar.bz2">tarball of everything (<?=$tarballsize?>K)</a>.
+Or you can just download the <a href="ccan.tar.bz2">tarball of everything including CCAN tools (<?=$tarballsize?>K)</a>.
 </p>
 
 <table align="center" width="80%" border="0" cellpadding="3" cellspacing="1">

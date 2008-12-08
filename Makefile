@@ -1,5 +1,13 @@
-# Hacky makefile to compile everything and run the tests in some kind of sane order.
-# V=--verbose for verbose tests.
+# Hacky makefile to compile everything and run the tests in some kind
+# of sane order.
+
+# Main targets:
+# 
+# check: run tests on all ccan modules (use 'make check V=--verbose' for more)
+#        Includes building libccan.a.
+# tools: build useful tools in tools/ dir.
+#        Especially tools/ccanlint/ccanlint and tools/namespacize.
+# distclean: destroy everything back to pristine state
 
 # This can be overridden on cmdline to generate pages elsewhere.
 WEBDIR=~/www/html/ccan/
@@ -40,8 +48,8 @@ $(WEBDIR)/junkcode/%.html: $(WEBDIR)/junkcode/%.tar.bz2
 $(ALL_DIRS):
 	@touch $@
 
-$(WEBDIR)/ccan.tar.bz2:
-	tar cvfj $@ `bzr ls --versioned --kind=file ccan`
+$(WEBDIR)/ccan.tar.bz2: config.h Makefile Makefile-ccan $(shell bzr ls --versioned --kind=file ccan) $(shell bzr ls --versioned --kind=file tools)
+	tar cvfj $@ $^
 
 $(ALL_PAGES): tools/doc_extract web/staticmoduleinfo.php
 
@@ -87,8 +95,6 @@ test-ccan/%: tools/run_tests libccan.a(%.o)
 test-ccan/%:: tools/run_tests
 	@echo Testing $*...
 	@if tools/run_tests $(V) ccan/$* | grep ^'not ok'; then exit 1; else exit 0; fi
-
-ccanlint: tools/ccanlint/ccanlint
 
 clean: tools-clean
 	$(RM) `find . -name '*.o'` `find . -name '.depends'` `find . -name '*.a'`  `find . -name _info`
