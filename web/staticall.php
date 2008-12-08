@@ -4,7 +4,7 @@ include('logo.html');
 include('menulist.html');
 include('static-configuration');
 
-$tarballsize=round((filesize($argv[2]."/ccan.tar.bz2") + 1023) / 1024);
+$tarballsize=round((filesize($argv[3]."/ccan.tar.bz2") + 1023) / 1024);
 ?>
 
 <h1> List of all CCAN modules: </h1>
