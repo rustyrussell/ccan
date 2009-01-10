@@ -38,7 +38,7 @@ __builtin_choose_expr(__builtin_types_compatible_p(typeof(1?(expr):0), oktype), 
 
 /**
  * typesafe_cb - cast a callback function if it matches the arg
- * @rettype: the return type of the callback function
+ * @rtype: the return type of the callback function
  * @fn: the callback function to cast
  * @arg: the (pointer) argument to hand to the callback function.
  *
@@ -54,18 +54,18 @@ __builtin_choose_expr(__builtin_types_compatible_p(typeof(1?(expr):0), oktype), 
  *	#define register_callback(fn, arg) \
  *		_register_callback(typesafe_cb(void, (fn), (arg)), (arg))
  */
-#define typesafe_cb(rettype, fn, arg)					\
+#define typesafe_cb(rtype, fn, arg)					\
 	cast_if_type(cast_if_type(cast_if_type((fn),			\
-					       rettype (*)(const typeof(arg)), \
-					       rettype (*)(void *)),	\
-				  rettype (*)(volatile typeof(arg)),	\
-				  rettype (*)(void *)),			\
-		     rettype (*)(typeof(arg)),				\
-		     rettype (*)(void *))
+					       rtype (*)(const typeof(*arg)*), \
+					       rtype (*)(void *)),	\
+				  rtype (*)(volatile typeof(*arg) *),	\
+				  rtype (*)(void *)),			\
+		     rtype (*)(typeof(arg)),				\
+		     rtype (*)(void *))
 
 /**
  * typesafe_cb_preargs - cast a callback function if it matches the arg
- * @rettype: the return type of the callback function
+ * @rtype: the return type of the callback function
  * @fn: the callback function to cast
  * @arg: the (pointer) argument to hand to the callback function.
  *
@@ -78,21 +78,21 @@ __builtin_choose_expr(__builtin_types_compatible_p(typeof(1?(expr):0), oktype), 
  *		_register_callback(typesafe_cb_preargs(void, (fn), (arg), int),\
  *				   (arg))
  */
-#define typesafe_cb_preargs(rettype, fn, arg, ...)			\
+#define typesafe_cb_preargs(rtype, fn, arg, ...)			\
 	cast_if_type(cast_if_type(cast_if_type((fn),			\
-					       rettype (*)(__VA_ARGS__,	\
-							   const typeof(arg)), \
-					       rettype (*)(__VA_ARGS__,	\
-							   void *)),	\
-				  rettype (*)(__VA_ARGS__,		\
-					      volatile typeof(arg)),	\
-				  rettype (*)(__VA_ARGS__, void *)),	\
-		     rettype (*)(__VA_ARGS__, typeof(arg)),		\
-		     rettype (*)(__VA_ARGS__, void *))
+					       rtype (*)(__VA_ARGS__,	\
+							 const typeof(*arg) *),\
+					       rtype (*)(__VA_ARGS__,	\
+							 void *)),	\
+				  rtype (*)(__VA_ARGS__,		\
+					    volatile typeof(*arg) *),	\
+				  rtype (*)(__VA_ARGS__, void *)),	\
+		     rtype (*)(__VA_ARGS__, typeof(arg)),		\
+		     rtype (*)(__VA_ARGS__, void *))
 
 /**
  * typesafe_cb_postargs - cast a callback function if it matches the arg
- * @rettype: the return type of the callback function
+ * @rtype: the return type of the callback function
  * @fn: the callback function to cast
  * @arg: the (pointer) argument to hand to the callback function.
  *
@@ -105,16 +105,16 @@ __builtin_choose_expr(__builtin_types_compatible_p(typeof(1?(expr):0), oktype), 
  *		_register_callback(typesafe_cb_preargs(void, (fn), (arg), int),\
  *				   (arg))
  */
-#define typesafe_cb_postargs(rettype, fn, arg, ...)			\
+#define typesafe_cb_postargs(rtype, fn, arg, ...)			\
 	cast_if_type(cast_if_type(cast_if_type((fn),			\
-					       rettype (*)(const typeof(arg), \
-							   __VA_ARGS__), \
-					       rettype (*)(void *,	\
-							   __VA_ARGS__)), \
-				  rettype (*)(volatile typeof(arg),	\
-					      __VA_ARGS__),		\
-				  rettype (*)(void *, __VA_ARGS__)),	\
-		     rettype (*)(typeof(arg), __VA_ARGS__),		\
-		     rettype (*)(void *, __VA_ARGS__))
+					       rtype (*)(const typeof(*arg) *, \
+							 __VA_ARGS__),	\
+					       rtype (*)(void *,	\
+							 __VA_ARGS__)), \
+				  rtype (*)(volatile typeof(*arg) *,	\
+					    __VA_ARGS__),		\
+				  rtype (*)(void *, __VA_ARGS__)),	\
+		     rtype (*)(typeof(arg), __VA_ARGS__),		\
+		     rtype (*)(void *, __VA_ARGS__))
 
 #endif /* CCAN_CAST_IF_TYPE_H */
