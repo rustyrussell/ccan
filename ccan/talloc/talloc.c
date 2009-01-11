@@ -83,9 +83,8 @@ static void *null_context;
 static pid_t *autofree_context;
 
 static void *(*tc_external_realloc)(const void *parent, void *ptr, size_t size);
-static void (*tc_lock)(void *);
-static void (*tc_unlock)(void *);
-static void *tc_lock_data;
+static void (*tc_lock)(const void *ctx);
+static void (*tc_unlock)(void);
 
 struct talloc_reference_handle {
 	struct talloc_reference_handle *next, *prev;
@@ -150,16 +149,27 @@ do { \
 	if ((p) && ((p) != (list))) (p)->next = (p)->prev = NULL; \
 } while (0)
 
-static inline void lock(void)
+static int locked;
+static inline void lock(const void *p)
 {
-	if (tc_lock)
-		tc_lock(tc_lock_data);
+	if (tc_lock && p) {
+		struct talloc_chunk *tc = talloc_chunk_from_ptr(p);
+
+		if (tc->flags & TALLOC_FLAG_EXT_ALLOC) {
+			if (locked)
+				TALLOC_ABORT("nested locking");
+			tc_lock(tc);
+			locked = 1;
+		}
+	}
 }
 
 static inline void unlock(void)
 {
-	if (tc_lock)
-		tc_unlock(tc_lock_data);
+	if (locked) {
+		tc_unlock();
+		locked = 0;
+	}
 }
 
 /*
@@ -179,14 +189,23 @@ static inline struct talloc_chunk *talloc_parent_chunk(const void *ptr)
 	return tc->parent;
 }
 
-void *talloc_parent(const void *ptr)
+/* This version doesn't do locking, so you must already have it. */
+static void *talloc_parent_nolock(const void *ptr)
 {
 	struct talloc_chunk *tc;
 
-	lock();
 	tc = talloc_parent_chunk(ptr);
+	return tc ? TC_PTR_FROM_CHUNK(tc) : NULL;
+}
+
+void *talloc_parent(const void *ptr)
+{
+	void *parent;
+
+	lock(ptr);
+	parent = talloc_parent_nolock(ptr);
 	unlock();
-	return tc? TC_PTR_FROM_CHUNK(tc) : NULL;
+	return parent;
 }
 
 /*
@@ -196,7 +215,7 @@ const char *talloc_parent_name(const void *ptr)
 {
 	struct talloc_chunk *tc;
 
-	lock();
+	lock(ptr);
 	tc = talloc_parent_chunk(ptr);
 	unlock();
 
@@ -346,7 +365,7 @@ void *_talloc_reference(const void *context, const void *ptr)
 	struct talloc_reference_handle *handle;
 	if (unlikely(ptr == NULL)) return NULL;
 
-	lock();
+	lock(context);
 	tc = talloc_chunk_from_ptr(ptr);
 	handle = (struct talloc_reference_handle *)_talloc_named_const(context,
 						   sizeof(struct talloc_reference_handle),
@@ -497,7 +516,7 @@ static inline int _talloc_free(void *ptr)
 	}
 
 	if (unlikely(tc->flags & TALLOC_FLAG_EXT_ALLOC))
-		oldparent = talloc_parent(ptr);
+		oldparent = talloc_parent_nolock(ptr);
 
 	if (tc->parent) {
 		_TLIST_REMOVE(tc->parent->child, tc);
@@ -546,7 +565,7 @@ void *_talloc_steal(const void *new_ctx, const void *ptr)
 {
 	void *p;
 
-	lock();
+	lock(new_ctx);
 	p = __talloc_steal(new_ctx, ptr);
 	unlock();
 	return p;
@@ -598,7 +617,7 @@ int talloc_unlink(const void *context, void *ptr)
 		context = null_context;
 	}
 
-	lock();
+	lock(context);
 	if (talloc_unreference(context, ptr) == 0) {
 		unlock();
 		return 0;
@@ -682,7 +701,7 @@ void *talloc_named(const void *context, size_t size, const char *fmt, ...)
 	void *ptr;
 	const char *name;
 
-	lock();
+	lock(context);
 	ptr = __talloc(context, size);
 	unlock();
 	if (unlikely(ptr == NULL)) return NULL;
@@ -747,9 +766,7 @@ void *talloc_init(const char *fmt, ...)
 	 */
 	talloc_enable_null_tracking();
 
-	lock();
 	ptr = __talloc(NULL, 0);
-	unlock();
 	if (unlikely(ptr == NULL)) return NULL;
 
 	va_start(ap, fmt);
@@ -788,7 +805,7 @@ void talloc_set_name_const(const void *ptr, const char *name)
 void *talloc_named_const(const void *context, size_t size, const char *name)
 {
 	void *p;
-	lock();
+	lock(context);
 	p = _talloc_named_const(context, size, name);
 	unlock();
 	return p;
@@ -805,7 +822,8 @@ void *talloc_named_const(const void *context, size_t size, const char *name)
 int talloc_free(void *ptr)
 {
 	int saved_errno = errno, ret;
-	lock();
+
+	lock(ptr);
 	ret = _talloc_free(ptr);
 	unlock();
 	if (ret == 0)
@@ -846,10 +864,10 @@ void *_talloc_realloc(const void *context, void *ptr, size_t size, const char *n
 		return NULL;
 	}
 
-	lock();
+	lock(ptr);
 	if (unlikely(tc->flags & TALLOC_FLAG_EXT_ALLOC)) {
 		/* need to get parent before setting free flag. */
-		void *parent = talloc_parent(ptr);
+		void *parent = talloc_parent_nolock(ptr);
 		tc->flags |= TALLOC_FLAG_FREE;
 		new_ptr = tc_external_realloc(parent, tc, size + TC_HDR_SIZE);
 	} else {
@@ -945,7 +963,7 @@ size_t talloc_total_size(const void *ptr)
 		return 0;
 	}
 
-	lock();
+	lock(ptr);
 	total = _talloc_total_size(ptr);
 	unlock();
 	return total;
@@ -979,11 +997,23 @@ size_t talloc_total_blocks(const void *ptr)
 {
 	size_t total;
 
-	lock();
+	lock(ptr);
 	total = _talloc_total_blocks(ptr);
 	unlock();
 
 	return total;
+}
+
+static size_t _talloc_reference_count(const void *ptr)
+{
+	struct talloc_chunk *tc = talloc_chunk_from_ptr(ptr);
+	struct talloc_reference_handle *h;
+	size_t ret = 0;
+
+	for (h=tc->refs;h;h=h->next) {
+		ret++;
+	}
+	return ret;
 }
 
 /*
@@ -991,14 +1021,10 @@ size_t talloc_total_blocks(const void *ptr)
 */
 size_t talloc_reference_count(const void *ptr)
 {
-	struct talloc_chunk *tc = talloc_chunk_from_ptr(ptr);
-	struct talloc_reference_handle *h;
-	size_t ret = 0;
+	size_t ret;
 
-	lock();
-	for (h=tc->refs;h;h=h->next) {
-		ret++;
-	}
+	lock(talloc_chunk_from_ptr(ptr));
+	ret = _talloc_reference_count(ptr);
 	unlock();
 	return ret;
 }
@@ -1051,7 +1077,7 @@ void talloc_report_depth_cb(const void *ptr, int depth, int max_depth,
 	}
 	if (ptr == NULL) return;
 
-	lock();
+	lock(ptr);
 	_talloc_report_depth_cb(ptr, depth, max_depth, callback, private_data);
 	unlock();
 }
@@ -1069,17 +1095,17 @@ static void talloc_report_depth_FILE_helper(const void *ptr, int depth, int max_
 	if (depth == 0) {
 		fprintf(f,"%stalloc report on '%s' (total %6lu bytes in %3lu blocks)\n", 
 			(max_depth < 0 ? "full " :""), name,
-			(unsigned long)talloc_total_size(ptr),
-			(unsigned long)talloc_total_blocks(ptr));
+			(unsigned long)_talloc_total_size(ptr),
+			(unsigned long)_talloc_total_blocks(ptr));
 		return;
 	}
 
 	fprintf(f, "%*s%-30s contains %6lu bytes in %3lu blocks (ref %d) %p\n", 
 		depth*4, "",
 		name,
-		(unsigned long)talloc_total_size(ptr),
-		(unsigned long)talloc_total_blocks(ptr),
-		(int)talloc_reference_count(ptr), ptr);
+		(unsigned long)_talloc_total_size(ptr),
+		(unsigned long)_talloc_total_blocks(ptr),
+		(int)_talloc_reference_count(ptr), ptr);
 
 #if 0
 	fprintf(f, "content: ");
@@ -1149,11 +1175,9 @@ static void talloc_report_null_full(void)
 */
 void talloc_enable_null_tracking(void)
 {
-	lock();
 	if (null_context == NULL) {
 		null_context = _talloc_named_const(NULL, 0, "null_context");
 	}
-	unlock();
 }
 
 /*
@@ -1161,10 +1185,8 @@ void talloc_enable_null_tracking(void)
 */
 void talloc_disable_null_tracking(void)
 {
-	lock();
 	_talloc_free(null_context);
 	null_context = NULL;
-	unlock();
 }
 
 /*
@@ -1192,7 +1214,7 @@ void *_talloc_zero(const void *ctx, size_t size, const char *name)
 {
 	void *p;
 
-	lock();
+	lock(ctx);
 	p = _talloc_named_const(ctx, size, name);
 	unlock();
 
@@ -1210,7 +1232,7 @@ void *_talloc_memdup(const void *t, const void *p, size_t size, const char *name
 {
 	void *newp;
 
-	lock();
+	lock(t);
 	newp = _talloc_named_const(t, size, name);
 	unlock();
 
@@ -1273,7 +1295,7 @@ char *talloc_strndup(const void *t, const char *p, size_t n)
 
 	for (len=0; len<n && p[len]; len++) ;
 
-	lock();
+	lock(t);
 	ret = (char *)__talloc(t, len + 1);
 	unlock();
 	if (!ret) { return NULL; }
@@ -1298,7 +1320,7 @@ char *talloc_vasprintf(const void *t, const char *fmt, va_list ap)
 		return NULL;
 	}
 
-	lock();
+	lock(t);
 	ret = (char *)__talloc(t, len+1);
 	unlock();
 	if (ret) {
@@ -1398,7 +1420,7 @@ void *_talloc_array(const void *ctx, size_t el_size, unsigned count, const char 
 	if (count >= MAX_TALLOC_SIZE/el_size) {
 		return NULL;
 	}
-	lock();
+	lock(ctx);
 	p = _talloc_named_const(ctx, el_size * count, name);
 	unlock();
 	return p;
@@ -1414,9 +1436,7 @@ void *_talloc_zero_array(const void *ctx, size_t el_size, unsigned count, const 
 	if (count >= MAX_TALLOC_SIZE/el_size) {
 		return NULL;
 	}
-	lock();
 	p = _talloc_zero(ctx, el_size * count, name);
-	unlock();
 	return p;
 }
 
@@ -1494,7 +1514,7 @@ void *talloc_find_parent_byname(const void *context, const char *name)
 		return NULL;
 	}
 
-	lock();
+	lock(context);
 	tc = talloc_chunk_from_ptr(context);
 	while (tc) {
 		if (tc->name && strcmp(tc->name, name) == 0) {
@@ -1522,7 +1542,7 @@ void talloc_show_parents(const void *context, FILE *file)
 		return;
 	}
 
-	lock();
+	lock(context);
 	tc = talloc_chunk_from_ptr(context);
 	fprintf(file, "talloc parents of '%s'\n", talloc_get_name(context));
 	while (tc) {
@@ -1539,19 +1559,20 @@ void talloc_show_parents(const void *context, FILE *file)
 int talloc_is_parent(const void *context, const void *ptr)
 {
 	int ret;
-	lock();
+	lock(context);
 	ret = _talloc_is_parent(context, ptr);
 	unlock();
 	return ret;
 }
 
 void *talloc_add_external(const void *ctx,
-			  void *(*realloc)(const void *, void *, size_t))
+			  void *(*realloc)(const void *, void *, size_t),
+			  void (*lock)(const void *p),
+			  void (*unlock)(void))
 {
 	struct talloc_chunk *tc, *parent;
 	void *p;
 
-	lock();
 	if (tc_external_realloc && tc_external_realloc != realloc)
 		TALLOC_ABORT("talloc_add_external realloc replaced");
 	tc_external_realloc = realloc;
@@ -1564,14 +1585,8 @@ void *talloc_add_external(const void *ctx,
 
 	tc = tc_external_realloc(ctx, NULL, TC_HDR_SIZE);
 	p = init_talloc(parent, tc, 0, 1);
-	unlock();
-
-	return p;
-}
-
-void _talloc_locksafe(void (*lock)(void *), void (*unlock)(void *), void *data)
-{
 	tc_lock = lock;
 	tc_unlock = unlock;
-	tc_lock_data = data;
+
+	return p;
 }

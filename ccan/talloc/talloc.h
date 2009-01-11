@@ -917,6 +917,8 @@ void *talloc_find_parent_byname(const void *ctx, const char *name);
  * talloc_add_external - create an externally allocated node
  * @ctx: the parent
  * @realloc: the realloc() equivalent
+ * @lock: the call to lock before manipulation of external nodes
+ * @unlock: the call to unlock after manipulation of external nodes
  *
  * talloc_add_external() creates a node which uses a separate allocator.  All
  * children allocated from that node will also use that allocator.
@@ -924,29 +926,17 @@ void *talloc_find_parent_byname(const void *ctx, const char *name);
  * Note: Currently there is only one external allocator, not per-node,
  * and it is set with this function.
  *
+ * @lock is handed a pointer which was previous returned from your realloc
+ * function; you should use that to figure out which lock to get if you have
+ * multiple external pools.
+ *
  * The parent pointers in realloc is the talloc pointer of the parent, if any.
  */
 void *talloc_add_external(const void *ctx,
 			  void *(*realloc)(const void *parent,
-					   void *ptr, size_t));
-
-/**
- * talloc_locksafe - set locking for talloc on shared memory
- * @lock: function to use to lock memory
- * @unlock: function to use to unlock memory
- * @data: pointer to hand to @lock and @unlock
- *
- * If talloc is actually dealing with shared memory (threads or shared
- * memory using talloc_add_external()) then locking is required on
- * allocation and free to avoid corruption.
- *
- * These hooks allow a very course-grained locking scheme: @lock is
- * called before any internal alloc or free, and @unlock is called
- * after. */
-#define talloc_locksafe(lock, unlock, data)			\
-	_talloc_locksafe(typesafe_cb(void, lock, data),		\
-			 typesafe_cb(void, unlock, data),	\
-			 data)
+					   void *ptr, size_t),
+			  void (*lock)(const void *p),
+			  void (*unlock)(void));
 
 /* The following definitions come from talloc.c  */
 void *_talloc(const void *context, size_t size);
@@ -967,6 +957,5 @@ void *_talloc_realloc_array(const void *ctx, void *ptr, size_t el_size, unsigned
 void *talloc_realloc_fn(const void *context, void *ptr, size_t size);
 void talloc_show_parents(const void *context, FILE *file);
 int talloc_is_parent(const void *context, const void *ptr);
-void _talloc_locksafe(void (*lock)(void *), void (*unlock)(void *), void *);
 
 #endif /* CCAN_TALLOC_H */

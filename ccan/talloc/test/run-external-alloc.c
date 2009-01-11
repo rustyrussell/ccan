@@ -2,7 +2,9 @@
 #include "tap/tap.h"
 #include <assert.h>
 
-static int ext_alloc_count, ext_free_count, ext_realloc_count;
+/* Much testing already done in run.c */
+
+static int ext_alloc_count, ext_free_count, ext_realloc_count, lock_count, unlock_count;
 static void *expected_parent;
 
 static void *ext_realloc(const void *parent, void *ptr, size_t size)
@@ -17,13 +19,23 @@ static void *ext_realloc(const void *parent, void *ptr, size_t size)
 	return realloc(ptr, size);
 }
 
+static void ext_lock(const void *ctx)
+{
+	lock_count++;
+}
+
+static void ext_unlock(void)
+{
+	unlock_count++;
+}
+
 int main(void)
 {
 	char *p, *p2, *head;
-	plan_tests(12);
+	plan_tests(13);
 
 	expected_parent = NULL;
-	head = talloc_add_external(NULL, ext_realloc);
+	head = talloc_add_external(NULL, ext_realloc, ext_lock, ext_unlock);
 	assert(head);
 	ok1(ext_alloc_count == 1);
 
@@ -49,6 +61,8 @@ int main(void)
 	expected_parent = head;
 	talloc_free(p);
 	ok1(ext_free_count == 2);
+
+	ok1(lock_count == unlock_count);
 
 	return exit_status();
 }
