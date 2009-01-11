@@ -478,6 +478,7 @@ static unsigned long new_uniform_page(void *pool, unsigned long poolsize,
 	unsigned long page, metalen;
 	uint8_t *metadata;
 
+	/* FIXME: Walk metadata looking for an existing uniform page. */
 	page = alloc_get_pages(pool, poolsize, 1, 1);
 	if (page == 0)
 		return 0;
@@ -514,6 +515,7 @@ static unsigned long alloc_sub_page(void *pool, unsigned long poolsize,
 
 	usize = suitable_for_uc(size, align);
 	if (usize) {
+		static int random_entry;
 		/* Look for a uniform page. */
 		for (i = 0; i < UNIFORM_CACHE_NUM; i++) {
 			if (uc->size[i] == usize) {
@@ -528,7 +530,7 @@ static unsigned long alloc_sub_page(void *pool, unsigned long poolsize,
 		}
 
 		/* OK, try a new uniform page.  Use random discard for now. */
-		i = random() % UNIFORM_CACHE_NUM;
+		i = (++random_entry % UNIFORM_CACHE_NUM);
 		maybe_transform_uniform_page(pool, uc->page[i]);
 
 		uc->page[i] = new_uniform_page(pool, poolsize, usize);
@@ -591,7 +593,7 @@ static bool uniform_page_is_empty(uint8_t *meta)
 	metalen = uniform_metalen(decode_usize(meta));
 
 	/* Skip the header (first two bytes of metadata). */
-	for (i = 2; i < metalen + 2; i++) {
+	for (i = 2; i < metalen; i++) {
 		BUILD_ASSERT(FREE == 0);
 		if (meta[i])
 			return false;
@@ -753,7 +755,7 @@ static void bitmap_free(void *pool, unsigned long pagenum, unsigned long off,
 	off++;
 
 	set_bit_pair(metadata, off++, FREE);
-	while (off < SUBPAGE_METAOFF / BITMAP_GRANULARITY
+	while (off <= SUBPAGE_METAOFF / BITMAP_GRANULARITY
 	       && get_bit_pair(metadata, off) == TAKEN)
 		set_bit_pair(metadata, off++, FREE);
 }
@@ -886,6 +888,12 @@ static bool is_metadata_page(void *pool, unsigned long poolsize,
 	return false;
 }
 
+/* Useful for gdb breakpoints. */
+static bool check_fail(void)
+{
+	return false;
+}
+
 static bool check_bitmap_metadata(void *pool, unsigned long *mhoff)
 {
 	enum alloc_state last_state = FREE;
@@ -898,10 +906,10 @@ static bool check_bitmap_metadata(void *pool, unsigned long *mhoff)
 		state = get_bit_pair((uint8_t *)pool + *mhoff, i+1);
 		switch (state) {
 		case SPECIAL:
-			return false;
+			return check_fail();
 		case TAKEN:
 			if (last_state == FREE)
-				return false;
+				return check_fail();
 			break;
 		default:
 			break;
@@ -911,6 +919,17 @@ static bool check_bitmap_metadata(void *pool, unsigned long *mhoff)
 	return true;
 }
 
+/* We don't know what alignment they asked for, but we can infer worst
+ * case from the size. */
+static unsigned int max_align(unsigned int size)
+{
+	unsigned int align = 1;
+
+	while (size % (align * 2) == 0)
+		align *= 2;
+	return align;
+}
+
 static bool check_uniform_metadata(void *pool, unsigned long *mhoff)
 {
 	uint8_t *meta = (uint8_t *)pool + *mhoff;
@@ -918,8 +937,8 @@ static bool check_uniform_metadata(void *pool, unsigned long *mhoff)
 	struct uniform_cache *uc = pool;
 
 	usize = decode_usize(meta);
-	if (usize == 0 || suitable_for_uc(usize, 1) != usize)
-		return false;
+	if (usize == 0 || suitable_for_uc(usize, max_align(usize)) != usize)
+		return check_fail();
 
 	/* If it's in uniform cache, make sure that agrees on size. */
 	for (i = 0; i < UNIFORM_CACHE_NUM; i++) {
@@ -933,7 +952,7 @@ static bool check_uniform_metadata(void *pool, unsigned long *mhoff)
 			continue;
 
 		if (usize != uc->size[i])
-			return false;
+			return check_fail();
 	}
 	return true;
 }
@@ -944,14 +963,14 @@ static bool check_subpage(void *pool, unsigned long poolsize,
 	unsigned long *mhoff = metadata_off(pool, page);
 
 	if (*mhoff + sizeof(struct metaheader) > poolsize)
-		return false;
+		return check_fail();
 
 	if (*mhoff % ALIGNOF(struct metaheader) != 0)
-		return false;
+		return check_fail();
 
 	/* It must point to a metadata page. */
 	if (!is_metadata_page(pool, poolsize, *mhoff / getpagesize()))
-		return false;
+		return check_fail();
 
 	/* Header at start of subpage allocation */
 	switch (get_bit_pair((uint8_t *)pool + *mhoff, 0)) {
@@ -960,7 +979,7 @@ static bool check_subpage(void *pool, unsigned long poolsize,
 	case UNIFORM:
 		return check_uniform_metadata(pool, mhoff);
 	default:
-		return false;
+		return check_fail();
 	}
 
 }
@@ -976,7 +995,7 @@ bool alloc_check(void *pool, unsigned long poolsize)
 		return true;
 
 	if (get_page_state(pool, 0) != TAKEN_START)
-		return false;
+		return check_fail();
 
 	/* First check metadata pages. */
 	/* Metadata pages will be marked TAKEN. */
@@ -985,21 +1004,21 @@ bool alloc_check(void *pool, unsigned long poolsize)
 
 		start = pool_offset(pool, mh);
 		if (start + sizeof(*mh) > poolsize)
-			return false;
+			return check_fail();
 
 		end = pool_offset(pool, (char *)(mh+1)
 				  + get_metalen(pool, poolsize, mh));
 		if (end > poolsize)
-			return false;
+			return check_fail();
 
 		/* Non-first pages should start on a page boundary. */
 		if (mh != first_mheader(pool, poolsize)
 		    && start % getpagesize() != 0)
-			return false;
+			return check_fail();
 
 		/* It should end on a page boundary. */
 		if (end % getpagesize() != 0)
-			return false;
+			return check_fail();
 	}
 
 	for (i = 0; i < poolsize / getpagesize(); i++) {
@@ -1010,20 +1029,20 @@ bool alloc_check(void *pool, unsigned long poolsize)
 		case FREE:
 			/* metadata pages are never free. */
 			if (is_metadata)
-				return false;
+				return check_fail();
 		case TAKEN_START:
 			break;
 		case TAKEN:
 			/* This should continue a previous block. */
 			if (last_state == FREE)
-				return false;
+				return check_fail();
 			if (is_metadata != was_metadata)
-				return false;
+				return check_fail();
 			break;
 		case SPECIAL:
 			/* Check metadata pointer etc. */
 			if (!check_subpage(pool, poolsize, i))
-				return false;
+				return check_fail();
 		}
 		last_state = state;
 		was_metadata = is_metadata;
@@ -1061,8 +1080,9 @@ void alloc_visualize(FILE *out, void *pool, unsigned long poolsize)
 			if (meta[j / 8] & (1 << (j % 8)))
 				total++;
 
-		printf("  %u: %u/%zu (%zu%% density)\n",
-		       uc->size[j], total, SUBPAGE_METAOFF / uc->size[i],
+		printf("  %u: %lu: %u/%zu (%zu%% density)\n",
+		       uc->size[i], uc->page[i], total,
+		       SUBPAGE_METAOFF / uc->size[i],
 		       (total * 100) / (SUBPAGE_METAOFF / uc->size[i]));
 	}
 
@@ -1095,7 +1115,7 @@ void alloc_visualize(FILE *out, void *pool, unsigned long poolsize)
 				break;
 			case BITMAP:
 				/* Skip over this allocated part. */
-				len = BITMAP_METALEN * CHAR_BIT;
+				len = BITMAP_METALEN * METADATA_PER_BYTE;
 				bitmapblocks++;
 				bitmaplen += len;
 				break;
