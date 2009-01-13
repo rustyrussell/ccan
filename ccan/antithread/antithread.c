@@ -7,29 +7,39 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <assert.h>
 #include <err.h>
 #include "antithread.h"
 #include <ccan/noerr/noerr.h>
 #include <ccan/talloc/talloc.h>
 #include <ccan/read_write_all/read_write_all.h>
 #include <ccan/alloc/alloc.h>
+#include <ccan/list/list.h>
 
 /* FIXME: Valgrind support should be possible for some cases.  Tricky
  * case is where another process allocates for you, but at worst we
  * could reset what is valid and what isn't on every entry into the
  * library or something. */
 
-struct at_pool
-{
-	const void *ctx;
+static LIST_HEAD(pools);
+
+/* Talloc destroys parents before children (damn Tridge's failing destructors!)
+ * so we need the first child (ie. last-destroyed) to actually clean up. */
+struct at_pool_contents {
+	struct list_node list;
 	void *pool;
 	unsigned long poolsize;
 	int fd;
 	int parent_rfd, parent_wfd;
+	struct at_pool *atp;
 };
 
-struct athread
-{
+struct at_pool {
+	struct at_pool_contents *p;
+	const void *ctx;
+};
+
+struct athread {
 	pid_t pid;
 	int rfd, wfd;
 };
@@ -64,13 +74,39 @@ static void unlock(int fd, unsigned long off)
 	errno = serrno;
 }
 
+/* This pointer is in a pool.  Find which one. */
+static struct at_pool_contents *find_pool(const void *ptr)
+{
+	struct at_pool_contents *p;
+
+	list_for_each(&pools, p, list) {
+		/* Special case for initial allocation: ptr *is* pool */
+		if (ptr == p->atp)
+			return p;
+
+		if ((char *)ptr >= (char *)p->pool
+		    && (char *)ptr < (char *)p->pool + p->poolsize)
+			return p;
+	}
+	abort();
+}
+
+static int destroy_pool(struct at_pool_contents *p)
+{
+	list_del(&p->list);
+	munmap(p->pool, p->poolsize);
+	close(p->fd);
+	close(p->parent_rfd);
+	close(p->parent_wfd);
+	return 0;
+}
+
 static void *at_realloc(const void *parent, void *ptr, size_t size)
 {
-	struct at_pool *p = talloc_find_parent_bytype(parent, struct at_pool);
+	struct at_pool_contents *p = find_pool(parent);
 	/* FIXME: realloc in ccan/alloc? */
 	void *new;
 
-	lock(p->fd, 0);
 	if (size == 0) {
 		alloc_free(p->pool, p->poolsize, ptr);
 		new = NULL;
@@ -89,8 +125,26 @@ static void *at_realloc(const void *parent, void *ptr, size_t size)
 			}
 		}
 	}
-	unlock(p->fd, 0);
+
 	return new;
+}
+
+static struct at_pool_contents *locked;
+static void talloc_lock(const void *ptr)
+{
+	struct at_pool_contents *p = find_pool(ptr);
+
+	lock(p->fd, 0);
+	assert(!locked);
+	locked = p;
+}
+
+static void talloc_unlock(void)
+{
+	struct at_pool_contents *p = locked;
+
+	locked = NULL;
+	unlock(p->fd, 0);
 }
 
 /* We add 16MB to size.  This compensates for address randomization. */
@@ -100,7 +154,8 @@ static void *at_realloc(const void *parent, void *ptr, size_t size)
 struct at_pool *at_pool(unsigned long size)
 {
 	int fd;
-	struct at_pool *p;
+	struct at_pool *atp;
+	struct at_pool_contents *p;
 	FILE *f;
 
 	/* FIXME: How much should we actually add for overhead?. */
@@ -122,9 +177,13 @@ struct at_pool *at_pool(unsigned long size)
 	if (ftruncate(fd, size + PADDING) != 0)
 		goto fail_close;
 
-	p = talloc(NULL, struct at_pool);
-	if (!p)
+	atp = talloc(NULL, struct at_pool);
+	if (!atp)
 		goto fail_close;
+
+	atp->p = p = talloc(NULL, struct at_pool_contents);
+	if (!p)
+		goto fail_free;
 
 	/* First map gets a nice big area. */
 	p->pool = mmap(NULL, size+PADDING, PROT_READ|PROT_WRITE, MAP_SHARED, fd,
@@ -139,22 +198,22 @@ struct at_pool *at_pool(unsigned long size)
 	if (p->pool == MAP_FAILED)
 		goto fail_free;
 
-	/* FIXME: Destructor? */
 	p->fd = fd;
 	p->poolsize = size;
 	p->parent_rfd = p->parent_wfd = -1;
+	p->atp = atp;
 	alloc_init(p->pool, p->poolsize);
+	list_add(&pools, &p->list);
+	talloc_set_destructor(p, destroy_pool);
 
-	p->ctx = talloc_add_external(p, at_realloc);
-	if (!p->ctx)
-		goto fail_unmap;
+	atp->ctx = talloc_add_external(atp,
+				       at_realloc, talloc_lock, talloc_unlock);
+	if (!atp->ctx)
+		goto fail_free;
+	return atp;
 
-	return p;
-
-fail_unmap:
-	munmap(p->pool, size);
 fail_free:
-	talloc_free(p);
+	talloc_free(atp);
 fail_close:
 	close_noerr(fd);
 	return NULL;
@@ -190,17 +249,18 @@ static int destroy_at(struct athread *at)
 }
 
 /* Sets up thread and forks it.  NULL on error. */
-static struct athread *fork_thread(struct at_pool *pool)
+static struct athread *fork_thread(struct at_pool *atp)
 {
 	int p2c[2], c2p[2];
 	struct athread *at;
+	struct at_pool_contents *pool = atp->p;
 
 	/* You can't already be a child of this pool. */
 	if (pool->parent_rfd != -1)
 		errx(1, "Can't create antithread on this pool: we're one");
 
 	/* We don't want this allocated *in* the pool. */
-	at = talloc_steal(pool, talloc(NULL, struct athread));
+	at = talloc_steal(atp, talloc(NULL, struct athread));
 
 	if (pipe(p2c) != 0)
 		goto free;
@@ -241,19 +301,19 @@ free:
 }
 
 /* Creating an antithread via fork() */
-struct athread *_at_run(struct at_pool *pool,
+struct athread *_at_run(struct at_pool *atp,
 			void *(*fn)(struct at_pool *, void *),
 			void *obj)
 {
 	struct athread *at;
 
-	at = fork_thread(pool);
+	at = fork_thread(atp);
 	if (!at)
 		return NULL;
 
 	if (at->pid == 0) {
 		/* Child */
-		at_tell_parent(pool, fn(pool, obj));
+		at_tell_parent(atp, fn(atp, obj));
 		exit(0);
 	}
 	/* Parent */
@@ -269,12 +329,12 @@ static unsigned int num_args(char *const argv[])
 }
 
 /* Fork and execvp, with added arguments for child to grab. */
-struct athread *at_spawn(struct at_pool *pool, void *arg, char *cmdline[])
+struct athread *at_spawn(struct at_pool *atp, void *arg, char *cmdline[])
 {
 	struct athread *at;
 	int err;
 
-	at = fork_thread(pool);
+	at = fork_thread(atp);
 	if (!at)
 		return NULL;
 
@@ -283,15 +343,15 @@ struct athread *at_spawn(struct at_pool *pool, void *arg, char *cmdline[])
 		char *argv[num_args(cmdline) + 2];
 		argv[0] = cmdline[0];
 		argv[1] = talloc_asprintf(NULL, "AT:%p/%lu/%i/%i/%i/%p",
-					  pool->pool, pool->poolsize,
-					  pool->fd, pool->parent_rfd,
-					  pool->parent_wfd, arg);
+					  atp->p->pool, atp->p->poolsize,
+					  atp->p->fd, atp->p->parent_rfd,
+					  atp->p->parent_wfd, arg);
 		/* Copy including NULL terminator. */
 		memcpy(&argv[2], &cmdline[1], num_args(cmdline)*sizeof(char *));
 		execvp(argv[0], argv);
 
 		err = errno;
-		write_all(pool->parent_wfd, &err, sizeof(err));
+		write_all(atp->p->parent_wfd, &err, sizeof(err));
 		exit(1);
 	}
 
@@ -344,7 +404,8 @@ void at_tell(struct athread *at, const void *status)
 /* For child to grab arguments from command line (removes them) */
 struct at_pool *at_get_pool(int *argc, char *argv[], void **arg)
 {
-	struct at_pool *p = talloc(NULL, struct at_pool);
+	struct at_pool *atp = talloc(NULL, struct at_pool);
+	struct at_pool_contents *p;
 	void *map;
 	int err;
 
@@ -356,6 +417,8 @@ struct at_pool *at_get_pool(int *argc, char *argv[], void **arg)
 	/* If they don't care, use dummy value. */
 	if (arg == NULL)
 		arg = &map;
+
+	p = atp->p = talloc(atp, struct at_pool_contents);
 
 	if (sscanf(argv[1], "AT:%p/%lu/%i/%i/%i/%p", 
 		   &p->pool, &p->poolsize, &p->fd,
@@ -375,8 +438,13 @@ struct at_pool *at_get_pool(int *argc, char *argv[], void **arg)
 		goto fail;
 	}
 
-	p->ctx = talloc_add_external(p, at_realloc);
-	if (!p->ctx)
+	list_add(&pools, &p->list);
+	talloc_set_destructor(p, destroy_pool);
+	p->atp = atp;
+
+	atp->ctx = talloc_add_external(atp,
+				       at_realloc, talloc_lock, talloc_unlock);
+	if (!atp->ctx)
 		goto fail;
 
 	/* Tell parent we're good. */
@@ -388,33 +456,33 @@ struct at_pool *at_get_pool(int *argc, char *argv[], void **arg)
 
 	/* Delete AT arg. */
 	memmove(&argv[1], &argv[2], --(*argc));
-	return p;
+
+	return atp;
 
 fail:
-	/* FIXME: cleanup properly. */
-	talloc_free(p);
+	talloc_free(atp);
 	return NULL;
 }
 
 /* Say something to our parent (async). */
-void at_tell_parent(struct at_pool *pool, const void *status)
+void at_tell_parent(struct at_pool *atp, const void *status)
 {
-	if (pool->parent_wfd == -1)
+	if (atp->p->parent_wfd == -1)
 		errx(1, "This process is not an antithread of this pool");
 
-	if (write(pool->parent_wfd, &status, sizeof(status)) != sizeof(status))
+	if (write(atp->p->parent_wfd, &status, sizeof(status))!=sizeof(status))
 		err(1, "Failure writing to parent");
 }
 
 /* What's the parent saying?  Blocks if fd not ready. */
-void *at_read_parent(struct at_pool *pool)
+void *at_read_parent(struct at_pool *atp)
 {
 	void *ret;
 
-	if (pool->parent_rfd == -1)
+	if (atp->p->parent_rfd == -1)
 		errx(1, "This process is not an antithread of this pool");
 
-	switch (read(pool->parent_rfd, &ret, sizeof(ret))) {
+	switch (read(atp->p->parent_rfd, &ret, sizeof(ret))) {
 	case -1:
 		err(1, "Reading from parent");
 	case 0:
@@ -429,18 +497,18 @@ void *at_read_parent(struct at_pool *pool)
 }
 
 /* The fd to poll on */
-int at_parent_fd(struct at_pool *pool)
+int at_parent_fd(struct at_pool *atp)
 {
-	if (pool->parent_rfd == -1)
+	if (atp->p->parent_rfd == -1)
 		errx(1, "This process is not an antithread of this pool");
 
-	return pool->parent_rfd;
+	return atp->p->parent_rfd;
 }
 
 /* FIXME: Futexme. */
 void at_lock(void *obj)
 {
-	struct at_pool *p = talloc_find_parent_bytype(obj, struct at_pool);
+	struct at_pool *atp = talloc_find_parent_bytype(obj, struct at_pool);
 #if 0
 	unsigned int *l;
 
@@ -448,7 +516,7 @@ void at_lock(void *obj)
 	l = talloc_lock_ptr(obj);
 #endif
 
-	lock(p->fd, (char *)obj - (char *)p->pool);
+	lock(atp->p->fd, (char *)obj - (char *)atp->p->pool);
 
 #if 0
 	if (*l)
@@ -459,7 +527,7 @@ void at_lock(void *obj)
 
 void at_unlock(void *obj)
 {
-	struct at_pool *p = talloc_find_parent_bytype(obj, struct at_pool);
+	struct at_pool *atp = talloc_find_parent_bytype(obj, struct at_pool);
 #if 0
 	unsigned int *l;
 
@@ -468,15 +536,15 @@ void at_unlock(void *obj)
 		errx(1, "Object %p was already unlocked", obj);
 	*l = 0;
 #endif
-	unlock(p->fd, (char *)obj - (char *)p->pool);
+	unlock(atp->p->fd, (char *)obj - (char *)atp->p->pool);
 }
 
-void at_lock_all(struct at_pool *p)
+void at_lock_all(struct at_pool *atp)
 {
-	lock(p->fd, 0);
+	lock(atp->p->fd, 0);
 }
 	
-void at_unlock_all(struct at_pool *p)
+void at_unlock_all(struct at_pool *atp)
 {
-	unlock(p->fd, 0);
+	unlock(atp->p->fd, 0);
 }

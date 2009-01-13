@@ -21,8 +21,8 @@ int main(int argc, char *argv[])
 	assert(atp);
 	pid = talloc(at_pool_ctx(atp), int);
 	assert(pid);
-	ok1((char *)pid >= (char *)atp->pool
-	    && (char *)pid < (char *)atp->pool + atp->poolsize);
+	ok1((char *)pid >= (char *)atp->p->pool
+	    && (char *)pid < (char *)atp->p->pool + atp->p->poolsize);
 	at = at_run(atp, test, pid);
 	assert(at);
 
