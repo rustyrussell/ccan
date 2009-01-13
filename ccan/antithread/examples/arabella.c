@@ -311,18 +311,30 @@ static struct drawing *new_drawing(const void *ctx, unsigned int num_tris)
 static void mutate_drawing(struct drawing *drawing,
 			   const struct image *master)
 {
-	unsigned int r = random();
+	unsigned int i, r = random();
 	struct triangle *tri = &drawing->tri[r % drawing->num_tris];
 
 	r /= drawing->num_tris;
-	r %= 10;
+	r %= 12;
 	if (r < 6) {
+		/* Move one corner in x or y dir. */
 		if (r % 2)
 			tri->coord[r/2].x = random() % master->width;
 		else
 			tri->coord[r/2].y = random() % master->height;
-	} else {
+	} else if (r < 10) {
+		/* Change one aspect of color. */
 		tri->color[r - 6] = random() % 256;
+	} else if (r == 10) {
+		/* Completely move a triangle. */
+		for (i = 0; i < 3; i++) {
+			tri->coord[i].x = random() % master->width;
+			tri->coord[i].y = random() % master->height;
+		}
+	} else {
+		/* Completely change a triangle's colour. */
+		for (i = 0; i < 4; i++)
+			tri->color[i] = random() % 256;
 	}
 	calc_multipliers(tri);
 }
@@ -537,12 +549,12 @@ static void dump_drawings(struct drawing **drawing, const char *outname)
 		fprintf(out, "%u triangles:\n", drawing[i]->num_tris);
 		for (j = 0; j < drawing[i]->num_tris; j++) {
 			fprintf(out, "%u,%u,%u,%u,%u,%u,%u,%u,%u,%u\n",
-				drawing[i]->tri[i].coord[0].x,
-				drawing[i]->tri[i].coord[0].y,
-				drawing[i]->tri[i].coord[1].x,
-				drawing[i]->tri[i].coord[1].y,
-				drawing[i]->tri[i].coord[2].x,
-				drawing[i]->tri[i].coord[2].y,
+				drawing[i]->tri[j].coord[0].x,
+				drawing[i]->tri[j].coord[0].y,
+				drawing[i]->tri[j].coord[1].x,
+				drawing[i]->tri[j].coord[1].y,
+				drawing[i]->tri[j].coord[2].x,
+				drawing[i]->tri[j].coord[2].y,
 				drawing[i]->tri[j].color[0],
 				drawing[i]->tri[j].color[1],
 				drawing[i]->tri[j].color[2],
@@ -631,12 +643,12 @@ int main(int argc, char *argv[])
 	} else {
 		FILE *state;
 		char header[100];
-		state = fopen(argv[5], "r");
+		state = fopen(argv[6], "r");
 		if (!state)
-			err(1, "Opening %s", argv[5]);
+			err(1, "Opening %s", argv[6]);
 		fflush(stdout);
 		fgets(header, 100, state);
-		printf("Loading initial population from %s: %s", argv[5],
+		printf("Loading initial population from %s: %s", argv[6],
 			header);
 		for (i = 0; i < POPULATION_SIZE; i++) {
 			drawing[i] = read_drawing(at_pool_ctx(atp),
