@@ -16,7 +16,6 @@ ALL_DEPENDS=$(patsubst %, ccan/%/.depends, $(ALL))
 include Makefile-ccan
 
 check: $(ALL_DIRS:%=test-%)
-	echo $(ALL_DIRS)
 
 distclean: clean
 	rm -f $(ALL_DEPENDS)

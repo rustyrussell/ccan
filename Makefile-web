@@ -58,4 +58,6 @@ $(WEBDIR)/tarballs/with-deps/%.tar.bz2: ccan/% ccan/%/test tools/ccan_depends
 	tar cvfj $@ $$(echo ccan/$* $$(tools/ccan_depends ccan/$*) | xargs -n 1 bzr ls --versioned --kind=file)
 
 distclean: distclean-web
+
+distclean-web:
 	rm -rf $(WEBDIR)
