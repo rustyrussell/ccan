@@ -1,8 +1,7 @@
 /* Async DNS lookup.  Shows passing complex data through pool. */
-#include "ccan/antithread/antithread.h"
-#include "ccan/string/string.h"
-#include "ccan/talloc/talloc.h"
-#include "md5_finder.h"
+#include <ccan/antithread/antithread.h>
+#include <ccan/str/str.h>
+#include <ccan/talloc/talloc.h>
 #include <err.h>
 #include <sys/select.h>
 #include <stdio.h>
