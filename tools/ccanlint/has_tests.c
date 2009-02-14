@@ -25,7 +25,9 @@ static void *check_has_tests(struct manifest *m)
 	if (!S_ISDIR(st.st_mode))
 		return test_is_not_dir;
 
-	if (list_empty(&m->run_tests) && list_empty(&m->compile_ok_tests)) {
+	if (list_empty(&m->api_tests)
+	    && list_empty(&m->run_tests)
+	    && list_empty(&m->compile_ok_tests)) {
 		if (list_empty(&m->compile_fail_tests)) 
 			return "You have no tests in the test directory";
 		else
@@ -38,7 +40,7 @@ static const char *describe_has_tests(struct manifest *m, void *check_result)
 {
 	return talloc_asprintf(m, "%s\n\n"
         "CCAN modules have a directory called test/ which contains tests.\n"
-	"There are three kinds of tests: run, compile_ok and compile_fail:\n"
+	"There are four kinds of tests: api, run, compile_ok and compile_fail:\n"
 	"you can tell which type of test a C file is by its name, eg 'run.c'\n"
 	"and 'run-simple.c' are both run tests.\n\n"
 	"The simplest kind of test is a run test, which must compile with no\n"
@@ -49,7 +51,10 @@ static const char *describe_has_tests(struct manifest *m, void *check_result)
 	"compile_fail tests are tests which should fail to compile (or emit\n"
 	"warnings) or link when FAIL is defined, but should compile and link\n"
 	"when it's not defined: this helps ensure unrelated errors don't make\n"
-	"compilation fail.\n\n"
+	"compilation fail.\n"
+	"api tests are just like a run test, except it is a guarantee of API\n"
+	"stability: this test should pass on all future versions of the\n"
+	"module.\n\n"
 	"Note that the tests are not linked against the files in the\n"
 	"above: you should directly #include those C files you want.  This\n"
 	"allows access to static functions and use special effects inside\n"

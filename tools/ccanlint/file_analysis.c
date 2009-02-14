@@ -85,7 +85,9 @@ static void add_files(struct manifest *m, const char *dir)
 				dest = &m->h_files;
 		} else if (strstarts(f->name, "test/")) {
 			if (is_c_src) {
-				if (strstarts(f->name, "test/run"))
+				if (strstarts(f->name, "test/api"))
+					dest = &m->api_tests;
+				else if (strstarts(f->name, "test/run"))
 					dest = &m->run_tests;
 				else if (strstarts(f->name, "test/compile_ok"))
 					dest = &m->compile_ok_tests;
@@ -135,6 +137,7 @@ struct manifest *get_manifest(void)
 	m->info_file = NULL;
 	list_head_init(&m->c_files);
 	list_head_init(&m->h_files);
+	list_head_init(&m->api_tests);
 	list_head_init(&m->run_tests);
 	list_head_init(&m->compile_ok_tests);
 	list_head_init(&m->compile_fail_tests);

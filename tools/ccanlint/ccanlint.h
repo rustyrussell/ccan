@@ -12,6 +12,7 @@ struct manifest {
 	struct list_head h_files;
 
 	struct list_head run_tests;
+	struct list_head api_tests;
 	struct list_head compile_ok_tests;
 	struct list_head compile_fail_tests;
 	struct list_head other_test_files;
