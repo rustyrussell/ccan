@@ -170,10 +170,6 @@ size_t crc_read_block(struct crc_context *ctx, long *result,
 	/* Make sure we have a copy of the last block_size bytes.
 	 * First, copy down the old data.  */
 	if (buffer_size(ctx)) {
-		memmove(ctx->buffer, ctx->buffer + ctx->buffer_start,
-			buffer_size(ctx));
-		ctx->buffer_end -= ctx->buffer_start;
-		ctx->buffer_start = 0;
 	}
 
 	if (crcmatch >= 0) {
@@ -202,6 +198,14 @@ size_t crc_read_block(struct crc_context *ctx, long *result,
 
 		/* Now save any literal bytes we'll need in future. */
 		len = ctx->literal_bytes - buffer_size(ctx);
+
+		/* Move down old data if we don't have room.  */
+		if (ctx->buffer_end + len > ctx->block_size) {
+			memmove(ctx->buffer, ctx->buffer + ctx->buffer_start,
+				buffer_size(ctx));
+			ctx->buffer_end -= ctx->buffer_start;
+			ctx->buffer_start = 0;
+		}
 		memcpy(ctx->buffer + ctx->buffer_end, buf, len);
 		ctx->buffer_end += len;
 		assert(buffer_size(ctx) <= ctx->block_size);
