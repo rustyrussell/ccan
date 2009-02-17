@@ -28,7 +28,7 @@ Or you can just download the <a href="ccan.tar.bz2">tarball of everything includ
 $d = dir($argv[1]);
 $modules = array();
 while (false !== ($entry = $d->read())) {
-	if ($entry[0] != '.') {
+	if ($entry[0] != '.' && is_dir($argv[1].$entry."/test")) {
 		array_push($modules, $entry);
 	}
 }
