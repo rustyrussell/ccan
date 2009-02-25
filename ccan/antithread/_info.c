@@ -18,6 +18,7 @@ int main(int argc, char *argv[])
 		printf("ccan/talloc\n");
 		printf("ccan/alloc\n");
 		printf("ccan/noerr\n");
+		printf("ccan/read_write_all\n"); /* For tests */
 		return 0;
 	}
 

@@ -1,7 +1,7 @@
 #include "md4/md4.h"
-#include "md4/md4.c"
 #include <tap/tap.h>
 #include <stdio.h>
+#include <string.h>
 
 static void check_md4(const char *string, const char *expected)
 {

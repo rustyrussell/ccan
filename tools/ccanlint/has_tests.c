@@ -43,18 +43,26 @@ static const char *describe_has_tests(struct manifest *m, void *check_result)
 	"There are four kinds of tests: api, run, compile_ok and compile_fail:\n"
 	"you can tell which type of test a C file is by its name, eg 'run.c'\n"
 	"and 'run-simple.c' are both run tests.\n\n"
+
 	"The simplest kind of test is a run test, which must compile with no\n"
 	"warnings, and then run: it is expected to use libtap to report its\n"
-	"results in a simple and portable format.\n"
+	"results in a simple and portable format.  It should #include the C\n"
+	"files from the module directly (so it can probe the internals): the\n"
+	"module will not be linked in.\n\n"
+
+	"api tests are just like a run test, except it is a guarantee of API\n"
+	"stability: this test should pass on all future versions of the\n"
+	"module.  They *are* linked to the module, since they should only\n"
+	"test the API, not the internal state.\n\n"
+
 	"compile_ok tests are a subset of run tests: they must compile and\n"
-	"link, but aren't run.\n"
+	"link, but aren't run.\n\n"
+
 	"compile_fail tests are tests which should fail to compile (or emit\n"
 	"warnings) or link when FAIL is defined, but should compile and link\n"
 	"when it's not defined: this helps ensure unrelated errors don't make\n"
-	"compilation fail.\n"
-	"api tests are just like a run test, except it is a guarantee of API\n"
-	"stability: this test should pass on all future versions of the\n"
-	"module.\n\n"
+	"compilation fail.\n\n"
+
 	"Note that the tests are not linked against the files in the\n"
 	"above: you should directly #include those C files you want.  This\n"
 	"allows access to static functions and use special effects inside\n"

@@ -5,6 +5,7 @@
 # 
 # check: run tests on all ccan modules (use 'make check V=--verbose' for more)
 #        Includes building libccan.a.
+# libccan.a: A library with all the ccan modules in it.
 # tools: build useful tools in tools/ dir.
 #        Especially tools/ccanlint/ccanlint and tools/namespacize.
 # distclean: destroy everything back to pristine state
@@ -13,39 +14,38 @@ ALL=$(patsubst ccan/%/test, %, $(wildcard ccan/*/test))
 ALL_DIRS=$(patsubst %, ccan/%, $(ALL))
 ALL_DEPENDS=$(patsubst %, ccan/%/.depends, $(ALL))
 
+default: libccan.a
+
 include Makefile-ccan
 
-check: $(ALL_DIRS:%=test-%)
+check: $(ALL_DIRS:ccan/%=check-%)
 
 distclean: clean
 	rm -f $(ALL_DEPENDS)
 
-# Override implicit attempt to link directory.
-$(ALL_DIRS):
-	@touch $@
+$(ALL_DEPENDS): %/.depends: %/_info.c tools/ccan_depends
+	@tools/ccan_depends $* > $@ || ( rm -f $@; exit 1 )
 
-$(ALL_DEPENDS): %/.depends: tools/ccan_depends
-	tools/ccan_depends $* > $@ || ( rm -f $@; exit 1 )
-
-test-ccan/%: tools/run_tests libccan.a(%.o)
+# Actual dependencies are created in inter-depends
+check-%: tools/run_tests
 	@echo Testing $*...
-	@if tools/run_tests $(V) ccan/$* | grep ^'not ok'; then exit 1; else exit 0; fi
+	@if tools/run_tests $(V) `[ ! -f ccan/$*.o ] || echo --apiobj=ccan/$*.o` ccan/$* $(filter-out ccan/$*.o, $(filter %.o, $^)) | grep ^'not ok'; then exit 1; else exit 0; fi
 
-# Some don't have object files.
-test-ccan/%:: tools/run_tests
-	@echo Testing $*...
-	@if tools/run_tests $(V) ccan/$* | grep ^'not ok'; then exit 1; else exit 0; fi
+libccan.a(%.o): ccan/%.o
+	$(AR) r $@ $<
 
 clean: tools-clean
-	$(RM) `find . -name '*.o'` `find . -name '.depends'` `find . -name '*.a'`  `find . -name _info`
+	$(RM) `find . -name '*.o'` `find . -name '.depends'` `find . -name '*.a'`  `find . -name _info` `find . -name '*.d'`
 	$(RM) inter-depends lib-depends test-depends
 
-# Only list a dependency if there are object files to build.
-inter-depends: $(ALL_DEPENDS)
-	for f in $(ALL_DEPENDS); do echo test-ccan/$$(basename $$(dirname $$f) ): $$(for dir in $$(cat $$f); do [ "$$(echo $$dir/[a-z]*.c)" = "$$dir/[a-z]*.c" ] || echo libccan.a\("$$(basename $$dir)".o\); done); done > $@
+# Creates a dependency from the tests to the object files which it needs.
+inter-depends: $(ALL_DEPENDS) Makefile
+	@for f in $(ALL_DEPENDS); do echo check-$$(basename $$(dirname $$f) ): $$(for dir in $$(cat $$f) $$(dirname $$f); do [ "$$(echo $$dir/[a-z]*.c)" = "$$dir/[a-z]*.c" ] || echo ccan/"$$(basename $$dir)".o; done); done > $@
 
-test-depends: $(ALL_DEPENDS)
-	for f in $(ALL_DEPENDS); do echo test-ccan/`basename \`dirname $$f\``: `sed -n 's,ccan/\(.*\),test-ccan/\1,p' < $$f`; done > $@
+# Creates dependencies between tests, so if foo depends on bar, bar is tested
+# first 
+test-depends: $(ALL_DEPENDS) Makefile
+	@for f in $(ALL_DEPENDS); do echo check-`basename \`dirname $$f\``: `sed -n 's,ccan/\(.*\),check-\1,p' < $$f`; done > $@
 
 include tools/Makefile
 -include inter-depends

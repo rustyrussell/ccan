@@ -19,7 +19,8 @@ static int verbose;
 struct test_type
 {
 	const char *name;
-	void (*buildfn)(const char *dir, struct test_type *t, const char *name);
+	void (*buildfn)(const char *dir, struct test_type *t, const char *name,
+			const char *apiobj);
 	void (*runfn)(const char *name);
 };
 
@@ -33,6 +34,7 @@ struct test
 struct obj
 {
 	struct obj *next;
+	bool generate;
 	char *name;
 };
 
@@ -76,8 +78,11 @@ static void cleanup_objs(void)
 {
 	struct obj *i;
 
-	for (i = objs; i; i = i->next)
+	for (i = objs; i; i = i->next) {
+		if (!i->generate)
+			continue;
 		unlink(talloc_asprintf(i, "%s.o", output_name(i->name)));
+	}
 }
 
 static void add_test(const char *testdir, const char *name, struct test_type *t)
@@ -90,23 +95,25 @@ static void add_test(const char *testdir, const char *name, struct test_type *t)
 	tests = test;
 }
 
-static void add_obj(const char *testdir, const char *name)
+static void add_obj(const char *testdir, const char *name, bool generate)
 {
 	struct obj *obj = talloc(testdir, struct obj);
 
 	obj->next = objs;
 	obj->name = talloc_asprintf(obj, "%s/%s", testdir, name);
+	obj->generate = generate;
 	objs = obj;
 }
 
-static int build(const char *dir, const char *name, int fail)
+static int build(const char *dir, const char *name, const char *apiobj,
+		 int fail)
 {
 	const char *cmd;
 	int ret;
 
-	cmd = talloc_asprintf(name, "gcc " CFLAGS " %s -o %s %s %s -L. -lccan %s",
+	cmd = talloc_asprintf(name, "gcc " CFLAGS " %s -o %s %s %s %s %s",
 			      fail ? "-DFAIL" : "",
-			      output_name(name), name, obj_list(),
+			      output_name(name), name, apiobj, obj_list(),
 			      verbose ? "" : "> /dev/null 2>&1");
 
 	if (verbose)
@@ -119,17 +126,26 @@ static int build(const char *dir, const char *name, int fail)
 	return ret;
 }
 
-static void compile_ok(const char *dir, struct test_type *t, const char *name)
+static void compile_ok(const char *dir, struct test_type *t, const char *name,
+		       const char *apiobj)
 {
-	ok(build(dir, name, 0) == 0, "%s %s", t->name, name);
+	ok(build(dir, name, "", 0) == 0, "%s %s", t->name, name);
 }
 
-static void compile_fail(const char *dir, struct test_type *t, const char *name)
+/* api tests get the API obj linked in as well. */
+static void compile_api_ok(const char *dir, struct test_type *t,
+			   const char *name, const char *apiobj)
 {
-	if (build(dir, name, 0) != 0)
+	ok(build(dir, name, apiobj, 0) == 0, "%s %s", t->name, name);
+}
+
+static void compile_fail(const char *dir, struct test_type *t, const char *name,
+			 const char *apiobj)
+{
+	if (build(dir, name, "", 0) != 0)
 		fail("non-FAIL build %s", name);
 	else
-		ok(build(dir, name, 1) > 0, "%s %s", t->name, name);
+		ok(build(dir, name, "", 1) > 0, "%s %s", t->name, name);
 }
 
 static void no_run(const char *name)
@@ -151,16 +167,17 @@ static struct test_type test_types[] = {
 	{ "compile_ok", compile_ok, no_run },
 	{ "compile_fail", compile_fail, no_run },
 	{ "run", compile_ok, run },
-	{ "api", compile_ok, run },
+	{ "api", compile_api_ok, run },
 };
 
 int main(int argc, char *argv[])
 {
 	DIR *dir;
 	struct dirent *d;
-	char *testdir;
+	char *testdir, *cwd;
+	const char *apiobj = "";
 	struct test *test;
-	unsigned int num_tests = 0, num_objs = 0;
+	unsigned int num_tests = 0, num_objs = 0, i;
 
 	if (argc > 1 && streq(argv[1], "--verbose")) {
 		verbose = 1;
@@ -168,8 +185,14 @@ int main(int argc, char *argv[])
 		argv++;
 	}
 
-	if (argc != 2)
-		errx(1, "Usage: run_tests [--verbose] <dir>");
+	if (argc > 1 && strstarts(argv[1], "--apiobj=")) {
+		apiobj = argv[1] + strlen("--apiobj=");
+		argc--;
+		argv++;
+	}
+
+	if (argc < 2)
+		errx(1, "Usage: run_tests [--verbose] [--apiobj=<obj>] <dir> [<extra-objs>...]");
 
 	testdir = talloc_asprintf(NULL, "%s/test", argv[1]);
 	dir = opendir(testdir);
@@ -177,7 +200,6 @@ int main(int argc, char *argv[])
 		err(1, "Opening '%s'", testdir);
 
 	while ((d = readdir(dir)) != NULL) {
-		unsigned int i;
 		if (d->d_name[0] == '.' || !strends(d->d_name, ".c"))
 			continue;
 
@@ -189,7 +211,7 @@ int main(int argc, char *argv[])
 			}
 		}
 		if (i == ARRAY_SIZE(test_types)) {
-			add_obj(testdir, d->d_name);
+			add_obj(testdir, d->d_name, true);
 			num_objs++;
 		}
 	}
@@ -198,9 +220,14 @@ int main(int argc, char *argv[])
 	/* First all the extra object compilations. */
 	compile_objs();
 
+	/* Now add any object files from the command line */
+	cwd = talloc_strdup(testdir, ".");
+	for (i = 2; i < argc; i++)
+		add_obj(cwd, argv[i], false);
+
 	/* Do all the test compilations. */
 	for (test = tests; test; test = test->next)
-		test->type->buildfn(argv[1], test->type, test->name);
+		test->type->buildfn(argv[1], test->type, test->name, apiobj);
 
 	cleanup_objs();
 

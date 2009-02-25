@@ -1,5 +1,6 @@
 _info
 .depends
+*.d
 *~
 tools/ccan_depends
 tools/doc_extract

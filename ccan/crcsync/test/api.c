@@ -1,8 +1,8 @@
 #include "crcsync/crcsync.h"
-#include "crcsync/crcsync.c"
 #include "tap/tap.h"
 #include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 
 /* FIXME: ccanize. */
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))

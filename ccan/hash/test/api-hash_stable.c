@@ -1,6 +1,5 @@
 #include "hash/hash.h"
 #include "tap/tap.h"
-#include "hash/hash.c"
 #include <stdbool.h>
 #include <string.h>
 
