@@ -9,10 +9,8 @@
 #include "ccan/tap/tap.h"
 #include "ccan/talloc/talloc.h"
 #include "ccan/str/str.h"
+#include "ccan/array_size/array_size.h"
 #include "tools.h"
-
-/* FIXME: Use build bug later. */
-#define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
 static struct test *tests = NULL;
 static struct obj *objs = NULL;
