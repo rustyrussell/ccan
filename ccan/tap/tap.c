@@ -67,9 +67,9 @@ _expected_tests(unsigned int tests)
 static void
 diagv(char *fmt, va_list ap)
 {
-	fputs("# ", stderr);
-	vfprintf(stderr, fmt, ap);
-	fputs("\n", stderr);
+	fputs("# ", stdout);
+	vfprintf(stdout, fmt, ap);
+	fputs("\n", stdout);
 }
 
 static void
