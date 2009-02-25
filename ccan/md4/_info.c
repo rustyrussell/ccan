@@ -1,0 +1,48 @@
+#include <stdio.h>
+#include <string.h>
+#include "config.h"
+
+/**
+ * md4 - MD4 Message Digest Algorithm (RFC1320).
+ *
+ * Message Digest #4 is a 128-bit hashing algorithm; it is quick but
+ * not sufficiently strong for cryptographic use (duplicates can be
+ * found very efficiently).  It provides sufficient mixing to have an
+ * avalanche effect: any change in input changes the output completely.
+ *
+ * Example:
+ *	#include <stdio.h>
+ *	#include <ccan/md4/md4.h>
+ *
+ *	// Provide MD4 sums of the input strings.
+ *	int main(int argc, char *argv[])
+ *	{
+ *		unsigned int i, j;
+ *		struct md4_ctx ctx;
+ *
+ *		for (i = 1; i < argc; i++) {
+ *			md4_init(&ctx);
+ *			md4_hash(&ctx, argv[i], strlen(argv[i]));
+ *			md4_finish(&ctx);
+ *			for (j = 0; j < 16; j++)
+ *				printf("%02x", ctx.hash.bytes[j]);
+ *			printf("\n");
+ *		}
+ *		return 0;
+ *	}
+ *
+ * Licence: LGPL (2 or any later version)
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/endian\n");
+		printf("ccan/array_size\n");
+		return 0;
+	}
+
+	return 1;
+}
