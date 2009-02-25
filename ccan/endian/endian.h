@@ -21,7 +21,7 @@ static inline uint32_t swab_u32(uint32_t val)
 {
 	return ((val & (uint32_t)0x000000ffUL) << 24)
 		| ((val & (uint32_t)0x0000ff00UL) <<  8)
-		| ((val & (uint32_t)0x00ff0000UL) >>  8) 
+		| ((val & (uint32_t)0x00ff0000UL) >>  8)
 		| ((val & (uint32_t)0xff000000UL) >> 24);
 }
 
