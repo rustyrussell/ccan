@@ -12,8 +12,8 @@ JUNKBALLS=$(JUNKDIRS:%=$(WEBDIR)/%.tar.bz2)
 upload: check webpages
 	bzr push
 	send-web # Rusty's upload script.
-	
-webpages: $(WEB_SUBDIRS) $(WEBDIR)/junkcode $(ALL_PAGES) $(WEBDIR)/list.html $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.jpg $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan $(JUNKPAGES) $(JUNKBALLS)
+
+webpages: $(WEB_SUBDIRS) $(WEBDIR)/junkcode $(WEBDIR)/list.html $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.jpg $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan $(JUNKPAGES) $(JUNKBALLS)
 
 $(WEB_SUBDIRS):
 	mkdir -p $@
@@ -39,10 +39,10 @@ $(WEBDIR)/upload.html: web/staticupload.php
 
 # cpp inserts gratuitous linebreaks at start of file, makes for php problems.
 $(WEBDIR)/uploader.php: web/uploader.php.cpp
-	cpp -w -C -P $< | grep . > $@
+	@cpp -w -C -P $< | grep . > $@
 
 $(WEBDIR)/index.html: web/staticindex.php
-	php5 web/staticindex.php > $@
+	@php5 web/staticindex.php > $@
 
 $(WEBDIR)/example-config.h: config.h
 	cp $< $@
@@ -54,13 +54,13 @@ $(WEBDIR)/ccan.jpg: web/ccan.jpg
 	cp $< $@
 
 $(WEBDIR)/info/%.html: ccan/% ccan/%/test $(WEBDIR)/tarballs/%.tar.bz2 $(WEBDIR)/tarballs/with-deps/%.tar.bz2
-	URLPREFIX=../ php5 web/staticmoduleinfo.php ccan/$* > $@
+	@URLPREFIX=../ php5 web/staticmoduleinfo.php ccan/$* > $@
 
-$(WEBDIR)/tarballs/%.tar.bz2: ccan/% ccan/%/test
-	tar -c -v -j -f $@ `bzr ls --versioned --kind=file ccan/$*`
+$(WEBDIR)/tarballs/%.tar.bz2: ccan/%/test
+	tar -c -j -f $@ `bzr ls --versioned --kind=file ccan/$*`
 
-$(WEBDIR)/tarballs/with-deps/%.tar.bz2: ccan/% ccan/%/test tools/ccan_depends
-	tar cvfj $@ $$(echo ccan/$* $$(tools/ccan_depends ccan/$*) | xargs -n 1 bzr ls --versioned --kind=file)
+$(WEBDIR)/tarballs/with-deps/%.tar.bz2: ccan/%/test tools/ccan_depends
+	tar cfj $@ $$(echo ccan/$* $$(tools/ccan_depends ccan/$*) | xargs -n 1 bzr ls --versioned --kind=file)
 
 distclean: distclean-web
 
