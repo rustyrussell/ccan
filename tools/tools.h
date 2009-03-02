@@ -6,6 +6,8 @@
 			"abcdefghijklmnopqrstuvwxyz" \
 			"01234567889_"
 
+#define SPACE_CHARS	" \f\n\r\t\v"
+
 #define CFLAGS "-O3 -Wall -Wundef -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Werror -Iccan/ -I."
 
 /* This actually compiles and runs the _info.c file to get dependencies. */
