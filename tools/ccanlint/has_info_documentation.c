@@ -56,7 +56,7 @@ static void create_info_template_doc(struct manifest *m, void *check_result)
 		err(1, "Creating _info.c.new to insert documentation");
 
 	if (fprintf(new,
-		    "/**"
+		    "/**\n"
 		    " * %s - [[ONE LINE DESCRIPTION HERE]]\n"
 		    " *\n"
 		    " * Paragraphs why %s exists and where to use it.\n"
