@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 		if (!read_all(p2c[0], buffer+1, sizeof(buffer)-1))
 			exit(3);
 		if (memchr(buffer, 0, sizeof(buffer))) {
-			fprintf(stderr, "buffer has 0 at offset %i\n",
+			fprintf(stderr, "buffer has 0 at offset %ti\n",
 				memchr(buffer, 0, sizeof(buffer)) - (void *)buffer);
 			exit(4);
 		}
