@@ -5,17 +5,21 @@
 #include <string.h>
 #include <ccan/ilog/ilog.h>
 #include "isaac.h"
-#if defined(__GNUC_PREREQ)
-# if __GNUC_PREREQ(4,2)
-#  pragma GCC diagnostic ignored "-Wparentheses"
-# endif
-#endif
-
 
 
 #define ISAAC_MASK        (0xFFFFFFFFU)
 
+/* Extract ISAAC_SZ_LOG bits (starting at bit 2). */
+static inline uint32_t lower_bits(uint32_t x)
+{
+	return (x & ((ISAAC_SZ-1) << 2)) >> 2;
+}
 
+/* Extract next ISAAC_SZ_LOG bits (starting at bit ISAAC_SZ_LOG+2). */
+static inline uint32_t upper_bits(uint32_t y)
+{
+	return (y >> (ISAAC_SZ_LOG+2)) & (ISAAC_SZ-1);
+}
 
 static void isaac_update(isaac_ctx *_ctx){
   uint32_t *m;
@@ -28,42 +32,42 @@ static void isaac_update(isaac_ctx *_ctx){
   m=_ctx->m;
   r=_ctx->r;
   a=_ctx->a;
-  b=_ctx->b+(++_ctx->c)&ISAAC_MASK;
+  b=_ctx->b+(++_ctx->c);
   for(i=0;i<ISAAC_SZ/2;i++){
     x=m[i];
-    a=(a^a<<13)+m[i+ISAAC_SZ/2]&ISAAC_MASK;
-    m[i]=y=m[(x&ISAAC_SZ-1<<2)>>2]+a+b&ISAAC_MASK;
-    r[i]=b=m[y>>ISAAC_SZ_LOG+2&ISAAC_SZ-1]+x&ISAAC_MASK;
+    a=(a^a<<13)+m[i+ISAAC_SZ/2];
+    m[i]=y=m[lower_bits(x)]+a+b;
+    r[i]=b=m[upper_bits(y)]+x;
     x=m[++i];
-    a=(a^a>>6)+m[i+ISAAC_SZ/2]&ISAAC_MASK;
-    m[i]=y=m[(x&ISAAC_SZ-1<<2)>>2]+a+b&ISAAC_MASK;
-    r[i]=b=m[y>>ISAAC_SZ_LOG+2&ISAAC_SZ-1]+x&ISAAC_MASK;
+    a=(a^a>>6)+m[i+ISAAC_SZ/2];
+    m[i]=y=m[lower_bits(x)]+a+b;
+    r[i]=b=m[upper_bits(y)]+x;
     x=m[++i];
-    a=(a^a<<2)+m[i+ISAAC_SZ/2]&ISAAC_MASK;
-    m[i]=y=m[(x&ISAAC_SZ-1<<2)>>2]+a+b&ISAAC_MASK;
-    r[i]=b=m[y>>ISAAC_SZ_LOG+2&ISAAC_SZ-1]+x&ISAAC_MASK;
+    a=(a^a<<2)+m[i+ISAAC_SZ/2];
+    m[i]=y=m[lower_bits(x)]+a+b;
+    r[i]=b=m[upper_bits(y)]+x;
     x=m[++i];
-    a=(a^a>>16)+m[i+ISAAC_SZ/2]&ISAAC_MASK;
-    m[i]=y=m[(x&ISAAC_SZ-1<<2)>>2]+a+b&ISAAC_MASK;
-    r[i]=b=m[y>>ISAAC_SZ_LOG+2&ISAAC_SZ-1]+x&ISAAC_MASK;
+    a=(a^a>>16)+m[i+ISAAC_SZ/2];
+    m[i]=y=m[lower_bits(x)]+a+b;
+    r[i]=b=m[upper_bits(y)]+x;
   }
   for(i=ISAAC_SZ/2;i<ISAAC_SZ;i++){
     x=m[i];
-    a=(a^a<<13)+m[i-ISAAC_SZ/2]&ISAAC_MASK;
-    m[i]=y=m[(x&ISAAC_SZ-1<<2)>>2]+a+b&ISAAC_MASK;
-    r[i]=b=m[y>>ISAAC_SZ_LOG+2&ISAAC_SZ-1]+x&ISAAC_MASK;
+    a=(a^a<<13)+m[i-ISAAC_SZ/2];
+    m[i]=y=m[lower_bits(x)]+a+b;
+    r[i]=b=m[upper_bits(y)]+x;
     x=m[++i];
-    a=(a^a>>6)+m[i-ISAAC_SZ/2]&ISAAC_MASK;
-    m[i]=y=m[(x&ISAAC_SZ-1<<2)>>2]+a+b&ISAAC_MASK;
-    r[i]=b=m[y>>ISAAC_SZ_LOG+2&ISAAC_SZ-1]+x&ISAAC_MASK;
+    a=(a^a>>6)+m[i-ISAAC_SZ/2];
+    m[i]=y=m[lower_bits(x)]+a+b;
+    r[i]=b=m[upper_bits(y)]+x;
     x=m[++i];
-    a=(a^a<<2)+m[i-ISAAC_SZ/2]&ISAAC_MASK;
-    m[i]=y=m[(x&ISAAC_SZ-1<<2)>>2]+a+b&ISAAC_MASK;
-    r[i]=b=m[y>>ISAAC_SZ_LOG+2&ISAAC_SZ-1]+x&ISAAC_MASK;
+    a=(a^a<<2)+m[i-ISAAC_SZ/2];
+    m[i]=y=m[lower_bits(x)]+a+b;
+    r[i]=b=m[upper_bits(y)]+x;
     x=m[++i];
-    a=(a^a>>16)+m[i-ISAAC_SZ/2]&ISAAC_MASK;
-    m[i]=y=m[(x&ISAAC_SZ-1<<2)>>2]+a+b&ISAAC_MASK;
-    r[i]=b=m[y>>ISAAC_SZ_LOG+2&ISAAC_SZ-1]+x&ISAAC_MASK;
+    a=(a^a>>16)+m[i-ISAAC_SZ/2];
+    m[i]=y=m[lower_bits(x)]+a+b;
+    r[i]=b=m[upper_bits(y)]+x;
   }
   _ctx->b=b;
   _ctx->a=a;
@@ -74,13 +78,13 @@ static void isaac_mix(uint32_t _x[8]){
   static const unsigned char SHIFT[8]={11,2,8,16,10,4,8,9};
   int i;
   for(i=0;i<8;i++){
-    _x[i]^=_x[i+1&7]<<SHIFT[i];
-    _x[i+3&7]+=_x[i];
-    _x[i+1&7]+=_x[i+2&7];
+    _x[i]^=_x[(i+1)&7]<<SHIFT[i];
+    _x[(i+3)&7]+=_x[i];
+    _x[(i+1)&7]+=_x[(i+2)&7];
     i++;
-    _x[i]^=_x[i+1&7]>>SHIFT[i];
-    _x[i+3&7]+=_x[i];
-    _x[i+1&7]+=_x[i+2&7];
+    _x[i]^=_x[(i+1)&7]>>SHIFT[i];
+    _x[(i+3)&7]+=_x[i];
+    _x[(i+1)&7]+=_x[(i+2)&7];
   }
 }
 
@@ -140,7 +144,7 @@ uint32_t isaac_next_uint(isaac_ctx *_ctx,uint32_t _n){
     v=r%_n;
     d=r-v;
   }
-  while((d+_n-1&ISAAC_MASK)<d);
+  while(((d+_n-1)&ISAAC_MASK)<d);
   return v;
 }
 
@@ -182,7 +186,7 @@ static float isaac_float_bits(isaac_ctx *_ctx,uint32_t _bits,int _base){
   ret+=ldexpf((float)_bits,_base-nbits_needed);
 #else
   if(nbits_needed>0){
-    _bits=_bits<<nbits_needed|isaac_next_uint32(_ctx)>>32-nbits_needed;
+    _bits=_bits<<nbits_needed|isaac_next_uint32(_ctx)>>(32-nbits_needed);
   }
 # if FLT_MANT_DIG<32
   else _bits>>=-nbits_needed;
@@ -229,7 +233,7 @@ static double isaac_double_bits(isaac_ctx *_ctx,uint32_t _bits,int _base){
     nbits_needed-=32;
     ret+=ldexp((double)isaac_next_uint32(_ctx),_base);
   }
-  _bits=isaac_next_uint32(_ctx)>>32-nbits_needed;
+  _bits=isaac_next_uint32(_ctx)>>(32-nbits_needed);
   ret+=ldexp((double)_bits,_base-nbits_needed);
 #else
   if(nbits_needed>0){

@@ -5,17 +5,21 @@
 #include <string.h>
 #include <ccan/ilog/ilog.h>
 #include "isaac64.h"
-#if defined(__GNUC_PREREQ)
-# if __GNUC_PREREQ(4,2)
-#  pragma GCC diagnostic ignored "-Wparentheses"
-# endif
-#endif
-
 
 
 #define ISAAC64_MASK ((uint64_t)0xFFFFFFFFFFFFFFFFULL)
 
+/* Extract ISAAC64_SZ_LOG bits (starting at bit 3). */
+static inline uint32_t lower_bits(uint64_t x)
+{
+	return (x & ((ISAAC64_SZ-1) << 3)) >>3;
+}
 
+/* Extract next ISAAC64_SZ_LOG bits (starting at bit ISAAC64_SZ_LOG+2). */
+static inline uint32_t upper_bits(uint32_t y)
+{
+	return (y >> (ISAAC64_SZ_LOG+3)) & (ISAAC64_SZ-1);
+}
 
 static void isaac64_update(isaac64_ctx *_ctx){
   uint64_t *m;
@@ -28,42 +32,42 @@ static void isaac64_update(isaac64_ctx *_ctx){
   m=_ctx->m;
   r=_ctx->r;
   a=_ctx->a;
-  b=_ctx->b+(++_ctx->c)&ISAAC64_MASK;
+  b=_ctx->b+(++_ctx->c);
   for(i=0;i<ISAAC64_SZ/2;i++){
     x=m[i];
-    a=~(a^a<<21)+m[i+ISAAC64_SZ/2]&ISAAC64_MASK;
-    m[i]=y=m[(x&ISAAC64_SZ-1<<3)>>3]+a+b&ISAAC64_MASK;
-    r[i]=b=m[y>>ISAAC64_SZ_LOG+3&ISAAC64_SZ-1]+x&ISAAC64_MASK;
+    a=~(a^a<<21)+m[i+ISAAC64_SZ/2];
+    m[i]=y=m[lower_bits(x)]+a+b;
+    r[i]=b=m[upper_bits(y)]+x;
     x=m[++i];
-    a=(a^a>>5)+m[i+ISAAC64_SZ/2]&ISAAC64_MASK;
-    m[i]=y=m[(x&ISAAC64_SZ-1<<3)>>3]+a+b&ISAAC64_MASK;
-    r[i]=b=m[y>>ISAAC64_SZ_LOG+3&ISAAC64_SZ-1]+x&ISAAC64_MASK;
+    a=(a^a>>5)+m[i+ISAAC64_SZ/2];
+    m[i]=y=m[lower_bits(x)]+a+b;
+    r[i]=b=m[upper_bits(y)]+x;
     x=m[++i];
-    a=(a^a<<12)+m[i+ISAAC64_SZ/2]&ISAAC64_MASK;
-    m[i]=y=m[(x&ISAAC64_SZ-1<<3)>>3]+a+b&ISAAC64_MASK;
-    r[i]=b=m[y>>ISAAC64_SZ_LOG+3&ISAAC64_SZ-1]+x&ISAAC64_MASK;
+    a=(a^a<<12)+m[i+ISAAC64_SZ/2];
+    m[i]=y=m[lower_bits(x)]+a+b;
+    r[i]=b=m[upper_bits(y)]+x;
     x=m[++i];
-    a=(a^a>>33)+m[i+ISAAC64_SZ/2]&ISAAC64_MASK;
-    m[i]=y=m[(x&ISAAC64_SZ-1<<3)>>3]+a+b&ISAAC64_MASK;
-    r[i]=b=m[y>>ISAAC64_SZ_LOG+3&ISAAC64_SZ-1]+x&ISAAC64_MASK;
+    a=(a^a>>33)+m[i+ISAAC64_SZ/2];
+    m[i]=y=m[lower_bits(x)]+a+b;
+    r[i]=b=m[upper_bits(y)]+x;
   }
   for(i=ISAAC64_SZ/2;i<ISAAC64_SZ;i++){
     x=m[i];
-    a=~(a^a<<21)+m[i-ISAAC64_SZ/2]&ISAAC64_MASK;
-    m[i]=y=m[(x&ISAAC64_SZ-1<<3)>>3]+a+b&ISAAC64_MASK;
-    r[i]=b=m[y>>ISAAC64_SZ_LOG+3&ISAAC64_SZ-1]+x&ISAAC64_MASK;
+    a=~(a^a<<21)+m[i-ISAAC64_SZ/2];
+    m[i]=y=m[lower_bits(x)]+a+b;
+    r[i]=b=m[upper_bits(y)]+x;
     x=m[++i];
-    a=(a^a>>5)+m[i-ISAAC64_SZ/2]&ISAAC64_MASK;
-    m[i]=y=m[(x&ISAAC64_SZ-1<<3)>>3]+a+b&ISAAC64_MASK;
-    r[i]=b=m[y>>ISAAC64_SZ_LOG+3&ISAAC64_SZ-1]+x&ISAAC64_MASK;
+    a=(a^a>>5)+m[i-ISAAC64_SZ/2];
+    m[i]=y=m[lower_bits(x)]+a+b;
+    r[i]=b=m[upper_bits(y)]+x;
     x=m[++i];
-    a=(a^a<<12)+m[i-ISAAC64_SZ/2]&ISAAC64_MASK;
-    m[i]=y=m[(x&ISAAC64_SZ-1<<3)>>3]+a+b&ISAAC64_MASK;
-    r[i]=b=m[y>>ISAAC64_SZ_LOG+3&ISAAC64_SZ-1]+x&ISAAC64_MASK;
+    a=(a^a<<12)+m[i-ISAAC64_SZ/2];
+    m[i]=y=m[lower_bits(x)]+a+b;
+    r[i]=b=m[upper_bits(y)]+x;
     x=m[++i];
-    a=(a^a>>33)+m[i-ISAAC64_SZ/2]&ISAAC64_MASK;
-    m[i]=y=m[(x&ISAAC64_SZ-1<<3)>>3]+a+b&ISAAC64_MASK;
-    r[i]=b=m[y>>ISAAC64_SZ_LOG+3&ISAAC64_SZ-1]+x&ISAAC64_MASK;
+    a=(a^a>>33)+m[i-ISAAC64_SZ/2];
+    m[i]=y=m[lower_bits(x)]+a+b;
+    r[i]=b=m[upper_bits(y)]+x;
   }
   _ctx->b=b;
   _ctx->a=a;
@@ -74,13 +78,13 @@ static void isaac64_mix(uint64_t _x[8]){
   static const unsigned char SHIFT[8]={9,9,23,15,14,20,17,14};
   int i;
   for(i=0;i<8;i++){
-    _x[i]-=_x[i+4&7];
-    _x[i+5&7]^=_x[i+7&7]>>SHIFT[i];
-    _x[i+7&7]+=_x[i];
+    _x[i]-=_x[(i+4)&7];
+    _x[(i+5)&7]^=_x[(i+7)&7]>>SHIFT[i];
+    _x[(i+7)&7]+=_x[i];
     i++;
-    _x[i]-=_x[i+4&7];
-    _x[i+5&7]^=_x[i+7&7]<<SHIFT[i];
-    _x[i+7&7]+=_x[i];
+    _x[i]-=_x[(i+4)&7];
+    _x[(i+5)&7]^=_x[(i+7)&7]<<SHIFT[i];
+    _x[(i+7)&7]+=_x[i];
   }
 }
 
@@ -142,7 +146,7 @@ uint64_t isaac64_next_uint(isaac64_ctx *_ctx,uint64_t _n){
     v=r%_n;
     d=r-v;
   }
-  while((d+_n-1&ISAAC64_MASK)<d);
+  while(((d+_n-1)&ISAAC64_MASK)<d);
   return v;
 }
 
@@ -174,11 +178,11 @@ static float isaac64_float_bits(isaac64_ctx *_ctx,uint64_t _bits,int _base){
     nbits_needed-=64;
     ret+=ldexpf((float)isaac64_next_uint64(_ctx),_base);
   }
-  _bits=isaac64_next_uint64(_ctx)>>64-nbits_needed;
+  _bits=isaac64_next_uint64(_ctx)>>(64-nbits_needed);
   ret+=ldexpf((float)_bits,_base-nbits_needed);
 #else
   if(nbits_needed>0){
-    _bits=_bits<<nbits_needed|isaac64_next_uint64(_ctx)>>64-nbits_needed;
+    _bits=_bits<<nbits_needed|isaac64_next_uint64(_ctx)>>(64-nbits_needed);
   }
 # if FLT_MANT_DIG<64
   else _bits>>=-nbits_needed;
@@ -225,11 +229,11 @@ static double isaac64_double_bits(isaac64_ctx *_ctx,uint64_t _bits,int _base){
     nbits_needed-=64;
     ret+=ldexp((double)isaac64_next_uint64(_ctx),_base);
   }
-  _bits=isaac64_next_uint64(_ctx)>>64-nbits_needed;
+  _bits=isaac64_next_uint64(_ctx)>>(64-nbits_needed);
   ret+=ldexp((double)_bits,_base-nbits_needed);
 #else
   if(nbits_needed>0){
-    _bits=_bits<<nbits_needed|isaac64_next_uint64(_ctx)>>64-nbits_needed;
+    _bits=_bits<<nbits_needed|isaac64_next_uint64(_ctx)>>(64-nbits_needed);
   }
 # if DBL_MANT_DIG<64
   else _bits>>=-nbits_needed;
