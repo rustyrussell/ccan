@@ -24,7 +24,7 @@
 #   elif LONG_MAX>=9223372036854775807LL
 #    define CLZ64_OFFS ((int)sizeof(unsigned long)*CHAR_BIT)
 #    define CLZ64(_x) (__builtin_clzl(_x))
-#   elif LLONG_MAX>=9223372036854775807LL
+#   else /* long long must be >= 64 bits according to ISO C */
 #    define CLZ64_OFFS ((int)sizeof(unsigned long long)*CHAR_BIT)
 #    define CLZ64(_x) (__builtin_clzll(_x))
 #   endif

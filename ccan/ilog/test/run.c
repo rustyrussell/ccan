@@ -1,11 +1,7 @@
-#include <stdio.h>
 #include "ilog/ilog.h"
+#include "ilog/ilog.c"
+#include <stdio.h>
 #include "tap/tap.h"
-#if defined(__GNUC_PREREQ)
-# if __GNUC_PREREQ(4,2)
-#  pragma GCC diagnostic ignored "-Wparentheses"
-# endif
-#endif
 
 /*Dead simple (but slow) versions to compare against.*/
 
@@ -33,7 +29,7 @@ int main(int _argc,const char *_argv[]){
   for(i=0;i<=32;i++){
     uint32_t v;
     /*Test each bit in turn (and 0).*/
-    v=i?(uint32_t)1U<<i-1:0;
+    v=i?(uint32_t)1U<<(i-1):0;
     for(j=0;j<NTRIALS;j++){
       int l;
       l=test_ilog32(v);
@@ -52,7 +48,7 @@ int main(int _argc,const char *_argv[]){
       else nmatches++;
       /*Also try a few more pseudo-random values with at most the same number
          of bits.*/
-      v=1103515245U*v+12345U&0xFFFFFFFFU>>(33-i>>1)>>(32-i>>1);
+      v=(1103515245U*v+12345U)&0xFFFFFFFFU>>((33-i)>>1)>>((32-i)>>1);
     }
   }
   ok1(nmatches==3*(32+1)*NTRIALS);
@@ -60,7 +56,7 @@ int main(int _argc,const char *_argv[]){
   for(i=0;i<=64;i++){
     uint64_t v;
     /*Test each bit in turn (and 0).*/
-    v=i?(uint64_t)1U<<i-1:0;
+    v=i?(uint64_t)1U<<(i-1):0;
     for(j=0;j<NTRIALS;j++){
       int l;
       l=test_ilog64(v);
@@ -81,8 +77,8 @@ int main(int _argc,const char *_argv[]){
       else nmatches++;
       /*Also try a few more pseudo-random values with at most the same number
          of bits.*/
-      v=(uint64_t)(2862933555777941757ULL*v+3037000493ULL
-       &0xFFFFFFFFFFFFFFFFULL>>(65-i>>1)>>(64-i>>1));
+      v=(uint64_t)((2862933555777941757ULL*v+3037000493ULL)
+	&0xFFFFFFFFFFFFFFFFULL>>((65-i)>>1)>>((64-i)>>1));
     }
   }
   ok1(nmatches==3*(64+1)*NTRIALS);
