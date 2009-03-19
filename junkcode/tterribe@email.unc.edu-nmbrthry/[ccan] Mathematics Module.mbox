@@ -1,0 +1,170 @@
+From tterribe@email.unc.edu Wed Mar 18 15:38:26 2009
+Return-Path: <ccan-bounces+rusty=rustcorp.com.au@ozlabs.org>
+X-Spam-Checker-Version: SpamAssassin 3.2.5 (2008-06-10) on ozlabs.org
+X-Spam-Level: 
+X-Spam-Status: No, score=-2.6 required=5.0 tests=BAYES_00 autolearn=ham
+	version=3.2.5
+X-Original-To: rusty@rustcorp.com.au
+Delivered-To: rusty@ozlabs.org
+Received: from ozlabs.org (localhost [127.0.0.1])
+	by ozlabs.org (Postfix) with ESMTP id 5399ADDE0E
+	for <rusty@rustcorp.com.au>; Thu, 19 Mar 2009 09:38:11 +1100 (EST)
+X-Original-To: ccan@ozlabs.org
+Delivered-To: ccan@ozlabs.org
+X-Greylist: delayed 2513 seconds by postgrey-1.31 at ozlabs;
+	Wed, 18 Mar 2009 16:50:38 EST
+Received: from mxpm.isis.unc.edu (mxp3.isis.unc.edu [152.2.2.161])
+	by ozlabs.org (Postfix) with ESMTP id 72C75DDEFA
+	for <ccan@ozlabs.org>; Wed, 18 Mar 2009 16:50:37 +1100 (EST)
+Received: from smtp.unc.edu (smtpsrv3.isis.unc.edu [152.2.2.251])
+	by mxp3.isis.unc.edu (8.14.3/8.14.3) with ESMTP id n2I58gVL008719
+	for <ccan@ozlabs.org>; Wed, 18 Mar 2009 01:08:42 -0400
+Received: from [192.168.5.124] (pool-173-73-173-234.washdc.fios.verizon.net
+	[173.73.173.234]) (authenticated bits=0)
+	by smtp.unc.edu (8.14.3/8.14.3) with ESMTP id n2I58fex014904
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
+	for <ccan@ozlabs.org>; Wed, 18 Mar 2009 01:08:42 -0400 (EDT)
+Message-ID: <49C081CA.5040501@email.unc.edu>
+Date: Wed, 18 Mar 2009 01:08:26 -0400
+From: "Timothy B. Terriberry" <tterribe@email.unc.edu>
+User-Agent: Mozilla/5.0 (X11; U; Linux i686; en-US;
+	rv:1.8.1.11) Gecko/20071216 SeaMonkey/1.1.7
+MIME-Version: 1.0
+To: ccan@ozlabs.org
+References: <c3cfaf5e0901190756x569da515s823fe4c7bd99c22a@mail.gmail.com>
+	<200902040051.54761.rusty@rustcorp.com.au>
+	<c3cfaf5e0902051926m6a2793e5pfdef62040becb4e7@mail.gmail.com>
+	<200903181452.14263.rusty@rustcorp.com.au>
+In-Reply-To: <200903181452.14263.rusty@rustcorp.com.au>
+Content-Type: multipart/mixed;
+  boundary="------------050107030903080507030408"
+X-Proofpoint-Virus-Version: vendor=fsecure engine=1.12.7400:2.4.4, 1.2.40,
+	4.0.166 definitions=2009-03-18_01:2009-03-13, 2009-03-18,
+	2009-03-17 signatures=0
+X-Proofpoint-Spam-Details: rule=uncdefault_notspam policy=uncdefault score=0
+	spamscore=0 ipscore=0 phishscore=0 bulkscore=0 adultscore=0
+	classifier=spam adjust=0 reason=mlx engine=5.0.0-0811170000
+	definitions=main-0903170259
+X-Mailman-Approved-At: Thu, 19 Mar 2009 09:38:09 +1100
+Subject: Re: [ccan] Mathematics Module
+X-BeenThere: ccan@ozlabs.org
+X-Mailman-Version: 2.1.11
+Precedence: list
+List-Id: "If perl can, maybe ccan?" <ccan.ozlabs.org>
+List-Unsubscribe: <https://ozlabs.org/mailman/options/ccan>,
+	<mailto:ccan-request@ozlabs.org?subject=unsubscribe>
+List-Archive: <http://ozlabs.org/pipermail/ccan>
+List-Post: <mailto:ccan@ozlabs.org>
+List-Help: <mailto:ccan-request@ozlabs.org?subject=help>
+List-Subscribe: <https://ozlabs.org/mailman/listinfo/ccan>,
+	<mailto:ccan-request@ozlabs.org?subject=subscribe>
+Sender: ccan-bounces+rusty=rustcorp.com.au@ozlabs.org
+Errors-To: ccan-bounces+rusty=rustcorp.com.au@ozlabs.org
+Status: R
+X-Status: NT
+X-KMail-EncryptionState:  
+X-KMail-SignatureState:  
+X-KMail-MDN-Sent:  
+
+This is a multi-part message in MIME format.
+--------------050107030903080507030408
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+
+Some of this stuff seems a little trivial to include, but if we're going
+to do so...
+
+The result of nCr is guaranteed to be an integer after each iteration,
+and so there's a) no reason to keep a separate numerator and denominator
+and b) no reason to do a minimum of nine (9!) divisions every iteration.
+Only a single gcd() is needed, and even that can often be skipped,
+requiring only 2-3 divisions per iteration. This is illustrated in
+choose.c (attached). You can easily add the check for the smaller r (_m
+in this implementation), upgrade the types to long, etc., as desired. If
+one really cared about speed, the divisions could be entirely replaced
+by multiplications and a small lookup table, since m and n are known to
+have a very limited range (or the result will overflow).
+
+Also included are a gcd() implementation without tail recursion and
+egcd(), the "extended" gcd, as well as a nice illustration of the use of
+egcd, a Chinese Remainder Theorem solver for systems of linear
+congruences. I don't have time to format these into a nice module with
+test cases right now, but feel free to take what you want and throw the
+rest in "junk". The code is (C) 1998-2001, except crt.c, which is (C)
+1999-2001, 2007. I'm releasing it here under the LGPLv2 license.
+
+--------------050107030903080507030408
+Content-Type: application/x-bzip;
+ name="nmbrthry.tar.bz2"
+Content-Transfer-Encoding: base64
+Content-Disposition: inline;
+ filename="nmbrthry.tar.bz2"
+
+QlpoOTFBWSZTWdZHi4IAD0t/nv/QAEB7//+/u2e8i//v/+4AQAAIAAGEgAAIYA798qVUUAAX
+YNLYVbSAAAKUAAKAAAAcGQaNAGTTENNBkGIYQNAaMTEaAAAaCjTEBIHqAADT1D1AAGgAAAAA
+HBkGjQBk0xDTQZBiGEDQGjExGgAAEmpFNRlNT/RGVN5U2mptT2qabUNqBiAyAADI8o09Eaeo
+cGQaNAGTTENNBkGIYQNAaMTEaAAAKkgggjQEZAQ0Mk0jU8U9Gmo0eU9TxpQZkaMjU2p9kDMf
+V9wivZ4gOTqn7wGbkUSRyyEA29t22fDfGfQl4fTBxbWtte1ra3VtnHjpqhvvQpVKhSqEVIKR
+LJUUqJKoTo/kUfaDk4lVemwZOWUGotQXUVLMhTZuP2LZrGWV8VUvVp+8vi9qmK+7B9lHCkb8
+yh+x2DE6DhzYZfIlH8CYGAmOI79GiqE3TyGgJLphSoomCpKsFYI2q9VcqgvgHEGoRkZPGHjJ
+EPGFISTMkk5VIkWMIRGIiJBBA4Azk8QZLHw6jf1iIqr1V3v3GzlSqccvyMsyOsZOTBs8jevS
+x14Jnzbf7BdiquJnDPRuUFDECxCenKDoOj2LHN2GS1m5RQvG5gwvTJRZSjGWtjotTKdCmkra
+1zR2WMOLDZO/l1fN/gS6tPBoaZ/hjO+8WfuNsr1W1l+bHI8OsHGWE1GrTp1YJYREyyZy9c+9
+06L2EwM23ZlsZHez1GrkMsnNtTYp+I1dzbgd9+DetnZ19jswy4v49VuWeh1as99KWZVItzcv
+4OHU2NU2UwpS/jfhl3FcWnucnCbFVw8TZ6Xm3aNODbUpG6zBTuMObVevJ4WdrfFbrMeJyWYM
+u9exZ2vzPQaaDLzpeqbU6b9JqYdDXa15etqjbqnhs9Lg8vzYbvFpvbV4tF/fm+DusbKaWmzR
+Z1s+FJlSYdZo61zc1UaX+7XL0rqYd7LUazNZ5utbmw5JRolpuWZxGNd9Noycmprj5ltmkd6y
+yUp0KFa7vHl7GiaKb8d27rV62nG9lU4G63TDm0qlk1wzGb4XS5Te6rLP9NTLlMG11mGmsmJV
+3FlePq4plnV6VOQ4ztVdxVS3FKU6+7orHFqp+lqxe1dP420bLOA4Ow0ceGzJS97t7WS/tVY6
+kpPiP5yVVZ7nZ1b4cztTr9nPkUPzsfHs+dfJrZ+e0zcx9vk6lzLNnE2qSXcH5l09cMAxOYN8
+stkO0dgpOUT+rWB14IblgbmNKNyIWNRDAccl0GhVDEVrnXMgqKsDDMgCpeGEQLTuHyqrF+lu
+5p/Jn2p0Tsy4P6newwulHD4Kw7vExPXdop7DtX2eHx1bM8LrRTgUXlusfJ3vm7XRk6MuDfKe
+Dzb697/Wn3fNwtanCca1Rx4Wy59HYcO/14e3+zUu7X9vG7V713oYasOCzlkr0rNVLtWz23q9
+6epbu4bM0qtbcWvRdsqcGLVTBq3bJJbw7PW5QLVahD52yLYc3q5QrQoqqlV12tdh3LOOmo/V
+/0hvIlzY7JPmutRVxV37HvLzFKxUrK6ope0sNEidcP3dB0DT5bkDJA4z6YYpeBeBfOi1JmMU
+xcQqqqGERAk5F7ANET46LJVgN7ZYWjeoHKZEtgiVB9NJzzDOnO0mjXWHNwcKZxfN22s4VFr7
+1rrr9bbZW3XZuzBnfbdeGkLbPbnbVhui+l7VritrYqaXb5q0mZo1cxfRto14cbcMWqG25qq3
+k73e+T7HoYMj26UWez6Gcfebb8frKx8/XqW46WybNaipIn1UGcEMDoozesCoanJMcM0gWdxy
+MRrJYXMhdZtVcufBtl2dNWeVVzWtpni9fsiij+vi22w/a8el2WHh5AGLdgB2I2TRmskWLA4Z
+rqYCndoy0AGfVM9pzCk2aR4ODHeyyaTMh4P5nu2lrwKGdIFoUdpLznlMS7C//pSyXgsfVlcv
+aySqk20aLsLe/YiIgi8M5gcWMeTQbeutHWJOHeKDmAQRDu/a1bIZc9XMlbcKuHhAbNyJChhk
+48K3zdvvriqqqrsdpRSl5NNtrXXve5VH59b3eP04uupUpScIeZL0onepLa0hVLGnpw4leWf/
+jS2M2y0s1kqqoqt6Fk9HsWjef7fX2z/y9SdHyWfPN3E+hY2SjAw/6rv0UkmVlvfKTJtCjFw/
+UVJio+M2H6tGEoZ4xyVKikor5R+uJwTmazsPA4Kh30i1IfP6vv3YorytYm8Re0loVP0HttPp
+lSOpJHZzV61lnm+HfZShdqdT7ut56CmrVNZH5CgwUnxKm7fdwbNaj9dWqScrLnptHtrJT2Fm
+aoqVVFi1L2VXp8sQwVJz5qUVULiriyhd5ZeXz2ybz9nX3p4JiOB+EsWKjhC2FzpcWdA6p/77
+fxdXuPfT4OKXovFpwMT0MNF7ZYq1o/Sz9OEY30XlypGpUl4stO1imMJxZLKZqqNFrDgzoviZ
+SlKsJmh8IyqGLRs2Zi74MN12cLHzF2V1MReqil5O3Y63EfTxaFsYcrGLy9E4tZ3DRJiJvPV8
+fY973uKHBNfP3VVO1MqrsVNKSn/edS6YPJNLfr8WZP2mTl7TymVnkpW89bRJ/zoc5qeT1ihS
+72XNrVKpeHJXrhkuYkruxlV9pOKlnNd6ptG3XJUKVI7xSUntOvRUTjmG57FAh5QSQoQWlQRJ
+RSUEQnGB+YaNbpKTVRLzYxE3MJb3vcVLrlCr1Ve5T3VW5suh6jk2YsdFmk+07nhFUZrBKECx
+Ko3aIMSeZJEQiCRGFJSiooqCqSlT8uLSXlHmqS0WSYlxdKYF7JkqGqup9T22WUs+3qWilxbu
+qfj+3K+ivvbFi1F9ftuvUrl8eDVnSn5R87sr5ye4WOpTAu+g+o5yc6k+VVXF85xeSeL1KUUw
+/k1jxqJz+uRnmmZg7BQ4zP3LWu28jxSyyUpZaftdnbYuvFFVVJHXJI417zeP45k5KqKoqlSH
+dJpHM9RiGHepu8dEnFPom81qST3LaJ5OD+1SnxegcFKKpVKYPqT5cPwT4tJpqmF3UnFkeGBq
+UpSZXcJLl9EsLDgh2MjdVivpKRSjwcZ10edfZ6vwZYZXtYqvx/VrWJmnBGqycJ5JSx1o65HV
+DuJeYk/fWOW9/fTrVLVnMr3VeZkVSg3cFKkOKXsepcqyrFeD8ZdaqrTJdR0NLMFrMXkWXKWm
+JaKlB50WYGy0XzE1nRZKWbSGCpF5eKMSli65iUNmyrCx+VN5QtKEMBwN0KKN0PR6P+5+rz9W
+93ddauvRPkSQxgaUrslQ6dvbCWVJKVFSopaWQtJoixdPi9Z8UPO8o+r4sLVMv65JPrHBD2Ki
+GELxH46UOUicJFIuZlKWRaH1w+Q+1TpPmdsPsScCdb/iPVJzcUpRntdWP+XZ3MUYI6lpD4LL
++qyGSp6YlTpLFLJVRFKMvqaOnqNDWa1FUopSo1iXnqt7P00s+/e1OFkm0jaTxTdfjwkkyXg5
+pbzk8YelmT0QrpCvQ4N2G9ouscJeWpPYqNdWVl2imlMMmcsVmxfweOl8LFkUosKa7sfzat1l
+lPu09H3u/wpO/1cxUa81Op0VTRYstKU1OmYaNdYz0lTWrFklkwURu310KLpW0M/iRuaUXllI
+3ZbMWpL0ReSpZKTxcdV2FehgWaV4KXSpmsVU0sWU405WVaLSzTp0vzorposnBrD11aOuRwQ2
+YRySn4Yp4nVqNpNHCRD8KklKhd/nHfeTKinVC0mpspUqU71lpTKyWqrWFq8Ki6koVFUqUmMw
+nL3dFlRTJ0kkzGqd3uUnwWTxs4fr1xj0ecHKf8OiS52vAtPaPbQ7ke6c3wYlk81PyK5+uST3
+dQxP5w/pDrf0+iQ0DTzffT0Kemzzz540M+frmgo9tSSlQe06nkWvzaLSXzFUvwbLHfQnrko8
+Io/YU5q/o6/979nHjdrOZbZWy8Onro7O0qFuos+UqWfQs7Iau1FvsHCk93tOx950SxD/+LuS
+KcKEhrI8XBA=
+--------------050107030903080507030408
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+_______________________________________________
+ccan mailing list
+ccan@ozlabs.org
+https://ozlabs.org/mailman/listinfo/ccan
+
+--------------050107030903080507030408--
