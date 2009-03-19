@@ -19,7 +19,7 @@ $(WEB_SUBDIRS):
 	mkdir -p $@
 
 $(WEBDIR)/junkcode/%.tar.bz2: junkcode/% $(WEBDIR)/junkcode
-	tar cvfj $@ `bzr ls --versioned --kind=file $<`
+	bzr ls --versioned --kind=file --null $< | xargs -0 -x tar cvfj $@ 
 
 $(WEBDIR)/junkcode/%.html: $(WEBDIR)/junkcode/%.tar.bz2
 	cd $(WEBDIR) && tar xfj junkcode/$*.tar.bz2
