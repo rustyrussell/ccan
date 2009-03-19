@@ -13,7 +13,7 @@ upload: check webpages
 	bzr push
 	send-web # Rusty's upload script.
 
-webpages: $(WEB_SUBDIRS) $(WEBDIR)/junkcode $(WEBDIR)/list.html $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.jpg $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan $(JUNKPAGES) $(JUNKBALLS)
+webpages: $(WEB_SUBDIRS) $(WEBDIR)/junkcode $(WEBDIR)/list.html $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.jpg $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan $(ALL_PAGES) $(JUNKPAGES) $(JUNKBALLS)
 
 $(WEB_SUBDIRS):
 	mkdir -p $@
@@ -53,7 +53,7 @@ $(WEBDIR)/Makefile-ccan: Makefile-ccan
 $(WEBDIR)/ccan.jpg: web/ccan.jpg
 	cp $< $@
 
-$(WEBDIR)/info/%.html: ccan/% ccan/%/test $(WEBDIR)/tarballs/%.tar.bz2 $(WEBDIR)/tarballs/with-deps/%.tar.bz2
+$(WEBDIR)/info/%.html: $(WEBDIR)/tarballs/%.tar.bz2 $(WEBDIR)/tarballs/with-deps/%.tar.bz2
 	@URLPREFIX=../ php5 web/staticmoduleinfo.php ccan/$* > $@
 
 $(WEBDIR)/tarballs/%.tar.bz2: ccan/%/test
