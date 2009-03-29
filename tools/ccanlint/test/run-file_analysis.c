@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
 	struct line_info *line_info;
 	struct ccan_file *f = talloc(NULL, struct ccan_file);
 
-	plan_tests(NUM_LINES * 2 + 2 + 66);
+	plan_tests(NUM_LINES * 2 + 2 + 86);
 
 	f->num_lines = NUM_LINES;
 	f->line_info = NULL;
@@ -176,26 +176,55 @@ int main(int argc, char *argv[])
 
 	/* Now check using interface. */
 	for (i = 0; i < f->num_lines; i++) {
+		unsigned int val = 1;
 		if (streq(testfile[i].line, "BAR")) {
-			ok1(get_ccan_line_pp(line_info[i].cond, "BAR", 1)
-			    == COMPILED);
-			ok1(get_ccan_line_pp(line_info[i].cond, "FOO", 1)
-			    == NOT_COMPILED);
+			/* If we don't know if the TEST_H was undefined,
+			 * best we get is a MAYBE. */
+			ok1(get_ccan_line_pp(line_info[i].cond, "BAR", &val,
+					     NULL) == MAYBE_COMPILED);
+			ok1(get_ccan_line_pp(line_info[i].cond, "BAR", NULL,
+					     NULL) == NOT_COMPILED);
+			ok1(get_ccan_line_pp(line_info[i].cond, "BAR", &val,
+					     "TEST_H", NULL,
+					     NULL) == COMPILED);
+			ok1(get_ccan_line_pp(line_info[i].cond, "BAR", NULL,
+					     "TEST_H", NULL,
+					     NULL) == NOT_COMPILED);
 		} else if (streq(testfile[i].line, "!BAR")) {
-			ok1(get_ccan_line_pp(line_info[i].cond, "BAR", 1)
-			    == NOT_COMPILED);
-			ok1(get_ccan_line_pp(line_info[i].cond, "FOO", 1)
-			    == COMPILED);
+			ok1(get_ccan_line_pp(line_info[i].cond, "BAR", &val,
+					     NULL) == NOT_COMPILED);
+			ok1(get_ccan_line_pp(line_info[i].cond, "BAR", NULL,
+					     NULL) == MAYBE_COMPILED);
+			ok1(get_ccan_line_pp(line_info[i].cond, "BAR", &val,
+					     "TEST_H", NULL,
+					     NULL) == NOT_COMPILED);
+			ok1(get_ccan_line_pp(line_info[i].cond, "BAR", NULL,
+					     "TEST_H", NULL,
+					     NULL) == COMPILED);
 		} else if (streq(testfile[i].line, "HAVE_BAR")) {
-			ok1(get_ccan_line_pp(line_info[i].cond, "HAVE_BAR", 1)
-			    == COMPILED);
-			ok1(get_ccan_line_pp(line_info[i].cond, "HAVE_BAR", 0)
-			    == NOT_COMPILED);
+			ok1(get_ccan_line_pp(line_info[i].cond, "HAVE_BAR",
+					     &val, NULL) == MAYBE_COMPILED);
+			ok1(get_ccan_line_pp(line_info[i].cond, "HAVE_BAR",
+					     &val, "TEST_H", NULL,
+					     NULL) == COMPILED);
+			val = 0;
+			ok1(get_ccan_line_pp(line_info[i].cond, "HAVE_BAR",
+					     &val, NULL) == NOT_COMPILED);
+			ok1(get_ccan_line_pp(line_info[i].cond, "HAVE_BAR",
+					     &val, "TEST_H", NULL,
+					     NULL) == NOT_COMPILED);
 		} else if (streq(testfile[i].line, "HAVE_FOO")) {
-			ok1(get_ccan_line_pp(line_info[i].cond, "HAVE_FOO", 1)
-			    == COMPILED);
-			ok1(get_ccan_line_pp(line_info[i].cond, "HAVE_FOO", 0)
-			    == NOT_COMPILED);
+			ok1(get_ccan_line_pp(line_info[i].cond, "HAVE_FOO",
+					     &val, NULL) == MAYBE_COMPILED);
+			ok1(get_ccan_line_pp(line_info[i].cond, "HAVE_FOO",
+					     &val, "TEST_H", NULL,
+					     NULL) == COMPILED);
+			val = 0;
+			ok1(get_ccan_line_pp(line_info[i].cond, "HAVE_FOO",
+					     &val, NULL) == NOT_COMPILED);
+			ok1(get_ccan_line_pp(line_info[i].cond, "HAVE_FOO",
+					     &val, "TEST_H", NULL,
+					     NULL) == NOT_COMPILED);
 		}
 	}
 

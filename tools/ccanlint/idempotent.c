@@ -22,81 +22,92 @@ static const char explain[]
   "...\n"
   "#endif /* MY_HEADER_H */\n";
 
-static char *get_ifndef_sym(char *line)
-{
-	line += strspn(line, SPACE_CHARS);
-	if (line[0] == '#')
-	{
-		line++;
-		line += strspn(line, SPACE_CHARS);
-		if (strstarts(line, "ifndef") && isspace(line[6]))
-			return line+6+strspn(line+6, SPACE_CHARS);
-		else if (strstarts(line, "if"))
-		{
-			line += 2;
-			line += strspn(line, SPACE_CHARS);
-			if (line[0] == '!')
-			{
-				line++;
-				line += strspn(line, SPACE_CHARS);
-				if (strstarts(line, "defined"))
-				{
-					line += 7;
-					line += strspn(line, SPACE_CHARS);
-					if (line[0] == '(')
-					{
-						line++;
-						line += strspn(line,
-							SPACE_CHARS);
-					}
-					return line;
-				}
-			}
-		}
-	}
-	return NULL;
-}
-
-static int is_define(char *line, char *id, size_t id_len)
-{
-	line += strspn(line, SPACE_CHARS);
-	if (line[0] == '#')
-	{
-		line++;
-		line += strspn(line, SPACE_CHARS);
-		if (strstarts(line, "define") && isspace(line[6]))
-		{
-			line += 6;
-			line += strspn(line, SPACE_CHARS);
-			if (strspn(line, IDENT_CHARS) == id_len &&
-			    memcmp(id, line, id_len) == 0)
-				return 1;
-		}
-	}
-	return 0;
-}
-
 static char *report_idem(struct ccan_file *f, char *sofar)
 {
-	char **lines;
-	char *id;
-	size_t id_len;
+	struct line_info *line_info;
+	unsigned int i, first_preproc_line;
+	const char *line, *sym;
 
-	lines = get_ccan_file_lines(f);
+	line_info = get_ccan_line_info(f);
 	if (f->num_lines < 3)
 		/* FIXME: We assume small headers probably uninteresting. */
-		return NULL;
+		return sofar;
 
-	id = get_ifndef_sym(lines[0]);
-	if (!id)
-		return talloc_asprintf_append(sofar,
-			"%s:1:expect first line to be #ifndef.\n", f->name);
-	id_len = strspn(id, IDENT_CHARS);
+	for (i = 0; i < f->num_lines; i++) {
+		if (line_info[i].type == DOC_LINE
+		    || line_info[i].type == COMMENT_LINE)
+			continue;
+		if (line_info[i].type == CODE_LINE)
+			return talloc_asprintf_append(sofar,
+			      "%s:%u:expect first non-comment line to be #ifndef.\n", f->name, i+1);
+		else if (line_info[i].type == PREPROC_LINE)
+			break;
+	}
 
-	if (!is_define(lines[1], id, id_len))
+	/* No code at all?  Don't complain. */
+	if (i == f->num_lines)
+		return sofar;
+
+	first_preproc_line = i;
+	for (i = first_preproc_line+1; i < f->num_lines; i++) {
+		if (line_info[i].type == DOC_LINE
+		    || line_info[i].type == COMMENT_LINE)
+			continue;
+		if (line_info[i].type == CODE_LINE)
+			return talloc_asprintf_append(sofar,
+			      "%s:%u:expect second line to be #define.\n", f->name, i+1);
+		else if (line_info[i].type == PREPROC_LINE)
+			break;
+	}
+
+	/* No code at all?  Weird. */
+	if (i == f->num_lines)
+		return sofar;
+
+	/* We expect a condition on this line. */
+	if (!line_info[i].cond) {
 		return talloc_asprintf_append(sofar,
-			"%s:2:expect second line to be '#define %.*s'.\n",
-			f->name, (int)id_len, id);
+					      "%s:%u:expected #ifndef.\n",
+					      f->name, first_preproc_line+1);
+	}
+
+	line = f->lines[i];
+
+	/* We expect the condition to be ! IFDEF <symbol>. */
+	if (line_info[i].cond->type != PP_COND_IFDEF
+	    || !line_info[i].cond->inverse) {
+		return talloc_asprintf_append(sofar,
+					      "%s:%u:expected #ifndef.\n",
+					      f->name, first_preproc_line+1);
+	}
+
+	/* And this to be #define <symbol> */
+	if (!get_token(&line, "#"))
+		abort();
+	if (!get_token(&line, "define")) {
+		return talloc_asprintf_append(sofar,
+			      "%s:%u:expected '#define %s'.\n",
+			      f->name, i+1, line_info[i].cond->symbol);
+	}
+	sym = get_symbol_token(f, &line);
+	if (!sym || !streq(sym, line_info[i].cond->symbol)) {
+		return talloc_asprintf_append(sofar,
+			      "%s:%u:expected '#define %s'.\n",
+			      f->name, i+1, line_info[i].cond->symbol);
+	}
+
+	/* Rest of code should all be covered by that conditional. */
+	for (i++; i < f->num_lines; i++) {
+		unsigned int val = 0;
+		if (line_info[i].type == DOC_LINE
+		    || line_info[i].type == COMMENT_LINE)
+			continue;
+		if (get_ccan_line_pp(line_info[i].cond, sym, &val)
+		    != NOT_COMPILED)
+			return talloc_asprintf_append(sofar,
+			      "%s:%u:code outside idempotent region.\n",
+			      f->name, i+1);
+	}
 
 	return sofar;
 }

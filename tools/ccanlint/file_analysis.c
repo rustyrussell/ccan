@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <dirent.h>
 #include <ctype.h>
+#include <stdarg.h>
 
 char **get_ccan_file_lines(struct ccan_file *f)
 {
@@ -57,6 +58,7 @@ static void add_files(struct manifest *m, const char *dir)
 
 		f = talloc(m, struct ccan_file);
 		f->lines = NULL;
+		f->line_info = NULL;
 		f->doc_sections = NULL;
 		f->name = talloc_asprintf(f, "%s%s", dir, ent->d_name);
 		if (lstat(f->name, &st) != 0)
@@ -242,7 +244,7 @@ static bool continues(const char *line)
 }
 
 /* Get token if it's equal to token. */
-static bool get_token(const char **line, const char *token)
+bool get_token(const char **line, const char *token)
 {
 	unsigned int toklen;
 
@@ -261,7 +263,7 @@ static bool get_token(const char **line, const char *token)
 	return false;
 }
 
-static char *get_symbol_token(void *ctx, const char **line)
+char *get_symbol_token(void *ctx, const char **line)
 {
 	unsigned int toklen;
 	char *ret;
@@ -421,47 +423,102 @@ struct line_info *get_ccan_line_info(struct ccan_file *f)
 	return f->line_info;
 }
 
-enum line_compiled get_ccan_line_pp(struct pp_conditions *cond,
-				    const char *symbol,
-				    unsigned int value)
+struct symbol {
+	struct list_node list;
+	const char *name;
+	const unsigned int *value;
+};
+
+static struct symbol *find_symbol(struct list_head *syms, const char *sym)
 {
-	enum line_compiled ret;
+	struct symbol *i;
+
+	list_for_each(syms, i, list)
+		if (streq(sym, i->name))
+			return i;
+	return NULL;
+}
+
+static enum line_compiled get_pp(struct pp_conditions *cond,
+				 struct list_head *syms)
+{
+	struct symbol *sym;
+	unsigned int val;
+	enum line_compiled parent, ret;
 
 	/* No conditions?  Easy. */
 	if (!cond)
 		return COMPILED;
 
 	/* Check we get here at all. */
-	ret = get_ccan_line_pp(cond->parent, symbol, value);
-	if (ret != COMPILED)
-		return ret;
+	parent = get_pp(cond->parent, syms);
+	if (parent == NOT_COMPILED)
+		return NOT_COMPILED;
+
+	if (cond->type == PP_COND_UNKNOWN)
+		return MAYBE_COMPILED;
+
+	sym = find_symbol(syms, cond->symbol);
+	if (!sym)
+		return MAYBE_COMPILED;
 
 	switch (cond->type) {
 	case PP_COND_IF:
-		if (streq(cond->symbol, symbol)) {
-			if (!value == cond->inverse)
-				return COMPILED;
-			else
-				return NOT_COMPILED;
-		}
-		/* Unknown symbol, will be 0. */
-		if (cond->inverse)
-			return COMPILED;
-		return NOT_COMPILED;
+		/* Undefined is 0. */
+		val = sym->value ? *sym->value : 0;
+		if (!val == cond->inverse)
+			ret = COMPILED;
+		else
+			ret = NOT_COMPILED;
+		break;
 
 	case PP_COND_IFDEF:
-		if (streq(cond->symbol, symbol)) {
-			if (cond->inverse)
-				return NOT_COMPILED;
-			else
-				return COMPILED;
-		}
-		/* Unknown symbol, assume undefined. */
-		if (cond->inverse)
-			return COMPILED;
-		return NOT_COMPILED;
-		
-	default: /* Unknown. */
-		return MAYBE_COMPILED;
+		if (cond->inverse == !sym->value)
+			ret = COMPILED;
+		else
+			ret = NOT_COMPILED;
+		break;
+
+	default:
+		abort();
 	}
+
+	/* If parent didn't know, NO == NO, but YES == MAYBE. */
+	if (parent == MAYBE_COMPILED && ret == COMPILED)
+		ret = MAYBE_COMPILED;
+	return ret;
 }
+
+static void add_symbol(struct list_head *head,
+		       const char *symbol, const unsigned int *value)
+{
+	struct symbol *sym = talloc(head, struct symbol);
+	sym->name = symbol;
+	sym->value = value;
+	list_add(head, &sym->list);
+}
+	
+enum line_compiled get_ccan_line_pp(struct pp_conditions *cond,
+				    const char *symbol,
+				    const unsigned int *value,
+				    ...)
+{
+	enum line_compiled ret;
+	struct list_head *head;
+	va_list ap;
+
+	head = talloc(NULL, struct list_head);
+	list_head_init(head);
+
+	va_start(ap, value);
+	add_symbol(head, symbol, value);
+
+	while ((symbol = va_arg(ap, const char *)) != NULL) {
+		value = va_arg(ap, const unsigned int *);
+		add_symbol(head, symbol, value);
+	}
+	ret = get_pp(cond, head);
+	talloc_free(head);
+	return ret;
+}
+

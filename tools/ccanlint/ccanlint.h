@@ -108,11 +108,16 @@ enum line_compiled {
 	MAYBE_COMPILED,
 };
 
-/* Simple evaluator: if this pre-processor symbol is defined to this
- * value, is this line compiled? (Other symbols assumed undefined) */
+/* Simple evaluator.  If symbols are set this way, is this condition true?
+ * NULL values mean undefined, NULL symbol terminates. */
 enum line_compiled get_ccan_line_pp(struct pp_conditions *cond,
 				    const char *symbol,
-				    unsigned int value);
+				    const unsigned int *value, ...);
+
+/* Get token if it's equal to token. */
+bool get_token(const char **line, const char *token);
+/* Talloc copy of symbol token, or NULL.  Increment line. */
+char *get_symbol_token(void *ctx, const char **line);
 
 /* Similarly for ->doc_sections */
 struct list_head *get_ccan_file_docs(struct ccan_file *f);
