@@ -80,7 +80,7 @@ static void handle_no_tests(struct manifest *m, void *check_result)
 	if (!ask("Should I create a template test/run.c file for you?"))
 		return;
 
-	if (mkdir("test", 0600) != 0) {
+	if (mkdir("test", 0700) != 0) {
 		if (errno != EEXIST)
 			err(1, "Creating test/ directory");
 	}
