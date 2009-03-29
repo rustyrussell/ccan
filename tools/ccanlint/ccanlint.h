@@ -49,13 +49,49 @@ struct ccanlint {
 /* Ask the user a yes/no question: the answer is NO if there's an error. */
 bool ask(const char *question);
 
+enum line_info_type {
+	PREPROC_LINE, /* Line starts with # */
+	CODE_LINE, /* Code (ie. not pure comment). */
+	DOC_LINE, /* Line with kernel-doc-style comment. */
+	COMMENT_LINE, /* (pure) comment line */
+};
+
+/* So far, only do simple #ifdef/#ifndef/#if defined/#if !defined tests,
+ * and #if <SYMBOL>/#if !<SYMBOL> */
+struct pp_conditions {
+	/* We're inside another ifdef? */
+	struct pp_conditions *parent;
+
+	enum {
+		PP_COND_IF,
+		PP_COND_IFDEF,
+		PP_COND_UNKNOWN,
+	} type;
+
+	bool inverse;
+	const char *symbol;
+};
+
+/* Preprocessor information about each line. */
+struct line_info {
+	enum line_info_type type;
+
+	/* Is this actually a continuation of line above? (which ends in \) */
+	bool continued;
+
+	/* Conditions for this line to be compiled. */
+	struct pp_conditions *cond;
+};
+
 struct ccan_file {
 	struct list_node list;
 
 	char *name;
 
+	/* Use get_ccan_file_lines / get_ccan_line_info to fill these. */
 	unsigned int num_lines;
 	char **lines;
+	struct line_info *line_info;
 
 	struct list_head *doc_sections;
 };
@@ -63,8 +99,24 @@ struct ccan_file {
 /* Use this rather than accessing f->lines directly: loads on demand. */
 char **get_ccan_file_lines(struct ccan_file *f);
 
+/* Use this rather than accessing f->lines directly: loads on demand. */
+struct line_info *get_ccan_line_info(struct ccan_file *f);
+
+enum line_compiled {
+	NOT_COMPILED,
+	COMPILED,
+	MAYBE_COMPILED,
+};
+
+/* Simple evaluator: if this pre-processor symbol is defined to this
+ * value, is this line compiled? (Other symbols assumed undefined) */
+enum line_compiled get_ccan_line_pp(struct pp_conditions *cond,
+				    const char *symbol,
+				    unsigned int value);
+
 /* Similarly for ->doc_sections */
 struct list_head *get_ccan_file_docs(struct ccan_file *f);
+
 
 /* Call the reporting on every line in the file.  sofar contains
  * previous results. */
@@ -78,6 +130,4 @@ extern struct ccanlint has_main_header;
 
 /* Normal tests. */
 extern struct ccanlint trailing_whitespace;
-
-
 #endif /* CCAN_LINT_H */
