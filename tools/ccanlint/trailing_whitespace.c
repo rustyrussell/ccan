@@ -5,8 +5,13 @@
 
 static char *report_on_trailing_whitespace(const char *line)
 {
-	if (!strends(line, " ") && !strends(line, "\t"))
-		return NULL;
+	const char *e = strchr(line, 0);
+	while (e>line && (e[-1]==' ' || e[-1]=='\t'))
+		e--;
+	if (*e == 0)
+		return NULL; //there were no trailing spaces
+	if (e == line)
+		return NULL; //the line only consists of spaces
 
 	if (strlen(line) > 20)
 		return talloc_asprintf(line, "...'%s'",
