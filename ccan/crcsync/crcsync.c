@@ -138,6 +138,7 @@ size_t crc_read_block(struct crc_context *ctx, long *result,
 		goto have_match;
 	}
 
+	/* old is the trailing edge of the checksum window. */
 	if (buffer_size(ctx) >= ctx->block_size)
 		old = ctx->buffer + ctx->buffer_start;
 	else
@@ -153,6 +154,7 @@ size_t crc_read_block(struct crc_context *ctx, long *result,
 						    *old, *p,
 						    ctx->uncrc_tab);
 			old++;
+			/* End of stored buffer?  Start on data they gave us. */
 			if (old == ctx->buffer + ctx->buffer_end)
 				old = buf;
 		} else {
@@ -165,11 +167,6 @@ size_t crc_read_block(struct crc_context *ctx, long *result,
 		ctx->total_bytes++;
 		consumed++;
 		p++;
-	}
-
-	/* Make sure we have a copy of the last block_size bytes.
-	 * First, copy down the old data.  */
-	if (buffer_size(ctx)) {
 	}
 
 	if (crcmatch >= 0) {
@@ -187,12 +184,15 @@ size_t crc_read_block(struct crc_context *ctx, long *result,
 			assert(ctx->literal_bytes == 0);
 			ctx->have_match = -1;
 			ctx->running_crc = 0;
+			/* Nothing more in the buffer. */
+			ctx->buffer_start = ctx->buffer_end = 0;
 		}
 	} else {
 		/* Output literal if it's more than 1 block ago. */
 		if (ctx->literal_bytes > ctx->block_size) {
 			*result = ctx->literal_bytes - ctx->block_size;
-			ctx->literal_bytes = ctx->block_size;
+			ctx->literal_bytes -= *result;
+			ctx->buffer_start += *result;
 		} else
 			*result = 0;
 
@@ -243,29 +243,34 @@ static size_t final_block_match(struct crc_context *ctx)
 long crc_read_flush(struct crc_context *ctx)
 {
 	long ret;
+	size_t final;
 
-	/* In case we ended on a whole block match. */
-	if (ctx->have_match == -1) {
-		size_t final;
-
-		final = final_block_match(ctx);
-		if (!final) {
-			/* This is how many bytes we're about to consume. */
-			ret = buffer_size(ctx);
-			ctx->buffer_start += ret;
-			ctx->literal_bytes -= ret;
-
-			return ret;
-		}
-		ctx->buffer_start += final;
-		ctx->literal_bytes -= final;
-		ctx->have_match = ctx->num_crcs-1;
+	/* We might have ended right on a matched block. */
+	if (ctx->have_match != -1) {
+		ctx->literal_bytes -= ctx->block_size;
+		assert(ctx->literal_bytes == 0);
+		ret = -ctx->have_match-1;
+		ctx->have_match = -1;
+		ctx->running_crc = 0;
+		/* Nothing more in the buffer. */
+		ctx->buffer_start = ctx->buffer_end;
+		return ret;
 	}
 
-	/* It might be a partial block match, so no assert */
-	ctx->literal_bytes = 0;
-	ret = -ctx->have_match-1;
-	ctx->have_match = -1;
+	/* Look for truncated final block. */
+	final = final_block_match(ctx);
+	if (!final) {
+		/* Nope?  Just a literal. */
+		ret = buffer_size(ctx);
+		ctx->buffer_start += ret;
+		ctx->literal_bytes -= ret;
+		return ret;
+	}
+
+	/* We matched (some of) what's left. */
+	ret = -(ctx->num_crcs-1)-1;
+	ctx->buffer_start += final;
+	ctx->literal_bytes -= final;
 	return ret;
 }
 

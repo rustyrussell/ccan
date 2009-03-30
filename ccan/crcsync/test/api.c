@@ -64,15 +64,36 @@ static void test_sync(const char *buffer1, size_t len1,
 		      const struct result results[], size_t num_results)
 {
 	struct crc_context *ctx;
-	size_t used, ret, i, curr_literal = 0;
+	size_t used, ret, i, curr_literal;
 	long result;
 	uint32_t crcs[num_blocks(len1, block_size)];
 
 	crc_of_blocks(buffer1, len1, block_size, 32, crcs);
+
+	/* Normal method. */
 	ctx = crc_context_new(block_size, 32, crcs, ARRAY_SIZE(crcs));
 
+	curr_literal = 0;
 	for (used = 0, i = 0; used < len2; used += ret) {
 		ret = crc_read_block(ctx, &result, buffer2+used, len2-used);
+		check_result(result, &curr_literal, results, num_results, &i);
+	}
+
+	while ((result = crc_read_flush(ctx)) != 0)
+		check_result(result, &curr_literal, results, num_results, &i);
+
+	check_finalized_result(curr_literal, results, num_results, &i);
+	
+	/* We must have achieved everything we expected. */
+	ok1(i == num_results);
+	crc_context_free(ctx);
+
+	/* Byte-at-a-time method. */
+	ctx = crc_context_new(block_size, 32, crcs, ARRAY_SIZE(crcs));
+
+	curr_literal = 0;
+	for (used = 0, i = 0; used < len2; used += ret) {
+		ret = crc_read_block(ctx, &result, buffer2+used, 1);
 
 		check_result(result, &curr_literal, results, num_results, &i);
 	}
@@ -93,7 +114,7 @@ int main(int argc, char *argv[])
 	unsigned int i;
 	uint32_t crcs1[12], crcs2[12];
 
-	plan_tests(733);
+	plan_tests(1454);
 
 	buffer1 = calloc(1024, 1);
 	buffer2 = calloc(1024, 1);
