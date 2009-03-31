@@ -268,7 +268,7 @@ long crc_read_flush(struct crc_context *ctx)
 	}
 
 	/* We matched (some of) what's left. */
-	ret = -(ctx->num_crcs-1)-1;
+	ret = -((int)ctx->num_crcs-1)-1;
 	ctx->buffer_start += final;
 	ctx->literal_bytes -= final;
 	return ret;
