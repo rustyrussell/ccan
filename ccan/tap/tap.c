@@ -23,7 +23,10 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-#define _GNU_SOURCE
+/* FIXME: The real fix is an asprintf module. */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE 1
+#endif
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
