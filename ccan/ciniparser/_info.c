@@ -1,0 +1,56 @@
+#include <stdio.h>
+#include <string.h>
+#include "config.h"
+
+/**
+ * ciniparser - easily parse and manipulate ini style configuration files
+ * A dictionary object is allocated which contains string keys and values.
+ * Functions to read string values return statically allocated objects,
+ * there is no need to free them (also, do not modify them directly).
+ *
+ * Additional functions to manipulate or unset objects in the dictionary
+ * can be found in the test suite.
+ *
+ * Example:
+ *
+ * #include <stdio.h>
+ * #include <stdbool.h>
+ * #include <ccan/ciniparser/ciniparser.h>
+ * 
+ * #define CONFIG_FILE "/etc/config.ini"
+ * 
+ * int main(int argc, char *argv[])
+ * {
+ *		dictionary *d;
+ *		char *val1;
+ *		bool val2;
+ *		double val3;
+ *		int val4;
+ *
+ *		d = ciniparser_load(CONFIG_FILE);
+ *		if (d == NULL)
+ *			return 1;
+ *
+ *		val1 = ciniparser_getstring(d, "daemon:pidfile", NULL);
+ *		val2 = ciniparser_getboolean(d, "daemon:debug", false);
+ *		val3 = ciniparser_getdouble(d, "daemon:maxload", 3.5);
+ *		val4 = ciniparser_getint(d, "daemon:maxchild", 5);
+ *
+ *		ciniparser_freedict(d);
+ *
+ *		return 0;
+ *}
+ * License: MIT
+ */
+
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		return 0;
+	}
+
+	return 1;
+}
