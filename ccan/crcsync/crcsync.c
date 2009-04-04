@@ -2,6 +2,7 @@
 #include <ccan/crc/crc.h>
 #include <string.h>
 #include <assert.h>
+#include <stdbool.h>
 
 void crc_of_blocks(const void *data, size_t len, unsigned int block_size,
 		   unsigned int crcbits, uint32_t crc[])
@@ -33,9 +34,14 @@ struct crc_context {
 	size_t total_bytes;
 	int have_match;
 
+	/* Final block is special (if a different size) */
+	size_t final_size;
+	uint32_t final_crc;
+
 	/* Uncrc tab. */
 	uint32_t uncrc_tab[256];
 
+	/* This doesn't count the last CRC. */
 	unsigned int num_crcs;
 	uint32_t crc[];
 };
@@ -59,13 +65,27 @@ static void init_uncrc_tab(uint32_t uncrc_tab[], unsigned int wsize)
 }
 
 struct crc_context *crc_context_new(size_t block_size, unsigned crcbits,
-				    const uint32_t crc[], unsigned num_crcs)
+				    const uint32_t crc[], unsigned num_crcs,
+				    size_t final_size)
 {
 	struct crc_context *ctx;
+
+	assert(num_crcs > 0);
+	assert(block_size > 0);
+	assert(final_size > 0);
+	assert(final_size <= block_size);
 
 	ctx = malloc(sizeof(*ctx) + sizeof(crc[0])*num_crcs);
 	if (ctx) {
 		ctx->block_size = block_size;
+		if (final_size != block_size) {
+			ctx->final_size = final_size;
+			ctx->final_crc = crc[--num_crcs];
+		} else {
+			/* If this is 0, we never compare against it. */
+			ctx->final_size = 0;
+		}
+
 		/* Technically, 1 << 32 is undefined. */
 		if (crcbits >= 32)
 			ctx->crcmask = 0xFFFFFFFF;
@@ -101,6 +121,14 @@ static int crc_matches(const struct crc_context *ctx)
 		if ((ctx->running_crc & ctx->crcmask) == ctx->crc[i])
 			return i;
 	return -1;
+}
+
+static bool final_matches(const struct crc_context *ctx)
+{
+	if (ctx->literal_bytes != ctx->final_size)
+		return false;
+
+	return (ctx->running_crc & ctx->crcmask) == ctx->final_crc;
 }
 
 static uint32_t crc_add_byte(uint32_t crc, uint8_t newbyte)
@@ -144,9 +172,15 @@ size_t crc_read_block(struct crc_context *ctx, long *result,
 	else
 		old = NULL;
 
-	while (!old || (crcmatch = crc_matches(ctx)) < 0) {
+	while (ctx->literal_bytes < ctx->block_size
+	       || (crcmatch = crc_matches(ctx)) < 0) {
 		if (consumed == buflen)
 			break;
+
+		/* Increment these now in case we hit goto: below. */
+		ctx->literal_bytes++;
+		ctx->total_bytes++;
+		consumed++;
 
 		/* Update crc. */
 		if (old) {
@@ -161,11 +195,13 @@ size_t crc_read_block(struct crc_context *ctx, long *result,
 			ctx->running_crc = crc_add_byte(ctx->running_crc, *p);
 			if (p == (uint8_t *)buf + ctx->block_size - 1)
 				old = buf;
+			/* We don't roll this csum, we only look for it after
+			 * a block match.  It's simpler and faster. */
+			if (final_matches(ctx)) {
+				crcmatch = ctx->num_crcs;
+				goto have_match;
+			}
 		}
-
-		ctx->literal_bytes++;
-		ctx->total_bytes++;
-		consumed++;
 		p++;
 	}
 
@@ -180,8 +216,11 @@ size_t crc_read_block(struct crc_context *ctx, long *result,
 		} else {
 		have_match:
 			*result = -crcmatch-1;
-			ctx->literal_bytes -= ctx->block_size;
-			assert(ctx->literal_bytes == 0);
+			if (crcmatch == ctx->num_crcs)
+				assert(ctx->literal_bytes == ctx->final_size);
+			else
+				assert(ctx->literal_bytes == ctx->block_size);
+			ctx->literal_bytes = 0;
 			ctx->have_match = -1;
 			ctx->running_crc = 0;
 			/* Nothing more in the buffer. */
@@ -219,37 +258,9 @@ size_t crc_read_block(struct crc_context *ctx, long *result,
 	return consumed;
 }
 
-/* We could try many techniques to match the final block.  We can
- * simply try to checksum whatever's left at the end and see if it
- * matches the final block checksum.  This works for the exact-match
- * case.
- *
- * We can do slightly better than this: if we try to match the checksum
- * on every block (starting with block_size 1) from where we end to EOF,
- * we can capture the "data appended" case as well.
- */
-static size_t final_block_match(struct crc_context *ctx)
-{
-	size_t size;
-	uint32_t crc;
-
-	if (ctx->num_crcs == 0)
-		return 0;
-
-	crc = 0;
-	for (size = 0; size < buffer_size(ctx); size++) {
-		const uint8_t *p = ctx->buffer;
-		crc = crc_add_byte(crc, p[ctx->buffer_start+size]);
-		if ((crc & ctx->crcmask) == ctx->crc[ctx->num_crcs-1])
-			return size+1;
-	}
-	return 0;
-}
-
 long crc_read_flush(struct crc_context *ctx)
 {
 	long ret;
-	size_t final;
 
 	/* We might have ended right on a matched block. */
 	if (ctx->have_match != -1) {
@@ -263,20 +274,11 @@ long crc_read_flush(struct crc_context *ctx)
 		return ret;
 	}
 
-	/* Look for truncated final block. */
-	final = final_block_match(ctx);
-	if (!final) {
-		/* Nope?  Just a literal. */
-		ret = buffer_size(ctx);
-		ctx->buffer_start += ret;
-		ctx->literal_bytes -= ret;
-		return ret;
-	}
-
-	/* We matched (some of) what's left. */
-	ret = -((int)ctx->num_crcs-1)-1;
-	ctx->buffer_start += final;
-	ctx->literal_bytes -= final;
+	/* The rest is just a literal. */
+	ret = buffer_size(ctx);
+	assert(ctx->literal_bytes == ret);
+	ctx->buffer_start = ctx->buffer_end = 0;
+	ctx->literal_bytes = 0;
 	return ret;
 }
 

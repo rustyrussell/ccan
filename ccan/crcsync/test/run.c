@@ -1,4 +1,5 @@
 #include "crcsync/crcsync.h"
+#include "../crcsync.c"
 #include "tap/tap.h"
 #include <stdlib.h>
 #include <stdbool.h>
@@ -64,14 +65,17 @@ static void test_sync(const char *buffer1, size_t len1,
 		      const struct result results[], size_t num_results)
 {
 	struct crc_context *ctx;
-	size_t used, ret, i, curr_literal;
+	size_t used, ret, i, curr_literal, finalsize;
 	long result;
 	uint32_t crcs[num_blocks(len1, block_size)];
 
 	crc_of_blocks(buffer1, len1, block_size, 32, crcs);
 
+	finalsize = len1 % block_size ?: block_size;
+
 	/* Normal method. */
-	ctx = crc_context_new(block_size, 32, crcs, ARRAY_SIZE(crcs));
+	ctx = crc_context_new(block_size, 32, crcs, ARRAY_SIZE(crcs),
+			      finalsize);
 
 	curr_literal = 0;
 	for (used = 0, i = 0; used < len2; used += ret) {
@@ -89,7 +93,8 @@ static void test_sync(const char *buffer1, size_t len1,
 	crc_context_free(ctx);
 
 	/* Byte-at-a-time method. */
-	ctx = crc_context_new(block_size, 32, crcs, ARRAY_SIZE(crcs));
+	ctx = crc_context_new(block_size, 32, crcs, ARRAY_SIZE(crcs),
+			      finalsize);
 
 	curr_literal = 0;
 	for (used = 0, i = 0; used < len2; used += ret) {

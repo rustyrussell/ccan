@@ -39,26 +39,30 @@ int main(int argc, char *argv[])
 		"pqr-a-very-long-test-that-differs-between-two-invokations-of-the-same-page-st"
 		/* MATCH */
 		"uvwxy" "z ABC" "DEFGH" "IJKLM" "NOPQR" "STUVW" "XYZ 0" "12345"
+		"6789"
 		/* NO MATCH */
-		"6789ab";
+		"ab";
 
 	int expected[] = { 4,
 			   -2, -3,
 			   77,
 			   -5, -6, -7, -8, -9, -10, -11, -12,
-			   6 };
+			   -13,
+			   2 };
 	crc_info_t crc_info1;
 	struct crc_context *crcctx;
 	long result;
 	size_t ndigested;
 	size_t offset = 0;
 	size_t len2 = strlen(data2);
+	size_t finalsize = strlen(data1) % BLOCKSIZE ?: BLOCKSIZE;
 	int expected_i = 0;
 
 	plan_tests(ARRAY_SIZE(expected) + 2);
 	crcblocks(&crc_info1, data1, strlen(data1), BLOCKSIZE);
 
-	crcctx = crc_context_new(BLOCKSIZE, 30, crc_info1.crcs, crc_info1.block_count);
+	crcctx = crc_context_new(BLOCKSIZE, 30, crc_info1.crcs, crc_info1.block_count,
+				 finalsize);
 	while ( offset < len2)
 	{
 		ndigested = crc_read_block(crcctx, &result, data2+offset, len2 - offset);

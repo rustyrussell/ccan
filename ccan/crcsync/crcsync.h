@@ -23,12 +23,14 @@ void crc_of_blocks(const void *data, size_t len, unsigned int blocksize,
  * @crcbits: the bits valid in the CRCs (<= 32)
  * @crc: array of block crcs
  * @num_crcs: number of block crcs
+ * @final_size: the final block size (<= blocksize).
  *
  * Returns an allocated pointer to the structure for crc_find_block,
  * or NULL.  Makes a copy of @crc and @num_crcs.
  */
 struct crc_context *crc_context_new(size_t blocksize, unsigned crcbits,
-				    const uint32_t crc[], unsigned num_crcs);
+				    const uint32_t crc[], unsigned num_crcs,
+				    size_t final_size);
 
 /**
  * crc_read_block - search for block matches in the buffer.
