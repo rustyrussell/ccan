@@ -113,176 +113,176 @@ static void test_sync(const char *buffer1, size_t len1,
 	crc_context_free(ctx);
 }
 
+#define BUFFER_SIZE 512
+#define BLOCK_SIZE 128
+#define NUM_BLOCKS (BUFFER_SIZE / BLOCK_SIZE)
+
 int main(int argc, char *argv[])
 {
 	char *buffer1, *buffer2;
 	unsigned int i;
-	uint32_t crcs1[12], crcs2[12];
+	uint32_t crcs1[NUM_BLOCKS], crcs2[NUM_BLOCKS];
 
-	plan_tests(1454);
+	plan_tests(664);
 
-	buffer1 = calloc(1024, 1);
-	buffer2 = calloc(1024, 1);
+	buffer1 = calloc(BUFFER_SIZE, 1);
+	buffer2 = calloc(BUFFER_SIZE, 1);
 
 	/* Truncated end block test. */
-	crcs1[11] = 0xdeadbeef;
-	crc_of_blocks(buffer1, 1024, 100, 32, crcs1);
-	ok1(crcs1[11] == 0xdeadbeef);
-	crc_of_blocks(buffer2, 1024, 100, 32, crcs2);
-	ok1(memcmp(crcs1, crcs2, sizeof(crcs1[0])*11) == 0);
+	crcs1[ARRAY_SIZE(crcs1)-1] = 0xdeadbeef;
+	crc_of_blocks(buffer1, BUFFER_SIZE-BLOCK_SIZE-1, BLOCK_SIZE, 32, crcs1);
+	ok1(crcs1[ARRAY_SIZE(crcs1)-1] == 0xdeadbeef);
+	crc_of_blocks(buffer2, BUFFER_SIZE-BLOCK_SIZE-1, BLOCK_SIZE, 32, crcs2);
+	ok1(memcmp(crcs1, crcs2, sizeof(crcs1[0])*(ARRAY_SIZE(crcs1)-1)) == 0);
 
 	/* Fill with non-zero pattern, retest. */
-	for (i = 0; i < 1024; i++)
-		buffer1[i] = buffer2[i] = i + i/128;
+	for (i = 0; i < BUFFER_SIZE; i++)
+		buffer1[i] = buffer2[i] = i + i/BLOCK_SIZE;
 
-	crcs1[11] = 0xdeadbeef;
-	crc_of_blocks(buffer1, 1024, 100, 32, crcs1);
-	ok1(crcs1[11] == 0xdeadbeef);
-	crc_of_blocks(buffer2, 1024, 100, 32, crcs2);
-	ok1(memcmp(crcs1, crcs2, sizeof(crcs1[0])*11) == 0);
+	crcs1[ARRAY_SIZE(crcs1)-1] = 0xdeadbeef;
+	crc_of_blocks(buffer1, BUFFER_SIZE-BLOCK_SIZE-1, BLOCK_SIZE, 32, crcs1);
+	ok1(crcs1[ARRAY_SIZE(crcs1)-1] == 0xdeadbeef);
+	crc_of_blocks(buffer2, BUFFER_SIZE-BLOCK_SIZE-1, BLOCK_SIZE, 32, crcs2);
+	ok1(memcmp(crcs1, crcs2, sizeof(crcs1[0])*(ARRAY_SIZE(crcs1)-1)) == 0);
 
 	/* Check that it correctly masks bits. */
-	crc_of_blocks(buffer1, 1024, 128, 32, crcs1);
-	crc_of_blocks(buffer2, 1024, 128, 8, crcs2);
-	for (i = 0; i < 1024/128; i++)
+	crc_of_blocks(buffer1, BUFFER_SIZE, BLOCK_SIZE, 32, crcs1);
+	crc_of_blocks(buffer2, BUFFER_SIZE, BLOCK_SIZE, 8, crcs2);
+	for (i = 0; i < NUM_BLOCKS; i++)
 		ok1(crcs2[i] == (crcs1[i] & 0xFF));
 
 	/* Now test the "exact match" "round blocks" case. */
 	{
-		struct result res[] = {
-			{ BLOCK, 0 },
-			{ BLOCK, 1 },
-			{ BLOCK, 2 },
-			{ BLOCK, 3 },
-			{ BLOCK, 4 },
-			{ BLOCK, 5 },
-			{ BLOCK, 6 },
-			{ BLOCK, 7 } };
-		test_sync(buffer1, 1024, buffer2, 1024, 128,
+		struct result res[NUM_BLOCKS];
+
+		for (i = 0; i < ARRAY_SIZE(res); i++) {
+			res[i].type = BLOCK;
+			res[i].val = i;
+		}
+		test_sync(buffer1, BUFFER_SIZE, buffer2,
+			  BUFFER_SIZE, BLOCK_SIZE,
 			  res, ARRAY_SIZE(res));
 	}
 
 	/* Now test the "exact match" with end block case. */
 	{
-		struct result res[] = {
-			{ BLOCK, 0 },
-			{ BLOCK, 1 },
-			{ BLOCK, 2 },
-			{ BLOCK, 3 },
-			{ BLOCK, 4 },
-			{ BLOCK, 5 },
-			{ BLOCK, 6 },
-			{ BLOCK, 7 },
-			{ BLOCK, 8 },
-			{ BLOCK, 9 },
-			{ BLOCK, 10 } };
-		test_sync(buffer1, 1024, buffer2, 1024, 100,
+		struct result res[NUM_BLOCKS+1];
+		for (i = 0; i < ARRAY_SIZE(res); i++) {
+			res[i].type = BLOCK;
+			res[i].val = i;
+		}
+		test_sync(buffer1, BUFFER_SIZE, buffer2,
+			  BUFFER_SIZE, BLOCK_SIZE-1,
 			  res, ARRAY_SIZE(res));
 	}
 
 	/* Now test the "one byte append" "round blocks" case. */
 	{
-		struct result res[] = {
-			{ BLOCK, 0 },
-			{ BLOCK, 1 },
-			{ BLOCK, 2 },
-			{ BLOCK, 3 },
-			{ BLOCK, 4 },
-			{ BLOCK, 5 },
-			{ BLOCK, 6 },
-			{ LITERAL, 1 } };
-		test_sync(buffer1, 1024-128, buffer2, 1024-127, 128,
+		struct result res[NUM_BLOCKS];
+		for (i = 0; i < ARRAY_SIZE(res)-1; i++) {
+			res[i].type = BLOCK;
+			res[i].val = i;
+		}
+		res[i].type = LITERAL;
+		res[i].val = 1;
+
+		test_sync(buffer1, BUFFER_SIZE-BLOCK_SIZE,
+			  buffer2, BUFFER_SIZE-BLOCK_SIZE+1, BLOCK_SIZE,
 			  res, ARRAY_SIZE(res));
 	}
 
 	/* Now test the "one byte append" with end block case. */
 	{
-		struct result res[] = {
-			{ BLOCK, 0 },
-			{ BLOCK, 1 },
-			{ BLOCK, 2 },
-			{ BLOCK, 3 },
-			{ BLOCK, 4 },
-			{ BLOCK, 5 },
-			{ BLOCK, 6 },
-			{ BLOCK, 7 },
-			{ BLOCK, 8 },
-			{ BLOCK, 9 },
-			{ BLOCK, 10 },
-			{ LITERAL, 1 } };
-		test_sync(buffer1, 1023, buffer2, 1024, 100,
-			  res, ARRAY_SIZE(res));
+		struct result res[NUM_BLOCKS+2];
+		for (i = 0; i < ARRAY_SIZE(res)-1; i++) {
+			res[i].type = BLOCK;
+			res[i].val = i;
+		}
+		res[i].type = LITERAL;
+		res[i].val = 1;
+
+		test_sync(buffer1, BUFFER_SIZE-1,
+			  buffer2, BUFFER_SIZE,
+			  BLOCK_SIZE - 1, res, ARRAY_SIZE(res));
 	}
 
 	/* Now try changing one block at a time, check we get right results. */
-	for (i = 0; i < 1024/128; i++) {
+	for (i = 0; i < NUM_BLOCKS; i++) {
 		unsigned int j;
-		struct result res[8];
+		struct result res[NUM_BLOCKS];
 
 		/* Mess with block. */
-		memcpy(buffer2, buffer1, 1024);
-		buffer2[i * 128]++;
+		memcpy(buffer2, buffer1, BUFFER_SIZE);
+		buffer2[i * BLOCK_SIZE]++;
 
 		for (j = 0; j < ARRAY_SIZE(res); j++) {
 			if (j == i) {
 				res[j].type = LITERAL;
-				res[j].val = 128;
+				res[j].val = BLOCK_SIZE;
 			} else {
 				res[j].type = BLOCK;
 				res[j].val = j;
 			}
 		}
 
-		test_sync(buffer1, 1024, buffer2, 1024, 128,
-			  res, ARRAY_SIZE(res));
+		test_sync(buffer1, BUFFER_SIZE,
+			  buffer2, BUFFER_SIZE,
+			  BLOCK_SIZE, res, ARRAY_SIZE(res));
 	}
 
 	/* Now try shrinking one block at a time, check we get right results. */
-	for (i = 0; i < 1024/128; i++) {
+	for (i = 0; i < NUM_BLOCKS; i++) {
 		unsigned int j;
-		struct result res[8];
+		struct result res[NUM_BLOCKS];
 
 		/* Shrink block. */
-		memcpy(buffer2, buffer1, i * 128 + 64);
-		memcpy(buffer2 + i * 128 + 64, buffer1 + i * 128 + 65,
-		       1024 - (i * 128 + 65));
+		memcpy(buffer2, buffer1, i * BLOCK_SIZE + BLOCK_SIZE/2);
+		memcpy(buffer2 + i * BLOCK_SIZE + BLOCK_SIZE/2,
+		       buffer1 + i * BLOCK_SIZE + BLOCK_SIZE/2 + 1,
+		       BUFFER_SIZE - (i * BLOCK_SIZE + BLOCK_SIZE/2 + 1));
 
 		for (j = 0; j < ARRAY_SIZE(res); j++) {
 			if (j == i) {
 				res[j].type = LITERAL;
-				res[j].val = 127;
+				res[j].val = BLOCK_SIZE-1;
 			} else {
 				res[j].type = BLOCK;
 				res[j].val = j;
 			}
 		}
 
-		test_sync(buffer1, 1024, buffer2, 1023, 128,
-			  res, ARRAY_SIZE(res));
+		test_sync(buffer1, BUFFER_SIZE,
+			  buffer2, BUFFER_SIZE-1,
+			  BLOCK_SIZE, res, ARRAY_SIZE(res));
 	}
 
-	/* Now try shrinking one block at a time, check we get right results. */
-	for (i = 0; i < 1024/128; i++) {
-		unsigned int j;
-		struct result res[8];
+	/* Finally, all possible combinations. */
+	for (i = 0; i < (1 << NUM_BLOCKS); i++) {
+		unsigned int j, num_res;
+		struct result res[NUM_BLOCKS];
 
-		/* Shrink block. */
-		memcpy(buffer2, buffer1, i * 128 + 64);
-		memcpy(buffer2 + i * 128 + 64, buffer1 + i * 128 + 65,
-		       1024 - (i * 128 + 65));
-
-		for (j = 0; j < ARRAY_SIZE(res); j++) {
-			if (j == i) {
-				res[j].type = LITERAL;
-				res[j].val = 127;
+		memcpy(buffer2, buffer1, BUFFER_SIZE);
+		for (j = num_res = 0; j < ARRAY_SIZE(res); j++) {
+			if (i & (i << j)) {
+				res[num_res].type = BLOCK;
+				res[num_res].val = j;
+				num_res++;
 			} else {
-				res[j].type = BLOCK;
-				res[j].val = j;
+				/* Mess with block. */
+				buffer2[j * BLOCK_SIZE]++;
+				if (num_res && res[num_res-1].type == LITERAL)
+					res[num_res-1].val += BLOCK_SIZE;
+				else {
+					res[num_res].type = LITERAL;
+					res[num_res].val = BLOCK_SIZE;
+					num_res++;
+				}
 			}
 		}
 
-		test_sync(buffer1, 1024, buffer2, 1023, 128,
-			  res, ARRAY_SIZE(res));
+		test_sync(buffer1, BUFFER_SIZE,
+			  buffer2, BUFFER_SIZE,
+			  BLOCK_SIZE, res, num_res);
 	}
 
 	return exit_status();
