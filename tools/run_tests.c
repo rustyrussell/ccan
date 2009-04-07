@@ -19,7 +19,7 @@ static int verbose;
 struct test_type {
 	const char *name;
 	void (*buildfn)(const char *dir, struct test_type *t, const char *name,
-			const char *apiobj);
+			const char *apiobj, const char *libs);
 	void (*runfn)(const char *name);
 };
 
@@ -103,14 +103,14 @@ static void add_obj(const char *testdir, const char *name, bool generate)
 }
 
 static int build(const char *dir, const char *name, const char *apiobj,
-		 int fail)
+		 const char *libs, int fail)
 {
 	const char *cmd;
 	int ret;
 
-	cmd = talloc_asprintf(name, "gcc " CFLAGS " %s -o %s %s %s %s %s",
+	cmd = talloc_asprintf(name, "gcc " CFLAGS " %s -o %s %s %s %s%s %s",
 			      fail ? "-DFAIL" : "",
-			      output_name(name), name, apiobj, obj_list(),
+			      output_name(name), name, apiobj, obj_list(), libs,
 			      verbose ? "" : "> /dev/null 2>&1");
 
 	if (verbose)
@@ -124,25 +124,26 @@ static int build(const char *dir, const char *name, const char *apiobj,
 }
 
 static void compile_ok(const char *dir, struct test_type *t, const char *name,
-		       const char *apiobj)
+		       const char *apiobj, const char *libs)
 {
-	ok(build(dir, name, "", 0) == 0, "%s %s", t->name, name);
+	ok(build(dir, name, "", libs, 0) == 0, "%s %s", t->name, name);
 }
 
 /* api tests get the API obj linked in as well. */
 static void compile_api_ok(const char *dir, struct test_type *t,
-			   const char *name, const char *apiobj)
+			   const char *name, const char *apiobj,
+			   const char *libs)
 {
-	ok(build(dir, name, apiobj, 0) == 0, "%s %s", t->name, name);
+	ok(build(dir, name, apiobj, libs, 0) == 0, "%s %s", t->name, name);
 }
 
 static void compile_fail(const char *dir, struct test_type *t, const char *name,
-			 const char *apiobj)
+			 const char *apiobj, const char *libs)
 {
-	if (build(dir, name, "", 0) != 0)
+	if (build(dir, name, "", libs, 0) != 0)
 		fail("non-FAIL build %s", name);
 	else
-		ok(build(dir, name, "", 1) > 0, "%s %s", t->name, name);
+		ok(build(dir, name, "", libs, 1) > 0, "%s %s", t->name, name);
 }
 
 static void no_run(const char *name)
@@ -173,11 +174,19 @@ int main(int argc, char *argv[])
 	struct dirent *d;
 	char *testdir, *cwd;
 	const char *apiobj = "";
+	char *libs = talloc_strdup(NULL, "");
 	struct test *test;
 	unsigned int num_tests = 0, num_objs = 0, i;
 
 	if (argc > 1 && streq(argv[1], "--verbose")) {
 		verbose = 1;
+		argc--;
+		argv++;
+	}
+
+	while (argc > 1 && strstarts(argv[1], "--lib=")) {
+		libs = talloc_asprintf_append(libs, " -l%s",
+					      argv[1] + strlen("--lib="));
 		argc--;
 		argv++;
 	}
@@ -224,7 +233,8 @@ int main(int argc, char *argv[])
 
 	/* Do all the test compilations. */
 	for (test = tests; test; test = test->next)
-		test->type->buildfn(argv[1], test->type, test->name, apiobj);
+		test->type->buildfn(argv[1], test->type, test->name,
+				    apiobj, libs);
 
 	cleanup_objs();
 

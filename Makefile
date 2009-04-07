@@ -27,9 +27,12 @@ $(ALL_DEPENDS): %/.depends: %/_info.c tools/ccan_depends
 	@tools/ccan_depends $* > $@ || ( rm -f $@; exit 1 )
 
 # Actual dependencies are created in inter-depends
-check-%: tools/run_tests
+check-%: tools/run_tests ccan/%/_info
 	@echo Testing $*...
-	@if tools/run_tests $(V) `[ ! -f ccan/$*.o ] || echo --apiobj=ccan/$*.o` ccan/$* $(filter-out ccan/$*.o, $(filter %.o, $^)) | grep ^'not ok'; then exit 1; else exit 0; fi
+	@if tools/run_tests $(V) $$(for f in `ccan/$*/_info libs`; do echo --lib=$$f; done) `[ ! -f ccan/$*.o ] || echo --apiobj=ccan/$*.o` ccan/$* $(filter-out ccan/$*.o, $(filter %.o, $^)) | grep ^'not ok'; then exit 1; else exit 0; fi
+
+ccan/%/_info: ccan/%/_info.c
+	$(CC) $(CFLAGS) -o $@ $<
 
 libccan.a(%.o): ccan/%.o
 	$(AR) r $@ $<
