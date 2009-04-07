@@ -102,13 +102,13 @@
  * License: Public Domain
  */
 #include <string.h>
+#include <stdio.h>
 #include "config.h"
 
 int main(int _argc,const char *_argv[]){
   /*Expect exactly one argument.*/
   if(_argc!=2)return 1;
   if(strcmp(_argv[1],"depends")==0){
-    /*PRINTF-CCAN-PACKAGES-YOU-NEED-ONE-PER-LINE-IF-ANY*/
     printf("ccan/ilog\n");
     return 0;
   }
