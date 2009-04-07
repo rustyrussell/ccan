@@ -102,7 +102,7 @@ static char *report_idem(struct ccan_file *f, char *sofar)
 		if (line_info[i].type == DOC_LINE
 		    || line_info[i].type == COMMENT_LINE)
 			continue;
-		if (get_ccan_line_pp(line_info[i].cond, sym, &val)
+		if (get_ccan_line_pp(line_info[i].cond, sym, &val, NULL)
 		    != NOT_COMPILED)
 			return talloc_asprintf_append(sofar,
 			      "%s:%u:code outside idempotent region.\n",
