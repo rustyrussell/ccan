@@ -16,23 +16,20 @@ static struct test *tests = NULL;
 static struct obj *objs = NULL;
 static int verbose;
 
-struct test_type
-{
+struct test_type {
 	const char *name;
 	void (*buildfn)(const char *dir, struct test_type *t, const char *name,
 			const char *apiobj);
 	void (*runfn)(const char *name);
 };
 
-struct test
-{
+struct test {
 	struct test *next;
 	struct test_type *type;
 	char *name;
 };
 
-struct obj
-{
+struct obj {
 	struct obj *next;
 	bool generate;
 	char *name;
