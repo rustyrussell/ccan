@@ -19,9 +19,8 @@ $licence=extract_field('licence',$module);
 <a href="<?=$repo_base.$module?>">Browse Source</a>
 </td>
 <td>
-Download:
-<a href="../<?=$tar_dir?>/<?=basename($module)?>.tar.bz2">(standalone)</a>
-<a href="../<?=$tar_dir?>/with-deps/<?=basename($module)?>.tar.bz2">(with all dependencies)</a>
+<a href="../<?=$tar_dir?>/with-deps/<?=basename($module)?>.tar.bz2">Download</a>
+<a href="../<?=$tar_dir?>/<?=basename($module)?>.tar.bz2">(without any required ccan dependencies)</a>
 </tr>
 </table>
 
