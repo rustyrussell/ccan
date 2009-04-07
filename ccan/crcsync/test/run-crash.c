@@ -55,14 +55,14 @@ int main(int argc, char *argv[])
 	size_t ndigested;
 	size_t offset = 0;
 	size_t len2 = strlen(data2);
-	size_t finalsize = strlen(data1) % BLOCKSIZE ?: BLOCKSIZE;
+	size_t tailsize = strlen(data1) % BLOCKSIZE;
 	int expected_i = 0;
 
 	plan_tests(ARRAY_SIZE(expected) + 2);
 	crcblocks(&crc_info1, data1, strlen(data1), BLOCKSIZE);
 
 	crcctx = crc_context_new(BLOCKSIZE, 30, crc_info1.crcs, crc_info1.block_count,
-				 finalsize);
+				 tailsize);
 	while ( offset < len2)
 	{
 		ndigested = crc_read_block(crcctx, &result, data2+offset, len2 - offset);

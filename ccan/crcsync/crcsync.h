@@ -19,14 +19,14 @@ void crc_of_blocks(const void *data, size_t len, unsigned int blocksize,
 
 /**
  * crc_context_new - allocate and initialize state for crc_find_block
- * @blocksize: the sie of each block
+ * @blocksize: the size of each block
  * @crcbits: the bits valid in the CRCs (<= 32)
- * @crc: array of block crcs
+ * @crc: array of block crcs (including final block, if any)
  * @num_crcs: number of block crcs
- * @final_size: the final block size (<= blocksize).
+ * @tail_size: the size of final partial block, if any (< blocksize).
  *
  * Returns an allocated pointer to the structure for crc_find_block,
- * or NULL.  Makes a copy of @crc and @num_crcs.
+ * or NULL.  Makes a copy of @crc.
  */
 struct crc_context *crc_context_new(size_t blocksize, unsigned crcbits,
 				    const uint32_t crc[], unsigned num_crcs,
