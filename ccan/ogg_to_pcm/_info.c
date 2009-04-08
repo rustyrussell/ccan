@@ -1,0 +1,43 @@
+#include <stdio.h>
+#include <string.h>
+#include "config.h"
+
+/**
+ * ogg_to_pcm - decode ogg vorbis audio files to PCM data using libvorbis 
+ *
+ * ogg_to_pcm implements a single function using libvorbis to decode
+ * signed 16 bit ogg audio data to signed 16 bit PCM data.
+ *
+ * Example:
+ * 	#include <stdint.h>
+ * 	#include <ogg_to_pcm.h>
+ *
+ * 	int main(int argc, char *argv[]) 
+ * 	{
+ * 		int16_t *pcmbuffer;
+ * 		int rc, sample_size, sample_rate, channels, nsamples;
+ *
+ * 		rc = ogg_to_pcm("mysound.ogg", &pcmbuffer,
+ * 			&sample_size, &sample_rate, &channels, &nsamples);
+ * 		if (rc != 0)
+ * 			return -1;
+ * 		return 0;
+ * 	}
+ *
+ * Licence: LGPL (2 or any later version)
+ *
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0)
+		return 0;
+
+	if (strcmp(argv[1], "libs") == 0) {
+		printf("vorbisfile\n");
+		return 0;
+	}
+	return 1;
+}
