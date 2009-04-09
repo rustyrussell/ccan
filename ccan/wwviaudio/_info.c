@@ -47,8 +47,8 @@ int main(int argc, char *argv[])
 
 	if (strcmp(argv[1], "depends") == 0) {
 		printf("ccan/ogg_to_pcm\n"
-		       "libvorbis >=19\n"
-		       "portaudio\n");
+		       "libvorbis\n"
+		       "portaudio >=19\n");
 		return 0;
 	}
 

@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
-		printf("libvorbis >=19\n");
+		printf("libvorbis\n");
 		return 0;
 	}
 
