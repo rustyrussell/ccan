@@ -1,9 +1,9 @@
 # This can be overridden on cmdline to generate pages elsewhere.
 WEBDIR=~/www/html/ccan/
 
-ALL_PAGES=$(patsubst ccan/%, $(WEBDIR)/info/%.html, $(ALL_DIRS))
-DIRECT_TARBALLS=$(patsubst ccan/%, $(WEBDIR)/tarballs/%.tar.bz2, $(ALL_DIRS))
-DEPEND_TARBALLS=$(patsubst ccan/%, $(WEBDIR)/tarballs/with-deps/%.tar.bz2, $(ALL_DIRS))
+ALL_PAGES=$(patsubst %, $(WEBDIR)/info/%.html, $(ALL))
+DIRECT_TARBALLS=$(patsubst %, $(WEBDIR)/tarballs/%.tar.bz2, $(ALL))
+DEPEND_TARBALLS=$(patsubst %, $(WEBDIR)/tarballs/with-deps/%.tar.bz2, $(ALL))
 WEB_SUBDIRS=$(WEBDIR)/tarballs $(WEBDIR)/junkcode $(WEBDIR)/tarballs/with-deps $(WEBDIR)/info
 JUNKDIRS=$(wildcard junkcode/*)
 JUNKPAGES=$(JUNKDIRS:%=$(WEBDIR)/%.html)
@@ -56,10 +56,10 @@ $(WEBDIR)/ccan.jpg: web/ccan.jpg
 $(WEBDIR)/info/%.html: $(WEBDIR)/tarballs/%.tar.bz2 $(WEBDIR)/tarballs/with-deps/%.tar.bz2
 	@URLPREFIX=../ php5 web/staticmoduleinfo.php ccan/$* > $@
 
-$(WEBDIR)/tarballs/%.tar.bz2: ccan/%/test
+$(WEBDIR)/tarballs/%.tar.bz2: ccan/%/_info.c
 	tar -c -j -f $@ `bzr ls --versioned --kind=file ccan/$*`
 
-$(WEBDIR)/tarballs/with-deps/%.tar.bz2: ccan/%/test tools/ccan_depends
+$(WEBDIR)/tarballs/with-deps/%.tar.bz2: ccan/%/_info.c tools/ccan_depends
 	tar cfj $@ $$(echo ccan/$* $$(tools/ccan_depends ccan/$*) | xargs -n 1 bzr ls --versioned --kind=file)
 
 distclean: distclean-web

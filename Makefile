@@ -10,15 +10,17 @@
 #        Especially tools/ccanlint/ccanlint and tools/namespacize.
 # distclean: destroy everything back to pristine state
 
-ALL=$(patsubst ccan/%/test, %, $(wildcard ccan/*/test))
-ALL_DIRS=$(patsubst %, ccan/%, $(ALL))
+# Anything with an _info.c file is a module.
+ALL=$(patsubst ccan/%/_info.c, %, $(wildcard ccan/*/_info.c))
 ALL_DEPENDS=$(patsubst %, ccan/%/.depends, $(ALL))
+# Not all modules have tests.
+ALL_TESTS=$(patsubst ccan/%/test/, %, $(wildcard ccan/*/test/))
 
 default: libccan.a
 
 include Makefile-ccan
 
-check: $(ALL_DIRS:ccan/%=check-%)
+check: $(ALL_TESTS:%=check-%)
 
 distclean: clean
 	rm -f $(ALL_DEPENDS)
