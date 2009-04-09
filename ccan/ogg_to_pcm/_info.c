@@ -32,8 +32,10 @@ int main(int argc, char *argv[])
 	if (argc != 2)
 		return 1;
 
-	if (strcmp(argv[1], "depends") == 0)
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("libvorbis\n");
 		return 0;
+	}
 
 	if (strcmp(argv[1], "libs") == 0) {
 		printf("vorbisfile\n");
