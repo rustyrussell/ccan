@@ -40,7 +40,7 @@ static const char *describe_trailing_whitespace(struct manifest *m,
 }
 
 struct ccanlint trailing_whitespace = {
-	.name = "Lines with unnecessary trailing whitespace",
+	.name = "No lines with unnecessary trailing whitespace",
 	.total_score = 1,
 	.check = check_trailing_whitespace,
 	.describe = describe_trailing_whitespace,

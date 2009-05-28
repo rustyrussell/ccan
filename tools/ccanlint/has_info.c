@@ -11,14 +11,14 @@
 #include <string.h>
 #include <ccan/noerr/noerr.h>
 
-static void *check_no_info(struct manifest *m)
+static void *check_has_info(struct manifest *m)
 {
 	if (m->info_file)
 		return NULL;
 	return m;
 }
 
-static const char *describe_no_info(struct manifest *m, void *check_result)
+static const char *describe_has_info(struct manifest *m, void *check_result)
 {
 	return "You have no _info.c file.\n\n"
 	"The file _info.c contains the metadata for a ccan package: things\n"
@@ -70,9 +70,9 @@ static void create_info_template(struct manifest *m, void *check_result)
 	fclose(info);
 }
 
-struct ccanlint no_info = {
-	.name = "No _info.c file",
-	.check = check_no_info,
-	.describe = describe_no_info,
+struct ccanlint has_info = {
+	.name = "Has _info.c file",
+	.check = check_has_info,
+	.describe = describe_has_info,
 	.handle = create_info_template,
 };

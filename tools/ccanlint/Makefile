@@ -1,4 +1,4 @@
-OBJS := tools/ccanlint/no_info.o \
+OBJS := tools/ccanlint/has_info.o \
 	tools/ccanlint/has_main_header.o \
 	tools/ccanlint/has_tests.o \
 	tools/ccanlint/trailing_whitespace.o \
