@@ -17,12 +17,9 @@
 
 char **get_ccan_file_lines(struct ccan_file *f)
 {
-	if (!f->lines) {
-		char *buffer = grab_file(f, f->name, NULL);
-		if (!buffer)
-			err(1, "Getting file %s", f->name);
-		f->lines = strsplit(f, buffer, "\n", &f->num_lines);
-	}
+	if (!f->lines)
+		f->lines = strsplit(f, f->contents, "\n", &f->num_lines);
+
 	return f->lines;
 }
 
@@ -76,13 +73,24 @@ static void add_files(struct manifest *m, const char *dir)
 
 		if (streq(f->name, "_info.c")) {
 			m->info_file = f;
+			f->contents = grab_file(f, f->name, &f->contents_size);
+			if (!f->contents)
+				err(1, "Reading file %s", f->name);
 			continue;
 		}
 
 		is_c_src = strends(f->name, ".c");
-		if (!is_c_src && !strends(f->name, ".h"))
+		if (!is_c_src && !strends(f->name, ".h")) {
+			/* We don't pull in contents of non-source files */
 			dest = &m->other_files;
-		else if (!strchr(f->name, '/')) {
+			continue;
+		}
+
+		f->contents = grab_file(f, f->name, &f->contents_size);
+		if (!f->contents)
+			err(1, "Reading file %s", f->name);
+
+		if (!strchr(f->name, '/')) {
 			if (is_c_src)
 				dest = &m->c_files;
 			else
