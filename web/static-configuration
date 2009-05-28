@@ -6,7 +6,7 @@ $tempfolder = "/home/ccan/upload-temp/";
 $uploadscript = "http://ccan.ozlabs.org/uploader.php";
 
 //infofile
-$infofile = '/_info.c';
+$infofile = '/_info';
 
 //ccan admin
 $ccanadmin = "rusty@rustcorp.com.au";
@@ -22,7 +22,7 @@ $repo_base = 'http://ccan.ozlabs.org/repo/?cmd=inventory;path=';
 
 function extract_field($field,$module)
 {
-   return htmlspecialchars(shell_exec('tools/doc_extract '.$field.' '.$module.'/_info.c'));
+   return htmlspecialchars(shell_exec('tools/doc_extract '.$field.' '.$module.'/_info'));
 }
 
 // Convert double line breaks into paragraphs, and blank spaces into preformat.

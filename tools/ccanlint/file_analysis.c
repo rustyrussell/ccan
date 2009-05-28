@@ -71,7 +71,7 @@ static void add_files(struct manifest *m, const char *dir)
 			continue;
 		}
 
-		if (streq(f->name, "_info.c")) {
+		if (streq(f->name, "_info")) {
 			m->info_file = f;
 			f->contents = grab_file(f, f->name, &f->contents_size);
 			if (!f->contents)

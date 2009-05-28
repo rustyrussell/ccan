@@ -39,8 +39,8 @@ static int unlink_info(char *infofile)
 /* Be careful about trying to compile over running programs (parallel make) */
 static char *compile_info(const void *ctx, const char *dir)
 {
-	char *infofile = talloc_asprintf(ctx, "%s/_info.%u", dir, getpid());
-	char *cmd = talloc_asprintf(ctx, "cc " CFLAGS " -o %s %s/_info.c",
+	char *infofile = talloc_asprintf(ctx, "%s/info.%u", dir, getpid());
+	char *cmd = talloc_asprintf(ctx, "cc " CFLAGS " -o %s -x c %s/_info",
 				    infofile, dir);
 	talloc_set_destructor(infofile, unlink_info);
 	if (system(cmd) != 0)
@@ -98,7 +98,7 @@ static char **get_one_safe_deps(const void *ctx,
 	char **deps, **lines, *raw, *fname;
 	unsigned int i, n = 0;
 
-	fname = talloc_asprintf(ctx, "%s/_info.c", dir);
+	fname = talloc_asprintf(ctx, "%s/_info", dir);
 	raw = grab_file(fname, fname, NULL);
 	if (!raw)
 		errx(1, "Could not open %s", fname);

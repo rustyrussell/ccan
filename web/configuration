@@ -21,7 +21,7 @@ $junkcode = "junkcode/";
 $tempfolder = "temp/";
 
 //infofile
-$infofile = '/_info.c';
+$infofile = '/_info';
 
 //temp repo
 $temprepo = "temprepo/";

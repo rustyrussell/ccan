@@ -48,12 +48,12 @@ extern struct ccanlint has_info_documentation;
 
 static void create_info_template_doc(struct manifest *m, void *check_result)
 {
-	int fd = open("_info.c.new", O_WRONLY|O_CREAT|O_EXCL, 0666);
+	int fd = open("_info.new", O_WRONLY|O_CREAT|O_EXCL, 0666);
 	FILE *new;
 	char *oldcontents;
 
 	if (fd < 0 || !(new = fdopen(fd, "w")))
-		err(1, "Creating _info.c.new to insert documentation");
+		err(1, "Creating _info.new to insert documentation");
 
 	if (fprintf(new,
 		    "/**\n"
@@ -64,26 +64,26 @@ static void create_info_template_doc(struct manifest *m, void *check_result)
 		    " * Followed by an Example: section with a standalone\n"
 		    " * (trivial and usually useless) program\n"
 		    " */\n", m->basename, m->basename) < 0) {
-		unlink_noerr("_info.c.new");
-		err(1, "Writing to _info.c.new to insert documentation");
+		unlink_noerr("_info.new");
+		err(1, "Writing to _info.new to insert documentation");
 	}
 
-	oldcontents = grab_file(m, "_info.c", NULL);
+	oldcontents = grab_file(m, "_info", NULL);
 	if (!oldcontents) {
-		unlink_noerr("_info.c.new");
-		err(1, "Reading _info.c");
+		unlink_noerr("_info.new");
+		err(1, "Reading _info");
 	}
 	if (fprintf(new, "%s", oldcontents) < 0) {
-		unlink_noerr("_info.c.new");
-		err(1, "Appending _info.c to _info.c.new");
+		unlink_noerr("_info.new");
+		err(1, "Appending _info to _info.new");
 	}
 	if (fclose(new) != 0) {
-		unlink_noerr("_info.c.new");
-		err(1, "Closing _info.c.new");
+		unlink_noerr("_info.new");
+		err(1, "Closing _info.new");
 	}
-	if (rename("_info.c.new", "_info.c") != 0) {
-		unlink_noerr("_info.c.new");
-		err(1, "Renaming _info.c.new to _info.c");
+	if (rename("_info.new", "_info") != 0) {
+		unlink_noerr("_info.new");
+		err(1, "Renaming _info.new to _info");
 	}
 }
 
@@ -96,20 +96,20 @@ static const char *describe_has_info_documentation(struct manifest *m,
 	if (!id->summary) {
 		has_info_documentation.handle = create_info_template_doc;
 		reason = talloc_asprintf_append(reason,
-		"Your _info.c has no module documentation.\n\n"
+		"Your _info file has no module documentation.\n\n"
 		"CCAN modules use /**-style comments for documentation: the\n"
-	        "overall documentation belongs in the _info.c metafile.\n");
+	        "overall documentation belongs in the _info metafile.\n");
 	}
 	if (!id->description)
 		reason = talloc_asprintf_append(reason,
-		"Your _info.c has no module description.\n\n"
-		"The lines after the first summary line in the _info.c file\n"
+		"Your _info file has no module description.\n\n"
+		"The lines after the first summary line in the _info file\n"
 		"documentation should describe the purpose and use of the\n"
 		"overall package\n");
 	if (!id->example)
 		reason = talloc_asprintf_append(reason,
-		"Your _info.c has no module example.\n\n"
-		"There should be an Example: section of the _info.c documentation\n"
+		"Your _info file has no module example.\n\n"
+		"There should be an Example: section of the _info documentation\n"
 		"which provides a concise toy program which uses your module\n");
 	return reason;
 }
@@ -122,7 +122,7 @@ static unsigned int has_info_documentation_score(struct manifest *m,
 }
 
 struct ccanlint has_info_documentation = {
-	.name = "Documentation in _info.c",
+	.name = "Documentation in _info file",
 	.total_score = 3,
 	.score = has_info_documentation_score,
 	.check = check_has_info_documentation,

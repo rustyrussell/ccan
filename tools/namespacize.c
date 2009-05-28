@@ -507,14 +507,14 @@ static void adjust_dependents(const char *dir)
 	verbose("Looking for dependents in %s\n", parent);
 	verbose_indent();
 	for (file = get_dir(parent); *file; file++) {
-		char *infoc, **deps;
+		char *info, **deps;
 		bool isdep = false;
 
 		if (basename(*file, *file)[0] == '.')
 			continue;
 
-		infoc = talloc_asprintf(*file, "%s/_info.c", *file);
-		if (access(infoc, R_OK) != 0)
+		info = talloc_asprintf(*file, "%s/_info", *file);
+		if (access(info, R_OK) != 0)
 			continue;
 
 		for (deps = get_deps(*file, *file, false); *deps; deps++) {

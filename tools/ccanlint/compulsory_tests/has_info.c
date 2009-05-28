@@ -20,8 +20,8 @@ static void *check_has_info(struct manifest *m)
 
 static const char *describe_has_info(struct manifest *m, void *check_result)
 {
-	return "You have no _info.c file.\n\n"
-	"The file _info.c contains the metadata for a ccan package: things\n"
+	return "You have no _info file.\n\n"
+	"The file _info contains the metadata for a ccan package: things\n"
 	"like the dependencies, the documentation for the package as a whole\n"
 	"and license information.\n";
 }
@@ -56,22 +56,22 @@ static void create_info_template(struct manifest *m, void *check_result)
 {
 	FILE *info;
 
-	if (!ask("Should I create a template _info.c file for you?"))
+	if (!ask("Should I create a template _info file for you?"))
 		return;
 
-	info = fopen("_info.c", "w");
+	info = fopen("_info", "w");
 	if (!info)
-		err(1, "Trying to create a template _info.c");
+		err(1, "Trying to create a template _info");
 
 	if (fprintf(info, template, m->basename) < 0) {
-		unlink_noerr("_info.c");
-		err(1, "Writing template into _info.c");
+		unlink_noerr("_info");
+		err(1, "Writing template into _info");
 	}
 	fclose(info);
 }
 
 struct ccanlint has_info = {
-	.name = "Has _info.c file",
+	.name = "Has _info file",
 	.check = check_has_info,
 	.describe = describe_has_info,
 	.handle = create_info_template,
