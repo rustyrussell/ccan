@@ -1,26 +1,30 @@
 #include <string.h>
 #include "config.h"
 
+#include "ccan/array/array.h"
+
 /**
  * array - A collection of macros for generic dynamic array management.
  *
  * The array module provides generic dynamic array functions via macros.  It
  * removes the tedium of managing realloc'd arrays with pointer, size, and
- * allocated size.  It also fits into structures quite well.
+ * allocated size.  It also fits into structures quite well.  It uses the
+ * talloc library to allocate the memory.
  * 
- * NOTE:  The API is currently unstable.  It will likely change in the near future.
+ * NOTE:  The API should be fairly stable now, but do expect small changes
+ * over time.
  * 
  * Example:
  * #include <ccan/array/array.h>
  * #include <stdio.h>
  * 
  * int main(void) {
- * 	Array(int) numbers = NewArray();
+ * 	array(int) numbers = array_new(NULL);
  * 	char buffer[32];
  * 	int add;
  * 	
  * 	for (;;) {
- * 		AFor(i, numbers, printf("%d ", *i))
+ * 		array_for(i, numbers, printf("%d ", *i))
  * 		if (numbers.size) puts("");
  * 		
  * 		printf("array> ");
@@ -29,14 +33,16 @@
  * 			break;
  * 		add = atoi(buffer);
  * 		
- * 		AAppend(numbers, add);
+ * 		array_append(numbers, add);
  * 	}
  * 	
- * 	AFree(numbers);
+ * 	array_free(numbers);
  * 	
  * 	return 0;
  * }
  *
+ * Author: Joey Adams
+ * Version: 0.1
  * Licence: BSD
  */
 int main(int argc, char *argv[])
@@ -45,7 +51,11 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0)
+		#ifndef ARRAY_USE_TALLOC
 		/* Nothing. */
+		#else
+		printf("ccan/talloc\n");
+		#endif
 		return 0;
 
 	return 1;

@@ -1,0 +1,161 @@
+static int testarray_from_lit(void);
+static int testarray_append_lit(void);
+static int testarray_prepend_lit(void);
+
+static void testLits(void) {
+	testing(array_from_lit);
+	ok1(testarray_from_lit());
+	
+	testing(testarray_append_lit);
+	ok1(testarray_append_lit());
+	
+	testing(testarray_prepend_lit);
+	ok1(testarray_prepend_lit());
+}
+
+static int testarray_from_lit(void) {
+	#ifndef ARRAY_USE_TALLOC
+	array_char a = array_new();
+	#else
+	array_char a = array_new(NULL);
+	#endif
+	size_t testsPassed = 0;
+	size_t len = 0;
+	
+	@forEachRandomString
+		/* Test @i */
+		array_from_lit(a, @str);
+		len = strlen(@str);
+		if (len != sizeof(@str)-1)
+			goto end;
+		if (a.size != len)
+			goto end;
+		if (a.size > a.alloc)
+			goto end;
+		if (strcmp(a.item, @str))
+			goto end;
+		array_free(a);
+		#ifndef ARRAY_USE_TALLOC
+		array_init(a);
+		#else
+		array_init(a, NULL);
+		#endif
+		testsPassed++;
+	@end
+	
+end:
+	array_free(a);
+	return testsPassed == @amount;
+}
+
+typedef struct {
+	char *item;
+	size_t size;
+} testLits_string;
+
+static int testarray_append_lit(void) {
+	#ifndef ARRAY_USE_TALLOC
+	array_char a = array_new();
+	array(testLits_string) strings = array_new();
+	#else
+	array_char a = array_new(NULL);
+	array(testLits_string) strings = array_new(NULL);
+	#endif
+	size_t testsPassed = 0;
+	size_t oldSize;
+	testLits_string append;
+	size_t offs = 0;
+	
+	@forEachRandomString
+		/* Test @i */
+		append.size = sizeof(@str)-1;
+		oldSize = a.size;
+		array_append_lit(a, @str);
+		if (a.size != oldSize+append.size)
+			goto end;
+		if (a.size > a.alloc)
+			goto end;
+		if (a.item[a.size])
+			goto end;
+		if (memcmp(a.item+oldSize, @str, a.size-oldSize))
+			goto end;
+		append.item = strdup(@str);
+		array_append(strings, append);
+		testsPassed++;
+	@end
+	
+	if (strings.size != @amount)
+		goto end;
+	array_for(i, strings,
+		if (a.size-offs < i->size)
+			goto end;
+		if (memcmp(a.item+offs, i->item, i->size))
+			goto end;
+		offs += i->size;
+	);
+	if (offs != a.size)
+		goto end;
+	if (a.item[offs])
+		goto end;
+	testsPassed++;
+	
+end:
+	array_free(a);
+	array_for(i, strings, free(i->item));
+	array_free(strings);
+	return testsPassed == @amount+1;
+}
+
+static int testarray_prepend_lit(void) {
+	#ifndef ARRAY_USE_TALLOC
+	array_char a = array_new();
+	array(testLits_string) strings = array_new();
+	#else
+	array_char a = array_new(NULL);
+	array(testLits_string) strings = array_new(NULL);
+	#endif
+	size_t testsPassed = 0;
+	size_t oldSize;
+	testLits_string append;
+	size_t offs;
+	
+	@forEachRandomString
+		/* Test @i */
+		append.size = sizeof(@str)-1;
+		oldSize = a.size;
+		array_prepend_lit(a, @str);
+		if (a.size != oldSize+append.size)
+			goto end;
+		if (a.size > a.alloc)
+			goto end;
+		if (a.item[a.size])
+			goto end;
+		if (memcmp(a.item, @str, a.size-oldSize))
+			goto end;
+		append.item = strdup(@str);
+		array_append(strings, append);
+		testsPassed++;
+	@end
+	
+	offs = a.size;
+	if (a.item[offs])
+		goto end;
+	if (strings.size != @amount)
+		goto end;
+	array_for(i, strings,
+		if (offs < i->size)
+			goto end;
+		offs -= i->size;
+		if (memcmp(a.item+offs, i->item, i->size))
+			goto end;
+	);
+	if (offs)
+		goto end;
+	testsPassed++;
+	
+end:
+	array_free(a);
+	array_for(i, strings, free(i->item));
+	array_free(strings);
+	return testsPassed == @amount+1;
+}
