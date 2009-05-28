@@ -97,9 +97,9 @@ static void handle_no_tests(struct manifest *m, void *check_result)
 	fputs("#include \"tap/tap.h\"\n", run);
 	fputs("\n", run);
 
-	fputs("int main(int argc, char *argv[])\n", run);
+	fputs("int main(void)\n", run);
 	fputs("{\n", run);
-	fputs("\t/* This is how many tests you plan to run\n", run);
+	fputs("\t/* This is how many tests you plan to run */\n", run);
 	fputs("\tplan_tests(3);\n", run);
 	fputs("\n", run);
 	fputs("\t/* Simple thing we expect to succeed */\n", run);
@@ -116,7 +116,8 @@ static void handle_no_tests(struct manifest *m, void *check_result)
 	fputs("#endif\n", run);
 	fputs("\n", run);
 	fputs("\t/* This exits depending on whether all tests passed */\n", run);
-	fputs("\return exit_status()\n", run);
+	fputs("\treturn exit_status();\n", run);
+	fputs("}\n", run);
 
 	fclose(run);
 }	

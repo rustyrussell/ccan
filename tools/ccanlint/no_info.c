@@ -40,7 +40,7 @@ static const char template[] =
 	" */\n"
 	"int main(int argc, char *argv[])\n"
 	"{\n"
-	"	/* Expect exactly one argument\n"
+	"	/* Expect exactly one argument */\n"
 	"	if (argc != 2)\n"
 	"		return 1;\n"
 	"\n"
