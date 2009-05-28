@@ -112,6 +112,10 @@ static char **get_one_safe_deps(const void *ctx,
 		char *str;
 		unsigned int len;
 
+		/* Ignore lines starting with # (e.g. #include) */
+		if (lines[i][0] == '#')
+			continue;
+
 		/* Start of line, or after ". */
 		if (strstarts(lines[i], "ccan/"))
 			str = lines[i];
