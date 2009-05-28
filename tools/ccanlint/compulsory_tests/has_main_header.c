@@ -1,4 +1,4 @@
-#include "ccanlint.h"
+#include <tools/ccanlint/ccanlint.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>

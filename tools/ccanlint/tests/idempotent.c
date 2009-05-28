@@ -1,4 +1,5 @@
-#include "ccanlint.h"
+#include <tools/ccanlint/ccanlint.h>
+#include <tools/tools.h>
 #include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
 #include <sys/types.h>
@@ -12,7 +13,6 @@
 #include <err.h>
 #include <string.h>
 #include <ctype.h>
-#include "../tools.h"
 
 static const char explain[] 
 = "Headers usually start with the C preprocessor lines to prevent multiple\n"

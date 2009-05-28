@@ -1,5 +1,5 @@
 /* Trailing whitespace test.  Almost embarrassing, but trivial. */
-#include "ccanlint.h"
+#include <tools/ccanlint/ccanlint.h>
 #include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
 

@@ -1,5 +1,5 @@
-#include "ccanlint.h"
-#include "../doc_extract.h"
+#include <tools/ccanlint/ccanlint.h>
+#include <tools/doc_extract.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
