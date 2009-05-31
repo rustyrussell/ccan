@@ -58,7 +58,7 @@ int main(void) {
 	}
 	reset(arr);
 	
-	testing(array_prepend, array_pop_nocheck);
+	testing(array_prepend, array_pop);
 	{
 		for (i=countof(lotsOfNumbers); i;)
 			array_prepend(arr, lotsOfNumbers[--i]);
@@ -67,7 +67,7 @@ int main(void) {
 		ok1(!memcmp(arr.item, lotsOfNumbers, sizeof(lotsOfNumbers)));
 		
 		for (i=countof(lotsOfNumbers); i;) {
-			if (array_pop_nocheck(arr) != (long)lotsOfNumbers[--i]) {
+			if (array_pop(arr) != (long)lotsOfNumbers[--i]) {
 				i++;
 				break;
 			}
@@ -251,7 +251,7 @@ int main(void) {
 	}
 	reset(str);
 	
-	testing(array_appends, array_prepends, array_pop);
+	testing(array_appends, array_prepends, array_pop_check);
 	{
 		#ifndef ARRAY_USE_TALLOC
 		array(const char*) array = array_new();
@@ -276,19 +276,19 @@ int main(void) {
 		    array.item[7]==n[7] &&
 		    array.item[8]==n[8]);
 		
-		ok1(array_pop(array)==n[8] &&
-		    array_pop(array)==n[7] &&
-		    array_pop(array)==n[6] &&
-		    array_pop(array)==n[5] &&
-		    array_pop(array)==n[4] &&
-		    array_pop(array)==n[3] &&
-		    array_pop(array)==n[2] &&
-		    array_pop(array)==n[1] &&
-		    array_pop(array)==n[0]);
+		ok1(array_pop_check(array)==n[8] &&
+		    array_pop_check(array)==n[7] &&
+		    array_pop_check(array)==n[6] &&
+		    array_pop_check(array)==n[5] &&
+		    array_pop_check(array)==n[4] &&
+		    array_pop_check(array)==n[3] &&
+		    array_pop_check(array)==n[2] &&
+		    array_pop_check(array)==n[1] &&
+		    array_pop_check(array)==n[0]);
 		
 		ok1(array.size==0);
 		
-		ok1(array_pop(array)==NULL && array_pop(array)==NULL && array_pop(array)==NULL);
+		ok1(array_pop_check(array)==NULL && array_pop_check(array)==NULL && array_pop_check(array)==NULL);
 		
 		array_free(array);
 	}
@@ -296,7 +296,7 @@ int main(void) {
 	trace("Freeing amalgams (internal)");
 	freeAmalgams();
 	
-	return 0;
+	return exit_status();
 }
 
 static void generateAmalgams(void) {

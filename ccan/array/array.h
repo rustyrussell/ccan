@@ -38,7 +38,9 @@
 #include <ccan/talloc/talloc.h>
 #endif
 
+#ifndef HAVE_ATTRIBUTE_MAY_ALIAS
 #define HAVE_ATTRIBUTE_MAY_ALIAS 1
+#endif
 
 //Use the array_alias macro to indicate that a pointer has changed but strict aliasing rules are too stupid to know it
 #if HAVE_ATTRIBUTE_MAY_ALIAS==1
@@ -88,7 +90,7 @@
 #define array_append_items(array, items, count) do {size_t __count = (count); array_resize(array, (array).size+__count); memcpy((array).item+(array).size-__count, items, __count*sizeof(*(array).item));} while(0)
 #define array_prepend(array, ...) do {array_resize(array, (array).size+1); memmove((array).item+1, (array).item, ((array).size-1)*sizeof(*(array).item)); *(array).item = (__VA_ARGS__);} while(0)
 #define array_push(array, ...) array_append(array, __VA_ARGS__)
-#define array_pop(array) ((array).size ? array_pop_nocheck(array) : NULL)
+#define array_pop_check(array) ((array).size ? array_pop(array) : NULL)
 
 #define array_growalloc(array, newAlloc) do {size_t __newAlloc=(newAlloc); if (__newAlloc > (array).alloc) array_realloc(array, (__newAlloc+63)&~63); } while(0)
 #if HAVE_STATEMENT_EXPR==1
@@ -97,7 +99,7 @@
 
 
 //We do just fine by ourselves
-#define array_pop_nocheck(array) ((array).item[--(array).size])
+#define array_pop(array) ((array).item[--(array).size])
 
 
 #if HAVE_TYPEOF==1
