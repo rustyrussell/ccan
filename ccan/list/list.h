@@ -62,7 +62,7 @@ struct list_head
  *			printf(" -> %s\n", c->name);
  *	}
  */
-struct list_head *list_check(struct list_head *h, const char *abortstr);
+struct list_head *list_check(const struct list_head *h, const char *abortstr);
 
 #ifdef CCAN_LIST_DEBUG
 #define debug_list(h) list_check((h), __func__)
@@ -166,7 +166,7 @@ static inline void list_del(struct list_node *n)
  * Example:
  *	assert(list_empty(&parent->children) == (parent->num_children == 0));
  */
-static inline bool list_empty(struct list_head *h)
+static inline bool list_empty(const struct list_head *h)
 {
 	(void)debug_list(h);
 	return h->n.next == &h->n;

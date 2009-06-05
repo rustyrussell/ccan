@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include "list.h"
 
-struct list_head *list_check(struct list_head *h, const char *abortstr)
+struct list_head *list_check(const struct list_head *h, const char *abortstr)
 {
-	struct list_node *n, *p;
+	const struct list_node *n, *p;
 	int count = 0;
 
 	if (h->n.next == &h->n) {
@@ -15,7 +15,7 @@ struct list_head *list_check(struct list_head *h, const char *abortstr)
 				abortstr, h);
 			abort();
 		}
-		return h;
+		return (struct list_head *)h;
 	}
 
 	for (p = &h->n, n = h->n.next; n != &h->n; p = n, n = n->next) {
@@ -29,5 +29,5 @@ struct list_head *list_check(struct list_head *h, const char *abortstr)
 			abort();
 		}
 	}
-	return h;
+	return (struct list_head *)h;
 }
