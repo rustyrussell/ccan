@@ -128,3 +128,5 @@ struct ccanlint has_info_documentation = {
 	.check = check_has_info_documentation,
 	.describe = describe_has_info_documentation,
 };
+
+REGISTER_TEST(has_info_documentation, NULL);

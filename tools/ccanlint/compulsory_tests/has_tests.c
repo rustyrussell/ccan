@@ -128,3 +128,5 @@ struct ccanlint has_tests = {
 	.describe = describe_has_tests,
 	.handle = handle_no_tests,
 };
+
+REGISTER_TEST(has_tests, NULL);

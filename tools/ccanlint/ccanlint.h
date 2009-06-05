@@ -4,6 +4,12 @@
 #include <stdbool.h>
 #include "../doc_extract.h"
 
+#define REGISTER_TEST(name, ...) extern struct ccanlint name
+#include "generated-init-tests"
+#undef REGISTER_TEST
+
+#define REGISTER_TEST(name, ...) 
+
 struct manifest {
 	char *basename;
 	struct ccan_file *info_file;
@@ -44,6 +50,12 @@ struct ccanlint {
 
 	/* Can we do something about it? (NULL if not) */
 	void (*handle)(struct manifest *m, void *check_result);
+
+	/* Internal use fields: */
+	/* Who depends on us? */
+	struct list_head dependencies;
+	/* How many things do we (still) depend on? */
+	unsigned int num_depends;
 };
 
 /* Ask the user a yes/no question: the answer is NO if there's an error. */
@@ -134,10 +146,13 @@ char *report_on_lines(struct list_head *files,
 		      char *(*report)(const char *),
 		      char *sofar);
 
-/* The critical tests which mean fail if they don't pass. */
-extern struct ccanlint no_info;
-extern struct ccanlint has_main_header;
-
 /* Normal tests. */
 extern struct ccanlint trailing_whitespace;
+
+/* Dependencies */
+struct dependent {
+	struct list_node node;
+	struct ccanlint *dependent;
+};
+
 #endif /* CCAN_LINT_H */

@@ -19,6 +19,7 @@
 #include "ccanlint.h"
 #include <unistd.h>
 #include <getopt.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,11 +28,7 @@
 
 static unsigned int verbose = 0;
 static LIST_HEAD(tests);
-
-static void init_tests(void)
-{
-#include "generated-init-tests" 
-}
+static LIST_HEAD(finished_tests);
 
 static void usage(const char *name)
 {
@@ -109,6 +106,53 @@ static bool run_test(const struct ccanlint *i,
 		i->handle(m, result);
 
 	return false;
+}
+
+static void register_test(struct ccanlint *test, ...)
+{
+	va_list ap;
+	struct ccanlint *depends; 
+	struct dependent *dchild;
+
+	list_add(&tests, &test->list);
+	va_start(ap, test);
+	/* Careful: we might have been initialized by a dependent. */
+	if (test->dependencies.n.next == NULL)
+		list_head_init(&test->dependencies);
+
+	//dependant(s) args (if any), last one is NULL
+	while ((depends = va_arg(ap, struct ccanlint *)) != NULL) {
+		dchild = malloc(sizeof(*dchild));
+		dchild->dependent = test;
+		/* The thing we depend on might not be initialized yet! */
+		if (depends->dependencies.n.next == NULL)
+			list_head_init(&depends->dependencies);
+		list_add_tail(&depends->dependencies, &dchild->node);
+		test->num_depends++;
+	}
+	va_end(ap);
+}
+
+static void init_tests(void)
+{
+	const struct ccanlint *i;
+
+#undef REGISTER_TEST
+#define REGISTER_TEST(name, ...) register_test(&name, __VA_ARGS__)
+#include "generated-init-tests"
+
+	if (!verbose)
+		return;
+
+	list_for_each(&tests, i, list) {
+		printf("%s depends on %u others\n", i->name, i->num_depends);
+		if (!list_empty(&i->dependencies)) {
+			const struct dependent *d;
+			printf("These depend on us:\n");
+			list_for_each(&i->dependencies, d, node)
+				printf("\t%s\n", d->dependent->name);
+		}
+	}
 }
 
 int main(int argc, char *argv[])

@@ -45,3 +45,6 @@ struct ccanlint trailing_whitespace = {
 	.check = check_trailing_whitespace,
 	.describe = describe_trailing_whitespace,
 };
+
+
+REGISTER_TEST(trailing_whitespace, NULL);

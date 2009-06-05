@@ -10,10 +10,11 @@ CORE_OBJS := tools/ccanlint/ccanlint.o \
 
 OBJS := $(CORE_OBJS) $(TEST_OBJS)
 
-tools/ccanlint/generated-init-tests: $(OBJS)
-	cat $(OBJS:.o=.c) | sed -n 's/^struct ccanlint \([A-Za-z0-9_]*\) = {/{ extern struct ccanlint \1; list_add(\&tests, \&\1.list); }/p' >$@
+# FIXME: write a trivial C program to do this
+tools/ccanlint/generated-init-tests: $(TEST_CFILES)
+	cat $(TEST_CFILES) | grep ^REGISTER_TEST > $@
 
-tools/ccanlint/ccanlint.o: tools/ccanlint/generated-init-tests
+$(TEST_OBJS): tools/ccanlint/generated-init-tests
 
 tools/ccanlint/ccanlint: $(OBJS)
 

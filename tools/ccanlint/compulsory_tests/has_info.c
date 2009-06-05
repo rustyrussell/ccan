@@ -76,3 +76,5 @@ struct ccanlint has_info = {
 	.describe = describe_has_info,
 	.handle = create_info_template,
 };
+
+REGISTER_TEST(has_info, NULL);

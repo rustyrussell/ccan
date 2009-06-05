@@ -39,3 +39,5 @@ struct ccanlint has_main_header = {
 	.check = check_has_main_header,
 	.describe = describe_has_main_header,
 };
+
+REGISTER_TEST(has_main_header, NULL);
