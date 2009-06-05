@@ -47,7 +47,9 @@ int main(int argc, char *argv[])
 		while (getppid() == pid)
 			sleep(1);
 		daemonized.ppid = getppid();
-		write(fds[1], &daemonized, sizeof(daemonized));
+		if (write(fds[1], &daemonized, sizeof(daemonized))
+		    != sizeof(daemonized))
+			exit(1);
 		exit(0);
 	}
 

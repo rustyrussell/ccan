@@ -24,7 +24,9 @@ bool daemonize(void)
 	/* Session leader so ^C doesn't whack us. */
 	setsid();
 	/* Move off any mount points we might be in. */
-	chdir("/");
+	if (chdir("/") != 0)
+		return false;
+
 	/* Discard our parent's old-fashioned umask prejudices. */
 	umask(0);
 	return true;
