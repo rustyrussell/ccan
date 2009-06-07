@@ -8,19 +8,19 @@
  * @data: pointer to the buffer to CRC
  * @len: length of the buffer
  * @blocksize: CRC of each block (final block may be shorter)
- * @crcbits: the number of bits of crc you want (currently 32 maximum)
+ * @crcbits: the number of bits of crc you want (currently 64 maximum)
  * @crc: the crcs (array will have (len + blocksize-1)/blocksize entries).
  *
  * Calculates the CRC of each block, and output the lower @crcbits to
  * @crc array.
  */
 void crc_of_blocks(const void *data, size_t len, unsigned int blocksize,
-		   unsigned int crcbits, uint32_t crc[]);
+		   unsigned int crcbits, uint64_t crc[]);
 
 /**
  * crc_context_new - allocate and initialize state for crc_find_block
  * @blocksize: the size of each block
- * @crcbits: the bits valid in the CRCs (<= 32)
+ * @crcbits: the bits valid in the CRCs (<= 64)
  * @crc: array of block crcs (including final block, if any)
  * @num_crcs: number of block crcs
  * @tail_size: the size of final partial block, if any (< blocksize).
@@ -29,7 +29,7 @@ void crc_of_blocks(const void *data, size_t len, unsigned int blocksize,
  * or NULL.  Makes a copy of @crc.
  */
 struct crc_context *crc_context_new(size_t blocksize, unsigned crcbits,
-				    const uint32_t crc[], unsigned num_crcs,
+				    const uint64_t crc[], unsigned num_crcs,
 				    size_t final_size);
 
 /**

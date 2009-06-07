@@ -76,6 +76,7 @@ int main(int argc, char *argv[])
 
 	if (strcmp(argv[1], "depends") == 0) {
 		printf("ccan/crc\n");
+		printf("ccan/array_size\n");
 		return 0;
 	}
 

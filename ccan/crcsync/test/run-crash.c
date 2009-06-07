@@ -11,14 +11,14 @@
 
 typedef struct {
 	int block_count;
-	unsigned int *crcs;
+	uint64_t *crcs;
 } crc_info_t;
 
 static void crcblocks(crc_info_t *crc_info, char *data, int datalen, int blocksize)
 {
 	crc_info->block_count = (datalen+blocksize-1)/blocksize;
-	crc_info->crcs = malloc(sizeof(unsigned int)*(crc_info->block_count + 1));
-	crc_of_blocks(data, datalen, blocksize, 30, crc_info->crcs);
+	crc_info->crcs = malloc(sizeof(uint64_t)*(crc_info->block_count + 1));
+	crc_of_blocks(data, datalen, blocksize, 60, crc_info->crcs);
 }
 
 #define BLOCKSIZE 5
@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
 	plan_tests(ARRAY_SIZE(expected) + 2);
 	crcblocks(&crc_info1, data1, strlen(data1), BLOCKSIZE);
 
-	crcctx = crc_context_new(BLOCKSIZE, 30, crc_info1.crcs, crc_info1.block_count,
+	crcctx = crc_context_new(BLOCKSIZE, 60, crc_info1.crcs, crc_info1.block_count,
 				 tailsize);
 	while ( offset < len2)
 	{

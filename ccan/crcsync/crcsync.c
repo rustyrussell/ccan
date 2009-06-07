@@ -4,68 +4,75 @@
 #include <assert.h>
 #include <stdbool.h>
 
+/* FIXME: That 64-bit CRC takes a while to warm the lower bits.  Do
+ * some quantitative tests and replace it?  Meanwhile, use upper bits. */
+static uint64_t mask_of(unsigned int crcbits)
+{
+	return -1ULL << (64 - crcbits);
+}
+
 void crc_of_blocks(const void *data, size_t len, unsigned int block_size,
-		   unsigned int crcbits, uint32_t crc[])
+		   unsigned int crcbits, uint64_t crc[])
 {
 	unsigned int i;
 	const uint8_t *buf = data;
-	uint32_t crcmask = crcbits < 32 ? (1 << crcbits) - 1 : 0xFFFFFFFF;
+	uint64_t crcmask = mask_of(crcbits);
 
 	for (i = 0; len >= block_size; i++) {
-		crc[i] = (crc32c(0, buf, block_size) & crcmask);
+		crc[i] = (crc64_iso(0, buf, block_size) & crcmask);
 		buf += block_size;
 		len -= block_size;
 	}
 	if (len)
-		crc[i] = (crc32c(0, buf, len) & crcmask);
+		crc[i] = (crc64_iso(0, buf, len) & crcmask);
 }
 
 struct crc_context {
 	size_t block_size;
-	uint32_t crcmask;
+	uint64_t crcmask;
 
 	/* Saved old buffer bytes (block_size bytes). */
 	void *buffer;
 	size_t buffer_start, buffer_end;
 
 	/* Progress so far. */
-	uint32_t running_crc;
+	uint64_t running_crc;
 	size_t literal_bytes;
 	size_t total_bytes;
 	int have_match;
 
 	/* Final block is special (if a different size) */
 	size_t tail_size;
-	uint32_t tail_crc;
+	uint64_t tail_crc;
 
 	/* Uncrc tab. */
-	uint32_t uncrc_tab[256];
+	uint64_t uncrc_tab[256];
 
 	/* This doesn't count the last CRC. */
 	unsigned int num_crcs;
-	uint32_t crc[];
+	uint64_t crc[];
 };
 
 /* Calculate the how the crc changes when we take a give char out of the
  * crc'd area. */
-static void init_uncrc_tab(uint32_t uncrc_tab[], unsigned int wsize)
+static void init_uncrc_tab(uint64_t uncrc_tab[], unsigned int wsize)
 {
 	unsigned int i;
-	uint32_t part_crc;
+	uint64_t part_crc;
 	uint8_t buffer[wsize];
 
 	/* Calculate crc(buffer+1, wsize-1) once, since it doesn't change. */
 	memset(buffer, 0, wsize);
-	part_crc = crc32c(0, buffer+1, wsize-1);
+	part_crc = crc64_iso(0, buffer+1, wsize-1);
 
 	for (i = 0; i < 256; i++) {
 		buffer[0] = i;
-		uncrc_tab[i] = (crc32c(0, buffer, wsize) ^ part_crc);
+		uncrc_tab[i] = (crc64_iso(0, buffer, wsize) ^ part_crc);
 	}
 }
 
 struct crc_context *crc_context_new(size_t block_size, unsigned crcbits,
-				    const uint32_t crc[], unsigned num_crcs,
+				    const uint64_t crc[], unsigned num_crcs,
 				    size_t tail_size)
 {
 	struct crc_context *ctx;
@@ -81,11 +88,7 @@ struct crc_context *crc_context_new(size_t block_size, unsigned crcbits,
 		if (tail_size)
 			ctx->tail_crc = crc[--num_crcs];
 
-		/* Technically, 1 << 32 is undefined. */
-		if (crcbits >= 32)
-			ctx->crcmask = 0xFFFFFFFF;
-		else
-			ctx->crcmask = (1 << crcbits)-1;
+		ctx->crcmask = mask_of(crcbits);
 		ctx->num_crcs = num_crcs;
 		memcpy(ctx->crc, crc, sizeof(crc[0])*num_crcs);
 		ctx->buffer_end = 0;
@@ -126,19 +129,19 @@ static bool tail_matches(const struct crc_context *ctx)
 	return (ctx->running_crc & ctx->crcmask) == ctx->tail_crc;
 }
 
-static uint32_t crc_add_byte(uint32_t crc, uint8_t newbyte)
+static uint64_t crc_add_byte(uint64_t crc, uint8_t newbyte)
 {
-	return crc32c(crc, &newbyte, 1);
+	return crc64_iso(crc, &newbyte, 1);
 }
 
-static uint32_t crc_remove_byte(uint32_t crc, uint8_t oldbyte,
-				const uint32_t uncrc_tab[])
+static uint64_t crc_remove_byte(uint64_t crc, uint8_t oldbyte,
+				const uint64_t uncrc_tab[])
 {
 	return crc ^ uncrc_tab[oldbyte];
 }
 
-static uint32_t crc_roll(uint32_t crc, uint8_t oldbyte, uint8_t newbyte,
-			 const uint32_t uncrc_tab[])
+static uint64_t crc_roll(uint64_t crc, uint8_t oldbyte, uint8_t newbyte,
+			 const uint64_t uncrc_tab[])
 {
 	return crc_add_byte(crc_remove_byte(crc, oldbyte, uncrc_tab), newbyte);
 }

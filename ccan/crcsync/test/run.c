@@ -67,14 +67,14 @@ static void test_sync(const char *buffer1, size_t len1,
 	struct crc_context *ctx;
 	size_t used, ret, i, curr_literal, tailsize;
 	long result;
-	uint32_t crcs[num_blocks(len1, block_size)];
+	uint64_t crcs[num_blocks(len1, block_size)];
 
-	crc_of_blocks(buffer1, len1, block_size, 32, crcs);
+	crc_of_blocks(buffer1, len1, block_size, 64, crcs);
 
 	tailsize = len1 % block_size;
 
 	/* Normal method. */
-	ctx = crc_context_new(block_size, 32, crcs, ARRAY_SIZE(crcs),
+	ctx = crc_context_new(block_size, 64, crcs, ARRAY_SIZE(crcs),
 			      tailsize);
 
 	curr_literal = 0;
@@ -93,7 +93,7 @@ static void test_sync(const char *buffer1, size_t len1,
 	crc_context_free(ctx);
 
 	/* Byte-at-a-time method. */
-	ctx = crc_context_new(block_size, 32, crcs, ARRAY_SIZE(crcs),
+	ctx = crc_context_new(block_size, 64, crcs, ARRAY_SIZE(crcs),
 			      tailsize);
 
 	curr_literal = 0;
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
 {
 	char *buffer1, *buffer2;
 	unsigned int i;
-	uint32_t crcs1[NUM_BLOCKS], crcs2[NUM_BLOCKS];
+	uint64_t crcs1[NUM_BLOCKS], crcs2[NUM_BLOCKS];
 
 	plan_tests(664);
 
@@ -130,9 +130,9 @@ int main(int argc, char *argv[])
 
 	/* Truncated end block test. */
 	crcs1[ARRAY_SIZE(crcs1)-1] = 0xdeadbeef;
-	crc_of_blocks(buffer1, BUFFER_SIZE-BLOCK_SIZE-1, BLOCK_SIZE, 32, crcs1);
+	crc_of_blocks(buffer1, BUFFER_SIZE-BLOCK_SIZE-1, BLOCK_SIZE, 64, crcs1);
 	ok1(crcs1[ARRAY_SIZE(crcs1)-1] == 0xdeadbeef);
-	crc_of_blocks(buffer2, BUFFER_SIZE-BLOCK_SIZE-1, BLOCK_SIZE, 32, crcs2);
+	crc_of_blocks(buffer2, BUFFER_SIZE-BLOCK_SIZE-1, BLOCK_SIZE, 64, crcs2);
 	ok1(memcmp(crcs1, crcs2, sizeof(crcs1[0])*(ARRAY_SIZE(crcs1)-1)) == 0);
 
 	/* Fill with non-zero pattern, retest. */
@@ -140,16 +140,16 @@ int main(int argc, char *argv[])
 		buffer1[i] = buffer2[i] = i + i/BLOCK_SIZE;
 
 	crcs1[ARRAY_SIZE(crcs1)-1] = 0xdeadbeef;
-	crc_of_blocks(buffer1, BUFFER_SIZE-BLOCK_SIZE-1, BLOCK_SIZE, 32, crcs1);
+	crc_of_blocks(buffer1, BUFFER_SIZE-BLOCK_SIZE-1, BLOCK_SIZE, 64, crcs1);
 	ok1(crcs1[ARRAY_SIZE(crcs1)-1] == 0xdeadbeef);
-	crc_of_blocks(buffer2, BUFFER_SIZE-BLOCK_SIZE-1, BLOCK_SIZE, 32, crcs2);
+	crc_of_blocks(buffer2, BUFFER_SIZE-BLOCK_SIZE-1, BLOCK_SIZE, 64, crcs2);
 	ok1(memcmp(crcs1, crcs2, sizeof(crcs1[0])*(ARRAY_SIZE(crcs1)-1)) == 0);
 
 	/* Check that it correctly masks bits. */
-	crc_of_blocks(buffer1, BUFFER_SIZE, BLOCK_SIZE, 32, crcs1);
+	crc_of_blocks(buffer1, BUFFER_SIZE, BLOCK_SIZE, 64, crcs1);
 	crc_of_blocks(buffer2, BUFFER_SIZE, BLOCK_SIZE, 8, crcs2);
 	for (i = 0; i < NUM_BLOCKS; i++)
-		ok1(crcs2[i] == (crcs1[i] & 0xFF));
+		ok1(crcs2[i] == (crcs1[i] & 0xFF00000000000000ULL));
 
 	/* Now test the "exact match" "round blocks" case. */
 	{

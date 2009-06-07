@@ -10,7 +10,7 @@
 static void test_roll(unsigned int wsize)
 {
 	uint8_t data[wsize * 2];
-	uint32_t uncrc_tab[256];
+	uint64_t uncrc_tab[256];
 	unsigned int i;
 
 	init_uncrc_tab(uncrc_tab, wsize);
@@ -19,10 +19,10 @@ static void test_roll(unsigned int wsize)
 		data[i] = random();
 
 	for (i = 1; i < ARRAY_SIZE(data) - wsize; i++) {
-		uint32_t rollcrc, crc;
+		uint64_t rollcrc, crc;
 
-		crc = crc32c(0, data+i, wsize);
-		rollcrc = crc_roll(crc32c(0, data+i-1, wsize),
+		crc = crc64_iso(0, data+i, wsize);
+		rollcrc = crc_roll(crc64_iso(0, data+i-1, wsize),
 				   data[i-1], data[i+wsize-1], uncrc_tab);
 
 		ok(crc == rollcrc, "wsize %u, i %u", wsize, i);
