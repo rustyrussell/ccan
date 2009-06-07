@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdio.h>
 
 /**
  * crc - routines for crc of bytes
@@ -35,6 +36,7 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/array_size\n");
 		return 0;
 	}
 
