@@ -238,12 +238,24 @@ static void test_crc32(uint32_t (*crc)(uint32_t, const void *, size_t),
 	ok1(memcmp(crc_table(), table_expect, 1024) == 0);
 }
 
+static void test_crc64(void)
+{
+	/* according to http://swissknife.sourceforge.net/CRC64.html */
+	ok1(crc64_iso(0, "IHATEMATH", strlen("IHATEMATH"))
+	    == 0xE3DCADD69B01ADD1ULL);
+
+	/* according to the CRC64 poly, http://sf.net/projects/jcrcgen */
+	ok1(crc64_iso(0, "123456789", strlen("123456789"))
+	    == 0x46A5A9388A5BEFFEULL);
+}
+
 int main(int argc, char *argv[])
 {
-	plan_tests(517 * 2);
+	plan_tests(517 * 2 + 2);
 	test_crc32(crc32c, crc32c_table,
 		   crcc_zero_expect, crcc_expect, crc32c_tab);
 	test_crc32(crc32_ieee, crc32_ieee_table,
 		   crc_ieee_zero_expect, crc_ieee_expect, crc32_ieee_tab);
+	test_crc64();
 	return exit_status();
 }

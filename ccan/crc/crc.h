@@ -55,7 +55,7 @@ uint32_t crc32c(uint32_t start_crc, const void *buf, size_t size);
  *	void check_user_crc_table(const uint32_t *usertab)
  *	{
  *		const uint32_t *ctab = crc32c_table();
- *		if (!ieee_tab || memcmp(ieee_tab, usertab, 1024) != 0)
+ *		if (!ctab || memcmp(ctab, usertab, 1024) != 0)
  *			abort();
  *	}
  */
@@ -80,4 +80,25 @@ uint32_t crc32_ieee(uint32_t start_crc, const void *buf, size_t size);
  * See crc32c_table() for details.
  */
 const uint32_t *crc32_ieee_table(void);
+
+/**
+ * crc64_iso - ISO 3309
+ * @start_crc: the initial crc (usually 0)
+ * @buf: pointer to bytes
+ * @size: length of buffer
+ *
+ * 64 bit CRC checksum using polynomial
+ * X^64 + X^4 + X^3 + X^1 + X^0
+ *
+ * See crc32c() for details.
+ */
+uint64_t crc64_iso(uint64_t start_crc, const void *buf, size_t size);
+
+/**
+ * crc64_iso_table - Get the ISO 3309 CRC table
+ *
+ * See crc32c_table() for details.
+ */
+const uint64_t *crc64_iso_table(void);
+
 #endif /* CCAN_CRC_H */
