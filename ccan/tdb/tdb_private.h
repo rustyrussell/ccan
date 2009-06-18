@@ -23,12 +23,26 @@
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifdef _SAMBA_BUILD_
 #include "replace.h"
 #include "system/filesys.h"
 #include "system/time.h"
 #include "system/shmem.h"
 #include "system/select.h"
 #include "system/wait.h"
+#else
+#define _XOPEN_SOURCE 500
+#include <stdint.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <sys/time.h>
+#include <sys/mman.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
+#include <errno.h>
+#include <stdio.h>
+#endif
 #include "tdb.h"
 
 #ifndef HAVE_GETPAGESIZE

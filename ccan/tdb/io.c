@@ -25,8 +25,10 @@
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
 
-
 #include "tdb_private.h"
+#ifndef MAX
+#define MAX(a,b) ((a) > (b) ? (a) : (b))
+#endif
 
 /* check for an out of bounds access - if it is out of bounds then
    see if the database has been expanded by someone else and expand

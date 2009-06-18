@@ -30,6 +30,12 @@
 extern "C" {
 #endif
 
+#ifndef _SAMBA_BUILD_
+/* For mode_t */
+#include <sys/types.h>
+/* For sig_atomic_t. */
+#include <signal.h>
+#endif
 
 /* flags to tdb_store() */
 #define TDB_REPLACE 1		/* Unused */
