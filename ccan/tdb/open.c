@@ -159,6 +159,7 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 		errno = ENOMEM;
 		goto fail;
 	}
+
 	tdb_io_init(tdb);
 	tdb->fd = -1;
 	tdb->name = NULL;

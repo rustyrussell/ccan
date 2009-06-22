@@ -189,7 +189,7 @@ int tdb_munmap(struct tdb_context *tdb)
 	if (tdb->flags & TDB_INTERNAL)
 		return 0;
 
-#ifdef HAVE_MMAP
+#if HAVE_MMAP
 	if (tdb->map_ptr) {
 		int ret = munmap(tdb->map_ptr, tdb->map_size);
 		if (ret != 0)
@@ -205,11 +205,11 @@ void tdb_mmap(struct tdb_context *tdb)
 	if (tdb->flags & TDB_INTERNAL)
 		return;
 
-#ifdef HAVE_MMAP
+#if HAVE_MMAP
 	if (!(tdb->flags & TDB_NOMMAP)) {
 		tdb->map_ptr = mmap(NULL, tdb->map_size, 
 				    PROT_READ|(tdb->read_only? 0:PROT_WRITE), 
-				    MAP_SHARED|MAP_FILE, tdb->fd, 0);
+				    MAP_SHARED, tdb->fd, 0);
 
 		/*
 		 * NB. When mmap fails it returns MAP_FAILED *NOT* NULL !!!!

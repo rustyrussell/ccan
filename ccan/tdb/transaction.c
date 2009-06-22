@@ -989,7 +989,7 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 	   not be backed up (as tdb rounding to block sizes means that
 	   file size changes are quite rare too). The following forces
 	   mtime changes when a transaction completes */
-#ifdef HAVE_UTIME
+#if HAVE_UTIME
 	utime(tdb->name, NULL);
 #endif
 

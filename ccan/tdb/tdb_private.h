@@ -1,3 +1,5 @@
+#ifndef TDB_PRIVATE_H
+#define TDB_PRIVATE_H
  /* 
    Unix SMB/CIFS implementation.
 
@@ -42,10 +44,12 @@
 #include <string.h>
 #include <errno.h>
 #include <stdio.h>
+#include <utime.h>
+#include "config.h"
 #endif
 #include "tdb.h"
 
-#ifndef HAVE_GETPAGESIZE
+#if HAVE_GETPAGESIZE
 #define getpagesize() 0x2000
 #endif
 
@@ -225,3 +229,4 @@ int tdb_rec_free_read(struct tdb_context *tdb, tdb_off_t off,
 		      struct list_struct *rec);
 
 
+#endif

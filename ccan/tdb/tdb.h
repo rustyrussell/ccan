@@ -33,6 +33,8 @@ extern "C" {
 #ifndef _SAMBA_BUILD_
 /* For mode_t */
 #include <sys/types.h>
+/* For O_* flags. */
+#include <sys/stat.h>
 /* For sig_atomic_t. */
 #include <signal.h>
 #endif
