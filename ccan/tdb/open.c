@@ -153,12 +153,24 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 	unsigned char *vp;
 	uint32_t vertest;
 	unsigned v;
+#ifdef TDB_TRACE
+	char tracefile[strlen(name) + 32];
+#endif
 
 	if (!(tdb = (struct tdb_context *)calloc(1, sizeof *tdb))) {
 		/* Can't log this */
 		errno = ENOMEM;
 		goto fail;
 	}
+
+#ifdef TDB_TRACE
+	sprintf(tracefile, "%s.trace.%u", name, getpid());
+	tdb->tracefd = open(tracefile, O_WRONLY|O_CREAT|O_EXCL, 0600);
+	if (tdb->tracefd < 0)
+		goto fail;
+	tdb_trace(tdb, "tdb_open %s %u %#x %#x %p\n",
+		  name, hash_size, tdb_flags, open_flags, hash_fn);
+#endif
 
 	tdb_io_init(tdb);
 	tdb->fd = -1;
@@ -329,6 +341,8 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 
 	if (!tdb)
 		return NULL;
+
+	close(tdb->tracefd);
 	
 	if (tdb->map_ptr) {
 		if (tdb->flags & TDB_INTERNAL)
@@ -365,6 +379,7 @@ int tdb_close(struct tdb_context *tdb)
 	struct tdb_context **i;
 	int ret = 0;
 
+	tdb_trace(tdb, "tdb_close");
 	if (tdb->transaction) {
 		tdb_transaction_cancel(tdb);
 	}
@@ -388,6 +403,7 @@ int tdb_close(struct tdb_context *tdb)
 		}
 	}
 
+	close(tdb->tracefd);
 	memset(tdb, 0, sizeof(*tdb));
 	SAFE_FREE(tdb);
 

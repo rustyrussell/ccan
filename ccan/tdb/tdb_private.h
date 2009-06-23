@@ -86,6 +86,18 @@ typedef uint32_t tdb_off_t;
  * argument. */
 #define TDB_LOG(x) tdb->log.log_fn x
 
+#ifdef TDB_TRACE
+void tdb_trace(const struct tdb_context *tdb, const char *fmt, ...);
+void tdb_trace_record(const struct tdb_context *tdb, TDB_DATA rec);
+#else
+static inline void tdb_trace(const struct tdb_context *tdb, const char *fmt, ...)
+{
+}
+static inline void tdb_trace_record(const struct tdb_context *tdb, TDB_DATA rec)
+{
+}
+#endif /* !TDB_TRACE */
+
 /* lock offsets */
 #define GLOBAL_LOCK      0
 #define ACTIVE_LOCK      4
@@ -185,6 +197,7 @@ struct tdb_context {
 	int page_size;
 	int max_dead_records;
 	bool have_transaction_lock;
+	int tracefd;
 	volatile sig_atomic_t *interrupt_sig_ptr;
 };
 

@@ -405,6 +405,8 @@ static const struct tdb_methods transaction_methods = {
 */
 int tdb_transaction_start(struct tdb_context *tdb)
 {
+	tdb_trace(tdb, "tdb_transaction_start\n");
+
 	/* some sanity checks */
 	if (tdb->read_only || (tdb->flags & TDB_INTERNAL) || tdb->traverse_read) {
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_start: cannot start a transaction on a read-only or internal db\n"));
@@ -514,6 +516,7 @@ int tdb_transaction_cancel(struct tdb_context *tdb)
 {	
 	int i;
 
+	tdb_trace(tdb, "tdb_transaction_cancel\n");
 	if (tdb->transaction == NULL) {
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_cancel: no transaction\n"));
 		return -1;
@@ -845,6 +848,7 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 	uint32_t zero = 0;
 	int i;
 
+	tdb_trace(tdb, "tdb_transaction_commit\n");
 	if (tdb->transaction == NULL) {
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_commit: no transaction\n"));
 		return -1;

@@ -413,48 +413,58 @@ static int _tdb_unlockall(struct tdb_context *tdb, int ltype)
 /* lock entire database with write lock */
 int tdb_lockall(struct tdb_context *tdb)
 {
+	tdb_trace(tdb, "tdb_lockall\n");
 	return _tdb_lockall(tdb, F_WRLCK, F_SETLKW);
 }
 
 /* lock entire database with write lock - mark only */
 int tdb_lockall_mark(struct tdb_context *tdb)
 {
+	tdb_trace(tdb, "tdb_lockall_mark\n");
 	return _tdb_lockall(tdb, F_WRLCK | TDB_MARK_LOCK, F_SETLKW);
 }
 
 /* unlock entire database with write lock - unmark only */
 int tdb_lockall_unmark(struct tdb_context *tdb)
 {
+	tdb_trace(tdb, "tdb_lockall_unmark\n");
 	return _tdb_unlockall(tdb, F_WRLCK | TDB_MARK_LOCK);
 }
 
 /* lock entire database with write lock - nonblocking varient */
 int tdb_lockall_nonblock(struct tdb_context *tdb)
 {
-	return _tdb_lockall(tdb, F_WRLCK, F_SETLK);
+	int ret = _tdb_lockall(tdb, F_WRLCK, F_SETLK);
+	tdb_trace(tdb, "tdb_lockall_nonblock = %i\n", ret);
+	return ret;
 }
 
 /* unlock entire database with write lock */
 int tdb_unlockall(struct tdb_context *tdb)
 {
+	tdb_trace(tdb, "tdb_unlockall\n");
 	return _tdb_unlockall(tdb, F_WRLCK);
 }
 
 /* lock entire database with read lock */
 int tdb_lockall_read(struct tdb_context *tdb)
 {
+	tdb_trace(tdb, "tdb_lockall_read\n");
 	return _tdb_lockall(tdb, F_RDLCK, F_SETLKW);
 }
 
 /* lock entire database with read lock - nonblock varient */
 int tdb_lockall_read_nonblock(struct tdb_context *tdb)
 {
-	return _tdb_lockall(tdb, F_RDLCK, F_SETLK);
+	int ret = _tdb_lockall(tdb, F_RDLCK, F_SETLK);
+	tdb_trace(tdb, "tdb_lockall_read_nonblock = %i\n", ret);
+	return ret;
 }
 
 /* unlock entire database with read lock */
 int tdb_unlockall_read(struct tdb_context *tdb)
 {
+	tdb_trace(tdb, "tdb_unlockall_read\n");
 	return _tdb_unlockall(tdb, F_RDLCK);
 }
 
@@ -462,6 +472,9 @@ int tdb_unlockall_read(struct tdb_context *tdb)
    contention - it cannot guarantee how many records will be locked */
 int tdb_chainlock(struct tdb_context *tdb, TDB_DATA key)
 {
+	tdb_trace(tdb, "tdb_chainlock ");
+	tdb_trace_record(tdb, key);
+	tdb_trace(tdb, "\n");
 	return tdb_lock(tdb, BUCKET(tdb->hash_fn(&key)), F_WRLCK);
 }
 
@@ -470,33 +483,52 @@ int tdb_chainlock(struct tdb_context *tdb, TDB_DATA key)
    locked */
 int tdb_chainlock_nonblock(struct tdb_context *tdb, TDB_DATA key)
 {
-	return tdb_lock_nonblock(tdb, BUCKET(tdb->hash_fn(&key)), F_WRLCK);
+	int ret = tdb_lock_nonblock(tdb, BUCKET(tdb->hash_fn(&key)), F_WRLCK);
+	tdb_trace(tdb, "tdb_chainlock_nonblock ");
+	tdb_trace_record(tdb, key);
+	tdb_trace(tdb, "= %i\n", ret);
+	return ret;
 }
 
 /* mark a chain as locked without actually locking it. Warning! use with great caution! */
 int tdb_chainlock_mark(struct tdb_context *tdb, TDB_DATA key)
 {
+	tdb_trace(tdb, "tdb_chainlock_mark ");
+	tdb_trace_record(tdb, key);
+	tdb_trace(tdb, "\n");
 	return tdb_lock(tdb, BUCKET(tdb->hash_fn(&key)), F_WRLCK | TDB_MARK_LOCK);
 }
 
 /* unmark a chain as locked without actually locking it. Warning! use with great caution! */
 int tdb_chainlock_unmark(struct tdb_context *tdb, TDB_DATA key)
 {
+	tdb_trace(tdb, "tdb_chainlock_unmark ");
+	tdb_trace_record(tdb, key);
+	tdb_trace(tdb, "\n");
 	return tdb_unlock(tdb, BUCKET(tdb->hash_fn(&key)), F_WRLCK | TDB_MARK_LOCK);
 }
 
 int tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key)
 {
+	tdb_trace(tdb, "tdb_chainunlock ");
+	tdb_trace_record(tdb, key);
+	tdb_trace(tdb, "\n");
 	return tdb_unlock(tdb, BUCKET(tdb->hash_fn(&key)), F_WRLCK);
 }
 
 int tdb_chainlock_read(struct tdb_context *tdb, TDB_DATA key)
 {
+	tdb_trace(tdb, "tdb_chainlock_read ");
+	tdb_trace_record(tdb, key);
+	tdb_trace(tdb, "\n");
 	return tdb_lock(tdb, BUCKET(tdb->hash_fn(&key)), F_RDLCK);
 }
 
 int tdb_chainunlock_read(struct tdb_context *tdb, TDB_DATA key)
 {
+	tdb_trace(tdb, "tdb_chainunlock_read ");
+	tdb_trace_record(tdb, key);
+	tdb_trace(tdb, "\n");
 	return tdb_unlock(tdb, BUCKET(tdb->hash_fn(&key)), F_RDLCK);
 }
 
