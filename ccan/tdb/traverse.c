@@ -169,6 +169,11 @@ static int tdb_traverse_internal(struct tdb_context *tdb,
 		dbuf.dptr = key.dptr + rec.key_len;
 		dbuf.dsize = rec.data_len;
 
+		tdb_trace(tdb, "traverse ");
+		tdb_trace_record(tdb, key);
+		tdb_trace_record(tdb, dbuf);
+		tdb_trace(tdb, "\n");
+
 		/* Drop chain lock, call out */
 		if (tdb_unlock(tdb, tl->hash, tl->lock_rw) != 0) {
 			ret = -1;
@@ -212,9 +217,10 @@ int tdb_traverse_read(struct tdb_context *tdb,
 	}
 
 	tdb->traverse_read++;
+	tdb_trace(tdb, "tdb_traverse_read_start\n");
 	ret = tdb_traverse_internal(tdb, fn, private_data, &tl);
+	tdb_trace(tdb, "tdb_traverse_end = %i\n", ret);
 	tdb->traverse_read--;
-	tdb_trace(tdb, "tdb_traverse_read = %i\n", ret);
 
 	tdb_transaction_unlock(tdb);
 
@@ -243,9 +249,10 @@ int tdb_traverse(struct tdb_context *tdb,
 	}
 
 	tdb->traverse_write++;
+	tdb_trace(tdb, "tdb_traverse_start\n");
 	ret = tdb_traverse_internal(tdb, fn, private_data, &tl);
+	tdb_trace(tdb, "tdb_traverse_end = %i\n", ret);
 	tdb->traverse_write--;
-	tdb_trace(tdb, "tdb_traverse = %i\n", ret);
 
 	tdb_transaction_unlock(tdb);
 

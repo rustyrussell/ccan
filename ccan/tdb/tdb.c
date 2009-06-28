@@ -65,8 +65,6 @@ static void tdb_increment_seqnum(struct tdb_context *tdb)
 		return;
 	}
 
-	tdb_trace(tdb, "tdb_increment_seqnum");
-
 	tdb_increment_seqnum_nonblock(tdb);
 
 	tdb_brlock(tdb, TDB_SEQNUM_OFS, F_UNLCK, F_SETLKW, 1, 1);
@@ -417,7 +415,7 @@ int tdb_delete(struct tdb_context *tdb, TDB_DATA key)
 	ret = tdb_delete_hash(tdb, key, hash);
 	tdb_trace(tdb, "tdb_delete ");
 	tdb_trace_record(tdb, key);
-	tdb_trace(tdb, "= %i\n", ret); 
+	tdb_trace(tdb, "= %s\n", ret ? "ENOENT" : "0"); 
 	return ret;
 }
 
@@ -693,8 +691,8 @@ int tdb_get_seqnum(struct tdb_context *tdb)
 {
 	tdb_off_t seqnum=0;
 
-	tdb_trace(tdb, "tdb_get_seqnum\n");
 	tdb_ofs_read(tdb, TDB_SEQNUM_OFS, &seqnum);
+	tdb_trace(tdb, "tdb_get_seqnum = %u\n", seqnum);
 	return seqnum;
 }
 
@@ -857,23 +855,25 @@ void tdb_trace(const struct tdb_context *tdb, const char *fmt, ...)
 {
 	char msg[256];
 	va_list args;
-	int len;
+	int len, err;
 
 	va_start(args, fmt);
 	len = vsprintf(msg, fmt, args);
 	va_end(args);
 
-	write(tdb->tracefd, msg, len);
+	err = write(tdb->tracefd, msg, len);
 }
 
 void tdb_trace_record(const struct tdb_context *tdb, TDB_DATA rec)
 {
 	char msg[20];
 	unsigned int i;
+	int err;
 
-	write(tdb->tracefd, msg, sprintf(msg, "%zu:", rec.dsize));
+	err = write(tdb->tracefd, msg, sprintf(msg, "%zu:", rec.dsize));
 	for (i = 0; i < rec.dsize; i++)
-		write(tdb->tracefd, msg, sprintf(msg, "%02x", rec.dptr[i]));
-	write(tdb->tracefd, " ", 1);
+		err += write(tdb->tracefd, msg, sprintf(msg, "%02x",
+							rec.dptr[i]));
+	err += write(tdb->tracefd, " ", 1);
 }
 #endif
