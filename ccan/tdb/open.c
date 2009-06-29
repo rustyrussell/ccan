@@ -164,12 +164,16 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 	}
 
 #ifdef TDB_TRACE
-	sprintf(tracefile, "%s.trace.%u", name, getpid());
-	tdb->tracefd = open(tracefile, O_WRONLY|O_CREAT|O_EXCL, 0600);
-	if (tdb->tracefd < 0)
-		goto fail;
-	tdb_trace(tdb, "tdb_open %s %u %#x %#x %p\n",
-		  name, hash_size, tdb_flags, open_flags, hash_fn);
+	if (!(tdb_flags & TDB_INTERNAL)) {
+		sprintf(tracefile, "%s.trace.%u", name, getpid());
+		tdb->tracefd = open(tracefile, O_WRONLY|O_CREAT|O_EXCL, 0600);
+		if (tdb->tracefd < 0)
+			goto fail;
+		tdb_trace(tdb, "tdb_open %s %u %#x %#x %p\n",
+			  name, hash_size, tdb_flags, open_flags, hash_fn);
+	} else
+		/* All writes will fail.  That's OK. */
+		tdb->tracefd = -1;
 #endif
 
 	tdb_io_init(tdb);
