@@ -25,12 +25,15 @@
 #define LOCKSTORE_PROB 5
 #define TRAVERSE_PROB 20
 #define TRAVERSE_READ_PROB 20
+#define TRAVERSE_MOD_PROB 100
+#define TRAVERSE_ABORT_PROB 500
 #define CULL_PROB 100
 #define KEYLEN 3
 #define DATALEN 100
 
 static struct tdb_context *db;
 static int in_transaction;
+static int in_traverse;
 static int error_count;
 
 #ifdef PRINTF_ATTRIBUTE
@@ -75,14 +78,27 @@ static char *randbuf(int len)
 	return buf;
 }
 
-static int cull_traverse(struct tdb_context *tdb, TDB_DATA key, TDB_DATA dbuf,
-			 void *state)
+static void addrec_db(void);
+static int modify_traverse(struct tdb_context *tdb, TDB_DATA key, TDB_DATA dbuf,
+			   void *state)
 {
 #if CULL_PROB
 	if (random() % CULL_PROB == 0) {
 		tdb_delete(tdb, key);
 	}
 #endif
+
+#if TRAVERSE_MOD_PROB
+	if (random() % TRAVERSE_MOD_PROB == 0) {
+		addrec_db();
+	}
+#endif
+
+#if TRAVERSE_ABORT_PROB
+	if (random() % TRAVERSE_ABORT_PROB == 0)
+		return 1;
+#endif
+
 	return 0;
 }
 
@@ -105,14 +121,14 @@ static void addrec_db(void)
 	data.dsize = dlen+1;
 
 #if TRANSACTION_PROB
-	if (in_transaction == 0 && random() % TRANSACTION_PROB == 0) {
+	if (in_traverse == 0 && in_transaction == 0 && random() % TRANSACTION_PROB == 0) {
 		if (tdb_transaction_start(db) != 0) {
 			fatal("tdb_transaction_start failed");
 		}
 		in_transaction++;
 		goto next;
 	}
-	if (in_transaction && random() % TRANSACTION_PROB == 0) {
+	if (in_traverse == 0 && in_transaction && random() % TRANSACTION_PROB == 0) {
 #if 0
 		if (random() % TRANSACTION_PREPARE_PROB == 0) {
 			if (tdb_transaction_prepare_commit(db) != 0) {
@@ -126,7 +142,7 @@ static void addrec_db(void)
 		in_transaction--;
 		goto next;
 	}
-	if (in_transaction && random() % TRANSACTION_PROB == 0) {
+	if (in_traverse == 0 && in_transaction && random() % TRANSACTION_PROB == 0) {
 		if (tdb_transaction_cancel(db) != 0) {
 			fatal("tdb_transaction_cancel failed");
 		}
@@ -136,7 +152,7 @@ static void addrec_db(void)
 #endif
 
 #if REOPEN_PROB
-	if (in_transaction == 0 && random() % REOPEN_PROB == 0) {
+	if (in_traverse == 0 && in_transaction == 0 && random() % REOPEN_PROB == 0) {
 		tdb_reopen_all(0);
 		goto next;
 	} 
@@ -181,15 +197,20 @@ static void addrec_db(void)
 #endif
 
 #if TRAVERSE_PROB
-	if (random() % TRAVERSE_PROB == 0) {
-		tdb_traverse(db, cull_traverse, NULL);
+	/* FIXME: recursive traverses break transactions? */
+	if (in_traverse == 0 && random() % TRAVERSE_PROB == 0) {
+		in_traverse++;
+		tdb_traverse(db, modify_traverse, NULL);
+		in_traverse--;
 		goto next;
 	}
 #endif
 
 #if TRAVERSE_READ_PROB
-	if (random() % TRAVERSE_READ_PROB == 0) {
+	if (in_traverse == 0 && random() % TRAVERSE_READ_PROB == 0) {
+		in_traverse++;
 		tdb_traverse_read(db, NULL, NULL);
+		in_traverse--;
 		goto next;
 	}
 #endif
