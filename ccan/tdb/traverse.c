@@ -182,6 +182,7 @@ static int tdb_traverse_internal(struct tdb_context *tdb,
 		}
 		if (fn && fn(tdb, key, dbuf, private_data)) {
 			/* They want us to terminate traversal */
+			tdb_trace(tdb, "tdb_traverse_end = %i\n", count);
 			ret = count;
 			if (tdb_unlock_record(tdb, tl->off) != 0) {
 				TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_traverse: unlock_record failed!\n"));;
@@ -192,6 +193,7 @@ static int tdb_traverse_internal(struct tdb_context *tdb,
 		}
 		SAFE_FREE(key.dptr);
 	}
+	tdb_trace(tdb, "tdb_traverse_end\n");
 out:
 	tdb->travlocks.next = tl->next;
 	if (ret < 0)
@@ -212,17 +214,18 @@ int tdb_traverse_read(struct tdb_context *tdb,
 
 	/* we need to get a read lock on the transaction lock here to
 	   cope with the lock ordering semantics of solaris10 */
-	if (tdb_transaction_lock(tdb, F_RDLCK)) {
+	if (tdb->traverse_read == 0 && tdb_transaction_lock(tdb, F_RDLCK)) {
 		return -1;
 	}
 
 	tdb->traverse_read++;
 	tdb_trace(tdb, "tdb_traverse_read_start\n");
 	ret = tdb_traverse_internal(tdb, fn, private_data, &tl);
-	tdb_trace(tdb, "tdb_traverse_end = %i\n", ret);
 	tdb->traverse_read--;
 
-	tdb_transaction_unlock(tdb);
+	if (tdb->traverse_read == 0) {
+		tdb_transaction_unlock(tdb);
+	}
 
 	return ret;
 }
@@ -243,18 +246,20 @@ int tdb_traverse(struct tdb_context *tdb,
 	if (tdb->read_only || tdb->traverse_read) {
 		return tdb_traverse_read(tdb, fn, private_data);
 	}
-	
-	if (tdb_transaction_lock(tdb, F_WRLCK)) {
+
+	/* Nested traversals: transaction lock doesn't nest. */
+	if (tdb->traverse_write == 0 && tdb_transaction_lock(tdb, F_WRLCK)) {
 		return -1;
 	}
 
 	tdb->traverse_write++;
 	tdb_trace(tdb, "tdb_traverse_start\n");
 	ret = tdb_traverse_internal(tdb, fn, private_data, &tl);
-	tdb_trace(tdb, "tdb_traverse_end = %i\n", ret);
 	tdb->traverse_write--;
 
-	tdb_transaction_unlock(tdb);
+	if (tdb->traverse_write == 0) {
+		tdb_transaction_unlock(tdb);
+	}
 
 	return ret;
 }
