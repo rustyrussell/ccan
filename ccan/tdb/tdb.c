@@ -623,8 +623,13 @@ int tdb_append(struct tdb_context *tdb, TDB_DATA key, TDB_DATA new_dbuf)
 	if (dbuf.dptr == NULL) {
 		dbuf.dptr = (unsigned char *)malloc(new_dbuf.dsize);
 	} else {
-		unsigned char *new_dptr = (unsigned char *)realloc(dbuf.dptr,
-						     dbuf.dsize + new_dbuf.dsize);
+		unsigned int new_len = dbuf.dsize + new_dbuf.dsize;
+		unsigned char *new_dptr;
+
+		/* realloc '0' is special: don't do that. */
+		if (new_len == 0)
+			new_len = 1;
+		new_dptr = (unsigned char *)realloc(dbuf.dptr, new_len);
 		if (new_dptr == NULL) {
 			free(dbuf.dptr);
 		}
