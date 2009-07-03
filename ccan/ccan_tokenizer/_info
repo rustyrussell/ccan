@@ -1,0 +1,97 @@
+#include <string.h>
+#include <stdio.h>
+#include "config.h"
+
+/**
+ * ccan_tokenizer - A full-text lexer for C source files
+ *
+ * ccan_tokenizer generates a list of tokens given the contents of a C source
+ * or header file.
+ *
+ * Example:
+ *
+ * #include <ccan/ccan_tokenizer/ccan_tokenizer.h>
+ * #include <ccan/grab_file/grab_file.h>
+ * #include <err.h>
+ *
+ * void token_list_stats(const struct token_list *tl) {
+ * 	size_t comment=0, white=0, stray=0, code=0, total=0;
+ * 	size_t count = 0;
+ * 	const struct token *i;
+ *
+ * 	for (i=tl->first; i; i=i->next) {
+ * 		size_t size = i->orig_size;
+ * 		total += size;
+ * 		count++;
+ *
+ * 		if (token_type_is_comment(i->type))
+ * 			comment += size;
+ * 		else if (i->type == TOK_WHITE)
+ * 			white += size;
+ * 		else if (i->type == TOK_STRAY)
+ * 			stray += size;
+ * 		else
+ * 			code += size;
+ * 	}
+ *
+ * 	printf("Code:        %.02f%%\n"
+ * 	       "White space: %.02f%%\n"
+ * 	       "Comments:    %.02f%%\n",
+ * 	       (double)code    * 100.0 / (double)total,
+ * 	       (double)white   * 100.0 / (double)total,
+ * 	       (double)comment * 100.0 / (double)total);
+ * 	if (stray)
+ * 		printf("Stray:       %.02f%%\n",
+ * 			(double)stray * 100.0 / (double)total);
+ * 	printf("Total size:  %zu bytes with %zu tokens\n",
+ * 		total, count);
+ * }
+ *
+ * int main(int argc, char *argv[]) {
+ * 	size_t len;
+ * 	char *file;
+ * 	struct token_list *tl;
+ * 	tok_message_queue mq;
+ * 	queue_init(mq, NULL);
+ *
+ * 	//grab the file
+ * 	if (argc != 2) {
+ * 		fprintf(stderr, "Usage: %s source_file\n", argv[0]);
+ * 		return 1;
+ * 	}
+ * 	file = grab_file(NULL, argv[1], &len);
+ * 	if (!file)
+ * 		err(1, "Could not read file %s", argv[1]);
+ *
+ * 	//tokenize the contents
+ * 	tl = tokenize(file, len, &mq);
+ *
+ * 	//print warnings, errors, etc.
+ * 	while (queue_count(mq)) {
+ * 		struct tok_message msg = dequeue(mq);
+ * 		tok_message_print(&msg, tl);
+ * 	}
+ *
+ * 	//do neat stuff with the token list
+ * 	token_list_stats(tl);
+ *
+ * 	//free stuff
+ * 	talloc_free(file); //implicitly frees tl
+ * 	queue_free(mq);
+ *
+ * 	return 0;
+ * }
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/array\n");
+		return 0;
+	}
+
+	return 1;
+}

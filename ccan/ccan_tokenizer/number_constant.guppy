@@ -1,0 +1,70 @@
+/*
+guppy is a pattern-matching language by Joey Adams that's not implemented or formalized yet.
+See http://www.funsitelots.com/pub/guppy.g for a near self-definition
+
+This is a guppy representation of integer and floating point formatting in C.
+It is based on http://c0x.coding-guidelines.com/6.4.4.1.html and http://c0x.coding-guidelines.com/6.4.4.2.html
+*/
+
+number_constant: [
+	integer_constant()
+	floating_constant()
+]
+
+integer_constant: [
+	([1-9] [0-9]*)           //decimal
+	(0 [0-7]*)               //octal
+	(0 [X x] [0-9 A-F a-f]*) //hexadecimal
+]
+
+integer_suffix: [
+	([U u] [L l]*0..2)
+	([L l]*1..2 [U u]*0..1)
+]
+
+floating_constant: [
+	decimal_floating_constant()
+	hexadecimal_floating_constant()
+]
+
+decimal_floating_constant: [
+	([0-9]* '.' [0-9]+ exponent_part()*0..1 floating_suffix())
+	([0-9]+ '.' exponent_part()*0..1 floating_suffix())
+	([0-9]+ exponent_part() floating_suffix())
+]
+
+exponent_part:
+	([E e] ['+' '-']*0..1 [0-9]+)
+
+hexadecimal_floating_constant:
+	(0 [X x] [
+		[0-9 A-F a-f]* '.' [0-9 A-F a-f]+
+		[0-9 A-F a-f]+ '.'
+		[0-9 A-F a-f]+
+	] [P p] ['+' '-']*0..1 [0-9]+ floating_suffix())
+
+floating_suffix: [F L f l]*0..1
+
+scan_number:
+(
+	[
+		(0 [X x] [0-9 A-F a-f '.']*)
+		(0 [B b] [0-1] [0-9 '.']*)
+		([0-9 '.']*)
+	]
+	( [E P e p] ['+' '-']*0..1 [0-9]* )*0..1
+	[0-9 A-Z a-z '.' '_' '$']*
+)
+
+/*
+Notes:
+
+A numeric constant can begin with any of:
+	0-9 '.'
+and can contain any of:
+	0-9 a-f e f l p u x '.' '+' '-'
+along with capital equivalents.
+
+If scanning finds something starting with a '.' but no decimal digit after it, it is the '.' operator and not a number.
+
+*/

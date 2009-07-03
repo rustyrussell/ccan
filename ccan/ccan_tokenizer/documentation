@@ -1,0 +1,51 @@
+readui - Flexible function for reading a 64-bit unsigned integer
+@sp: Pointer to scanning pointer
+@e:  Pointer to end of string
+@base:  Typically one of READUI_DEC, READUI_HEX, READUI_OCT, or READUI_BIN.
+
+readui() converts the string of digits from *sp to e to a number, setting *sp to the first invalid character or e if the entire string is valid or empty.  It does not look at prefixes or suffixes, only digits.  It skips preceding whitespace.
+
+readui() uses errno to indicate success or failure.  It will set errno to one of the following:
+
+0:  Input is valid and non-empty
+EINVAL:  Input is empty, does not start with any valid digits, or base is 0
+ERANGE:  Number given is greater than ULLONG_MAX
+
+Example (UNTESTED):
+
+uint64_t read_number(const char *str) {
+	const char *s = str, *e = strchr(str, 0);
+	readui_base base = READUI_DEC;
+	uint64_t result;
+	
+	//See if the number has a 0x (for hex) or 0 (for octal) prefix
+	if (s+2<=e && *s=='0') {
+		s++;
+		if (*s=='x' || *s=='X') {
+			base = READUI_HEX;
+			s++;
+		} else
+			base = READUI_OCT;
+	}
+	
+	result = readui(&s, e, base);
+	
+	if (errno)
+		perror("read_number");
+	
+	return result;
+}
+
+Rules for a token list:
+
+It always has and starts with a TOK_STARTLINE
+
+
+Misc.:
+
+If the world were intuitive, the tokenizer would never report warnings or bugs on a source file that compiles successfully.  However, one case where it does is when erroneous tokens appear within an #if 0 block.  Example:
+
+#if 0
+0b101.0p0
+#endif
+
