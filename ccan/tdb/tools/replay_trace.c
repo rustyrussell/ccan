@@ -328,6 +328,8 @@ static void op_analyze_traverse(const char *filename,
 	int i;
 	struct traverse *trav = talloc(op, struct traverse);
 
+	op[op_num].key = tdb_null;
+
 	/* = %u means traverse function terminated. */
 	if (words[2]) {
 		if (!streq(words[2], "=") || !words[3] || words[4])
@@ -935,7 +937,7 @@ int main(int argc, char *argv[])
 		int status;
 		wait(&status);
 		if (!WIFEXITED(status))
-			errx(1, "Child died with signal");
+			errx(1, "Child died with signal %i", WTERMSIG(status));
 		if (WEXITSTATUS(status) != 0)
 			errx(1, "Child died with error code");
 	}
