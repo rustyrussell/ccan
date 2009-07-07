@@ -62,7 +62,7 @@ hash_keyword (register const char *str, register unsigned int len)
       51, 51, 51, 51, 51, 51, 51, 51, 51, 51,
       51, 51, 51, 51, 51, 51, 51, 51, 51, 51,
       51, 51, 51, 51, 51, 51, 51, 15, 51, 25,
-       5,  0, 10,  0,  0,  0, 51,  0,  0,  0,
+       5,  0, 10,  0,  0, 51, 51,  0,  0,  0,
       15, 51, 15, 51, 51,  0,  5,  0, 51,  0,
       51, 15, 51, 51, 51, 51, 51, 51, 51, 51,
       51, 51, 51, 51, 51, 51, 51, 51, 51, 51,
@@ -93,9 +93,9 @@ find_keyword (register const char *str, register unsigned int len)
 {
   enum
     {
-      TOTAL_KEYWORDS = 33,
+      TOTAL_KEYWORDS = 32,
       MIN_WORD_LENGTH = 8,
-      MAX_WORD_LENGTH = 29,
+      MAX_WORD_LENGTH = 25,
       MIN_HASH_VALUE = 8,
       MAX_HASH_VALUE = 50
     };
@@ -103,28 +103,28 @@ find_keyword (register const char *str, register unsigned int len)
   static const struct op_table wordlist[] =
     {
       {""}, {""}, {""}, {""}, {""}, {""}, {""}, {""},
-#line 44 "keywords.gperf"
+#line 43 "keywords.gperf"
       {"traverse", OP_TDB_TRAVERSE, op_add_key_data,},
-#line 34 "keywords.gperf"
-      {"tdb_store", OP_TDB_STORE, op_add_store,},
 #line 33 "keywords.gperf"
+      {"tdb_store", OP_TDB_STORE, op_add_store,},
+#line 32 "keywords.gperf"
       {"tdb_exists", OP_TDB_EXISTS, op_add_key_ret,},
 #line 16 "keywords.gperf"
       {"tdb_lockall", OP_TDB_LOCKALL, op_add_nothing,},
-#line 37 "keywords.gperf"
+#line 36 "keywords.gperf"
       {"tdb_wipe_all", OP_TDB_WIPE_ALL, op_add_nothing,},
 #line 20 "keywords.gperf"
       {"tdb_unlockall", OP_TDB_UNLOCKALL, op_add_nothing,},
-#line 36 "keywords.gperf"
+#line 35 "keywords.gperf"
       {"tdb_get_seqnum", OP_TDB_GET_SEQNUM, op_add_seqnum,},
-#line 48 "keywords.gperf"
+#line 47 "keywords.gperf"
       {"tdb_delete", OP_TDB_DELETE, op_add_key_ret,},
 #line 17 "keywords.gperf"
       {"tdb_lockall_mark", OP_TDB_LOCKALL_MARK, op_add_nothing,},
       {""},
 #line 18 "keywords.gperf"
       {"tdb_lockall_unmark", OP_TDB_LOCKALL_UNMARK, op_add_nothing,},
-#line 47 "keywords.gperf"
+#line 46 "keywords.gperf"
       {"tdb_fetch", OP_TDB_FETCH, op_add_key_data,},
 #line 19 "keywords.gperf"
       {"tdb_lockall_nonblock", OP_TDB_LOCKALL_NONBLOCK, op_add_nothing,},
@@ -136,33 +136,32 @@ find_keyword (register const char *str, register unsigned int len)
       {""},
 #line 22 "keywords.gperf"
       {"tdb_lockall_read_nonblock", OP_TDB_LOCKALL_READ_NONBLOCK, op_add_nothing,},
-#line 43 "keywords.gperf"
-      {"tdb_traverse_end", OP_TDB_TRAVERSE_END, op_analyze_traverse,},
-#line 39 "keywords.gperf"
-      {"tdb_transaction_cancel", OP_TDB_TRANSACTION_CANCEL, op_add_nothing,},
 #line 42 "keywords.gperf"
-      {"tdb_traverse_start", OP_TDB_TRAVERSE_START, op_add_traverse,},
-#line 31 "keywords.gperf"
-      {"tdb_increment_seqnum_nonblock", OP_TDB_INCREMENT_SEQNUM_NONBLOCK, op_add_nothing,},
-#line 35 "keywords.gperf"
-      {"tdb_append", OP_TDB_APPEND, op_add_append,},
+      {"tdb_traverse_end", OP_TDB_TRAVERSE_END, op_analyze_traverse,},
 #line 38 "keywords.gperf"
-      {"tdb_transaction_start", OP_TDB_TRANSACTION_START, op_add_nothing,},
-#line 40 "keywords.gperf"
-      {"tdb_transaction_commit", OP_TDB_TRANSACTION_COMMIT, op_add_nothing,},
+      {"tdb_transaction_cancel", OP_TDB_TRANSACTION_CANCEL, op_add_nothing,},
 #line 41 "keywords.gperf"
+      {"tdb_traverse_start", OP_TDB_TRAVERSE_START, op_add_traverse,},
+      {""},
+#line 34 "keywords.gperf"
+      {"tdb_append", OP_TDB_APPEND, op_add_append,},
+#line 37 "keywords.gperf"
+      {"tdb_transaction_start", OP_TDB_TRANSACTION_START, op_add_nothing,},
+#line 39 "keywords.gperf"
+      {"tdb_transaction_commit", OP_TDB_TRANSACTION_COMMIT, op_add_nothing,},
+#line 40 "keywords.gperf"
       {"tdb_traverse_read_start", OP_TDB_TRAVERSE_READ_START, op_add_traverse,},
       {""}, {""},
-#line 32 "keywords.gperf"
+#line 31 "keywords.gperf"
       {"tdb_parse_record", OP_TDB_PARSE_RECORD, op_add_key_ret,},
-#line 45 "keywords.gperf"
+#line 44 "keywords.gperf"
       {"tdb_firstkey", OP_TDB_FIRSTKEY, op_add_key,},
 #line 24 "keywords.gperf"
       {"tdb_chainlock", OP_TDB_CHAINLOCK, op_add_key,},
       {""},
 #line 28 "keywords.gperf"
       {"tdb_chainunlock", OP_TDB_CHAINUNLOCK, op_add_key,},
-#line 46 "keywords.gperf"
+#line 45 "keywords.gperf"
       {"tdb_nextkey", OP_TDB_NEXTKEY, op_add_key_data,},
       {""},
 #line 26 "keywords.gperf"
