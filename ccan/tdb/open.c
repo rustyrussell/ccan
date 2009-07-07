@@ -163,19 +163,6 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 		goto fail;
 	}
 
-#ifdef TDB_TRACE
-	if (!(tdb_flags & TDB_INTERNAL)) {
-		sprintf(tracefile, "%s.trace.%u", name, getpid());
-		tdb->tracefd = open(tracefile, O_WRONLY|O_CREAT|O_EXCL, 0600);
-		if (tdb->tracefd < 0)
-			goto fail;
-		tdb_trace(tdb, "tdb_open %s %u %#x %#x %p\n",
-			  name, hash_size, tdb_flags, open_flags, hash_fn);
-	} else
-		/* All writes will fail.  That's OK. */
-		tdb->tracefd = -1;
-#endif
-
 	tdb_io_init(tdb);
 	tdb->fd = -1;
 	tdb->name = NULL;
@@ -222,6 +209,10 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 			TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_open_ex: tdb_new_database failed!"));
 			goto fail;
 		}
+#ifdef TDB_TRACE
+		/* All tracing will fail.  That's ok. */
+		tdb->tracefd = -1;
+#endif
 		goto internal;
 	}
 
@@ -330,6 +321,15 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 		goto fail;
 	}
 
+#ifdef TDB_TRACE
+	sprintf(tracefile, "%s.trace.%u", name, getpid());
+	tdb->tracefd = open(tracefile, O_WRONLY|O_CREAT|O_EXCL, 0600);
+	if (tdb->tracefd < 0)
+		goto fail;
+	tdb_enable_seqnum(tdb);
+	tdb_trace_open(tdb, "tdb_open", hash_size, tdb_flags, open_flags);
+#endif
+
  internal:
 	/* Internal (memory-only) databases skip all the code above to
 	 * do with disk files, and resume here by releasing their
@@ -383,7 +383,7 @@ int tdb_close(struct tdb_context *tdb)
 	struct tdb_context **i;
 	int ret = 0;
 
-	tdb_trace(tdb, "tdb_close\n");
+	tdb_trace(tdb, "tdb_close");
 	if (tdb->transaction) {
 		tdb_transaction_cancel_internal(tdb);
 	}

@@ -20,6 +20,7 @@
 #define DELETE_PROB 8
 #define STORE_PROB 4
 #define APPEND_PROB 6
+#if 0
 #define TRANSACTION_PROB 10
 #define TRANSACTION_PREPARE_PROB 2
 #define LOCKSTORE_PROB 5
@@ -27,6 +28,7 @@
 #define TRAVERSE_READ_PROB 20
 #define TRAVERSE_MOD_PROB 100
 #define TRAVERSE_ABORT_PROB 500
+#endif
 #define CULL_PROB 100
 #define KEYLEN 3
 #define DATALEN 100

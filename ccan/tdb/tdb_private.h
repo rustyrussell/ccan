@@ -89,15 +89,32 @@ typedef uint32_t tdb_off_t;
 #define TDB_LOG(x) tdb->log.log_fn x
 
 #ifdef TDB_TRACE
-void tdb_trace(const struct tdb_context *tdb, const char *fmt, ...);
-void tdb_trace_record(const struct tdb_context *tdb, TDB_DATA rec);
+void tdb_trace(struct tdb_context *tdb, const char *op);
+void tdb_trace_open(struct tdb_context *tdb, const char *op,
+		    unsigned hash_size, unsigned tdb_flags, unsigned open_flags);
+void tdb_trace_ret(struct tdb_context *tdb, const char *op, int ret);
+void tdb_trace_retrec(struct tdb_context *tdb, const char *op, TDB_DATA ret);
+void tdb_trace_1rec(struct tdb_context *tdb, const char *op,
+		    TDB_DATA rec);
+void tdb_trace_1rec_ret(struct tdb_context *tdb, const char *op,
+			TDB_DATA rec, int ret);
+void tdb_trace_1rec_retrec(struct tdb_context *tdb, const char *op,
+			   TDB_DATA rec, TDB_DATA ret);
+void tdb_trace_2rec_flag_ret(struct tdb_context *tdb, const char *op,
+			     TDB_DATA rec1, TDB_DATA rec2, unsigned flag,
+			     int ret);
+void tdb_trace_2rec_retrec(struct tdb_context *tdb, const char *op,
+			   TDB_DATA rec1, TDB_DATA rec2, TDB_DATA ret);
 #else
-static inline void tdb_trace(const struct tdb_context *tdb, const char *fmt, ...)
-{
-}
-static inline void tdb_trace_record(const struct tdb_context *tdb, TDB_DATA rec)
-{
-}
+#define tdb_trace(tdb, op)
+#define tdb_trace_open(tdb, op, hash_size, tdb_flags, open_flags)
+#define tdb_trace_ret(tdb, op, ret)
+#define tdb_trace_retrec(tdb, op, ret)
+#define tdb_trace_1rec(tdb, op, rec)
+#define tdb_trace_1rec_ret(tdb, op, rec, ret)
+#define tdb_trace_1rec_retrec(tdb, op, rec, ret)
+#define tdb_trace_2rec_flag_ret(tdb, op, rec1, rec2, flag, ret)
+#define tdb_trace_2rec_retrec(tdb, op, rec1, rec2, ret)
 #endif /* !TDB_TRACE */
 
 /* lock offsets */

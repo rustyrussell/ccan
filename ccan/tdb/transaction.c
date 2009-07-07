@@ -457,7 +457,7 @@ int tdb_transaction_cancel_internal(struct tdb_context *tdb)
 */
 int tdb_transaction_start(struct tdb_context *tdb)
 {
-	tdb_trace(tdb, "tdb_transaction_start\n");
+	tdb_trace(tdb, "tdb_transaction_start");
 
 	/* some sanity checks */
 	if (tdb->read_only || (tdb->flags & TDB_INTERNAL) || tdb->traverse_read) {
@@ -566,7 +566,7 @@ fail:
 */
 int tdb_transaction_cancel(struct tdb_context *tdb)
 {	
-	tdb_trace(tdb, "tdb_transaction_cancel\n");
+	tdb_trace(tdb, "tdb_transaction_cancel");
 	return tdb_transaction_cancel_internal(tdb);
 }
 /*
@@ -851,7 +851,7 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 	uint32_t zero = 0;
 	int i;
 
-	tdb_trace(tdb, "tdb_transaction_commit\n");
+	tdb_trace(tdb, "tdb_transaction_commit");
 	if (tdb->transaction == NULL) {
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_commit: no transaction\n"));
 		return -1;
