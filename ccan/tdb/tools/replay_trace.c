@@ -98,7 +98,6 @@ enum op_type {
 	OP_TDB_CHAINUNLOCK,
 	OP_TDB_CHAINLOCK_READ,
 	OP_TDB_CHAINUNLOCK_READ,
-	OP_TDB_INCREMENT_SEQNUM_NONBLOCK,
 	OP_TDB_PARSE_RECORD,
 	OP_TDB_EXISTS,
 	OP_TDB_STORE,
@@ -593,9 +592,6 @@ unsigned run_ops(struct tdb_context *tdb,
 		case OP_TDB_CHAINUNLOCK_READ:
 			try(tdb_chainunlock_read(tdb, op[i].key), op[i].ret);
 			break;
-		case OP_TDB_INCREMENT_SEQNUM_NONBLOCK:
-			tdb_increment_seqnum_nonblock(tdb);
-			break;
 		case OP_TDB_PARSE_RECORD:
 			try(tdb_parse_record(tdb, op[i].key, get_len, NULL),
 			    op[i].ret);
@@ -932,7 +928,7 @@ int main(int argc, char *argv[])
 
 	gettimeofday(&start, NULL);
 	/* Tell them all to go!  Any write of sufficient length will do. */
-	if (write(fds[1], hashsize, i) != 1)
+	if (write(fds[1], hashsize, i) != i)
 		err(1, "Writing to wakeup pipe");
 
 	for (i = 0; i < argc - 2; i++) {

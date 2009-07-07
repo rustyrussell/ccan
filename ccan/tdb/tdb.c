@@ -41,8 +41,6 @@ void tdb_increment_seqnum_nonblock(struct tdb_context *tdb)
 		return;
 	}
 
-	tdb_trace(tdb, "tdb_increment_seqnum_nonblock");
-
 	/* we ignore errors from this, as we have no sane way of
 	   dealing with them.
 	*/
