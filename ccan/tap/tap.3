@@ -16,9 +16,9 @@ their success or failure.
 .Ss PRINTF STRINGS
 In the descriptions that follow, for any function that takes as the
 last two parameters
-.Dq Fa char * , Fa ...
+.Dq Fa const char * , Fa ...
 it can be assumed that the
-.Fa char *
+.Fa const char *
 is a
 .Fn printf
 -like format string, and the optional arguments are values to be placed
@@ -35,7 +35,7 @@ in that string.
 .Xc
 .It Xo
 .Ft void
-.Fn plan_skip_all "char *" "..."
+.Fn plan_skip_all "const char *" "..."
 .Xc
 .El
 .Pp
@@ -74,7 +74,7 @@ the tests.
 .Bl -tag -width indent
 .It Xo
 .Ft unsigned int
-.Fn ok "expression" "char *" "..."
+.Fn ok "expression" "const char *" "..."
 .Xc
 .It Xo
 .Ft unsigned int
@@ -82,11 +82,11 @@ the tests.
 .Xc
 .It Xo
 .Ft unsigned int
-.Fn pass "char *" "..."
+.Fn pass "const char *" "..."
 .Xc
 .It Xo
 .Ft unsigned int
-.Fn fail "char *" "..."
+.Fn fail "const char *" "..."
 .Xc
 .El
 .Pp
@@ -161,10 +161,10 @@ These are synonyms for ok(1, ...) and ok(0, ...).
 .Bl -tag -width indent
 .It Xo
 .Ft void
-.Fn skip "unsigned int" "char *" "..."
+.Fn skip "unsigned int" "const char *" "..."
 .Xc
 .It Xo
-.Fn skip_if "expression" "unsigned int" "char *" "..."
+.Fn skip_if "expression" "unsigned int" "const char *" "..."
 .Xc
 .El
 .Pp
@@ -204,7 +204,7 @@ skip_if(getuid() != 0, 1, "because test only works as root") {
 .Bl -tag -width indent
 .It Xo
 .Ft void
-.Fn todo_start "char *" "..."
+.Fn todo_start "const char *" "..."
 .Xc
 .It Xo
 .Ft void
@@ -261,8 +261,8 @@ yet to fix, but want to put tests in your testing script
 .Ss DIAGNOSTIC OUTPUT
 .Bl -tag -width indent
 .It Xo
-.Fr void
-.Fn diag "char *" "..."
+.Fr int
+.Fn diag "const char *" "..."
 .Xc
 .El
 .Pp
@@ -273,6 +273,7 @@ It ensures that the output will not be considered by the TAP test harness.
 adds the necessary trailing
 .Dq \en
 for you.
+It returns the number of characters written.
 .Bd -literal -offset indent
 diag("Expected return code 0, got return code %d", rcode);
 .Ed

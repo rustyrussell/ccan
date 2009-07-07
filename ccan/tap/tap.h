@@ -124,8 +124,8 @@ void plan_tests(unsigned int tests);
 #endif
 #endif
 
-unsigned int _gen_result(int, const char *, char *, unsigned int, char *, ...)
-	PRINTF_ATTRIBUTE(5, 6);
+unsigned int _gen_result(int, const char *, const char *, unsigned int,
+   const char *, ...) PRINTF_ATTRIBUTE(5, 6);
 
 /**
  * diag - print a diagnostic message (use instead of printf/fprintf)
@@ -137,7 +137,7 @@ unsigned int _gen_result(int, const char *, char *, unsigned int, char *, ...)
  * Example:
  *	diag("Now running complex tests");
  */
-void diag(char *fmt, ...) PRINTF_ATTRIBUTE(1, 2);
+void diag(const char *fmt, ...) PRINTF_ATTRIBUTE(1, 2);
 
 /**
  * skip - print a diagnostic message (use instead of printf/fprintf)
@@ -160,7 +160,7 @@ void diag(char *fmt, ...) PRINTF_ATTRIBUTE(1, 2);
  *	skip(1, "Don't have SOME_FEATURE");
  *	#endif
  */
-void skip(unsigned int n, char *fmt, ...) PRINTF_ATTRIBUTE(2, 3);
+void skip(unsigned int n, const char *fmt, ...) PRINTF_ATTRIBUTE(2, 3);
 
 /**
  * todo_start - mark tests that you expect to fail.
@@ -185,7 +185,7 @@ void skip(unsigned int n, char *fmt, ...) PRINTF_ATTRIBUTE(2, 3);
  *	ok(dwim(), "Did what the user wanted");
  *	todo_end();
  */
-void todo_start(char *fmt, ...) PRINTF_ATTRIBUTE(1, 2);
+void todo_start(const char *fmt, ...) PRINTF_ATTRIBUTE(1, 2);
 
 /**
  * todo_end - end of tests you expect to fail.
@@ -241,6 +241,6 @@ void plan_no_plan(void);
  *	}
  *	plan_tests(13);
  */
-void plan_skip_all(char *reason);
+void plan_skip_all(const char *reason);
 
 #endif /* C99 or gcc */
