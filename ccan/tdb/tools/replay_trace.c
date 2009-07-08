@@ -12,6 +12,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/time.h>
+#include <errno.h>
+#include <signal.h>
 
 #define STRINGIFY2(x) #x
 #define STRINGIFY(x) STRINGIFY2(x)
@@ -19,7 +21,7 @@
 /* Avoid mod by zero */
 static unsigned int total_keys = 1;
 
-#define DEBUG_DEPS 1
+/* #define DEBUG_DEPS 1 */
 
 /* Traversals block transactions in the current implementation. */
 #define TRAVERSALS_TAKE_TRANSACTION_LOCK 1
@@ -48,7 +50,8 @@ static void __attribute__((noreturn)) fail(const char *filename,
 	do {								\
 		int ret = (expr);					\
 		if (ret != (expect))					\
-			fail(filename, i+1, STRINGIFY(expr) "= %i", ret); \
+			fail(filename[file], i+1,			\
+			     STRINGIFY(expr) "= %i", ret);		\
 	} while (0)
 
 /* Try or imitate results. */
@@ -57,7 +60,8 @@ static void __attribute__((noreturn)) fail(const char *filename,
 		int ret = expr;						\
 		if (ret != expect) {					\
 			fprintf(stderr, "%s:%u: %s gave %i not %i",	\
-			      filename, i+1, STRINGIFY(expr), ret, expect); \
+				filename[file], i+1, STRINGIFY(expr),	\
+				ret, expect);				\
 			if (expect == 0)				\
 				force;					\
 			else						\
@@ -129,8 +133,8 @@ struct op {
 
 	/* Who is waiting for us? */
 	struct list_head post;
-	/* How many are we waiting for? */
-	unsigned int pre;
+	/* What are we waiting for? */
+	struct list_head pre;
 
 	/* If I'm part of a group (traverse/transaction) where is
 	 * start?  (Otherwise, 0) */
@@ -139,7 +143,7 @@ struct op {
 	union {
 		int flag; /* open and store */
 		struct traverse *trav; /* traverse start */
-		TDB_DATA post_append; /* append */
+		TDB_DATA pre_append; /* append */
 		unsigned int transaction_end; /* transaction start */
 	};
 };
@@ -187,7 +191,6 @@ static void add_op(const char *filename, struct op **op, unsigned int i,
 	new = (*op) + i;
 	new->op = type;
 	new->serial = serial;
-	new->pre = 0;
 	new->ret = 0;
 	new->group_start = 0;
 }
@@ -256,14 +259,20 @@ static void op_add_store(const char *filename,
 static void op_add_append(const char *filename,
 			  struct op op[], unsigned int op_num, char *words[])
 {
+	TDB_DATA post_append;
+
 	if (!words[2] || !words[3] || !words[4] || !words[5] || words[6]
 	    || !streq(words[4], "="))
 		fail(filename, op_num+1, "Expect <key> <data> = <rec>");
 
 	op[op_num].key = make_tdb_data(op, filename, op_num+1, words[2]);
 	op[op_num].data = make_tdb_data(op, filename, op_num+1, words[3]);
-	op[op_num].post_append
-		= make_tdb_data(op, filename, op_num+1, words[5]);
+
+	post_append = make_tdb_data(op, filename, op_num+1, words[5]);
+
+	/* By subtraction, figure out what previous data was. */
+	op[op_num].pre_append.dptr = post_append.dptr;
+	op[op_num].pre_append.dsize = post_append.dsize - op[op_num].data.dsize;
 	total_keys++;
 }
 
@@ -433,6 +442,107 @@ find_keyword (register const char *str, register unsigned int len);
 
 #include "keywords.c"
 
+struct depend {
+	/* We can have more than one */
+	struct list_node list;
+	unsigned int file;
+	unsigned int op;
+};
+
+struct depend_xmit {
+	unsigned int dst_op;
+	unsigned int src_file, src_op;
+};
+
+static void remove_matching_dep(struct list_head *deps,
+				unsigned int file, unsigned int op)
+{
+	struct depend *dep;
+
+	list_for_each(deps, dep, list) {
+		if (dep->file == file && dep->op == op) {
+			list_del(&dep->list);
+			return;
+		}
+	}
+	errx(1, "Failed to find depend on file %u line %u\n", file, op+1);
+}
+
+static void check_deps(const char *filename, struct op op[], unsigned int num)
+{
+#ifdef DEBUG_DEPS
+	unsigned int i;
+
+	for (i = 1; i < num; i++)
+		if (!list_empty(&op[i].pre))
+			fail(filename, i+1, "Still has dependencies");
+#endif
+}
+
+static void dump_pre(char *filename[], unsigned int file,
+		     struct op op[], unsigned int i)
+{
+	struct depend *dep;
+
+	printf("%s:%u still waiting for:\n", filename[file], i+1);
+	list_for_each(&op[i].pre, dep, list)
+		printf("    %s:%u\n", filename[dep->file], dep->op+1);
+	check_deps(filename[file], op, i);
+}
+
+static void do_pre(char *filename[], unsigned int file, int pre_fd,
+		   struct op op[], unsigned int i)
+{
+	while (!list_empty(&op[i].pre)) {
+		struct depend_xmit dep;
+
+#if DEBUG_DEPS
+		printf("%s:%u:waiting for pre\n", filename[file], i+1);
+		fflush(stdout);
+#endif
+		alarm(10);
+		while (read(pre_fd, &dep, sizeof(dep)) != sizeof(dep)) {
+			if (errno == EINTR) {
+				dump_pre(filename, file, op, i);
+				exit(1);
+			} else
+				errx(1, "Reading from pipe");
+		}
+		alarm(0);
+
+#if DEBUG_DEPS
+		printf("%s:%u:got pre %u from %s:%u\n", filename[file], i+1,
+		       dep.dst_op+1, filename[dep.src_file], dep.src_op+1);
+		fflush(stdout);
+#endif
+		/* This could be any op, not just this one. */
+		remove_matching_dep(&op[dep.dst_op].pre,
+				    dep.src_file, dep.src_op);
+	}
+}
+
+static void do_post(char *filename[], unsigned int file,
+		    const struct op op[], unsigned int i)
+{
+	struct depend *dep;
+
+	list_for_each(&op[i].post, dep, list) {
+		struct depend_xmit dx;
+
+		dx.src_file = file;
+		dx.src_op = i;
+		dx.dst_op = dep->op;
+#if DEBUG_DEPS
+		printf("%s:%u:sending to file %s:%u\n", filename[file], i+1,
+		       filename[dep->file], dep->op+1);
+#endif
+		if (write(pipes[dep->file].fd[1], &dx, sizeof(dx))
+		    != sizeof(dx))
+			err(1, "%s:%u failed to tell file %s",
+			    filename[file], i+1, filename[dep->file]);
+	}
+}
+
 static int get_len(TDB_DATA key, TDB_DATA data, void *private_data)
 {
 	return data.dsize;
@@ -440,13 +550,15 @@ static int get_len(TDB_DATA key, TDB_DATA data, void *private_data)
 
 static unsigned run_ops(struct tdb_context *tdb,
 			int pre_fd,
-			const char *filename,
+			char *filename[],
+			unsigned int file,
 			struct op op[],
 			unsigned int start, unsigned int stop);
 
 struct traverse_info {
 	struct op *op;
-	const char *filename;
+	char **filename;
+	unsigned file;
 	int pre_fd;
 	unsigned int start;
 	unsigned int i;
@@ -463,14 +575,16 @@ static int trivial_traverse(struct tdb_context *tdb,
 
 	while (trav->hash[h].index) {
 		if (key_eq(trav->hash[h].key, key)) {
-			run_ops(tdb, tinfo->pre_fd, tinfo->filename, tinfo->op,
-				trav->hash[h].index, trav->end);
+			run_ops(tdb, tinfo->pre_fd, tinfo->filename,
+				tinfo->file, tinfo->op, trav->hash[h].index,
+				trav->end);
 			tinfo->i++;
 			return 0;
 		}
 		h = (h + 1) % (trav->num * 2);
 	}
-	fail(tinfo->filename, tinfo->start + 1, "unexpected traverse key");
+	fail(tinfo->filename[tinfo->file], tinfo->start + 1,
+	     "unexpected traverse key");
 }
 
 /* More complex.  Just do whatever's they did at the n'th entry. */
@@ -485,17 +599,17 @@ static int nontrivial_traverse(struct tdb_context *tdb,
 		/* This can happen if traverse expects to be empty. */
 		if (tinfo->start + 1 == trav->end)
 			return 1;
-		fail(tinfo->filename, tinfo->start + 1,
+		fail(tinfo->filename[tinfo->file], tinfo->start + 1,
 		     "traverse did not terminate");
 	}
 
 	if (tinfo->op[tinfo->i].op != OP_TDB_TRAVERSE)
-		fail(tinfo->filename, tinfo->start + 1,
+		fail(tinfo->filename[tinfo->file], tinfo->start + 1,
 		     "%s:%u:traverse terminated early");
 
 	/* Run any normal ops. */
-	tinfo->i = run_ops(tdb, tinfo->pre_fd, tinfo->filename, tinfo->op,
-			   tinfo->i+1, trav->end);
+	tinfo->i = run_ops(tdb, tinfo->pre_fd, tinfo->filename, tinfo->file,
+			   tinfo->op, tinfo->i+1, trav->end);
 
 	if (tinfo->i == trav->end)
 		return 1;
@@ -505,20 +619,23 @@ static int nontrivial_traverse(struct tdb_context *tdb,
 
 static unsigned op_traverse(struct tdb_context *tdb,
 			    int pre_fd,
-			    const char *filename,
+			    char *filename[],
+			    unsigned int file,
 			    int (*traversefn)(struct tdb_context *,
 					      tdb_traverse_func, void *),
 			    struct op op[],
 			    unsigned int start)
 {
 	struct traverse *trav = op[start].trav;
-	struct traverse_info tinfo = { op, filename, pre_fd, start, start+1 };
+	struct traverse_info tinfo = { op, filename, file, pre_fd,
+				       start, start+1 };
 
 	/* Trivial case. */
 	if (trav->hash) {
 		int ret = traversefn(tdb, trivial_traverse, &tinfo);
 		if (ret != trav->num)
-			fail(filename, start+1, "short traversal %i", ret);
+			fail(filename[file], start+1,
+			     "short traversal %i", ret);
 		return trav->end;
 	}
 
@@ -531,73 +648,33 @@ static unsigned op_traverse(struct tdb_context *tdb,
 		if (op[tinfo.i].op == OP_TDB_TRAVERSE)
 			tinfo.i++;
 		else
-			tinfo.i = run_ops(tdb, pre_fd, filename, op,
+			tinfo.i = run_ops(tdb, pre_fd, filename, file, op,
 					  tinfo.i, trav->end);
 	}
+
 	return trav->end;
 }
 
-struct depend {
-	/* We can have more than one */
-	struct list_node list;
-	unsigned int file;
-	unsigned int op;
-};
-
-static void do_pre(const char *filename, int pre_fd,
-		   struct op op[], unsigned int i)
+static void break_out(int sig)
 {
-	while (op[i].pre != 0) {
-		unsigned int opnum;
-
-#if DEBUG_DEPS
-		printf("%s:%u:waiting for pre\n", filename, i+1);
-		fflush(stdout);
-#endif
-		if (read(pre_fd, &opnum, sizeof(opnum)) != sizeof(opnum))
-			errx(1, "Reading from pipe");
-
-#if DEBUG_DEPS
-		printf("%s:%u:got pre %u (%u)\n", filename, i+1, opnum+1,
-		       op[opnum].pre);
-		fflush(stdout);
-#endif
-		/* This could be any op, not just this one. */
-		if (op[opnum].pre == 0)
-			errx(1, "Got extra notification for op line %u",
-			     opnum + 1);
-		if (opnum < i)
-			errx(1, "%s:%u: got late notification for line %u",
-			     filename, i + 1, opnum + 1);
-		op[opnum].pre--;
-	}
-}
-
-static void do_post(const char *filename, const struct op op[], unsigned int i)
-{
-	struct depend *dep;
-
-	list_for_each(&op[i].post, dep, list) {
-#if DEBUG_DEPS
-		printf("%s:%u:sending %u to file %u\n", filename, i+1,
-		       dep->op+1, dep->file);
-#endif
-		if (write(pipes[dep->file].fd[1], &dep->op, sizeof(dep->op))
-		    != sizeof(dep->op))
-			err(1, "Failed to tell file %u", dep->file);
-	}
 }
 
 static __attribute__((noinline))
 unsigned run_ops(struct tdb_context *tdb,
 		 int pre_fd,
-		 const char *filename,
+		 char *filename[],
+		 unsigned int file,
 		 struct op op[], unsigned int start, unsigned int stop)
 {
 	unsigned int i;
+	struct sigaction sa;
 
+	sa.sa_handler = break_out;
+	sa.sa_flags = 0;
+
+	sigaction(SIGALRM, &sa, NULL);
 	for (i = start; i < stop; i++) {
-		do_pre(filename, pre_fd, op, i);
+		do_pre(filename, file, pre_fd, op, i);
 
 		switch (op[i].op) {
 		case OP_TDB_LOCKALL:
@@ -682,11 +759,11 @@ unsigned run_ops(struct tdb_context *tdb,
 			try(tdb_transaction_commit(tdb), op[i].ret);
 			break;
 		case OP_TDB_TRAVERSE_READ_START:
-			i = op_traverse(tdb, pre_fd, filename,
+			i = op_traverse(tdb, pre_fd, filename, file,
 					tdb_traverse_read, op, i);
 			break;
 		case OP_TDB_TRAVERSE_START:
-			i = op_traverse(tdb, pre_fd, filename,
+			i = op_traverse(tdb, pre_fd, filename, file,
 					tdb_traverse, op, i);
 			break;
 		case OP_TDB_TRAVERSE:
@@ -694,27 +771,28 @@ unsigned run_ops(struct tdb_context *tdb,
 			 * done our ops. */
 			return i;
 		case OP_TDB_TRAVERSE_END:
-			fail(filename, i+1, "unepxected end traverse");
+			fail(filename[file], i+1, "unepxected end traverse");
 		/* FIXME: These must be treated like traverse. */
 		case OP_TDB_FIRSTKEY:
 			if (!key_eq(tdb_firstkey(tdb), op[i].data))
-				fail(filename, i+1, "bad firstkey");
+				fail(filename[file], i+1, "bad firstkey");
 			break;
 		case OP_TDB_NEXTKEY:
 			if (!key_eq(tdb_nextkey(tdb, op[i].key), op[i].data))
-				fail(filename, i+1, "bad nextkey");
+				fail(filename[file], i+1, "bad nextkey");
 			break;
 		case OP_TDB_FETCH: {
 			TDB_DATA f = tdb_fetch(tdb, op[i].key);
 			if (!key_eq(f, op[i].data))
-				fail(filename, i+1, "bad fetch %u", f.dsize);
+				fail(filename[file], i+1, "bad fetch %u",
+				     f.dsize);
 			break;
 		}
 		case OP_TDB_DELETE:
 			try(tdb_delete(tdb, op[i].key), op[i].ret);
 			break;
 		}
-		do_post(filename, op, i);
+		do_post(filename, file, op, i);
 	}
 	return i;
 }
@@ -789,16 +867,152 @@ struct keyinfo {
 	struct key_user *user;
 };
 
-static bool changes_db(const struct op *op)
-{
-	if (op->ret != 0)
-		return false;
+static const TDB_DATA must_not_exist;
+static const TDB_DATA must_exist;
+static const TDB_DATA not_exists_or_empty;
 
-	return op->op == OP_TDB_STORE
-		|| op->op == OP_TDB_APPEND
-		|| op->op == OP_TDB_WIPE_ALL
-		|| op->op == OP_TDB_TRANSACTION_COMMIT
-		|| op->op == OP_TDB_DELETE;
+/* NULL means doesn't care if it exists or not, &must_exist means
+ * it must exist but we don't care what, &must_not_exist means it must
+ * not exist, otherwise the data it needs. */
+static const TDB_DATA *needs(const struct op *op)
+{
+	switch (op->op) {
+	/* FIXME: Pull forward deps, since we can deadlock */
+	case OP_TDB_CHAINLOCK:
+	case OP_TDB_CHAINLOCK_NONBLOCK:
+	case OP_TDB_CHAINLOCK_MARK:
+	case OP_TDB_CHAINLOCK_UNMARK:
+	case OP_TDB_CHAINUNLOCK:
+	case OP_TDB_CHAINLOCK_READ:
+	case OP_TDB_CHAINUNLOCK_READ:
+		return NULL;
+
+	case OP_TDB_APPEND:
+		if (op->pre_append.dsize == 0)
+			return &not_exists_or_empty;
+		return &op->pre_append;
+
+	case OP_TDB_STORE:
+		if (op->flag == TDB_INSERT) {
+			if (op->ret < 0)
+				return &must_exist;
+			else
+				return &must_not_exist;
+		} else if (op->flag == TDB_MODIFY) {
+			if (op->ret < 0)
+				return &must_not_exist;
+			else
+				return &must_exist;
+		}
+		/* No flags?  Don't care */
+		return NULL;
+
+	case OP_TDB_EXISTS:
+		if (op->ret == 1)
+			return &must_exist;
+		else
+			return &must_not_exist;
+
+	case OP_TDB_PARSE_RECORD:
+		if (op->ret < 0)
+			return &must_not_exist;
+		return &must_exist;
+
+	/* FIXME: handle these. */
+	case OP_TDB_WIPE_ALL:
+	case OP_TDB_FIRSTKEY:
+	case OP_TDB_NEXTKEY:
+	case OP_TDB_GET_SEQNUM:
+	case OP_TDB_TRAVERSE:
+	case OP_TDB_TRANSACTION_COMMIT:
+	case OP_TDB_TRANSACTION_CANCEL:
+	case OP_TDB_TRANSACTION_START:
+		return NULL;
+
+	case OP_TDB_FETCH:
+		if (!op->data.dptr)
+			return &must_not_exist;
+		return &op->data;
+
+	case OP_TDB_DELETE:
+		if (op->ret < 0)
+			return &must_not_exist;
+		return &must_exist;
+
+	default:
+		errx(1, "Unexpected op %i", op->op);
+	}
+	
+}
+
+enum satisfaction {
+	/* This op makes the other one possible. */
+	SATISFIES,
+	/* This op makes the other one impossible. */
+	DISSATISFIES,
+	/* This op makes no difference. */
+	NO_CHANGE
+};
+
+static enum satisfaction satisfies(const struct op *op, const TDB_DATA *need)
+{
+	bool deletes, creates;
+
+	/* Failed ops don't change state of db. */
+	if (op->ret < 0)
+		return NO_CHANGE;
+
+	deletes = (op->op == OP_TDB_DELETE || op->op == OP_TDB_WIPE_ALL);
+	/* Append/store is creating the record if ret == 0 (1 means replaced) */
+	if (op->op == OP_TDB_APPEND || op->op == OP_TDB_STORE)
+		creates = (op->ret == 0);
+	else
+		creates = false;
+
+	if (need == &must_not_exist) {
+		if (deletes)
+			return SATISFIES;
+		if (creates)
+			return DISSATISFIES;
+		return NO_CHANGE;
+	}
+
+	if (need == &must_exist) {
+		if (deletes)
+			return DISSATISFIES;
+		if (creates) 
+			return SATISFIES;
+		return NO_CHANGE;
+	}
+
+	if (need == &not_exists_or_empty) {
+		if (deletes)
+			return SATISFIES;
+		if (!creates)
+			return NO_CHANGE;
+	}
+
+	/* OK, we need an exact match. */
+	if (deletes)
+		return DISSATISFIES;
+
+	/* An append which results in the wrong data dissatisfies. */
+	if (op->op == OP_TDB_APPEND) {
+		if (op->pre_append.dsize + op->data.dsize != need->dsize)
+			return DISSATISFIES;
+		if (memcmp(op->pre_append.dptr, need->dptr,
+			   op->pre_append.dsize) != 0)
+			return DISSATISFIES;
+		if (memcmp(op->data.dptr, need->dptr + op->pre_append.dsize,
+			   op->data.dsize) != 0)
+			return DISSATISFIES;
+		return SATISFIES;
+	} else if (op->op == OP_TDB_STORE) {
+		if (key_eq(op->data, *need))
+			return SATISFIES;
+		return DISSATISFIES;
+	}
+	return NO_CHANGE;
 }
 
 static struct keyinfo *hash_ops(struct op *op[], unsigned int num_ops[],
@@ -814,14 +1028,35 @@ static struct keyinfo *hash_ops(struct op *op[], unsigned int num_ops[],
 		int ret = op[a->file][a->op_num].serial
 			- op[b->file][b->op_num].serial;
 
-		/* Fetches don't inc serial, so we put changes first. */
+		/* Serial is not completely reliable.  First, fetches don't
+		 * inc serial, second we don't lock to get seq number.
+		 * This smooths things a little for simple cases. */
 		if (ret == 0) {
-			if (changes_db(&op[a->file][a->op_num])
-			    && !changes_db(&op[b->file][b->op_num]))
+			const TDB_DATA *a_needs, *b_needs;
+
+			b_needs = needs(&op[b->file][b->op_num]);
+			switch (satisfies(&op[a->file][a->op_num], b_needs)) {
+			case SATISFIES:
+				/* A comes first: it satisfies B. */
 				return -1;
-			if (changes_db(&op[b->file][b->op_num])
-			    && !changes_db(&op[a->file][a->op_num]))
+			case DISSATISFIES:
+				/* A doesn't come first: it messes up B. */
 				return 1;
+			default:
+				break;
+			}
+
+			a_needs = needs(&op[a->file][a->op_num]);
+			switch (satisfies(&op[b->file][b->op_num], a_needs)) {
+			case SATISFIES:
+				/* B comes first: it satisfies A. */
+				return 1;
+			case DISSATISFIES:
+				/* B doesn't come first: it messes up A. */
+				return -1;
+			default:
+				break;
+			}
 		}
 		return ret;
 	}
@@ -831,6 +1066,7 @@ static struct keyinfo *hash_ops(struct op *op[], unsigned int num_ops[],
 		for (j = 1; j < num_ops[i]; j++) {
 			/* We can't do this on allocation, due to realloc. */
 			list_head_init(&op[i][j].post);
+			list_head_init(&op[i][j].pre);
 
 			if (!op[i][j].key.dptr)
 				continue;
@@ -872,13 +1108,24 @@ static struct keyinfo *hash_ops(struct op *op[], unsigned int num_ops[],
 
 static void add_dependency(void *ctx,
 			   struct op *op[],
+			   char *filename[],
 			   unsigned int needs_file,
 			   unsigned int needs_opnum,
 			   unsigned int satisfies_file,
 			   unsigned int satisfies_opnum)
 {
-	struct depend *post;
+	struct depend *post, *pre;
 	unsigned int needs_start, sat_start;
+
+	/* We don't depend on ourselves. */
+	if (needs_file == satisfies_file)
+		return;
+
+#if DEBUG_DEPS
+	printf("%s:%u: depends on %s:%u\n",
+	       filename[needs_file], needs_opnum+1,
+	       filename[satisfies_file], satisfies_opnum+1);
+#endif
 
 	needs_start = op[needs_file][needs_opnum].group_start;
 	sat_start = op[satisfies_file][satisfies_opnum].group_start;
@@ -887,10 +1134,6 @@ static void add_dependency(void *ctx,
 	if (needs_start) {
 		switch (op[needs_file][needs_start].op) {
 		case OP_TDB_TRANSACTION_START:
-#if TRAVERSALS_TAKE_TRANSACTION_LOCK
-		case OP_TDB_TRAVERSE_START:
-		case OP_TDB_TRAVERSE_READ_START:
-#endif
 			needs_opnum = needs_start;
 #ifdef DEBUG_DEPS
 			printf("  -> Back to %u\n", needs_start+1);
@@ -921,23 +1164,75 @@ static void add_dependency(void *ctx,
 	post->op = needs_opnum;
 	list_add(&op[satisfies_file][satisfies_opnum].post, &post->list);
 
-	op[needs_file][needs_opnum].pre++;
-#ifdef DEBUG_DEPS
-	if (op[needs_file][needs_opnum].pre > 1) {
-		printf("   (File %u opnum %u hash %u needs)\n",
-		       needs_file, needs_opnum+1,
-		       op[needs_file][needs_opnum].pre);
-		fflush(stdout);
-	}
-#endif
+	pre = talloc(ctx, struct depend);
+	pre->file = satisfies_file;
+	pre->op = satisfies_opnum;
+	list_add(&op[needs_file][needs_opnum].pre, &pre->list);
 }
+
+#if TRAVERSALS_TAKE_TRANSACTION_LOCK
+struct traverse_dep {
+	unsigned int file;
+	unsigned int op_num;
+	const struct op *op;
+};
+
+/* Sort by which one runs first. */
+static int compare_traverse_dep(const void *_a, const void *_b)
+{
+	const struct traverse_dep *a = _a, *b = _b;
+	const struct traverse *trava = a->op->trav, *travb = b->op->trav;
+
+	if (a->op->serial != b->op->serial)
+		return a->op->serial - b->op->serial;
+
+	/* If they have same serial, it means one didn't make any changes.
+	 * Thus sort by end in that case. */
+	return a->op[trava->end - a->op_num].serial
+		- b->op[travb->end - b->op_num].serial;
+}
+
+/* Traversals can deadlock against each other.  Force order. */
+static void make_traverse_depends(char *filename[],
+				  struct op *op[], unsigned int num_ops[],
+				  unsigned int num)
+{
+	unsigned int i, j, num_traversals = 0;
+	struct traverse_dep *dep;
+
+	dep = talloc_array(NULL, struct traverse_dep, 1);
+
+	/* Count them. */
+	for (i = 0; i < num; i++) {
+		for (j = 0; j < num_ops[i]; j++) {
+			if (op[i][j].op == OP_TDB_TRAVERSE_START
+			    || op[i][j].op == OP_TDB_TRAVERSE_READ_START) {
+				dep = talloc_realloc(NULL, dep,
+						     struct traverse_dep,
+						     num_traversals+1);
+				dep[num_traversals].file = i;
+				dep[num_traversals].op_num = j;
+				dep[num_traversals].op = &op[i][j];
+				num_traversals++;
+			}
+		}
+	}
+	qsort(dep, num_traversals, sizeof(dep[0]), compare_traverse_dep);
+	for (i = 1; i < num_traversals; i++) {
+		/* i depends on end of traverse i-1. */
+		add_dependency(NULL, op, filename, dep[i].file, dep[i].op_num,
+			       dep[i-1].file, dep[i-1].op->trav->end);
+	}
+	talloc_free(dep);
+}
+#endif /* TRAVERSALS_TAKE_TRANSACTION_LOCK */
 
 static void derive_dependencies(char *filename[],
 				struct op *op[], unsigned int num_ops[],
 				unsigned int num)
 {
 	struct keyinfo *hash;
-	unsigned int i;
+	unsigned int i, j;
 
 	/* Create hash table for faster key lookup. */
 	hash = hash_ops(op, num_ops, num);
@@ -945,27 +1240,18 @@ static void derive_dependencies(char *filename[],
 	/* We make the naive assumption that two ops on the same key
 	 * have to be ordered; it's overkill. */
 	for (i = 0; i < total_keys * 2; i++) {
-		unsigned int j;
-
 		for (j = 1; j < hash[i].num_users; j++) {
-			/* We don't depend on ourselves. */
-			if (hash[i].user[j].file == hash[i].user[j-1].file)
-				continue;
-#if DEBUG_DEPS
-			printf("%s:%u: depends on %s:%u\n",
-			       filename[hash[i].user[j].file],
-			       hash[i].user[j].op_num+1,
-			       filename[hash[i].user[j-1].file],
-			       hash[i].user[j-1].op_num+1);
-			fflush(stdout);
-#endif
-			add_dependency(hash, op,
+			add_dependency(hash, op, filename,
 				       hash[i].user[j].file,
 				       hash[i].user[j].op_num,
 				       hash[i].user[j-1].file,
 				       hash[i].user[j-1].op_num);
 		}
 	}
+
+#if TRAVERSALS_TAKE_TRANSACTION_LOCK
+	make_traverse_depends(filename, op, num_ops, num);
+#endif
 }
 
 int main(int argc, char *argv[])
@@ -975,19 +1261,26 @@ int main(int argc, char *argv[])
 	struct op *op[argc];
 	int fds[2];
 	char c;
+	bool ok = true;
 
 	if (argc < 3)
 		errx(1, "Usage: %s <tdbfile> <tracefile>...", argv[0]);
 
 	pipes = talloc_array(NULL, struct pipe, argc - 2);
 	for (i = 0; i < argc - 2; i++) {
+		printf("Loading tracefile %s...", argv[2+i]);
+		fflush(stdout);
 		op[i] = load_tracefile(argv[2+i], &num_ops[i], &hashsize[i],
 				       &tdb_flags[i], &open_flags[i]);
 		if (pipe(pipes[i].fd) != 0)
 			err(1, "creating pipe");
+		printf("done\n");
 	}
 
+	printf("Calculating inter-dependencies...");
+	fflush(stdout);
 	derive_dependencies(argv+2, op, num_ops, i);
+	printf("done\n");
 
 	/* Don't fork for single arg case: simple debugging. */
 	if (argc == 3) {
@@ -995,8 +1288,13 @@ int main(int argc, char *argv[])
 		tdb = tdb_open_ex(argv[1], hashsize[0], tdb_flags[0],
 				  open_flags[0], 0600,
 				  NULL, hash_key);
-		run_ops(tdb, pipes[0].fd[0], argv[2],
-			op[0], 1, num_ops[0]);
+		printf("Single threaded run...");
+		fflush(stdout);
+
+		run_ops(tdb, pipes[0].fd[0], argv+2, 0, op[0], 1, num_ops[0]);
+		check_deps(argv[2], op[0], num_ops[0]);
+
+		printf("done\n");
 		exit(0);
 	}
 
@@ -1020,8 +1318,9 @@ int main(int argc, char *argv[])
 			/* This catches parent exiting. */
 			if (read(fds[0], &c, 1) != 1)
 				exit(1);
-			run_ops(tdb, pipes[i].fd[0], argv[2+i],
-				op[i], 1, num_ops[i]);
+			run_ops(tdb, pipes[i].fd[0], argv+2, i, op[i], 1,
+				num_ops[i]);
+			check_deps(argv[2+i], op[i], num_ops[i]);
 			exit(0);
 		default:
 			break;
@@ -1031,6 +1330,8 @@ int main(int argc, char *argv[])
 	/* Let everything settle. */
 	sleep(1);
 
+	printf("Starting run...");
+	fflush(stdout);
 	gettimeofday(&start, NULL);
 	/* Tell them all to go!  Any write of sufficient length will do. */
 	if (write(fds[1], hashsize, i) != i)
@@ -1039,12 +1340,18 @@ int main(int argc, char *argv[])
 	for (i = 0; i < argc - 2; i++) {
 		int status;
 		wait(&status);
-		if (!WIFEXITED(status))
-			errx(1, "Child died with signal %i", WTERMSIG(status));
-		if (WEXITSTATUS(status) != 0)
-			errx(1, "Child died with error code");
+		if (!WIFEXITED(status)) {
+			warnx("Child died with signal %i", WTERMSIG(status));
+			ok = false;
+		} else if (WEXITSTATUS(status) != 0)
+			/* Assume child spat out error. */
+			ok = false;
 	}
+	if (!ok)
+		exit(1);
+
 	gettimeofday(&end, NULL);
+	printf("done\n");
 
 	end.tv_sec -= start.tv_sec;
 	printf("Time replaying: %lu usec\n",
