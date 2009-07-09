@@ -16,6 +16,9 @@ tools/ccanlint/generated-init-tests: $(TEST_CFILES)
 
 $(TEST_OBJS): tools/ccanlint/generated-init-tests
 
+# Otherwise, ccanlint.c et al. may fail to build
+$(CORE_OBJS): tools/ccanlint/generated-init-tests
+
 tools/ccanlint/ccanlint: $(OBJS)
 
 ccanlint-clean:
