@@ -125,6 +125,8 @@ char *read_cstring(array_char *out, const char *s, const char *e, char quoteChar
 								"Double quote characters need not be escaped within single quotes"); */
 							break;
 						}
+						if (c=='?') // \? is needed in some situations to avoid building a trigraph
+							break;
 						tok_msg_warn(unknown_escape, s-2,
 							"Unknown escape sequence '\\%c'", c);
 						break;

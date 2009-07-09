@@ -1,6 +1,6 @@
 Update that simple tokenizer compulsory test so things will compile
 
-
+Handle cases like escaped question marks and pound symbols that I don't understand yet.
 
 (done) Fix #include <stdio.h> to read include directive correctly
 
