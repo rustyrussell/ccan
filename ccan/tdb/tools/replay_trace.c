@@ -1264,6 +1264,9 @@ static void derive_dependencies(char *filename[],
 	/* Create hash table for faster key lookup. */
 	hash = hash_ops(op, num_ops, num);
 
+	/* Now handle the hard cases: same serial number. */
+	sort_ops(hash, filename, op);
+
 	/* We make the naive assumption that two ops on the same key
 	 * have to be ordered; it's overkill. */
 	for (i = 0; i < total_keys * 2; i++) {
