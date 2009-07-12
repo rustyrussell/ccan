@@ -1,3 +1,8 @@
+Write test for empty_char_constant
+
+defined cannot be used as a macro name
+<strike>Add "defined" and only accept it in appropriate circumstances</strike>
+
 Update that simple tokenizer compulsory test so things will compile
 
 Handle cases like escaped question marks and pound symbols that I don't understand yet.

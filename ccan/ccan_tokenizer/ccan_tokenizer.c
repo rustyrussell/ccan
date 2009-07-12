@@ -473,12 +473,19 @@ struct token_list *tokenize(const char *orig, size_t orig_size,
 				
 				add(.type = type,
 					{.include = include});
+				
 			} else if (c=='\'' || c=='\"') { //character or string literal
 				array_char string = array_new(tl);
 				s = read_cstring(&string, s, e, c, mq);
 				if (s<e) s++; //advance past endquote (if available)
 				add(.type = c=='\'' ? TOK_CHAR : TOK_STRING,
 				    {.string = string});
+				
+				if (c=='\'' && string.size==0) {
+					tok_msg_error(empty_char_constant, orig,
+						"Empty character constant");
+				}
+				
 			} else if (c=='/' && s<e && (*s=='*' || *s=='/')) { //comment
 				if (*s++ == '*') { /* C-style comment */
 					const char *comment_start = s-2;

@@ -41,8 +41,11 @@ enum token_type {
 	TOK_INTEGER,	   //integer (e.g. 5, 1000L, 0x5)
 	TOK_FLOATING,	   //floating point number (e.g. 5.0, 7.0f, etc.)
 	TOK_OPERATOR,	   //operator (e.g. +, -, (, ), ++, etc.)
+	
+	#define token_type_is_identifier(type) ((type)>=TOK_KEYWORD && (type)<=TOK_IDENTIFIER)
 	TOK_KEYWORD,	   //keyword (e.g. char, _Bool, ifdef)
 	TOK_IDENTIFIER,	   //identifier or unprocessed keyword (e.g. int, token, pp_conditions)
+	
 	TOK_CHAR,	   //character literal (e.g. 'a' or even '1234')
 	TOK_STRING,	   //string literal (e.g. "hello" or "zero\0inside")
 	TOK_LEADING_POUND, //leading # in a preprocessor directive (e.g. # include)
@@ -54,6 +57,7 @@ enum token_type {
 	TOK_CCOMMENT, //C comment (e.g. /* comment */)
 	TOK_CPPCOMMENT, //C++ comment (e.g. //comment )
 	TOK_WHITE, //whitespace (span of \t\n\v\f\r and space)
+	
 	TOK_STARTLINE,	//beginning of line (txt/txtsize is always empty)
 	TOK_STRAY, //control characters, weird characters, and extended characters where they shouldn't be
 };
@@ -192,6 +196,11 @@ struct token {
 	size_t line, col;
 };
 
+//keywords such as int, long, etc. may be defined over, making them identifiers in a sense
+static inline int token_is_identifier(const struct token *tok) {
+	return token_type_is_identifier(tok->type);
+}
+
 static inline int token_is_ignored(const struct token *tok) {
 	return token_type_is_ignored(tok->type);
 }
@@ -202,6 +211,11 @@ static inline int token_is_op(const struct token *tok, int opkw) {
 
 static inline int token_is_kw(const struct token *tok, int opkw) {
 	return tok->type==TOK_KEYWORD && tok->opkw==opkw;
+}
+
+static inline int token_txt_is(const struct token *tok, const char *str) {
+	size_t len = strlen(str);
+	return tok->txt_size==len && !memcmp(tok->txt, str, len);
 }
 
 struct token_list {
