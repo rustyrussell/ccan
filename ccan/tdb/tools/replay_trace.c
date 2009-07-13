@@ -1025,32 +1025,76 @@ static bool satisfies(const TDB_DATA *data, const TDB_DATA *need)
 	return key_eq(*data, *need);
 }
 
+static void move_to_front(struct key_user res[], unsigned int elem)
+{
+	if (elem != 0) {
+		struct key_user tmp = res[elem];
+		memmove(res + 1, res, elem*sizeof(res[0]));
+		res[0] = tmp;
+	}
+}
+
+static void restore_to_pos(struct key_user res[], unsigned int elem)
+{
+	if (elem != 0) {
+		struct key_user tmp = res[0];
+		memmove(res, res + 1, elem*sizeof(res[0]));
+		res[elem] = tmp;
+	}
+}
+
 static bool sort_deps(char *filename[], struct op *op[],
 		      struct key_user res[], unsigned num,
-		      const TDB_DATA *data)
+		      const TDB_DATA *data, unsigned num_files)
 {
-	unsigned int i;
+	unsigned int i, files_done;
+	struct op *this_op;
+	bool done[num_files];
 
 	/* Nothing left?  We're sorted. */
 	if (num == 0)
 		return true;
 
-	for (i = 0; i < num; i++) {
-		struct op *this_op = &op[res[i].file][res[i].op_num];
+	memset(done, 0, sizeof(done));
 
+	/* Since ops within a trace file are ordered, we just need to figure
+	 * out which file to try next.  Since we don't take into account
+	 * inter-key relationships (which exist by virtue of trace file order),
+	 * we minimize the chance of harm by trying to keep in serial order. */
+	for (files_done = 0, i = 0; i < num && files_done < num_files; i++) {
+		if (done[res[i].file])
+			continue;
+
+		this_op = &op[res[i].file][res[i].op_num];
 		/* Is what we have good enough for this op? */
 		if (satisfies(data, needs(this_op))) {
-			/* Try this one next. */
-			struct key_user tmp = res[0];
-			res[0] = res[i];
-			res[i] = tmp;
+			move_to_front(res, i);
 			if (sort_deps(filename, op, res+1, num-1,
-				      gives(this_op, data)))
+				      gives(this_op, data), num_files))
 				return true;
+			restore_to_pos(res, i);
 		}
+		done[res[i].file] = true;
+		files_done++;
 	}
+
 	/* No combination worked. */
 	return false;
+}
+
+static void check_dep_sorting(struct key_user user[], unsigned num_users,
+			      unsigned num_files)
+{
+#if DEBUG_DEPS
+	unsigned int i;
+	unsigned minima[num_files];
+
+	memset(minima, 0, sizeof(minima));
+	for (i = 0; i < num_users; i++) {
+		assert(minima[user[i].file] < user[i].op_num);
+		minima[user[i].file] = user[i].op_num;
+	}
+#endif
 }
 
 /* All these ops have the same serial number.  Which comes first?
@@ -1061,22 +1105,21 @@ static bool sort_deps(char *filename[], struct op *op[],
  * in which case we'll deadlock and report: fix manually in that case).
  */
 static void figure_deps(char *filename[], struct op *op[],
-			struct key_user user[], unsigned start, unsigned end)
+			struct key_user user[], unsigned num_users,
+			unsigned num_files)
 {
-	unsigned int i;
 	/* We assume database starts empty. */
 	const struct TDB_DATA *data = &tdb_null;
 
-	/* What do we have to start with? */
-	for (i = 0; i < start; i++)
-		data = gives(&op[user[i].file][user[i].op_num], data);
-
-	if (!sort_deps(filename, op, user + start, end - start, data))
-		fail(filename[user[start].file], user[start].op_num+1,
+	if (!sort_deps(filename, op, user, num_users, data, num_files))
+		fail(filename[user[0].file], user[0].op_num+1,
 		     "Could not resolve inter-dependencies");
+
+	check_dep_sorting(user, num_users, num_files);
 }
 
-static void sort_ops(struct keyinfo hash[], char *filename[], struct op *op[])
+static void sort_ops(struct keyinfo hash[], char *filename[], struct op *op[],
+		     unsigned int num)
 {
 	unsigned int h;
 
@@ -1084,32 +1127,22 @@ static void sort_ops(struct keyinfo hash[], char *filename[], struct op *op[])
 	int compare_serial(const void *_a, const void *_b)
 	{
 		const struct key_user *a = _a, *b = _b;
+
+		/* First, maintain order within any trace file. */
+		if (a->file == b->file)
+			return a->op_num - b->op_num;
+
+		/* Otherwise, arrange by serial order. */
 		return op[a->file][a->op_num].serial
 			- op[b->file][b->op_num].serial;
 	}
 
-	/* Now sort into seqnum order. */
+	/* Now sort into serial order. */
 	for (h = 0; h < total_keys * 2; h++) {
-		unsigned int i, same;
 		struct key_user *user = hash[h].user;
 
 		qsort(user, hash[h].num_users, sizeof(user[0]), compare_serial);
-
-		/* Try to deal with same serial numbers. */
-		for (i = 1, same = 0; i < hash[h].num_users; i++) {
-			if (op[user[i].file][user[i].op_num].serial
-			    == op[user[i-1].file][user[i-1].op_num].serial) {
-				same++;
-				continue;
-			}
-
-			if (same) {
-				figure_deps(filename, op, user, i-same-1, i);
-				same = 0;
-			}
-		}
-		if (same)
-			figure_deps(filename, op, user, i-same-1, i);
+		figure_deps(filename, op, user, hash[h].num_users, num);
 	}
 }
 
@@ -1317,8 +1350,8 @@ static void derive_dependencies(char *filename[],
 	/* Create hash table for faster key lookup. */
 	hash = hash_ops(op, num_ops, num);
 
-	/* Now handle the hard cases: same serial number. */
-	sort_ops(hash, filename, op);
+	/* Sort them by serial number. */
+	sort_ops(hash, filename, op, num);
 
 	/* Create dependencies back to the last change, rather than
 	 * creating false dependencies by naively making each one
