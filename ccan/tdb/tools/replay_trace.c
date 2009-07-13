@@ -1120,7 +1120,6 @@ static int destroy_depend(struct depend *dep)
 	return 0;
 }
 
-static unsigned int dep_count;
 static void add_dependency(void *ctx,
 			   struct op *op[],
 			   char *filename[],
@@ -1182,8 +1181,6 @@ static void add_dependency(void *ctx,
 	list_add(&op[satisfies_file][satisfies_opnum].post, &dep->post_list);
 	list_add(&op[needs_file][needs_opnum].pre, &dep->pre_list);
 	talloc_set_destructor(dep, destroy_depend);
-
-	dep_count++;
 }
 
 #if TRAVERSALS_TAKE_TRANSACTION_LOCK
@@ -1240,7 +1237,6 @@ static void make_traverse_depends(char *filename[],
 			       dep[i-1].file, dep[i-1].op->trav->end);
 	}
 	talloc_free(dep);
-	printf("Dep count after traverses: %u\n", dep_count);
 }
 #endif /* TRAVERSALS_TAKE_TRANSACTION_LOCK */
 
@@ -1279,6 +1275,34 @@ static void depend_on_previous(struct op *op[],
 				       user[i].file, user[i].op_num,
 				       user[j].file, user[j].op_num);
 			deps[user[j].file] = true;
+		}
+	}
+}
+
+/* This is simple, but not complete.  We don't take into account
+ * indirect dependencies. */
+static void optimize_dependencies(struct op *op[], unsigned int num_ops[],
+				  unsigned int num)
+{
+	unsigned int i, j;
+
+	for (i = 0; i < num; i++) {
+		int deps[num];
+
+		for (j = 0; j < num; j++)
+			deps[j] = -1;
+
+		for (j = 1; j < num_ops[i]; j++) {
+			struct depend *dep, *next;
+
+			list_for_each_safe(&op[i][j].pre, dep, next, pre_list) {
+				if (deps[dep->satisfies_file]
+				    >= (int)dep->satisfies_opnum)
+					talloc_free(dep);
+				else
+					deps[dep->satisfies_file]
+						= dep->satisfies_opnum;
+			}
 		}
 	}
 }
@@ -1324,11 +1348,12 @@ static void derive_dependencies(char *filename[],
 					       hash[h].user[prev].op_num);
 		}
 	}
-	printf("Dep count after deriving: %u\n", dep_count);
 
 #if TRAVERSALS_TAKE_TRANSACTION_LOCK
 	make_traverse_depends(filename, op, num_ops, num);
 #endif
+
+	optimize_dependencies(op, num_ops, num);
 }
 
 int main(int argc, char *argv[])
