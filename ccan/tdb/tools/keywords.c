@@ -139,16 +139,16 @@ find_keyword (register const char *str, register unsigned int len)
 #line 42 "keywords.gperf"
       {"tdb_traverse_end", OP_TDB_TRAVERSE_END, op_analyze_traverse,},
 #line 38 "keywords.gperf"
-      {"tdb_transaction_cancel", OP_TDB_TRANSACTION_CANCEL, op_add_nothing,},
+      {"tdb_transaction_cancel", OP_TDB_TRANSACTION_CANCEL, op_analyze_transaction,},
 #line 41 "keywords.gperf"
       {"tdb_traverse_start", OP_TDB_TRAVERSE_START, op_add_traverse,},
       {""},
 #line 34 "keywords.gperf"
       {"tdb_append", OP_TDB_APPEND, op_add_append,},
 #line 37 "keywords.gperf"
-      {"tdb_transaction_start", OP_TDB_TRANSACTION_START, op_add_nothing,},
+      {"tdb_transaction_start", OP_TDB_TRANSACTION_START, op_add_transaction,},
 #line 39 "keywords.gperf"
-      {"tdb_transaction_commit", OP_TDB_TRANSACTION_COMMIT, op_add_nothing,},
+      {"tdb_transaction_commit", OP_TDB_TRANSACTION_COMMIT, op_analyze_transaction,},
 #line 40 "keywords.gperf"
       {"tdb_traverse_read_start", OP_TDB_TRAVERSE_READ_START, op_add_traverse,},
       {""}, {""},
