@@ -448,29 +448,13 @@ find_keyword (register const char *str, register unsigned int len);
 
 struct depend {
 	/* We can have more than one */
-	struct list_node list;
-	unsigned int file;
-	unsigned int op;
+	struct list_node pre_list;
+	struct list_node post_list;
+	unsigned int needs_file;
+	unsigned int needs_opnum;
+	unsigned int satisfies_file;
+	unsigned int satisfies_opnum;
 };
-
-struct depend_xmit {
-	unsigned int dst_op;
-	unsigned int src_file, src_op;
-};
-
-static void remove_matching_dep(struct list_head *deps,
-				unsigned int file, unsigned int op)
-{
-	struct depend *dep;
-
-	list_for_each(deps, dep, list) {
-		if (dep->file == file && dep->op == op) {
-			list_del(&dep->list);
-			return;
-		}
-	}
-	errx(1, "Failed to find depend on file %u line %u\n", file, op+1);
-}
 
 static void check_deps(const char *filename, struct op op[], unsigned int num)
 {
@@ -489,16 +473,18 @@ static void dump_pre(char *filename[], unsigned int file,
 	struct depend *dep;
 
 	printf("%s:%u still waiting for:\n", filename[file], i+1);
-	list_for_each(&op[i].pre, dep, list)
-		printf("    %s:%u\n", filename[dep->file], dep->op+1);
+	list_for_each(&op[i].pre, dep, pre_list)
+		printf("    %s:%u\n",
+		       filename[dep->satisfies_file], dep->satisfies_opnum+1);
 	check_deps(filename[file], op, i);
 }
 
+/* We simply read/write pointers, since we all are children. */
 static void do_pre(char *filename[], unsigned int file, int pre_fd,
 		   struct op op[], unsigned int i)
 {
 	while (!list_empty(&op[i].pre)) {
-		struct depend_xmit dep;
+		struct depend *dep;
 
 #if DEBUG_DEPS
 		printf("%s:%u:waiting for pre\n", filename[file], i+1);
@@ -516,12 +502,11 @@ static void do_pre(char *filename[], unsigned int file, int pre_fd,
 
 #if DEBUG_DEPS
 		printf("%s:%u:got pre %u from %s:%u\n", filename[file], i+1,
-		       dep.dst_op+1, filename[dep.src_file], dep.src_op+1);
+		       dep->needs_op, dep->satisfies_file, dep->satisfies_op+1);
 		fflush(stdout);
 #endif
 		/* This could be any op, not just this one. */
-		remove_matching_dep(&op[dep.dst_op].pre,
-				    dep.src_file, dep.src_op);
+		talloc_free(dep);
 	}
 }
 
@@ -530,20 +515,15 @@ static void do_post(char *filename[], unsigned int file,
 {
 	struct depend *dep;
 
-	list_for_each(&op[i].post, dep, list) {
-		struct depend_xmit dx;
-
-		dx.src_file = file;
-		dx.src_op = i;
-		dx.dst_op = dep->op;
+	list_for_each(&op[i].post, dep, post_list) {
 #if DEBUG_DEPS
 		printf("%s:%u:sending to file %s:%u\n", filename[file], i+1,
-		       filename[dep->file], dep->op+1);
+		       filename[dep->needs_file], dep->needs_opnum+1);
 #endif
-		if (write(pipes[dep->file].fd[1], &dx, sizeof(dx))
-		    != sizeof(dx))
+		if (write(pipes[dep->needs_file].fd[1], &dep, sizeof(dep))
+		    != sizeof(dep))
 			err(1, "%s:%u failed to tell file %s",
-			    filename[file], i+1, filename[dep->file]);
+			    filename[file], i+1, filename[dep->needs_file]);
 	}
 }
 
@@ -1133,6 +1113,13 @@ static void sort_ops(struct keyinfo hash[], char *filename[], struct op *op[])
 	}
 }
 
+static int destroy_depend(struct depend *dep)
+{
+	list_del(&dep->pre_list);
+	list_del(&dep->post_list);
+	return 0;
+}
+
 static unsigned int dep_count;
 static void add_dependency(void *ctx,
 			   struct op *op[],
@@ -1142,7 +1129,7 @@ static void add_dependency(void *ctx,
 			   unsigned int satisfies_file,
 			   unsigned int satisfies_opnum)
 {
-	struct depend *post, *pre;
+	struct depend *dep;
 	unsigned int needs_start, sat_start;
 
 	/* We don't depend on ourselves. */
@@ -1187,15 +1174,14 @@ static void add_dependency(void *ctx,
 		}
 	}
 
-	post = talloc(ctx, struct depend);
-	post->file = needs_file;
-	post->op = needs_opnum;
-	list_add(&op[satisfies_file][satisfies_opnum].post, &post->list);
-
-	pre = talloc(ctx, struct depend);
-	pre->file = satisfies_file;
-	pre->op = satisfies_opnum;
-	list_add(&op[needs_file][needs_opnum].pre, &pre->list);
+	dep = talloc(ctx, struct depend);
+	dep->needs_file = needs_file;
+	dep->needs_opnum = needs_opnum;
+	dep->satisfies_file = satisfies_file;
+	dep->satisfies_opnum = satisfies_opnum;
+	list_add(&op[satisfies_file][satisfies_opnum].post, &dep->post_list);
+	list_add(&op[needs_file][needs_opnum].pre, &dep->pre_list);
+	talloc_set_destructor(dep, destroy_depend);
 
 	dep_count++;
 }
