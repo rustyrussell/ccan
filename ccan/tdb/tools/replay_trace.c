@@ -1133,6 +1133,7 @@ static void sort_ops(struct keyinfo hash[], char *filename[], struct op *op[])
 	}
 }
 
+static unsigned int dep_count;
 static void add_dependency(void *ctx,
 			   struct op *op[],
 			   char *filename[],
@@ -1195,6 +1196,8 @@ static void add_dependency(void *ctx,
 	pre->file = satisfies_file;
 	pre->op = satisfies_opnum;
 	list_add(&op[needs_file][needs_opnum].pre, &pre->list);
+
+	dep_count++;
 }
 
 #if TRAVERSALS_TAKE_TRANSACTION_LOCK
@@ -1251,15 +1254,55 @@ static void make_traverse_depends(char *filename[],
 			       dep[i-1].file, dep[i-1].op->trav->end);
 	}
 	talloc_free(dep);
+	printf("Dep count after traverses: %u\n", dep_count);
 }
 #endif /* TRAVERSALS_TAKE_TRANSACTION_LOCK */
+
+static bool changes_db(const struct op *op)
+{
+	return gives(op, NULL) != NULL;
+}
+
+static void depend_on_previous(struct op *op[],
+			       char *filename[],
+			       unsigned int num,
+			       struct key_user user[],
+			       unsigned int i,
+			       int prev)
+{
+	bool deps[num];
+	int j;
+
+	if (i == 0)
+		return;
+
+	if (prev == i - 1) {
+		/* Just depend on previous. */
+		add_dependency(NULL, op, filename,
+			       user[i].file, user[i].op_num,
+			       user[prev].file, user[prev].op_num);
+		return;
+	}
+
+	/* We have to wait for the readers.  Find last one in *each* file. */
+	memset(deps, 0, sizeof(deps));
+	deps[user[i].file] = true;
+	for (j = i - 1; j > prev; j--) {
+		if (!deps[user[j].file]) {
+			add_dependency(NULL, op, filename,
+				       user[i].file, user[i].op_num,
+				       user[j].file, user[j].op_num);
+			deps[user[j].file] = true;
+		}
+	}
+}
 
 static void derive_dependencies(char *filename[],
 				struct op *op[], unsigned int num_ops[],
 				unsigned int num)
 {
 	struct keyinfo *hash;
-	unsigned int i, j;
+	unsigned int h, i;
 
 	/* Create hash table for faster key lookup. */
 	hash = hash_ops(op, num_ops, num);
@@ -1267,17 +1310,35 @@ static void derive_dependencies(char *filename[],
 	/* Now handle the hard cases: same serial number. */
 	sort_ops(hash, filename, op);
 
-	/* We make the naive assumption that two ops on the same key
-	 * have to be ordered; it's overkill. */
-	for (i = 0; i < total_keys * 2; i++) {
-		for (j = 1; j < hash[i].num_users; j++) {
-			add_dependency(hash, op, filename,
-				       hash[i].user[j].file,
-				       hash[i].user[j].op_num,
-				       hash[i].user[j-1].file,
-				       hash[i].user[j-1].op_num);
+	/* Create dependencies back to the last change, rather than
+	 * creating false dependencies by naively making each one
+	 * depend on the previous.  This has two purposes: it makes
+	 * later optimization simpler, and it also avoids deadlock with
+	 * same sequence number ops inside traversals (if one
+	 * traversal doesn't write anything, two ops can have the same
+	 * sequence number yet we can create a traversal dependency
+	 * the other way). */
+	for (h = 0; h < total_keys * 2; h++) {
+		int prev = -1;
+
+		if (hash[h].num_users < 2)
+			continue;
+
+		for (i = 0; i < hash[h].num_users; i++) {
+			if (changes_db(&op[hash[h].user[i].file]
+				       [hash[h].user[i].op_num])) {
+				depend_on_previous(op, filename, num,
+						   hash[h].user, i, prev);
+				prev = i;
+			} else if (prev >= 0)
+				add_dependency(hash, op, filename,
+					       hash[h].user[i].file,
+					       hash[h].user[i].op_num,
+					       hash[h].user[prev].file,
+					       hash[h].user[prev].op_num);
 		}
 	}
+	printf("Dep count after deriving: %u\n", dep_count);
 
 #if TRAVERSALS_TAKE_TRANSACTION_LOCK
 	make_traverse_depends(filename, op, num_ops, num);
