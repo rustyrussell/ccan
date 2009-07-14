@@ -1165,8 +1165,10 @@ static void add_dependency(void *ctx,
 	unsigned int needs_start, sat_start;
 
 	/* We don't depend on ourselves. */
-	if (needs_file == satisfies_file)
+	if (needs_file == satisfies_file) {
+		assert(satisfies_opnum < needs_opnum);
 		return;
+	}
 
 #if DEBUG_DEPS
 	printf("%s:%u: depends on %s:%u\n",
@@ -1318,6 +1320,29 @@ static void optimize_dependencies(struct op *op[], unsigned int num_ops[],
 				  unsigned int num)
 {
 	unsigned int i, j;
+
+	/* There can only be one real dependency on each file */
+	for (i = 0; i < num; i++) {
+		for (j = 1; j < num_ops[i]; j++) {
+			struct depend *dep, *next;
+			struct depend *prev[num];
+
+			memset(prev, 0, sizeof(prev));
+
+			list_for_each_safe(&op[i][j].pre, dep, next, pre_list) {
+				if (!prev[dep->satisfies_file]) {
+					prev[dep->satisfies_file] = dep;
+					continue;
+				}
+				if (prev[dep->satisfies_file]->satisfies_opnum
+				    > dep->satisfies_opnum) {
+					talloc_free(prev[dep->satisfies_file]);
+					prev[dep->satisfies_file] = dep;
+				} else
+					talloc_free(dep);
+			}
+		}
+	}
 
 	for (i = 0; i < num; i++) {
 		int deps[num];
