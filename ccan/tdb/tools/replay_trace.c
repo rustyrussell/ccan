@@ -502,7 +502,8 @@ static void do_pre(char *filename[], unsigned int file, int pre_fd,
 
 #if DEBUG_DEPS
 		printf("%s:%u:got pre %u from %s:%u\n", filename[file], i+1,
-		       dep->needs_op, dep->satisfies_file, dep->satisfies_op+1);
+		       dep->needs_opnum+1, filename[dep->satisfies_file],
+		       dep->satisfies_opnum+1);
 		fflush(stdout);
 #endif
 		/* This could be any op, not just this one. */
@@ -1335,7 +1336,7 @@ static void optimize_dependencies(struct op *op[], unsigned int num_ops[],
 					continue;
 				}
 				if (prev[dep->satisfies_file]->satisfies_opnum
-				    > dep->satisfies_opnum) {
+				    < dep->satisfies_opnum) {
 					talloc_free(prev[dep->satisfies_file]);
 					prev[dep->satisfies_file] = dep;
 				} else
