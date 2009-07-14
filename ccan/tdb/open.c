@@ -153,9 +153,6 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 	unsigned char *vp;
 	uint32_t vertest;
 	unsigned v;
-#ifdef TDB_TRACE
-	char tracefile[strlen(name) + 32];
-#endif
 
 	if (!(tdb = (struct tdb_context *)calloc(1, sizeof *tdb))) {
 		/* Can't log this */
@@ -322,12 +319,17 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 	}
 
 #ifdef TDB_TRACE
-	sprintf(tracefile, "%s.trace.%u", name, getpid());
-	tdb->tracefd = open(tracefile, O_WRONLY|O_CREAT|O_EXCL, 0600);
-	if (tdb->tracefd < 0)
-		goto fail;
-	tdb_enable_seqnum(tdb);
-	tdb_trace_open(tdb, "tdb_open", hash_size, tdb_flags, open_flags);
+	{
+		char tracefile[strlen(name) + 32];
+
+		sprintf(tracefile, "%s.trace.%u", name, getpid());
+		tdb->tracefd = open(tracefile, O_WRONLY|O_CREAT|O_EXCL, 0600);
+		if (tdb->tracefd < 0)
+			goto fail;
+		tdb_enable_seqnum(tdb);
+		tdb_trace_open(tdb, "tdb_open", hash_size, tdb_flags,
+			       open_flags);
+	}
 #endif
 
  internal:
