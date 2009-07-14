@@ -211,7 +211,7 @@ int tdb_traverse_read(struct tdb_context *tdb,
 
 	/* we need to get a read lock on the transaction lock here to
 	   cope with the lock ordering semantics of solaris10 */
-	if (tdb->traverse_read == 0 && tdb_transaction_lock(tdb, F_RDLCK)) {
+	if (tdb_transaction_lock(tdb, F_RDLCK)) {
 		return -1;
 	}
 
@@ -220,9 +220,7 @@ int tdb_traverse_read(struct tdb_context *tdb,
 	ret = tdb_traverse_internal(tdb, fn, private_data, &tl);
 	tdb->traverse_read--;
 
-	if (tdb->traverse_read == 0) {
-		tdb_transaction_unlock(tdb);
-	}
+	tdb_transaction_unlock(tdb);
 
 	return ret;
 }
@@ -244,8 +242,7 @@ int tdb_traverse(struct tdb_context *tdb,
 		return tdb_traverse_read(tdb, fn, private_data);
 	}
 
-	/* Nested traversals: transaction lock doesn't nest. */
-	if (tdb->traverse_write == 0 && tdb_transaction_lock(tdb, F_WRLCK)) {
+	if (tdb_transaction_lock(tdb, F_WRLCK)) {
 		return -1;
 	}
 
@@ -254,9 +251,7 @@ int tdb_traverse(struct tdb_context *tdb,
 	ret = tdb_traverse_internal(tdb, fn, private_data, &tl);
 	tdb->traverse_write--;
 
-	if (tdb->traverse_write == 0) {
-		tdb_transaction_unlock(tdb);
-	}
+	tdb_transaction_unlock(tdb);
 
 	return ret;
 }

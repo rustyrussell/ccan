@@ -302,6 +302,7 @@ int tdb_unlock(struct tdb_context *tdb, int list, int ltype)
 int tdb_transaction_lock(struct tdb_context *tdb, int ltype)
 {
 	if (tdb->have_transaction_lock || tdb->global_lock.count) {
+		tdb->have_transaction_lock++;
 		return 0;
 	}
 	if (tdb->methods->tdb_brlock(tdb, TRANSACTION_LOCK, ltype, 
@@ -310,7 +311,7 @@ int tdb_transaction_lock(struct tdb_context *tdb, int ltype)
 		tdb->ecode = TDB_ERR_LOCK;
 		return -1;
 	}
-	tdb->have_transaction_lock = 1;
+	tdb->have_transaction_lock++;
 	return 0;
 }
 
@@ -319,15 +320,10 @@ int tdb_transaction_lock(struct tdb_context *tdb, int ltype)
  */
 int tdb_transaction_unlock(struct tdb_context *tdb)
 {
-	int ret;
-	if (!tdb->have_transaction_lock) {
+	if (--tdb->have_transaction_lock) {
 		return 0;
 	}
-	ret = tdb->methods->tdb_brlock(tdb, TRANSACTION_LOCK, F_UNLCK, F_SETLKW, 0, 1);
-	if (ret == 0) {
-		tdb->have_transaction_lock = 0;
-	}
-	return ret;
+	return tdb->methods->tdb_brlock(tdb, TRANSACTION_LOCK, F_UNLCK, F_SETLKW, 0, 1);
 }
 
 
