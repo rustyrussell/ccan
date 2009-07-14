@@ -143,12 +143,11 @@ struct op {
 
 	union {
 		int flag; /* open and store */
-		struct traverse *trav; /* traverse start */
 		struct {  /* append */
 			TDB_DATA pre;
 			TDB_DATA post;
 		} append;
-		unsigned int transaction_end; /* transaction start */
+		unsigned int group_len; /* transaction/traverse start */
 	};
 };
 
@@ -298,7 +297,7 @@ static void op_add_traverse(const char *filename,
 		fail(filename, op_num+1, "Expect no arguments");
 
 	op[op_num].key = tdb_null;
-	op[op_num].trav = NULL;
+	op[op_num].group_len = 0;
 }
 
 static void op_add_transaction(const char *filename, struct op op[],
@@ -308,7 +307,7 @@ static void op_add_transaction(const char *filename, struct op op[],
 		fail(filename, op_num+1, "Expect no arguments");
 
 	op[op_num].key = tdb_null;
-	op[op_num].transaction_end = 0;
+	op[op_num].group_len = 0;
 }
 
 static void op_analyze_transaction(const char *filename,
@@ -323,8 +322,7 @@ static void op_analyze_transaction(const char *filename,
 		fail(filename, op_num+1, "Expect no arguments");
 
 	for (i = op_num-1; i >= 0; i--) {
-		if (op[i].op == OP_TDB_TRANSACTION_START &&
-		    !op[i].transaction_end)
+		if (op[i].op == OP_TDB_TRANSACTION_START && !op[i].group_len)
 			break;
 	}
 
@@ -332,7 +330,7 @@ static void op_analyze_transaction(const char *filename,
 		fail(filename, op_num+1, "no transaction start found");
 
 	start = i;
-	op[start].transaction_end = op_num;
+	op[start].group_len = op_num - i;
 
 	/* This rolls in nested transactions.  I think that's right. */
 	for (i++; i <= op_num; i++)
@@ -344,50 +342,11 @@ struct traverse_hash {
 	unsigned int index;
 };
 
-/* A traverse is a hash of keys, each one associated with ops. */
-struct traverse {
-	/* How many traversal callouts should I do? */
-	unsigned int num;
-
-	/* Where is traversal end op? */
-	unsigned int end;
-
-	/* For trivial traversals. */
-	struct traverse_hash *hash;
-};
-
-/* A trivial traversal is one which doesn't terminate early and only
- * plays with its own record.  We can reliably replay these even if
- * traverse order changes. */
-static bool is_trivial_traverse(struct op op[], unsigned int end)
-{
-#if 0
-	unsigned int i;
-	TDB_DATA cur = tdb_null;
-
-	if (op[end].ret != 0)
-		return false;
-
-	for (i = 0; i < end; i++) {
-		if (!op[i].key.dptr)
-			continue;
-		if (op[i].op == OP_TDB_TRAVERSE)
-			cur = op[i].key;
-		if (!key_eq(cur, op[i].key))
-			return false;
-	}
-	return true;
-#endif
-	/* With multiple things happening at once, no traverse is trivial. */
-	return false;
-}
-
 static void op_analyze_traverse(const char *filename,
 				struct op op[], unsigned int op_num,
 				char *words[])
 {
 	int i, start;
-	struct traverse *trav = talloc(op, struct traverse);
 
 	op[op_num].key = tdb_null;
 
@@ -399,15 +358,11 @@ static void op_analyze_traverse(const char *filename,
 	} else
 		op[op_num].ret = 0;
 
-	trav->num = 0;
-	trav->end = op_num;
 	for (i = op_num-1; i >= 0; i--) {
-		if (op[i].op == OP_TDB_TRAVERSE)
-			trav->num++;
 		if (op[i].op != OP_TDB_TRAVERSE_READ_START
 		    && op[i].op != OP_TDB_TRAVERSE_START)
 			continue;
-		if (op[i].trav)
+		if (op[i].group_len)
 			continue;
 		break;
 	}
@@ -416,28 +371,10 @@ static void op_analyze_traverse(const char *filename,
 		fail(filename, op_num+1, "no traversal start found");
 
 	start = i;
-	op[start].trav = trav;
+	op[start].group_len = op_num - start;
 
 	for (i = start; i <= op_num; i++)
 		op[i].group_start = start;
-
-	if (is_trivial_traverse(op+i, op_num-i)) {
-		/* Fill in a plentiful hash table. */
-		op[start].trav->hash = talloc_zero_array(op[i].trav,
-							 struct traverse_hash,
-							 trav->num * 2);
-		for (i = start; i < op_num; i++) {
-			unsigned int h;
-			if (op[i].op != OP_TDB_TRAVERSE)
-				continue;
-			h = hash_key(&op[i].key) % (trav->num * 2);
-			while (trav->hash[h].index)
-				h = (h + 1) % (trav->num * 2);
-			trav->hash[h].index = i+1;
-			trav->hash[h].key = op[i].key;
-		}
-	} else
-		trav->hash = NULL;
 }
 
 /* Keep -Wmissing-declarations happy: */
@@ -549,40 +486,17 @@ struct traverse_info {
 	unsigned int i;
 };
 
-/* Trivial case: do whatever they did for this key. */
-static int trivial_traverse(struct tdb_context *tdb,
-			    TDB_DATA key, TDB_DATA data,
-			    void *_tinfo)
-{
-	struct traverse_info *tinfo = _tinfo;
-	struct traverse *trav = tinfo->op[tinfo->start].trav;
-	unsigned int h = hash_key(&key) % (trav->num * 2);
-
-	while (trav->hash[h].index) {
-		if (key_eq(trav->hash[h].key, key)) {
-			run_ops(tdb, tinfo->pre_fd, tinfo->filename,
-				tinfo->file, tinfo->op, trav->hash[h].index,
-				trav->end);
-			tinfo->i++;
-			return 0;
-		}
-		h = (h + 1) % (trav->num * 2);
-	}
-	fail(tinfo->filename[tinfo->file], tinfo->start + 1,
-	     "unexpected traverse key");
-}
-
 /* More complex.  Just do whatever's they did at the n'th entry. */
 static int nontrivial_traverse(struct tdb_context *tdb,
 			       TDB_DATA key, TDB_DATA data,
 			       void *_tinfo)
 {
 	struct traverse_info *tinfo = _tinfo;
-	struct traverse *trav = tinfo->op[tinfo->start].trav;
+	unsigned int trav_len = tinfo->op[tinfo->start].group_len;
 
-	if (tinfo->i == trav->end) {
+	if (tinfo->i == tinfo->start + trav_len) {
 		/* This can happen if traverse expects to be empty. */
-		if (tinfo->start + 1 == trav->end)
+		if (trav_len == 1)
 			return 1;
 		fail(tinfo->filename[tinfo->file], tinfo->start + 1,
 		     "traverse did not terminate");
@@ -594,9 +508,9 @@ static int nontrivial_traverse(struct tdb_context *tdb,
 
 	/* Run any normal ops. */
 	tinfo->i = run_ops(tdb, tinfo->pre_fd, tinfo->filename, tinfo->file,
-			   tinfo->op, tinfo->i+1, trav->end);
+			   tinfo->op, tinfo->i+1, tinfo->start + trav_len);
 
-	if (tinfo->i == trav->end)
+	if (tinfo->i == tinfo->start + trav_len)
 		return 1;
 
 	return 0;
@@ -611,33 +525,23 @@ static unsigned op_traverse(struct tdb_context *tdb,
 			    struct op op[],
 			    unsigned int start)
 {
-	struct traverse *trav = op[start].trav;
 	struct traverse_info tinfo = { op, filename, file, pre_fd,
 				       start, start+1 };
-
-	/* Trivial case. */
-	if (trav->hash) {
-		int ret = traversefn(tdb, trivial_traverse, &tinfo);
-		if (ret != trav->num)
-			fail(filename[file], start+1,
-			     "short traversal %i", ret);
-		return trav->end;
-	}
 
 	traversefn(tdb, nontrivial_traverse, &tinfo);
 
 	/* Traversing in wrong order can have strange effects: eg. if
 	 * original traverse went A (delete A), B, we might do B
 	 * (delete A).  So if we have ops left over, we do it now. */
-	while (tinfo.i != trav->end) {
+	while (tinfo.i != start + op[start].group_len) {
 		if (op[tinfo.i].op == OP_TDB_TRAVERSE)
 			tinfo.i++;
 		else
 			tinfo.i = run_ops(tdb, pre_fd, filename, file, op,
-					  tinfo.i, trav->end);
+					  tinfo.i, start + op[start].group_len);
 	}
 
-	return trav->end;
+	return tinfo.i;
 }
 
 static void break_out(int sig)
@@ -755,7 +659,7 @@ unsigned run_ops(struct tdb_context *tdb,
 			 * done our ops. */
 			return i;
 		case OP_TDB_TRAVERSE_END:
-			fail(filename[file], i+1, "unepxected end traverse");
+			fail(filename[file], i+1, "unexpected end traverse");
 		/* FIXME: These must be treated like traverse. */
 		case OP_TDB_FIRSTKEY:
 			if (!key_eq(tdb_firstkey(tdb), op[i].data))
@@ -1200,14 +1104,17 @@ static void add_dependency(void *ctx,
 	if (sat_start) {
 		if (op[satisfies_file][sat_start].op
 		    == OP_TDB_TRANSACTION_START) {
-			satisfies_opnum
-				= op[satisfies_file][sat_start].transaction_end;
+			satisfies_opnum = sat_start
+				+ op[satisfies_file][sat_start].group_len;
 #ifdef DEBUG_DEPS
 			printf("  -> Depends on %u\n", satisfies_opnum+1);
 			fflush(stdout);
 #endif
 		}
 	}
+
+	assert(op[needs_file][needs_opnum].op != OP_TDB_TRAVERSE);
+	assert(op[satisfies_file][satisfies_opnum].op != OP_TDB_TRAVERSE);
 
 	dep = talloc(ctx, struct depend);
 	dep->needs_file = needs_file;
@@ -1223,23 +1130,7 @@ static void add_dependency(void *ctx,
 struct traverse_dep {
 	unsigned int file;
 	unsigned int op_num;
-	const struct op *op;
 };
-
-/* Sort by which one runs first. */
-static int compare_traverse_dep(const void *_a, const void *_b)
-{
-	const struct traverse_dep *a = _a, *b = _b;
-	const struct traverse *trava = a->op->trav, *travb = b->op->trav;
-
-	if (a->op->serial != b->op->serial)
-		return a->op->serial - b->op->serial;
-
-	/* If they have same serial, it means one didn't make any changes.
-	 * Thus sort by end in that case. */
-	return a->op[trava->end - a->op_num].serial
-		- b->op[travb->end - b->op_num].serial;
-}
 
 /* Traversals can deadlock against each other.  Force order. */
 static void make_traverse_depends(char *filename[],
@@ -1249,19 +1140,33 @@ static void make_traverse_depends(char *filename[],
 	unsigned int i, j, num_traversals = 0;
 	struct traverse_dep *dep;
 
+	/* Sort by which one runs first. */
+	int compare_traverse_dep(const void *_a, const void *_b)
+	{
+		const struct traverse_dep *ta = _a, *tb = _b;
+		const struct op *a = &op[ta->file][ta->op_num],
+			*b = &op[tb->file][tb->op_num];
+
+		if (a->serial != b->serial)
+			return a->serial - b->serial;
+
+		/* If they have same serial, it means one didn't make any
+		 * changes.  Thus sort by end in that case. */
+		return a[a->group_len].serial - b[b->group_len].serial;
+	}
+
 	dep = talloc_array(NULL, struct traverse_dep, 1);
 
 	/* Count them. */
 	for (i = 0; i < num; i++) {
-		for (j = 0; j < num_ops[i]; j++) {
-			if (op[i][j].op == OP_TDB_TRAVERSE_START
-			    || op[i][j].op == OP_TDB_TRAVERSE_READ_START) {
+		for (j = 1; j < num_ops[i]; j++) {
+			/* Transaction on traverse start. */
+			if (op[i][j].group_start == j) {
 				dep = talloc_realloc(NULL, dep,
 						     struct traverse_dep,
 						     num_traversals+1);
 				dep[num_traversals].file = i;
 				dep[num_traversals].op_num = j;
-				dep[num_traversals].op = &op[i][j];
 				num_traversals++;
 			}
 		}
@@ -1270,7 +1175,8 @@ static void make_traverse_depends(char *filename[],
 	for (i = 1; i < num_traversals; i++) {
 		/* i depends on end of traverse i-1. */
 		add_dependency(NULL, op, filename, dep[i].file, dep[i].op_num,
-			       dep[i-1].file, dep[i-1].op->trav->end);
+			       dep[i-1].file, dep[i-1].op_num
+			       + op[dep[i-1].file][dep[i-1].op_num].group_len);
 	}
 	talloc_free(dep);
 }
