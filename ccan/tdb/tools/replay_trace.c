@@ -873,9 +873,32 @@ static const TDB_DATA *needs(const struct op *op)
 	
 }
 
-/* What's the data after this op?  pre if nothing changed. */
-static const TDB_DATA *gives(const struct op *op, const TDB_DATA *pre)
+static bool is_transaction(const struct op *op)
 {
+	return op->op == OP_TDB_TRANSACTION_START;
+}
+
+/* What's the data after this op?  pre if nothing changed. */
+static const TDB_DATA *gives(const TDB_DATA *key, const TDB_DATA *pre,
+			     const struct op *op)
+{
+	if (is_transaction(op)) {
+		unsigned int i;
+
+		/* Cancelled transactions don't change anything. */
+		if (op[op->group_len].op == OP_TDB_TRANSACTION_CANCEL)
+			return pre;
+		assert(op[op->group_len].op == OP_TDB_TRANSACTION_COMMIT);
+
+		for (i = 1; i < op->group_len; i++) {
+			/* This skips nested transactions, too */
+			if (op[i].op != OP_TDB_TRAVERSE
+			    && key_eq(op[i].key, *key))
+				pre = gives(key, pre, &op[i]);
+		}
+		return pre;
+	}
+
 	/* Failed ops don't change state of db. */
 	if (op->ret < 0)
 		return pre;
@@ -890,6 +913,16 @@ static const TDB_DATA *gives(const struct op *op, const TDB_DATA *pre)
 		return &op->data;
 
 	return pre;
+}
+
+static bool in_transaction(const struct op op[], unsigned int i)
+{
+	return op[i].group_start && is_transaction(&op[op[i].group_start]);
+}
+
+static bool in_traverse(const struct op op[], unsigned int i)
+{
+	return op[i].group_start && !is_transaction(&op[op[i].group_start]);
 }
 
 static struct keyinfo *hash_ops(struct op *op[], unsigned int num_ops[],
@@ -929,7 +962,23 @@ static struct keyinfo *hash_ops(struct op *op[], unsigned int num_ops[],
 			hash[h].user = talloc_realloc(hash, hash[h].user,
 						     struct key_user,
 						     hash[h].num_users+1);
-			hash[h].user[hash[h].num_users].op_num = j;
+
+			/* If it's in a transaction, it's the transaction which
+			 * matters from an analysis POV. */
+			if (in_transaction(op[i], j)) {
+				unsigned start = op[i][j].group_start;
+
+				/* Don't include twice. */
+				if (hash[h].num_users
+				    && hash[h].user[hash[h].num_users-1].file
+					== i
+				    && hash[h].user[hash[h].num_users-1].op_num
+					== start)
+					continue;
+
+				hash[h].user[hash[h].num_users].op_num = start;
+			} else
+				hash[h].user[hash[h].num_users].op_num = j;
 			hash[h].user[hash[h].num_users].file = i;
 			hash[h].num_users++;
 		}
@@ -938,8 +987,33 @@ static struct keyinfo *hash_ops(struct op *op[], unsigned int num_ops[],
 	return hash;
 }
 
-static bool satisfies(const TDB_DATA *data, const TDB_DATA *need)
+static bool satisfies(const TDB_DATA *key, const TDB_DATA *data,
+		      const struct op *op)
 {
+	const TDB_DATA *need = NULL;
+
+	if (is_transaction(op)) {
+		unsigned int i;
+
+		/* Look through for an op in this transaction which
+		 * needs this key. */
+		for (i = 1; i < op->group_len; i++) {
+			if (op[i].op != OP_TDB_TRAVERSE
+			    && key_eq(op[i].key, *key)) {
+				need = needs(&op[i]);
+				/* tdb_exists() is special: there might be
+				 * something in the transaction with more
+				 * specific requirements.  Other ops don't have
+				 * specific requirements (eg. store or delete),
+				 * but they change the value so we can't get
+				 * more information from future ops. */
+				if (op[i].op != OP_TDB_EXISTS)
+					break;
+			}
+		}
+	} else
+		need = needs(op);
+
 	/* Don't need anything?  Cool. */
 	if (!need)
 		return true;
@@ -970,34 +1044,50 @@ static bool satisfies(const TDB_DATA *data, const TDB_DATA *need)
 	return key_eq(*data, *need);
 }
 
-static void move_to_front(struct key_user res[], unsigned int elem)
+static void move_to_front(struct key_user res[], unsigned off, unsigned elem)
 {
-	if (elem != 0) {
+	if (elem != off) {
 		struct key_user tmp = res[elem];
-		memmove(res + 1, res, elem*sizeof(res[0]));
-		res[0] = tmp;
+		memmove(res + off + 1, res + off, (elem - off)*sizeof(res[0]));
+		res[off] = tmp;
 	}
 }
 
-static void restore_to_pos(struct key_user res[], unsigned int elem)
+static void restore_to_pos(struct key_user res[], unsigned off, unsigned elem)
 {
-	if (elem != 0) {
-		struct key_user tmp = res[0];
-		memmove(res, res + 1, elem*sizeof(res[0]));
+	if (elem != off) {
+		struct key_user tmp = res[off];
+		memmove(res + off, res + off + 1, (elem - off)*sizeof(res[0]));
 		res[elem] = tmp;
 	}
 }
 
 static bool sort_deps(char *filename[], struct op *op[],
-		      struct key_user res[], unsigned num,
-		      const TDB_DATA *data, unsigned num_files)
+		      struct key_user res[],
+		      unsigned off, unsigned num,
+		      const TDB_DATA *key, const TDB_DATA *data,
+		      unsigned num_files, unsigned fuzz)
 {
 	unsigned int i, files_done;
 	struct op *this_op;
 	bool done[num_files];
 
-	/* Nothing left?  We're sorted. */
-	if (num == 0)
+	/* Does this make serial numbers go backwards?  Allow a little fuzz. */
+	if (off > 0) {
+		int serial1 = op[res[off-1].file][res[off-1].op_num].serial;
+		int serial2 = op[res[off].file][res[off].op_num].serial;
+
+		if (serial1 - serial2 > (int)fuzz) {
+#if DEBUG_DEPS
+			printf("Serial jump too far (%u -> %u)\n",
+			       serial1, serial2);
+#endif
+			return false;
+		}
+	}
+
+	/* One or none left?  We're sorted. */
+	if (off + 1 >= num)
 		return true;
 
 	memset(done, 0, sizeof(done));
@@ -1006,18 +1096,20 @@ static bool sort_deps(char *filename[], struct op *op[],
 	 * out which file to try next.  Since we don't take into account
 	 * inter-key relationships (which exist by virtue of trace file order),
 	 * we minimize the chance of harm by trying to keep in serial order. */
-	for (files_done = 0, i = 0; i < num && files_done < num_files; i++) {
+	for (files_done = 0, i = off; i < num && files_done < num_files; i++) {
 		if (done[res[i].file])
 			continue;
 
 		this_op = &op[res[i].file][res[i].op_num];
+
 		/* Is what we have good enough for this op? */
-		if (satisfies(data, needs(this_op))) {
-			move_to_front(res, i);
-			if (sort_deps(filename, op, res+1, num-1,
-				      gives(this_op, data), num_files))
+		if (satisfies(key, data, this_op)) {
+			move_to_front(res, off, i);
+			if (sort_deps(filename, op, res, off+1, num,
+				      key, gives(key, data, this_op),
+				      num_files, fuzz))
 				return true;
-			restore_to_pos(res, i);
+			restore_to_pos(res, off, i);
 		}
 		done[res[i].file] = true;
 		files_done++;
@@ -1050,13 +1142,22 @@ static void check_dep_sorting(struct key_user user[], unsigned num_users,
  * in which case we'll deadlock and report: fix manually in that case).
  */
 static void figure_deps(char *filename[], struct op *op[],
-			struct key_user user[], unsigned num_users,
-			unsigned num_files)
+			const TDB_DATA *key, struct key_user user[],
+			unsigned num_users, unsigned num_files)
 {
 	/* We assume database starts empty. */
 	const struct TDB_DATA *data = &tdb_null;
+	unsigned int fuzz;
 
-	if (!sort_deps(filename, op, user, num_users, data, num_files))
+	/* We prefer to keep strict serial order if possible: it's the
+	 * most likely.  We get more lax if that fails. */
+	for (fuzz = 0; fuzz < 100; fuzz = (fuzz + 1)*2) {
+		if (sort_deps(filename, op, user, 0, num_users, key, data,
+			      num_files, fuzz))
+			break;
+	}
+
+	if (fuzz >= 100)
 		fail(filename[user[0].file], user[0].op_num+1,
 		     "Could not resolve inter-dependencies");
 
@@ -1087,7 +1188,8 @@ static void sort_ops(struct keyinfo hash[], char *filename[], struct op *op[],
 		struct key_user *user = hash[h].user;
 
 		qsort(user, hash[h].num_users, sizeof(user[0]), compare_serial);
-		figure_deps(filename, op, user, hash[h].num_users, num);
+		figure_deps(filename, op, &hash[h].key, user, hash[h].num_users,
+			    num);
 	}
 }
 
@@ -1107,7 +1209,6 @@ static void add_dependency(void *ctx,
 			   unsigned int satisfies_opnum)
 {
 	struct depend *dep;
-	unsigned int needs_start, sat_start;
 
 	/* We don't depend on ourselves. */
 	if (needs_file == satisfies_file) {
@@ -1121,37 +1222,57 @@ static void add_dependency(void *ctx,
 	       filename[satisfies_file], satisfies_opnum+1);
 #endif
 
-	needs_start = op[needs_file][needs_opnum].group_start;
-	sat_start = op[satisfies_file][satisfies_opnum].group_start;
+#if TRAVERSALS_TAKE_TRANSACTION_LOCK
+	/* If something in a traverse depends on something in another
+	 * traverse/transaction, it creates a dependency between the
+	 * two groups. */
+	if ((in_traverse(op[satisfies_file], satisfies_opnum)
+	     && op[needs_file][needs_opnum].group_start)
+	    || (in_traverse(op[needs_file], needs_opnum)
+		&& op[satisfies_file][satisfies_opnum].group_start)) {
+		unsigned int sat;
 
-	/* If needs is in a transaction, we need it before start. */
-	if (needs_start) {
-		switch (op[needs_file][needs_start].op) {
-		case OP_TDB_TRANSACTION_START:
-			needs_opnum = needs_start;
-#ifdef DEBUG_DEPS
-			printf("  -> Back to %u\n", needs_start+1);
-			fflush(stdout);
-#endif
-			break;
-		default:
-			break;
-		}
+		/* We are satisfied by end of group. */
+		sat = op[satisfies_file][satisfies_opnum].group_start;
+		satisfies_opnum = sat + op[satisfies_file][sat].group_len;
+		/* And we need that done by start of our group. */
+		needs_opnum = op[needs_file][needs_opnum].group_start;
 	}
 
-	/* If satisfies is in a transaction, we wait until after commit. */
-	/* FIXME: If transaction is cancelled, don't need dependency. */
-	if (sat_start) {
-		if (op[satisfies_file][sat_start].op
-		    == OP_TDB_TRANSACTION_START) {
-			satisfies_opnum = sat_start
-				+ op[satisfies_file][sat_start].group_len;
-#ifdef DEBUG_DEPS
-			printf("  -> Depends on %u\n", satisfies_opnum+1);
-			fflush(stdout);
-#endif
+	/* There is also this case:
+	 *  <traverse> <read foo> ...
+	 *  <transaction> ... </transaction> <create foo>
+	 * Where if we start the traverse then wait, we could block
+	 * the transaction and deadlock.
+	 *
+	 * We try to address this by ensuring that where seqnum indicates it's
+	 * possible, we wait for <create foo> before *starting* traverse.
+	 */
+	else if (in_traverse(op[needs_file], needs_opnum)) {
+		struct op *need = &op[needs_file][needs_opnum];
+		if (op[needs_file][need->group_start].serial <
+		    op[satisfies_file][satisfies_opnum].serial) {
+			needs_opnum = need->group_start;
 		}
 	}
+#endif
+
+ 	/* If you depend on a transaction, you actually depend on it ending. */
+ 	if (is_transaction(&op[satisfies_file][satisfies_opnum])) {
+ 		satisfies_opnum
+ 			+= op[satisfies_file][satisfies_opnum].group_len;
+#if DEBUG_DEPS
+		printf("-> Actually end of transaction %s:%u\n",
+		       filename[satisfies_file], satisfies_opnum+1);
+#endif
+ 	} else
+		/* We should never create a dependency from middle of
+		 * a transaction. */
+ 		assert(!in_transaction(op[satisfies_file], satisfies_opnum)
+		       || op[satisfies_file][satisfies_opnum].op
+ 		       == OP_TDB_TRANSACTION_COMMIT
+ 		       || op[satisfies_file][satisfies_opnum].op
+ 		       == OP_TDB_TRANSACTION_CANCEL);
 
 	assert(op[needs_file][needs_opnum].op != OP_TDB_TRAVERSE);
 	assert(op[satisfies_file][satisfies_opnum].op != OP_TDB_TRAVERSE);
@@ -1166,66 +1287,9 @@ static void add_dependency(void *ctx,
 	talloc_set_destructor(dep, destroy_depend);
 }
 
-#if TRAVERSALS_TAKE_TRANSACTION_LOCK
-struct traverse_dep {
-	unsigned int file;
-	unsigned int op_num;
-};
-
-/* Traversals can deadlock against each other, and transactions.  Force
- * order. */
-static void make_traverse_depends(char *filename[],
-				  struct op *op[], unsigned int num_ops[],
-				  unsigned int num)
+static bool changes_db(const TDB_DATA *key, const struct op *op)
 {
-	unsigned int i, j, num_traversals = 0;
-	struct traverse_dep *dep;
-
-	/* Sort by which one runs first. */
-	int compare_traverse_dep(const void *_a, const void *_b)
-	{
-		const struct traverse_dep *ta = _a, *tb = _b;
-		const struct op *a = &op[ta->file][ta->op_num],
-			*b = &op[tb->file][tb->op_num];
-
-		if (a->serial != b->serial)
-			return a->serial - b->serial;
-
-		/* If they have same serial, it means one didn't make any
-		 * changes.  Thus sort by end in that case. */
-		return a[a->group_len].serial - b[b->group_len].serial;
-	}
-
-	dep = talloc_array(NULL, struct traverse_dep, 1);
-
-	/* Count them. */
-	for (i = 0; i < num; i++) {
-		for (j = 1; j < num_ops[i]; j++) {
- 			/* Transaction or traverse start. */
-			if (op[i][j].group_start == j) {
-				dep = talloc_realloc(NULL, dep,
-						     struct traverse_dep,
-						     num_traversals+1);
-				dep[num_traversals].file = i;
-				dep[num_traversals].op_num = j;
-				num_traversals++;
-			}
-		}
-	}
-	qsort(dep, num_traversals, sizeof(dep[0]), compare_traverse_dep);
-	for (i = 1; i < num_traversals; i++) {
-		/* i depends on end of traverse i-1. */
-		add_dependency(NULL, op, filename, dep[i].file, dep[i].op_num,
-			       dep[i-1].file, dep[i-1].op_num
-			       + op[dep[i-1].file][dep[i-1].op_num].group_len);
-	}
-	talloc_free(dep);
-}
-#endif /* TRAVERSALS_TAKE_TRANSACTION_LOCK */
-
-static bool changes_db(const struct op *op)
-{
-	return gives(op, NULL) != NULL;
+	return gives(key, NULL, op) != NULL;
 }
 
 static void depend_on_previous(struct op *op[],
@@ -1341,7 +1405,7 @@ static void derive_dependencies(char *filename[],
 			continue;
 
 		for (i = 0; i < hash[h].num_users; i++) {
-			if (changes_db(&op[hash[h].user[i].file]
+			if (changes_db(&hash[h].key, &op[hash[h].user[i].file]
 				       [hash[h].user[i].op_num])) {
 				depend_on_previous(op, filename, num,
 						   hash[h].user, i, prev);
@@ -1354,10 +1418,6 @@ static void derive_dependencies(char *filename[],
 					       hash[h].user[prev].op_num);
 		}
 	}
-
-#if TRAVERSALS_TAKE_TRANSACTION_LOCK
-	make_traverse_depends(filename, op, num_ops, num);
-#endif
 
 	optimize_dependencies(op, num_ops, num);
 }
