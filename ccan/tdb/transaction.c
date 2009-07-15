@@ -457,8 +457,6 @@ int tdb_transaction_cancel_internal(struct tdb_context *tdb)
 */
 int tdb_transaction_start(struct tdb_context *tdb)
 {
-	tdb_trace(tdb, "tdb_transaction_start");
-
 	/* some sanity checks */
 	if (tdb->read_only || (tdb->flags & TDB_INTERNAL) || tdb->traverse_read) {
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_start: cannot start a transaction on a read-only or internal db\n"));
@@ -468,6 +466,7 @@ int tdb_transaction_start(struct tdb_context *tdb)
 
 	/* cope with nested tdb_transaction_start() calls */
 	if (tdb->transaction != NULL) {
+		tdb_trace(tdb, "tdb_transaction_start");
 		if (!tdb->flags & TDB_NO_NESTING) {
 			tdb->transaction->nesting++;
 			TDB_LOG((tdb, TDB_DEBUG_TRACE, "tdb_transaction_start: nesting %d\n", 
@@ -549,6 +548,8 @@ int tdb_transaction_start(struct tdb_context *tdb)
 	tdb->transaction->io_methods = tdb->methods;
 	tdb->methods = &transaction_methods;
 
+	/* Trace at the end, so we get sequence number correct. */
+	tdb_trace(tdb, "tdb_transaction_start");
 	return 0;
 	
 fail:
