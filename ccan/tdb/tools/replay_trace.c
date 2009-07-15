@@ -22,7 +22,7 @@
 /* Avoid mod by zero */
 static unsigned int total_keys = 1;
 
-/* #define DEBUG_DEPS 1 */
+#define DEBUG_DEPS 1
 
 /* Traversals block transactions in the current implementation. */
 #define TRAVERSALS_TAKE_TRANSACTION_LOCK 1
@@ -404,23 +404,26 @@ static void check_deps(const char *filename, struct op op[], unsigned int num)
 #endif
 }
 
-static void dump_pre(char *filename[], unsigned int file,
-		     struct op op[], unsigned int i)
+static void dump_pre(char *filename[], struct op *op[],
+		     unsigned int file, unsigned int i)
 {
 	struct depend *dep;
 
-	printf("%s:%u still waiting for:\n", filename[file], i+1);
-	list_for_each(&op[i].pre, dep, pre_list)
-		printf("    %s:%u\n",
-		       filename[dep->satisfies_file], dep->satisfies_opnum+1);
-	check_deps(filename[file], op, i);
+	printf("%s:%u (%u) still waiting for:\n", filename[file], i+1,
+		op[file][i].serial);
+	list_for_each(&op[file][i].pre, dep, pre_list)
+		printf("    %s:%u (%u)\n",
+		       filename[dep->satisfies_file], dep->satisfies_opnum+1,
+		       op[dep->satisfies_file][dep->satisfies_opnum].serial);
+	check_deps(filename[file], op[file], i);
 }
 
 /* We simply read/write pointers, since we all are children. */
-static void do_pre(char *filename[], unsigned int file, int pre_fd,
-		   struct op op[], unsigned int i)
+static void do_pre(struct tdb_context *tdb,
+		   char *filename[], struct op *op[],
+		   unsigned int file, int pre_fd, unsigned int i)
 {
-	while (!list_empty(&op[i].pre)) {
+	while (!list_empty(&op[file][i].pre)) {
 		struct depend *dep;
 
 #if DEBUG_DEPS
@@ -430,7 +433,7 @@ static void do_pre(char *filename[], unsigned int file, int pre_fd,
 		alarm(10);
 		while (read(pre_fd, &dep, sizeof(dep)) != sizeof(dep)) {
 			if (errno == EINTR) {
-				dump_pre(filename, file, op, i);
+				dump_pre(filename, op, file, i);
 				exit(1);
 			} else
 				errx(1, "Reading from pipe");
@@ -448,12 +451,12 @@ static void do_pre(char *filename[], unsigned int file, int pre_fd,
 	}
 }
 
-static void do_post(char *filename[], unsigned int file,
-		    const struct op op[], unsigned int i)
+static void do_post(char *filename[], struct op *op[],
+		    unsigned int file, unsigned int i)
 {
 	struct depend *dep;
 
-	list_for_each(&op[i].post, dep, post_list) {
+	list_for_each(&op[file][i].post, dep, post_list) {
 #if DEBUG_DEPS
 		printf("%s:%u:sending to file %s:%u\n", filename[file], i+1,
 		       filename[dep->needs_file], dep->needs_opnum+1);
@@ -473,12 +476,12 @@ static int get_len(TDB_DATA key, TDB_DATA data, void *private_data)
 static unsigned run_ops(struct tdb_context *tdb,
 			int pre_fd,
 			char *filename[],
+			struct op *op[],
 			unsigned int file,
-			struct op op[],
 			unsigned int start, unsigned int stop);
 
 struct traverse_info {
-	struct op *op;
+	struct op **op;
 	char **filename;
 	unsigned file;
 	int pre_fd;
@@ -492,7 +495,7 @@ static int nontrivial_traverse(struct tdb_context *tdb,
 			       void *_tinfo)
 {
 	struct traverse_info *tinfo = _tinfo;
-	unsigned int trav_len = tinfo->op[tinfo->start].group_len;
+	unsigned int trav_len = tinfo->op[tinfo->file][tinfo->start].group_len;
 
 	if (tinfo->i == tinfo->start + trav_len) {
 		/* This can happen if traverse expects to be empty. */
@@ -502,13 +505,13 @@ static int nontrivial_traverse(struct tdb_context *tdb,
 		     "traverse did not terminate");
 	}
 
-	if (tinfo->op[tinfo->i].op != OP_TDB_TRAVERSE)
+	if (tinfo->op[tinfo->file][tinfo->i].op != OP_TDB_TRAVERSE)
 		fail(tinfo->filename[tinfo->file], tinfo->start + 1,
 		     "%s:%u:traverse terminated early");
 
 	/* Run any normal ops. */
-	tinfo->i = run_ops(tdb, tinfo->pre_fd, tinfo->filename, tinfo->file,
-			   tinfo->op, tinfo->i+1, tinfo->start + trav_len);
+	tinfo->i = run_ops(tdb, tinfo->pre_fd, tinfo->filename, tinfo->op,
+			   tinfo->file, tinfo->i+1, tinfo->start + trav_len);
 
 	if (tinfo->i == tinfo->start + trav_len)
 		return 1;
@@ -522,7 +525,7 @@ static unsigned op_traverse(struct tdb_context *tdb,
 			    unsigned int file,
 			    int (*traversefn)(struct tdb_context *,
 					      tdb_traverse_func, void *),
-			    struct op op[],
+			    struct op *op[],
 			    unsigned int start)
 {
 	struct traverse_info tinfo = { op, filename, file, pre_fd,
@@ -533,12 +536,13 @@ static unsigned op_traverse(struct tdb_context *tdb,
 	/* Traversing in wrong order can have strange effects: eg. if
 	 * original traverse went A (delete A), B, we might do B
 	 * (delete A).  So if we have ops left over, we do it now. */
-	while (tinfo.i != start + op[start].group_len) {
-		if (op[tinfo.i].op == OP_TDB_TRAVERSE)
+	while (tinfo.i != start + op[file][start].group_len) {
+		if (op[file][tinfo.i].op == OP_TDB_TRAVERSE)
 			tinfo.i++;
 		else
-			tinfo.i = run_ops(tdb, pre_fd, filename, file, op,
-					  tinfo.i, start + op[start].group_len);
+			tinfo.i = run_ops(tdb, pre_fd, filename, op, file,
+					  tinfo.i,
+					  start + op[file][start].group_len);
 	}
 
 	return tinfo.i;
@@ -552,8 +556,9 @@ static __attribute__((noinline))
 unsigned run_ops(struct tdb_context *tdb,
 		 int pre_fd,
 		 char *filename[],
+		 struct op *op[],
 		 unsigned int file,
-		 struct op op[], unsigned int start, unsigned int stop)
+		 unsigned int start, unsigned int stop)
 {
 	unsigned int i;
 	struct sigaction sa;
@@ -563,88 +568,98 @@ unsigned run_ops(struct tdb_context *tdb,
 
 	sigaction(SIGALRM, &sa, NULL);
 	for (i = start; i < stop; i++) {
-		do_pre(filename, file, pre_fd, op, i);
+		do_pre(tdb, filename, op, file, pre_fd, i);
 
-		switch (op[i].op) {
+		switch (op[file][i].op) {
 		case OP_TDB_LOCKALL:
-			try(tdb_lockall(tdb), op[i].ret);
+			try(tdb_lockall(tdb), op[file][i].ret);
 			break;
 		case OP_TDB_LOCKALL_MARK:
-			try(tdb_lockall_mark(tdb), op[i].ret);
+			try(tdb_lockall_mark(tdb), op[file][i].ret);
 			break;
 		case OP_TDB_LOCKALL_UNMARK:
-			try(tdb_lockall_unmark(tdb), op[i].ret);
+			try(tdb_lockall_unmark(tdb), op[file][i].ret);
 			break;
 		case OP_TDB_LOCKALL_NONBLOCK:
-			unreliable(tdb_lockall_nonblock(tdb), op[i].ret,
+			unreliable(tdb_lockall_nonblock(tdb), op[file][i].ret,
 				   tdb_lockall(tdb), tdb_unlockall(tdb));
 			break;
 		case OP_TDB_UNLOCKALL:
-			try(tdb_unlockall(tdb), op[i].ret);
+			try(tdb_unlockall(tdb), op[file][i].ret);
 			break;
 		case OP_TDB_LOCKALL_READ:
-			try(tdb_lockall_read(tdb), op[i].ret);
+			try(tdb_lockall_read(tdb), op[file][i].ret);
 			break;
 		case OP_TDB_LOCKALL_READ_NONBLOCK:
-			unreliable(tdb_lockall_read_nonblock(tdb), op[i].ret,
+			unreliable(tdb_lockall_read_nonblock(tdb),
+				   op[file][i].ret,
 				   tdb_lockall_read(tdb),
 				   tdb_unlockall_read(tdb));
 			break;
 		case OP_TDB_UNLOCKALL_READ:
-			try(tdb_unlockall_read(tdb), op[i].ret);
+			try(tdb_unlockall_read(tdb), op[file][i].ret);
 			break;
 		case OP_TDB_CHAINLOCK:
-			try(tdb_chainlock(tdb, op[i].key), op[i].ret);
+			try(tdb_chainlock(tdb, op[file][i].key),
+			    op[file][i].ret);
 			break;
 		case OP_TDB_CHAINLOCK_NONBLOCK:
-			unreliable(tdb_chainlock_nonblock(tdb, op[i].key),
-				   op[i].ret,
-				   tdb_chainlock(tdb, op[i].key),
-				   tdb_chainunlock(tdb, op[i].key));
+			unreliable(tdb_chainlock_nonblock(tdb, op[file][i].key),
+				   op[file][i].ret,
+				   tdb_chainlock(tdb, op[file][i].key),
+				   tdb_chainunlock(tdb, op[file][i].key));
 			break;
 		case OP_TDB_CHAINLOCK_MARK:
-			try(tdb_chainlock_mark(tdb, op[i].key), op[i].ret);
+			try(tdb_chainlock_mark(tdb, op[file][i].key),
+			    op[file][i].ret);
 			break;
 		case OP_TDB_CHAINLOCK_UNMARK:
-			try(tdb_chainlock_unmark(tdb, op[i].key), op[i].ret);
+			try(tdb_chainlock_unmark(tdb, op[file][i].key),
+			    op[file][i].ret);
 			break;
 		case OP_TDB_CHAINUNLOCK:
-			try(tdb_chainunlock(tdb, op[i].key), op[i].ret);
+			try(tdb_chainunlock(tdb, op[file][i].key),
+			    op[file][i].ret);
 			break;
 		case OP_TDB_CHAINLOCK_READ:
-			try(tdb_chainlock_read(tdb, op[i].key), op[i].ret);
+			try(tdb_chainlock_read(tdb, op[file][i].key),
+			    op[file][i].ret);
 			break;
 		case OP_TDB_CHAINUNLOCK_READ:
-			try(tdb_chainunlock_read(tdb, op[i].key), op[i].ret);
+			try(tdb_chainunlock_read(tdb, op[file][i].key),
+			    op[file][i].ret);
 			break;
 		case OP_TDB_PARSE_RECORD:
-			try(tdb_parse_record(tdb, op[i].key, get_len, NULL),
-			    op[i].ret);
+			try(tdb_parse_record(tdb, op[file][i].key, get_len,
+					     NULL),
+			    op[file][i].ret);
 			break;
 		case OP_TDB_EXISTS:
-			try(tdb_exists(tdb, op[i].key), op[i].ret);
+			try(tdb_exists(tdb, op[file][i].key), op[file][i].ret);
 			break;
 		case OP_TDB_STORE:
-			try(tdb_store(tdb, op[i].key, op[i].data, op[i].flag),
-			    op[i].ret);
+			try(tdb_store(tdb, op[file][i].key, op[file][i].data,
+				      op[file][i].flag),
+			    op[file][i].ret);
 			break;
 		case OP_TDB_APPEND:
-			try(tdb_append(tdb, op[i].key, op[i].data), op[i].ret);
+			try(tdb_append(tdb, op[file][i].key, op[file][i].data),
+			    op[file][i].ret);
 			break;
 		case OP_TDB_GET_SEQNUM:
-			try(tdb_get_seqnum(tdb), op[i].ret);
+			try(tdb_get_seqnum(tdb), op[file][i].ret);
 			break;
 		case OP_TDB_WIPE_ALL:
-			try(tdb_wipe_all(tdb), op[i].ret);
+			try(tdb_wipe_all(tdb), op[file][i].ret);
 			break;
 		case OP_TDB_TRANSACTION_START:
-			try(tdb_transaction_start(tdb), op[i].ret);
+			try(tdb_transaction_start(tdb), op[file][i].ret);
 			break;
 		case OP_TDB_TRANSACTION_CANCEL:
-			try(tdb_transaction_cancel(tdb), op[i].ret);
+			try(tdb_transaction_cancel(tdb), op[file][i].ret);
 			break;
 		case OP_TDB_TRANSACTION_COMMIT:
-			try(tdb_transaction_commit(tdb), op[i].ret);
+			try(tdb_transaction_commit(tdb), op[file][i].ret);
 			break;
 		case OP_TDB_TRAVERSE_READ_START:
 			i = op_traverse(tdb, pre_fd, filename, file,
@@ -662,25 +677,26 @@ unsigned run_ops(struct tdb_context *tdb,
 			fail(filename[file], i+1, "unexpected end traverse");
 		/* FIXME: These must be treated like traverse. */
 		case OP_TDB_FIRSTKEY:
-			if (!key_eq(tdb_firstkey(tdb), op[i].data))
+			if (!key_eq(tdb_firstkey(tdb), op[file][i].data))
 				fail(filename[file], i+1, "bad firstkey");
 			break;
 		case OP_TDB_NEXTKEY:
-			if (!key_eq(tdb_nextkey(tdb, op[i].key), op[i].data))
+			if (!key_eq(tdb_nextkey(tdb, op[file][i].key),
+				    op[file][i].data))
 				fail(filename[file], i+1, "bad nextkey");
 			break;
 		case OP_TDB_FETCH: {
-			TDB_DATA f = tdb_fetch(tdb, op[i].key);
-			if (!key_eq(f, op[i].data))
+			TDB_DATA f = tdb_fetch(tdb, op[file][i].key);
+			if (!key_eq(f, op[file][i].data))
 				fail(filename[file], i+1, "bad fetch %u",
 				     f.dsize);
 			break;
 		}
 		case OP_TDB_DELETE:
-			try(tdb_delete(tdb, op[i].key), op[i].ret);
+			try(tdb_delete(tdb, op[file][i].key), op[file][i].ret);
 			break;
 		}
-		do_post(filename, file, op, i);
+		do_post(filename, op, file, i);
 	}
 	return i;
 }
@@ -1132,7 +1148,8 @@ struct traverse_dep {
 	unsigned int op_num;
 };
 
-/* Traversals can deadlock against each other.  Force order. */
+/* Traversals can deadlock against each other, and transactions.  Force
+ * order. */
 static void make_traverse_depends(char *filename[],
 				  struct op *op[], unsigned int num_ops[],
 				  unsigned int num)
@@ -1160,7 +1177,7 @@ static void make_traverse_depends(char *filename[],
 	/* Count them. */
 	for (i = 0; i < num; i++) {
 		for (j = 1; j < num_ops[i]; j++) {
-			/* Transaction on traverse start. */
+ 			/* Transaction or traverse start. */
 			if (op[i][j].group_start == j) {
 				dep = talloc_realloc(NULL, dep,
 						     struct traverse_dep,
@@ -1358,7 +1375,7 @@ int main(int argc, char *argv[])
 		printf("Single threaded run...");
 		fflush(stdout);
 
-		run_ops(tdb, pipes[0].fd[0], argv+2, 0, op[0], 1, num_ops[0]);
+		run_ops(tdb, pipes[0].fd[0], argv+2, op, 0, 1, num_ops[0]);
 		check_deps(argv[2], op[0], num_ops[0]);
 
 		printf("done\n");
@@ -1385,7 +1402,7 @@ int main(int argc, char *argv[])
 			/* This catches parent exiting. */
 			if (read(fds[0], &c, 1) != 1)
 				exit(1);
-			run_ops(tdb, pipes[i].fd[0], argv+2, i, op[i], 1,
+			run_ops(tdb, pipes[i].fd[0], argv+2, op, i, 1,
 				num_ops[i]);
 			check_deps(argv[2+i], op[i], num_ops[i]);
 			exit(0);
