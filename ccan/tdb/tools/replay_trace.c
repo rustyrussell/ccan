@@ -1023,18 +1023,13 @@ static bool satisfies(const TDB_DATA *key, const TDB_DATA *data,
 	assert(data != &must_not_exist);
 	assert(data != &not_exists_or_empty);
 
-	/* must_not_exist == must_not_exist, must_exist == must_exist, or
-	   not_exists_or_empty == not_exists_or_empty. */
-	if (data->dsize == need->dsize && data->dptr == need->dptr)
-		return true;
-
 	/* Must not exist?  data must not exist. */
 	if (need == &must_not_exist)
-		return data->dptr == NULL;
+		return data == &tdb_null;
 
 	/* Must exist? */
 	if (need == &must_exist)
-		return data->dptr != NULL;
+		return data != &tdb_null;
 
 	/* Either noexist or empty. */
 	if (need == &not_exists_or_empty)
@@ -1250,7 +1245,7 @@ static void add_dependency(void *ctx,
 	 */
 	else if (in_traverse(op[needs_file], needs_opnum)) {
 		struct op *need = &op[needs_file][needs_opnum];
-		if (op[needs_file][need->group_start].serial <
+		if (op[needs_file][need->group_start].serial >
 		    op[satisfies_file][satisfies_opnum].serial) {
 			needs_opnum = need->group_start;
 		}
