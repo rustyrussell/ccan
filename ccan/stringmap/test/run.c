@@ -68,6 +68,8 @@ static char *random_string(struct block_pool *bp) {
 struct test_entry {
 	const char *str;
 	char *value;
+		/* value is not a string, but a pointer to char marking that
+		   this key has been entered already. */
 };
 
 static int by_str(const void *ap, const void *bp) {
@@ -161,11 +163,11 @@ static int test_stringmap(size_t count, FILE *out) {
 			
 			unique_count++;
 		} else {
-			if (strcmp(i->value, map.last->value))
+			if (strcmp(i->str, map.last->str))
 				err("lookup returned incorrect string");
 			if (i->value != *node)
 				err("lookup returned incorrect value");
-			if (!**node)
+			if (!*i->value)
 				err("lookup returned bogus value");
 		}
 	}
