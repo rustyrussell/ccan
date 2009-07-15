@@ -310,30 +310,36 @@ static void op_add_transaction(const char *filename, struct op op[],
 	op[op_num].group_len = 0;
 }
 
+static int op_transaction_start(struct op op[], unsigned int op_num)
+{
+	unsigned int i;
+
+	for (i = op_num-1; i > 0; i--) {
+		if (op[i].op == OP_TDB_TRANSACTION_START && !op[i].group_len)
+			return i;
+	}
+	return 0;
+}
+
 static void op_analyze_transaction(const char *filename,
 				   struct op op[], unsigned int op_num,
 				   char *words[])
 {
-	int i, start;
+	unsigned int start, i;
 
 	op[op_num].key = tdb_null;
 
 	if (words[2])
 		fail(filename, op_num+1, "Expect no arguments");
 
-	for (i = op_num-1; i >= 0; i--) {
-		if (op[i].op == OP_TDB_TRANSACTION_START && !op[i].group_len)
-			break;
-	}
-
-	if (i < 0)
+	start = op_transaction_start(op, op_num);
+	if (!start)
 		fail(filename, op_num+1, "no transaction start found");
 
-	start = i;
-	op[start].group_len = op_num - i;
+	op[start].group_len = op_num - start;
 
 	/* This rolls in nested transactions.  I think that's right. */
-	for (i++; i <= op_num; i++)
+	for (i = start; i <= op_num; i++)
 		op[i].group_start = start;
 }
 
@@ -701,6 +707,23 @@ unsigned run_ops(struct tdb_context *tdb,
 	return i;
 }
 
+/* tdbtorture, in particular, can do a tdb_close with a transaction in
+ * progress. */
+static struct op *maybe_cancel_transaction(const char *filename,
+					   struct op *op, unsigned int *num)
+{
+	unsigned int start = op_transaction_start(op, *num);
+
+	if (start) {
+		char *words[] = { "<unknown>", "tdb_close", NULL };
+		add_op(filename, &op, *num, op[start].serial,
+		       OP_TDB_TRANSACTION_CANCEL);
+		op_analyze_transaction(filename, op, *num, words);
+		(*num)++;
+	}
+	return op;
+}
+
 static struct op *load_tracefile(const char *filename, unsigned int *num,
 				 unsigned int *hashsize,
 				 unsigned int *tdb_flags,
@@ -743,7 +766,8 @@ static struct op *load_tracefile(const char *filename, unsigned int *num,
 					     "lines after tdb_close");
 				*num = i;
 				talloc_free(lines);
-				return op;
+				return maybe_cancel_transaction(filename,
+								op, num);
 			}
 			fail(filename, i+1, "Unknown operation '%s'", words[1]);
 		}
@@ -756,7 +780,7 @@ static struct op *load_tracefile(const char *filename, unsigned int *num,
 	      filename, i);
 	talloc_free(lines);
 	*num = i - 1;
-	return op;
+	return maybe_cancel_transaction(filename, op, num);
 }
 
 /* We remember all the keys we've ever seen, and who has them. */
@@ -1018,7 +1042,7 @@ static void check_dep_sorting(struct key_user user[], unsigned num_users,
 #endif
 }
 
-/* All these ops have the same serial number.  Which comes first?
+/* All these ops happen on the same key.  Which comes first?
  *
  * This can happen both because read ops or failed write ops don't
  * change serial number, and also due to race since we access the
