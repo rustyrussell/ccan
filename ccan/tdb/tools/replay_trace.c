@@ -320,12 +320,12 @@ static void op_add_transaction(const char *filename, struct op op[],
 	op[op_num].group_len = 0;
 }
 
-static int op_transaction_start(struct op op[], unsigned int op_num)
+static int op_find_start(struct op op[], unsigned int op_num, enum op_type type)
 {
 	unsigned int i;
 
 	for (i = op_num-1; i > 0; i--) {
-		if (op[i].op == OP_TDB_TRANSACTION_START && !op[i].group_len)
+		if (op[i].op == type && !op[i].group_len)
 			return i;
 	}
 	return 0;
@@ -342,7 +342,7 @@ static void op_analyze_transaction(const char *filename,
 	if (words[2])
 		fail(filename, op_num+1, "Expect no arguments");
 
-	start = op_transaction_start(op, op_num);
+	start = op_find_start(op, op_num, OP_TDB_TRANSACTION_START);
 	if (!start)
 		fail(filename, op_num+1, "no transaction start found");
 
@@ -352,11 +352,6 @@ static void op_analyze_transaction(const char *filename,
 	for (i = start; i <= op_num; i++)
 		op[i].group_start = start;
 }
-
-struct traverse_hash {
-	TDB_DATA key;
-	unsigned int index;
-};
 
 static void op_analyze_traverse(const char *filename,
 				struct op op[], unsigned int op_num,
@@ -374,19 +369,12 @@ static void op_analyze_traverse(const char *filename,
 	} else
 		op[op_num].ret = 0;
 
-	for (i = op_num-1; i >= 0; i--) {
-		if (op[i].op != OP_TDB_TRAVERSE_READ_START
-		    && op[i].op != OP_TDB_TRAVERSE_START)
-			continue;
-		if (op[i].group_len)
-			continue;
-		break;
-	}
-
-	if (i < 0)
+	start = op_find_start(op, op_num, OP_TDB_TRAVERSE_START);
+	if (!start)
+		start = op_find_start(op, op_num, OP_TDB_TRAVERSE_READ_START);
+	if (!start)
 		fail(filename, op_num+1, "no traversal start found");
 
-	start = i;
 	op[start].group_len = op_num - start;
 
 	for (i = start; i <= op_num; i++)
@@ -743,7 +731,7 @@ unsigned run_ops(struct tdb_context *tdb,
 static struct op *maybe_cancel_transaction(const char *filename,
 					   struct op *op, unsigned int *num)
 {
-	unsigned int start = op_transaction_start(op, *num);
+	unsigned int start = op_find_start(op, *num, OP_TDB_TRANSACTION_START);
 
 	if (start) {
 		char *words[] = { "<unknown>", "tdb_close", NULL };
@@ -904,16 +892,32 @@ static const TDB_DATA *needs(const struct op *op)
 	
 }
 
-static bool is_transaction(const struct op *op)
+static bool starts_transaction(const struct op *op)
 {
 	return op->op == OP_TDB_TRANSACTION_START;
+}
+
+static bool in_transaction(const struct op op[], unsigned int i)
+{
+	return op[i].group_start && starts_transaction(&op[op[i].group_start]);
+}
+
+static bool starts_traverse(const struct op *op)
+{
+	return op->op == OP_TDB_TRAVERSE_START
+		|| op->op == OP_TDB_TRAVERSE_READ_START;
+}
+
+static bool in_traverse(const struct op op[], unsigned int i)
+{
+	return op[i].group_start && starts_traverse(&op[op[i].group_start]);
 }
 
 /* What's the data after this op?  pre if nothing changed. */
 static const TDB_DATA *gives(const TDB_DATA *key, const TDB_DATA *pre,
 			     const struct op *op)
 {
-	if (is_transaction(op)) {
+	if (starts_transaction(op)) {
 		unsigned int i;
 
 		/* Cancelled transactions don't change anything. */
@@ -943,22 +947,6 @@ static const TDB_DATA *gives(const TDB_DATA *key, const TDB_DATA *pre,
 		return &op->data;
 
 	return pre;
-}
-
-static bool in_transaction(const struct op op[], unsigned int i)
-{
-	return op[i].group_start && is_transaction(&op[op[i].group_start]);
-}
-
-static bool is_traverse(const struct op *op)
-{
-	return op->op == OP_TDB_TRAVERSE_START
-		|| op->op == OP_TDB_TRAVERSE_READ_START;
-}
-
-static bool in_traverse(const struct op op[], unsigned int i)
-{
-	return op[i].group_start && is_traverse(&op[op[i].group_start]);
 }
 
 static struct keyinfo *hash_ops(struct op *op[], unsigned int num_ops[],
@@ -1023,7 +1011,7 @@ static bool satisfies(const TDB_DATA *key, const TDB_DATA *data,
 {
 	const TDB_DATA *need = NULL;
 
-	if (is_transaction(op)) {
+	if (starts_transaction(op)) {
 		unsigned int i;
 
 		/* Look through for an op in this transaction which
@@ -1283,7 +1271,7 @@ static void add_dependency(void *ctx,
 #endif
 
  	/* If you depend on a transaction, you actually depend on it ending. */
- 	if (is_transaction(&op[satisfies_file][satisfies_opnum])) {
+ 	if (starts_transaction(&op[satisfies_file][satisfies_opnum])) {
  		satisfies_opnum
  			+= op[satisfies_file][satisfies_opnum].group_len;
 #if DEBUG_DEPS
@@ -1440,7 +1428,7 @@ static void make_traverse_depends(char *filename[],
  			/* Traverse start (ignore those in
 			 * transactions; they're already covered by
 			 * transaction dependencies). */
-			if (is_traverse(&op[i][j])
+			if (starts_traverse(&op[i][j])
 			    && !in_transaction(op[i], j)) {
 				dep = talloc_realloc(NULL, dep,
 						     struct traverse_dep,
