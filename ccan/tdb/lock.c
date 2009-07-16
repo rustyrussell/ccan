@@ -500,7 +500,7 @@ int tdb_chainlock_unmark(struct tdb_context *tdb, TDB_DATA key)
 
 int tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key)
 {
-	tdb_trace_1rec(tdb, "tdb_chainlock", key);
+	tdb_trace_1rec(tdb, "tdb_chainunlock", key);
 	return tdb_unlock(tdb, BUCKET(tdb->hash_fn(&key)), F_WRLCK);
 }
 
