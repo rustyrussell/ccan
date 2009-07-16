@@ -1088,6 +1088,10 @@ static bool sort_deps(char *filename[], struct op *op[],
 	struct op *this_op;
 	bool done[num_files];
 
+	/* None left?  We're sorted. */
+	if (off == num)
+		return true;
+
 	/* Does this make serial numbers go backwards?  Allow a little fuzz. */
 	if (off > 0) {
 		int serial1 = op[res[off-1].file][res[off-1].op_num].serial;
@@ -1101,10 +1105,6 @@ static bool sort_deps(char *filename[], struct op *op[],
 			return false;
 		}
 	}
-
-	/* One or none left?  We're sorted. */
-	if (off + 1 >= num)
-		return true;
 
 	memset(done, 0, sizeof(done));
 
