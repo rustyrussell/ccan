@@ -69,16 +69,9 @@ static char *strlwc(const char *s)
 	if (s == NULL)
 		return NULL;
 
-	memset(l, 0, ASCIILINESZ+1);
-	i=0;
-
-	while (s[i] && i < ASCIILINESZ) {
-		l[i] = (char)tolower((int)s[i]);
-		i++;
-	}
-
-	l[ASCIILINESZ] = (char) 0;
-
+	for (i = 0; s[i] && i < ASCIILINESZ; i++)
+		l[i] = tolower(s[i]);
+	l[i] = '\0';
 	return l;
 }
 
@@ -94,30 +87,26 @@ static char *strlwc(const char *s)
  * is statically allocated, it will be modified at each function call
  * (not re-entrant).
  */
-static char *strstrip(char *s)
+static char *strstrip(const char *s)
 {
 	static char l[ASCIILINESZ+1];
-	char *last;
+	unsigned int i, numspc;
 
 	if (s == NULL)
 		return NULL;
 
-	while (isspace((int)*s) && *s)
+	while (isspace(*s))
 		s++;
 
-	memset(l, 0, ASCIILINESZ+1);
-	strcpy(l, s);
-	last = l + strlen(l);
-
-	while (last > l) {
-		if (!isspace((int)*(last-1)))
-			break;
-		last --;
+	for (i = numspc = 0; s[i] && i < ASCIILINESZ; i++) {
+		l[i] = s[i];
+		if (isspace(l[i]))
+			numspc++;
+		else
+			numspc = 0;
 	}
-
-	*last = (char) 0;
-
-	return (char *) l;
+	l[i - numspc] = '\0';
+	return l;
 }
 
 /**
