@@ -1443,6 +1443,12 @@ static void make_traverse_depends(char *filename[],
 
 	for (i = 1; i < num_traversals; i++) {
 		const struct op *prev = &op[dep[i-1].file][dep[i-1].op_num];
+		const struct op *curr = &op[dep[i].file][dep[i].op_num];
+
+		/* Read traverses don't depend on each other (read lock). */
+		if (prev->op == OP_TDB_TRAVERSE_READ_START
+		    && curr->op == OP_TDB_TRAVERSE_READ_START)
+			continue;
 
 		/* Only make dependency if it's clear. */
 		if (compare_traverse_dep(&dep[i], &dep[i-1])) {
