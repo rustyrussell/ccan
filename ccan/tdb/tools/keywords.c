@@ -104,7 +104,7 @@ find_keyword (register const char *str, register unsigned int len)
     {
       {""}, {""}, {""}, {""}, {""}, {""}, {""}, {""},
 #line 43 "keywords.gperf"
-      {"traverse", OP_TDB_TRAVERSE, op_add_key_data,},
+      {"traverse", OP_TDB_TRAVERSE, op_add_traverse,},
 #line 33 "keywords.gperf"
       {"tdb_store", OP_TDB_STORE, op_add_store,},
 #line 32 "keywords.gperf"
@@ -141,7 +141,7 @@ find_keyword (register const char *str, register unsigned int len)
 #line 38 "keywords.gperf"
       {"tdb_transaction_cancel", OP_TDB_TRANSACTION_CANCEL, op_analyze_transaction,},
 #line 41 "keywords.gperf"
-      {"tdb_traverse_start", OP_TDB_TRAVERSE_START, op_add_traverse,},
+      {"tdb_traverse_start", OP_TDB_TRAVERSE_START, op_add_traverse_start,},
       {""},
 #line 34 "keywords.gperf"
       {"tdb_append", OP_TDB_APPEND, op_add_append,},
@@ -150,7 +150,7 @@ find_keyword (register const char *str, register unsigned int len)
 #line 39 "keywords.gperf"
       {"tdb_transaction_commit", OP_TDB_TRANSACTION_COMMIT, op_analyze_transaction,},
 #line 40 "keywords.gperf"
-      {"tdb_traverse_read_start", OP_TDB_TRAVERSE_READ_START, op_add_traverse,},
+      {"tdb_traverse_read_start", OP_TDB_TRAVERSE_READ_START, op_add_traverse_start,},
       {""}, {""},
 #line 31 "keywords.gperf"
       {"tdb_parse_record", OP_TDB_PARSE_RECORD, op_add_key_ret,},

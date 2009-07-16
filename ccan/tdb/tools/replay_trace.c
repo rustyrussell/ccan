@@ -213,8 +213,7 @@ static void op_add_key(const char *filename,
 		fail(filename, op_num+1, "Expected just a key");
 
 	op[op_num].key = make_tdb_data(op, filename, op_num+1, words[2]);
-	if (op[op_num].op != OP_TDB_TRAVERSE)
-		total_keys++;
+	total_keys++;
 }
 
 static void op_add_key_ret(const char *filename,
@@ -241,6 +240,16 @@ static void op_add_key_data(const char *filename,
 	/* May only be a unique key if it fails */
 	if (!op[op_num].data.dptr)
 		total_keys++;
+}
+
+/* We don't record the keys or data for a traverse, as we don't use them. */
+static void op_add_traverse(const char *filename,
+			    struct op op[], unsigned int op_num, char *words[])
+{
+	if (!words[2] || !words[3] || !words[4] || words[5]
+	    || !streq(words[3], "="))
+		fail(filename, op_num+1, "Expected <key> = <data>");
+	op[op_num].key = tdb_null;
 }
 
 /* <serial> tdb_store <rec> <rec> <flag> = <ret> */
@@ -290,8 +299,9 @@ static void op_add_seqnum(const char *filename,
 	op[op_num].ret = atoi(words[3]);
 }
 
-static void op_add_traverse(const char *filename,
-			    struct op op[], unsigned int op_num, char *words[])
+static void op_add_traverse_start(const char *filename,
+				  struct op op[],
+				  unsigned int op_num, char *words[])
 {
 	if (words[2])
 		fail(filename, op_num+1, "Expect no arguments");
@@ -913,8 +923,7 @@ static const TDB_DATA *gives(const TDB_DATA *key, const TDB_DATA *pre,
 
 		for (i = 1; i < op->group_len; i++) {
 			/* This skips nested transactions, too */
-			if (op[i].op != OP_TDB_TRAVERSE
-			    && key_eq(op[i].key, *key))
+			if (key_eq(op[i].key, *key))
 				pre = gives(key, pre, &op[i]);
 		}
 		return pre;
@@ -966,11 +975,6 @@ static struct keyinfo *hash_ops(struct op *op[], unsigned int num_ops[],
 			list_head_init(&op[i][j].pre);
 
 			if (!op[i][j].key.dptr)
-				continue;
-
-			/* We don't wait for traverse keys */
-			/* FIXME: We should, for trivial traversals. */
-			if (op[i][j].op == OP_TDB_TRAVERSE)
 				continue;
 
 			h = hash_key(&op[i][j].key) % (total_keys * 2);
@@ -1025,8 +1029,7 @@ static bool satisfies(const TDB_DATA *key, const TDB_DATA *data,
 		/* Look through for an op in this transaction which
 		 * needs this key. */
 		for (i = 1; i < op->group_len; i++) {
-			if (op[i].op != OP_TDB_TRAVERSE
-			    && key_eq(op[i].key, *key)) {
+			if (key_eq(op[i].key, *key)) {
 				need = needs(&op[i]);
 				/* tdb_exists() is special: there might be
 				 * something in the transaction with more
