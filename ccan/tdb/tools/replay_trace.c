@@ -941,9 +941,15 @@ static bool in_transaction(const struct op op[], unsigned int i)
 	return op[i].group_start && is_transaction(&op[op[i].group_start]);
 }
 
+static bool is_traverse(const struct op *op)
+{
+	return op->op == OP_TDB_TRAVERSE_START
+		|| op->op == OP_TDB_TRAVERSE_READ_START;
+}
+
 static bool in_traverse(const struct op op[], unsigned int i)
 {
-	return op[i].group_start && !is_transaction(&op[op[i].group_start]);
+	return op[i].group_start && is_traverse(&op[op[i].group_start]);
 }
 
 static struct keyinfo *hash_ops(struct op *op[], unsigned int num_ops[],
@@ -1393,6 +1399,73 @@ static void optimize_dependencies(struct op *op[], unsigned int num_ops[],
 	}
 }
 
+#if TRAVERSALS_TAKE_TRANSACTION_LOCK
+struct traverse_dep {
+	unsigned int file;
+	unsigned int op_num;
+};
+
+/* Force an order among the traversals, so they don't deadlock (as much) */
+static void make_traverse_depends(char *filename[],
+				  struct op *op[], unsigned int num_ops[],
+				  unsigned int num)
+{
+	unsigned int i, num_traversals = 0;
+	int j;
+	struct traverse_dep *dep;
+
+	/* Sort by which one runs first. */
+	int compare_traverse_dep(const void *_a, const void *_b)
+	{
+		const struct traverse_dep *ta = _a, *tb = _b;
+		const struct op *a = &op[ta->file][ta->op_num],
+			*b = &op[tb->file][tb->op_num];
+
+		if (a->serial != b->serial)
+			return a->serial - b->serial;
+
+		/* If they have same serial, it means one didn't make any
+		 * changes.  Thus sort by end in that case. */
+		return a[a->group_len].serial - b[b->group_len].serial;
+	}
+
+	dep = talloc_array(NULL, struct traverse_dep, 1);
+
+	/* Count them. */
+	for (i = 0; i < num; i++) {
+		for (j = 1; j < num_ops[i]; j++) {
+ 			/* Traverse start (ignore those in
+			 * transactions; they're already covered by
+			 * transaction dependencies). */
+			if (is_traverse(&op[i][j])
+			    && !in_transaction(op[i], j)) {
+				dep = talloc_realloc(NULL, dep,
+						     struct traverse_dep,
+						     num_traversals+1);
+				dep[num_traversals].file = i;
+				dep[num_traversals].op_num = j;
+				num_traversals++;
+			}
+		}
+	}
+	qsort(dep, num_traversals, sizeof(dep[0]), compare_traverse_dep);
+
+	for (i = 1; i < num_traversals; i++) {
+		const struct op *prev = &op[dep[i-1].file][dep[i-1].op_num];
+
+		/* Only make dependency if it's clear. */
+		if (compare_traverse_dep(&dep[i], &dep[i-1])) {
+			/* i depends on end of traverse i-1. */
+			add_dependency(NULL, op, filename,
+				       dep[i].file, dep[i].op_num,
+				       dep[i-1].file, dep[i-1].op_num
+				       + prev->group_len);
+		}
+	}
+	talloc_free(dep);
+}
+#endif
+
 static void derive_dependencies(char *filename[],
 				struct op *op[], unsigned int num_ops[],
 				unsigned int num)
@@ -1434,6 +1507,10 @@ static void derive_dependencies(char *filename[],
 					       hash[h].user[prev].op_num);
 		}
 	}
+
+#if TRAVERSALS_TAKE_TRANSACTION_LOCK
+	make_traverse_depends(filename, op, num_ops, num);
+#endif
 
 	optimize_dependencies(op, num_ops, num);
 }
