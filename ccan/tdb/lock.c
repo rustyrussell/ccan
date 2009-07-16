@@ -301,7 +301,10 @@ int tdb_unlock(struct tdb_context *tdb, int list, int ltype)
  */
 int tdb_transaction_lock(struct tdb_context *tdb, int ltype)
 {
-	if (tdb->have_transaction_lock || tdb->global_lock.count) {
+	if (tdb->global_lock.count) {
+		return 0;
+	}
+	if (tdb->have_transaction_lock) {
 		tdb->have_transaction_lock++;
 		return 0;
 	}
@@ -320,6 +323,9 @@ int tdb_transaction_lock(struct tdb_context *tdb, int ltype)
  */
 int tdb_transaction_unlock(struct tdb_context *tdb)
 {
+	if (tdb->global_lock.count) {
+		return 0;
+	}
 	if (--tdb->have_transaction_lock) {
 		return 0;
 	}
