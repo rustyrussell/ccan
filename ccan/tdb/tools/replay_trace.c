@@ -1448,9 +1448,8 @@ int main(int argc, char *argv[])
 	/* Don't fork for single arg case: simple debugging. */
 	if (argc == 3) {
 		struct tdb_context *tdb;
-		tdb = tdb_open_ex(argv[1], hashsize[0], tdb_flags[0],
-				  open_flags[0], 0600,
-				  NULL, hash_key);
+		tdb = tdb_open_ex(argv[1], hashsize[0], tdb_flags[0]|TDB_NOSYNC,
+				  open_flags[0], 0600, NULL, hash_key);
 		printf("Single threaded run...");
 		fflush(stdout);
 
@@ -1472,9 +1471,9 @@ int main(int argc, char *argv[])
 			err(1, "fork failed");
 		case 0:
 			close(fds[1]);
-			tdb = tdb_open_ex(argv[1], hashsize[i], tdb_flags[i],
-					  open_flags[i], 0600,
-					  NULL, hash_key);
+			tdb = tdb_open_ex(argv[1], hashsize[i],
+					  tdb_flags[i]|TDB_NOSYNC,
+					  open_flags[i], 0600, NULL, hash_key);
 			if (!tdb)
 				err(1, "Opening tdb %s", argv[1]);
 
