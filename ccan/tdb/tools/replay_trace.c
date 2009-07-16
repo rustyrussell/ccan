@@ -22,7 +22,7 @@
 /* Avoid mod by zero */
 static unsigned int total_keys = 1;
 
-#define DEBUG_DEPS 1
+/* #define DEBUG_DEPS 1 */
 
 /* Traversals block transactions in the current implementation. */
 #define TRAVERSALS_TAKE_TRANSACTION_LOCK 1
@@ -425,9 +425,10 @@ static void dump_pre(char *filename[], struct op *op[],
 }
 
 /* We simply read/write pointers, since we all are children. */
-static void do_pre(struct tdb_context *tdb,
+static bool do_pre(struct tdb_context *tdb,
 		   char *filename[], struct op *op[],
-		   unsigned int file, int pre_fd, unsigned int i)
+		   unsigned int file, int pre_fd, unsigned int i,
+		   bool backoff)
 {
 	while (!list_empty(&op[file][i].pre)) {
 		struct depend *dep;
@@ -436,9 +437,17 @@ static void do_pre(struct tdb_context *tdb,
 		printf("%s:%u:waiting for pre\n", filename[file], i+1);
 		fflush(stdout);
 #endif
-		alarm(10);
+		if (backoff)
+			alarm(2);
+		else
+			alarm(10);
 		while (read(pre_fd, &dep, sizeof(dep)) != sizeof(dep)) {
 			if (errno == EINTR) {
+				if (backoff) {
+					warnx("%s:%u:avoiding deadlock",
+					      filename[file], i+1);
+					return false;
+				}
 				dump_pre(filename, op, file, i);
 				exit(1);
 			} else
@@ -455,6 +464,7 @@ static void do_pre(struct tdb_context *tdb,
 		/* This could be any op, not just this one. */
 		talloc_free(dep);
 	}
+	return true;
 }
 
 static void do_post(char *filename[], struct op *op[],
@@ -484,7 +494,8 @@ static unsigned run_ops(struct tdb_context *tdb,
 			char *filename[],
 			struct op *op[],
 			unsigned int file,
-			unsigned int start, unsigned int stop);
+			unsigned int start, unsigned int stop,
+			bool backoff);
 
 struct traverse_info {
 	struct op **op;
@@ -502,6 +513,7 @@ static int nontrivial_traverse(struct tdb_context *tdb,
 {
 	struct traverse_info *tinfo = _tinfo;
 	unsigned int trav_len = tinfo->op[tinfo->file][tinfo->start].group_len;
+	bool avoid_deadlock = false;
 
 	if (tinfo->i == tinfo->start + trav_len) {
 		/* This can happen if traverse expects to be empty. */
@@ -515,11 +527,17 @@ static int nontrivial_traverse(struct tdb_context *tdb,
 		fail(tinfo->filename[tinfo->file], tinfo->start + 1,
 		     "%s:%u:traverse terminated early");
 
+#if TRAVERSALS_TAKE_TRANSACTION_LOCK
+	avoid_deadlock = true;
+#endif
+
 	/* Run any normal ops. */
 	tinfo->i = run_ops(tdb, tinfo->pre_fd, tinfo->filename, tinfo->op,
-			   tinfo->file, tinfo->i+1, tinfo->start + trav_len);
+			   tinfo->file, tinfo->i+1, tinfo->start + trav_len,
+			   avoid_deadlock);
 
-	if (tinfo->i == tinfo->start + trav_len)
+	/* We backed off, or we hit OP_TDB_TRAVERSE_END. */
+	if (tinfo->op[tinfo->file][tinfo->i].op != OP_TDB_TRAVERSE)
 		return 1;
 
 	return 0;
@@ -548,7 +566,8 @@ static unsigned op_traverse(struct tdb_context *tdb,
 		else
 			tinfo.i = run_ops(tdb, pre_fd, filename, op, file,
 					  tinfo.i,
-					  start + op[file][start].group_len);
+					  start + op[file][start].group_len,
+					  false);
 	}
 
 	return tinfo.i;
@@ -564,7 +583,8 @@ unsigned run_ops(struct tdb_context *tdb,
 		 char *filename[],
 		 struct op *op[],
 		 unsigned int file,
-		 unsigned int start, unsigned int stop)
+		 unsigned int start, unsigned int stop,
+		 bool backoff)
 {
 	unsigned int i;
 	struct sigaction sa;
@@ -574,7 +594,8 @@ unsigned run_ops(struct tdb_context *tdb,
 
 	sigaction(SIGALRM, &sa, NULL);
 	for (i = start; i < stop; i++) {
-		do_pre(tdb, filename, op, file, pre_fd, i);
+		if (!do_pre(tdb, filename, op, file, pre_fd, i, backoff))
+			return i;
 
 		switch (op[file][i].op) {
 		case OP_TDB_LOCKALL:
@@ -1453,7 +1474,8 @@ int main(int argc, char *argv[])
 		printf("Single threaded run...");
 		fflush(stdout);
 
-		run_ops(tdb, pipes[0].fd[0], argv+2, op, 0, 1, num_ops[0]);
+		run_ops(tdb, pipes[0].fd[0], argv+2, op, 0, 1, num_ops[0],
+			false);
 		check_deps(argv[2], op[0], num_ops[0]);
 
 		printf("done\n");
@@ -1481,7 +1503,7 @@ int main(int argc, char *argv[])
 			if (read(fds[0], &c, 1) != 1)
 				exit(1);
 			run_ops(tdb, pipes[i].fd[0], argv+2, op, i, 1,
-				num_ops[i]);
+				num_ops[i], false);
 			check_deps(argv[2+i], op[i], num_ops[i]);
 			exit(0);
 		default:
