@@ -22,9 +22,7 @@
 #define APPEND_PROB 6
 #define TRANSACTION_PROB 10
 #define TRANSACTION_PREPARE_PROB 2
-#if 0
 #define LOCKSTORE_PROB 5
-#endif
 #define TRAVERSE_PROB 20
 #define TRAVERSE_READ_PROB 20
 #define TRAVERSE_MOD_PROB 100
@@ -145,7 +143,6 @@ static void addrec_db(void)
 		goto next;
 	}
 
-#if 0
 	if (in_traverse == 0 && in_transaction && random() % TRANSACTION_PROB == 0) {
 		if (tdb_transaction_cancel(db) != 0) {
 			fatal("tdb_transaction_cancel failed");
@@ -153,7 +150,6 @@ static void addrec_db(void)
 		in_transaction--;
 		goto next;
 	}
-#endif
 #endif
 
 #if REOPEN_PROB
