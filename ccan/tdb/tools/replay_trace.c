@@ -126,8 +126,8 @@ enum op_type {
 };
 
 struct op {
-	unsigned int serial;
-	enum op_type op;
+	unsigned int seqnum;
+	enum op_type type;
 	TDB_DATA key;
 	TDB_DATA data;
 	int ret;
@@ -150,6 +150,11 @@ struct op {
 		/* transaction/traverse start/chainlock */
 		unsigned int group_len;
 	};
+};
+
+struct op_desc {
+	unsigned int file;
+	unsigned int op_num;
 };
 
 static unsigned char hex_char(const char *filename, unsigned int line, char c)
@@ -188,13 +193,13 @@ static TDB_DATA make_tdb_data(const void *ctx,
 }
 
 static void add_op(const char *filename, struct op **op, unsigned int i,
-		   unsigned int serial, enum op_type type)
+		   unsigned int seqnum, enum op_type type)
 {
 	struct op *new;
 	*op = talloc_realloc(NULL, *op, struct op, i+1);
 	new = (*op) + i;
-	new->op = type;
-	new->serial = serial;
+	new->type = type;
+	new->seqnum = seqnum;
 	new->ret = 0;
 	new->group_start = 0;
 }
@@ -263,7 +268,7 @@ static void op_add_traversefn(const char *filename,
 	op[op_num].key = tdb_null;
 }
 
-/* <serial> tdb_store <rec> <rec> <flag> = <ret> */
+/* <seqnum> tdb_store <rec> <rec> <flag> = <ret> */
 static void op_add_store(const char *filename,
 			 struct op op[], unsigned int op_num, char *words[])
 {
@@ -278,7 +283,7 @@ static void op_add_store(const char *filename,
 	total_keys++;
 }
 
-/* <serial> tdb_append <rec> <rec> = <rec> */
+/* <seqnum> tdb_append <rec> <rec> = <rec> */
 static void op_add_append(const char *filename,
 			  struct op op[], unsigned int op_num, char *words[])
 {
@@ -299,7 +304,7 @@ static void op_add_append(const char *filename,
 	total_keys++;
 }
 
-/* <serial> tdb_get_seqnum = <ret> */
+/* <seqnum> tdb_get_seqnum = <ret> */
 static void op_add_seqnum(const char *filename,
 			  struct op op[], unsigned int op_num, char *words[])
 {
@@ -363,7 +368,7 @@ static int op_find_start(struct op op[], unsigned int op_num, enum op_type type)
 	unsigned int i;
 
 	for (i = op_num-1; i > 0; i--) {
-		if (op[i].op == type && !op[i].group_len)
+		if (op[i].type == type && !op[i].group_len)
 			return i;
 	}
 	return 0;
@@ -461,10 +466,8 @@ struct depend {
 	/* We can have more than one */
 	struct list_node pre_list;
 	struct list_node post_list;
-	unsigned int needs_file;
-	unsigned int needs_opnum;
-	unsigned int satisfies_file;
-	unsigned int satisfies_opnum;
+	struct op_desc needs;
+	struct op_desc prereq;
 };
 
 static void check_deps(const char *filename, struct op op[], unsigned int num)
@@ -484,11 +487,11 @@ static void dump_pre(char *filename[], struct op *op[],
 	struct depend *dep;
 
 	printf("%s:%u (%u) still waiting for:\n", filename[file], i+1,
-		op[file][i].serial);
+		op[file][i].seqnum);
 	list_for_each(&op[file][i].pre, dep, pre_list)
 		printf("    %s:%u (%u)\n",
-		       filename[dep->satisfies_file], dep->satisfies_opnum+1,
-		       op[dep->satisfies_file][dep->satisfies_opnum].serial);
+		       filename[dep->prereq.file], dep->prereq.op_num+1,
+		       op[dep->prereq.file][dep->prereq.op_num].seqnum);
 	check_deps(filename[file], op[file], i);
 }
 
@@ -525,8 +528,8 @@ static bool do_pre(struct tdb_context *tdb,
 
 #if DEBUG_DEPS
 		printf("%s:%u:got pre %u from %s:%u\n", filename[file], i+1,
-		       dep->needs_opnum+1, filename[dep->satisfies_file],
-		       dep->satisfies_opnum+1);
+		       dep->needs.op_num+1, filename[dep->prereq.file],
+		       dep->prereq.op_num+1);
 		fflush(stdout);
 #endif
 		/* This could be any op, not just this one. */
@@ -543,12 +546,12 @@ static void do_post(char *filename[], struct op *op[],
 	list_for_each(&op[file][i].post, dep, post_list) {
 #if DEBUG_DEPS
 		printf("%s:%u:sending to file %s:%u\n", filename[file], i+1,
-		       filename[dep->needs_file], dep->needs_opnum+1);
+		       filename[dep->needs.file], dep->needs.op_num+1);
 #endif
-		if (write(pipes[dep->needs_file].fd[1], &dep, sizeof(dep))
+		if (write(pipes[dep->needs.file].fd[1], &dep, sizeof(dep))
 		    != sizeof(dep))
 			err(1, "%s:%u failed to tell file %s",
-			    filename[file], i+1, filename[dep->needs_file]);
+			    filename[file], i+1, filename[dep->needs.file]);
 	}
 }
 
@@ -591,7 +594,7 @@ static int nontrivial_traverse(struct tdb_context *tdb,
 		     "traverse did not terminate");
 	}
 
-	if (tinfo->op[tinfo->file][tinfo->i].op != OP_TDB_TRAVERSE)
+	if (tinfo->op[tinfo->file][tinfo->i].type != OP_TDB_TRAVERSE)
 		fail(tinfo->filename[tinfo->file], tinfo->start + 1,
 		     "%s:%u:traverse terminated early");
 
@@ -605,7 +608,7 @@ static int nontrivial_traverse(struct tdb_context *tdb,
 			   avoid_deadlock);
 
 	/* We backed off, or we hit OP_TDB_TRAVERSE_END. */
-	if (tinfo->op[tinfo->file][tinfo->i].op != OP_TDB_TRAVERSE)
+	if (tinfo->op[tinfo->file][tinfo->i].type != OP_TDB_TRAVERSE)
 		return 1;
 
 	return 0;
@@ -629,7 +632,7 @@ static unsigned op_traverse(struct tdb_context *tdb,
 	 * original traverse went A (delete A), B, we might do B
 	 * (delete A).  So if we have ops left over, we do it now. */
 	while (tinfo.i != start + op[file][start].group_len) {
-		if (op[file][tinfo.i].op == OP_TDB_TRAVERSE)
+		if (op[file][tinfo.i].type == OP_TDB_TRAVERSE)
 			tinfo.i++;
 		else
 			tinfo.i = run_ops(tdb, pre_fd, filename, op, file,
@@ -665,7 +668,7 @@ unsigned run_ops(struct tdb_context *tdb,
 		if (!do_pre(tdb, filename, op, file, pre_fd, i, backoff))
 			return i;
 
-		switch (op[file][i].op) {
+		switch (op[file][i].type) {
 		case OP_TDB_LOCKALL:
 			try(tdb_lockall(tdb), op[file][i].ret);
 			break;
@@ -805,7 +808,7 @@ static struct op *maybe_cancel_transaction(const char *filename,
 
 	if (start) {
 		char *words[] = { "<unknown>", "tdb_close", NULL };
-		add_op(filename, &op, *num, op[start].serial,
+		add_op(filename, &op, *num, op[start].seqnum,
 		       OP_TDB_TRANSACTION_CANCEL);
 		op_analyze_transaction(filename, op, *num, words);
 		(*num)++;
@@ -845,7 +848,7 @@ static struct op *load_tracefile(const char *filename, unsigned int *num,
 
 		words = strsplit(lines, lines[i], " ", NULL);
 		if (!words[0] || !words[1])
-			fail(filename, i+1, "Expected serial number and op");
+			fail(filename, i+1, "Expected seqnum number and op");
 	       
 		opt = find_keyword(words[1], strlen(words[1]));
 		if (!opt) {
@@ -873,15 +876,10 @@ static struct op *load_tracefile(const char *filename, unsigned int *num,
 }
 
 /* We remember all the keys we've ever seen, and who has them. */
-struct key_user {
-	unsigned int file;
-	unsigned int op_num;
-};
-
 struct keyinfo {
 	TDB_DATA key;
 	unsigned int num_users;
-	struct key_user *user;
+	struct op_desc *user;
 };
 
 static const TDB_DATA must_not_exist;
@@ -893,7 +891,7 @@ static const TDB_DATA not_exists_or_empty;
  * not exist, otherwise the data it needs. */
 static const TDB_DATA *needs(const struct op *op)
 {
-	switch (op->op) {
+	switch (op->type) {
 	/* FIXME: Pull forward deps, since we can deadlock */
 	case OP_TDB_CHAINLOCK:
 	case OP_TDB_CHAINLOCK_NONBLOCK:
@@ -957,14 +955,14 @@ static const TDB_DATA *needs(const struct op *op)
 		return &must_exist;
 
 	default:
-		errx(1, "Unexpected op %i", op->op);
+		errx(1, "Unexpected op type %i", op->type);
 	}
 	
 }
 
 static bool starts_transaction(const struct op *op)
 {
-	return op->op == OP_TDB_TRANSACTION_START;
+	return op->type == OP_TDB_TRANSACTION_START;
 }
 
 static bool in_transaction(const struct op op[], unsigned int i)
@@ -975,13 +973,13 @@ static bool in_transaction(const struct op op[], unsigned int i)
 static bool successful_transaction(const struct op *op)
 {
 	return starts_transaction(op)
-		&& op[op->group_len].op == OP_TDB_TRANSACTION_COMMIT;
+		&& op[op->group_len].type == OP_TDB_TRANSACTION_COMMIT;
 }
 
 static bool starts_traverse(const struct op *op)
 {
-	return op->op == OP_TDB_TRAVERSE_START
-		|| op->op == OP_TDB_TRAVERSE_READ_START;
+	return op->type == OP_TDB_TRAVERSE_START
+		|| op->type == OP_TDB_TRAVERSE_READ_START;
 }
 
 static bool in_traverse(const struct op op[], unsigned int i)
@@ -991,7 +989,8 @@ static bool in_traverse(const struct op op[], unsigned int i)
 
 static bool starts_chainlock(const struct op *op)
 {
-	return op->op == OP_TDB_CHAINLOCK_READ || op->op == OP_TDB_CHAINLOCK;
+	return op->type == OP_TDB_CHAINLOCK_READ
+		|| op->type == OP_TDB_CHAINLOCK;
 }
 
 static bool in_chainlock(const struct op op[], unsigned int i)
@@ -1007,11 +1006,11 @@ static const TDB_DATA *gives(const TDB_DATA *key, const TDB_DATA *pre,
 		unsigned int i;
 
 		/* Cancelled transactions don't change anything. */
-		if (op[op->group_len].op == OP_TDB_TRANSACTION_CANCEL)
+		if (op[op->group_len].type == OP_TDB_TRANSACTION_CANCEL)
 			return pre;
-		assert(op[op->group_len].op == OP_TDB_TRANSACTION_COMMIT
-		       || op[op->group_len].op == OP_TDB_CHAINUNLOCK_READ
-		       || op[op->group_len].op == OP_TDB_CHAINUNLOCK);
+		assert(op[op->group_len].type == OP_TDB_TRANSACTION_COMMIT
+		       || op[op->group_len].type == OP_TDB_CHAINUNLOCK_READ
+		       || op[op->group_len].type == OP_TDB_CHAINUNLOCK);
 
 		for (i = 1; i < op->group_len; i++) {
 			/* This skips nested transactions, too */
@@ -1025,13 +1024,13 @@ static const TDB_DATA *gives(const TDB_DATA *key, const TDB_DATA *pre,
 	if (op->ret < 0)
 		return pre;
 
-	if (op->op == OP_TDB_DELETE || op->op == OP_TDB_WIPE_ALL)
+	if (op->type == OP_TDB_DELETE || op->type == OP_TDB_WIPE_ALL)
 		return &tdb_null;
 
-	if (op->op == OP_TDB_APPEND)
+	if (op->type == OP_TDB_APPEND)
 		return &op->append.post;
 
-	if (op->op == OP_TDB_STORE)
+	if (op->type == OP_TDB_STORE)
 		return &op->data;
 
 	return pre;
@@ -1067,7 +1066,7 @@ static struct keyinfo *hash_ops(struct op *op[], unsigned int num_ops[],
 				op[i][j].key.dptr = hash[h].key.dptr;
 			}
 			hash[h].user = talloc_realloc(hash, hash[h].user,
-						     struct key_user,
+						     struct op_desc,
 						     hash[h].num_users+1);
 
 			/* If it's in a transaction, it's the transaction which
@@ -1114,7 +1113,7 @@ static bool satisfies(const TDB_DATA *key, const TDB_DATA *data,
 				 * specific requirements (eg. store or delete),
 				 * but they change the value so we can't get
 				 * more information from future ops. */
-				if (op[i].op != OP_TDB_EXISTS)
+				if (op[i].type != OP_TDB_EXISTS)
 					break;
 			}
 		}
@@ -1146,26 +1145,26 @@ static bool satisfies(const TDB_DATA *key, const TDB_DATA *data,
 	return key_eq(*data, *need);
 }
 
-static void move_to_front(struct key_user res[], unsigned off, unsigned elem)
+static void move_to_front(struct op_desc res[], unsigned off, unsigned elem)
 {
 	if (elem != off) {
-		struct key_user tmp = res[elem];
+		struct op_desc tmp = res[elem];
 		memmove(res + off + 1, res + off, (elem - off)*sizeof(res[0]));
 		res[off] = tmp;
 	}
 }
 
-static void restore_to_pos(struct key_user res[], unsigned off, unsigned elem)
+static void restore_to_pos(struct op_desc res[], unsigned off, unsigned elem)
 {
 	if (elem != off) {
-		struct key_user tmp = res[off];
+		struct op_desc tmp = res[off];
 		memmove(res + off, res + off + 1, (elem - off)*sizeof(res[0]));
 		res[elem] = tmp;
 	}
 }
 
 static bool sort_deps(char *filename[], struct op *op[],
-		      struct key_user res[],
+		      struct op_desc res[],
 		      unsigned off, unsigned num,
 		      const TDB_DATA *key, const TDB_DATA *data,
 		      unsigned num_files, unsigned fuzz)
@@ -1178,15 +1177,15 @@ static bool sort_deps(char *filename[], struct op *op[],
 	if (off == num)
 		return true;
 
-	/* Does this make serial numbers go backwards?  Allow a little fuzz. */
+	/* Does this make sequence number go backwards?  Allow a little fuzz. */
 	if (off > 0) {
-		int serial1 = op[res[off-1].file][res[off-1].op_num].serial;
-		int serial2 = op[res[off].file][res[off].op_num].serial;
+		int seqnum1 = op[res[off-1].file][res[off-1].op_num].seqnum;
+		int seqnum2 = op[res[off].file][res[off].op_num].seqnum;
 
-		if (serial1 - serial2 > (int)fuzz) {
+		if (seqnum1 - seqnum2 > (int)fuzz) {
 #if DEBUG_DEPS
-			printf("Serial jump too far (%u -> %u)\n",
-			       serial1, serial2);
+			printf("Seqnum jump too far (%u -> %u)\n",
+			       seqnum1, seqnum2);
 #endif
 			return false;
 		}
@@ -1197,7 +1196,7 @@ static bool sort_deps(char *filename[], struct op *op[],
 	/* Since ops within a trace file are ordered, we just need to figure
 	 * out which file to try next.  Since we don't take into account
 	 * inter-key relationships (which exist by virtue of trace file order),
-	 * we minimize the chance of harm by trying to keep in serial order. */
+	 * we minimize the chance of harm by trying to keep in seqnum order. */
 	for (files_done = 0, i = off; i < num && files_done < num_files; i++) {
 		if (done[res[i].file])
 			continue;
@@ -1221,7 +1220,7 @@ static bool sort_deps(char *filename[], struct op *op[],
 	return false;
 }
 
-static void check_dep_sorting(struct key_user user[], unsigned num_users,
+static void check_dep_sorting(struct op_desc user[], unsigned num_users,
 			      unsigned num_files)
 {
 #if DEBUG_DEPS
@@ -1239,19 +1238,19 @@ static void check_dep_sorting(struct key_user user[], unsigned num_users,
 /* All these ops happen on the same key.  Which comes first?
  *
  * This can happen both because read ops or failed write ops don't
- * change serial number, and also due to race since we access the
+ * change sequence number, and also due to race since we access the
  * number unlocked (the race can cause less detectable ordering problems,
  * in which case we'll deadlock and report: fix manually in that case).
  */
 static void figure_deps(char *filename[], struct op *op[],
-			const TDB_DATA *key, struct key_user user[],
+			const TDB_DATA *key, struct op_desc user[],
 			unsigned num_users, unsigned num_files)
 {
 	/* We assume database starts empty. */
 	const struct TDB_DATA *data = &tdb_null;
 	unsigned int fuzz;
 
-	/* We prefer to keep strict serial order if possible: it's the
+	/* We prefer to keep strict seqnum order if possible: it's the
 	 * most likely.  We get more lax if that fails. */
 	for (fuzz = 0; fuzz < 100; fuzz = (fuzz + 1)*2) {
 		if (sort_deps(filename, op, user, 0, num_users, key, data,
@@ -1272,19 +1271,19 @@ static void sort_ops(struct keyinfo hash[], char *filename[], struct op *op[],
 	unsigned int h;
 
 	/* Gcc nexted function extension.  How cool is this? */
-	int compare_serial(const void *_a, const void *_b)
+	int compare_seqnum(const void *_a, const void *_b)
 	{
-		const struct key_user *a = _a, *b = _b;
+		const struct op_desc *a = _a, *b = _b;
 
 		/* First, maintain order within any trace file. */
 		if (a->file == b->file)
 			return a->op_num - b->op_num;
 
-		/* Otherwise, arrange by serial order. */
-		if (op[a->file][a->op_num].serial !=
-		    op[b->file][b->op_num].serial)
-			return op[a->file][a->op_num].serial
-				- op[b->file][b->op_num].serial;
+		/* Otherwise, arrange by seqnum order. */
+		if (op[a->file][a->op_num].seqnum !=
+		    op[b->file][b->op_num].seqnum)
+			return op[a->file][a->op_num].seqnum
+				- op[b->file][b->op_num].seqnum;
 
 		/* Cancelled transactions are assumed to happen first. */
 		if (starts_transaction(&op[a->file][a->op_num])
@@ -1298,11 +1297,11 @@ static void sort_ops(struct keyinfo hash[], char *filename[], struct op *op[],
 		return 0;
 	}
 
-	/* Now sort into serial order. */
+	/* Now sort into seqnum order. */
 	for (h = 0; h < total_keys * 2; h++) {
-		struct key_user *user = hash[h].user;
+		struct op_desc *user = hash[h].user;
 
-		qsort(user, hash[h].num_users, sizeof(user[0]), compare_serial);
+		qsort(user, hash[h].num_users, sizeof(user[0]), compare_seqnum);
 		figure_deps(filename, op, &hash[h].key, user, hash[h].num_users,
 			    num);
 	}
@@ -1318,42 +1317,44 @@ static int destroy_depend(struct depend *dep)
 static void add_dependency(void *ctx,
 			   struct op *op[],
 			   char *filename[],
-			   unsigned int needs_file,
-			   unsigned int needs_opnum,
-			   unsigned int satisfies_file,
-			   unsigned int satisfies_opnum)
+			   const struct op_desc *needs,
+			   const struct op_desc *prereq)
 {
 	struct depend *dep;
 
 	/* We don't depend on ourselves. */
-	if (needs_file == satisfies_file) {
-		assert(satisfies_opnum < needs_opnum);
+	if (needs->file == prereq->file) {
+		assert(prereq->op_num < needs->op_num);
 		return;
 	}
 
 #if DEBUG_DEPS
 	printf("%s:%u: depends on %s:%u\n",
-	       filename[needs_file], needs_opnum+1,
-	       filename[satisfies_file], satisfies_opnum+1);
+	       filename[needs->file], needs->op_num+1,
+	       filename[prereq->file], prereq->op_num+1);
 #endif
+
+	dep = talloc(ctx, struct depend);
+	dep->needs = *needs;
+	dep->prereq = *prereq;
 
 #if TRAVERSALS_TAKE_TRANSACTION_LOCK
 	/* If something in a traverse depends on something in another
 	 * traverse/transaction, it creates a dependency between the
 	 * two groups. */
-	if ((in_traverse(op[satisfies_file], satisfies_opnum)
-	     && (starts_transaction(&op[needs_file][needs_opnum])
-		 || starts_traverse(&op[needs_file][needs_opnum])))
-	    || (in_traverse(op[needs_file], needs_opnum)
-		&& (starts_transaction(&op[satisfies_file][satisfies_opnum])
-		    || starts_traverse(&op[satisfies_file][satisfies_opnum])))){
-		unsigned int sat;
+	if ((in_traverse(op[prereq->file], prereq->op_num)
+	     && (starts_transaction(&op[needs->file][needs->op_num])
+		 || starts_traverse(&op[needs->file][needs->op_num])))
+	    || (in_traverse(op[needs->file], needs->op_num)
+		&& (starts_transaction(&op[prereq->file][prereq->op_num])
+		    || starts_traverse(&op[prereq->file][prereq->op_num])))) {
+		unsigned int start;
 
 		/* We are satisfied by end of group. */
-		sat = op[satisfies_file][satisfies_opnum].group_start;
-		satisfies_opnum = sat + op[satisfies_file][sat].group_len;
+		start = op[prereq->file][prereq->op_num].group_start;
+		dep->prereq.op_num = start + op[prereq->file][start].group_len;
 		/* And we need that done by start of our group. */
-		needs_opnum = op[needs_file][needs_opnum].group_start;
+		dep->needs.op_num = op[needs->file][needs->op_num].group_start;
 	}
 
 	/* There is also this case:
@@ -1365,44 +1366,38 @@ static void add_dependency(void *ctx,
 	 * We try to address this by ensuring that where seqnum indicates it's
 	 * possible, we wait for <create foo> before *starting* traverse.
 	 */
-	else if (in_traverse(op[needs_file], needs_opnum)) {
-		struct op *need = &op[needs_file][needs_opnum];
-		if (op[needs_file][need->group_start].serial >
-		    op[satisfies_file][satisfies_opnum].serial) {
-			needs_opnum = need->group_start;
+	else if (in_traverse(op[needs->file], needs->op_num)) {
+		struct op *need = &op[needs->file][needs->op_num];
+		if (op[needs->file][need->group_start].seqnum >
+		    op[prereq->file][prereq->op_num].seqnum) {
+			dep->needs.op_num = need->group_start;
 		}
 	}
 #endif
 
  	/* If you depend on a transaction or chainlock, you actually
 	 * depend on it ending. */
- 	if (starts_transaction(&op[satisfies_file][satisfies_opnum])
-	    || starts_chainlock(&op[satisfies_file][satisfies_opnum])) {
- 		satisfies_opnum
- 			+= op[satisfies_file][satisfies_opnum].group_len;
+ 	if (starts_transaction(&op[prereq->file][dep->prereq.op_num])
+	    || starts_chainlock(&op[prereq->file][dep->prereq.op_num])) {
+ 		dep->prereq.op_num
+			+= op[dep->prereq.file][dep->prereq.op_num].group_len;
 #if DEBUG_DEPS
 		printf("-> Actually end of transaction %s:%u\n",
-		       filename[satisfies_file], satisfies_opnum+1);
+		       filename[dep->prereq->file], dep->prereq->op_num+1);
 #endif
  	} else
 		/* We should never create a dependency from middle of
 		 * a transaction. */
- 		assert(!in_transaction(op[satisfies_file], satisfies_opnum)
-		       || op[satisfies_file][satisfies_opnum].op
+ 		assert(!in_transaction(op[prereq->file], dep->prereq.op_num)
+		       || op[prereq->file][dep->prereq.op_num].type
  		       == OP_TDB_TRANSACTION_COMMIT
- 		       || op[satisfies_file][satisfies_opnum].op
+ 		       || op[prereq->file][dep->prereq.op_num].type
  		       == OP_TDB_TRANSACTION_CANCEL);
 
-	assert(op[needs_file][needs_opnum].op != OP_TDB_TRAVERSE);
-	assert(op[satisfies_file][satisfies_opnum].op != OP_TDB_TRAVERSE);
-
-	dep = talloc(ctx, struct depend);
-	dep->needs_file = needs_file;
-	dep->needs_opnum = needs_opnum;
-	dep->satisfies_file = satisfies_file;
-	dep->satisfies_opnum = satisfies_opnum;
-	list_add(&op[satisfies_file][satisfies_opnum].post, &dep->post_list);
-	list_add(&op[needs_file][needs_opnum].pre, &dep->pre_list);
+	list_add(&op[dep->prereq.file][dep->prereq.op_num].post,
+		 &dep->post_list);
+	list_add(&op[dep->needs.file][dep->needs.op_num].pre,
+		 &dep->pre_list);
 	talloc_set_destructor(dep, destroy_depend);
 }
 
@@ -1414,7 +1409,7 @@ static bool changes_db(const TDB_DATA *key, const struct op *op)
 static void depend_on_previous(struct op *op[],
 			       char *filename[],
 			       unsigned int num,
-			       struct key_user user[],
+			       struct op_desc user[],
 			       unsigned int i,
 			       int prev)
 {
@@ -1426,9 +1421,7 @@ static void depend_on_previous(struct op *op[],
 
 	if (prev == i - 1) {
 		/* Just depend on previous. */
-		add_dependency(NULL, op, filename,
-			       user[i].file, user[i].op_num,
-			       user[prev].file, user[prev].op_num);
+		add_dependency(NULL, op, filename, &user[i], &user[prev]);
 		return;
 	}
 
@@ -1437,9 +1430,7 @@ static void depend_on_previous(struct op *op[],
 	deps[user[i].file] = true;
 	for (j = i - 1; j > prev; j--) {
 		if (!deps[user[j].file]) {
-			add_dependency(NULL, op, filename,
-				       user[i].file, user[i].op_num,
-				       user[j].file, user[j].op_num);
+			add_dependency(NULL, op, filename, &user[i], &user[j]);
 			deps[user[j].file] = true;
 		}
 	}
@@ -1461,14 +1452,14 @@ static void optimize_dependencies(struct op *op[], unsigned int num_ops[],
 			memset(prev, 0, sizeof(prev));
 
 			list_for_each_safe(&op[i][j].pre, dep, next, pre_list) {
-				if (!prev[dep->satisfies_file]) {
-					prev[dep->satisfies_file] = dep;
+				if (!prev[dep->prereq.file]) {
+					prev[dep->prereq.file] = dep;
 					continue;
 				}
-				if (prev[dep->satisfies_file]->satisfies_opnum
-				    < dep->satisfies_opnum) {
-					talloc_free(prev[dep->satisfies_file]);
-					prev[dep->satisfies_file] = dep;
+				if (prev[dep->prereq.file]->prereq.op_num
+				    < dep->prereq.op_num) {
+					talloc_free(prev[dep->prereq.file]);
+					prev[dep->prereq.file] = dep;
 				} else
 					talloc_free(dep);
 			}
@@ -1485,23 +1476,18 @@ static void optimize_dependencies(struct op *op[], unsigned int num_ops[],
 			struct depend *dep, *next;
 
 			list_for_each_safe(&op[i][j].pre, dep, next, pre_list) {
-				if (deps[dep->satisfies_file]
-				    >= (int)dep->satisfies_opnum)
+				if (deps[dep->prereq.file]
+				    >= (int)dep->prereq.op_num)
 					talloc_free(dep);
 				else
-					deps[dep->satisfies_file]
-						= dep->satisfies_opnum;
+					deps[dep->prereq.file]
+						= dep->prereq.op_num;
 			}
 		}
 	}
 }
 
 #if TRAVERSALS_TAKE_TRANSACTION_LOCK
-struct traverse_dep {
-	unsigned int file;
-	unsigned int op_num;
-};
-
 /* Force an order among the traversals, so they don't deadlock (as much) */
 static void make_traverse_depends(char *filename[],
 				  struct op *op[], unsigned int num_ops[],
@@ -1509,24 +1495,24 @@ static void make_traverse_depends(char *filename[],
 {
 	unsigned int i, num_traversals = 0;
 	int j;
-	struct traverse_dep *dep;
+	struct op_desc *desc;
 
 	/* Sort by which one runs first. */
-	int compare_traverse_dep(const void *_a, const void *_b)
+	int compare_traverse_desc(const void *_a, const void *_b)
 	{
-		const struct traverse_dep *ta = _a, *tb = _b;
-		const struct op *a = &op[ta->file][ta->op_num],
-			*b = &op[tb->file][tb->op_num];
+		const struct op_desc *da = _a, *db = _b;
+		const struct op *a = &op[da->file][da->op_num],
+			*b = &op[db->file][db->op_num];
 
-		if (a->serial != b->serial)
-			return a->serial - b->serial;
+		if (a->seqnum != b->seqnum)
+			return a->seqnum - b->seqnum;
 
-		/* If they have same serial, it means one didn't make any
+		/* If they have same seqnum, it means one didn't make any
 		 * changes.  Thus sort by end in that case. */
-		return a[a->group_len].serial - b[b->group_len].serial;
+		return a[a->group_len].seqnum - b[b->group_len].seqnum;
 	}
 
-	dep = talloc_array(NULL, struct traverse_dep, 1);
+	desc = talloc_array(NULL, struct op_desc, 1);
 
 	/* Count them. */
 	for (i = 0; i < num; i++) {
@@ -1536,36 +1522,35 @@ static void make_traverse_depends(char *filename[],
 			 * transaction dependencies). */
 			if (starts_traverse(&op[i][j])
 			    && !in_transaction(op[i], j)) {
-				dep = talloc_realloc(NULL, dep,
-						     struct traverse_dep,
-						     num_traversals+1);
-				dep[num_traversals].file = i;
-				dep[num_traversals].op_num = j;
+				desc = talloc_realloc(NULL, desc,
+						      struct op_desc,
+						      num_traversals+1);
+				desc[num_traversals].file = i;
+				desc[num_traversals].op_num = j;
 				num_traversals++;
 			}
 		}
 	}
-	qsort(dep, num_traversals, sizeof(dep[0]), compare_traverse_dep);
+	qsort(desc, num_traversals, sizeof(desc[0]), compare_traverse_desc);
 
 	for (i = 1; i < num_traversals; i++) {
-		const struct op *prev = &op[dep[i-1].file][dep[i-1].op_num];
-		const struct op *curr = &op[dep[i].file][dep[i].op_num];
+		const struct op *prev = &op[desc[i-1].file][desc[i-1].op_num];
+		const struct op *curr = &op[desc[i].file][desc[i].op_num];
 
 		/* Read traverses don't depend on each other (read lock). */
-		if (prev->op == OP_TDB_TRAVERSE_READ_START
-		    && curr->op == OP_TDB_TRAVERSE_READ_START)
+		if (prev->type == OP_TDB_TRAVERSE_READ_START
+		    && curr->type == OP_TDB_TRAVERSE_READ_START)
 			continue;
 
 		/* Only make dependency if it's clear. */
-		if (compare_traverse_dep(&dep[i], &dep[i-1])) {
+		if (compare_traverse_desc(&desc[i], &desc[i-1])) {
 			/* i depends on end of traverse i-1. */
-			add_dependency(NULL, op, filename,
-				       dep[i].file, dep[i].op_num,
-				       dep[i-1].file, dep[i-1].op_num
-				       + prev->group_len);
+			struct op_desc end = desc[i-1];
+			end.op_num += prev->group_len;
+			add_dependency(NULL, op, filename, &desc[i], &end);
 		}
 	}
-	talloc_free(dep);
+	talloc_free(desc);
 }
 #endif
 
@@ -1579,7 +1564,7 @@ static void derive_dependencies(char *filename[],
 	/* Create hash table for faster key lookup. */
 	hash = hash_ops(op, num_ops, num);
 
-	/* Sort them by serial number. */
+	/* Sort them by sequence number. */
 	sort_ops(hash, filename, op, num);
 
 	/* Create dependencies back to the last change, rather than
@@ -1604,10 +1589,8 @@ static void derive_dependencies(char *filename[],
 				prev = i;
 			} else if (prev >= 0)
 				add_dependency(hash, op, filename,
-					       hash[h].user[i].file,
-					       hash[h].user[i].op_num,
-					       hash[h].user[prev].file,
-					       hash[h].user[prev].op_num);
+					       &hash[h].user[i],
+					       &hash[h].user[prev]);
 		}
 	}
 
