@@ -157,10 +157,10 @@ find_keyword (register const char *str, register unsigned int len)
 #line 44 "keywords.gperf"
       {"tdb_firstkey", OP_TDB_FIRSTKEY, op_add_key,},
 #line 24 "keywords.gperf"
-      {"tdb_chainlock", OP_TDB_CHAINLOCK, op_add_key,},
+      {"tdb_chainlock", OP_TDB_CHAINLOCK, op_add_chainlock,},
       {""},
 #line 28 "keywords.gperf"
-      {"tdb_chainunlock", OP_TDB_CHAINUNLOCK, op_add_key,},
+      {"tdb_chainunlock", OP_TDB_CHAINUNLOCK, op_analyze_chainlock,},
 #line 45 "keywords.gperf"
       {"tdb_nextkey", OP_TDB_NEXTKEY, op_add_key_data,},
       {""},
@@ -171,12 +171,12 @@ find_keyword (register const char *str, register unsigned int len)
       {"tdb_chainlock_unmark", OP_TDB_CHAINLOCK_UNMARK, op_add_key,},
       {""},
 #line 25 "keywords.gperf"
-      {"tdb_chainlock_nonblock", OP_TDB_CHAINLOCK_NONBLOCK, op_add_key_ret,},
+      {"tdb_chainlock_nonblock", OP_TDB_CHAINLOCK_NONBLOCK, op_add_chainlock_ret,},
 #line 29 "keywords.gperf"
-      {"tdb_chainlock_read", OP_TDB_CHAINLOCK_READ, op_add_key,},
+      {"tdb_chainlock_read", OP_TDB_CHAINLOCK_READ, op_add_chainlock,},
       {""},
 #line 30 "keywords.gperf"
-      {"tdb_chainunlock_read", OP_TDB_CHAINUNLOCK_READ, op_add_key,}
+      {"tdb_chainunlock_read", OP_TDB_CHAINUNLOCK_READ, op_analyze_chainlock,}
     };
 
   if (len <= MAX_WORD_LENGTH && len >= MIN_WORD_LENGTH)
