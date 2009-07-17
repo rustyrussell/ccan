@@ -147,7 +147,8 @@ struct op {
 			TDB_DATA pre;
 			TDB_DATA post;
 		} append;
-		unsigned int group_len; /* transaction/traverse start */
+		/* transaction/traverse start/chainlock */
+		unsigned int group_len;
 	};
 };
 
@@ -320,6 +321,33 @@ static void op_add_transaction(const char *filename, struct op op[],
 	op[op_num].group_len = 0;
 }
 
+static void op_add_chainlock(const char *filename,
+			     struct op op[], unsigned int op_num, char *words[])
+{
+	if (words[2] == NULL || words[3])
+		fail(filename, op_num+1, "Expected just a key");
+
+	/* A chainlock key isn't a key in the normal sense; it doesn't
+	 * have to be in the db at all.  Also, we don't want to hash this op. */
+	op[op_num].data = make_tdb_data(op, filename, op_num+1, words[2]);
+	op[op_num].key = tdb_null;
+	op[op_num].group_len = 0;
+}
+
+static void op_add_chainlock_ret(const char *filename,
+				 struct op op[], unsigned int op_num,
+				 char *words[])
+{
+	if (!words[2] || !words[3] || !words[4] || words[5]
+	    || !streq(words[3], "="))
+		fail(filename, op_num+1, "Expected <key> = <ret>");
+	op[op_num].ret = atoi(words[4]);
+	op[op_num].data = make_tdb_data(op, filename, op_num+1, words[2]);
+	op[op_num].key = tdb_null;
+	op[op_num].group_len = 0;
+	total_keys++;
+}
+
 static int op_find_start(struct op op[], unsigned int op_num, enum op_type type)
 {
 	unsigned int i;
@@ -349,6 +377,36 @@ static void op_analyze_transaction(const char *filename,
 	op[start].group_len = op_num - start;
 
 	/* This rolls in nested transactions.  I think that's right. */
+	for (i = start; i <= op_num; i++)
+		op[i].group_start = start;
+}
+
+/* We treat chainlocks a lot like transactions, even though that's overkill */
+static void op_analyze_chainlock(const char *filename,
+				 struct op op[], unsigned int op_num,
+				 char *words[])
+{
+	unsigned int i, start;
+
+	if (words[2] == NULL || words[3])
+		fail(filename, op_num+1, "Expected just a key");
+
+	op[op_num].data = make_tdb_data(op, filename, op_num+1, words[2]);
+	op[op_num].key = tdb_null;
+	total_keys++;
+
+	start = op_find_start(op, op_num, OP_TDB_CHAINLOCK);
+	if (!start)
+		start = op_find_start(op, op_num, OP_TDB_CHAINLOCK_READ);
+	if (!start)
+		fail(filename, op_num+1, "no initial chainlock found");
+
+	/* FIXME: We'd have to do something clever to make this work
+	 * vs. deadlock. */
+	if (!key_eq(op[start].data, op[op_num].data))
+		fail(filename, op_num+1, "nested chainlock calls?");
+
+	op[start].group_len = op_num - start;
 	for (i = start; i <= op_num; i++)
 		op[i].group_start = start;
 }
@@ -913,17 +971,29 @@ static bool in_traverse(const struct op op[], unsigned int i)
 	return op[i].group_start && starts_traverse(&op[op[i].group_start]);
 }
 
+static bool starts_chainlock(const struct op *op)
+{
+	return op->op == OP_TDB_CHAINLOCK_READ || op->op == OP_TDB_CHAINLOCK;
+}
+
+static bool in_chainlock(const struct op op[], unsigned int i)
+{
+	return op[i].group_start && starts_chainlock(&op[op[i].group_start]);
+}
+
 /* What's the data after this op?  pre if nothing changed. */
 static const TDB_DATA *gives(const TDB_DATA *key, const TDB_DATA *pre,
 			     const struct op *op)
 {
-	if (starts_transaction(op)) {
+	if (starts_transaction(op) || starts_chainlock(op)) {
 		unsigned int i;
 
 		/* Cancelled transactions don't change anything. */
 		if (op[op->group_len].op == OP_TDB_TRANSACTION_CANCEL)
 			return pre;
-		assert(op[op->group_len].op == OP_TDB_TRANSACTION_COMMIT);
+		assert(op[op->group_len].op == OP_TDB_TRANSACTION_COMMIT
+		       || op[op->group_len].op == OP_TDB_CHAINUNLOCK_READ
+		       || op[op->group_len].op == OP_TDB_CHAINUNLOCK);
 
 		for (i = 1; i < op->group_len; i++) {
 			/* This skips nested transactions, too */
@@ -984,7 +1054,8 @@ static struct keyinfo *hash_ops(struct op *op[], unsigned int num_ops[],
 
 			/* If it's in a transaction, it's the transaction which
 			 * matters from an analysis POV. */
-			if (in_transaction(op[i], j)) {
+			if (in_transaction(op[i], j)
+			    || in_chainlock(op[i], j)) {
 				unsigned start = op[i][j].group_start;
 
 				/* Don't include twice. */
@@ -1011,7 +1082,7 @@ static bool satisfies(const TDB_DATA *key, const TDB_DATA *data,
 {
 	const TDB_DATA *need = NULL;
 
-	if (starts_transaction(op)) {
+	if (starts_transaction(op) || starts_chainlock(op)) {
 		unsigned int i;
 
 		/* Look through for an op in this transaction which
@@ -1240,9 +1311,11 @@ static void add_dependency(void *ctx,
 	 * traverse/transaction, it creates a dependency between the
 	 * two groups. */
 	if ((in_traverse(op[satisfies_file], satisfies_opnum)
-	     && op[needs_file][needs_opnum].group_start)
+	     && (starts_transaction(&op[needs_file][needs_opnum])
+		 || starts_traverse(&op[needs_file][needs_opnum])))
 	    || (in_traverse(op[needs_file], needs_opnum)
-		&& op[satisfies_file][satisfies_opnum].group_start)) {
+		&& (starts_transaction(&op[satisfies_file][satisfies_opnum])
+		    || starts_traverse(&op[satisfies_file][satisfies_opnum])))){
 		unsigned int sat;
 
 		/* We are satisfied by end of group. */
@@ -1270,8 +1343,10 @@ static void add_dependency(void *ctx,
 	}
 #endif
 
- 	/* If you depend on a transaction, you actually depend on it ending. */
- 	if (starts_transaction(&op[satisfies_file][satisfies_opnum])) {
+ 	/* If you depend on a transaction or chainlock, you actually
+	 * depend on it ending. */
+ 	if (starts_transaction(&op[satisfies_file][satisfies_opnum])
+	    || starts_chainlock(&op[satisfies_file][satisfies_opnum])) {
  		satisfies_opnum
  			+= op[satisfies_file][satisfies_opnum].group_len;
 #if DEBUG_DEPS
