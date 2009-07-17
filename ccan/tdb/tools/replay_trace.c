@@ -253,6 +253,16 @@ static void op_add_traverse(const char *filename,
 	op[op_num].key = tdb_null;
 }
 
+/* Full traverse info is useful for debugging, but changing it to
+ * "traversefn" without the data makes the traces *much* smaller! */
+static void op_add_traversefn(const char *filename,
+			    struct op op[], unsigned int op_num, char *words[])
+{
+	if (words[2])
+		fail(filename, op_num+1, "Expected no values");
+	op[op_num].key = tdb_null;
+}
+
 /* <serial> tdb_store <rec> <rec> <flag> = <ret> */
 static void op_add_store(const char *filename,
 			 struct op op[], unsigned int op_num, char *words[])
