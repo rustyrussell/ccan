@@ -962,6 +962,12 @@ static bool in_transaction(const struct op op[], unsigned int i)
 	return op[i].group_start && starts_transaction(&op[op[i].group_start]);
 }
 
+static bool successful_transaction(const struct op *op)
+{
+	return starts_transaction(op)
+		&& op[op->group_len].op == OP_TDB_TRANSACTION_COMMIT;
+}
+
 static bool starts_traverse(const struct op *op)
 {
 	return op->op == OP_TDB_TRAVERSE_START
@@ -1265,8 +1271,21 @@ static void sort_ops(struct keyinfo hash[], char *filename[], struct op *op[],
 			return a->op_num - b->op_num;
 
 		/* Otherwise, arrange by serial order. */
-		return op[a->file][a->op_num].serial
-			- op[b->file][b->op_num].serial;
+		if (op[a->file][a->op_num].serial !=
+		    op[b->file][b->op_num].serial)
+			return op[a->file][a->op_num].serial
+				- op[b->file][b->op_num].serial;
+
+		/* Cancelled transactions are assumed to happen first. */
+		if (starts_transaction(&op[a->file][a->op_num])
+		    && !successful_transaction(&op[a->file][a->op_num]))
+			return -1;
+		if (starts_transaction(&op[b->file][b->op_num])
+		    && !successful_transaction(&op[b->file][b->op_num]))
+			return 1;
+
+		/* No idea. */
+		return 0;
 	}
 
 	/* Now sort into serial order. */
