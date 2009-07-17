@@ -435,8 +435,10 @@ static void op_analyze_traverse(const char *filename,
 
 	op[start].group_len = op_num - start;
 
+	/* Don't roll in nested traverse/chainlock */
 	for (i = start; i <= op_num; i++)
-		op[i].group_start = start;
+		if (!op[i].group_start)
+			op[i].group_start = start;
 }
 
 /* Keep -Wmissing-declarations happy: */
