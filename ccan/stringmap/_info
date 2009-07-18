@@ -1,0 +1,66 @@
+#include <stdio.h>
+#include <string.h>
+#include "config.h"
+
+/**
+ * stringmap - Macros for mapping strings to things
+ *
+ * stringmap provides a generic string map via macros.
+ *
+ * Features which are sorely lacking in this version of stringmap are deletion and traversal.
+ *
+ * Example:
+ *
+ * #include <ccan/stringmap/stringmap.h>                                                                                                                                        
+ *
+ * static const char *get_string(void) {                                                                                                                                        
+ *      static char buffer[4096];                                                                                                                                               
+ *      char *tail;                                                                                                                                                             
+ *      if (!fgets(buffer, sizeof(buffer), stdin))                                                                                                                              
+ *              return NULL;                                                                                                                                                    
+ *      tail = strchr(buffer, 0);                                                                                                                                               
+ *      if (tail>buffer && tail[-1]=='\n')                                                                                                                                      
+ *              *--tail = 0;                                                                                                                                                    
+ *      if (!*buffer)                                                                                                                                                           
+ *              return NULL;                                                                                                                                                    
+ *      return buffer;                                                                                                                                                          
+ * }                                                                                                                                                                            
+ *
+ * int main(void) {                                                                                                                                                             
+ *      stringmap(int) map = stringmap_new(NULL);
+ *      const char *string;
+ *
+ *      while ((string = get_string()) != NULL) {
+ *              int *count = stringmap_lookup(map, string);
+ *
+ *              if (!count) {
+ *                      printf("\"%s\" is new\n", string);
+ *                      count = stringmap_enter(map, string);
+ *              }
+ *
+ *              (*count) ++;
+ *
+ *              printf("\"%s\" has been entered %d times\n", string, *count);
+ *      }
+ *
+ *      stringmap_free(map);
+ *
+ *    return 0;
+ * }
+ *
+ *	Authors: Joey Adams, Anders Magnusson
+ *	License: BSD
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/block_pool\n");
+		return 0;
+	}
+
+	return 1;
+}

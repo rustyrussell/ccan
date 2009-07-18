@@ -1,0 +1,51 @@
+#include <stdio.h>
+#include <string.h>
+#include "config.h"
+
+/**
+ * block_pool - An efficient allocator for blocks that don't need to be
+ * resized or freed.
+ *
+ * block_pool allocates blocks by packing them into buffers, making the
+ * overhead per block virtually zero.  Because of this, you cannot resize or
+ * free individual blocks, but you can free the entire block_pool.
+ *
+ * The rationale behind block_pool is that talloc uses a lot of bytes per
+ * block (48 on 32-bit, 80 on 64-bit).  Nevertheless, talloc is an excellent
+ * tool for C programmers of all ages.  Because a block_pool is a talloc
+ * context, it can be useful in talloc-based applications where many small
+ * blocks need to be allocated.
+ *
+ * Example:
+ *
+ * #include <ccan/block_pool/block_pool.h>
+ *
+ * int main(void) {
+ *      struct block_pool *bp = block_pool_new(NULL);
+ *
+ *      void *buffer = block_pool_alloc(bp, 4096);
+ *      char *string = block_pool_strdup(bp, "A string");
+ *
+ *      int array[] = {0,1,1,2,3,5,8,13,21,34};
+ *      int *array_copy = block_pool_memdup(bp, array, sizeof(array));
+ *
+ *      block_pool_free(bp);
+ *    return 0;
+ * }
+ *
+ *	Author: Joey Adams
+ *	License: BSD
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/talloc\n");
+		return 0;
+	}
+
+	return 1;
+}

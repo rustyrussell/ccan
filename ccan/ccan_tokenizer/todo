@@ -1,0 +1,177 @@
+Write test for empty_char_constant
+
+defined cannot be used as a macro name
+<strike>Add "defined" and only accept it in appropriate circumstances</strike>
+
+Update that simple tokenizer compulsory test so things will compile
+
+Handle cases like escaped question marks and pound symbols that I don't understand yet.
+
+(done) Fix #include <stdio.h> to read include directive correctly
+
+txt/orig state of affairs:
+
+The problem is that there are two ways to interpret line,col:
+	With respect to txt
+	With respect to orig
+
+This isn't a problem when txt and orig point to the same character, as in:
+
+int in\
+dex
+int \
+index /*Here, the backslash break should be gobbled up by the space identifier*/
+
+line,col has no ambiguity as to where it should point.  However, when they point to different characters (i.e. at the beginning of a line):
+
+\
+int index
+
+line,col could either point to orig or to the first real character.  Thus, we will do the latter.
+
+Moreover, will a newline followed by backslash breaks generate a token that gobbles up said breaks?  I believe it will, but no need to call this mandatory.
+
+Thus, on a lookup with a txt pointer, the line/col/orig should match the real character and not preceding backslash breaks.
+
+
+I've been assuming that every token starts with its first character, neglecting the case where a line starts with backslash breaks.  The question is, given the txt pointer to the first character, where should the derived orig land?
+
+Currently, the orig lands after the beginning backslash breaks, when instead it should probably land before them.
+
+Here's what the tokenizer's text anchoring needs:
+	Broken/unbroken text pointer -> line/col
+	Unbroken contents per token to identify identifier text
+	Original contents per token to rebuild the document
+	Ability to change "original contents" so the document will be saved with modifications
+	Ability to insert new tokens
+
+Solution:
+	New tokens will typically have identical txt and orig, yea even the same pointer.
+	txt/txt_size for unbroken contents, orig/orig_size for original
+	modify orig to change the document
+	txt identifies identifier text
+	Line lookup tables are used to resolve txt/orig pointers; other pointers can't be resolved in the same fashion and may require traversing backward through the list.
+
+What this means:
+	Token txt/txt_size, orig/orig_size, orig_lines, txt_lines, and tok_point_lookup are all still correct.
+	Token line,col will be removed
+	
+Other improvements to do:
+	Sanity check the point lookups like crazy
+	Remove the array() structures in token_list, as these are supposed to be read-only
+
+Make sure tok_point_lookup returns correct values for every single pointer possible, particularly those in orig that are on backslash-breaks
+
+Convert the tok_message_queue into an array of messages bound to tokens.
+
+Ask Rusty about the trailing newline in this case:
+
+/* Blah
+ * 
+ * blah
+ */
+
+Here, rather than the trailing space being blank, it is "blank" from the comment perspective.
+May require deeper analysis.
+
+Todos from ccan_tokenizer.h
+/*
+Assumption:  Every token fits in one and exactly one line
+Counterexamples:
+	Backslash-broken lines
+	Multiline comments
+
+Checks to implement in the tokenizer:
+
+is the $ character used in an identifier (some configurations of GCC allow this)
+are there potentially ambiguous sequences used in a string literal (e.g. "\0000")
+Are there stray characters?  (e.g. '\0', '@', '\b')
+Are there trailing spaces at the end of lines (unless said spaces consume the entire line)?
+	Are there trailing spaces after a backslash-broken line?
+
+
+Fixes todo:
+
+backslash-newline sequence should register as an empty character, and the tokenizer's line value should be incremented accordingly.
+*/
+
+Lex angle bracket strings in #include
+
+Check the rules in the documentation
+
+Examine the message queue as part of testing the tokenizer:
+	Make sure there are no bug messages
+	Make sure files compile with no warnings
+For the tokenizer sanity check, make sure integers and floats have valid suffixes respectively
+	(e.g. no TOK_F for an integer, no TOK_ULL for a floating)
+
+Update the scan_number sanity checks
+(done) Move scan_number et al. to a separate C file
+
+Test:
+	Overflow and underflow floats
+	0x.p0
+	(done) 0755f //octal 0755 with invalid suffix
+	(done) 0755e1 //floating 7550
+
+Figure out how keywords will be handled.
+	Preprocessor directives are <strike>case-insensitive</strike> actually case-sensitive (except __VA_ARGS__)
+	All C keywords are case sensitive
+	__VA_ARGS__ should be read as an identifier unless it's in the expansion of a macro.  Otherwise, GCC generates a warning.
+		We are in the expansion of a macro after <startline> <space> # <space> 
+	Don't forget about __attribute__
+	Except for __VA_ARGS__, all preprocessor keywords are proceeded by <startline> <space> # <space>
+
+Solution:
+	All the words themselves will go into one opkw dictionary, and for both type and opkw, no distinction will be made between preprocessor and normal keywords.
+	Instead, int type will become short type; unsigned short cpp:1;
+
+Merge
+Commit ccan_tokenizer to the ccan repo
+Introduce ccan_tokenizer to ccanlint
+
+Write testcases for scanning all available operators
+Support integer and floating point suffices (e.g. 500UL, 0.5f)
+Examine the message queue after tokenizing
+Make sure single-character operators have an opkw < 128
+Make sure c_dictionary has no duplicate entries
+Write verifiers for other types than TOK_WHITE
+
+What's been done:
+
+Operator table has been organized
+Merged Rusty's changes
+Fixed if -> while in finalize
+Fixed a couple mistakes in run-simple-token.c testcases themselves
+	Expected orig/orig_size sizes weren't right
+Made token_list_sanity_check a public function and used it throughout run-simple-token.c
+Tests succeed and pass valgrind
+
+Lines/columns of every token are recorded
+
+(done) Fix "0\nstatic"
+(done) Write tests to make sure backslash-broken lines have correct token locations.
+(done) Correctly handle backslash-broken lines
+	One plan:  Separate the scanning code from the reading code.  Scanning sends valid ranges to reading, and reading fills valid tokens for the tokenizer/scanner to properly add
+	Another plan:  Un-break backslash-broken lines into another copy of the input.  Create an array of the positions of each real line break so 
+Annotate message queue messages with current token
+
+Conversion to make:
+	From:
+		Position in unbroken text
+	To:
+		Real line number
+		Real offset from start of line
+
+Thus, we want an array of real line start locations wrt the unbroken text
+
+Here is a bro\
+ken line.  Here is a
+real line.
+
+<LINE>Here is a bro<LINE>ken line.  Here is a
+<LINE>real line.
+
+If we know the position of the token text wrt the unbroken text, we can look up the real line number and offset using only the array of real line start positions within the unbroken text.
+
+Because all we need is the orig and orig_size with respect to the unbroken text to orient 
