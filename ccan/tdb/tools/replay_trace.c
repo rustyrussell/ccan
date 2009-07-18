@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <assert.h>
+#include <fcntl.h>
 
 #define STRINGIFY2(x) #x
 #define STRINGIFY(x) STRINGIFY2(x)
@@ -31,6 +32,7 @@ struct pipe {
 	int fd[2];
 };
 static struct pipe *pipes;
+static int backoff_fd = -1;
 
 static void __attribute__((noreturn)) fail(const char *filename,
 					   unsigned int line,
@@ -119,6 +121,7 @@ enum op_type {
 	OP_TDB_TRAVERSE_START,
 	OP_TDB_TRAVERSE_END,
 	OP_TDB_TRAVERSE,
+	OP_TDB_TRAVERSE_END_EARLY,
 	OP_TDB_FIRSTKEY,
 	OP_TDB_NEXTKEY,
 	OP_TDB_FETCH,
@@ -515,8 +518,12 @@ static bool do_pre(struct tdb_context *tdb,
 		while (read(pre_fd, &dep, sizeof(dep)) != sizeof(dep)) {
 			if (errno == EINTR) {
 				if (backoff) {
+					struct op_desc desc = { file,i };
 					warnx("%s:%u:avoiding deadlock",
 					      filename[file], i+1);
+					if (write(backoff_fd, &desc,
+						  sizeof(desc)) != sizeof(desc))
+						err(1, "writing backoff_fd");
 					return false;
 				}
 				dump_pre(filename, op, file, i);
@@ -607,7 +614,7 @@ static int nontrivial_traverse(struct tdb_context *tdb,
 			   tinfo->file, tinfo->i+1, tinfo->start + trav_len,
 			   avoid_deadlock);
 
-	/* We backed off, or we hit OP_TDB_TRAVERSE_END. */
+	/* We backed off, or we hit OP_TDB_TRAVERSE_END/EARLY. */
 	if (tinfo->op[tinfo->file][tinfo->i].type != OP_TDB_TRAVERSE)
 		return 1;
 
@@ -632,7 +639,8 @@ static unsigned op_traverse(struct tdb_context *tdb,
 	 * original traverse went A (delete A), B, we might do B
 	 * (delete A).  So if we have ops left over, we do it now. */
 	while (tinfo.i != start + op[file][start].group_len) {
-		if (op[file][tinfo.i].type == OP_TDB_TRAVERSE)
+		if (op[file][tinfo.i].type == OP_TDB_TRAVERSE
+		    || op[file][tinfo.i].type == OP_TDB_TRAVERSE_END_EARLY)
 			tinfo.i++;
 		else
 			tinfo.i = run_ops(tdb, pre_fd, filename, op, file,
@@ -768,6 +776,7 @@ unsigned run_ops(struct tdb_context *tdb,
 					tdb_traverse, op, i);
 			break;
 		case OP_TDB_TRAVERSE:
+		case OP_TDB_TRAVERSE_END_EARLY:
 			/* Terminate: we're in a traverse, and we've
 			 * done our ops. */
 			return i;
@@ -1552,6 +1561,52 @@ static void make_traverse_depends(char *filename[],
 	}
 	talloc_free(desc);
 }
+
+static void set_nonblock(int fd)
+{
+	if (fcntl(fd, F_SETFL, fcntl(fd, F_GETFL)|O_NONBLOCK) != 0)
+		err(1, "Setting pipe nonblocking");
+}
+
+static bool handle_backoff(struct op *op[], int fd)
+{
+	struct op_desc desc;
+	bool handled = false;
+
+	/* Sloppy coding: we assume PIPEBUF never fills. */
+	while (read(fd, &desc, sizeof(desc)) != -1) {
+		unsigned int i;
+		handled = true;
+		for (i = desc.op_num; i > 0; i--) {
+			if (op[desc.file][i].type == OP_TDB_TRAVERSE) {
+				/* We insert a fake end here. */
+				op[desc.file][i].type
+					= OP_TDB_TRAVERSE_END_EARLY;
+				break;
+			} else if (starts_traverse(&op[desc.file][i])) {
+				unsigned int start = i;
+				struct op tmp = op[desc.file][i];
+				/* Move the ops outside traverse. */
+				memmove(&op[desc.file][i],
+					&op[desc.file][i+1],
+					(desc.op_num-i-1) * sizeof(op[0][0]));
+				op[desc.file][desc.op_num] = tmp;
+				while (op[desc.file][i].group_start == start) {
+					op[desc.file][i++].group_start
+						= desc.op_num;
+				}
+				break;
+			}
+		}
+	}
+	return handled;
+}
+
+#else /* !TRAVERSALS_TAKE_TRANSACTION_LOCK */
+static bool handle_backoff(struct op *op[], int fd)
+{
+	return false;
+}
 #endif
 
 static void derive_dependencies(char *filename[],
@@ -1601,55 +1656,21 @@ static void derive_dependencies(char *filename[],
 	optimize_dependencies(op, num_ops, num);
 }
 
-int main(int argc, char *argv[])
+static struct timeval run_test(char *argv[],
+			       unsigned int num_ops[],
+			       unsigned int hashsize[],
+			       unsigned int tdb_flags[],
+			       unsigned int open_flags[],
+			       struct op *op[],
+			       int fds[2])
 {
-	struct timeval start, end;
-	unsigned int i, num_ops[argc], hashsize[argc], tdb_flags[argc], open_flags[argc];
-	struct op *op[argc];
-	int fds[2];
-	char c;
+	unsigned int i;
+	struct timeval start, end, diff;
 	bool ok = true;
 
-	if (argc < 3)
-		errx(1, "Usage: %s <tdbfile> <tracefile>...", argv[0]);
-
-	pipes = talloc_array(NULL, struct pipe, argc - 2);
-	for (i = 0; i < argc - 2; i++) {
-		printf("Loading tracefile %s...", argv[2+i]);
-		fflush(stdout);
-		op[i] = load_tracefile(argv[2+i], &num_ops[i], &hashsize[i],
-				       &tdb_flags[i], &open_flags[i]);
-		if (pipe(pipes[i].fd) != 0)
-			err(1, "creating pipe");
-		printf("done\n");
-	}
-
-	printf("Calculating inter-dependencies...");
-	fflush(stdout);
-	derive_dependencies(argv+2, op, num_ops, i);
-	printf("done\n");
-
-	/* Don't fork for single arg case: simple debugging. */
-	if (argc == 3) {
+	for (i = 0; argv[i+2]; i++) {
 		struct tdb_context *tdb;
-		tdb = tdb_open_ex(argv[1], hashsize[0], tdb_flags[0]|TDB_NOSYNC,
-				  open_flags[0], 0600, NULL, hash_key);
-		printf("Single threaded run...");
-		fflush(stdout);
-
-		run_ops(tdb, pipes[0].fd[0], argv+2, op, 0, 1, num_ops[0],
-			false);
-		check_deps(argv[2], op[0], num_ops[0]);
-
-		printf("done\n");
-		exit(0);
-	}
-
-	if (pipe(fds) != 0)
-		err(1, "creating pipe");
-
-	for (i = 0; i < argc - 2; i++) {
-		struct tdb_context *tdb;
+		char c;
 
 		switch (fork()) {
 		case -1:
@@ -1684,7 +1705,7 @@ int main(int argc, char *argv[])
 	if (write(fds[1], hashsize, i) != i)
 		err(1, "Writing to wakeup pipe");
 
-	for (i = 0; i < argc - 2; i++) {
+	for (i = 0; argv[i + 2]; i++) {
 		int status;
 		wait(&status);
 		if (!WIFEXITED(status)) {
@@ -1700,9 +1721,75 @@ int main(int argc, char *argv[])
 	gettimeofday(&end, NULL);
 	printf("done\n");
 
-	end.tv_sec -= start.tv_sec;
+	if (end.tv_usec < start.tv_usec) {
+		end.tv_usec += 1000000;
+		end.tv_sec--;
+	}
+	diff.tv_sec = end.tv_sec - start.tv_sec;
+	diff.tv_usec = end.tv_usec - start.tv_usec;
+	return diff;
+}
+
+int main(int argc, char *argv[])
+{
+	struct timeval diff;
+	unsigned int i, num_ops[argc], hashsize[argc], tdb_flags[argc], open_flags[argc];
+	struct op *op[argc];
+	int fds[2];
+
+	if (argc < 3)
+		errx(1, "Usage: %s <tdbfile> <tracefile>...", argv[0]);
+
+	pipes = talloc_array(NULL, struct pipe, argc - 1);
+	for (i = 0; i < argc - 2; i++) {
+		printf("Loading tracefile %s...", argv[2+i]);
+		fflush(stdout);
+		op[i] = load_tracefile(argv[2+i], &num_ops[i], &hashsize[i],
+				       &tdb_flags[i], &open_flags[i]);
+		if (pipe(pipes[i].fd) != 0)
+			err(1, "creating pipe");
+		printf("done\n");
+	}
+
+	printf("Calculating inter-dependencies...");
+	fflush(stdout);
+	derive_dependencies(argv+2, op, num_ops, i);
+	printf("done\n");
+
+	/* Don't fork for single arg case: simple debugging. */
+	if (argc == 3) {
+		struct tdb_context *tdb;
+		tdb = tdb_open_ex(argv[1], hashsize[0], tdb_flags[0]|TDB_NOSYNC,
+				  open_flags[0], 0600, NULL, hash_key);
+		printf("Single threaded run...");
+		fflush(stdout);
+
+		run_ops(tdb, pipes[0].fd[0], argv+2, op, 0, 1, num_ops[0],
+			false);
+		check_deps(argv[2], op[0], num_ops[0]);
+
+		printf("done\n");
+		exit(0);
+	}
+
+	if (pipe(fds) != 0)
+		err(1, "creating pipe");
+
+#if TRAVERSALS_TAKE_TRANSACTION_LOCK
+	if (pipe(pipes[argc-2].fd) != 0)
+		err(1, "creating pipe");
+	backoff_fd = pipes[argc-2].fd[1];
+	set_nonblock(pipes[argc-2].fd[1]);
+	set_nonblock(pipes[argc-2].fd[0]);
+#endif
+
+	do {
+		diff = run_test(argv, num_ops, hashsize, tdb_flags, open_flags,
+				op, fds);
+	} while (handle_backoff(op, pipes[argc-2].fd[0]));
+
 	printf("Time replaying: %lu usec\n",
-	       end.tv_sec * 1000000UL + (end.tv_usec - start.tv_usec));
+	       diff.tv_sec * 1000000UL + diff.tv_usec);
 	
 	exit(0);
 }
