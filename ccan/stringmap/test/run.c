@@ -6,6 +6,12 @@
 static void test_trivial(void) {
 	stringmap(int) map = stringmap_new(NULL);
 	
+	ok1(stringmap_lookup(map, "") == NULL);
+	*stringmap_enter(map, "") = -1;
+	
+	ok1(stringmap_lookup(map, "0") == NULL);
+	*stringmap_enter(map, "0") = 0;
+	
 	ok1(stringmap_lookup(map, "one") == NULL);
 	*stringmap_enter(map, "one") = 1;
 	
@@ -22,8 +28,10 @@ static void test_trivial(void) {
 	ok1(*stringmap_lookup(map, "one") == 1);
 	ok1(*stringmap_lookup(map, "four") == 4);
 	ok1(*stringmap_lookup(map, "two") == 2);
+	ok1(*stringmap_lookup(map, "") == -1);
+	ok1(*stringmap_lookup(map, "0") == 0);
 	
-	ok1(map.t.count == 4);
+	ok1(map.t.count == 6);
 	
 	stringmap_free(map);
 }
@@ -45,35 +53,52 @@ static void scramble(void *base, size_t nmemb, size_t size) {
 
 //#define RANDOM_STRING_READABLE
 
-static char *random_string(struct block_pool *bp) {
-	size_t len = random() % 100;
-	char *str = block_pool_alloc(bp, len+1);
+static char *random_string(struct block_pool *bp, size_t *len_out) {
+	#ifndef RANDOM_STRING_READABLE
+	size_t len = random()%5 ? random()%10 : random()%1000;
+	#else
+	size_t len = random() % 10;
+	#endif
+	char *str = block_pool_alloc(bp, len);
 	char *i;
+	
+	*len_out = len;
 	
 	for (i=str; len--; i++) {
 		#ifndef RANDOM_STRING_READABLE
 		char c = random();
-		*i = c ? c : ' ';
+		*i = c;
 		#else
-		//only generate characters [32,126]
-		char c = random()%95 + 32;
+		//only generate characters a-z
+		char c = random()%26 + 'a';
 		*i = c;
 		#endif
 	}
-	*i = 0;
 	
 	return str;
 }
 
 struct test_entry {
+	//note: struct layout needs to match *stringmap(char*).last
 	const char *str;
+	size_t len;
+	
 	char *value;
 		/* value is not a string, but a pointer to char marking that
 		   this key has been entered already. */
 };
 
-static int by_str(const void *ap, const void *bp) {
-	return strcmp(((struct test_entry*)ap)->str, ((struct test_entry*)bp)->str);
+static int tecmp(const struct test_entry *a, const struct test_entry *b) {
+	if (a->len < b->len)
+		return -1;
+	else if (a->len > b->len)
+		return 1;
+	else
+		return memcmp(a->str, b->str, a->len);
+}
+
+static int by_str(const void *a, const void *b) {
+	return tecmp(a, b);
 }
 
 static void cull_duplicates(struct test_entry *entries, size_t *count) {
@@ -83,10 +108,10 @@ static void cull_duplicates(struct test_entry *entries, size_t *count) {
 	
 	for (i=entries, o=entries; i<e;) {
 		//skip repeated strings
-		if (i>entries) {
-			const char *last = i[-1].str;
-			if (!strcmp(last, i->str)) {
-				do i++; while(i<e && !strcmp(last, i->str));
+		if (o>entries) {
+			struct test_entry *last = &o[-1];
+			if (!tecmp(last, i)) {
+				do i++; while(i<e && !tecmp(last, i));
 				continue;
 			}
 		}
@@ -112,7 +137,8 @@ static int test_stringmap(size_t count, FILE *out) {
 			print("error: ", __VA_ARGS__); \
 			goto fail; \
 		} while(0)
-	#define debug(...) print("debug: ", __VA_ARGS__)
+	//#define debug(...) print("debug: ", __VA_ARGS__)
+	#define debug(...) do {} while(0)
 	#define msg(...) print("info: ", __VA_ARGS__)
 	
 	struct block_pool *bp = block_pool_new(NULL);
@@ -127,11 +153,13 @@ static int test_stringmap(size_t count, FILE *out) {
 	msg("Generating %zu test entries...", count);
 	
 	for (i=entries; i<e; value++) {
-		char *str = random_string(bp);
+		size_t len;
+		char *str = random_string(bp, &len);
 		size_t same_count = (random()%5 ? random()%3 : random()%10) + 1;
 		
 		for (;same_count-- && i<e; i++) {
 			i->str = str;
+			i->len = len;
 			i->value = value;
 		}
 	}
@@ -147,24 +175,28 @@ static int test_stringmap(size_t count, FILE *out) {
 		
 		debug("Looking up %s", i->str);
 		
-		node = stringmap_lookup(map, i->str);
+		node = stringmap_lookup_n(map, i->str, i->len);
 		
 		if (!node) {
 			if (*i->value)
 				err("Previously inserted entry not found");
 			
-			debug("Not found; entering");
+			debug("Not found; entering %s", i->str);
 			
-			node = stringmap_enter(map, i->str);
-			if (!node || strcmp(i->str, map.last->str))
+			node = stringmap_enter_n(map, i->str, i->len);
+			if (!node || tecmp(i, (void*)map.last))
 				err("Node not properly entered");
+			if (map.last->str[map.last->len])
+				err("Entered string not zero-terminated");
 			*node = i->value;
 			*i->value = 1; //mark that the entry is entered
 			
 			unique_count++;
 		} else {
-			if (strcmp(i->str, map.last->str))
+			if (tecmp(i, (void*)map.last))
 				err("lookup returned incorrect string");
+			if (map.last->str[map.last->len])
+				err("Looked-up string not zero-terminated");
 			if (i->value != *node)
 				err("lookup returned incorrect value");
 			if (!*i->value)
@@ -175,14 +207,16 @@ static int test_stringmap(size_t count, FILE *out) {
 	if (map.t.count != unique_count)
 		err("Map has incorrect count");
 	
-	printf("stringmap test passed after %zu inserts, %zu lookups (%zu total operations)\n", unique_count, (i-entries)-unique_count, i-entries);
+	printf("stringmap test passed after %zu inserts, %zu lookups (%zu total operations)\n",
+		unique_count, (i-entries)-unique_count, i-entries);
 	
 	block_pool_free(bp);
 	stringmap_free(map);
 	return 1;
 
 fail:
-	printf("stringmap test failed after %zu inserts, %zu lookups (%zu total operations)\n", unique_count, (i-entries)-unique_count, i-entries);
+	printf("stringmap test failed after %zu inserts, %zu lookups (%zu total operations)\n",
+		unique_count, (i-entries)-unique_count, i-entries);
 	
 	block_pool_free(bp);
 	stringmap_free(map);
@@ -196,10 +230,10 @@ fail:
 
 int main(void)
 {
-	plan_tests(10);
+	plan_tests(14);
 	
 	test_trivial();
-	ok1(test_stringmap(10000, NULL));
+	ok1(test_stringmap(10000, stdout));
 	
 	return exit_status();
 }

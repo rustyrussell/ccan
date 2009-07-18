@@ -5,7 +5,8 @@
 /**
  * stringmap - Macros for mapping strings to things
  *
- * stringmap provides a generic string map via macros.
+ * stringmap provides a generic string map via macros.  It also supports byte
+ * strings with null characters.
  *
  * Features which are sorely lacking in this version of stringmap are deletion and traversal.
  *

@@ -32,7 +32,7 @@
 #include <ccan/block_pool/block_pool.h>
 #include <stdint.h>
 
-#define stringmap(theType) struct {struct stringmap t; struct {char *str; theType value;} *last;}
+#define stringmap(theType) struct {struct stringmap t; struct {char *str; size_t len; theType value;} *last;}
 	//the 'last' pointer here is used as a hacky typeof() alternative
 
 #define stringmap_new(ctx) {{0,0,(struct block_pool*)(ctx)},0}
@@ -50,14 +50,19 @@
 #define stringmap_lookup(sm, key) stringmap_le(sm, key, 0)
 #define stringmap_enter(sm, key) stringmap_le(sm, key, 1)
 
+/* Variants of lookup and enter that let you specify a length.  Note that byte
+   strings may have null characters in them, and it won't affect the
+	algorithm.  Many lives were lost to make this possible. */
+#define stringmap_lookup_n(sm, key, len) stringmap_le_n(sm, key, len, 0)
+#define stringmap_enter_n(sm, key, len) stringmap_le_n(sm, key, len, 1)
+
+#define stringmap_le(sm, key, enterf) stringmap_le_n(sm, key, (size_t)-1, enterf)
+
 //this macro sets sm.last so it can exploit its type
-#define stringmap_le(sm, key, enterf) ((((sm).last) = stringmap_lookup_real(&(sm).t, key, enterf, sizeof(*(sm).last))) ? &(sm).last->value : NULL)
+#define stringmap_le_n(sm, key, len, enterf) ((((sm).last) = stringmap_lookup_real(&(sm).t, key, len, enterf, sizeof(*(sm).last))) ? &(sm).last->value : NULL)
 
 
-struct stringmap_node {
-	uint32_t bitno;
-	struct stringmap_node *lr[2];
-};
+struct stringmap_node;
 
 struct stringmap {
 	struct stringmap_node *root;
@@ -66,6 +71,6 @@ struct stringmap {
 	//hack: 'bp' holds talloc ctx when 'root' is NULL
 };
 
-void *stringmap_lookup_real(struct stringmap *t, const char *key, int enterf, size_t T_size);
+void *stringmap_lookup_real(struct stringmap *t, const char *key, size_t len, int enterf, size_t T_size);
 
 #endif
