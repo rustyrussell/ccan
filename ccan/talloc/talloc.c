@@ -819,12 +819,12 @@ void *talloc_named_const(const void *context, size_t size, const char *name)
    will not be freed if the ref_count is > 1 or the destructor (if
    any) returns non-zero
 */
-int talloc_free(void *ptr)
+int talloc_free(const void *ptr)
 {
 	int saved_errno = errno, ret;
 
 	lock(ptr);
-	ret = _talloc_free(ptr);
+	ret = _talloc_free(discard_const_p(void, ptr));
 	unlock();
 	if (ret == 0)
 		errno = saved_errno;

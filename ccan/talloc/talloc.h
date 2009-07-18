@@ -119,7 +119,7 @@
  * See Also:
  *	talloc_set_destructor, talloc_unlink
  */
-int talloc_free(void *ptr);
+int talloc_free(const void *ptr);
 
 /**
  * talloc_set_destructor: set a destructor for when this pointer is freed
