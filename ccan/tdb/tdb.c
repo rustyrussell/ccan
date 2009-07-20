@@ -874,7 +874,7 @@ static void tdb_trace_end_ret(struct tdb_context *tdb, int ret)
 
 static void tdb_trace_record(struct tdb_context *tdb, TDB_DATA rec)
 {
-	char msg[20];
+	char msg[20 + rec.dsize*2], *p;
 	unsigned int i;
 
 	/* We differentiate zero-length records from non-existent ones. */
@@ -882,12 +882,13 @@ static void tdb_trace_record(struct tdb_context *tdb, TDB_DATA rec)
 		tdb_trace_write(tdb, " NULL");
 		return;
 	}
-	sprintf(msg, " %zu:", rec.dsize);
+
+	p = msg;
+	p += sprintf(p, " %zu:", rec.dsize);
+	for (i = 0; i < rec.dsize; i++)
+		p += sprintf(p, "%02x", rec.dptr[i]);
+
 	tdb_trace_write(tdb, msg);
-	for (i = 0; i < rec.dsize; i++) {
-		sprintf(msg, "%02x", rec.dptr[i]);
-		tdb_trace_write(tdb, msg);
-	}
 }
 
 void tdb_trace(struct tdb_context *tdb, const char *op)
