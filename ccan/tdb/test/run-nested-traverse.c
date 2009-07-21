@@ -12,6 +12,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <err.h>
+#include "external-transaction.h"
+
+static int agent;
 
 static bool correct_key(TDB_DATA key)
 {
@@ -38,11 +41,11 @@ static int traverse1(struct tdb_context *tdb, TDB_DATA key, TDB_DATA data,
 {
 	ok1(correct_key(key));
 	ok1(correct_data(data));
-	ok1(tdb->have_transaction_lock);
+	ok1(!external_agent_transaction(agent, tdb_name(tdb)));
 	tdb_traverse(tdb, traverse2, NULL);
 
 	/* That should *not* release the transaction lock! */
-	ok1(tdb->have_transaction_lock);
+	ok1(!external_agent_transaction(agent, tdb_name(tdb)));
 	return 0;
 }
 
@@ -51,12 +54,17 @@ int main(int argc, char *argv[])
 	struct tdb_context *tdb;
 	TDB_DATA key, data;
 
-	plan_tests(14);
-	tdb = tdb_open("/tmp/test.tdb", 1024, TDB_CLEAR_IF_FIRST,
+	plan_tests(15);
+	agent = prepare_external_agent();
+	if (agent < 0)
+		err(1, "preparing agent");
+
+	tdb = tdb_open("/tmp/test3.tdb", 1024, TDB_CLEAR_IF_FIRST,
 		       O_CREAT|O_TRUNC|O_RDWR, 0600);
 	ok1(tdb);
 
-	/* Tickle bug on appending zero length buffer to zero length buffer. */
+	ok1(external_agent_transaction(agent, tdb_name(tdb)));
+
 	key.dsize = strlen("hi");
 	key.dptr = (void *)"hi";
 	data.dptr = (void *)"world";

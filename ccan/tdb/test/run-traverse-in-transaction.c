@@ -12,6 +12,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <err.h>
+#include "external-transaction.h"
+
+static int agent;
 
 static bool correct_key(TDB_DATA key)
 {
@@ -38,12 +41,15 @@ int main(int argc, char *argv[])
 	struct tdb_context *tdb;
 	TDB_DATA key, data;
 
-	plan_tests(12);
-	tdb = tdb_open("/tmp/test.tdb", 1024, TDB_CLEAR_IF_FIRST,
+	plan_tests(13);
+	agent = prepare_external_agent();
+	if (agent < 0)
+		err(1, "preparing agent");
+
+	tdb = tdb_open("/tmp/test2.tdb", 1024, TDB_CLEAR_IF_FIRST,
 		       O_CREAT|O_TRUNC|O_RDWR, 0600);
 	ok1(tdb);
 
-	/* Tickle bug on appending zero length buffer to zero length buffer. */
 	key.dsize = strlen("hi");
 	key.dptr = (void *)"hi";
 	data.dptr = (void *)"world";
@@ -51,18 +57,21 @@ int main(int argc, char *argv[])
 
 	ok1(tdb_store(tdb, key, data, TDB_INSERT) == 0);
 
+	ok1(external_agent_transaction(agent, tdb_name(tdb)));
+
 	ok1(tdb_transaction_start(tdb) == 0);
-	ok(tdb->have_transaction_lock, "Transaction lock in transaction");
+	ok1(!external_agent_transaction(agent, tdb_name(tdb)));
 	tdb_traverse(tdb, traverse, NULL);
 
 	/* That should *not* release the transaction lock! */
-	ok(tdb->have_transaction_lock, "Transaction lock after traverse");
+	ok1(!external_agent_transaction(agent, tdb_name(tdb)));
 	tdb_traverse_read(tdb, traverse, NULL);
 
 	/* That should *not* release the transaction lock! */
-	ok(tdb->have_transaction_lock, "Transaction lock after traverse_read");
+	ok1(!external_agent_transaction(agent, tdb_name(tdb)));
 	ok1(tdb_transaction_commit(tdb) == 0);
-	ok(!tdb->have_transaction_lock, "Transaction unlock");
+	/* Now we should be fine. */
+	ok1(external_agent_transaction(agent, tdb_name(tdb)));
 
 	tdb_close(tdb);
 
