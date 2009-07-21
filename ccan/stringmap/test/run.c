@@ -88,13 +88,21 @@ struct test_entry {
 		   this key has been entered already. */
 };
 
-static int tecmp(const struct test_entry *a, const struct test_entry *b) {
-	if (a->len < b->len)
-		return -1;
-	else if (a->len > b->len)
-		return 1;
-	else
-		return memcmp(a->str, b->str, a->len);
+static int tecmp(const struct test_entry *ap, const struct test_entry *bp) {
+	const unsigned char *a = (unsigned char*)ap->str, *ae = a+ap->len;
+	const unsigned char *b = (unsigned char*)bp->str, *be = b+bp->len;
+	
+	for (;;a++, b++) {
+		if (a >= ae) {
+			if (b >= be)
+				return 0; //strings are the same
+			return -1; //a is shorter than b
+		}
+		if (b >= be)
+			return 1; //b is shorter than a
+		if (*a != *b) //there is a differing character
+			return (unsigned int)*a - (unsigned int)*b;
+	}
 }
 
 static int by_str(const void *a, const void *b) {
@@ -126,26 +134,116 @@ static void cull_duplicates(struct test_entry *entries, size_t *count) {
 	*count = o-entries;
 }
 
+#define print(tag, fmt, ...) do { \
+		if (out) \
+			fprintf(out, tag fmt "\n", ##__VA_ARGS__); \
+	} while(0)
+#define err(...) do { \
+		print("error: ", __VA_ARGS__); \
+		goto fail; \
+	} while(0)
+//#define debug(...) print("debug: ", __VA_ARGS__)
+#define debug(...) do {} while(0)
+#define msg(...) print("info: ", __VA_ARGS__)
+
+static int test_traverse(struct stringmap *map, struct test_entry *strings, size_t size, FILE *out) {
+	size_t sp = 0;
+	size_t stack_alloc = 16;
+	struct stringmap_node **stack = NULL;
+	struct stringmap_node *n;
+	void *leaf;
+	#define check(lri) do { \
+			leaf = n->lr[lri]; \
+			if (!size--) \
+				err("Fewer items in tree than counted"); \
+			if (tecmp(leaf, strings++)) \
+				err("%s leaf has incorrect string", lri ? "Left" : "Right"); \
+		} while(0)
+	#define check_left() check(0)
+	#define check_right() check(1)
+	
+	if (map->count != size)
+		err("map->count != size");
+	
+	if (map->count == 0)
+		return 1;
+	
+	if (map->count == 1) {
+		leaf = (struct test_entry*)map->root;
+		if (!tecmp(leaf, &strings[0]))
+			return 1;
+		else
+			err("Only leaf in tree has incorrect value");
+	}
+	
+	stack = malloc(sizeof(*stack) * stack_alloc);
+	n = map->root;
+	
+	for (;;) {
+		//descend left
+		while (!n->left_is_leaf) {
+			stack[sp++] = n;
+			n = n->lr[0];
+			
+			if (sp >= stack_alloc) {
+				stack_alloc += stack_alloc;
+				stack = realloc(stack, sizeof(*stack) * stack_alloc);
+			}
+		}
+		
+		check_left();
+		
+	ascend_right:
+		while (n->right_is_leaf) {
+			check_right();
+			
+			if (!sp)
+				goto done; //we finished up the last entry
+			n = stack[--sp];
+		}
+		
+		//descend right
+		n = n->lr[1];
+		while (n->left_is_leaf) {
+			check_left();
+			
+			if (n->right_is_leaf) {
+				check_right();
+				
+				if (!sp)
+					goto done;
+				n = stack[--sp];
+				goto ascend_right; //sorry
+			}
+			n = n->lr[1];
+		}
+	}
+	
+done:
+	if (size != 0)
+		err("More items in tree than counted");
+	
+	free(stack);
+	return 1;
+	
+fail:
+	if (stack)
+		free(stack);
+	return 0;
+	
+	#undef check
+	#undef check_left
+	#undef check_right
+}
+
 static int test_stringmap(size_t count, FILE *out) {
 	stringmap(char*) map = stringmap_new(NULL);
 	
-	#define print(tag, fmt, ...) do { \
-			if (out) \
-				fprintf(out, tag fmt "\n", ##__VA_ARGS__); \
-		} while(0)
-	#define err(...) do { \
-			print("error: ", __VA_ARGS__); \
-			goto fail; \
-		} while(0)
-	//#define debug(...) print("debug: ", __VA_ARGS__)
-	#define debug(...) do {} while(0)
-	#define msg(...) print("info: ", __VA_ARGS__)
-	
 	struct block_pool *bp = block_pool_new(NULL);
 	struct test_entry *entries = block_pool_alloc(bp, sizeof(*entries) * count);
-	struct test_entry *i, *e = entries+count;
+	struct test_entry *i, *e = entries+count, *o;
 	char *value_base = block_pool_alloc(bp, count), *value = value_base;
-	size_t unique_count = 0;
+	size_t unique_count;
 	
 	//we use value to track whether an entry has been added or not
 	memset(value, 0, count);
@@ -170,7 +268,7 @@ static int test_stringmap(size_t count, FILE *out) {
 	
 	msg("Inserting/looking up %zu entries...", count);
 	
-	for (i=entries; i<e; i++) {
+	for (i=entries, o=entries; i<e; i++) {
 		char **node;
 		
 		debug("Looking up %s", i->str);
@@ -191,7 +289,8 @@ static int test_stringmap(size_t count, FILE *out) {
 			*node = i->value;
 			*i->value = 1; //mark that the entry is entered
 			
-			unique_count++;
+			//write this unique entry to the entry list to traverse later
+			*o++ = *i;
 		} else {
 			if (tecmp(i, (void*)map.last))
 				err("lookup returned incorrect string");
@@ -204,8 +303,16 @@ static int test_stringmap(size_t count, FILE *out) {
 		}
 	}
 	
+	unique_count = o-entries;
+	
 	if (map.t.count != unique_count)
 		err("Map has incorrect count");
+	
+	qsort(entries, unique_count, sizeof(*entries), by_str);
+	
+	msg("Traversing forward through %zu items", unique_count);	
+	if (!test_traverse(&map.t, entries, unique_count, out))
+		err("Traversal does not produce the strings in order");
 	
 	printf("stringmap test passed after %zu inserts, %zu lookups (%zu total operations)\n",
 		unique_count, (i-entries)-unique_count, i-entries);
@@ -221,12 +328,12 @@ fail:
 	block_pool_free(bp);
 	stringmap_free(map);
 	return 0;
-	
-	#undef print
-	#undef err
-	#undef debug
-	#undef msg
 }
+
+#undef print
+#undef err
+#undef debug
+#undef msg
 
 int main(void)
 {

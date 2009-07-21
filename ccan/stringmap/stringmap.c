@@ -39,7 +39,7 @@
 #define assert(...) do {} while(0)
 #endif
 
-#define PEEK_BIT(key, bit)		((key[bit >> 3] >> (bit & 7)) & 1)
+#define PEEK_BIT(key, bit)		((key[bit >> 3] >> (~bit & 7)) & 1)
 
 struct stringmap_node {
 	uint32_t left_is_leaf:1, right_is_leaf:1, bitno:30;
@@ -155,8 +155,8 @@ void *stringmap_lookup_real(struct stringmap *t, const char *key, size_t len, in
 			
 			//advance cix to the first differing bit
 			ix = *m ^ *k;
-			while ((ix & 1) == 0)
-				ix >>= 1, cix++;
+			while ((ix & 128) == 0)
+				ix <<= 1, cix++;
 			
 			//choose left/right based on the differing bit
 			bit = PEEK_BIT(key, cix);
