@@ -49,7 +49,7 @@
 #endif
 #include "tdb.h"
 
-#define TDB_TRACE 1
+/* #define TDB_TRACE 1 */
 
 #if HAVE_GETPAGESIZE
 #define getpagesize() 0x2000
