@@ -284,6 +284,9 @@ tdb_off_t tdb_allocate(struct tdb_context *tdb, tdb_len_t length, struct list_st
 	if (tdb_lock(tdb, -1, F_WRLCK) == -1)
 		return 0;
 
+	/* over-allocate to reduce fragmentation */
+	length *= 1.25;
+
 	/* Extra bytes required for tailer */
 	length += sizeof(tdb_off_t);
 	length = TDB_ALIGN(length, TDB_ALIGNMENT);
