@@ -423,6 +423,10 @@ static const struct tdb_methods transaction_methods = {
 */
 static int transaction_sync(struct tdb_context *tdb, tdb_off_t offset, tdb_len_t length)
 {	
+	if (tdb->flags & TDB_NOSYNC) {
+		return 0;
+	}
+
 	if (fsync(tdb->fd) != 0) {
 		tdb->ecode = TDB_ERR_IO;
 		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction: fsync failed\n"));
@@ -1066,11 +1070,9 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 	SAFE_FREE(tdb->transaction->blocks);
 	tdb->transaction->num_blocks = 0;
 
-	if (!(tdb->flags & TDB_NOSYNC)) {
-		/* ensure the new data is on disk */
-		if (transaction_sync(tdb, 0, tdb->map_size) == -1) {
-			return -1;
-		}
+	/* ensure the new data is on disk */
+	if (transaction_sync(tdb, 0, tdb->map_size) == -1) {
+		return -1;
 	}
 
 	tdb_brlock(tdb, GLOBAL_LOCK, F_UNLCK, F_SETLKW, 0, 1);
