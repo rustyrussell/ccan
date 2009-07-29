@@ -846,6 +846,98 @@ failed:
 	return -1;
 }
 
+
+struct traverse_state {
+	bool error;
+	struct tdb_context *dest_db;
+};
+
+/*
+  traverse function for repacking
+ */
+static int repack_traverse(struct tdb_context *tdb, TDB_DATA key, TDB_DATA data, void *private)
+{
+	struct traverse_state *state = (struct traverse_state *)private;
+	if (tdb_store(state->dest_db, key, data, TDB_INSERT) != 0) {
+		state->error = true;
+		return -1;
+	}
+	return 0;
+}
+
+/*
+  repack a tdb
+ */
+int tdb_repack(struct tdb_context *tdb)
+{
+	struct tdb_context *tmp_db;
+	struct traverse_state state;
+
+	tdb_trace(tdb, "tdb_repack");
+
+	if (tdb_transaction_start(tdb) != 0) {
+		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_repack: Failed to start transaction\n"));
+		return -1;
+	}
+
+	tmp_db = tdb_open("tmpdb", tdb_hash_size(tdb), TDB_INTERNAL, O_RDWR|O_CREAT, 0);
+	if (tmp_db == NULL) {
+		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_repack: Failed to create tmp_db\n"));
+		tdb_transaction_cancel(tdb);
+		return -1;
+	}
+
+	state.error = false;
+	state.dest_db = tmp_db;
+
+	if (tdb_traverse_read(tdb, repack_traverse, &state) == -1) {
+		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_repack: Failed to traverse copying out\n"));
+		tdb_transaction_cancel(tdb);
+		tdb_close(tmp_db);
+		return -1;		
+	}
+
+	if (state.error) {
+		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_repack: Error during traversal\n"));
+		tdb_transaction_cancel(tdb);
+		tdb_close(tmp_db);
+		return -1;
+	}
+
+	if (tdb_wipe_all(tdb) != 0) {
+		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_repack: Failed to wipe database\n"));
+		tdb_transaction_cancel(tdb);
+		tdb_close(tmp_db);
+		return -1;
+	}
+
+	state.error = false;
+	state.dest_db = tdb;
+
+	if (tdb_traverse_read(tmp_db, repack_traverse, &state) == -1) {
+		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_repack: Failed to traverse copying back\n"));
+		tdb_transaction_cancel(tdb);
+		tdb_close(tmp_db);
+		return -1;		
+	}
+
+	if (state.error) {
+		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_repack: Error during second traversal\n"));
+		tdb_transaction_cancel(tdb);
+		tdb_close(tmp_db);
+		return -1;
+	}
+
+	tdb_close(tmp_db);
+
+	if (tdb_transaction_commit(tdb) != 0) {
+		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_repack: Failed to commit\n"));
+		return -1;
+	}
+
+	return 0;
+}
+
 #ifdef TDB_TRACE
 static void tdb_trace_write(struct tdb_context *tdb, const char *str)
 {
