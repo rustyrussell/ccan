@@ -96,6 +96,11 @@ static tdb_off_t tdb_find(struct tdb_context *tdb, TDB_DATA key, uint32_t hash,
 				      NULL) == 0) {
 			return rec_ptr;
 		}
+		/* detect tight infinite loop */
+		if (rec_ptr == r->next) {
+			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_find: loop detected.\n"));
+			return TDB_ERRCODE(TDB_ERR_CORRUPT, 0);
+		}
 		rec_ptr = r->next;
 	}
 	return TDB_ERRCODE(TDB_ERR_NOEXIST, 0);
