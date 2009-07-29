@@ -349,8 +349,9 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 	if (!tdb)
 		return NULL;
 
+#ifdef TDB_TRACE
 	close(tdb->tracefd);
-	
+#endif
 	if (tdb->map_ptr) {
 		if (tdb->flags & TDB_INTERNAL)
 			SAFE_FREE(tdb->map_ptr);
@@ -410,7 +411,9 @@ int tdb_close(struct tdb_context *tdb)
 		}
 	}
 
+#ifdef TDB_TRACE
 	close(tdb->tracefd);
+#endif
 	memset(tdb, 0, sizeof(*tdb));
 	SAFE_FREE(tdb);
 
