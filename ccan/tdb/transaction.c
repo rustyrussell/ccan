@@ -121,6 +121,10 @@ struct tdb_transaction {
 	   but don't create a new transaction */
 	int nesting;
 
+	/* set when a prepare has already occurred */
+	bool prepared;
+	tdb_off_t magic_offset;
+
 	/* old file size before transaction */
 	tdb_len_t old_map_size;
 };
@@ -134,6 +138,14 @@ static int transaction_read(struct tdb_context *tdb, tdb_off_t off, void *buf,
 			    tdb_len_t len, int cv)
 {
 	uint32_t blk;
+
+	/* Only a commit is allowed on a prepared transaction */
+	if (tdb->transaction->prepared) {
+		tdb->ecode = TDB_ERR_EINVAL;
+		TDB_LOG((tdb, TDB_DEBUG_FATAL, "transaction_read: transaction already prepared, read not allowed\n"));
+		tdb->transaction->transaction_error = 1;
+		return -1;
+	}
 
 	/* break it down into block sized ops */
 	while (len + (off % tdb->transaction->block_size) > tdb->transaction->block_size) {
@@ -191,6 +203,14 @@ static int transaction_write(struct tdb_context *tdb, tdb_off_t off,
 			     const void *buf, tdb_len_t len)
 {
 	uint32_t blk;
+
+	/* Only a commit is allowed on a prepared transaction */
+	if (tdb->transaction->prepared) {
+		tdb->ecode = TDB_ERR_EINVAL;
+		TDB_LOG((tdb, TDB_DEBUG_FATAL, "transaction_write: transaction already prepared, write not allowed\n"));
+		tdb->transaction->transaction_error = 1;
+		return -1;
+	}
 
 	/* if the write is to a hash head, then update the transaction
 	   hash heads */
@@ -398,9 +418,34 @@ static const struct tdb_methods transaction_methods = {
 	transaction_brlock
 };
 
+/*
+  sync to disk
+*/
+static int transaction_sync(struct tdb_context *tdb, tdb_off_t offset, tdb_len_t length)
+{	
+	if (fsync(tdb->fd) != 0) {
+		tdb->ecode = TDB_ERR_IO;
+		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction: fsync failed\n"));
+		return -1;
+	}
+#ifdef MS_SYNC
+	if (tdb->map_ptr) {
+		tdb_off_t moffset = offset & ~(tdb->page_size-1);
+		if (msync(moffset + (char *)tdb->map_ptr, 
+			  length + (offset - moffset), MS_SYNC) != 0) {
+			tdb->ecode = TDB_ERR_IO;
+			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction: msync failed - %s\n",
+				 strerror(errno)));
+			return -1;
+		}
+	}
+#endif
+	return 0;
+}
+
 int tdb_transaction_cancel_internal(struct tdb_context *tdb)
 {
-	int i;
+	int i, ret = 0;
 
 	if (tdb->transaction == NULL) {
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_cancel: no transaction\n"));
@@ -422,6 +467,18 @@ int tdb_transaction_cancel_internal(struct tdb_context *tdb)
 		}
 	}
 	SAFE_FREE(tdb->transaction->blocks);
+
+	if (tdb->transaction->magic_offset) {
+		const struct tdb_methods *methods = tdb->transaction->io_methods;
+		uint32_t zero = 0;
+
+		/* remove the recovery marker */
+		if (methods->tdb_write(tdb, tdb->transaction->magic_offset, &zero, 4) == -1 ||
+		transaction_sync(tdb, tdb->transaction->magic_offset, 4) == -1) {
+			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction_cancel: failed to remove recovery magic\n"));
+			ret = -1;
+		}
+	}
 
 	/* remove any global lock created during the transaction */
 	if (tdb->global_lock.count != 0) {
@@ -448,7 +505,7 @@ int tdb_transaction_cancel_internal(struct tdb_context *tdb)
 	SAFE_FREE(tdb->transaction->hash_heads);
 	SAFE_FREE(tdb->transaction);
 	
-	return 0;
+	return ret;
 }
 
 /*
@@ -570,31 +627,6 @@ int tdb_transaction_cancel(struct tdb_context *tdb)
 	tdb_trace(tdb, "tdb_transaction_cancel");
 	return tdb_transaction_cancel_internal(tdb);
 }
-/*
-  sync to disk
-*/
-static int transaction_sync(struct tdb_context *tdb, tdb_off_t offset, tdb_len_t length)
-{	
-	if (fsync(tdb->fd) != 0) {
-		tdb->ecode = TDB_ERR_IO;
-		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction: fsync failed\n"));
-		return -1;
-	}
-#ifdef MS_SYNC
-	if (tdb->map_ptr) {
-		tdb_off_t moffset = offset & ~(tdb->page_size-1);
-		if (msync(moffset + (char *)tdb->map_ptr, 
-			  length + (offset - moffset), MS_SYNC) != 0) {
-			tdb->ecode = TDB_ERR_IO;
-			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction: msync failed - %s\n",
-				 strerror(errno)));
-			return -1;
-		}
-	}
-#endif
-	return 0;
-}
-
 
 /*
   work out how much space the linearised recovery data will consume
@@ -842,26 +874,26 @@ static int transaction_setup_recovery(struct tdb_context *tdb,
 	return 0;
 }
 
-/*
-  commit the current transaction
-*/
-int tdb_transaction_commit(struct tdb_context *tdb)
+static int tdb_transaction_prepare_commit_internal(struct tdb_context *tdb)
 {	
 	const struct tdb_methods *methods;
-	tdb_off_t magic_offset = 0;
-	uint32_t zero = 0;
-	int i;
 
-	tdb_trace(tdb, "tdb_transaction_commit");
 	if (tdb->transaction == NULL) {
-		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_commit: no transaction\n"));
+		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_prepare_commit: no transaction\n"));
+		return -1;
+	}
+
+	if (tdb->transaction->prepared) {
+		tdb->ecode = TDB_ERR_EINVAL;
+		tdb_transaction_cancel(tdb);
+		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_prepare_commit: transaction already prepared\n"));
 		return -1;
 	}
 
 	if (tdb->transaction->transaction_error) {
 		tdb->ecode = TDB_ERR_IO;
 		tdb_transaction_cancel_internal(tdb);
-		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_commit: transaction error pending\n"));
+		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_prepare_commit: transaction error pending\n"));
 		return -1;
 	}
 
@@ -871,9 +903,13 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 		return 0;
 	}		
 
+#ifdef TDB_TRACE
+	/* store seqnum now, before reading becomes illegal. */
+	tdb_ofs_read(tdb, TDB_SEQNUM_OFS, &tdb->transaction_prepare_seqnum);
+#endif
+
 	/* check for a null transaction */
 	if (tdb->transaction->blocks == NULL) {
-		tdb_transaction_cancel_internal(tdb);
 		return 0;
 	}
 
@@ -883,14 +919,14 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 	   nested their locks properly, so fail the transaction */
 	if (tdb->num_locks || tdb->global_lock.count) {
 		tdb->ecode = TDB_ERR_LOCK;
-		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_commit: locks pending on commit\n"));
+		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_prepare_commit: locks pending on commit\n"));
 		tdb_transaction_cancel_internal(tdb);
 		return -1;
 	}
 
 	/* upgrade the main transaction lock region to a write lock */
 	if (tdb_brlock_upgrade(tdb, FREELIST_TOP, 0) == -1) {
-		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_start: failed to upgrade hash locks\n"));
+		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_prepare_commit: failed to upgrade hash locks\n"));
 		tdb->ecode = TDB_ERR_LOCK;
 		tdb_transaction_cancel_internal(tdb);
 		return -1;
@@ -899,7 +935,7 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 	/* get the global lock - this prevents new users attaching to the database
 	   during the commit */
 	if (tdb_brlock(tdb, GLOBAL_LOCK, F_WRLCK, F_SETLKW, 0, 1) == -1) {
-		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_commit: failed to get global lock\n"));
+		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_prepare_commit: failed to get global lock\n"));
 		tdb->ecode = TDB_ERR_LOCK;
 		tdb_transaction_cancel_internal(tdb);
 		return -1;
@@ -907,13 +943,15 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 
 	if (!(tdb->flags & TDB_NOSYNC)) {
 		/* write the recovery data to the end of the file */
-		if (transaction_setup_recovery(tdb, &magic_offset) == -1) {
-			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction_commit: failed to setup recovery data\n"));
+		if (transaction_setup_recovery(tdb, &tdb->transaction->magic_offset) == -1) {
+			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction_prepare_commit: failed to setup recovery data\n"));
 			tdb_brlock(tdb, GLOBAL_LOCK, F_UNLCK, F_SETLKW, 0, 1);
 			tdb_transaction_cancel_internal(tdb);
 			return -1;
 		}
 	}
+
+	tdb->transaction->prepared = true;
 
 	/* expand the file to the new size if needed */
 	if (tdb->map_size != tdb->transaction->old_map_size) {
@@ -921,7 +959,7 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 					     tdb->map_size - 
 					     tdb->transaction->old_map_size) == -1) {
 			tdb->ecode = TDB_ERR_IO;
-			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction_commit: expansion failed\n"));
+			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction_prepare_commit: expansion failed\n"));
 			tdb_brlock(tdb, GLOBAL_LOCK, F_UNLCK, F_SETLKW, 0, 1);
 			tdb_transaction_cancel_internal(tdb);
 			return -1;
@@ -929,6 +967,68 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 		tdb->map_size = tdb->transaction->old_map_size;
 		methods->tdb_oob(tdb, tdb->map_size + 1, 1);
 	}
+
+	/* Keep the global lock until the actual commit */
+
+	return 0;
+}
+
+/*
+   prepare to commit the current transaction
+*/
+int tdb_transaction_prepare_commit(struct tdb_context *tdb)
+{	
+	tdb_trace(tdb, "tdb_transaction_prepare_commit");
+	return tdb_transaction_prepare_commit_internal(tdb);
+}
+
+/*
+  commit the current transaction
+*/
+int tdb_transaction_commit(struct tdb_context *tdb)
+{	
+	const struct tdb_methods *methods;
+	int i;
+
+	if (tdb->transaction == NULL) {
+		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_commit: no transaction\n"));
+		return -1;
+	}
+
+	/* If we've prepared, can't read seqnum. */
+	if (tdb->transaction->prepared) {
+		tdb_trace_seqnum(tdb, tdb->transaction_prepare_seqnum,
+				 "tdb_transaction_commit");
+	} else {
+		tdb_trace(tdb, "tdb_transaction_commit");
+	}
+
+	if (tdb->transaction->transaction_error) {
+		tdb->ecode = TDB_ERR_IO;
+		tdb_transaction_cancel(tdb);
+		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_commit: transaction error pending\n"));
+		return -1;
+	}
+
+
+	if (tdb->transaction->nesting != 0) {
+		tdb->transaction->nesting--;
+		return 0;
+	}
+
+	/* check for a null transaction */
+	if (tdb->transaction->blocks == NULL) {
+		tdb_transaction_cancel_internal(tdb);
+		return 0;
+	}
+
+	if (!tdb->transaction->prepared) {
+		int ret = tdb_transaction_prepare_commit_internal(tdb);
+		if (ret)
+			return ret;
+	}
+
+	methods = tdb->transaction->io_methods;
 
 	/* perform all the writes */
 	for (i=0;i<tdb->transaction->num_blocks;i++) {
@@ -969,17 +1069,6 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 	if (!(tdb->flags & TDB_NOSYNC)) {
 		/* ensure the new data is on disk */
 		if (transaction_sync(tdb, 0, tdb->map_size) == -1) {
-			return -1;
-		}
-
-		/* remove the recovery marker */
-		if (methods->tdb_write(tdb, magic_offset, &zero, 4) == -1) {
-			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction_commit: failed to remove recovery magic\n"));
-			return -1;
-		}
-
-		/* ensure the recovery marker has been removed on disk */
-		if (transaction_sync(tdb, magic_offset, 4) == -1) {
 			return -1;
 		}
 	}

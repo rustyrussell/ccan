@@ -898,6 +898,16 @@ void tdb_trace(struct tdb_context *tdb, const char *op)
 	tdb_trace_end(tdb);
 }
 
+void tdb_trace_seqnum(struct tdb_context *tdb, uint32_t seqnum, const char *op)
+{
+	char msg[sizeof(tdb_off_t) * 4];
+
+	sprintf(msg, "%u ", seqnum);
+	tdb_trace_write(tdb, msg);
+	tdb_trace_write(tdb, op);
+	tdb_trace_end(tdb);
+}
+
 void tdb_trace_open(struct tdb_context *tdb, const char *op,
 		    unsigned hash_size, unsigned tdb_flags, unsigned open_flags)
 {

@@ -116,6 +116,7 @@ enum op_type {
 	OP_TDB_WIPE_ALL,
 	OP_TDB_TRANSACTION_START,
 	OP_TDB_TRANSACTION_CANCEL,
+	OP_TDB_TRANSACTION_PREPARE_COMMIT,
 	OP_TDB_TRANSACTION_COMMIT,
 	OP_TDB_TRAVERSE_READ_START,
 	OP_TDB_TRAVERSE_START,
@@ -763,6 +764,10 @@ unsigned run_ops(struct tdb_context *tdb,
 			break;
 		case OP_TDB_TRANSACTION_CANCEL:
 			try(tdb_transaction_cancel(tdb), op[file][i].ret);
+			break;
+		case OP_TDB_TRANSACTION_PREPARE_COMMIT:
+			try(tdb_transaction_prepare_commit(tdb),
+			    op[file][i].ret);
 			break;
 		case OP_TDB_TRANSACTION_COMMIT:
 			try(tdb_transaction_commit(tdb), op[file][i].ret);

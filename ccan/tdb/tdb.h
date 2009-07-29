@@ -137,6 +137,7 @@ int tdb_fd(struct tdb_context *tdb);
 tdb_log_func tdb_log_fn(struct tdb_context *tdb);
 void *tdb_get_logging_private(struct tdb_context *tdb);
 int tdb_transaction_start(struct tdb_context *tdb);
+int tdb_transaction_prepare_commit(struct tdb_context *tdb);
 int tdb_transaction_commit(struct tdb_context *tdb);
 int tdb_transaction_cancel(struct tdb_context *tdb);
 int tdb_transaction_recover(struct tdb_context *tdb);

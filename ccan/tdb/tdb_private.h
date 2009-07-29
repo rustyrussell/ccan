@@ -49,7 +49,7 @@
 #endif
 #include "tdb.h"
 
-/* #define TDB_TRACE 1 */
+#define TDB_TRACE 1
 
 #if HAVE_GETPAGESIZE
 #define getpagesize() 0x2000
@@ -90,6 +90,7 @@ typedef uint32_t tdb_off_t;
 
 #ifdef TDB_TRACE
 void tdb_trace(struct tdb_context *tdb, const char *op);
+void tdb_trace_seqnum(struct tdb_context *tdb, uint32_t seqnum, const char *op);
 void tdb_trace_open(struct tdb_context *tdb, const char *op,
 		    unsigned hash_size, unsigned tdb_flags, unsigned open_flags);
 void tdb_trace_ret(struct tdb_context *tdb, const char *op, int ret);
@@ -107,6 +108,7 @@ void tdb_trace_2rec_retrec(struct tdb_context *tdb, const char *op,
 			   TDB_DATA rec1, TDB_DATA rec2, TDB_DATA ret);
 #else
 #define tdb_trace(tdb, op)
+#define tdb_trace_seqnum(tdb, seqnum, op)
 #define tdb_trace_open(tdb, op, hash_size, tdb_flags, open_flags)
 #define tdb_trace_ret(tdb, op, ret)
 #define tdb_trace_retrec(tdb, op, ret)
@@ -216,7 +218,10 @@ struct tdb_context {
 	int page_size;
 	int max_dead_records;
 	int transaction_lock_count;
+#ifdef TDB_TRACE
 	int tracefd;
+	uint32_t transaction_prepare_seqnum;
+#endif
 	volatile sig_atomic_t *interrupt_sig_ptr;
 };
 

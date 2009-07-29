@@ -129,13 +129,11 @@ static void addrec_db(void)
 		goto next;
 	}
 	if (in_traverse == 0 && in_transaction && random() % TRANSACTION_PROB == 0) {
-#if 0
 		if (random() % TRANSACTION_PREPARE_PROB == 0) {
 			if (tdb_transaction_prepare_commit(db) != 0) {
 				fatal("tdb_transaction_prepare_commit failed");
 			}
 		}
-#endif
 		if (tdb_transaction_commit(db) != 0) {
 			fatal("tdb_transaction_commit failed");
 		}
