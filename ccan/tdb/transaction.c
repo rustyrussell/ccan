@@ -127,6 +127,9 @@ struct tdb_transaction {
 
 	/* old file size before transaction */
 	tdb_len_t old_map_size;
+
+	/* we should re-pack on commit */
+	bool need_repack;
 };
 
 
@@ -396,6 +399,8 @@ static int transaction_expand_file(struct tdb_context *tdb, tdb_off_t size,
 	if (transaction_write(tdb, size, NULL, addition) != 0) {
 		return -1;
 	}
+
+	tdb->transaction->need_repack = true;
 
 	return 0;
 }
@@ -993,6 +998,7 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 {	
 	const struct tdb_methods *methods;
 	int i;
+	bool need_repack;
 
 	if (tdb->transaction == NULL) {
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_commit: no transaction\n"));
@@ -1092,9 +1098,15 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 	utime(tdb->name, NULL);
 #endif
 
+	need_repack = tdb->transaction->need_repack;
+
 	/* use a transaction cancel to free memory and remove the
 	   transaction locks */
 	tdb_transaction_cancel_internal(tdb);
+
+	if (need_repack) {
+		return tdb_repack(tdb);
+	}
 
 	return 0;
 }
