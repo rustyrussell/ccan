@@ -469,7 +469,7 @@ static void *__talloc_steal(const void *new_ctx, const void *ptr)
 /* 
    internal talloc_free call
 */
-static inline int _talloc_free(void *ptr)
+static inline int _talloc_free(const void *ptr)
 {
 	struct talloc_chunk *tc;
 	void *oldparent = NULL;
@@ -508,7 +508,7 @@ static inline int _talloc_free(void *ptr)
 			return -1;
 		}
 		tc->destructor = (talloc_destructor_t)-1;
-		if (d(ptr) == -1) {
+		if (d(discard_const_p(void, ptr)) == -1) {
 			tc->destructor = d;
 			return -1;
 		}
