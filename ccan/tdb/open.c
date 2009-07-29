@@ -324,11 +324,12 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 
 		sprintf(tracefile, "%s.trace.%u", name, getpid());
 		tdb->tracefd = open(tracefile, O_WRONLY|O_CREAT|O_EXCL, 0600);
-		if (tdb->tracefd < 0)
-			goto fail;
-		tdb_enable_seqnum(tdb);
-		tdb_trace_open(tdb, "tdb_open", hash_size, tdb_flags,
-			       open_flags);
+		if (tdb->tracefd >= 0) {
+			tdb_enable_seqnum(tdb);
+			tdb_trace_open(tdb, "tdb_open", hash_size, tdb_flags,
+				       open_flags);
+		} else
+			TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_open_ex: failed to open trace file %s!\n", tracefile));
 	}
 #endif
 
