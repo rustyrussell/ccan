@@ -243,7 +243,7 @@ static int test_stringmap(size_t count, FILE *out) {
 	struct test_entry *entries = block_pool_alloc(bp, sizeof(*entries) * count);
 	struct test_entry *i, *e = entries+count, *o;
 	char *value_base = block_pool_alloc(bp, count), *value = value_base;
-	size_t unique_count;
+	size_t unique_count = 0;
 	
 	//we use value to track whether an entry has been added or not
 	memset(value, 0, count);
