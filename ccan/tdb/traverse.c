@@ -27,8 +27,11 @@
 
 #include "tdb_private.h"
 
-/* Uses traverse lock: 0 = finish, -1 = error, other = record offset */
-static int tdb_next_lock(struct tdb_context *tdb, struct tdb_traverse_lock *tlock,
+#define TDB_NEXT_LOCK_ERR ((tdb_off_t)-1)
+
+/* Uses traverse lock: 0 = finish, TDB_NEXT_LOCK_ERR = error,
+   other = record offset */
+static tdb_off_t tdb_next_lock(struct tdb_context *tdb, struct tdb_traverse_lock *tlock,
 			 struct list_struct *rec)
 {
 	int want_next = (tlock->off != 0);
@@ -71,7 +74,7 @@ static int tdb_next_lock(struct tdb_context *tdb, struct tdb_traverse_lock *tloc
 		}
 
 		if (tdb_lock(tdb, tlock->hash, tlock->lock_rw) == -1)
-			return -1;
+			return TDB_NEXT_LOCK_ERR;
 
 		/* No previous record?  Start at top of chain. */
 		if (!tlock->off) {
@@ -99,6 +102,7 @@ static int tdb_next_lock(struct tdb_context *tdb, struct tdb_traverse_lock *tloc
 
 			/* Detect infinite loops. From "Shlomi Yaakobovich" <Shlomi@exanet.com>. */
 			if (tlock->off == rec->next) {
+				tdb->ecode = TDB_ERR_CORRUPT;
 				TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_next_lock: loop detected.\n"));
 				goto fail;
 			}
@@ -128,7 +132,7 @@ static int tdb_next_lock(struct tdb_context *tdb, struct tdb_traverse_lock *tloc
 	tlock->off = 0;
 	if (tdb_unlock(tdb, tlock->hash, tlock->lock_rw) != 0)
 		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_next_lock: On error unlock failed!\n"));
-	return -1;
+	return TDB_NEXT_LOCK_ERR;
 }
 
 /* traverse the entire database - calling fn(tdb, key, data) on each element.
@@ -142,7 +146,8 @@ static int tdb_traverse_internal(struct tdb_context *tdb,
 {
 	TDB_DATA key, dbuf;
 	struct list_struct rec;
-	int ret, count = 0;
+	int ret = 0, count = 0;
+	tdb_off_t off;
 
 	/* This was in the initializaton, above, but the IRIX compiler
 	 * did not like it.  crh
@@ -153,7 +158,11 @@ static int tdb_traverse_internal(struct tdb_context *tdb,
 	tdb->travlocks.next = tl;
 
 	/* tdb_next_lock places locks on the record returned, and its chain */
-	while ((ret = tdb_next_lock(tdb, tl, &rec)) > 0) {
+	while ((off = tdb_next_lock(tdb, tl, &rec)) != 0) {
+		if (off == TDB_NEXT_LOCK_ERR) {
+			ret = -1;
+			goto out;
+		}
 		count++;
 		/* now read the full record */
 		key.dptr = tdb_alloc_read(tdb, tl->off + sizeof(rec), 
@@ -181,7 +190,6 @@ static int tdb_traverse_internal(struct tdb_context *tdb,
 		if (fn && fn(tdb, key, dbuf, private_data)) {
 			/* They want us to terminate traversal */
 			tdb_trace_ret(tdb, "tdb_traverse_end", count);
-			ret = count;
 			if (tdb_unlock_record(tdb, tl->off) != 0) {
 				TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_traverse: unlock_record failed!\n"));;
 				ret = -1;
@@ -263,6 +271,7 @@ TDB_DATA tdb_firstkey(struct tdb_context *tdb)
 {
 	TDB_DATA key;
 	struct list_struct rec;
+	tdb_off_t off;
 
 	/* release any old lock */
 	if (tdb_unlock_record(tdb, tdb->travlocks.off) != 0)
@@ -271,7 +280,8 @@ TDB_DATA tdb_firstkey(struct tdb_context *tdb)
 	tdb->travlocks.lock_rw = F_RDLCK;
 
 	/* Grab first record: locks chain and returned record. */
-	if (tdb_next_lock(tdb, &tdb->travlocks, &rec) <= 0) {
+	off = tdb_next_lock(tdb, &tdb->travlocks, &rec);
+	if (off == 0 || off == TDB_NEXT_LOCK_ERR) {
 		tdb_trace_retrec(tdb, "tdb_firstkey", tdb_null);
 		return tdb_null;
 	}
@@ -294,6 +304,7 @@ TDB_DATA tdb_nextkey(struct tdb_context *tdb, TDB_DATA oldkey)
 	TDB_DATA key = tdb_null;
 	struct list_struct rec;
 	unsigned char *k = NULL;
+	tdb_off_t off;
 
 	/* Is locked key the old key?  If so, traverse will be reliable. */
 	if (tdb->travlocks.off) {
@@ -337,7 +348,8 @@ TDB_DATA tdb_nextkey(struct tdb_context *tdb, TDB_DATA oldkey)
 
 	/* Grab next record: locks chain and returned record,
 	   unlocks old record */
-	if (tdb_next_lock(tdb, &tdb->travlocks, &rec) > 0) {
+	off = tdb_next_lock(tdb, &tdb->travlocks, &rec);
+	if (off != TDB_NEXT_LOCK_ERR && off != 0) {
 		key.dsize = rec.key_len;
 		key.dptr = tdb_alloc_read(tdb, tdb->travlocks.off+sizeof(rec),
 					  key.dsize);

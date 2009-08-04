@@ -34,6 +34,7 @@
 #include "system/wait.h"
 #else
 #define _XOPEN_SOURCE 500
+#define _FILE_OFFSET_BITS 64
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
