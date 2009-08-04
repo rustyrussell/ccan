@@ -47,11 +47,12 @@ static int tdb_oob(struct tdb_context *tdb, tdb_off_t len, int probe)
 			TDB_LOG((tdb, TDB_DEBUG_FATAL,"tdb_oob len %d beyond internal malloc size %d\n",
 				 (int)len, (int)tdb->map_size));
 		}
-		return TDB_ERRCODE(TDB_ERR_IO, -1);
+		return -1;
 	}
 
 	if (fstat(tdb->fd, &st) == -1) {
-		return TDB_ERRCODE(TDB_ERR_IO, -1);
+		tdb->ecode = TDB_ERR_IO;
+		return -1;
 	}
 
 	if (st.st_size < (size_t)len) {
@@ -61,12 +62,14 @@ static int tdb_oob(struct tdb_context *tdb, tdb_off_t len, int probe)
 			TDB_LOG((tdb, TDB_DEBUG_FATAL,"tdb_oob len %d beyond eof at %d\n",
 				 (int)len, (int)st.st_size));
 		}
-		return TDB_ERRCODE(TDB_ERR_IO, -1);
+		return -1;
 	}
 
 	/* Unmap, update size, remap */
-	if (tdb_munmap(tdb) == -1)
-		return TDB_ERRCODE(TDB_ERR_IO, -1);
+	if (tdb_munmap(tdb) == -1) {
+		tdb->ecode = TDB_ERR_IO;
+		return -1;
+	}
 	tdb->map_size = st.st_size;
 	tdb_mmap(tdb);
 	return 0;
@@ -94,27 +97,27 @@ static int tdb_write(struct tdb_context *tdb, tdb_off_t off,
 		ssize_t written = pwrite(tdb->fd, buf, len, off);
 		if ((written != (ssize_t)len) && (written != -1)) {
 			/* try once more */
+			tdb->ecode = TDB_ERR_IO;
 			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_write: wrote only "
 				 "%d of %d bytes at %d, trying once more\n",
 				 (int)written, len, off));
-			errno = ENOSPC;
-			written = pwrite(tdb->fd, (const void *)((const char *)buf+written),
+			written = pwrite(tdb->fd, (const char *)buf+written,
 					 len-written,
 					 off+written);
 		}
 		if (written == -1) {
-		/* Ensure ecode is set for log fn. */
-		tdb->ecode = TDB_ERR_IO;
+			/* Ensure ecode is set for log fn. */
+			tdb->ecode = TDB_ERR_IO;
 			TDB_LOG((tdb, TDB_DEBUG_FATAL,"tdb_write failed at %d "
 				 "len=%d (%s)\n", off, len, strerror(errno)));
-			return TDB_ERRCODE(TDB_ERR_IO, -1);
+			return -1;
 		} else if (written != (ssize_t)len) {
+			tdb->ecode = TDB_ERR_IO;
 			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_write: failed to "
 				 "write %d bytes at %d in two attempts\n",
 				 len, off));
-			errno = ENOSPC;
-		return TDB_ERRCODE(TDB_ERR_IO, -1);
-	}
+			return -1;
+		}
 	}
 	return 0;
 }
@@ -148,7 +151,7 @@ static int tdb_read(struct tdb_context *tdb, tdb_off_t off, void *buf,
 				 "len=%d ret=%d (%s) map_size=%d\n",
 				 (int)off, (int)len, (int)ret, strerror(errno),
 				 (int)tdb->map_size));
-			return TDB_ERRCODE(TDB_ERR_IO, -1);
+			return -1;
 		}
 	}
 	if (cv) {
@@ -388,7 +391,7 @@ unsigned char *tdb_alloc_read(struct tdb_context *tdb, tdb_off_t offset, tdb_len
 		tdb->ecode = TDB_ERR_OOM;
 		TDB_LOG((tdb, TDB_DEBUG_ERROR,"tdb_alloc_read malloc failed len=%d (%s)\n",
 			   len, strerror(errno)));
-		return TDB_ERRCODE(TDB_ERR_OOM, buf);
+		return NULL;
 	}
 	if (tdb->methods->tdb_read(tdb, offset, buf, len, 0) == -1) {
 		SAFE_FREE(buf);
@@ -440,7 +443,7 @@ int tdb_rec_read(struct tdb_context *tdb, tdb_off_t offset, struct list_struct *
 		/* Ensure ecode is set for log fn. */
 		tdb->ecode = TDB_ERR_CORRUPT;
 		TDB_LOG((tdb, TDB_DEBUG_FATAL,"tdb_rec_read bad magic 0x%x at offset=%d\n", rec->magic, offset));
-		return TDB_ERRCODE(TDB_ERR_CORRUPT, -1);
+		return -1;
 	}
 	return tdb->methods->tdb_oob(tdb, rec->next+sizeof(*rec), 0);
 }

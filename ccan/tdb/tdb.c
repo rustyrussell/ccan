@@ -98,12 +98,14 @@ static tdb_off_t tdb_find(struct tdb_context *tdb, TDB_DATA key, uint32_t hash,
 		}
 		/* detect tight infinite loop */
 		if (rec_ptr == r->next) {
+			tdb->ecode = TDB_ERR_CORRUPT;
 			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_find: loop detected.\n"));
-			return TDB_ERRCODE(TDB_ERR_CORRUPT, 0);
+			return 0;
 		}
 		rec_ptr = r->next;
 	}
-	return TDB_ERRCODE(TDB_ERR_NOEXIST, 0);
+	tdb->ecode = TDB_ERR_NOEXIST;
+	return 0;
 }
 
 /* As tdb_find, but if you succeed, keep the lock */
@@ -217,7 +219,8 @@ int tdb_parse_record(struct tdb_context *tdb, TDB_DATA key,
 	if (!(rec_ptr = tdb_find_lock_hash(tdb,key,hash,F_RDLCK,&rec))) {
 		tdb_trace_1rec_ret(tdb, "tdb_parse_record", key,
 				   -TDB_ERR_NOEXIST);
-		return TDB_ERRCODE(TDB_ERR_NOEXIST, 0);
+		tdb->ecode = TDB_ERR_NOEXIST;
+		return 0;
 	}
 	tdb_trace_1rec_ret(tdb, "tdb_parse_record", key, 0);
 

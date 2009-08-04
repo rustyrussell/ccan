@@ -54,7 +54,7 @@ int tdb_rec_free_read(struct tdb_context *tdb, tdb_off_t off, struct list_struct
 		tdb->ecode = TDB_ERR_CORRUPT;
 		TDB_LOG((tdb, TDB_DEBUG_WARNING, "tdb_rec_free_read bad magic 0x%x at offset=%d\n", 
 			   rec->magic, off));
-		return TDB_ERRCODE(TDB_ERR_CORRUPT, -1);
+		return -1;
 	}
 	if (tdb->methods->tdb_oob(tdb, rec->next+sizeof(*rec), 0) != 0)
 		return -1;
@@ -78,8 +78,9 @@ static int remove_from_freelist(struct tdb_context *tdb, tdb_off_t off, tdb_off_
 		/* Follow chain (next offset is at start of record) */
 		last_ptr = i;
 	}
+	tdb->ecode = TDB_ERR_CORRUPT;
 	TDB_LOG((tdb, TDB_DEBUG_FATAL,"remove_from_freelist: not on list at off=%d\n", off));
-	return TDB_ERRCODE(TDB_ERR_CORRUPT, -1);
+	return -1;
 }
 #endif
 

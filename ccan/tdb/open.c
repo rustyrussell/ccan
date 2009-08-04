@@ -55,8 +55,10 @@ static int tdb_new_database(struct tdb_context *tdb, int hash_size)
 
 	/* We make it up in memory, then write it out if not internal */
 	size = sizeof(struct tdb_header) + (hash_size+1)*sizeof(tdb_off_t);
-	if (!(newdb = (struct tdb_header *)calloc(size, 1)))
-		return TDB_ERRCODE(TDB_ERR_OOM, -1);
+	if (!(newdb = (struct tdb_header *)calloc(size, 1))) {
+		tdb->ecode = TDB_ERR_OOM;
+		return -1;
+	}
 
 	/* Fill in the header */
 	newdb->version = TDB_VERSION;

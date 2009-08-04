@@ -84,7 +84,7 @@ int tdb_brlock(struct tdb_context *tdb, tdb_off_t offset,
 			TDB_LOG((tdb, TDB_DEBUG_TRACE,"tdb_brlock failed (fd=%d) at offset %d rw_type=%d lck_type=%d len=%d\n", 
 				 tdb->fd, offset, rw_type, lck_type, (int)len));
 		}
-		return TDB_ERRCODE(TDB_ERR_LOCK, -1);
+		return -1;
 	}
 	return 0;
 }
@@ -133,10 +133,12 @@ static int _tdb_lock(struct tdb_context *tdb, int list, int ltype, int op)
 	}
 
 	if (tdb->global_lock.count) {
-		return TDB_ERRCODE(TDB_ERR_LOCK, -1);
+		tdb->ecode = TDB_ERR_LOCK;
+		return -1;
 	}
 
 	if (list < -1 || list >= (int)tdb->header.hash_size) {
+		tdb->ecode = TDB_ERR_LOCK;
 		TDB_LOG((tdb, TDB_DEBUG_ERROR,"tdb_lock: invalid list %d for ltype=%d\n", 
 			   list, ltype));
 		return -1;
@@ -228,7 +230,8 @@ int tdb_unlock(struct tdb_context *tdb, int list, int ltype)
 	}
 
 	if (tdb->global_lock.count) {
-		return TDB_ERRCODE(TDB_ERR_LOCK, -1);
+		tdb->ecode = TDB_ERR_LOCK;
+		return -1;
 	}
 
 	if (tdb->flags & TDB_NOLOCK)
@@ -350,8 +353,10 @@ static int _tdb_lockall(struct tdb_context *tdb, int ltype, int op)
 	ltype &= ~TDB_MARK_LOCK;
 
 	/* There are no locks on read-only dbs */
-	if (tdb->read_only || tdb->traverse_read)
-		return TDB_ERRCODE(TDB_ERR_LOCK, -1);
+	if (tdb->read_only || tdb->traverse_read) {
+		tdb->ecode = TDB_ERR_LOCK;
+		return -1;
+	}
 
 	if (tdb->global_lock.count && tdb->global_lock.ltype == ltype) {
 		tdb->global_lock.count++;
@@ -360,12 +365,14 @@ static int _tdb_lockall(struct tdb_context *tdb, int ltype, int op)
 
 	if (tdb->global_lock.count) {
 		/* a global lock of a different type exists */
-		return TDB_ERRCODE(TDB_ERR_LOCK, -1);
+		tdb->ecode = TDB_ERR_LOCK;
+		return -1;
 	}
 	
 	if (tdb->num_locks != 0) {
 		/* can't combine global and chain locks */
-		return TDB_ERRCODE(TDB_ERR_LOCK, -1);
+		tdb->ecode = TDB_ERR_LOCK;
+		return -1;
 	}
 
 	if (!mark_lock &&
@@ -394,11 +401,13 @@ static int _tdb_unlockall(struct tdb_context *tdb, int ltype)
 
 	/* There are no locks on read-only dbs */
 	if (tdb->read_only || tdb->traverse_read) {
-		return TDB_ERRCODE(TDB_ERR_LOCK, -1);
+		tdb->ecode = TDB_ERR_LOCK;
+		return -1;
 	}
 
 	if (tdb->global_lock.ltype != ltype || tdb->global_lock.count == 0) {
-		return TDB_ERRCODE(TDB_ERR_LOCK, -1);
+		tdb->ecode = TDB_ERR_LOCK;
+		return -1;
 	}
 
 	if (tdb->global_lock.count > 1) {

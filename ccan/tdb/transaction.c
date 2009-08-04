@@ -385,7 +385,8 @@ static int transaction_oob(struct tdb_context *tdb, tdb_off_t len, int probe)
 	if (len <= tdb->map_size) {
 		return 0;
 	}
-	return TDB_ERRCODE(TDB_ERR_IO, -1);
+	tdb->ecode = TDB_ERR_IO;
+	return -1;
 }
 
 /*
