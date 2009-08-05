@@ -247,17 +247,19 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 
 	errno = 0;
 	if (read(tdb->fd, &tdb->header, sizeof(tdb->header)) != sizeof(tdb->header)
-	    || strcmp(tdb->header.magic_food, TDB_MAGIC_FOOD) != 0
-	    || (tdb->header.version != TDB_VERSION
-		&& !(rev = (tdb->header.version==TDB_BYTEREV(TDB_VERSION))))) {
-		/* its not a valid database - possibly initialise it */
+	    || strcmp(tdb->header.magic_food, TDB_MAGIC_FOOD) != 0) {
 		if (!(open_flags & O_CREAT) || tdb_new_database(tdb, hash_size) == -1) {
 			if (errno == 0) {
-			errno = EIO; /* ie bad format or something */
+				errno = EIO; /* ie bad format or something */
 			}
 			goto fail;
 		}
 		rev = (tdb->flags & TDB_CONVERT);
+	} else if (tdb->header.version != TDB_VERSION
+		   && !(rev = (tdb->header.version==TDB_BYTEREV(TDB_VERSION)))) {
+		/* wrong version */
+		errno = EIO;
+		goto fail;
 	}
 	vp = (unsigned char *)&tdb->header.version;
 	vertest = (((uint32_t)vp[0]) << 24) | (((uint32_t)vp[1]) << 16) |
