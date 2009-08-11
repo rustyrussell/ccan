@@ -4,8 +4,8 @@
 struct op_table {
 	const char *name;
 	enum op_type type;
-	void (*enhance_op)(const char *filename,
-			   struct op op[], unsigned int op_num, char *words[]);
+	void (*enhance_op)(char *filename[], struct op op[],
+			   unsigned file, unsigned op_num, char *words[]);
 };
 %define hash-function-name hash_keyword
 %define lookup-function-name find_keyword
@@ -33,7 +33,7 @@ tdb_exists, OP_TDB_EXISTS, op_add_key_ret,
 tdb_store, OP_TDB_STORE, op_add_store,
 tdb_append, OP_TDB_APPEND, op_add_append,
 tdb_get_seqnum, OP_TDB_GET_SEQNUM, op_add_seqnum,
-tdb_wipe_all, OP_TDB_WIPE_ALL, op_add_nothing,
+tdb_wipe_all, OP_TDB_WIPE_ALL, op_add_wipe_all,
 tdb_transaction_start, OP_TDB_TRANSACTION_START, op_add_transaction,
 tdb_transaction_cancel, OP_TDB_TRANSACTION_CANCEL, op_analyze_transaction,
 tdb_transaction_commit, OP_TDB_TRANSACTION_COMMIT, op_analyze_transaction,
@@ -47,3 +47,4 @@ tdb_firstkey, OP_TDB_FIRSTKEY, op_add_key,
 tdb_nextkey, OP_TDB_NEXTKEY, op_add_key_data,
 tdb_fetch, OP_TDB_FETCH, op_add_key_data,
 tdb_delete, OP_TDB_DELETE, op_add_key_ret,
+tdb_repack, OP_TDB_REPACK, op_add_nothing,

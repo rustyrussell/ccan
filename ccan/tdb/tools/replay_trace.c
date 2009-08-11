@@ -23,6 +23,10 @@
 /* Avoid mod by zero */
 static unsigned int total_keys = 1;
 
+/* All the wipe_all ops. */
+static struct op_desc *wipe_alls = NULL;
+static unsigned int num_wipe_alls = 0;
+
 /* #define DEBUG_DEPS 1 */
 
 /* Traversals block transactions in the current implementation. */
@@ -127,6 +131,7 @@ enum op_type {
 	OP_TDB_NEXTKEY,
 	OP_TDB_FETCH,
 	OP_TDB_DELETE,
+	OP_TDB_REPACK,
 };
 
 struct op {
@@ -208,98 +213,100 @@ static void add_op(const char *filename, struct op **op, unsigned int i,
 	new->group_start = 0;
 }
 
-static void op_add_nothing(const char *filename,
-			   struct op op[], unsigned int op_num, char *words[])
+static void op_add_nothing(char *filename[], struct op op[],
+			   unsigned file, unsigned op_num, char *words[])
 {
 	if (words[2])
-		fail(filename, op_num+1, "Expected no arguments");
+		fail(filename[file], op_num+1, "Expected no arguments");
 	op[op_num].key = tdb_null;
 }
 
-static void op_add_key(const char *filename,
-		       struct op op[], unsigned int op_num, char *words[])
+static void op_add_key(char *filename[], struct op op[],
+		       unsigned file, unsigned op_num, char *words[])
 {
 	if (words[2] == NULL || words[3])
-		fail(filename, op_num+1, "Expected just a key");
+		fail(filename[file], op_num+1, "Expected just a key");
 
-	op[op_num].key = make_tdb_data(op, filename, op_num+1, words[2]);
+	op[op_num].key = make_tdb_data(op, filename[file], op_num+1, words[2]);
 	total_keys++;
 }
 
-static void op_add_key_ret(const char *filename,
-			   struct op op[], unsigned int op_num, char *words[])
+static void op_add_key_ret(char *filename[], struct op op[],
+			   unsigned file, unsigned op_num, char *words[])
 {
 	if (!words[2] || !words[3] || !words[4] || words[5]
 	    || !streq(words[3], "="))
-		fail(filename, op_num+1, "Expected <key> = <ret>");
+		fail(filename[file], op_num+1, "Expected <key> = <ret>");
 	op[op_num].ret = atoi(words[4]);
-	op[op_num].key = make_tdb_data(op, filename, op_num+1, words[2]);
+	op[op_num].key = make_tdb_data(op, filename[file], op_num+1, words[2]);
 	/* May only be a unique key if it fails */
 	if (op[op_num].ret != 0)
 		total_keys++;
 }
 
-static void op_add_key_data(const char *filename,
-			    struct op op[], unsigned int op_num, char *words[])
+static void op_add_key_data(char *filename[], struct op op[],
+			    unsigned file, unsigned op_num, char *words[])
 {
 	if (!words[2] || !words[3] || !words[4] || words[5]
 	    || !streq(words[3], "="))
-		fail(filename, op_num+1, "Expected <key> = <data>");
-	op[op_num].key = make_tdb_data(op, filename, op_num+1, words[2]);
-	op[op_num].data = make_tdb_data(op, filename, op_num+1, words[4]);
-	/* May only be a unique key if it fails */
+		fail(filename[file], op_num+1, "Expected <key> = <data>");
+	op[op_num].key = make_tdb_data(op, filename[file], op_num+1, words[2]);
+	op[op_num].data = make_tdb_data(op, filename[file], op_num+1, words[4]);
+	/* Likely only be a unique key if it fails */
 	if (!op[op_num].data.dptr)
+		total_keys++;
+	else if (random() % 2)
 		total_keys++;
 }
 
 /* We don't record the keys or data for a traverse, as we don't use them. */
-static void op_add_traverse(const char *filename,
-			    struct op op[], unsigned int op_num, char *words[])
+static void op_add_traverse(char *filename[], struct op op[],
+			    unsigned file, unsigned op_num, char *words[])
 {
 	if (!words[2] || !words[3] || !words[4] || words[5]
 	    || !streq(words[3], "="))
-		fail(filename, op_num+1, "Expected <key> = <data>");
+		fail(filename[file], op_num+1, "Expected <key> = <data>");
 	op[op_num].key = tdb_null;
 }
 
 /* Full traverse info is useful for debugging, but changing it to
  * "traversefn" without the data makes the traces *much* smaller! */
-static void op_add_traversefn(const char *filename,
-			    struct op op[], unsigned int op_num, char *words[])
+static void op_add_traversefn(char *filename[], struct op op[],
+			    unsigned file, unsigned op_num, char *words[])
 {
 	if (words[2])
-		fail(filename, op_num+1, "Expected no values");
+		fail(filename[file], op_num+1, "Expected no values");
 	op[op_num].key = tdb_null;
 }
 
 /* <seqnum> tdb_store <rec> <rec> <flag> = <ret> */
-static void op_add_store(const char *filename,
-			 struct op op[], unsigned int op_num, char *words[])
+static void op_add_store(char *filename[], struct op op[],
+			 unsigned file, unsigned op_num, char *words[])
 {
 	if (!words[2] || !words[3] || !words[4] || !words[5] || !words[6]
 	    || words[7] || !streq(words[5], "="))
-		fail(filename, op_num+1, "Expect <key> <data> <flag> = <ret>");
+		fail(filename[file], op_num+1, "Expect <key> <data> <flag> = <ret>");
 
 	op[op_num].flag = strtoul(words[4], NULL, 0);
 	op[op_num].ret = atoi(words[6]);
-	op[op_num].key = make_tdb_data(op, filename, op_num+1, words[2]);
-	op[op_num].data = make_tdb_data(op, filename, op_num+1, words[3]);
+	op[op_num].key = make_tdb_data(op, filename[file], op_num+1, words[2]);
+	op[op_num].data = make_tdb_data(op, filename[file], op_num+1, words[3]);
 	total_keys++;
 }
 
 /* <seqnum> tdb_append <rec> <rec> = <rec> */
-static void op_add_append(const char *filename,
-			  struct op op[], unsigned int op_num, char *words[])
+static void op_add_append(char *filename[], struct op op[],
+			  unsigned file, unsigned op_num, char *words[])
 {
 	if (!words[2] || !words[3] || !words[4] || !words[5] || words[6]
 	    || !streq(words[4], "="))
-		fail(filename, op_num+1, "Expect <key> <data> = <rec>");
+		fail(filename[file], op_num+1, "Expect <key> <data> = <rec>");
 
-	op[op_num].key = make_tdb_data(op, filename, op_num+1, words[2]);
-	op[op_num].data = make_tdb_data(op, filename, op_num+1, words[3]);
+	op[op_num].key = make_tdb_data(op, filename[file], op_num+1, words[2]);
+	op[op_num].data = make_tdb_data(op, filename[file], op_num+1, words[3]);
 
 	op[op_num].append.post
-		= make_tdb_data(op, filename, op_num+1, words[5]);
+		= make_tdb_data(op, filename[file], op_num+1, words[5]);
 
 	/* By subtraction, figure out what previous data was. */
 	op[op_num].append.pre.dptr = op[op_num].append.post.dptr;
@@ -309,62 +316,73 @@ static void op_add_append(const char *filename,
 }
 
 /* <seqnum> tdb_get_seqnum = <ret> */
-static void op_add_seqnum(const char *filename,
-			  struct op op[], unsigned int op_num, char *words[])
+static void op_add_seqnum(char *filename[], struct op op[],
+			  unsigned file, unsigned op_num, char *words[])
 {
 	if (!words[2] || !words[3] || words[4] || !streq(words[2], "="))
-		fail(filename, op_num+1, "Expect = <ret>");
+		fail(filename[file], op_num+1, "Expect = <ret>");
 
 	op[op_num].key = tdb_null;
 	op[op_num].ret = atoi(words[3]);
 }
 
-static void op_add_traverse_start(const char *filename,
-				  struct op op[],
-				  unsigned int op_num, char *words[])
+static void op_add_traverse_start(char *filename[], struct op op[],
+				  unsigned file, unsigned op_num, char *words[])
 {
 	if (words[2])
-		fail(filename, op_num+1, "Expect no arguments");
+		fail(filename[file], op_num+1, "Expect no arguments");
 
 	op[op_num].key = tdb_null;
 	op[op_num].group_len = 0;
 }
 
-static void op_add_transaction(const char *filename, struct op op[],
-			       unsigned int op_num, char *words[])
+static void op_add_transaction(char *filename[], struct op op[],
+			       unsigned file, unsigned op_num, char *words[])
 {
 	if (words[2])
-		fail(filename, op_num+1, "Expect no arguments");
+		fail(filename[file], op_num+1, "Expect no arguments");
 
 	op[op_num].key = tdb_null;
 	op[op_num].group_len = 0;
 }
 
-static void op_add_chainlock(const char *filename,
-			     struct op op[], unsigned int op_num, char *words[])
+static void op_add_chainlock(char *filename[], struct op op[],
+			     unsigned file, unsigned op_num, char *words[])
 {
 	if (words[2] == NULL || words[3])
-		fail(filename, op_num+1, "Expected just a key");
+		fail(filename[file], op_num+1, "Expected just a key");
 
 	/* A chainlock key isn't a key in the normal sense; it doesn't
 	 * have to be in the db at all.  Also, we don't want to hash this op. */
-	op[op_num].data = make_tdb_data(op, filename, op_num+1, words[2]);
+	op[op_num].data = make_tdb_data(op, filename[file], op_num+1, words[2]);
 	op[op_num].key = tdb_null;
 	op[op_num].group_len = 0;
 }
 
-static void op_add_chainlock_ret(const char *filename,
-				 struct op op[], unsigned int op_num,
-				 char *words[])
+static void op_add_chainlock_ret(char *filename[], struct op op[],
+				 unsigned file, unsigned op_num, char *words[])
 {
 	if (!words[2] || !words[3] || !words[4] || words[5]
 	    || !streq(words[3], "="))
-		fail(filename, op_num+1, "Expected <key> = <ret>");
+		fail(filename[file], op_num+1, "Expected <key> = <ret>");
 	op[op_num].ret = atoi(words[4]);
-	op[op_num].data = make_tdb_data(op, filename, op_num+1, words[2]);
+	op[op_num].data = make_tdb_data(op, filename[file], op_num+1, words[2]);
 	op[op_num].key = tdb_null;
 	op[op_num].group_len = 0;
 	total_keys++;
+}
+
+static void op_add_wipe_all(char *filename[], struct op op[],
+			    unsigned file, unsigned op_num, char *words[])
+{
+	if (words[2])
+		fail(filename[file], op_num+1, "Expected no arguments");
+	op[op_num].key = tdb_null;
+	wipe_alls = talloc_realloc(NULL, wipe_alls, struct op_desc,
+				   num_wipe_alls+1);
+	wipe_alls[num_wipe_alls].file = file;
+	wipe_alls[num_wipe_alls].op_num = op_num;
+	num_wipe_alls++;
 }
 
 static int op_find_start(struct op op[], unsigned int op_num, enum op_type type)
@@ -378,8 +396,8 @@ static int op_find_start(struct op op[], unsigned int op_num, enum op_type type)
 	return 0;
 }
 
-static void op_analyze_transaction(const char *filename,
-				   struct op op[], unsigned int op_num,
+static void op_analyze_transaction(char *filename[], struct op op[],
+				   unsigned file, unsigned op_num,
 				   char *words[])
 {
 	unsigned int start, i;
@@ -387,11 +405,11 @@ static void op_analyze_transaction(const char *filename,
 	op[op_num].key = tdb_null;
 
 	if (words[2])
-		fail(filename, op_num+1, "Expect no arguments");
+		fail(filename[file], op_num+1, "Expect no arguments");
 
 	start = op_find_start(op, op_num, OP_TDB_TRANSACTION_START);
 	if (!start)
-		fail(filename, op_num+1, "no transaction start found");
+		fail(filename[file], op_num+1, "no transaction start found");
 
 	op[start].group_len = op_num - start;
 
@@ -401,16 +419,15 @@ static void op_analyze_transaction(const char *filename,
 }
 
 /* We treat chainlocks a lot like transactions, even though that's overkill */
-static void op_analyze_chainlock(const char *filename,
-				 struct op op[], unsigned int op_num,
-				 char *words[])
+static void op_analyze_chainlock(char *filename[], struct op op[],
+				 unsigned file, unsigned op_num, char *words[])
 {
 	unsigned int i, start;
 
 	if (words[2] == NULL || words[3])
-		fail(filename, op_num+1, "Expected just a key");
+		fail(filename[file], op_num+1, "Expected just a key");
 
-	op[op_num].data = make_tdb_data(op, filename, op_num+1, words[2]);
+	op[op_num].data = make_tdb_data(op, filename[file], op_num+1, words[2]);
 	op[op_num].key = tdb_null;
 	total_keys++;
 
@@ -418,21 +435,20 @@ static void op_analyze_chainlock(const char *filename,
 	if (!start)
 		start = op_find_start(op, op_num, OP_TDB_CHAINLOCK_READ);
 	if (!start)
-		fail(filename, op_num+1, "no initial chainlock found");
+		fail(filename[file], op_num+1, "no initial chainlock found");
 
 	/* FIXME: We'd have to do something clever to make this work
 	 * vs. deadlock. */
 	if (!key_eq(op[start].data, op[op_num].data))
-		fail(filename, op_num+1, "nested chainlock calls?");
+		fail(filename[file], op_num+1, "nested chainlock calls?");
 
 	op[start].group_len = op_num - start;
 	for (i = start; i <= op_num; i++)
 		op[i].group_start = start;
 }
 
-static void op_analyze_traverse(const char *filename,
-				struct op op[], unsigned int op_num,
-				char *words[])
+static void op_analyze_traverse(char *filename[], struct op op[],
+				unsigned file, unsigned op_num, char *words[])
 {
 	int i, start;
 
@@ -441,7 +457,7 @@ static void op_analyze_traverse(const char *filename,
 	/* = %u means traverse function terminated. */
 	if (words[2]) {
 		if (!streq(words[2], "=") || !words[3] || words[4])
-			fail(filename, op_num+1, "expect = <num>");
+			fail(filename[file], op_num+1, "expect = <num>");
 		op[op_num].ret = atoi(words[3]);
 	} else
 		op[op_num].ret = 0;
@@ -450,7 +466,7 @@ static void op_analyze_traverse(const char *filename,
 	if (!start)
 		start = op_find_start(op, op_num, OP_TDB_TRAVERSE_READ_START);
 	if (!start)
-		fail(filename, op_num+1, "no traversal start found");
+		fail(filename[file], op_num+1, "no traversal start found");
 
 	op[start].group_len = op_num - start;
 
@@ -807,6 +823,11 @@ unsigned run_ops(struct tdb_context *tdb,
 		case OP_TDB_DELETE:
 			try(tdb_delete(tdb, op[file][i].key), op[file][i].ret);
 			break;
+		case OP_TDB_REPACK:
+			/* We do nothing here: the transaction and traverse are
+			 * traced.  It's in the trace to mark it, since it
+			 * may become unnecessary in future. */
+			break;
 		}
 		do_post(filename, op, file, i);
 	}
@@ -815,22 +836,24 @@ unsigned run_ops(struct tdb_context *tdb,
 
 /* tdbtorture, in particular, can do a tdb_close with a transaction in
  * progress. */
-static struct op *maybe_cancel_transaction(const char *filename,
+static struct op *maybe_cancel_transaction(char *filename[], unsigned int file,
 					   struct op *op, unsigned int *num)
 {
 	unsigned int start = op_find_start(op, *num, OP_TDB_TRANSACTION_START);
 
 	if (start) {
 		char *words[] = { "<unknown>", "tdb_close", NULL };
-		add_op(filename, &op, *num, op[start].seqnum,
+		add_op(filename[file], &op, *num, op[start].seqnum,
 		       OP_TDB_TRANSACTION_CANCEL);
-		op_analyze_transaction(filename, op, *num, words);
+		op_analyze_transaction(filename, op, file, *num, words);
 		(*num)++;
 	}
 	return op;
 }
 
-static struct op *load_tracefile(const char *filename, unsigned int *num,
+static struct op *load_tracefile(char *filename[],
+				 unsigned int file,
+				 unsigned int *num,
 				 unsigned int *hashsize,
 				 unsigned int *tdb_flags,
 				 unsigned int *open_flags)
@@ -839,19 +862,19 @@ static struct op *load_tracefile(const char *filename, unsigned int *num,
 	struct op *op = talloc_array(NULL, struct op, 1);
 	char **words;
 	char **lines;
-	char *file;
+	char *contents;
 
-	file = grab_file(NULL, filename, NULL);
-	if (!file)
-		err(1, "Reading %s", filename);
+	contents = grab_file(NULL, filename[file], NULL);
+	if (!contents)
+		err(1, "Reading %s", filename[file]);
 
-	lines = strsplit(file, file, "\n", NULL);
+	lines = strsplit(contents, contents, "\n", NULL);
 	if (!lines[0])
-		errx(1, "%s is empty", filename);
+		errx(1, "%s is empty", filename[file]);
 
 	words = strsplit(lines, lines[0], " ", NULL);
 	if (!streq(words[1], "tdb_open"))
-		fail(filename, 1, "does not start with tdb_open");
+		fail(filename[file], 1, "does not start with tdb_open");
 
 	*hashsize = atoi(words[2]);
 	*tdb_flags = strtoul(words[3], NULL, 0);
@@ -862,31 +885,33 @@ static struct op *load_tracefile(const char *filename, unsigned int *num,
 
 		words = strsplit(lines, lines[i], " ", NULL);
 		if (!words[0] || !words[1])
-			fail(filename, i+1, "Expected seqnum number and op");
+			fail(filename[file], i+1,
+			     "Expected seqnum number and op");
 	       
 		opt = find_keyword(words[1], strlen(words[1]));
 		if (!opt) {
 			if (streq(words[1], "tdb_close")) {
 				if (lines[i+1])
-					fail(filename, i+2,
+					fail(filename[file], i+2,
 					     "lines after tdb_close");
 				*num = i;
 				talloc_free(lines);
-				return maybe_cancel_transaction(filename,
+				return maybe_cancel_transaction(filename, file,
 								op, num);
 			}
-			fail(filename, i+1, "Unknown operation '%s'", words[1]);
+			fail(filename[file], i+1,
+			     "Unknown operation '%s'", words[1]);
 		}
 
-		add_op(filename, &op, i, atoi(words[0]), opt->type);
-		opt->enhance_op(filename, op, i, words);
+		add_op(filename[file], &op, i, atoi(words[0]), opt->type);
+		opt->enhance_op(filename, op, file, i, words);
 	}
 
 	fprintf(stderr, "%s:%u:last operation is not tdb_close: incomplete?",
-	      filename, i);
+		filename[file], i);
 	talloc_free(lines);
 	*num = i - 1;
-	return maybe_cancel_transaction(filename, op, num);
+	return maybe_cancel_transaction(filename, file, op, num);
 }
 
 /* We remember all the keys we've ever seen, and who has them. */
@@ -896,6 +921,44 @@ struct keyinfo {
 	struct op_desc *user;
 };
 
+static bool starts_transaction(const struct op *op)
+{
+	return op->type == OP_TDB_TRANSACTION_START;
+}
+
+static bool in_transaction(const struct op op[], unsigned int i)
+{
+	return op[i].group_start && starts_transaction(&op[op[i].group_start]);
+}
+
+static bool successful_transaction(const struct op *op)
+{
+	return starts_transaction(op)
+		&& op[op->group_len].type == OP_TDB_TRANSACTION_COMMIT;
+}
+
+static bool starts_traverse(const struct op *op)
+{
+	return op->type == OP_TDB_TRAVERSE_START
+		|| op->type == OP_TDB_TRAVERSE_READ_START;
+}
+
+static bool in_traverse(const struct op op[], unsigned int i)
+{
+	return op[i].group_start && starts_traverse(&op[op[i].group_start]);
+}
+
+static bool starts_chainlock(const struct op *op)
+{
+	return op->type == OP_TDB_CHAINLOCK_READ
+		|| op->type == OP_TDB_CHAINLOCK;
+}
+
+static bool in_chainlock(const struct op op[], unsigned int i)
+{
+	return op[i].group_start && starts_chainlock(&op[op[i].group_start]);
+}
+
 static const TDB_DATA must_not_exist;
 static const TDB_DATA must_exist;
 static const TDB_DATA not_exists_or_empty;
@@ -903,8 +966,31 @@ static const TDB_DATA not_exists_or_empty;
 /* NULL means doesn't care if it exists or not, &must_exist means
  * it must exist but we don't care what, &must_not_exist means it must
  * not exist, otherwise the data it needs. */
-static const TDB_DATA *needs(const struct op *op)
+static const TDB_DATA *needs(const TDB_DATA *key, const struct op *op)
 {
+	/* Look through for an op in this transaction which needs this key. */
+	if (starts_transaction(op) || starts_chainlock(op)) {
+		unsigned int i;
+		const TDB_DATA *need = NULL;
+
+		for (i = 1; i < op->group_len; i++) {
+			if (key_eq(op[i].key, *key)
+			    || op[i].type == OP_TDB_WIPE_ALL) {
+				need = needs(key, &op[i]);
+				/* tdb_exists() is special: there might be
+				 * something in the transaction with more
+				 * specific requirements.  Other ops don't have
+				 * specific requirements (eg. store or delete),
+				 * but they change the value so we can't get
+				 * more information from future ops. */
+				if (op[i].type != OP_TDB_EXISTS)
+					break;
+			}
+		}
+
+		return need;
+	}
+
 	switch (op->type) {
 	/* FIXME: Pull forward deps, since we can deadlock */
 	case OP_TDB_CHAINLOCK:
@@ -974,44 +1060,6 @@ static const TDB_DATA *needs(const struct op *op)
 	
 }
 
-static bool starts_transaction(const struct op *op)
-{
-	return op->type == OP_TDB_TRANSACTION_START;
-}
-
-static bool in_transaction(const struct op op[], unsigned int i)
-{
-	return op[i].group_start && starts_transaction(&op[op[i].group_start]);
-}
-
-static bool successful_transaction(const struct op *op)
-{
-	return starts_transaction(op)
-		&& op[op->group_len].type == OP_TDB_TRANSACTION_COMMIT;
-}
-
-static bool starts_traverse(const struct op *op)
-{
-	return op->type == OP_TDB_TRAVERSE_START
-		|| op->type == OP_TDB_TRAVERSE_READ_START;
-}
-
-static bool in_traverse(const struct op op[], unsigned int i)
-{
-	return op[i].group_start && starts_traverse(&op[op[i].group_start]);
-}
-
-static bool starts_chainlock(const struct op *op)
-{
-	return op->type == OP_TDB_CHAINLOCK_READ
-		|| op->type == OP_TDB_CHAINLOCK;
-}
-
-static bool in_chainlock(const struct op op[], unsigned int i)
-{
-	return op[i].group_start && starts_chainlock(&op[op[i].group_start]);
-}
-
 /* What's the data after this op?  pre if nothing changed. */
 static const TDB_DATA *gives(const TDB_DATA *key, const TDB_DATA *pre,
 			     const struct op *op)
@@ -1028,7 +1076,8 @@ static const TDB_DATA *gives(const TDB_DATA *key, const TDB_DATA *pre,
 
 		for (i = 1; i < op->group_len; i++) {
 			/* This skips nested transactions, too */
-			if (key_eq(op[i].key, *key))
+			if (key_eq(op[i].key, *key)
+			    || op[i].type == OP_TDB_WIPE_ALL)
 				pre = gives(key, pre, &op[i]);
 		}
 		return pre;
@@ -1048,6 +1097,35 @@ static const TDB_DATA *gives(const TDB_DATA *key, const TDB_DATA *pre,
 		return &op->data;
 
 	return pre;
+}
+
+static void add_hash_user(struct keyinfo *hash,
+			  unsigned int h,
+			  struct op *op[],
+			  unsigned int file,
+			  unsigned int op_num)
+{
+	hash[h].user = talloc_realloc(hash, hash[h].user,
+				      struct op_desc, hash[h].num_users+1);
+
+	/* If it's in a transaction, it's the transaction which
+	 * matters from an analysis POV. */
+	if (in_transaction(op[file], op_num)
+	    || in_chainlock(op[file], op_num)) {
+		unsigned i;
+
+		op_num = op[file][op_num].group_start;
+
+		/* Don't include twice. */
+		for (i = 0; i < hash[h].num_users; i++) {
+			if (hash[h].user[i].file == file
+			    && hash[h].user[i].op_num == op_num)
+				return;
+		}
+	}
+	hash[h].user[hash[h].num_users].op_num = op_num;
+	hash[h].user[hash[h].num_users].file = file;
+	hash[h].num_users++;
 }
 
 static struct keyinfo *hash_ops(struct op *op[], unsigned int num_ops[],
@@ -1079,30 +1157,19 @@ static struct keyinfo *hash_ops(struct op *op[], unsigned int num_ops[],
 				talloc_free(op[i][j].key.dptr);
 				op[i][j].key.dptr = hash[h].key.dptr;
 			}
-			hash[h].user = talloc_realloc(hash, hash[h].user,
-						     struct op_desc,
-						     hash[h].num_users+1);
 
-			/* If it's in a transaction, it's the transaction which
-			 * matters from an analysis POV. */
-			if (in_transaction(op[i], j)
-			    || in_chainlock(op[i], j)) {
-				unsigned start = op[i][j].group_start;
-
-				/* Don't include twice. */
-				if (hash[h].num_users
-				    && hash[h].user[hash[h].num_users-1].file
-					== i
-				    && hash[h].user[hash[h].num_users-1].op_num
-					== start)
-					continue;
-
-				hash[h].user[hash[h].num_users].op_num = start;
-			} else
-				hash[h].user[hash[h].num_users].op_num = j;
-			hash[h].user[hash[h].num_users].file = i;
-			hash[h].num_users++;
+			add_hash_user(hash, h, op, i, j);
 		}
+	}
+
+	/* Any wipe all entries need adding to all hash entries. */
+	for (h = 0; h < total_keys*2; h++) {
+		if (!hash[h].num_users)
+			continue;
+
+		for (i = 0; i < num_wipe_alls; i++)
+			add_hash_user(hash, h, op,
+				      wipe_alls[i].file, wipe_alls[i].op_num);
 	}
 
 	return hash;
@@ -1111,28 +1178,7 @@ static struct keyinfo *hash_ops(struct op *op[], unsigned int num_ops[],
 static bool satisfies(const TDB_DATA *key, const TDB_DATA *data,
 		      const struct op *op)
 {
-	const TDB_DATA *need = NULL;
-
-	if (starts_transaction(op) || starts_chainlock(op)) {
-		unsigned int i;
-
-		/* Look through for an op in this transaction which
-		 * needs this key. */
-		for (i = 1; i < op->group_len; i++) {
-			if (key_eq(op[i].key, *key)) {
-				need = needs(&op[i]);
-				/* tdb_exists() is special: there might be
-				 * something in the transaction with more
-				 * specific requirements.  Other ops don't have
-				 * specific requirements (eg. store or delete),
-				 * but they change the value so we can't get
-				 * more information from future ops. */
-				if (op[i].type != OP_TDB_EXISTS)
-					break;
-			}
-		}
-	} else
-		need = needs(op);
+	const TDB_DATA *need = needs(key, op);
 
 	/* Don't need anything?  Cool. */
 	if (!need)
@@ -1256,12 +1302,11 @@ static void check_dep_sorting(struct op_desc user[], unsigned num_users,
  * number unlocked (the race can cause less detectable ordering problems,
  * in which case we'll deadlock and report: fix manually in that case).
  */
-static void figure_deps(char *filename[], struct op *op[],
-			const TDB_DATA *key, struct op_desc user[],
+static bool figure_deps(char *filename[], struct op *op[],
+			const TDB_DATA *key, const TDB_DATA *data,
+			struct op_desc user[],
 			unsigned num_users, unsigned num_files)
 {
-	/* We assume database starts empty. */
-	const struct TDB_DATA *data = &tdb_null;
 	unsigned int fuzz;
 
 	/* We prefer to keep strict seqnum order if possible: it's the
@@ -1273,13 +1318,35 @@ static void figure_deps(char *filename[], struct op *op[],
 	}
 
 	if (fuzz >= 100)
-		fail(filename[user[0].file], user[0].op_num+1,
-		     "Could not resolve inter-dependencies");
+		return false;
 
 	check_dep_sorting(user, num_users, num_files);
+	return true;
 }
 
-static void sort_ops(struct keyinfo hash[], char *filename[], struct op *op[],
+/* We're having trouble sorting out dependencies for this key.  Assume that it's
+ * a pre-existing record in the db, so determine a likely value. */
+static const TDB_DATA *preexisting_data(char *filename[], struct op *op[],
+					const TDB_DATA *key,
+					struct op_desc *user,
+					unsigned int num_users)
+{
+	unsigned int i;
+	const TDB_DATA *data;
+
+	for (i = 0; i < num_users; i++) {
+		data = needs(key, &op[user->file][user->op_num]);
+		if (data && data != &must_not_exist) {
+			printf("%s:%u: needs pre-existing record\n",
+			       filename[user->file], user->op_num+1);
+			return data;
+		}
+	}
+	return &tdb_null;
+}
+
+static void sort_ops(struct tdb_context *tdb,
+		     struct keyinfo hash[], char *filename[], struct op *op[],
 		     unsigned int num)
 {
 	unsigned int h;
@@ -1316,8 +1383,20 @@ static void sort_ops(struct keyinfo hash[], char *filename[], struct op *op[],
 		struct op_desc *user = hash[h].user;
 
 		qsort(user, hash[h].num_users, sizeof(user[0]), compare_seqnum);
-		figure_deps(filename, op, &hash[h].key, user, hash[h].num_users,
-			    num);
+		if (!figure_deps(filename, op, &hash[h].key, &tdb_null, user,
+				 hash[h].num_users, num)) {
+			const TDB_DATA *data;
+
+			data = preexisting_data(filename, op, &hash[h].key,
+						user, hash[h].num_users);
+			/* Give the first op what it wants: does that help? */
+			if (!figure_deps(filename, op, &hash[h].key, data, user,
+					 hash[h].num_users, num))
+				fail(filename[user[0].file], user[0].op_num+1,
+				     "Could not resolve inter-dependencies");
+			if (tdb_store(tdb, hash[h].key, *data, TDB_INSERT) != 0)
+				errx(1, "Could not store initial value");
+		}
 	}
 }
 
@@ -1614,7 +1693,8 @@ static bool handle_backoff(struct op *op[], int fd)
 }
 #endif
 
-static void derive_dependencies(char *filename[],
+static void derive_dependencies(struct tdb_context *tdb,
+				char *filename[],
 				struct op *op[], unsigned int num_ops[],
 				unsigned int num)
 {
@@ -1625,7 +1705,7 @@ static void derive_dependencies(char *filename[],
 	hash = hash_ops(op, num_ops, num);
 
 	/* Sort them by sequence number. */
-	sort_ops(hash, filename, op, num);
+	sort_ops(tdb, hash, filename, op, num);
 
 	/* Create dependencies back to the last change, rather than
 	 * creating false dependencies by naively making each one
@@ -1683,7 +1763,7 @@ static struct timeval run_test(char *argv[],
 		case 0:
 			close(fds[1]);
 			tdb = tdb_open_ex(argv[1], hashsize[i],
-					  tdb_flags[i]|TDB_NOSYNC,
+					  tdb_flags[i],
 					  open_flags[i], 0600, NULL, hash_key);
 			if (!tdb)
 				err(1, "Opening tdb %s", argv[1]);
@@ -1741,6 +1821,7 @@ int main(int argc, char *argv[])
 	unsigned int i, num_ops[argc], hashsize[argc], tdb_flags[argc], open_flags[argc];
 	struct op *op[argc];
 	int fds[2];
+	struct tdb_context *tdb;
 
 	if (argc < 3)
 		errx(1, "Usage: %s <tdbfile> <tracefile>...", argv[0]);
@@ -1749,22 +1830,31 @@ int main(int argc, char *argv[])
 	for (i = 0; i < argc - 2; i++) {
 		printf("Loading tracefile %s...", argv[2+i]);
 		fflush(stdout);
-		op[i] = load_tracefile(argv[2+i], &num_ops[i], &hashsize[i],
+		op[i] = load_tracefile(argv+2, i, &num_ops[i], &hashsize[i],
 				       &tdb_flags[i], &open_flags[i]);
 		if (pipe(pipes[i].fd) != 0)
 			err(1, "creating pipe");
+		/* Don't truncate, or clear if first: we do that. */
+		open_flags[i] &= ~(O_TRUNC);
+		tdb_flags[i] &= ~(TDB_CLEAR_IF_FIRST);
+		/* Open NOSYNC, to save time. */
+		tdb_flags[i] |= TDB_NOSYNC;
 		printf("done\n");
 	}
 
+	/* Dependency may figure we need to create seed records. */
+	tdb = tdb_open_ex(argv[1], hashsize[0], TDB_CLEAR_IF_FIRST|TDB_NOSYNC,
+			  O_CREAT|O_TRUNC|O_RDWR, 0600, NULL, hash_key);
+
 	printf("Calculating inter-dependencies...");
 	fflush(stdout);
-	derive_dependencies(argv+2, op, num_ops, i);
+	derive_dependencies(tdb, argv+2, op, num_ops, i);
 	printf("done\n");
+	tdb_close(tdb);
 
 	/* Don't fork for single arg case: simple debugging. */
 	if (argc == 3) {
-		struct tdb_context *tdb;
-		tdb = tdb_open_ex(argv[1], hashsize[0], tdb_flags[0]|TDB_NOSYNC,
+		tdb = tdb_open_ex(argv[1], hashsize[0], tdb_flags[0],
 				  open_flags[0], 0600, NULL, hash_key);
 		printf("Single threaded run...");
 		fflush(stdout);

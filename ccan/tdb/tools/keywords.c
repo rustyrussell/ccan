@@ -35,10 +35,10 @@
 struct op_table {
 	const char *name;
 	enum op_type type;
-	void (*enhance_op)(const char *filename,
-			   struct op op[], unsigned int op_num, char *words[]);
+	void (*enhance_op)(char *filename[], struct op op[],
+			   unsigned file, unsigned op_num, char *words[]);
 };
-/* maximum key range = 48, duplicates = 0 */
+/* maximum key range = 53, duplicates = 0 */
 
 #ifdef __GNUC__
 __inline
@@ -52,32 +52,32 @@ hash_keyword (register const char *str, register unsigned int len)
 {
   static const unsigned char asso_values[] =
     {
-      56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
-      56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
-      56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
-      56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
-      56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
-      56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
-      56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
-      56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
-      56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
-      56, 56, 56, 56, 56, 56, 56, 20, 56, 30,
-       5,  0,  0,  5,  5, 56, 56,  0,  0,  0,
-      20, 56, 20, 56, 56,  0,  5,  0, 56,  0,
-      56,  5, 56, 56, 56, 56, 56, 56, 56, 56,
-      56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
-      56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
-      56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
-      56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
-      56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
-      56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
-      56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
-      56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
-      56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
-      56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
-      56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
-      56, 56, 56, 56, 56, 56, 56, 56, 56, 56,
-      56, 56, 56, 56, 56, 56
+      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+      61, 61, 61, 61, 61, 61, 61, 45, 61, 30,
+       5,  0,  0,  5,  5, 61, 61,  0,  0,  0,
+      20, 61, 20, 61, 25,  0,  5,  0, 61,  0,
+      61,  5, 61, 61, 61, 61, 61, 61, 61, 61,
+      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+      61, 61, 61, 61, 61, 61, 61, 61, 61, 61,
+      61, 61, 61, 61, 61, 61
     };
   return len + asso_values[(unsigned char)str[4]] + asso_values[(unsigned char)str[len - 1]];
 }
@@ -93,11 +93,11 @@ find_keyword (register const char *str, register unsigned int len)
 {
   enum
     {
-      TOTAL_KEYWORDS = 34,
+      TOTAL_KEYWORDS = 35,
       MIN_WORD_LENGTH = 8,
       MAX_WORD_LENGTH = 30,
       MIN_HASH_VALUE = 8,
-      MAX_HASH_VALUE = 55
+      MAX_HASH_VALUE = 60
     };
 
   static const struct op_table wordlist[] =
@@ -112,7 +112,7 @@ find_keyword (register const char *str, register unsigned int len)
 #line 16 "keywords.gperf"
       {"tdb_lockall", OP_TDB_LOCKALL, op_add_nothing,},
 #line 36 "keywords.gperf"
-      {"tdb_wipe_all", OP_TDB_WIPE_ALL, op_add_nothing,},
+      {"tdb_wipe_all", OP_TDB_WIPE_ALL, op_add_wipe_all,},
 #line 20 "keywords.gperf"
       {"tdb_unlockall", OP_TDB_UNLOCKALL, op_add_nothing,},
 #line 48 "keywords.gperf"
@@ -153,8 +153,8 @@ find_keyword (register const char *str, register unsigned int len)
 #line 41 "keywords.gperf"
       {"tdb_traverse_read_start", OP_TDB_TRAVERSE_READ_START, op_add_traverse_start,},
       {""},
-#line 34 "keywords.gperf"
-      {"tdb_append", OP_TDB_APPEND, op_add_append,},
+#line 50 "keywords.gperf"
+      {"tdb_repack", OP_TDB_REPACK, op_add_nothing,},
 #line 47 "keywords.gperf"
       {"tdb_nextkey", OP_TDB_NEXTKEY, op_add_key_data,},
       {""}, {""}, {""},
@@ -181,7 +181,10 @@ find_keyword (register const char *str, register unsigned int len)
       {"tdb_chainlock_read", OP_TDB_CHAINLOCK_READ, op_add_chainlock,},
       {""},
 #line 30 "keywords.gperf"
-      {"tdb_chainunlock_read", OP_TDB_CHAINUNLOCK_READ, op_analyze_chainlock,}
+      {"tdb_chainunlock_read", OP_TDB_CHAINUNLOCK_READ, op_analyze_chainlock,},
+      {""}, {""}, {""}, {""},
+#line 34 "keywords.gperf"
+      {"tdb_append", OP_TDB_APPEND, op_add_append,}
     };
 
   if (len <= MAX_WORD_LENGTH && len >= MIN_WORD_LENGTH)
