@@ -9,18 +9,33 @@
 void *grab_fd(const void *ctx, int fd, size_t *size)
 {
 	int ret;
-	size_t max = 16384, s;
+	size_t max, s;
 	char *buffer;
+	struct stat st;
 
 	if (!size)
 		size = &s;
 	*size = 0;
 
+	if (fstat(fd, &st) == 0)
+		max = st.st_size;
+	else
+		max = 16384;
+
 	buffer = talloc_array(ctx, char, max+1);
 	while ((ret = read(fd, buffer + *size, max - *size)) > 0) {
 		*size += ret;
-		if (*size == max)
-			buffer = talloc_realloc(ctx, buffer, char, max*=2 + 1);
+		if (*size == max) {
+			buffer = talloc_realloc(ctx, buffer, char, max*2+1);
+			if (!buffer) {
+				buffer = talloc_realloc(ctx, buffer, char,
+							max + 1024*1024 + 1);
+				if (!buffer)
+					return NULL;
+				max += 1024*1024;
+			} else
+				max *= 2;
+		}
 	}
 	if (ret < 0) {
 		talloc_free(buffer);
