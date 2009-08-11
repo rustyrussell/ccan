@@ -85,11 +85,13 @@
     still available, but no transaction recovery area is used and no
     fsync/msync calls are made.
 
-  - if TDB_NO_NESTING is passed to flags in tdb open then transaction
-    nesting is disabled. tdb_transaction_start() will then implicitely
-    cancel any pending transactions and always start a new transaction
-    context instead of nesting.
+  - if TDB_ALLOW_NESTING is passed to flags in tdb open, or added using
+    tdb_add_flags() transaction is enabled.
+    The default is that transaction nesting is not allowed and an attempt
+    to create a nested transaction will fail with TDB_ERR_NESTING.
 
+    Beware. when transactions are nested a transaction successfully
+    completed with tdb_transaction_commit() can be silently unrolled later.
 */
 
 
@@ -533,16 +535,15 @@ int tdb_transaction_start(struct tdb_context *tdb)
 
 	/* cope with nested tdb_transaction_start() calls */
 	if (tdb->transaction != NULL) {
-		tdb_trace(tdb, "tdb_transaction_start");
-		if (!tdb->flags & TDB_NO_NESTING) {
-			tdb->transaction->nesting++;
-			TDB_LOG((tdb, TDB_DEBUG_TRACE, "tdb_transaction_start: nesting %d\n", 
-				 tdb->transaction->nesting));
-			return 0;
-		} else {
-			tdb_transaction_cancel_internal(tdb);
-			TDB_LOG((tdb, TDB_DEBUG_TRACE, "tdb_transaction_start: cancelling previous transaction\n"));
+		if (!(tdb->flags & TDB_ALLOW_NESTING)) {
+			tdb->ecode = TDB_ERR_NESTING;
+			return -1;
 		}
+		tdb_trace(tdb, "tdb_transaction_start");
+		tdb->transaction->nesting++;
+		TDB_LOG((tdb, TDB_DEBUG_TRACE, "tdb_transaction_start: nesting %d\n", 
+			 tdb->transaction->nesting));
+		return 0;
 	}
 
 	if (tdb->num_locks != 0 || tdb->global_lock.count) {
