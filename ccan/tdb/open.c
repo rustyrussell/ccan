@@ -393,7 +393,7 @@ int tdb_close(struct tdb_context *tdb)
 
 	tdb_trace(tdb, "tdb_close");
 	if (tdb->transaction) {
-		tdb_transaction_cancel_internal(tdb);
+		_tdb_transaction_cancel(tdb);
 	}
 
 	if (tdb->map_ptr) {

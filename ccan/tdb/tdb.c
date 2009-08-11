@@ -160,7 +160,7 @@ static int tdb_update_hash(struct tdb_context *tdb, TDB_DATA key, uint32_t hash,
  * then the TDB_DATA will have zero length but
  * a non-zero pointer
  */
-static TDB_DATA do_tdb_fetch(struct tdb_context *tdb, TDB_DATA key)
+static TDB_DATA _tdb_fetch(struct tdb_context *tdb, TDB_DATA key)
 {
 	tdb_off_t rec_ptr;
 	struct list_struct rec;
@@ -181,7 +181,7 @@ static TDB_DATA do_tdb_fetch(struct tdb_context *tdb, TDB_DATA key)
 
 TDB_DATA tdb_fetch(struct tdb_context *tdb, TDB_DATA key)
 {
-	TDB_DATA ret = do_tdb_fetch(tdb, key);
+	TDB_DATA ret = _tdb_fetch(tdb, key);
 
 	tdb_trace_1rec_retrec(tdb, "tdb_fetch", key, ret);
 	return ret;
@@ -446,8 +446,8 @@ static tdb_off_t tdb_find_dead(struct tdb_context *tdb, uint32_t hash,
 	return 0;
 }
 
-static int _tdb_store(struct tdb_context *tdb, TDB_DATA key, TDB_DATA dbuf,
-		      int flag, uint32_t hash)
+static int _tdb_store(struct tdb_context *tdb, TDB_DATA key,
+		      TDB_DATA dbuf, int flag, uint32_t hash)
 {
 	struct list_struct rec;
 	tdb_off_t rec_ptr;
@@ -613,7 +613,7 @@ int tdb_append(struct tdb_context *tdb, TDB_DATA key, TDB_DATA new_dbuf)
 	if (tdb_lock(tdb, BUCKET(hash), F_WRLCK) == -1)
 		return -1;
 
-	dbuf = do_tdb_fetch(tdb, key);
+	dbuf = _tdb_fetch(tdb, key);
 
 	if (dbuf.dptr == NULL) {
 		dbuf.dptr = (unsigned char *)malloc(new_dbuf.dsize);

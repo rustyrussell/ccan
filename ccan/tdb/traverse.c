@@ -140,9 +140,9 @@ static tdb_off_t tdb_next_lock(struct tdb_context *tdb, struct tdb_traverse_lock
    if fn is NULL then it is not called
    a non-zero return value from fn() indicates that the traversal should stop
   */
-static int tdb_traverse_internal(struct tdb_context *tdb, 
-				 tdb_traverse_func fn, void *private_data,
-				 struct tdb_traverse_lock *tl)
+static int _tdb_traverse(struct tdb_context *tdb, 
+			 tdb_traverse_func fn, void *private_data,
+			 struct tdb_traverse_lock *tl)
 {
 	TDB_DATA key, dbuf;
 	struct list_struct rec;
@@ -226,7 +226,7 @@ int tdb_traverse_read(struct tdb_context *tdb,
 
 	tdb->traverse_read++;
 	tdb_trace(tdb, "tdb_traverse_read_start");
-	ret = tdb_traverse_internal(tdb, fn, private_data, &tl);
+	ret = _tdb_traverse(tdb, fn, private_data, &tl);
 	tdb->traverse_read--;
 
 	tdb_transaction_unlock(tdb);
@@ -257,7 +257,7 @@ int tdb_traverse(struct tdb_context *tdb,
 
 	tdb->traverse_write++;
 	tdb_trace(tdb, "tdb_traverse_start");
-	ret = tdb_traverse_internal(tdb, fn, private_data, &tl);
+	ret = _tdb_traverse(tdb, fn, private_data, &tl);
 	tdb->traverse_write--;
 
 	tdb_transaction_unlock(tdb);
