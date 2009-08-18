@@ -508,7 +508,7 @@ static int _tdb_unlockall(struct tdb_context *tdb, int ltype, bool mark_lock)
 	}
 
 	if (!mark_lock &&
-	    tdb->methods->brunlock(tdb, F_WRLCK,
+	    tdb->methods->brunlock(tdb, ltype,
 				   FREELIST_TOP, 4*tdb->header.hash_size)) {
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_unlockall failed (%s)\n", strerror(errno)));
 		return -1;
