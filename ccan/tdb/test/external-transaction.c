@@ -51,9 +51,12 @@ maybe_alarmed:
 	return -3;
 }
 
+struct agent {
+	int cmdfd, responsefd;
+};
 
-/* Do this before doing any tdb stuff.  Return handle, or -1. */
-int prepare_external_agent(void)
+/* Do this before doing any tdb stuff.  Return handle, or NULL. */
+struct agent *prepare_external_agent(void)
 {
 	int pid;
 	int command[2], response[2];
@@ -61,18 +64,20 @@ int prepare_external_agent(void)
 	char name[PATH_MAX];
 
 	if (pipe(command) != 0 || pipe(response) != 0)
-		return -1;
+		return NULL;
 
 	pid = fork();
 	if (pid < 0)
-		return -1;
+		return NULL;
 
 	if (pid != 0) {
+		struct agent *agent = malloc(sizeof(*agent));
+
 		close(command[0]);
 		close(response[1]);
-		/* FIXME: Make fds consective. */
-		dup2(command[1]+1, response[1]);
-		return command[1];
+		agent->cmdfd = command[1];
+		agent->responsefd = response[0];
+		return agent;
 	}
 
 	close(command[1]);
@@ -89,15 +94,15 @@ int prepare_external_agent(void)
 }
 
 /* Ask the external agent to try to do a transaction. */
-bool external_agent_transaction(int handle, const char *tdbname)
+bool external_agent_transaction(struct agent *agent, const char *tdbname)
 {
 	int res;
 
-	if (write(handle, tdbname, strlen(tdbname)+1)
+	if (write(agent->cmdfd, tdbname, strlen(tdbname)+1)
 	    != strlen(tdbname)+1)
 		err(1, "Writing to agent");
 
-	if (read(handle+1, &res, sizeof(res)) != sizeof(res))
+	if (read(agent->responsefd, &res, sizeof(res)) != sizeof(res))
 		err(1, "Reading from agent");
 
 	if (res > 1)

@@ -14,7 +14,7 @@
 #include <err.h>
 #include "external-transaction.h"
 
-static int agent;
+static struct agent *agent;
 
 static bool correct_key(TDB_DATA key)
 {
@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
 
 	plan_tests(15);
 	agent = prepare_external_agent();
-	if (agent < 0)
+	if (!agent)
 		err(1, "preparing agent");
 
 	tdb = tdb_open("/tmp/test3.tdb", 1024, TDB_CLEAR_IF_FIRST,
