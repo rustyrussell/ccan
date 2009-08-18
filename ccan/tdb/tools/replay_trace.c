@@ -20,6 +20,8 @@
 #define STRINGIFY2(x) #x
 #define STRINGIFY(x) STRINGIFY2(x)
 
+static bool quiet = false;
+
 /* Avoid mod by zero */
 static unsigned int total_keys = 1;
 
@@ -506,12 +508,14 @@ static void dump_pre(char *filename[], struct op *op[],
 {
 	struct depend *dep;
 
-	printf("%s:%u (%u) still waiting for:\n", filename[file], i+1,
-		op[file][i].seqnum);
-	list_for_each(&op[file][i].pre, dep, pre_list)
-		printf("    %s:%u (%u)\n",
-		       filename[dep->prereq.file], dep->prereq.op_num+1,
-		       op[dep->prereq.file][dep->prereq.op_num].seqnum);
+	if (!quiet) {
+		printf("%s:%u (%u) still waiting for:\n", filename[file], i+1,
+		       op[file][i].seqnum);
+		list_for_each(&op[file][i].pre, dep, pre_list)
+			printf("    %s:%u (%u)\n",
+			       filename[dep->prereq.file], dep->prereq.op_num+1,
+			       op[dep->prereq.file][dep->prereq.op_num].seqnum);
+	}
 	check_deps(filename[file], op[file], i);
 }
 
@@ -907,9 +911,12 @@ static struct op *load_tracefile(char *filename[],
 		opt->enhance_op(filename, op, file, i, words);
 	}
 
-	fprintf(stderr, "%s:%u:last operation is not tdb_close: incomplete?",
-		filename[file], i);
-	talloc_free(lines);
+	if (!quiet)
+		fprintf(stderr,
+			"%s:%u:last operation is not tdb_close: incomplete?",
+			filename[file], i);
+
+	talloc_free(contents);
 	*num = i - 1;
 	return maybe_cancel_transaction(filename, file, op, num);
 }
@@ -1337,8 +1344,9 @@ static const TDB_DATA *preexisting_data(char *filename[], struct op *op[],
 	for (i = 0; i < num_users; i++) {
 		data = needs(key, &op[user->file][user->op_num]);
 		if (data && data != &must_not_exist) {
-			printf("%s:%u: needs pre-existing record\n",
-			       filename[user->file], user->op_num+1);
+			if (!quiet)
+				printf("%s:%u: needs pre-existing record\n",
+				       filename[user->file], user->op_num+1);
 			return data;
 		}
 	}
@@ -1762,9 +1770,8 @@ static struct timeval run_test(char *argv[],
 			err(1, "fork failed");
 		case 0:
 			close(fds[1]);
-			tdb = tdb_open_ex(argv[1], hashsize[i],
-					  tdb_flags[i],
-					  open_flags[i], 0600, NULL, hash_key);
+			tdb = tdb_open(argv[1], hashsize[i],
+				       tdb_flags[i], open_flags[i], 0600);
 			if (!tdb)
 				err(1, "Opening tdb %s", argv[1]);
 
@@ -1783,7 +1790,8 @@ static struct timeval run_test(char *argv[],
 	/* Let everything settle. */
 	sleep(1);
 
-	printf("Starting run...");
+	if (!quiet)
+		printf("Starting run...");
 	fflush(stdout);
 	gettimeofday(&start, NULL);
 	/* Tell them all to go!  Any write of sufficient length will do. */
@@ -1804,7 +1812,8 @@ static struct timeval run_test(char *argv[],
 		exit(1);
 
 	gettimeofday(&end, NULL);
-	printf("done\n");
+	if (!quiet)
+		printf("done\n");
 
 	if (end.tv_usec < start.tv_usec) {
 		end.tv_usec += 1000000;
@@ -1815,20 +1824,54 @@ static struct timeval run_test(char *argv[],
 	return diff;
 }
 
+static void init_tdb(struct tdb_context *master_tdb,
+		     const char *name, unsigned int hashsize)
+{
+	TDB_DATA key, data;
+	struct tdb_context *tdb;
+
+	tdb = tdb_open(name, hashsize, TDB_CLEAR_IF_FIRST|TDB_NOSYNC,
+		       O_CREAT|O_TRUNC|O_RDWR, 0600);
+	if (!tdb)
+		errx(1, "opening tdb %s", name);
+
+	for (key = tdb_firstkey(master_tdb);
+	     key.dptr;
+	     key = tdb_nextkey(master_tdb, key)) {
+		data = tdb_fetch(master_tdb, key);
+		if (tdb_store(tdb, key, data, TDB_INSERT) != 0)
+			errx(1, "Failed to store initial key");
+	}
+	tdb_close(tdb);
+}
+
 int main(int argc, char *argv[])
 {
 	struct timeval diff;
 	unsigned int i, num_ops[argc], hashsize[argc], tdb_flags[argc], open_flags[argc];
 	struct op *op[argc];
 	int fds[2];
-	struct tdb_context *tdb;
+	struct tdb_context *master;
+	unsigned int runs = 1;
 
 	if (argc < 3)
-		errx(1, "Usage: %s <tdbfile> <tracefile>...", argv[0]);
+		errx(1, "Usage: %s [--quiet] [-n <number>] <tdbfile> <tracefile>...", argv[0]);
+
+	if (streq(argv[1], "--quiet")) {
+		quiet = true;
+		argv++;
+		argc--;
+	}
+	if (streq(argv[1], "-n")) {
+		runs = atoi(argv[2]);
+		argv += 2;
+		argc -= 2;
+	}
 
 	pipes = talloc_array(NULL, struct pipe, argc - 1);
 	for (i = 0; i < argc - 2; i++) {
-		printf("Loading tracefile %s...", argv[2+i]);
+		if (!quiet)
+			printf("Loading tracefile %s...", argv[2+i]);
 		fflush(stdout);
 		op[i] = load_tracefile(argv+2, i, &num_ops[i], &hashsize[i],
 				       &tdb_flags[i], &open_flags[i]);
@@ -1839,52 +1882,74 @@ int main(int argc, char *argv[])
 		tdb_flags[i] &= ~(TDB_CLEAR_IF_FIRST);
 		/* Open NOSYNC, to save time. */
 		tdb_flags[i] |= TDB_NOSYNC;
-		printf("done\n");
+		if (!quiet)
+			printf("done\n");
 	}
 
 	/* Dependency may figure we need to create seed records. */
-	tdb = tdb_open_ex(argv[1], hashsize[0], TDB_CLEAR_IF_FIRST|TDB_NOSYNC,
-			  O_CREAT|O_TRUNC|O_RDWR, 0600, NULL, hash_key);
-
-	printf("Calculating inter-dependencies...");
-	fflush(stdout);
-	derive_dependencies(tdb, argv+2, op, num_ops, i);
-	printf("done\n");
-	tdb_close(tdb);
-
-	/* Don't fork for single arg case: simple debugging. */
-	if (argc == 3) {
-		tdb = tdb_open_ex(argv[1], hashsize[0], tdb_flags[0],
-				  open_flags[0], 0600, NULL, hash_key);
-		printf("Single threaded run...");
+	master = tdb_open(NULL, 0, TDB_INTERNAL, O_RDWR, 0);
+	if (!quiet) {
+		printf("Calculating inter-dependencies...");
 		fflush(stdout);
-
-		run_ops(tdb, pipes[0].fd[0], argv+2, op, 0, 1, num_ops[0],
-			false);
-		check_deps(argv[2], op[0], num_ops[0]);
-
-		printf("done\n");
-		exit(0);
 	}
+	derive_dependencies(master, argv+2, op, num_ops, i);
+	if (!quiet)
+		printf("done\n");
 
-	if (pipe(fds) != 0)
-		err(1, "creating pipe");
+	for (i = 0; i < runs; i++) {
+		init_tdb(master, argv[1], hashsize[0]);
+
+		/* Don't fork for single arg case: simple debugging. */
+		if (argc == 3) {
+			struct timeval start, end;
+			struct tdb_context *tdb;
+
+			tdb = tdb_open(argv[1], hashsize[0], tdb_flags[0],
+				       open_flags[0], 0600);
+			if (!quiet) {
+				printf("Single threaded run...");
+				fflush(stdout);
+			}
+			gettimeofday(&start, NULL);
+
+			run_ops(tdb, pipes[0].fd[0], argv+2, op, 0, 1,
+				num_ops[0], false);
+			gettimeofday(&end, NULL);
+			if (!quiet)
+				printf("done\n");
+			tdb_close(tdb);
+
+			check_deps(argv[2], op[0], num_ops[0]);
+			if (end.tv_usec < start.tv_usec) {
+				end.tv_usec += 1000000;
+				end.tv_sec--;
+			}
+			diff.tv_sec = end.tv_sec - start.tv_sec;
+			diff.tv_usec = end.tv_usec - start.tv_usec;
+			goto print_time;
+		}
+
+		if (pipe(fds) != 0)
+			err(1, "creating pipe");
 
 #if TRAVERSALS_TAKE_TRANSACTION_LOCK
-	if (pipe(pipes[argc-2].fd) != 0)
-		err(1, "creating pipe");
-	backoff_fd = pipes[argc-2].fd[1];
-	set_nonblock(pipes[argc-2].fd[1]);
-	set_nonblock(pipes[argc-2].fd[0]);
+		if (pipe(pipes[argc-2].fd) != 0)
+			err(1, "creating pipe");
+		backoff_fd = pipes[argc-2].fd[1];
+		set_nonblock(pipes[argc-2].fd[1]);
+		set_nonblock(pipes[argc-2].fd[0]);
 #endif
 
-	do {
-		diff = run_test(argv, num_ops, hashsize, tdb_flags, open_flags,
-				op, fds);
-	} while (handle_backoff(op, pipes[argc-2].fd[0]));
+		do {
+			diff = run_test(argv, num_ops, hashsize, tdb_flags,
+					open_flags, op, fds);
+		} while (handle_backoff(op, pipes[argc-2].fd[0]));
 
-	printf("Time replaying: %lu usec\n",
-	       diff.tv_sec * 1000000UL + diff.tv_usec);
-	
+	print_time:
+		if (!quiet)
+			printf("Time replaying: ");
+		printf("%lu usec\n", diff.tv_sec * 1000000UL + diff.tv_usec);
+	}
+
 	exit(0);
 }
