@@ -182,6 +182,15 @@ struct tdb_traverse_lock {
 	int lock_rw;
 };
 
+enum tdb_lock_flags {
+	/* WAIT == F_SETLKW, NOWAIT == F_SETLK */
+	TDB_LOCK_NOWAIT = 0,
+	TDB_LOCK_WAIT = 1,
+	/* If set, don't log an error on failure. */
+	TDB_LOCK_PROBE = 2,
+	/* If set, don't actually lock at all. */
+	TDB_LOCK_MARK_ONLY = 4,
+};
 
 struct tdb_methods {
 	int (*tdb_read)(struct tdb_context *, tdb_off_t , void *, tdb_len_t , int );
@@ -189,7 +198,8 @@ struct tdb_methods {
 	void (*next_hash_chain)(struct tdb_context *, uint32_t *);
 	int (*tdb_oob)(struct tdb_context *, tdb_off_t , int );
 	int (*tdb_expand_file)(struct tdb_context *, tdb_off_t , tdb_off_t );
-	int (*tdb_brlock)(struct tdb_context *, tdb_off_t , int, int, int, size_t);
+	int (*brlock)(struct tdb_context *, int, tdb_off_t, size_t, enum tdb_lock_flags);
+	int (*brunlock)(struct tdb_context *, int, tdb_off_t, size_t);
 };
 
 struct tdb_context {
@@ -235,9 +245,13 @@ void tdb_mmap(struct tdb_context *tdb);
 int tdb_lock(struct tdb_context *tdb, int list, int ltype);
 int tdb_lock_nonblock(struct tdb_context *tdb, int list, int ltype);
 int tdb_unlock(struct tdb_context *tdb, int list, int ltype);
-int tdb_brlock(struct tdb_context *tdb, tdb_off_t offset, int rw_type, int lck_type, int probe, size_t len);
+int tdb_brlock(struct tdb_context *tdb,
+	       int rw_type, tdb_off_t offset, size_t len,
+	       enum tdb_lock_flags flags);
+int tdb_brunlock(struct tdb_context *tdb,
+		 int rw_type, tdb_off_t offset, size_t len);
 int tdb_transaction_lock(struct tdb_context *tdb, int ltype);
-int tdb_transaction_unlock(struct tdb_context *tdb);
+int tdb_transaction_unlock(struct tdb_context *tdb, int ltype);
 int tdb_brlock_upgrade(struct tdb_context *tdb, tdb_off_t offset, size_t len);
 int tdb_write_lock_record(struct tdb_context *tdb, tdb_off_t off);
 int tdb_write_unlock_record(struct tdb_context *tdb, tdb_off_t off);
@@ -250,7 +264,7 @@ int tdb_ofs_read(struct tdb_context *tdb, tdb_off_t offset, tdb_off_t *d);
 int tdb_ofs_write(struct tdb_context *tdb, tdb_off_t offset, tdb_off_t *d);
 int tdb_lock_record(struct tdb_context *tdb, tdb_off_t off);
 int tdb_unlock_record(struct tdb_context *tdb, tdb_off_t off);
-int _tdb_transaction_cancel(struct tdb_context *tdb);
+int _tdb_transaction_cancel(struct tdb_context *tdb, int ltype);
 int tdb_rec_read(struct tdb_context *tdb, tdb_off_t offset, struct list_struct *rec);
 int tdb_rec_write(struct tdb_context *tdb, tdb_off_t offset, struct list_struct *rec);
 int tdb_do_delete(struct tdb_context *tdb, tdb_off_t rec_ptr, struct list_struct *rec);

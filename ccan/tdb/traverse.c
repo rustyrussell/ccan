@@ -229,7 +229,7 @@ int tdb_traverse_read(struct tdb_context *tdb,
 	ret = _tdb_traverse(tdb, fn, private_data, &tl);
 	tdb->traverse_read--;
 
-	tdb_transaction_unlock(tdb);
+	tdb_transaction_unlock(tdb, F_RDLCK);
 
 	return ret;
 }
@@ -260,7 +260,7 @@ int tdb_traverse(struct tdb_context *tdb,
 	ret = _tdb_traverse(tdb, fn, private_data, &tl);
 	tdb->traverse_write--;
 
-	tdb_transaction_unlock(tdb);
+	tdb_transaction_unlock(tdb, F_WRLCK);
 
 	return ret;
 }

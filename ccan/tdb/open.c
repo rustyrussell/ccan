@@ -226,7 +226,7 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
         fcntl(tdb->fd, F_SETFD, v | FD_CLOEXEC);
 
 	/* ensure there is only one process initialising at once */
-	if (tdb->methods->tdb_brlock(tdb, GLOBAL_LOCK, F_WRLCK, F_SETLKW, 0, 1) == -1) {
+	if (tdb->methods->brlock(tdb, F_WRLCK, GLOBAL_LOCK, 1, TDB_LOCK_WAIT) == -1) {
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_open_ex: failed to get global lock on %s: %s\n",
 			 name, strerror(errno)));
 		goto fail;	/* errno set by tdb_brlock */
@@ -235,7 +235,7 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 	/* we need to zero database if we are the only one with it open */
 	if ((tdb_flags & TDB_CLEAR_IF_FIRST) &&
 	    (!tdb->read_only) &&
-	    (locked = (tdb->methods->tdb_brlock(tdb, ACTIVE_LOCK, F_WRLCK, F_SETLK, 0, 1) == 0))) {
+	    (locked = (tdb->methods->brlock(tdb, F_WRLCK, ACTIVE_LOCK, 1, TDB_LOCK_NOWAIT|TDB_LOCK_PROBE) == 0))) {
 		open_flags |= O_CREAT;
 		if (ftruncate(tdb->fd, 0) == -1) {
 			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_open_ex: "
@@ -298,7 +298,7 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 	tdb->inode = st.st_ino;
 	tdb_mmap(tdb);
 	if (locked) {
-		if (tdb->methods->tdb_brlock(tdb, ACTIVE_LOCK, F_UNLCK, F_SETLK, 0, 1) == -1) {
+		if (tdb->methods->brunlock(tdb, F_WRLCK, ACTIVE_LOCK, 1) == -1) {
 			TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_open_ex: "
 				 "failed to take ACTIVE_LOCK on %s: %s\n",
 				 name, strerror(errno)));
@@ -313,7 +313,7 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 
 	if (tdb_flags & TDB_CLEAR_IF_FIRST) {
 		/* leave this lock in place to indicate it's in use */
-		if (tdb->methods->tdb_brlock(tdb, ACTIVE_LOCK, F_RDLCK, F_SETLKW, 0, 1) == -1)
+		if (tdb->methods->brlock(tdb, F_RDLCK, ACTIVE_LOCK, 1, TDB_LOCK_WAIT) == -1)
 			goto fail;
 	}
 
@@ -341,7 +341,7 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 	/* Internal (memory-only) databases skip all the code above to
 	 * do with disk files, and resume here by releasing their
 	 * global lock and hooking into the active list. */
-	if (tdb->methods->tdb_brlock(tdb, GLOBAL_LOCK, F_UNLCK, F_SETLKW, 0, 1) == -1)
+	if (tdb->methods->brunlock(tdb, F_WRLCK, GLOBAL_LOCK, 1) == -1)
 		goto fail;
 	tdb->next = tdbs;
 	tdbs = tdb;
@@ -391,10 +391,10 @@ int tdb_close(struct tdb_context *tdb)
 	struct tdb_context **i;
 	int ret = 0;
 
-	tdb_trace(tdb, "tdb_close");
 	if (tdb->transaction) {
-		_tdb_transaction_cancel(tdb);
+		tdb_transaction_cancel(tdb);
 	}
+	tdb_trace(tdb, "tdb_close");
 
 	if (tdb->map_ptr) {
 		if (tdb->flags & TDB_INTERNAL)
@@ -468,7 +468,7 @@ int tdb_reopen(struct tdb_context *tdb)
 		goto fail;
 	}
 	if ((tdb->flags & TDB_CLEAR_IF_FIRST) && 
-	    (tdb->methods->tdb_brlock(tdb, ACTIVE_LOCK, F_RDLCK, F_SETLKW, 0, 1) == -1)) {
+	    (tdb->methods->brlock(tdb, F_RDLCK, ACTIVE_LOCK, 1, TDB_LOCK_WAIT) == -1)) {
 		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_reopen: failed to obtain active lock\n"));
 		goto fail;
 	}
