@@ -158,12 +158,11 @@ int tdb_brlock(struct tdb_context *tdb,
 	} while (ret == -1 && errno == EINTR);
 
 	if (ret == -1) {
+		tdb->ecode = TDB_ERR_LOCK;
 		/* Generic lock error. errno set by fcntl.
 		 * EAGAIN is an expected return from non-blocking
 		 * locks. */
 		if (!(flags & TDB_LOCK_PROBE) && errno != EAGAIN) {
-			/* Ensure error code is set for log fun to examine. */
-			tdb->ecode = TDB_ERR_LOCK;
 			TDB_LOG((tdb, TDB_DEBUG_TRACE,"tdb_brlock failed (fd=%d) at offset %d rw_type=%d flags=%d len=%d\n", 
 				 tdb->fd, offset, rw_type, flags, (int)len));
 		}
