@@ -17,7 +17,7 @@ void *grab_fd(const void *ctx, int fd, size_t *size)
 		size = &s;
 	*size = 0;
 
-	if (fstat(fd, &st) == 0)
+	if (fstat(fd, &st) == 0 && S_ISREG(st.st_mode))
 		max = st.st_size;
 	else
 		max = 16384;
