@@ -1,6 +1,6 @@
 /*
  * ccanlint: assorted checks and advice for a ccan package
- * Copyright (C) 2008 Rusty Russell
+ * Copyright (C) 2008 Rusty Russell, Idris Soule
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -27,7 +27,8 @@
 #include <ctype.h>
 
 static unsigned int verbose = 0;
-static LIST_HEAD(tests);
+static LIST_HEAD(compulsory_tests);
+static LIST_HEAD(normal_tests);
 static LIST_HEAD(finished_tests);
 
 static void usage(const char *name)
@@ -64,7 +65,7 @@ bool ask(const char *question)
 		&& toupper(reply[0]) == 'Y';
 }
 
-static bool run_test(const struct ccanlint *i,
+static bool run_test(struct ccanlint *i,
 		     bool summary,
 		     unsigned int *score,
 		     unsigned int *total_score,
@@ -72,16 +73,22 @@ static bool run_test(const struct ccanlint *i,
 {
 	void *result;
 	unsigned int this_score;
+	const struct dependent *d;
 
 	if (i->total_score)
 		*total_score += i->total_score;
-
+	//one less test to run through
+	list_for_each(&i->dependencies, d, node)
+		d->dependent->num_depends--;
 	result = i->check(m);
 	if (!result) {
 		if (verbose)
 			printf("  %s: OK\n", i->name);
 		if (i->total_score)
 			*score += i->total_score;
+
+		list_del(&i->list);
+		list_add_tail(&finished_tests, &i->list);
 		return true;
 	}
 
@@ -97,6 +104,8 @@ static bool run_test(const struct ccanlint *i,
 
 		if (verbose)
 			indent_print(i->describe(m, result));
+		list_del(&i->list);
+		list_add_tail(&finished_tests, &i->list);
 		return false;
 	}
 
@@ -104,23 +113,28 @@ static bool run_test(const struct ccanlint *i,
 
 	if (i->handle)
 		i->handle(m, result);
-
+	list_del(&i->list);
+	list_add_tail(&finished_tests, &i->list);
 	return false;
 }
 
 static void register_test(struct ccanlint *test, ...)
 {
 	va_list ap;
-	struct ccanlint *depends; 
+	struct ccanlint *depends;
 	struct dependent *dchild;
 
-	list_add(&tests, &test->list);
+	if (!test->total_score)
+		list_add(&compulsory_tests, &test->list);
+	else
+		list_add(&normal_tests, &test->list);
+
 	va_start(ap, test);
 	/* Careful: we might have been initialized by a dependent. */
 	if (test->dependencies.n.next == NULL)
 		list_head_init(&test->dependencies);
 
-	//dependant(s) args (if any), last one is NULL
+	//dependent(s) args (if any), last one is NULL
 	while ((depends = va_arg(ap, struct ccanlint *)) != NULL) {
 		dchild = malloc(sizeof(*dchild));
 		dchild->dependent = test;
@@ -131,6 +145,23 @@ static void register_test(struct ccanlint *test, ...)
 		test->num_depends++;
 	}
 	va_end(ap);
+}
+
+/**
+ * get_next_test - retrieves the next test to be processed
+ **/
+static inline struct ccanlint *get_next_test(struct list_head *test)
+{
+	struct ccanlint *i;
+
+	if (list_empty(test))
+		return NULL;
+
+	list_for_each(test, i, list) {
+		if (i->num_depends == 0)
+			return i;
+	}
+	errx(1, "Can't make process; test dependency cycle");
 }
 
 static void init_tests(void)
@@ -144,7 +175,19 @@ static void init_tests(void)
 	if (!verbose)
 		return;
 
-	list_for_each(&tests, i, list) {
+	printf("\nCompulsory Tests\n");
+	list_for_each(&compulsory_tests, i, list) {
+		printf("%s depends on %u others\n", i->name, i->num_depends);
+		if (!list_empty(&i->dependencies)) {
+			const struct dependent *d;
+			printf("These depend on us:\n");
+			list_for_each(&i->dependencies, d, node)
+				printf("\t%s\n", d->dependent->name);
+		}
+	}
+
+	printf("\nNormal Tests\n");
+	list_for_each(&normal_tests, i, list) {
 		printf("%s depends on %u others\n", i->name, i->num_depends);
 		if (!list_empty(&i->dependencies)) {
 			const struct dependent *d;
@@ -161,7 +204,7 @@ int main(int argc, char *argv[])
 	bool summary = false;
 	unsigned int score, total_score;
 	struct manifest *m;
-	const struct ccanlint *i;
+	struct ccanlint *i;
 
 	/* I'd love to use long options, but that's not standard. */
 	/* FIXME: getopt_long ccan package? */
@@ -192,18 +235,19 @@ int main(int argc, char *argv[])
 	/* If you don't pass the compulsory tests, you don't even get a score */
 	if (verbose)
 		printf("Compulsory tests:\n");
-	list_for_each(&tests, i, list)
-		if (!i->total_score)
-			if (!run_test(i, summary, &score, &total_score, m))
-				exit(1);
+
+	while ((i = get_next_test(&compulsory_tests)) != NULL) {
+		if (!run_test(i, summary, &score, &total_score, m))
+			exit(1);
+	}
 
 	if (verbose)
 		printf("\nNormal tests:\n");
 	score = total_score = 0;
-	list_for_each(&tests, i, list)
+	while ((i = get_next_test(&normal_tests)) != NULL) {
 		if (i->total_score)
 			run_test(i, summary, &score, &total_score, m);
-
+	}
 	printf("Total score: %u/%u\n", score, total_score);
 
 	return 0;
