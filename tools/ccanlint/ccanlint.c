@@ -25,18 +25,21 @@
 #include <string.h>
 #include <err.h>
 #include <ctype.h>
+#include <ccan/talloc/talloc.h>
 
 static unsigned int verbose = 0;
 static LIST_HEAD(compulsory_tests);
 static LIST_HEAD(normal_tests);
 static LIST_HEAD(finished_tests);
+bool safe_mode = false;
 
 static void usage(const char *name)
 {
-	fprintf(stderr, "Usage: %s [-s] [-v] [-d <dirname>]\n"
+	fprintf(stderr, "Usage: %s [-s] [-n] [-v] [-d <dirname>]\n"
 		"   -v: verbose mode\n"
 		"   -s: simply give one line per FAIL and total score\n"
-		"   -d: use this directory instead of the current one\n",
+		"   -d: use this directory instead of the current one\n"
+		"   -n: do not compile anything\n",
 		name);
 	exit(1);
 }
@@ -208,7 +211,7 @@ int main(int argc, char *argv[])
 
 	/* I'd love to use long options, but that's not standard. */
 	/* FIXME: getopt_long ccan package? */
-	while ((c = getopt(argc, argv, "sd:v")) != -1) {
+	while ((c = getopt(argc, argv, "sd:vn")) != -1) {
 		switch (c) {
 		case 'd':
 			if (chdir(optarg) != 0)
@@ -220,6 +223,9 @@ int main(int argc, char *argv[])
 		case 'v':
 			verbose++;
 			break;
+		case 'n':
+			safe_mode = true;
+			break;
 		default:
 			usage(argv[0]);
 		}
@@ -228,7 +234,7 @@ int main(int argc, char *argv[])
 	if (optind < argc)
 		usage(argv[0]);
 
-	m = get_manifest();
+	m = get_manifest(talloc_autofree_context());
 
 	init_tests();
 
@@ -249,6 +255,5 @@ int main(int argc, char *argv[])
 			run_test(i, summary, &score, &total_score, m);
 	}
 	printf("Total score: %u/%u\n", score, total_score);
-
 	return 0;
 }

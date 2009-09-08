@@ -102,15 +102,6 @@ static void add_replace_tok(struct replace **repl, const char *s)
 	*repl = new;
 }
 
-static char *basename(const void *ctx, const char *dir)
-{
-	char *p = strrchr(dir, '/');
-
-	if (!p)
-		return (char *)dir;
-	return talloc_strdup(ctx, p+1);
-}
-
 static void look_for_macros(char *contents, struct replace **repl)
 {
 	char *p;
@@ -269,7 +260,7 @@ static void analyze_headers(const char *dir, struct replace **repl)
 	char *hdr, *contents;
 
 	/* Get hold of header, assume that's it. */
-	hdr = talloc_asprintf(dir, "%s/%s.h", dir, basename(dir, dir));
+	hdr = talloc_asprintf(dir, "%s/%s.h", dir, talloc_basename(dir, dir));
 	contents = grab_file(dir, hdr, NULL);
 	if (!contents)
 		err(1, "Reading %s", hdr);
@@ -459,27 +450,16 @@ static struct replace *read_replacement_file(const char *depdir)
 	return repl;
 }
 
-static char *parent_dir(const void *ctx, const char *dir)
-{
-	char *parent, *slash;
-
-	parent = talloc_strdup(ctx, dir);
-	slash = strrchr(parent, '/');
-	if (slash)
-		*slash = '\0';
-	else
-		parent = talloc_strdup(ctx, ".");
-	return parent;
-}
-
 static void adjust_dir(const char *dir)
 {
-	char *parent = parent_dir(talloc_autofree_context(), dir);
+	char *parent = talloc_dirname(talloc_autofree_context(), dir);
 	char **deps;
 
 	verbose("Adjusting %s\n", dir);
 	verbose_indent();
-	for (deps = get_deps(parent, dir, false); *deps; deps++) {
+	for (deps = get_deps(parent, parent, talloc_basename(parent, dir),
+			     false);
+	     *deps; deps++) {
 		char *depdir;
 		struct adjusted *adj = NULL;
 		struct replace *repl;
@@ -500,8 +480,8 @@ static void adjust_dir(const char *dir)
 
 static void adjust_dependents(const char *dir)
 {
-	char *parent = parent_dir(NULL, dir);
-	char *base = basename(parent, dir);
+	char *parent = talloc_dirname(NULL, dir);
+	char *base = talloc_basename(parent, dir);
 	char **file;
 
 	verbose("Looking for dependents in %s\n", parent);
@@ -510,15 +490,19 @@ static void adjust_dependents(const char *dir)
 		char *info, **deps;
 		bool isdep = false;
 
-		if (basename(*file, *file)[0] == '.')
+		if (talloc_basename(*file, *file)[0] == '.')
 			continue;
 
 		info = talloc_asprintf(*file, "%s/_info", *file);
 		if (access(info, R_OK) != 0)
 			continue;
 
-		for (deps = get_deps(*file, *file, false); *deps; deps++) {
-			if (streq(*deps, base))
+		for (deps = get_deps(*file, talloc_dirname(*file, *file),
+				     talloc_basename(*file, *file), false);
+		     *deps; deps++) {
+			if (!strstarts(*deps, "ccan/"))
+				continue;
+			if (streq(*deps + strlen("ccan/"), base))
 				isdep = true;
 		}
 		if (isdep)

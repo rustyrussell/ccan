@@ -6,6 +6,7 @@
 #include <err.h>
 #include <stdbool.h>
 #include <unistd.h>
+#include <errno.h>
 
 static char ** __attribute__((format(printf, 3, 4)))
 lines_from_cmd(const void *ctx, unsigned int *num, char *format, ...)
@@ -37,11 +38,12 @@ static int unlink_info(char *infofile)
 }
 
 /* Be careful about trying to compile over running programs (parallel make) */
-static char *compile_info(const void *ctx, const char *dir)
+static char *compile_info(const void *ctx, const char *dir, const char *name)
 {
 	char *infofile = talloc_asprintf(ctx, "%s/info.%u", dir, getpid());
-	char *cmd = talloc_asprintf(ctx, "cc " CFLAGS " -o %s -x c %s/_info",
-				    infofile, dir);
+	char *cmd = talloc_asprintf(ctx, "cc " CFLAGS
+				    " -o %s -x c %s/%s/_info",
+				    infofile, dir, name);
 	talloc_set_destructor(infofile, unlink_info);
 	if (system(cmd) != 0)
 		return NULL;
@@ -49,13 +51,14 @@ static char *compile_info(const void *ctx, const char *dir)
 	return infofile;
 }
 
-static char **get_one_deps(const void *ctx, const char *dir, unsigned int *num)
+static char **get_one_deps(const void *ctx, const char *dir,
+			   const char *name, unsigned int *num)
 {
 	char **deps, *cmd, *infofile;
 
-	infofile = compile_info(ctx, dir);
+	infofile = compile_info(ctx, dir, name);
 	if (!infofile)
-		errx(1, "Could not compile _info for '%s'", dir);
+		errx(1, "Could not compile _info for '%s'", name);
 
 	cmd = talloc_asprintf(ctx, "%s depends", infofile);
 	deps = lines_from_cmd(cmd, num, "%s", cmd);
@@ -93,12 +96,13 @@ static char *replace(const void *ctx, const char *src,
 
 /* This is a terrible hack.  We scan for ccan/ strings. */
 static char **get_one_safe_deps(const void *ctx,
-				const char *dir, unsigned int *num)
+				const char *dir, const char *name,
+				unsigned int *num)
 {
 	char **deps, **lines, *raw, *fname;
 	unsigned int i, n = 0;
 
-	fname = talloc_asprintf(ctx, "%s/_info", dir);
+	fname = talloc_asprintf(ctx, "%s/%s/_info", dir, name);
 	raw = grab_file(fname, fname, NULL);
 	if (!raw)
 		errx(1, "Could not open %s", fname);
@@ -150,13 +154,14 @@ static bool have_dep(char **deps, unsigned int num, const char *dep)
 
 /* Gets all the dependencies, recursively. */
 static char **
-get_all_deps(const void *ctx, const char *dir,
-	     char **(*get_one)(const void *, const char *, unsigned int *))
+get_all_deps(const void *ctx, const char *dir, const char *name,
+	     char **(*get_one)(const void *, const char *, const char *,
+			       unsigned int *))
 {
 	char **deps;
 	unsigned int i, num;
 
-	deps = get_one(ctx, dir, &num);
+	deps = get_one(ctx, dir, name, &num);
 	for (i = 0; i < num; i++) {
 		char **newdeps;
 		unsigned int j, newnum;
@@ -164,7 +169,8 @@ get_all_deps(const void *ctx, const char *dir,
 		if (!strstarts(deps[i], "ccan/"))
 			continue;
 
-		newdeps = get_one(ctx, deps[i], &newnum);
+		newdeps = get_one(ctx, dir, deps[i] + strlen("ccan/"),
+				  &newnum);
 
 		/* Should be short, so brute-force out dups. */
 		for (j = 0; j < newnum; j++) {
@@ -179,21 +185,59 @@ get_all_deps(const void *ctx, const char *dir,
 	return deps;
 }
 
-char **get_deps(const void *ctx, const char *dir, bool recurse)
+char **get_deps(const void *ctx, const char *dir, const char *name,
+		bool recurse)
 {
 	if (!recurse) {
 		unsigned int num;
-		return get_one_deps(ctx, dir, &num);
+		return get_one_deps(ctx, dir, name, &num);
 	}
-	return get_all_deps(ctx, dir, get_one_deps);
+	return get_all_deps(ctx, dir, name, get_one_deps);
 }
 
-char **get_safe_ccan_deps(const void *ctx, const char *dir, bool recurse)
+char **get_safe_ccan_deps(const void *ctx, const char *dir,
+			  const char *name, bool recurse)
 {
 	if (!recurse) {
 		unsigned int num;
-		return get_one_safe_deps(ctx, dir, &num);
+		return get_one_safe_deps(ctx, dir, name, &num);
 	}
-	return get_all_deps(ctx, dir, get_one_safe_deps);
+	return get_all_deps(ctx, dir, name, get_one_safe_deps);
 }
 	
+char *talloc_basename(const void *ctx, const char *dir)
+{
+	char *p = strrchr(dir, '/');
+
+	if (!p)
+		return (char *)dir;
+	return talloc_strdup(ctx, p+1);
+}
+
+char *talloc_dirname(const void *ctx, const char *dir)
+{
+	char *p = strrchr(dir, '/');
+
+	if (!p)
+		return talloc_strdup(ctx, ".");
+	return talloc_strndup(ctx, dir, p - dir);
+}
+
+char *talloc_getcwd(const void *ctx)
+{
+	unsigned int len;
+	char *cwd;
+
+	/* *This* is why people hate C. */
+	len = 32;
+	cwd = talloc_array(ctx, char, len);
+	while (!getcwd(cwd, len)) {
+		if (errno != ERANGE) {
+			talloc_free(cwd);
+			return NULL;
+		}
+		cwd = talloc_realloc(ctx, cwd, char, len *= 2);
+	}
+	return cwd;
+}
+

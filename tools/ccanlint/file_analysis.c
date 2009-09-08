@@ -32,6 +32,18 @@ struct list_head *get_ccan_file_docs(struct ccan_file *f)
 	return f->doc_sections;
 }
 
+struct ccan_file *new_ccan_file(const void *ctx, char *name)
+{
+	struct ccan_file *f;
+
+	f = talloc(ctx, struct ccan_file);
+	f->lines = NULL;
+	f->line_info = NULL;
+	f->doc_sections = NULL;
+	f->name = talloc_steal(f, name);
+	return f;
+}
+
 static void add_files(struct manifest *m, const char *dir)
 {
 	DIR *d;
@@ -53,11 +65,8 @@ static void add_files(struct manifest *m, const char *dir)
 		if (ent->d_name[0] == '.')
 			continue;
 
-		f = talloc(m, struct ccan_file);
-		f->lines = NULL;
-		f->line_info = NULL;
-		f->doc_sections = NULL;
-		f->name = talloc_asprintf(f, "%s%s", dir, ent->d_name);
+		f = new_ccan_file(m, talloc_asprintf(m, "%s%s",
+						     dir, ent->d_name));
 		if (lstat(f->name, &st) != 0)
 			err(1, "lstat %s", f->name);
 
@@ -141,9 +150,9 @@ char *report_on_lines(struct list_head *files,
 	return sofar;
 }
 
-struct manifest *get_manifest(void)
+struct manifest *get_manifest(const void *ctx)
 {
-	struct manifest *m = talloc(NULL, struct manifest);
+	struct manifest *m = talloc(ctx, struct manifest);
 	unsigned int len;
 
 	m->info_file = NULL;
@@ -156,15 +165,9 @@ struct manifest *get_manifest(void)
 	list_head_init(&m->other_test_files);
 	list_head_init(&m->other_files);
 
-	/* *This* is why people hate C. */
-	len = 32;
-	m->basename = talloc_array(m, char, len);
-	while (!getcwd(m->basename, len)) {
-		if (errno != ERANGE)
-			err(1, "Getting current directory");
-		m->basename = talloc_realloc(m, m->basename, char, len *= 2);
-	}
-
+	m->basename = talloc_getcwd(m);
+	if (!m->basename)
+		err(1, "Getting current directory");
 	len = strlen(m->basename);
 	while (len && m->basename[len-1] == '/')
 		m->basename[--len] = '\0';

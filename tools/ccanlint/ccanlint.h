@@ -11,6 +11,7 @@
 #define REGISTER_TEST(name, ...) 
 
 struct manifest {
+	/* The module name, ie. final element of dir name */
 	char *basename;
 	struct ccan_file *info_file;
 
@@ -24,9 +25,12 @@ struct manifest {
 	struct list_head other_test_files;
 
 	struct list_head other_files;
+
+	/* From tests/check_depends.c */
+	struct list_head dep_obj_files;
 };
 
-struct manifest *get_manifest(void);
+struct manifest *get_manifest(const void *ctx);
 
 struct ccanlint {
 	struct list_node list;
@@ -113,6 +117,9 @@ struct ccan_file {
 	struct list_head *doc_sections;
 };
 
+/* A new ccan_file, with the given name (talloc_steal onto returned value). */
+struct ccan_file *new_ccan_file(const void *ctx, char *name);
+
 /* Use this rather than accessing f->lines directly: loads on demand. */
 char **get_ccan_file_lines(struct ccan_file *f);
 
@@ -154,5 +161,8 @@ struct dependent {
 	struct list_node node;
 	struct ccanlint *dependent;
 };
+
+/* Are we happy to compile stuff, or just non-intrusive tests? */
+extern bool safe_mode;
 
 #endif /* CCAN_LINT_H */
