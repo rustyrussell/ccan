@@ -100,6 +100,9 @@ static bool run_test(struct ccanlint *i,
 	else
 		this_score = 0;
 
+	list_del(&i->list);
+	list_add_tail(&finished_tests, &i->list);
+
 	*score += this_score;
 	if (summary) {
 		printf("%s FAILED (%u/%u)\n",
@@ -107,17 +110,22 @@ static bool run_test(struct ccanlint *i,
 
 		if (verbose)
 			indent_print(i->describe(m, result));
-		list_del(&i->list);
-		list_add_tail(&finished_tests, &i->list);
-		return false;
+	} else {
+		printf("%s\n", i->describe(m, result));
+
+		if (i->handle)
+			i->handle(m, result);
 	}
 
-	printf("%s\n", i->describe(m, result));
+	/* Skip any tests which depend on this one. */
+	list_for_each(&i->dependencies, d, node) {
+		list_del(&d->dependent->list);
+		list_add(&finished_tests, &d->dependent->list);
+		if (verbose)
+			printf("  -> skipping %s\n", d->dependent->name);
+		*total_score += d->dependent->total_score;
+	}
 
-	if (i->handle)
-		i->handle(m, result);
-	list_del(&i->list);
-	list_add_tail(&finished_tests, &i->list);
 	return false;
 }
 
