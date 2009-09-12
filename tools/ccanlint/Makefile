@@ -6,6 +6,7 @@ CORE_OBJS := tools/ccanlint/ccanlint.o \
 	tools/ccanlint/file_analysis.o \
 	tools/doc_extract-core.o \
 	tools/depends.o \
+	tools/tools.o \
 	ccan/str_talloc/str_talloc.o ccan/grab_file/grab_file.o \
 	ccan/talloc/talloc.o ccan/noerr/noerr.o
 

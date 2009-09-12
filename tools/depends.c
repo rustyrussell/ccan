@@ -185,6 +185,22 @@ get_all_deps(const void *ctx, const char *dir, const char *name,
 	return deps;
 }
 
+char **get_libs(const void *ctx, const char *dir,
+		const char *name, unsigned int *num)
+{
+	char **libs, *cmd, *infofile;
+
+	infofile = compile_info(ctx, dir, name);
+	if (!infofile)
+		errx(1, "Could not compile _info for '%s'", name);
+
+	cmd = talloc_asprintf(ctx, "%s libs", infofile);
+	libs = lines_from_cmd(cmd, num, "%s", cmd);
+	if (!libs)
+		err(1, "Could not run '%s'", cmd);
+	return libs;
+}
+
 char **get_deps(const void *ctx, const char *dir, const char *name,
 		bool recurse)
 {
@@ -204,40 +220,3 @@ char **get_safe_ccan_deps(const void *ctx, const char *dir,
 	}
 	return get_all_deps(ctx, dir, name, get_one_safe_deps);
 }
-	
-char *talloc_basename(const void *ctx, const char *dir)
-{
-	char *p = strrchr(dir, '/');
-
-	if (!p)
-		return (char *)dir;
-	return talloc_strdup(ctx, p+1);
-}
-
-char *talloc_dirname(const void *ctx, const char *dir)
-{
-	char *p = strrchr(dir, '/');
-
-	if (!p)
-		return talloc_strdup(ctx, ".");
-	return talloc_strndup(ctx, dir, p - dir);
-}
-
-char *talloc_getcwd(const void *ctx)
-{
-	unsigned int len;
-	char *cwd;
-
-	/* *This* is why people hate C. */
-	len = 32;
-	cwd = talloc_array(ctx, char, len);
-	while (!getcwd(cwd, len)) {
-		if (errno != ERANGE) {
-			talloc_free(cwd);
-			return NULL;
-		}
-		cwd = talloc_realloc(ctx, cwd, char, len *= 2);
-	}
-	return cwd;
-}
-

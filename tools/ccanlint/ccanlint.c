@@ -68,6 +68,19 @@ bool ask(const char *question)
 		&& toupper(reply[0]) == 'Y';
 }
 
+static const char *should_skip(struct manifest *m, struct ccanlint *i)
+{
+	if (i->skip_fail)
+		return "dependency failed";
+
+	if (i->skip)
+		return "dependency was skipped";
+
+	if (i->can_run)
+		return i->can_run(m);
+	return NULL;
+}
+
 static bool run_test(struct ccanlint *i,
 		     bool summary,
 		     unsigned int *score,
@@ -77,18 +90,38 @@ static bool run_test(struct ccanlint *i,
 	void *result;
 	unsigned int this_score;
 	const struct dependent *d;
+	const char *skip;
 
-	if (i->total_score)
-		*total_score += i->total_score;
 	//one less test to run through
 	list_for_each(&i->dependencies, d, node)
 		d->dependent->num_depends--;
+
+	skip = should_skip(m, i);
+	if (skip) {
+		if (verbose)
+			printf("  %s: skipped (%s)\n", i->name, skip);
+
+		/* If we're skipping this because a prereq failed, we fail. */
+		if (i->skip_fail)
+			*total_score += i->total_score;
+			
+		list_del(&i->list);
+		list_add_tail(&finished_tests, &i->list);
+		list_for_each(&i->dependencies, d, node) {
+			d->dependent->skip = true;
+			d->dependent->skip_fail = i->skip_fail;
+		}
+		return true;
+	}
+
 	result = i->check(m);
 	if (!result) {
 		if (verbose)
 			printf("  %s: OK\n", i->name);
-		if (i->total_score)
+		if (i->total_score) {
 			*score += i->total_score;
+			*total_score += i->total_score;
+		}
 
 		list_del(&i->list);
 		list_add_tail(&finished_tests, &i->list);
@@ -103,6 +136,7 @@ static bool run_test(struct ccanlint *i,
 	list_del(&i->list);
 	list_add_tail(&finished_tests, &i->list);
 
+	*total_score += i->total_score;
 	*score += this_score;
 	if (summary) {
 		printf("%s FAILED (%u/%u)\n",
@@ -119,11 +153,8 @@ static bool run_test(struct ccanlint *i,
 
 	/* Skip any tests which depend on this one. */
 	list_for_each(&i->dependencies, d, node) {
-		list_del(&d->dependent->list);
-		list_add(&finished_tests, &d->dependent->list);
-		if (verbose)
-			printf("  -> skipping %s\n", d->dependent->name);
-		*total_score += d->dependent->total_score;
+		d->dependent->skip = true;
+		d->dependent->skip_fail = true;
 	}
 
 	return false;

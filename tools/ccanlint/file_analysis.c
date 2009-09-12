@@ -164,6 +164,8 @@ struct manifest *get_manifest(const void *ctx)
 	list_head_init(&m->compile_fail_tests);
 	list_head_init(&m->other_test_files);
 	list_head_init(&m->other_files);
+	list_head_init(&m->dep_dirs);
+	list_head_init(&m->dep_objs);
 
 	m->basename = talloc_getcwd(m);
 	if (!m->basename)

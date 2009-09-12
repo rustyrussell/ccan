@@ -26,8 +26,10 @@ struct manifest {
 
 	struct list_head other_files;
 
-	/* From tests/check_depends.c */
-	struct list_head dep_obj_files;
+	/* From tests/check_depends_exist.c */
+	struct list_head dep_dirs;
+	/* From tests/check_depends_built.c */
+	struct list_head dep_objs;
 };
 
 struct manifest *get_manifest(const void *ctx);
@@ -40,6 +42,9 @@ struct ccanlint {
 
 	/* Total score that this test is worth.  0 means compulsory tests. */
 	unsigned int total_score;
+
+	/* Can we run this test?  Return string explaining why, if not. */
+	const char *(*can_run)(struct manifest *m);
 
 	/* If this returns non-NULL, it means the check failed. */
 	void *(*check)(struct manifest *m);
@@ -60,6 +65,10 @@ struct ccanlint {
 	struct list_head dependencies;
 	/* How many things do we (still) depend on? */
 	unsigned int num_depends;
+	/* Did we skip a dependency?  If so, must skip this, too. */
+	bool skip;
+	/* Did we fail a dependency?  If so, skip and mark as fail. */
+	bool skip_fail;
 };
 
 /* Ask the user a yes/no question: the answer is NO if there's an error. */

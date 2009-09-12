@@ -19,7 +19,13 @@ char **get_deps(const void *ctx, const char *dir, const char *name,
 char **get_safe_ccan_deps(const void *ctx, const char *dir, const char *name,
 			  bool recurse);
 
+/* This also needs to compile the info file. */
+char **get_libs(const void *ctx, const char *dir,
+		const char *name, unsigned int *num);
+
+/* From tools.c */
 char *talloc_basename(const void *ctx, const char *dir);
 char *talloc_dirname(const void *ctx, const char *dir);
 char *talloc_getcwd(const void *ctx);
+char *run_command(const void *ctx, const char *fmt, ...);
 #endif /* CCAN_TOOLS_H */
