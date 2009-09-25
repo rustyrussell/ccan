@@ -144,14 +144,6 @@ static int transaction_read(struct tdb_context *tdb, tdb_off_t off, void *buf,
 {
 	uint32_t blk;
 
-	/* Only a commit is allowed on a prepared transaction */
-	if (tdb->transaction->prepared) {
-		tdb->ecode = TDB_ERR_EINVAL;
-		TDB_LOG((tdb, TDB_DEBUG_FATAL, "transaction_read: transaction already prepared, read not allowed\n"));
-		tdb->transaction->transaction_error = 1;
-		return -1;
-	}
-
 	/* break it down into block sized ops */
 	while (len + (off % tdb->transaction->block_size) > tdb->transaction->block_size) {
 		tdb_len_t len2 = tdb->transaction->block_size - (off % tdb->transaction->block_size);
