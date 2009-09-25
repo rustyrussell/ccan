@@ -1,19 +1,21 @@
 ALL_TOOLS = tools/ccan_depends tools/run_tests tools/doc_extract tools/namespacize tools/ccanlint/ccanlint
 
+DEP_OBJS = tools/depends.o tools/compile.o tools/tools.o ccan/str_talloc/str_talloc.o ccan/grab_file/grab_file.o ccan/talloc/talloc.o ccan/noerr/noerr.o ccan/read_write_all/read_write_all.o
+
 .PHONY: tools
 tools: $(ALL_TOOLS)
 
-tools/ccan_depends: tools/ccan_depends.o tools/depends.o tools/tools.o ccan/str_talloc/str_talloc.o ccan/grab_file/grab_file.o ccan/talloc/talloc.o ccan/noerr/noerr.o
+tools/ccan_depends: tools/ccan_depends.o $(DEP_OBJS)
 
-tools/run_tests: tools/run_tests.o tools/depends.o ccan/str_talloc/str_talloc.o ccan/grab_file/grab_file.o ccan/tap/tap.o ccan/noerr/noerr.o ccan/talloc/talloc.o
+tools/run_tests: tools/run_tests.o ccan/tap/tap.o $(DEP_OBJS)
 
-tools/doc_extract: tools/doc_extract.o tools/doc_extract-core.o ccan/str_talloc/str_talloc.o ccan/grab_file/grab_file.o ccan/noerr/noerr.o ccan/talloc/talloc.o
+tools/doc_extract: tools/doc_extract.o tools/doc_extract-core.o $(DEP_OBJS)
 
-tools/namespacize: tools/namespacize.o tools/depends.o tools/tools.o ccan/str_talloc/str_talloc.o ccan/grab_file/grab_file.o ccan/noerr/noerr.o ccan/talloc/talloc.o
+tools/namespacize: tools/namespacize.o $(DEP_OBJS)
 
 tools/run_tests.o tools/namespacize.o tools/depends.o: tools/tools.h
 
 tools-clean: ccanlint-clean
-	rm -f $(ALL_TOOLS)
+	$(RM) $(ALL_TOOLS)
 
 include tools/ccanlint/Makefile

@@ -40,7 +40,7 @@ static char *obj_list(const struct manifest *m, bool link_with_module)
 static char *lib_list(const struct manifest *m)
 {
 	unsigned int i, num;
-	char **libs = get_libs(m, ".", ".", &num);
+	char **libs = get_libs(m, ".", ".", &num, &m->info_file->compiled);
 	char *ret = talloc_strdup(m, "");
 
 	for (i = 0; i < num; i++)
@@ -48,23 +48,20 @@ static char *lib_list(const struct manifest *m)
 	return ret;
 }
 
-static int cleanup_testfile(const char *testfile)
-{
-	unlink(testfile);
-	return 0;
-}
-
 static char *compile(const void *ctx,
 		     struct manifest *m, struct ccan_file *file, bool fail,
 		     bool link_with_module)
 {
-	file->compiled = talloc_strdup(ctx, tempnam("/tmp", "ccanlint"));
-	talloc_set_destructor(file->compiled, cleanup_testfile);
+	char *errmsg;
 
-	return run_command(m, "cc " CFLAGS " %s -o %s %s %s %s",
-			   fail ? "-DFAIL" : "",
-			   file->compiled, file->name,
-			   obj_list(m, link_with_module), lib_list(m));
+	file->compiled = compile_and_link(ctx, file->name,
+					  obj_list(m, link_with_module),
+					  fail ? "-DFAIL" : "",
+					  lib_list(m), &errmsg);
+	if (!file->compiled)
+		return errmsg;
+	talloc_steal(ctx, file->compiled);
+	return NULL;
 }
 
 struct compile_tests_result {

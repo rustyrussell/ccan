@@ -128,7 +128,7 @@ struct ccan_file {
 	struct list_head *doc_sections;
 
 	/* If this file gets compiled (eg. .C file to .o file), result here. */
-	const char *compiled;
+	char *compiled;
 };
 
 /* A new ccan_file, with the given name (talloc_steal onto returned value). */

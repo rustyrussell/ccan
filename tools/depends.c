@@ -2,7 +2,11 @@
 #include <ccan/str/str.h>
 #include <ccan/grab_file/grab_file.h>
 #include <ccan/str_talloc/str_talloc.h>
+#include <ccan/read_write_all/read_write_all.h>
 #include "tools.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include <err.h>
 #include <stdbool.h>
 #include <unistd.h>
@@ -31,36 +35,46 @@ lines_from_cmd(const void *ctx, unsigned int *num, char *format, ...)
 	return strsplit(ctx, buffer, "\n", num);
 }
 
-static int unlink_info(char *infofile)
-{
-	unlink(infofile);
-	return 0;
-}
-
-/* Be careful about trying to compile over running programs (parallel make) */
+/* Be careful about trying to compile over running programs (parallel make).
+ * temp_file helps here. */
 static char *compile_info(const void *ctx, const char *dir, const char *name)
 {
-	char *infofile = talloc_asprintf(ctx, "%s/info.%u", dir, getpid());
-	char *cmd = talloc_asprintf(ctx, "cc " CFLAGS
-				    " -o %s -x c %s/%s/_info",
-				    infofile, dir, name);
-	talloc_set_destructor(infofile, unlink_info);
-	if (system(cmd) != 0)
+	char *info_c_file, *info, *errmsg;
+	size_t len;
+	int fd;
+
+	/* Copy it to a file with proper .c suffix. */
+	info = grab_file(ctx, talloc_asprintf(ctx, "%s/%s/_info", dir, name),
+			 &len);
+	if (!info)
 		return NULL;
 
-	return infofile;
+	info_c_file = temp_file(ctx, ".c");
+	fd = open(info_c_file, O_WRONLY|O_CREAT|O_EXCL, 0600);
+	if (fd < 0)
+		return NULL;
+	if (!write_all(fd, info, len))
+		return NULL;
+
+	if (close(fd) != 0)
+		return NULL;
+
+	return compile_and_link(ctx, info_c_file, "", "", "", &errmsg);
 }
 
 static char **get_one_deps(const void *ctx, const char *dir,
-			   const char *name, unsigned int *num)
+			   const char *name, unsigned int *num,
+			   char **infofile)
 {
-	char **deps, *cmd, *infofile;
+	char **deps, *cmd;
 
-	infofile = compile_info(ctx, dir, name);
-	if (!infofile)
-		errx(1, "Could not compile _info for '%s'", name);
+	if (!*infofile) {
+		*infofile = compile_info(ctx, dir, name);
+		if (!*infofile)
+			errx(1, "Could not compile _info for '%s'", name);
+	}
 
-	cmd = talloc_asprintf(ctx, "%s depends", infofile);
+	cmd = talloc_asprintf(ctx, "%s depends", *infofile);
 	deps = lines_from_cmd(cmd, num, "%s", cmd);
 	if (!deps)
 		err(1, "Could not run '%s'", cmd);
@@ -97,7 +111,8 @@ static char *replace(const void *ctx, const char *src,
 /* This is a terrible hack.  We scan for ccan/ strings. */
 static char **get_one_safe_deps(const void *ctx,
 				const char *dir, const char *name,
-				unsigned int *num)
+				unsigned int *num,
+				char **infofile)
 {
 	char **deps, **lines, *raw, *fname;
 	unsigned int i, n = 0;
@@ -155,13 +170,14 @@ static bool have_dep(char **deps, unsigned int num, const char *dep)
 /* Gets all the dependencies, recursively. */
 static char **
 get_all_deps(const void *ctx, const char *dir, const char *name,
+	     char **infofile,
 	     char **(*get_one)(const void *, const char *, const char *,
-			       unsigned int *))
+			       unsigned int *, char **))
 {
 	char **deps;
 	unsigned int i, num;
 
-	deps = get_one(ctx, dir, name, &num);
+	deps = get_one(ctx, dir, name, &num, infofile);
 	for (i = 0; i < num; i++) {
 		char **newdeps;
 		unsigned int j, newnum;
@@ -170,7 +186,7 @@ get_all_deps(const void *ctx, const char *dir, const char *name,
 			continue;
 
 		newdeps = get_one(ctx, dir, deps[i] + strlen("ccan/"),
-				  &newnum);
+				  &newnum, infofile);
 
 		/* Should be short, so brute-force out dups. */
 		for (j = 0; j < newnum; j++) {
@@ -186,15 +202,18 @@ get_all_deps(const void *ctx, const char *dir, const char *name,
 }
 
 char **get_libs(const void *ctx, const char *dir,
-		const char *name, unsigned int *num)
+		const char *name, unsigned int *num,
+		char **infofile)
 {
-	char **libs, *cmd, *infofile;
+	char **libs, *cmd;
 
-	infofile = compile_info(ctx, dir, name);
-	if (!infofile)
-		errx(1, "Could not compile _info for '%s'", name);
+	if (!*infofile) {
+		*infofile = compile_info(ctx, dir, name);
+		if (!*infofile)
+			errx(1, "Could not compile _info for '%s'", name);
+	}
 
-	cmd = talloc_asprintf(ctx, "%s libs", infofile);
+	cmd = talloc_asprintf(ctx, "%s libs", *infofile);
 	libs = lines_from_cmd(cmd, num, "%s", cmd);
 	if (!libs)
 		err(1, "Could not run '%s'", cmd);
@@ -202,21 +221,31 @@ char **get_libs(const void *ctx, const char *dir,
 }
 
 char **get_deps(const void *ctx, const char *dir, const char *name,
-		bool recurse)
+		bool recurse, char **infofile)
 {
+	char *temp = NULL, **ret;
+	if (!infofile)
+		infofile = &temp;
+
 	if (!recurse) {
 		unsigned int num;
-		return get_one_deps(ctx, dir, name, &num);
+		ret = get_one_deps(ctx, dir, name, &num, infofile);
+	} else
+		ret = get_all_deps(ctx, dir, name, infofile, get_one_deps);
+
+	if (infofile == &temp && temp) {
+		unlink(temp);
+		talloc_free(temp);
 	}
-	return get_all_deps(ctx, dir, name, get_one_deps);
+	return ret;
 }
 
 char **get_safe_ccan_deps(const void *ctx, const char *dir,
-			  const char *name, bool recurse)
+			  const char *name, bool recurse, char **infofile)
 {
 	if (!recurse) {
 		unsigned int num;
-		return get_one_safe_deps(ctx, dir, name, &num);
+		return get_one_safe_deps(ctx, dir, name, &num, infofile);
 	}
-	return get_all_deps(ctx, dir, name, get_one_safe_deps);
+	return get_all_deps(ctx, dir, name, infofile, get_one_safe_deps);
 }

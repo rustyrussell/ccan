@@ -21,12 +21,6 @@ static const char *can_build(struct manifest *m)
 	return NULL;
 }
 
-static int cleanup_testfile(char *testfile)
-{
-	unlink(testfile);
-	return 0;
-}
-
 static char *obj_list(const struct manifest *m)
 {
 	char *list = talloc_strdup(m, "");
@@ -42,7 +36,7 @@ static char *obj_list(const struct manifest *m)
 static char *lib_list(const struct manifest *m)
 {
 	unsigned int i, num;
-	char **libs = get_libs(m, ".", ".", &num);
+	char **libs = get_libs(m, ".", ".", &num, &m->info_file->compiled);
 	char *ret = talloc_strdup(m, "");
 
 	for (i = 0; i < num; i++)
@@ -53,13 +47,10 @@ static char *lib_list(const struct manifest *m)
 static void *check_use_build(struct manifest *m)
 {
 	char *contents;
-	char *tmpfile, *outfile;
+	char *tmpfile, *err;
 	int fd;
 
-	tmpfile = talloc_strdup(m, tempnam("/tmp", "ccanlint"));
-	talloc_set_destructor(tmpfile, cleanup_testfile);
-	outfile = talloc_strdup(m, tempnam("/tmp", "ccanlint"));
-	talloc_set_destructor(outfile, cleanup_testfile);
+	tmpfile = temp_file(m, ".c");
 
 	fd = open(tmpfile, O_WRONLY | O_CREAT | O_EXCL, 0600);
 	if (fd < 0)
@@ -79,8 +70,9 @@ static void *check_use_build(struct manifest *m)
 	}
 	close(fd);
 
-	return run_command(m, "cc " CFLAGS " -o %s -x c %s -x none %s %s",
-			   outfile, tmpfile, obj_list(m), lib_list(m));
+	if (!compile_and_link(m, tmpfile, obj_list(m), "", lib_list(m), &err))
+		return err;
+	return NULL;
 }
 
 static const char *describe_use_build(struct manifest *m, void *check_result)

@@ -458,7 +458,7 @@ static void adjust_dir(const char *dir)
 	verbose("Adjusting %s\n", dir);
 	verbose_indent();
 	for (deps = get_deps(parent, parent, talloc_basename(parent, dir),
-			     false);
+			     false, NULL);
 	     *deps; deps++) {
 		char *depdir;
 		struct adjusted *adj = NULL;
@@ -498,7 +498,7 @@ static void adjust_dependents(const char *dir)
 			continue;
 
 		for (deps = get_deps(*file, talloc_dirname(*file, *file),
-				     talloc_basename(*file, *file), false);
+				     talloc_basename(*file, *file), false, NULL);
 		     *deps; deps++) {
 			if (!strstarts(*deps, "ccan/"))
 				continue;

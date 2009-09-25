@@ -21,12 +21,6 @@ static const char *can_build(struct manifest *m)
 	return NULL;
 }
 
-static int cleanup_testfile(char *testfile)
-{
-	unlink(testfile);
-	return 0;
-}
-
 static char *objname(const void *ctx, const char *cfile)
 {
 	return talloc_asprintf(ctx, "%.*s.o ", strlen(cfile) - 2, cfile);
@@ -37,8 +31,7 @@ static char *compile(struct manifest *m, const char *cfile)
 	char *obj;
 
 	obj = objname(m, cfile);
-	talloc_set_destructor(obj, cleanup_testfile);
-	return run_command(m, "cc " CFLAGS " -c -o %s %s", obj, cfile);
+	return compile_object(m, obj, cfile);
 }
 
 static void *do_compile_test_helpers(struct manifest *m)

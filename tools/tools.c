@@ -1,10 +1,16 @@
 #include <ccan/talloc/talloc.h>
 #include <ccan/grab_file/grab_file.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <err.h>
 #include "tools.h"
+
+static char *tmpdir = NULL;
+static unsigned int count;
 
 char *talloc_basename(const void *ctx, const char *dir)
 {
@@ -42,6 +48,7 @@ char *talloc_getcwd(const void *ctx)
 	return cwd;
 }
 
+/* Returns output if command fails. */
 char *run_command(const void *ctx, const char *fmt, ...)
 {
 	va_list ap;
@@ -66,4 +73,36 @@ char *run_command(const void *ctx, const char *fmt, ...)
 
 	talloc_free(cmd);
 	return NULL;
+}
+
+static int unlink_all(char *dir)
+{
+	char cmd[strlen(dir) + sizeof("rm -rf ")];
+	sprintf(cmd, "rm -rf %s", dir);
+//	system(cmd);
+	return 0;
+}
+
+char *temp_file(const void *ctx, const char *extension)
+{
+	/* For first call, create dir. */
+	while (!tmpdir) {
+		tmpdir = getenv("TMPDIR");
+		if (!tmpdir)
+			tmpdir = "/tmp";
+		tmpdir = talloc_asprintf(talloc_autofree_context(),
+					 "%s/ccanlint-%u.%lu",
+					 tmpdir, getpid(), random());
+		if (mkdir(tmpdir, 0700) != 0) {
+			if (errno == EEXIST) {
+				talloc_free(tmpdir);
+				tmpdir = NULL;
+				continue;
+			}
+			err(1, "mkdir %s failed", tmpdir);
+		}
+		talloc_set_destructor(tmpdir, unlink_all);
+	}
+
+	return talloc_asprintf(ctx, "%s/%u%s", tmpdir, count++, extension);
 }

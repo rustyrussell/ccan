@@ -40,9 +40,11 @@ static void *check_depends_exist(struct manifest *m)
 	char **deps;
 
 	if (safe_mode)
-		deps = get_safe_ccan_deps(m, "..", m->basename, true);
+		deps = get_safe_ccan_deps(m, "..", m->basename, true,
+					  &m->info_file->compiled);
 	else
-		deps = get_deps(m, "..", m->basename, true);
+		deps = get_deps(m, "..", m->basename, true,
+				&m->info_file->compiled);
 
 	for (i = 0; deps[i]; i++) {
 		if (!strstarts(deps[i], "ccan/"))

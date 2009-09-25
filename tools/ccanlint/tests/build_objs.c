@@ -23,15 +23,14 @@ static const char *can_build(struct manifest *m)
 
 static bool compile_obj(struct ccan_file *c_file, char *objfile, char **report)
 {
-	char *contents;
+	char *err;
 
-	contents = run_command(objfile, "cc " CFLAGS " -o %s -c %s",
-			       objfile, c_file->name);
-	if (contents) {
+	err = compile_object(objfile, objfile, c_file->name);
+	if (err) {
 		if (*report)
-			*report = talloc_append_string(*report, contents);
+			*report = talloc_append_string(*report, err);
 		else
-			*report = contents;
+			*report = err;
 		return false;
 	}
 	return true;

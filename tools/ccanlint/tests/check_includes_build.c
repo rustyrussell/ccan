@@ -22,22 +22,14 @@ static const char *can_build(struct manifest *m)
 	return NULL;
 }
 
-static int cleanup_testfile(char *testfile)
-{
-	unlink(testfile);
-	return 0;
-}
-
 static void *check_includes_build(struct manifest *m)
 {
 	char *contents;
 	char *tmpfile, *objfile;
 	int fd;
 
-	tmpfile = talloc_strdup(m, tempnam("/tmp", "ccanlint"));
-	talloc_set_destructor(tmpfile, cleanup_testfile);
-	objfile = talloc_strdup(m, tempnam("/tmp", "ccanlint"));
-	talloc_set_destructor(objfile, cleanup_testfile);
+	tmpfile = temp_file(m, ".c");
+	objfile = temp_file(m, ".o");
 
 	fd = open(tmpfile, O_WRONLY | O_CREAT | O_EXCL, 0600);
 	if (fd < 0)
@@ -52,8 +44,7 @@ static void *check_includes_build(struct manifest *m)
 	}
 	close(fd);
 
-	return run_command(m, "cc " CFLAGS " -o %s -c -x c %s",
-			   objfile, tmpfile);
+	return compile_object(m, objfile, tmpfile);
 }
 
 static const char *describe_includes_build(struct manifest *m,
