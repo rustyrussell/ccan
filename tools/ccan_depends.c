@@ -42,10 +42,10 @@ int main(int argc, char *argv[])
 
 	if (compile)
 		deps = get_deps(talloc_autofree_context(),
-				dirname, basename, recurse);
+				dirname, basename, recurse, NULL);
 	else
 		deps = get_safe_ccan_deps(talloc_autofree_context(),
-					  dirname, basename, recurse);
+					  dirname, basename, recurse, NULL);
 
 	for (i = 0; deps[i]; i++)
 		if (strstarts(deps[i], "ccan/") == ccan)
