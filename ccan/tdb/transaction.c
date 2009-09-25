@@ -919,11 +919,6 @@ static int _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 		return 0;
 	}		
 
-#ifdef TDB_TRACE
-	/* store seqnum now, before reading becomes illegal. */
-	tdb_ofs_read(tdb, TDB_SEQNUM_OFS, &tdb->transaction_prepare_seqnum);
-#endif
-
 	/* check for a null transaction */
 	if (tdb->transaction->blocks == NULL) {
 		return 0;
@@ -1012,13 +1007,7 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 		return -1;
 	}
 
-	/* If we've prepared, can't read seqnum. */
-	if (tdb->transaction->prepared) {
-		tdb_trace_seqnum(tdb, tdb->transaction_prepare_seqnum,
-				 "tdb_transaction_commit");
-	} else {
-		tdb_trace(tdb, "tdb_transaction_commit");
-	}
+	tdb_trace(tdb, "tdb_transaction_commit");
 
 	if (tdb->transaction->transaction_error) {
 		tdb->ecode = TDB_ERR_IO;
