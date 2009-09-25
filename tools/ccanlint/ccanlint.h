@@ -5,7 +5,8 @@
 #include "../doc_extract.h"
 
 #define REGISTER_TEST(name, ...) extern struct ccanlint name
-#include "generated-init-tests"
+#include "generated-compulsory-tests"
+#include "generated-normal-tests"
 #undef REGISTER_TEST
 
 #define REGISTER_TEST(name, ...) 
@@ -41,7 +42,7 @@ struct ccanlint {
 	/* Unique name of test */
 	const char *name;
 
-	/* Total score that this test is worth.  0 means compulsory tests. */
+	/* Total score that this test is worth. */
 	unsigned int total_score;
 
 	/* Can we run this test?  Return string explaining why, if not. */

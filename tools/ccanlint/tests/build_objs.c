@@ -49,7 +49,6 @@ static void *check_objs_build(struct manifest *m)
 	struct ccan_file *i;
 
 	/* One point for each obj file. */
-	build_objs.total_score = 0;
 	list_for_each(&m->c_files, i, list)
 		build_objs.total_score++;
 
@@ -71,7 +70,6 @@ static const char *describe_objs_build(struct manifest *m, void *check_result)
 
 struct ccanlint build_objs = {
 	.name = "Module object files can be built",
-	.total_score = 1,
 	.check = check_objs_build,
 	.describe = describe_objs_build,
 	.can_run = can_build,

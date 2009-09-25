@@ -83,7 +83,6 @@ static void *do_compile_tests(struct manifest *m)
 
 	list_head_init(list);
 
-	compile_tests.total_score = 0;
 	list_for_each(&m->compile_ok_tests, i, list) {
 		compile_tests.total_score++;
 		cmdout = compile(list, m, i, false, false);
@@ -178,7 +177,6 @@ static const char *describe_compile_tests(struct manifest *m,
 
 struct ccanlint compile_tests = {
 	.name = "Compile tests succeed",
-	.total_score = 1,
 	.score = score_compile_tests,
 	.check = do_compile_tests,
 	.describe = describe_compile_tests,

@@ -160,16 +160,13 @@ static bool run_test(struct ccanlint *i,
 	return false;
 }
 
-static void register_test(struct ccanlint *test, ...)
+static void register_test(struct list_head *h, struct ccanlint *test, ...)
 {
 	va_list ap;
 	struct ccanlint *depends;
 	struct dependent *dchild;
 
-	if (!test->total_score)
-		list_add(&compulsory_tests, &test->list);
-	else
-		list_add(&normal_tests, &test->list);
+	list_add(h, &test->list);
 
 	va_start(ap, test);
 	/* Careful: we might have been initialized by a dependent. */
@@ -211,8 +208,11 @@ static void init_tests(void)
 	const struct ccanlint *i;
 
 #undef REGISTER_TEST
-#define REGISTER_TEST(name, ...) register_test(&name, __VA_ARGS__)
-#include "generated-init-tests"
+#define REGISTER_TEST(name, ...) register_test(&normal_tests, &name, __VA_ARGS__)
+#include "generated-normal-tests"
+#undef REGISTER_TEST
+#define REGISTER_TEST(name, ...) register_test(&compulsory_tests, &name, __VA_ARGS__)
+#include "generated-compulsory-tests"
 
 	if (!verbose)
 		return;
@@ -289,10 +289,9 @@ int main(int argc, char *argv[])
 	if (verbose)
 		printf("\nNormal tests:\n");
 	score = total_score = 0;
-	while ((i = get_next_test(&normal_tests)) != NULL) {
-		if (i->total_score)
-			run_test(i, summary, &score, &total_score, m);
-	}
+	while ((i = get_next_test(&normal_tests)) != NULL)
+		run_test(i, summary, &score, &total_score, m);
+
 	printf("Total score: %u/%u\n", score, total_score);
 	return 0;
 }

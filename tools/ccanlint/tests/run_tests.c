@@ -29,7 +29,6 @@ static void *do_run_tests(struct manifest *m)
 
 	list_head_init(list);
 
-	run_tests.total_score = 0;
 	list_for_each(&m->run_tests, i, list) {
 		char *testout;
 		run_tests.total_score++;
@@ -80,7 +79,6 @@ static const char *describe_run_tests(struct manifest *m,
 
 struct ccanlint run_tests = {
 	.name = "run and api tests run successfully",
-	.total_score = 1,
 	.score = score_run_tests,
 	.check = do_run_tests,
 	.describe = describe_run_tests,
