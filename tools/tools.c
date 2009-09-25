@@ -61,7 +61,7 @@ char *run_command(const void *ctx, const char *fmt, ...)
 
 	/* Ensure stderr gets to us too. */
 	cmd = talloc_asprintf_append(cmd, " 2>&1");
-	
+
 	pipe = popen(cmd, "r");
 	if (!pipe)
 		return talloc_asprintf(ctx, "Failed to run '%s'", cmd);
@@ -79,7 +79,7 @@ static int unlink_all(char *dir)
 {
 	char cmd[strlen(dir) + sizeof("rm -rf ")];
 	sprintf(cmd, "rm -rf %s", dir);
-//	system(cmd);
+	system(cmd);
 	return 0;
 }
 

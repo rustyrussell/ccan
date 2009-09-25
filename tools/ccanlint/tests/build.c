@@ -26,23 +26,32 @@ static char *obj_list(const struct manifest *m)
 	char *list = talloc_strdup(m, "");
 	struct ccan_file *i;
 
-	/* Object from all the C files. */
+	/* Objects from all the C files. */
 	list_for_each(&m->c_files, i, list)
-		list = talloc_asprintf_append(list, "%.*s.o ",
-					      strlen(i->name) - 2, i->name);
+		list = talloc_asprintf_append(list, "%s ", i->compiled);
 
 	return list;
 }
 
-/* We leave this object file around after ccanlint runs, all built. */
 static void *do_build(struct manifest *m)
 {
+	char *filename, *err;
+
 	if (list_empty(&m->c_files)) {
 		/* No files?  No score, but we "pass". */
 		build.total_score = 0;
 		return NULL;
 	}
-	return run_command(m, "ld -r -o ../%s.o %s", m->basename, obj_list(m));
+	filename = link_objects(m, obj_list(m), &err);
+	if (filename) {
+		char *realname = talloc_asprintf(m, "../%s.o", m->basename);
+		/* We leave this object file around, all built. */
+		if (rename(filename, realname) != 0)
+			return talloc_asprintf(m, "Failed to rename %s to %s",
+					       filename, realname);
+		return NULL;
+	}
+	return err;
 }
 
 static const char *describe_build(struct manifest *m, void *check_result)

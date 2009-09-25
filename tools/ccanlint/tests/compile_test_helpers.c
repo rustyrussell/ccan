@@ -21,17 +21,14 @@ static const char *can_build(struct manifest *m)
 	return NULL;
 }
 
-static char *objname(const void *ctx, const char *cfile)
+static char *compile(struct manifest *m, struct ccan_file *cfile)
 {
-	return talloc_asprintf(ctx, "%.*s.o ", strlen(cfile) - 2, cfile);
-}
+	char *err;
 
-static char *compile(struct manifest *m, const char *cfile)
-{
-	char *obj;
-
-	obj = objname(m, cfile);
-	return compile_object(m, obj, cfile);
+	cfile->compiled = compile_object(m, cfile->name, &err);
+	if (cfile->compiled)
+		return NULL;
+	return err;
 }
 
 static void *do_compile_test_helpers(struct manifest *m)
@@ -41,7 +38,7 @@ static void *do_compile_test_helpers(struct manifest *m)
 
 	list_for_each(&m->other_test_c_files, i, list) {
 		compile_tests.total_score++;
-		cmdout = compile(m, i->name);
+		cmdout = compile(m, i);
 		if (cmdout)
 			return talloc_asprintf(m,
 					       "Failed to compile helper C"

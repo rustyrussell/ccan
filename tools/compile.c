@@ -3,15 +3,29 @@
 #include <stdlib.h>
 
 /* Compile multiple object files into a single.  Returns errmsg if fails. */
-char *link_objects(const void *ctx, const char *outfile, const char *objs)
+char *link_objects(const void *ctx, const char *objs, char **errmsg)
 {
-	return run_command(ctx, "cc " CFLAGS " -c -o %s %s", outfile, objs);
+	char *file = temp_file(ctx, ".o");
+
+	*errmsg = run_command(ctx, "ld -r -o %s %s", file, objs);
+	if (*errmsg) {
+		talloc_free(file);
+		return NULL;
+	}
+	return file;
 }
 
 /* Compile a single C file to an object file.  Returns errmsg if fails. */
-char *compile_object(const void *ctx, const char *outfile, const char *cfile)
+char *compile_object(const void *ctx, const char *cfile, char **errmsg)
 {
-	return run_command(ctx, "cc " CFLAGS " -c -o %s %s", outfile, cfile);
+	char *file = temp_file(ctx, ".o");
+
+	*errmsg = run_command(ctx, "cc " CFLAGS " -c -o %s %s", file, cfile);
+	if (*errmsg) {
+		talloc_free(file);
+		return NULL;
+	}
+	return file;
 }
 
 /* Compile and link single C file, with object files.

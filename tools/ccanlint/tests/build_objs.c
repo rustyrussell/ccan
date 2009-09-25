@@ -21,50 +21,31 @@ static const char *can_build(struct manifest *m)
 	return NULL;
 }
 
-static bool compile_obj(struct ccan_file *c_file, char *objfile, char **report)
-{
-	char *err;
-
-	err = compile_object(objfile, objfile, c_file->name);
-	if (err) {
-		if (*report)
-			*report = talloc_append_string(*report, err);
-		else
-			*report = err;
-		return false;
-	}
-	return true;
-}
-
-static int cleanup_obj(char *objfile)
-{
-	unlink(objfile);
-	return 0;
-}
-
 static void *check_objs_build(struct manifest *m)
 {
 	char *report = NULL;
 	struct ccan_file *i;
 
-	/* One point for each obj file. */
-	list_for_each(&m->c_files, i, list)
+	list_for_each(&m->c_files, i, list) {
+		char *err;
+
+		/* One point for each obj file. */
 		build_objs.total_score++;
 
-	list_for_each(&m->c_files, i, list) {
-		char *objfile = talloc_strdup(m, i->name);
-		objfile[strlen(objfile)-1] = 'o';
-
-		if (compile_obj(i, objfile, &report))
-			talloc_set_destructor(objfile, cleanup_obj);
+		i->compiled = compile_object(m, i->name, &err);
+		if (!i->compiled) {
+			if (report)
+				report = talloc_append_string(report, err);
+			else
+				report = err;
+		}
 	}
 	return report;
 }
 
 static const char *describe_objs_build(struct manifest *m, void *check_result)
 {
-	return talloc_asprintf(check_result, 
-			       "%s", (char *)check_result);
+	return check_result;
 }
 
 struct ccanlint build_objs = {

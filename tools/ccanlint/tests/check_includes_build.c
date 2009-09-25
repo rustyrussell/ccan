@@ -25,11 +25,10 @@ static const char *can_build(struct manifest *m)
 static void *check_includes_build(struct manifest *m)
 {
 	char *contents;
-	char *tmpfile, *objfile;
+	char *tmpfile, *err;
 	int fd;
 
 	tmpfile = temp_file(m, ".c");
-	objfile = temp_file(m, ".o");
 
 	fd = open(tmpfile, O_WRONLY | O_CREAT | O_EXCL, 0600);
 	if (fd < 0)
@@ -44,7 +43,9 @@ static void *check_includes_build(struct manifest *m)
 	}
 	close(fd);
 
-	return compile_object(m, objfile, tmpfile);
+	if (compile_object(m, tmpfile, &err))
+		return NULL;
+	return err;
 }
 
 static const char *describe_includes_build(struct manifest *m,

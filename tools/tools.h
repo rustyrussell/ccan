@@ -30,13 +30,16 @@ char *talloc_getcwd(const void *ctx);
 char *run_command(const void *ctx, const char *fmt, ...);
 char *temp_file(const void *ctx, const char *extension);
 
-/* From compile.c. */
-/* Compile multiple object files into a single.  Returns errmsg if fails. */
-char *link_objects(const void *ctx, const char *outfile, const char *objs);
+/* From compile.c.
+ *
+ * These all compile into a temporary dir, and return the filename.
+ * On failure they return NULL, and errmsg is set to compiler output.
+ */
+/* Compile multiple object files into a single. */
+char *link_objects(const void *ctx, const char *objs, char **errmsg);
 /* Compile a single C file to an object file.  Returns errmsg if fails. */
-char *compile_object(const void *ctx, const char *outfile, const char *cfile);
-/* Compile and link single C file, with object files.
- * Returns name of result, or NULL (and fills in errmsg). */
+char *compile_object(const void *ctx, const char *cfile, char **errmsg);
+/* Compile and link single C file, with object files, libs, etc. */
 char *compile_and_link(const void *ctx, const char *cfile, const char *objs,
 		       const char *extra_cflags, const char *libs,
 		       char **errmsg);

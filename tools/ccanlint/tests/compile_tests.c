@@ -23,13 +23,18 @@ static const char *can_build(struct manifest *m)
 
 static char *obj_list(const struct manifest *m, bool link_with_module)
 {
-	char *list = talloc_strdup(m, "../tap.o");
+	char *list;
 	struct ccan_file *i;
+
+	/* We expect to be linked with tap, unless that's us. */
+	if (!streq(m->basename, "tap"))
+		list = talloc_strdup(m, "../tap.o");
+	else
+		list = talloc_strdup(m, "");
 
 	/* Objects from any other C files. */
 	list_for_each(&m->other_test_c_files, i, list)
-		list = talloc_asprintf_append(list, " %.*s.o",
-					      strlen(i->name) - 2, i->name);
+		list = talloc_asprintf_append(list, " %s", i->compiled);
 
 	if (link_with_module)
 		list = talloc_asprintf_append(list, " ../%s.o", m->basename);
@@ -118,7 +123,7 @@ static void *do_compile_tests(struct manifest *m)
 
 	list_for_each(&m->compile_fail_tests, i, list) {
 		compile_tests.total_score++;
-		cmdout = compile(list, m, i, true, false);
+		cmdout = compile(list, m, i, false, false);
 		if (cmdout) {
 			res = talloc(list, struct compile_tests_result);
 			res->filename = i->name;
@@ -126,7 +131,7 @@ static void *do_compile_tests(struct manifest *m)
 			res->output = talloc_steal(res, cmdout);
 			list_add_tail(list, &res->list);
 		} else {
-			cmdout = compile(list, m, i, false, false);
+			cmdout = compile(list, m, i, true, false);
 			if (!cmdout) {
 				res = talloc(list, struct compile_tests_result);
 				res->filename = i->name;
