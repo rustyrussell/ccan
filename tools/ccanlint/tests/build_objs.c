@@ -16,8 +16,6 @@
 
 static const char *can_build(struct manifest *m)
 {
-	if (list_empty(&m->c_files))
-		return "No C files in module";
 	if (safe_mode)
 		return "Safe mode enabled";
 	return NULL;

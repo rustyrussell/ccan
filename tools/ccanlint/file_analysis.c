@@ -40,6 +40,7 @@ struct ccan_file *new_ccan_file(const void *ctx, char *name)
 	f->lines = NULL;
 	f->line_info = NULL;
 	f->doc_sections = NULL;
+	f->compiled = NULL;
 	f->name = talloc_steal(f, name);
 	return f;
 }
@@ -115,7 +116,7 @@ static void add_files(struct manifest *m, const char *dir)
 				else if (strstarts(f->name, "test/compile_fail"))
 					dest = &m->compile_fail_tests;
 				else
-					dest = &m->other_test_files;
+					dest = &m->other_test_c_files;
 			} else
 				dest = &m->other_test_files;
 		} else
@@ -162,6 +163,7 @@ struct manifest *get_manifest(const void *ctx)
 	list_head_init(&m->run_tests);
 	list_head_init(&m->compile_ok_tests);
 	list_head_init(&m->compile_fail_tests);
+	list_head_init(&m->other_test_c_files);
 	list_head_init(&m->other_test_files);
 	list_head_init(&m->other_files);
 	list_head_init(&m->dep_dirs);

@@ -16,8 +16,6 @@
 
 static const char *can_build(struct manifest *m)
 {
-	if (list_empty(&m->c_files))
-		return "No C files in module";
 	if (safe_mode)
 		return "Safe mode enabled";
 	return NULL;
@@ -39,6 +37,11 @@ static char *obj_list(const struct manifest *m)
 /* We leave this object file around after ccanlint runs, all built. */
 static void *do_build(struct manifest *m)
 {
+	if (list_empty(&m->c_files)) {
+		/* No files?  No score, but we "pass". */
+		build.total_score = 0;
+		return NULL;
+	}
 	return run_command(m, "ld -r -o ../%s.o %s", m->basename, obj_list(m));
 }
 

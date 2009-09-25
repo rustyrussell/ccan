@@ -50,11 +50,11 @@ static bool expect_obj_file(const char *dir)
 static void *check_depends_built(struct manifest *m)
 {
 	struct ccan_file *i;
+	struct stat st;
 	char *report = NULL;
 
 	list_for_each(&m->dep_dirs, i, list) {
 		char *objfile;
-		struct stat st;
 
 		if (!expect_obj_file(i->name))
 			continue;
@@ -70,6 +70,17 @@ static void *check_depends_built(struct manifest *m)
 		}
 			
 	}
+
+	/* We may need libtap for testing, unless we're "tap" */
+	if (!streq(m->basename, "tap")
+	    && (!list_empty(&m->run_tests) || !list_empty(&m->api_tests))) {
+		if (stat("../tap.o", &st) != 0) {
+			report = talloc_asprintf_append(report,
+							"object file ../tap.o"
+							" (for tests)\n");
+		}
+	}
+
 	return talloc_steal(m, report);
 }
 

@@ -22,6 +22,7 @@ struct manifest {
 	struct list_head api_tests;
 	struct list_head compile_ok_tests;
 	struct list_head compile_fail_tests;
+	struct list_head other_test_c_files;
 	struct list_head other_test_files;
 
 	struct list_head other_files;
@@ -124,6 +125,9 @@ struct ccan_file {
 	struct line_info *line_info;
 
 	struct list_head *doc_sections;
+
+	/* If this file gets compiled (eg. .C file to .o file), result here. */
+	const char *compiled;
 };
 
 /* A new ccan_file, with the given name (talloc_steal onto returned value). */
