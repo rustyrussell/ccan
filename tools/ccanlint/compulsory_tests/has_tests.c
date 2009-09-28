@@ -123,7 +123,7 @@ static void handle_no_tests(struct manifest *m, void *check_result)
 }	
 
 struct ccanlint has_tests = {
-	.name = "No tests",
+	.name = "Has tests",
 	.check = check_has_tests,
 	.describe = describe_has_tests,
 	.handle = handle_no_tests,

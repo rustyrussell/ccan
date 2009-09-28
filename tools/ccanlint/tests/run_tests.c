@@ -77,6 +77,8 @@ static const char *describe_run_tests(struct manifest *m,
 	return talloc_append_string(descrip, check_result);
 }
 
+/* FIXME: Handle by offering to run under debugger... */
+
 struct ccanlint run_tests = {
 	.name = "run and api tests run successfully",
 	.score = score_run_tests,
