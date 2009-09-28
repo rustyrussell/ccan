@@ -46,7 +46,7 @@ static char *output_name(const char *name)
 	return ret;
 }
 
-static char *obj_list(void)
+static char *obj_list(const char *dir)
 {
 	char *list = talloc_strdup(objs, "");
 	struct obj *i;
@@ -55,7 +55,8 @@ static char *obj_list(void)
 		list = talloc_asprintf_append(list, "%s ", i->name);
 
 	/* FIXME */
-	list = talloc_asprintf_append(list, "ccan/tap/tap.o");
+	if (!streq(dir, "tap") && !strends(dir, "/tap"))
+		list = talloc_asprintf_append(list, "ccan/tap/tap.o");
 	return list;
 }
 
@@ -110,8 +111,8 @@ static int build(const char *dir, const char *name, const char *apiobj,
 
 	cmd = talloc_asprintf(name, "gcc " CFLAGS " %s -o %s %s %s %s%s %s",
 			      fail ? "-DFAIL" : "",
-			      output_name(name), name, apiobj, obj_list(), libs,
-			      verbose ? "" : "> /dev/null 2>&1");
+			      output_name(name), name, apiobj, obj_list(dir),
+			      libs, verbose ? "" : "> /dev/null 2>&1");
 
 	if (verbose)
 		fprintf(stderr, "Running %s\n", cmd);
