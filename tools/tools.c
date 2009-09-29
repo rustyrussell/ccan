@@ -79,7 +79,8 @@ static int unlink_all(char *dir)
 {
 	char cmd[strlen(dir) + sizeof("rm -rf ")];
 	sprintf(cmd, "rm -rf %s", dir);
-	system(cmd);
+	if (system(cmd) != 0)
+		warn("Could not remove temporary work in %s", dir);
 	return 0;
 }
 
