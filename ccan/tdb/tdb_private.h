@@ -231,7 +231,6 @@ struct tdb_context {
 	int transaction_lock_count;
 #ifdef TDB_TRACE
 	int tracefd;
-	uint32_t transaction_prepare_seqnum;
 #endif
 	volatile sig_atomic_t *interrupt_sig_ptr;
 };
