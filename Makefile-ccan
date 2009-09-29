@@ -9,7 +9,7 @@ DEPGEN=-MD
 -include ccan/*/*.d
 
 # Every directory with .c files is included.
-DIRS=$(patsubst %/, %, $(sort $(dir $(wildcard ccan/*/*.c))))
+DIRS=$(filter-out $(EXCLUDE), $(patsubst %/, %, $(sort $(dir $(wildcard ccan/*/*.c)))))
 
 # We compile all the ccan/foo/*.o files together into ccan/foo.o
 OBJFILES=$(DIRS:=.o)

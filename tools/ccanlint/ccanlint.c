@@ -17,6 +17,7 @@
  * Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 #include "ccanlint.h"
+#include "../tools.h"
 #include <unistd.h>
 #include <getopt.h>
 #include <stdarg.h>
@@ -37,13 +38,14 @@ static void usage(const char *name)
 {
 	fprintf(stderr, "Usage: %s [-s] [-n] [-v] [-d <dirname>]\n"
 		"   -v: verbose mode\n"
-		"   -s: simply give one line per FAIL and total score\n"
+		"   -s: simply give one line summary\n"
 		"   -d: use this directory instead of the current one\n"
 		"   -n: do not compile anything\n",
 		name);
 	exit(1);
 }
 
+#if 0
 static void indent_print(const char *string)
 {
 	while (*string) {
@@ -56,6 +58,7 @@ static void indent_print(const char *string)
 		string += line;
 	}
 }
+#endif
 
 bool ask(const char *question)
 {
@@ -82,7 +85,7 @@ static const char *should_skip(struct manifest *m, struct ccanlint *i)
 }
 
 static bool run_test(struct ccanlint *i,
-		     bool summary,
+		     bool quiet,
 		     unsigned int *score,
 		     unsigned int *total_score,
 		     struct manifest *m)
@@ -138,13 +141,7 @@ static bool run_test(struct ccanlint *i,
 
 	*total_score += i->total_score;
 	*score += this_score;
-	if (summary) {
-		printf("%s FAILED (%u/%u)\n",
-		       i->name, this_score, i->total_score);
-
-		if (verbose)
-			indent_print(i->describe(m, result));
-	} else {
+	if (!quiet) {
 		printf("%s\n", i->describe(m, result));
 
 		if (i->handle)
@@ -247,12 +244,16 @@ int main(int argc, char *argv[])
 	unsigned int score, total_score;
 	struct manifest *m;
 	struct ccanlint *i;
+	const char *prefix = "";
 
 	/* I'd love to use long options, but that's not standard. */
 	/* FIXME: getopt_long ccan package? */
 	while ((c = getopt(argc, argv, "sd:vn")) != -1) {
 		switch (c) {
 		case 'd':
+			prefix = talloc_append_string(talloc_basename(NULL,
+								      optarg),
+						      ": ");
 			if (chdir(optarg) != 0)
 				err(1, "Changing into directory '%s'", optarg);
 			break;
@@ -282,8 +283,9 @@ int main(int argc, char *argv[])
 		printf("Compulsory tests:\n");
 
 	while ((i = get_next_test(&compulsory_tests)) != NULL) {
-		if (!run_test(i, summary, &score, &total_score, m))
-			exit(1);
+		if (!run_test(i, summary, &score, &total_score, m)) {
+			errx(1, "%s%s failed", prefix, i->name);
+		}
 	}
 
 	if (verbose)
@@ -292,6 +294,6 @@ int main(int argc, char *argv[])
 	while ((i = get_next_test(&normal_tests)) != NULL)
 		run_test(i, summary, &score, &total_score, m);
 
-	printf("Total score: %u/%u\n", score, total_score);
+	printf("%sTotal score: %u/%u\n", prefix, score, total_score);
 	return 0;
 }

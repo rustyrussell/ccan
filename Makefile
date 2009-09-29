@@ -10,11 +10,15 @@
 #        Especially tools/ccanlint/ccanlint and tools/namespacize.
 # distclean: destroy everything back to pristine state
 
+# Trying to build the whole repo is usually a lose; there will be some
+# dependencies you don't have.
+EXCLUDE=ccan/wwviaudio ccan/ogg_to_pcm
+
 # Anything with an _info file is a module.
-ALL=$(patsubst ccan/%/_info, %, $(wildcard ccan/*/_info))
+ALL=$(filter-out $(EXCLUDE), $(patsubst ccan/%/_info, %, $(wildcard ccan/*/_info)))
 ALL_DEPENDS=$(patsubst %, ccan/%/.depends, $(ALL))
 # Not all modules have tests.
-ALL_TESTS=$(patsubst ccan/%/test/, %, $(wildcard ccan/*/test/))
+ALL_TESTS=$(patsubst ccan/%/test/, %, $(foreach dir, $(ALL), $(wildcard ccan/$(dir)/test/)))
 
 default: libccan.a
 
@@ -29,9 +33,8 @@ $(ALL_DEPENDS): %/.depends: %/_info tools/ccan_depends
 	@tools/ccan_depends $* > $@ || ( rm -f $@; exit 1 )
 
 # Actual dependencies are created in inter-depends
-check-%: tools/run_tests ccan/%/info
-	@echo Testing $*...
-	@if tools/run_tests $(V) $$(for f in `ccan/$*/info libs`; do echo --lib=$$f; done) `[ ! -f ccan/$*.o ] || echo --apiobj=ccan/$*.o` ccan/$* $(filter-out ccan/$*.o, $(filter %.o, $^)) | grep ^'not ok'; then exit 1; else exit 0; fi
+check-%: tools/ccanlint/ccanlint
+	@tools/ccanlint/ccanlint -s -d ccan/$*
 
 ccan/%/info: ccan/%/_info
 	$(CC) $(CFLAGS) -o $@ -x c $<
