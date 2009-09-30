@@ -1,0 +1,66 @@
+#include <string.h>
+#include <stdio.h>
+#include "config.h"
+
+/**
+ * sparse_bsearch - search a sorted array with some invalid entries
+ *
+ * bsearch() is great for searching an array, but if you are deleting from
+ * the array, you then need to memmove() to keep it dense.
+ *
+ * Sometimes there is a useful invalid value which can be used to mark deleted
+ * entries, but such a "gappy" array breaks bsearch.  This function allows
+ * "invalid" entries in your array, which are ignored for the search.
+ * 
+ * Example:
+ *	#include <ccan/sparse_bsearch/sparse_bsearch.h>
+ *
+ *	static bool val_valid(unsigned int *val)
+ *	{
+ *		return *val != 0;
+ *	}
+ *	static int val_cmp(const unsigned int *a, const unsigned int *b)
+ *	{
+ *		return (int)((*a) - (*b));
+ *	}
+ *	static unsigned int values[] = { 1, 7, 11, 1235, 99999 };
+ *
+ *	// Return true if this value is in set, and remove it.
+ *	bool remove_from_values(unsigned int val)
+ *	{
+ *		unsigned int *p;
+ *		// We use 5 here, but ccan/array_size.h is better!
+ *		p = sparse_bsearch(&val, values, 5, val_cmp, val_valid);
+ *		if (!p)
+ *			return false;
+ *		*p = 0;
+ *		return true;
+ *	}
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		int i, val;
+ *		for (i = 1; i < argc; i++) {
+ *			val = atoi(argv[i]);
+ *			if (remove_from_values(val))
+ *				printf("%i removed.\n", val);
+ *			else
+ *				printf("%i wasn't there.\n", val);
+ *		}
+ *		return 0;
+ *	}
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/typesafe_cb\n"
+		       "ccan/check_type\n");
+		return 0;
+	}
+
+	return 1;
+}
