@@ -31,7 +31,7 @@
  * arguments are of identical types.  No type promotion of the expressions is
  * done: an unsigned int is not the same as an int!
  *
- * check_types_match() always evaluates to 1.
+ * check_types_match() always evaluates to 0.
  *
  * If your compiler does not support typeof, then the best we can do is fail
  * to compile if the sizes of the types are unequal (a less complete check).
