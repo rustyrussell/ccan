@@ -9,7 +9,7 @@
 #define SPACE_CHARS	" \f\n\r\t\v"
 
 /* FIXME: Remove some -I */
-#define CFLAGS "-O -Wall -Wundef -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Werror -Iccan/ -I. -I.. -I../.."
+#define CFLAGS "-g -Wall -Wundef -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Werror -Iccan/ -I. -I.. -I../.."
 
 /* This actually compiles and runs the info file to get dependencies. */
 char **get_deps(const void *ctx, const char *dir, const char *name,

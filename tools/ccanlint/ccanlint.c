@@ -241,7 +241,7 @@ int main(int argc, char *argv[])
 {
 	int c;
 	bool summary = false;
-	unsigned int score, total_score;
+	unsigned int score = 0, total_score = 0;
 	struct manifest *m;
 	struct ccanlint *i;
 	const char *prefix = "";
@@ -290,7 +290,6 @@ int main(int argc, char *argv[])
 
 	if (verbose)
 		printf("\nNormal tests:\n");
-	score = total_score = 0;
 	while ((i = get_next_test(&normal_tests)) != NULL)
 		run_test(i, summary, &score, &total_score, m);
 
