@@ -25,70 +25,6 @@
 #include "tdb_private.h"
 #include <limits.h>
 
-/*
-  For each value, we flip F bits in a bitmap of size 2^B.  So we can think
-  of this as a F*B bit hash (this isn't quite true due to hash collisions,
-  but it seems good enough for F << B).
-
-  Assume that we only have a single error; this is *not* the birthday
-  problem, since the question is: "does that error hash to the same as
-  the correct value", ie. a simple 1 in 2^F*B.  The chances of detecting
-  multiple errors is even higher (since we only need to detect one of
-  them).
-
-  Given that ldb uses a hash size of 10000, using 512 bytes per hash chain
-  (5M) seems reasonable.  With 128 hashes, that's about 1 in a million chance
-  of missing a single linked list error.
-*/
-#define NUM_HASHES 128
-#define BITMAP_BITS (512 * CHAR_BIT)
-
-/* We use the excellent Jenkins lookup3 hash; this is based on hash_word2.
- * See: http://burtleburtle.net/bob/c/lookup3.c
- */
-#define rot(x,k) (((x)<<(k)) | ((x)>>(32-(k))))
-
-#define final(a,b,c) \
-{ \
-  c ^= b; c -= rot(b,14); \
-  a ^= c; a -= rot(c,11); \
-  b ^= a; b -= rot(a,25); \
-  c ^= b; c -= rot(b,16); \
-  a ^= c; a -= rot(c,4);  \
-  b ^= a; b -= rot(a,14); \
-  c ^= b; c -= rot(b,24); \
-}
-
-static void hash(uint32_t key, uint32_t *pc, uint32_t *pb)
-{
-	uint32_t a,b,c;
-
-	/* Set up the internal state */
-	a = b = c = 0xdeadbeef + *pc;
-	c += *pb;
-
-	a += key;
-	final(a,b,c);
-	*pc=c; *pb=b;
-}
-
-static void bit_flip(unsigned char bits[], unsigned int idx)
-{
-	bits[idx / CHAR_BIT] ^= (1 << (idx % CHAR_BIT));
-}
-
-static void add_to_hash(unsigned char bits[], tdb_off_t off)
-{
-	uint32_t h1 = off, h2 = 0;
-	unsigned int i;
-	for (i = 0; i < NUM_HASHES / 2; i++) {
-		hash(off, &h1, &h2);
-		bit_flip(bits, h1 % BITMAP_BITS);
-		bit_flip(bits, h2 % BITMAP_BITS);
-		h2++;
-	}
-}
-
 /* Since we opened it, these shouldn't fail unless it's recent corruption. */
 static bool tdb_check_header(struct tdb_context *tdb, tdb_off_t *recovery)
 {
@@ -124,6 +60,7 @@ corrupt:
 	return false;
 }
 
+/* Generic record header check. */
 static bool tdb_check_record(struct tdb_context *tdb,
 			     tdb_off_t off,
 			     const struct list_struct *rec)
@@ -164,13 +101,15 @@ corrupt:
 	return false;
 }
 
-static TDB_DATA get_data(struct tdb_context *tdb, tdb_off_t off, tdb_len_t len)
+/* Grab some bytes: may copy if can't use mmap.
+   Caller has already done bounds check. */
+static TDB_DATA get_bytes(struct tdb_context *tdb,
+			  tdb_off_t off, tdb_len_t len)
 {
 	TDB_DATA d;
 
 	d.dsize = len;
 
-	/* We've already done bounds check here. */
 	if (tdb->transaction == NULL && tdb->map_ptr != NULL)
 		d.dptr = (unsigned char *)tdb->map_ptr + off;
 	else
@@ -178,13 +117,92 @@ static TDB_DATA get_data(struct tdb_context *tdb, tdb_off_t off, tdb_len_t len)
 	return d;
 }
 
-static void put_data(struct tdb_context *tdb, TDB_DATA d)
+/* Frees data if we're not able to simply use mmap. */
+static void put_bytes(struct tdb_context *tdb, TDB_DATA d)
 {
 	if (tdb->transaction == NULL && tdb->map_ptr != NULL)
 		return;
 	free(d.dptr);
 }
 
+/* We use the excellent Jenkins lookup3 hash; this is based on hash_word2.
+ * See: http://burtleburtle.net/bob/c/lookup3.c
+ */
+#define rot(x,k) (((x)<<(k)) | ((x)>>(32-(k))))
+static void hash(uint32_t key, uint32_t *pc, uint32_t *pb)
+{
+	uint32_t a,b,c;
+
+	/* Set up the internal state */
+	a = b = c = 0xdeadbeef + *pc;
+	c += *pb;
+	a += key;
+	c ^= b; c -= rot(b,14);
+	a ^= c; a -= rot(c,11);
+	b ^= a; b -= rot(a,25);
+	c ^= b; c -= rot(b,16);
+	a ^= c; a -= rot(c,4);
+	b ^= a; b -= rot(a,14);
+	c ^= b; c -= rot(b,24);
+	*pc=c; *pb=b;
+}
+
+/*
+  We want to check that all free records are in the free list
+  (only once), and all free list entries are free records.  Similarly
+  for each hash chain of used records.
+
+  Doing that naively (without walking hash chains, since we want to be
+  linear) means keeping a list of records which have been seen in each
+  hash chain, and another of records pointed to (ie. next pointers
+  from records and the initial hash chain heads).  These two lists
+  should be equal.  This will take 8 bytes per record, and require
+  sorting at the end.
+
+  So instead, we record each offset in a bitmap such a way that
+  recording it twice will cancel out.  Since each offset should appear
+  exactly twice, the bitmap should be zero at the end.
+
+  The approach was inspired by Bloom Filters (see Wikipedia).  For
+  each value, we flip K bits in a bitmap of size N.  The number of
+  distinct arrangements is:
+
+	N! / (K! * (N-K)!)
+
+  Of course, not all arrangements are actually distinct, but testing
+  shows this formula to be close enough.
+
+  So, if K == 8 and N == 256, the probability of two things flipping the same
+  bits is 1 in 409,663,695,276,000.
+
+  Given that ldb uses a hash size of 10000, using 32 bytes per hash chain
+  (320k) seems reasonable.
+*/
+#define NUM_HASHES 8
+#define BITMAP_BITS 256
+
+static void bit_flip(unsigned char bits[], unsigned int idx)
+{
+	bits[idx / CHAR_BIT] ^= (1 << (idx % CHAR_BIT));
+}
+
+/* We record offsets in a bitmap for the particular chain it should be in.  */
+static void record_offset(unsigned char bits[], tdb_off_t off)
+{
+	uint32_t h1 = off, h2 = 0;
+	unsigned int i;
+
+	/* We get two good hash values out of jhash2, so we use both.  Then
+	 * we keep going to produce further hash values. */
+	for (i = 0; i < NUM_HASHES / 2; i++) {
+		hash(off, &h1, &h2);
+		bit_flip(bits, h1 % BITMAP_BITS);
+		bit_flip(bits, h2 % BITMAP_BITS);
+		h2++;
+	}
+}
+
+/* Check that an in-use record is valid. */
 static bool tdb_check_used_record(struct tdb_context *tdb,
 				  tdb_off_t off,
 				  const struct list_struct *rec,
@@ -201,39 +219,43 @@ static bool tdb_check_used_record(struct tdb_context *tdb,
 	if (rec->key_len + rec->data_len + sizeof(tdb_off_t) > rec->rec_len)
 		return false;
 
-	key = get_data(tdb, off + sizeof(*rec), rec->key_len);
+	key = get_bytes(tdb, off + sizeof(*rec), rec->key_len);
 	if (!key.dptr)
 		return false;
 
 	if (tdb->hash_fn(&key) != rec->full_hash)
 		goto fail_put_key;
 
-	add_to_hash(hashes[BUCKET(rec->full_hash)+1], off);
+	/* Mark this offset as a known value for this hash bucket. */
+	record_offset(hashes[BUCKET(rec->full_hash)+1], off);
+	/* And similarly if the next pointer is valid. */
 	if (rec->next)
-		add_to_hash(hashes[BUCKET(rec->full_hash)+1], rec->next);
+		record_offset(hashes[BUCKET(rec->full_hash)+1], rec->next);
 
-	/* If they supply a check function, get data. */
-	if (check) {
-		data = get_data(tdb, off + sizeof(*rec) + rec->key_len,
-				rec->data_len);
+	/* If they supply a check function and this record isn't dead,
+	   get data and feed it. */
+	if (check && rec->magic != TDB_DEAD_MAGIC) {
+		data = get_bytes(tdb, off + sizeof(*rec) + rec->key_len,
+				 rec->data_len);
 		if (!data.dptr)
 			goto fail_put_key;
 
 		if (check(key, data, private) == -1)
 			goto fail_put_data;
-		put_data(tdb, data);
+		put_bytes(tdb, data);
 	}
 
-	put_data(tdb, key);
+	put_bytes(tdb, key);
 	return true;
 
 fail_put_data:
-	put_data(tdb, data);
+	put_bytes(tdb, data);
 fail_put_key:
-	put_data(tdb, key);
+	put_bytes(tdb, key);
 	return false;
 }
 
+/* Check that an unused record is valid. */
 static bool tdb_check_free_record(struct tdb_context *tdb,
 				  tdb_off_t off,
 				  const struct list_struct *rec,
@@ -242,13 +264,14 @@ static bool tdb_check_free_record(struct tdb_context *tdb,
 	if (!tdb_check_record(tdb, off, rec))
 		return false;
 
-	add_to_hash(hashes[0], off);
+	/* Mark this offset as a known value for the free list. */
+	record_offset(hashes[0], off);
+	/* And similarly if the next pointer is valid. */
 	if (rec->next)
-		add_to_hash(hashes[0], rec->next);
+		record_offset(hashes[0], rec->next);
 	return true;
 }
 
-/* We do this via linear scan, even though it's not 100% accurate. */
 int tdb_check(struct tdb_context *tdb,
 	      int (*check)(TDB_DATA key, TDB_DATA data, void *private),
 	      void *private)
@@ -265,9 +288,11 @@ int tdb_check(struct tdb_context *tdb,
 	/* Make sure we know true size of the underlying file. */
 	tdb->methods->tdb_oob(tdb, tdb->map_size + 1, 1);
 
+	/* Header must be OK: also gets us the recovery ptr, if any. */
 	if (!tdb_check_header(tdb, &recovery_start))
 		goto unlock;
 
+	/* We should have the whole header, too. */
 	if (tdb->map_size < TDB_DATA_START(tdb->header.hash_size)) {
 		tdb->ecode = TDB_ERR_CORRUPT;
 		goto unlock;
@@ -286,15 +311,16 @@ int tdb_check(struct tdb_context *tdb,
 	for (h = 1; h < 1+tdb->header.hash_size; h++)
 		hashes[h] = hashes[h-1] + BITMAP_BITS / CHAR_BIT;
 
-	/* Freelist and hash headers are all in a row. */
+	/* Freelist and hash headers are all in a row: read them. */
 	for (h = 0; h < 1+tdb->header.hash_size; h++) {
 		if (tdb_ofs_read(tdb, FREELIST_TOP + h*sizeof(tdb_off_t),
 				 &off) == -1)
 			goto free;
 		if (off)
-			add_to_hash(hashes[h], off);
+			record_offset(hashes[h], off);
 	}
 
+	/* For each record, read it in and check it's ok. */
 	for (off = TDB_DATA_START(tdb->header.hash_size);
 	     off < tdb->map_size;
 	     off += sizeof(rec) + rec.rec_len) {
@@ -335,7 +361,7 @@ int tdb_check(struct tdb_context *tdb,
 		}
 	}
 
-	/* We must have found recovery area. */
+	/* We must have found recovery area if there was one. */
 	if (recovery_start != 0 && !found_recovery)
 		goto free;
 

@@ -32,18 +32,26 @@ static int check(TDB_DATA key, TDB_DATA data, void *private)
 	return 0;
 }
 
-int main(int argc, char *argv[])
+static void tdb_flip_bit(struct tdb_context *tdb, unsigned int bit)
 {
-	struct tdb_context *tdb;
+	unsigned int off = bit / CHAR_BIT;
+	unsigned char mask = (1 << (bit % CHAR_BIT));
+
+	if (tdb->map_ptr)
+		((unsigned char *)tdb->map_ptr)[off] ^= mask;
+	else {
+		unsigned char c;
+		pread(tdb->fd, &c, 1, off);
+		c ^= mask;
+		pwrite(tdb->fd, &c, 1, off);
+	}
+}
+
+static void check_test(struct tdb_context *tdb)
+{
 	TDB_DATA key, data;
 	unsigned int i, verifiable, corrupt, sizes[2], dsize, ksize;
 
-	plan_tests(2);
-	tdb = tdb_open("/tmp/test6.tdb", 2, TDB_CLEAR_IF_FIRST,
-		       O_CREAT|O_TRUNC|O_RDWR, 0600);
-
-	if (!tdb)
-		abort();
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	
 	key.dptr = (void *)"hello";
@@ -77,16 +85,39 @@ int main(int argc, char *argv[])
 
 	/* Flip one bit at a time, make sure it detects verifiable bytes. */
 	for (i = 0, corrupt = 0; i < tdb->map_size * CHAR_BIT; i++) {
-		bit_flip(tdb->map_ptr, i);
+		tdb_flip_bit(tdb, i);
 		memset(sizes, 0, sizeof(sizes));
 		if (tdb_check(tdb, check, sizes) != 0)
 			corrupt++;
 		else if (sizes[0] != ksize || sizes[1] != dsize)
 			corrupt++;
-		bit_flip(tdb->map_ptr, i);
+		tdb_flip_bit(tdb, i);
 	}
 	ok(corrupt == verifiable * CHAR_BIT, "corrupt %u should be %u",
 	   corrupt, verifiable * CHAR_BIT);
+}
+
+int main(int argc, char *argv[])
+{
+	struct tdb_context *tdb;
+
+	plan_tests(4);
+	/* This should use mmap. */
+	tdb = tdb_open("/tmp/test6.tdb", 2, TDB_CLEAR_IF_FIRST,
+		       O_CREAT|O_TRUNC|O_RDWR, 0600);
+
+	if (!tdb)
+		abort();
+	check_test(tdb);
+	tdb_close(tdb);
+
+	/* This should not. */
+	tdb = tdb_open("/tmp/test6.tdb", 2, TDB_CLEAR_IF_FIRST|TDB_NOMMAP,
+		       O_CREAT|O_TRUNC|O_RDWR, 0600);
+
+	if (!tdb)
+		abort();
+	check_test(tdb);
 	tdb_close(tdb);
 
 	return exit_status();
