@@ -18,7 +18,7 @@ $frommail = "ccan@ozlabs.org";
 $tar_dir = 'tarballs';
 
 //where bzr repo is: attach module name to browse
-$repo_base = 'http://ccan.ozlabs.org/repo/?cmd=inventory;path=';
+$repo_base = 'http://ccan.ozlabs.org/browse/';
 
 function extract_field($field,$module)
 {

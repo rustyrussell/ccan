@@ -14,7 +14,7 @@ something useful.
 </p>
 
 <p>
-CCAN is loosely modelled after the succesful <a href="http://cpan.org">CPAN project</a>
+CCAN is loosely modelled after the successful <a href="http://cpan.org">CPAN project</a>
 for Perl code development and sharing.
 </p>
 
@@ -36,7 +36,7 @@ ways to use it:
 There's also a
 <a href="http://bazaar-vcs.org/">Bazaar</a> repository for all the CCAN
 infrastructure at
-<a href="http://ccan.ozlabs.org/repo">http://ccan.ozlabs.org/repo</a>.
+<a href="http://ccan.ozlabs.org/browse">http://ccan.ozlabs.org/repo</a>.
 </p>
 
 <h2>Module Contributions</h2>
