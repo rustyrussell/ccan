@@ -57,6 +57,7 @@ static bool tdb_check_header(struct tdb_context *tdb, tdb_off_t *recovery)
 
 corrupt:
 	tdb->ecode = TDB_ERR_CORRUPT;
+	TDB_LOG((tdb, TDB_DEBUG_ERROR, "Header is corrupt\n"));
 	return false;
 }
 
@@ -68,31 +69,54 @@ static bool tdb_check_record(struct tdb_context *tdb,
 	tdb_off_t tailer;
 
 	/* Check rec->next: 0 or points to record offset, aligned. */
-	if (rec->next > 0 && rec->next < TDB_DATA_START(tdb->header.hash_size))
+	if (rec->next > 0 && rec->next < TDB_DATA_START(tdb->header.hash_size)){
+		TDB_LOG((tdb, TDB_DEBUG_ERROR,
+			 "Record offset %d too small next %d\n",
+			 off, rec->next));
 		goto corrupt;
-	if (rec->next + sizeof(*rec) < rec->next)
+	}
+	if (rec->next + sizeof(*rec) < rec->next) {
+		TDB_LOG((tdb, TDB_DEBUG_ERROR,
+			 "Record offset %d too large next %d\n",
+			 off, rec->next));
 		goto corrupt;
-	if ((rec->next % TDB_ALIGNMENT) != 0)
+	}
+	if ((rec->next % TDB_ALIGNMENT) != 0) {
+		TDB_LOG((tdb, TDB_DEBUG_ERROR,
+			 "Record offset %d misaligned next %d\n",
+			 off, rec->next));
 		goto corrupt;
-	if (tdb->methods->tdb_oob(tdb, rec->next+sizeof(*rec), 1))
+	}
+	if (tdb->methods->tdb_oob(tdb, rec->next+sizeof(*rec), 0))
 		goto corrupt;
 
 	/* Check rec_len: similar to rec->next, implies next record. */
-	if ((rec->rec_len % TDB_ALIGNMENT) != 0)
+	if ((rec->rec_len % TDB_ALIGNMENT) != 0) {
+		TDB_LOG((tdb, TDB_DEBUG_ERROR,
+			 "Record offset %d misaligned length %d\n",
+			 off, rec->rec_len));
 		goto corrupt;
+	}
 	/* Must fit tailer. */
-	if (rec->rec_len < sizeof(tailer))
+	if (rec->rec_len < sizeof(tailer)) {
+		TDB_LOG((tdb, TDB_DEBUG_ERROR,
+			 "Record offset %d too short length %d\n",
+			 off, rec->rec_len));
 		goto corrupt;
+	}
 	/* OOB allows "right at the end" access, so this works for last rec. */
-	if (tdb->methods->tdb_oob(tdb, off+sizeof(*rec)+rec->rec_len, 1))
+	if (tdb->methods->tdb_oob(tdb, off+sizeof(*rec)+rec->rec_len, 0))
 		goto corrupt;
 
 	/* Check tailer. */
 	if (tdb_ofs_read(tdb, off+sizeof(*rec)+rec->rec_len-sizeof(tailer),
 			 &tailer) == -1)
 		goto corrupt;
-	if (tailer != sizeof(*rec) + rec->rec_len)
+	if (tailer != sizeof(*rec) + rec->rec_len) {
+		TDB_LOG((tdb, TDB_DEBUG_ERROR,
+			 "Record offset %d invalid tailer\n", off));
 		goto corrupt;
+	}
 
 	return true;
 
@@ -216,15 +240,21 @@ static bool tdb_check_used_record(struct tdb_context *tdb,
 		return false;
 
 	/* key + data + tailer must fit in record */
-	if (rec->key_len + rec->data_len + sizeof(tdb_off_t) > rec->rec_len)
+	if (rec->key_len + rec->data_len + sizeof(tdb_off_t) > rec->rec_len) {
+		TDB_LOG((tdb, TDB_DEBUG_ERROR,
+			 "Record offset %d too short for contents\n", off));
 		return false;
+	}
 
 	key = get_bytes(tdb, off + sizeof(*rec), rec->key_len);
 	if (!key.dptr)
 		return false;
 
-	if (tdb->hash_fn(&key) != rec->full_hash)
+	if (tdb->hash_fn(&key) != rec->full_hash) {
+		TDB_LOG((tdb, TDB_DEBUG_ERROR,
+			 "Record offset %d has incorrect hash\n", off));
 		goto fail_put_key;
+	}
 
 	/* Mark this offset as a known value for this hash bucket. */
 	record_offset(hashes[BUCKET(rec->full_hash)+1], off);
@@ -295,6 +325,7 @@ int tdb_check(struct tdb_context *tdb,
 	/* We should have the whole header, too. */
 	if (tdb->map_size < TDB_DATA_START(tdb->header.hash_size)) {
 		tdb->ecode = TDB_ERR_CORRUPT;
+		TDB_LOG((tdb, TDB_DEBUG_ERROR, "File too short for hashes\n"));
 		goto unlock;
 	}
 
@@ -339,12 +370,20 @@ int tdb_check(struct tdb_context *tdb,
 				goto free;
 			break;
 		case TDB_RECOVERY_MAGIC:
-			if (recovery_start != off)
+		case 0: /* Used for invalid (or in-progress) recovery area. */ 
+			if (recovery_start != off) {
+				TDB_LOG((tdb, TDB_DEBUG_ERROR,
+					 "Unexpected recovery record at offset %d\n",
+					 off));
 				goto free;
+			}
 			found_recovery = true;
 			break;
 		default:
 			tdb->ecode = TDB_ERR_CORRUPT;
+			TDB_LOG((tdb, TDB_DEBUG_ERROR,
+				 "Bad magic 0x%x at offset %d\n",
+				 rec.magic, off));
 			goto free;
 		}
 	}
@@ -356,14 +395,21 @@ int tdb_check(struct tdb_context *tdb,
 		for (i = 0; i < BITMAP_BITS / CHAR_BIT; i++) {
 			if (hashes[h][i] != 0) {
 				tdb->ecode = TDB_ERR_CORRUPT;
+				TDB_LOG((tdb, TDB_DEBUG_ERROR,
+					 "Hashes do not match records\n"));
 				goto free;
 			}
 		}
 	}
 
 	/* We must have found recovery area if there was one. */
-	if (recovery_start != 0 && !found_recovery)
+	if (recovery_start != 0 && !found_recovery) {
+		TDB_LOG((tdb, TDB_DEBUG_ERROR,
+			 "Expected %s recovery area, got %s\n",
+			 recovery_start ? "a" : "no",
+			 found_recovery ? "one" : "none"));
 		goto free;
+	}
 
 	free(hashes);
 	tdb_unlockall(tdb);
@@ -375,9 +421,3 @@ unlock:
 	tdb_unlockall(tdb);
 	return -1;
 }
-
-		
-
-	
-
-	
