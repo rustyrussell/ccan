@@ -29,4 +29,4 @@ check: replay_trace
 	@sed 's/\(^[0-9]* traverse\) .*/\1fn/' < $^ > $@
 
 clean:
-	rm -f replay_trace tdbtorture tdbdump *.o
+	rm -f replay_trace tdbtorture tdbdump tdbtool *.o
