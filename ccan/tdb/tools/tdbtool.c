@@ -30,6 +30,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <string.h>
+#include <stdarg.h>
 
 static int do_command(void);
 const char *cmdname;
@@ -117,6 +118,15 @@ static double _end_timer(void)
 	gettimeofday(&tp2,NULL);
 	return((tp2.tv_sec - tp1.tv_sec) + 
 	       (tp2.tv_usec - tp1.tv_usec)*1.0e-6);
+}
+
+static void tdb_log(struct tdb_context *tdb, enum tdb_debug_level level, const char *format, ...)
+{
+	va_list ap;
+    
+	va_start(ap, format);
+	vfprintf(stderr, format, ap);
+	va_end(ap);
 }
 
 /* a tdb tool for manipulating a tdb database */
@@ -211,9 +221,12 @@ static void terror(const char *why)
 
 static void create_tdb(const char *tdbname)
 {
+	struct tdb_logging_context log_ctx;
+	log_ctx.log_fn = tdb_log;
+
 	if (tdb) tdb_close(tdb);
-	tdb = tdb_open(tdbname, 0, TDB_CLEAR_IF_FIRST | (disable_mmap?TDB_NOMMAP:0),
-		       O_RDWR | O_CREAT | O_TRUNC, 0600);
+	tdb = tdb_open_ex(tdbname, 0, TDB_CLEAR_IF_FIRST | (disable_mmap?TDB_NOMMAP:0),
+			  O_RDWR | O_CREAT | O_TRUNC, 0600, &log_ctx, NULL);
 	if (!tdb) {
 		printf("Could not create %s: %s\n", tdbname, strerror(errno));
 	}
@@ -221,8 +234,12 @@ static void create_tdb(const char *tdbname)
 
 static void open_tdb(const char *tdbname)
 {
+	struct tdb_logging_context log_ctx;
+	log_ctx.log_fn = tdb_log;
+
 	if (tdb) tdb_close(tdb);
-	tdb = tdb_open(tdbname, 0, disable_mmap?TDB_NOMMAP:0, O_RDWR, 0600);
+	tdb = tdb_open_ex(tdbname, 0, disable_mmap?TDB_NOMMAP:0, O_RDWR, 0600,
+			  &log_ctx, NULL);
 	if (!tdb) {
 		printf("Could not open %s: %s\n", tdbname, strerror(errno));
 	}
@@ -522,24 +539,15 @@ static void next_record(TDB_CONTEXT *the_tdb, TDB_DATA *pkey)
 		print_rec(the_tdb, *pkey, dbuf, NULL);
 }
 
-static int test_fn(TDB_CONTEXT *the_tdb, TDB_DATA key, TDB_DATA dbuf, void *state)
-{
-	return 0;
-}
-
 static void check_db(TDB_CONTEXT *the_tdb)
 {
-	int tdbcount=-1;
-	if (the_tdb) {
-		tdbcount = tdb_traverse(the_tdb, test_fn, NULL);
-	} else {
+	if (!the_tdb) {
 		printf("Error: No database opened!\n");
-	}
-
-	if (tdbcount<0) {
-		printf("Integrity check for the opened database failed.\n");
 	} else {
-		printf("Database integrity is OK and has %d records.\n", tdbcount);
+		if (tdb_check(the_tdb, NULL, NULL) == -1)
+			printf("Integrity check for the opened database failed.\n");
+		else
+			printf("Database integrity is OK.\n");
 	}
 }
 
