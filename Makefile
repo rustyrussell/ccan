@@ -24,7 +24,7 @@ default: libccan.a
 
 include Makefile-ccan
 
-check: $(ALL_TESTS:%=check-%)
+check: $(ALL_TESTS:%=summary-check-%)
 
 distclean: clean
 	rm -f $(ALL_DEPENDS)
@@ -34,6 +34,10 @@ $(ALL_DEPENDS): %/.depends: %/_info tools/ccan_depends
 
 # Actual dependencies are created in inter-depends
 check-%: tools/ccanlint/ccanlint
+	@tools/ccanlint/ccanlint -d ccan/$*
+
+# Doesn't test dependencies, doesn't print verbose fail results.
+summary-check-%: tools/ccanlint/ccanlint $(OBJFILES)
 	@tools/ccanlint/ccanlint -s -d ccan/$*
 
 ccan/%/info: ccan/%/_info
