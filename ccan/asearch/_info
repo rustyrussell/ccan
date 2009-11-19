@@ -1,0 +1,57 @@
+#include <stdio.h>
+#include <string.h>
+#include "config.h"
+
+/**
+ * asearch - typesafe binary search (bsearch)
+ *
+ * An ordered array of objects can be efficiently searched using a binary
+ * search algorithm; the time taken is around log(number of elements).
+ *
+ * This version uses macros to be typesafe on platforms which support it.
+ *
+ * Licence: LGPL
+ *
+ * Example:
+ *	#include <ccan/asearch/asearch.h>
+ *	#include <stdio.h>
+ *	#include <string.h>
+ *	
+ *	static int cmp(const char *key, char *const *elem)
+ *	{
+ *		return strcmp(key, *elem);
+ *	}
+ *	
+ *	int main(int argc, char *argv[])
+ *	{
+ *		char **p;
+ *	
+ *		if (argc < 2) {
+ *			fprintf(stderr, "Usage: %s <key> <list>...\n"
+ *				"Print position of key in (sorted) list\n",
+ *				argv[0]);
+ *			exit(1);
+ *		}
+ *	
+ *		p = asearch(argv[1], &argv[2], argc-2, cmp);
+ *		if (!p) {
+ *			printf("Not found!\n");
+ *			return 1;
+ *		}
+ *		printf("%u\n", p - &argv[2]);
+ *		return 0;
+ *	}
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/typesafe_cb\n");
+		printf("ccan/array_size\n");
+		return 0;
+	}
+
+	return 1;
+}
