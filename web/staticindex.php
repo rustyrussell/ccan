@@ -35,8 +35,7 @@ ways to use it:
 <p>
 There's also a
 <a href="http://bazaar-vcs.org/">Bazaar</a> repository for all the CCAN
-infrastructure at
-<a href="http://ccan.ozlabs.org/browse">http://ccan.ozlabs.org/repo</a>.
+infrastructure at http://ccan.ozlabs.org/repo (<a href="http://ccan.ozlabs.org/browse">browse</a>).
 </p>
 
 <h2>Module Contributions</h2>
