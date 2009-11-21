@@ -789,6 +789,35 @@ void *_talloc(const void *context, size_t size)
 	return __talloc(context, size);
 }
 
+static int talloc_destroy_pointer(void ***pptr)
+{
+	if ((uintptr_t)**pptr < getpagesize())
+		TALLOC_ABORT("Double free or invalid talloc_set?");
+	/* Invalidate pointer so it can't be used again. */
+	**pptr = (void *)1;
+	return 0;
+}
+
+void _talloc_set(void *ptr, const void *ctx, size_t size, const char *name)
+{
+	void ***child;
+	void **pptr = ptr;
+
+	*pptr = talloc_named_const(ctx, size, name);
+	if (unlikely(!*pptr))
+		return;
+
+	child = talloc(*pptr, void **);
+	if (unlikely(!child)) {
+		talloc_free(*pptr);
+		*pptr = NULL;
+		return;
+	}
+	*child = pptr;
+	talloc_set_name_const(child, "talloc_set destructor");
+	talloc_set_destructor(child, talloc_destroy_pointer);
+}
+
 /*
   externally callable talloc_set_name_const()
 */

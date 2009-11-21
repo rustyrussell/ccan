@@ -88,6 +88,30 @@
 #define talloc(ctx, type) (type *)talloc_named_const(ctx, sizeof(type), #type)
 
 /**
+ * talloc_set - allocate dynamic memory for a type, into a pointer
+ * @ptr: pointer to the pointer to assign.
+ * @ctx: context to be parent of this allocation, or NULL.
+ *
+ * talloc_set() does a talloc, but also adds a destructor which will make the
+ * pointer invalid when it is freed.  This can find many use-after-free bugs.
+ *
+ * Note that the destructor is chained off a zero-length allocation, and so
+ * is not affected by talloc_set_destructor().
+ *
+ * Example:
+ *	unsigned int *a;
+ *	a = talloc(NULL, unsigned int);
+ *	talloc_set(&b, a, unsigned int);
+ *	talloc_free(a);
+ *	*b = 1; // This will crash!
+ *
+ * See Also:
+ *	talloc.
+ */
+#define talloc_set(pptr, ctx) \
+	_talloc_set((pptr), (ctx), sizeof(&**(pptr)), __location__)
+
+/**
  * talloc_free - free talloc'ed memory and its children
  * @ptr: the talloced pointer to free
  *
@@ -940,6 +964,7 @@ void *talloc_add_external(const void *ctx,
 
 /* The following definitions come from talloc.c  */
 void *_talloc(const void *context, size_t size);
+void _talloc_set(void *ptr, const void *ctx, size_t size, const char *name);
 void _talloc_set_destructor(const void *ptr, int (*destructor)(void *));
 size_t talloc_reference_count(const void *ptr);
 void *_talloc_reference(const void *context, const void *ptr);
