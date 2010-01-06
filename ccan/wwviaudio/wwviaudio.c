@@ -34,8 +34,8 @@
 #include "wwviaudio.h"
 #undef WWVIAUDIO_DEFINE_GLOBALS
 
-#include "portaudio.h"
-#include "ccan/ogg_to_pcm/ogg_to_pcm.h"
+#include <portaudio.h>
+#include <ccan/ogg_to_pcm/ogg_to_pcm.h>
 
 #define FRAMES_PER_BUFFER  (1024)
 

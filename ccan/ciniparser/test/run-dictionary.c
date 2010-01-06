@@ -1,7 +1,7 @@
-#include "ciniparser/dictionary.h"
-#include "ciniparser/dictionary.c"
+#include <ccan/ciniparser/dictionary.h>
+#include <ccan/ciniparser/dictionary.c>
 
-#include "tap/tap.h"
+#include <ccan/tap/tap.h>
 
 static void test_trivial(void) {
 	dictionary *map = dictionary_new(0);

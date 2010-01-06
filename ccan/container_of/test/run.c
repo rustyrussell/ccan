@@ -1,5 +1,5 @@
-#include "container_of/container_of.h"
-#include "tap/tap.h"
+#include <ccan/container_of/container_of.h>
+#include <ccan/tap/tap.h>
 
 struct foo {
 	int a;

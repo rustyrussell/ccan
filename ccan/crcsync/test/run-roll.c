@@ -1,6 +1,6 @@
-#include "crcsync/crcsync.h"
-#include "crcsync/crcsync.c"
-#include "tap/tap.h"
+#include <ccan/crcsync/crcsync.h>
+#include <ccan/crcsync/crcsync.c>
+#include <ccan/tap/tap.h>
 #include <stdlib.h>
 #include <stdbool.h>
 

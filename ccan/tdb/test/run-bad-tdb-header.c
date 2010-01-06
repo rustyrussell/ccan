@@ -1,14 +1,14 @@
 #define _XOPEN_SOURCE 500
-#include "tdb/tdb.h"
-#include "tdb/io.c"
-#include "tdb/tdb.c"
-#include "tdb/lock.c"
-#include "tdb/freelist.c"
-#include "tdb/traverse.c"
-#include "tdb/transaction.c"
-#include "tdb/error.c"
-#include "tdb/open.c"
-#include "tap/tap.h"
+#include <ccan/tdb/tdb.h>
+#include <ccan/tdb/io.c>
+#include <ccan/tdb/tdb.c>
+#include <ccan/tdb/lock.c>
+#include <ccan/tdb/freelist.c>
+#include <ccan/tdb/traverse.c>
+#include <ccan/tdb/transaction.c>
+#include <ccan/tdb/error.c>
+#include <ccan/tdb/open.c>
+#include <ccan/tap/tap.h>
 #include <stdlib.h>
 #include <err.h>
 
