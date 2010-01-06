@@ -181,12 +181,13 @@ get_all_deps(const void *ctx, const char *dir, const char *name,
 	for (i = 0; i < num; i++) {
 		char **newdeps;
 		unsigned int j, newnum;
+		char *subinfo = NULL;
 
 		if (!strstarts(deps[i], "ccan/"))
 			continue;
 
 		newdeps = get_one(ctx, dir, deps[i] + strlen("ccan/"),
-				  &newnum, infofile);
+				  &newnum, &subinfo);
 
 		/* Should be short, so brute-force out dups. */
 		for (j = 0; j < newnum; j++) {
