@@ -19,9 +19,6 @@ main(int argc, char *argv[])
 	struct 		stat st;
 
 	str = grab_file(NULL, "test/run-grab.c", NULL);
-	/* FIXME: run_tests runs us from top level dir.  Kill this */
-	if (!str)
-		str = grab_file(NULL, "ccan/grab_file/test/run-grab.c", NULL);
 	split = strsplit(NULL, str, "\n", NULL);
 	length = strlen(split[0]);
 	ok1(streq(split[0], "/* This is test for grab_file() function"));

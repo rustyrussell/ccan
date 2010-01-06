@@ -1411,7 +1411,7 @@ static void test_tokenizer(void) {
 	msg_fail:;
 	}
 	
-	test_tokenizer_file("ccan/ccan_tokenizer/test/run.c", &mq);
+	test_tokenizer_file("test/run.c", &mq);
 	
 	while (queue_count(mq)) {
 		struct tok_message msg = dequeue(mq);

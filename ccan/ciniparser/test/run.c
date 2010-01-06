@@ -22,7 +22,7 @@ int main(int argc, char * argv[])
 	double dtmp;
 
 	if (argc < 2)
-		ini_name = "ccan/ciniparser/test/test.ini";
+		ini_name = "test/test.ini";
 	else
 		ini_name = argv[1] ;
 
