@@ -1,7 +1,7 @@
-#include "ilog/ilog.h"
-#include "ilog/ilog.c"
+#include <ccan/ilog/ilog.h>
+#include <ccan/ilog/ilog.c>
 #include <stdio.h>
-#include "tap/tap.h"
+#include <ccan/tap/tap.h>
 
 /*Dead simple (but slow) versions to compare against.*/
 

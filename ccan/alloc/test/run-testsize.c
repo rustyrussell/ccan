@@ -1,6 +1,6 @@
-#include "alloc/alloc.h"
-#include "tap/tap.h"
-#include "alloc/alloc.c"
+#include <ccan/alloc/alloc.h>
+#include <ccan/tap/tap.h>
+#include <ccan/alloc/alloc.c>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <err.h>

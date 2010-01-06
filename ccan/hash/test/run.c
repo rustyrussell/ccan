@@ -1,6 +1,6 @@
-#include "hash/hash.h"
-#include "tap/tap.h"
-#include "hash/hash.c"
+#include <ccan/hash/hash.h>
+#include <ccan/tap/tap.h>
+#include <ccan/hash/hash.c>
 #include <stdbool.h>
 #include <string.h>
 

@@ -1,9 +1,9 @@
-#include "str_talloc/str_talloc.h"
+#include <ccan/str_talloc/str_talloc.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "str_talloc/str_talloc.c"
-#include "tap/tap.h"
-#include "str/str.h"
+#include <ccan/str_talloc/str_talloc.c>
+#include <ccan/tap/tap.h>
+#include <ccan/str/str.h>
 
 /* FIXME: ccanize */
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))

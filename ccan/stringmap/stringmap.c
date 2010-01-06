@@ -29,7 +29,7 @@
 /* This is a heavily modified version of the Patricia tree implementation
    in PCC at http://pcc.zentus.com/cgi-bin/cvsweb.cgi/cc/cpp/cpp.c?rev=1.96 */
 
-#include "stringmap.h"
+#include <ccan/stringmap/stringmap.h>
 
 //#define CONSISTENCY_CHECK
 

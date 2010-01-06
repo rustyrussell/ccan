@@ -1,7 +1,7 @@
-#include "antithread/antithread.c"
+#include <ccan/antithread/antithread.c>
 #include <assert.h>
 #include <unistd.h>
-#include "tap/tap.h"
+#include <ccan/tap/tap.h>
 
 #define NUM_RUNS 100
 

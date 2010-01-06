@@ -1,8 +1,8 @@
 /* FIXME: Do something tricky to ensure we really do loop in read_all. */
 
-#include "read_write_all/read_write_all.h"
-#include "read_write_all/read_write_all.c"
-#include "tap/tap.h"
+#include <ccan/read_write_all/read_write_all.h>
+#include <ccan/read_write_all/read_write_all.c>
+#include <ccan/tap/tap.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <signal.h>

@@ -1,6 +1,6 @@
-#include "list/list.h"
-#include "tap/tap.h"
-#include "list/list.c"
+#include <ccan/list/list.h>
+#include <ccan/tap/tap.h>
+#include <ccan/list/list.c>
 #include <stdbool.h>
 #include <stdio.h>
 

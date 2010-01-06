@@ -1,5 +1,5 @@
-#include "crc/crc.h"
-#include "tap/tap.h"
+#include <ccan/crc/crc.h>
+#include <ccan/tap/tap.h>
 #include <string.h>
 
 static const uint32_t crc32c_tab[] = {

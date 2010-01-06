@@ -1,7 +1,7 @@
-#include "endian/endian.h"
+#include <ccan/endian/endian.h>
 #include <stdlib.h>
 #include <stddef.h>
-#include <tap/tap.h>
+#include <ccan/tap/tap.h>
 
 int main(int argc, char *argv[])
 {

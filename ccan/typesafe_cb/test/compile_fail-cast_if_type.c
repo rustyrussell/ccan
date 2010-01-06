@@ -1,4 +1,4 @@
-#include "typesafe_cb/typesafe_cb.h"
+#include <ccan/typesafe_cb/typesafe_cb.h>
 
 void _set_some_value(void *val);
 

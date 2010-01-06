@@ -1,5 +1,5 @@
-#include "hash/hash.h"
-#include "tap/tap.h"
+#include <ccan/hash/hash.h>
+#include <ccan/tap/tap.h>
 #include <stdbool.h>
 #include <string.h>
 

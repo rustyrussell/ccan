@@ -1,4 +1,4 @@
-#include "check_type/check_type.h"
+#include <ccan/check_type/check_type.h>
 
 int main(int argc, char *argv[])
 {

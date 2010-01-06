@@ -1,5 +1,5 @@
-#include "talloc/talloc.c"
-#include "tap/tap.h"
+#include <ccan/talloc/talloc.c>
+#include <ccan/tap/tap.h>
 #include <assert.h>
 
 /* Much testing already done in run.c */

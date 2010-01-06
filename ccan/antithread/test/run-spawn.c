@@ -1,6 +1,6 @@
-#include "antithread/antithread.c"
+#include <ccan/antithread/antithread.c>
 #include <assert.h>
-#include "tap/tap.h"
+#include <ccan/tap/tap.h>
 
 int main(int argc, char *argv[])
 {

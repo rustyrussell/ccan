@@ -1,4 +1,4 @@
-#include "talloc/talloc.c"
+#include <ccan/talloc/talloc.c>
 
 int main(void)
 {

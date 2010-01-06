@@ -1,7 +1,7 @@
-#include "stringmap/stringmap.h"
-#include "stringmap/stringmap.c"
+#include <ccan/stringmap/stringmap.h>
+#include <ccan/stringmap/stringmap.c>
 
-#include "tap/tap.h"
+#include <ccan/tap/tap.h>
 
 static void test_trivial(void) {
 	stringmap(int) map = stringmap_new(NULL);

@@ -1,5 +1,5 @@
-#include "md4/md4.h"
-#include <tap/tap.h>
+#include <ccan/md4/md4.h>
+#include <ccan/tap/tap.h>
 #include <stdio.h>
 #include <string.h>
 

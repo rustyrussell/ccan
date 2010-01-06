@@ -1,4 +1,4 @@
-#include "array_size/array_size.h"
+#include <ccan/array_size/array_size.h>
 
 int main(int argc, char *argv[8])
 {

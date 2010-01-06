@@ -1,7 +1,7 @@
 #include <stdio.h>
-#include <tap/tap.h>
-#include "array/array.h"
-#include "array/array.c"
+#include <ccan/tap/tap.h>
+#include <ccan/array/array.h>
+#include <ccan/array/array.c>
 
 #define countof(array...) (sizeof(array)/sizeof(*(array)))
 #include "lotsOfNumbers.h"

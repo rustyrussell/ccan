@@ -1,10 +1,10 @@
-#include "ccan_tokenizer/read_cnumber.c"
-#include "ccan_tokenizer/read_cstring.c"
-#include "ccan_tokenizer/dict.c"
-#include "ccan_tokenizer/ccan_tokenizer.c"
-#include "ccan_tokenizer/queue.c"
-#include "ccan_tokenizer/charflag.c"
-#include "tap/tap.h"
+#include <ccan/ccan_tokenizer/read_cnumber.c>
+#include <ccan/ccan_tokenizer/read_cstring.c>
+#include <ccan/ccan_tokenizer/dict.c>
+#include <ccan/ccan_tokenizer/ccan_tokenizer.c>
+#include <ccan/ccan_tokenizer/queue.c>
+#include <ccan/ccan_tokenizer/charflag.c>
+#include <ccan/tap/tap.h>
 
 #define item(num) (toks->first[num])
 //sed 's/toks->array\.item\[\([^]]*\)\]/item(\1)/g'

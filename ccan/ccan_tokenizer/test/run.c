@@ -25,16 +25,16 @@
         THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "ccan_tokenizer/read_cnumber.c"
-#include "ccan_tokenizer/read_cstring.c"
-#include "ccan_tokenizer/dict.c"
-#include "ccan_tokenizer/ccan_tokenizer.c"
-#include "ccan_tokenizer/queue.c"
-#include "ccan_tokenizer/charflag.c"
+#include <ccan/ccan_tokenizer/read_cnumber.c>
+#include <ccan/ccan_tokenizer/read_cstring.c>
+#include <ccan/ccan_tokenizer/dict.c>
+#include <ccan/ccan_tokenizer/ccan_tokenizer.c>
+#include <ccan/ccan_tokenizer/queue.c>
+#include <ccan/ccan_tokenizer/charflag.c>
 
-#include "ccan_tokenizer/ccan_tokenizer.h"
+#include <ccan/ccan_tokenizer/ccan_tokenizer.h>
 
-#include "tap/tap.h"
+#include <ccan/tap/tap.h>
 
 #include <math.h>
 

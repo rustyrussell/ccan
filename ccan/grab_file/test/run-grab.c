@@ -1,14 +1,14 @@
 /* This is test for grab_file() function
  */
-#include 	"grab_file/grab_file.h"
-#include 	<stdlib.h>
-#include 	<stdio.h>
-#include 	<err.h>
-#include 	<sys/stat.h>
-#include 	"grab_file/grab_file.c"
-#include 	"tap/tap.h"
-#include 	"str_talloc/str_talloc.h"
-#include 	"str/str.h"
+#include <ccan/grab_file/grab_file.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <err.h>
+#include <sys/stat.h>
+#include <ccan/grab_file/grab_file.c>
+#include <ccan/tap/tap.h>
+#include <ccan/str_talloc/str_talloc.h>
+#include <ccan/str/str.h>
 
 int 
 main(int argc, char *argv[])

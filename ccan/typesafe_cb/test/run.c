@@ -1,6 +1,6 @@
-#include "typesafe_cb/typesafe_cb.h"
+#include <ccan/typesafe_cb/typesafe_cb.h>
 #include <string.h>
-#include "tap/tap.h"
+#include <ccan/tap/tap.h>
 
 static char dummy = 0;
 

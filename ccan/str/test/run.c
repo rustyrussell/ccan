@@ -1,7 +1,7 @@
-#include "str/str.h"
+#include <ccan/str/str.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "tap/tap.h"
+#include <ccan/tap/tap.h>
 
 /* FIXME: ccanize */
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))

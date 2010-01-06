@@ -1,6 +1,6 @@
-#include "talloc_link/talloc_link.h"
-#include "tap/tap.h"
-#include "talloc_link/talloc_link.c"
+#include <ccan/talloc_link/talloc_link.h>
+#include <ccan/tap/tap.h>
+#include <ccan/talloc_link/talloc_link.c>
 #include <stdlib.h>
 #include <err.h>
 

@@ -1,5 +1,5 @@
-#include "array_size/array_size.h"
-#include "tap/tap.h"
+#include <ccan/array_size/array_size.h>
+#include <ccan/tap/tap.h>
 
 static char array1[1];
 static int array2[2];

@@ -1,4 +1,4 @@
-#include "typesafe_cb/typesafe_cb.h"
+#include <ccan/typesafe_cb/typesafe_cb.h>
 #include <stdlib.h>
 
 static void _register_callback(void (*cb)(void *arg), void *arg)

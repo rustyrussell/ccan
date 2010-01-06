@@ -1,14 +1,14 @@
-#include <ciniparser/ciniparser.h>
-#include <ciniparser/ciniparser.c>
-#include <ciniparser/dictionary.h>
-#include <ciniparser/dictionary.c>
+#include <ccan/ciniparser/ciniparser.h>
+#include <ccan/ciniparser/ciniparser.c>
+#include <ccan/ciniparser/dictionary.h>
+#include <ccan/ciniparser/dictionary.c>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdbool.h>
 
-#include <tap/tap.h>
+#include <ccan/tap/tap.h>
 
 #define NUM_TESTS 12
 

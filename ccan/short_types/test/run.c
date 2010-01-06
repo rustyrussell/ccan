@@ -1,5 +1,5 @@
-#include "short_types/short_types.h"
-#include "tap/tap.h"
+#include <ccan/short_types/short_types.h>
+#include <ccan/tap/tap.h>
 #include <stdlib.h>
 #include <err.h>
 

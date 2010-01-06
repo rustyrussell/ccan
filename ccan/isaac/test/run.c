@@ -1,6 +1,6 @@
-#include "isaac/isaac.h"
-#include "isaac/isaac.c"
-#include "tap/tap.h"
+#include <ccan/isaac/isaac.h>
+#include <ccan/isaac/isaac.c>
+#include <ccan/tap/tap.h>
 #include <stddef.h>
 
 static const uint32_t STATEVEC[ISAAC_SZ<<1]={

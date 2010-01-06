@@ -1,4 +1,4 @@
-#include "typesafe_cb/typesafe_cb.h"
+#include <ccan/typesafe_cb/typesafe_cb.h>
 #include <stdlib.h>
 
 /* const args in callbacks should be OK. */

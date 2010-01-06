@@ -33,7 +33,7 @@
  */
 
 #include <ctype.h>
-#include "ciniparser.h"
+#include <ccan/ccan/ciniparser.h>
 
 #define ASCIILINESZ      (1024)
 #define INI_INVALID_KEY  ((char*) NULL)

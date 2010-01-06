@@ -25,9 +25,9 @@
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#include "talloc/talloc.c"
+#include <ccan/talloc/talloc.c>
 #include <stdbool.h>
-#include "tap/tap.h"
+#include <ccan/tap/tap.h>
 
 #define torture_assert(test, expr, str)					\
 	ok(expr, "%s [\n%s: Expression %s failed: %s\n]\n",		\

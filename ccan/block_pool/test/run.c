@@ -1,6 +1,6 @@
-#include "block_pool/block_pool.h"
-#include "block_pool/block_pool.c"
-#include "tap/tap.h"
+#include <ccan/block_pool/block_pool.h>
+#include <ccan/block_pool/block_pool.c>
+#include <ccan/tap/tap.h>
 
 struct alloc_record {
 	size_t size;

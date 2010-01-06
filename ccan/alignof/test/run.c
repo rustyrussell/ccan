@@ -1,7 +1,7 @@
+#include <ccan/alignof/alignof.h>
 #include <stdlib.h>
 #include <stddef.h>
-#include <tap/tap.h>
-#include "alignof/alignof.h"
+#include <ccan/tap/tap.h>
 
 /* Alignment is remarkably difficult to test.  The rules may be more
  * complex than ALIGNOF() can know: eg. on i386 __alignof__(double) == 8, but
