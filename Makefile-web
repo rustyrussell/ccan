@@ -19,7 +19,7 @@ $(WEB_SUBDIRS):
 	mkdir -p $@
 
 $(WEBDIR)/junkcode/%.tar.bz2: junkcode/% $(WEBDIR)/junkcode
-	bzr ls --versioned --kind=file --null $< | xargs -0 -x tar cvfj $@ 
+	bzr ls --recursive --versioned --kind=file --null $< | xargs -0 -x tar cvfj $@ 
 
 $(WEBDIR)/junkcode/%.html: $(WEBDIR)/junkcode/%.tar.bz2
 	cd $(WEBDIR) && tar xfj junkcode/$*.tar.bz2
@@ -57,10 +57,10 @@ $(WEBDIR)/info/%.html: $(WEBDIR)/tarballs/%.tar.bz2 $(WEBDIR)/tarballs/with-deps
 	@URLPREFIX=../ php5 web/staticmoduleinfo.php ccan/$* > $@
 
 $(WEBDIR)/tarballs/%.tar.bz2: ccan/%/_info
-	tar -c -j -f $@ `bzr ls --versioned --kind=file ccan/$*`
+	tar -c -j -f $@ `bzr ls --recursive --versioned --kind=file ccan/$*`
 
 $(WEBDIR)/tarballs/with-deps/%.tar.bz2: ccan/%/_info tools/ccan_depends
-	tar cfj $@ $$(echo ccan/$* $$(tools/ccan_depends ccan/$*) | xargs -n 1 bzr ls --versioned --kind=file)
+	tar cfj $@ $$(echo ccan/$* $$(tools/ccan_depends ccan/$*) | xargs -n 1 bzr ls --recursive --versioned --kind=file)
 
 distclean: distclean-web
 
