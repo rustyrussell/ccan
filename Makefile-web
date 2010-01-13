@@ -1,5 +1,5 @@
 # This can be overridden on cmdline to generate pages elsewhere.
-WEBDIR=~/www/html/ccan/
+WEBDIR=~/www/html/ccan
 
 ALL_PAGES=$(patsubst %, $(WEBDIR)/info/%.html, $(ALL))
 DIRECT_TARBALLS=$(patsubst %, $(WEBDIR)/tarballs/%.tar.bz2, $(ALL))
@@ -26,7 +26,7 @@ $(WEBDIR)/junkcode/%.html: $(WEBDIR)/junkcode/%.tar.bz2
 	php5 web/staticjunkcode.php junkcode/$* $* > $@
 
 # We want tarball to contain ccan/
-$(WEBDIR)/ccan.tar.bz2: config.h Makefile Makefile-ccan $(shell bzr ls --versioned --kind=file ccan) $(shell bzr ls --versioned --kind=file tools)
+$(WEBDIR)/ccan.tar.bz2: config.h Makefile Makefile-ccan $(shell bzr ls --versioned --kind=file --recursive ccan) $(shell bzr ls --versioned --recursive --kind=file tools)
 	DIR=`pwd` && cd /tmp && ln -sf "$$DIR" ccan && tar cvfj $@ `for f in $^; do echo ccan/$$f; done` && rm ccan
 
 $(ALL_PAGES): tools/doc_extract web/staticmoduleinfo.php
