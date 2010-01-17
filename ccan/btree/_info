@@ -1,0 +1,250 @@
+#include <string.h>
+#include "config.h"
+
+/**
+ * btree - Efficient sorted associative container based on B-trees.
+ *
+ * This module provides an efficient in-memory lookup container that keeps a
+ * set of pointers sorted using a user-defined search function.
+ *
+ * This module supports insertion, removal, lookup, and traversal using an
+ * iterator system.  Note that insertion and removal into/from a btree will
+ * invalidate all iterators pointing to it (including the one passed to the
+ * insertion or removal function).
+ *
+ * btree currently doesn't have convenience functions for the simple tasks of
+ * "look up by key", "insert a key", and "remove a key".  To insert or remove,
+ * you first have use btree_find* to position an iterator on the
+ * insertion/removal point, then call btree_insert_at or btree_remove_at using
+ * that iterator.  Since a btree can hold multiple items with the same key,
+ * it isn't clear how the convenience functions should work yet.  I'm open to
+ * suggestions.
+ *
+ * A B-tree (not to be confused with a binary tree) is a data structure that
+ * performs insertion, removal, and lookup in O(log n) time per operation.
+ * Although B-trees are typically used for databases and filesystems, this is
+ * an in-memory implementation.
+ *
+ * Unlike functions like qsort, bsearch, and tsearch, btree does not take a
+ * comparison function.  It takes a binary search function, which is
+ * theoretically equivalent but faster.  Writing a binary search function
+ * is more difficult than writing a comparison function, so a macro is provided
+ * to make it much easier than doing either manually.
+ *
+ * Example:
+ * #include <ccan/btree/btree.h>
+ * 
+ * #include <errno.h>
+ * #include <stdlib.h>
+ * #include <stdio.h>
+ * #include <string.h>
+ * 
+ * struct word {
+ * 	char *word;
+ * 	char *letter_set;
+ * };
+ * 
+ * //Define the ordering function order_by_letter_set
+ * btree_search_implement
+ * (
+ * 	order_by_letter_set,
+ * 	struct word *,
+ * 	int c = strcmp(a->letter_set, b->letter_set),
+ * 	c == 0,
+ * 	c < 0
+ * )
+ * 
+ * struct word *new_word(const char *line);
+ * char *chomp(char *str);
+ * char *make_letter_set(char *str);
+ * 
+ * void insert_word(struct btree *btree, struct word *word)
+ * {
+ * 	btree_iterator iter;
+ * 	
+ * 	//Position iterator after existing words with this letter set.
+ * 	btree_find_last(btree, word, iter);
+ * 	
+ * 	//Insert new word at iterator position.
+ * 	btree_insert_at(iter, word);
+ * }
+ * 
+ * void print_anagrams(struct btree *btree, char *line)
+ * {
+ * 	btree_iterator iter, end;
+ * 	struct word key = {
+ * 		NULL,
+ * 		make_letter_set(line)
+ * 	};
+ * 	
+ * 	//Find first matching word.
+ * 	if (!btree_find_first(btree, &key, iter)) {
+ * 		printf("\t(none)\n");
+ * 		return;
+ * 	}
+ * 	
+ * 	btree_find_last(btree, &key, end);
+ * 	
+ * 	//Traverse matching words.
+ * 	for (; btree_deref(iter) && btree_cmp_iters(iter, end) < 0;
+ * 	       btree_next(iter))
+ * 	{
+ * 		struct word *word = iter->item;
+ * 		printf("\t%s\n", word->word);
+ * 	}
+ * }
+ * 
+ * int destroy_word(struct word *word, void *ctx)
+ * {
+ * 	(void) ctx;
+ * 	
+ * 	free(word->word);
+ * 	free(word->letter_set);
+ * 	free(word);
+ * 	
+ * 	return 1;
+ * }
+ * 
+ * struct btree *read_dictionary(const char *filename)
+ * {
+ * 	FILE *f;
+ * 	char line[256];
+ * 	
+ * 	//Construct new btree with the ordering function order_by_letter_set .
+ * 	struct btree *btree = btree_new(order_by_letter_set);
+ * 	
+ * 	f = fopen(filename, "r");
+ * 	if (!f)
+ * 		goto fail;
+ * 	
+ * 	//Set the destroy callback so btree_free will automatically
+ * 	//free our items.  Setting btree->destroy is optional.
+ * 	btree->destroy = (btree_action_t)destroy_word;
+ * 	
+ * 	while (fgets(line, sizeof(line), f)) {
+ * 		struct word *word = new_word(line);
+ * 		if (!word)
+ * 			continue;
+ * 		insert_word(btree, word);
+ * 	}
+ * 	
+ * 	if (ferror(f)) {
+ * 		fclose(f);
+ * 		goto fail;
+ * 	}
+ * 	if (fclose(f))
+ * 		goto fail;
+ * 	
+ * 	return btree;
+ * 
+ * fail:
+ * 	btree_delete(btree);
+ * 	fprintf(stderr, "%s: %s\n", filename, strerror(errno));
+ * 	return NULL;
+ * }
+ * 
+ * int main(int argc, char *argv[])
+ * {
+ * 	struct btree *btree;
+ * 	char line[256];
+ * 	
+ * 	if (argc != 2) {
+ * 		fprintf(stderr,
+ * 			"Usage: %s dictionary-file\n"
+ * 			"Example:\n"
+ * 			"\t%s /usr/share/dict/words\n"
+ * 			"\n"
+ * 			, argv[0], argv[0]);
+ * 		return 1;
+ * 	}
+ * 	
+ * 	printf("Indexing...\n");
+ * 	btree = read_dictionary(argv[1]);
+ * 	printf("Dictionary has %ld words\n", (long)btree->count);
+ * 	
+ * 	for (;;) {
+ * 		printf("> ");
+ * 		if (!fgets(line, sizeof(line), stdin))
+ * 			break;
+ * 		chomp(line);
+ * 		if (!*line)
+ * 			break;
+ * 		
+ * 		printf("Anagrams of \"%s\":\n", line);
+ * 		print_anagrams(btree, line);
+ * 	}
+ * 	
+ * 	printf("Cleaning up...\n");
+ * 	btree_delete(btree);
+ * 	
+ * 	return 0;
+ * }
+ * 
+ * struct word *new_word(const char *line)
+ * {
+ * 	struct word *word;
+ * 	char *letter_set = make_letter_set(strdup(line));
+ * 	
+ * 	//Discard lines with no letters
+ * 	if (!*letter_set) {
+ * 		free(letter_set);
+ * 		return NULL;
+ * 	}
+ * 	
+ * 	word = malloc(sizeof(struct word));
+ * 	word->word = chomp(strdup(line));
+ * 	word->letter_set = letter_set;
+ * 	
+ * 	return word;
+ * }
+ * 
+ * //Remove trailing newline (if present).
+ * char *chomp(char *str)
+ * {
+ * 	char *end = strchr(str, '\0') - 1;
+ * 	if (*str && *end == '\n')
+ * 		*end = 0;
+ * 	return str;
+ * }
+ * 
+ * //Remove all characters but letters, make letters lowercase, and sort them.
+ * char *make_letter_set(char *str)
+ * {
+ * 	size_t count[26] = {0};
+ * 	size_t i, j;
+ * 	char *o = str;
+ * 	
+ * 	for (i=0; str[i]; i++) {
+ * 		char c = str[i];
+ * 		if (c >= 'A' && c <= 'Z')
+ * 			c += 'a'-'A';
+ * 		if (c >= 'a' && c <= 'z')
+ * 			count[c - 'a']++;
+ * 	}
+ * 	
+ * 	for (i = 0; i < 26; i++) {
+ * 		for (j = 0; j < count[i]; j++)
+ * 			*o++ = 'a' + i;
+ * 	}
+ * 	*o = '\0';
+ * 	
+ * 	return str;
+ * }
+ *
+ * Author: Joey Adams
+ * Version: 0.1.0
+ * Licence: BSD
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		/* Nothing */
+		return 0;
+	}
+
+	return 1;
+}
