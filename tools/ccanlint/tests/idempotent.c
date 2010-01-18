@@ -138,4 +138,4 @@ struct ccanlint idempotent = {
 	.describe = describe_idempotent,
 };
 
-REGISTER_TEST(idempotent, &trailing_whitespace, NULL);
+REGISTER_TEST(idempotent, NULL);
