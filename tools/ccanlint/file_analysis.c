@@ -151,9 +151,10 @@ char *report_on_lines(struct list_head *files,
 	return sofar;
 }
 
-struct manifest *get_manifest(const void *ctx)
+struct manifest *get_manifest(const void *ctx, const char *dir)
 {
 	struct manifest *m = talloc(ctx, struct manifest);
+	char *olddir;
 	unsigned int len;
 
 	m->info_file = NULL;
@@ -169,6 +170,13 @@ struct manifest *get_manifest(const void *ctx)
 	list_head_init(&m->dep_dirs);
 	list_head_init(&m->dep_objs);
 
+	olddir = talloc_getcwd(NULL);
+	if (!olddir)
+		err(1, "Getting current directory");
+
+	if (chdir(dir) != 0)
+		err(1, "Failed to chdir to %s", dir);
+
 	m->basename = talloc_getcwd(m);
 	if (!m->basename)
 		err(1, "Getting current directory");
@@ -182,6 +190,11 @@ struct manifest *get_manifest(const void *ctx)
 	m->basename++;
 
 	add_files(m, "");
+
+	if (chdir(olddir) != 0)
+		err(1, "Returning to original directory '%s'", olddir);
+	talloc_free(olddir);
+
 	return m;
 }
 

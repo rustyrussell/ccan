@@ -244,13 +244,14 @@ int main(int argc, char *argv[])
 	unsigned int score = 0, total_score = 0;
 	struct manifest *m;
 	struct ccanlint *i;
-	const char *prefix = "";
+	const char *prefix = "", *dir = ".";
 
 	/* I'd love to use long options, but that's not standard. */
 	/* FIXME: getopt_long ccan package? */
 	while ((c = getopt(argc, argv, "sd:vn")) != -1) {
 		switch (c) {
 		case 'd':
+			dir = optarg;
 			prefix = talloc_append_string(talloc_basename(NULL,
 								      optarg),
 						      ": ");
@@ -274,7 +275,7 @@ int main(int argc, char *argv[])
 	if (optind < argc)
 		usage(argv[0]);
 
-	m = get_manifest(talloc_autofree_context());
+	m = get_manifest(talloc_autofree_context(), dir);
 
 	init_tests();
 

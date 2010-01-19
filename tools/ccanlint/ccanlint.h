@@ -34,7 +34,7 @@ struct manifest {
 	struct list_head dep_objs;
 };
 
-struct manifest *get_manifest(const void *ctx);
+struct manifest *get_manifest(const void *ctx, const char *dir);
 
 struct ccanlint {
 	struct list_node list;

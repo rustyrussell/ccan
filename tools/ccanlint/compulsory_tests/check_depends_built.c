@@ -24,22 +24,10 @@ static const char *can_build(struct manifest *m)
 /* FIXME: recursive ccanlint if they ask for it. */
 static bool expect_obj_file(const char *dir)
 {
-	char *olddir;
 	struct manifest *dep_man;
 	bool has_c_files;
 
-	olddir = talloc_getcwd(dir);
-	if (!olddir)
-		err(1, "Getting current directory");
-
-	/* We will fail below if this doesn't exist. */
-	if (chdir(dir) != 0)
-		return false;
-
-	dep_man = get_manifest(dir);
-	if (chdir(olddir) != 0)
-		err(1, "Returning to original directory '%s'", olddir);
-	talloc_free(olddir);
+	dep_man = get_manifest(dir, dir);
 
 	/* If it has C files, we expect an object file built from them. */
 	has_c_files = !list_empty(&dep_man->c_files);
