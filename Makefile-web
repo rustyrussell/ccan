@@ -13,7 +13,7 @@ upload: check webpages
 	bzr push
 	send-web # Rusty's upload script.
 
-webpages: $(WEB_SUBDIRS) $(WEBDIR)/junkcode $(WEBDIR)/list.html $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.jpg $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan $(ALL_PAGES) $(JUNKPAGES) $(JUNKBALLS)
+webpages: $(WEB_SUBDIRS) $(WEBDIR)/junkcode $(WEBDIR)/list.html $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.jpg $(BZRBROWSE) $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan $(ALL_PAGES) $(JUNKPAGES) $(JUNKBALLS)
 
 $(WEB_SUBDIRS):
 	mkdir -p $@
@@ -51,6 +51,10 @@ $(WEBDIR)/Makefile-ccan: Makefile-ccan
 	cp $< $@
 
 $(WEBDIR)/ccan.jpg: web/ccan.jpg
+	cp $< $@
+
+BZRBROWSE=$(WEBDIR)/bzrbrowse.cgi $(WEBDIR)/file.png $(WEBDIR)/folder.png
+$(BZRBROWSE): %: web/bzrbrowse/%
 	cp $< $@
 
 $(WEBDIR)/info/%.html: $(WEBDIR)/tarballs/%.tar.bz2 $(WEBDIR)/tarballs/with-deps/%.tar.bz2
