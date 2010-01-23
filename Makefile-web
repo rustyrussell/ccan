@@ -8,6 +8,7 @@ WEB_SUBDIRS=$(WEBDIR)/tarballs $(WEBDIR)/junkcode $(WEBDIR)/tarballs/with-deps $
 JUNKDIRS=$(wildcard junkcode/*)
 JUNKPAGES=$(JUNKDIRS:%=$(WEBDIR)/%.html)
 JUNKBALLS=$(JUNKDIRS:%=$(WEBDIR)/%.tar.bz2)
+BZRBROWSE=$(WEBDIR)/bzrbrowse.cgi $(WEBDIR)/file.png $(WEBDIR)/folder.png
 
 upload: check webpages
 	bzr push
@@ -53,8 +54,7 @@ $(WEBDIR)/Makefile-ccan: Makefile-ccan
 $(WEBDIR)/ccan.jpg: web/ccan.jpg
 	cp $< $@
 
-BZRBROWSE=$(WEBDIR)/bzrbrowse.cgi $(WEBDIR)/file.png $(WEBDIR)/folder.png
-$(BZRBROWSE): %: web/bzrbrowse/%
+$(BZRBROWSE): $(WEBDIR)/%: web/bzrbrowse/%
 	cp $< $@
 
 $(WEBDIR)/info/%.html: $(WEBDIR)/tarballs/%.tar.bz2 $(WEBDIR)/tarballs/with-deps/%.tar.bz2

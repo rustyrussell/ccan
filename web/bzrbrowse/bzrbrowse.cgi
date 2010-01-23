@@ -19,10 +19,10 @@
 
 # CHANGE THIS:
 config = {
-    'root': '/home/lukas/projects',
-    'base_url': '/~lukas/bzrbrowse.cgi',
-    'images_url': '/~lukas/bzrbrowse',
-    'branch_url': 'http://bzr.oxygene.sk',
+    'root': '/home/ccan/ccan',
+    'base_url': '/browse',
+    'images_url': '/browse',
+    'branch_url': 'http://ccan.ozlabs.org/repo',
 }
 
 import os, sys
