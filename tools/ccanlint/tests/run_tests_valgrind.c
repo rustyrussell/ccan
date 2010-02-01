@@ -99,12 +99,15 @@ static void run_under_debugger_vg(struct manifest *m, void *check_result)
 {
 	struct list_head *list = check_result;
 	struct run_tests_result *first;
+	char *command;
 
 	if (!ask("Should I run the first failing test under the debugger?"))
 		return;
 
 	first = list_top(list, struct run_tests_result, list);
-	run_command(m, "valgrind --db-attach=yes %s", first->file->compiled);
+	command = talloc_asprintf(m, "valgrind --db-attach=yes %s",
+				  first->file->compiled);
+	system(command);
 }
 
 struct ccanlint run_tests_vg = {
