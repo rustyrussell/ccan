@@ -28,11 +28,12 @@ static void *check_objs_build(struct manifest *m)
 
 	list_for_each(&m->c_files, i, list) {
 		char *err;
+		char *fullfile = talloc_asprintf(m, "%s/%s", m->dir, i->name);
 
 		/* One point for each obj file. */
 		build_objs.total_score++;
 
-		i->compiled = compile_object(m, i->name, &err);
+		i->compiled = compile_object(m, fullfile, ccan_dir, &err);
 		if (!i->compiled) {
 			if (report)
 				report = talloc_append_string(report, err);

@@ -12,7 +12,6 @@ int main(int argc, char *argv[])
 	bool compile = false;
 	bool recurse = true;
 	bool ccan = true;
-	char *dirname, *basename;
 
 	if (argv[1] && streq(argv[1], "--direct")) {
 		argv++;
@@ -37,15 +36,12 @@ int main(int argc, char *argv[])
 	if (!ccan && !compile)
 		errx(1, "--non-ccan needs --compile");
 
-	dirname = talloc_dirname(NULL, argv[1]);
-	basename = talloc_basename(NULL, argv[1]);
-
 	if (compile)
-		deps = get_deps(talloc_autofree_context(),
-				dirname, basename, recurse, NULL);
+		deps = get_deps(talloc_autofree_context(), argv[1],
+				recurse, NULL);
 	else
 		deps = get_safe_ccan_deps(talloc_autofree_context(),
-					  dirname, basename, recurse, NULL);
+					  argv[1], recurse, NULL);
 
 	for (i = 0; deps[i]; i++)
 		if (strstarts(deps[i], "ccan/") == ccan)

@@ -36,7 +36,7 @@ static char *obj_list(const struct manifest *m)
 static char *lib_list(const struct manifest *m)
 {
 	unsigned int i, num;
-	char **libs = get_libs(m, ".", ".", &num, &m->info_file->compiled);
+	char **libs = get_libs(m, ".", &num, &m->info_file->compiled);
 	char *ret = talloc_strdup(m, "");
 
 	for (i = 0; i < num; i++)
@@ -70,7 +70,8 @@ static void *check_use_build(struct manifest *m)
 	}
 	close(fd);
 
-	if (!compile_and_link(m, tmpfile, obj_list(m), "", lib_list(m), &err))
+	if (!compile_and_link(m, tmpfile, ccan_dir, obj_list(m), "",
+			      lib_list(m), &err))
 		return err;
 	return NULL;
 }

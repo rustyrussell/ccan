@@ -12,6 +12,7 @@
 #define REGISTER_TEST(name, ...) 
 
 struct manifest {
+	char *dir;
 	/* The module name, ie. final element of dir name */
 	char *basename;
 	struct ccan_file *info_file;
@@ -113,7 +114,11 @@ struct line_info {
 struct ccan_file {
 	struct list_node list;
 
+	/* Name (usually, within m->dir). */
 	char *name;
+
+	/* Full path name. */
+	char *fullname;
 
 	/* Pristine version of the original file.
 	 * Use get_ccan_file_lines to fill this. */
@@ -132,7 +137,7 @@ struct ccan_file {
 };
 
 /* A new ccan_file, with the given name (talloc_steal onto returned value). */
-struct ccan_file *new_ccan_file(const void *ctx, char *name);
+struct ccan_file *new_ccan_file(const void *ctx, const char *dir, char *name);
 
 /* Use this rather than accessing f->lines directly: loads on demand. */
 char **get_ccan_file_lines(struct ccan_file *f);
@@ -178,5 +183,8 @@ struct dependent {
 
 /* Are we happy to compile stuff, or just non-intrusive tests? */
 extern bool safe_mode;
+
+/* Where is the ccan dir?  Available after first manifest. */
+extern const char *ccan_dir;
 
 #endif /* CCAN_LINT_H */

@@ -44,16 +44,16 @@ static void *check_depends_built(struct manifest *m)
 	list_for_each(&m->dep_dirs, i, list) {
 		char *objfile;
 
-		if (!expect_obj_file(i->name))
+		if (!expect_obj_file(i->fullname))
 			continue;
 
-		objfile = talloc_asprintf(m, "%s.o", i->name);
+		objfile = talloc_asprintf(m, "%s.o", i->fullname);
 		if (stat(objfile, &st) != 0) {
 			report = talloc_asprintf_append(report,
 							"object file %s\n",
 							objfile);
 		} else {
-			struct ccan_file *f = new_ccan_file(m, objfile);
+			struct ccan_file *f = new_ccan_file(m, "", objfile);
 			list_add_tail(&m->dep_objs, &f->list);
 		}
 			
@@ -62,10 +62,12 @@ static void *check_depends_built(struct manifest *m)
 	/* We may need libtap for testing, unless we're "tap" */
 	if (!streq(m->basename, "tap")
 	    && (!list_empty(&m->run_tests) || !list_empty(&m->api_tests))) {
-		if (stat("../tap.o", &st) != 0) {
+		char *tapobj = talloc_asprintf(m, "%s/ccan/tap.o", ccan_dir);
+		if (stat(tapobj, &st) != 0) {
 			report = talloc_asprintf_append(report,
-							"object file ../tap.o"
-							" (for tests)\n");
+							"object file %s"
+							" (for tests)\n",
+							tapobj);
 		}
 	}
 

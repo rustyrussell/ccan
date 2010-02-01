@@ -24,8 +24,9 @@ static const char *can_build(struct manifest *m)
 static char *compile(struct manifest *m, struct ccan_file *cfile)
 {
 	char *err;
+	char *fullfile = talloc_asprintf(m, "%s/%s", m->dir, cfile->name);
 
-	cfile->compiled = compile_object(m, cfile->name, &err);
+	cfile->compiled = compile_object(m, fullfile, ccan_dir, &err);
 	if (cfile->compiled)
 		return NULL;
 	return err;

@@ -20,7 +20,7 @@ static char *add_dep(char *sofar, struct manifest *m, const char *dep)
 	struct stat st;
 	struct ccan_file *f;
 
-	dir = talloc_asprintf(m, "../%s", dep);
+	dir = talloc_asprintf(m, "%s/%s", ccan_dir, dep);
 	if (stat(dir, &st) != 0) {
 		return talloc_asprintf_append(sofar,
 					      "ccan/%s: expected it in"
@@ -28,7 +28,7 @@ static char *add_dep(char *sofar, struct manifest *m, const char *dep)
 					      dep, dir);
 	}
 
-	f = new_ccan_file(m, dir);
+	f = new_ccan_file(m, "", dir);
 	list_add_tail(&m->dep_dirs, &f->list);
 	return sofar;
 }
@@ -38,19 +38,21 @@ static void *check_depends_exist(struct manifest *m)
 	unsigned int i;
 	char *report = NULL;
 	char **deps;
+	char *updir = talloc_strdup(m, m->dir);
+
+	*strrchr(updir, '/') = '\0';
 
 	if (safe_mode)
-		deps = get_safe_ccan_deps(m, "..", m->basename, true,
+		deps = get_safe_ccan_deps(m, m->dir, true,
 					  &m->info_file->compiled);
 	else
-		deps = get_deps(m, "..", m->basename, true,
-				&m->info_file->compiled);
+		deps = get_deps(m, m->dir, true, &m->info_file->compiled);
 
 	for (i = 0; deps[i]; i++) {
 		if (!strstarts(deps[i], "ccan/"))
 			continue;
 
-		report = add_dep(report, m, deps[i] + strlen("ccan/"));
+		report = add_dep(report, m, deps[i]);
 	}
 	return report;
 }

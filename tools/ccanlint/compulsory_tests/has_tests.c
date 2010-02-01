@@ -15,10 +15,11 @@ static char test_is_not_dir[] = "test is not a directory";
 static void *check_has_tests(struct manifest *m)
 {
 	struct stat st;
+	char *test_dir = talloc_asprintf(m, "%s/test", m->dir);
 
-	if (lstat("test", &st) != 0) {
+	if (lstat(test_dir, &st) != 0) {
 		if (errno != ENOENT)
-			err(1, "statting test/");
+			err(1, "statting %s", test_dir);
 		return "You have no test directory";
 	}
 

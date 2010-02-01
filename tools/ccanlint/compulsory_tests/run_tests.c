@@ -33,6 +33,15 @@ static void *do_run_tests(struct manifest *m)
 	struct run_tests_result *res;
 	struct ccan_file *i;
 	char *cmdout;
+	char *olddir;
+
+	/* We run tests in the module directory, so any paths
+	 * referenced can all be module-local. */
+	olddir = talloc_getcwd(m);
+	if (!olddir)
+		err(1, "Could not save cwd");
+	if (chdir(m->dir) != 0)
+		err(1, "Could not chdir to %s", m->dir);
 
 	list_head_init(list);
 
@@ -64,6 +73,9 @@ static void *do_run_tests(struct manifest *m)
 		talloc_free(list);
 		list = NULL;
 	}
+
+	if (chdir(olddir) != 0)
+		err(1, "Could not chdir to %s", olddir);
 
 	return list;
 }

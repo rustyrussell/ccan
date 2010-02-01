@@ -255,8 +255,6 @@ int main(int argc, char *argv[])
 			prefix = talloc_append_string(talloc_basename(NULL,
 								      optarg),
 						      ": ");
-			if (chdir(optarg) != 0)
-				err(1, "Changing into directory '%s'", optarg);
 			break;
 		case 's':
 			summary = true;

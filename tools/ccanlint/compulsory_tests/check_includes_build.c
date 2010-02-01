@@ -43,7 +43,7 @@ static void *check_includes_build(struct manifest *m)
 	}
 	close(fd);
 
-	if (compile_object(m, tmpfile, &err))
+	if (compile_object(m, tmpfile, ccan_dir, &err))
 		return NULL;
 	return err;
 }

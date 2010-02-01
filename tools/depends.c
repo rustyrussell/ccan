@@ -37,15 +37,14 @@ lines_from_cmd(const void *ctx, unsigned int *num, char *format, ...)
 
 /* Be careful about trying to compile over running programs (parallel make).
  * temp_file helps here. */
-static char *compile_info(const void *ctx, const char *dir, const char *name)
+static char *compile_info(const void *ctx, const char *dir)
 {
-	char *info_c_file, *info, *errmsg;
+	char *info_c_file, *info, *errmsg, *ccandir;
 	size_t len;
 	int fd;
 
 	/* Copy it to a file with proper .c suffix. */
-	info = grab_file(ctx, talloc_asprintf(ctx, "%s/%s/_info", dir, name),
-			 &len);
+	info = grab_file(ctx, talloc_asprintf(ctx, "%s/_info", dir), &len);
 	if (!info)
 		return NULL;
 
@@ -59,19 +58,21 @@ static char *compile_info(const void *ctx, const char *dir, const char *name)
 	if (close(fd) != 0)
 		return NULL;
 
-	return compile_and_link(ctx, info_c_file, "", "", "", &errmsg);
+	ccandir = talloc_dirname(ctx, dir);
+	*strrchr(ccandir, '/') = '\0';
+	return compile_and_link(ctx, info_c_file, ccandir, "", "", "",
+				&errmsg);
 }
 
 static char **get_one_deps(const void *ctx, const char *dir,
-			   const char *name, unsigned int *num,
-			   char **infofile)
+			   unsigned int *num, char **infofile)
 {
 	char **deps, *cmd;
 
 	if (!*infofile) {
-		*infofile = compile_info(ctx, dir, name);
+		*infofile = compile_info(ctx, dir);
 		if (!*infofile)
-			errx(1, "Could not compile _info for '%s'", name);
+			errx(1, "Could not compile _info for '%s'", dir);
 	}
 
 	cmd = talloc_asprintf(ctx, "%s depends", *infofile);
@@ -110,14 +111,14 @@ static char *replace(const void *ctx, const char *src,
 
 /* This is a terrible hack.  We scan for ccan/ strings. */
 static char **get_one_safe_deps(const void *ctx,
-				const char *dir, const char *name,
+				const char *dir,
 				unsigned int *num,
 				char **infofile)
 {
 	char **deps, **lines, *raw, *fname;
 	unsigned int i, n = 0;
 
-	fname = talloc_asprintf(ctx, "%s/%s/_info", dir, name);
+	fname = talloc_asprintf(ctx, "%s/_info", dir);
 	raw = grab_file(fname, fname, NULL);
 	if (!raw)
 		errx(1, "Could not open %s", fname);
@@ -169,25 +170,28 @@ static bool have_dep(char **deps, unsigned int num, const char *dep)
 
 /* Gets all the dependencies, recursively. */
 static char **
-get_all_deps(const void *ctx, const char *dir, const char *name,
+get_all_deps(const void *ctx, const char *dir,
 	     char **infofile,
-	     char **(*get_one)(const void *, const char *, const char *,
+	     char **(*get_one)(const void *, const char *,
 			       unsigned int *, char **))
 {
 	char **deps;
 	unsigned int i, num;
 
-	deps = get_one(ctx, dir, name, &num, infofile);
+	deps = get_one(ctx, dir, &num, infofile);
 	for (i = 0; i < num; i++) {
 		char **newdeps;
 		unsigned int j, newnum;
 		char *subinfo = NULL;
+		char *subdir;
 
 		if (!strstarts(deps[i], "ccan/"))
 			continue;
 
-		newdeps = get_one(ctx, dir, deps[i] + strlen("ccan/"),
-				  &newnum, &subinfo);
+		subdir = talloc_asprintf(ctx, "%s/%s",
+					 talloc_dirname(ctx, dir),
+					 deps[i] + strlen("ccan/"));
+		newdeps = get_one(ctx, subdir, &newnum, &subinfo);
 
 		/* Should be short, so brute-force out dups. */
 		for (j = 0; j < newnum; j++) {
@@ -203,15 +207,14 @@ get_all_deps(const void *ctx, const char *dir, const char *name,
 }
 
 char **get_libs(const void *ctx, const char *dir,
-		const char *name, unsigned int *num,
-		char **infofile)
+		unsigned int *num, char **infofile)
 {
 	char **libs, *cmd;
 
 	if (!*infofile) {
-		*infofile = compile_info(ctx, dir, name);
+		*infofile = compile_info(ctx, dir);
 		if (!*infofile)
-			errx(1, "Could not compile _info for '%s'", name);
+			errx(1, "Could not compile _info for '%s'", dir);
 	}
 
 	cmd = talloc_asprintf(ctx, "%s libs", *infofile);
@@ -221,7 +224,7 @@ char **get_libs(const void *ctx, const char *dir,
 	return libs;
 }
 
-char **get_deps(const void *ctx, const char *dir, const char *name,
+char **get_deps(const void *ctx, const char *dir,
 		bool recurse, char **infofile)
 {
 	char *temp = NULL, **ret;
@@ -230,9 +233,9 @@ char **get_deps(const void *ctx, const char *dir, const char *name,
 
 	if (!recurse) {
 		unsigned int num;
-		ret = get_one_deps(ctx, dir, name, &num, infofile);
+		ret = get_one_deps(ctx, dir, &num, infofile);
 	} else
-		ret = get_all_deps(ctx, dir, name, infofile, get_one_deps);
+		ret = get_all_deps(ctx, dir, infofile, get_one_deps);
 
 	if (infofile == &temp && temp) {
 		unlink(temp);
@@ -242,11 +245,11 @@ char **get_deps(const void *ctx, const char *dir, const char *name,
 }
 
 char **get_safe_ccan_deps(const void *ctx, const char *dir,
-			  const char *name, bool recurse, char **infofile)
+			  bool recurse, char **infofile)
 {
 	if (!recurse) {
 		unsigned int num;
-		return get_one_safe_deps(ctx, dir, name, &num, infofile);
+		return get_one_safe_deps(ctx, dir, &num, infofile);
 	}
-	return get_all_deps(ctx, dir, name, infofile, get_one_safe_deps);
+	return get_all_deps(ctx, dir, infofile, get_one_safe_deps);
 }

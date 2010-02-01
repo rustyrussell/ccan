@@ -15,6 +15,8 @@
 #include <ctype.h>
 #include <stdarg.h>
 
+const char *ccan_dir;
+
 char **get_ccan_file_lines(struct ccan_file *f)
 {
 	if (!f->lines)
@@ -32,7 +34,7 @@ struct list_head *get_ccan_file_docs(struct ccan_file *f)
 	return f->doc_sections;
 }
 
-struct ccan_file *new_ccan_file(const void *ctx, char *name)
+struct ccan_file *new_ccan_file(const void *ctx, const char *dir, char *name)
 {
 	struct ccan_file *f;
 
@@ -42,6 +44,7 @@ struct ccan_file *new_ccan_file(const void *ctx, char *name)
 	f->doc_sections = NULL;
 	f->compiled = NULL;
 	f->name = talloc_steal(f, name);
+	f->fullname = talloc_asprintf(f, "%s/%s", dir, f->name);
 	return f;
 }
 
@@ -66,8 +69,9 @@ static void add_files(struct manifest *m, const char *dir)
 		if (ent->d_name[0] == '.')
 			continue;
 
-		f = new_ccan_file(m, talloc_asprintf(m, "%s%s",
-						     dir, ent->d_name));
+		f = new_ccan_file(m, m->dir,
+				  talloc_asprintf(m, "%s%s",
+						  dir, ent->d_name));
 		if (lstat(f->name, &st) != 0)
 			err(1, "lstat %s", f->name);
 
@@ -177,17 +181,28 @@ struct manifest *get_manifest(const void *ctx, const char *dir)
 	if (chdir(dir) != 0)
 		err(1, "Failed to chdir to %s", dir);
 
-	m->basename = talloc_getcwd(m);
-	if (!m->basename)
+	m->dir = talloc_getcwd(m);
+	if (!m->dir)
 		err(1, "Getting current directory");
-	len = strlen(m->basename);
-	while (len && m->basename[len-1] == '/')
-		m->basename[--len] = '\0';
 
-	m->basename = strrchr(m->basename, '/');
+	len = strlen(m->dir);
+	while (len && m->dir[len-1] == '/')
+		m->dir[--len] = '\0';
+
+	m->basename = strrchr(m->dir, '/');
 	if (!m->basename)
 		errx(1, "I don't expect to be run from the root directory");
 	m->basename++;
+
+	/* We expect the ccan dir to be two levels above module dir. */
+	if (!ccan_dir) {
+		char *p;
+		ccan_dir = talloc_strdup(NULL, m->dir);
+		p = strrchr(ccan_dir, '/');
+		*p = '\0';
+		p = strrchr(ccan_dir, '/');
+		*p = '\0';
+	}
 
 	add_files(m, "");
 

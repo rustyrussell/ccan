@@ -28,7 +28,7 @@ static char *obj_list(const struct manifest *m, bool link_with_module)
 
 	/* We expect to be linked with tap, unless that's us. */
 	if (!streq(m->basename, "tap"))
-		list = talloc_strdup(m, "../tap.o");
+		list = talloc_asprintf(m, "%s/ccan/tap.o", ccan_dir);
 	else
 		list = talloc_strdup(m, "");
 
@@ -37,7 +37,7 @@ static char *obj_list(const struct manifest *m, bool link_with_module)
 		list = talloc_asprintf_append(list, " %s", i->compiled);
 
 	if (link_with_module)
-		list = talloc_asprintf_append(list, " ../%s.o", m->basename);
+		list = talloc_asprintf_append(list, " %s.o", m->dir);
 
 	/* Other ccan modules. */
 	list_for_each(&m->dep_objs, i, list)
@@ -49,7 +49,7 @@ static char *obj_list(const struct manifest *m, bool link_with_module)
 static char *lib_list(const struct manifest *m)
 {
 	unsigned int i, num;
-	char **libs = get_libs(m, ".", ".", &num, &m->info_file->compiled);
+	char **libs = get_libs(m, ".", &num, &m->info_file->compiled);
 	char *ret = talloc_strdup(m, "");
 
 	for (i = 0; i < num; i++)
@@ -63,7 +63,7 @@ static char *compile(const void *ctx,
 {
 	char *errmsg;
 
-	file->compiled = compile_and_link(ctx, file->name,
+	file->compiled = compile_and_link(ctx, file->fullname, ccan_dir,
 					  obj_list(m, link_with_module),
 					  fail ? "-DFAIL" : "",
 					  lib_list(m), &errmsg);
