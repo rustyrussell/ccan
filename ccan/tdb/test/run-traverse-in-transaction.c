@@ -57,21 +57,21 @@ int main(int argc, char *argv[])
 
 	ok1(tdb_store(tdb, key, data, TDB_INSERT) == 0);
 
-	ok1(external_agent_transaction(agent, tdb_name(tdb)));
+	ok1(external_agent_operation(agent, TRANSACTION, tdb_name(tdb)));
 
 	ok1(tdb_transaction_start(tdb) == 0);
-	ok1(!external_agent_transaction(agent, tdb_name(tdb)));
+	ok1(!external_agent_operation(agent, TRANSACTION, tdb_name(tdb)));
 	tdb_traverse(tdb, traverse, NULL);
 
 	/* That should *not* release the transaction lock! */
-	ok1(!external_agent_transaction(agent, tdb_name(tdb)));
+	ok1(!external_agent_operation(agent, TRANSACTION, tdb_name(tdb)));
 	tdb_traverse_read(tdb, traverse, NULL);
 
 	/* That should *not* release the transaction lock! */
-	ok1(!external_agent_transaction(agent, tdb_name(tdb)));
+	ok1(!external_agent_operation(agent, TRANSACTION, tdb_name(tdb)));
 	ok1(tdb_transaction_commit(tdb) == 0);
 	/* Now we should be fine. */
-	ok1(external_agent_transaction(agent, tdb_name(tdb)));
+	ok1(external_agent_operation(agent, TRANSACTION, tdb_name(tdb)));
 
 	tdb_close(tdb);
 
