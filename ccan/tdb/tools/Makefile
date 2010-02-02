@@ -1,4 +1,4 @@
-LDLIBS:=-lccan
+LDLIBS:=../../tdb.o
 CFLAGS:=-I../../.. -Wall -O3 #-g -pg
 LDFLAGS:=-L../../..
 
@@ -7,8 +7,9 @@ default: replay_trace tdbtorture tdbdump tdbtool
 benchmark: replay_trace
 	@trap "rm -f /tmp/trace.$$$$" 0; for f in benchmarks/*.rz; do if runzip -k $$f -o /tmp/trace.$$$$ && echo -n "$$f": && ./replay_trace --quiet -n 5 replay.tdb /tmp/trace.$$$$ && rm /tmp/trace.$$$$; then rm -f /tmp/trace.$$$$; else exit 1; fi; done
 
-replay_trace: replay_trace.c keywords.c
-	$(LINK.c) $< $(LOADLIBES) $(LDLIBS) -o $@
+REPLAY_LIBS=$(LDLIBS) ../../str_talloc.o ../../grab_file.o  ../../talloc.o ../../noerr.o
+replay_trace: replay_trace.c keywords.c $(REPLAY_LIBS)
+	$(LINK.c) $< $(LOADLIBES) $(REPLAY_LIBS) -o $@
 
 keywords.c: keywords.gperf
 	gperf $< > $@
