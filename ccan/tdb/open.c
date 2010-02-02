@@ -403,8 +403,10 @@ int tdb_close(struct tdb_context *tdb)
 			tdb_munmap(tdb);
 	}
 	SAFE_FREE(tdb->name);
-	if (tdb->fd != -1)
+	if (tdb->fd != -1) {
 		ret = close(tdb->fd);
+		tdb->fd = -1;
+	}
 	SAFE_FREE(tdb->lockrecs);
 
 	/* Remove from contexts list */
