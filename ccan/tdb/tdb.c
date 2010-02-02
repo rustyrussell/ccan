@@ -122,6 +122,7 @@ tdb_off_t tdb_find_lock_hash(struct tdb_context *tdb, TDB_DATA key, uint32_t has
 	return rec_ptr;
 }
 
+static TDB_DATA _tdb_fetch(struct tdb_context *tdb, TDB_DATA key);
 
 /* update an entry in place - this only works if the new data size
    is <= the old data size and the key exists.
@@ -135,6 +136,25 @@ static int tdb_update_hash(struct tdb_context *tdb, TDB_DATA key, uint32_t hash,
 	/* find entry */
 	if (!(rec_ptr = tdb_find(tdb, key, hash, &rec)))
 		return -1;
+
+	/* it could be an exact duplicate of what is there - this is
+	 * surprisingly common (eg. with a ldb re-index). */
+	if (rec.key_len == key.dsize && 
+	    rec.data_len == dbuf.dsize &&
+	    rec.full_hash == hash) {
+		TDB_DATA data = _tdb_fetch(tdb, key);
+		if (data.dsize == dbuf.dsize &&
+		    memcmp(data.dptr, dbuf.dptr, data.dsize) == 0) {
+			if (data.dptr) {
+				free(data.dptr);
+			}
+			return 0;
+		}
+		if (data.dptr) {
+			free(data.dptr);
+		}
+	}
+	 
 
 	/* must be long enough key, data and tailer */
 	if (rec.rec_len < key.dsize + dbuf.dsize + sizeof(tdb_off_t)) {
