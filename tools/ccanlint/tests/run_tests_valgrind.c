@@ -49,7 +49,7 @@ static void *do_run_tests_vg(struct manifest *m)
 	list_head_init(list);
 
 	list_for_each(&m->run_tests, i, list) {
-		run_tests.total_score++;
+		run_tests_vg.total_score++;
 		/* FIXME: timeout here */
 		cmdout = run_command(m, "valgrind -q %s", i->compiled);
 		if (cmdout) {
@@ -61,7 +61,7 @@ static void *do_run_tests_vg(struct manifest *m)
 	}
 
 	list_for_each(&m->api_tests, i, list) {
-		run_tests.total_score++;
+		run_tests_vg.total_score++;
 		/* FIXME: timeout here */
 		cmdout = run_command(m, "valgrind -q %s", i->compiled);
 		if (cmdout) {
@@ -87,7 +87,7 @@ static unsigned int score_run_tests_vg(struct manifest *m, void *check_result)
 {
 	struct list_head *list = check_result;
 	struct run_tests_result *i;
-	unsigned int score = run_tests.total_score;
+	unsigned int score = run_tests_vg.total_score;
 
 	list_for_each(list, i, list)
 		score--;

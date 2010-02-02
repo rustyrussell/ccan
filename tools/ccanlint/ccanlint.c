@@ -119,8 +119,13 @@ static bool run_test(struct ccanlint *i,
 
 	result = i->check(m);
 	if (!result) {
-		if (verbose)
-			printf("  %s: OK\n", i->name);
+		if (verbose) {
+			printf("  %s: OK", i->name);
+			if (i->total_score)
+				printf(" (+%u/%u)",
+				       i->total_score, i->total_score);
+			printf("\n");
+		}
 		if (i->total_score) {
 			*score += i->total_score;
 			*total_score += i->total_score;
@@ -141,6 +146,10 @@ static bool run_test(struct ccanlint *i,
 
 	*total_score += i->total_score;
 	*score += this_score;
+	if (verbose) {
+		printf("  %s: FAIL (+%u/%u)\n",
+		       i->name, this_score, i->total_score);
+	}
 	if (!quiet) {
 		printf("%s\n", i->describe(m, result));
 
