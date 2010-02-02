@@ -213,11 +213,10 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 	}
 
 	/*
-	 * TDB_ALLOW_NESTING is the default behavior.
-	 * Note: this may change in future versions!
+	 * TDB_DISALLOW_NESTING is the default behavior.
 	 */
-	if (!(tdb->flags & TDB_DISALLOW_NESTING)) {
-		tdb->flags |= TDB_ALLOW_NESTING;
+	if (!(tdb->flags & TDB_ALLOW_NESTING)) {
+		tdb->flags |= TDB_DISALLOW_NESTING;
 	}
 
 	/* internal databases don't mmap or lock, and start off cleared */
