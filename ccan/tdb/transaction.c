@@ -86,12 +86,20 @@
     fsync/msync calls are made.
 
   - if TDB_ALLOW_NESTING is passed to flags in tdb open, or added using
-    tdb_add_flags() transaction is enabled.
-    The default is that transaction nesting is not allowed and an attempt
-    to create a nested transaction will fail with TDB_ERR_NESTING.
+    tdb_add_flags() transaction nesting is enabled.
+    It resets the TDB_DISALLOW_NESTING flag, as both cannot be used together.
+    The default is that transaction nesting is allowed.
+    Note: this default may change in future versions of tdb.
 
     Beware. when transactions are nested a transaction successfully
     completed with tdb_transaction_commit() can be silently unrolled later.
+
+  - if TDB_DISALLOW_NESTING is passed to flags in tdb open, or added using
+    tdb_add_flags() transaction nesting is disabled.
+    It resets the TDB_ALLOW_NESTING flag, as both cannot be used together.
+    An attempt create a nested transaction will fail with TDB_ERR_NESTING.
+    The default is that transaction nesting is allowed.
+    Note: this default may change in future versions of tdb.
 */
 
 

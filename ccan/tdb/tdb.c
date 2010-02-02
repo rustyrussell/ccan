@@ -735,11 +735,41 @@ int tdb_get_flags(struct tdb_context *tdb)
 
 void tdb_add_flags(struct tdb_context *tdb, unsigned flags)
 {
+	if ((flags & TDB_ALLOW_NESTING) &&
+	    (flags & TDB_DISALLOW_NESTING)) {
+		tdb->ecode = TDB_ERR_NESTING;
+		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_add_flags: "
+			"allow_nesting and disallow_nesting are not allowed together!"));
+		return;
+	}
+
+	if (flags & TDB_ALLOW_NESTING) {
+		tdb->flags &= ~TDB_DISALLOW_NESTING;
+	}
+	if (flags & TDB_DISALLOW_NESTING) {
+		tdb->flags &= ~TDB_ALLOW_NESTING;
+	}
+
 	tdb->flags |= flags;
 }
 
 void tdb_remove_flags(struct tdb_context *tdb, unsigned flags)
 {
+	if ((flags & TDB_ALLOW_NESTING) &&
+	    (flags & TDB_DISALLOW_NESTING)) {
+		tdb->ecode = TDB_ERR_NESTING;
+		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_remove_flags: "
+			"allow_nesting and disallow_nesting are not allowed together!"));
+		return;
+	}
+
+	if (flags & TDB_ALLOW_NESTING) {
+		tdb->flags |= TDB_DISALLOW_NESTING;
+	}
+	if (flags & TDB_DISALLOW_NESTING) {
+		tdb->flags |= TDB_ALLOW_NESTING;
+	}
+
 	tdb->flags &= ~flags;
 }
 
