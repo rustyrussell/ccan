@@ -41,6 +41,20 @@ static bool clear_if_first;
 #undef fcntl
 #undef ftruncate
 
+static void taplog(struct tdb_context *tdb,
+		   enum tdb_debug_level level,
+		   const char *fmt, ...)
+{
+	va_list ap;
+	char line[200];
+
+	va_start(ap, fmt);
+	vsprintf(line, fmt, ap);
+	va_end(ap);
+
+	diag("%s", line);
+}
+
 static void save_file_contents(int fd)
 {
 	struct stat st;
@@ -195,6 +209,7 @@ static int ftruncate_check(int fd, off_t length)
 
 int main(int argc, char *argv[])
 {
+	struct tdb_logging_context logctx = { taplog, NULL };
 	const int flags[] = { TDB_DEFAULT,
 			      TDB_CLEAR_IF_FIRST,
 			      TDB_NOMMAP, 
@@ -213,11 +228,15 @@ int main(int argc, char *argv[])
 	nice(15);
 
 	for (i = 0; i < sizeof(flags)/sizeof(flags[0]); i++) {
-		unlink(TEST_DBNAME);
-		tdb = tdb_open(TEST_DBNAME, 1024, flags[i],
-			       O_CREAT|O_TRUNC|O_RDWR, 0600);
-		ok1(tdb);
 		clear_if_first = (flags[i] & TDB_CLEAR_IF_FIRST);
+		diag("Test with %s and %s\n",
+		     clear_if_first ? "CLEAR" : "DEFAULT",
+		     (flags[i] & TDB_NOMMAP) ? "no mmap" : "mmap");
+		unlink(TEST_DBNAME);
+		tdb = tdb_open_ex(TEST_DBNAME, 1024, flags[i],
+				  O_CREAT|O_TRUNC|O_RDWR, 0600,
+				  &logctx, NULL);
+		ok1(tdb);
 
 		ok1(tdb_transaction_start(tdb) == 0);
 		in_transaction = true;
@@ -230,7 +249,7 @@ int main(int argc, char *argv[])
 		ok1(tdb_transaction_commit(tdb) == 0);
 		if (agent_pending)
 			check_for_agent(tdb->fd, true);
-		ok(errors == 0, "We had %u errors", errors);
+		ok(errors == 0, "We had %u unexpected changes", errors);
 
 		tdb_close(tdb);
 	}
