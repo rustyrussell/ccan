@@ -135,6 +135,9 @@ struct tdb_transaction {
 	bool prepared;
 	tdb_off_t magic_offset;
 
+	/* set when the GLOBAL_LOCK has been taken */
+	bool global_lock_taken;
+
 	/* old file size before transaction */
 	tdb_len_t old_map_size;
 
@@ -499,6 +502,11 @@ int _tdb_transaction_cancel(struct tdb_context *tdb, int ltype)
 			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction_cancel: failed to remove recovery magic\n"));
 			ret = -1;
 		}
+	}
+
+	if (tdb->transaction->global_lock_taken) {
+		tdb_brunlock(tdb, F_WRLCK, GLOBAL_LOCK, 1);
+		tdb->transaction->global_lock_taken = false;
 	}
 
 	/* remove any global lock created during the transaction */
@@ -960,11 +968,12 @@ static int _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 		return -1;
 	}
 
+ 	tdb->transaction->global_lock_taken = true;
+
 	if (!(tdb->flags & TDB_NOSYNC)) {
 		/* write the recovery data to the end of the file */
 		if (transaction_setup_recovery(tdb, &tdb->transaction->magic_offset) == -1) {
 			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction_prepare_commit: failed to setup recovery data\n"));
-			tdb_brunlock(tdb, F_WRLCK, GLOBAL_LOCK, 1);
 			_tdb_transaction_cancel(tdb, F_WRLCK);
 			return -1;
 		}
@@ -979,7 +988,6 @@ static int _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 					     tdb->transaction->old_map_size) == -1) {
 			tdb->ecode = TDB_ERR_IO;
 			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction_prepare_commit: expansion failed\n"));
-			tdb_brunlock(tdb, F_WRLCK, GLOBAL_LOCK, 1);
 			_tdb_transaction_cancel(tdb, F_WRLCK);
 			return -1;
 		}
@@ -1069,7 +1077,6 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 			tdb_transaction_recover(tdb); 
 
 			_tdb_transaction_cancel(tdb, F_WRLCK);
-			tdb_brunlock(tdb, F_WRLCK, GLOBAL_LOCK, 1);
 
 			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction_commit: write failed\n"));
 			return -1;
@@ -1084,8 +1091,6 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 	if (transaction_sync(tdb, 0, tdb->map_size) == -1) {
 		return -1;
 	}
-
-	tdb_brunlock(tdb, F_WRLCK, GLOBAL_LOCK, 1);
 
 	/*
 	  TODO: maybe write to some dummy hdr field, or write to magic

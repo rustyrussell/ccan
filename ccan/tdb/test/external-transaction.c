@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <ccan/tdb/tdb.h>
 #include <ccan/tap/tap.h>
+#include <stdio.h>
 
 static volatile sig_atomic_t alarmed;
 static void do_alarm(int signum)
