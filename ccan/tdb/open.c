@@ -164,6 +164,9 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 
 	tdb_io_init(tdb);
 	tdb->fd = -1;
+#ifdef TDB_TRACE
+	tdb->tracefd = -1;
+#endif
 	tdb->name = NULL;
 	tdb->map_ptr = NULL;
 	tdb->flags = tdb_flags;
@@ -208,10 +211,6 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 			TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_open_ex: tdb_new_database failed!"));
 			goto fail;
 		}
-#ifdef TDB_TRACE
-		/* All tracing will fail.  That's ok. */
-		tdb->tracefd = -1;
-#endif
 		goto internal;
 	}
 
