@@ -680,7 +680,7 @@ static int tdb_recovery_allocate(struct tdb_context *tdb,
 				 tdb_off_t *recovery_offset,
 				 tdb_len_t *recovery_max_size)
 {
-	struct list_struct rec;
+	struct tdb_record rec;
 	const struct tdb_methods *methods = tdb->transaction->io_methods;
 	tdb_off_t recovery_head;
 
@@ -766,7 +766,7 @@ static int transaction_setup_recovery(struct tdb_context *tdb,
 	tdb_len_t recovery_size;
 	unsigned char *data, *p;
 	const struct tdb_methods *methods = tdb->transaction->io_methods;
-	struct list_struct *rec;
+	struct tdb_record *rec;
 	tdb_off_t recovery_offset, recovery_max_size;
 	tdb_off_t old_map_size = tdb->transaction->old_map_size;
 	uint32_t magic, tailer;
@@ -786,7 +786,7 @@ static int transaction_setup_recovery(struct tdb_context *tdb,
 		return -1;
 	}
 
-	rec = (struct list_struct *)data;
+	rec = (struct tdb_record *)data;
 	memset(rec, 0, sizeof(*rec));
 
 	rec->magic    = 0;
@@ -869,7 +869,7 @@ static int transaction_setup_recovery(struct tdb_context *tdb,
 	magic = TDB_RECOVERY_MAGIC;
 	CONVERT(magic);
 
-	*magic_offset = recovery_offset + offsetof(struct list_struct, magic);
+	*magic_offset = recovery_offset + offsetof(struct tdb_record, magic);
 
 	if (methods->tdb_write(tdb, *magic_offset, &magic, sizeof(magic)) == -1) {
 		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction_setup_recovery: failed to write recovery magic\n"));
@@ -1118,7 +1118,7 @@ int tdb_transaction_recover(struct tdb_context *tdb)
 	tdb_off_t recovery_head, recovery_eof;
 	unsigned char *data, *p;
 	uint32_t zero = 0;
-	struct list_struct rec;
+	struct tdb_record rec;
 
 	/* find the recovery area */
 	if (tdb_ofs_read(tdb, TDB_RECOVERY_HEAD, &recovery_head) == -1) {
@@ -1205,7 +1205,7 @@ int tdb_transaction_recover(struct tdb_context *tdb)
 	}
 
 	/* remove the recovery magic */
-	if (tdb_ofs_write(tdb, recovery_head + offsetof(struct list_struct, magic), 
+	if (tdb_ofs_write(tdb, recovery_head + offsetof(struct tdb_record, magic),
 			  &zero) == -1) {
 		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction_recover: failed to remove recovery magic\n"));
 		tdb->ecode = TDB_ERR_IO;

@@ -46,7 +46,7 @@ static int seen_insert(struct tdb_context *mem_tdb, tdb_off_t rec_ptr)
 int tdb_validate_freelist(struct tdb_context *tdb, int *pnum_entries)
 {
 	struct tdb_context *mem_tdb = NULL;
-	struct list_struct rec;
+	struct tdb_record rec;
 	tdb_off_t rec_ptr, last_ptr;
 	int ret = -1;
 

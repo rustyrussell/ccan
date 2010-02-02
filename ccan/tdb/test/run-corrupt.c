@@ -76,9 +76,9 @@ static void check_test(struct tdb_context *tdb)
 	/* From the free list chain and hash chains. */
 	verifiable += 3 * sizeof(tdb_off_t);
 	/* From the record headers & tailer */
-	verifiable += 5 * (sizeof(struct list_struct) + sizeof(uint32_t));
+	verifiable += 5 * (sizeof(struct tdb_record) + sizeof(uint32_t));
 	/* The free block: we ignore datalen, keylen, full_hash. */
-	verifiable += sizeof(struct list_struct) - 3*sizeof(uint32_t) +
+	verifiable += sizeof(struct tdb_record) - 3*sizeof(uint32_t) +
 		sizeof(uint32_t);
 	/* Our check function verifies the key and data. */
 	verifiable += ksize + dsize;

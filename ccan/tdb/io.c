@@ -298,7 +298,7 @@ static int tdb_expand_file(struct tdb_context *tdb, tdb_off_t size, tdb_off_t ad
    file and doing the mmap again if necessary */
 int tdb_expand(struct tdb_context *tdb, tdb_off_t size)
 {
-	struct list_struct rec;
+	struct tdb_record rec;
 	tdb_off_t offset, new_size;	
 
 	if (tdb_lock(tdb, -1, F_WRLCK) == -1) {
@@ -435,7 +435,7 @@ int tdb_parse_data(struct tdb_context *tdb, TDB_DATA key,
 }
 
 /* read/write a record */
-int tdb_rec_read(struct tdb_context *tdb, tdb_off_t offset, struct list_struct *rec)
+int tdb_rec_read(struct tdb_context *tdb, tdb_off_t offset, struct tdb_record *rec)
 {
 	if (tdb->methods->tdb_read(tdb, offset, rec, sizeof(*rec),DOCONV()) == -1)
 		return -1;
@@ -448,9 +448,9 @@ int tdb_rec_read(struct tdb_context *tdb, tdb_off_t offset, struct list_struct *
 	return tdb->methods->tdb_oob(tdb, rec->next+sizeof(*rec), 0);
 }
 
-int tdb_rec_write(struct tdb_context *tdb, tdb_off_t offset, struct list_struct *rec)
+int tdb_rec_write(struct tdb_context *tdb, tdb_off_t offset, struct tdb_record *rec)
 {
-	struct list_struct r = *rec;
+	struct tdb_record r = *rec;
 	return tdb->methods->tdb_write(tdb, offset, CONVERT(r), sizeof(r));
 }
 

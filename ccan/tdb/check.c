@@ -64,7 +64,7 @@ corrupt:
 /* Generic record header check. */
 static bool tdb_check_record(struct tdb_context *tdb,
 			     tdb_off_t off,
-			     const struct list_struct *rec)
+			     const struct tdb_record *rec)
 {
 	tdb_off_t tailer;
 
@@ -229,7 +229,7 @@ static void record_offset(unsigned char bits[], tdb_off_t off)
 /* Check that an in-use record is valid. */
 static bool tdb_check_used_record(struct tdb_context *tdb,
 				  tdb_off_t off,
-				  const struct list_struct *rec,
+				  const struct tdb_record *rec,
 				  unsigned char **hashes,
 				  int (*check)(TDB_DATA, TDB_DATA, void *),
 				  void *private)
@@ -288,7 +288,7 @@ fail_put_key:
 /* Check that an unused record is valid. */
 static bool tdb_check_free_record(struct tdb_context *tdb,
 				  tdb_off_t off,
-				  const struct list_struct *rec,
+				  const struct tdb_record *rec,
 				  unsigned char **hashes)
 {
 	if (!tdb_check_record(tdb, off, rec))
@@ -309,7 +309,7 @@ int tdb_check(struct tdb_context *tdb,
 	unsigned int h;
 	unsigned char **hashes;
 	tdb_off_t off, recovery_start;
-	struct list_struct rec;
+	struct tdb_record rec;
 	bool found_recovery = false;
 
 	if (tdb_lockall(tdb) == -1)

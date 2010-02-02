@@ -136,9 +136,9 @@ void tdb_trace_2rec_retrec(struct tdb_context *tdb, const char *op,
 #define CONVERT(x) (DOCONV() ? tdb_convert(&x, sizeof(x)) : &x)
 
 
-/* the body of the database is made of one list_struct for the free space
+/* the body of the database is made of one tdb_record for the free space
    plus a separate data list for each hash value */
-struct list_struct {
+struct tdb_record {
 	tdb_off_t next; /* offset of the next record in the list */
 	tdb_len_t rec_len; /* total byte length of record */
 	tdb_len_t key_len; /* byte length of key */
@@ -257,16 +257,16 @@ int tdb_write_unlock_record(struct tdb_context *tdb, tdb_off_t off);
 int tdb_ofs_read(struct tdb_context *tdb, tdb_off_t offset, tdb_off_t *d);
 int tdb_ofs_write(struct tdb_context *tdb, tdb_off_t offset, tdb_off_t *d);
 void *tdb_convert(void *buf, uint32_t size);
-int tdb_free(struct tdb_context *tdb, tdb_off_t offset, struct list_struct *rec);
-tdb_off_t tdb_allocate(struct tdb_context *tdb, tdb_len_t length, struct list_struct *rec);
+int tdb_free(struct tdb_context *tdb, tdb_off_t offset, struct tdb_record *rec);
+tdb_off_t tdb_allocate(struct tdb_context *tdb, tdb_len_t length, struct tdb_record *rec);
 int tdb_ofs_read(struct tdb_context *tdb, tdb_off_t offset, tdb_off_t *d);
 int tdb_ofs_write(struct tdb_context *tdb, tdb_off_t offset, tdb_off_t *d);
 int tdb_lock_record(struct tdb_context *tdb, tdb_off_t off);
 int tdb_unlock_record(struct tdb_context *tdb, tdb_off_t off);
 int _tdb_transaction_cancel(struct tdb_context *tdb, int ltype);
-int tdb_rec_read(struct tdb_context *tdb, tdb_off_t offset, struct list_struct *rec);
-int tdb_rec_write(struct tdb_context *tdb, tdb_off_t offset, struct list_struct *rec);
-int tdb_do_delete(struct tdb_context *tdb, tdb_off_t rec_ptr, struct list_struct *rec);
+int tdb_rec_read(struct tdb_context *tdb, tdb_off_t offset, struct tdb_record *rec);
+int tdb_rec_write(struct tdb_context *tdb, tdb_off_t offset, struct tdb_record *rec);
+int tdb_do_delete(struct tdb_context *tdb, tdb_off_t rec_ptr, struct tdb_record *rec);
 unsigned char *tdb_alloc_read(struct tdb_context *tdb, tdb_off_t offset, tdb_len_t len);
 int tdb_parse_data(struct tdb_context *tdb, TDB_DATA key,
 		   tdb_off_t offset, tdb_len_t len,
@@ -274,11 +274,11 @@ int tdb_parse_data(struct tdb_context *tdb, TDB_DATA key,
 				 void *private_data),
 		   void *private_data);
 tdb_off_t tdb_find_lock_hash(struct tdb_context *tdb, TDB_DATA key, uint32_t hash, int locktype,
-			   struct list_struct *rec);
+			   struct tdb_record *rec);
 void tdb_io_init(struct tdb_context *tdb);
 int tdb_expand(struct tdb_context *tdb, tdb_off_t size);
 int tdb_rec_free_read(struct tdb_context *tdb, tdb_off_t off,
-		      struct list_struct *rec);
+		      struct tdb_record *rec);
 
 
 #endif

@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 	TDB_DATA key, orig_data, data;
 	uint32_t hash;
 	tdb_off_t rec_ptr;
-	struct list_struct rec;
+	struct tdb_record rec;
 
 	plan_tests(24);
 	tdb = tdb_open("/tmp/test.tdb", 1024, TDB_CLEAR_IF_FIRST,

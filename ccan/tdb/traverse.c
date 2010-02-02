@@ -32,7 +32,7 @@
 /* Uses traverse lock: 0 = finish, TDB_NEXT_LOCK_ERR = error,
    other = record offset */
 static tdb_off_t tdb_next_lock(struct tdb_context *tdb, struct tdb_traverse_lock *tlock,
-			 struct list_struct *rec)
+			 struct tdb_record *rec)
 {
 	int want_next = (tlock->off != 0);
 
@@ -145,7 +145,7 @@ static int _tdb_traverse(struct tdb_context *tdb,
 			 struct tdb_traverse_lock *tl)
 {
 	TDB_DATA key, dbuf;
-	struct list_struct rec;
+	struct tdb_record rec;
 	int ret = 0, count = 0;
 	tdb_off_t off;
 
@@ -270,7 +270,7 @@ int tdb_traverse(struct tdb_context *tdb,
 TDB_DATA tdb_firstkey(struct tdb_context *tdb)
 {
 	TDB_DATA key;
-	struct list_struct rec;
+	struct tdb_record rec;
 	tdb_off_t off;
 
 	/* release any old lock */
@@ -302,7 +302,7 @@ TDB_DATA tdb_nextkey(struct tdb_context *tdb, TDB_DATA oldkey)
 {
 	uint32_t oldhash;
 	TDB_DATA key = tdb_null;
-	struct list_struct rec;
+	struct tdb_record rec;
 	unsigned char *k = NULL;
 	tdb_off_t off;
 

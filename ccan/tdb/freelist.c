@@ -34,7 +34,7 @@
 #define USE_RIGHT_MERGES 0
 
 /* read a freelist record and check for simple errors */
-int tdb_rec_free_read(struct tdb_context *tdb, tdb_off_t off, struct list_struct *rec)
+int tdb_rec_free_read(struct tdb_context *tdb, tdb_off_t off, struct tdb_record *rec)
 {
 	if (tdb->methods->tdb_read(tdb, off, rec, sizeof(*rec),DOCONV()) == -1)
 		return -1;
@@ -87,7 +87,7 @@ static int remove_from_freelist(struct tdb_context *tdb, tdb_off_t off, tdb_off_
 
 /* update a record tailer (must hold allocation lock) */
 static int update_tailer(struct tdb_context *tdb, tdb_off_t offset,
-			 const struct list_struct *rec)
+			 const struct tdb_record *rec)
 {
 	tdb_off_t totalsize;
 
@@ -99,7 +99,7 @@ static int update_tailer(struct tdb_context *tdb, tdb_off_t offset,
 
 /* Add an element into the freelist. Merge adjacent records if
    neccessary. */
-int tdb_free(struct tdb_context *tdb, tdb_off_t offset, struct list_struct *rec)
+int tdb_free(struct tdb_context *tdb, tdb_off_t offset, struct tdb_record *rec)
 {
 	/* Allocation and tailer lock */
 	if (tdb_lock(tdb, -1, F_WRLCK) != 0)
@@ -115,7 +115,7 @@ int tdb_free(struct tdb_context *tdb, tdb_off_t offset, struct list_struct *rec)
 	/* Look right first (I'm an Australian, dammit) */
 	if (offset + sizeof(*rec) + rec->rec_len + sizeof(*rec) <= tdb->map_size) {
 		tdb_off_t right = offset + sizeof(*rec) + rec->rec_len;
-		struct list_struct r;
+		struct tdb_record r;
 
 		if (tdb->methods->tdb_read(tdb, right, &r, sizeof(r), DOCONV()) == -1) {
 			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_free: right read failed at %u\n", right));
@@ -141,7 +141,7 @@ left:
 	/* Look left */
 	if (offset - sizeof(tdb_off_t) > TDB_DATA_START(tdb->header.hash_size)) {
 		tdb_off_t left = offset - sizeof(tdb_off_t);
-		struct list_struct l;
+		struct tdb_record l;
 		tdb_off_t leftsize;
 		
 		/* Read in tailer and jump back to header */
@@ -220,9 +220,9 @@ update:
  */
 static tdb_off_t tdb_allocate_ofs(struct tdb_context *tdb, 
 				  tdb_len_t length, tdb_off_t rec_ptr,
-				  struct list_struct *rec, tdb_off_t last_ptr)
+				  struct tdb_record *rec, tdb_off_t last_ptr)
 {
-#define MIN_REC_SIZE (sizeof(struct list_struct) + sizeof(tdb_off_t) + 8)
+#define MIN_REC_SIZE (sizeof(struct tdb_record) + sizeof(tdb_off_t) + 8)
 
 	if (rec->rec_len < length + MIN_REC_SIZE) {
 		/* we have to grab the whole record */
@@ -268,12 +268,12 @@ static tdb_off_t tdb_allocate_ofs(struct tdb_context *tdb,
 }
 
 /* allocate some space from the free list. The offset returned points
-   to a unconnected list_struct within the database with room for at
+   to a unconnected tdb_record within the database with room for at
    least length bytes of total data
 
    0 is returned if the space could not be allocated
  */
-tdb_off_t tdb_allocate(struct tdb_context *tdb, tdb_len_t length, struct list_struct *rec)
+tdb_off_t tdb_allocate(struct tdb_context *tdb, tdb_len_t length, struct tdb_record *rec)
 {
 	tdb_off_t rec_ptr, last_ptr, newrec_ptr;
 	struct {

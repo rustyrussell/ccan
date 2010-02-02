@@ -77,7 +77,7 @@ static int tdb_key_compare(TDB_DATA key, TDB_DATA data, void *private_data)
 /* Returns 0 on fail.  On success, return offset of record, and fills
    in rec */
 static tdb_off_t tdb_find(struct tdb_context *tdb, TDB_DATA key, uint32_t hash,
-			struct list_struct *r)
+			struct tdb_record *r)
 {
 	tdb_off_t rec_ptr;
 	
@@ -111,7 +111,7 @@ static tdb_off_t tdb_find(struct tdb_context *tdb, TDB_DATA key, uint32_t hash,
 
 /* As tdb_find, but if you succeed, keep the lock */
 tdb_off_t tdb_find_lock_hash(struct tdb_context *tdb, TDB_DATA key, uint32_t hash, int locktype,
-			   struct list_struct *rec)
+			   struct tdb_record *rec)
 {
 	uint32_t rec_ptr;
 
@@ -129,7 +129,7 @@ tdb_off_t tdb_find_lock_hash(struct tdb_context *tdb, TDB_DATA key, uint32_t has
 */
 static int tdb_update_hash(struct tdb_context *tdb, TDB_DATA key, uint32_t hash, TDB_DATA dbuf)
 {
-	struct list_struct rec;
+	struct tdb_record rec;
 	tdb_off_t rec_ptr;
 
 	/* find entry */
@@ -164,7 +164,7 @@ static int tdb_update_hash(struct tdb_context *tdb, TDB_DATA key, uint32_t hash,
 static TDB_DATA _tdb_fetch(struct tdb_context *tdb, TDB_DATA key)
 {
 	tdb_off_t rec_ptr;
-	struct list_struct rec;
+	struct tdb_record rec;
 	TDB_DATA ret;
 	uint32_t hash;
 
@@ -210,7 +210,7 @@ int tdb_parse_record(struct tdb_context *tdb, TDB_DATA key,
 		     void *private_data)
 {
 	tdb_off_t rec_ptr;
-	struct list_struct rec;
+	struct tdb_record rec;
 	int ret;
 	uint32_t hash;
 
@@ -241,7 +241,7 @@ int tdb_parse_record(struct tdb_context *tdb, TDB_DATA key,
 */
 static int tdb_exists_hash(struct tdb_context *tdb, TDB_DATA key, uint32_t hash)
 {
-	struct list_struct rec;
+	struct tdb_record rec;
 	
 	if (tdb_find_lock_hash(tdb, key, hash, F_RDLCK, &rec) == 0)
 		return 0;
@@ -260,10 +260,10 @@ int tdb_exists(struct tdb_context *tdb, TDB_DATA key)
 }
 
 /* actually delete an entry in the database given the offset */
-int tdb_do_delete(struct tdb_context *tdb, tdb_off_t rec_ptr, struct list_struct *rec)
+int tdb_do_delete(struct tdb_context *tdb, tdb_off_t rec_ptr, struct tdb_record *rec)
 {
 	tdb_off_t last_ptr, i;
-	struct list_struct lastrec;
+	struct tdb_record lastrec;
 
 	if (tdb->read_only || tdb->traverse_read) return -1;
 
@@ -299,7 +299,7 @@ static int tdb_count_dead(struct tdb_context *tdb, uint32_t hash)
 {
 	int res = 0;
 	tdb_off_t rec_ptr;
-	struct list_struct rec;
+	struct tdb_record rec;
 	
 	/* read in the hash top */
 	if (tdb_ofs_read(tdb, TDB_HASH_TOP(hash), &rec_ptr) == -1)
@@ -323,7 +323,7 @@ static int tdb_count_dead(struct tdb_context *tdb, uint32_t hash)
 static int tdb_purge_dead(struct tdb_context *tdb, uint32_t hash)
 {
 	int res = -1;
-	struct list_struct rec;
+	struct tdb_record rec;
 	tdb_off_t rec_ptr;
 
 	if (tdb_lock(tdb, -1, F_WRLCK) == -1) {
@@ -359,7 +359,7 @@ static int tdb_purge_dead(struct tdb_context *tdb, uint32_t hash)
 static int tdb_delete_hash(struct tdb_context *tdb, TDB_DATA key, uint32_t hash)
 {
 	tdb_off_t rec_ptr;
-	struct list_struct rec;
+	struct tdb_record rec;
 	int ret;
 
 	if (tdb->max_dead_records != 0) {
@@ -422,7 +422,7 @@ int tdb_delete(struct tdb_context *tdb, TDB_DATA key)
  * See if we have a dead record around with enough space
  */
 static tdb_off_t tdb_find_dead(struct tdb_context *tdb, uint32_t hash,
-			       struct list_struct *r, tdb_len_t length)
+			       struct tdb_record *r, tdb_len_t length)
 {
 	tdb_off_t rec_ptr;
 	
@@ -450,7 +450,7 @@ static tdb_off_t tdb_find_dead(struct tdb_context *tdb, uint32_t hash,
 static int _tdb_store(struct tdb_context *tdb, TDB_DATA key,
 		      TDB_DATA dbuf, int flag, uint32_t hash)
 {
-	struct list_struct rec;
+	struct tdb_record rec;
 	tdb_off_t rec_ptr;
 	char *p = NULL;
 	int ret = -1;
@@ -739,7 +739,7 @@ void tdb_enable_seqnum(struct tdb_context *tdb)
  */
 static int tdb_free_region(struct tdb_context *tdb, tdb_off_t offset, ssize_t length)
 {
-	struct list_struct rec;
+	struct tdb_record rec;
 	if (length <= sizeof(rec)) {
 		/* the region is not worth adding */
 		return 0;
@@ -788,7 +788,7 @@ int tdb_wipe_all(struct tdb_context *tdb)
 	}
 
 	if (recovery_head != 0) {
-		struct list_struct rec;
+		struct tdb_record rec;
 		if (tdb->methods->tdb_read(tdb, recovery_head, &rec, sizeof(rec), DOCONV()) == -1) {
 			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_wipe_all: failed to read recovery record\n"));
 			return -1;
