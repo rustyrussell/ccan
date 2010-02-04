@@ -10,6 +10,7 @@
 #include <ccan/tdb/transaction.c>
 #include <ccan/tdb/error.c>
 #include <ccan/tdb/open.c>
+#include <ccan/tdb/check.c>
 #include <ccan/tap/tap.h>
 #include <stdlib.h>
 #include <err.h>

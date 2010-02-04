@@ -19,6 +19,7 @@ static int ftruncate_check(int fd, off_t length);
 #include <ccan/tdb/transaction.c>
 #include <ccan/tdb/error.c>
 #include <ccan/tdb/open.c>
+#include <ccan/tdb/check.c>
 #include <ccan/tap/tap.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -80,7 +81,7 @@ static void check_for_agent(int fd, bool block)
 	if (!external_agent_operation_check(agent, block, &res))
 		return;
 
-	if (res != 0)
+	if (res != 1)
 		err(1, "Agent failed open");
 	agent_pending = false;
 
