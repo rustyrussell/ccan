@@ -494,10 +494,10 @@ int _tdb_transaction_cancel(struct tdb_context *tdb, int ltype)
 
 	if (tdb->transaction->magic_offset) {
 		const struct tdb_methods *methods = tdb->transaction->io_methods;
-		uint32_t zero = 0;
+		uint32_t invalid = TDB_RECOVERY_INVALID_MAGIC;
 
 		/* remove the recovery marker */
-		if (methods->tdb_write(tdb, tdb->transaction->magic_offset, &zero, 4) == -1 ||
+		if (methods->tdb_write(tdb, tdb->transaction->magic_offset, &invalid, 4) == -1 ||
 		transaction_sync(tdb, tdb->transaction->magic_offset, 4) == -1) {
 			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction_cancel: failed to remove recovery magic\n"));
 			ret = -1;
@@ -805,7 +805,7 @@ static int transaction_setup_recovery(struct tdb_context *tdb,
 	rec = (struct tdb_record *)data;
 	memset(rec, 0, sizeof(*rec));
 
-	rec->magic    = 0;
+	rec->magic    = TDB_RECOVERY_INVALID_MAGIC;
 	rec->data_len = recovery_size;
 	rec->rec_len  = recovery_max_size;
 	rec->key_len  = old_map_size;

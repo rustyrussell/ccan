@@ -370,7 +370,7 @@ int tdb_check(struct tdb_context *tdb,
 				goto free;
 			break;
 		case TDB_RECOVERY_MAGIC:
-		case 0: /* Used for invalid (or in-progress) recovery area. */ 
+		case TDB_RECOVERY_INVALID_MAGIC:
 			if (recovery_start != off) {
 				TDB_LOG((tdb, TDB_DEBUG_ERROR,
 					 "Unexpected recovery record at offset %d\n",
