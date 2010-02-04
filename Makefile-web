@@ -1,5 +1,5 @@
 # This can be overridden on cmdline to generate pages elsewhere.
-WEBDIR=~/www/html/ccan
+WEBDIR=/home/rusty/www/html/ccan
 
 ALL_PAGES=$(patsubst %, $(WEBDIR)/info/%.html, $(ALL))
 DIRECT_TARBALLS=$(patsubst %, $(WEBDIR)/tarballs/%.tar.bz2, $(ALL))
