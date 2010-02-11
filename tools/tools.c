@@ -1,7 +1,10 @@
 #include <ccan/talloc/talloc.h>
 #include <ccan/grab_file/grab_file.h>
+#include <ccan/noerr/noerr.h>
+#include <ccan/read_write_all/read_write_all.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdarg.h>
@@ -106,4 +109,40 @@ char *temp_file(const void *ctx, const char *extension)
 	}
 
 	return talloc_asprintf(ctx, "%s/%u%s", tmpdir, count++, extension);
+}
+
+bool move_file(const char *oldname, const char *newname)
+{
+	char *contents;
+	size_t size;
+	int fd;
+	bool ret;
+
+	/* Simple case: rename works. */
+	if (rename(oldname, newname) == 0)
+		return true;
+
+	/* Try copy and delete: not atomic! */
+	contents = grab_file(NULL, oldname, &size);
+	if (!contents)
+		return false;
+
+	fd = open(newname, O_WRONLY|O_CREAT|O_TRUNC, 0666);
+	if (fd < 0) {
+		ret = false;
+		goto free;
+	}
+
+	ret = write_all(fd, contents, size);
+	if (close(fd) != 0)
+		ret = false;
+
+	if (ret)
+		unlink(oldname);
+	else
+		unlink(newname);
+
+free:
+	talloc_free(contents);
+	return ret;
 }

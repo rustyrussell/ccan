@@ -406,7 +406,7 @@ static void setup_adjust_files(const char *dir,
 static void rename_files(const struct adjusted *adj)
 {
 	while (adj) {
-		if (rename(adj->tmpfile, adj->file) != 0)
+		if (!move_file(adj->tmpfile, adj->file))
 			warn("Could not rename over '%s', we're in trouble",
 			     adj->file);
 		adj = adj->next;

@@ -46,7 +46,7 @@ static void *do_build(struct manifest *m)
 	if (filename) {
 		char *realname = talloc_asprintf(m, "%s.o", m->dir);
 		/* We leave this object file around, all built. */
-		if (rename(filename, realname) != 0)
+		if (!move_file(filename, realname))
 			return talloc_asprintf(m, "Failed to rename %s to %s",
 					       filename, realname);
 		return NULL;

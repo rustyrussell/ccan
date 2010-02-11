@@ -29,6 +29,7 @@ char *talloc_dirname(const void *ctx, const char *dir);
 char *talloc_getcwd(const void *ctx);
 char *run_command(const void *ctx, const char *fmt, ...);
 char *temp_file(const void *ctx, const char *extension);
+bool move_file(const char *oldname, const char *newname);
 
 /* From compile.c.
  *

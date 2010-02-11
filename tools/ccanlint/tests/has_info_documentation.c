@@ -1,5 +1,6 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/doc_extract.h>
+#include <tools/tools.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -81,7 +82,7 @@ static void create_info_template_doc(struct manifest *m, void *check_result)
 		unlink_noerr("_info.new");
 		err(1, "Closing _info.new");
 	}
-	if (rename("_info.new", "_info") != 0) {
+	if (!move_file("_info.new", "_info")) {
 		unlink_noerr("_info.new");
 		err(1, "Renaming _info.new to _info");
 	}
