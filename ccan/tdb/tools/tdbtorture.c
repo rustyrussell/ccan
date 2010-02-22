@@ -252,14 +252,10 @@ static void send_count_and_suicide(int sig)
 
 static int run_child(int i, int seed, unsigned num_loops, unsigned start)
 {
-	db = tdb_open_ex("torture.tdb", hash_size, TDB_CLEAR_IF_FIRST, 
+	db = tdb_open_ex("torture.tdb", hash_size, TDB_DEFAULT, 
 			 O_RDWR | O_CREAT, 0600, &log_ctx, NULL);
 	if (!db) {
 		fatal("db open failed");
-	}
-
-	if (seed == -1) {
-		seed = (getpid() + time(NULL)) & 0x7FFFFFFF;
 	}
 
 	srand(seed + i);
@@ -335,6 +331,10 @@ int main(int argc, char * const *argv)
 	}
 
 	unlink("torture.tdb");
+
+	if (seed == -1) {
+		seed = (getpid() + time(NULL)) & 0x7FFFFFFF;
+	}
 
 	if (num_procs == 1 && !kill_random) {
 		/* Don't fork for this case, makes debugging easier. */
