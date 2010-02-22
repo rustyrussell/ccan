@@ -161,7 +161,6 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 		errno = ENOMEM;
 		goto fail;
 	}
-
 	tdb_io_init(tdb);
 	tdb->fd = -1;
 #ifdef TDB_TRACE
@@ -341,7 +340,8 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 	{
 		char tracefile[strlen(name) + 32];
 
-		sprintf(tracefile, "%s.trace.%u", name, getpid());
+		snprintf(tracefile, sizeof(tracefile),
+			 "%s.trace.%li", name, (long)getpid());
 		tdb->tracefd = open(tracefile, O_WRONLY|O_CREAT|O_EXCL, 0600);
 		if (tdb->tracefd >= 0) {
 			tdb_enable_seqnum(tdb);
@@ -453,9 +453,7 @@ void *tdb_get_logging_private(struct tdb_context *tdb)
 	return tdb->log.log_private;
 }
 
-/* reopen a tdb - this can be used after a fork to ensure that we have an independent
-   seek pointer from our parent and to re-establish locks */
-int tdb_reopen(struct tdb_context *tdb)
+static int tdb_reopen_internal(struct tdb_context *tdb, bool active_lock)
 {
 	struct stat st;
 
@@ -484,11 +482,6 @@ int tdb_reopen(struct tdb_context *tdb)
 		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_reopen: open failed (%s)\n", strerror(errno)));
 		goto fail;
 	}
-	if ((tdb->flags & TDB_CLEAR_IF_FIRST) && 
-	    (tdb->methods->brlock(tdb, F_RDLCK, ACTIVE_LOCK, 1, TDB_LOCK_WAIT) == -1)) {
-		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_reopen: failed to obtain active lock\n"));
-		goto fail;
-	}
 	if (fstat(tdb->fd, &st) != 0) {
 		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_reopen: fstat failed (%s)\n", strerror(errno)));
 		goto fail;
@@ -499,11 +492,24 @@ int tdb_reopen(struct tdb_context *tdb)
 	}
 	tdb_mmap(tdb);
 
+	if (active_lock &&
+	    (tdb->methods->brlock(tdb, F_RDLCK, ACTIVE_LOCK, 1, TDB_LOCK_WAIT) == -1)) {
+		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_reopen: failed to obtain active lock\n"));
+		goto fail;
+	}
+
 	return 0;
 
 fail:
 	tdb_close(tdb);
 	return -1;
+}
+
+/* reopen a tdb - this can be used after a fork to ensure that we have an independent
+   seek pointer from our parent and to re-establish locks */
+int tdb_reopen(struct tdb_context *tdb)
+{
+	return tdb_reopen_internal(tdb, tdb->flags & TDB_CLEAR_IF_FIRST);
 }
 
 /* reopen all tdb's */
@@ -512,6 +518,8 @@ int tdb_reopen_all(int parent_longlived)
 	struct tdb_context *tdb;
 
 	for (tdb=tdbs; tdb; tdb = tdb->next) {
+		bool active_lock = (tdb->flags & TDB_CLEAR_IF_FIRST);
+
 		/*
 		 * If the parent is longlived (ie. a
 		 * parent daemon architecture), we know
@@ -525,10 +533,10 @@ int tdb_reopen_all(int parent_longlived)
 		 */
 		if (parent_longlived) {
 			/* Ensure no clear-if-first. */
-			tdb->flags &= ~TDB_CLEAR_IF_FIRST;
+			active_lock = false;
 		}
 
-		if (tdb_reopen(tdb) != 0)
+		if (tdb_reopen_internal(tdb, active_lock) != 0)
 			return -1;
 	}
 

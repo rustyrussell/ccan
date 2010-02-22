@@ -1,14 +1,14 @@
- /* 
+ /*
    Unix SMB/CIFS implementation.
 
    trivial database library
 
    Copyright (C) Rusty Russell		   2009
-   
+
      ** NOTE! The following LGPL license applies to the tdb
      ** library. This does NOT imply that all of Samba is released
      ** under the LGPL
-   
+
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public
    License as published by the Free Software Foundation; either
@@ -232,7 +232,7 @@ static bool tdb_check_used_record(struct tdb_context *tdb,
 				  const struct tdb_record *rec,
 				  unsigned char **hashes,
 				  int (*check)(TDB_DATA, TDB_DATA, void *),
-				  void *private)
+				  void *private_data)
 {
 	TDB_DATA key, data;
 
@@ -270,7 +270,7 @@ static bool tdb_check_used_record(struct tdb_context *tdb,
 		if (!data.dptr)
 			goto fail_put_key;
 
-		if (check(key, data, private) == -1)
+		if (check(key, data, private_data) == -1)
 			goto fail_put_data;
 		put_bytes(tdb, data);
 	}
@@ -303,8 +303,8 @@ static bool tdb_check_free_record(struct tdb_context *tdb,
 }
 
 int tdb_check(struct tdb_context *tdb,
-	      int (*check)(TDB_DATA key, TDB_DATA data, void *private),
-	      void *private)
+	      int (*check)(TDB_DATA key, TDB_DATA data, void *private_data),
+	      void *private_data)
 {
 	unsigned int h;
 	unsigned char **hashes;
@@ -330,7 +330,8 @@ int tdb_check(struct tdb_context *tdb,
 	}
 
 	/* One big malloc: pointers then bit arrays. */
-	hashes = calloc(1, sizeof(hashes[0]) * (1+tdb->header.hash_size)
+	hashes = (unsigned char **)calloc(
+			1, sizeof(hashes[0]) * (1+tdb->header.hash_size)
 			+ BITMAP_BITS / CHAR_BIT * (1+tdb->header.hash_size));
 	if (!hashes) {
 		tdb->ecode = TDB_ERR_OOM;
@@ -362,7 +363,7 @@ int tdb_check(struct tdb_context *tdb,
 		case TDB_MAGIC:
 		case TDB_DEAD_MAGIC:
 			if (!tdb_check_used_record(tdb, off, &rec, hashes,
-						   check, private))
+						   check, private_data))
 				goto free;
 			break;
 		case TDB_FREE_MAGIC:

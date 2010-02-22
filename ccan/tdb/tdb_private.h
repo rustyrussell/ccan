@@ -52,6 +52,18 @@
 
 /* #define TDB_TRACE 1 */
 
+#ifndef __STRING
+#define __STRING(x)    #x
+#endif
+
+#ifndef __STRINGSTRING
+#define __STRINGSTRING(x) __STRING(x)
+#endif
+
+#ifndef __location__
+#define __location__ __FILE__ ":" __STRINGSTRING(__LINE__)
+#endif
+
 #if HAVE_GETPAGESIZE
 #define getpagesize() 0x2000
 #endif

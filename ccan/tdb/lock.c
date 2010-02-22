@@ -33,17 +33,17 @@ void tdb_setalarm_sigptr(struct tdb_context *tdb, volatile sig_atomic_t *ptr)
 }
 
 static int fcntl_lock(struct tdb_context *tdb,
-		      int rw, off_t off, off_t len, bool wait)
+		      int rw, off_t off, off_t len, bool waitflag)
 {
 	struct flock fl;
-	
+
 	fl.l_type = rw;
 	fl.l_whence = SEEK_SET;
 	fl.l_start = off;
 	fl.l_len = len;
 	fl.l_pid = 0;
 
-	if (wait)
+	if (waitflag)
 		return fcntl(tdb->fd, F_SETLKW, &fl);
 	else
 		return fcntl(tdb->fd, F_SETLK, &fl);
@@ -163,7 +163,7 @@ int tdb_brlock(struct tdb_context *tdb,
 		 * EAGAIN is an expected return from non-blocking
 		 * locks. */
 		if (!(flags & TDB_LOCK_PROBE) && errno != EAGAIN) {
-			TDB_LOG((tdb, TDB_DEBUG_TRACE,"tdb_brlock failed (fd=%d) at offset %d rw_type=%d flags=%d len=%d\n", 
+			TDB_LOG((tdb, TDB_DEBUG_TRACE,"tdb_brlock failed (fd=%d) at offset %d rw_type=%d flags=%d len=%d\n",
 				 tdb->fd, offset, rw_type, flags, (int)len));
 		}
 		return -1;
@@ -185,7 +185,7 @@ int tdb_brunlock(struct tdb_context *tdb,
 	} while (ret == -1 && errno == EINTR);
 
 	if (ret == -1) {
-		TDB_LOG((tdb, TDB_DEBUG_TRACE,"tdb_brunlock failed (fd=%d) at offset %d rw_type=%d len=%d\n", 
+		TDB_LOG((tdb, TDB_DEBUG_TRACE,"tdb_brunlock failed (fd=%d) at offset %d rw_type=%d len=%d\n",
 			 tdb->fd, offset, rw_type, (int)len));
 	}
 	return ret;
@@ -631,6 +631,8 @@ int tdb_chainunlock_read(struct tdb_context *tdb, TDB_DATA key)
 	tdb_trace_1rec(tdb, "tdb_chainunlock_read", key);
 	return tdb_unlock(tdb, BUCKET(tdb->hash_fn(&key)), F_RDLCK);
 }
+
+
 
 /* record lock stops delete underneath */
 int tdb_lock_record(struct tdb_context *tdb, tdb_off_t off)

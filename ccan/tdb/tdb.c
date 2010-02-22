@@ -190,9 +190,9 @@ static TDB_DATA _tdb_fetch(struct tdb_context *tdb, TDB_DATA key)
 
 	/* find which hash bucket it is in */
 	hash = tdb->hash_fn(&key);
-	if (!(rec_ptr = tdb_find_lock_hash(tdb,key,hash,F_RDLCK,&rec))) {
+	if (!(rec_ptr = tdb_find_lock_hash(tdb,key,hash,F_RDLCK,&rec)))
 		return tdb_null;
-	}
+
 	ret.dptr = tdb_alloc_read(tdb, rec_ptr + sizeof(rec) + rec.key_len,
 				  rec.data_len);
 	ret.dsize = rec.data_len;
@@ -238,8 +238,7 @@ int tdb_parse_record(struct tdb_context *tdb, TDB_DATA key,
 	hash = tdb->hash_fn(&key);
 
 	if (!(rec_ptr = tdb_find_lock_hash(tdb,key,hash,F_RDLCK,&rec))) {
-		tdb_trace_1rec_ret(tdb, "tdb_parse_record", key,
-				   -TDB_ERR_NOEXIST);
+		tdb_trace_1rec_ret(tdb, "tdb_parse_record", key, -1);
 		tdb->ecode = TDB_ERR_NOEXIST;
 		return 0;
 	}
@@ -468,7 +467,7 @@ static tdb_off_t tdb_find_dead(struct tdb_context *tdb, uint32_t hash,
 }
 
 static int _tdb_store(struct tdb_context *tdb, TDB_DATA key,
-		      TDB_DATA dbuf, int flag, uint32_t hash)
+		       TDB_DATA dbuf, int flag, uint32_t hash)
 {
 	struct tdb_record rec;
 	tdb_off_t rec_ptr;
@@ -594,7 +593,7 @@ static int _tdb_store(struct tdb_context *tdb, TDB_DATA key,
 }
 
 /* store an element in the database, replacing any existing element
-   with the same key 
+   with the same key
 
    return 0 on success, -1 on failure
 */
@@ -605,8 +604,7 @@ int tdb_store(struct tdb_context *tdb, TDB_DATA key, TDB_DATA dbuf, int flag)
 
 	if (tdb->read_only || tdb->traverse_read) {
 		tdb->ecode = TDB_ERR_RDONLY;
-		tdb_trace_2rec_flag_ret(tdb, "tdb_store", key, dbuf, flag,
-					-TDB_ERR_RDONLY);
+		tdb_trace_2rec_flag_ret(tdb, "tdb_store", key, dbuf, flag, -1);
 		return -1;
 	}
 
@@ -620,7 +618,6 @@ int tdb_store(struct tdb_context *tdb, TDB_DATA key, TDB_DATA dbuf, int flag)
 	tdb_unlock(tdb, BUCKET(hash), F_WRLCK);
 	return ret;
 }
-
 
 /* Append to an entry. Create if not exist. */
 int tdb_append(struct tdb_context *tdb, TDB_DATA key, TDB_DATA new_dbuf)
@@ -714,7 +711,6 @@ int tdb_get_seqnum(struct tdb_context *tdb)
 	tdb_off_t seqnum=0;
 
 	tdb_ofs_read(tdb, TDB_SEQNUM_OFS, &seqnum);
-	tdb_trace_ret(tdb, "tdb_get_seqnum", seqnum);
 	return seqnum;
 }
 
@@ -900,7 +896,6 @@ failed:
 	return -1;
 }
 
-
 struct traverse_state {
 	bool error;
 	struct tdb_context *dest_db;
@@ -909,9 +904,9 @@ struct traverse_state {
 /*
   traverse function for repacking
  */
-static int repack_traverse(struct tdb_context *tdb, TDB_DATA key, TDB_DATA data, void *private)
+static int repack_traverse(struct tdb_context *tdb, TDB_DATA key, TDB_DATA data, void *private_data)
 {
-	struct traverse_state *state = (struct traverse_state *)private;
+	struct traverse_state *state = (struct traverse_state *)private_data;
 	if (tdb_store(state->dest_db, key, data, TDB_INSERT) != 0) {
 		state->error = true;
 		return -1;
@@ -930,13 +925,13 @@ int tdb_repack(struct tdb_context *tdb)
 	tdb_trace(tdb, "tdb_repack");
 
 	if (tdb_transaction_start(tdb) != 0) {
-		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_repack: Failed to start transaction\n"));
+		TDB_LOG((tdb, TDB_DEBUG_FATAL, __location__ " Failed to start transaction\n"));
 		return -1;
 	}
 
 	tmp_db = tdb_open("tmpdb", tdb_hash_size(tdb), TDB_INTERNAL, O_RDWR|O_CREAT, 0);
 	if (tmp_db == NULL) {
-		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_repack: Failed to create tmp_db\n"));
+		TDB_LOG((tdb, TDB_DEBUG_FATAL, __location__ " Failed to create tmp_db\n"));
 		tdb_transaction_cancel(tdb);
 		return -1;
 	}
@@ -945,21 +940,21 @@ int tdb_repack(struct tdb_context *tdb)
 	state.dest_db = tmp_db;
 
 	if (tdb_traverse_read(tdb, repack_traverse, &state) == -1) {
-		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_repack: Failed to traverse copying out\n"));
+		TDB_LOG((tdb, TDB_DEBUG_FATAL, __location__ " Failed to traverse copying out\n"));
 		tdb_transaction_cancel(tdb);
 		tdb_close(tmp_db);
 		return -1;		
 	}
 
 	if (state.error) {
-		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_repack: Error during traversal\n"));
+		TDB_LOG((tdb, TDB_DEBUG_FATAL, __location__ " Error during traversal\n"));
 		tdb_transaction_cancel(tdb);
 		tdb_close(tmp_db);
 		return -1;
 	}
 
 	if (tdb_wipe_all(tdb) != 0) {
-		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_repack: Failed to wipe database\n"));
+		TDB_LOG((tdb, TDB_DEBUG_FATAL, __location__ " Failed to wipe database\n"));
 		tdb_transaction_cancel(tdb);
 		tdb_close(tmp_db);
 		return -1;
@@ -969,14 +964,14 @@ int tdb_repack(struct tdb_context *tdb)
 	state.dest_db = tdb;
 
 	if (tdb_traverse_read(tmp_db, repack_traverse, &state) == -1) {
-		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_repack: Failed to traverse copying back\n"));
+		TDB_LOG((tdb, TDB_DEBUG_FATAL, __location__ " Failed to traverse copying back\n"));
 		tdb_transaction_cancel(tdb);
 		tdb_close(tmp_db);
 		return -1;		
 	}
 
 	if (state.error) {
-		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_repack: Error during second traversal\n"));
+		TDB_LOG((tdb, TDB_DEBUG_FATAL, __location__ " Error during second traversal\n"));
 		tdb_transaction_cancel(tdb);
 		tdb_close(tmp_db);
 		return -1;
@@ -985,7 +980,7 @@ int tdb_repack(struct tdb_context *tdb)
 	tdb_close(tmp_db);
 
 	if (tdb_transaction_commit(tdb) != 0) {
-		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_repack: Failed to commit\n"));
+		TDB_LOG((tdb, TDB_DEBUG_FATAL, __location__ " Failed to commit\n"));
 		return -1;
 	}
 
@@ -1004,10 +999,10 @@ static void tdb_trace_write(struct tdb_context *tdb, const char *str)
 static void tdb_trace_start(struct tdb_context *tdb)
 {
 	tdb_off_t seqnum=0;
-	char msg[sizeof(tdb_off_t) * 4];
+	char msg[sizeof(tdb_off_t) * 4 + 1];
 
 	tdb_ofs_read(tdb, TDB_SEQNUM_OFS, &seqnum);
-	sprintf(msg, "%u ", seqnum);
+	snprintf(msg, sizeof(msg), "%u ", seqnum);
 	tdb_trace_write(tdb, msg);
 }
 
@@ -1018,8 +1013,8 @@ static void tdb_trace_end(struct tdb_context *tdb)
 
 static void tdb_trace_end_ret(struct tdb_context *tdb, int ret)
 {
-	char msg[sizeof(ret) * 4];
-	sprintf(msg, " = %i\n", ret);
+	char msg[sizeof(ret) * 4 + 4];
+	snprintf(msg, sizeof(msg), " = %i\n", ret);
 	tdb_trace_write(tdb, msg);
 }
 
@@ -1034,10 +1029,11 @@ static void tdb_trace_record(struct tdb_context *tdb, TDB_DATA rec)
 		return;
 	}
 
+	/* snprintf here is purely cargo-cult programming. */
 	p = msg;
-	p += sprintf(p, " %zu:", rec.dsize);
+	p += snprintf(p, sizeof(msg), " %zu:", rec.dsize);
 	for (i = 0; i < rec.dsize; i++)
-		p += sprintf(p, "%02x", rec.dptr[i]);
+		p += snprintf(p, 2, "%02x", rec.dptr[i]);
 
 	tdb_trace_write(tdb, msg);
 }
@@ -1051,9 +1047,9 @@ void tdb_trace(struct tdb_context *tdb, const char *op)
 
 void tdb_trace_seqnum(struct tdb_context *tdb, uint32_t seqnum, const char *op)
 {
-	char msg[sizeof(tdb_off_t) * 4];
+	char msg[sizeof(tdb_off_t) * 4 + 1];
 
-	sprintf(msg, "%u ", seqnum);
+	snprintf(msg, sizeof(msg), "%u ", seqnum);
 	tdb_trace_write(tdb, msg);
 	tdb_trace_write(tdb, op);
 	tdb_trace_end(tdb);
@@ -1064,7 +1060,8 @@ void tdb_trace_open(struct tdb_context *tdb, const char *op,
 {
 	char msg[128];
 
-	sprintf(msg, "%s %u %#x %#x", op, hash_size, tdb_flags, open_flags);
+	snprintf(msg, sizeof(msg),
+		 "%s %u 0x%x 0x%x", op, hash_size, tdb_flags, open_flags);
 	tdb_trace_start(tdb);
 	tdb_trace_write(tdb, msg);
 	tdb_trace_end(tdb);
@@ -1119,9 +1116,9 @@ void tdb_trace_2rec_flag_ret(struct tdb_context *tdb, const char *op,
 			     TDB_DATA rec1, TDB_DATA rec2, unsigned flag,
 			     int ret)
 {
-	char msg[sizeof(ret) * 4];
+	char msg[1 + sizeof(ret) * 4];
 
-	sprintf(msg, " %#x", flag); 
+	snprintf(msg, sizeof(msg), " %#x", flag);
 	tdb_trace_start(tdb);
 	tdb_trace_write(tdb, op);
 	tdb_trace_record(tdb, rec1);

@@ -194,7 +194,9 @@ int tdb_munmap(struct tdb_context *tdb)
 
 #if HAVE_MMAP
 	if (tdb->map_ptr) {
-		int ret = munmap(tdb->map_ptr, tdb->map_size);
+		int ret;
+
+		ret = munmap(tdb->map_ptr, tdb->map_size);
 		if (ret != 0)
 			return ret;
 	}
@@ -386,6 +388,7 @@ unsigned char *tdb_alloc_read(struct tdb_context *tdb, tdb_off_t offset, tdb_len
 	unsigned char *buf;
 
 	/* some systems don't like zero length malloc */
+
 	if (!(buf = (unsigned char *)malloc(len ? len : 1))) {
 		/* Ensure ecode is set for log fn. */
 		tdb->ecode = TDB_ERR_OOM;
