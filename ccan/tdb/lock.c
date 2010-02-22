@@ -683,7 +683,8 @@ bool tdb_have_extra_locks(struct tdb_context *tdb)
 	return extra;
 }
 
-/* The transaction code uses this to remove all locks. */
+/* The transaction code uses this to remove all locks.  Note that this
+   may include OPEN_LOCK. */
 void tdb_release_extra_locks(struct tdb_context *tdb)
 {
 	unsigned int i, extra = 0;

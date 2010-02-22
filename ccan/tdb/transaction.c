@@ -135,9 +135,6 @@ struct tdb_transaction {
 	bool prepared;
 	tdb_off_t magic_offset;
 
-	/* set when the OPEN_LOCK has been taken */
-	bool open_lock_taken;
-
 	/* old file size before transaction */
 	tdb_len_t old_map_size;
 
@@ -418,6 +415,9 @@ static int transaction_brlock(struct tdb_context *tdb,
 			      int rw_type, tdb_off_t offset, size_t len,
 			      enum tdb_lock_flags flags)
 {
+	/* FIXME: We actually grab the open lock during a transaction. */
+	if (offset == OPEN_LOCK)
+		return tdb_brlock(tdb, rw_type, offset, len, flags);
 	return 0;
 }
 
@@ -504,11 +504,7 @@ int _tdb_transaction_cancel(struct tdb_context *tdb, int ltype)
 		}
 	}
 
-	if (tdb->transaction->open_lock_taken) {
-		tdb_brunlock(tdb, F_WRLCK, OPEN_LOCK, 1);
-		tdb->transaction->open_lock_taken = false;
-	}
-
+	/* This also removes the OPEN_LOCK, if we have it. */
 	tdb_release_extra_locks(tdb);
 
 	/* restore the normal io methods */
@@ -945,14 +941,11 @@ static int _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 
 	/* get the open lock - this prevents new users attaching to the database
 	   during the commit */
-	if (tdb_brlock(tdb, F_WRLCK, OPEN_LOCK, 1, TDB_LOCK_WAIT) == -1) {
+	if (tdb_nest_lock(tdb, OPEN_LOCK, F_WRLCK, TDB_LOCK_WAIT) == -1) {
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_prepare_commit: failed to get open lock\n"));
-		tdb->ecode = TDB_ERR_LOCK;
 		_tdb_transaction_cancel(tdb, F_WRLCK);
 		return -1;
 	}
-
-	tdb->transaction->open_lock_taken = true;
 
 	if (!(tdb->flags & TDB_NOSYNC)) {
 		/* write the recovery data to the end of the file */
