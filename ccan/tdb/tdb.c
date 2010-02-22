@@ -805,7 +805,7 @@ static int tdb_free_region(struct tdb_context *tdb, tdb_off_t offset, ssize_t le
 
 /*
   wipe the entire database, deleting all records. This can be done
-  very fast by using a global lock. The entire data portion of the
+  very fast by using a allrecord lock. The entire data portion of the
   file becomes a single entry in the freelist.
 
   This code carefully steps around the recovery area, leaving it alone

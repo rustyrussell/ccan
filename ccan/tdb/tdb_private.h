@@ -223,7 +223,7 @@ struct tdb_context {
 	int read_only; /* opened read-only */
 	int traverse_read; /* read-only traversal */
 	int traverse_write; /* read-write traversal */
-	struct tdb_lock_type global_lock;
+	struct tdb_lock_type allrecord_lock;
 	int num_lockrecs;
 	struct tdb_lock_type *lockrecs; /* only real locks, all with count>0 */
 	enum TDB_ERROR ecode; /* error code for last tdb error */

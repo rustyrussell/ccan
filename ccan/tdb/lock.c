@@ -226,13 +226,13 @@ static int _tdb_lock(struct tdb_context *tdb, int list, int ltype,
 	struct tdb_lock_type *new_lck;
 	int i;
 
-	/* a global lock allows us to avoid per chain locks */
-	if (tdb->global_lock.count && 
-	    (ltype == tdb->global_lock.ltype || ltype == F_RDLCK)) {
+	/* a allrecord lock allows us to avoid per chain locks */
+	if (tdb->allrecord_lock.count &&
+	    (ltype == tdb->allrecord_lock.ltype || ltype == F_RDLCK)) {
 		return 0;
 	}
 
-	if (tdb->global_lock.count) {
+	if (tdb->allrecord_lock.count) {
 		tdb->ecode = TDB_ERR_LOCK;
 		return -1;
 	}
@@ -318,12 +318,12 @@ static int _tdb_unlock(struct tdb_context *tdb, int list, int ltype,
 	struct tdb_lock_type *lck = NULL;
 
 	/* a global lock allows us to avoid per chain locks */
-	if (tdb->global_lock.count && 
-	    (ltype == tdb->global_lock.ltype || ltype == F_RDLCK)) {
+	if (tdb->allrecord_lock.count &&
+	    (ltype == tdb->allrecord_lock.ltype || ltype == F_RDLCK)) {
 		return 0;
 	}
 
-	if (tdb->global_lock.count) {
+	if (tdb->allrecord_lock.count) {
 		tdb->ecode = TDB_ERR_LOCK;
 		return -1;
 	}
@@ -403,7 +403,7 @@ int tdb_unlock(struct tdb_context *tdb, int list, int ltype)
  */
 int tdb_transaction_lock(struct tdb_context *tdb, int ltype)
 {
-	if (tdb->global_lock.count) {
+	if (tdb->allrecord_lock.count) {
 		return 0;
 	}
 	if (tdb->transaction_lock_count > 0) {
@@ -426,7 +426,7 @@ int tdb_transaction_lock(struct tdb_context *tdb, int ltype)
 int tdb_transaction_unlock(struct tdb_context *tdb, int ltype)
 {
 	int ret;
-	if (tdb->global_lock.count) {
+	if (tdb->allrecord_lock.count) {
 		return 0;
 	}
 	if (tdb->transaction_lock_count > 1) {
@@ -453,12 +453,12 @@ static int _tdb_lockall(struct tdb_context *tdb, int ltype,
 		return -1;
 	}
 
-	if (tdb->global_lock.count && tdb->global_lock.ltype == ltype) {
-		tdb->global_lock.count++;
+	if (tdb->allrecord_lock.count && tdb->allrecord_lock.ltype == ltype) {
+		tdb->allrecord_lock.count++;
 		return 0;
 	}
 
-	if (tdb->global_lock.count) {
+	if (tdb->allrecord_lock.count) {
 		/* a global lock of a different type exists */
 		tdb->ecode = TDB_ERR_LOCK;
 		return -1;
@@ -479,8 +479,8 @@ static int _tdb_lockall(struct tdb_context *tdb, int ltype,
 		return -1;
 	}
 
-	tdb->global_lock.count = 1;
-	tdb->global_lock.ltype = ltype;
+	tdb->allrecord_lock.count = 1;
+	tdb->allrecord_lock.ltype = ltype;
 
 	return 0;
 }
@@ -496,13 +496,13 @@ static int _tdb_unlockall(struct tdb_context *tdb, int ltype, bool mark_lock)
 		return -1;
 	}
 
-	if (tdb->global_lock.ltype != ltype || tdb->global_lock.count == 0) {
+	if (tdb->allrecord_lock.ltype != ltype || tdb->allrecord_lock.count == 0) {
 		tdb->ecode = TDB_ERR_LOCK;
 		return -1;
 	}
 
-	if (tdb->global_lock.count > 1) {
-		tdb->global_lock.count--;
+	if (tdb->allrecord_lock.count > 1) {
+		tdb->allrecord_lock.count--;
 		return 0;
 	}
 
@@ -513,8 +513,8 @@ static int _tdb_unlockall(struct tdb_context *tdb, int ltype, bool mark_lock)
 		return -1;
 	}
 
-	tdb->global_lock.count = 0;
-	tdb->global_lock.ltype = 0;
+	tdb->allrecord_lock.count = 0;
+	tdb->allrecord_lock.ltype = 0;
 
 	return 0;
 }
@@ -637,7 +637,7 @@ int tdb_chainunlock_read(struct tdb_context *tdb, TDB_DATA key)
 /* record lock stops delete underneath */
 int tdb_lock_record(struct tdb_context *tdb, tdb_off_t off)
 {
-	if (tdb->global_lock.count) {
+	if (tdb->allrecord_lock.count) {
 		return 0;
 	}
 	return off ? tdb->methods->brlock(tdb, F_RDLCK, off, 1, TDB_LOCK_WAIT) : 0;
@@ -668,7 +668,7 @@ int tdb_unlock_record(struct tdb_context *tdb, tdb_off_t off)
 	struct tdb_traverse_lock *i;
 	uint32_t count = 0;
 
-	if (tdb->global_lock.count) {
+	if (tdb->allrecord_lock.count) {
 		return 0;
 	}
 

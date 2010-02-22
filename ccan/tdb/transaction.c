@@ -510,10 +510,10 @@ int _tdb_transaction_cancel(struct tdb_context *tdb, int ltype)
 	}
 
 	/* remove any global lock created during the transaction */
-	if (tdb->global_lock.count != 0) {
-		tdb_brunlock(tdb, tdb->global_lock.ltype,
+	if (tdb->allrecord_lock.count != 0) {
+		tdb_brunlock(tdb, tdb->allrecord_lock.ltype,
 			     FREELIST_TOP, 4*tdb->header.hash_size);
-		tdb->global_lock.count = 0;
+		tdb->allrecord_lock.count = 0;
 	}
 
 	/* remove any locks created during the transaction */
@@ -564,7 +564,7 @@ int tdb_transaction_start(struct tdb_context *tdb)
 		return 0;
 	}
 
-	if (tdb->num_locks != 0 || tdb->global_lock.count) {
+	if (tdb->num_locks != 0 || tdb->allrecord_lock.count) {
 		/* the caller must not have any locks when starting a
 		   transaction as otherwise we'll be screwed by lack
 		   of nested locks in posix */
@@ -944,7 +944,7 @@ static int _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 	
 	/* if there are any locks pending then the caller has not
 	   nested their locks properly, so fail the transaction */
-	if (tdb->num_locks || tdb->global_lock.count) {
+	if (tdb->num_locks || tdb->allrecord_lock.count) {
 		tdb->ecode = TDB_ERR_LOCK;
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_prepare_commit: locks pending on commit\n"));
 		_tdb_transaction_cancel(tdb, F_RDLCK);
