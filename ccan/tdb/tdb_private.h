@@ -284,7 +284,6 @@ int tdb_ofs_read(struct tdb_context *tdb, tdb_off_t offset, tdb_off_t *d);
 int tdb_ofs_write(struct tdb_context *tdb, tdb_off_t offset, tdb_off_t *d);
 int tdb_lock_record(struct tdb_context *tdb, tdb_off_t off);
 int tdb_unlock_record(struct tdb_context *tdb, tdb_off_t off);
-int _tdb_transaction_cancel(struct tdb_context *tdb, int ltype);
 int tdb_rec_read(struct tdb_context *tdb, tdb_off_t offset, struct tdb_record *rec);
 int tdb_rec_write(struct tdb_context *tdb, tdb_off_t offset, struct tdb_record *rec);
 int tdb_do_delete(struct tdb_context *tdb, tdb_off_t rec_ptr, struct tdb_record *rec);

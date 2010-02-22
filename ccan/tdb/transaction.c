@@ -466,8 +466,8 @@ static int transaction_sync(struct tdb_context *tdb, tdb_off_t offset, tdb_len_t
 	return 0;
 }
 
-/* ltype is F_WRLCK after prepare. */
-int _tdb_transaction_cancel(struct tdb_context *tdb, int ltype)
+
+static int _tdb_transaction_cancel(struct tdb_context *tdb)
 {
 	int i, ret = 0;
 
@@ -632,11 +632,8 @@ fail_allrecord_lock:
 */
 int tdb_transaction_cancel(struct tdb_context *tdb)
 {
-	int ltype = F_RDLCK;
 	tdb_trace(tdb, "tdb_transaction_cancel");
-	if (tdb->transaction && tdb->transaction->prepared)
-		ltype = F_WRLCK;
-	return _tdb_transaction_cancel(tdb, ltype);
+	return _tdb_transaction_cancel(tdb);
 }
 
 /*
@@ -896,14 +893,14 @@ static int _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 
 	if (tdb->transaction->prepared) {
 		tdb->ecode = TDB_ERR_EINVAL;
-		_tdb_transaction_cancel(tdb, F_WRLCK);
+		_tdb_transaction_cancel(tdb);
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_prepare_commit: transaction already prepared\n"));
 		return -1;
 	}
 
 	if (tdb->transaction->transaction_error) {
 		tdb->ecode = TDB_ERR_IO;
-		_tdb_transaction_cancel(tdb, F_RDLCK);
+		_tdb_transaction_cancel(tdb);
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_prepare_commit: transaction error pending\n"));
 		return -1;
 	}
@@ -926,14 +923,14 @@ static int _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 	if (tdb_have_extra_locks(tdb)) {
 		tdb->ecode = TDB_ERR_LOCK;
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_prepare_commit: locks pending on commit\n"));
-		_tdb_transaction_cancel(tdb, F_RDLCK);
+		_tdb_transaction_cancel(tdb);
 		return -1;
 	}
 
 	/* upgrade the main transaction lock region to a write lock */
 	if (tdb_allrecord_upgrade(tdb) == -1) {
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_prepare_commit: failed to upgrade hash locks\n"));
-		_tdb_transaction_cancel(tdb, F_RDLCK);
+		_tdb_transaction_cancel(tdb);
 		return -1;
 	}
 
@@ -941,7 +938,7 @@ static int _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 	   during the commit */
 	if (tdb_nest_lock(tdb, OPEN_LOCK, F_WRLCK, TDB_LOCK_WAIT) == -1) {
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_prepare_commit: failed to get open lock\n"));
-		_tdb_transaction_cancel(tdb, F_WRLCK);
+		_tdb_transaction_cancel(tdb);
 		return -1;
 	}
 
@@ -949,7 +946,7 @@ static int _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 		/* write the recovery data to the end of the file */
 		if (transaction_setup_recovery(tdb, &tdb->transaction->magic_offset) == -1) {
 			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction_prepare_commit: failed to setup recovery data\n"));
-			_tdb_transaction_cancel(tdb, F_WRLCK);
+			_tdb_transaction_cancel(tdb);
 			return -1;
 		}
 	}
@@ -963,7 +960,7 @@ static int _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 					     tdb->transaction->old_map_size) == -1) {
 			tdb->ecode = TDB_ERR_IO;
 			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction_prepare_commit: expansion failed\n"));
-			_tdb_transaction_cancel(tdb, F_WRLCK);
+			_tdb_transaction_cancel(tdb);
 			return -1;
 		}
 		tdb->map_size = tdb->transaction->old_map_size;
@@ -1015,7 +1012,7 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 
 	/* check for a null transaction */
 	if (tdb->transaction->blocks == NULL) {
-		_tdb_transaction_cancel(tdb, F_RDLCK);
+		_tdb_transaction_cancel(tdb);
 		return 0;
 	}
 
@@ -1051,7 +1048,7 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 			tdb->methods = methods;
 			tdb_transaction_recover(tdb); 
 
-			_tdb_transaction_cancel(tdb, F_WRLCK);
+			_tdb_transaction_cancel(tdb);
 
 			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction_commit: write failed\n"));
 			return -1;
@@ -1086,7 +1083,7 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 
 	/* use a transaction cancel to free memory and remove the
 	   transaction locks */
-	_tdb_transaction_cancel(tdb, F_WRLCK);
+	_tdb_transaction_cancel(tdb);
 
 	if (need_repack) {
 		return tdb_repack(tdb);
