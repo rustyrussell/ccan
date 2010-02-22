@@ -249,7 +249,7 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 	/* we need to zero database if we are the only one with it open */
 	if ((tdb_flags & TDB_CLEAR_IF_FIRST) &&
 	    (!tdb->read_only) &&
-	    (locked = (tdb->methods->brlock(tdb, F_WRLCK, ACTIVE_LOCK, 1, TDB_LOCK_NOWAIT|TDB_LOCK_PROBE) == 0))) {
+	    (locked = (tdb_nest_lock(tdb, ACTIVE_LOCK, F_WRLCK, TDB_LOCK_NOWAIT|TDB_LOCK_PROBE) == 0))) {
 		open_flags |= O_CREAT;
 		if (ftruncate(tdb->fd, 0) == -1) {
 			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_open_ex: "
@@ -312,7 +312,7 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 	tdb->inode = st.st_ino;
 	tdb_mmap(tdb);
 	if (locked) {
-		if (tdb->methods->brunlock(tdb, F_WRLCK, ACTIVE_LOCK, 1) == -1) {
+		if (tdb_nest_unlock(tdb, ACTIVE_LOCK, F_WRLCK, false) == -1) {
 			TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_open_ex: "
 				 "failed to take ACTIVE_LOCK on %s: %s\n",
 				 name, strerror(errno)));
@@ -327,8 +327,9 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 
 	if (tdb_flags & TDB_CLEAR_IF_FIRST) {
 		/* leave this lock in place to indicate it's in use */
-		if (tdb->methods->brlock(tdb, F_RDLCK, ACTIVE_LOCK, 1, TDB_LOCK_WAIT) == -1)
+		if (tdb_nest_lock(tdb, ACTIVE_LOCK, F_RDLCK, TDB_LOCK_WAIT) == -1) {
 			goto fail;
+		}
 	}
 
 	/* if needed, run recovery */
@@ -382,6 +383,7 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 	if (tdb->fd != -1)
 		if (close(tdb->fd) != 0)
 			TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_open_ex: failed to close tdb->fd on error!\n"));
+	SAFE_FREE(tdb->lockrecs);
 	SAFE_FREE(tdb);
 	errno = save_errno;
 	return NULL;
@@ -493,8 +495,11 @@ static int tdb_reopen_internal(struct tdb_context *tdb, bool active_lock)
 	}
 	tdb_mmap(tdb);
 
-	if (active_lock &&
-	    (tdb->methods->brlock(tdb, F_RDLCK, ACTIVE_LOCK, 1, TDB_LOCK_WAIT) == -1)) {
+	/* We may still think we hold the active lock. */
+	tdb->num_lockrecs = 0;
+	SAFE_FREE(tdb->lockrecs);
+
+	if (active_lock && tdb_nest_lock(tdb, ACTIVE_LOCK, F_RDLCK, TDB_LOCK_WAIT) == -1) {
 		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_reopen: failed to obtain active lock\n"));
 		goto fail;
 	}

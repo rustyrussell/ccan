@@ -675,6 +675,11 @@ bool tdb_have_extra_locks(struct tdb_context *tdb)
 		return true;
 	}
 
+	/* We always hold the active lock if CLEAR_IF_FIRST. */
+	if (find_nestlock(tdb, ACTIVE_LOCK)) {
+		extra--;
+	}
+
 	/* In a transaction, we expect to hold the transaction lock */
 	if (tdb->transaction && find_nestlock(tdb, TRANSACTION_LOCK)) {
 		extra--;
@@ -698,7 +703,10 @@ void tdb_release_extra_locks(struct tdb_context *tdb)
 	for (i=0;i<tdb->num_lockrecs;i++) {
 		struct tdb_lock_type *lck = &tdb->lockrecs[i];
 
+		/* Don't release transaction or active locks! */
 		if (tdb->transaction && lck->off == TRANSACTION_LOCK) {
+			tdb->lockrecs[extra++] = *lck;
+		} else if (lck->off == ACTIVE_LOCK) {
 			tdb->lockrecs[extra++] = *lck;
 		} else {
 			tdb_brunlock(tdb, lck->ltype, lck->off, 1);

@@ -259,6 +259,7 @@ int tdb_nest_lock(struct tdb_context *tdb, uint32_t offset, int ltype,
 		  enum tdb_lock_flags flags);
 int tdb_nest_unlock(struct tdb_context *tdb, uint32_t offset, int ltype,
 		    bool mark_lock);
+bool tdb_have_locks(struct tdb_context *tdb);
 int tdb_unlock(struct tdb_context *tdb, int list, int ltype);
 int tdb_brlock(struct tdb_context *tdb,
 	       int rw_type, tdb_off_t offset, size_t len,
