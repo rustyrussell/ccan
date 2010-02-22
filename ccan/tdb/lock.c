@@ -197,13 +197,29 @@ int tdb_brunlock(struct tdb_context *tdb,
   deadlock detection and claim a deadlock when progress can be
   made. For those OSes we may loop for a while.  
 */
-int tdb_brlock_upgrade(struct tdb_context *tdb, tdb_off_t offset, size_t len)
+int tdb_allrecord_upgrade(struct tdb_context *tdb)
 {
 	int count = 1000;
+
+	if (tdb->allrecord_lock.count != 1) {
+		TDB_LOG((tdb, TDB_DEBUG_ERROR,
+			 "tdb_allrecord_upgrade failed: count %u too high\n",
+			 tdb->allrecord_lock.count));
+		return -1;
+	}
+
+	if (tdb->allrecord_lock.off != 1) {
+		TDB_LOG((tdb, TDB_DEBUG_ERROR,
+			 "tdb_allrecord_upgrade failed: already upgraded?\n"));
+		return -1;
+	}
+
 	while (count--) {
 		struct timeval tv;
-		if (tdb_brlock(tdb, F_WRLCK, offset, len,
+		if (tdb_brlock(tdb, F_WRLCK, FREELIST_TOP, 0,
 			       TDB_LOCK_WAIT|TDB_LOCK_PROBE) == 0) {
+			tdb->allrecord_lock.ltype = F_WRLCK;
+			tdb->allrecord_lock.off = 0;
 			return 0;
 		}
 		if (errno != EDEADLK) {
@@ -214,7 +230,7 @@ int tdb_brlock_upgrade(struct tdb_context *tdb, tdb_off_t offset, size_t len)
 		tv.tv_usec = 1;
 		select(0, NULL, NULL, NULL, &tv);
 	}
-	TDB_LOG((tdb, TDB_DEBUG_TRACE,"tdb_brlock_upgrade failed at offset %d\n", offset));
+	TDB_LOG((tdb, TDB_DEBUG_TRACE,"tdb_allrecord_upgrade failed\n"));
 	return -1;
 }
 
@@ -420,11 +436,10 @@ int tdb_transaction_unlock(struct tdb_context *tdb, int ltype)
 }
 
 
-
-
-/* lock/unlock entire database */
-static int _tdb_lockall(struct tdb_context *tdb, int ltype,
-			enum tdb_lock_flags flags)
+/* lock/unlock entire database.  It can only be upgradable if you have some
+ * other way of guaranteeing exclusivity (ie. transaction write lock). */
+int tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
+		       enum tdb_lock_flags flags, bool upgradable)
 {
 	/* There are no locks on read-only dbs */
 	if (tdb->read_only || tdb->traverse_read) {
@@ -449,6 +464,12 @@ static int _tdb_lockall(struct tdb_context *tdb, int ltype,
 		return -1;
 	}
 
+	if (upgradable && ltype != F_RDLCK) {
+		/* tdb error: you can't upgrade a write lock! */
+		tdb->ecode = TDB_ERR_LOCK;
+		return -1;
+	}
+
 	if (tdb->methods->brlock(tdb, ltype, FREELIST_TOP, 0, flags)) {
 		if (flags & TDB_LOCK_WAIT) {
 			TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_lockall failed (%s)\n", strerror(errno)));
@@ -457,7 +478,10 @@ static int _tdb_lockall(struct tdb_context *tdb, int ltype,
 	}
 
 	tdb->allrecord_lock.count = 1;
-	tdb->allrecord_lock.ltype = ltype;
+	/* If it's upgradable, it's actually exclusive so we can treat
+	 * it as a write lock. */
+	tdb->allrecord_lock.ltype = upgradable ? F_WRLCK : ltype;
+	tdb->allrecord_lock.off = upgradable;
 
 	return 0;
 }
@@ -465,7 +489,7 @@ static int _tdb_lockall(struct tdb_context *tdb, int ltype,
 
 
 /* unlock entire db */
-static int _tdb_unlockall(struct tdb_context *tdb, int ltype, bool mark_lock)
+int tdb_allrecord_unlock(struct tdb_context *tdb, int ltype, bool mark_lock)
 {
 	/* There are no locks on read-only dbs */
 	if (tdb->read_only || tdb->traverse_read) {
@@ -473,7 +497,14 @@ static int _tdb_unlockall(struct tdb_context *tdb, int ltype, bool mark_lock)
 		return -1;
 	}
 
-	if (tdb->allrecord_lock.ltype != ltype || tdb->allrecord_lock.count == 0) {
+	if (tdb->allrecord_lock.count == 0) {
+		tdb->ecode = TDB_ERR_LOCK;
+		return -1;
+	}
+
+	/* Upgradable locks are marked as write locks. */
+	if (tdb->allrecord_lock.ltype != ltype
+	    && (!tdb->allrecord_lock.off || ltype != F_RDLCK)) {
 		tdb->ecode = TDB_ERR_LOCK;
 		return -1;
 	}
@@ -499,27 +530,27 @@ static int _tdb_unlockall(struct tdb_context *tdb, int ltype, bool mark_lock)
 int tdb_lockall(struct tdb_context *tdb)
 {
 	tdb_trace(tdb, "tdb_lockall");
-	return _tdb_lockall(tdb, F_WRLCK, TDB_LOCK_WAIT);
+	return tdb_allrecord_lock(tdb, F_WRLCK, TDB_LOCK_WAIT, false);
 }
 
 /* lock entire database with write lock - mark only */
 int tdb_lockall_mark(struct tdb_context *tdb)
 {
 	tdb_trace(tdb, "tdb_lockall_mark");
-	return _tdb_lockall(tdb, F_WRLCK, TDB_LOCK_MARK_ONLY);
+	return tdb_allrecord_lock(tdb, F_WRLCK, TDB_LOCK_MARK_ONLY, false);
 }
 
 /* unlock entire database with write lock - unmark only */
 int tdb_lockall_unmark(struct tdb_context *tdb)
 {
 	tdb_trace(tdb, "tdb_lockall_unmark");
-	return _tdb_unlockall(tdb, F_WRLCK, true);
+	return tdb_allrecord_unlock(tdb, F_WRLCK, true);
 }
 
 /* lock entire database with write lock - nonblocking varient */
 int tdb_lockall_nonblock(struct tdb_context *tdb)
 {
-	int ret = _tdb_lockall(tdb, F_WRLCK, TDB_LOCK_NOWAIT);
+	int ret = tdb_allrecord_lock(tdb, F_WRLCK, TDB_LOCK_NOWAIT, false);
 	tdb_trace_ret(tdb, "tdb_lockall_nonblock", ret);
 	return ret;
 }
@@ -528,20 +559,20 @@ int tdb_lockall_nonblock(struct tdb_context *tdb)
 int tdb_unlockall(struct tdb_context *tdb)
 {
 	tdb_trace(tdb, "tdb_unlockall");
-	return _tdb_unlockall(tdb, F_WRLCK, false);
+	return tdb_allrecord_unlock(tdb, F_WRLCK, false);
 }
 
 /* lock entire database with read lock */
 int tdb_lockall_read(struct tdb_context *tdb)
 {
 	tdb_trace(tdb, "tdb_lockall_read");
-	return _tdb_lockall(tdb, F_RDLCK, TDB_LOCK_WAIT);
+	return tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false);
 }
 
 /* lock entire database with read lock - nonblock varient */
 int tdb_lockall_read_nonblock(struct tdb_context *tdb)
 {
-	int ret = _tdb_lockall(tdb, F_RDLCK, TDB_LOCK_NOWAIT);
+	int ret = tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_NOWAIT, false);
 	tdb_trace_ret(tdb, "tdb_lockall_read_nonblock", ret);
 	return ret;
 }
@@ -550,7 +581,7 @@ int tdb_lockall_read_nonblock(struct tdb_context *tdb)
 int tdb_unlockall_read(struct tdb_context *tdb)
 {
 	tdb_trace(tdb, "tdb_unlockall_read");
-	return _tdb_unlockall(tdb, F_RDLCK, false);
+	return tdb_allrecord_unlock(tdb, F_RDLCK, false);
 }
 
 /* lock/unlock one hash chain. This is meant to be used to reduce
@@ -661,7 +692,8 @@ bool tdb_have_extra_locks(struct tdb_context *tdb)
 {
 	unsigned int extra = tdb->num_lockrecs;
 
-	if (tdb->allrecord_lock.count) {
+	/* A transaction holds the lock for all records. */
+	if (!tdb->transaction && tdb->allrecord_lock.count) {
 		return true;
 	}
 

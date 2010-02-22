@@ -223,7 +223,7 @@ struct tdb_context {
 	int read_only; /* opened read-only */
 	int traverse_read; /* read-only traversal */
 	int traverse_write; /* read-write traversal */
-	struct tdb_lock_type allrecord_lock;
+	struct tdb_lock_type allrecord_lock; /* .offset == upgradable */
 	int num_lockrecs;
 	struct tdb_lock_type *lockrecs; /* only real locks, all with count>0 */
 	enum TDB_ERROR ecode; /* error code for last tdb error */
@@ -269,7 +269,10 @@ bool tdb_have_extra_locks(struct tdb_context *tdb);
 void tdb_release_extra_locks(struct tdb_context *tdb);
 int tdb_transaction_lock(struct tdb_context *tdb, int ltype);
 int tdb_transaction_unlock(struct tdb_context *tdb, int ltype);
-int tdb_brlock_upgrade(struct tdb_context *tdb, tdb_off_t offset, size_t len);
+int tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
+		       enum tdb_lock_flags flags, bool upgradable);
+int tdb_allrecord_unlock(struct tdb_context *tdb, int ltype, bool mark_lock);
+int tdb_allrecord_upgrade(struct tdb_context *tdb);
 int tdb_write_lock_record(struct tdb_context *tdb, tdb_off_t off);
 int tdb_write_unlock_record(struct tdb_context *tdb, tdb_off_t off);
 int tdb_ofs_read(struct tdb_context *tdb, tdb_off_t offset, tdb_off_t *d);

@@ -510,7 +510,6 @@ int _tdb_transaction_cancel(struct tdb_context *tdb, int ltype)
 	/* restore the normal io methods */
 	tdb->methods = tdb->transaction->io_methods;
 
-	tdb_brunlock(tdb, ltype, FREELIST_TOP, 0);
 	tdb_transaction_unlock(tdb, F_WRLCK);
 	SAFE_FREE(tdb->transaction->hash_heads);
 	SAFE_FREE(tdb->transaction);
@@ -583,10 +582,9 @@ int tdb_transaction_start(struct tdb_context *tdb)
 	
 	/* get a read lock from the freelist to the end of file. This
 	   is upgraded to a write lock during the commit */
-	if (tdb_brlock(tdb, F_RDLCK, FREELIST_TOP, 0, TDB_LOCK_WAIT) == -1) {
+	if (tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, true) == -1) {
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_start: failed to get hash locks\n"));
-		tdb->ecode = TDB_ERR_LOCK;
-		goto fail;
+		goto fail_allrecord_lock;
 	}
 
 	/* setup a copy of the hash table heads so the hash scan in
@@ -619,7 +617,8 @@ int tdb_transaction_start(struct tdb_context *tdb)
 	return 0;
 	
 fail:
-	tdb_brunlock(tdb, F_RDLCK, FREELIST_TOP, 0);
+	tdb_allrecord_unlock(tdb, F_RDLCK, false);
+fail_allrecord_lock:
 	tdb_transaction_unlock(tdb, F_WRLCK);
 	SAFE_FREE(tdb->transaction->blocks);
 	SAFE_FREE(tdb->transaction->hash_heads);
@@ -932,9 +931,8 @@ static int _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 	}
 
 	/* upgrade the main transaction lock region to a write lock */
-	if (tdb_brlock_upgrade(tdb, FREELIST_TOP, 0) == -1) {
+	if (tdb_allrecord_upgrade(tdb) == -1) {
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_prepare_commit: failed to upgrade hash locks\n"));
-		tdb->ecode = TDB_ERR_LOCK;
 		_tdb_transaction_cancel(tdb, F_RDLCK);
 		return -1;
 	}
