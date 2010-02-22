@@ -520,7 +520,7 @@ int _tdb_transaction_cancel(struct tdb_context *tdb, int ltype)
 	if (tdb->num_locks != 0) {
 		for (i=0;i<tdb->num_lockrecs;i++) {
 			tdb_brunlock(tdb, tdb->lockrecs[i].ltype,
-				     FREELIST_TOP+4*tdb->lockrecs[i].list, 1);
+				     tdb->lockrecs[i].off, 1);
 		}
 		tdb->num_locks = 0;
 		tdb->num_lockrecs = 0;

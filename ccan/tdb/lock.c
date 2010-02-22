@@ -218,43 +218,38 @@ int tdb_brlock_upgrade(struct tdb_context *tdb, tdb_off_t offset, size_t len)
 	return -1;
 }
 
+/* list -1 is the alloc list, otherwise a hash chain. */
+static tdb_off_t lock_offset(int list)
+{
+	return FREELIST_TOP + 4*list;
+}
 
-/* lock a list in the database. list -1 is the alloc list */
-static int _tdb_lock(struct tdb_context *tdb, int list, int ltype,
-		     enum tdb_lock_flags flags)
+/* lock an offset in the database. */
+int tdb_nest_lock(struct tdb_context *tdb, uint32_t offset, int ltype,
+		  enum tdb_lock_flags flags)
 {
 	struct tdb_lock_type *new_lck;
 	int i;
 
-	/* a allrecord lock allows us to avoid per chain locks */
-	if (tdb->allrecord_lock.count &&
-	    (ltype == tdb->allrecord_lock.ltype || ltype == F_RDLCK)) {
-		return 0;
-	}
-
-	if (tdb->allrecord_lock.count) {
+	if (offset >= lock_offset(tdb->header.hash_size)) {
 		tdb->ecode = TDB_ERR_LOCK;
-		return -1;
-	}
-
-	if (list < -1 || list >= (int)tdb->header.hash_size) {
-		tdb->ecode = TDB_ERR_LOCK;
-		TDB_LOG((tdb, TDB_DEBUG_ERROR,"tdb_lock: invalid list %d for ltype=%d\n", 
-			   list, ltype));
+		TDB_LOG((tdb, TDB_DEBUG_ERROR,"tdb_lock: invalid offset %u for ltype=%d\n",
+			 offset, ltype));
 		return -1;
 	}
 	if (tdb->flags & TDB_NOLOCK)
 		return 0;
 
 	for (i=0; i<tdb->num_lockrecs; i++) {
-		if (tdb->lockrecs[i].list == list) {
+		if (tdb->lockrecs[i].off == offset) {
 			if (tdb->lockrecs[i].count == 0) {
 				/*
 				 * Can't happen, see tdb_unlock(). It should
 				 * be an assert.
 				 */
 				TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_lock: "
-					 "lck->count == 0 for list %d", list));
+					 "lck->count == 0 for offset %u",
+					 offset));
 			}
 			/*
 			 * Just increment the in-memory struct, posix locks
@@ -276,13 +271,13 @@ static int _tdb_lock(struct tdb_context *tdb, int list, int ltype,
 
 	/* Since fcntl locks don't nest, we do a lock for the first one,
 	   and simply bump the count for future ones */
-	if (tdb->methods->brlock(tdb, ltype, FREELIST_TOP+4*list, 1, flags)) {
+	if (tdb->methods->brlock(tdb, ltype, offset, 1, flags)) {
 		return -1;
 	}
 
 	tdb->num_locks++;
 
-	tdb->lockrecs[tdb->num_lockrecs].list = list;
+	tdb->lockrecs[tdb->num_lockrecs].off = offset;
 	tdb->lockrecs[tdb->num_lockrecs].count = 1;
 	tdb->lockrecs[tdb->num_lockrecs].ltype = ltype;
 	tdb->num_lockrecs += 1;
@@ -295,7 +290,19 @@ int tdb_lock(struct tdb_context *tdb, int list, int ltype)
 {
 	int ret;
 
-	ret = _tdb_lock(tdb, list, ltype, TDB_LOCK_WAIT);
+	/* a allrecord lock allows us to avoid per chain locks */
+	if (tdb->allrecord_lock.count &&
+	    (ltype == tdb->allrecord_lock.ltype || ltype == F_RDLCK)) {
+		return 0;
+	}
+
+	if (tdb->allrecord_lock.count) {
+		tdb->ecode = TDB_ERR_LOCK;
+		ret = -1;
+	} else {
+		ret = tdb_nest_lock(tdb, lock_offset(list), ltype,
+				    TDB_LOCK_WAIT);
+	}
 	if (ret) {
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_lock failed on list %d "
 			 "ltype=%d (%s)\n",  list, ltype, strerror(errno)));
@@ -306,18 +313,7 @@ int tdb_lock(struct tdb_context *tdb, int list, int ltype)
 /* lock a list in the database. list -1 is the alloc list. non-blocking lock */
 int tdb_lock_nonblock(struct tdb_context *tdb, int list, int ltype)
 {
-	return _tdb_lock(tdb, list, ltype, TDB_LOCK_NOWAIT);
-}
-
-
-static int _tdb_unlock(struct tdb_context *tdb, int list, int ltype,
-		       bool mark_lock)
-{
-	int ret = -1;
-	int i;
-	struct tdb_lock_type *lck = NULL;
-
-	/* a global lock allows us to avoid per chain locks */
+	/* a allrecord lock allows us to avoid per chain locks */
 	if (tdb->allrecord_lock.count &&
 	    (ltype == tdb->allrecord_lock.ltype || ltype == F_RDLCK)) {
 		return 0;
@@ -328,17 +324,28 @@ static int _tdb_unlock(struct tdb_context *tdb, int list, int ltype,
 		return -1;
 	}
 
+	return tdb_nest_lock(tdb, lock_offset(list), ltype, TDB_LOCK_NOWAIT);
+}
+
+
+int tdb_nest_unlock(struct tdb_context *tdb, uint32_t offset, int ltype,
+		    bool mark_lock)
+{
+	int ret = -1;
+	int i;
+	struct tdb_lock_type *lck = NULL;
+
 	if (tdb->flags & TDB_NOLOCK)
 		return 0;
 
 	/* Sanity checks */
-	if (list < -1 || list >= (int)tdb->header.hash_size) {
-		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_unlock: list %d invalid (%d)\n", list, tdb->header.hash_size));
+	if (offset >= lock_offset(tdb->header.hash_size)) {
+		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_unlock: offset %u invalid (%d)\n", offset, tdb->header.hash_size));
 		return ret;
 	}
 
 	for (i=0; i<tdb->num_lockrecs; i++) {
-		if (tdb->lockrecs[i].list == list) {
+		if (tdb->lockrecs[i].off == offset) {
 			lck = &tdb->lockrecs[i];
 			break;
 		}
@@ -364,8 +371,7 @@ static int _tdb_unlock(struct tdb_context *tdb, int list, int ltype,
 	if (mark_lock) {
 		ret = 0;
 	} else {
-		ret = tdb->methods->brunlock(tdb, ltype,
-					     FREELIST_TOP+4*list, 1);
+		ret = tdb->methods->brunlock(tdb, ltype, offset, 1);
 	}
 	tdb->num_locks--;
 
@@ -395,7 +401,18 @@ static int _tdb_unlock(struct tdb_context *tdb, int list, int ltype,
 
 int tdb_unlock(struct tdb_context *tdb, int list, int ltype)
 {
-	return _tdb_unlock(tdb, list, ltype, false);
+	/* a global lock allows us to avoid per chain locks */
+	if (tdb->allrecord_lock.count &&
+	    (ltype == tdb->allrecord_lock.ltype || ltype == F_RDLCK)) {
+		return 0;
+	}
+
+	if (tdb->allrecord_lock.count) {
+		tdb->ecode = TDB_ERR_LOCK;
+		return -1;
+	}
+
+	return tdb_nest_unlock(tdb, lock_offset(list), ltype, false);
 }
 
 /*
@@ -599,8 +616,8 @@ int tdb_chainlock_nonblock(struct tdb_context *tdb, TDB_DATA key)
 /* mark a chain as locked without actually locking it. Warning! use with great caution! */
 int tdb_chainlock_mark(struct tdb_context *tdb, TDB_DATA key)
 {
-	int ret = _tdb_lock(tdb, BUCKET(tdb->hash_fn(&key)), F_WRLCK,
-			    TDB_LOCK_MARK_ONLY);
+	int ret = tdb_nest_lock(tdb, lock_offset(BUCKET(tdb->hash_fn(&key))),
+				F_WRLCK, TDB_LOCK_MARK_ONLY);
 	tdb_trace_1rec(tdb, "tdb_chainlock_mark", key);
 	return ret;
 }
@@ -609,7 +626,8 @@ int tdb_chainlock_mark(struct tdb_context *tdb, TDB_DATA key)
 int tdb_chainlock_unmark(struct tdb_context *tdb, TDB_DATA key)
 {
 	tdb_trace_1rec(tdb, "tdb_chainlock_unmark", key);
-	return _tdb_unlock(tdb, BUCKET(tdb->hash_fn(&key)), F_WRLCK, true);
+	return tdb_nest_unlock(tdb, lock_offset(BUCKET(tdb->hash_fn(&key))),
+			       F_WRLCK, true);
 }
 
 int tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key)
