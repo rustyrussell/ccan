@@ -449,9 +449,7 @@ static int _tdb_lockall(struct tdb_context *tdb, int ltype,
 		return -1;
 	}
 
-	if (tdb->methods->brlock(tdb, ltype,
-				 FREELIST_TOP, 4*tdb->header.hash_size,
-				 flags)) {
+	if (tdb->methods->brlock(tdb, ltype, FREELIST_TOP, 0, flags)) {
 		if (flags & TDB_LOCK_WAIT) {
 			TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_lockall failed (%s)\n", strerror(errno)));
 		}
@@ -486,8 +484,7 @@ static int _tdb_unlockall(struct tdb_context *tdb, int ltype, bool mark_lock)
 	}
 
 	if (!mark_lock &&
-	    tdb->methods->brunlock(tdb, ltype,
-				   FREELIST_TOP, 4*tdb->header.hash_size)) {
+	    tdb->methods->brunlock(tdb, ltype, FREELIST_TOP, 0)) {
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_unlockall failed (%s)\n", strerror(errno)));
 		return -1;
 	}
@@ -688,8 +685,7 @@ void tdb_release_extra_locks(struct tdb_context *tdb)
 	unsigned int i, extra = 0;
 
 	if (tdb->allrecord_lock.count != 0) {
-		tdb_brunlock(tdb, tdb->allrecord_lock.ltype,
-			     FREELIST_TOP, 4*tdb->header.hash_size);
+		tdb_brunlock(tdb, tdb->allrecord_lock.ltype, FREELIST_TOP, 0);
 		tdb->allrecord_lock.count = 0;
 	}
 
