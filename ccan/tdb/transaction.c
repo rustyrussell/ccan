@@ -1203,16 +1203,6 @@ int tdb_transaction_recover(struct tdb_context *tdb)
 		return -1;			
 	}
 	
-	/* reduce the file size to the old size */
-	tdb_munmap(tdb);
-	if (ftruncate(tdb->fd, recovery_eof) != 0) {
-		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction_recover: failed to reduce to recovery size\n"));
-		tdb->ecode = TDB_ERR_IO;
-		return -1;			
-	}
-	tdb->map_size = recovery_eof;
-	tdb_mmap(tdb);
-
 	if (transaction_sync(tdb, 0, recovery_eof) == -1) {
 		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_transaction_recover: failed to sync2 recovery\n"));
 		tdb->ecode = TDB_ERR_IO;
