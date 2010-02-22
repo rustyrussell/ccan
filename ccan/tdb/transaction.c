@@ -509,23 +509,7 @@ int _tdb_transaction_cancel(struct tdb_context *tdb, int ltype)
 		tdb->transaction->open_lock_taken = false;
 	}
 
-	/* remove any global lock created during the transaction */
-	if (tdb->allrecord_lock.count != 0) {
-		tdb_brunlock(tdb, tdb->allrecord_lock.ltype,
-			     FREELIST_TOP, 4*tdb->header.hash_size);
-		tdb->allrecord_lock.count = 0;
-	}
-
-	/* remove any locks created during the transaction */
-	if (tdb->num_locks != 0) {
-		for (i=0;i<tdb->num_lockrecs;i++) {
-			tdb_brunlock(tdb, tdb->lockrecs[i].ltype,
-				     tdb->lockrecs[i].off, 1);
-		}
-		tdb->num_locks = 0;
-		tdb->num_lockrecs = 0;
-		SAFE_FREE(tdb->lockrecs);
-	}
+	tdb_release_extra_locks(tdb);
 
 	/* restore the normal io methods */
 	tdb->methods = tdb->transaction->io_methods;
