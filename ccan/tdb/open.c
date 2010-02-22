@@ -240,8 +240,8 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
         fcntl(tdb->fd, F_SETFD, v | FD_CLOEXEC);
 
 	/* ensure there is only one process initialising at once */
-	if (tdb->methods->brlock(tdb, F_WRLCK, GLOBAL_LOCK, 1, TDB_LOCK_WAIT) == -1) {
-		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_open_ex: failed to get global lock on %s: %s\n",
+	if (tdb->methods->brlock(tdb, F_WRLCK, OPEN_LOCK, 1, TDB_LOCK_WAIT) == -1) {
+		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_open_ex: failed to get open lock on %s: %s\n",
 			 name, strerror(errno)));
 		goto fail;	/* errno set by tdb_brlock */
 	}
@@ -355,8 +355,8 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
  internal:
 	/* Internal (memory-only) databases skip all the code above to
 	 * do with disk files, and resume here by releasing their
-	 * global lock and hooking into the active list. */
-	if (tdb->methods->brunlock(tdb, F_WRLCK, GLOBAL_LOCK, 1) == -1)
+	 * open lock and hooking into the active list. */
+	if (tdb->methods->brunlock(tdb, F_WRLCK, OPEN_LOCK, 1) == -1)
 		goto fail;
 	tdb->next = tdbs;
 	tdbs = tdb;

@@ -134,7 +134,7 @@ void tdb_trace_2rec_retrec(struct tdb_context *tdb, const char *op,
 #endif /* !TDB_TRACE */
 
 /* lock offsets */
-#define GLOBAL_LOCK      0
+#define OPEN_LOCK        0
 #define ACTIVE_LOCK      4
 #define TRANSACTION_LOCK 8
 

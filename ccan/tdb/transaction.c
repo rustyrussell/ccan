@@ -76,7 +76,7 @@
     to reduce this to 3 or even 2 with some more work.
 
   - check for a valid recovery record on open of the tdb, while the
-    global lock is held. Automatically recover from the transaction
+    open lock is held. Automatically recover from the transaction
     recovery area if needed, then continue with the open as
     usual. This allows for smooth crash recovery with no administrator
     intervention.
@@ -135,8 +135,8 @@ struct tdb_transaction {
 	bool prepared;
 	tdb_off_t magic_offset;
 
-	/* set when the GLOBAL_LOCK has been taken */
-	bool global_lock_taken;
+	/* set when the OPEN_LOCK has been taken */
+	bool open_lock_taken;
 
 	/* old file size before transaction */
 	tdb_len_t old_map_size;
@@ -504,9 +504,9 @@ int _tdb_transaction_cancel(struct tdb_context *tdb, int ltype)
 		}
 	}
 
-	if (tdb->transaction->global_lock_taken) {
-		tdb_brunlock(tdb, F_WRLCK, GLOBAL_LOCK, 1);
-		tdb->transaction->global_lock_taken = false;
+	if (tdb->transaction->open_lock_taken) {
+		tdb_brunlock(tdb, F_WRLCK, OPEN_LOCK, 1);
+		tdb->transaction->open_lock_taken = false;
 	}
 
 	/* remove any global lock created during the transaction */
@@ -959,16 +959,16 @@ static int _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 		return -1;
 	}
 
-	/* get the global lock - this prevents new users attaching to the database
+	/* get the open lock - this prevents new users attaching to the database
 	   during the commit */
-	if (tdb_brlock(tdb, F_WRLCK, GLOBAL_LOCK, 1, TDB_LOCK_WAIT) == -1) {
-		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_prepare_commit: failed to get global lock\n"));
+	if (tdb_brlock(tdb, F_WRLCK, OPEN_LOCK, 1, TDB_LOCK_WAIT) == -1) {
+		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_prepare_commit: failed to get open lock\n"));
 		tdb->ecode = TDB_ERR_LOCK;
 		_tdb_transaction_cancel(tdb, F_WRLCK);
 		return -1;
 	}
 
- 	tdb->transaction->global_lock_taken = true;
+	tdb->transaction->open_lock_taken = true;
 
 	if (!(tdb->flags & TDB_NOSYNC)) {
 		/* write the recovery data to the end of the file */
@@ -995,7 +995,7 @@ static int _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 		methods->tdb_oob(tdb, tdb->map_size + 1, 1);
 	}
 
-	/* Keep the global lock until the actual commit */
+	/* Keep the open lock until the actual commit */
 
 	return 0;
 }
@@ -1123,7 +1123,7 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 
 /*
   recover from an aborted transaction. Must be called with exclusive
-  database write access already established (including the global
+  database write access already established (including the open
   lock to prevent new processes attaching)
 */
 int tdb_transaction_recover(struct tdb_context *tdb)
