@@ -59,14 +59,14 @@ static void tdb_increment_seqnum(struct tdb_context *tdb)
 		return;
 	}
 
-	if (tdb_brlock(tdb, F_WRLCK, TDB_SEQNUM_OFS, 1,
-		       TDB_LOCK_WAIT|TDB_LOCK_PROBE) != 0) {
+	if (tdb_nest_lock(tdb, TDB_SEQNUM_OFS, F_WRLCK,
+			  TDB_LOCK_WAIT|TDB_LOCK_PROBE) != 0) {
 		return;
 	}
 
 	tdb_increment_seqnum_nonblock(tdb);
 
-	tdb_brunlock(tdb, F_WRLCK, TDB_SEQNUM_OFS, 1);
+	tdb_nest_unlock(tdb, TDB_SEQNUM_OFS, F_WRLCK, false);
 }
 
 static int tdb_key_compare(TDB_DATA key, TDB_DATA data, void *private_data)
