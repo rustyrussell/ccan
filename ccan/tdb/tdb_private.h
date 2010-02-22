@@ -241,7 +241,6 @@ struct tdb_context {
 	struct tdb_transaction *transaction;
 	int page_size;
 	int max_dead_records;
-	int transaction_lock_count;
 #ifdef TDB_TRACE
 	int tracefd;
 #endif

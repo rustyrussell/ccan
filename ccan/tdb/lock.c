@@ -415,18 +415,7 @@ int tdb_unlock(struct tdb_context *tdb, int list, int ltype)
  */
 int tdb_transaction_lock(struct tdb_context *tdb, int ltype)
 {
-	if (tdb->transaction_lock_count > 0) {
-		tdb->transaction_lock_count++;
-		return 0;
-	}
-
-	if (tdb->methods->brlock(tdb, ltype, TRANSACTION_LOCK, 1, TDB_LOCK_WAIT) == -1) {
-		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_lock: failed to get transaction lock\n"));
-		tdb->ecode = TDB_ERR_LOCK;
-		return -1;
-	}
-	tdb->transaction_lock_count++;
-	return 0;
+	return tdb_nest_lock(tdb, TRANSACTION_LOCK, ltype, TDB_LOCK_WAIT);
 }
 
 /*
@@ -434,16 +423,7 @@ int tdb_transaction_lock(struct tdb_context *tdb, int ltype)
  */
 int tdb_transaction_unlock(struct tdb_context *tdb, int ltype)
 {
-	int ret;
-	if (tdb->transaction_lock_count > 1) {
-		tdb->transaction_lock_count--;
-		return 0;
-	}
-	ret = tdb->methods->brunlock(tdb, ltype, TRANSACTION_LOCK, 1);
-	if (ret == 0) {
-		tdb->transaction_lock_count = 0;
-	}
-	return ret;
+	return tdb_nest_unlock(tdb, TRANSACTION_LOCK, ltype, false);
 }
 
 
@@ -689,19 +669,24 @@ int tdb_unlock_record(struct tdb_context *tdb, tdb_off_t off)
 
 bool tdb_have_extra_locks(struct tdb_context *tdb)
 {
+	unsigned int extra = tdb->num_lockrecs;
+
 	if (tdb->allrecord_lock.count) {
 		return true;
 	}
-	if (tdb->num_lockrecs) {
-		return true;
+
+	/* In a transaction, we expect to hold the transaction lock */
+	if (tdb->transaction && find_nestlock(tdb, TRANSACTION_LOCK)) {
+		extra--;
 	}
-	return false;
+
+	return extra;
 }
 
 /* The transaction code uses this to remove all locks. */
 void tdb_release_extra_locks(struct tdb_context *tdb)
 {
-	unsigned int i;
+	unsigned int i, extra = 0;
 
 	if (tdb->allrecord_lock.count != 0) {
 		tdb_brunlock(tdb, tdb->allrecord_lock.ltype,
@@ -710,10 +695,17 @@ void tdb_release_extra_locks(struct tdb_context *tdb)
 	}
 
 	for (i=0;i<tdb->num_lockrecs;i++) {
-		tdb_brunlock(tdb, tdb->lockrecs[i].ltype,
-			     tdb->lockrecs[i].off, 1);
+		struct tdb_lock_type *lck = &tdb->lockrecs[i];
+
+		if (tdb->transaction && lck->off == TRANSACTION_LOCK) {
+			tdb->lockrecs[extra++] = *lck;
+		} else {
+			tdb_brunlock(tdb, lck->ltype, lck->off, 1);
+		}
 	}
-	tdb->num_locks = 0;
-	tdb->num_lockrecs = 0;
-	SAFE_FREE(tdb->lockrecs);
+	tdb->num_locks = extra;
+	tdb->num_lockrecs = extra;
+	if (tdb->num_lockrecs == 0) {
+		SAFE_FREE(tdb->lockrecs);
+	}
 }
