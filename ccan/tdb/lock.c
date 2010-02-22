@@ -277,12 +277,10 @@ int tdb_nest_lock(struct tdb_context *tdb, uint32_t offset, int ltype,
 		return -1;
 	}
 
-	tdb->num_locks++;
-
 	tdb->lockrecs[tdb->num_lockrecs].off = offset;
 	tdb->lockrecs[tdb->num_lockrecs].count = 1;
 	tdb->lockrecs[tdb->num_lockrecs].ltype = ltype;
-	tdb->num_lockrecs += 1;
+	tdb->num_lockrecs++;
 
 	return 0;
 }
@@ -368,17 +366,12 @@ int tdb_nest_unlock(struct tdb_context *tdb, uint32_t offset, int ltype,
 	} else {
 		ret = tdb->methods->brunlock(tdb, ltype, offset, 1);
 	}
-	tdb->num_locks--;
 
 	/*
 	 * Shrink the array by overwriting the element just unlocked with the
 	 * last array element.
 	 */
-
-	if (tdb->num_lockrecs > 1) {
-		*lck = tdb->lockrecs[tdb->num_lockrecs-1];
-	}
-	tdb->num_lockrecs -= 1;
+	*lck = tdb->lockrecs[--tdb->num_lockrecs];
 
 	/*
 	 * We don't bother with realloc when the array shrinks, but if we have
@@ -712,7 +705,6 @@ void tdb_release_extra_locks(struct tdb_context *tdb)
 			tdb_brunlock(tdb, lck->ltype, lck->off, 1);
 		}
 	}
-	tdb->num_locks = extra;
 	tdb->num_lockrecs = extra;
 	if (tdb->num_lockrecs == 0) {
 		SAFE_FREE(tdb->lockrecs);

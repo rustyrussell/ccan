@@ -236,7 +236,6 @@ struct tdb_context {
 	struct tdb_logging_context log;
 	unsigned int (*hash_fn)(TDB_DATA *key);
 	int open_flags; /* flags used in the open - needed by reopen */
-	unsigned int num_locks; /* number of chain locks held */
 	const struct tdb_methods *methods;
 	struct tdb_transaction *transaction;
 	int page_size;
