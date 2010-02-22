@@ -224,12 +224,24 @@ static tdb_off_t lock_offset(int list)
 	return FREELIST_TOP + 4*list;
 }
 
+static struct tdb_lock_type *find_nestlock(struct tdb_context *tdb,
+					   tdb_off_t offset)
+{
+	unsigned int i;
+
+	for (i=0; i<tdb->num_lockrecs; i++) {
+		if (tdb->lockrecs[i].off == offset) {
+			return &tdb->lockrecs[i];
+		}
+	}
+	return NULL;
+}
+
 /* lock an offset in the database. */
 int tdb_nest_lock(struct tdb_context *tdb, uint32_t offset, int ltype,
 		  enum tdb_lock_flags flags)
 {
 	struct tdb_lock_type *new_lck;
-	int i;
 
 	if (offset >= lock_offset(tdb->header.hash_size)) {
 		tdb->ecode = TDB_ERR_LOCK;
@@ -240,24 +252,14 @@ int tdb_nest_lock(struct tdb_context *tdb, uint32_t offset, int ltype,
 	if (tdb->flags & TDB_NOLOCK)
 		return 0;
 
-	for (i=0; i<tdb->num_lockrecs; i++) {
-		if (tdb->lockrecs[i].off == offset) {
-			if (tdb->lockrecs[i].count == 0) {
-				/*
-				 * Can't happen, see tdb_unlock(). It should
-				 * be an assert.
-				 */
-				TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_lock: "
-					 "lck->count == 0 for offset %u",
-					 offset));
-			}
-			/*
-			 * Just increment the in-memory struct, posix locks
-			 * don't stack.
-			 */
-			tdb->lockrecs[i].count++;
-			return 0;
-		}
+	new_lck = find_nestlock(tdb, offset);
+	if (new_lck) {
+		/*
+		 * Just increment the in-memory struct, posix locks
+		 * don't stack.
+		 */
+		new_lck->count++;
+		return 0;
 	}
 
 	new_lck = (struct tdb_lock_type *)realloc(
@@ -332,8 +334,7 @@ int tdb_nest_unlock(struct tdb_context *tdb, uint32_t offset, int ltype,
 		    bool mark_lock)
 {
 	int ret = -1;
-	int i;
-	struct tdb_lock_type *lck = NULL;
+	struct tdb_lock_type *lck;
 
 	if (tdb->flags & TDB_NOLOCK)
 		return 0;
@@ -344,13 +345,7 @@ int tdb_nest_unlock(struct tdb_context *tdb, uint32_t offset, int ltype,
 		return ret;
 	}
 
-	for (i=0; i<tdb->num_lockrecs; i++) {
-		if (tdb->lockrecs[i].off == offset) {
-			lck = &tdb->lockrecs[i];
-			break;
-		}
-	}
-
+	lck = find_nestlock(tdb, offset);
 	if ((lck == NULL) || (lck->count == 0)) {
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_unlock: count is 0\n"));
 		return -1;
