@@ -461,7 +461,7 @@ static int tdb_reopen_internal(struct tdb_context *tdb, bool active_lock)
 		return 0; /* Nothing to do. */
 	}
 
-	if (tdb->num_locks != 0 || tdb->allrecord_lock.count) {
+	if (tdb_have_extra_locks(tdb)) {
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_reopen: reopen not allowed with locks held\n"));
 		goto fail;
 	}

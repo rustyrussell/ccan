@@ -266,6 +266,7 @@ int tdb_brlock(struct tdb_context *tdb,
 	       enum tdb_lock_flags flags);
 int tdb_brunlock(struct tdb_context *tdb,
 		 int rw_type, tdb_off_t offset, size_t len);
+bool tdb_have_extra_locks(struct tdb_context *tdb);
 int tdb_transaction_lock(struct tdb_context *tdb, int ltype);
 int tdb_transaction_unlock(struct tdb_context *tdb, int ltype);
 int tdb_brlock_upgrade(struct tdb_context *tdb, tdb_off_t offset, size_t len);

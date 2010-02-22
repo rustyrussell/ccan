@@ -474,8 +474,8 @@ static int _tdb_lockall(struct tdb_context *tdb, int ltype,
 		tdb->ecode = TDB_ERR_LOCK;
 		return -1;
 	}
-	
-	if (tdb->num_locks != 0) {
+
+	if (tdb_have_extra_locks(tdb)) {
 		/* can't combine global and chain locks */
 		tdb->ecode = TDB_ERR_LOCK;
 		return -1;
@@ -690,4 +690,15 @@ int tdb_unlock_record(struct tdb_context *tdb, tdb_off_t off)
 		if (i->off == off)
 			count++;
 	return (count == 1 ? tdb->methods->brunlock(tdb, F_RDLCK, off, 1) : 0);
+}
+
+bool tdb_have_extra_locks(struct tdb_context *tdb)
+{
+	if (tdb->allrecord_lock.count) {
+		return true;
+	}
+	if (tdb->num_lockrecs) {
+		return true;
+	}
+	return false;
 }

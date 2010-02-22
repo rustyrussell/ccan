@@ -564,7 +564,7 @@ int tdb_transaction_start(struct tdb_context *tdb)
 		return 0;
 	}
 
-	if (tdb->num_locks != 0 || tdb->allrecord_lock.count) {
+	if (tdb_have_extra_locks(tdb)) {
 		/* the caller must not have any locks when starting a
 		   transaction as otherwise we'll be screwed by lack
 		   of nested locks in posix */
@@ -944,7 +944,7 @@ static int _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 	
 	/* if there are any locks pending then the caller has not
 	   nested their locks properly, so fail the transaction */
-	if (tdb->num_locks || tdb->allrecord_lock.count) {
+	if (tdb_have_extra_locks(tdb)) {
 		tdb->ecode = TDB_ERR_LOCK;
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_transaction_prepare_commit: locks pending on commit\n"));
 		_tdb_transaction_cancel(tdb, F_RDLCK);
