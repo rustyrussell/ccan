@@ -286,7 +286,7 @@ int tdb_do_delete(struct tdb_context *tdb, tdb_off_t rec_ptr, struct tdb_record 
 
 	if (tdb->read_only || tdb->traverse_read) return -1;
 
-	if (tdb->traverse_write != 0 || 
+	if (((tdb->traverse_write != 0) && (!TDB_DEAD(rec))) ||
 	    tdb_write_lock_record(tdb, rec_ptr) == -1) {
 		/* Someone traversing here: mark it as dead */
 		rec->magic = TDB_DEAD_MAGIC;
