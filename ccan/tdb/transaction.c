@@ -683,10 +683,16 @@ static int tdb_recovery_allocate(struct tdb_context *tdb,
 
 	rec.rec_len = 0;
 
-	if (recovery_head != 0 && 
-	    methods->tdb_read(tdb, recovery_head, &rec, sizeof(rec), DOCONV()) == -1) {
-		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_recovery_allocate: failed to read recovery record\n"));
-		return -1;
+	if (recovery_head != 0) {
+		if (methods->tdb_read(tdb, recovery_head, &rec, sizeof(rec), DOCONV()) == -1) {
+			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_recovery_allocate: failed to read recovery record\n"));
+			return -1;
+		}
+		/* ignore invalid recovery regions: can happen in crash */
+		if (rec.magic != TDB_RECOVERY_MAGIC &&
+		    rec.magic != TDB_RECOVERY_INVALID_MAGIC) {
+			recovery_head = 0;
+		}
 	}
 
 	*recovery_size = tdb_recovery_size(tdb);
