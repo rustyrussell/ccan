@@ -662,11 +662,20 @@ int tdb_write_lock_record(struct tdb_context *tdb, tdb_off_t off)
 	for (i = &tdb->travlocks; i; i = i->next)
 		if (i->off == off)
 			return -1;
+	if (tdb->allrecord_lock.count) {
+		if (tdb->allrecord_lock.ltype == F_WRLCK) {
+			return 0;
+		}
+		return -1;
+	}
 	return tdb->methods->brlock(tdb, F_WRLCK, off, 1, TDB_LOCK_NOWAIT|TDB_LOCK_PROBE);
 }
 
 int tdb_write_unlock_record(struct tdb_context *tdb, tdb_off_t off)
 {
+	if (tdb->allrecord_lock.count) {
+		return 0;
+	}
 	return tdb->methods->brunlock(tdb, F_WRLCK, off, 1);
 }
 
