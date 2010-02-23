@@ -116,6 +116,7 @@ reset:
 	if (setjmp(jmpbuf) != 0) {
 		/* We're partway through.  Simulate our death. */
 		close(tdb->fd);
+		forget_locking();
 		in_transaction = false;
 
 		if (external_agent_operation(agent, NEEDS_RECOVERY_KEEP_OPENED,
@@ -144,11 +145,12 @@ reset:
 		external_agent_operation(agent, CLOSE, "");
 		/* Suppress logging as this tries to use closed fd. */
 		suppress_logging = true;
+		suppress_lockcheck = true;
 		tdb_close(tdb);
 		suppress_logging = false;
+		suppress_lockcheck = false;
 		target++;
 		current = 0;
-		forget_locking();
 		goto reset;
 	}
 
@@ -195,7 +197,7 @@ int main(int argc, char *argv[])
 	struct agent *agent;
 	int i;
 
-	plan_tests(6);
+	plan_tests(12);
 	unlock_callback = maybe_die;
 
 	agent = prepare_external_agent();

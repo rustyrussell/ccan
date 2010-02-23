@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <ccan/tap/tap.h>
+#include <ccan/tdb/tdb_private.h>
 
 struct lock {
 	struct lock *next;
@@ -13,6 +14,7 @@ struct lock {
 };
 static struct lock *locks;
 int locking_errors = 0;
+bool suppress_lockcheck = false;
 void (*unlock_callback)(int fd);
 
 int fcntl_with_lockcheck(int fd, int cmd, ... /* arg */ )
@@ -47,7 +49,7 @@ int fcntl_with_lockcheck(int fd, int cmd, ... /* arg */ )
 				break;
 			}
 		}
-		if (!old) {
+		if (!old && !suppress_lockcheck) {
 			diag("Unknown unlock %u@%u",
 			     (int)fl->l_len, (int)fl->l_start);
 			locking_errors++;
@@ -70,11 +72,22 @@ int fcntl_with_lockcheck(int fd, int cmd, ... /* arg */ )
 				break;
 		}
 		if (i) {
-			diag("%s lock %u@%u overlaps %u@%u",
-			     fl->l_type == F_WRLCK ? "write" : "read",
-			     (int)fl->l_len, (int)fl->l_start,
-			     i->len, (int)i->off);
-			locking_errors++;
+			/* Special case: upgrade of allrecord lock. */
+			if (i->type == F_RDLCK && fl->l_type == F_WRLCK
+			    && i->off == FREELIST_TOP
+			    && fl->l_start == FREELIST_TOP
+			    && i->len == 0
+			    && fl->l_len == 0) {
+				i->type = F_WRLCK;
+				goto ok;
+			}
+			if (!suppress_lockcheck) {
+				diag("%s lock %u@%u overlaps %u@%u",
+				     fl->l_type == F_WRLCK ? "write" : "read",
+				     (int)fl->l_len, (int)fl->l_start,
+				     i->len, (int)i->off);
+				locking_errors++;
+			}
 		}
 		new = malloc(sizeof *new);
 		new->off = fl->l_start;
@@ -83,7 +96,7 @@ int fcntl_with_lockcheck(int fd, int cmd, ... /* arg */ )
 		new->next = locks;
 		locks = new;
 	}
-
+ok:
 	ret = fcntl(fd, cmd, fl);
 	if (ret == 0 && fl->l_type == F_UNLCK && unlock_callback)
 		unlock_callback(fd);
