@@ -1,13 +1,14 @@
 #define _XOPEN_SOURCE 500
 #include <unistd.h>
+#include "lock-tracking.h"
+
 static ssize_t pwrite_check(int fd, const void *buf, size_t count, off_t offset);
 static ssize_t write_check(int fd, const void *buf, size_t count);
-static int fcntl_check(int fd, int cmd, ... /* arg */ );
 static int ftruncate_check(int fd, off_t length);
 
 #define pwrite pwrite_check
 #define write write_check
-#define fcntl fcntl_check
+#define fcntl fcntl_with_lockcheck
 #define ftruncate ftruncate_check
 
 #include <ccan/tdb/tdb.h>
@@ -107,6 +108,9 @@ static void check_for_agent(int fd, bool block)
 
 static void check_file_contents(int fd)
 {
+	if (!in_transaction)
+		return;
+
 	if (agent_pending)
 		check_for_agent(fd, false);
 
@@ -132,16 +136,14 @@ static ssize_t pwrite_check(int fd,
 {
 	ssize_t ret;
 
-	if (in_transaction)
-		check_file_contents(fd);
+	check_file_contents(fd);
 
 	snapshot_uptodate = false;
 	ret = pwrite(fd, buf, count, offset);
 	if (ret != count)
 		return ret;
 
-	if (in_transaction)
-		check_file_contents(fd);
+	check_file_contents(fd);
 	return ret;
 }
 
@@ -149,8 +151,7 @@ static ssize_t write_check(int fd, const void *buf, size_t count)
 {
 	ssize_t ret;
 
-	if (in_transaction)
-		check_file_contents(fd);
+	check_file_contents(fd);
 
 	snapshot_uptodate = false;
 
@@ -158,37 +159,7 @@ static ssize_t write_check(int fd, const void *buf, size_t count)
 	if (ret != count)
 		return ret;
 
-	if (in_transaction)
-		check_file_contents(fd);
-	return ret;
-}
-
-/* This seems to be a macro for glibc... */
-extern int fcntl(int fd, int cmd, ... /* arg */ );
-
-static int fcntl_check(int fd, int cmd, ... /* arg */ )
-{
-	va_list ap;
-	int ret, arg3;
-	struct flock *fl;
-
-	if (cmd != F_SETLK && cmd != F_SETLKW) {
-		/* This may be totally bogus, but we don't know in general. */
-		va_start(ap, cmd);
-		arg3 = va_arg(ap, int);
-		va_end(ap);
-
-		return fcntl(fd, cmd, arg3);
-	}
-
-	va_start(ap, cmd);
-	fl = va_arg(ap, struct flock *);
-	va_end(ap);
-
-	ret = fcntl(fd, cmd, fl);
-
-	if (in_transaction && fl->l_type == F_UNLCK)
-		check_file_contents(fd);
+	check_file_contents(fd);
 	return ret;
 }
 
@@ -196,15 +167,13 @@ static int ftruncate_check(int fd, off_t length)
 {
 	int ret;
 
-	if (in_transaction)
-		check_file_contents(fd);
+	check_file_contents(fd);
 
 	snapshot_uptodate = false;
 
 	ret = ftruncate(fd, length);
 
-	if (in_transaction)
-		check_file_contents(fd);
+	check_file_contents(fd);
 	return ret;
 }
 
@@ -220,6 +189,7 @@ int main(int argc, char *argv[])
 	TDB_DATA key, data;
 
 	plan_tests(20);
+	unlock_callback = check_file_contents;
 	agent = prepare_external_agent();
 	if (!agent)
 		err(1, "preparing agent");

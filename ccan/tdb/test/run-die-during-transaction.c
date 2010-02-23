@@ -1,13 +1,13 @@
 #define _XOPEN_SOURCE 500
 #include <unistd.h>
+#include "lock-tracking.h"
 static ssize_t pwrite_check(int fd, const void *buf, size_t count, off_t offset);
 static ssize_t write_check(int fd, const void *buf, size_t count);
-static int fcntl_check(int fd, int cmd, ... /* arg */ );
 static int ftruncate_check(int fd, off_t length);
 
 #define pwrite pwrite_check
 #define write write_check
-#define fcntl fcntl_check
+#define fcntl fcntl_with_lockcheck
 #define ftruncate ftruncate_check
 
 #include <ccan/tdb/tdb.h>
@@ -39,15 +39,6 @@ static int target, current;
 static jmp_buf jmpbuf;
 #define TEST_DBNAME "/tmp/test7.tdb"
 
-/* We save the locks so we can reaquire them. */
-struct lock {
-	struct lock *next;
-	off_t off;
-	unsigned int len;
-	int type;
-};
-static struct lock *locks;
-
 static void taplog(struct tdb_context *tdb,
 		   enum tdb_debug_level level,
 		   const char *fmt, ...)
@@ -65,9 +56,9 @@ static void taplog(struct tdb_context *tdb,
 	diag("%s", line);
 }
 
-static void check_file_contents(int fd)
+static void maybe_die(int fd)
 {
-	if (current++ == target) {
+	if (in_transaction && current++ == target) {
 		longjmp(jmpbuf, 1);
 	}
 }
@@ -77,15 +68,13 @@ static ssize_t pwrite_check(int fd,
 {
 	ssize_t ret;
 
-	if (in_transaction)
-		check_file_contents(fd);
+	maybe_die(fd);
 
 	ret = pwrite(fd, buf, count, offset);
 	if (ret != count)
 		return ret;
 
-	if (in_transaction)
-		check_file_contents(fd);
+	maybe_die(fd);
 	return ret;
 }
 
@@ -93,68 +82,13 @@ static ssize_t write_check(int fd, const void *buf, size_t count)
 {
 	ssize_t ret;
 
-	if (in_transaction)
-		check_file_contents(fd);
+	maybe_die(fd);
 
 	ret = write(fd, buf, count);
 	if (ret != count)
 		return ret;
 
-	if (in_transaction)
-		check_file_contents(fd);
-	return ret;
-}
-
-extern int fcntl(int fd, int cmd, ... /* arg */ );
-
-static int fcntl_check(int fd, int cmd, ... /* arg */ )
-{
-	va_list ap;
-	int ret, arg3;
-	struct flock *fl;
-
-	if (cmd != F_SETLK && cmd != F_SETLKW) {
-		/* This may be totally bogus, but we don't know in general. */
-		va_start(ap, cmd);
-		arg3 = va_arg(ap, int);
-		va_end(ap);
-
-		return fcntl(fd, cmd, arg3);
-	}
-
-	va_start(ap, cmd);
-	fl = va_arg(ap, struct flock *);
-	va_end(ap);
-
-	ret = fcntl(fd, cmd, fl);
-	if (ret == 0) {
-		if (fl->l_type == F_UNLCK) {
-			struct lock **l;
-			struct lock *old = NULL;
-			
-			for (l = &locks; *l; l = &(*l)->next) {
-				if ((*l)->off == fl->l_start
-				    && (*l)->len == fl->l_len) {
-					old = *l;
-					*l = (*l)->next;
-					free(old);
-					break;
-				}
-			}
-			if (!old)
-				errx(1, "Unknown lock");
-		} else {
-			struct lock *new = malloc(sizeof *new);
-			new->off = fl->l_start;
-			new->len = fl->l_len;
-			new->type = fl->l_type;
-			new->next = locks;
-			locks = new;
-		}
-	}
-
-	if (in_transaction && fl->l_type == F_UNLCK)
-		check_file_contents(fd);
+	maybe_die(fd);
 	return ret;
 }
 
@@ -162,13 +96,11 @@ static int ftruncate_check(int fd, off_t length)
 {
 	int ret;
 
-	if (in_transaction)
-		check_file_contents(fd);
+	maybe_die(fd);
 
 	ret = ftruncate(fd, length);
 
-	if (in_transaction)
-		check_file_contents(fd);
+	maybe_die(fd);
 	return ret;
 }
 
@@ -216,6 +148,7 @@ reset:
 		suppress_logging = false;
 		target++;
 		current = 0;
+		forget_locking();
 		goto reset;
 	}
 
@@ -248,6 +181,9 @@ reset:
 	external_agent_operation(agent, CLOSE, "");
 
 	ok1(needed_recovery);
+	ok1(locking_errors == 0);
+	ok1(forget_locking() == 0);
+	locking_errors = 0;
 	return true;
 }
 
@@ -260,6 +196,8 @@ int main(int argc, char *argv[])
 	int i;
 
 	plan_tests(6);
+	unlock_callback = maybe_die;
+
 	agent = prepare_external_agent();
 	if (!agent)
 		err(1, "preparing agent");

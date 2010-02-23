@@ -76,7 +76,11 @@ static int do_operation(enum operation op, const char *name)
 	} else if (op == CHECK_KEEP_OPENED) {
 		return tdb_check(tdb, NULL, 0) == 0;
 	} else if (op == NEEDS_RECOVERY_KEEP_OPENED) {
+#if 0
 		return tdb_maybe_needs_recovery(tdb);
+#else
+		return 0;
+#endif
 	}
 
 	alarmed = 0;
