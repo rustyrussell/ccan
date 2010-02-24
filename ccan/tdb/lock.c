@@ -309,8 +309,8 @@ int tdb_nest_lock(struct tdb_context *tdb, uint32_t offset, int ltype,
 	return 0;
 }
 
-/* lock a list in the database. list -1 is the alloc list */
-int tdb_lock(struct tdb_context *tdb, int list, int ltype)
+static int tdb_lock_list(struct tdb_context *tdb, int list, int ltype,
+			 enum tdb_lock_flags waitflag)
 {
 	int ret;
 
@@ -324,9 +324,17 @@ int tdb_lock(struct tdb_context *tdb, int list, int ltype)
 		tdb->ecode = TDB_ERR_LOCK;
 		ret = -1;
 	} else {
-		ret = tdb_nest_lock(tdb, lock_offset(list), ltype,
-				    TDB_LOCK_WAIT);
+		ret = tdb_nest_lock(tdb, lock_offset(list), ltype, waitflag);
 	}
+	return ret;
+}
+
+/* lock a list in the database. list -1 is the alloc list */
+int tdb_lock(struct tdb_context *tdb, int list, int ltype)
+{
+	int ret;
+
+	ret = tdb_lock_list(tdb, list, ltype, TDB_LOCK_WAIT);
 	if (ret) {
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_lock failed on list %d "
 			 "ltype=%d (%s)\n",  list, ltype, strerror(errno)));
@@ -337,18 +345,7 @@ int tdb_lock(struct tdb_context *tdb, int list, int ltype)
 /* lock a list in the database. list -1 is the alloc list. non-blocking lock */
 int tdb_lock_nonblock(struct tdb_context *tdb, int list, int ltype)
 {
-	/* a allrecord lock allows us to avoid per chain locks */
-	if (tdb->allrecord_lock.count &&
-	    (ltype == tdb->allrecord_lock.ltype || ltype == F_RDLCK)) {
-		return 0;
-	}
-
-	if (tdb->allrecord_lock.count) {
-		tdb->ecode = TDB_ERR_LOCK;
-		return -1;
-	}
-
-	return tdb_nest_lock(tdb, lock_offset(list), ltype, TDB_LOCK_NOWAIT);
+	return tdb_lock_list(tdb, list, ltype, TDB_LOCK_NOWAIT);
 }
 
 
