@@ -309,10 +309,44 @@ int tdb_nest_lock(struct tdb_context *tdb, uint32_t offset, int ltype,
 	return 0;
 }
 
+static int tdb_lock_and_recover(struct tdb_context *tdb)
+{
+	int ret;
+
+	/* We need to match locking order in transaction commit. */
+	if (tdb_brlock(tdb, F_WRLCK, FREELIST_TOP, 0, TDB_LOCK_WAIT)) {
+		return -1;
+	}
+
+	if (tdb_brlock(tdb, F_WRLCK, OPEN_LOCK, 1, TDB_LOCK_WAIT)) {
+		tdb_brunlock(tdb, F_WRLCK, FREELIST_TOP, 0);
+		return -1;
+	}
+
+	ret = tdb_transaction_recover(tdb);
+
+	tdb_brunlock(tdb, F_WRLCK, OPEN_LOCK, 1);
+	tdb_brunlock(tdb, F_WRLCK, FREELIST_TOP, 0);
+
+	return ret;
+}
+
+static bool have_data_locks(const struct tdb_context *tdb)
+{
+	unsigned int i;
+
+	for (i = 0; i < tdb->num_lockrecs; i++) {
+		if (tdb->lockrecs[i].off >= lock_offset(-1))
+			return true;
+	}
+	return false;
+}
+
 static int tdb_lock_list(struct tdb_context *tdb, int list, int ltype,
 			 enum tdb_lock_flags waitflag)
 {
 	int ret;
+	bool check = false;
 
 	/* a allrecord lock allows us to avoid per chain locks */
 	if (tdb->allrecord_lock.count &&
@@ -324,7 +358,18 @@ static int tdb_lock_list(struct tdb_context *tdb, int list, int ltype,
 		tdb->ecode = TDB_ERR_LOCK;
 		ret = -1;
 	} else {
+		/* Only check when we grab first data lock. */
+		check = !have_data_locks(tdb);
 		ret = tdb_nest_lock(tdb, lock_offset(list), ltype, waitflag);
+
+		if (ret == 0 && check && tdb_needs_recovery(tdb)) {
+			tdb_nest_unlock(tdb, lock_offset(list), ltype, false);
+
+			if (tdb_lock_and_recover(tdb) == -1) {
+				return -1;
+			}
+			return tdb_lock_list(tdb, list, ltype, waitflag);
+		}
 	}
 	return ret;
 }
@@ -487,6 +532,21 @@ int tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
 	 * it as a write lock. */
 	tdb->allrecord_lock.ltype = upgradable ? F_WRLCK : ltype;
 	tdb->allrecord_lock.off = upgradable;
+
+	if (tdb_needs_recovery(tdb)) {
+		bool mark = flags & TDB_LOCK_MARK_ONLY;
+		tdb_allrecord_unlock(tdb, ltype, mark);
+		if (mark) {
+			tdb->ecode = TDB_ERR_LOCK;
+			TDB_LOG((tdb, TDB_DEBUG_ERROR,
+				 "tdb_lockall_mark cannot do recovery\n"));
+			return -1;
+		}
+		if (tdb_lock_and_recover(tdb) == -1) {
+			return -1;
+		}
+		return tdb_allrecord_lock(tdb, ltype, flags, upgradable);
+	}
 
 	return 0;
 }

@@ -1194,3 +1194,28 @@ int tdb_transaction_recover(struct tdb_context *tdb)
 	/* all done */
 	return 0;
 }
+
+/* Any I/O failures we say "needs recovery". */
+bool tdb_needs_recovery(struct tdb_context *tdb)
+{
+	tdb_off_t recovery_head;
+	struct tdb_record rec;
+
+	/* find the recovery area */
+	if (tdb_ofs_read(tdb, TDB_RECOVERY_HEAD, &recovery_head) == -1) {
+		return true;
+	}
+
+	if (recovery_head == 0) {
+		/* we have never allocated a recovery record */
+		return false;
+	}
+
+	/* read the recovery record */
+	if (tdb->methods->tdb_read(tdb, recovery_head, &rec,
+				   sizeof(rec), DOCONV()) == -1) {
+		return true;
+	}
+
+	return (rec.magic == TDB_RECOVERY_MAGIC);
+}
