@@ -119,6 +119,12 @@ static int fcntl_unlock(struct tdb_context *tdb, int rw, off_t off, off_t len)
 	return fcntl(tdb->fd, F_SETLKW, &fl);
 }
 
+/* list -1 is the alloc list, otherwise a hash chain. */
+static tdb_off_t lock_offset(int list)
+{
+	return FREELIST_TOP + 4*list;
+}
+
 /* a byte range locking function - return 0 on success
    this functions locks/unlocks 1 byte at the specified offset.
 
@@ -143,6 +149,14 @@ int tdb_brlock(struct tdb_context *tdb,
 
 	if ((rw_type == F_WRLCK) && (tdb->read_only || tdb->traverse_read)) {
 		tdb->ecode = TDB_ERR_RDONLY;
+		return -1;
+	}
+
+	/* Sanity check */
+	if (tdb->transaction && offset >= lock_offset(-1) && len != 0) {
+		tdb->ecode = TDB_ERR_RDONLY;
+		TDB_LOG((tdb, TDB_DEBUG_TRACE, "tdb_brlock attempted in transaction at offset %d rw_type=%d flags=%d len=%d\n",
+			 offset, rw_type, flags, (int)len));
 		return -1;
 	}
 
@@ -234,12 +248,6 @@ int tdb_allrecord_upgrade(struct tdb_context *tdb)
 	return -1;
 }
 
-/* list -1 is the alloc list, otherwise a hash chain. */
-static tdb_off_t lock_offset(int list)
-{
-	return FREELIST_TOP + 4*list;
-}
-
 static struct tdb_lock_type *find_nestlock(struct tdb_context *tdb,
 					   tdb_off_t offset)
 {
@@ -289,7 +297,7 @@ int tdb_nest_lock(struct tdb_context *tdb, uint32_t offset, int ltype,
 
 	/* Since fcntl locks don't nest, we do a lock for the first one,
 	   and simply bump the count for future ones */
-	if (tdb->methods->brlock(tdb, ltype, offset, 1, flags)) {
+	if (tdb_brlock(tdb, ltype, offset, 1, flags)) {
 		return -1;
 	}
 
@@ -380,7 +388,7 @@ int tdb_nest_unlock(struct tdb_context *tdb, uint32_t offset, int ltype,
 	if (mark_lock) {
 		ret = 0;
 	} else {
-		ret = tdb->methods->brunlock(tdb, ltype, offset, 1);
+		ret = tdb_brunlock(tdb, ltype, offset, 1);
 	}
 
 	/*
@@ -470,7 +478,7 @@ int tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
 		return -1;
 	}
 
-	if (tdb->methods->brlock(tdb, ltype, FREELIST_TOP, 0, flags)) {
+	if (tdb_brlock(tdb, ltype, FREELIST_TOP, 0, flags)) {
 		if (flags & TDB_LOCK_WAIT) {
 			TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_lockall failed (%s)\n", strerror(errno)));
 		}
@@ -514,8 +522,7 @@ int tdb_allrecord_unlock(struct tdb_context *tdb, int ltype, bool mark_lock)
 		return 0;
 	}
 
-	if (!mark_lock &&
-	    tdb->methods->brunlock(tdb, ltype, FREELIST_TOP, 0)) {
+	if (!mark_lock && tdb_brunlock(tdb, ltype, FREELIST_TOP, 0)) {
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_unlockall failed (%s)\n", strerror(errno)));
 		return -1;
 	}
@@ -648,7 +655,7 @@ int tdb_lock_record(struct tdb_context *tdb, tdb_off_t off)
 	if (tdb->allrecord_lock.count) {
 		return 0;
 	}
-	return off ? tdb->methods->brlock(tdb, F_RDLCK, off, 1, TDB_LOCK_WAIT) : 0;
+	return off ? tdb_brlock(tdb, F_RDLCK, off, 1, TDB_LOCK_WAIT) : 0;
 }
 
 /*
@@ -668,7 +675,7 @@ int tdb_write_lock_record(struct tdb_context *tdb, tdb_off_t off)
 		}
 		return -1;
 	}
-	return tdb->methods->brlock(tdb, F_WRLCK, off, 1, TDB_LOCK_NOWAIT|TDB_LOCK_PROBE);
+	return tdb_brlock(tdb, F_WRLCK, off, 1, TDB_LOCK_NOWAIT|TDB_LOCK_PROBE);
 }
 
 int tdb_write_unlock_record(struct tdb_context *tdb, tdb_off_t off)
@@ -676,7 +683,7 @@ int tdb_write_unlock_record(struct tdb_context *tdb, tdb_off_t off)
 	if (tdb->allrecord_lock.count) {
 		return 0;
 	}
-	return tdb->methods->brunlock(tdb, F_WRLCK, off, 1);
+	return tdb_brunlock(tdb, F_WRLCK, off, 1);
 }
 
 /* fcntl locks don't stack: avoid unlocking someone else's */
@@ -694,7 +701,7 @@ int tdb_unlock_record(struct tdb_context *tdb, tdb_off_t off)
 	for (i = &tdb->travlocks; i; i = i->next)
 		if (i->off == off)
 			count++;
-	return (count == 1 ? tdb->methods->brunlock(tdb, F_RDLCK, off, 1) : 0);
+	return (count == 1 ? tdb_brunlock(tdb, F_RDLCK, off, 1) : 0);
 }
 
 bool tdb_have_extra_locks(struct tdb_context *tdb)

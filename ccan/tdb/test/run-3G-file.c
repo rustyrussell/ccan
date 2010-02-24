@@ -50,9 +50,7 @@ static const struct tdb_methods large_io_methods = {
 	tdb_write,
 	tdb_next_hash_chain,
 	tdb_oob,
-	tdb_expand_file_sparse,
-	tdb_brlock,
-	tdb_brunlock
+	tdb_expand_file_sparse
 };
 
 static int test_traverse(struct tdb_context *tdb, TDB_DATA key, TDB_DATA data,

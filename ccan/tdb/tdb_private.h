@@ -211,8 +211,6 @@ struct tdb_methods {
 	void (*next_hash_chain)(struct tdb_context *, uint32_t *);
 	int (*tdb_oob)(struct tdb_context *, tdb_off_t , int );
 	int (*tdb_expand_file)(struct tdb_context *, tdb_off_t , tdb_off_t );
-	int (*brlock)(struct tdb_context *, int, tdb_off_t, size_t, enum tdb_lock_flags);
-	int (*brunlock)(struct tdb_context *, int, tdb_off_t, size_t);
 };
 
 struct tdb_context {

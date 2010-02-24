@@ -408,33 +408,12 @@ static int transaction_expand_file(struct tdb_context *tdb, tdb_off_t size,
 	return 0;
 }
 
-/*
-  brlock during a transaction - ignore them
-*/
-static int transaction_brlock(struct tdb_context *tdb,
-			      int rw_type, tdb_off_t offset, size_t len,
-			      enum tdb_lock_flags flags)
-{
-	/* FIXME: We actually grab the open lock during a transaction. */
-	if (offset == OPEN_LOCK)
-		return tdb_brlock(tdb, rw_type, offset, len, flags);
-	return 0;
-}
-
-static int transaction_brunlock(struct tdb_context *tdb,
-				int rw_type, tdb_off_t offset, size_t len)
-{
-	return 0;
-}
-
 static const struct tdb_methods transaction_methods = {
 	transaction_read,
 	transaction_write,
 	transaction_next_hash_chain,
 	transaction_oob,
 	transaction_expand_file,
-	transaction_brlock,
-	transaction_brunlock
 };
 
 /*
