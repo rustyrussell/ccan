@@ -104,6 +104,9 @@ static const char *describe_run_tests(struct manifest *m,
 	return descrip;
 }
 
+/* Gcc's warn_unused_result is fascist bullshit. */
+#define doesnt_matter()
+
 static void run_under_debugger(struct manifest *m, void *check_result)
 {
 	char *command;
@@ -116,7 +119,8 @@ static void run_under_debugger(struct manifest *m, void *check_result)
 	first = list_top(list, struct run_tests_result, list);
 	command = talloc_asprintf(m, "gdb -ex 'break tap.c:136' -ex 'run' %s",
 				  first->file->compiled);
-	system(command);
+	if (system(command))
+		doesnt_matter();
 }
 
 struct ccanlint run_tests = {

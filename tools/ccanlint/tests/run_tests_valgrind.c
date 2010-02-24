@@ -107,6 +107,9 @@ static const char *describe_run_tests_vg(struct manifest *m,
 	return descrip;
 }
 
+/* Gcc's warn_unused_result is fascist bullshit. */
+#define doesnt_matter()
+
 static void run_under_debugger_vg(struct manifest *m, void *check_result)
 {
 	struct list_head *list = check_result;
@@ -119,7 +122,8 @@ static void run_under_debugger_vg(struct manifest *m, void *check_result)
 	first = list_top(list, struct run_tests_result, list);
 	command = talloc_asprintf(m, "valgrind --db-attach=yes %s",
 				  first->file->compiled);
-	system(command);
+	if (system(command))
+		doesnt_matter();
 }
 
 struct ccanlint run_tests_vg = {
