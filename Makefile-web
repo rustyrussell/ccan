@@ -1,9 +1,11 @@
 # This can be overridden on cmdline to generate pages elsewhere.
 WEBDIR=/home/rusty/www/html/ccan
 
-ALL_PAGES=$(patsubst %, $(WEBDIR)/info/%.html, $(ALL))
-DIRECT_TARBALLS=$(patsubst %, $(WEBDIR)/tarballs/%.tar.bz2, $(ALL))
-DEPEND_TARBALLS=$(patsubst %, $(WEBDIR)/tarballs/with-deps/%.tar.bz2, $(ALL))
+# Ignore EXCLUDE when making webpages.
+REALLY_ALL=$(patsubst ccan/%/_info, %, $(wildcard ccan/*/_info))
+ALL_PAGES=$(patsubst %, $(WEBDIR)/info/%.html, $(REALLY_ALL))
+DIRECT_TARBALLS=$(patsubst %, $(WEBDIR)/tarballs/%.tar.bz2, $(REALLY_ALL))
+DEPEND_TARBALLS=$(patsubst %, $(WEBDIR)/tarballs/with-deps/%.tar.bz2, $(REALLY_ALL))
 WEB_SUBDIRS=$(WEBDIR)/tarballs $(WEBDIR)/junkcode $(WEBDIR)/tarballs/with-deps $(WEBDIR)/info
 JUNKDIRS=$(wildcard junkcode/*)
 JUNKPAGES=$(JUNKDIRS:%=$(WEBDIR)/%.html)
@@ -58,7 +60,7 @@ $(BZRBROWSE): $(WEBDIR)/%: web/bzrbrowse/%
 	cp $< $@
 
 $(WEBDIR)/info/%.html: $(WEBDIR)/tarballs/%.tar.bz2 $(WEBDIR)/tarballs/with-deps/%.tar.bz2
-	@URLPREFIX=../ php5 web/staticmoduleinfo.php ccan/$* > $@
+	@URLPREFIX=../ php5 web/staticmoduleinfo.php `pwd`/ccan/$* > $@
 
 $(WEBDIR)/tarballs/%.tar.bz2: ccan/%/_info
 	tar -c -j -f $@ `bzr ls --recursive --versioned --kind=file ccan/$*`
