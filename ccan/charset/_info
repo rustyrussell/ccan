@@ -1,0 +1,63 @@
+#include <stdio.h>
+#include <string.h>
+#include "config.h"
+
+/**
+ * charset - character set conversion and validation routines
+ *
+ * This module provides a collection (well, only one, at the moment) of
+ * well-tested routines for dealing with character set nonsense.
+ *
+ * Validation functions:
+ *  - bool utf8_validate(const char *str, size_t length);
+ *
+ * Example:
+ *	#include <err.h>
+ *	#include <stdio.h>
+ *	#include <string.h>
+ *	#include <ccan/charset/charset.h>
+ *	#include <ccan/grab_file/grab_file.h>
+ *	#include <ccan/talloc/talloc.h>	// For talloc_free()
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		size_t len;
+ *		char *file;
+ *		bool valid;
+ *
+ *		if (argc != 2)
+ *			err(1, "Expected exactly one argument");
+ *
+ *		file = grab_file(NULL, argv[1], &len);
+ *		if (!file)
+ *			err(1, "Could not read file %s", argv[1]);
+ *
+ *		valid = utf8_validate(file, len));
+ *		printf("File contents are %s UTF-8\n", valid ? "valid" : "invalid");
+ *
+ *		talloc_free(file);
+ *
+ *		return 0;
+ *	}
+ *
+ * Author: Joey Adams
+ * Licence: MIT
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		/* Nothing */
+		return 0;
+	}
+	
+	if (strcmp(argv[1], "libs") == 0) {
+		printf("m\n"); /* Needed for the pow() invocation in run.c */
+		return 0;
+	}
+
+	return 1;
+}
