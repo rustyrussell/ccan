@@ -40,7 +40,8 @@ static unsigned int utf8_randcode(int len)
 		case 3:
 			for (;;) {
 				ret = r % (0x10000-0x800) + 0x800;
-				if (!utf8_allow_surrogates && ret >= 0xD800 && ret <= 0xDFFF)
+				if ((!utf8_allow_surrogates && ret >= 0xD800 && ret <= 0xDFFF)
+				|| ret >= 0xFFFE)
 				{
 					r = rand32();
 					continue;

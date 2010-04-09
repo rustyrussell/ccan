@@ -50,17 +50,22 @@ bool utf8_validate(const char *str, size_t length)
 				return false;
 		} else if (c < 0xF0) {
 			/* 3-byte sequence, U+0800 to U+FFFF
-			   Note that the surrogate range is U+D800 to U+DFFF
+			   Note that the surrogate range is U+D800 to U+DFFF,
+				  and that U+FFFE and U+FFFF are illegal characters.
 			   c must be >= 11100000 (which it is)
 			   If c is 11100000, then s[0] must be >= 10100000
 			   If the global parameter utf8_allow_surrogates is false:
 			      If c is 11101101 and s[0] is >= 10100000,
 			         then this is a surrogate and we should fail.
+			   If c is 11101111, s[0] is 10111111, and s[1] >= 10111110,
+				  then this is an illegal character and we should fail.
 			   s[0] and s[1] must be 10xxxxxx */
 			len = 1;
 			if (c == 0xE0 && *s < 0xA0)
 				return false;
 			if (!utf8_allow_surrogates && c == 0xED && *s >= 0xA0)
+				return false;
+			if (c == 0xEF && s[0] == 0xBF && (s+1 >= e || s[1] >= 0xBE))
 				return false;
 		} else {
 			/* 4-byte sequence, U+010000 to U+10FFFF
