@@ -12,7 +12,7 @@
 
 # Trying to build the whole repo is usually a lose; there will be some
 # dependencies you don't have.
-EXCLUDE=ccan/wwviaudio ccan/ogg_to_pcm
+EXCLUDE=wwviaudio ogg_to_pcm
 
 # Anything with an _info file is a module.
 ALL=$(filter-out $(EXCLUDE), $(patsubst ccan/%/_info, %, $(wildcard ccan/*/_info)))
@@ -23,6 +23,8 @@ ALL_TESTS=$(patsubst ccan/%/test/, %, $(foreach dir, $(ALL), $(wildcard ccan/$(d
 default: libccan.a
 
 include Makefile-ccan
+
+fastcheck: $(ALL_TESTS:%=summary-fastcheck-%)
 
 check: $(ALL_TESTS:%=summary-check-%)
 
@@ -36,9 +38,15 @@ $(ALL_DEPENDS): %/.depends: %/_info tools/ccan_depends
 check-%: tools/ccanlint/ccanlint
 	@tools/ccanlint/ccanlint -d ccan/$*
 
+fastcheck-%: tools/ccanlint/ccanlint
+	@tools/ccanlint/ccanlint -t -d ccan/$*
+
 # Doesn't test dependencies, doesn't print verbose fail results.
 summary-check-%: tools/ccanlint/ccanlint $(OBJFILES)
 	@tools/ccanlint/ccanlint -s -d ccan/$*
+
+summary-fastcheck-%: tools/ccanlint/ccanlint $(OBJFILES)
+	@tools/ccanlint/ccanlint -t -s -d ccan/$*
 
 ccan/%/info: ccan/%/_info
 	$(CC) $(CFLAGS) -o $@ -x c $<

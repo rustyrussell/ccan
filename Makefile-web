@@ -12,7 +12,7 @@ JUNKPAGES=$(JUNKDIRS:%=$(WEBDIR)/%.html)
 JUNKBALLS=$(JUNKDIRS:%=$(WEBDIR)/%.tar.bz2)
 BZRBROWSE=$(WEBDIR)/bzrbrowse.cgi $(WEBDIR)/file.png $(WEBDIR)/folder.png
 
-upload: check webpages
+upload: fastcheck webpages
 	bzr push
 	send-web # Rusty's upload script.
 
