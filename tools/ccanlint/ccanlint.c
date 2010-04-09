@@ -37,18 +37,18 @@ static LIST_HEAD(normal_tests);
 static LIST_HEAD(finished_tests);
 bool safe_mode = false;
 static struct btree *exclude;
-static bool fastmode = false;
+static unsigned int timeout;
 
 static void usage(const char *name)
 {
-	fprintf(stderr, "Usage: %s [-s] [-n] [-v] [-t] [-d <dirname>]\n"
+	fprintf(stderr, "Usage: %s [-s] [-n] [-v] [-t <ms>] [-d <dirname>] [-x <tests>]\n"
 		"   -v: verbose mode\n"
 		"   -s: simply give one line summary\n"
 		"   -d: use this directory instead of the current one\n"
 		"   -n: do not compile anything\n"
 		"   -l: list tests ccanlint performs\n"
 		"   -x: exclude tests (e.g. -x trailing_whitespace,valgrind)\n"
-		"   -t: ignore (terminate) tests that are slow\n",
+		"   -t: ignore (terminate) tests that are slower than this\n",
 		name);
 	exit(1);
 }
@@ -130,9 +130,9 @@ static bool run_test(struct ccanlint *i,
 		return true;
 	}
 
-	timeleft = fastmode ? 1000 : default_timeout_ms;
+	timeleft = timeout ? timeout : default_timeout_ms;
 	result = i->check(m, &timeleft);
-	if (fastmode && timeleft == 0) {
+	if (timeout && timeleft == 0) {
 		skip = "timeout";
 		goto skip;
 	}
@@ -320,7 +320,7 @@ int main(int argc, char *argv[])
 
 	/* I'd love to use long options, but that's not standard. */
 	/* FIXME: getopt_long ccan package? */
-	while ((c = getopt(argc, argv, "sd:vnlx:t")) != -1) {
+	while ((c = getopt(argc, argv, "sd:vnlx:t:")) != -1) {
 		switch (c) {
 		case 'd':
 			dir = optarg;
@@ -346,7 +346,10 @@ int main(int argc, char *argv[])
 				btree_insert(exclude, exclude_strs[i]);
 		} break;
 		case 't':
-			fastmode = true;
+			timeout = atoi(optarg);
+			if (!timeout)
+				errx(1, "Invalid timeout %s: 1 ms minumum",
+				     optarg);
 			break;
 		default:
 			usage(argv[0]);

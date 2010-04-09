@@ -2,8 +2,8 @@
 # For simple projects you could just do:
 #	SRCFILES += $(wildcard ccan/*/*.c)
 
-#CFLAGS=-g -O3 -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Werror -I. $(DEPGEN)
-CFLAGS=-g -Wall -Wstrict-prototypes -Wold-style-definition -Werror -I. $(DEPGEN)
+CFLAGS=-g -O3 -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Werror -I. $(DEPGEN)
+#CFLAGS=-g -Wall -Wstrict-prototypes -Wold-style-definition -Werror -I. $(DEPGEN)
 
 default: libccan.a
 

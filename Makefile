@@ -20,6 +20,45 @@ ALL_DEPENDS=$(patsubst %, ccan/%/.depends, $(ALL))
 # Not all modules have tests.
 ALL_TESTS=$(patsubst ccan/%/test/, %, $(foreach dir, $(ALL), $(wildcard ccan/$(dir)/test/)))
 
+# Here's my rough logarithmic timeout graph for my laptop:
+#
+# 302                                                  -     
+#    |                                                  / --*  
+#    |                                                 /       
+#    |                                                 /       
+#    |                                                /        
+#    |Execution Time, seconds                        /        
+#    |                                               /         
+#    |                                          ---//          
+#    |                                         /               
+#    |                                       //                
+#    |                    ---\            ---                  
+#    |                 ---    \\    ------                     
+#    |-----------------         \---                           
+# 19 +------------------------------------------------------+--
+#    0           Timeout (ms, logarithmic)               262144
+#
+# 140
+#    |                                                         
+#    |------------                                             
+#    |            ---                                          
+#    |               ---------                                 
+#    |                        -------                          
+#    |                               --\                       
+#    |                                  \\-                    
+#    | Tests skipped                       --\                 
+#    |                                        \                
+#    |                                         \\              
+#    |                                           \\\           
+#    |                                              \          
+#    |                                               \----     
+#  --+0---------------------------------------------------==+--
+#    0           Timeout (ms, logarithmic)               262144
+#
+# On my laptop, this runs 574 tests in 40 seconds, vs. a full check which
+# runs 676 tests in 260 seconds.
+FASTTIMEOUT=750
+
 default: libccan.a
 
 include Makefile-ccan
@@ -39,14 +78,14 @@ check-%: tools/ccanlint/ccanlint
 	@tools/ccanlint/ccanlint -d ccan/$*
 
 fastcheck-%: tools/ccanlint/ccanlint
-	@tools/ccanlint/ccanlint -t -d ccan/$*
+	@tools/ccanlint/ccanlint -t $(FASTTIMEOUT) -d ccan/$*
 
 # Doesn't test dependencies, doesn't print verbose fail results.
 summary-check-%: tools/ccanlint/ccanlint $(OBJFILES)
 	@tools/ccanlint/ccanlint -s -d ccan/$*
 
 summary-fastcheck-%: tools/ccanlint/ccanlint $(OBJFILES)
-	@tools/ccanlint/ccanlint -t -s -d ccan/$*
+	@tools/ccanlint/ccanlint -t $(FASTTIMEOUT) -s -d ccan/$*
 
 ccan/%/info: ccan/%/_info
 	$(CC) $(CFLAGS) -o $@ -x c $<
