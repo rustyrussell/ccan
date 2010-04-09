@@ -40,6 +40,9 @@ struct manifest *get_manifest(const void *ctx, const char *dir);
 struct ccanlint {
 	struct list_node list;
 
+	/* More concise unique name of test. */
+	const char *key;
+
 	/* Unique name of test */
 	const char *name;
 

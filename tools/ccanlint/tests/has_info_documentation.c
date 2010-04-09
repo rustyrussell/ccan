@@ -123,6 +123,7 @@ static unsigned int has_info_documentation_score(struct manifest *m,
 }
 
 struct ccanlint has_info_documentation = {
+	.key = "info-documentation",
 	.name = "Documentation in _info file",
 	.total_score = 3,
 	.score = has_info_documentation_score,

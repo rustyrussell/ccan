@@ -56,6 +56,7 @@ static const char *describe_compile_test_helpers(struct manifest *m,
 }
 
 struct ccanlint compile_test_helpers = {
+	.key = "compile-helpers",
 	.name = "Compiling test helper files",
 	.total_score = 1,
 	.check = do_compile_test_helpers,

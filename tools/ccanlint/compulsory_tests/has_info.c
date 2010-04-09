@@ -71,6 +71,7 @@ static void create_info_template(struct manifest *m, void *check_result)
 }
 
 struct ccanlint has_info = {
+	.key = "info",
 	.name = "Has _info file",
 	.check = check_has_info,
 	.describe = describe_has_info,

@@ -50,6 +50,7 @@ static const char *describe_objs_build(struct manifest *m, void *check_result)
 }
 
 struct ccanlint build_objs = {
+	.key = "build-objs",
 	.name = "Module object files can be built",
 	.check = check_objs_build,
 	.describe = describe_objs_build,

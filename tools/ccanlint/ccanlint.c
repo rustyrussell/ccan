@@ -26,6 +26,9 @@
 #include <string.h>
 #include <err.h>
 #include <ctype.h>
+#include <ccan/btree/btree.h>
+#include <ccan/str/str.h>
+#include <ccan/str_talloc/str_talloc.h>
 #include <ccan/talloc/talloc.h>
 
 static unsigned int verbose = 0;
@@ -33,6 +36,7 @@ static LIST_HEAD(compulsory_tests);
 static LIST_HEAD(normal_tests);
 static LIST_HEAD(finished_tests);
 bool safe_mode = false;
+static struct btree *exclude;
 
 static void usage(const char *name)
 {
@@ -40,7 +44,9 @@ static void usage(const char *name)
 		"   -v: verbose mode\n"
 		"   -s: simply give one line summary\n"
 		"   -d: use this directory instead of the current one\n"
-		"   -n: do not compile anything\n",
+		"   -n: do not compile anything\n"
+		"   -l: list tests ccanlint performs\n"
+		"   -x: exclude tests (e.g. -x trailing_whitespace,valgrind)\n",
 		name);
 	exit(1);
 }
@@ -73,6 +79,9 @@ bool ask(const char *question)
 
 static const char *should_skip(struct manifest *m, struct ccanlint *i)
 {
+	if (btree_lookup(exclude, i->key))
+		return "excluded on command line";
+	
 	if (i->skip_fail)
 		return "dependency failed";
 
@@ -212,6 +221,7 @@ static inline struct ccanlint *get_next_test(struct list_head *test)
 static void init_tests(void)
 {
 	const struct ccanlint *i;
+	struct btree *keys, *names;
 
 #undef REGISTER_TEST
 #define REGISTER_TEST(name, ...) register_test(&normal_tests, &name, __VA_ARGS__)
@@ -220,6 +230,25 @@ static void init_tests(void)
 #define REGISTER_TEST(name, ...) register_test(&compulsory_tests, &name, __VA_ARGS__)
 #include "generated-compulsory-tests"
 
+	/* Self-consistency check: make sure no two tests
+	   have the same key or name. */
+	keys = btree_new(btree_strcmp);
+	names = btree_new(btree_strcmp);
+	list_for_each(&compulsory_tests, i, list) {
+		if (!btree_insert(keys, i->key))
+			errx(1, "BUG: Duplicate test key '%s'", i->key);
+		if (!btree_insert(keys, i->name))
+			errx(1, "BUG: Duplicate test name '%s'", i->name);
+	}
+	list_for_each(&normal_tests, i, list) {
+		if (!btree_insert(keys, i->key))
+			errx(1, "BUG: Duplicate test key '%s'", i->key);
+		if (!btree_insert(keys, i->name))
+			errx(1, "BUG: Duplicate test name '%s'", i->name);
+	}
+	btree_delete(keys);
+	btree_delete(names);
+	
 	if (!verbose)
 		return;
 
@@ -246,6 +275,37 @@ static void init_tests(void)
 	}
 }
 
+static void print_test(const struct ccanlint *i)
+{
+	int space = 25 - strlen(i->key);
+	
+	if (space >= 2) {
+		printf("   %s", i->key);
+		while (space--)
+			putchar(' ');
+	} else {
+		printf("   %s  ", i->key);
+	}
+	
+	printf("%s\n", i->name);
+}
+
+static void list_tests(void)
+{
+	const struct ccanlint *i;
+	
+	init_tests();
+	
+	printf("Compulsory tests:\n");
+	list_for_each(&compulsory_tests, i, list)
+		print_test(i);
+	printf("Normal tests:\n");
+	list_for_each(&normal_tests, i, list)
+		print_test(i);
+	
+	exit(0);
+}
+
 int main(int argc, char *argv[])
 {
 	int c;
@@ -254,10 +314,12 @@ int main(int argc, char *argv[])
 	struct manifest *m;
 	struct ccanlint *i;
 	const char *prefix = "", *dir = ".";
+	
+	exclude = btree_new(btree_strcmp);
 
 	/* I'd love to use long options, but that's not standard. */
 	/* FIXME: getopt_long ccan package? */
-	while ((c = getopt(argc, argv, "sd:vn")) != -1) {
+	while ((c = getopt(argc, argv, "sd:vnlx:")) != -1) {
 		switch (c) {
 		case 'd':
 			dir = optarg;
@@ -265,6 +327,8 @@ int main(int argc, char *argv[])
 								      optarg),
 						      ": ");
 			break;
+		case 'l':
+			list_tests();
 		case 's':
 			summary = true;
 			break;
@@ -274,6 +338,12 @@ int main(int argc, char *argv[])
 		case 'n':
 			safe_mode = true;
 			break;
+		case 'x': {
+			char **exclude_strs = strsplit(NULL, optarg, ",", NULL);
+			size_t i;
+			for (i = 0; exclude_strs[i]; i++)
+				btree_insert(exclude, exclude_strs[i]);
+		} break;
 		default:
 			usage(argv[0]);
 		}

@@ -83,6 +83,7 @@ static const char *describe_depends_built(struct manifest *m,
 }
 
 struct ccanlint depends_built = {
+	.key = "depends-built",
 	.name = "CCAN dependencies are built",
 	.total_score = 1,
 	.check = check_depends_built,
