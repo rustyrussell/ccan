@@ -33,10 +33,14 @@ Note:  The following should work but are not well-tested yet:
 
 btree_walk...
 btree_cmp_iters
+btree_insert
+btree_remove
+btree_lookup
 */
 
+#include <stdbool.h>
 #include <stdint.h>
-#include <stddef.h>
+#include <string.h>
 
 /*
  * Maximum number of items per node.
@@ -90,6 +94,8 @@ typedef unsigned int btree_search_proto(
 );
 typedef btree_search_proto *btree_search_t;
 
+btree_search_proto btree_strcmp;
+
 /*
  * Callback used by btree_delete() and btree_walk...().
  *
@@ -106,6 +112,7 @@ struct btree {
 	size_t count; /* Total number of items in B-tree */
 	
 	btree_search_t search;
+	bool multi;
 	
 	/*
 	 * These are set to NULL by default.
@@ -122,6 +129,30 @@ struct btree {
 
 struct btree *btree_new(btree_search_t search);
 void btree_delete(struct btree *btree);
+
+/* Inserts an item into the btree.  If an item already exists that is equal
+ * to this one (as determined by the search function), behavior depends on the
+ * btree->multi setting.
+ *   If btree->multi is false (default), returns false, and no item
+ *      is inserted (because it would be a duplicate).
+ *   If btree->multi is true, returns true, putting the item after
+ *      its duplicates.
+ */
+bool btree_insert(struct btree *btree, const void *item);
+
+/* Removes an item from the btree.  If an item exists that is equal to the
+ * key (as determined by the search function), it is removed.
+ *
+ * If btree->multi is set, all matching items are removed.
+ *
+ * Returns true if item was found and deleted, false if not found. */
+bool btree_remove(struct btree *btree, const void *key);
+
+/* Finds the requested item.
+ * Returns the item pointer on success, NULL on failure.
+ * Note that NULL is a valid item value.  If you need to put
+ * NULLs in a btree, use btree_find instead. */
+void *btree_lookup(struct btree *btree, const void *key);
 
 
 /* lr must be 0 or 1, nothing else. */

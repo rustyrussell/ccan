@@ -77,6 +77,7 @@ struct btree *btree_new(btree_search_t search)
 		node->depth = 0;
 	btree->root = node;
 	btree->search = search;
+	btree->multi = false;
 	return btree;
 }
 
@@ -84,6 +85,43 @@ void btree_delete(struct btree *btree)
 {
 	node_delete(btree->root, btree);
 	free(btree);
+}
+
+bool btree_insert(struct btree *btree, const void *item)
+{
+	btree_iterator iter;
+	
+	if (btree_find_last(btree, item, iter) && !btree->multi)
+		return false;
+	
+	btree_insert_at(iter, item);
+	return true;
+}
+
+bool btree_remove(struct btree *btree, const void *key)
+{
+	btree_iterator iter;
+	bool success = false;
+	bool multi = btree->multi;
+	
+	do {
+		if (btree_find_first(btree, key, iter)) {
+			btree_remove_at(iter);
+			success = true;
+		}
+	} while (multi);
+	
+	return success;
+}
+
+void *btree_lookup(struct btree *btree, const void *key)
+{
+	btree_iterator iter;
+	
+	if (btree_find_first(btree, key, iter))
+		return iter->item;
+	
+	return NULL;
 }
 
 int btree_begin_end_lr(const struct btree *btree, btree_iterator iter, int lr)
@@ -373,6 +411,17 @@ int btree_cmp_iters(const btree_iterator iter_a, const btree_iterator iter_b)
 	
 	return 0;
 }
+
+/********************* Built-in ordering functions *******************/
+
+btree_search_implement
+(
+	btree_strcmp,
+	char*,
+	int c = strcmp(a, b),
+	c == 0,
+	c < 0
+)
 
 
 /************************* Private functions *************************/

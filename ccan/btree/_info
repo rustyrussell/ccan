@@ -12,14 +12,6 @@
  * invalidate all iterators pointing to it (including the one passed to the
  * insertion or removal function).
  *
- * btree currently doesn't have convenience functions for the simple tasks of
- * "look up by key", "insert a key", and "remove a key".  To insert or remove,
- * you first have use btree_find* to position an iterator on the
- * insertion/removal point, then call btree_insert_at or btree_remove_at using
- * that iterator.  Since a btree can hold multiple items with the same key,
- * it isn't clear how the convenience functions should work yet.  I'm open to
- * suggestions.
- *
  * A B-tree (not to be confused with a binary tree) is a data structure that
  * performs insertion, removal, and lookup in O(log n) time per operation.
  * Although B-trees are typically used for databases and filesystems, this is
