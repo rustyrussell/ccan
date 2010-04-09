@@ -36,7 +36,7 @@ static const char *describe_has_main_header(struct manifest *m,
 
 struct ccanlint has_main_header = {
 	.key = "has-main-header",
-	.name = "No main header file",
+	.name = "Module has main header file",
 	.check = check_has_main_header,
 	.describe = describe_has_main_header,
 };

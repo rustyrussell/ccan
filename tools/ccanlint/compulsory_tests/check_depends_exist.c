@@ -67,7 +67,7 @@ static const char *describe_depends_exist(struct manifest *m,
 
 struct ccanlint depends_exist = {
 	.key = "depends-exist",
-	.name = "CCAN dependencies are present",
+	.name = "Module's CCAN dependencies are present",
 	.total_score = 1,
 	.check = check_depends_exist,
 	.describe = describe_depends_exist,

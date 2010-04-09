@@ -133,7 +133,7 @@ static const char *describe_idempotent(struct manifest *m, void *check_result)
 
 struct ccanlint idempotent = {
 	.key = "idempotent",
-	.name = "Headers are #ifndef/#define idempotent wrapped",
+	.name = "Module headers are #ifndef/#define wrapped",
 	.total_score = 1,
 	.check = check_idempotent,
 	.describe = describe_idempotent,

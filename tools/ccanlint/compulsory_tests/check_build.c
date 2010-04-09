@@ -84,8 +84,8 @@ static const char *describe_use_build(struct manifest *m, void *check_result)
 }
 
 struct ccanlint check_build = {
-	.key = "check-build",
-	.name = "Module can be used",
+	.key = "check-link",
+	.name = "Module can be linked against trivial program",
 	.total_score = 1,
 	.check = check_use_build,
 	.describe = describe_use_build,

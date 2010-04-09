@@ -63,7 +63,7 @@ static const char *describe_build(struct manifest *m, void *check_result)
 
 struct ccanlint build = {
 	.key = "build",
-	.name = "Module can be built",
+	.name = "Module can be built from object files",
 	.total_score = 1,
 	.check = do_build,
 	.describe = describe_build,

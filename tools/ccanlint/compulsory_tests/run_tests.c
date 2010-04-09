@@ -125,7 +125,7 @@ static void run_under_debugger(struct manifest *m, void *check_result)
 
 struct ccanlint run_tests = {
 	.key = "run",
-	.name = "run and api tests run successfully",
+	.name = "Module's run and api tests pass",
 	.score = score_run_tests,
 	.check = do_run_tests,
 	.describe = describe_run_tests,

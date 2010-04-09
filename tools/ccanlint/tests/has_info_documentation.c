@@ -124,7 +124,7 @@ static unsigned int has_info_documentation_score(struct manifest *m,
 
 struct ccanlint has_info_documentation = {
 	.key = "info-documentation",
-	.name = "Documentation in _info file",
+	.name = "Module has documentation in _info",
 	.total_score = 3,
 	.score = has_info_documentation_score,
 	.check = check_has_info_documentation,

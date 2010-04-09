@@ -128,7 +128,7 @@ static void run_under_debugger_vg(struct manifest *m, void *check_result)
 
 struct ccanlint run_tests_vg = {
 	.key = "valgrind",
-	.name = "run and api tests under valgrind",
+	.name = "Module's run and api tests succeed under valgrind",
 	.score = score_run_tests_vg,
 	.check = do_run_tests_vg,
 	.describe = describe_run_tests_vg,

@@ -58,7 +58,7 @@ static const char *describe_includes_build(struct manifest *m,
 
 struct ccanlint includes_build = {
 	.key = "include-main",
-	.name = "Can compile against main header",
+	.name = "Modules main header compiles",
 	.total_score = 1,
 	.check = check_includes_build,
 	.describe = describe_includes_build,

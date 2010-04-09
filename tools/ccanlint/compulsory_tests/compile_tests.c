@@ -183,7 +183,7 @@ static const char *describe_compile_tests(struct manifest *m,
 
 struct ccanlint compile_tests = {
 	.key = "compile",
-	.name = "Compile tests succeed",
+	.name = "Module tests compile",
 	.score = score_compile_tests,
 	.check = do_compile_tests,
 	.describe = describe_compile_tests,
