@@ -2,7 +2,7 @@
 WEBDIR=/home/rusty/www/html/ccan
 
 # Ignore EXCLUDE when making webpages.
-REALLY_ALL=$(patsubst ccan/%/_info, %, $(wildcard ccan/*/_info))
+REALLY_ALL=$(patsubst ccan/%/_info, %, $(shell bzr ls -R ccan | grep '/_info$$'))
 ALL_PAGES=$(patsubst %, $(WEBDIR)/info/%.html, $(REALLY_ALL))
 DIRECT_TARBALLS=$(patsubst %, $(WEBDIR)/tarballs/%.tar.bz2, $(REALLY_ALL))
 DEPEND_TARBALLS=$(patsubst %, $(WEBDIR)/tarballs/with-deps/%.tar.bz2, $(REALLY_ALL))
