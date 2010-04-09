@@ -27,7 +27,7 @@ char **get_libs(const void *ctx, const char *dir,
 char *talloc_basename(const void *ctx, const char *dir);
 char *talloc_dirname(const void *ctx, const char *dir);
 char *talloc_getcwd(const void *ctx);
-char *run_command(const void *ctx, const char *fmt, ...);
+char *run_command(const void *ctx, unsigned int *time_ms, const char *fmt, ...);
 char *temp_file(const void *ctx, const char *extension);
 bool move_file(const char *oldname, const char *newname);
 
@@ -45,4 +45,8 @@ char *compile_object(const void *ctx, const char *cfile, const char *ccandir,
 char *compile_and_link(const void *ctx, const char *cfile, const char *ccandir,
 		       const char *objs, const char *extra_cflags,
 		       const char *libs, char **errmsg);
+
+/* Default wait for run_command.  Should never time out. */
+extern const unsigned int default_timeout_ms;
+
 #endif /* CCAN_TOOLS_H */

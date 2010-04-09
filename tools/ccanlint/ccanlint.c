@@ -37,16 +37,18 @@ static LIST_HEAD(normal_tests);
 static LIST_HEAD(finished_tests);
 bool safe_mode = false;
 static struct btree *exclude;
+static bool fastmode = false;
 
 static void usage(const char *name)
 {
-	fprintf(stderr, "Usage: %s [-s] [-n] [-v] [-d <dirname>]\n"
+	fprintf(stderr, "Usage: %s [-s] [-n] [-v] [-t] [-d <dirname>]\n"
 		"   -v: verbose mode\n"
 		"   -s: simply give one line summary\n"
 		"   -d: use this directory instead of the current one\n"
 		"   -n: do not compile anything\n"
 		"   -l: list tests ccanlint performs\n"
-		"   -x: exclude tests (e.g. -x trailing_whitespace,valgrind)\n",
+		"   -x: exclude tests (e.g. -x trailing_whitespace,valgrind)\n"
+		"   -t: ignore (terminate) tests that are slow\n",
 		name);
 	exit(1);
 }
@@ -100,7 +102,7 @@ static bool run_test(struct ccanlint *i,
 		     struct manifest *m)
 {
 	void *result;
-	unsigned int this_score;
+	unsigned int this_score, timeleft;
 	const struct dependent *d;
 	const char *skip;
 
@@ -109,7 +111,9 @@ static bool run_test(struct ccanlint *i,
 		d->dependent->num_depends--;
 
 	skip = should_skip(m, i);
+
 	if (skip) {
+	skip:
 		if (verbose)
 			printf("  %s: skipped (%s)\n", i->name, skip);
 
@@ -126,7 +130,12 @@ static bool run_test(struct ccanlint *i,
 		return true;
 	}
 
-	result = i->check(m);
+	timeleft = fastmode ? 1000 : default_timeout_ms;
+	result = i->check(m, &timeleft);
+	if (fastmode && timeleft == 0) {
+		skip = "timeout";
+		goto skip;
+	}
 	if (!result) {
 		if (verbose) {
 			printf("  %s: OK", i->name);
@@ -311,7 +320,7 @@ int main(int argc, char *argv[])
 
 	/* I'd love to use long options, but that's not standard. */
 	/* FIXME: getopt_long ccan package? */
-	while ((c = getopt(argc, argv, "sd:vnlx:")) != -1) {
+	while ((c = getopt(argc, argv, "sd:vnlx:t")) != -1) {
 		switch (c) {
 		case 'd':
 			dir = optarg;
@@ -336,6 +345,9 @@ int main(int argc, char *argv[])
 			for (i = 0; exclude_strs[i]; i++)
 				btree_insert(exclude, exclude_strs[i]);
 		} break;
+		case 't':
+			fastmode = true;
+			break;
 		default:
 			usage(argv[0]);
 		}

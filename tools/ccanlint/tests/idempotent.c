@@ -112,7 +112,7 @@ static char *report_idem(struct ccan_file *f, char *sofar)
 	return sofar;
 }
 
-static void *check_idempotent(struct manifest *m)
+static void *check_idempotent(struct manifest *m, unsigned int *timeleft)
 {
 	struct ccan_file *f;
 	char *report = NULL;

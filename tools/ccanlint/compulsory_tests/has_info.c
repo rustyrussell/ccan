@@ -11,7 +11,7 @@
 #include <string.h>
 #include <ccan/noerr/noerr.h>
 
-static void *check_has_info(struct manifest *m)
+static void *check_has_info(struct manifest *m, unsigned int *timeleft)
 {
 	if (m->info_file)
 		return NULL;

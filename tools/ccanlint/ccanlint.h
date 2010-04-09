@@ -52,8 +52,9 @@ struct ccanlint {
 	/* Can we run this test?  Return string explaining why, if not. */
 	const char *(*can_run)(struct manifest *m);
 
-	/* If this returns non-NULL, it means the check failed. */
-	void *(*check)(struct manifest *m);
+	/* If this returns non-NULL, it means the check failed.
+	 * If timeleft is set to 0, means it timed out. */
+	void *(*check)(struct manifest *m, unsigned int *timeleft);
 
 	/* The non-NULL return from check is passed to one of these: */
 

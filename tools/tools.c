@@ -2,8 +2,11 @@
 #include <ccan/grab_file/grab_file.h>
 #include <ccan/noerr/noerr.h>
 #include <ccan/read_write_all/read_write_all.h>
+#include <ccan/noerr/noerr.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/time.h>
+#include <sys/wait.h>
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
@@ -14,6 +17,9 @@
 
 static char *tmpdir = NULL;
 static unsigned int count;
+
+/* Ten minutes. */
+const unsigned int default_timeout_ms = 10 * 60 * 1000;
 
 char *talloc_basename(const void *ctx, const char *dir)
 {
@@ -51,31 +57,106 @@ char *talloc_getcwd(const void *ctx)
 	return cwd;
 }
 
+static char *run_with_timeout(const void *ctx,
+			      const char *cmd,
+			      bool *ok,
+			      unsigned *timeout_ms)
+{
+	pid_t pid;
+	int p[2];
+	char *ret;
+	int status, ms;
+	struct timeval start, end;
+
+	*ok = false;
+	if (pipe(p) != 0)
+		return talloc_asprintf(ctx, "Failed to create pipe: %s",
+				       strerror(errno));
+
+	pid = fork();
+	if (pid == -1) {
+		close_noerr(p[0]);
+		close_noerr(p[1]);
+		return talloc_asprintf(ctx, "Failed to fork: %s",
+				       strerror(errno));
+		return NULL;
+	}
+
+	if (pid == 0) {
+		struct itimerval itim;
+
+		if (dup2(p[1], STDOUT_FILENO) != STDOUT_FILENO
+		    || dup2(p[1], STDERR_FILENO) != STDERR_FILENO
+		    || close(p[0]) != 0
+		    || close(STDIN_FILENO) != 0
+		    || open("/dev/null", O_RDONLY) != STDIN_FILENO)
+			exit(128);
+
+		itim.it_interval.tv_sec = itim.it_interval.tv_usec = 0;
+		itim.it_value.tv_sec = *timeout_ms / 1000;
+		itim.it_value.tv_usec = (*timeout_ms % 1000) * 1000;
+		setitimer(ITIMER_REAL, &itim, NULL);
+
+		status = system(cmd);
+		if (WIFEXITED(status))
+			exit(WEXITSTATUS(status));
+		/* Here's a hint... */
+		exit(128 + WTERMSIG(status));
+	}
+
+	close(p[1]);
+	gettimeofday(&start, NULL);
+	ret = grab_fd(ctx, p[0], NULL);
+	/* This shouldn't fail... */
+	if (waitpid(pid, &status, 0) != pid)
+		err(1, "Failed to wait for child");
+
+	gettimeofday(&end, NULL);
+	if (WIFSIGNALED(status)) {
+		*timeout_ms = 0;
+		return ret;
+	}
+	if (end.tv_usec < start.tv_usec) {
+		end.tv_usec += 1000000;
+		end.tv_sec--;
+	}
+	ms = (end.tv_sec - start.tv_sec) * 1000
+		+ (end.tv_usec - start.tv_usec) / 1000;
+	if (ms > *timeout_ms)
+		*timeout_ms = 0;
+	else
+		*timeout_ms -= ms;
+
+	*ok = (WEXITSTATUS(status) == 0);
+	return ret;
+}
+
 /* Returns output if command fails. */
-char *run_command(const void *ctx, const char *fmt, ...)
+char *run_command(const void *ctx, unsigned int *time_ms, const char *fmt, ...)
 {
 	va_list ap;
 	char *cmd, *contents;
-	FILE *pipe;
+	bool ok;
+	unsigned int default_time = default_timeout_ms;
+
+	if (!time_ms)
+		time_ms = &default_time;
 
 	va_start(ap, fmt);
 	cmd = talloc_vasprintf(ctx, fmt, ap);
 	va_end(ap);
 
-	/* Ensure stderr gets to us too. */
-	cmd = talloc_asprintf_append(cmd, " 2>&1");
+	contents = run_with_timeout(ctx, cmd, &ok, time_ms);
+	if (ok) {
+		talloc_free(contents);
+		return NULL;
+	}
 
-	pipe = popen(cmd, "r");
-	if (!pipe)
-		return talloc_asprintf(ctx, "Failed to run '%s'", cmd);
-
-	contents = grab_fd(cmd, fileno(pipe), NULL);
-	if (pclose(pipe) != 0)
-		return talloc_asprintf(ctx, "Running '%s':\n%s",
-				       cmd, contents);
-
-	talloc_free(cmd);
-	return NULL;
+	if (!contents)
+		err(1, "Problem running child");
+	if (*time_ms == 0)
+		talloc_asprintf_append(contents, "\n== TIMED OUT ==\n");
+	return contents;
 }
 
 static int unlink_all(char *dir)

@@ -27,7 +27,7 @@ struct run_tests_result {
 	const char *output;
 };
 
-static void *do_run_tests(struct manifest *m)
+static void *do_run_tests(struct manifest *m, unsigned int *timeleft)
 {
 	struct list_head *list = talloc(m, struct list_head);
 	struct run_tests_result *res;
@@ -47,8 +47,7 @@ static void *do_run_tests(struct manifest *m)
 
 	list_for_each(&m->run_tests, i, list) {
 		run_tests.total_score++;
-		/* FIXME: timeout here */
-		cmdout = run_command(m, i->compiled);
+		cmdout = run_command(m, timeleft, i->compiled);
 		if (cmdout) {
 			res = talloc(list, struct run_tests_result);
 			res->file = i;
@@ -59,8 +58,7 @@ static void *do_run_tests(struct manifest *m)
 
 	list_for_each(&m->api_tests, i, list) {
 		run_tests.total_score++;
-		/* FIXME: timeout here */
-		cmdout = run_command(m, i->compiled);
+		cmdout = run_command(m, timeleft, i->compiled);
 		if (cmdout) {
 			res = talloc(list, struct run_tests_result);
 			res->file = i;

@@ -33,7 +33,7 @@ static char *obj_list(const struct manifest *m)
 	return list;
 }
 
-static void *do_build(struct manifest *m)
+static void *do_build(struct manifest *m, unsigned int *timeleft)
 {
 	char *filename, *err;
 

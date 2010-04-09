@@ -80,7 +80,7 @@ struct compile_tests_result {
 	const char *output;
 };
 
-static void *do_compile_tests(struct manifest *m)
+static void *do_compile_tests(struct manifest *m, unsigned int *timeleft)
 {
 	struct list_head *list = talloc(m, struct list_head);
 	char *cmdout;

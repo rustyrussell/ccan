@@ -12,7 +12,7 @@
 
 static char test_is_not_dir[] = "test is not a directory";
 
-static void *check_has_tests(struct manifest *m)
+static void *check_has_tests(struct manifest *m, unsigned int *timeleft)
 {
 	struct stat st;
 	char *test_dir = talloc_asprintf(m, "%s/test", m->dir);

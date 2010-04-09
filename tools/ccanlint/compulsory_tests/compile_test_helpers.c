@@ -32,7 +32,7 @@ static char *compile(struct manifest *m, struct ccan_file *cfile)
 	return err;
 }
 
-static void *do_compile_test_helpers(struct manifest *m)
+static void *do_compile_test_helpers(struct manifest *m, unsigned int *timeleft)
 {
 	char *cmdout = NULL;
 	struct ccan_file *i;

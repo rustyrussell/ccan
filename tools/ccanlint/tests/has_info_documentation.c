@@ -22,7 +22,8 @@ struct info_docs
 	bool example;
 };
 
-static void *check_has_info_documentation(struct manifest *m)
+static void *check_has_info_documentation(struct manifest *m,
+					  unsigned int *timeleft)
 {
 	struct list_head *infodocs = get_ccan_file_docs(m->info_file);
 	struct doc_section *d;

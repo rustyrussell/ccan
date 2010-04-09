@@ -12,7 +12,7 @@
 #include <ccan/talloc/talloc.h>
 #include <ccan/noerr/noerr.h>
 
-static void *check_has_main_header(struct manifest *m)
+static void *check_has_main_header(struct manifest *m, unsigned int *timeleft)
 {
 	struct ccan_file *f;
 

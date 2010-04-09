@@ -44,7 +44,7 @@ static char *lib_list(const struct manifest *m)
 	return ret;
 }
 
-static void *check_use_build(struct manifest *m)
+static void *check_use_build(struct manifest *m, unsigned int *timeleft)
 {
 	char *contents;
 	char *tmpfile, *err;

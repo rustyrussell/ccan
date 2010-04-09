@@ -19,7 +19,8 @@ static char *report_on_trailing_whitespace(const char *line)
 	return talloc_asprintf(line, "'%s'", line);
 }
 
-static void *check_trailing_whitespace(struct manifest *m)
+static void *check_trailing_whitespace(struct manifest *m,
+				       unsigned int *timeleft)
 {
 	char *report;
 

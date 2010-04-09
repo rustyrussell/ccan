@@ -22,7 +22,7 @@ static const char *can_build(struct manifest *m)
 	return NULL;
 }
 
-static void *check_includes_build(struct manifest *m)
+static void *check_includes_build(struct manifest *m, unsigned int *timeleft)
 {
 	char *contents;
 	char *tmpfile, *err;

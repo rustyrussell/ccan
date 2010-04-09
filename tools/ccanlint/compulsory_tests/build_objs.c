@@ -21,7 +21,7 @@ static const char *can_build(struct manifest *m)
 	return NULL;
 }
 
-static void *check_objs_build(struct manifest *m)
+static void *check_objs_build(struct manifest *m, unsigned int *timeleft)
 {
 	char *report = NULL;
 	struct ccan_file *i;

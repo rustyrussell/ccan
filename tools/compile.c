@@ -7,7 +7,7 @@ char *link_objects(const void *ctx, const char *objs, char **errmsg)
 {
 	char *file = temp_file(ctx, ".o");
 
-	*errmsg = run_command(ctx, "ld -r -o %s %s", file, objs);
+	*errmsg = run_command(ctx, NULL, "ld -r -o %s %s", file, objs);
 	if (*errmsg) {
 		talloc_free(file);
 		return NULL;
@@ -21,7 +21,7 @@ char *compile_object(const void *ctx, const char *cfile, const char *ccandir,
 {
 	char *file = temp_file(ctx, ".o");
 
-	*errmsg = run_command(ctx, "cc " CFLAGS " -I%s -c -o %s %s",
+	*errmsg = run_command(ctx, NULL, "cc " CFLAGS " -I%s -c -o %s %s",
 			      ccandir, file, cfile);
 	if (*errmsg) {
 		talloc_free(file);
@@ -38,7 +38,7 @@ char *compile_and_link(const void *ctx, const char *cfile, const char *ccandir,
 {
 	char *file = temp_file(ctx, "");
 
-	*errmsg = run_command(ctx, "cc " CFLAGS " -I%s %s -o %s %s %s %s",
+	*errmsg = run_command(ctx, NULL, "cc " CFLAGS " -I%s %s -o %s %s %s %s",
 			      ccandir, extra_cflags, file, cfile, objs, libs);
 	if (*errmsg) {
 		talloc_free(file);

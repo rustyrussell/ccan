@@ -17,7 +17,8 @@
 /* Note: we already test safe_mode in run_tests.c */
 static const char *can_run_vg(struct manifest *m)
 {
-	char *output = run_command(m, "valgrind -q true");
+	unsigned int timeleft = default_timeout_ms;
+	char *output = run_command(m, &timeleft, "valgrind -q true");
 
 	if (output)
 		return talloc_asprintf(m, "No valgrind support: %s", output);
@@ -30,7 +31,7 @@ struct run_tests_result {
 	const char *output;
 };
 
-static void *do_run_tests_vg(struct manifest *m)
+static void *do_run_tests_vg(struct manifest *m, unsigned int *timeleft)
 {
 	struct list_head *list = talloc(m, struct list_head);
 	struct run_tests_result *res;
@@ -50,8 +51,8 @@ static void *do_run_tests_vg(struct manifest *m)
 
 	list_for_each(&m->run_tests, i, list) {
 		run_tests_vg.total_score++;
-		/* FIXME: timeout here */
-		cmdout = run_command(m, "valgrind -q %s", i->compiled);
+		cmdout = run_command(m, timeleft,
+				     "valgrind -q %s", i->compiled);
 		if (cmdout) {
 			res = talloc(list, struct run_tests_result);
 			res->file = i;
@@ -62,8 +63,8 @@ static void *do_run_tests_vg(struct manifest *m)
 
 	list_for_each(&m->api_tests, i, list) {
 		run_tests_vg.total_score++;
-		/* FIXME: timeout here */
-		cmdout = run_command(m, "valgrind -q %s", i->compiled);
+		cmdout = run_command(m, timeleft,
+				     "valgrind -q %s", i->compiled);
 		if (cmdout) {
 			res = talloc(list, struct run_tests_result);
 			res->file = i;
