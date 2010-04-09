@@ -145,6 +145,8 @@ char *run_command(const void *ctx, unsigned int *time_ms, const char *fmt, ...)
 
 	if (!time_ms)
 		time_ms = &default_time;
+	else if (*time_ms == 0)
+		return talloc_strdup(ctx, "\n== TIMED OUT ==\n");
 
 	va_start(ap, fmt);
 	cmd = talloc_vasprintf(ctx, fmt, ap);
