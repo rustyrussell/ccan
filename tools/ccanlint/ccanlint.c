@@ -275,34 +275,26 @@ static void init_tests(void)
 	}
 }
 
-static void print_test(const struct ccanlint *i)
+static void print_tests(struct list_head *tests, const char *type)
 {
-	int space = 25 - strlen(i->key);
-	
-	if (space >= 2) {
-		printf("   %s", i->key);
-		while (space--)
-			putchar(' ');
-	} else {
-		printf("   %s  ", i->key);
+	struct ccanlint *i;
+
+	printf("%s tests:\n", type);
+	/* This makes them print in topological order. */
+	while ((i = get_next_test(tests)) != NULL) {
+		const struct dependent *d;
+		printf("   %-25s %s\n", i->key, i->name);
+		list_del(&i->list);
+		list_for_each(&i->dependencies, d, node)
+			d->dependent->num_depends--;
 	}
-	
-	printf("%s\n", i->name);
 }
 
 static void list_tests(void)
 {
-	const struct ccanlint *i;
-	
 	init_tests();
-	
-	printf("Compulsory tests:\n");
-	list_for_each(&compulsory_tests, i, list)
-		print_test(i);
-	printf("Normal tests:\n");
-	list_for_each(&normal_tests, i, list)
-		print_test(i);
-	
+	print_tests(&compulsory_tests, "Compulsory");
+	print_tests(&normal_tests, "Normal");
 	exit(0);
 }
 
