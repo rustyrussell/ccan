@@ -13,6 +13,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <err.h>
+#include <unistd.h>
 #include "tools.h"
 
 static char *tmpdir = NULL;
@@ -57,6 +58,11 @@ char *talloc_getcwd(const void *ctx)
 	return cwd;
 }
 
+static void killme(int sig)
+{
+	kill(-getpid(), SIGKILL);
+}
+
 static char *run_with_timeout(const void *ctx,
 			      const char *cmd,
 			      bool *ok,
@@ -73,6 +79,7 @@ static char *run_with_timeout(const void *ctx,
 		return talloc_asprintf(ctx, "Failed to create pipe: %s",
 				       strerror(errno));
 
+	gettimeofday(&start, NULL);
 	pid = fork();
 	if (pid == -1) {
 		close_noerr(p[0]);
@@ -92,6 +99,8 @@ static char *run_with_timeout(const void *ctx,
 		    || open("/dev/null", O_RDONLY) != STDIN_FILENO)
 			exit(128);
 
+		setpgid(0, 0);
+		signal(SIGALRM, killme);
 		itim.it_interval.tv_sec = itim.it_interval.tv_usec = 0;
 		itim.it_value.tv_sec = *timeout_ms / 1000;
 		itim.it_value.tv_usec = (*timeout_ms % 1000) * 1000;
@@ -105,17 +114,12 @@ static char *run_with_timeout(const void *ctx,
 	}
 
 	close(p[1]);
-	gettimeofday(&start, NULL);
 	ret = grab_fd(ctx, p[0], NULL);
 	/* This shouldn't fail... */
 	if (waitpid(pid, &status, 0) != pid)
 		err(1, "Failed to wait for child");
 
 	gettimeofday(&end, NULL);
-	if (WIFSIGNALED(status)) {
-		*timeout_ms = 0;
-		return ret;
-	}
 	if (end.tv_usec < start.tv_usec) {
 		end.tv_usec += 1000000;
 		end.tv_sec--;
@@ -127,7 +131,7 @@ static char *run_with_timeout(const void *ctx,
 	else
 		*timeout_ms -= ms;
 
-	*ok = (WEXITSTATUS(status) == 0);
+	*ok = (WIFEXITED(status) && WEXITSTATUS(status) == 0);
 	return ret;
 }
 
@@ -155,7 +159,8 @@ char *run_command(const void *ctx, unsigned int *time_ms, const char *fmt, ...)
 	if (!contents)
 		err(1, "Problem running child");
 	if (*time_ms == 0)
-		talloc_asprintf_append(contents, "\n== TIMED OUT ==\n");
+		contents = talloc_asprintf_append(contents,
+						  "\n== TIMED OUT ==\n");
 	return contents;
 }
 
