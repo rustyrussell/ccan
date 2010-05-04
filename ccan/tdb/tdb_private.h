@@ -64,7 +64,7 @@
 #define __location__ __FILE__ ":" __STRINGSTRING(__LINE__)
 #endif
 
-#if HAVE_GETPAGESIZE
+#if !HAVE_GETPAGESIZE
 #define getpagesize() 0x2000
 #endif
 
