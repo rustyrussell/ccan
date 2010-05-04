@@ -3,16 +3,16 @@ session_start();
 include('logo.html');
 include('menulist.html');
 include('static-configuration');
-$module=$argv[1];
-
-$maintainer=extract_field('maintainer',$module);
-$author=extract_field('author',$module);
-$summary=extract_field('summary',$module);
-$description=htmlize_field('description',$module);
-$example=extract_field('example',$module);
-$dependencies=htmlspecialchars(shell_exec('tools/ccan_depends --direct '.$module));
-$extdepends=htmlspecialchars(shell_exec('tools/ccan_depends --compile --non-ccan '.$module));
-$licence=extract_field('licence',$module);
+$module_path=$argv[1];
+$module=basename($module_path);
+$maintainer=extract_field('maintainer',$module_path);
+$author=extract_field('author',$module_path);
+$summary=extract_field('summary',$module_path);
+$description=htmlize_field('description',$module_path);
+$example=extract_field('example',$module_path);
+$dependencies=htmlspecialchars(shell_exec('tools/ccan_depends --direct '.$module_path));
+$extdepends=htmlspecialchars(shell_exec('tools/ccan_depends --compile --non-ccan '.$module_path));
+$licence=extract_field('licence',$module_path);
 ?>
 <table align="center" bgcolor="lightblue" width="70%" border="0" cellpadding="3" cellspacing="1">
 <tr align="center" bgcolor="FFFFCC">
@@ -20,8 +20,8 @@ $licence=extract_field('licence',$module);
 <a href="<?=$repo_base.$module?>">Browse Source</a>
 </td>
 <td>
-<a href="../<?=$tar_dir?>/with-deps/<?=basename($module)?>.tar.bz2">Download</a>
-<a href="../<?=$tar_dir?>/<?=basename($module)?>.tar.bz2">(without any required ccan dependencies)</a>
+<a href="../<?=$tar_dir?>/with-deps/<?=$module?>.tar.bz2">Download</a>
+<a href="../<?=$tar_dir?>/<?=$module?>.tar.bz2">(without any required ccan dependencies)</a>
 </tr>
 </table>
 
