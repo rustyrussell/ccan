@@ -10,6 +10,7 @@
 #include <err.h>
 #include <string.h>
 #include <ccan/noerr/noerr.h>
+#include <ccan/talloc/talloc.h>
 
 static void *check_has_info(struct manifest *m, unsigned int *timeleft)
 {
@@ -55,17 +56,19 @@ static const char template[] =
 static void create_info_template(struct manifest *m, void *check_result)
 {
 	FILE *info;
+	const char *filename;
 
 	if (!ask("Should I create a template _info file for you?"))
 		return;
 
-	info = fopen("_info", "w");
+	filename = talloc_asprintf(m, "%s/%s", m->dir, "_info");
+	info = fopen(filename, "w");
 	if (!info)
-		err(1, "Trying to create a template _info");
+		err(1, "Trying to create a template _info in %s", filename);
 
 	if (fprintf(info, template, m->basename) < 0) {
-		unlink_noerr("_info");
-		err(1, "Writing template into _info");
+		unlink_noerr(filename);
+		err(1, "Writing template into %s", filename);
 	}
 	fclose(info);
 }
