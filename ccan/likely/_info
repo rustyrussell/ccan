@@ -1,0 +1,44 @@
+#include <string.h>
+#include <stdio.h>
+#include "config.h"
+
+/**
+ * likely - macros for annotating likely/unlikely branches in the code
+ *
+ * Inspired by Andi Kleen's macros for the Linux Kernel, these macros
+ * help you annotate rare paths in your code for the convenience of the
+ * compiler and the reader.
+ *
+ * Licence: LGPL (2 or any later version)
+ *
+ * Example:
+ *	#include <ccan/likely/likely.h>
+ *	#include <stdio.h>
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		// This example is silly: the compiler knows exit() is unlikely.
+ *		if (unlikely(argc == 1)) {
+ *			fprintf(stderr, "Usage: %s <args>...\n", argv[0]);
+ *			return 1;
+ *		}
+ *		for (argc++; argv[argc]; argc++)
+ *			printf("%s\n", argv[argc]);
+ *		return 0;
+ *	}
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/str\n");
+		printf("ccan/hashtable\n");
+		printf("ccan/hash\n");
+		return 0;
+	}
+
+	return 1;
+}

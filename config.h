@@ -1,5 +1,6 @@
 /* Simple config.h for gcc. */
 #define HAVE_ALIGNOF 1
+#define HAVE_ATTRIBUTE_COLD 1
 #define HAVE_ATTRIBUTE_PRINTF 1
 #define HAVE_BIG_ENDIAN 0
 #define HAVE_BUILTIN_CHOOSE_EXPR 1
