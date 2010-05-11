@@ -43,4 +43,16 @@ static inline bool strends(const char *str, const char *postfix)
 
 	return streq(str + strlen(str) - strlen(postfix), postfix);
 }
+
+/**
+ * stringify - Turn expression into a string literal
+ * @expr: any C expression
+ *
+ * Example:
+ *	#define PRINT_COND_IF_FALSE(cond) \
+ *		((cond) || printf("%s is false!", stringify(cond)))
+ */
+#define stringify(expr)		stringify_1(expr)
+/* Double-indirection required to stringify expansions */
+#define stringify_1(expr)	#expr
 #endif /* CCAN_STR_H */

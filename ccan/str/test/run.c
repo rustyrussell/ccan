@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	plan_tests(n * n * 5);
+	plan_tests(n * n * 5 + 3);
 	for (i = 0; i < n; i++) {
 		for (j = 0; j < n; j++) {
 			unsigned int k, identical = 0;
@@ -75,6 +75,12 @@ int main(int argc, char *argv[])
 			}
 		}
 	}
+
+	ok1(streq(stringify(NUM_SUBSTRINGS),
+		  "((sizeof(substrings) / sizeof(substrings[0])) - 1)"));
+	ok1(streq(stringify(ARRAY_SIZE(substrings)),
+		  "(sizeof(substrings) / sizeof(substrings[0]))"));
+	ok1(streq(stringify(i == 0), "i == 0"));
 
 	return exit_status();
 }				
