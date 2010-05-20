@@ -1,0 +1,53 @@
+#include <stdio.h>
+#include <string.h>
+#include "config.h"
+
+/**
+ * idtree - id allocation tree
+ *
+ * There are often cases where you want to provide an integer handle for
+ * some data, and easily map it back to another structure.
+ *
+ * idtree is an efficient implementation of an int->void * mapping, with
+ * assignment of the lowest available id number.  It is from the Linux kernel
+ * via the Samba project.
+ *
+ * Example:
+ *	#include <ccan/idtree/idtree.h>
+ *	#include <ccan/talloc/talloc.h>
+ *	#include <stdlib.h>
+ *	#include <stdio.h>
+ *
+ *	// Silly example which puts args in the idtree and retreives them
+ *	int main(int argc, char *argv[])
+ *	{
+ *		struct idtree *idtree = idtree_new(NULL);
+ *		unsigned int i;
+ *	
+ *		// This will return consecutive id numbers.
+ *		for (i = 0; i < argc; i++) {
+ *			printf("idtree_add('%s') -> id %i\n",
+ *			       argv[i], idtree_add(idtree, argv[i], -1));
+ *		}
+ *		for (i = 0; i < argc; i++) {
+ *			printf("id %i -> '%s'\n", i, idtree_lookup(idtree, i));
+ *		}
+ *		return 0;
+ *	}
+ *
+ * Licence: GPL (2 or any later version)
+ * Maintainer: Rusty Russell <rusty@rustcorp.com.au>
+ * Author: Jim Houston <jim.houston@ccur.com>
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/talloc\n");
+		return 0;
+	}
+
+	return 1;
+}
