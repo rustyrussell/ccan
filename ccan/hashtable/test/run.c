@@ -87,49 +87,40 @@ struct travarg {
 	uint64_t *val;
 };
 
-static bool count(void *p, void *cbarg)
+static bool count(void *p, struct travarg *travarg)
 {
-	struct travarg *travarg = cbarg;
 	travarg->count++;
 	travarg->touched[*(uint64_t *)p]++;
 	return false;
 }
 
-static bool delete_self(void *p, void *cbarg)
+static bool delete_self(uint64_t *p, struct travarg *travarg)
 {
-	struct travarg *travarg = cbarg;
-	uint64_t val = *(uint64_t *)p;
-
 	travarg->count++;
-	travarg->touched[val]++;
+	travarg->touched[*p]++;
 	return !hashtable_del(travarg->ht, hash(p, NULL), p);
 }
 
-static bool delete_next(void *p, void *cbarg)
+static bool delete_next(uint64_t *p, struct travarg *travarg)
 {
-	struct travarg *travarg = cbarg;
-	uint64_t val = *(uint64_t *)p;
-	uint64_t *next = &travarg->val[(val + 1) % NUM_VALS];
+	uint64_t *next = &travarg->val[((*p) + 1) % NUM_VALS];
 
 	travarg->count++;
-	travarg->touched[val]++;
+	travarg->touched[*p]++;
 	return !hashtable_del(travarg->ht, hash(next, NULL), next);
 }
 
-static bool delete_prev(void *p, void *cbarg)
+static bool delete_prev(uint64_t *p, struct travarg *travarg)
 {
-	struct travarg *travarg = cbarg;
-	uint64_t val = *(uint64_t *)p;
-	uint64_t *prev = &travarg->val[(val - 1) % NUM_VALS];
+	uint64_t *prev = &travarg->val[((*p) - 1) % NUM_VALS];
 
 	travarg->count++;
-	travarg->touched[val]++;
+	travarg->touched[*p]++;
 	return !hashtable_del(travarg->ht, hash(prev, NULL), prev);
 }
 
-static bool stop_halfway(void *p, void *cbarg)
+static bool stop_halfway(void *p, struct travarg *travarg)
 {
-	struct travarg *travarg = cbarg;
 	travarg->count++;
 	travarg->touched[*(uint64_t *)p]++;
 
@@ -207,13 +198,13 @@ int main(int argc, char *argv[])
 	travarg.count = 0;
 
 	/* Traverse. */
-	hashtable_traverse(ht, count, &travarg);
+	hashtable_traverse(ht, void, count, &travarg);
 	ok1(travarg.count == NUM_VALS);
 	check_all_touched_once(&travarg);
 
 	memset(travarg.touched, 0, sizeof(travarg.touched));
 	travarg.count = 0;
-	hashtable_traverse(ht, stop_halfway, &travarg);
+	hashtable_traverse(ht, void, stop_halfway, &travarg);
 	ok1(travarg.count == NUM_VALS / 2);
 	check_only_touched_once(&travarg);
 
@@ -222,7 +213,7 @@ int main(int argc, char *argv[])
 	i = 0;
 	/* Delete until we make no more progress. */
 	for (;;) {
-		hashtable_traverse(ht, delete_self, &travarg);
+		hashtable_traverse(ht, uint64_t, delete_self, &travarg);
 		if (travarg.count == i || travarg.count > NUM_VALS)
 			break;
 		i = travarg.count;
@@ -233,14 +224,14 @@ int main(int argc, char *argv[])
 	memset(travarg.touched, 0, sizeof(travarg.touched));
 	travarg.count = 0;
 	refill_vals(ht, val, NUM_VALS);
-	hashtable_traverse(ht, delete_next, &travarg);
+	hashtable_traverse(ht, uint64_t, delete_next, &travarg);
 	ok1(travarg.count <= NUM_VALS);
 	check_only_touched_once(&travarg);
 
 	memset(travarg.touched, 0, sizeof(travarg.touched));
 	travarg.count = 0;
 	refill_vals(ht, val, NUM_VALS);
-	hashtable_traverse(ht, delete_prev, &travarg);
+	hashtable_traverse(ht, uint64_t, delete_prev, &travarg);
 	ok1(travarg.count <= NUM_VALS);
 	check_only_touched_once(&travarg);
 

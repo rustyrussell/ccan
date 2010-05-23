@@ -23,10 +23,10 @@
 #if HAVE_TYPEOF
 #define asearch(key, base, num, cmp)					\
 	((__typeof__(*(base))*)(bsearch((key), (base), (num), sizeof(*(base)), \
-	     cast_if_type((cmp),					\
-			  int (*)(const __typeof__(*(key)) *,		\
-				  const __typeof__(*(base)) *),		\
-			  int (*)(const void *, const void *)))))
+		cast_if_type(int (*)(const void *, const void *),	\
+			     (cmp),					\
+			     int (*)(const __typeof__(*(key)) *,	\
+				     const __typeof__(*(base)) *)))))
 #else
 #define asearch(key, base, num, cmp)				\
 	(bsearch((key), (base), (num), sizeof(*(base)),		\

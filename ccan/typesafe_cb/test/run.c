@@ -11,7 +11,7 @@ static void _set_some_value(void *val)
 }
 
 #define set_some_value(expr)						\
-	_set_some_value(cast_if_type((expr), unsigned long, void *))
+	_set_some_value(cast_if_type(void *, (expr), unsigned long))
 
 static void _callback_onearg(void (*fn)(void *arg), void *arg)
 {

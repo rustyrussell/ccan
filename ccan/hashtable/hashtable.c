@@ -186,10 +186,10 @@ bool hashtable_del(struct hashtable *ht, unsigned long hash, const void *p)
 	delete_run(ht, i);
 	return true;
 }
-	
-	
-void hashtable_traverse(struct hashtable *ht, bool (*cb)(void *p, void *cbarg),
-			void *cbarg)
+
+void _hashtable_traverse(struct hashtable *ht,
+			 bool (*cb)(void *p, void *cbarg),
+			 void *cbarg)
 {
 	size_t i;
 

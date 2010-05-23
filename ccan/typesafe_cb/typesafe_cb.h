@@ -5,9 +5,9 @@
 #if HAVE_TYPEOF && HAVE_BUILTIN_CHOOSE_EXPR && HAVE_BUILTIN_TYPES_COMPATIBLE_P
 /**
  * cast_if_type - only cast an expression if it is of a given type
+ * @desttype: the type to cast to
  * @expr: the expression to cast
  * @oktype: the type we allow
- * @desttype: the type to cast to
  *
  * This macro is used to create functions which allow multiple types.
  * The result of this macro is used somewhere that a @desttype type is
@@ -27,14 +27,40 @@
  *	// We can take either an unsigned long or a void *.
  *	void _set_some_value(void *val);
  *	#define set_some_value(expr)			\
- *		_set_some_value(cast_if_type((expr), unsigned long, void *))
+ *		_set_some_value(cast_if_type(void *, (expr), unsigned long))
  */
-#define cast_if_type(expr, oktype, desttype)				\
+#define cast_if_type(desttype, expr, oktype)				\
 __builtin_choose_expr(__builtin_types_compatible_p(typeof(1?(expr):0), oktype), \
 			(desttype)(expr), (expr))
 #else
 #define cast_if_type(expr, oktype, desttype) ((desttype)(expr))
 #endif
+
+/**
+ * cast_if_any - only cast an expression if it is one of the three given types
+ * @desttype: the type to cast to
+ * @expr: the expression to cast
+ * @ok1: the first type we allow
+ * @ok2: the second type we allow
+ * @ok3: the third type we allow
+ *
+ * This is a convenient wrapper for multiple cast_if_type() calls.  You can
+ * chain them inside each other (ie. use cast_if_any() for expr) if you need
+ * more than 3 arguments.
+ *
+ * Example:
+ *	// We can take either a long, unsigned long, void * or a const void *.
+ *	void _set_some_value(void *val);
+ *	#define set_some_value(expr)					\
+ *		_set_some_value(cast_if_any(void *, (expr),		\
+ *					    long, unsigned long, const void *))
+ */
+#define cast_if_any(desttype, expr, ok1, ok2, ok3)			\
+	cast_if_type(desttype,						\
+		     cast_if_type(desttype,				\
+				  cast_if_type(desttype, (expr), ok1),	\
+				  ok2),					\
+		     ok3)
 
 /**
  * typesafe_cb - cast a callback function if it matches the arg
@@ -54,14 +80,11 @@ __builtin_choose_expr(__builtin_types_compatible_p(typeof(1?(expr):0), oktype), 
  *	#define register_callback(fn, arg) \
  *		_register_callback(typesafe_cb(void, (fn), (arg)), (arg))
  */
-#define typesafe_cb(rtype, fn, arg)					\
-	cast_if_type(cast_if_type(cast_if_type((fn),			\
-					       rtype (*)(const typeof(*arg)*), \
-					       rtype (*)(void *)),	\
-				  rtype (*)(volatile typeof(*arg) *),	\
-				  rtype (*)(void *)),			\
-		     rtype (*)(typeof(arg)),				\
-		     rtype (*)(void *))
+#define typesafe_cb(rtype, fn, arg)			\
+	cast_if_any(rtype (*)(void *), (fn),		\
+		    rtype (*)(typeof(*arg)*),		\
+		    rtype (*)(const typeof(*arg)*),	\
+		    rtype (*)(volatile typeof(*arg)*))
 
 /**
  * typesafe_cb_const - cast a const callback function if it matches the arg
@@ -82,8 +105,8 @@ __builtin_choose_expr(__builtin_types_compatible_p(typeof(1?(expr):0), oktype), 
  *		_register_callback(typesafe_cb_const(void, (fn), (arg)), (arg))
  */
 #define typesafe_cb_const(rtype, fn, arg)				\
-	cast_if_type((fn),						\
-		     rtype (*)(const typeof(*arg)*), rtype (*)(const void *))
+	cast_if_type(rtype (*)(const void *), (fn),			\
+		     rtype (*)(const typeof(*arg)*))
 
 /**
  * typesafe_cb_preargs - cast a callback function if it matches the arg
@@ -101,16 +124,10 @@ __builtin_choose_expr(__builtin_types_compatible_p(typeof(1?(expr):0), oktype), 
  *				   (arg))
  */
 #define typesafe_cb_preargs(rtype, fn, arg, ...)			\
-	cast_if_type(cast_if_type(cast_if_type((fn),			\
-					       rtype (*)(__VA_ARGS__,	\
-							 const typeof(*arg) *),\
-					       rtype (*)(__VA_ARGS__,	\
-							 void *)),	\
-				  rtype (*)(__VA_ARGS__,		\
-					    volatile typeof(*arg) *),	\
-				  rtype (*)(__VA_ARGS__, void *)),	\
-		     rtype (*)(__VA_ARGS__, typeof(arg)),		\
-		     rtype (*)(__VA_ARGS__, void *))
+	cast_if_any(rtype (*)(__VA_ARGS__, void *), (fn),		\
+		    rtype (*)(__VA_ARGS__, typeof(arg)),		\
+		    rtype (*)(__VA_ARGS__, const typeof(*arg) *),	\
+		    rtype (*)(__VA_ARGS__, volatile typeof(*arg) *))
 
 /**
  * typesafe_cb_postargs - cast a callback function if it matches the arg
@@ -124,20 +141,14 @@ __builtin_choose_expr(__builtin_types_compatible_p(typeof(1?(expr):0), oktype), 
  * Example:
  *	void _register_callback(void (*fn)(void *arg, int), void *arg);
  *	#define register_callback(fn, arg) \
- *		_register_callback(typesafe_cb_preargs(void, (fn), (arg), int),\
+ *		_register_callback(typesafe_cb_postargs(void, (fn), (arg), int),\
  *				   (arg))
  */
 #define typesafe_cb_postargs(rtype, fn, arg, ...)			\
-	cast_if_type(cast_if_type(cast_if_type((fn),			\
-					       rtype (*)(const typeof(*arg) *, \
-							 __VA_ARGS__),	\
-					       rtype (*)(void *,	\
-							 __VA_ARGS__)), \
-				  rtype (*)(volatile typeof(*arg) *,	\
-					    __VA_ARGS__),		\
-				  rtype (*)(void *, __VA_ARGS__)),	\
-		     rtype (*)(typeof(arg), __VA_ARGS__),		\
-		     rtype (*)(void *, __VA_ARGS__))
+	cast_if_any(rtype (*)(void *, __VA_ARGS__), (fn),		\
+		    rtype (*)(typeof(arg), __VA_ARGS__),		\
+		    rtype (*)(const typeof(*arg) *, __VA_ARGS__),	\
+		    rtype (*)(volatile typeof(*arg) *, __VA_ARGS__))
 
 /**
  * typesafe_cb_cmp - cast a compare function if it matches the arg
@@ -160,7 +171,7 @@ __builtin_choose_expr(__builtin_types_compatible_p(typeof(1?(expr):0), oktype), 
  *			  typesafe_cb_cmp(int, (cmpfn), (base)), (arg))
  */
 #define typesafe_cb_cmp(rtype, cmpfn, arg)				\
-	cast_if_type((cmpfn),						\
-		     rtype (*)(const typeof(*arg)*, const typeof(*arg)*), \
-		     rtype (*)(const void *, const void *))
+	cast_if_type(rtype (*)(const void *, const void *), (cmpfn),	\
+		     rtype (*)(const typeof(*arg)*, const typeof(*arg)*))
+		     
 #endif /* CCAN_CAST_IF_TYPE_H */

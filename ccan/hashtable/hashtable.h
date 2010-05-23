@@ -2,6 +2,7 @@
 #define CCAN_HASHTABLE_H
 #include "config.h"
 #include <stdbool.h>
+#include <ccan/typesafe_cb/typesafe_cb.h>
 
 struct hashtable;
 
@@ -63,12 +64,27 @@ bool hashtable_del(struct hashtable *ht, unsigned long hash, const void *p);
 /**
  * hashtable_traverse - call a function on every pointer in hash tree
  * @ht: the hashtable
+ * @type: the type of the element in the hashtable.
  * @cb: the callback: returns true to abort traversal.
  * @cbarg: the argument to the callback
  *
  * Note that your traversal callback may delete any entry (it won't crash),
  * but it may make the traverse unreliable.
  */
-void hashtable_traverse(struct hashtable *ht, bool (*cb)(void *p, void *cbarg),
-			void *cbarg);
+#define hashtable_traverse(ht, type, cb, cbarg)				\
+	_hashtable_traverse(ht, cast_if_type(bool (*)(void *, void *),	\
+			     cast_if_any(bool (*)(void *,		\
+						  void *), (cb),	\
+					 bool (*)(const type *,		\
+						  const typeof(*cbarg) *), \
+					 bool (*)(type *,		\
+						  const typeof(*cbarg) *), \
+					 bool (*)(const type *,		\
+						  typeof(*cbarg) *)),	\
+					     bool (*)(type *,		\
+						      typeof(*cbarg) *)), \
+			    cbarg)
+
+void _hashtable_traverse(struct hashtable *ht,
+			 bool (*cb)(void *p, void *cbarg), void *cbarg);
 #endif /* CCAN_HASHTABLE_H */

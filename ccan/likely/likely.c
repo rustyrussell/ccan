@@ -88,11 +88,8 @@ static double right_ratio(const struct trace *t)
 	return (double)t->right / t->count;
 }
 
-static bool get_stats(void *elem, void *vinfo)
+static bool get_stats(struct trace *trace, struct get_stats_info *info)
 {
-	struct trace *trace = elem;
-	struct get_stats_info *info = vinfo;
-
 	if (trace->count < info->min_hits)
 		return false;
 
@@ -116,7 +113,7 @@ const char *likely_stats(unsigned int min_hits, unsigned int percent)
 	info.worst_ratio = 2;
 
 	/* This is O(n), but it's not likely called that often. */
-	hashtable_traverse(htable, get_stats, &info);
+	hashtable_traverse(htable, struct trace, get_stats, &info);
 
 	if (info.worst_ratio * 100 > percent)
 		return NULL;

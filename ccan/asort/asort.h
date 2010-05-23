@@ -16,19 +16,13 @@
  * The @cmp function should exactly match the type of the @base and
  * @ctx arguments.  Otherwise it can take three const void *.
  */
-#if HAVE_TYPEOF
 #define asort(base, num, cmp, ctx)					\
 _asort((base), (num), sizeof(*(base)),					\
-       cast_if_type((cmp),						\
+       cast_if_type(int (*)(const void *, const void *, const void *),	\
+		    (cmp),						\
 		    int (*)(const __typeof__(*(base)) *,		\
 			    const __typeof__(*(base)) *,		\
-			    __typeof__(ctx)),				\
-		    int (*)(const void *, const void *, const void *)), (ctx))
-#else
-#define asort(base, num, cmp, ctx)				\
-	_asort((base), (num), sizeof(*(base)),			\
-	       (int (*)(const void *, const void *, const void *))(cmp), ctx)
-#endif
+			    __typeof__(ctx))), (ctx))
 
 void _asort(void *base, size_t nmemb, size_t size,
 	    int(*compar)(const void *, const void *, const void *),
