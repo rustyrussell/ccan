@@ -33,7 +33,7 @@
 __builtin_choose_expr(__builtin_types_compatible_p(typeof(1?(expr):0), oktype), \
 			(desttype)(expr), (expr))
 #else
-#define cast_if_type(expr, oktype, desttype) ((desttype)(expr))
+#define cast_if_type(desttype, expr, oktype) ((desttype)(expr))
 #endif
 
 /**
