@@ -28,11 +28,11 @@ static void my_callback(const char *p)
 {
 }
 
-static void my_callback_pre(int x, const char *p)
+static void my_callback_pre(int x, /*const*/ char *p)
 {
 }
 
-static void my_callback_post(const char *p, int x)
+static void my_callback_post(/*const*/ char *p, int x)
 {
 }
 

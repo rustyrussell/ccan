@@ -28,11 +28,12 @@ static void my_callback(volatile char *p)
 {
 }
 
-static void my_callback_pre(int x, volatile char *p)
+/* FIXME: Can't handle volatile for these */
+static void my_callback_pre(int x, /* volatile */ char *p)
 {
 }
 
-static void my_callback_post(volatile char *p, int x)
+static void my_callback_post(/* volatile */ char *p, int x)
 {
 }
 

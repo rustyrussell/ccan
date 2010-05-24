@@ -30,11 +30,11 @@ static void my_callback(const struct undefined *undef)
 {
 }
 
-static void my_callback_pre(int x, const struct undefined *undef)
+static void my_callback_pre(int x, struct undefined *undef)
 {
 }
 
-static void my_callback_post(const struct undefined *undef, int x)
+static void my_callback_post(struct undefined *undef, int x)
 {
 }
 

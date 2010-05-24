@@ -7,7 +7,7 @@ void _set_some_value(void *val)
 }
 
 #define set_some_value(expr)						\
-	_set_some_value(cast_if_type(void *, (expr), unsigned long))
+	_set_some_value(cast_if_type(void *, (expr), (expr), unsigned long))
 
 int main(int argc, char *argv[])
 {
