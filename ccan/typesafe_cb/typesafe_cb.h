@@ -61,7 +61,9 @@ __builtin_choose_expr(__builtin_types_compatible_p(typeof(1?(test):0), oktype), 
 	cast_if_type(desttype,						\
 		     cast_if_type(desttype,				\
 				  cast_if_type(desttype, (expr), (test), ok1), \
+				  (test),				\
 				  ok2),					\
+		     (test),						\
 		     ok3)
 
 /**
