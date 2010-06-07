@@ -99,7 +99,6 @@ static char *run_with_timeout(const void *ctx,
 		    || open("/dev/null", O_RDONLY) != STDIN_FILENO)
 			exit(128);
 
-		setpgid(0, 0);
 		signal(SIGALRM, killme);
 		itim.it_interval.tv_sec = itim.it_interval.tv_usec = 0;
 		itim.it_value.tv_sec = *timeout_ms / 1000;
