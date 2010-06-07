@@ -73,17 +73,18 @@ bool hashtable_del(struct hashtable *ht, unsigned long hash, const void *p);
  */
 #define hashtable_traverse(ht, type, cb, cbarg)				\
 	_hashtable_traverse(ht, cast_if_type(bool (*)(void *, void *),	\
-			     cast_if_any(bool (*)(void *,		\
-						  void *), (cb),	\
-					 bool (*)(const type *,		\
-						  const typeof(*cbarg) *), \
-					 bool (*)(type *,		\
-						  const typeof(*cbarg) *), \
-					 bool (*)(const type *,		\
-						  typeof(*cbarg) *)),	\
-					     bool (*)(type *,		\
-						      typeof(*cbarg) *)), \
-			    cbarg)
+					     cast_if_any(bool (*)(void *, \
+								  void *), \
+							 (cb), (cb),	\
+							 bool (*)(const type *,	\
+								  const typeof(*cbarg) *), \
+							 bool (*)(type *, \
+								  const typeof(*cbarg) *), \
+							 bool (*)(const type *,	\
+								  typeof(*cbarg) *)), \
+					     (cb),		\
+					     bool (*)(type *, typeof(*cbarg) *)), \
+			    (cbarg))
 
 void _hashtable_traverse(struct hashtable *ht,
 			 bool (*cb)(void *p, void *cbarg), void *cbarg);
