@@ -14,6 +14,7 @@
 #include <dirent.h>
 #include <ctype.h>
 #include <stdarg.h>
+#include <assert.h>
 
 const char *ccan_dir;
 
@@ -37,6 +38,8 @@ struct list_head *get_ccan_file_docs(struct ccan_file *f)
 struct ccan_file *new_ccan_file(const void *ctx, const char *dir, char *name)
 {
 	struct ccan_file *f;
+
+	assert(dir[0] == '/');
 
 	f = talloc(ctx, struct ccan_file);
 	f->lines = NULL;
@@ -172,7 +175,6 @@ struct manifest *get_manifest(const void *ctx, const char *dir)
 	list_head_init(&m->other_test_files);
 	list_head_init(&m->other_files);
 	list_head_init(&m->dep_dirs);
-	list_head_init(&m->dep_objs);
 
 	olddir = talloc_getcwd(NULL);
 	if (!olddir)

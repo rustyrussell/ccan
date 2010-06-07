@@ -40,8 +40,10 @@ static char *obj_list(const struct manifest *m, bool link_with_module)
 		list = talloc_asprintf_append(list, " %s.o", m->dir);
 
 	/* Other ccan modules. */
-	list_for_each(&m->dep_objs, i, list)
-		list = talloc_asprintf_append(list, " %s", i->name);
+	list_for_each(&m->dep_dirs, i, list) {
+		if (i->compiled)
+			list = talloc_asprintf_append(list, " %s", i->compiled);
+	}
 
 	return list;
 }

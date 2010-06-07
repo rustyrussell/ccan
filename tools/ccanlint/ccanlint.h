@@ -31,8 +31,6 @@ struct manifest {
 
 	/* From tests/check_depends_exist.c */
 	struct list_head dep_dirs;
-	/* From tests/check_depends_built.c */
-	struct list_head dep_objs;
 };
 
 struct manifest *get_manifest(const void *ctx, const char *dir);

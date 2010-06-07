@@ -27,9 +27,10 @@ static char *obj_list(const struct manifest *m)
 	struct ccan_file *i;
 
 	/* Other CCAN deps. */
-	list_for_each(&m->dep_objs, i, list)
-		list = talloc_asprintf_append(list, "%s ", i->name);
-
+	list_for_each(&m->dep_dirs, i, list) {
+		if (i->compiled)
+			list = talloc_asprintf_append(list, "%s ", i->compiled);
+	}
 	return list;
 }
 

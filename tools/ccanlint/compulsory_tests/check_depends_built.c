@@ -42,21 +42,16 @@ static void *check_depends_built(struct manifest *m, unsigned int *timeleft)
 	char *report = NULL;
 
 	list_for_each(&m->dep_dirs, i, list) {
-		char *objfile;
-
 		if (!expect_obj_file(i->fullname))
 			continue;
 
-		objfile = talloc_asprintf(m, "%s.o", i->fullname);
-		if (stat(objfile, &st) != 0) {
+		i->compiled = talloc_asprintf(i, "%s.o", i->fullname);
+		if (stat(i->compiled, &st) != 0) {
 			report = talloc_asprintf_append(report,
 							"object file %s\n",
-							objfile);
-		} else {
-			struct ccan_file *f = new_ccan_file(m, "", objfile);
-			list_add_tail(&m->dep_objs, &f->list);
-		}
-			
+							i->compiled);
+			i->compiled = NULL;
+		}			
 	}
 
 	/* We may need libtap for testing, unless we're "tap" */

@@ -16,19 +16,17 @@
 
 static char *add_dep(char *sofar, struct manifest *m, const char *dep)
 {
-	char *dir;
 	struct stat st;
 	struct ccan_file *f;
 
-	dir = talloc_asprintf(m, "%s/%s", ccan_dir, dep);
-	if (stat(dir, &st) != 0) {
+	f = new_ccan_file(m, ccan_dir, talloc_strdup(m, dep));
+	if (stat(f->fullname, &st) != 0) {
 		return talloc_asprintf_append(sofar,
 					      "ccan/%s: expected it in"
 					      " directory %s\n",
-					      dep, dir);
+					      dep, f->fullname);
 	}
 
-	f = new_ccan_file(m, "", dir);
 	list_add_tail(&m->dep_dirs, &f->list);
 	return sofar;
 }
