@@ -40,11 +40,16 @@ bool move_file(const char *oldname, const char *newname);
 char *link_objects(const void *ctx, const char *objs, char **errmsg);
 /* Compile a single C file to an object file.  Returns errmsg if fails. */
 char *compile_object(const void *ctx, const char *cfile, const char *ccandir,
-		     char **errmsg);
-/* Compile and link single C file, with object files, libs, etc. */
+		     const char *outfile);
+/* Compile and link single C file, with object files, libs, etc.  NULL on
+ * success, error output on fail. */
 char *compile_and_link(const void *ctx, const char *cfile, const char *ccandir,
 		       const char *objs, const char *extra_cflags,
-		       const char *libs, char **errmsg);
+		       const char *libs, const char *outfile);
+
+/* If keep is false, return a temporary file.  Otherwise, base it on srcname */
+char *maybe_temp_file(const void *ctx, const char *extension, bool keep,
+		      const char *srcname);
 
 /* Default wait for run_command.  Should never time out. */
 extern const unsigned int default_timeout_ms;

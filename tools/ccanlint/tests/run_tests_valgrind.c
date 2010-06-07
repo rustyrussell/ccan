@@ -31,7 +31,9 @@ struct run_tests_result {
 	const char *output;
 };
 
-static void *do_run_tests_vg(struct manifest *m, unsigned int *timeleft)
+static void *do_run_tests_vg(struct manifest *m,
+			     bool keep,
+			     unsigned int *timeleft)
 {
 	struct list_head *list = talloc(m, struct list_head);
 	struct run_tests_result *res;
@@ -128,7 +130,7 @@ static void run_under_debugger_vg(struct manifest *m, void *check_result)
 }
 
 struct ccanlint run_tests_vg = {
-	.key = "valgrind",
+	.key = "valgrind-tests",
 	.name = "Module's run and api tests succeed under valgrind",
 	.score = score_run_tests_vg,
 	.check = do_run_tests_vg,

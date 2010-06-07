@@ -45,10 +45,12 @@ static char *lib_list(const struct manifest *m)
 	return ret;
 }
 
-static void *check_use_build(struct manifest *m, unsigned int *timeleft)
+static void *check_use_build(struct manifest *m,
+			     bool keep,
+			     unsigned int *timeleft)
 {
 	char *contents;
-	char *tmpfile, *err;
+	char *tmpfile;
 	int fd;
 
 	tmpfile = temp_file(m, ".c");
@@ -71,10 +73,8 @@ static void *check_use_build(struct manifest *m, unsigned int *timeleft)
 	}
 	close(fd);
 
-	if (!compile_and_link(m, tmpfile, ccan_dir, obj_list(m), "",
-			      lib_list(m), &err))
-		return err;
-	return NULL;
+	return compile_and_link(m, tmpfile, ccan_dir, obj_list(m), "",
+				lib_list(m), temp_file(m, ""));
 }
 
 static const char *describe_use_build(struct manifest *m, void *check_result)

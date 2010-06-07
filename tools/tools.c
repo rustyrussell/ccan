@@ -199,6 +199,18 @@ char *temp_file(const void *ctx, const char *extension)
 	return talloc_asprintf(ctx, "%s/%u%s", tmpdir, count++, extension);
 }
 
+char *maybe_temp_file(const void *ctx, const char *extension, bool keep,
+		      const char *srcname)
+{
+	size_t baselen;
+
+	if (!keep)
+		return temp_file(ctx, extension);
+
+	baselen = strrchr(srcname, '.') - srcname;
+	return talloc_asprintf(ctx, "%.*s%s", baselen, srcname, extension);
+}
+
 bool move_file(const char *oldname, const char *newname)
 {
 	char *contents;

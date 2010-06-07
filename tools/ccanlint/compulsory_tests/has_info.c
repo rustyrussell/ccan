@@ -12,7 +12,9 @@
 #include <ccan/noerr/noerr.h>
 #include <ccan/talloc/talloc.h>
 
-static void *check_has_info(struct manifest *m, unsigned int *timeleft)
+static void *check_has_info(struct manifest *m,
+			    bool keep,
+			    unsigned int *timeleft)
 {
 	if (m->info_file)
 		return NULL;

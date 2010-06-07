@@ -33,7 +33,9 @@ static char *obj_list(const struct manifest *m)
 	return list;
 }
 
-static void *do_build(struct manifest *m, unsigned int *timeleft)
+static void *do_build(struct manifest *m,
+		      bool keep,
+		      unsigned int *timeleft)
 {
 	char *filename, *err;
 
@@ -43,7 +45,7 @@ static void *do_build(struct manifest *m, unsigned int *timeleft)
 		return NULL;
 	}
 	filename = link_objects(m, obj_list(m), &err);
-	if (filename) {
+	if (filename && keep) {
 		char *realname = talloc_asprintf(m, "%s.o", m->dir);
 		/* We leave this object file around, all built. */
 		if (!move_file(filename, realname))

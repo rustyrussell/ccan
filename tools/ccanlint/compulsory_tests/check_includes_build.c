@@ -22,20 +22,37 @@ static const char *can_build(struct manifest *m)
 	return NULL;
 }
 
-static void *check_includes_build(struct manifest *m, unsigned int *timeleft)
+static struct ccan_file *main_header(struct manifest *m)
+{
+	struct ccan_file *f;
+
+	list_for_each(&m->h_files, f, list) {
+		if (strstarts(f->name, m->basename)
+		    && strlen(f->name) == strlen(m->basename) + 2)
+			return f;
+	}
+	/* Should not happen: we depend on has_main_header */
+	return NULL;
+}
+
+static void *check_includes_build(struct manifest *m,
+				  bool keep,
+				  unsigned int *timeleft)
 {
 	char *contents;
-	char *tmpfile, *err;
+	char *tmpsrc, *tmpobj;
 	int fd;
+	struct ccan_file *mainh = main_header(m);
 
-	tmpfile = temp_file(m, ".c");
+	tmpsrc = maybe_temp_file(m, "-included.c", keep, mainh->fullname);
+	tmpobj = maybe_temp_file(m, ".o", keep, tmpsrc);
 
-	fd = open(tmpfile, O_WRONLY | O_CREAT | O_EXCL, 0600);
+	fd = open(tmpsrc, O_WRONLY | O_CREAT | O_EXCL, 0600);
 	if (fd < 0)
-		return talloc_asprintf(m, "Creating temporary file: %s",
-				       strerror(errno));
+		return talloc_asprintf(m, "Creating temporary file %s: %s",
+				       tmpsrc, strerror(errno));
 
-	contents = talloc_asprintf(tmpfile, "#include <ccan/%s/%s.h>\n",
+	contents = talloc_asprintf(tmpsrc, "#include <ccan/%s/%s.h>\n",
 				   m->basename, m->basename);
 	if (write(fd, contents, strlen(contents)) != strlen(contents)) {
 		close(fd);
@@ -43,9 +60,7 @@ static void *check_includes_build(struct manifest *m, unsigned int *timeleft)
 	}
 	close(fd);
 
-	if (compile_object(m, tmpfile, ccan_dir, &err))
-		return NULL;
-	return err;
+	return compile_object(m, tmpsrc, ccan_dir, tmpobj);
 }
 
 static const char *describe_includes_build(struct manifest *m,
@@ -65,4 +80,4 @@ struct ccanlint includes_build = {
 	.can_run = can_build,
 };
 
-REGISTER_TEST(includes_build, &depends_exist, NULL);
+REGISTER_TEST(includes_build, &depends_exist, &has_main_header, NULL);

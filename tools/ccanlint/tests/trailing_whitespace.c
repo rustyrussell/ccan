@@ -20,6 +20,7 @@ static char *report_on_trailing_whitespace(const char *line)
 }
 
 static void *check_trailing_whitespace(struct manifest *m,
+				       bool keep,
 				       unsigned int *timeleft)
 {
 	char *report;

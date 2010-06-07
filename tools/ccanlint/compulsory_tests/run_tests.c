@@ -27,7 +27,9 @@ struct run_tests_result {
 	const char *output;
 };
 
-static void *do_run_tests(struct manifest *m, unsigned int *timeleft)
+static void *do_run_tests(struct manifest *m,
+			  bool keep,
+			  unsigned int *timeleft)
 {
 	struct list_head *list = talloc(m, struct list_head);
 	struct run_tests_result *res;

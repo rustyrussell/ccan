@@ -60,18 +60,23 @@ static char *lib_list(const struct manifest *m)
 }
 
 static char *compile(const void *ctx,
-		     struct manifest *m, struct ccan_file *file, bool fail,
-		     bool link_with_module)
+		     struct manifest *m,
+		     struct ccan_file *file,
+		     bool fail,
+		     bool link_with_module,
+		     bool keep)
 {
 	char *errmsg;
 
-	file->compiled = compile_and_link(ctx, file->fullname, ccan_dir,
-					  obj_list(m, link_with_module),
-					  fail ? "-DFAIL" : "",
-					  lib_list(m), &errmsg);
-	if (!file->compiled)
+	file->compiled = maybe_temp_file(ctx, "", keep, file->fullname);
+	errmsg = compile_and_link(ctx, file->fullname, ccan_dir,
+				  obj_list(m, link_with_module),
+				  fail ? "-DFAIL" : "",
+				  lib_list(m), file->compiled);
+	if (errmsg) {
+		talloc_free(file->compiled);
 		return errmsg;
-	talloc_steal(ctx, file->compiled);
+	}
 	return NULL;
 }
 
@@ -82,7 +87,9 @@ struct compile_tests_result {
 	const char *output;
 };
 
-static void *do_compile_tests(struct manifest *m, unsigned int *timeleft)
+static void *do_compile_tests(struct manifest *m,
+			      bool keep,
+			      unsigned int *timeleft)
 {
 	struct list_head *list = talloc(m, struct list_head);
 	char *cmdout;
@@ -93,7 +100,7 @@ static void *do_compile_tests(struct manifest *m, unsigned int *timeleft)
 
 	list_for_each(&m->compile_ok_tests, i, list) {
 		compile_tests.total_score++;
-		cmdout = compile(list, m, i, false, false);
+		cmdout = compile(list, m, i, false, false, keep);
 		if (cmdout) {
 			res = talloc(list, struct compile_tests_result);
 			res->filename = i->name;
@@ -105,7 +112,7 @@ static void *do_compile_tests(struct manifest *m, unsigned int *timeleft)
 
 	list_for_each(&m->run_tests, i, list) {
 		compile_tests.total_score++;
-		cmdout = compile(m, m, i, false, false);
+		cmdout = compile(m, m, i, false, false, keep);
 		if (cmdout) {
 			res = talloc(list, struct compile_tests_result);
 			res->filename = i->name;
@@ -117,7 +124,7 @@ static void *do_compile_tests(struct manifest *m, unsigned int *timeleft)
 
 	list_for_each(&m->api_tests, i, list) {
 		compile_tests.total_score++;
-		cmdout = compile(m, m, i, false, true);
+		cmdout = compile(m, m, i, false, true, keep);
 		if (cmdout) {
 			res = talloc(list, struct compile_tests_result);
 			res->filename = i->name;
@@ -129,7 +136,7 @@ static void *do_compile_tests(struct manifest *m, unsigned int *timeleft)
 
 	list_for_each(&m->compile_fail_tests, i, list) {
 		compile_tests.total_score++;
-		cmdout = compile(list, m, i, false, false);
+		cmdout = compile(list, m, i, false, false, false);
 		if (cmdout) {
 			res = talloc(list, struct compile_tests_result);
 			res->filename = i->name;
@@ -137,7 +144,7 @@ static void *do_compile_tests(struct manifest *m, unsigned int *timeleft)
 			res->output = talloc_steal(res, cmdout);
 			list_add_tail(list, &res->list);
 		} else {
-			cmdout = compile(list, m, i, true, false);
+			cmdout = compile(list, m, i, true, false, false);
 			if (!cmdout) {
 				res = talloc(list, struct compile_tests_result);
 				res->filename = i->name;
@@ -184,7 +191,7 @@ static const char *describe_compile_tests(struct manifest *m,
 }
 
 struct ccanlint compile_tests = {
-	.key = "compile",
+	.key = "compile-tests",
 	.name = "Module tests compile",
 	.score = score_compile_tests,
 	.check = do_compile_tests,

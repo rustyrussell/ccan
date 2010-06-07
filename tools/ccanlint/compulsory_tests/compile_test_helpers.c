@@ -21,25 +21,24 @@ static const char *can_build(struct manifest *m)
 	return NULL;
 }
 
-static char *compile(struct manifest *m, struct ccan_file *cfile)
+static char *compile(struct manifest *m, 
+		     bool keep,
+		     struct ccan_file *cfile)
 {
-	char *err;
-	char *fullfile = talloc_asprintf(m, "%s/%s", m->dir, cfile->name);
-
-	cfile->compiled = compile_object(m, fullfile, ccan_dir, &err);
-	if (cfile->compiled)
-		return NULL;
-	return err;
+	cfile->compiled = maybe_temp_file(m, "", keep, cfile->fullname);
+	return compile_object(m, cfile->fullname, ccan_dir, cfile->compiled);
 }
 
-static void *do_compile_test_helpers(struct manifest *m, unsigned int *timeleft)
+static void *do_compile_test_helpers(struct manifest *m,
+				     bool keep,
+				     unsigned int *timeleft)
 {
 	char *cmdout = NULL;
 	struct ccan_file *i;
 
 	list_for_each(&m->other_test_c_files, i, list) {
 		compile_tests.total_score++;
-		cmdout = compile(m, i);
+		cmdout = compile(m, keep, i);
 		if (cmdout)
 			return talloc_asprintf(m,
 					       "Failed to compile helper C"

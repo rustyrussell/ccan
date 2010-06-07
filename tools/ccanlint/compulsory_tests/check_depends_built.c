@@ -35,7 +35,9 @@ static bool expect_obj_file(const char *dir)
 	return has_c_files;
 }
 
-static void *check_depends_built(struct manifest *m, unsigned int *timeleft)
+static void *check_depends_built(struct manifest *m,
+				 bool keep,
+				 unsigned int *timeleft)
 {
 	struct ccan_file *i;
 	struct stat st;

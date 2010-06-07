@@ -51,8 +51,9 @@ struct ccanlint {
 	const char *(*can_run)(struct manifest *m);
 
 	/* If this returns non-NULL, it means the check failed.
+	 * keep is set if you should keep the results.
 	 * If timeleft is set to 0, means it timed out. */
-	void *(*check)(struct manifest *m, unsigned int *timeleft);
+	void *(*check)(struct manifest *m, bool keep, unsigned int *timeleft);
 
 	/* The non-NULL return from check is passed to one of these: */
 
@@ -74,6 +75,8 @@ struct ccanlint {
 	bool skip;
 	/* Did we fail a dependency?  If so, skip and mark as fail. */
 	bool skip_fail;
+	/* Did the user want to keep these results? */
+	bool keep_results;
 };
 
 /* Ask the user a yes/no question: the answer is NO if there's an error. */

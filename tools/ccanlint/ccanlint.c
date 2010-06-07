@@ -41,12 +41,13 @@ static unsigned int timeout;
 
 static void usage(const char *name)
 {
-	fprintf(stderr, "Usage: %s [-s] [-n] [-v] [-t <ms>] [-d <dirname>] [-x <tests>]\n"
+	fprintf(stderr, "Usage: %s [-s] [-n] [-v] [-t <ms>] [-d <dirname>] [-x <tests>] [-k <test>]*\n"
 		"   -v: verbose mode\n"
 		"   -s: simply give one line summary\n"
 		"   -d: use this directory instead of the current one\n"
 		"   -n: do not compile anything\n"
 		"   -l: list tests ccanlint performs\n"
+		"   -k: keep results of this test (can be used multiple times)\n"
 		"   -x: exclude tests (e.g. -x trailing_whitespace,valgrind)\n"
 		"   -t: ignore (terminate) tests that are slower than this\n",
 		name);
@@ -131,7 +132,7 @@ static bool run_test(struct ccanlint *i,
 	}
 
 	timeleft = timeout ? timeout : default_timeout_ms;
-	result = i->check(m, &timeleft);
+	result = i->check(m, i->keep_results, &timeleft);
 	if (timeout && timeleft == 0) {
 		skip = "timeout";
 		goto skip;
@@ -284,6 +285,29 @@ static void init_tests(void)
 	}
 }
 
+static struct ccanlint *find_test(const char *key)
+{
+	struct ccanlint *i;
+
+	list_for_each(&compulsory_tests, i, list)
+		if (streq(i->key, key))
+			return i;
+
+	list_for_each(&normal_tests, i, list)
+		if (streq(i->key, key))
+			return i;
+
+	return NULL;
+}
+
+static void keep_test(const char *testname)
+{
+	struct ccanlint *i = find_test(testname);
+	if (!i)
+		errx(1, "No test %s to --keep", testname);
+	i->keep_results = true;
+}
+
 static void print_tests(struct list_head *tests, const char *type)
 {
 	struct ccanlint *i;
@@ -301,7 +325,6 @@ static void print_tests(struct list_head *tests, const char *type)
 
 static void list_tests(void)
 {
-	init_tests();
 	print_tests(&compulsory_tests, "Compulsory");
 	print_tests(&normal_tests, "Normal");
 	exit(0);
@@ -316,11 +339,13 @@ int main(int argc, char *argv[])
 	struct ccanlint *i;
 	const char *prefix = "", *dir = ".";
 	
+	init_tests();
+
 	exclude = btree_new(btree_strcmp);
 
 	/* I'd love to use long options, but that's not standard. */
 	/* FIXME: getopt_long ccan package? */
-	while ((c = getopt(argc, argv, "sd:vnlx:t:")) != -1) {
+	while ((c = getopt(argc, argv, "sd:vnlx:t:k:")) != -1) {
 		switch (c) {
 		case 'd':
 			dir = optarg;
@@ -338,6 +363,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'n':
 			safe_mode = true;
+			break;
+		case 'k':
+			keep_test(optarg);
 			break;
 		case 'x': {
 			char **exclude_strs = strsplit(NULL, optarg, ",", NULL);
@@ -360,8 +388,6 @@ int main(int argc, char *argv[])
 		usage(argv[0]);
 
 	m = get_manifest(talloc_autofree_context(), dir);
-
-	init_tests();
 
 	/* If you don't pass the compulsory tests, you don't even get a score */
 	if (verbose)

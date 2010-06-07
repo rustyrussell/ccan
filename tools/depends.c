@@ -39,7 +39,7 @@ lines_from_cmd(const void *ctx, unsigned int *num, char *format, ...)
  * temp_file helps here. */
 static char *compile_info(const void *ctx, const char *dir)
 {
-	char *info_c_file, *info, *errmsg, *ccandir;
+	char *info_c_file, *info, *ccandir, *compiled;
 	size_t len;
 	int fd;
 
@@ -60,8 +60,12 @@ static char *compile_info(const void *ctx, const char *dir)
 
 	ccandir = talloc_dirname(ctx, dir);
 	*strrchr(ccandir, '/') = '\0';
-	return compile_and_link(ctx, info_c_file, ccandir, "", "", "",
-				&errmsg);
+
+	compiled = temp_file(ctx, "");
+	if (compile_and_link(ctx, info_c_file, ccandir, "", "", "",
+			     compiled))
+		return NULL;
+	return compiled;
 }
 
 static char **get_one_deps(const void *ctx, const char *dir,

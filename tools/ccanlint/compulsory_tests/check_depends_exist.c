@@ -31,7 +31,9 @@ static char *add_dep(char *sofar, struct manifest *m, const char *dep)
 	return sofar;
 }
 
-static void *check_depends_exist(struct manifest *m, unsigned int *timeleft)
+static void *check_depends_exist(struct manifest *m,
+				 bool keep,
+				 unsigned int *timeleft)
 {
 	unsigned int i;
 	char *report = NULL;

@@ -23,6 +23,7 @@ struct info_docs
 };
 
 static void *check_has_info_documentation(struct manifest *m,
+					  bool keep,
 					  unsigned int *timeleft)
 {
 	struct list_head *infodocs = get_ccan_file_docs(m->info_file);
