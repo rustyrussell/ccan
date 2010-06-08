@@ -6,886 +6,723 @@
 #include <stdlib.h>
 #include "alloc.h"
 #include <ccan/build_assert/build_assert.h>
-#include <ccan/alignof/alignof.h>
+#include <ccan/likely/likely.h>
+#include <ccan/short_types/short_types.h>
 #include "config.h"
 
-/* FIXME: We assume getpagesize() doesnt change.  Remapping file with
- * different pagesize should still work. */
+/*
+   Inspired by (and parts taken from) Andrew Tridgell's alloc_mmap:
+   http://samba.org/~tridge/junkcode/alloc_mmap/
 
-/* FIXME: Doesn't handle non-page-aligned poolsize. */
+   Copyright (C) Andrew Tridgell 2007
+   
+   This library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2 of the License, or (at your option) any later version.
 
-/* FIXME: Reduce. */
-#define MIN_SIZE (getpagesize() * 2)
+   This library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Lesser General Public License for more details.
 
-/* What's the granularity of sub-page allocs? */
-#define BITMAP_GRANULARITY 4
-
-/* File layout:
- *
- *  file := pagestates pad uniform-cache metadata
- *  pagestates := pages * 2-bits-per-page
- *  pad := pad to next ALIGNOF(metaheader)
- *
- *  metadata := metalen next-ptr metabits
- *  metabits := freeblock | bitblock | uniformblock
- *  freeblock := FREE +
- *  bitblock := BITMAP + 2-bits-per-bit-in-page + pad-to-byte
- *  uniformblock := UNIFORM + 14-bit-byte-len + bits + pad-to-byte
+   You should have received a copy of the GNU Lesser General Public
+   License along with this library; if not, write to the Free Software
+   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-#define UNIFORM_CACHE_NUM 16
-struct uniform_cache
-{
-	uint16_t size[UNIFORM_CACHE_NUM];
-	/* These could be u32 if we're prepared to limit size. */
-	unsigned long page[UNIFORM_CACHE_NUM];
+
+#if 0 /* Until we have the tiny allocator working, go down to 1 MB */
+
+/* We divide the pool into this many large pages (nearest power of 2) */
+#define MAX_PAGES (1024UL)
+
+/* 32 small pages == 1 large page. */
+#define BITS_FROM_SMALL_TO_LARGE_PAGE 5
+
+#else
+
+#define MAX_PAGES (128UL)
+#define BITS_FROM_SMALL_TO_LARGE_PAGE 4
+
+#endif
+
+/* Smallest pool size for this scheme: 512-byte small pages.  That's
+ * 4/8% overhead for 32/64 bit. */
+#define MIN_USEFUL_SIZE (MAX_PAGES << (9 + BITS_FROM_SMALL_TO_LARGE_PAGE))
+
+/* Every 4 buckets, we jump up a power of 2. ...8 10 12 14 16 20 24 28 32... */
+#define INTER_BUCKET_SPACE 4
+
+/* FIXME: Figure this out properly. */
+#define MAX_SIZE (1 << 30)
+
+/* How few object to fit in a page before using a larger one? (8) */
+#define MAX_PAGE_OBJECT_ORDER	3
+
+#define BITS_PER_LONG (sizeof(long) * CHAR_BIT)
+
+struct bucket_state {
+	unsigned long elements_per_page;
+	unsigned long page_list;
+	unsigned long full_list;
 };
 
-struct metaheader
-{
-	/* Next meta header, or 0 */
-	unsigned long next;
-	/* Bits start here. */
+struct header {
+	/* 1024 bit bitmap of which pages are large. */
+	unsigned long pagesize[MAX_PAGES / BITS_PER_LONG];
+
+	/* List of unused small/large pages. */
+	unsigned long small_free_list;
+	unsigned long large_free_list;
+
+	/* This is less defined: we have two buckets for each power of 2 */
+	struct bucket_state bs[1];
 };
 
-/* Assumes a is a power of two. */
-static unsigned long align_up(unsigned long x, unsigned long a)
+struct page_header {
+	unsigned long next, prev;
+	u32 elements_used;
+	/* FIXME: Pack this in somewhere... */
+	u8 bucket;
+	unsigned long used[1]; /* One bit per element. */
+};
+
+/* 2 bit for every byte to allocate. */
+static void tiny_alloc_init(void *pool, unsigned long poolsize)
 {
-	return (x + a - 1) & ~(a - 1);
+/* FIXME */
 }
 
-static unsigned long align_down(unsigned long x, unsigned long a)
+static void *tiny_alloc_get(void *pool, unsigned long poolsize,
+			    unsigned long size, unsigned long align)
 {
-	return x & ~(a - 1);
+/* FIXME */
+	return NULL;
 }
 
-static unsigned long div_up(unsigned long x, unsigned long a)
+static void tiny_alloc_free(void *pool, unsigned long poolsize, void *free)
 {
-	return (x + a - 1) / a;
+/* FIXME */
 }
 
-/* It turns out that we spend a lot of time dealing with bit pairs.
- * These routines manipulate them.
+static unsigned long tiny_alloc_size(void *pool, unsigned long poolsize,
+				      void *p)
+{
+/* FIXME */
+	return 0;
+}
+
+static bool tiny_alloc_check(void *pool, unsigned long poolsize)
+{
+/* FIXME */
+	return true;
+}
+
+static unsigned int fls(unsigned long val)
+{
+#if HAVE_BUILTIN_CLZL
+	/* This is significantly faster! */
+	return val ? sizeof(long) * CHAR_BIT - __builtin_clzl(val) : 0;
+#else
+	unsigned int r = 32;
+
+	if (!val)
+		return 0;
+	if (!(val & 0xffff0000u)) {
+		val <<= 16;
+		r -= 16;
+	}
+	if (!(val & 0xff000000u)) {
+		val <<= 8;
+		r -= 8;
+	}
+	if (!(val & 0xf0000000u)) {
+		val <<= 4;
+		r -= 4;
+	}
+	if (!(val & 0xc0000000u)) {
+		val <<= 2;
+		r -= 2;
+	}
+	if (!(val & 0x80000000u)) {
+		val <<= 1;
+		r -= 1;
+	}
+	return r;
+#endif
+}
+
+/* FIXME: Move to bitops. */
+static unsigned int ffsl(unsigned long val)
+{
+#if HAVE_BUILTIN_FFSL
+	/* This is significantly faster! */
+	return __builtin_ffsl(val);
+#else
+	unsigned int r = 1;
+
+	if (!val)
+		return 0;
+	if (sizeof(long) == sizeof(u64)) {
+		if (!(val & 0xffffffff)) {
+			/* Workaround gcc warning on 32-bit:
+			   error: right shift count >= width of type */
+			u64 tmp = val;
+			tmp >>= 32;
+			val = tmp;
+			r += 32;
+		}
+	}
+	if (!(val & 0xffff)) {
+		val >>= 16;
+		r += 16;
+	}
+	if (!(val & 0xff)) {
+		val >>= 8;
+		r += 8;
+	}
+	if (!(val & 0xf)) {
+		val >>= 4;
+		r += 4;
+	}
+	if (!(val & 3)) {
+		val >>= 2;
+		r += 2;
+	}
+	if (!(val & 1)) {
+		val >>= 1;
+		r += 1;
+	}
+	return r;
+#endif
+}
+
+static unsigned int popcount(unsigned long val)
+{
+#if HAVE_BUILTIN_POPCOUNTL
+	return __builtin_popcountl(val);
+#else
+	if (sizeof(long) == sizeof(u64)) {
+		u64 v = val;
+		v = (v & 0x5555555555555555ULL)
+			+ ((v >> 1) & 0x5555555555555555ULL);
+		v = (v & 0x3333333333333333ULL)
+			+ ((v >> 1) & 0x3333333333333333ULL);
+		v = (v & 0x0F0F0F0F0F0F0F0FULL)
+			+ ((v >> 1) & 0x0F0F0F0F0F0F0F0FULL);
+		v = (v & 0x00FF00FF00FF00FFULL)
+			+ ((v >> 1) & 0x00FF00FF00FF00FFULL);
+		v = (v & 0x0000FFFF0000FFFFULL)
+			+ ((v >> 1) & 0x0000FFFF0000FFFFULL);
+		v = (v & 0x00000000FFFFFFFFULL)
+			+ ((v >> 1) & 0x00000000FFFFFFFFULL);
+		return v;
+	}
+	val = (val & 0x55555555ULL) + ((val >> 1) & 0x55555555ULL);
+	val = (val & 0x33333333ULL) + ((val >> 1) & 0x33333333ULL);
+	val = (val & 0x0F0F0F0FULL) + ((val >> 1) & 0x0F0F0F0FULL);
+	val = (val & 0x00FF00FFULL) + ((val >> 1) & 0x00FF00FFULL);
+	val = (val & 0x0000FFFFULL) + ((val >> 1) & 0x0000FFFFULL);
+	return val;
+#endif
+}
+
+/*
+ * Every 4 buckets, the size doubles.
+ * Between buckets, sizes increase linearly.
+ *
+ * eg. bucket 40 = 2^10			= 1024
+ *     bucket 41 = 2^10 + 2^10*4	= 1024 + 256
+ *     bucket 42 = 2^10 + 2^10*4	= 1024 + 512
+ *     bucket 43 = 2^10 + 2^10*4	= 1024 + 768
+ *     bucket 45 = 2^11			= 2048
+ *
+ * Care is taken to handle low numbered buckets, at cost of overflow.
  */
-static uint8_t get_bit_pair(const uint8_t *bits, unsigned long index)
+static unsigned long bucket_to_size(unsigned int bucket)
 {
-	return bits[index * 2 / CHAR_BIT] >> (index * 2 % CHAR_BIT) & 3;
+	unsigned long base = 1 << (bucket / INTER_BUCKET_SPACE);
+	return base + ((bucket % INTER_BUCKET_SPACE)
+		       << (bucket / INTER_BUCKET_SPACE))
+		/ INTER_BUCKET_SPACE;
 }
 
-static void set_bit_pair(uint8_t *bits, unsigned long index, uint8_t val)
+/*
+ * Say size is 10.
+ *   fls(size/2) == 3.  1 << 3 == 8, so we're 2 too large, out of a possible
+ * 8 too large.  That's 1/4 of the way to the next power of 2 == 1 bucket.
+ *
+ * We make sure we round up.  Note that this fails on 32 bit at size
+ * 1879048193 (around bucket 120).
+ */
+static unsigned int size_to_bucket(unsigned long size)
 {
-	bits[index * 2 / CHAR_BIT] &= ~(3 << (index * 2 % CHAR_BIT));
-	bits[index * 2 / CHAR_BIT] |= (val << (index * 2 % CHAR_BIT));
+	unsigned int base = fls(size/2);
+	unsigned long overshoot;
+
+	overshoot = size - (1 << base);
+	return base * INTER_BUCKET_SPACE
+		+ ((overshoot * INTER_BUCKET_SPACE + (1 << base)-1) >> base);
 }
 
-/* This is used for page states and subpage allocations */
-enum alloc_state
+static unsigned int large_page_bits(unsigned long poolsize)
 {
-	FREE,
-	TAKEN,
-	TAKEN_START,
-	SPECIAL,	/* Sub-page allocation for page states. */
-};
-
-/* The types for subpage metadata. */
-enum sub_metadata_type
-{
-	/* FREE is same as alloc state */
-	BITMAP = 1, /* bitmap allocated page */
-	UNIFORM, /* uniform size allocated page */
-};
-
-/* Page states are represented by bitpairs, at the start of the pool. */
-#define BITS_PER_PAGE 2
-
-/* How much metadata info per byte? */
-#define METADATA_PER_BYTE (CHAR_BIT / 2)
-
-static uint8_t *get_page_statebits(const void *pool)
-{
-	return (uint8_t *)pool + sizeof(struct uniform_cache);
+	return fls(poolsize / MAX_PAGES / 2);
 }
 
-static enum alloc_state get_page_state(const void *pool, unsigned long page)
+static unsigned long align_up(unsigned long x, unsigned long align)
 {
-	return get_bit_pair(get_page_statebits(pool), page);
+	return (x + align - 1) & ~(align - 1);
 }
 
-static void set_page_state(void *pool, unsigned long page, enum alloc_state s)
+static void *from_off(struct header *head, unsigned long off)
 {
-	set_bit_pair(get_page_statebits(pool), page, s);
+	return (char *)head + off;
 }
 
-/* The offset of metadata for a subpage allocation is found at the end
- * of the subpage */
-#define SUBPAGE_METAOFF (getpagesize() - sizeof(unsigned long))
-
-/* This is the length of metadata in bits.  It consists of two bits
- * for every BITMAP_GRANULARITY of usable bytes in the page, then two
- * bits for the tailer.. */
-#define BITMAP_METABITLEN						\
-    ((div_up(SUBPAGE_METAOFF, BITMAP_GRANULARITY) + 1) * BITS_PER_PAGE)
-
-/* This is the length in bytes. */
-#define BITMAP_METALEN (div_up(BITMAP_METABITLEN, CHAR_BIT))
-
-static struct metaheader *first_mheader(void *pool, unsigned long poolsize)
+static unsigned long to_off(struct header *head, void *p)
 {
-	unsigned int pagestatelen;
-
-	pagestatelen = align_up(div_up(poolsize/getpagesize() * BITS_PER_PAGE,
-				       CHAR_BIT),
-				ALIGNOF(struct metaheader));
-	return (struct metaheader *)(get_page_statebits(pool) + pagestatelen);
+	return (char *)p - (char *)head;
 }
 
-static struct metaheader *next_mheader(void *pool, struct metaheader *mh)
+static size_t used_size(unsigned int num_elements)
 {
-	if (!mh->next)
-		return NULL;
-
-	return (struct metaheader *)((char *)pool + mh->next);
+	return (num_elements + BITS_PER_LONG-1) / BITS_PER_LONG;
 }
 
-static unsigned long pool_offset(void *pool, void *p)
+/*
+ * We always align the first entry to the lower power of 2.
+ * eg. the 12-byte bucket gets 8-byte aligned.  The 4096-byte bucket
+ * gets 4096-byte aligned.
+ */
+static unsigned long page_header_size(unsigned int align_bits,
+				      unsigned long num_elements)
 {
-	return (char *)p - (char *)pool;
+	unsigned long size;
+
+	size = sizeof(struct page_header)
+		- sizeof(((struct page_header *)0)->used)
+		+ used_size(num_elements);
+	return align_up(size, 1 << align_bits);
+}
+
+static void add_to_list(struct header *head,
+			unsigned long *list, struct page_header *ph)
+{
+	unsigned long h = *list, offset = to_off(head, ph);
+
+	ph->next = h;
+	if (h) {
+		struct page_header *prev = from_off(head, h);
+		assert(prev->prev == 0);
+		prev->prev = offset;
+	}
+	*list = offset;
+	ph->prev = 0;
+}
+
+static void del_from_list(struct header *head,
+			  unsigned long *list, struct page_header *ph)
+{
+	/* Front of list? */
+	if (ph->prev == 0) {
+		*list = ph->next;
+	} else {
+		struct page_header *prev = from_off(head, ph->prev);
+		prev->next = ph->next;
+	}
+	if (ph->next != 0) {
+		struct page_header *next = from_off(head, ph->next);
+		next->prev = ph->prev;
+	}
+}
+
+static unsigned long pop_from_list(struct header *head,
+				   unsigned long *list)
+{
+	unsigned long h = *list;
+	struct page_header *ph = from_off(head, h);
+
+	if (likely(h)) {
+		*list = ph->next;
+		if (*list) {
+			struct page_header *next = from_off(head, *list);
+			next->prev = 0;
+		}
+	}
+	return h;
+}
+
+static void add_small_page_to_freelist(struct header *head,
+				       struct page_header *ph)
+{
+	add_to_list(head, &head->small_free_list, ph);
+}
+
+static void add_large_page_to_freelist(struct header *head,
+				       struct page_header *ph)
+{
+	add_to_list(head, &head->large_free_list, ph);
+}
+
+static void add_to_bucket_list(struct header *head,
+			       struct bucket_state *bs,
+			       struct page_header *ph)
+{
+	add_to_list(head, &bs->page_list, ph);
+}
+
+static void del_from_bucket_list(struct header *head,
+				 struct bucket_state *bs,
+				 struct page_header *ph)
+{
+	del_from_list(head, &bs->page_list, ph);
+}
+
+static void del_from_bucket_full_list(struct header *head,
+				      struct bucket_state *bs,
+				      struct page_header *ph)
+{
+	del_from_list(head, &bs->full_list, ph);
+}
+
+static void add_to_bucket_full_list(struct header *head,
+				    struct bucket_state *bs,
+				    struct page_header *ph)
+{
+	add_to_list(head, &bs->full_list, ph);
+}
+
+static void clear_bit(unsigned long bitmap[], unsigned int off)
+{
+	bitmap[off / BITS_PER_LONG] &= ~(1 << (off % BITS_PER_LONG));
+}
+
+static bool test_bit(const unsigned long bitmap[], unsigned int off)
+{
+	return bitmap[off / BITS_PER_LONG] & (1 << (off % BITS_PER_LONG));
+}
+
+static void set_bit(unsigned long bitmap[], unsigned int off)
+{
+	bitmap[off / BITS_PER_LONG] |= (1 << (off % BITS_PER_LONG));
+}
+
+/* There must be a bit to be found. */
+static unsigned int find_free_bit(const unsigned long bitmap[])
+{
+	unsigned int i;
+
+	for (i = 0; bitmap[i] == -1UL; i++);
+	return (i*BITS_PER_LONG) + ffsl(~bitmap[i]) - 1;
+}
+
+/* How many elements can we fit in a page? */
+static unsigned long elements_per_page(unsigned long align_bits,
+				       unsigned long esize,
+				       unsigned long psize)
+{
+	unsigned long num, overhead;
+
+	/* First approximation: no extra room for bitmap. */
+	overhead = align_up(sizeof(struct page_header), 1 << align_bits);
+	num = (psize - overhead) / esize;
+
+	while (page_header_size(align_bits, num) + esize * num > psize)
+		num--;
+	return num;
+}
+
+static bool large_page_bucket(unsigned int bucket, unsigned long poolsize)
+{
+	unsigned int sp_bits;
+	unsigned long max_smallsize;
+
+	sp_bits = large_page_bits(poolsize) - BITS_FROM_SMALL_TO_LARGE_PAGE;
+	/* Note: this doesn't take into account page header. */
+	max_smallsize = (1UL << sp_bits) >> MAX_PAGE_OBJECT_ORDER;
+
+	return bucket_to_size(bucket) > max_smallsize;
+}
+
+static unsigned int max_bucket(unsigned int lp_bits)
+{
+	return (lp_bits - MAX_PAGE_OBJECT_ORDER) * INTER_BUCKET_SPACE;
 }
 
 void alloc_init(void *pool, unsigned long poolsize)
 {
-	/* FIXME: Alignment assumptions about pool. */
-	unsigned long len, i;
-	struct metaheader *mh;
+	struct header *head = pool;
+	struct page_header *ph;
+	unsigned int lp_bits, sp_bits, num_buckets;
+	unsigned long header_size, i;
 
-	if (poolsize < MIN_SIZE)
+	if (poolsize < MIN_USEFUL_SIZE) {
+		tiny_alloc_init(pool, poolsize);
 		return;
-
-	mh = first_mheader(pool, poolsize);
-
-	/* Mark all page states FREE, all uniform caches zero, and all of
-	 * metaheader bitmap which takes rest of first page. */
-	len = align_up(pool_offset(pool, mh + 1), getpagesize());
-	BUILD_ASSERT(FREE == 0);
-	memset(pool, 0, len);
-
-	/* Mark the pagestate and metadata page(s) allocated. */
-	set_page_state(pool, 0, TAKEN_START);
-	for (i = 1; i < div_up(len, getpagesize()); i++)
-		set_page_state(pool, i, TAKEN);
-}
-
-/* Two bits per element, representing page states.  Returns 0 on fail.
- * off is used to allocate from subpage bitmaps, which use the first 2
- * bits as the type, so the real bitmap is offset by 1. */
-static unsigned long alloc_from_bitmap(uint8_t *bits, unsigned long off,
-				       unsigned long elems,
-				       unsigned long want, unsigned long align)
-{
-	long i;
-	unsigned long free;
-
-	free = 0;
-	/* We allocate from far end, to increase ability to expand metadata. */
-	for (i = elems - 1; i >= 0; i--) {
-		switch (get_bit_pair(bits, off+i)) {
-		case FREE:
-			if (++free >= want) {
-				unsigned long j;
-
-				/* They might ask for large alignment. */
-				if (align && i % align)
-					continue;
-
-				set_bit_pair(bits, off+i, TAKEN_START);
-				for (j = i+1; j < i + want; j++)
-					set_bit_pair(bits, off+j, TAKEN);
-				return off+i;
-			}
-			break;
-		case SPECIAL:
-		case TAKEN_START:
-		case TAKEN:
-			free = 0;
-			break;
-		}
 	}
 
-	return 0;
+	lp_bits = large_page_bits(poolsize);
+	sp_bits = lp_bits - BITS_FROM_SMALL_TO_LARGE_PAGE;
+
+	num_buckets = max_bucket(lp_bits);
+
+	head = pool;
+	header_size = sizeof(*head) + sizeof(head->bs) * (num_buckets-1);
+
+	memset(head, 0, header_size);
+	for (i = 0; i < num_buckets; i++) {
+		unsigned long pagesize;
+
+		if (large_page_bucket(i, poolsize))
+			pagesize = 1UL << lp_bits;
+		else
+			pagesize = 1UL << sp_bits;
+
+		head->bs[i].elements_per_page
+			= elements_per_page(i / INTER_BUCKET_SPACE,
+					    bucket_to_size(i),
+					    pagesize);
+	}
+
+	/* They start as all large pages. */
+	memset(head->pagesize, 0xFF, sizeof(head->pagesize));
+	/* FIXME: small pages for last bit? */
+
+	/* Split first page into small pages. */
+	assert(header_size << (1UL << lp_bits));
+	clear_bit(head->pagesize, 0);
+
+	/* Skip over page(s) used by header, add rest to free list */
+	for (i = align_up(header_size, (1 << sp_bits)) >> sp_bits;
+	     i < (1 << BITS_FROM_SMALL_TO_LARGE_PAGE);
+	     i++) {
+		ph = from_off(head, i<<sp_bits);
+		ph->elements_used = 0;
+		add_small_page_to_freelist(head, ph);
+	}
+
+	/* Add the rest of the pages as large pages. */
+	i = (1 << lp_bits);
+	while (i + (1 << lp_bits) <= poolsize) {
+		ph = from_off(head, i);
+		ph->elements_used = 0;
+		add_large_page_to_freelist(head, ph);
+		i += (1 << lp_bits);
+	}
 }
 
-static unsigned long alloc_get_pages(void *pool, unsigned long poolsize,
-				     unsigned long pages, unsigned long align)
+/* A large page worth of small pages are free: delete them from free list. */
+static void del_large_from_small_free_list(struct header *head,
+					   struct page_header *ph,
+					   unsigned int sp_bits)
 {
-	return alloc_from_bitmap(get_page_statebits(pool),
-				 0, poolsize / getpagesize(), pages,
-				 align / getpagesize());
-}
-
-/* Offset to metadata is at end of page. */
-static unsigned long *metadata_off(void *pool, unsigned long page)
-{
-	return (unsigned long *)
-		((char *)pool + (page+1)*getpagesize() - sizeof(unsigned long));
-}
-
-static uint8_t *get_page_metadata(void *pool, unsigned long page)
-{
-	return (uint8_t *)pool + *metadata_off(pool, page);
-}
-
-static void set_page_metadata(void *pool, unsigned long page, uint8_t *meta)
-{
-	*metadata_off(pool, page) = meta - (uint8_t *)pool;
-}
-
-static unsigned long sub_page_alloc(void *pool, unsigned long page,
-				    unsigned long size, unsigned long align)
-{
-	uint8_t *bits = get_page_metadata(pool, page);
 	unsigned long i;
-	enum sub_metadata_type type;
 
-	type = get_bit_pair(bits, 0);
-
-	/* If this is a uniform page, we can't allocate from it. */
-	if (type == UNIFORM)
-		return 0;
-
-	assert(type == BITMAP);
-
-	/* We use a standart bitmap, but offset because of that BITMAP
-	 * header. */
-	i = alloc_from_bitmap(bits, 1, SUBPAGE_METAOFF/BITMAP_GRANULARITY,
-			      div_up(size, BITMAP_GRANULARITY),
-			      align / BITMAP_GRANULARITY);
-
-	/* Can't allocate? */
-	if (i == 0)
-		return 0;
-
-	/* i-1 because of the header. */
-	return page*getpagesize() + (i-1)*BITMAP_GRANULARITY;
-}
-
-/* We look at the page states to figure out where the allocation for this
- * metadata ends. */
-static unsigned long get_metalen(void *pool, unsigned long poolsize,
-				 struct metaheader *mh)
-{
-	unsigned long i, first, pages = poolsize / getpagesize();
-
-	first = pool_offset(pool, mh + 1)/getpagesize();
-
-	for (i = first + 1; i < pages && get_page_state(pool,i) == TAKEN; i++);
-
-	return i * getpagesize() - pool_offset(pool, mh + 1);
-}
-
-static unsigned int uniform_metalen(unsigned int usize)
-{
-	unsigned int metalen;
-
-	assert(usize < (1 << 14));
-
-	/* Two bits for the header, 14 bits for size, then one bit for each
-	 * element the page can hold.  Round up to number of bytes. */
-	metalen = div_up(2 + 14 + SUBPAGE_METAOFF / usize, CHAR_BIT);
-
-	/* To ensure metaheader is always aligned, round bytes up. */
-	metalen = align_up(metalen, ALIGNOF(struct metaheader));
-
-	return metalen;
-}
-
-static unsigned int decode_usize(uint8_t *meta)
-{
-	return ((unsigned)meta[1] << (CHAR_BIT-2)) | (meta[0] >> 2);
-}
-
-static void encode_usize(uint8_t *meta, unsigned int usize)
-{
-	meta[0] = (UNIFORM | (usize << 2));
-	meta[1] = (usize >> (CHAR_BIT - 2));
-}
-
-static uint8_t *alloc_metaspace(void *pool, unsigned long poolsize,
-				struct metaheader *mh, unsigned long bytes,
-				enum sub_metadata_type type)
-{
-	uint8_t *meta = (uint8_t *)(mh + 1);
-	unsigned long free = 0, len, i, metalen;
-
-	metalen = get_metalen(pool, poolsize, mh);
-
-	/* Walk through metadata looking for free. */
-	for (i = 0; i < metalen * METADATA_PER_BYTE; i += len) {
-		switch (get_bit_pair(meta, i)) {
-		case FREE:
-			len = 1;
-			free++;
-			if (free == bytes * METADATA_PER_BYTE) {
-				/* Mark this as a bitmap. */
-				set_bit_pair(meta, i - free + 1, type);
-				return meta + (i - free + 1)/METADATA_PER_BYTE;
-			}
-			break;
-		case BITMAP:
-			/* Skip over this allocated part. */
-			len = BITMAP_METALEN * METADATA_PER_BYTE;
-			free = 0;
-			break;
-		case UNIFORM:
-			/* Figure metalen given usize. */
-			len = decode_usize(meta + i / METADATA_PER_BYTE);
-			len = uniform_metalen(len) * METADATA_PER_BYTE;
-			free = 0;
-			break;
-		default:
-			assert(0);
-			return NULL;
-		}
+	for (i = 0; i < (1 << BITS_FROM_SMALL_TO_LARGE_PAGE); i++) {
+		del_from_list(head, &head->small_free_list,
+			      (void *)ph + (i << sp_bits));
 	}
-	return NULL;
 }
 
-/* We need this many bytes of metadata. */
-static uint8_t *new_metadata(void *pool, unsigned long poolsize,
-			     unsigned long bytes, enum sub_metadata_type type)
+static bool all_empty(struct header *head, unsigned long off, unsigned sp_bits)
 {
-	struct metaheader *mh, *newmh;
-	unsigned long page;
-	uint8_t *meta;
+	unsigned long i;
 
-	for (mh = first_mheader(pool,poolsize); mh; mh = next_mheader(pool,mh))
-		if ((meta = alloc_metaspace(pool, poolsize, mh, bytes, type)))
-			return meta;
-
-	/* No room for metadata?  Can we expand an existing one? */
-	for (mh = first_mheader(pool,poolsize); mh; mh = next_mheader(pool,mh)){
-		unsigned long nextpage;
-
-		/* We start on this page. */
-		nextpage = pool_offset(pool, (char *)(mh+1))/getpagesize();
-		/* Iterate through any other pages we own. */
-		while (get_page_state(pool, ++nextpage) == TAKEN);
-
-		/* Now, can we grab that page? */
-		if (get_page_state(pool, nextpage) != FREE)
-			continue;
-
-		/* OK, expand metadata, do it again. */
-		set_page_state(pool, nextpage, TAKEN);
-		BUILD_ASSERT(FREE == 0);
-		memset((char *)pool + nextpage*getpagesize(), 0, getpagesize());
-		return alloc_metaspace(pool, poolsize, mh, bytes, type);
-	}
-
-	/* No metadata left at all? */
-	page = alloc_get_pages(pool, poolsize, div_up(bytes, getpagesize()), 1);
-	if (!page)
-		return NULL;
-
-	newmh = (struct metaheader *)((char *)pool + page * getpagesize());
-	BUILD_ASSERT(FREE == 0);
-	memset(newmh + 1, 0, getpagesize() - sizeof(*mh));
-
-	/* Sew it into linked list */
-	mh = first_mheader(pool,poolsize);
-	newmh->next = mh->next;
-	mh->next = pool_offset(pool, newmh);
-
-	return alloc_metaspace(pool, poolsize, newmh, bytes, type);
-}
-
-static void alloc_free_pages(void *pool, unsigned long pagenum)
-{
-	assert(get_page_state(pool, pagenum) == TAKEN_START);
-	set_page_state(pool, pagenum, FREE);
-	while (get_page_state(pool, ++pagenum) == TAKEN)
-		set_page_state(pool, pagenum, FREE);
-}
-
-static void maybe_transform_uniform_page(void *pool, unsigned long offset)
-{
-	/* FIXME: If possible and page isn't full, change to a bitmap */
-}
-
-/* Returns 0 or the size of the uniform alloc to use */
-static unsigned long suitable_for_uc(unsigned long size, unsigned long align)
-{
-	unsigned long num_elems, wastage, usize;
-	unsigned long bitmap_cost;
-
-	if (size == 0)
-		size = 1;
-
-	/* Fix up silly alignments. */
-	usize = align_up(size, align);
-
-	/* How many can fit in this page? */
-	num_elems = SUBPAGE_METAOFF / usize;
-
-	/* Can happen with bigger alignments. */
-	if (!num_elems)
-		return 0;
-
-	/* Usize maxes out at 14 bits. */
-	if (usize >= (1 << 14))
-		return 0;
-
-	/* How many bytes would be left at the end? */
-	wastage = SUBPAGE_METAOFF % usize;
-
-	/* If we can get a larger allocation within alignment constraints, we
-	 * should do it, otherwise might as well leave wastage at the end. */
-	usize += align_down(wastage / num_elems, align);
-
-	/* Bitmap allocation costs 2 bits per BITMAP_GRANULARITY bytes, plus
-	 * however much we waste in rounding up to BITMAP_GRANULARITY. */
-	bitmap_cost = 2 * div_up(size, BITMAP_GRANULARITY)
-		+ CHAR_BIT * (align_up(size, BITMAP_GRANULARITY) - size);
-
-	/* Our cost is 1 bit, plus usize overhead */
-	if (bitmap_cost < 1 + (usize - size) * CHAR_BIT)
-		return 0;
-
-	return usize;
-}
-
-static unsigned long uniform_alloc(void *pool, unsigned long poolsize,
-				   struct uniform_cache *uc,
-				   unsigned long ucnum)
-{
-	uint8_t *metadata = get_page_metadata(pool, uc->page[ucnum]) + 2;
-	unsigned long i, max;
-
-	/* Simple one-bit-per-object bitmap. */
-	max = SUBPAGE_METAOFF / uc->size[ucnum];
-	for (i = 0; i < max; i++) {
-		if (!(metadata[i / CHAR_BIT] & (1 << (i % CHAR_BIT)))) {
-			metadata[i / CHAR_BIT] |= (1 << (i % CHAR_BIT));
-			return uc->page[ucnum] * getpagesize()
-				+ i * uc->size[ucnum];
-		}
-	}
-
-	return 0;
-}
-
-static unsigned long new_uniform_page(void *pool, unsigned long poolsize,
-				      unsigned long usize)
-{
-	unsigned long page, metalen;
-	uint8_t *metadata;
-
-	/* FIXME: Walk metadata looking for an existing uniform page. */
-	page = alloc_get_pages(pool, poolsize, 1, 1);
-	if (page == 0)
-		return 0;
-
-	metalen = uniform_metalen(usize);
-
-	/* Get metadata for page. */
-	metadata = new_metadata(pool, poolsize, metalen, UNIFORM);
-	if (!metadata) {
-		alloc_free_pages(pool, page);
-		return 0;
-	}
-
-	encode_usize(metadata, usize);
-
-	BUILD_ASSERT(FREE == 0);
-	memset(metadata + 2, 0, metalen - 2);
-
-	/* Actually, this is a subpage page now. */
-	set_page_state(pool, page, SPECIAL);
-
-	/* Set metadata pointer for page. */
-	set_page_metadata(pool, page, metadata);
-
-	return page;
-}
-
-static unsigned long alloc_sub_page(void *pool, unsigned long poolsize,
-				    unsigned long size, unsigned long align)
-{
-	unsigned long i, usize;
-	uint8_t *metadata;
-	struct uniform_cache *uc = pool;
-
-	usize = suitable_for_uc(size, align);
-	if (usize) {
-		static int random_entry;
-		/* Look for a uniform page. */
-		for (i = 0; i < UNIFORM_CACHE_NUM; i++) {
-			if (uc->size[i] == usize) {
-				unsigned long ret;
-				ret = uniform_alloc(pool, poolsize, uc, i);
-				if (ret != 0)
-					return ret;
-				/* OK, that one is full, remove from cache. */
-				uc->size[i] = 0;
-				break;
-			}
-		}
-
-		/* OK, try a new uniform page.  Use random discard for now. */
-		i = (++random_entry % UNIFORM_CACHE_NUM);
-		maybe_transform_uniform_page(pool, uc->page[i]);
-
-		uc->page[i] = new_uniform_page(pool, poolsize, usize);
-		if (uc->page[i]) {
-			uc->size[i] = usize;
-			return uniform_alloc(pool, poolsize, uc, i);
-		}
-		uc->size[i] = 0;
-	}
-
-	/* Look for partial page. */
-	for (i = 0; i < poolsize / getpagesize(); i++) {
-		unsigned long ret;
-		if (get_page_state(pool, i) != SPECIAL)
-			continue;
-
-		ret = sub_page_alloc(pool, i, size, align);
-		if (ret)
-			return ret;
-	}
-
-	/* Create new SUBPAGE page. */
-	i = alloc_get_pages(pool, poolsize, 1, 1);
-	if (i == 0)
-		return 0;
-
-	/* Get metadata for page. */
-	metadata = new_metadata(pool, poolsize, BITMAP_METALEN, BITMAP);
-	if (!metadata) {
-		alloc_free_pages(pool, i);
-		return 0;
-	}
-
-	/* Actually, this is a subpage page now. */
-	set_page_state(pool, i, SPECIAL);
-
-	/* Set metadata pointer for page. */
-	set_page_metadata(pool, i, metadata);
-
-	/* Do allocation like normal */
-	return sub_page_alloc(pool, i, size, align);
-}
-
-static bool bitmap_page_is_empty(uint8_t *meta)
-{
-	unsigned int i;
-
-	/* Skip the header (first bit of metadata). */
-	for (i = 1; i < SUBPAGE_METAOFF/BITMAP_GRANULARITY+1; i++)
-		if (get_bit_pair(meta, i) != FREE)
-			return false;
-
-	return true;
-}
-
-static bool uniform_page_is_empty(uint8_t *meta)
-{
-	unsigned int i, metalen;
-
-	metalen = uniform_metalen(decode_usize(meta));
-
-	/* Skip the header (first two bytes of metadata). */
-	for (i = 2; i < metalen; i++) {
-		BUILD_ASSERT(FREE == 0);
-		if (meta[i])
+	for (i = 0; i < (1 << BITS_FROM_SMALL_TO_LARGE_PAGE); i++) {
+		struct page_header *ph = from_off(head, off + (i << sp_bits));
+		if (ph->elements_used)
 			return false;
 	}
 	return true;
 }
 
-static bool special_page_is_empty(void *pool, unsigned long page)
+static unsigned long get_large_page(struct header *head,
+				    unsigned long poolsize)
 {
-	uint8_t *meta;
-	enum sub_metadata_type type;
+	unsigned long lp_bits, sp_bits, i, page;
 
-	meta = get_page_metadata(pool, page);
-	type = get_bit_pair(meta, 0);
+	page = pop_from_list(head, &head->large_free_list);
+	if (likely(page))
+		return page;
 
-	switch (type) {
-	case UNIFORM:
-		return uniform_page_is_empty(meta);
-	case BITMAP:
-		return bitmap_page_is_empty(meta);
-	default:
-		assert(0);
-	}
-}
+	/* Look for small pages to coalesce, after first large page. */
+	lp_bits = large_page_bits(poolsize);
+	sp_bits = lp_bits - BITS_FROM_SMALL_TO_LARGE_PAGE;
 
-static void clear_special_metadata(void *pool, unsigned long page)
-{
-	uint8_t *meta;
-	enum sub_metadata_type type;
-
-	meta = get_page_metadata(pool, page);
-	type = get_bit_pair(meta, 0);
-
-	switch (type) {
-	case UNIFORM:
-		/* First two bytes are the header, rest is already FREE */
-		BUILD_ASSERT(FREE == 0);
-		memset(meta, 0, 2);
-		break;
-	case BITMAP:
-		/* First two bits is the header. */
-		BUILD_ASSERT(BITMAP_METALEN > 1);
-		meta[0] = 0;
-		break;
-	default:
-		assert(0);
-	}
-}
-
-/* Returns true if we cleaned any pages. */
-static bool clean_empty_subpages(void *pool, unsigned long poolsize)
-{
-	unsigned long i;
-	bool progress = false;
-
-	for (i = 0; i < poolsize/getpagesize(); i++) {
-		if (get_page_state(pool, i) != SPECIAL)
+	for (i = (1 << lp_bits); i < poolsize; i += (1 << lp_bits)) {
+		/* Already a large page? */
+		if (test_bit(head->pagesize, i >> lp_bits))
 			continue;
-
-		if (special_page_is_empty(pool, i)) {
-			clear_special_metadata(pool, i);
-			set_page_state(pool, i, FREE);
-			progress = true;
+		if (all_empty(head, i, sp_bits)) {
+			struct page_header *ph = from_off(head, i);
+			set_bit(head->pagesize, i >> lp_bits);
+			del_large_from_small_free_list(head, ph, sp_bits);
+			add_large_page_to_freelist(head, ph);
 		}
 	}
-	return progress;
+			
+	return pop_from_list(head, &head->large_free_list);
 }
 
-/* Returns true if we cleaned any pages. */
-static bool clean_metadata(void *pool, unsigned long poolsize)
+/* Returns small page. */
+static unsigned long break_up_large_page(struct header *head,
+					 unsigned long psize,
+					 unsigned long lpage)
 {
-	struct metaheader *mh, *prev_mh = NULL;
-	bool progress = false;
+	unsigned long lp_bits, sp_bits, i;
 
-	for (mh = first_mheader(pool,poolsize); mh; mh = next_mheader(pool,mh)){
-		uint8_t *meta;
-		long i;
-		unsigned long metalen = get_metalen(pool, poolsize, mh);
+	lp_bits = large_page_bits(psize);
+	sp_bits = lp_bits - BITS_FROM_SMALL_TO_LARGE_PAGE;
+	clear_bit(head->pagesize, lpage >> lp_bits);
 
-		meta = (uint8_t *)(mh + 1);
-		BUILD_ASSERT(FREE == 0);
-		for (i = metalen - 1; i > 0; i--)
-			if (meta[i] != 0)
-				break;
+	for (i = 1; i < (1 << BITS_FROM_SMALL_TO_LARGE_PAGE); i++)
+		add_small_page_to_freelist(head,
+					   from_off(head,
+						    lpage + (i<<sp_bits)));
 
-		/* Completely empty? */
-		if (prev_mh && i == metalen) {
-			alloc_free_pages(pool,
-					 pool_offset(pool, mh)/getpagesize());
-			prev_mh->next = mh->next;
-			mh = prev_mh;
-			progress = true;
-		} else {
-			uint8_t *p;
+	return lpage;
+}
 
-			/* Some pages at end are free? */
-			for (p = (uint8_t *)(mh+1) + metalen - getpagesize();
-			     p > meta + i;
-			     p -= getpagesize()) {
-				set_page_state(pool,
-					       pool_offset(pool, p)
-					       / getpagesize(),
-					       FREE);
-				progress = true;
-			}
-		}
-	}
+static unsigned long get_small_page(struct header *head,
+				    unsigned long poolsize)
+{
+	unsigned long ret;
 
-	return progress;
+	ret = pop_from_list(head, &head->small_free_list);
+	if (likely(ret))
+		return ret;
+	ret = get_large_page(head, poolsize);
+	if (likely(ret))
+		ret = break_up_large_page(head, poolsize, ret);
+	return ret;
 }
 
 void *alloc_get(void *pool, unsigned long poolsize,
 		unsigned long size, unsigned long align)
 {
-	bool subpage_clean = false, metadata_clean = false;
-	unsigned long ret;
+	struct header *head = pool;
+	unsigned int bucket;
+	unsigned long i;
+	struct bucket_state *bs;
+	struct page_header *ph;
 
-	if (poolsize < MIN_SIZE)
+	if (poolsize < MIN_USEFUL_SIZE) {
+		return tiny_alloc_get(pool, poolsize, size, align);
+	}
+
+	size = align_up(size, align);
+	if (unlikely(!size))
+		size = 1;
+	bucket = size_to_bucket(size);
+
+	if (bucket >= max_bucket(large_page_bits(poolsize))) {
+		/* FIXME: huge alloc. */
 		return NULL;
-
-again:
-	/* Sub-page allocations have an overhead of ~12%. */
-	if (size + size/8 >= getpagesize() || align >= getpagesize()) {
-		unsigned long pages = div_up(size, getpagesize());
-
-		ret = alloc_get_pages(pool, poolsize, pages, align)
-			* getpagesize();
-	} else
-		ret = alloc_sub_page(pool, poolsize, size, align);
-
-	if (ret != 0)
-		return (char *)pool + ret;
-
-	/* Allocation failed: garbage collection. */
-	if (!subpage_clean) {
-		subpage_clean = true;
-		if (clean_empty_subpages(pool, poolsize))
-			goto again;
 	}
 
-	if (!metadata_clean) {
-		metadata_clean = true;
-		if (clean_metadata(pool, poolsize))
-			goto again;
+	bs = &head->bs[bucket];
+
+	if (!bs->page_list) {
+		struct page_header *ph;
+
+		if (large_page_bucket(bucket, poolsize))
+			bs->page_list = get_large_page(head, poolsize);
+		else
+			bs->page_list = get_small_page(head, poolsize);
+		/* FIXME: Try large-aligned alloc?  Header stuffing? */
+		if (unlikely(!bs->page_list))
+			return NULL;
+		ph = from_off(head, bs->page_list);
+		ph->bucket = bucket;
+		ph->elements_used = 0;
+		ph->next = 0;
+		memset(ph->used, 0, used_size(bs->elements_per_page));
 	}
 
-	/* FIXME: Compact metadata? */
-	return NULL;
-}
+	ph = from_off(head, bs->page_list);
 
-static void bitmap_free(void *pool, unsigned long pagenum, unsigned long off,
-			uint8_t *metadata)
-{
-	assert(off % BITMAP_GRANULARITY == 0);
+	i = find_free_bit(ph->used);
+	set_bit(ph->used, i);
+	ph->elements_used++;
 
-	off /= BITMAP_GRANULARITY;
-
-	/* Offset by one because first bit is used for header. */
-	off++;
-
-	set_bit_pair(metadata, off++, FREE);
-	while (off <= SUBPAGE_METAOFF / BITMAP_GRANULARITY
-	       && get_bit_pair(metadata, off) == TAKEN)
-		set_bit_pair(metadata, off++, FREE);
-}
-
-static void uniform_free(void *pool, unsigned long pagenum, unsigned long off,
-			 uint8_t *metadata)
-{
-	unsigned int usize, bit;
-
-	usize = decode_usize(metadata);
-	/* Must have been this size. */
-	assert(off % usize == 0);
-	bit = off / usize;
-
-	/* Skip header. */
-	metadata += 2;
-
-	/* Must have been allocated. */
-	assert(metadata[bit / CHAR_BIT] & (1 << (bit % CHAR_BIT)));
-	metadata[bit / CHAR_BIT] &= ~(1 << (bit % CHAR_BIT));
-}
-
-static void subpage_free(void *pool, unsigned long pagenum, void *free)
-{
-	unsigned long off = (unsigned long)free % getpagesize();
-	uint8_t *metadata = get_page_metadata(pool, pagenum);
-	enum sub_metadata_type type;
-
-	type = get_bit_pair(metadata, 0);
-
-	assert(off < SUBPAGE_METAOFF);
-
-	switch (type) {
-	case BITMAP:
-		bitmap_free(pool, pagenum, off, metadata);
-		break;
-	case UNIFORM:
-		uniform_free(pool, pagenum, off, metadata);
-		break;
-	default:
-		assert(0);
+	/* check if this page is now full */
+	if (unlikely(ph->elements_used == bs->elements_per_page)) {
+		del_from_bucket_list(head, bs, ph);
+		add_to_bucket_full_list(head, bs, ph);
 	}
+
+	return (char *)ph + page_header_size(ph->bucket / INTER_BUCKET_SPACE,
+					     bs->elements_per_page)
+	       + i * bucket_to_size(bucket);
 }
 
 void alloc_free(void *pool, unsigned long poolsize, void *free)
 {
-	unsigned long pagenum;
-	struct metaheader *mh;
+	struct header *head = pool;
+	struct bucket_state *bs;
+	unsigned int pagebits;
+	unsigned long i, pgoffset, offset = (char *)free - (char *)pool;
+	bool smallpage;
+	struct page_header *ph;
 
-	if (!free)
-		return;
+	if (poolsize < MIN_USEFUL_SIZE) {
+		return tiny_alloc_free(pool, poolsize, free);
+	}
 
-	assert(poolsize >= MIN_SIZE);
+	/* Get page header. */
+	pagebits = large_page_bits(poolsize);
+	if (!test_bit(head->pagesize, offset >> pagebits)) {
+		smallpage = true;
+		pagebits -= BITS_FROM_SMALL_TO_LARGE_PAGE;
+	} else
+		smallpage = false;
 
-	mh = first_mheader(pool, poolsize);
-	assert((char *)free >= (char *)(mh + 1));
-	assert((char *)pool + poolsize > (char *)free);
+	/* Step back to page header. */
+	ph = from_off(head, offset & ~((1UL << pagebits) - 1));
+	bs = &head->bs[ph->bucket];
+	pgoffset = (offset & ((1UL << pagebits) - 1))
+		- page_header_size(ph->bucket / INTER_BUCKET_SPACE,
+				   bs->elements_per_page);
 
-	pagenum = pool_offset(pool, free) / getpagesize();
+	if (unlikely(ph->elements_used == bs->elements_per_page)) {
+		del_from_bucket_full_list(head, bs, ph);
+		add_to_bucket_list(head, bs, ph);
+	}
 
-	if (get_page_state(pool, pagenum) == SPECIAL)
-		subpage_free(pool, pagenum, free);
-	else {
-		assert((unsigned long)free % getpagesize() == 0);
-		alloc_free_pages(pool, pagenum);
+	/* Which element are we? */
+	i = pgoffset / bucket_to_size(ph->bucket);
+	clear_bit(ph->used, i);
+	ph->elements_used--;
+
+	if (unlikely(ph->elements_used == 0)) {
+		bs = &head->bs[ph->bucket];
+		del_from_bucket_list(head, bs, ph);
+		if (smallpage)
+			add_small_page_to_freelist(head, ph);
+		else
+			add_large_page_to_freelist(head, ph);
 	}
 }
 
 unsigned long alloc_size(void *pool, unsigned long poolsize, void *p)
 {
-	unsigned long len, pagenum;
-	struct metaheader *mh;
+	struct header *head = pool;
+	unsigned int pagebits;
+	unsigned long offset = (char *)p - (char *)pool;
+	struct page_header *ph;
 
-	assert(poolsize >= MIN_SIZE);
+	if (poolsize < MIN_USEFUL_SIZE)
+		return tiny_alloc_size(pool, poolsize, p);
 
-	mh = first_mheader(pool, poolsize);
-	assert((char *)p >= (char *)(mh + 1));
-	assert((char *)pool + poolsize > (char *)p);
+	/* Get page header. */
+	pagebits = large_page_bits(poolsize);
+	if (!test_bit(head->pagesize, offset >> pagebits))
+		pagebits -= BITS_FROM_SMALL_TO_LARGE_PAGE;
 
-	pagenum = pool_offset(pool, p) / getpagesize();
-
-	if (get_page_state(pool, pagenum) == SPECIAL) {
-		unsigned long off = (unsigned long)p % getpagesize();
-		uint8_t *metadata = get_page_metadata(pool, pagenum);
-		enum sub_metadata_type type = get_bit_pair(metadata, 0);
-
-		assert(off < SUBPAGE_METAOFF);
-
-		switch (type) {
-		case BITMAP:
-			assert(off % BITMAP_GRANULARITY == 0);
-			off /= BITMAP_GRANULARITY;
-
-			/* Offset by one because first bit used for header. */
-			off++;
-			len = BITMAP_GRANULARITY;
-			while (++off < SUBPAGE_METAOFF / BITMAP_GRANULARITY
-			       && get_bit_pair(metadata, off) == TAKEN)
-				len += BITMAP_GRANULARITY;
-			break;
-		case UNIFORM:
-			len = decode_usize(metadata);
-			break;
-		default:
-			assert(0);
-		}
-	} else {
-		len = getpagesize();
-		while (get_page_state(pool, ++pagenum) == TAKEN)
-			len += getpagesize();
-	}
-
-	return len;
-}
-
-static bool is_metadata_page(void *pool, unsigned long poolsize,
-			     unsigned long page)
-{
-	struct metaheader *mh;
-
-	for (mh = first_mheader(pool,poolsize); mh; mh = next_mheader(pool,mh)){
-		unsigned long start, end;
-
-		start = pool_offset(pool, mh);
-		end = pool_offset(pool, (char *)(mh+1)
-				  + get_metalen(pool, poolsize, mh));
-		if (page >= start/getpagesize() && page < end/getpagesize())
-			return true;
-	}
-	return false;
+	/* Step back to page header. */
+	ph = from_off(head, offset & ~((1UL << pagebits) - 1));
+	return bucket_to_size(ph->bucket);
 }
 
 /* Useful for gdb breakpoints. */
@@ -894,293 +731,215 @@ static bool check_fail(void)
 	return false;
 }
 
-static bool check_bitmap_metadata(void *pool, unsigned long *mhoff)
+static unsigned long count_bits(const unsigned long bitmap[],
+				unsigned long limit)
 {
-	enum alloc_state last_state = FREE;
-	unsigned int i;
+	unsigned long i, count = 0;
 
-	for (i = 0; i < SUBPAGE_METAOFF / BITMAP_GRANULARITY; i++) {
-		enum alloc_state state;
+	while (limit >= BITS_PER_LONG) {
+		count += popcount(bitmap[0]);
+		bitmap++;
+		limit -= BITS_PER_LONG;
+	}
 
-		/* +1 because header is the first byte. */
-		state = get_bit_pair((uint8_t *)pool + *mhoff, i+1);
-		switch (state) {
-		case SPECIAL:
+	for (i = 0; i < limit; i++)
+		if (test_bit(bitmap, i))
+			count++;
+	return count;
+}
+
+static bool out_of_bounds(unsigned long off,
+			  unsigned long pagesize,
+			  unsigned long poolsize)
+{
+	return (off > poolsize || off + pagesize > poolsize);
+}
+
+static bool check_bucket(struct header *head,
+			 unsigned long poolsize,
+			 unsigned long pages[],
+			 struct bucket_state *bs,
+			 unsigned int bindex)
+{
+	bool lp_bucket = large_page_bucket(bindex, poolsize);
+	struct page_header *ph;
+	unsigned long taken, i, prev, pagesize, sp_bits, lp_bits;
+
+	lp_bits = large_page_bits(poolsize);
+	sp_bits = lp_bits - BITS_FROM_SMALL_TO_LARGE_PAGE;
+
+	pagesize = 1UL << (lp_bucket ? lp_bits : sp_bits);
+
+	/* This many elements fit? */
+	taken = page_header_size(bindex / INTER_BUCKET_SPACE,
+				 bs->elements_per_page);
+	taken += bucket_to_size(bindex) * bs->elements_per_page;
+	if (taken > pagesize)
+		return check_fail();
+
+	/* One more wouldn't fit? */
+	taken = page_header_size(bindex / INTER_BUCKET_SPACE,
+				 bs->elements_per_page + 1);
+	taken += bucket_to_size(bindex) * (bs->elements_per_page + 1);
+	if (taken <= pagesize)
+		return check_fail();
+
+	/* Walk used list. */
+	prev = 0;
+	for (i = bs->page_list; i; i = ph->next) {
+		/* Bad pointer? */
+		if (out_of_bounds(i, pagesize, poolsize))
 			return check_fail();
-		case TAKEN:
-			if (last_state == FREE)
-				return check_fail();
-			break;
-		default:
-			break;
-		}
-		last_state = state;
+		/* Wrong size page? */
+		if (!!test_bit(head->pagesize, i >> lp_bits) != lp_bucket)
+			return check_fail();
+		/* Not page boundary? */
+		if (i % pagesize)
+			return check_fail();
+		ph = from_off(head, i);
+		/* Linked list corrupt? */
+		if (ph->prev != prev)
+			return check_fail();
+		/* Already seen this page? */
+		if (test_bit(pages, i >> sp_bits))
+			return check_fail();
+		set_bit(pages, i >> sp_bits);
+		/* Empty or full? */
+		if (ph->elements_used == 0)
+			return check_fail();
+		if (ph->elements_used >= bs->elements_per_page)
+			return check_fail();
+		/* Used bits don't agree? */
+		if (ph->elements_used != count_bits(ph->used,
+						    bs->elements_per_page))
+			return check_fail();
+		/* Wrong bucket? */
+		if (ph->bucket != bindex)
+			return check_fail();
+		prev = i;
+	}
+
+	/* Walk full list. */
+	prev = 0;
+	for (i = bs->full_list; i; i = ph->next) {
+		/* Bad pointer? */
+		if (out_of_bounds(i, pagesize, poolsize))
+			return check_fail();
+		/* Wrong size page? */
+		if (!!test_bit(head->pagesize, i >> lp_bits) != lp_bucket)
+			return check_fail();
+		/* Not page boundary? */
+		if (i % pagesize)
+			return check_fail();
+		ph = from_off(head, i);
+		/* Linked list corrupt? */
+		if (ph->prev != prev)
+			return check_fail();
+		/* Already seen this page? */
+		if (test_bit(pages, i >> sp_bits))
+			return check_fail();
+		set_bit(pages, i >> sp_bits);
+		/* Not full? */
+		if (ph->elements_used != bs->elements_per_page)
+			return check_fail();
+		/* Used bits don't agree? */
+		if (ph->elements_used != count_bits(ph->used,
+						    bs->elements_per_page))
+			return check_fail();
+		/* Wrong bucket? */
+		if (ph->bucket != bindex)
+			return check_fail();
+		prev = i;
 	}
 	return true;
-}
-
-/* We don't know what alignment they asked for, but we can infer worst
- * case from the size. */
-static unsigned int max_align(unsigned int size)
-{
-	unsigned int align = 1;
-
-	while (size % (align * 2) == 0)
-		align *= 2;
-	return align;
-}
-
-static bool check_uniform_metadata(void *pool, unsigned long *mhoff)
-{
-	uint8_t *meta = (uint8_t *)pool + *mhoff;
-	unsigned int i, usize;
-	struct uniform_cache *uc = pool;
-
-	usize = decode_usize(meta);
-	if (usize == 0 || suitable_for_uc(usize, max_align(usize)) != usize)
-		return check_fail();
-
-	/* If it's in uniform cache, make sure that agrees on size. */
-	for (i = 0; i < UNIFORM_CACHE_NUM; i++) {
-		uint8_t *ucm;
-
-		if (!uc->size[i])
-			continue;
-
-		ucm = get_page_metadata(pool, uc->page[i]);
-		if (ucm != meta)
-			continue;
-
-		if (usize != uc->size[i])
-			return check_fail();
-	}
-	return true;
-}
-
-static bool check_subpage(void *pool, unsigned long poolsize,
-			  unsigned long page)
-{
-	unsigned long *mhoff = metadata_off(pool, page);
-
-	if (*mhoff + sizeof(struct metaheader) > poolsize)
-		return check_fail();
-
-	if (*mhoff % ALIGNOF(struct metaheader) != 0)
-		return check_fail();
-
-	/* It must point to a metadata page. */
-	if (!is_metadata_page(pool, poolsize, *mhoff / getpagesize()))
-		return check_fail();
-
-	/* Header at start of subpage allocation */
-	switch (get_bit_pair((uint8_t *)pool + *mhoff, 0)) {
-	case BITMAP:
-		return check_bitmap_metadata(pool, mhoff);
-	case UNIFORM:
-		return check_uniform_metadata(pool, mhoff);
-	default:
-		return check_fail();
-	}
-
 }
 
 bool alloc_check(void *pool, unsigned long poolsize)
 {
-	unsigned long i;
-	struct metaheader *mh;
-	enum alloc_state last_state = FREE;
-	bool was_metadata = false;
+	struct header *head = pool;
+	unsigned long prev, i, lp_bits, sp_bits, header_size, num_buckets;
+	struct page_header *ph;
+	unsigned long pages[(MAX_PAGES << BITS_FROM_SMALL_TO_LARGE_PAGE)
+			    / BITS_PER_LONG] = { 0 };
 
-	if (poolsize < MIN_SIZE)
-		return true;
+	if (poolsize < MIN_USEFUL_SIZE)
+		return tiny_alloc_check(pool, poolsize);
 
-	if (get_page_state(pool, 0) != TAKEN_START)
-		return check_fail();
+	lp_bits = large_page_bits(poolsize);
+	sp_bits = lp_bits - BITS_FROM_SMALL_TO_LARGE_PAGE;
 
-	/* First check metadata pages. */
-	/* Metadata pages will be marked TAKEN. */
-	for (mh = first_mheader(pool,poolsize); mh; mh = next_mheader(pool,mh)){
-		unsigned long start, end;
+	num_buckets = max_bucket(lp_bits);
 
-		start = pool_offset(pool, mh);
-		if (start + sizeof(*mh) > poolsize)
+	header_size = sizeof(*head) + sizeof(head->bs) * (num_buckets-1);
+
+	/* First, set all bits taken by header. */
+	for (i = 0; i < header_size; i += (1UL << sp_bits))
+		set_bit(pages, i >> sp_bits);
+
+	/* Check small page free list. */
+	prev = 0;
+	for (i = head->small_free_list; i; i = ph->next) {
+		/* Bad pointer? */
+		if (out_of_bounds(i, 1 << sp_bits, poolsize))
 			return check_fail();
-
-		end = pool_offset(pool, (char *)(mh+1)
-				  + get_metalen(pool, poolsize, mh));
-		if (end > poolsize)
+		/* Large page? */
+		if (test_bit(head->pagesize, i >> lp_bits))
 			return check_fail();
-
-		/* Non-first pages should start on a page boundary. */
-		if (mh != first_mheader(pool, poolsize)
-		    && start % getpagesize() != 0)
+		/* Not page boundary? */
+		if (i % (1 << sp_bits))
 			return check_fail();
-
-		/* It should end on a page boundary. */
-		if (end % getpagesize() != 0)
+		ph = from_off(head, i);
+		/* Linked list corrupt? */
+		if (ph->prev != prev)
 			return check_fail();
+		/* Already seen this page? */
+		if (test_bit(pages, i >> sp_bits))
+			return check_fail();
+		set_bit(pages, i >> sp_bits);
+		prev = i;
 	}
 
-	for (i = 0; i < poolsize / getpagesize(); i++) {
-		enum alloc_state state = get_page_state(pool, i);
-		bool is_metadata = is_metadata_page(pool, poolsize,i);
+	/* Check large page free list. */
+	prev = 0;
+	for (i = head->large_free_list; i; i = ph->next) {
+		/* Bad pointer? */
+		if (out_of_bounds(i, 1 << lp_bits, poolsize))
+			return check_fail();
+		/* Not large page? */
+		if (!test_bit(head->pagesize, i >> lp_bits))
+			return check_fail();
+		/* Not page boundary? */
+		if (i % (1 << lp_bits))
+			return check_fail();
+		ph = from_off(head, i);
+		/* Linked list corrupt? */
+		if (ph->prev != prev)
+			return check_fail();
+		/* Already seen this page? */
+		if (test_bit(pages, i >> sp_bits))
+			return check_fail();
+		set_bit(pages, i >> sp_bits);
+		prev = i;
+	}
 
-		switch (state) {
-		case FREE:
-			/* metadata pages are never free. */
-			if (is_metadata)
-				return check_fail();
-		case TAKEN_START:
-			break;
-		case TAKEN:
-			/* This should continue a previous block. */
-			if (last_state == FREE)
-				return check_fail();
-			if (is_metadata != was_metadata)
-				return check_fail();
-			break;
-		case SPECIAL:
-			/* Check metadata pointer etc. */
-			if (!check_subpage(pool, poolsize, i))
-				return check_fail();
+	/* Check the buckets. */
+	for (i = 0; i < max_bucket(lp_bits); i++) {
+		struct bucket_state *bs = &head->bs[i];
+
+		if (!check_bucket(head, poolsize, pages, bs, i))
+			return false;
+	}
+
+	/* Make sure every page accounted for. */
+	for (i = 0; i < poolsize >> sp_bits; i++) {
+		if (!test_bit(pages, i))
+			return check_fail();
+		if (test_bit(head->pagesize,
+			     i >> BITS_FROM_SMALL_TO_LARGE_PAGE)) {
+			/* Large page, skip rest. */
+			i += (1 << BITS_FROM_SMALL_TO_LARGE_PAGE) - 1;
 		}
-		last_state = state;
-		was_metadata = is_metadata;
 	}
+
 	return true;
-}
-
-void alloc_visualize(FILE *out, void *pool, unsigned long poolsize)
-{
-	struct metaheader *mh;
-	struct uniform_cache *uc = pool;
-	unsigned long pagebitlen, metadata_pages, count[1<<BITS_PER_PAGE], tot;
-	long i;
-
-	if (poolsize < MIN_SIZE) {
-		fprintf(out, "Pool smaller than %u: no content\n", MIN_SIZE);
-		return;
-	}
-
-	tot = 0;
-	for (i = 0; i < UNIFORM_CACHE_NUM; i++)
-		tot += (uc->size[i] != 0);
-	fprintf(out, "Uniform cache (%lu entries):\n", tot);
-	for (i = 0; i < UNIFORM_CACHE_NUM; i++) {
-		unsigned int j, total = 0;
-		uint8_t *meta;
-
-		if (!uc->size[i])
-			continue;
-
-		/* First two bytes are header. */
-		meta = get_page_metadata(pool, uc->page[i]) + 2;
-
-		for (j = 0; j < SUBPAGE_METAOFF / uc->size[i]; j++)
-			if (meta[j / 8] & (1 << (j % 8)))
-				total++;
-
-		printf("  %u: %lu: %u/%zu (%zu%% density)\n",
-		       uc->size[i], uc->page[i], total,
-		       SUBPAGE_METAOFF / uc->size[i],
-		       (total * 100) / (SUBPAGE_METAOFF / uc->size[i]));
-	}
-
-	memset(count, 0, sizeof(count));
-	for (i = 0; i < poolsize / getpagesize(); i++)
-		count[get_page_state(pool, i)]++;
-
-	mh = first_mheader(pool, poolsize);
-	pagebitlen = (uint8_t *)mh - get_page_statebits(pool);
-	fprintf(out, "%lu bytes of page bits: FREE/TAKEN/TAKEN_START/SUBPAGE = %lu/%lu/%lu/%lu\n",
-		pagebitlen, count[0], count[1], count[2], count[3]);
-
-	/* One metadata page for every page of page bits. */
-	metadata_pages = div_up(pagebitlen, getpagesize());
-
-	/* Now do each metadata page. */
-	for (; mh; mh = next_mheader(pool,mh)) {
-		unsigned long free = 0, bitmapblocks = 0, uniformblocks = 0,
-			len = 0, uniformlen = 0, bitmaplen = 0, metalen;
-		uint8_t *meta = (uint8_t *)(mh + 1);
-
-		metalen = get_metalen(pool, poolsize, mh);
-		metadata_pages += (sizeof(*mh) + metalen) / getpagesize();
-
-		for (i = 0; i < metalen * METADATA_PER_BYTE; i += len) {
-			switch (get_bit_pair(meta, i)) {
-			case FREE:
-				len = 1;
-				free++;
-				break;
-			case BITMAP:
-				/* Skip over this allocated part. */
-				len = BITMAP_METALEN * METADATA_PER_BYTE;
-				bitmapblocks++;
-				bitmaplen += len;
-				break;
-			case UNIFORM:
-				/* Skip over this part. */
-				len = decode_usize(meta + i/METADATA_PER_BYTE);
-				len = uniform_metalen(len) * METADATA_PER_BYTE;
-				uniformblocks++;
-				uniformlen += len;
-				break;
-			default:
-				assert(0);
-			}
-		}
-
-		fprintf(out, "Metadata %lu-%lu: %lu free, %lu bitmapblocks, %lu uniformblocks, %lu%% density\n",
-			pool_offset(pool, mh),
-			pool_offset(pool, (char *)(mh+1) + metalen),
-			free, bitmapblocks, uniformblocks,
-			(bitmaplen + uniformlen) * 100
-			/ (free + bitmaplen + uniformlen));
-	}
-
-	/* Account for total pages allocated. */
-	tot = (count[1] + count[2] - metadata_pages) * getpagesize();
-
-	fprintf(out, "Total metadata bytes = %lu\n",
-		metadata_pages * getpagesize());
-
-	/* Now do every subpage. */
-	for (i = 0; i < poolsize / getpagesize(); i++) {
-		uint8_t *meta;
-		unsigned int j, allocated;
-		enum sub_metadata_type type;
-
-		if (get_page_state(pool, i) != SPECIAL)
-			continue;
-
-		memset(count, 0, sizeof(count));
-
-		meta = get_page_metadata(pool, i);
-		type = get_bit_pair(meta, 0);
-
-		if (type == BITMAP) {
-			for (j = 0; j < SUBPAGE_METAOFF/BITMAP_GRANULARITY; j++)
-				count[get_page_state(meta, j)]++;
-			allocated = (count[1] + count[2]) * BITMAP_GRANULARITY;
-			fprintf(out, "Subpage bitmap ");
-		} else {
-			unsigned int usize = decode_usize(meta);
-
-			assert(type == UNIFORM);
-			fprintf(out, "Subpage uniform (%u) ", usize);
-			meta += 2;
-			for (j = 0; j < SUBPAGE_METAOFF / usize; j++)
-				count[!!(meta[j / 8] & (1 << (j % 8)))]++;
-			allocated = count[1] * usize;
-		}
-		fprintf(out, "%lu: FREE/TAKEN/TAKEN_START = %lu/%lu/%lu %u%% density\n",
-			i, count[0], count[1], count[2],
-			allocated * 100 / getpagesize());
-		tot += allocated;
-	}
-
-	/* This is optimistic, since we overalloc in several cases. */
-	fprintf(out, "Best possible allocation density = %lu%%\n",
-		tot * 100 / poolsize);
 }
