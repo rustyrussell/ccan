@@ -7,6 +7,16 @@
  * @mem_ctx: talloc parent to allocate from (may be NULL).
  *
  * Allocate an empty id tree.  You can free it with talloc_free().
+ *
+ * Example:
+ *	#include <err.h>
+ *
+ *	static struct idtree *ids;
+ *
+ *	...
+ *		ids = idtree_new(NULL);
+ *		if (!ids)
+ *			err(1, "Failed to allocate idtree");
  */
 struct idtree *idtree_new(void *mem_ctx);
 
@@ -17,6 +27,29 @@ struct idtree *idtree_new(void *mem_ctx);
  * @limit: the maximum id to allocate (ie. INT_MAX means no limit).
  *
  * This returns a non-negative id number, or -1 if all are taken.
+ *
+ * Example:
+ *	struct foo {
+ *		unsigned int id;
+ *		...
+ *	};
+ *
+ *	// Create a new foo, assigning an id.
+ *	struct foo *new_foo(void)
+ *	{
+ *		int id;
+ *		foo = malloc(sizeof(*foo));
+ *		if (!foo)
+ *			return NULL;
+ *
+ *		id = idtree_add(ids, foo, INT_MAX);
+ *		if (id < 0) {
+ *			free(foo);
+ *			return NULL;
+ *		}
+ *		foo->id = id;
+ *		return foo;
+ *	}
  */
 int idtree_add(struct idtree *idtree, const void *ptr, int limit);
 
@@ -27,7 +60,34 @@ int idtree_add(struct idtree *idtree, const void *ptr, int limit);
  * @starting_id: the minimum id value to consider.
  * @limit: the maximum id to allocate (ie. INT_MAX means no limit).
  *
- * This returns a non-negative id number, or -1 if all are taken.
+ * Example:
+ *	static int last_id = -1;
+ *	struct foo {
+ *		unsigned int id;
+ *		...
+ *	};
+ *
+ *	// Create a new foo, assigning a consecutive id.
+ *	// This maximizes the time before ids roll.
+ *	struct foo *new_foo(void)
+ *	{
+ *		int id;
+ *		foo = malloc(sizeof(*foo));
+ *		if (!foo)
+ *			return NULL;
+ *
+ *		id = idtree_add_above(ids, foo, last_id+1, INT_MAX);
+ *		if (id < 0) {
+ *			id = idtree_add(ids, foo, INT_MAX);
+ *			if (id < 0) {
+ *				free(foo);
+ *				return NULL;
+ *			}
+ *		}
+ *		last_id = id;
+ *		foo->id = id;
+ *		return foo;
+ *	}
  */
 int idtree_add_above(struct idtree *idtree, const void *ptr,
 		     int starting_id, int limit);
@@ -39,6 +99,13 @@ int idtree_add_above(struct idtree *idtree, const void *ptr,
  *
  * Returns NULL if the value is not found, otherwise the pointer value
  * set with the idtree_add()/idtree_add_above().
+ *
+ * Example:
+ *	// Look up a foo for a given ID.
+ *	struct foo *find_foo(unsigned int id)
+ *	{
+ *		return idtree_lookup(ids, id);
+ *	}
  */
 void *idtree_lookup(const struct idtree *idtree, int id);
 
@@ -48,6 +115,17 @@ void *idtree_lookup(const struct idtree *idtree, int id);
  * @id: the id to remove.
  *
  * Returns false if the id was not in the tree.
+ *
+ * Example:
+ *	#include <assert.h>
+ *
+ *	// Look up a foo for a given ID.
+ *	void *free_foo(struct foo *foo)
+ *	{
+ *		bool exists = idtree_remove(ids, foo->id);
+ *		assert(exists);
+ *		free(foo);
+ *	}
  */
 bool idtree_remove(struct idtree *idtree, int id);
 #endif /* CCAN_IDTREE_H */
