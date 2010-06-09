@@ -31,7 +31,7 @@
    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#if 0 /* Until we have the tiny allocator working, go down to 1 MB */
+#if 0 /* Until we have the tiny allocator working, go down to 64k */
 
 /* We divide the pool into this many large pages (nearest power of 2) */
 #define MAX_LARGE_PAGES (1024UL)
@@ -48,9 +48,9 @@
 
 #define MAX_SMALL_PAGES (MAX_LARGE_PAGES << BITS_FROM_SMALL_TO_LARGE_PAGE)
 
-/* Smallest pool size for this scheme: 512-byte small pages.  That's
- * 3/5% overhead for 32/64 bit. */
-#define MIN_USEFUL_SIZE (MAX_SMALL_PAGES * 512)
+/* Smallest pool size for this scheme: 128-byte small pages.  That's
+ * 9/13% overhead for 32/64 bit. */
+#define MIN_USEFUL_SIZE (MAX_SMALL_PAGES * 128)
 
 /* Every 4 buckets, we jump up a power of 2. ...8 10 12 14 16 20 24 28 32... */
 #define INTER_BUCKET_SPACE 4
@@ -66,7 +66,7 @@
 #define BITS_PER_LONG (sizeof(long) * CHAR_BIT)
 
 struct bucket_state {
-	unsigned long elements_per_page;
+	u32 elements_per_page;
 	u16 page_list;
 	u16 full_list;
 };
@@ -85,9 +85,9 @@ struct header {
 
 struct page_header {
 	u16 next, prev;
-	u32 elements_used;
-	/* FIXME: Pack this in somewhere... */
-	u8 bucket;
+	/* FIXME: We can just count all-0 and all-1 used[] elements. */
+	unsigned elements_used : 25;
+	unsigned bucket : 7;
 	unsigned long used[1]; /* One bit per element. */
 };
 
