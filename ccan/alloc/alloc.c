@@ -275,9 +275,9 @@ static unsigned long align_up(unsigned long x, unsigned long align)
 	return (x + align - 1) & ~(align - 1);
 }
 
-static void *from_off(struct header *head, unsigned long off)
+static struct page_header *from_off(struct header *head, unsigned long off)
 {
-	return (char *)head + off;
+	return (struct page_header *)((char *)head + off);
 }
 
 static unsigned long to_off(struct header *head, void *p)
@@ -287,7 +287,7 @@ static unsigned long to_off(struct header *head, void *p)
 
 static size_t used_size(unsigned int num_elements)
 {
-	return (num_elements + BITS_PER_LONG-1) / BITS_PER_LONG;
+	return align_up(num_elements, BITS_PER_LONG) / CHAR_BIT;
 }
 
 /*
