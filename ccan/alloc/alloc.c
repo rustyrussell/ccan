@@ -943,3 +943,129 @@ bool alloc_check(void *pool, unsigned long poolsize)
 
 	return true;
 }
+
+static unsigned long print_overhead(FILE *out, const char *desc,
+				    unsigned long bytes,
+				    unsigned long poolsize)
+{
+	fprintf(out, "Overhead (%s): %lu bytes (%.3g%%)\n",
+		desc, bytes, 100.0 * bytes / poolsize);
+	return bytes;
+}
+
+static unsigned long count_list(struct header *head,
+				unsigned long off,
+				unsigned long *total_elems)
+{
+	struct page_header *p;
+	unsigned long ret = 0;
+
+	while (off) {
+		p = from_off(head, off);
+		if (total_elems)
+			(*total_elems) += p->elements_used;
+		ret++;
+		off = p->next;
+	}
+	return ret;
+}
+
+static unsigned long visualize_bucket(FILE *out, struct header *head,
+				      unsigned int bucket,
+				      unsigned long poolsize)
+{
+	unsigned long num_full, num_partial, num_pages, page_size,
+		elems, hdr_min, hdr_size, elems_per_page, overhead = 0;
+
+	elems_per_page = head->bs[bucket].elements_per_page;
+
+	/* If we used byte-based bitmaps, we could get pg hdr to: */
+	hdr_min = sizeof(struct page_header)
+		- sizeof(((struct page_header *)0)->used)
+		+ align_up(elems_per_page, CHAR_BIT) / CHAR_BIT;
+	hdr_size = page_header_size(bucket / INTER_BUCKET_SPACE,
+				    elems_per_page);
+
+	elems = 0;
+	num_full = count_list(head, head->bs[bucket].full_list, &elems);
+	num_partial = count_list(head, head->bs[bucket].page_list, &elems);
+	num_pages = num_full + num_partial;
+	if (!num_pages)
+		return 0;
+
+	fprintf(out, "Bucket %u (%lu bytes):"
+		" %lu full, %lu partial = %lu elements\n",
+		bucket, bucket_to_size(bucket), num_full, num_partial, elems);
+	/* Strict requirement of page header size. */
+	overhead += print_overhead(out, "page headers",
+				   hdr_min * num_pages, poolsize);
+	/* Gap between minimal page header and actual start. */
+	overhead += print_overhead(out, "page post-header alignments",
+				   (hdr_size - hdr_min) * num_pages, poolsize);
+	/* Between last element and end of page. */
+	page_size = 1UL << large_page_bits(poolsize);
+	if (!large_page_bucket(bucket, poolsize))
+		page_size >>= BITS_FROM_SMALL_TO_LARGE_PAGE;
+
+	overhead += print_overhead(out, "page tails",
+				   (page_size - (hdr_size
+						 + (elems_per_page
+						    * bucket_to_size(bucket))))
+				   * num_pages, poolsize);
+	return overhead;
+}
+
+static void tiny_alloc_visualize(FILE *out, void *pool, unsigned long poolsize)
+{
+}
+
+void alloc_visualize(FILE *out, void *pool, unsigned long poolsize)
+{
+	struct header *head = pool;
+	unsigned long i, lp_bits, sp_bits, header_size, num_buckets, count,
+		overhead = 0;
+
+	fprintf(out, "Pool %p size %lu: (%s allocator)\n", pool, poolsize,
+		poolsize < MIN_USEFUL_SIZE ? "tiny" : "standard");
+
+	if (poolsize < MIN_USEFUL_SIZE) {
+		tiny_alloc_visualize(out, pool, poolsize);
+		return;
+	}
+	
+	lp_bits = large_page_bits(poolsize);
+	sp_bits = lp_bits - BITS_FROM_SMALL_TO_LARGE_PAGE;
+
+	num_buckets = max_bucket(lp_bits);
+	header_size = sizeof(*head) + sizeof(head->bs) * (num_buckets-1);
+
+	fprintf(out, "Large page size %lu, small page size %lu.\n",
+		1UL << lp_bits, 1UL << sp_bits);
+	overhead += print_overhead(out, "unused pool tail",
+				   poolsize % (1 << lp_bits), poolsize);
+	fprintf(out, "Main header %lu bytes (%lu small pages).\n",
+		header_size, align_up(header_size, 1 << sp_bits) >> sp_bits);
+	overhead += print_overhead(out, "partial header page",
+				   align_up(header_size, 1 << sp_bits)
+				   - header_size, poolsize);
+	/* Total large pages. */
+	i = count_bits(head->pagesize, poolsize >> lp_bits);
+	/* Used pages. */
+	count = i - count_list(head, head->large_free_list, NULL);
+	fprintf(out, "%lu/%lu large pages used (%.3g%%)\n",
+		count, i, count ? 100.0 * count / i : 0.0);
+
+	/* Total small pages. */
+	i = (poolsize >> lp_bits) - i;
+	/* Used pages */
+	count = i - count_list(head, head->small_free_list, NULL);
+	fprintf(out, "%lu/%lu small pages used (%.3g%%)\n",
+		count, i, count ? 100.0 * count / i : 0.0);
+
+	/* Summary of each bucket. */
+	fprintf(out, "%lu buckets:\n", num_buckets);
+	for (i = 0; i < num_buckets; i++)
+		overhead += visualize_bucket(out, head, i, poolsize);
+
+	print_overhead(out, "total", overhead, poolsize);
+}
