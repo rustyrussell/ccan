@@ -78,6 +78,9 @@
  * It is assumed that @arg is of pointer type: usually @arg is passed
  * or assigned to a void * elsewhere anyway.
  *
+ * This will not work with a NULL @fn argument: see typesafe_cb_def or
+ * typesafe_cb_exact.
+ *
  * Example:
  *	void _register_callback(void (*fn)(void *arg), void *arg);
  *	#define register_callback(fn, arg) \
@@ -85,6 +88,46 @@
  */
 #define typesafe_cb(rtype, fn, arg)			\
 	cast_if_type(rtype (*)(void *), (fn), (fn)(arg), rtype)
+
+/**
+ * typesafe_cb_def - cast a callback fn if it matches arg (of defined type)
+ * @rtype: the return type of the callback function
+ * @fn: the callback function to cast
+ * @arg: the (pointer) argument to hand to the callback function.
+ *
+ * This is typesafe_cb(), except the type must be defined (eg. if it's
+ * struct foo *, the definition of struct foo must be visible).  For many
+ * applications, this is reasonable.
+ *
+ * This variant can accept @fn equal to NULL.
+ *
+ * Example:
+ *	void _register_callback(void (*fn)(void *arg), void *arg);
+ *	#define register_callback(fn, arg) \
+ *		_register_callback(typesafe_cb_def(void, (fn), (arg)), (arg))
+ */
+#define typesafe_cb_def(rtype, fn, arg)			\
+	cast_if_any(rtype (*)(void *), (fn), &*(fn),	\
+		    rtype (*)(typeof(*arg)*),		\
+		    rtype (*)(const typeof(*arg)*),	\
+		    rtype (*)(volatile typeof(*arg)*))
+
+/**
+ * typesafe_cb_exact - cast a callback fn if it exactly matches arg
+ * @rtype: the return type of the callback function
+ * @fn: the callback function to cast
+ * @arg: the (pointer) argument to hand to the callback function.
+ *
+ * This is typesafe_cb(), except the @fn can be NULL, or must exactly match
+ * the @arg type (no const or volatile).
+ *
+ * Example:
+ *	void _register_callback(void (*fn)(void *arg), void *arg);
+ *	#define register_callback(fn, arg) \
+ *		_register_callback(typesafe_cb_exact(void, (fn), (arg)), (arg))
+ */
+#define typesafe_cb_exact(rtype, fn, arg)				\
+	cast_if_type(rtype (*)(void *), (fn), &*(fn), rtype (*)(typeof(arg)))
 
 /**
  * typesafe_cb_const - cast a const callback function if it matches the arg

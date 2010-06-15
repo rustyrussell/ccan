@@ -10,9 +10,6 @@ static void _register_callback(void (*cb)(void *arg), void *arg)
 #define register_callback(cb, arg)				\
 	_register_callback(typesafe_cb(void, (cb), (arg)), (arg))
 
-#define register_callback_def(cb, arg)				\
-	_register_callback(typesafe_cb_def(void, (cb), (arg)), (arg))
-
 static void _register_callback_pre(void (*cb)(int x, void *arg), void *arg)
 {
 }
@@ -42,7 +39,6 @@ static void my_callback_post(/*const*/ char *p, int x)
 int main(int argc, char *argv[])
 {
 	register_callback(my_callback, "hello world");
-	register_callback_def(my_callback, "hello world");
 	register_callback_pre(my_callback_pre, "hello world");
 	register_callback_post(my_callback_post, "hello world");
 	return 0;
