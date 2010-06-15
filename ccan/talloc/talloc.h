@@ -196,7 +196,7 @@ int talloc_free(const void *ptr);
  *	talloc, talloc_free
  */
 #define talloc_set_destructor(ptr, function)				      \
-	_talloc_set_destructor((ptr), typesafe_cb(int, (function), (ptr)))
+	_talloc_set_destructor((ptr), typesafe_cb_def(int, (function), (ptr)))
 
 /**
  * talloc_zero - allocate zeroed dynamic memory for a type

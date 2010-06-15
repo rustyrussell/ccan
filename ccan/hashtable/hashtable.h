@@ -75,14 +75,14 @@ bool hashtable_del(struct hashtable *ht, unsigned long hash, const void *p);
 	_hashtable_traverse(ht, cast_if_type(bool (*)(void *, void *),	\
 					     cast_if_any(bool (*)(void *, \
 								  void *), \
-							 (cb), (cb),	\
+							 (cb), &*(cb),	\
 							 bool (*)(const type *,	\
 								  const typeof(*cbarg) *), \
 							 bool (*)(type *, \
 								  const typeof(*cbarg) *), \
 							 bool (*)(const type *,	\
 								  typeof(*cbarg) *)), \
-					     (cb),		\
+					     &*(cb),		\
 					     bool (*)(type *, typeof(*cbarg) *)), \
 			    (cbarg))
 

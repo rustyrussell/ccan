@@ -19,7 +19,7 @@
 #define asort(base, num, cmp, ctx)					\
 _asort((base), (num), sizeof(*(base)),					\
        cast_if_type(int (*)(const void *, const void *, const void *),	\
-		    (cmp),						\
+		    (cmp), &*(cmp),					\
 		    int (*)(const __typeof__(*(base)) *,		\
 			    const __typeof__(*(base)) *,		\
 			    __typeof__(ctx))), (ctx))

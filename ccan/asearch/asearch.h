@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <ccan/typesafe_cb/typesafe_cb.h>
 
-/*
+/**
  * asearch - search an array of elements
  * @key: pointer to item being searched for
  * @base: pointer to data to sort
@@ -24,7 +24,7 @@
 #define asearch(key, base, num, cmp)					\
 	((__typeof__(*(base))*)(bsearch((key), (base), (num), sizeof(*(base)), \
 		cast_if_type(int (*)(const void *, const void *),	\
-			     (cmp),					\
+			     (cmp), &*(cmp),				\
 			     int (*)(const __typeof__(*(key)) *,	\
 				     const __typeof__(*(base)) *)))))
 #else
