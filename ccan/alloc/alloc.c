@@ -5,6 +5,8 @@
 #include <assert.h>
 #include <stdlib.h>
 #include "alloc.h"
+#include "bitops.h"
+#include "tiny.h"
 #include <ccan/build_assert/build_assert.h>
 #include <ccan/likely/likely.h>
 #include <ccan/short_types/short_types.h>
@@ -91,146 +93,6 @@ struct page_header {
 	unsigned long used[1]; /* One bit per element. */
 };
 
-/* 2 bit for every byte to allocate. */
-static void tiny_alloc_init(void *pool, unsigned long poolsize)
-{
-/* FIXME */
-}
-
-static void *tiny_alloc_get(void *pool, unsigned long poolsize,
-			    unsigned long size, unsigned long align)
-{
-/* FIXME */
-	return NULL;
-}
-
-static void tiny_alloc_free(void *pool, unsigned long poolsize, void *free)
-{
-/* FIXME */
-}
-
-static unsigned long tiny_alloc_size(void *pool, unsigned long poolsize,
-				      void *p)
-{
-/* FIXME */
-	return 0;
-}
-
-static bool tiny_alloc_check(void *pool, unsigned long poolsize)
-{
-/* FIXME */
-	return true;
-}
-
-static unsigned int fls(unsigned long val)
-{
-#if HAVE_BUILTIN_CLZL
-	/* This is significantly faster! */
-	return val ? sizeof(long) * CHAR_BIT - __builtin_clzl(val) : 0;
-#else
-	unsigned int r = 32;
-
-	if (!val)
-		return 0;
-	if (!(val & 0xffff0000u)) {
-		val <<= 16;
-		r -= 16;
-	}
-	if (!(val & 0xff000000u)) {
-		val <<= 8;
-		r -= 8;
-	}
-	if (!(val & 0xf0000000u)) {
-		val <<= 4;
-		r -= 4;
-	}
-	if (!(val & 0xc0000000u)) {
-		val <<= 2;
-		r -= 2;
-	}
-	if (!(val & 0x80000000u)) {
-		val <<= 1;
-		r -= 1;
-	}
-	return r;
-#endif
-}
-
-/* FIXME: Move to bitops. */
-static unsigned int ffsl(unsigned long val)
-{
-#if HAVE_BUILTIN_FFSL
-	/* This is significantly faster! */
-	return __builtin_ffsl(val);
-#else
-	unsigned int r = 1;
-
-	if (!val)
-		return 0;
-	if (sizeof(long) == sizeof(u64)) {
-		if (!(val & 0xffffffff)) {
-			/* Workaround gcc warning on 32-bit:
-			   error: right shift count >= width of type */
-			u64 tmp = val;
-			tmp >>= 32;
-			val = tmp;
-			r += 32;
-		}
-	}
-	if (!(val & 0xffff)) {
-		val >>= 16;
-		r += 16;
-	}
-	if (!(val & 0xff)) {
-		val >>= 8;
-		r += 8;
-	}
-	if (!(val & 0xf)) {
-		val >>= 4;
-		r += 4;
-	}
-	if (!(val & 3)) {
-		val >>= 2;
-		r += 2;
-	}
-	if (!(val & 1)) {
-		val >>= 1;
-		r += 1;
-	}
-	return r;
-#endif
-}
-
-static unsigned int popcount(unsigned long val)
-{
-#if HAVE_BUILTIN_POPCOUNTL
-	return __builtin_popcountl(val);
-#else
-	if (sizeof(long) == sizeof(u64)) {
-		u64 v = val;
-		v = (v & 0x5555555555555555ULL)
-			+ ((v >> 1) & 0x5555555555555555ULL);
-		v = (v & 0x3333333333333333ULL)
-			+ ((v >> 1) & 0x3333333333333333ULL);
-		v = (v & 0x0F0F0F0F0F0F0F0FULL)
-			+ ((v >> 1) & 0x0F0F0F0F0F0F0F0FULL);
-		v = (v & 0x00FF00FF00FF00FFULL)
-			+ ((v >> 1) & 0x00FF00FF00FF00FFULL);
-		v = (v & 0x0000FFFF0000FFFFULL)
-			+ ((v >> 1) & 0x0000FFFF0000FFFFULL);
-		v = (v & 0x00000000FFFFFFFFULL)
-			+ ((v >> 1) & 0x00000000FFFFFFFFULL);
-		return v;
-	}
-	val = (val & 0x55555555ULL) + ((val >> 1) & 0x55555555ULL);
-	val = (val & 0x33333333ULL) + ((val >> 1) & 0x33333333ULL);
-	val = (val & 0x0F0F0F0FULL) + ((val >> 1) & 0x0F0F0F0FULL);
-	val = (val & 0x00FF00FFULL) + ((val >> 1) & 0x00FF00FFULL);
-	val = (val & 0x0000FFFFULL) + ((val >> 1) & 0x0000FFFFULL);
-	return val;
-#endif
-}
-
 /*
  * Every 4 buckets, the size doubles.
  * Between buckets, sizes increase linearly.
@@ -272,11 +134,6 @@ static unsigned int size_to_bucket(unsigned long size)
 static unsigned int small_page_bits(unsigned long poolsize)
 {
 	return fls(poolsize / MAX_SMALL_PAGES / 2);
-}
-
-static unsigned long align_up(unsigned long x, unsigned long align)
-{
-	return (x + align - 1) & ~(align - 1);
 }
 
 static struct page_header *from_pgnum(struct header *head,
@@ -1049,10 +906,6 @@ static unsigned long visualize_bucket(FILE *out, struct header *head,
 						    * bucket_to_size(bucket))))
 				   * num_pages, poolsize);
 	return overhead;
-}
-
-static void tiny_alloc_visualize(FILE *out, void *pool, unsigned long poolsize)
-{
 }
 
 void alloc_visualize(FILE *out, void *pool, unsigned long poolsize)

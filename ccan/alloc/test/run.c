@@ -1,11 +1,10 @@
 #include <ccan/alloc/alloc.h>
 #include <ccan/tap/tap.h>
 #include <ccan/alloc/alloc.c>
+#include <ccan/alloc/bitops.c>
+#include <ccan/alloc/tiny.c>
 #include <stdlib.h>
 #include <err.h>
-
-#define POOL_ORD 20
-#define POOL_SIZE (1 << POOL_ORD)
 
 #define sort(p, num, cmp) \
 	qsort((p), (num), sizeof(*p), (int(*)(const void *, const void *))cmp)
@@ -25,35 +24,35 @@ static bool unique(void *p[], unsigned int num)
 	return true;
 }	
 
-static bool free_every_second_one(void *mem, unsigned int num, void *p[])
+static bool free_every_second_one(void *mem, unsigned int num, 
+				  unsigned long pool_size, void *p[])
 {
 	unsigned int i;
 
 	/* Free every second one. */
 	for (i = 0; i < num; i += 2) {
-		alloc_free(mem, POOL_SIZE, p[i]);
+		alloc_free(mem, pool_size, p[i]);
 	}
-	if (!alloc_check(mem, POOL_SIZE))
+	if (!alloc_check(mem, pool_size))
 		return false;
 	for (i = 1; i < num; i += 2) {
-		alloc_free(mem, POOL_SIZE, p[i]);
+		alloc_free(mem, pool_size, p[i]);
 	}
-	if (!alloc_check(mem, POOL_SIZE))
+	if (!alloc_check(mem, pool_size))
 		return false;
 	return true;
 }
 
-
-int main(int argc, char *argv[])
+static void test(unsigned int pool_size)
 {
 	void *mem;
 	unsigned int i, num, max_size;
-	void **p = calloc(POOL_SIZE, sizeof(*p));
-
-	plan_tests(120);
+	void **p = calloc(pool_size, sizeof(*p));
+	/* FIXME: Should be pool_size! */
+	unsigned alloc_limit = (pool_size / MAX_LARGE_PAGES) >> MAX_PAGE_OBJECT_ORDER;
 
 	/* FIXME: Needs to be page aligned for now. */
-	if (posix_memalign(&mem, 1 << POOL_ORD, POOL_SIZE) != 0)
+	if (posix_memalign(&mem, pool_size, pool_size) != 0)
 		errx(1, "Failed allocating aligned memory"); 
 
 	/* Small pool, all allocs fail, even 0-length. */
@@ -66,33 +65,33 @@ int main(int argc, char *argv[])
 	/* Free of NULL should work. */
 	alloc_free(mem, 0, NULL);
 
-	alloc_init(mem, POOL_SIZE);
-	ok1(alloc_check(mem, POOL_SIZE));
+	alloc_init(mem, pool_size);
+	ok1(alloc_check(mem, pool_size));
 	/* Find largest allocation which works. */
-	for (max_size = POOL_SIZE * 2; max_size; max_size--) {
-		p[0] = alloc_get(mem, POOL_SIZE, max_size, 1);
+	for (max_size = pool_size + 1; max_size; max_size--) {
+		p[0] = alloc_get(mem, pool_size, max_size, 1);
 		if (p[0])
 			break;
 	}
-	ok1(max_size < POOL_SIZE);
+	ok1(max_size < pool_size);
 	ok1(max_size > 0);
-	ok1(alloc_check(mem, POOL_SIZE));
-	ok1(alloc_size(mem, POOL_SIZE, p[0]) >= max_size);
+	ok1(alloc_check(mem, pool_size));
+	ok1(alloc_size(mem, pool_size, p[0]) >= max_size);
 
 	/* Free it, should be able to reallocate it. */
-	alloc_free(mem, POOL_SIZE, p[0]);
-	ok1(alloc_check(mem, POOL_SIZE));
+	alloc_free(mem, pool_size, p[0]);
+	ok1(alloc_check(mem, pool_size));
 
-	p[0] = alloc_get(mem, POOL_SIZE, max_size, 1);
+	p[0] = alloc_get(mem, pool_size, max_size, 1);
 	ok1(p[0]);
-	ok1(alloc_size(mem, POOL_SIZE, p[0]) >= max_size);
-	ok1(alloc_check(mem, POOL_SIZE));
-	alloc_free(mem, POOL_SIZE, p[0]);
-	ok1(alloc_check(mem, POOL_SIZE));
+	ok1(alloc_size(mem, pool_size, p[0]) >= max_size);
+	ok1(alloc_check(mem, pool_size));
+	alloc_free(mem, pool_size, p[0]);
+	ok1(alloc_check(mem, pool_size));
 
 	/* Allocate a whole heap. */
-	for (i = 0; i < POOL_SIZE; i++) {
-		p[i] = alloc_get(mem, POOL_SIZE, 1, 1);
+	for (i = 0; i < pool_size; i++) {
+		p[i] = alloc_get(mem, pool_size, 1, 1);
 		if (!p[i])
 			break;
 	}
@@ -100,13 +99,13 @@ int main(int argc, char *argv[])
 	/* Uncomment this for a more intuitive view of what the
 	 * allocator looks like after all these 1 byte allocs. */
 #if 0
-	alloc_visualize(stderr, mem, POOL_SIZE);
+	alloc_visualize(stderr, mem, pool_size);
 #endif
 
 	num = i;
 	/* Can't allocate this many. */
-	ok1(num != POOL_SIZE);
-	ok1(alloc_check(mem, POOL_SIZE));
+	ok1(num != pool_size);
+	ok1(alloc_check(mem, pool_size));
 
 	/* Sort them. */
 	sort(p, num, addr_cmp);
@@ -114,55 +113,66 @@ int main(int argc, char *argv[])
 	/* Uniqueness check */
 	ok1(unique(p, num));
 
-	ok1(free_every_second_one(mem, num, p));
-	ok1(alloc_check(mem, POOL_SIZE));
+	ok1(free_every_second_one(mem, num, pool_size, p));
+	ok1(alloc_check(mem, pool_size));
 
 	/* Should be able to reallocate max size. */
-	p[0] = alloc_get(mem, POOL_SIZE, max_size, 1);
+	p[0] = alloc_get(mem, pool_size, max_size, 1);
 	ok1(p[0]);
-	ok1(alloc_check(mem, POOL_SIZE));
-	ok1(alloc_size(mem, POOL_SIZE, p[0]) >= max_size);
+	ok1(alloc_check(mem, pool_size));
+	ok1(alloc_size(mem, pool_size, p[0]) >= max_size);
 
 	/* Re-initializing should be the same as freeing everything */
-	alloc_init(mem, POOL_SIZE);
-	ok1(alloc_check(mem, POOL_SIZE));
-	p[0] = alloc_get(mem, POOL_SIZE, max_size, 1);
+	alloc_init(mem, pool_size);
+	ok1(alloc_check(mem, pool_size));
+	p[0] = alloc_get(mem, pool_size, max_size, 1);
 	ok1(p[0]);
-	ok1(alloc_size(mem, POOL_SIZE, p[0]) >= max_size);
-	ok1(alloc_check(mem, POOL_SIZE));
-	alloc_free(mem, POOL_SIZE, p[0]);
-	ok1(alloc_check(mem, POOL_SIZE));
+	ok1(alloc_size(mem, pool_size, p[0]) >= max_size);
+	ok1(alloc_check(mem, pool_size));
+	alloc_free(mem, pool_size, p[0]);
+	ok1(alloc_check(mem, pool_size));
 
 	/* Alignment constraints should be met, as long as powers of two */
-	for (i = 0; i < /*FIXME: POOL_ORD-1*/ 10; i++) {
-		p[i] = alloc_get(mem, POOL_SIZE, i, 1 << i);
+	for (i = 0; (1 << i) < alloc_limit; i++) {
+		p[i] = alloc_get(mem, pool_size, i, 1 << i);
 		ok1(p[i]);
 		ok1(((unsigned long)p[i] % (1 << i)) == 0);
-		ok1(alloc_check(mem, POOL_SIZE));
-		ok1(alloc_size(mem, POOL_SIZE, p[i]) >= i);
+		ok1(alloc_check(mem, pool_size));
+		ok1(alloc_size(mem, pool_size, p[i]) >= i);
 	}
 
-	for (i = 0; i < /*FIXME: POOL_ORD-1*/ 10; i++) {
-		alloc_free(mem, POOL_SIZE, p[i]);
-		ok1(alloc_check(mem, POOL_SIZE));
+	for (i = 0; (1 << i) < alloc_limit; i++) {
+		alloc_free(mem, pool_size, p[i]);
+		ok1(alloc_check(mem, pool_size));
 	}
 
 	/* Alignment constraints for a single-byte allocation. */
-	for (i = 0; i < /*FIXME: POOL_ORD*/ 10; i++) {
-		p[0] = alloc_get(mem, POOL_SIZE, 1, 1 << i);
+	for (i = 0; (1 << i) < alloc_limit; i++) {
+		p[0] = alloc_get(mem, pool_size, 1, 1 << i);
 		ok1(p[0]);
-		ok1(alloc_check(mem, POOL_SIZE));
-		ok1(alloc_size(mem, POOL_SIZE, p[i]) >= 1);
-		alloc_free(mem, POOL_SIZE, p[0]);
-		ok1(alloc_check(mem, POOL_SIZE));
+		ok1(alloc_check(mem, pool_size));
+		ok1(alloc_size(mem, pool_size, p[i]) >= 1);
+		alloc_free(mem, pool_size, p[0]);
+		ok1(alloc_check(mem, pool_size));
 	}
 
 	/* Alignment check for a 0-byte allocation.  Corner case. */
-	p[0] = alloc_get(mem, POOL_SIZE, 0, 1 << (/*FIXME: POOL_ORD - 1*/ 10));
-	ok1(alloc_check(mem, POOL_SIZE));
-	ok1(alloc_size(mem, POOL_SIZE, p[0]) < POOL_SIZE);
-	alloc_free(mem, POOL_SIZE, p[0]);
-	ok1(alloc_check(mem, POOL_SIZE));
+	p[0] = alloc_get(mem, pool_size, 0, alloc_limit);
+	ok1(alloc_check(mem, pool_size));
+	ok1(alloc_size(mem, pool_size, p[0]) < pool_size);
+	alloc_free(mem, pool_size, p[0]);
+	ok1(alloc_check(mem, pool_size));
+}
+
+int main(int argc, char *argv[])
+{
+	plan_tests(112 + 92);
+
+	/* Large test. */
+	test(MIN_USEFUL_SIZE * 2);
+
+	/* Small test. */
+	test(MIN_USEFUL_SIZE / 2);
 
 	return exit_status();
 }
