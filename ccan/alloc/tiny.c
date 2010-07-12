@@ -38,18 +38,14 @@ static unsigned encode_len_with_header(unsigned long len)
 }
 
 /* Encoding can be read from front or back; 0 is invalid at either
- * start or end.  Returns bytes used for header, or 0 if won't fit. */
-static unsigned encode(unsigned long len, bool free, unsigned char arr[],
-		       size_t limit)
+ * start or end.  Returns bytes used for header. */
+static unsigned encode(unsigned long len, bool free, unsigned char arr[])
 {
 	unsigned int hdrlen = 1;
 
 	/* We can never have a length < MIN_BLOCK_SIZE. */
 	assert(len >= MIN_BLOCK_SIZE);
 	len -= MIN_BLOCK_SIZE;
-
-	if (encode_length(len) > limit)
-		return 0;
 
 	/* First byte always contains free bit. */
 	arr[0] = TERM_BIT | (free ? FREE_BIT : 0);
@@ -115,8 +111,7 @@ void tiny_alloc_init(void *pool, unsigned long poolsize)
 		return;
 
 	memset(pool, 0, arrsize);
-	encode(poolsize - arrsize, true,
-	       (unsigned char *)pool + arrsize, poolsize - arrsize);
+	encode(poolsize - arrsize, true, (unsigned char *)pool + arrsize);
 }
 
 /* Walk through and try to coalesce */
@@ -129,8 +124,7 @@ static bool try_coalesce(unsigned char *pool, unsigned long poolsize)
 	do {
 		hdrlen = decode(&len, &free, pool + off);
 		if (free && prev_free) {
-			encode(prev_len + len, true, pool + prev_off,
-			       poolsize - prev_off);
+			encode(prev_len + len, true, pool + prev_off);
 			coalesced = true;
 		}
 		prev_free = free;
@@ -138,6 +132,10 @@ static bool try_coalesce(unsigned char *pool, unsigned long poolsize)
 		prev_len = len;
 		off += len;
 	} while (off < poolsize);
+
+	/* FIXME: Refill free_array here. */
+	if (coalesced)
+		memset(pool, 0, free_array_size(poolsize));
 
 	return coalesced;
 }
@@ -152,11 +150,23 @@ static bool long_enough(unsigned long offset, unsigned long len,
 	return offset + size <= end;
 }
 
+static unsigned long find_free_end(unsigned char *arr, unsigned long arrsize)
+{
+	unsigned long end;
+
+	for (end = 0; end < arrsize; end++) {
+		if (!arr[end])
+			break;
+	}
+	return end;
+}
+
 void *tiny_alloc_get(void *pool, unsigned long poolsize,
 		     unsigned long size, unsigned long align)
 {
 	unsigned long arrsize = free_array_size(poolsize);
-	unsigned long len, off, actual, hdr, hdrlen;
+	unsigned long len, off, fa_off, fa_hdrlen, actual, hdr, hdrlen, freelen;
+	unsigned char *arr = pool;
 	bool free;
 
 	/* We can't do anything with tiny pools. */
@@ -167,12 +177,25 @@ void *tiny_alloc_get(void *pool, unsigned long poolsize,
 	if (!size)
 		size = 1;
 
-	/* FIXME: Look through free array. */
+	/* Look for entries in free array. */
+	freelen = find_free_end(pool, arrsize);
+	for (fa_off = 0; fa_off < freelen; fa_off += fa_hdrlen) {
+		fa_hdrlen = decode(&off, &free, arr + fa_off);
+		off -= MIN_BLOCK_SIZE;
+		hdrlen = decode(&len, &free, arr + off);
+		if (long_enough(off, len, size, align)) {
+			/* Move every successive entry down. */
+			memmove(arr + fa_off, arr + fa_off + fa_hdrlen,
+				freelen - fa_hdrlen);
+			memset(arr + freelen - fa_hdrlen, 0, fa_hdrlen);
+			goto found;
+		}
+	}
 
 again:
 	off = arrsize;
 
-	hdrlen = decode(&len, &free, (unsigned char *)pool + off);
+	hdrlen = decode(&len, &free, arr + off);
 	while (!free || !long_enough(off, len, size, align)) {
 		/* FIXME: Refill free array if this block is free. */
 
@@ -183,28 +206,29 @@ again:
 				goto again;
 			return NULL;
 		}
-		hdrlen = decode(&len, &free, (unsigned char *)pool + off);
+		hdrlen = decode(&len, &free, arr + off);
 	}
 
+found:
 	/* We have a free block.  Since we walk from front, take far end. */
 	actual = ((off + len - size) & ~(align - 1));
 	hdr = actual - encode_len_with_header(off + len - actual);
 
 	/* Do we have enough room to split? */
 	if (hdr - off >= MIN_BLOCK_SIZE) {
-		encode(hdr - off, true, (unsigned char *)pool + off, poolsize);
+		encode(hdr - off, true, arr + off);
 	} else {
 		hdr = off;
 	}
 
 	/* Make sure that we are all-zero up to actual, so we can walk back
 	 * and find header. */
-	memset((unsigned char *)pool + hdr, 0, actual - hdr);
+	memset(arr + hdr, 0, actual - hdr);
 
 	/* Create header for allocated block. */
-	encode(off + len - hdr, false, (unsigned char *)pool + hdr, poolsize);
+	encode(off + len - hdr, false, arr + hdr);
 
-	return (unsigned char *)pool + actual;
+	return arr + actual;
 }
 
 static unsigned char *to_hdr(void *p)
@@ -224,6 +248,8 @@ static unsigned char *to_hdr(void *p)
 
 void tiny_alloc_free(void *pool, unsigned long poolsize, void *freep)
 {
+	unsigned long len, end, arrsize = free_array_size(poolsize);
+	unsigned char *arr = pool;
 	unsigned char *hdr;
 
 	/* Too small to do anything. */
@@ -231,9 +257,14 @@ void tiny_alloc_free(void *pool, unsigned long poolsize, void *freep)
 		return;
 
 	hdr = to_hdr(freep);
-
-	/* FIXME: Put in free array. */
 	hdr[0] |= FREE_BIT;
+
+	end = find_free_end(pool, arrsize);
+
+	/* If we can fit this block, encode it. */
+	len = encode_length(hdr - arr);
+	if (end + len <= arrsize)
+		encode(hdr - arr + MIN_BLOCK_SIZE, true, arr + end);
 }
 
 unsigned long tiny_alloc_size(void *pool, unsigned long poolsize, void *p)
@@ -252,41 +283,77 @@ static bool tiny_check_fail(void)
 	return false;
 }
 
+static bool check_decode(const unsigned char *arr, unsigned long len)
+{
+	unsigned int i;
+
+	if (len == 0)
+		return tiny_check_fail();
+	if (!(arr[0] & TERM_BIT))
+		return tiny_check_fail();
+	if (arr[0] & SINGLE_BYTE)
+		return true;
+	for (i = 1; i < len; i++) {
+		if (arr[i] & TERM_BIT)
+			return true;
+	}
+	return tiny_check_fail();
+}
+
 bool tiny_alloc_check(void *pool, unsigned long poolsize)
 {
 	unsigned long arrsize = free_array_size(poolsize);
 	unsigned char *arr = pool;
-	unsigned long len, off, hdrlen;
+	unsigned long len, off, off2, hdrlen, end;
+	unsigned long i, freearr[arrsize], num_freearr = 0;
 	bool free;
 
 	if (poolsize < MIN_BLOCK_SIZE)
 		return true;
 
-	/* For the moment, free array is all zeroes. */
-	for (off = 0; off < arrsize; off++) {
+	end = find_free_end(pool, arrsize);
+	for (off = 0; off < end; off += hdrlen) {
+		if (!check_decode(arr + off, end - off))
+			return false;
+		hdrlen = decode(&off2, &free, arr + off);
+		off2 -= MIN_BLOCK_SIZE;
+		if (off2 >= poolsize)
+			return tiny_check_fail();
+		if (!free)
+			return tiny_check_fail();
+		freearr[num_freearr++] = off2;
+	}
+	/* Rest of free array should be all zeroes. */
+	for (off = end; off < arrsize; off++) {
 		if (arr[off] != 0)
 			return tiny_check_fail();
 	}
 
 	for (off = arrsize; off < poolsize; off += len) {
 		/* We should have a valid header. */
-		if (!(arr[off] & TERM_BIT))
-			return tiny_check_fail();
-		if (!(arr[off] & SINGLE_BYTE)) {
-			unsigned long off2;
-			for (off2 = off+1; off2 < poolsize; off2++) {
-				if (arr[off2] & TERM_BIT)
-					break;
-			}
-			if (off2 == poolsize)
-				return tiny_check_fail();
-		}
+		if (!check_decode(arr + off, poolsize - off))
+			return false;
 		hdrlen = decode(&len, &free, arr + off);
 		if (off + len > poolsize)
 			return tiny_check_fail();
 		if (hdrlen != encode_length(len - MIN_BLOCK_SIZE))
 			return tiny_check_fail();
+		for (i = 0; i < num_freearr; i++) {
+			if (freearr[i] == off) {
+				if (!free)
+					return tiny_check_fail();
+				memmove(&freearr[i], &freearr[i+1],
+					(num_freearr-- - (i + 1))
+					* sizeof(freearr[i]));
+				break;
+			}
+		}
 	}
+
+	/* Now we should have found everything in freearr. */
+	if (num_freearr)
+		return tiny_check_fail();
+		
 	return true;
 }
 
