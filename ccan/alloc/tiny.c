@@ -152,13 +152,13 @@ static bool long_enough(unsigned long offset, unsigned long len,
 
 static unsigned long find_free_end(unsigned char *arr, unsigned long arrsize)
 {
-	unsigned long end;
+	long i;
 
-	for (end = 0; end < arrsize; end++) {
-		if (!arr[end])
-			break;
+	for (i = arrsize-1; i >= 0; i--) {
+		if (arr[i])
+			return i + 1;
 	}
-	return end;
+	return 0;
 }
 
 void *tiny_alloc_get(void *pool, unsigned long poolsize,
