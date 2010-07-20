@@ -359,7 +359,7 @@ void alloc_init(void *pool, unsigned long poolsize)
 	/* FIXME: small pages for last bit? */
 
 	/* Split first page into small pages. */
-	assert(header_size << (1UL << lp_bits));
+	assert(header_size < (1UL << lp_bits));
 	clear_bit(head->pagesize, 0);
 
 	/* Skip over page(s) used by header, add rest to free list */
