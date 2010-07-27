@@ -186,7 +186,7 @@ void *tiny_alloc_get(void *pool, unsigned long poolsize,
 		if (long_enough(off, len, size, align)) {
 			/* Move every successive entry down. */
 			memmove(arr + fa_off, arr + fa_off + fa_hdrlen,
-				freelen - fa_hdrlen);
+				freelen - (fa_off + fa_hdrlen));
 			memset(arr + freelen - fa_hdrlen, 0, fa_hdrlen);
 			goto found;
 		}
