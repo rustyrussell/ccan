@@ -509,49 +509,6 @@ static u16 get_small_page(struct header *head, unsigned long poolsize,
 	return ret;
 }
 
-void where_is_page(struct header *head, struct page_header *where,
-		   unsigned int sp_bits)
-{
-	struct page_header *pg;
-	unsigned long off, bucket,
-		num_buckets = max_bucket(sp_bits + BITS_FROM_SMALL_TO_LARGE_PAGE);
-
-	for (off = head->small_free_list; off; off = pg->next) {
-		pg = from_pgnum(head, off, sp_bits);
-		if (pg == where) {
-			printf("It's in the small free list\n");
-			return;
-		}
-	}
-
-	for (off = head->large_free_list; off; off = pg->next) {
-		pg = from_pgnum(head, off, sp_bits);
-		if (pg == where) {
-			printf("It's in the large free list\n");
-			return;
-		}
-	}
-
-	for (bucket = 0; bucket < num_buckets; bucket++) {
-		for (off = head->bs[bucket].page_list; off; off = pg->next) {
-			pg = from_pgnum(head, off, sp_bits);
-			if (pg == where) {
-				printf("It's in %lu bucket page list\n", bucket);
-				return;
-			}
-		}
-
-		for (off = head->bs[bucket].full_list; off; off = pg->next) {
-			pg = from_pgnum(head, off, sp_bits);
-			if (pg == where) {
-				printf("It's in %lu bucket full list\n", bucket);
-				return;
-			}
-		}
-	}
-	printf("It's nowhere!\n");
-}
-
 static bool huge_allocated(struct header *head, unsigned long offset)
 {
 	unsigned long i;
