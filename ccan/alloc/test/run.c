@@ -164,7 +164,7 @@ static void test(unsigned int pool_size)
 
 int main(int argc, char *argv[])
 {
-	plan_tests(480);
+	plan_tests(440);
 
 	/* Large test. */
 	test(MIN_USEFUL_SIZE * 2);

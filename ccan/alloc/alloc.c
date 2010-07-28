@@ -35,7 +35,7 @@
  */
 
 /* We divide the pool into this many large pages (nearest power of 2) */
-#define MAX_LARGE_PAGES (1024UL)
+#define MAX_LARGE_PAGES (256UL)
 
 /* 32 small pages == 1 large page. */
 #define BITS_FROM_SMALL_TO_LARGE_PAGE 5
