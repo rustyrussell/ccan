@@ -48,12 +48,9 @@ static void test(unsigned int pool_size)
 	void *mem;
 	unsigned int i, num, max_size;
 	void **p = calloc(pool_size, sizeof(*p));
-	/* FIXME: Should be pool_size! */
-	unsigned alloc_limit = (pool_size / MAX_LARGE_PAGES) >> MAX_PAGE_OBJECT_ORDER;
+	unsigned alloc_limit = pool_size / 2;
 
-	/* FIXME: Needs to be page aligned for now. */
-	if (posix_memalign(&mem, pool_size, pool_size) != 0)
-		errx(1, "Failed allocating aligned memory"); 
+	mem = malloc(pool_size);
 
 	/* Small pool, all allocs fail, even 0-length. */
 	alloc_init(mem, 0);
@@ -136,7 +133,7 @@ static void test(unsigned int pool_size)
 	for (i = 0; (1 << i) < alloc_limit; i++) {
 		p[i] = alloc_get(mem, pool_size, i, 1 << i);
 		ok1(p[i]);
-		ok1(((unsigned long)p[i] % (1 << i)) == 0);
+		ok1(((char *)p[i] - (char *)mem) % (1 << i) == 0);
 		ok1(alloc_check(mem, pool_size));
 		ok1(alloc_size(mem, pool_size, p[i]) >= i);
 	}
@@ -150,8 +147,9 @@ static void test(unsigned int pool_size)
 	for (i = 0; (1 << i) < alloc_limit; i++) {
 		p[0] = alloc_get(mem, pool_size, 1, 1 << i);
 		ok1(p[0]);
+		ok1(((char *)p[0] - (char *)mem) % (1 << i) == 0);
 		ok1(alloc_check(mem, pool_size));
-		ok1(alloc_size(mem, pool_size, p[i]) >= 1);
+		ok1(alloc_size(mem, pool_size, p[0]) >= 1);
 		alloc_free(mem, pool_size, p[0]);
 		ok1(alloc_check(mem, pool_size));
 	}
@@ -166,7 +164,7 @@ static void test(unsigned int pool_size)
 
 int main(int argc, char *argv[])
 {
-	plan_tests(112 + 92);
+	plan_tests(480);
 
 	/* Large test. */
 	test(MIN_USEFUL_SIZE * 2);

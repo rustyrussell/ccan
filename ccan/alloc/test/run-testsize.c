@@ -27,7 +27,7 @@ static bool sizes_ok(void *mem, unsigned long poolsize, void *p[], unsigned num)
 
 static void test_pool(unsigned long pool_size)
 {
-	unsigned int i, j, num;
+	unsigned int i, num;
 	void *mem;
 	void **p;
 	bool flip = false;
@@ -50,17 +50,15 @@ static void test_pool(unsigned long pool_size)
 	ok1(sizes_ok(mem, pool_size, p, num));
 
 	/* Free every second one. */
-	for (i = j = 0; i < num; i = i * 3 / 2 + 1) {
+	for (i = 0; i < num; i = i * 3 / 2 + 1) {
 		flip = !flip;
 		if (flip) {
-			/* Compact. */
-			p[j++] = p[i];
 			invert_bytes(p[i], alloc_size(mem,pool_size,p[i]));
 			continue;
 		}
 		alloc_free(mem, pool_size, p[i]);
+		p[i] = NULL;
 	}
-	num /= 2;
 	ok1(alloc_check(mem, pool_size));
 	ok1(sizes_ok(mem, pool_size, p, num));
 	free(p);
