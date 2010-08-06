@@ -22,14 +22,14 @@ $(WEB_SUBDIRS):
 	mkdir -p $@
 
 $(WEBDIR)/junkcode/%.tar.bz2: junkcode/% $(WEBDIR)/junkcode
-	bzr ls --recursive --versioned --kind=file --null $< | xargs -0 -x tar cvfj $@ 
+	(bzr ls --recursive --versioned --kind=file --null $<; bzr ls --recursive --versioned --kind=symlink --null $<) | xargs -0 -x tar cvfj $@ 
 
 $(WEBDIR)/junkcode/%.html: $(WEBDIR)/junkcode/%.tar.bz2
 	cd $(WEBDIR) && tar xfj junkcode/$*.tar.bz2
 	php5 web/staticjunkcode.php junkcode/$* $* > $@
 
 # We want tarball to contain ccan/
-$(WEBDIR)/ccan.tar.bz2: config.h Makefile Makefile-ccan $(shell bzr ls --versioned --kind=file --recursive ccan) $(shell bzr ls --versioned --recursive --kind=file tools)
+$(WEBDIR)/ccan.tar.bz2: config.h Makefile Makefile-ccan $(shell bzr ls --versioned --kind=file --recursive ccan) $(shell bzr ls --versioned --recursive --kind=file tools) $(shell bzr ls --versioned --kind=symlink --recursive ccan) $(shell bzr ls --versioned --recursive --kind=symlink tools)
 	DIR=`pwd` && cd /tmp && ln -sf "$$DIR" ccan && tar cvfj $@ `for f in $^; do echo ccan/$$f; done` && rm ccan
 
 $(ALL_PAGES): tools/doc_extract web/staticmoduleinfo.php
@@ -63,10 +63,10 @@ $(WEBDIR)/info/%.html: $(WEBDIR)/tarballs/%.tar.bz2 $(WEBDIR)/tarballs/with-deps
 	@URLPREFIX=../ php5 web/staticmoduleinfo.php `pwd`/ccan/$* > $@
 
 $(WEBDIR)/tarballs/%.tar.bz2: ccan/%/_info
-	tar -c -j -f $@ `bzr ls --recursive --versioned --kind=file ccan/$*`
+	tar -c -j -f $@ `bzr ls --recursive --versioned --kind=file ccan/$*` `bzr ls --recursive --versioned --kind=symlink ccan/$*`
 
 $(WEBDIR)/tarballs/with-deps/%.tar.bz2: ccan/%/_info tools/ccan_depends
-	tar cfj $@ $$(echo ccan/$* $$(tools/ccan_depends ccan/$*) | xargs -n 1 bzr ls --recursive --versioned --kind=file)
+	tar cfj $@ $$(echo ccan/$* $$(tools/ccan_depends ccan/$*) | xargs -n 1 bzr ls --recursive --versioned --kind=file) $$(echo ccan/$* $$(tools/ccan_depends ccan/$*) | xargs -n 1 bzr ls --recursive --versioned --kind=symlink)
 
 distclean: distclean-web
 
