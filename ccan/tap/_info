@@ -42,6 +42,8 @@
  *		ok1(strcmp(ab, a) > 0);
  *		return exit_status();
  *	}
+ *
+ * Maintainer: Rusty Russell <rusty@rustcorp.com.au>
  */
 int main(int argc, char *argv[])
 {

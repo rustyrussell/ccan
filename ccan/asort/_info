@@ -12,6 +12,7 @@
  * asort does both.
  *
  * Licence: LGPL
+ * Author: Rusty Russell <rusty@rustcorp.com.au>
  *
  * Example:
  *	#include <ccan/asort/asort.h>

@@ -11,6 +11,7 @@
  * This version uses macros to be typesafe on platforms which support it.
  *
  * Licence: LGPL
+ * Author: Rusty Russell <rusty@rustcorp.com.au>
  *
  * Example:
  *	#include <ccan/asearch/asearch.h>

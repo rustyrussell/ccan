@@ -10,6 +10,7 @@
  * compiler and the reader.
  *
  * Licence: LGPL (2 or any later version)
+ * Author: Rusty Russell <rusty@rustcorp.com.au>
  *
  * Example:
  *	#include <ccan/likely/likely.h>
