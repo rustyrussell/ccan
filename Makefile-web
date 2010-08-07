@@ -10,7 +10,7 @@ WEB_SUBDIRS=$(WEBDIR)/tarballs $(WEBDIR)/junkcode $(WEBDIR)/tarballs/with-deps $
 JUNKDIRS=$(wildcard junkcode/*)
 JUNKPAGES=$(JUNKDIRS:%=$(WEBDIR)/%.html)
 JUNKBALLS=$(JUNKDIRS:%=$(WEBDIR)/%.tar.bz2)
-BZRBROWSE=$(WEBDIR)/bzrbrowse.cgi $(WEBDIR)/file.png $(WEBDIR)/folder.png
+BZRBROWSE=$(WEBDIR)/bzrbrowse.cgi $(WEBDIR)/file.png $(WEBDIR)/folder.png $(WEBDIR)/symlink.png
 
 upload: fastcheck webpages
 	bzr push

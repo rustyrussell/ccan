@@ -21,16 +21,16 @@
 config = {
     'root': '/home/ccan/ccan',
     'base_url': '/browse',
-    'images_url': '/browse',
+    'images_url': '',
     'branch_url': 'http://ccan.ozlabs.org/repo',
 }
 
-import os, sys
+import os, sys, string
 from bzrlib.branch import Branch
 from bzrlib.errors import NotBranchError
 from bzrlib import urlutils, osutils
 
-__version__ = '0.0.1'
+__version__ = '0.0.1-rusty'
 
 
 class HTTPError(Exception):
@@ -55,6 +55,7 @@ class BzrBrowse(object):
     icons = {
         'file': 'file.png',
         'directory': 'folder.png',
+        'symlink': 'symlink.png',
     }
 
     page_tmpl = '''<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
@@ -147,12 +148,24 @@ code { background-color: #000; color: #FFF; font-size: 90%%;}
                 linenumbers + '</pre></td><td class="text"><pre>' + escape_html(text) +
                 '</pre></td></tr></table>')
 
+    # Symlinks in ccan contain .., and bzr refuses to serve that.  Simplify.
+    def squish(self, linkname):
+        result = []
+        for elem in string.split(linkname, os.sep):
+            if elem == '..':
+                result = result[:-1]
+            else:
+                result.append(elem)
+        return string.join(result, os.sep)
+
     def list_branch_directory(self, branch, path, relpath):
         tree = branch.basis_tree()
         file_id = tree.path2id(relpath)
         ie = tree.inventory[file_id]
         if ie.kind == 'file':
             return self.view_branch_file(tree, ie)
+        if ie.kind == 'symlink':
+            return self.list_branch_directory(branch, path, self.squish(osutils.dirname(relpath) + os.sep + ie.symlink_target))
         entries = []
         if path:
             entries.append({
