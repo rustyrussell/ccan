@@ -485,11 +485,9 @@ int tdb_transaction_unlock(struct tdb_context *tdb, int ltype)
 	return tdb_nest_unlock(tdb, TRANSACTION_LOCK, ltype, false);
 }
 
-
-/* lock/unlock entire database.  It can only be upgradable if you have some
- * other way of guaranteeing exclusivity (ie. transaction write lock). */
-int tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
-		       enum tdb_lock_flags flags, bool upgradable)
+/* Returns 0 if all done, -1 if error, 1 if ok. */
+static int tdb_allrecord_check(struct tdb_context *tdb, int ltype,
+			       enum tdb_lock_flags flags, bool upgradable)
 {
 	/* There are no locks on read-only dbs */
 	if (tdb->read_only || tdb->traverse_read) {
@@ -518,6 +516,20 @@ int tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
 		/* tdb error: you can't upgrade a write lock! */
 		tdb->ecode = TDB_ERR_LOCK;
 		return -1;
+	}
+	return 1;
+}
+
+/* lock/unlock entire database.  It can only be upgradable if you have some
+ * other way of guaranteeing exclusivity (ie. transaction write lock). */
+int tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
+		       enum tdb_lock_flags flags, bool upgradable)
+{
+	switch (tdb_allrecord_check(tdb, ltype, flags, upgradable)) {
+	case -1:
+		return -1;
+	case 0:
+		return 0;
 	}
 
 	if (tdb_brlock(tdb, ltype, FREELIST_TOP, 0, flags)) {
@@ -646,6 +658,85 @@ int tdb_unlockall_read(struct tdb_context *tdb)
 {
 	tdb_trace(tdb, "tdb_unlockall_read");
 	return tdb_allrecord_unlock(tdb, F_RDLCK, false);
+}
+
+/* We only need to lock individual bytes, but Linux merges consecutive locks
+ * so we lock in contiguous ranges. */
+static int tdb_chainlock_gradual(struct tdb_context *tdb,
+				 size_t off, size_t len)
+{
+	int ret;
+
+	if (len <= 4) {
+		/* Single record.  Just do blocking lock. */
+		return tdb_brlock(tdb, F_WRLCK, off, len, TDB_LOCK_WAIT);
+	}
+
+	/* First we try non-blocking. */
+	ret = tdb_brlock(tdb, F_WRLCK, off, len, TDB_LOCK_NOWAIT);
+	if (ret == 0) {
+		return 0;
+	}
+
+	/* Try locking first half, then second. */
+	ret = tdb_chainlock_gradual(tdb, off, len / 2);
+	if (ret == -1)
+		return -1;
+
+	ret = tdb_chainlock_gradual(tdb, off + len / 2, len - len / 2);
+	if (ret == -1) {
+		tdb_brunlock(tdb, F_WRLCK, off, len / 2);
+		return -1;
+	}
+	return 0;
+}
+
+/* We do the locking gradually to avoid being starved by smaller locks. */
+int tdb_lockall_gradual(struct tdb_context *tdb)
+{
+	int ret;
+
+	/* This checks for other locks, nesting. */
+	ret = tdb_allrecord_check(tdb, F_WRLCK, TDB_LOCK_WAIT, false);
+	if (ret == -1 || ret == 0)
+		return ret;
+
+	/* We cover two kinds of locks:
+	 * 1) Normal chain locks.  Taken for almost all operations.
+	 * 3) Individual records locks.  Taken after normal or free
+	 *    chain locks.
+	 *
+	 * It is (1) which cause the starvation problem, so we're only
+	 * gradual for that. */
+	if (tdb_chainlock_gradual(tdb, FREELIST_TOP,
+				  tdb->header.hash_size * 4) == -1) {
+		return -1;
+	}
+
+	/* Grab individual record locks. */
+	if (tdb_brlock(tdb, F_WRLCK, lock_offset(tdb->header.hash_size), 0,
+		       TDB_LOCK_WAIT) == -1) {
+		tdb_brunlock(tdb, F_WRLCK, FREELIST_TOP,
+			     tdb->header.hash_size * 4);
+		return -1;
+	}
+
+	/* That adds up to an allrecord lock. */
+	tdb->allrecord_lock.count = 1;
+	tdb->allrecord_lock.ltype = F_WRLCK;
+	tdb->allrecord_lock.off = false;
+
+	/* Just check we don't need recovery... */
+	if (tdb_needs_recovery(tdb)) {
+		tdb_allrecord_unlock(tdb, F_WRLCK, false);
+		if (tdb_lock_and_recover(tdb) == -1) {
+			return -1;
+		}
+		/* Try again. */
+		return tdb_lockall_gradual(tdb);
+	}
+
+	return 0;
 }
 
 /* lock/unlock one hash chain. This is meant to be used to reduce
