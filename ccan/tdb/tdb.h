@@ -132,7 +132,6 @@ int tdb_lockall_read_nonblock(struct tdb_context *tdb);
 int tdb_unlockall_read(struct tdb_context *tdb);
 int tdb_lockall_mark(struct tdb_context *tdb);
 int tdb_lockall_unmark(struct tdb_context *tdb);
-int tdb_lockall_gradual(struct tdb_context *tdb);
 const char *tdb_name(struct tdb_context *tdb);
 int tdb_fd(struct tdb_context *tdb);
 tdb_log_func tdb_log_fn(struct tdb_context *tdb);

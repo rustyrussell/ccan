@@ -77,9 +77,13 @@ int main(int argc, char *argv[])
 
 	if (strcmp(argv[1], "lockall") == 0)
 		lockall = tdb_lockall;
-	else if (strcmp(argv[1], "gradual") == 0)
+	else if (strcmp(argv[1], "gradual") == 0) {
+#if 0
 		lockall = tdb_lockall_gradual;
-	else
+#else
+		errx(1, "gradual is now the default implementation");
+#endif
+	} else
 		usage("Arg1 should be 'lockall' or 'gradual'");
 
 	num = atoi(argv[2]);
