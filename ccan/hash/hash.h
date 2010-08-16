@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "config.h"
+#include <ccan/build_assert/build_assert.h>
 
 /* Stolen mostly from: lookup3.c, by Bob Jenkins, May 2006, Public Domain.
  * 
@@ -25,7 +26,7 @@
  * It may also change with future versions: it could even detect at runtime
  * what the fastest hash to use is.
  *
- * See also: hash_stable.
+ * See also: hash64, hash_stable.
  *
  * Example:
  *	#include "hash/hash.h"
@@ -69,6 +70,9 @@
  * memory representations of integers depend on the machine
  * endianness.
  *
+ * See also:
+ *	hash64_stable
+ *
  * Example:
  *	#include "hash/hash.h"
  *	#include <err.h>
@@ -85,11 +89,12 @@
  *	}
  */
 #define hash_stable(p, num, base)					\
-	(sizeof(*(p)) == 8 ? hash_stable_64((p), (num), (base))		\
+	(EXPR_BUILD_ASSERT(sizeof(*(p)) == 8 || sizeof(*(p)) == 4	\
+			   || sizeof(*(p)) == 2 || sizeof(*(p)) == 1) +	\
+	 sizeof(*(p)) == 8 ? hash_stable_64((p), (num), (base))		\
 	 : sizeof(*(p)) == 4 ? hash_stable_32((p), (num), (base))	\
 	 : sizeof(*(p)) == 2 ? hash_stable_16((p), (num), (base))	\
-	 : sizeof(*(p)) == 1 ? hash_stable_8((p), (num), (base))	\
-	 : hash_stable_fail((p), (num), sizeof(*(p)), (base)))
+	 : hash_stable_8((p), (num), (base)))
 
 /**
  * hash_u32 - fast hash an array of 32-bit values for internal use
@@ -106,6 +111,18 @@
  * network or saved to disk).
  */
 uint32_t hash_u32(const uint32_t *key, size_t num, uint32_t base);
+
+/* Our underlying operations. */
+uint32_t hash_any(const void *key, size_t length, uint32_t base);
+uint32_t hash_stable_64(const void *key, size_t n, uint32_t base);
+uint32_t hash_stable_32(const void *key, size_t n, uint32_t base);
+uint32_t hash_stable_16(const void *key, size_t n, uint32_t base);
+uint32_t hash_stable_8(const void *key, size_t n, uint32_t base);
+uint64_t hash64_any(const void *key, size_t length, uint32_t base);
+uint64_t hash64_stable_64(const void *key, size_t n, uint32_t base);
+uint64_t hash64_stable_32(const void *key, size_t n, uint32_t base);
+uint64_t hash64_stable_16(const void *key, size_t n, uint32_t base);
+uint64_t hash64_stable_8(const void *key, size_t n, uint32_t base);
 
 /**
  * hash_string - very fast hash of an ascii string
@@ -131,14 +148,6 @@ static inline uint32_t hash_string(const char *string)
 
 	return ret;
 }
-
-/* Our underlying operations. */
-uint32_t hash_any(const void *key, size_t length, uint32_t base);
-uint32_t hash_stable_64(const void *key, size_t n, uint32_t base);
-uint32_t hash_stable_32(const void *key, size_t n, uint32_t base);
-uint32_t hash_stable_16(const void *key, size_t n, uint32_t base);
-uint32_t hash_stable_8(const void *key, size_t n, uint32_t base);
-uint32_t hash_stable_fail(const void *key, size_t n, size_t len, uint32_t base);
 
 /**
  * hash_pointer - hash a pointer for internal use
@@ -195,4 +204,106 @@ static inline uint32_t hash_pointer(const void *p, uint32_t base)
 	} else
 		return hash(&p, 1, base);
 }
+
+/**
+ * hash64 - fast 64-bit hash of an array for internal use
+ * @p: the array or pointer to first element
+ * @num: the number of elements to hash
+ * @base: the base number to roll into the hash (usually 0)
+ *
+ * The memory region pointed to by p is combined with the base to form
+ * a 64-bit hash.
+ *
+ * This hash will have different results on different machines, so is
+ * only useful for internal hashes (ie. not hashes sent across the
+ * network or saved to disk).
+ *
+ * It may also change with future versions: it could even detect at runtime
+ * what the fastest hash to use is.
+ *
+ * See also: hash.
+ *
+ * Example:
+ *	#include <ccan/hash/hash.h>
+ *	#include <err.h>
+ *	#include <stdio.h>
+ *
+ *	// Simple demonstration: idential strings will have the same hash, but
+ *	// two different strings will probably not.
+ *	int main(int argc, char *argv[])
+ *	{
+ *		uint64_t hash1, hash2;
+ *
+ *		if (argc != 3)
+ *			err(1, "Usage: %s <string1> <string2>", argv[0]);
+ *
+ *		hash1 = hash64(argv[1], strlen(argv[1]), 0);
+ *		hash2 = hash64(argv[2], strlen(argv[2]), 0);
+ *		printf("Hash is %s\n", hash1 == hash2 ? "same" : "different");
+ *		return 0;
+ *	}
+ */
+#define hash64(p, num, base) hash64_any((p), (num)*sizeof(*(p)), (base))
+
+/**
+ * hash64_stable - 64 bit hash of an array for external use
+ * @p: the array or pointer to first element
+ * @num: the number of elements to hash
+ * @base: the base number to roll into the hash (usually 0)
+ *
+ * The array of simple integer types pointed to by p is combined with
+ * the base to form a 64-bit hash.
+ *
+ * This hash will have the same results on different machines, so can
+ * be used for external hashes (ie. hashes sent across the network or
+ * saved to disk).  The results will not change in future versions of
+ * this module.
+ *
+ * Note that it is only legal to hand an array of simple integer types
+ * to this hash (ie. char, uint16_t, int64_t, etc).  In these cases,
+ * the same values will have the same hash result, even though the
+ * memory representations of integers depend on the machine
+ * endianness.
+ *
+ * See also:
+ *	hash_stable
+ *
+ * Example:
+ *	#include <ccan/hash/hash.h>
+ *	#include <err.h>
+ *	#include <stdio.h>
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		if (argc != 2)
+ *			err(1, "Usage: %s <string-to-hash>", argv[0]);
+ *
+ *		printf("Hash stable result is %llu\n",
+ *		       (long long)hash64_stable(argv[1], strlen(argv[1]), 0));
+ *		return 0;
+ *	}
+ */
+#define hash64_stable(p, num, base)					\
+	(EXPR_BUILD_ASSERT(sizeof(*(p)) == 8 || sizeof(*(p)) == 4	\
+			   || sizeof(*(p)) == 2 || sizeof(*(p)) == 1) +	\
+	 sizeof(*(p)) == 8 ? hash64_stable_64((p), (num), (base))	\
+	 : sizeof(*(p)) == 4 ? hash64_stable_32((p), (num), (base))	\
+	 : sizeof(*(p)) == 2 ? hash64_stable_16((p), (num), (base))	\
+	 : hash64_stable_8((p), (num), (base)))
+
+
+/**
+ * hashl - fast 32/64-bit hash of an array for internal use
+ * @p: the array or pointer to first element
+ * @num: the number of elements to hash
+ * @base: the base number to roll into the hash (usually 0)
+ *
+ * This is either hash() or hash64(), on 32/64 bit long machines.
+ */
+#define hashl(p, num, base)						\
+	(EXPR_BUILD_ASSERT(sizeof(long) == sizeof(uint32_t)		\
+			   || sizeof(long) == sizeof(uint64_t)) +	\
+	(sizeof(long) == sizeof(uint64_t)				\
+	 ? hash64((p), (num), (base)) : hash((p), (num), (base))))
+
 #endif /* HASH_H */

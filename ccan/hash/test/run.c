@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
 	for (i = 0; i < ARRAY_WORDS; i++)
 		array[i] = i;
 
-	plan_tests(22);
+	plan_tests(39);
 	/* Hash should be the same, indep of memory alignment. */
 	val = hash(array, sizeof(array), 0);
 	for (i = 0; i < sizeof(uint32_t); i++) {
@@ -37,6 +37,31 @@ int main(int argc, char *argv[])
 			for (k = 0; k < ARRAY_WORDS; k++)
 				array[k] = random();
 			results[(hash(array, sizeof(array), 0) >> i*8)&0xFF]++;
+		}
+
+		for (j = 0; j < 256; j++) {
+			if (results[j] < lowest)
+				lowest = results[j];
+			if (results[j] > highest)
+				highest = results[j];
+		}
+		/* Expect within 20% */
+		ok(lowest > 800, "Byte %i lowest %i", i, lowest);
+		ok(highest < 1200, "Byte %i highest %i", i, highest);
+		diag("Byte %i, range %u-%u", i, lowest, highest);
+	}
+
+	/* Hash of random values should have random distribution:
+	 * check one byte at a time. */
+	for (i = 0; i < sizeof(uint64_t); i++) {
+		unsigned int lowest = -1U, highest = 0;
+
+		memset(results, 0, sizeof(results));
+
+		for (j = 0; j < 256000; j++) {
+			for (k = 0; k < ARRAY_WORDS; k++)
+				array[k] = random();
+			results[(hash64(array, sizeof(array), 0) >> i*8)&0xFF]++;
 		}
 
 		for (j = 0; j < 256; j++) {
@@ -74,6 +99,13 @@ int main(int argc, char *argv[])
 		   i, highest);
 		diag("hash_pointer byte %i, range %u-%u", i, lowest, highest);
 	}
+
+	if (sizeof(long) == sizeof(uint32_t))
+		ok1(hashl(array, sizeof(array), 0)
+		    == hash(array, sizeof(array), 0));
+	else
+		ok1(hashl(array, sizeof(array), 0)
+		    == hash64(array, sizeof(array), 0));
 
 	/* String hash: weak, so only test bottom byte */
 	for (i = 0; i < 1; i++) {
