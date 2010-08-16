@@ -42,10 +42,10 @@ $(WEBDIR)/upload.html: web/staticupload.php
 
 # cpp inserts gratuitous linebreaks at start of file, makes for php problems.
 $(WEBDIR)/uploader.php: web/uploader.php.cpp
-	@cpp -w -C -P $< | grep . > $@
+	cpp -w -C -P $< | grep . > $@
 
 $(WEBDIR)/index.html: web/staticindex.php
-	@php5 web/staticindex.php > $@
+	php5 web/staticindex.php > $@
 
 $(WEBDIR)/example-config.h: config.h
 	cp $< $@
@@ -60,7 +60,7 @@ $(BZRBROWSE): $(WEBDIR)/%: web/bzrbrowse/%
 	cp $< $@
 
 $(WEBDIR)/info/%.html: $(WEBDIR)/tarballs/%.tar.bz2 $(WEBDIR)/tarballs/with-deps/%.tar.bz2
-	@URLPREFIX=../ php5 web/staticmoduleinfo.php `pwd`/ccan/$* > $@
+	URLPREFIX=../ php5 web/staticmoduleinfo.php `pwd`/ccan/$* > $@
 
 $(WEBDIR)/tarballs/%.tar.bz2: ccan/%/_info
 	tar -c -j -f $@ `bzr ls --recursive --versioned --kind=file ccan/$*` `bzr ls --recursive --versioned --kind=symlink ccan/$*`

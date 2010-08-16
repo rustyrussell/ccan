@@ -71,21 +71,21 @@ distclean: clean
 	rm -f $(ALL_DEPENDS)
 
 $(ALL_DEPENDS): %/.depends: %/_info tools/ccan_depends
-	@tools/ccan_depends $* > $@ || ( rm -f $@; exit 1 )
+	tools/ccan_depends $* > $@ || ( rm -f $@; exit 1 )
 
 # Actual dependencies are created in inter-depends
 check-%: tools/ccanlint/ccanlint
-	@tools/ccanlint/ccanlint -d ccan/$*
+	tools/ccanlint/ccanlint -d ccan/$*
 
 fastcheck-%: tools/ccanlint/ccanlint
-	@tools/ccanlint/ccanlint -t $(FASTTIMEOUT) -d ccan/$*
+	tools/ccanlint/ccanlint -t $(FASTTIMEOUT) -d ccan/$*
 
 # Doesn't test dependencies, doesn't print verbose fail results.
 summary-check-%: tools/ccanlint/ccanlint $(OBJFILES)
-	@tools/ccanlint/ccanlint -s -d ccan/$*
+	tools/ccanlint/ccanlint -s -d ccan/$*
 
 summary-fastcheck-%: tools/ccanlint/ccanlint $(OBJFILES)
-	@tools/ccanlint/ccanlint -t $(FASTTIMEOUT) -s -d ccan/$*
+	tools/ccanlint/ccanlint -t $(FASTTIMEOUT) -s -d ccan/$*
 
 ccan/%/info: ccan/%/_info
 	$(CC) $(CFLAGS) -o $@ -x c $<
@@ -99,12 +99,12 @@ clean: tools-clean
 
 # Creates a dependency from the tests to the object files which it needs.
 inter-depends: $(ALL_DEPENDS) Makefile
-	@for f in $(ALL_DEPENDS); do echo check-$$(basename $$(dirname $$f) ): $$(for dir in $$(cat $$f) $$(dirname $$f); do [ "$$(echo $$dir/*.c)" = "$$dir/*.c" ] || echo ccan/"$$(basename $$dir)".o; done); done > $@
+	for f in $(ALL_DEPENDS); do echo check-$$(basename $$(dirname $$f) ): $$(for dir in $$(cat $$f) $$(dirname $$f); do [ "$$(echo $$dir/*.c)" = "$$dir/*.c" ] || echo ccan/"$$(basename $$dir)".o; done); done > $@
 
 # Creates dependencies between tests, so if foo depends on bar, bar is tested
 # first 
 test-depends: $(ALL_DEPENDS) Makefile
-	@for f in $(ALL_DEPENDS); do echo check-`basename \`dirname $$f\``: `sed -n 's,ccan/\(.*\),check-\1,p' < $$f`; done > $@
+	for f in $(ALL_DEPENDS); do echo check-`basename \`dirname $$f\``: `sed -n 's,ccan/\(.*\),check-\1,p' < $$f`; done > $@
 
 include tools/Makefile
 -include inter-depends
