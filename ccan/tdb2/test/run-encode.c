@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 		ok1(rec_key_length(&rec) == klen);
 		ok1(rec_data_length(&rec) == dlen);
 		ok1(rec_extra_padding(&rec) == xlen);
-		ok1(rec_hash(&rec) == h);
+		ok1(rec_hash(&rec) << (64 - 11) == h);
 		ok1(rec_magic(&rec) == TDB_MAGIC);
 	}
 	ok1(tap_log_messages == 0);

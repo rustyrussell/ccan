@@ -136,7 +136,7 @@ static inline uint64_t rec_extra_padding(const struct tdb_used_record *r)
 
 static inline uint64_t rec_hash(const struct tdb_used_record *r)
 {
-	return ((r->magic_and_meta >> 32) & ((1ULL << 11) - 1)) << (64 - 11);
+	return ((r->magic_and_meta >> 32) & ((1ULL << 11) - 1));
 }
 
 static inline uint16_t rec_magic(const struct tdb_used_record *r)
@@ -254,8 +254,11 @@ struct tdb_methods {
   internal prototypes
 */
 /* tdb.c: */
-/* Returns true if header changed. */
-bool update_header(struct tdb_context *tdb);
+/* Returns true if header changed (and updates it). */
+bool header_changed(struct tdb_context *tdb);
+
+/* Commit header to disk. */
+int write_header(struct tdb_context *tdb);
 
 /* Hash random memory. */
 uint64_t tdb_hash(struct tdb_context *tdb, const void *ptr, size_t len);
@@ -349,8 +352,8 @@ uint64_t hash_record(struct tdb_context *tdb, tdb_off_t off);
 void tdb_lock_init(struct tdb_context *tdb);
 
 /* Lock/unlock a particular hash list. */
-int tdb_lock_list(struct tdb_context *tdb, tdb_off_t list,
-		  int ltype, enum tdb_lock_flags waitflag);
+tdb_off_t tdb_lock_list(struct tdb_context *tdb, uint64_t hash,
+			int ltype, enum tdb_lock_flags waitflag);
 int tdb_unlock_list(struct tdb_context *tdb, tdb_off_t list, int ltype);
 
 /* Lock/unlock a particular free list. */

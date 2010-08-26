@@ -21,9 +21,9 @@ null_log_fn(struct tdb_context *tdb,
 /* We do a lot of work assuming our copy of the header volatile area
  * is uptodate, and usually it is.  However, once we grab a lock, we have to
  * re-check it. */
-bool update_header(struct tdb_context *tdb)
+bool header_changed(struct tdb_context *tdb)
 {
-	struct tdb_header_volatile pad, *v;
+	uint64_t gen;
 
 	if (!(tdb->flags & TDB_NOLOCK) && tdb->header_uptodate) {
 		tdb->log(tdb, TDB_DEBUG_WARNING, tdb->log_priv,
@@ -33,17 +33,23 @@ bool update_header(struct tdb_context *tdb)
 	/* We could get a partial update if we're not holding any locks. */
 	assert((tdb->flags & TDB_NOLOCK) || tdb_has_locks(tdb));
 
-	v = tdb_get(tdb, offsetof(struct tdb_header, v), &pad, sizeof(*v));
-	if (!v) {
-		/* On failure, imply we updated header so they retry. */
+	tdb->header_uptodate = true;
+	gen = tdb_read_off(tdb, offsetof(struct tdb_header, v.generation));
+	if (unlikely(gen != tdb->header.v.generation)) {
+		tdb_read_convert(tdb, offsetof(struct tdb_header, v),
+				 &tdb->header.v, sizeof(tdb->header.v));
 		return true;
 	}
-	tdb->header_uptodate = true;
-	if (likely(memcmp(&tdb->header.v, v, sizeof(*v)) == 0)) {
-		return false;
-	}
-	tdb->header.v = *v;
-	return true;
+	return false;
+}
+
+int write_header(struct tdb_context *tdb)
+{
+	assert(tdb_read_off(tdb, offsetof(struct tdb_header, v.generation))
+	       == tdb->header.v.generation);
+	tdb->header.v.generation++;
+	return tdb_write_convert(tdb, offsetof(struct tdb_header, v),
+				 &tdb->header.v, sizeof(tdb->header.v));
 }
 
 static uint64_t jenkins_hash(const void *key, size_t length, uint64_t seed,
@@ -382,10 +388,12 @@ static int tdb_key_compare(TDB_DATA key, TDB_DATA data, void *private_data)
 static void unlock_lists(struct tdb_context *tdb,
 			 uint64_t start, uint64_t end, int ltype)
 {
-	do {
+	for (;;) {
 		tdb_unlock_list(tdb, start, ltype);
+		if (start == end)
+			return;
 		start = (start + 1) & ((1ULL << tdb->header.v.hash_bits) - 1);
-	} while (start != end);
+	}
 }
 
 /* FIXME: Return header copy? */
@@ -402,26 +410,19 @@ static tdb_off_t find_bucket_and_lock(struct tdb_context *tdb,
 	uint64_t hextra;
 	tdb_off_t off;
 
-	/* hash_bits might be out of date... */
-again:
-	*start = *end = hash & ((1ULL << tdb->header.v.hash_bits) - 1);
-	hextra = hash >> tdb->header.v.hash_bits;
-
 	/* FIXME: can we avoid locks for some fast paths? */
-	if (tdb_lock_list(tdb, *end, ltype, TDB_LOCK_WAIT) == -1)
+	*start = tdb_lock_list(tdb, hash, ltype, TDB_LOCK_WAIT);
+	if (*start == TDB_OFF_ERR)
 		return TDB_OFF_ERR;
 
-	/* We only need to check this for first lock. */
-	if (unlikely(update_header(tdb))) {
-		tdb_unlock_list(tdb, *end, ltype);
-		goto again;
-	}
+	*end = *start;
+	hextra = hash >> tdb->header.v.hash_bits;
 
 	while ((off = tdb_read_off(tdb, tdb->header.v.hash_off
 				   + *end * sizeof(tdb_off_t)))
 	       != TDB_OFF_ERR) {
 		struct tdb_used_record pad, *r;
-		uint64_t keylen, next;
+		uint64_t keylen;
 
 		/* Didn't find it? */
 		if (!off)
@@ -470,16 +471,10 @@ again:
 	lock_next:
 		/* Lock next bucket. */
 		/* FIXME: We can deadlock if this wraps! */
-		next = (*end + 1) & ((1ULL << tdb->header.v.hash_bits) - 1);
-		if (next == *start) {
-			tdb->ecode = TDB_ERR_CORRUPT;
-			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-				 "find_bucket_and_lock: full hash table!\n");
+		off = tdb_lock_list(tdb, ++hash, ltype, TDB_LOCK_WAIT);
+		if (off == TDB_OFF_ERR)
 			goto unlock_err;
-		}
-		if (tdb_lock_list(tdb, next, ltype, TDB_LOCK_WAIT) == -1)
-			goto unlock_err;
-		*end = next;
+		*end = off;
 	}
 
 unlock_err:
@@ -514,11 +509,9 @@ static void enlarge_hash(struct tdb_context *tdb)
 	if (tdb_allrecord_lock(tdb, F_WRLCK, TDB_LOCK_WAIT, false) == -1)
 		return;
 
-	if (unlikely(update_header(tdb))) {
-		/* Someone else enlarged for us?  Nothing to do. */
-		if ((1ULL << tdb->header.v.hash_bits) != num)
-			goto unlock;
-	}
+	/* Someone else enlarged for us?  Nothing to do. */
+	if ((1ULL << tdb->header.v.hash_bits) != num)
+		goto unlock;
 
 	newoff = alloc(tdb, 0, num * 2, 0, false);
 	if (unlikely(newoff == TDB_OFF_ERR))
@@ -728,7 +721,8 @@ again:
 	num++;
 
 	for (i = chain + 1; i < chain + 1 + num; i++) {
-		if (tdb_lock_list(tdb, i, F_WRLCK, TDB_LOCK_WAIT) == -1) {
+		if (tdb_lock_list(tdb, i, F_WRLCK, TDB_LOCK_WAIT)
+		    == TDB_OFF_ERR) {
 			if (i != chain + 1)
 				unlock_lists(tdb, chain + 1, i-1, F_WRLCK);
 			return -1;
@@ -741,7 +735,8 @@ again:
 						 1ULL << tdb->header.v.hash_bits);
 		(*extra_locks)++;
 		for (i = 0; i < *extra_locks; i++) {
-			if (tdb_lock_list(tdb, i, F_WRLCK, TDB_LOCK_NOWAIT)) {
+			if (tdb_lock_list(tdb, i, F_WRLCK, TDB_LOCK_NOWAIT)
+			    == TDB_OFF_ERR) {
 				/* Failed.  Caller must lock in order. */
 				if (i)
 					unlock_lists(tdb, 0, i-1, F_WRLCK);
@@ -827,7 +822,8 @@ int tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 
 		/* We need extra locks at the start. */
 		for (i = 0; i < extra_locks; i++) {
-			if (tdb_lock_list(tdb, i, F_WRLCK, TDB_LOCK_WAIT)) {
+			if (tdb_lock_list(tdb, i, F_WRLCK, TDB_LOCK_WAIT)
+			    == TDB_OFF_ERR) {
 				if (i)
 					unlock_lists(tdb, 0, i-1, F_WRLCK);
 				return -1;

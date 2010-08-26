@@ -130,7 +130,7 @@ tdb_off_t zone_of(struct tdb_context *tdb, tdb_off_t off)
 	return off >> tdb->header.v.zone_bits;
 }
 
-/* Returns fl->max_bucket + 1, or list number to search. */
+/* Returns free_buckets + 1, or list number to search. */
 static tdb_off_t find_free_head(struct tdb_context *tdb, tdb_off_t bucket)
 {
 	tdb_off_t first, off;
@@ -138,7 +138,7 @@ static tdb_off_t find_free_head(struct tdb_context *tdb, tdb_off_t bucket)
 	/* Speculatively search for a non-zero bucket. */
 	first = tdb->last_zone * (tdb->header.v.free_buckets+1) + bucket;
 	off = tdb_find_nonzero_off(tdb, free_list_off(tdb, first),
-				   tdb->header.v.free_buckets - bucket);
+				   tdb->header.v.free_buckets + 1 - bucket);
 	return bucket + off;
 }
 
@@ -210,7 +210,7 @@ int add_free_record(struct tdb_context *tdb,
 	tdb->last_zone = zone_of(tdb, off);
 	list = tdb->last_zone * (tdb->header.v.free_buckets+1)
 		+ size_to_bucket(tdb, new.data_len);
-		
+
 	if (tdb_lock_free_list(tdb, list, TDB_LOCK_WAIT) != 0)
 		return -1;
 
@@ -319,7 +319,7 @@ static tdb_off_t lock_and_alloc(struct tdb_context *tdb,
 				tdb_len_t *actual)
 {
 	tdb_off_t list;
-	tdb_off_t off, prev, best_off;
+	tdb_off_t off, best_off;
 	struct tdb_free_record pad, best = { 0 }, *r;
 	double multiplier;
 
@@ -331,27 +331,21 @@ again:
 		return TDB_OFF_ERR;
 	}
 
-	prev = free_list_off(tdb, list);
-	off = tdb_read_off(tdb, prev);
-
-	if (unlikely(off == TDB_OFF_ERR))
-		goto unlock_err;
-
 	best.data_len = -1ULL;
 	best_off = 0;
 	multiplier = 1.0;
 
 	/* Walk the list to see if any are large enough, getting less fussy
 	 * as we go. */
-	while (off) {
-		prev = off;
-		off = tdb_read_off(tdb, prev);
-		if (unlikely(off == TDB_OFF_ERR))
-			goto unlock_err;
+	off = tdb_read_off(tdb, free_list_off(tdb, list));
+	if (unlikely(off == TDB_OFF_ERR))
+		goto unlock_err;
 
+	while (off) {
 		r = tdb_get(tdb, off, &pad, sizeof(*r));
 		if (!r)
 			goto unlock_err;
+
 		if (r->magic != TDB_FREE_MAGIC) {
 			tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 				 "lock_and_alloc: %llu non-free 0x%llx\n",
@@ -364,18 +358,9 @@ again:
 			best = *r;
 		}
 
-		if (best.data_len < size * multiplier && best_off) {
-			/* We're happy with this size: take it. */
-			if (remove_from_list(tdb, list, &best) != 0)
-				goto unlock_err;
-			tdb_unlock_free_list(tdb, list);
+		if (best.data_len < size * multiplier && best_off)
+			goto use_best;
 
-			if (to_used_record(tdb, best_off, size, best.data_len,
-					   actual)) {
-				return -1;
-			}
-			return best_off;
-		}
 		multiplier *= 1.01;
 
 		/* Since we're going slow anyway, try coalescing here. */
@@ -387,6 +372,22 @@ again:
 			/* This has unlocked list, restart. */
 			goto again;
 		}
+		off = r->next;
+	}
+
+	/* If we found anything at all, use it. */
+	if (best_off) {
+	use_best:
+		/* We're happy with this size: take it. */
+		if (remove_from_list(tdb, list, &best) != 0)
+			goto unlock_err;
+		tdb_unlock_free_list(tdb, list);
+
+		if (to_used_record(tdb, best_off, size, best.data_len,
+				   actual)) {
+			return -1;
+		}
+		return best_off;
 	}
 
 	tdb_unlock_free_list(tdb, list);
@@ -440,11 +441,11 @@ static tdb_off_t get_free(struct tdb_context *tdb, size_t size,
 		tdb_off_t b;
 
 		/* Start at exact size bucket, and search up... */
-		for (b = bucket; b <= tdb->header.v.num_zones; b++) {
+		for (b = bucket; b <= tdb->header.v.free_buckets; b++) {
 			b = find_free_head(tdb, b);
 
 			/* Non-empty list?  Try getting block. */
-			if (b <= tdb->header.v.num_zones) {
+			if (b <= tdb->header.v.free_buckets) {
 				/* Try getting one from list. */
 				off = lock_and_alloc(tdb, b, size, actual);
 				if (off == TDB_OFF_ERR)
@@ -698,7 +699,6 @@ int tdb_expand(struct tdb_context *tdb, tdb_len_t klen, tdb_len_t dlen,
 		}
 	}
 
-
 	/* Free up the old free buckets. */
 	old_free_off -= sizeof(fhdr);
 	if (tdb_read_convert(tdb, old_free_off, &fhdr, sizeof(fhdr)) == -1)
@@ -714,6 +714,8 @@ int tdb_expand(struct tdb_context *tdb, tdb_len_t klen, tdb_len_t dlen,
 	/* Start allocating from where the new space is. */
 	tdb->last_zone = zone_of(tdb, tdb->map_size - add);
 	tdb_access_release(tdb, oldf);
+	if (write_header(tdb) == -1)
+		goto fail;
 success:
 	tdb_allrecord_unlock(tdb, F_WRLCK);
 	return 0;
