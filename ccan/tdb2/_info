@@ -1,0 +1,81 @@
+#include <string.h>
+#include <stdio.h>
+
+/**
+ * tdb2 - [[WORK IN PROGRESS!]] The trivial (64bit transactional) database
+ *
+ * The tdb2 module provides an efficient keyword data mapping (usually
+ * within a file).  It supports transactions, so the contents of the
+ * database is reliable even across crashes.
+ *
+ * Example:
+ *	#include <ccan/tdb2/tdb2.h>
+ *	#include <ccan/str/str.h>
+ *	#include <err.h>
+ *	#include <stdio.h>
+ *	
+ *	static void usage(void)
+ *	{
+ *		errx(1, "Usage: %s fetch <dbfile> <key>\n"
+ *		     "OR %s store <dbfile> <key> <data>");
+ *	}
+ *	
+ *	int main(int argc, char *argv[])
+ *	{
+ *		struct tdb_context *tdb;
+ *		TDB_DATA key, value;
+ *	
+ *		if (argc < 4)
+ *			usage();
+ *	
+ *		tdb = tdb_open(argv[2], 1024, TDB_DEFAULT, O_CREAT|O_RDWR,
+ *				0600);
+ *		if (!tdb)
+ *			err(1, "Opening %s", argv[2]);
+ *	
+ *		key.dptr = (void *)argv[3];
+ *		key.dsize = strlen(argv[3]);
+ *	
+ *		if (streq(argv[1], "fetch")) {
+ *			if (argc != 4)
+ *				usage();
+ *			value = tdb_fetch(tdb, key);
+ *			if (!value.dptr)
+ *				errx(1, "fetch %s: %s",
+ *				     argv[3], tdb_errorstr(tdb));
+ *			printf("%.*s\n", value.dsize, (char *)value.dptr);
+ *			free(value.dptr);
+ *		} else if (streq(argv[1], "store")) {
+ *			if (argc != 5)
+ *				usage();
+ *			value.dptr = (void *)argv[4];
+ *			value.dsize = strlen(argv[4]);
+ *			if (tdb_store(tdb, key, value, 0) != 0)
+ *				errx(1, "store %s: %s",
+ *				     argv[3], tdb_errorstr(tdb));
+ *		} else
+ *			usage();
+ *	
+ *		return 0;
+ *	}
+ *
+ * Maintainer: Rusty Russell <rusty@rustcorp.com.au>
+ *
+ * Author: Rusty Russell
+ *
+ * Licence: LGPLv3 (or later)
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/hash\n");
+		printf("ccan/likely\n");
+		printf("ccan/asearch\n");
+		return 0;
+	}
+
+	return 1;
+}
