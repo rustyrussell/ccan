@@ -25,13 +25,13 @@ bool update_header(struct tdb_context *tdb)
 {
 	struct tdb_header_volatile pad, *v;
 
-	if (tdb->header_uptodate) {
+	if (!(tdb->flags & TDB_NOLOCK) && tdb->header_uptodate) {
 		tdb->log(tdb, TDB_DEBUG_WARNING, tdb->log_priv,
 			 "warning: header uptodate already\n");
 	}
 
 	/* We could get a partial update if we're not holding any locks. */
-	assert(tdb_has_locks(tdb));
+	assert((tdb->flags & TDB_NOLOCK) || tdb_has_locks(tdb));
 
 	v = tdb_get(tdb, offsetof(struct tdb_header, v), &pad, sizeof(*v));
 	if (!v) {
@@ -207,20 +207,28 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	uint64_t hash_test;
 	unsigned v;
 
-	if (!(tdb = (struct tdb_context *)calloc(1, sizeof *tdb))) {
+	tdb = malloc(sizeof(*tdb));
+	if (!tdb) {
 		/* Can't log this */
 		errno = ENOMEM;
 		goto fail;
 	}
-	tdb->fd = -1;
 	tdb->name = NULL;
 	tdb->map_ptr = NULL;
+	tdb->fd = -1;
+	/* map_size will be set below. */
+	tdb->ecode = TDB_SUCCESS;
+	/* header will be read in below. */
+	tdb->header_uptodate = false;
 	tdb->flags = tdb_flags;
 	tdb->log = null_log_fn;
 	tdb->log_priv = NULL;
 	tdb->khash = jenkins_hash;
 	tdb->hash_priv = NULL;
+	tdb->transaction = NULL;
+	/* last_zone will be set below. */
 	tdb_io_init(tdb);
+	tdb_lock_init(tdb);
 
 	/* FIXME */
 	if (attr) {
@@ -238,12 +246,13 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	}
 
 	if ((open_flags & O_ACCMODE) == O_RDONLY) {
-		tdb->read_only = 1;
+		tdb->read_only = true;
 		/* read only databases don't do locking */
 		tdb->flags |= TDB_NOLOCK;
-	}
+	} else
+		tdb->read_only = false;
 
-	/* internal databases don't mmap or lock */
+	/* internal databases don't need any of the rest. */
 	if (tdb->flags & TDB_INTERNAL) {
 		tdb->flags |= (TDB_NOLOCK | TDB_NOMMAP);
 		if (tdb_new_database(tdb) != 0) {
@@ -253,7 +262,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		}
 		TEST_IT(tdb->flags & TDB_CONVERT);
 		tdb_convert(tdb, &tdb->header, sizeof(tdb->header));
-		goto internal;
+		return tdb;
 	}
 
 	if ((tdb->fd = open(name, open_flags, mode)) == -1) {
@@ -331,15 +340,10 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb->map_size = st.st_size;
 	tdb->device = st.st_dev;
 	tdb->inode = st.st_ino;
-	tdb_io_init(tdb);
 	tdb_mmap(tdb);
-
- internal:
-	/* Internal (memory-only) databases skip all the code above to
-	 * do with disk files, and resume here by releasing their
-	 * open lock and hooking into the active list. */
 	tdb_unlock_open(tdb);
-	tdb->last_zone = random_free_zone(tdb);
+	tdb_zone_init(tdb);
+
 	tdb->next = tdbs;
 	tdbs = tdb;
 	return tdb;
@@ -380,8 +384,7 @@ static void unlock_lists(struct tdb_context *tdb,
 {
 	do {
 		tdb_unlock_list(tdb, start, ltype);
-		start = (start + ((1ULL << tdb->header.v.hash_bits) - 1))
-			& ((1ULL << tdb->header.v.hash_bits) - 1);
+		start = (start + 1) & ((1ULL << tdb->header.v.hash_bits) - 1);
 	} while (start != end);
 }
 
@@ -878,4 +881,9 @@ int tdb_close(struct tdb_context *tdb)
 	free(tdb);
 
 	return ret;
+}
+
+enum TDB_ERROR tdb_error(struct tdb_context *tdb)
+{
+	return tdb->ecode;
 }

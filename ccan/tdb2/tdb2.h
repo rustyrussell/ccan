@@ -133,6 +133,8 @@ int tdb_check(struct tdb_context *tdb,
 	      int (*check)(TDB_DATA key, TDB_DATA data, void *private_data),
 	      void *private_data);
 
+enum TDB_ERROR tdb_error(struct tdb_context *tdb);
+
 extern struct tdb_data tdb_null;
 
 #ifdef  __cplusplus

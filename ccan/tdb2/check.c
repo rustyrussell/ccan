@@ -86,8 +86,8 @@ static bool check_header(struct tdb_context *tdb)
 static int off_cmp(const tdb_off_t *a, const tdb_off_t *b)
 {
 	/* Can overflow an int. */
-	return a > b ? 1
-		: a < b ? -1
+	return *a > *b ? 1
+		: *a < *b ? -1
 		: 0;
 }
 

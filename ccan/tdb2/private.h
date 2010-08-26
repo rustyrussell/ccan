@@ -223,6 +223,9 @@ struct tdb_context {
 	tdb_hashfn_t khash;
 	void *hash_priv;
 
+	/* Set if we are in a transaction. */
+	struct tdb_transaction *transaction;
+	
 	/* What zone of the tdb to use, for spreading load. */
 	uint64_t last_zone; 
 
@@ -234,9 +237,6 @@ struct tdb_context {
 	uint64_t num_lockrecs;
 	struct tdb_lock_type *lockrecs;
 
-	/* Set if we are in a transaction. */
-	struct tdb_transaction *transaction;
-	
 	/* Single list of all TDBs, to avoid multiple opens. */
 	struct tdb_context *next;
 	dev_t device;	
@@ -247,7 +247,7 @@ struct tdb_methods {
 	int (*read)(struct tdb_context *, tdb_off_t, void *, tdb_len_t);
 	int (*write)(struct tdb_context *, tdb_off_t, const void *, tdb_len_t);
 	int (*oob)(struct tdb_context *, tdb_off_t, bool);
-	int (*expand_file)(struct tdb_context *, tdb_len_t, tdb_len_t);
+	int (*expand_file)(struct tdb_context *, tdb_len_t);
 };
 
 /*
@@ -262,7 +262,7 @@ uint64_t tdb_hash(struct tdb_context *tdb, const void *ptr, size_t len);
 
 
 /* free.c: */
-uint64_t random_free_zone(struct tdb_context *tdb);
+void tdb_zone_init(struct tdb_context *tdb);
 
 /* If this fails, try tdb_expand. */
 tdb_off_t alloc(struct tdb_context *tdb, size_t keylen, size_t datalen,
@@ -346,6 +346,8 @@ int tdb_read_convert(struct tdb_context *tdb, tdb_off_t off,
 uint64_t hash_record(struct tdb_context *tdb, tdb_off_t off);
 
 /* lock.c: */
+void tdb_lock_init(struct tdb_context *tdb);
+
 /* Lock/unlock a particular hash list. */
 int tdb_lock_list(struct tdb_context *tdb, tdb_off_t list,
 		  int ltype, enum tdb_lock_flags waitflag);

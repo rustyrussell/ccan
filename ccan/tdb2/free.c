@@ -45,10 +45,17 @@ static unsigned int quick_random(struct tdb_context *tdb)
 }
 
 /* Start by using a random zone to spread the load. */
-uint64_t random_free_zone(struct tdb_context *tdb)
+void tdb_zone_init(struct tdb_context *tdb)
 {
-	/* num_zones might be out of date, but can only increase */
-	return quick_random(tdb) % tdb->header.v.num_zones;
+	/*
+	 * We read num_zones without a proper lock, so we could have
+	 * gotten a partial read.  Since zone_bits is 1 byte long, we
+	 * can trust that; even if it's increased, the number of zones
+	 * cannot have decreased.  And using the map size means we
+	 * will not start with a zone which hasn't been filled yet.
+	 */
+	tdb->last_zone = quick_random(tdb)
+		% ((tdb->map_size >> tdb->header.v.zone_bits) + 1);
 }
 
 static unsigned fls64(uint64_t val)
@@ -559,33 +566,42 @@ int tdb_expand(struct tdb_context *tdb, tdb_len_t klen, tdb_len_t dlen,
 	       bool growing)
 {
 	uint64_t new_num_buckets, new_num_zones, new_zone_bits;
-	uint64_t old_num_total, i;
+	uint64_t i, old_num_total, old_num_zones, old_size, old_zone_bits;
 	tdb_len_t add, freebucket_size, needed;
 	tdb_off_t off, old_free_off;
 	const tdb_off_t *oldf;
 	struct tdb_used_record fhdr;
-	
+
 	/* We need room for the record header too. */
 	needed = sizeof(struct tdb_used_record)
 		+ adjust_size(klen, dlen, growing);
+
+	/* tdb_allrecord_lock will update header; did zones change? */
+	old_zone_bits = tdb->header.v.zone_bits;
+	old_num_zones = tdb->header.v.num_zones;
 
 	/* FIXME: this is overkill.  An expand lock? */
 	if (tdb_allrecord_lock(tdb, F_WRLCK, TDB_LOCK_WAIT, false) == -1)
 		return -1;
 
 	/* Someone may have expanded for us. */
-	if (update_header(tdb))
+	if (old_zone_bits != tdb->header.v.zone_bits
+	    || old_num_zones != tdb->header.v.num_zones)
 		goto success;
 
-	/* Make sure we have the latest size. */
+	/* They may have also expanded the underlying size (otherwise we'd
+	 * have expanded our mmap to look at those offsets already). */
+	old_size = tdb->map_size;
 	tdb->methods->oob(tdb, tdb->map_size + 1, true);
+	if (tdb->map_size != old_size)
+		goto success;
 
 	/* Did we enlarge zones without enlarging file? */
 	if (tdb->map_size < tdb->header.v.num_zones<<tdb->header.v.zone_bits) {
 		add = (tdb->header.v.num_zones<<tdb->header.v.zone_bits)
 			- tdb->map_size;
 		/* Updates tdb->map_size. */
-		if (tdb->methods->expand_file(tdb, tdb->map_size, add) == -1)
+		if (tdb->methods->expand_file(tdb, add) == -1)
 			goto fail;
 		if (add_free_record(tdb, tdb->map_size - add, add) == -1)
 			goto fail;
@@ -628,7 +644,7 @@ int tdb_expand(struct tdb_context *tdb, tdb_len_t klen, tdb_len_t dlen,
 	}
 
 	/* Updates tdb->map_size. */
-	if (tdb->methods->expand_file(tdb, tdb->map_size, add) == -1)
+	if (tdb->methods->expand_file(tdb, add) == -1)
 		goto fail;
 
 	/* Use first part as new free bucket array. */

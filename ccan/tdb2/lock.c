@@ -567,6 +567,7 @@ int tdb_allrecord_unlock(struct tdb_context *tdb, int ltype)
 
 	tdb->allrecord_lock.count = 0;
 	tdb->allrecord_lock.ltype = 0;
+	tdb->header_uptodate = false;
 
 	hash_size = (1ULL << tdb->header.v.hash_bits);
 
@@ -668,7 +669,7 @@ int tdb_lock_free_list(struct tdb_context *tdb, tdb_off_t flist,
 		       enum tdb_lock_flags waitflag)
 {
 	/* You're supposed to have a hash lock first! */
-	if (!tdb_has_locks(tdb)) {
+	if (!(tdb->flags & TDB_NOLOCK) && !tdb_has_locks(tdb)) {
 		tdb->ecode = TDB_ERR_LOCK;
 		tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
 			 "tdb_lock_free_list without lock!\n");
@@ -847,3 +848,10 @@ void tdb_release_transaction_locks(struct tdb_context *tdb)
 	tdb->header_uptodate = false;
 }
 #endif
+
+void tdb_lock_init(struct tdb_context *tdb)
+{
+	tdb->num_lockrecs = 0;
+	tdb->lockrecs = NULL;
+	tdb->allrecord_lock.count = 0;
+}

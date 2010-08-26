@@ -228,7 +228,7 @@ int zero_out(struct tdb_context *tdb, tdb_off_t off, tdb_len_t len)
 		return 0;
 	} else {
 		char buf[8192] = { 0 };
-		return fill(tdb, buf, sizeof(buf), len, off);
+		return fill(tdb, buf, sizeof(buf), off, len);
 	}
 }
 
@@ -445,8 +445,7 @@ int tdb_parse_data(struct tdb_context *tdb, TDB_DATA key,
 
 /* expand a file.  we prefer to use ftruncate, as that is what posix
   says to use for mmap expansion */
-static int tdb_expand_file(struct tdb_context *tdb,
-			   tdb_len_t size, tdb_len_t addition)
+static int tdb_expand_file(struct tdb_context *tdb, tdb_len_t addition)
 {
 	char buf[8192];
 
@@ -455,15 +454,33 @@ static int tdb_expand_file(struct tdb_context *tdb,
 		return -1;
 	}
 
-	/* If this fails, we try to fill anyway. */
-	if (ftruncate(tdb->fd, size+addition))
-		;
+	if (tdb->flags & TDB_INTERNAL) {
+		char *new = realloc(tdb->map_ptr, tdb->map_size + addition);
+		if (!new) {
+			tdb->ecode = TDB_ERR_OOM;
+			return -1;
+		}
+		tdb->map_ptr = new;
+		tdb->map_size += addition;
+	} else {
+		/* Unmap before trying to write; old TDB claimed OpenBSD had
+		 * problem with this otherwise. */
+		tdb_munmap(tdb);
 
-	/* now fill the file with something. This ensures that the
-	   file isn't sparse, which would be very bad if we ran out of
-	   disk. This must be done with write, not via mmap */
-	memset(buf, 0x43, sizeof(buf));
-	return fill(tdb, buf, sizeof(buf), addition, size);
+		/* If this fails, we try to fill anyway. */
+		if (ftruncate(tdb->fd, tdb->map_size + addition))
+			;
+
+		/* now fill the file with something. This ensures that the
+		   file isn't sparse, which would be very bad if we ran out of
+		   disk. This must be done with write, not via mmap */
+		memset(buf, 0x43, sizeof(buf));
+		if (fill(tdb, buf, sizeof(buf), tdb->map_size, addition) == -1)
+			return -1;
+		tdb->map_size += addition;
+		tdb_mmap(tdb);
+	}
+	return 0;
 }
 
 const void *tdb_access_read(struct tdb_context *tdb,
@@ -556,84 +573,6 @@ static void tdb_next_hash_chain(struct tdb_context *tdb, uint32_t *chain)
 		}
 	}
 	(*chain) = h;
-}
-
-
-/* expand the database by expanding the underlying file and doing the
-   mmap again if necessary */
-int tdb_expand(struct tdb_context *tdb)
-{
-	struct tdb_record rec;
-	tdb_off_t offset, new_size;	
-
-	/* We have to lock every hash bucket and every free list. */
-	do {
-		
-
-	if (tdb_lock(tdb, -1, F_WRLCK) == -1) {
-		TDB_LOG((tdb, TDB_DEBUG_ERROR, "lock failed in tdb_expand\n"));
-		return -1;
-	}
-
-	/* must know about any previous expansions by another process */
-	tdb->methods->tdb_oob(tdb, tdb->map_size + 1, 1);
-
-	/* always make room for at least 100 more records, and at
-           least 25% more space. Round the database up to a multiple
-           of the page size */
-	new_size = MAX(tdb->map_size + size*100, tdb->map_size * 1.25);
-	size = TDB_ALIGN(new_size, tdb->page_size) - tdb->map_size;
-
-	if (!(tdb->flags & TDB_INTERNAL))
-		tdb_munmap(tdb);
-
-	/*
-	 * We must ensure the file is unmapped before doing this
-	 * to ensure consistency with systems like OpenBSD where
-	 * writes and mmaps are not consistent.
-	 */
-
-	/* expand the file itself */
-	if (!(tdb->flags & TDB_INTERNAL)) {
-		if (tdb->methods->tdb_expand_file(tdb, tdb->map_size, size) != 0)
-			goto fail;
-	}
-
-	tdb->map_size += size;
-
-	if (tdb->flags & TDB_INTERNAL) {
-		char *new_map_ptr = (char *)realloc(tdb->map_ptr,
-						    tdb->map_size);
-		if (!new_map_ptr) {
-			tdb->map_size -= size;
-			goto fail;
-		}
-		tdb->map_ptr = new_map_ptr;
-	} else {
-		/*
-		 * We must ensure the file is remapped before adding the space
-		 * to ensure consistency with systems like OpenBSD where
-		 * writes and mmaps are not consistent.
-		 */
-
-		/* We're ok if the mmap fails as we'll fallback to read/write */
-		tdb_mmap(tdb);
-	}
-
-	/* form a new freelist record */
-	memset(&rec,'\0',sizeof(rec));
-	rec.rec_len = size - sizeof(rec);
-
-	/* link it into the free list */
-	offset = tdb->map_size - size;
-	if (tdb_free(tdb, offset, &rec) == -1)
-		goto fail;
-
-	tdb_unlock(tdb, -1, F_WRLCK);
-	return 0;
- fail:
-	tdb_unlock(tdb, -1, F_WRLCK);
-	return -1;
 }
 
 /* read/write a tdb_off_t */
