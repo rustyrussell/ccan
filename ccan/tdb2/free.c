@@ -404,20 +404,17 @@ static tdb_off_t huge_alloc(struct tdb_context *tdb, size_t size,
 {
 	tdb_off_t i, off;
 
-	do {
-		for (i = 0; i < tdb->header.v.num_zones; i++) {
-			/* Try getting one from list. */
-			off = lock_and_alloc(tdb, tdb->header.v.free_buckets,
-					     size, actual);
-			if (off == TDB_OFF_ERR)
-				return TDB_OFF_ERR;
-			if (off != 0)
-				return off;
-			/* FIXME: Coalesce! */
-		}
-	} while (tdb_expand(tdb, 0, size, false) == 0);
-
-	return TDB_OFF_ERR;
+	for (i = 0; i < tdb->header.v.num_zones; i++) {
+		/* Try getting one from list. */
+		off = lock_and_alloc(tdb, tdb->header.v.free_buckets,
+				     size, actual);
+		if (off == TDB_OFF_ERR)
+			return TDB_OFF_ERR;
+		if (off != 0)
+			return off;
+		/* FIXME: Coalesce! */
+	}
+	return 0;
 }
 
 static tdb_off_t get_free(struct tdb_context *tdb, size_t size,
@@ -634,14 +631,15 @@ int tdb_expand(struct tdb_context *tdb, tdb_len_t klen, tdb_len_t dlen,
 		/* Increase the zone size. */
 		new_num_zones = tdb->header.v.num_zones;
 		new_zone_bits = tdb->header.v.zone_bits+1;
-		while ((new_num_zones << new_zone_bits) - tdb->map_size
-		       < needed) {
+		while ((new_num_zones << new_zone_bits)
+		       < tdb->map_size + needed) {
 			new_zone_bits++;
 		}
 
-		/* We expand by enough zones to meet the need. */
-		add = (needed + (1ULL << new_zone_bits)-1)
-			& ~((1ULL << new_zone_bits)-1);
+		/* We expand by enough full zones to meet the need. */
+		add = ((tdb->map_size + needed + (1ULL << new_zone_bits)-1)
+		       & ~((1ULL << new_zone_bits)-1))
+			- tdb->map_size;
 	}
 
 	/* Updates tdb->map_size. */
@@ -667,15 +665,17 @@ int tdb_expand(struct tdb_context *tdb, tdb_len_t klen, tdb_len_t dlen,
 	old_num_total = tdb->header.v.num_zones*(tdb->header.v.free_buckets+1);
 	old_free_off = tdb->header.v.free_off;
 	oldf = tdb_access_read(tdb, old_free_off,
-			       old_num_total * sizeof(tdb_off_t));
+			       old_num_total * sizeof(tdb_off_t), true);
 	if (!oldf)
 		goto fail;
 
 	/* Switch to using our new zone. */
-	if (zero_out(tdb, off, new_num_zones * (new_num_buckets + 1)) == -1)
+	if (zero_out(tdb, off, freebucket_size) == -1)
 		goto fail_release;
+
 	tdb->header.v.free_off = off;
 	tdb->header.v.num_zones = new_num_zones;
+	tdb->header.v.zone_bits = new_zone_bits;
 	tdb->header.v.free_buckets = new_num_buckets;
 
 	/* FIXME: If zone size hasn't changed, can simply copy pointers. */
@@ -704,7 +704,9 @@ int tdb_expand(struct tdb_context *tdb, tdb_len_t klen, tdb_len_t dlen,
 	if (tdb_read_convert(tdb, old_free_off, &fhdr, sizeof(fhdr)) == -1)
 		goto fail_release;
 	if (add_free_record(tdb, old_free_off,
-			    rec_data_length(&fhdr)+rec_extra_padding(&fhdr)))
+			    sizeof(fhdr)
+			    + rec_data_length(&fhdr)
+			    + rec_extra_padding(&fhdr)))
 		goto fail_release;
 
 	/* Add the rest as a new free record. */

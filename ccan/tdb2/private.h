@@ -296,20 +296,13 @@ void *tdb_convert(const struct tdb_context *tdb, void *buf, tdb_len_t size);
 void tdb_munmap(struct tdb_context *tdb);
 void tdb_mmap(struct tdb_context *tdb);
 
-/* Hand data to a function, direct if possible */
-int tdb_parse_data(struct tdb_context *tdb, TDB_DATA key,
-		   tdb_off_t offset, tdb_len_t len,
-		   int (*parser)(TDB_DATA key, TDB_DATA data,
-				 void *private_data),
-		   void *private_data);
-
 /* Either make a copy into pad and return that, or return ptr into mmap.
  * Converts endian (ie. will use pad in that case). */
 void *tdb_get(struct tdb_context *tdb, tdb_off_t off, void *pad, size_t len);
 
 /* Either alloc a copy, or give direct access.  Release frees or noop. */
 const void *tdb_access_read(struct tdb_context *tdb,
-			    tdb_off_t off, tdb_len_t len);
+			    tdb_off_t off, tdb_len_t len, bool convert);
 void tdb_access_release(struct tdb_context *tdb, const void *p);
 
 /* Convenience routine to get an offset. */
@@ -337,9 +330,9 @@ bool tdb_read_all(int fd, void *buf, size_t len);
 /* Allocate and make a copy of some offset. */
 void *tdb_alloc_read(struct tdb_context *tdb, tdb_off_t offset, tdb_len_t len);
 
-/* Munges record and writes it */
+/* Writes a converted copy of a record. */
 int tdb_write_convert(struct tdb_context *tdb, tdb_off_t off,
-		      void *rec, size_t len);
+		      const void *rec, size_t len);
 
 /* Reads record and converts it */
 int tdb_read_convert(struct tdb_context *tdb, tdb_off_t off,

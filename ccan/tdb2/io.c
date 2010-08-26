@@ -132,19 +132,13 @@ void *tdb_get(struct tdb_context *tdb, tdb_off_t off, void *pad, size_t len)
 		if (ret)
 			return ret;
 	}
-
-	if (unlikely(tdb_oob(tdb, off + len, false) == -1))
-		return NULL;
-
-	if (tdb->methods->read(tdb, off, pad, len) == -1)
-		return NULL;
-	return tdb_convert(tdb, pad, len);
+	return tdb_read_convert(tdb, off, pad, len) == -1 ? NULL : pad;
 }
 
 /* Endian conversion: we only ever deal with 8 byte quantities */
 void *tdb_convert(const struct tdb_context *tdb, void *buf, tdb_len_t size)
 {
-	if (unlikely((tdb->flags & TDB_CONVERT))) {
+	if (unlikely((tdb->flags & TDB_CONVERT)) && buf) {
 		uint64_t i, *p = (uint64_t *)buf;
 		for (i = 0; i < size / 8; i++)
 			p[i] = bswap_64(p[i]);
@@ -157,23 +151,19 @@ void *tdb_convert(const struct tdb_context *tdb, void *buf, tdb_len_t size)
 uint64_t tdb_find_nonzero_off(struct tdb_context *tdb, tdb_off_t off,
 			      uint64_t num)
 {
-	uint64_t i, *val;
-	bool alloc = false;
+	uint64_t i;
+	const uint64_t *val;
 
-	val = tdb_direct(tdb, off, num * sizeof(tdb_off_t));
-	if (!unlikely(val)) {
-		val = tdb_alloc_read(tdb, off, num * sizeof(tdb_off_t));
-		if (!val)
-			return num;
-		alloc = true;
-	}
+	/* Zero vs non-zero is the same unconverted: minor optimization. */
+	val = tdb_access_read(tdb, off, num * sizeof(tdb_off_t), false);
+	if (!val)
+		return num;
 
 	for (i = 0; i < num; i++) {
 		if (val[i])
 			break;
 	}
-	if (unlikely(alloc))
-		free(val);
+	tdb_access_release(tdb, val);
 	return i;
 }
 
@@ -181,55 +171,38 @@ uint64_t tdb_find_nonzero_off(struct tdb_context *tdb, tdb_off_t off,
 uint64_t tdb_find_zero_off(struct tdb_context *tdb, tdb_off_t off,
 			   uint64_t num)
 {
-	uint64_t i, *val;
-	bool alloc = false;
+	uint64_t i;
+	const uint64_t *val;
 
-	val = tdb_direct(tdb, off, num * sizeof(tdb_off_t));
-	if (!unlikely(val)) {
-		val = tdb_alloc_read(tdb, off, num * sizeof(tdb_off_t));
-		if (!val)
-			return num;
-		alloc = true;
-	}
+	/* Zero vs non-zero is the same unconverted: minor optimization. */
+	val = tdb_access_read(tdb, off, num * sizeof(tdb_off_t), false);
+	if (!val)
+		return num;
 
 	for (i = 0; i < num; i++) {
 		if (!val[i])
 			break;
 	}
-	if (unlikely(alloc))
-		free(val);
+	tdb_access_release(tdb, val);
 	return i;
-}
-
-static int fill(struct tdb_context *tdb,
-		const void *buf, size_t size,
-		tdb_off_t off, tdb_len_t len)
-{
-	while (len) {
-		size_t n = len > size ? size : len;
-
-		if (!tdb_pwrite_all(tdb->fd, buf, n, off)) {
-			tdb->ecode = TDB_ERR_IO;
-			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-				 "fill write failed: giving up!\n");
-			return -1;
-		}
-		len -= n;
-		off += n;
-	}
-	return 0;
 }
 
 int zero_out(struct tdb_context *tdb, tdb_off_t off, tdb_len_t len)
 {
+	char buf[8192] = { 0 };
 	void *p = tdb_direct(tdb, off, len);
 	if (p) {
 		memset(p, 0, len);
 		return 0;
-	} else {
-		char buf[8192] = { 0 };
-		return fill(tdb, buf, sizeof(buf), off, len);
 	}
+	while (len) {
+		unsigned todo = len < sizeof(buf) ? len : sizeof(buf);
+		if (tdb->methods->write(tdb, off, buf, todo) == -1)
+			return -1;
+		len -= todo;
+		off += todo;
+	}
+	return 0;
 }
 
 tdb_off_t tdb_read_off(struct tdb_context *tdb, tdb_off_t off)
@@ -357,9 +330,26 @@ static int tdb_read(struct tdb_context *tdb, tdb_off_t off, void *buf,
 }
 
 int tdb_write_convert(struct tdb_context *tdb, tdb_off_t off,
-		      void *rec, size_t len)
+		      const void *rec, size_t len)
 {
-	return tdb->methods->write(tdb, off, tdb_convert(tdb, rec, len), len);
+	int ret;
+	if (unlikely((tdb->flags & TDB_CONVERT))) {
+		void *conv = malloc(len);
+		if (!conv) {
+			tdb->ecode = TDB_ERR_OOM;
+			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
+				 "tdb_write: no memory converting %zu bytes\n",
+				 len);
+			return -1;
+		}
+		memcpy(conv, rec, len);
+		ret = tdb->methods->write(tdb, off,
+					  tdb_convert(tdb, conv, len), len);
+		free(conv);
+	} else
+		ret = tdb->methods->write(tdb, off, rec, len);
+
+	return ret;
 }
 
 int tdb_read_convert(struct tdb_context *tdb, tdb_off_t off,
@@ -397,7 +387,7 @@ void *tdb_alloc_read(struct tdb_context *tdb, tdb_off_t offset, tdb_len_t len)
 uint64_t hash_record(struct tdb_context *tdb, tdb_off_t off)
 {
 	struct tdb_used_record pad, *r;
-	void *key;
+	const void *key;
 	uint64_t klen, hash;
 
 	r = tdb_get(tdb, off, &pad, sizeof(pad));
@@ -406,41 +396,32 @@ uint64_t hash_record(struct tdb_context *tdb, tdb_off_t off)
 		return 0;
 
 	klen = rec_key_length(r);
-	key = tdb_direct(tdb, off + sizeof(pad), klen);
-	if (likely(key))
-		return tdb_hash(tdb, key, klen);
-
-	key = tdb_alloc_read(tdb, off + sizeof(pad), klen);
-	if (unlikely(!key))
+	key = tdb_access_read(tdb, off + sizeof(pad), klen, false);
+	if (!key)
 		return 0;
+
 	hash = tdb_hash(tdb, key, klen);
-	free(key);
+	tdb_access_release(tdb, key);
 	return hash;
 }
 
-/* Give a piece of tdb data to a parser */
-int tdb_parse_data(struct tdb_context *tdb, TDB_DATA key,
-		   tdb_off_t offset, tdb_len_t len,
-		   int (*parser)(TDB_DATA key, TDB_DATA data,
-				 void *private_data),
-		   void *private_data)
+static int fill(struct tdb_context *tdb,
+		const void *buf, size_t size,
+		tdb_off_t off, tdb_len_t len)
 {
-	TDB_DATA data;
-	int result;
-	bool allocated = false;
+	while (len) {
+		size_t n = len > size ? size : len;
 
-	data.dsize = len;
-	data.dptr = tdb_direct(tdb, offset, len);
-	if (unlikely(!data.dptr)) {
-		if (!(data.dptr = tdb_alloc_read(tdb, offset, len))) {
+		if (!tdb_pwrite_all(tdb->fd, buf, n, off)) {
+			tdb->ecode = TDB_ERR_IO;
+			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
+				 "fill write failed: giving up!\n");
 			return -1;
 		}
-		allocated = true;
+		len -= n;
+		off += n;
 	}
-	result = parser(key, data, private_data);
-	if (unlikely(allocated))
-		free(data.dptr);
-	return result;
+	return 0;
 }
 
 /* expand a file.  we prefer to use ftruncate, as that is what posix
@@ -484,12 +465,18 @@ static int tdb_expand_file(struct tdb_context *tdb, tdb_len_t addition)
 }
 
 const void *tdb_access_read(struct tdb_context *tdb,
-			    tdb_off_t off, tdb_len_t len)
+			    tdb_off_t off, tdb_len_t len, bool convert)
 {
-	const void *ret = tdb_direct(tdb, off, len);
+	const void *ret = NULL;
 
-	if (!ret)
+	if (likely(!(tdb->flags & TDB_CONVERT)))
+		ret = tdb_direct(tdb, off, len);
+
+	if (!ret) {
 		ret = tdb_alloc_read(tdb, off, len);
+		if (convert)
+			tdb_convert(tdb, (void *)ret, len);
+	}
 	return ret;
 }
 

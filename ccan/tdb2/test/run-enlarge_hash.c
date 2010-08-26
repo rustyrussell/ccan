@@ -13,24 +13,14 @@ int main(int argc, char *argv[])
 	int flags[] = { TDB_INTERNAL, TDB_DEFAULT,
 			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT };
 
-	plan_tests(sizeof(flags) / sizeof(flags[0]) * 10 + 1);
+	plan_tests(sizeof(flags) / sizeof(flags[0]) * 2 + 1);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		tdb = tdb_open("/tmp/run-new_database.tdb", flags[i],
 			       O_RDWR|O_CREAT|O_TRUNC, 0600, NULL);
 		tdb->log = tap_log_fn;
 		ok1(tdb);
 		if (tdb) {
-			/* First expand (expand file to fill zone). */
-			ok1(tdb_expand(tdb, 1, 1, false) == 0);
-			ok1(tdb->header.v.num_zones == 1);
-			ok1(tdb_check(tdb, NULL, NULL) == 0);
-			/* Little expand (extra zone). */
-			ok1(tdb_expand(tdb, 1, 1, false) == 0);
-			ok1(tdb->header.v.num_zones == 2);
-			ok1(tdb_check(tdb, NULL, NULL) == 0);
-			/* Big expand (enlarge zones) */
- 			ok1(tdb_expand(tdb, 1, 4096, false) == 0);
-			ok1(tdb->header.v.num_zones == 2);
+			enlarge_hash(tdb);
 			ok1(tdb_check(tdb, NULL, NULL) == 0);
 			tdb_close(tdb);
 		}

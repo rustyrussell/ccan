@@ -425,7 +425,7 @@ static tdb_off_t entry_matches(struct tdb_context *tdb,
 	if (keylen != key->dsize)
 		return TDB_OFF_ERR;
 
-	rkey = tdb_access_read(tdb, off + sizeof(*rec), keylen);
+	rkey = tdb_access_read(tdb, off + sizeof(*rec), keylen, false);
 	if (!rkey)
 		return TDB_OFF_ERR;
 	if (memcmp(rkey, key->dptr, keylen) != 0)
@@ -435,7 +435,7 @@ static tdb_off_t entry_matches(struct tdb_context *tdb,
 }
 
 /* FIXME: Optimize? */
-static void unlock_range(struct tdb_context *tdb,
+static void unlock_lists(struct tdb_context *tdb,
 			 tdb_off_t list, tdb_len_t num,
 			 int ltype)
 {
@@ -446,7 +446,7 @@ static void unlock_range(struct tdb_context *tdb,
 }
 
 /* FIXME: Optimize? */
-static int lock_range(struct tdb_context *tdb,
+static int lock_lists(struct tdb_context *tdb,
 		      tdb_off_t list, tdb_len_t num,
 		      int ltype)
 {
@@ -454,7 +454,7 @@ static int lock_range(struct tdb_context *tdb,
 
 	for (i = list; i < list + num; i++) {
 		if (tdb_lock_list(tdb, i, ltype, TDB_LOCK_WAIT) != 0) {
-			unlock_range(tdb, list, i - list, ltype);
+			unlock_lists(tdb, list, i - list, ltype);
 			return -1;
 		}
 	}
@@ -480,7 +480,7 @@ again:
 		if (tdb_lock_list(tdb, 0, ltype, TDB_LOCK_WAIT))
 			return TDB_OFF_ERR;
 		len = tdb_find_zero_off(tdb, hash_off(tdb, 0), num);
-		if (lock_range(tdb, 1, len, ltype) == -1) {
+		if (lock_lists(tdb, 1, len, ltype) == -1) {
 			tdb_unlock_list(tdb, 0, ltype);
 			return TDB_OFF_ERR;
 		}
@@ -491,9 +491,9 @@ again:
 		start++;
 		pre_locks = 0;
 	}
-	if (unlikely(lock_range(tdb, start, len, ltype) == -1)) {
+	if (unlikely(lock_lists(tdb, start, len, ltype) == -1)) {
 		if (pre_locks)
-			unlock_range(tdb, 0, pre_locks, ltype);
+			unlock_lists(tdb, 0, pre_locks, ltype);
 		else
 			tdb_unlock_list(tdb, start, ltype);
 		return TDB_OFF_ERR;
@@ -501,9 +501,9 @@ again:
 
 	/* Now, did we lose the race, and it's not zero any more? */
 	if (unlikely(tdb_read_off(tdb, hash_off(tdb, pre_locks + len)) != 0)) {
-		unlock_range(tdb, 0, pre_locks, ltype);
+		unlock_lists(tdb, 0, pre_locks, ltype);
 		/* Leave the start locked, as expected. */
-		unlock_range(tdb, start + 1, len - 1, ltype);
+		unlock_lists(tdb, start + 1, len - 1, ltype);
 		goto again;
 	}
 
@@ -529,7 +529,8 @@ static int update_rec_hdr(struct tdb_context *tdb,
 /* If we fail, others will try after us. */
 static void enlarge_hash(struct tdb_context *tdb)
 {
-	tdb_off_t newoff, i;
+	tdb_off_t newoff, oldoff, i;
+	tdb_len_t hlen;
 	uint64_t h, num = 1ULL << tdb->header.v.hash_bits;
 	struct tdb_used_record pad, *r;
 
@@ -541,26 +542,32 @@ static void enlarge_hash(struct tdb_context *tdb)
 	if ((1ULL << tdb->header.v.hash_bits) != num)
 		goto unlock;
 
-	newoff = alloc(tdb, 0, num * 2, 0, false);
+	/* Allocate our new array. */
+	hlen = num * sizeof(tdb_off_t) * 2;
+	newoff = alloc(tdb, 0, hlen, 0, false);
 	if (unlikely(newoff == TDB_OFF_ERR))
 		goto unlock;
 	if (unlikely(newoff == 0)) {
-		if (tdb_expand(tdb, 0, num * 2, false) == -1)
+		if (tdb_expand(tdb, 0, hlen, false) == -1)
 			goto unlock;
-		newoff = alloc(tdb, 0, num * 2, 0, false);
+		newoff = alloc(tdb, 0, hlen, 0, false);
 		if (newoff == TDB_OFF_ERR || newoff == 0)
 			goto unlock;
 	}
+	/* Step over record header! */
+	newoff += sizeof(struct tdb_used_record);
+
+	/* Starts all zero. */
+	if (zero_out(tdb, newoff, hlen) == -1)
+		goto unlock;
 
 	/* FIXME: If the space before is empty, we know this is in its ideal
-	 * location.  We can steal a bit from the pointer to avoid rehash. */
-	for (i = tdb_find_nonzero_off(tdb, tdb->header.v.hash_off, num);
+	 * location.  Or steal a bit from the pointer to avoid rehash. */
+	for (i = tdb_find_nonzero_off(tdb, hash_off(tdb, 0), num);
 	     i < num;
-	     i += tdb_find_nonzero_off(tdb, tdb->header.v.hash_off
-				       + i*sizeof(tdb_off_t), num - i)) {
+	     i += tdb_find_nonzero_off(tdb, hash_off(tdb, i), num - i)) {
 		tdb_off_t off;
-		off = tdb_read_off(tdb, tdb->header.v.hash_off
-				   + i*sizeof(tdb_off_t));
+		off = tdb_read_off(tdb, hash_off(tdb, i));
 		if (unlikely(off == TDB_OFF_ERR))
 			goto unlock;
 		if (unlikely(!off)) {
@@ -578,18 +585,17 @@ static void enlarge_hash(struct tdb_context *tdb)
 	}
 
 	/* Free up old hash. */
-	r = tdb_get(tdb, tdb->header.v.hash_off, &pad, sizeof(*r));
+	oldoff = tdb->header.v.hash_off - sizeof(*r);
+	r = tdb_get(tdb, oldoff, &pad, sizeof(*r));
 	if (!r)
 		goto unlock;
-	add_free_record(tdb, tdb->header.v.hash_off,
-			rec_data_length(r) + rec_extra_padding(r));
+	add_free_record(tdb, oldoff,
+			sizeof(*r)+rec_data_length(r)+rec_extra_padding(r));
 
 	/* Now we write the modified header. */
-	tdb->header.v.generation++;
 	tdb->header.v.hash_bits++;
 	tdb->header.v.hash_off = newoff;
-	tdb_write_convert(tdb, offsetof(struct tdb_header, v),
-			  &tdb->header.v, sizeof(tdb->header.v));
+	write_header(tdb);
 unlock:
 	tdb_allrecord_unlock(tdb, F_WRLCK);
 }
@@ -667,7 +673,7 @@ int tdb_store(struct tdb_context *tdb,
 	/* Allocate a new record. */
 	new_off = alloc(tdb, key.dsize, dbuf.dsize, h, growing);
 	if (new_off == 0) {
-		unlock_range(tdb, start, num_locks, F_WRLCK);
+		unlock_lists(tdb, start, num_locks, F_WRLCK);
 		/* Expand, then try again... */
 		if (tdb_expand(tdb, key.dsize, dbuf.dsize, growing) == -1)
 			return -1;
@@ -695,7 +701,7 @@ write:
 		goto fail;
 
 	/* FIXME: tdb_increment_seqnum(tdb); */
-	unlock_range(tdb, start, num_locks, F_WRLCK);
+	unlock_lists(tdb, start, num_locks, F_WRLCK);
 
 	/* FIXME: by simple simulation, this approximated 60% full.
 	 * Check in real case! */
@@ -705,7 +711,7 @@ write:
 	return 0;
 
 fail:
-	unlock_range(tdb, start, num_locks, F_WRLCK);
+	unlock_lists(tdb, start, num_locks, F_WRLCK);
 	return -1;
 }
 
@@ -745,7 +751,7 @@ struct tdb_data tdb_fetch(struct tdb_context *tdb, struct tdb_data key)
 	}
 
 	if (!off) {
-		unlock_range(tdb, start, num_locks, F_RDLCK);
+		unlock_lists(tdb, start, num_locks, F_RDLCK);
 		tdb->ecode = TDB_ERR_NOEXIST;
 		return tdb_null;
 	}
@@ -753,7 +759,7 @@ struct tdb_data tdb_fetch(struct tdb_context *tdb, struct tdb_data key)
 	ret.dsize = rec_data_length(&rec);
 	ret.dptr = tdb_alloc_read(tdb, off + sizeof(rec) + key.dsize,
 				  ret.dsize);
-	unlock_range(tdb, start, num_locks, F_RDLCK);
+	unlock_lists(tdb, start, num_locks, F_RDLCK);
 	return ret;
 }
 
@@ -831,7 +837,7 @@ int tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 	}
 
 	if (!off) {
-		unlock_range(tdb, start, num_locks, F_WRLCK);
+		unlock_lists(tdb, start, num_locks, F_WRLCK);
 		tdb->ecode = TDB_ERR_NOEXIST;
 		return -1;
 	}
@@ -875,11 +881,11 @@ delete:
 			    + rec_extra_padding(&rec)) != 0)
 		goto unlock_err;
 
-	unlock_range(tdb, start, num_locks, F_WRLCK);
+	unlock_lists(tdb, start, num_locks, F_WRLCK);
 	return 0;
 
 unlock_err:
-	unlock_range(tdb, start, num_locks, F_WRLCK);
+	unlock_lists(tdb, start, num_locks, F_WRLCK);
 	return -1;
 }
 

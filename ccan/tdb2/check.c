@@ -71,8 +71,8 @@ static bool check_header(struct tdb_context *tdb)
 	    < tdb->map_size) {
 		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 			 "check: %llu zones size %llu don't cover %llu\n",
-			 (long long)(1ULL << tdb->header.v.zone_bits),
 			 (long long)tdb->header.v.num_zones,
+			 (long long)(1ULL << tdb->header.v.zone_bits),
 			 (long long)tdb->map_size);
 		return false;
 	}
