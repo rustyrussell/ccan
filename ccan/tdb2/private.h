@@ -83,10 +83,10 @@ typedef uint64_t tdb_off_t;
 /* Hash chain locks. */
 #define TDB_HASH_LOCK_START 2
 
-/* We start wih 256 hash buckets, 10 free buckets.  A 1k-sized zone. */
+/* We start wih 256 hash buckets, 10 free buckets.  A 4k-sized zone. */
 #define INITIAL_HASH_BITS 8
 #define INITIAL_FREE_BUCKETS 10
-#define INITIAL_ZONE_BITS 10
+#define INITIAL_ZONE_BITS 12
 
 #if !HAVE_BSWAP_64
 static inline uint64_t bswap_64(uint64_t x)
@@ -328,6 +328,8 @@ tdb_off_t tdb_find_zero_off(struct tdb_context *tdb, tdb_off_t off,
 
 /* Even on files, we can get partial writes due to signals. */
 bool tdb_pwrite_all(int fd, const void *buf, size_t len, tdb_off_t off);
+bool tdb_pread_all(int fd, void *buf, size_t len, tdb_off_t off);
+bool tdb_read_all(int fd, void *buf, size_t len);
 
 /* Allocate and make a copy of some offset. */
 void *tdb_alloc_read(struct tdb_context *tdb, tdb_off_t offset, tdb_len_t len);

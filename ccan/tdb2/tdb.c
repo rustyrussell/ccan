@@ -1,6 +1,7 @@
 #include "private.h"
 #include <ccan/tdb2/tdb2.h>
 #include <ccan/hash/hash.h>
+#include <ccan/build_assert/build_assert.h>
 #include <ccan/likely/likely.h>
 #include <assert.h>
 
@@ -48,7 +49,7 @@ bool update_header(struct tdb_context *tdb)
 static uint64_t jenkins_hash(const void *key, size_t length, uint64_t seed,
 			     void *arg)
 {
-	return hash64_any(key, length, seed);
+	return hash64_stable((const unsigned char *)key, length, seed);
 }
 
 uint64_t tdb_hash(struct tdb_context *tdb, const void *ptr, size_t len)
@@ -77,7 +78,7 @@ static uint64_t random_number(struct tdb_context *tdb)
 
 	fd = open("/dev/urandom", O_RDONLY);
 	if (fd >= 0) {
-		if (read(fd, &ret, sizeof(ret)) == sizeof(ret)) {
+		if (tdb_read_all(fd, &ret, sizeof(ret))) {
 			tdb->log(tdb, TDB_DEBUG_TRACE, tdb->log_priv,
 				 "tdb_open: random from /dev/urandom\n");
 			close(fd);
@@ -130,6 +131,7 @@ static int tdb_new_database(struct tdb_context *tdb)
 {
 	/* We make it up in memory, then write it out if not internal */
 	struct new_database newdb;
+	unsigned int magic_off = offsetof(struct tdb_header, magic_food);
 
 	/* Fill in the header */
 	newdb.hdr.version = TDB_VERSION;
@@ -141,6 +143,9 @@ static int tdb_new_database(struct tdb_context *tdb)
 					 tdb->hash_priv);
 
 	newdb.hdr.v.generation = 0;
+
+	/* The initial zone must cover the initial database size! */
+	BUILD_ASSERT((1ULL << INITIAL_ZONE_BITS) >= sizeof(newdb));
 
 	/* Free array has 1 zone, 10 buckets.  All buckets empty. */
 	newdb.hdr.v.num_zones = 1;
@@ -158,6 +163,17 @@ static int tdb_new_database(struct tdb_context *tdb)
 		   sizeof(newdb.hash), sizeof(newdb.hash), 0);
 	memset(newdb.hash, 0, sizeof(newdb.hash));
 
+	/* Magic food */
+	memset(newdb.hdr.magic_food, 0, sizeof(newdb.hdr.magic_food));
+	strcpy(newdb.hdr.magic_food, TDB_MAGIC_FOOD);
+
+	/* This creates an endian-converted database, as if read from disk */
+	tdb_convert(tdb,
+		    (char *)&newdb.hdr + magic_off,
+		    sizeof(newdb) - magic_off);
+
+	tdb->header = newdb.hdr;
+
 	if (tdb->flags & TDB_INTERNAL) {
 		tdb->map_size = sizeof(newdb);
 		tdb->map_ptr = malloc(tdb->map_size);
@@ -166,9 +182,6 @@ static int tdb_new_database(struct tdb_context *tdb)
 			return -1;
 		}
 		memcpy(tdb->map_ptr, &newdb, tdb->map_size);
-		tdb->header = newdb.hdr;
-		/* Convert the `ondisk' version if asked. */
-		tdb_convert(tdb, tdb->map_ptr, sizeof(newdb));
 		return 0;
 	}
 	if (lseek(tdb->fd, 0, SEEK_SET) == -1)
@@ -176,14 +189,6 @@ static int tdb_new_database(struct tdb_context *tdb)
 
 	if (ftruncate(tdb->fd, 0) == -1)
 		return -1;
-
-	/* This creates an endian-converted header, as if read from disk */
-	tdb->header = newdb.hdr;
-	tdb_convert(tdb, &tdb->header, sizeof(tdb->header));
-
-	/* Don't endian-convert the magic food! */
-	memset(newdb.hdr.magic_food, 0, sizeof(newdb.hdr.magic_food));
-	strcpy(newdb.hdr.magic_food, TDB_MAGIC_FOOD);
 
 	if (!tdb_pwrite_all(tdb->fd, &newdb, sizeof(newdb), 0)) {
 		tdb->ecode = TDB_ERR_IO;
@@ -215,6 +220,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb->log_priv = NULL;
 	tdb->khash = jenkins_hash;
 	tdb->hash_priv = NULL;
+	tdb_io_init(tdb);
 
 	/* FIXME */
 	if (attr) {
@@ -246,6 +252,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 			goto fail;
 		}
 		TEST_IT(tdb->flags & TDB_CONVERT);
+		tdb_convert(tdb, &tdb->header, sizeof(tdb->header));
 		goto internal;
 	}
 
@@ -268,8 +275,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		goto fail;	/* errno set by tdb_brlock */
 	}
 
-	errno = 0;
-	if (read(tdb->fd, &tdb->header, sizeof(tdb->header)) != sizeof(tdb->header)
+	if (!tdb_pread_all(tdb->fd, &tdb->header, sizeof(tdb->header), 0)
 	    || strcmp(tdb->header.magic_food, TDB_MAGIC_FOOD) != 0) {
 		if (!(open_flags & O_CREAT) || tdb_new_database(tdb) == -1) {
 			if (errno == 0) {

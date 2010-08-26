@@ -52,8 +52,7 @@ extern "C" {
 #define TDB_INTERNAL 2 /* don't store on disk */
 #define TDB_NOLOCK   4 /* don't do any locking */
 #define TDB_NOMMAP   8 /* don't use mmap */
-#define TDB_CONVERT 16 /* convert endian (internal use) */
-#define TDB_BIGENDIAN 32 /* header is big-endian (internal use) */
+#define TDB_CONVERT 16 /* convert endian */
 #define TDB_NOSYNC   64 /* don't use synchronous transactions */
 #define TDB_SEQNUM   128 /* maintain a sequence number */
 #define TDB_VOLATILE   256 /* Activate the per-hashchain freelist, default 5 */

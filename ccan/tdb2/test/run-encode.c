@@ -3,14 +3,15 @@
 #include <ccan/tdb2/lock.c>
 #include <ccan/tdb2/io.c>
 #include <ccan/tap/tap.h>
+#include "logging.h"
 
 int main(int argc, char *argv[])
 {
 	unsigned int i;
 	struct tdb_used_record rec;
-	struct tdb_context tdb = { .log = null_log_fn, .log_priv = NULL };
+	struct tdb_context tdb = { .log = tap_log_fn, .log_priv = NULL };
 
-	plan_tests(64 + 32 + 48*6);
+	plan_tests(64 + 32 + 48*6 + 1);
 
 	/* We should be able to encode any data value. */
 	for (i = 0; i < 64; i++)
@@ -36,5 +37,6 @@ int main(int argc, char *argv[])
 		ok1(rec_hash(&rec) == h);
 		ok1(rec_magic(&rec) == TDB_MAGIC);
 	}
+	ok1(tap_log_messages == 0);
 	return exit_status();
 }

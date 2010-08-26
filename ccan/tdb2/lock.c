@@ -436,7 +436,8 @@ static int tdb_lock_gradual(struct tdb_context *tdb,
 /* lock/unlock entire database.  It can only be upgradable if you have some
  * other way of guaranteeing exclusivity (ie. transaction write lock).
  * Note that we don't lock the free chains: noone can get those locks
- * without a hash chain lock first. */
+ * without a hash chain lock first.
+ * The header *will be* up to date once this returns success. */
 int tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
 		       enum tdb_lock_flags flags, bool upgradable)
 {
@@ -494,27 +495,27 @@ again:
 		return -1;
 	}
 
+	tdb->allrecord_lock.count = 1;
+	/* If it's upgradable, it's actually exclusive so we can treat
+	 * it as a write lock. */
+	tdb->allrecord_lock.ltype = upgradable ? F_WRLCK : ltype;
+	tdb->allrecord_lock.off = upgradable;
+
 	/* Now we re-check header, holding lock. */
 	if (unlikely(update_header(tdb))) {
-		tdb_brunlock(tdb, ltype, TDB_HASH_LOCK_START, hash_size);
+		tdb_allrecord_unlock(tdb, ltype);
 		goto again;
 	}
 
 	/* Now check for needing recovery. */
 	if (unlikely(tdb_needs_recovery(tdb))) {
-		tdb_brunlock(tdb, ltype, TDB_HASH_LOCK_START, hash_size);
+		tdb_allrecord_unlock(tdb, ltype);
 		if (tdb_lock_and_recover(tdb) == -1) {
 			return -1;
 		}		
 		goto again;
 	}
 
-
-	tdb->allrecord_lock.count = 1;
-	/* If it's upgradable, it's actually exclusive so we can treat
-	 * it as a write lock. */
-	tdb->allrecord_lock.ltype = upgradable ? F_WRLCK : ltype;
-	tdb->allrecord_lock.off = upgradable;
 	return 0;
 }
 

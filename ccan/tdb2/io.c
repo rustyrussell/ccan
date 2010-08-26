@@ -125,11 +125,8 @@ static void *tdb_direct(struct tdb_context *tdb, tdb_off_t off, size_t len)
 /* Either make a copy into pad and return that, or return ptr into mmap. */
 /* Note: pad has to be a real object, so we can't get here if len
  * overflows size_t */
-/* FIXME: Transaction */
 void *tdb_get(struct tdb_context *tdb, tdb_off_t off, void *pad, size_t len)
 {
-	ssize_t r;
-
 	if (likely(!(tdb->flags & TDB_CONVERT))) {
 		void *ret = tdb_direct(tdb, off, len);
 		if (ret)
@@ -139,18 +136,8 @@ void *tdb_get(struct tdb_context *tdb, tdb_off_t off, void *pad, size_t len)
 	if (unlikely(tdb_oob(tdb, off + len, false) == -1))
 		return NULL;
 
-	r = pread(tdb->fd, pad, len, off);
-	if (r != (ssize_t)len) {
-		/* Ensure ecode is set for log fn. */
-		tdb->ecode = TDB_ERR_IO;
-		tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-			 "tdb_read failed at %llu "
-			 "len=%lld ret=%lld (%s) map_size=%lld\n",
-			 (long long)off, (long long)len,
-			 (long long)r, strerror(errno),
-			 (long long)tdb->map_size);
+	if (tdb->methods->read(tdb, off, pad, len) == -1)
 		return NULL;
-	}
 	return tdb_convert(tdb, pad, len);
 }
 
@@ -249,7 +236,7 @@ tdb_off_t tdb_read_off(struct tdb_context *tdb, tdb_off_t off)
 {
 	tdb_off_t pad, *ret;
 
-	ret = tdb_get(tdb, off, &pad, sizeof(ret));
+	ret = tdb_get(tdb, off, &pad, sizeof(pad));
 	if (!ret) {
 		return TDB_OFF_ERR;
 	}
@@ -260,7 +247,7 @@ tdb_off_t tdb_read_off(struct tdb_context *tdb, tdb_off_t off)
 bool tdb_pwrite_all(int fd, const void *buf, size_t len, tdb_off_t off)
 {
 	while (len) {
-		size_t ret;
+		ssize_t ret;
 		ret = pwrite(fd, buf, len, off);
 		if (ret < 0)
 			return false;
@@ -268,8 +255,46 @@ bool tdb_pwrite_all(int fd, const void *buf, size_t len, tdb_off_t off)
 			errno = ENOSPC;
 			return false;
 		}
-		buf += ret;
+		buf = (char *)buf + ret;
 		off += ret;
+		len -= ret;
+	}
+	return true;
+}
+
+/* Even on files, we can get partial reads due to signals. */
+bool tdb_pread_all(int fd, void *buf, size_t len, tdb_off_t off)
+{
+	while (len) {
+		ssize_t ret;
+		ret = pread(fd, buf, len, off);
+		if (ret < 0)
+			return false;
+		if (ret == 0) {
+			/* ETOOSHORT? */
+			errno = EWOULDBLOCK;
+			return false;
+		}
+		buf = (char *)buf + ret;
+		off += ret;
+		len -= ret;
+	}
+	return true;
+}
+
+bool tdb_read_all(int fd, void *buf, size_t len)
+{
+	while (len) {
+		ssize_t ret;
+		ret = read(fd, buf, len);
+		if (ret < 0)
+			return false;
+		if (ret == 0) {
+			/* ETOOSHORT? */
+			errno = EWOULDBLOCK;
+			return false;
+		}
+		buf = (char *)buf + ret;
 		len -= ret;
 	}
 	return true;
@@ -316,15 +341,14 @@ static int tdb_read(struct tdb_context *tdb, tdb_off_t off, void *buf,
 	if (tdb->map_ptr) {
 		memcpy(buf, off + (char *)tdb->map_ptr, len);
 	} else {
-		ssize_t ret = pread(tdb->fd, buf, len, off);
-		if (ret != (ssize_t)len) {
+		if (!tdb_pread_all(tdb->fd, buf, len, off)) {
 			/* Ensure ecode is set for log fn. */
 			tdb->ecode = TDB_ERR_IO;
 			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
 				 "tdb_read failed at %lld "
-				 "len=%lld ret=%lld (%s) map_size=%lld\n",
+				 "len=%lld (%s) map_size=%lld\n",
 				 (long long)off, (long long)len,
-				 (long long)ret, strerror(errno),
+				 strerror(errno),
 				 (long long)tdb->map_size);
 			return -1;
 		}
@@ -376,17 +400,17 @@ uint64_t hash_record(struct tdb_context *tdb, tdb_off_t off)
 	void *key;
 	uint64_t klen, hash;
 
-	r = tdb_get(tdb, off, &pad, sizeof(*r));
+	r = tdb_get(tdb, off, &pad, sizeof(pad));
 	if (!r)
 		/* FIXME */
 		return 0;
 
 	klen = rec_key_length(r);
-	key = tdb_direct(tdb, off + sizeof(*r), klen);
+	key = tdb_direct(tdb, off + sizeof(pad), klen);
 	if (likely(key))
 		return tdb_hash(tdb, key, klen);
 
-	key = tdb_alloc_read(tdb, off + sizeof(*r), klen);
+	key = tdb_alloc_read(tdb, off + sizeof(pad), klen);
 	if (unlikely(!key))
 		return 0;
 	hash = tdb_hash(tdb, key, klen);

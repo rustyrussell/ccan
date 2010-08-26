@@ -187,7 +187,8 @@ static bool check_hash_list(struct tdb_context *tdb,
 		num_nonzero++;
 	}
 
-	if (num_found != num_used) {
+	/* free table and hash table are two of the used blocks. */
+	if (num_found != num_used - 2) {
 		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 			 "tdb_check: Not all entries are in hash\n");
 		return false;
@@ -322,10 +323,9 @@ int tdb_check(struct tdb_context *tdb,
 	size_t num_free = 0, num_used = 0;
 	bool hash_found = false, free_found = false;
 
+	/* This always ensures the header is uptodate. */
 	if (tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false) != 0)
 		return -1;
-
-	update_header(tdb);
 
 	if (!check_header(tdb))
 		goto fail;
@@ -403,9 +403,9 @@ int tdb_check(struct tdb_context *tdb,
 		goto fail;
 
 	tdb_allrecord_unlock(tdb, F_RDLCK);
-	return true;
+	return 0;
 
 fail:
 	tdb_allrecord_unlock(tdb, F_RDLCK);
-	return false;
+	return -1;
 }
