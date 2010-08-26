@@ -842,23 +842,24 @@ delete:
 		goto unlock_err;
 
 	/* Rehash anything following. */
-	for (i = old_bucket+1; i < h + num_locks; i++) {
+	for (i = hash_off(tdb, old_bucket+1);
+	     i != hash_off(tdb, h + num_locks);
+	     i += sizeof(tdb_off_t)) {
 		tdb_off_t off2;
 		uint64_t h2;
 
-		off2 = tdb_read_off(tdb, hash_off(tdb, i));
+		off2 = tdb_read_off(tdb, i);
 		if (unlikely(off2 == TDB_OFF_ERR))
 			goto unlock_err;
 
 		/* Maybe use a bit to indicate it is in ideal place? */
 		h2 = hash_record(tdb, off2);
 		/* Is it happy where it is? */
-		if ((h2 & ((1ULL << tdb->header.v.hash_bits)-1))
-		    == (i & ((1ULL << tdb->header.v.hash_bits)-1)))
+		if (hash_off(tdb, h2) == i)
 			continue;
 
 		/* Remove it. */
-		if (tdb_write_off(tdb, hash_off(tdb, i), 0) == -1)
+		if (tdb_write_off(tdb, i, 0) == -1)
 			goto unlock_err;
 
 		/* Rehash it. */
