@@ -112,18 +112,6 @@
  */
 uint32_t hash_u32(const uint32_t *key, size_t num, uint32_t base);
 
-/* Our underlying operations. */
-uint32_t hash_any(const void *key, size_t length, uint32_t base);
-uint32_t hash_stable_64(const void *key, size_t n, uint32_t base);
-uint32_t hash_stable_32(const void *key, size_t n, uint32_t base);
-uint32_t hash_stable_16(const void *key, size_t n, uint32_t base);
-uint32_t hash_stable_8(const void *key, size_t n, uint32_t base);
-uint64_t hash64_any(const void *key, size_t length, uint32_t base);
-uint64_t hash64_stable_64(const void *key, size_t n, uint32_t base);
-uint64_t hash64_stable_32(const void *key, size_t n, uint32_t base);
-uint64_t hash64_stable_16(const void *key, size_t n, uint32_t base);
-uint64_t hash64_stable_8(const void *key, size_t n, uint32_t base);
-
 /**
  * hash_string - very fast hash of an ascii string
  * @str: the nul-terminated string
@@ -150,66 +138,10 @@ static inline uint32_t hash_string(const char *string)
 }
 
 /**
- * hash_pointer - hash a pointer for internal use
- * @p: the pointer value to hash
- * @base: the base number to roll into the hash (usually 0)
- *
- * The pointer p (not what p points to!) is combined with the base to form
- * a 32-bit hash.
- *
- * This hash will have different results on different machines, so is
- * only useful for internal hashes (ie. not hashes sent across the
- * network or saved to disk).
- *
- * Example:
- *	#include "hash/hash.h"
- *
- *	// Code to keep track of memory regions.
- *	struct region {
- *		struct region *chain;
- *		void *start;
- *		unsigned int size;
- *	};
- *	// We keep a simple hash table.
- *	static struct region *region_hash[128];
- *
- *	static void add_region(struct region *r)
- *	{
- *		unsigned int h = hash_pointer(r->start);
- *
- *		r->chain = region_hash[h];
- *		region_hash[h] = r->chain;
- *	}
- *
- *	static void find_region(const void *start)
- *	{
- *		struct region *r;
- *
- *		for (r = region_hash[hash_pointer(start)]; r; r = r->chain)
- *			if (r->start == start)
- *				return r;
- *		return NULL;
- *	}
- */
-static inline uint32_t hash_pointer(const void *p, uint32_t base)
-{
-	if (sizeof(p) % sizeof(uint32_t) == 0) {
-		/* This convoluted union is the right way of aliasing. */
-		union {
-			uint32_t u32[sizeof(p) / sizeof(uint32_t)];
-			const void *p;
-		} u;
-		u.p = p;
-		return hash_u32(u.u32, sizeof(p) / sizeof(uint32_t), base);
-	} else
-		return hash(&p, 1, base);
-}
-
-/**
  * hash64 - fast 64-bit hash of an array for internal use
  * @p: the array or pointer to first element
  * @num: the number of elements to hash
- * @base: the base number to roll into the hash (usually 0)
+ * @base: the 64-bit base number to roll into the hash (usually 0)
  *
  * The memory region pointed to by p is combined with the base to form
  * a 64-bit hash.
@@ -306,4 +238,71 @@ static inline uint32_t hash_pointer(const void *p, uint32_t base)
 	(sizeof(long) == sizeof(uint64_t)				\
 	 ? hash64((p), (num), (base)) : hash((p), (num), (base))))
 
+/* Our underlying operations. */
+uint32_t hash_any(const void *key, size_t length, uint32_t base);
+uint32_t hash_stable_64(const void *key, size_t n, uint32_t base);
+uint32_t hash_stable_32(const void *key, size_t n, uint32_t base);
+uint32_t hash_stable_16(const void *key, size_t n, uint32_t base);
+uint32_t hash_stable_8(const void *key, size_t n, uint32_t base);
+uint64_t hash64_any(const void *key, size_t length, uint64_t base);
+uint64_t hash64_stable_64(const void *key, size_t n, uint64_t base);
+uint64_t hash64_stable_32(const void *key, size_t n, uint64_t base);
+uint64_t hash64_stable_16(const void *key, size_t n, uint64_t base);
+uint64_t hash64_stable_8(const void *key, size_t n, uint64_t base);
+
+/**
+ * hash_pointer - hash a pointer for internal use
+ * @p: the pointer value to hash
+ * @base: the base number to roll into the hash (usually 0)
+ *
+ * The pointer p (not what p points to!) is combined with the base to form
+ * a 32-bit hash.
+ *
+ * This hash will have different results on different machines, so is
+ * only useful for internal hashes (ie. not hashes sent across the
+ * network or saved to disk).
+ *
+ * Example:
+ *	#include "hash/hash.h"
+ *
+ *	// Code to keep track of memory regions.
+ *	struct region {
+ *		struct region *chain;
+ *		void *start;
+ *		unsigned int size;
+ *	};
+ *	// We keep a simple hash table.
+ *	static struct region *region_hash[128];
+ *
+ *	static void add_region(struct region *r)
+ *	{
+ *		unsigned int h = hash_pointer(r->start);
+ *
+ *		r->chain = region_hash[h];
+ *		region_hash[h] = r->chain;
+ *	}
+ *
+ *	static void find_region(const void *start)
+ *	{
+ *		struct region *r;
+ *
+ *		for (r = region_hash[hash_pointer(start)]; r; r = r->chain)
+ *			if (r->start == start)
+ *				return r;
+ *		return NULL;
+ *	}
+ */
+static inline uint32_t hash_pointer(const void *p, uint32_t base)
+{
+	if (sizeof(p) % sizeof(uint32_t) == 0) {
+		/* This convoluted union is the right way of aliasing. */
+		union {
+			uint32_t u32[sizeof(p) / sizeof(uint32_t)];
+			const void *p;
+		} u;
+		u.p = p;
+		return hash_u32(u.u32, sizeof(p) / sizeof(uint32_t), base);
+	} else
+		return hash(&p, 1, base);
+}
 #endif /* HASH_H */

@@ -543,13 +543,13 @@ static uint32_t hashbig( const void *key, size_t length, uint32_t *val2)
  * element.  This delivers least-surprise: hash such as "int arr[] = {
  * 1, 2 }; hash_stable(arr, 2, 0);" will be the same on big and little
  * endian machines, even though a bytewise hash wouldn't be. */
-uint64_t hash64_stable_64(const void *key, size_t n, uint32_t base)
+uint64_t hash64_stable_64(const void *key, size_t n, uint64_t base)
 {
 	const uint64_t *k = key;
 	uint32_t a,b,c;
 
 	/* Set up the internal state */
-	a = b = c = 0xdeadbeef + ((uint32_t)n*8) + base;
+	a = b = c = 0xdeadbeef + ((uint32_t)n*8) + (base >> 32) + base;
 
 	while (n > 3) {
 		a += (uint32_t)k[0];
@@ -582,13 +582,13 @@ uint64_t hash64_stable_64(const void *key, size_t n, uint32_t base)
 	return ((uint64_t)b << 32) | c;
 }
 
-uint64_t hash64_stable_32(const void *key, size_t n, uint32_t base)
+uint64_t hash64_stable_32(const void *key, size_t n, uint64_t base)
 {
 	const uint32_t *k = key;
 	uint32_t a,b,c;
 
 	/* Set up the internal state */
-	a = b = c = 0xdeadbeef + ((uint32_t)n*4) + base;
+	a = b = c = 0xdeadbeef + ((uint32_t)n*4) + (base >> 32) + base;
 
 	while (n > 3) {
 		a += k[0];
@@ -612,13 +612,13 @@ uint64_t hash64_stable_32(const void *key, size_t n, uint32_t base)
 	return ((uint64_t)b << 32) | c;
 }
 
-uint64_t hash64_stable_16(const void *key, size_t n, uint32_t base)
+uint64_t hash64_stable_16(const void *key, size_t n, uint64_t base)
 {
 	const uint16_t *k = key;
 	uint32_t a,b,c;
 
 	/* Set up the internal state */
-	a = b = c = 0xdeadbeef + ((uint32_t)n*2) + base;
+	a = b = c = 0xdeadbeef + ((uint32_t)n*2) + (base >> 32) + base;
 
 	while (n > 6) {
 		a += (uint32_t)k[0] + ((uint32_t)k[1] << 16);
@@ -648,12 +648,13 @@ uint64_t hash64_stable_16(const void *key, size_t n, uint32_t base)
 	final(a,b,c);
 	return ((uint64_t)b << 32) | c;
 }
-	
-uint64_t hash64_stable_8(const void *key, size_t n, uint32_t base)
-{
-	uint32_t lower = hashlittle(key, n, &base);
 
-	return ((uint64_t)base << 32) | lower;	
+uint64_t hash64_stable_8(const void *key, size_t n, uint64_t base)
+{
+	uint32_t b32 = base + (base >> 32);
+	uint32_t lower = hashlittle(key, n, &b32);
+
+	return ((uint64_t)b32 << 32) | lower;	
 }
 
 uint32_t hash_any(const void *key, size_t length, uint32_t base)
@@ -686,16 +687,17 @@ uint32_t hash_stable_8(const void *key, size_t n, uint32_t base)
 
 /* Jenkins' lookup8 is a 64 bit hash, but he says it's obsolete.  Use
  * the plain one and recombine into 64 bits. */
-uint64_t hash64_any(const void *key, size_t length, uint32_t base)
+uint64_t hash64_any(const void *key, size_t length, uint64_t base)
 {
+	uint32_t b32 = base + (base >> 32);
 	uint32_t lower;
 
 	if (HASH_BIG_ENDIAN)
-		lower = hashbig(key, length, &base);
+		lower = hashbig(key, length, &b32);
 	else
-		lower = hashlittle(key, length, &base);
+		lower = hashlittle(key, length, &b32);
 
-	return ((uint64_t)base << 32) | lower;
+	return ((uint64_t)b32 << 32) | lower;
 }
 
 #ifdef SELF_TEST
