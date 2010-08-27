@@ -13,7 +13,6 @@
 #include <err.h>
 #include <string.h>
 #include <ctype.h>
-#include "build-coverage.h"
 
 /* Note: we already test safe_mode in run_tests.c */
 static const char *can_run_coverage(struct manifest *m)
@@ -87,23 +86,6 @@ static char *lib_list(const struct manifest *m)
 	return ret;
 }
 
-/* Grrr... gcov drops a turd in the current directory. */
-void move_gcov_turd(const char *dir,
-		    struct ccan_file *file, const char *extension)
-{
-	char *base, *gcovfile, *gcovdest;
-
-	base = talloc_basename(file, file->name);
-	gcovfile = talloc_asprintf(file, "%s/%.*s%s",
-				   dir, strlen(base)-2, base, extension);
-	gcovdest = talloc_asprintf(file, "%s/%.*s%s",
-				   talloc_dirname(base, file->cov_compiled),
-				   strlen(base)-2, base, extension);
-	if (!move_file(gcovfile, gcovdest))
-		err(1, "Could not move %s to %s", gcovfile, gcovdest);
-	talloc_free(base);
-}
-
 static char *cov_compile(const void *ctx,
 			 struct manifest *m,
 			 struct ccan_file *file,
@@ -111,7 +93,6 @@ static char *cov_compile(const void *ctx,
 			 bool keep)
 {
 	char *errmsg;
-	char path[PATH_MAX];
 
 	file->cov_compiled = maybe_temp_file(ctx, "", keep, file->fullname);
 	errmsg = compile_and_link(ctx, file->fullname, ccan_dir,
@@ -123,7 +104,6 @@ static char *cov_compile(const void *ctx,
 		return errmsg;
 	}
 
-	move_gcov_turd(getcwd(path, sizeof(path)), file, ".gcno");
 	return NULL;
 }
 

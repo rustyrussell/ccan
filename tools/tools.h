@@ -32,6 +32,7 @@ char *talloc_getcwd(const void *ctx);
 char *run_command(const void *ctx, unsigned int *time_ms, const char *fmt, ...);
 char *run_with_timeout(const void *ctx, const char *cmd,
 		       bool *ok, unsigned *timeout_ms);
+char *temp_dir(const void *ctx);
 char *temp_file(const void *ctx, const char *extension);
 bool move_file(const char *oldname, const char *newname);
 

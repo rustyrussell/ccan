@@ -172,7 +172,7 @@ static int unlink_all(char *dir)
 	return 0;
 }
 
-char *temp_file(const void *ctx, const char *extension)
+char *temp_dir(const void *ctx)
 {
 	/* For first call, create dir. */
 	while (!tmpdir) {
@@ -192,8 +192,13 @@ char *temp_file(const void *ctx, const char *extension)
 		}
 		talloc_set_destructor(tmpdir, unlink_all);
 	}
+	return tmpdir;
+}
 
-	return talloc_asprintf(ctx, "%s/%u%s", tmpdir, count++, extension);
+char *temp_file(const void *ctx, const char *extension)
+{
+	return talloc_asprintf(ctx, "%s/%u%s",
+			       temp_dir(ctx), count++, extension);
 }
 
 char *maybe_temp_file(const void *ctx, const char *extension, bool keep,

@@ -333,7 +333,7 @@ int main(int argc, char *argv[])
 	unsigned int score = 0, total_score = 0;
 	struct manifest *m;
 	struct ccanlint *i;
-	const char *prefix = "", *dir = ".";
+	const char *prefix = "", *dir = talloc_getcwd(NULL);
 	
 	init_tests();
 
@@ -344,7 +344,11 @@ int main(int argc, char *argv[])
 	while ((c = getopt(argc, argv, "sd:vnlx:t:k:")) != -1) {
 		switch (c) {
 		case 'd':
-			dir = optarg;
+			if (optarg[0] != '/')
+				dir = talloc_asprintf_append(NULL, "%s/%s",
+							     dir, optarg);
+			else
+				dir = optarg;
 			prefix = talloc_append_string(talloc_basename(NULL,
 								      optarg),
 						      ": ");
@@ -382,6 +386,10 @@ int main(int argc, char *argv[])
 
 	if (optind < argc)
 		usage(argv[0]);
+
+	/* We move into temporary directory, so gcov dumps its files there. */
+	if (chdir(temp_dir(talloc_autofree_context())) != 0)
+		err(1, "Error changing to %s temporary dir", temp_dir(NULL));
 
 	m = get_manifest(talloc_autofree_context(), dir);
 

@@ -14,7 +14,6 @@
 #include <err.h>
 #include <string.h>
 #include <ctype.h>
-#include "build-coverage.h"
 
 struct coverage_result {
 	float uncovered;
@@ -118,7 +117,6 @@ static void *do_run_coverage_tests(struct manifest *m,
 			return res;
 		}
 		covcmd = talloc_asprintf_append(covcmd, " %s", i->name);
-		move_gcov_turd(olddir, i, ".gcda");
 	}
 
 	list_for_each(&m->api_tests, i, list) {
@@ -129,7 +127,6 @@ static void *do_run_coverage_tests(struct manifest *m,
 			return res;
 		}
 		covcmd = talloc_asprintf_append(covcmd, " %s", i->name);
-		move_gcov_turd(olddir, i, ".gcda");
 	}
 
 	/* Now run gcov: we want output even if it succeeds. */
