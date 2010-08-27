@@ -559,92 +559,39 @@ static bool zones_happy(struct tdb_context *tdb)
 	return true;
 }
 
-/* Expand the database. */
-int tdb_expand(struct tdb_context *tdb, tdb_len_t klen, tdb_len_t dlen,
-	       bool growing)
+/* Returns how much extra room we get, or TDB_OFF_ERR. */
+static tdb_len_t expand_to_fill_zones(struct tdb_context *tdb)
 {
-	uint64_t new_num_buckets, new_num_zones, new_zone_bits;
-	uint64_t i, old_num_total, old_num_zones, old_size, old_zone_bits;
-	tdb_len_t add, freebucket_size, needed;
-	tdb_off_t off, old_free_off;
-	const tdb_off_t *oldf;
-	struct tdb_used_record fhdr;
+	tdb_len_t add;
 
-	/* We need room for the record header too. */
-	needed = sizeof(struct tdb_used_record)
-		+ adjust_size(klen, dlen, growing);
-
-	/* tdb_allrecord_lock will update header; did zones change? */
-	old_zone_bits = tdb->header.v.zone_bits;
-	old_num_zones = tdb->header.v.num_zones;
-
-	/* FIXME: this is overkill.  An expand lock? */
-	if (tdb_allrecord_lock(tdb, F_WRLCK, TDB_LOCK_WAIT, false) == -1)
-		return -1;
-
-	/* Someone may have expanded for us. */
-	if (old_zone_bits != tdb->header.v.zone_bits
-	    || old_num_zones != tdb->header.v.num_zones)
-		goto success;
-
-	/* They may have also expanded the underlying size (otherwise we'd
-	 * have expanded our mmap to look at those offsets already). */
-	old_size = tdb->map_size;
-	tdb->methods->oob(tdb, tdb->map_size + 1, true);
-	if (tdb->map_size != old_size)
-		goto success;
-
-	/* Did we enlarge zones without enlarging file? */
-	if (tdb->map_size < tdb->header.v.num_zones<<tdb->header.v.zone_bits) {
-		add = (tdb->header.v.num_zones<<tdb->header.v.zone_bits)
-			- tdb->map_size;
-		/* Updates tdb->map_size. */
-		if (tdb->methods->expand_file(tdb, add) == -1)
-			goto fail;
-		if (add_free_record(tdb, tdb->map_size - add, add) == -1)
-			goto fail;
-		if (add >= needed) {
-			/* Allocate from this zone. */
-			tdb->last_zone = zone_of(tdb, tdb->map_size - add);
-			goto success;
-		}
-	}
-
-	/* Slow path.  Should we increase the number of buckets? */
-	new_num_buckets = tdb->header.v.free_buckets;
-	if (larger_buckets_might_help(tdb))
-		new_num_buckets++;
-
-	/* Now we'll need room for the new free buckets, too.  Assume
-	 * worst case (zones expand). */
-	needed += sizeof(fhdr)
-		+ ((tdb->header.v.num_zones+1)
-		   * (new_num_buckets+1) * sizeof(tdb_off_t));
-
-	/* If we need less that one zone, and they're working well, just add
-	 * another one. */
-	if (needed < (1UL<<tdb->header.v.zone_bits) && zones_happy(tdb)) {
-		new_num_zones = tdb->header.v.num_zones+1;
-		new_zone_bits = tdb->header.v.zone_bits;
-		add = 1ULL << tdb->header.v.zone_bits;
-	} else {
-		/* Increase the zone size. */
-		new_num_zones = tdb->header.v.num_zones;
-		new_zone_bits = tdb->header.v.zone_bits+1;
-		while ((new_num_zones << new_zone_bits)
-		       < tdb->map_size + needed) {
-			new_zone_bits++;
-		}
-
-		/* We expand by enough full zones to meet the need. */
-		add = ((tdb->map_size + needed + (1ULL << new_zone_bits)-1)
-		       & ~((1ULL << new_zone_bits)-1))
-			- tdb->map_size;
-	}
+	/* We can enlarge zones without enlarging file to match. */
+	add = (tdb->header.v.num_zones<<tdb->header.v.zone_bits)
+		- tdb->map_size;
+	if (add <= sizeof(struct tdb_free_record))
+		return 0;
 
 	/* Updates tdb->map_size. */
 	if (tdb->methods->expand_file(tdb, add) == -1)
-		goto fail;
+		return TDB_OFF_ERR;
+	if (add_free_record(tdb, tdb->map_size - add, add) == -1)
+		return TDB_OFF_ERR;
+	return add;
+}
+
+static int update_zones(struct tdb_context *tdb,
+			uint64_t new_num_zones,
+			uint64_t new_zone_bits,
+			uint64_t new_num_buckets,
+			tdb_len_t add)
+{
+	tdb_len_t freebucket_size;
+	const tdb_off_t *oldf;
+	tdb_off_t i, off, old_num_total, old_free_off;
+	struct tdb_used_record fhdr;
+
+	/* Updates tdb->map_size. */
+	if (tdb->methods->expand_file(tdb, add) == -1)
+		return -1;
 
 	/* Use first part as new free bucket array. */
 	off = tdb->map_size - add;
@@ -653,9 +600,9 @@ int tdb_expand(struct tdb_context *tdb, tdb_len_t klen, tdb_len_t dlen,
 
 	/* Write header. */
 	if (set_header(tdb, &fhdr, 0, freebucket_size, freebucket_size, 0))
-		goto fail;
+		return -1;
 	if (tdb_write_convert(tdb, off, &fhdr, sizeof(fhdr)) == -1)
-		goto fail;
+		return -1;
 
 	/* Adjust off to point to start of buckets, add to be remainder. */
 	add -= freebucket_size + sizeof(fhdr);
@@ -667,7 +614,7 @@ int tdb_expand(struct tdb_context *tdb, tdb_len_t klen, tdb_len_t dlen,
 	oldf = tdb_access_read(tdb, old_free_off,
 			       old_num_total * sizeof(tdb_off_t), true);
 	if (!oldf)
-		goto fail;
+		return -1;
 
 	/* Switch to using our new zone. */
 	if (zero_out(tdb, off, freebucket_size) == -1)
@@ -716,14 +663,95 @@ int tdb_expand(struct tdb_context *tdb, tdb_len_t klen, tdb_len_t dlen,
 	/* Start allocating from where the new space is. */
 	tdb->last_zone = zone_of(tdb, tdb->map_size - add);
 	tdb_access_release(tdb, oldf);
-	if (write_header(tdb) == -1)
+	return write_header(tdb);
+
+fail_release:
+	tdb_access_release(tdb, oldf);
+	return -1;
+}
+
+/* Expand the database. */
+int tdb_expand(struct tdb_context *tdb, tdb_len_t klen, tdb_len_t dlen,
+	       bool growing)
+{
+	uint64_t new_num_buckets, new_num_zones, new_zone_bits;
+	uint64_t old_num_zones, old_size, old_zone_bits;
+	tdb_len_t add, needed;
+
+	/* We need room for the record header too. */
+	needed = sizeof(struct tdb_used_record)
+		+ adjust_size(klen, dlen, growing);
+
+	/* tdb_allrecord_lock will update header; did zones change? */
+	old_zone_bits = tdb->header.v.zone_bits;
+	old_num_zones = tdb->header.v.num_zones;
+
+	/* FIXME: this is overkill.  An expand lock? */
+	if (tdb_allrecord_lock(tdb, F_WRLCK, TDB_LOCK_WAIT, false) == -1)
+		return -1;
+
+	/* Someone may have expanded for us. */
+	if (old_zone_bits != tdb->header.v.zone_bits
+	    || old_num_zones != tdb->header.v.num_zones)
+		goto success;
+
+	/* They may have also expanded the underlying size (otherwise we'd
+	 * have expanded our mmap to look at those offsets already). */
+	old_size = tdb->map_size;
+	tdb->methods->oob(tdb, tdb->map_size + 1, true);
+	if (tdb->map_size != old_size)
+		goto success;
+
+	add = expand_to_fill_zones(tdb);
+	if (add == TDB_OFF_ERR)
 		goto fail;
+
+	if (add >= needed) {
+		/* Allocate from this zone. */
+		tdb->last_zone = zone_of(tdb, tdb->map_size - add);
+		goto success;
+	}
+
+	/* Slow path.  Should we increase the number of buckets? */
+	new_num_buckets = tdb->header.v.free_buckets;
+	if (larger_buckets_might_help(tdb))
+		new_num_buckets++;
+
+	/* Now we'll need room for the new free buckets, too.  Assume
+	 * worst case (zones expand). */
+	needed += sizeof(struct tdb_used_record)
+		+ ((tdb->header.v.num_zones+1)
+		   * (new_num_buckets+1) * sizeof(tdb_off_t));
+
+	/* If we need less that one zone, and they're working well, just add
+	 * another one. */
+	if (needed < (1UL<<tdb->header.v.zone_bits) && zones_happy(tdb)) {
+		new_num_zones = tdb->header.v.num_zones+1;
+		new_zone_bits = tdb->header.v.zone_bits;
+		add = 1ULL << tdb->header.v.zone_bits;
+	} else {
+		/* Increase the zone size. */
+		new_num_zones = tdb->header.v.num_zones;
+		new_zone_bits = tdb->header.v.zone_bits+1;
+		while ((new_num_zones << new_zone_bits)
+		       < tdb->map_size + needed) {
+			new_zone_bits++;
+		}
+
+		/* We expand by enough full zones to meet the need. */
+		add = ((tdb->map_size + needed + (1ULL << new_zone_bits)-1)
+		       & ~((1ULL << new_zone_bits)-1))
+			- tdb->map_size;
+	}
+
+	if (update_zones(tdb, new_num_zones, new_zone_bits, new_num_buckets,
+			 add) == -1)
+		goto fail;
+
 success:
 	tdb_allrecord_unlock(tdb, F_WRLCK);
 	return 0;
 
-fail_release:
-	tdb_access_release(tdb, oldf);
 fail:
 	tdb_allrecord_unlock(tdb, F_WRLCK);
 	return -1;
