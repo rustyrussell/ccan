@@ -28,7 +28,7 @@ ways to use it:
 
 <li> Use it in place by giving it a "config.h" (steal
      <a href="example-config.h">this example</a>) and compiling all the .c
-       files which don't start with "_" (eg. as in this <a href="Makefile-ccan">simple Makefile</a>).
+       files (simply, or as in this <a href="Makefile-ccan">Makefile</a>).
 </ol>
 </p>
 
@@ -42,8 +42,9 @@ infrastructure at http://ccan.ozlabs.org/repo (<a href="http://ccan.ozlabs.org/b
 
 <p>
 We welcome new code!  The guide to creating new modules is a work in
-progress (just copy an existing module), but anyone can
-just <a href="upload.html">upload code</a>.
+progress (just copy an existing module), but anyone can send code to
+the <a href="http://ozlabs.org/mailman/listinfo/ccan">friendly
+mailing list</a> or just <a href="upload.html">upload it</a>.
 </p>
 
 <p>
@@ -57,7 +58,6 @@ licenses preferred.
 We have a <a href="http://ozlabs.org/mailman/listinfo/ccan">low volume
 mailing list</a> for discussion of CCAN in general, and you're welcome
 to join.
-
 </p>
 
 <p>
