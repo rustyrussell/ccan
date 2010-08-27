@@ -106,6 +106,7 @@ static bool run_test(struct ccanlint *i,
 	unsigned int this_score, timeleft;
 	const struct dependent *d;
 	const char *skip;
+	bool failed;
 
 	//one less test to run through
 	list_for_each(&i->dependencies, d, node)
@@ -137,52 +138,47 @@ static bool run_test(struct ccanlint *i,
 		skip = "timeout";
 		goto skip;
 	}
-	if (!result) {
-		if (verbose) {
-			printf("  %s: OK", i->name);
-			if (i->total_score)
-				printf(" (+%u/%u)",
-				       i->total_score, i->total_score);
-			printf("\n");
-		}
-		if (i->total_score) {
-			*score += i->total_score;
-			*total_score += i->total_score;
-		}
 
-		list_del(&i->list);
-		list_add_tail(&finished_tests, &i->list);
-		return true;
-	}
-
-	if (i->score)
+	if (!result)
+		this_score = i->total_score ? i->total_score : 1;
+	else if (i->score)
 		this_score = i->score(m, result);
 	else
 		this_score = 0;
 
-	list_del(&i->list);
-	list_add_tail(&finished_tests, &i->list);
+	failed = (this_score == 0);
 
-	*total_score += i->total_score;
-	*score += this_score;
 	if (verbose) {
-		printf("  %s: FAIL (+%u/%u)\n",
-		       i->name, this_score, i->total_score);
+		printf("  %s: %s", i->name, failed ? "FAIL" : "OK");
+		if (i->total_score)
+			printf(" (+%u/%u)",
+				       this_score, i->total_score);
+		printf("\n");
 	}
-	if (!quiet) {
-		printf("%s\n", i->describe(m, result));
 
+	if (!quiet && result) {
+		if (i->describe && (failed || verbose))
+			printf("    %s\n", i->describe(m, result));
 		if (i->handle)
 			i->handle(m, result);
 	}
 
-	/* Skip any tests which depend on this one. */
-	list_for_each(&i->dependencies, d, node) {
-		d->dependent->skip = true;
-		d->dependent->skip_fail = true;
+	if (i->total_score) {
+		*score += this_score;
+		*total_score += i->total_score;
 	}
 
-	return false;
+	list_del(&i->list);
+	list_add_tail(&finished_tests, &i->list);
+
+	if (failed) {
+		/* Skip any tests which depend on this one. */
+		list_for_each(&i->dependencies, d, node) {
+			d->dependent->skip = true;
+			d->dependent->skip_fail = true;
+		}
+	}
+	return !failed;
 }
 
 static void register_test(struct list_head *h, struct ccanlint *test, ...)
@@ -344,7 +340,7 @@ int main(int argc, char *argv[])
 	exclude = btree_new(btree_strcmp);
 
 	/* I'd love to use long options, but that's not standard. */
-	/* FIXME: getopt_long ccan package? */
+	/* FIXME: popt ccan package? */
 	while ((c = getopt(argc, argv, "sd:vnlx:t:k:")) != -1) {
 		switch (c) {
 		case 'd':
