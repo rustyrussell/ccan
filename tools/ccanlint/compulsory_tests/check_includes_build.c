@@ -60,7 +60,7 @@ static void *check_includes_build(struct manifest *m,
 	}
 	close(fd);
 
-	return compile_object(m, tmpsrc, ccan_dir, tmpobj);
+	return compile_object(m, tmpsrc, ccan_dir, "", tmpobj);
 }
 
 static const char *describe_includes_build(struct manifest *m,

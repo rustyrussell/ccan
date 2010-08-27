@@ -139,6 +139,9 @@ struct ccan_file {
 
 	/* If this file gets compiled (eg. .C file to .o file), result here. */
 	char *compiled;
+
+	/* Compiled with coverage information. */
+	char *cov_compiled;
 };
 
 /* A new ccan_file, with the given name (talloc_steal onto returned value). */

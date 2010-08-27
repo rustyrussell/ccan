@@ -17,10 +17,11 @@ char *link_objects(const void *ctx, const char *objs, char **errmsg)
 
 /* Compile a single C file to an object file.  Returns errmsg if fails. */
 char *compile_object(const void *ctx, const char *cfile, const char *ccandir,
+		     const char *extra_cflags,
 		     const char *outfile)
 {
-	return run_command(ctx, NULL, "cc " CFLAGS " -I%s -c -o %s %s",
-			   ccandir, outfile, cfile);
+	return run_command(ctx, NULL, "cc " CFLAGS " -I%s %s -c -o %s %s",
+			   ccandir, extra_cflags, outfile, cfile);
 }
 
 /* Compile and link single C file, with object files.

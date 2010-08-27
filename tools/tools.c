@@ -63,10 +63,8 @@ static void killme(int sig)
 	kill(-getpid(), SIGKILL);
 }
 
-static char *run_with_timeout(const void *ctx,
-			      const char *cmd,
-			      bool *ok,
-			      unsigned *timeout_ms)
+char *run_with_timeout(const void *ctx, const char *cmd,
+		       bool *ok, unsigned *timeout_ms)
 {
 	pid_t pid;
 	int p[2];

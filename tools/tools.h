@@ -9,7 +9,9 @@
 #define SPACE_CHARS	" \f\n\r\t\v"
 
 /* FIXME: Nested functions break with -Wmissing-prototypes -Wmissing-declarations */
-#define CFLAGS "-g -Wall -Wundef -Wstrict-prototypes -Wold-style-definition -Werror -I../.."
+#define CFLAGS "-g -Wall -Wundef -Wstrict-prototypes -Wold-style-definition -Werror"
+
+#define COVERAGE_CFLAGS "-fprofile-arcs -ftest-coverage"
 
 /* This actually compiles and runs the info file to get dependencies. */
 char **get_deps(const void *ctx, const char *dir, bool recurse,
@@ -28,6 +30,8 @@ char *talloc_basename(const void *ctx, const char *dir);
 char *talloc_dirname(const void *ctx, const char *dir);
 char *talloc_getcwd(const void *ctx);
 char *run_command(const void *ctx, unsigned int *time_ms, const char *fmt, ...);
+char *run_with_timeout(const void *ctx, const char *cmd,
+		       bool *ok, unsigned *timeout_ms);
 char *temp_file(const void *ctx, const char *extension);
 bool move_file(const char *oldname, const char *newname);
 
@@ -40,6 +44,7 @@ bool move_file(const char *oldname, const char *newname);
 char *link_objects(const void *ctx, const char *objs, char **errmsg);
 /* Compile a single C file to an object file.  Returns errmsg if fails. */
 char *compile_object(const void *ctx, const char *cfile, const char *ccandir,
+		     const char *extra_cflags,
 		     const char *outfile);
 /* Compile and link single C file, with object files, libs, etc.  NULL on
  * success, error output on fail. */

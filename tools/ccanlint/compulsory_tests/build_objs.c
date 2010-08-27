@@ -35,7 +35,7 @@ static void *check_objs_build(struct manifest *m,
 		build_objs.total_score++;
 
 		i->compiled = maybe_temp_file(m, "", keep, fullfile);
-		err = compile_object(m, fullfile, ccan_dir, i->compiled);
+		err = compile_object(m, fullfile, ccan_dir, "", i->compiled);
 		if (err) {
 			talloc_free(i->compiled);
 			if (report)

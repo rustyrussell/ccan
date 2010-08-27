@@ -26,7 +26,8 @@ static char *compile(struct manifest *m,
 		     struct ccan_file *cfile)
 {
 	cfile->compiled = maybe_temp_file(m, "", keep, cfile->fullname);
-	return compile_object(m, cfile->fullname, ccan_dir, cfile->compiled);
+	return compile_object(m, cfile->fullname, ccan_dir, "",
+			      cfile->compiled);
 }
 
 static void *do_compile_test_helpers(struct manifest *m,
