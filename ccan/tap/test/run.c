@@ -129,5 +129,5 @@ int main(int argc, char *argv[])
 
 	write_all(stdoutfd, "ok 1 - All passed\n",
 		  strlen("ok 1 - All passed\n"));
-	_exit(0);
+	exit(0);
 }
