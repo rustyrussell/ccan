@@ -372,6 +372,14 @@ int tdb_check(struct tdb_context *tdb,
 			if (tdb->methods->oob(tdb, off + len, false))
 				goto fail;
 
+			if (len < sizeof(p->f)) {
+				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
+					 "tdb_check: too short record %llu at"
+					 " %llu\n",
+					 (long long)len, (long long)off);
+				goto fail;
+			}
+
 			if (off + sizeof(p->u) == tdb->header.v.hash_off) {
 				hash_found = true;
 			} else if (off + sizeof(p->u)
