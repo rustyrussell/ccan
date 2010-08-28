@@ -268,6 +268,8 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		}
 		TEST_IT(tdb->flags & TDB_CONVERT);
 		tdb_convert(tdb, &tdb->header, sizeof(tdb->header));
+		/* Zones don't matter for internal db. */
+		tdb->last_zone = 0;
 		return tdb;
 	}
 
@@ -518,9 +520,9 @@ static int update_rec_hdr(struct tdb_context *tdb,
 			  struct tdb_used_record *rec,
 			  uint64_t h)
 {
-	uint64_t room = rec_data_length(rec) + rec_extra_padding(rec);
+	uint64_t dataroom = rec_data_length(rec) + rec_extra_padding(rec);
 
-	if (set_header(tdb, rec, keylen, datalen, room - datalen, h))
+	if (set_header(tdb, rec, keylen, datalen, keylen + dataroom, h))
 		return -1;
 
 	return tdb_write_convert(tdb, off, rec, sizeof(*rec));
@@ -688,11 +690,11 @@ int tdb_store(struct tdb_context *tdb,
 				+ rec_extra_padding(&rec));
 	}
 
-write:
 	/* FIXME: Encode extra hash bits! */
 	if (tdb_write_off(tdb, hash_off(tdb, old_bucket), new_off) == -1)
 		goto fail;
 
+write:
 	off = new_off + sizeof(struct tdb_used_record);
 	if (tdb->methods->write(tdb, off, key.dptr, key.dsize) == -1)
 		goto fail;

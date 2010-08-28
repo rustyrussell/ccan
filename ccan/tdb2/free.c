@@ -279,7 +279,7 @@ static int coalesce(struct tdb_context *tdb, tdb_off_t off,
 			break;
 		}
 
-		if (remove_from_list(tdb, list, r) == -1) {
+		if (remove_from_list(tdb, nlist, r) == -1) {
 			tdb_unlock_free_list(tdb, nlist);
 			goto err;
 		}
@@ -296,6 +296,14 @@ static int coalesce(struct tdb_context *tdb, tdb_off_t off,
 	r = tdb_get(tdb, off, &pad, sizeof(pad));
 	if (!r)
 		goto err;
+
+	if (r->data_len != data_len) {
+		tdb->ecode = TDB_ERR_CORRUPT;
+		tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
+			 "coalesce: expected data len %llu not %llu\n",
+			 (long long)data_len, (long long)r->data_len);
+		goto err;
+	}
 
 	if (remove_from_list(tdb, list, r) == -1)
 		goto err;
