@@ -70,6 +70,12 @@ int fcntl_with_lockcheck(int fd, int cmd, ... /* arg */ )
 				break;
 			if (fl_end >= i->off && fl_end < i_end)
 				break;
+
+			/* tdb_allrecord_lock does this, handle adjacent: */
+			if (fl->l_start == i_end && fl->l_type == i->type) {
+				i->len = fl->l_len ? i->len + fl->l_len : 0;
+				goto ok;
+			}
 		}
 		if (i) {
 			/* Special case: upgrade of allrecord lock. */
