@@ -153,13 +153,6 @@ static void add_to_freetable(struct tdb_context *tdb,
 	add_free_record(tdb, eoff, sizeof(struct tdb_used_record) + elen);
 }
 
-static tdb_off_t hash_off(struct tdb_context *tdb, uint64_t list)
-{
-	return tdb->header.v.hash_off
-		+ ((list & ((1ULL << tdb->header.v.hash_bits) - 1))
-		   * sizeof(tdb_off_t));
-}
-
 static void add_to_hashtable(struct tdb_context *tdb,
 			     tdb_off_t eoff,
 			     struct tdb_data key)

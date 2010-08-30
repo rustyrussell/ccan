@@ -394,7 +394,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	return NULL;
 }
 
-static tdb_off_t hash_off(struct tdb_context *tdb, uint64_t list)
+tdb_off_t hash_off(struct tdb_context *tdb, uint64_t list)
 {
 	return tdb->header.v.hash_off
 		+ ((list & ((1ULL << tdb->header.v.hash_bits) - 1))
@@ -561,16 +561,24 @@ static int hash_add(struct tdb_context *tdb,
 
 	if (unlikely(num == len)) {
 		/* We wrapped.  Look through start of hash table. */
+		i = 0;
 		hoff = hash_off(tdb, 0);
 		len = (1ULL << tdb->header.v.hash_bits);
 		num = tdb_find_zero_off(tdb, hoff, len);
-		if (i == len) {
+		if (num == len) {
 			tdb->ecode = TDB_ERR_CORRUPT;
 			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
 				 "hash_add: full hash table!\n");
 			return -1;
 		}
 	}
+	if (tdb_read_off(tdb, hash_off(tdb, i + num)) != 0) {
+		tdb->ecode = TDB_ERR_CORRUPT;
+		tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
+			 "hash_add: overwriting hash table?\n");
+		return -1;
+	}
+
 	/* FIXME: Encode extra hash bits! */
 	return tdb_write_off(tdb, hash_off(tdb, i + num), off);
 }
@@ -582,6 +590,7 @@ static void enlarge_hash(struct tdb_context *tdb)
 	tdb_len_t hlen;
 	uint64_t num = 1ULL << tdb->header.v.hash_bits;
 	struct tdb_used_record pad, *r;
+	unsigned int records = 0;
 
 	/* FIXME: We should do this without holding locks throughout. */
 	if (tdb_allrecord_lock(tdb, F_WRLCK, TDB_LOCK_WAIT, false) == -1)
@@ -624,7 +633,13 @@ again:
 			goto oldheader;
 		if (off && hash_add(tdb, hash_record(tdb, off), off) == -1)
 			goto oldheader;
+		if (off)
+			records++;
 	}
+
+	tdb->log(tdb, TDB_DEBUG_TRACE, tdb->log_priv,
+		 "enlarge_hash: moved %u records from %llu buckets.\n",
+		 records, (long long)num);
 
 	/* Free up old hash. */
 	r = tdb_get(tdb, oldoff - sizeof(*r), &pad, sizeof(*r));
@@ -643,6 +658,42 @@ oldheader:
 	tdb->header.v.hash_bits--;
 	tdb->header.v.hash_off = oldoff;
 	goto unlock;
+}
+
+
+/* This is the slow version of the routine which searches the
+ * hashtable for an entry.
+ * We lock every hash bucket up to and including the next zero one.
+ */
+static tdb_off_t find_and_lock_slow(struct tdb_context *tdb,
+				    struct tdb_data key,
+				    uint64_t h,
+				    int ltype,
+				    tdb_off_t *start_lock,
+				    tdb_len_t *num_locks,
+				    tdb_off_t *bucket,
+				    struct tdb_used_record *rec)
+{
+	/* Warning: this may drop the lock on *bucket! */
+	*num_locks = relock_hash_to_zero(tdb, *start_lock, ltype);
+	if (*num_locks == TDB_OFF_ERR)
+		return TDB_OFF_ERR;
+
+	for (*bucket = *start_lock;
+	     *bucket < *start_lock + *num_locks;
+	     (*bucket)++) {
+		tdb_off_t off = entry_matches(tdb, *bucket, h, &key, rec);
+		/* Empty entry or we found it? */
+		if (off == 0 || off != TDB_OFF_ERR)
+			return off;
+	}
+
+	/* We didn't find a zero entry?  Something went badly wrong... */
+	unlock_lists(tdb, *start_lock, *start_lock + *num_locks, ltype);
+	tdb->ecode = TDB_ERR_CORRUPT;
+	tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
+		 "find_and_lock: expected to find an empty hash bucket!\n");
+	return TDB_OFF_ERR;
 }
 
 /* This is the core routine which searches the hashtable for an entry.
@@ -676,27 +727,8 @@ static tdb_off_t find_and_lock(struct tdb_context *tdb,
 	}
 
 	/* Slow path, need to grab more locks and search. */
-
-	/* Warning: this may drop the lock on *bucket! */
-	*num_locks = relock_hash_to_zero(tdb, *start_lock, ltype);
-	if (*num_locks == TDB_OFF_ERR)
-		return TDB_OFF_ERR;
-
-	for (*bucket = *start_lock;
-	     *bucket < *start_lock + *num_locks;
-	     (*bucket)++) {
-		off = entry_matches(tdb, *bucket, h, &key, rec);
-		/* Empty entry or we found it? */
-		if (off == 0 || off != TDB_OFF_ERR)
-			return off;
-	}
-
-	/* We didn't find a zero entry?  Something went badly wrong... */
-	unlock_lists(tdb, *start_lock, *start_lock + *num_locks, ltype);
-	tdb->ecode = TDB_ERR_CORRUPT;
-	tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-		 "find_and_lock: expected to find an empty hash bucket!\n");
-	return TDB_OFF_ERR;
+	return find_and_lock_slow(tdb, key, h, ltype, start_lock, num_locks,
+				  bucket, rec);
 }
 
 /* Returns -1 on error, 0 on OK, 1 on "expand and retry." */
@@ -710,7 +742,10 @@ static int replace_data(struct tdb_context *tdb,
 
 	/* Allocate a new record. */
 	new_off = alloc(tdb, key.dsize, dbuf.dsize, h, growing);
-	if (new_off == 0)
+	if (unlikely(new_off == TDB_OFF_ERR))
+		return -1;
+
+	if (unlikely(new_off == 0))
 		return 1;
 
 	/* We didn't like the existing one: remove it. */
@@ -883,7 +918,7 @@ int tdb_append(struct tdb_context *tdb,
 	if (unlikely(num > 4 * tdb->header.v.hash_bits - 30))
 		enlarge_hash(tdb);
 
-	return 0;
+	return ret;
 
 fail:
 	unlock_lists(tdb, start, num, F_WRLCK);
@@ -922,28 +957,38 @@ int tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 	uint64_t h;
 
 	h = tdb_hash(tdb, key.dptr, key.dsize);
-	off = find_and_lock(tdb, key, h, F_WRLCK, &start, &num, &bucket, &rec);
+	start = tdb_lock_list(tdb, h, F_WRLCK, TDB_LOCK_WAIT);
+	if (unlikely(start == TDB_OFF_ERR))
+		return -1;
+
+	/* FIXME: Fastpath: if next is zero, we can delete without lock,
+	 * since this lock protects us. */
+	off = find_and_lock_slow(tdb, key, h, F_WRLCK,
+				 &start, &num, &bucket, &rec);
 	if (unlikely(off == TDB_OFF_ERR))
 		return -1;
 
 	if (!off) {
+		/* FIXME: We could optimize not found case if it mattered, by
+		 * reading offset after first lock: if it's zero, goto here. */
 		unlock_lists(tdb, start, num, F_WRLCK);
 		tdb->ecode = TDB_ERR_NOEXIST;
 		return -1;
 	}
+	/* Since we found the entry, we must have locked it and a zero. */
+	assert(num >= 2);
 
 	/* This actually unlinks it. */
 	if (tdb_write_off(tdb, hash_off(tdb, bucket), 0) == -1)
 		goto unlock_err;
 
 	/* Rehash anything following. */
-	for (i = hash_off(tdb, bucket+1);
-	     i != hash_off(tdb, h + num - 1);
-	     i += sizeof(tdb_off_t)) {
-		tdb_off_t off2;
+	for (i = bucket+1; i != bucket + num - 1; i++) {
+		tdb_off_t hoff, off2;
 		uint64_t h2;
 
-		off2 = tdb_read_off(tdb, i);
+		hoff = hash_off(tdb, i);
+		off2 = tdb_read_off(tdb, hoff);
 		if (unlikely(off2 == TDB_OFF_ERR))
 			goto unlock_err;
 
@@ -954,11 +999,11 @@ int tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 		/* Maybe use a bit to indicate it is in ideal place? */
 		h2 = hash_record(tdb, off2);
 		/* Is it happy where it is? */
-		if (hash_off(tdb, h2) == i)
+		if (hash_off(tdb, h2) == hoff)
 			continue;
 
 		/* Remove it. */
-		if (tdb_write_off(tdb, i, 0) == -1)
+		if (tdb_write_off(tdb, hoff, 0) == -1)
 			goto unlock_err;
 
 		/* Rehash it. */

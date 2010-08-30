@@ -89,6 +89,7 @@ typedef struct tdb_data {
 struct tdb_context;
 
 /* FIXME: Make typesafe */
+typedef int (*tdb_traverse_func)(struct tdb_context *, TDB_DATA, TDB_DATA, void *);
 typedef void (*tdb_logfn_t)(struct tdb_context *, enum tdb_debug_level, void *priv, const char *, ...) PRINTF_ATTRIBUTE(4, 5);
 typedef uint64_t (*tdb_hashfn_t)(const void *key, size_t len, uint64_t seed,
 				 void *priv);
@@ -129,6 +130,11 @@ struct tdb_data tdb_fetch(struct tdb_context *tdb, struct tdb_data key);
 int tdb_delete(struct tdb_context *tdb, struct tdb_data key);
 int tdb_store(struct tdb_context *tdb, struct tdb_data key, struct tdb_data dbuf, int flag);
 int tdb_append(struct tdb_context *tdb, struct tdb_data key, struct tdb_data dbuf);
+int tdb_chainlock(struct tdb_context *tdb, TDB_DATA key);
+int tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key);
+int64_t tdb_traverse(struct tdb_context *tdb, tdb_traverse_func fn, void *p);
+int64_t tdb_traverse_read(struct tdb_context *tdb,
+			  tdb_traverse_func fn, void *p);
 int tdb_close(struct tdb_context *tdb);
 int tdb_check(struct tdb_context *tdb,
 	      int (*check)(TDB_DATA key, TDB_DATA data, void *private_data),

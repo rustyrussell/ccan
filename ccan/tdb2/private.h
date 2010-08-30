@@ -263,6 +263,9 @@ int write_header(struct tdb_context *tdb);
 /* Hash random memory. */
 uint64_t tdb_hash(struct tdb_context *tdb, const void *ptr, size_t len);
 
+/* offset of hash table entry for this list/hash value */
+tdb_off_t hash_off(struct tdb_context *tdb, uint64_t list);
+
 
 /* free.c: */
 void tdb_zone_init(struct tdb_context *tdb);

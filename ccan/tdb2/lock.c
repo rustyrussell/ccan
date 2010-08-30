@@ -719,7 +719,8 @@ void tdb_unlock_free_list(struct tdb_context *tdb, tdb_off_t flist)
 			+ flist, F_WRLCK);
 }
 
-#if 0
+/* Even if the entry isn't in this hash bucket, you'd have to lock this
+ * bucket to find it. */
 static int chainlock(struct tdb_context *tdb, const TDB_DATA *key,
 		     int ltype, enum tdb_lock_flags waitflag,
 		     const char *func)
@@ -739,6 +740,14 @@ int tdb_chainlock(struct tdb_context *tdb, TDB_DATA key)
 	return chainlock(tdb, &key, F_WRLCK, TDB_LOCK_WAIT, "tdb_chainlock");
 }
 
+int tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key)
+{
+	uint64_t h = tdb_hash(tdb, key.dptr, key.dsize);
+	tdb_trace_1rec(tdb, "tdb_chainunlock", key);
+	return tdb_unlock_list(tdb, h, F_WRLCK);
+}
+
+#if 0
 /* lock/unlock one hash chain, non-blocking. This is meant to be used
    to reduce contention - it cannot guarantee how many records will be
    locked */
@@ -746,14 +755,6 @@ int tdb_chainlock_nonblock(struct tdb_context *tdb, TDB_DATA key)
 {
 	return chainlock(tdb, &key, F_WRLCK, TDB_LOCK_NOWAIT,
 			 "tdb_chainlock_nonblock");
-}
-
-int tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key)
-{
-	uint64_t h = tdb_hash(tdb, key.dptr, key.dsize);
-	tdb_trace_1rec(tdb, "tdb_chainunlock", key);
-	return tdb_unlock_list(tdb, h & ((1ULL << tdb->header.v.hash_bits)-1),
-			       F_WRLCK);
 }
 
 int tdb_chainlock_read(struct tdb_context *tdb, TDB_DATA key)
