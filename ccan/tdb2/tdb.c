@@ -599,12 +599,18 @@ static void enlarge_hash(struct tdb_context *tdb)
 				 "find_bucket_and_lock: zero hash bucket!\n");
 			goto unlock;
 		}
-		h = hash_record(tdb, off);
+
+		/* Find next empty hash slot. */
+		for (h = hash_record(tdb, off);
+		     tdb_read_off(tdb, newoff + (h & ((num * 2)-1))
+				  * sizeof(tdb_off_t)) != 0;
+		     h++);
+
 		/* FIXME: Encode extra hash bits! */
-		if (tdb_write_off(tdb, newoff
-				  + (h & ((num * 2) - 1)) * sizeof(uint64_t),
-				  off) == -1)
+		if (tdb_write_off(tdb, newoff + (h & ((num * 2)-1))
+				  * sizeof(tdb_off_t), off) == -1)
 			goto unlock;
+		i++;
 	}
 
 	/* Free up old hash. */
