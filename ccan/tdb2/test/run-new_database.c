@@ -16,8 +16,7 @@ int main(int argc, char *argv[])
 	plan_tests(sizeof(flags) / sizeof(flags[0]) * 2 + 1);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		tdb = tdb_open("run-new_database", flags[i],
-			       O_RDWR|O_CREAT|O_TRUNC, 0600, NULL);
-		tdb->log = tap_log_fn;
+			       O_RDWR|O_CREAT|O_TRUNC, 0600, &tap_log_attr);
 		ok1(tdb);
 		if (tdb) {
 			ok1(tdb_check(tdb, NULL, NULL) == 0);

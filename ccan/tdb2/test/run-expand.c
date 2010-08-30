@@ -28,8 +28,7 @@ int main(int argc, char *argv[])
 	/* First, lower level expansion tests. */
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		tdb = tdb_open("run-expand.tdb", flags[i],
-			       O_RDWR|O_CREAT|O_TRUNC, 0600, NULL);
-		tdb->log = tap_log_fn;
+			       O_RDWR|O_CREAT|O_TRUNC, 0600, &tap_log_attr);
 		ok1(tdb);
 		if (!tdb)
 			continue;
@@ -102,8 +101,7 @@ int main(int argc, char *argv[])
 	/* Now using tdb_expand. */
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		tdb = tdb_open("run-expand.tdb", flags[i],
-			       O_RDWR|O_CREAT|O_TRUNC, 0600, NULL);
-		tdb->log = tap_log_fn;
+			       O_RDWR|O_CREAT|O_TRUNC, 0600, &tap_log_attr);
 		ok1(tdb);
 		if (!tdb)
 			continue;

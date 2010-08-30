@@ -236,12 +236,24 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb_io_init(tdb);
 	tdb_lock_init(tdb);
 
-	/* FIXME */
-	if (attr) {
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "tdb_open: attributes not yet supported\n");
-		errno = EINVAL;
-		goto fail;
+	while (attr) {
+		switch (attr->base.attr) {
+		case TDB_ATTRIBUTE_LOG:
+			tdb->log = attr->log.log_fn;
+			tdb->log_priv = attr->log.log_private;
+			break;
+		case TDB_ATTRIBUTE_HASH:
+			tdb->khash = attr->hash.hash_fn;
+			tdb->hash_priv = attr->hash.hash_private;
+			break;
+		default:
+			tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
+				 "tdb_open: unknown attribute type %u\n",
+				 attr->base.attr);
+			errno = EINVAL;
+			goto fail;
+		}
+		attr = attr->base.next;
 	}
 
 	if ((open_flags & O_ACCMODE) == O_WRONLY) {
@@ -402,6 +414,8 @@ static tdb_off_t entry_matches(struct tdb_context *tdb,
 	uint64_t keylen;
 	const unsigned char *rkey;
 
+	list &= ((1ULL << tdb->header.v.hash_bits) - 1);
+
 	off = tdb_read_off(tdb, tdb->header.v.hash_off
 			   + list * sizeof(tdb_off_t));
 	if (off == 0 || off == TDB_OFF_ERR)
@@ -455,7 +469,8 @@ static int lock_lists(struct tdb_context *tdb,
 	tdb_off_t i;
 
 	for (i = list; i < list + num; i++) {
-		if (tdb_lock_list(tdb, i, ltype, TDB_LOCK_WAIT) != 0) {
+		if (tdb_lock_list(tdb, i, ltype, TDB_LOCK_WAIT)
+		    == TDB_OFF_ERR) {
 			unlock_lists(tdb, list, i - list, ltype);
 			return -1;
 		}
@@ -469,7 +484,7 @@ static int lock_lists(struct tdb_context *tdb,
 static tdb_len_t relock_hash_to_zero(struct tdb_context *tdb,
 				     tdb_off_t start, int ltype)
 {
-	tdb_len_t num, len, pre_locks;
+	tdb_len_t num, len;
 
 again:
 	num = 1ULL << tdb->header.v.hash_bits;
@@ -477,39 +492,45 @@ again:
 	if (unlikely(len == num - start)) {
 		/* We hit the end of the hash range.  Drop lock: we have
 		   to lock start of hash first. */
+		tdb_len_t pre_locks;
+
 		tdb_unlock_list(tdb, start, ltype);
+
 		/* Grab something, so header is stable. */
 		if (tdb_lock_list(tdb, 0, ltype, TDB_LOCK_WAIT))
 			return TDB_OFF_ERR;
-		len = tdb_find_zero_off(tdb, hash_off(tdb, 0), num);
-		if (lock_lists(tdb, 1, len, ltype) == -1) {
+		pre_locks = tdb_find_zero_off(tdb, hash_off(tdb, 0), num);
+		/* We want to lock the zero entry as well. */
+		pre_locks++;
+		if (lock_lists(tdb, 1, pre_locks - 1, ltype) == -1) {
 			tdb_unlock_list(tdb, 0, ltype);
 			return TDB_OFF_ERR;
 		}
-		pre_locks = len;
-		len = num - start;
-	} else {
-		/* We already have lock on start. */
-		start++;
-		pre_locks = 0;
-	}
-	if (unlikely(lock_lists(tdb, start, len, ltype) == -1)) {
-		if (pre_locks)
+
+		/* Now lock later ones. */
+		if (unlikely(lock_lists(tdb, start, len, ltype) == -1)) {
 			unlock_lists(tdb, 0, pre_locks, ltype);
-		else
+			return TDB_OFF_ERR;
+		}
+		len += pre_locks;
+	} else {
+		/* We want to lock the zero entry as well. */
+		len++;
+		/* But we already have lock on start. */
+		if (unlikely(lock_lists(tdb, start+1, len-1, ltype) == -1)) {
 			tdb_unlock_list(tdb, start, ltype);
-		return TDB_OFF_ERR;
+			return TDB_OFF_ERR;
+		}
 	}
 
 	/* Now, did we lose the race, and it's not zero any more? */
-	if (unlikely(tdb_read_off(tdb, hash_off(tdb, pre_locks + len)) != 0)) {
-		unlock_lists(tdb, 0, pre_locks, ltype);
+	if (unlikely(tdb_read_off(tdb, hash_off(tdb, start + len - 1)) != 0)) {
 		/* Leave the start locked, as expected. */
 		unlock_lists(tdb, start + 1, len - 1, ltype);
 		goto again;
 	}
 
-	return pre_locks + len;
+	return len;
 }
 
 /* FIXME: modify, don't rewrite! */
@@ -632,13 +653,14 @@ int tdb_store(struct tdb_context *tdb,
 		for (i = start; i < start + num_locks; i++) {
 			off = entry_matches(tdb, i, h, &key, &rec);
 			/* Empty entry or we found it? */
-			if (off == 0 || off != TDB_OFF_ERR) {
-				old_bucket = i;
+			if (off == 0 || off != TDB_OFF_ERR)
 				break;
-			}
 		}
 		if (i == start + num_locks)
 			off = 0;
+
+		/* Even if not found, this is where we put the new entry. */
+		old_bucket = i;
 	}
 
 	/* Now we have lock on this hash bucket. */
@@ -707,7 +729,7 @@ write:
 
 	/* FIXME: by simple simulation, this approximated 60% full.
 	 * Check in real case! */
-	if (unlikely(num_locks > 4 * tdb->header.v.hash_bits - 31))
+	if (unlikely(num_locks > 4 * tdb->header.v.hash_bits - 30))
 		enlarge_hash(tdb);
 
 	return 0;

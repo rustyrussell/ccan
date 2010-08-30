@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include "logging.h"
 
 struct tdb_layout *new_tdb_layout(void)
 {
@@ -208,7 +209,7 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 
 	mem = malloc(len);
 	/* Now populate our header, cribbing from a real TDB header. */
-	tdb = tdb_open(NULL, TDB_INTERNAL, O_RDWR, 0, NULL);
+	tdb = tdb_open(NULL, TDB_INTERNAL, O_RDWR, 0, &tap_log_attr);
 	hdr = (void *)mem;
 	*hdr = tdb->header;
 	hdr->v.generation++;

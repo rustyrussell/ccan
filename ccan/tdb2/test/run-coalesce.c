@@ -41,7 +41,6 @@ int main(int argc, char *argv[])
 	tdb_layout_add_freetable(layout, 1, 16, 12, 0);
 	tdb_layout_add_free(layout, 1024);
 	tdb = tdb_layout_get(layout);
-	tdb->log = tap_log_fn;
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	ok1(free_record_length(tdb, layout->elem[2].base.off) == 1024);
 
@@ -64,7 +63,6 @@ int main(int argc, char *argv[])
 	tdb_layout_add_free(layout, 1024);
 	tdb_layout_add_used(layout, key, data, 6);
 	tdb = tdb_layout_get(layout);
-	tdb->log = tap_log_fn;
 	ok1(free_record_length(tdb, layout->elem[2].base.off) == 1024);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 
@@ -87,7 +85,6 @@ int main(int argc, char *argv[])
 	tdb_layout_add_free(layout, 1024);
 	tdb_layout_add_free(layout, 512);
 	tdb = tdb_layout_get(layout);
-	tdb->log = tap_log_fn;
 	ok1(free_record_length(tdb, layout->elem[2].base.off) == 1024);
 	ok1(free_record_length(tdb, layout->elem[3].base.off) == 512);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
@@ -113,7 +110,6 @@ int main(int argc, char *argv[])
 	tdb_layout_add_free(layout, 512);
 	tdb_layout_add_used(layout, key, data, 6);
 	tdb = tdb_layout_get(layout);
-	tdb->log = tap_log_fn;
 	ok1(free_record_length(tdb, layout->elem[2].base.off) == 1024);
 	ok1(free_record_length(tdb, layout->elem[3].base.off) == 512);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
@@ -139,7 +135,6 @@ int main(int argc, char *argv[])
 	tdb_layout_add_free(layout, 512);
 	tdb_layout_add_free(layout, 32);
 	tdb = tdb_layout_get(layout);
-	tdb->log = tap_log_fn;
 	ok1(free_record_length(tdb, layout->elem[2].base.off) == 1024);
 	ok1(free_record_length(tdb, layout->elem[3].base.off) == 512);
 	ok1(free_record_length(tdb, layout->elem[4].base.off) == 32);
@@ -166,7 +161,6 @@ int main(int argc, char *argv[])
 	tdb_layout_add_free(layout, 32768);
 	tdb_layout_add_free(layout, 30000);
 	tdb = tdb_layout_get(layout);
-	tdb->log = tap_log_fn;
 	ok1(free_record_length(tdb, layout->elem[2].base.off) == 32768);
 	ok1(zone_of(tdb, layout->elem[2].base.off) == 0);
 	ok1(free_record_length(tdb, layout->elem[3].base.off) == 30000);
@@ -197,7 +191,6 @@ int main(int argc, char *argv[])
 	}
 	total -= sizeof(struct tdb_used_record);
 	tdb = tdb_layout_get(layout);
-	tdb->log = tap_log_fn;
 	ok1(free_record_length(tdb, layout->elem[2].base.off) == 1 << 4);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 

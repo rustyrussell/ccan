@@ -16,14 +16,14 @@ int main(int argc, char *argv[])
 	plan_tests(sizeof(flags) / sizeof(flags[0]) * 2 + 1);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		tdb = tdb_open("run-enlarge-hash.tdb", flags[i],
-			       O_RDWR|O_CREAT|O_TRUNC, 0600, NULL);
-		tdb->log = tap_log_fn;
+			       O_RDWR|O_CREAT|O_TRUNC, 0600, &tap_log_attr);
 		ok1(tdb);
 		if (tdb) {
 			enlarge_hash(tdb);
 			ok1(tdb_check(tdb, NULL, NULL) == 0);
 			tdb_close(tdb);
 		}
+		/* FIXME: Test enlarging with hash clash. */
 	}
 	ok1(tap_log_messages == 0);
 	return exit_status();

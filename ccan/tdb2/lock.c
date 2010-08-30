@@ -665,6 +665,8 @@ again:
 
 int tdb_unlock_list(struct tdb_context *tdb, tdb_off_t list, int ltype)
 {
+	list &= ((1ULL << tdb->header.v.hash_bits) - 1);
+
 	/* a allrecord lock allows us to avoid per chain locks */
 	if (tdb->allrecord_lock.count) {
 		if (tdb->allrecord_lock.ltype == F_RDLCK

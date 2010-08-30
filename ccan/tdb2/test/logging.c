@@ -7,6 +7,11 @@
 
 unsigned tap_log_messages;
 
+union tdb_attribute tap_log_attr = {
+	.log = { .base = { .attr = TDB_ATTRIBUTE_LOG },
+		 .log_fn = tap_log_fn }
+};
+
 void tap_log_fn(struct tdb_context *tdb,
 		enum tdb_debug_level level, void *priv,
 		const char *fmt, ...)
@@ -19,7 +24,8 @@ void tap_log_fn(struct tdb_context *tdb,
 		abort();
 	diag("tdb log level %u: %s", level, p);
 	free(p);
-	tap_log_messages++;
+	if (level != TDB_DEBUG_TRACE)
+		tap_log_messages++;
 	va_end(ap);
 }
 
