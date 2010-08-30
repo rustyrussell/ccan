@@ -26,6 +26,8 @@ char **get_libs(const void *ctx, const char *dir,
 		unsigned int *num, char **infofile);
 
 /* From tools.c */
+/* If set, print all commands run, all output they give and exit status. */
+extern bool tools_verbose;
 char *talloc_basename(const void *ctx, const char *dir);
 char *talloc_dirname(const void *ctx, const char *dir);
 char *talloc_getcwd(const void *ctx);

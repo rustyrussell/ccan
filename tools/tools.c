@@ -18,6 +18,7 @@
 
 static char *tmpdir = NULL;
 static unsigned int count;
+bool tools_verbose = false;
 
 /* Ten minutes. */
 const unsigned int default_timeout_ms = 10 * 60 * 1000;
@@ -77,6 +78,9 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 		return talloc_asprintf(ctx, "Failed to create pipe: %s",
 				       strerror(errno));
 
+	if (tools_verbose)
+		printf("Running: %s\n", cmd);
+
 	gettimeofday(&start, NULL);
 	pid = fork();
 	if (pid == -1) {
@@ -128,6 +132,13 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 	else
 		*timeout_ms -= ms;
 
+	if (tools_verbose) {
+		printf("%s", ret);
+		printf("Finished: %u ms, %s %u\n", ms,
+		       WIFEXITED(status) ? "exit status" : "killed by signal",
+		       WIFEXITED(status) ? WEXITSTATUS(status)
+		       : WTERMSIG(status));
+	}
 	*ok = (WIFEXITED(status) && WEXITSTATUS(status) == 0);
 	return ret;
 }
@@ -167,6 +178,8 @@ static int unlink_all(char *dir)
 {
 	char cmd[strlen(dir) + sizeof("rm -rf ")];
 	sprintf(cmd, "rm -rf %s", dir);
+	if (tools_verbose)
+		printf("Running: %s\n", cmd);
 	if (system(cmd) != 0)
 		warn("Could not remove temporary work in %s", dir);
 	return 0;
@@ -192,25 +205,34 @@ char *temp_dir(const void *ctx)
 		}
 		talloc_set_destructor(tmpdir, unlink_all);
 	}
+	if (tools_verbose)
+		printf("Created temporary directory %s\n", tmpdir);
 	return tmpdir;
 }
 
 char *temp_file(const void *ctx, const char *extension)
 {
-	return talloc_asprintf(ctx, "%s/%u%s",
-			       temp_dir(ctx), count++, extension);
+	char *f = talloc_asprintf(ctx, "%s/%u%s",
+				  temp_dir(ctx), count++, extension);
+	if (tools_verbose)
+		printf("Created temporary file %s\n", f);
+	return f;
 }
 
 char *maybe_temp_file(const void *ctx, const char *extension, bool keep,
 		      const char *srcname)
 {
 	size_t baselen;
+	char *f;
 
 	if (!keep)
 		return temp_file(ctx, extension);
 
 	baselen = strrchr(srcname, '.') - srcname;
-	return talloc_asprintf(ctx, "%.*s%s", baselen, srcname, extension);
+	f = talloc_asprintf(ctx, "%.*s%s", baselen, srcname, extension);
+	if (tools_verbose)
+		printf("Creating file %s\n", f);
+	return f;
 }
 
 bool move_file(const char *oldname, const char *newname)
@@ -220,17 +242,28 @@ bool move_file(const char *oldname, const char *newname)
 	int fd;
 	bool ret;
 
+	if (tools_verbose)
+		printf("Moving file %s to %s: ", oldname, newname);
+
 	/* Simple case: rename works. */
-	if (rename(oldname, newname) == 0)
+	if (rename(oldname, newname) == 0) {
+		if (tools_verbose)
+			printf("rename worked\n");
 		return true;
+	}
 
 	/* Try copy and delete: not atomic! */
 	contents = grab_file(NULL, oldname, &size);
-	if (!contents)
+	if (!contents) {
+		if (tools_verbose)
+			printf("read failed: %s\n", strerror(errno));
 		return false;
+	}
 
 	fd = open(newname, O_WRONLY|O_CREAT|O_TRUNC, 0666);
 	if (fd < 0) {
+		if (tools_verbose)
+			printf("output open failed: %s\n", strerror(errno));
 		ret = false;
 		goto free;
 	}
@@ -239,10 +272,15 @@ bool move_file(const char *oldname, const char *newname)
 	if (close(fd) != 0)
 		ret = false;
 
-	if (ret)
+	if (ret) {
+		if (tools_verbose)
+			printf("copy worked\n");
 		unlink(oldname);
-	else
+	} else {
+		if (tools_verbose)
+			printf("write/close failed\n");
 		unlink(newname);
+	}
 
 free:
 	talloc_free(contents);
