@@ -699,13 +699,50 @@ static tdb_off_t find_and_lock(struct tdb_context *tdb,
 	return TDB_OFF_ERR;
 }
 
+/* Returns -1 on error, 0 on OK, 1 on "expand and retry." */
+static int replace_data(struct tdb_context *tdb,
+			uint64_t h, struct tdb_data key, struct tdb_data dbuf,
+			tdb_off_t bucket,
+			tdb_off_t old_off, tdb_len_t old_room,
+			bool growing)
+{
+	tdb_off_t new_off;
+
+	/* Allocate a new record. */
+	new_off = alloc(tdb, key.dsize, dbuf.dsize, h, growing);
+	if (new_off == 0)
+		return 1;
+
+	/* We didn't like the existing one: remove it. */
+	if (old_off)
+		add_free_record(tdb, old_off,
+				sizeof(struct tdb_used_record)
+				+ key.dsize + old_room);
+
+	/* FIXME: Encode extra hash bits! */
+	if (tdb_write_off(tdb, hash_off(tdb, bucket), new_off) == -1)
+		return -1;
+
+	new_off += sizeof(struct tdb_used_record);
+	if (tdb->methods->write(tdb, new_off, key.dptr, key.dsize) == -1)
+		return -1;
+
+	new_off += key.dsize;
+	if (tdb->methods->write(tdb, new_off, dbuf.dptr, dbuf.dsize) == -1)
+		return -1;
+
+	/* FIXME: tdb_increment_seqnum(tdb); */
+	return 0;
+}
+
 int tdb_store(struct tdb_context *tdb,
 	      struct tdb_data key, struct tdb_data dbuf, int flag)
 {
-	tdb_off_t new_off, off, bucket, start, num;
+	tdb_off_t off, bucket, start, num;
+	tdb_len_t old_room = 0;
 	struct tdb_used_record rec;
 	uint64_t h;
-	bool growing = false;
+	int ret;
 
 	h = tdb_hash(tdb, key.dptr, key.dsize);
 	off = find_and_lock(tdb, key, h, F_WRLCK, &start, &num, &bucket, &rec);
@@ -720,18 +757,22 @@ int tdb_store(struct tdb_context *tdb,
 		}
 	} else {
 		if (off) {
-			if (rec_data_length(&rec) + rec_extra_padding(&rec)
-			    >= dbuf.dsize) {
-				new_off = off;
+			old_room = rec_data_length(&rec)
+				+ rec_extra_padding(&rec);
+			if (old_room >= dbuf.dsize) {
+				/* Can modify in-place.  Easy! */
 				if (update_rec_hdr(tdb, off,
 						   key.dsize, dbuf.dsize,
 						   &rec, h))
 					goto fail;
-				goto write;
+				if (tdb->methods->write(tdb, off + sizeof(rec)
+							+ key.dsize,
+							dbuf.dptr, dbuf.dsize))
+					goto fail;
+				unlock_lists(tdb, start, num, F_WRLCK);
+				return 0;
 			}
 			/* FIXME: See if right record is free? */
-			/* Hint to allocator that we've realloced. */
-			growing = true;
 		} else {
 			if (flag == TDB_MODIFY) {
 				/* if the record doesn't exist and we
@@ -743,38 +784,99 @@ int tdb_store(struct tdb_context *tdb,
 		}
 	}
 
-	/* Allocate a new record. */
-	new_off = alloc(tdb, key.dsize, dbuf.dsize, h, growing);
-	if (new_off == 0) {
-		unlock_lists(tdb, start, num, F_WRLCK);
+	/* If we didn't use the old record, this implies we're growing. */
+	ret = replace_data(tdb, h, key, dbuf, bucket, off, old_room, off != 0);
+	unlock_lists(tdb, start, num, F_WRLCK);
+
+	if (unlikely(ret == 1)) {
 		/* Expand, then try again... */
-		if (tdb_expand(tdb, key.dsize, dbuf.dsize, growing) == -1)
+		if (tdb_expand(tdb, key.dsize, dbuf.dsize, off != 0) == -1)
 			return -1;
 		return tdb_store(tdb, key, dbuf, flag);
 	}
 
-	/* We didn't like the existing one: remove it. */
+	/* FIXME: by simple simulation, this approximated 60% full.
+	 * Check in real case! */
+	if (unlikely(num > 4 * tdb->header.v.hash_bits - 30))
+		enlarge_hash(tdb);
+
+	return ret;
+
+fail:
+	unlock_lists(tdb, start, num, F_WRLCK);
+	return -1;
+}
+
+int tdb_append(struct tdb_context *tdb,
+	       struct tdb_data key, struct tdb_data dbuf)
+{
+	tdb_off_t off, bucket, start, num;
+	struct tdb_used_record rec;
+	tdb_len_t old_room = 0, old_dlen;
+	uint64_t h;
+	unsigned char *newdata;
+	struct tdb_data new_dbuf;
+	int ret;
+
+	h = tdb_hash(tdb, key.dptr, key.dsize);
+	off = find_and_lock(tdb, key, h, F_WRLCK, &start, &num, &bucket, &rec);
+	if (unlikely(off == TDB_OFF_ERR))
+		return -1;
+
 	if (off) {
-		add_free_record(tdb, off, sizeof(struct tdb_used_record)
-				+ rec_key_length(&rec)
-				+ rec_data_length(&rec)
-				+ rec_extra_padding(&rec));
+		old_dlen = rec_data_length(&rec);
+		old_room = old_dlen + rec_extra_padding(&rec);
+
+		/* Fast path: can append in place. */
+		if (rec_extra_padding(&rec) >= dbuf.dsize) {
+			if (update_rec_hdr(tdb, off, key.dsize,
+					   old_dlen + dbuf.dsize, &rec, h))
+				goto fail;
+
+			off += sizeof(rec) + key.dsize + old_dlen;
+			if (tdb->methods->write(tdb, off, dbuf.dptr,
+						dbuf.dsize) == -1)
+				goto fail;
+
+			/* FIXME: tdb_increment_seqnum(tdb); */
+			unlock_lists(tdb, start, num, F_WRLCK);
+			return 0;
+		}
+		/* FIXME: Check right record free? */
+
+		/* Slow path. */
+		newdata = malloc(key.dsize + old_dlen + dbuf.dsize);
+		if (!newdata) {
+			tdb->ecode = TDB_ERR_OOM;
+			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
+				 "tdb_append: cannot allocate %llu bytes!\n",
+				 (long long)key.dsize + old_dlen + dbuf.dsize);
+			goto fail;
+		}
+		if (tdb->methods->read(tdb, off + sizeof(rec) + key.dsize,
+				       newdata, old_dlen) != 0) {
+			free(newdata);
+			goto fail;
+		}
+		memcpy(newdata + old_dlen, dbuf.dptr, dbuf.dsize);
+		new_dbuf.dptr = newdata;
+		new_dbuf.dsize = old_dlen + dbuf.dsize;
+	} else {
+		newdata = NULL;
+		new_dbuf = dbuf;
 	}
 
-	/* FIXME: Encode extra hash bits! */
-	if (tdb_write_off(tdb, hash_off(tdb, bucket), new_off) == -1)
-		goto fail;
-
-write:
-	off = new_off + sizeof(struct tdb_used_record);
-	if (tdb->methods->write(tdb, off, key.dptr, key.dsize) == -1)
-		goto fail;
-	off += key.dsize;
-	if (tdb->methods->write(tdb, off, dbuf.dptr, dbuf.dsize) == -1)
-		goto fail;
-
-	/* FIXME: tdb_increment_seqnum(tdb); */
+	/* If they're using tdb_append(), it implies they're growing record. */
+	ret = replace_data(tdb, h, key, new_dbuf, bucket, off, old_room, true);
 	unlock_lists(tdb, start, num, F_WRLCK);
+	free(newdata);
+
+	if (unlikely(ret == 1)) {
+		/* Expand, then try again. */
+		if (tdb_expand(tdb, key.dsize, dbuf.dsize, true) == -1)
+			return -1;
+		return tdb_append(tdb, key, dbuf);
+	}
 
 	/* FIXME: by simple simulation, this approximated 60% full.
 	 * Check in real case! */

@@ -128,6 +128,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 struct tdb_data tdb_fetch(struct tdb_context *tdb, struct tdb_data key);
 int tdb_delete(struct tdb_context *tdb, struct tdb_data key);
 int tdb_store(struct tdb_context *tdb, struct tdb_data key, struct tdb_data dbuf, int flag);
+int tdb_append(struct tdb_context *tdb, struct tdb_data key, struct tdb_data dbuf);
 int tdb_close(struct tdb_context *tdb);
 int tdb_check(struct tdb_context *tdb,
 	      int (*check)(TDB_DATA key, TDB_DATA data, void *private_data),

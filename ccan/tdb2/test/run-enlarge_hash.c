@@ -21,8 +21,9 @@ int main(int argc, char *argv[])
 	struct tdb_data data = { (unsigned char *)&v, sizeof(v) };
 	union tdb_attribute hattr = { .hash = { .base = { TDB_ATTRIBUTE_HASH },
 						.hash_fn = clash } };
-	int flags[] = { TDB_INTERNAL, TDB_DEFAULT,
-			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT };
+	int flags[] = { TDB_INTERNAL, TDB_DEFAULT, TDB_NOMMAP,
+			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT, 
+			TDB_NOMMAP|TDB_CONVERT };
 
 	hattr.base.next = &tap_log_attr;
 

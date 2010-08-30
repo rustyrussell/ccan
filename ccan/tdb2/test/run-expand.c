@@ -20,8 +20,9 @@ int main(int argc, char *argv[])
 	tdb_off_t off;
 	uint64_t val, buckets;
 	struct tdb_context *tdb;
-	int flags[] = { TDB_INTERNAL, TDB_DEFAULT,
-			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT };
+	int flags[] = { TDB_INTERNAL, TDB_DEFAULT, TDB_NOMMAP,
+			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT,
+			TDB_NOMMAP|TDB_CONVERT };
 
 	plan_tests(sizeof(flags) / sizeof(flags[0]) * 40 + 1);
 

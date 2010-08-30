@@ -13,8 +13,9 @@ int main(int argc, char *argv[])
 {
 	unsigned int i;
 	struct tdb_context *tdb;
-	int flags[] = { TDB_INTERNAL, TDB_DEFAULT,
-			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT };
+	int flags[] = { TDB_INTERNAL, TDB_DEFAULT, TDB_NOMMAP,
+			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT, 
+			TDB_NOMMAP|TDB_CONVERT };
 	struct tdb_data key = { (unsigned char *)"key", 3 };
 	struct tdb_data data;
 

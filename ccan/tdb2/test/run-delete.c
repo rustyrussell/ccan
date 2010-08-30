@@ -62,8 +62,37 @@ static void test_val(struct tdb_context *tdb, unsigned int val)
 	v = val + 1;
 	ok1(tdb_fetch(tdb, key).dsize == data.dsize);
 
-	/* Delete that, so we are empty. */
+	/* Now, this will be ideally placed. */
+	v = val + 2;
+	ok1(tdb_store(tdb, key, data, TDB_INSERT) == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == 0);
+
+	/* This will collide with both. */
+	v = val;
+	ok1(tdb_store(tdb, key, data, TDB_INSERT) == 0);
+
+	/* We can still find them all, right? */
+	ok1(tdb_fetch(tdb, key).dsize == data.dsize);
+	v = val + 1;
+	ok1(tdb_fetch(tdb, key).dsize == data.dsize);
+	v = val + 2;
+	ok1(tdb_fetch(tdb, key).dsize == data.dsize);
+
+	/* And if we delete val + 1, that val + 2 should not move! */
+	v = val + 1;
 	ok1(tdb_delete(tdb, key) == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == 0);
+
+	v = val;
+	ok1(tdb_fetch(tdb, key).dsize == data.dsize);
+	v = val + 2;
+	ok1(tdb_fetch(tdb, key).dsize == data.dsize);
+
+	/* Delete those two, so we are empty. */
+	ok1(tdb_delete(tdb, key) == 0);
+	v = val;
+	ok1(tdb_delete(tdb, key) == 0);
+
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 }
 
@@ -73,12 +102,13 @@ int main(int argc, char *argv[])
 	struct tdb_context *tdb;
 	union tdb_attribute hattr = { .hash = { .base = { TDB_ATTRIBUTE_HASH },
 						.hash_fn = clash } };
-	int flags[] = { TDB_INTERNAL, TDB_DEFAULT,
-			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT };
+	int flags[] = { TDB_INTERNAL, TDB_DEFAULT, TDB_NOMMAP,
+			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT,
+			TDB_NOMMAP|TDB_CONVERT };
 
 	hattr.base.next = &tap_log_attr;
 
-	plan_tests(sizeof(flags) / sizeof(flags[0]) * 44 + 1);
+	plan_tests(sizeof(flags) / sizeof(flags[0]) * 66 + 1);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		tdb = tdb_open("run-delete.tdb", flags[i],
 			       O_RDWR|O_CREAT|O_TRUNC, 0600, &hattr);
