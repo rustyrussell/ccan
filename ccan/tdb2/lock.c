@@ -485,8 +485,8 @@ int tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
 	/* Lock all the hash buckets. */
 again:
 	hash_size = (1ULL << tdb->header.v.hash_bits);
-	if (tdb_lock_gradual(tdb, ltype, TDB_HASH_LOCK_START,
-			     1ULL << tdb->header.v.hash_bits, flags)) {
+	if (tdb_lock_gradual(tdb, ltype, flags, TDB_HASH_LOCK_START,
+			     hash_size)) {
 		if (!(flags & TDB_LOCK_PROBE)) {
 			tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 				 "tdb_lockall hashes failed (%s)\n",
