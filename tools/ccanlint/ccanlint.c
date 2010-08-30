@@ -400,8 +400,9 @@ int main(int argc, char *argv[])
 	m = get_manifest(talloc_autofree_context(), dir);
 
 	/* Create a symlink from temp dir back to src dir's test directory. */
-	symlink(talloc_asprintf(m, "%s/test", dir),
-		talloc_asprintf(m, "%s/test", temp_dir(NULL)));
+	if (symlink(talloc_asprintf(m, "%s/test", dir),
+		    talloc_asprintf(m, "%s/test", temp_dir(NULL))) != 0)
+		err(1, "Creating test symlink in %s", temp_dir(NULL));
 
 	/* If you don't pass the compulsory tests, you don't even get a score */
 	if (verbose)
