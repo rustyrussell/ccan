@@ -36,7 +36,7 @@ static bool snapshot_uptodate;
 static char *snapshot;
 static off_t snapshot_len;
 static bool clear_if_first;
-#define TEST_DBNAME "/tmp/test7.tdb"
+#define TEST_DBNAME "run-open-during-transaction.tdb"
 
 #undef write
 #undef pwrite

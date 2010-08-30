@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
 	key.dsize = strlen("hi");
 	key.dptr = (void *)"hi";
 
-	tdb = tdb_open("/tmp/test4.tdb", 1024, TDB_CLEAR_IF_FIRST,
+	tdb = tdb_open("run-nested-transactions.tdb", 1024, TDB_CLEAR_IF_FIRST,
 		       O_CREAT|O_TRUNC|O_RDWR, 0600);
 	ok1(tdb);
 
@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 	free(data.dptr);
 	tdb_close(tdb);
 
-	tdb = tdb_open("/tmp/test4.tdb", 1024, TDB_ALLOW_NESTING, O_RDWR, 0);
+	tdb = tdb_open("run-nested-transactions.tdb", 1024, TDB_ALLOW_NESTING, O_RDWR, 0);
 	ok1(tdb);
 
 	ok1(tdb_transaction_start(tdb) == 0);

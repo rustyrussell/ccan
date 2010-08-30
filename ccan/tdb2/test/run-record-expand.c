@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
 	plan_tests(sizeof(flags) / sizeof(flags[0])
 		   * (3 + (1 + (MAX_SIZE/SIZE_STEP)) * 2) + 1);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
-		tdb = tdb_open("/tmp/run-new_database.tdb", flags[i],
+		tdb = tdb_open("run-record-expand.tdb", flags[i],
 			       O_RDWR|O_CREAT|O_TRUNC, 0600, NULL);
 		tdb->log = tap_log_fn;
 		ok1(tdb);

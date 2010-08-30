@@ -78,8 +78,8 @@ int main(int argc, char *argv[])
 	int errors = 0;
 
 	plan_tests(41);
-	tdb = tdb_open("/tmp/test8.tdb", 1024, TDB_CLEAR_IF_FIRST,
-		       O_CREAT|O_TRUNC|O_RDWR, 0600);
+	tdb = tdb_open("run-no-lock-during-traverse.tdb",
+		       1024, TDB_CLEAR_IF_FIRST, O_CREAT|O_TRUNC|O_RDWR, 0600);
 
 	ok1(tdb);
 	ok1(prepare_entries(tdb));

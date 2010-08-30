@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
 
 	plan_tests(4);
 	/* This should use mmap. */
-	tdb = tdb_open("/tmp/test6.tdb", 2, TDB_CLEAR_IF_FIRST,
+	tdb = tdb_open("run-corrupt.tdb", 2, TDB_CLEAR_IF_FIRST,
 		       O_CREAT|O_TRUNC|O_RDWR, 0600);
 
 	if (!tdb)
@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 	tdb_close(tdb);
 
 	/* This should not. */
-	tdb = tdb_open("/tmp/test6.tdb", 2, TDB_CLEAR_IF_FIRST|TDB_NOMMAP,
+	tdb = tdb_open("run-corrupt.tdb", 2, TDB_CLEAR_IF_FIRST|TDB_NOMMAP,
 		       O_CREAT|O_TRUNC|O_RDWR, 0600);
 
 	if (!tdb)

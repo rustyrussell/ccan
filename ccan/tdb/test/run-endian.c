@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 	TDB_DATA key, data;
 
 	plan_tests(13);
-	tdb = tdb_open("/tmp/test.tdb", 1024, TDB_CLEAR_IF_FIRST|TDB_CONVERT,
+	tdb = tdb_open("run-endian.tdb", 1024, TDB_CLEAR_IF_FIRST|TDB_CONVERT,
 		       O_CREAT|O_TRUNC|O_RDWR, 0600);
 
 	ok1(tdb);
@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 	tdb_close(tdb);
 
 	/* Reopen: should read it */
-	tdb = tdb_open("/tmp/test.tdb", 1024, 0, O_RDWR, 0);
+	tdb = tdb_open("run-endian.tdb", 1024, 0, O_RDWR, 0);
 	ok1(tdb);
 	
 	key.dsize = strlen("hi");

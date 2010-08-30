@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 	TDB_DATA key, data;
 
 	plan_tests(10);
-	tdb = tdb_open("/tmp/test.tdb", 1024, TDB_CLEAR_IF_FIRST,
+	tdb = tdb_open("run.tdb", 1024, TDB_CLEAR_IF_FIRST,
 		       O_CREAT|O_TRUNC|O_RDWR, 0600);
 
 	ok1(tdb);

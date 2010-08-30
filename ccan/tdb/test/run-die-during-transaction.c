@@ -37,7 +37,7 @@ static bool in_transaction;
 static bool suppress_logging;
 static int target, current;
 static jmp_buf jmpbuf;
-#define TEST_DBNAME "/tmp/test7.tdb"
+#define TEST_DBNAME "run-die-during-transaction.tdb"
 
 static void taplog(struct tdb_context *tdb,
 		   enum tdb_debug_level level,

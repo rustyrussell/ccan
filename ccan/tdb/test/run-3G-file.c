@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 	struct tdb_record rec;
 
 	plan_tests(24);
-	tdb = tdb_open("/tmp/test.tdb", 1024, TDB_CLEAR_IF_FIRST,
+	tdb = tdb_open("run-36-file.tdb", 1024, TDB_CLEAR_IF_FIRST,
 		       O_CREAT|O_TRUNC|O_RDWR, 0600);
 
 	ok1(tdb);

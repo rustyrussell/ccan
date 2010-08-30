@@ -47,8 +47,8 @@ int main(int argc, char *argv[])
 	if (!agent)
 		err(1, "preparing agent");
 
-	tdb = tdb_open("/tmp/test2.tdb", 1024, TDB_CLEAR_IF_FIRST,
-		       O_CREAT|O_TRUNC|O_RDWR, 0600);
+	tdb = tdb_open("run-traverse-in-transaction.tdb",
+		       1024, TDB_CLEAR_IF_FIRST, O_CREAT|O_TRUNC|O_RDWR, 0600);
 	ok1(tdb);
 
 	key.dsize = strlen("hi");

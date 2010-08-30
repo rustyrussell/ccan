@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 	TDB_DATA key, data;
 
 	plan_tests(9);
-	tdb = tdb_open("/tmp/test5.tdb", 1, TDB_CLEAR_IF_FIRST,
+	tdb = tdb_open("run-check.tdb", 1, TDB_CLEAR_IF_FIRST,
 		       O_CREAT|O_TRUNC|O_RDWR, 0600);
 
 	ok1(tdb);
@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	tdb_close(tdb);
 
-	tdb = tdb_open("/tmp/test5.tdb", 1024, 0, O_RDWR, 0);
+	tdb = tdb_open("run-check.tdb", 1024, 0, O_RDWR, 0);
 	ok1(tdb);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	tdb_close(tdb);
