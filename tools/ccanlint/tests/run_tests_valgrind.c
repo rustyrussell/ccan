@@ -18,7 +18,7 @@
 static const char *can_run_vg(struct manifest *m)
 {
 	unsigned int timeleft = default_timeout_ms;
-	char *output = run_command(m, &timeleft, "valgrind -q true");
+	char *output = run_command(m, &timeleft, "valgrind -q --error-exitcode=0 true");
 
 	if (output)
 		return talloc_asprintf(m, "No valgrind support: %s", output);
@@ -54,7 +54,8 @@ static void *do_run_tests_vg(struct manifest *m,
 	list_for_each(&m->run_tests, i, list) {
 		run_tests_vg.total_score++;
 		cmdout = run_command(m, timeleft,
-				     "valgrind -q %s", i->compiled);
+				     "valgrind -q --error-exitcode=100 %s",
+				     i->compiled);
 		if (cmdout) {
 			res = talloc(list, struct run_tests_result);
 			res->file = i;
@@ -66,7 +67,8 @@ static void *do_run_tests_vg(struct manifest *m,
 	list_for_each(&m->api_tests, i, list) {
 		run_tests_vg.total_score++;
 		cmdout = run_command(m, timeleft,
-				     "valgrind -q %s", i->compiled);
+				     "valgrind -q --error-exitcode=100 %s",
+				     i->compiled);
 		if (cmdout) {
 			res = talloc(list, struct run_tests_result);
 			res->file = i;
