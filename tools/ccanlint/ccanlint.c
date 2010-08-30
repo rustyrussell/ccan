@@ -31,7 +31,7 @@
 #include <ccan/str_talloc/str_talloc.h>
 #include <ccan/talloc/talloc.h>
 
-static unsigned int verbose = 0;
+unsigned int verbose = 0;
 static LIST_HEAD(compulsory_tests);
 static LIST_HEAD(normal_tests);
 static LIST_HEAD(finished_tests);
@@ -42,7 +42,7 @@ static unsigned int timeout;
 static void usage(const char *name)
 {
 	fprintf(stderr, "Usage: %s [-s] [-n] [-v] [-t <ms>] [-d <dirname>] [-x <tests>] [-k <test>]*\n"
-		"   -v: verbose mode\n"
+		"   -v: verbose mode (can specify more than once)\n"
 		"   -s: simply give one line summary\n"
 		"   -d: use this directory instead of the current one\n"
 		"   -n: do not compile anything\n"
@@ -106,7 +106,7 @@ static bool run_test(struct ccanlint *i,
 	unsigned int this_score, timeleft;
 	const struct dependent *d;
 	const char *skip;
-	bool failed;
+	bool bad, good;
 
 	//one less test to run through
 	list_for_each(&i->dependencies, d, node)
@@ -146,10 +146,12 @@ static bool run_test(struct ccanlint *i,
 	else
 		this_score = 0;
 
-	failed = (this_score == 0);
+	bad = (this_score == 0);
+	good = (this_score >= i->total_score);
 
-	if (verbose) {
-		printf("  %s: %s", i->name, failed ? "FAIL" : "OK");
+	if (verbose || (bad && !quiet)) {
+		printf("  %s: %s", i->name,
+		       bad ? "FAIL" : good ? "PASS" : "PARTIAL");
 		if (i->total_score)
 			printf(" (+%u/%u)",
 				       this_score, i->total_score);
@@ -157,8 +159,9 @@ static bool run_test(struct ccanlint *i,
 	}
 
 	if (!quiet && result) {
-		if (i->describe && (failed || verbose))
-			printf("    %s\n", i->describe(m, result));
+		const char *desc;
+		if (i->describe && (desc = i->describe(m, result)) != NULL) 
+			printf("    %s\n", desc);
 		if (i->handle)
 			i->handle(m, result);
 	}
@@ -171,14 +174,14 @@ static bool run_test(struct ccanlint *i,
 	list_del(&i->list);
 	list_add_tail(&finished_tests, &i->list);
 
-	if (failed) {
+	if (bad) {
 		/* Skip any tests which depend on this one. */
 		list_for_each(&i->dependencies, d, node) {
 			d->dependent->skip = true;
 			d->dependent->skip_fail = true;
 		}
 	}
-	return !failed;
+	return good;
 }
 
 static void register_test(struct list_head *h, struct ccanlint *test, ...)
@@ -387,11 +390,18 @@ int main(int argc, char *argv[])
 	if (optind < argc)
 		usage(argv[0]);
 
+	if (verbose >= 3)
+		tools_verbose = true;
+
 	/* We move into temporary directory, so gcov dumps its files there. */
 	if (chdir(temp_dir(talloc_autofree_context())) != 0)
 		err(1, "Error changing to %s temporary dir", temp_dir(NULL));
 
 	m = get_manifest(talloc_autofree_context(), dir);
+
+	/* Create a symlink from temp dir back to src dir's test directory. */
+	symlink(talloc_asprintf(m, "%s/test", dir),
+		talloc_asprintf(m, "%s/test", temp_dir(NULL)));
 
 	/* If you don't pass the compulsory tests, you don't even get a score */
 	if (verbose)

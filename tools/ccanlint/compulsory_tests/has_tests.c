@@ -51,7 +51,8 @@ static const char *describe_has_tests(struct manifest *m, void *check_result)
 	"warnings, and then run: it is expected to use libtap to report its\n"
 	"results in a simple and portable format.  It should #include the C\n"
 	"files from the module directly (so it can probe the internals): the\n"
-	"module will not be linked in.\n\n"
+	"module will not be linked in.  The test will be run in a temporary\n"
+	"directory, with the test directory symlinked under test/.\n\n"
 
 	"api tests are just like a run test, except it is a guarantee of API\n"
 	"stability: this test should pass on all future versions of the\n"

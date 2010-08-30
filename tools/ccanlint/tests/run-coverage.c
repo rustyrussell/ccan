@@ -2,6 +2,7 @@
 #include <tools/tools.h>
 #include <ccan/talloc/talloc.h>
 #include <ccan/str_talloc/str_talloc.h>
+#include <ccan/grab_file/grab_file.h>
 #include <ccan/str/str.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -18,7 +19,7 @@
 struct coverage_result {
 	float uncovered;
 	const char *what;
-	const char *output;
+	char *output;
 };
 
 static bool find_source_file(struct manifest *m, const char *filename)
@@ -38,7 +39,8 @@ static bool find_source_file(struct manifest *m, const char *filename)
 
 /* FIXME: Don't know how stable this is.  Read cov files directly? */
 static void analyze_coverage(struct manifest *m,
-			     struct coverage_result *res, const char *output)
+			     struct coverage_result *res, const char *output,
+			     bool full_gcov)
 {
 	char **lines = strsplit(res, output, "\n", NULL);
 	float covered_lines = 0.0;
@@ -49,6 +51,7 @@ static void analyze_coverage(struct manifest *m,
 	  Output looks like:
 	   File '../../../ccan/tdb2/private.h'
 	   Lines executed:0.00% of 8
+	   /home/ccan/ccan/tdb2/test/run-simple-delete.c:creating 'run-simple-delete.c.gcov'
 
 	   File '../../../ccan/tdb2/tdb.c'
 	   Lines executed:0.00% of 450
@@ -71,6 +74,28 @@ static void analyze_coverage(struct manifest *m,
 				errx(1, "Could not parse line '%s'", lines[i]);
 			total_lines += of;
 			covered_lines += ex / 100.0 * of;
+		} else if (full_gcov && strstr(lines[i], ":creating '")) {
+			char *file, *filename, *apostrophe;
+			apostrophe = strchr(lines[i], '\'');
+			filename = apostrophe + 1;
+			apostrophe = strchr(filename, '\'');
+			*apostrophe = '\0';
+			if (lines_matter) {
+				file = grab_file(res, filename, NULL);
+				if (!file) {
+					res->what = talloc_asprintf(res,
+							    "Reading %s",
+							    filename);
+					res->output = talloc_strdup(res,
+							    strerror(errno));
+					return;
+				}
+				res->output = talloc_append_string(res->output,
+								   file);
+			}
+			if (tools_verbose)
+				printf("Unlinking %s", filename);
+			unlink(filename);
 		}
 	}
 
@@ -88,24 +113,18 @@ static void *do_run_coverage_tests(struct manifest *m,
 	struct coverage_result *res;
 	struct ccan_file *i;
 	char *cmdout;
-	char *olddir;
 	char *covcmd;
 	bool ok;
-
-	/* We run tests in the module directory, so any paths
-	 * referenced can all be module-local. */
-	olddir = talloc_getcwd(m);
-	if (!olddir)
-		err(1, "Could not save cwd");
-	if (chdir(m->dir) != 0)
-		err(1, "Could not chdir to %s", m->dir);
+	bool full_gcov = (verbose > 1);
 
 	res = talloc(m, struct coverage_result);
 	res->what = NULL;
+	res->output = talloc_strdup(res, "");
 	res->uncovered = 1.0;
 
 	/* This tells gcov where we put those .gcno files. */
-	covcmd = talloc_asprintf(m, "gcov -n -o %s",
+	covcmd = talloc_asprintf(m, "gcov %s -o %s",
+				 full_gcov ? "" : "-n",
 				 talloc_dirname(res, m->info_file->compiled));
 
 	/* Run them all. */
@@ -116,7 +135,7 @@ static void *do_run_coverage_tests(struct manifest *m,
 			res->output = talloc_steal(res, cmdout);
 			return res;
 		}
-		covcmd = talloc_asprintf_append(covcmd, " %s", i->name);
+		covcmd = talloc_asprintf_append(covcmd, " %s", i->fullname);
 	}
 
 	list_for_each(&m->api_tests, i, list) {
@@ -126,7 +145,7 @@ static void *do_run_coverage_tests(struct manifest *m,
 			res->output = talloc_steal(res, cmdout);
 			return res;
 		}
-		covcmd = talloc_asprintf_append(covcmd, " %s", i->name);
+		covcmd = talloc_asprintf_append(covcmd, " %s", i->fullname);
 	}
 
 	/* Now run gcov: we want output even if it succeeds. */
@@ -137,7 +156,8 @@ static void *do_run_coverage_tests(struct manifest *m,
 		return res;
 	}
 
-	analyze_coverage(m, res, cmdout);
+	analyze_coverage(m, res, cmdout, full_gcov);
+
 	return res;
 }
 
@@ -161,12 +181,20 @@ static const char *describe_run_coverage_tests(struct manifest *m,
 					       void *check_result)
 {
 	struct coverage_result *res = check_result;
+	bool full_gcov = (verbose > 1);
+	char *ret;
 
 	if (res->what)
 		return talloc_asprintf(m, "%s: %s", res->what, res->output);
 
-	return talloc_asprintf(m, "Tests achieved %0.2f%% coverage",
-			       (1.0 - res->uncovered) * 100);
+	if (!verbose)
+		return NULL;
+
+	ret = talloc_asprintf(m, "Tests achieved %0.2f%% coverage",
+			      (1.0 - res->uncovered) * 100);
+	if (full_gcov)
+		ret = talloc_asprintf_append(ret, "\n%s", res->output);
+	return ret;
 }
 
 struct ccanlint run_coverage_tests = {

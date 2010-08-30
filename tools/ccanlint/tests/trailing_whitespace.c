@@ -3,6 +3,7 @@
 #include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
 
+/* FIXME: only print full analysis if verbose >= 2.  */
 static char *report_on_trailing_whitespace(const char *line)
 {
 	const char *e = strchr(line, 0);
@@ -36,6 +37,8 @@ static void *check_trailing_whitespace(struct manifest *m,
 static const char *describe_trailing_whitespace(struct manifest *m,
 						void *check_result)
 {
+	if (!verbose)
+		return NULL;
 	return talloc_asprintf(check_result, 
 			       "Some source files have trailing whitespace:\n"
 			       "%s", (char *)check_result);

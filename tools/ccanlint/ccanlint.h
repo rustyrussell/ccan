@@ -11,6 +11,11 @@
 
 #define REGISTER_TEST(name, ...) 
 
+/* 1 == Describe results for partial failures.
+   2 == Describe gory details.
+   3 == Describe every action. */
+extern unsigned int verbose;
+
 struct manifest {
 	char *dir;
 	/* The module name, ie. final element of dir name */
