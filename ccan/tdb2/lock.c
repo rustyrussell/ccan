@@ -255,13 +255,18 @@ static int tdb_nest_lock(struct tdb_context *tdb, tdb_off_t offset, int ltype,
 {
 	struct tdb_lock_type *new_lck;
 
-	if (offset >= TDB_HASH_LOCK_START + (1ULL << tdb->header.v.hash_bits)
-	    + (tdb->header.v.num_zones * (tdb->header.v.free_buckets+1))) {
-		tdb->ecode = TDB_ERR_LOCK;
-		tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-			 "tdb_lock: invalid offset %llu for ltype=%d\n",
-			 (long long)offset, ltype);
-		return -1;
+	/* Header is not valid for open lock; valgrind complains. */
+	if (offset >= TDB_HASH_LOCK_START) {
+		if (offset > TDB_HASH_LOCK_START
+		    + (1ULL << tdb->header.v.hash_bits)
+		    + (tdb->header.v.num_zones
+		       * (tdb->header.v.free_buckets+1))) {
+			tdb->ecode = TDB_ERR_LOCK;
+			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
+				 "tdb_lock: invalid offset %llu ltype=%d\n",
+				 (long long)offset, ltype);
+			return -1;
+		}
 	}
 	if (tdb->flags & TDB_NOLOCK)
 		return 0;

@@ -147,7 +147,7 @@ static int tdb_new_database(struct tdb_context *tdb)
 					 sizeof(newdb.hdr.hash_test),
 					 newdb.hdr.hash_seed,
 					 tdb->hash_priv);
-
+	memset(newdb.hdr.reserved, 0, sizeof(newdb.hdr.reserved));
 	newdb.hdr.v.generation = 0;
 
 	/* The initial zone must cover the initial database size! */
