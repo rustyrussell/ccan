@@ -549,12 +549,38 @@ static int update_rec_hdr(struct tdb_context *tdb,
 	return tdb_write_convert(tdb, off, rec, sizeof(*rec));
 }
 
+static int hash_add(struct tdb_context *tdb,
+		    uint64_t hash, tdb_off_t off)
+{
+	tdb_off_t i, hoff, len, num;
+
+	/* Look for next space. */
+	i = (hash & ((1ULL << tdb->header.v.hash_bits) - 1));
+	len = (1ULL << tdb->header.v.hash_bits) - i;
+	num = tdb_find_zero_off(tdb, hash_off(tdb, i), len);
+
+	if (unlikely(num == len)) {
+		/* We wrapped.  Look through start of hash table. */
+		hoff = hash_off(tdb, 0);
+		len = (1ULL << tdb->header.v.hash_bits);
+		num = tdb_find_zero_off(tdb, hoff, len);
+		if (i == len) {
+			tdb->ecode = TDB_ERR_CORRUPT;
+			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
+				 "hash_add: full hash table!\n");
+			return -1;
+		}
+	}
+	/* FIXME: Encode extra hash bits! */
+	return tdb_write_off(tdb, hash_off(tdb, i + num), off);
+}
+
 /* If we fail, others will try after us. */
 static void enlarge_hash(struct tdb_context *tdb)
 {
 	tdb_off_t newoff, oldoff, i;
 	tdb_len_t hlen;
-	uint64_t h, num = 1ULL << tdb->header.v.hash_bits;
+	uint64_t num = 1ULL << tdb->header.v.hash_bits;
 	struct tdb_used_record pad, *r;
 
 	/* FIXME: We should do this without holding locks throughout. */
@@ -565,6 +591,7 @@ static void enlarge_hash(struct tdb_context *tdb)
 	if ((1ULL << tdb->header.v.hash_bits) != num)
 		goto unlock;
 
+again:
 	/* Allocate our new array. */
 	hlen = num * sizeof(tdb_off_t) * 2;
 	newoff = alloc(tdb, 0, hlen, 0, false);
@@ -573,9 +600,7 @@ static void enlarge_hash(struct tdb_context *tdb)
 	if (unlikely(newoff == 0)) {
 		if (tdb_expand(tdb, 0, hlen, false) == -1)
 			goto unlock;
-		newoff = alloc(tdb, 0, hlen, 0, false);
-		if (newoff == TDB_OFF_ERR || newoff == 0)
-			goto unlock;
+		goto again;
 	}
 	/* Step over record header! */
 	newoff += sizeof(struct tdb_used_record);
@@ -584,49 +609,40 @@ static void enlarge_hash(struct tdb_context *tdb)
 	if (zero_out(tdb, newoff, hlen) == -1)
 		goto unlock;
 
+	/* Update header now so we can use normal routines. */
+	oldoff = tdb->header.v.hash_off;
+
+	tdb->header.v.hash_bits++;
+	tdb->header.v.hash_off = newoff;
+
 	/* FIXME: If the space before is empty, we know this is in its ideal
 	 * location.  Or steal a bit from the pointer to avoid rehash. */
-	for (i = tdb_find_nonzero_off(tdb, hash_off(tdb, 0), num);
-	     i < num;
-	     i += tdb_find_nonzero_off(tdb, hash_off(tdb, i), num - i)) {
+	for (i = 0; i < num; i++) {
 		tdb_off_t off;
-		off = tdb_read_off(tdb, hash_off(tdb, i));
+		off = tdb_read_off(tdb, oldoff + i * sizeof(tdb_off_t));
 		if (unlikely(off == TDB_OFF_ERR))
-			goto unlock;
-		if (unlikely(!off)) {
-			tdb->ecode = TDB_ERR_CORRUPT;
-			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-				 "enlarge_hash: zero hash bucket!\n");
-			goto unlock;
-		}
-
-		/* Find next empty hash slot. */
-		for (h = hash_record(tdb, off);
-		     tdb_read_off(tdb, newoff + (h & ((num * 2)-1))
-				  * sizeof(tdb_off_t)) != 0;
-		     h++);
-
-		/* FIXME: Encode extra hash bits! */
-		if (tdb_write_off(tdb, newoff + (h & ((num * 2)-1))
-				  * sizeof(tdb_off_t), off) == -1)
-			goto unlock;
-		i++;
+			goto oldheader;
+		if (off && hash_add(tdb, hash_record(tdb, off), off) == -1)
+			goto oldheader;
 	}
 
 	/* Free up old hash. */
-	oldoff = tdb->header.v.hash_off - sizeof(*r);
-	r = tdb_get(tdb, oldoff, &pad, sizeof(*r));
+	r = tdb_get(tdb, oldoff - sizeof(*r), &pad, sizeof(*r));
 	if (!r)
-		goto unlock;
-	add_free_record(tdb, oldoff,
+		goto oldheader;
+	add_free_record(tdb, oldoff - sizeof(*r),
 			sizeof(*r)+rec_data_length(r)+rec_extra_padding(r));
 
 	/* Now we write the modified header. */
-	tdb->header.v.hash_bits++;
-	tdb->header.v.hash_off = newoff;
 	write_header(tdb);
 unlock:
 	tdb_allrecord_unlock(tdb, F_WRLCK);
+	return;
+
+oldheader:
+	tdb->header.v.hash_bits--;
+	tdb->header.v.hash_off = oldoff;
+	goto unlock;
 }
 
 /* This is the core routine which searches the hashtable for an entry.
@@ -795,31 +811,6 @@ struct tdb_data tdb_fetch(struct tdb_context *tdb, struct tdb_data key)
 
 	unlock_lists(tdb, start, num, F_RDLCK);
 	return ret;
-}
-
-static int hash_add(struct tdb_context *tdb, uint64_t h, tdb_off_t off)
-{
-	tdb_off_t i, hoff, len, num;
-
-	/* Look for next space. */
-	i = (h & ((1ULL << tdb->header.v.hash_bits) - 1));
-	len = (1ULL << tdb->header.v.hash_bits) - i;
-	num = tdb_find_zero_off(tdb, hash_off(tdb, i), len);
-
-	if (unlikely(num == len)) {
-		/* We wrapped.  Look through start of hash table. */
-		hoff = hash_off(tdb, 0);
-		len = (1ULL << tdb->header.v.hash_bits);
-		num = tdb_find_zero_off(tdb, hoff, len);
-		if (i == len) {
-			tdb->ecode = TDB_ERR_CORRUPT;
-			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-				 "hash_add: full hash table!\n");
-			return -1;
-		}
-	}
-	/* FIXME: Encode extra hash bits! */
-	return tdb_write_off(tdb, hash_off(tdb, i + num), off);
 }
 
 int tdb_delete(struct tdb_context *tdb, struct tdb_data key)
