@@ -596,7 +596,7 @@ static void enlarge_hash(struct tdb_context *tdb)
 		if (unlikely(!off)) {
 			tdb->ecode = TDB_ERR_CORRUPT;
 			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-				 "find_bucket_and_lock: zero hash bucket!\n");
+				 "enlarge_hash: zero hash bucket!\n");
 			goto unlock;
 		}
 
@@ -629,45 +629,72 @@ unlock:
 	tdb_allrecord_unlock(tdb, F_WRLCK);
 }
 
+/* This is the core routine which searches the hashtable for an entry.
+ * On error, no locks are held and TDB_OFF_ERR is returned.
+ * Otherwise, *num_locks locks of type ltype from *start_lock are held.
+ * The bucket where the entry is (or would be) is in *bucket.
+ * If not found, the return value is 0.
+ * If found, the return value is the offset, and *rec is the record. */
+static tdb_off_t find_and_lock(struct tdb_context *tdb,
+			       struct tdb_data key,
+			       uint64_t h,
+			       int ltype,
+			       tdb_off_t *start_lock,
+			       tdb_len_t *num_locks,
+			       tdb_off_t *bucket,
+			       struct tdb_used_record *rec)
+{
+	tdb_off_t off;
+
+	/* FIXME: can we avoid locks for some fast paths? */
+	*start_lock = tdb_lock_list(tdb, h, ltype, TDB_LOCK_WAIT);
+	if (*start_lock == TDB_OFF_ERR)
+		return TDB_OFF_ERR;
+
+	/* Fast path. */
+	off = entry_matches(tdb, *start_lock, h, &key, rec);
+	if (likely(off != TDB_OFF_ERR)) {
+		*bucket = *start_lock;
+		*num_locks = 1;
+		return off;
+	}
+
+	/* Slow path, need to grab more locks and search. */
+
+	/* Warning: this may drop the lock on *bucket! */
+	*num_locks = relock_hash_to_zero(tdb, *start_lock, ltype);
+	if (*num_locks == TDB_OFF_ERR)
+		return TDB_OFF_ERR;
+
+	for (*bucket = *start_lock;
+	     *bucket < *start_lock + *num_locks;
+	     (*bucket)++) {
+		off = entry_matches(tdb, *bucket, h, &key, rec);
+		/* Empty entry or we found it? */
+		if (off == 0 || off != TDB_OFF_ERR)
+			return off;
+	}
+
+	/* We didn't find a zero entry?  Something went badly wrong... */
+	unlock_lists(tdb, *start_lock, *start_lock + *num_locks, ltype);
+	tdb->ecode = TDB_ERR_CORRUPT;
+	tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
+		 "find_and_lock: expected to find an empty hash bucket!\n");
+	return TDB_OFF_ERR;
+}
+
 int tdb_store(struct tdb_context *tdb,
 	      struct tdb_data key, struct tdb_data dbuf, int flag)
 {
-	tdb_off_t new_off, off, old_bucket, start, num_locks = 1;
+	tdb_off_t new_off, off, bucket, start, num;
 	struct tdb_used_record rec;
 	uint64_t h;
 	bool growing = false;
 
 	h = tdb_hash(tdb, key.dptr, key.dsize);
-
-	/* FIXME: can we avoid locks for some fast paths? */
-	start = tdb_lock_list(tdb, h, F_WRLCK, TDB_LOCK_WAIT);
-	if (start == TDB_OFF_ERR)
+	off = find_and_lock(tdb, key, h, F_WRLCK, &start, &num, &bucket, &rec);
+	if (unlikely(off == TDB_OFF_ERR))
 		return -1;
-
-	/* Fast path. */
-	old_bucket = start;
-	off = entry_matches(tdb, start, h, &key, &rec);
-	if (unlikely(off == TDB_OFF_ERR)) {
-		/* Slow path, need to grab more locks and search. */
-		tdb_off_t i;
-
-		/* Warning: this may drop the lock!  Does that on error. */
-		num_locks = relock_hash_to_zero(tdb, start, F_WRLCK);
-		if (num_locks == TDB_OFF_ERR)
-			return -1;
-
-		for (i = start; i < start + num_locks; i++) {
-			off = entry_matches(tdb, i, h, &key, &rec);
-			/* Empty entry or we found it? */
-			if (off == 0 || off != TDB_OFF_ERR)
-				break;
-		}
-		if (i == start + num_locks)
-			off = 0;
-
-		/* Even if not found, this is where we put the new entry. */
-		old_bucket = i;
-	}
 
 	/* Now we have lock on this hash bucket. */
 	if (flag == TDB_INSERT) {
@@ -703,7 +730,7 @@ int tdb_store(struct tdb_context *tdb,
 	/* Allocate a new record. */
 	new_off = alloc(tdb, key.dsize, dbuf.dsize, h, growing);
 	if (new_off == 0) {
-		unlock_lists(tdb, start, num_locks, F_WRLCK);
+		unlock_lists(tdb, start, num, F_WRLCK);
 		/* Expand, then try again... */
 		if (tdb_expand(tdb, key.dsize, dbuf.dsize, growing) == -1)
 			return -1;
@@ -719,7 +746,7 @@ int tdb_store(struct tdb_context *tdb,
 	}
 
 	/* FIXME: Encode extra hash bits! */
-	if (tdb_write_off(tdb, hash_off(tdb, old_bucket), new_off) == -1)
+	if (tdb_write_off(tdb, hash_off(tdb, bucket), new_off) == -1)
 		goto fail;
 
 write:
@@ -731,65 +758,42 @@ write:
 		goto fail;
 
 	/* FIXME: tdb_increment_seqnum(tdb); */
-	unlock_lists(tdb, start, num_locks, F_WRLCK);
+	unlock_lists(tdb, start, num, F_WRLCK);
 
 	/* FIXME: by simple simulation, this approximated 60% full.
 	 * Check in real case! */
-	if (unlikely(num_locks > 4 * tdb->header.v.hash_bits - 30))
+	if (unlikely(num > 4 * tdb->header.v.hash_bits - 30))
 		enlarge_hash(tdb);
 
 	return 0;
 
 fail:
-	unlock_lists(tdb, start, num_locks, F_WRLCK);
+	unlock_lists(tdb, start, num, F_WRLCK);
 	return -1;
 }
 
 struct tdb_data tdb_fetch(struct tdb_context *tdb, struct tdb_data key)
 {
-	tdb_off_t off, start, num_locks = 1;
+	tdb_off_t off, start, num, bucket;
 	struct tdb_used_record rec;
 	uint64_t h;
 	struct tdb_data ret;
 
 	h = tdb_hash(tdb, key.dptr, key.dsize);
-
-	/* FIXME: can we avoid locks for some fast paths? */
-	start = tdb_lock_list(tdb, h, F_RDLCK, TDB_LOCK_WAIT);
-	if (start == TDB_OFF_ERR)
+	off = find_and_lock(tdb, key, h, F_RDLCK, &start, &num, &bucket, &rec);
+	if (unlikely(off == TDB_OFF_ERR))
 		return tdb_null;
-
-	/* Fast path. */
-	off = entry_matches(tdb, start, h, &key, &rec);
-	if (unlikely(off == TDB_OFF_ERR)) {
-		/* Slow path, need to grab more locks and search. */
-		tdb_off_t i;
-
-		/* Warning: this may drop the lock!  Does that on error. */
-		num_locks = relock_hash_to_zero(tdb, start, F_RDLCK);
-		if (num_locks == TDB_OFF_ERR)
-			return tdb_null;
-
-		for (i = start; i < start + num_locks; i++) {
-			off = entry_matches(tdb, i, h, &key, &rec);
-			/* Empty entry or we found it? */
-			if (off == 0 || off != TDB_OFF_ERR)
-				break;
-		}
-		if (i == start + num_locks)
-			off = 0;
-	}
 
 	if (!off) {
-		unlock_lists(tdb, start, num_locks, F_RDLCK);
 		tdb->ecode = TDB_ERR_NOEXIST;
-		return tdb_null;
+		ret = tdb_null;
+	} else {
+		ret.dsize = rec_data_length(&rec);
+		ret.dptr = tdb_alloc_read(tdb, off + sizeof(rec) + key.dsize,
+					  ret.dsize);
 	}
 
-	ret.dsize = rec_data_length(&rec);
-	ret.dptr = tdb_alloc_read(tdb, off + sizeof(rec) + key.dsize,
-				  ret.dsize);
-	unlock_lists(tdb, start, num_locks, F_RDLCK);
+	unlock_lists(tdb, start, num, F_RDLCK);
 	return ret;
 }
 
@@ -820,66 +824,28 @@ static int hash_add(struct tdb_context *tdb, uint64_t h, tdb_off_t off)
 
 int tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 {
-	tdb_off_t i, old_bucket, off, start, num_locks = 1;
+	tdb_off_t i, bucket, off, start, num;
 	struct tdb_used_record rec;
 	uint64_t h;
 
 	h = tdb_hash(tdb, key.dptr, key.dsize);
-
-	/* FIXME: can we avoid locks for some fast paths? */
-	start = tdb_lock_list(tdb, h, F_WRLCK, TDB_LOCK_WAIT);
-	if (start == TDB_OFF_ERR)
+	off = find_and_lock(tdb, key, h, F_WRLCK, &start, &num, &bucket, &rec);
+	if (unlikely(off == TDB_OFF_ERR))
 		return -1;
 
-	/* Fast path. */
-	old_bucket = start;
-	off = entry_matches(tdb, start, h, &key, &rec);
-	if (off && off != TDB_OFF_ERR) {
-		/* We can only really fastpath delete if next bucket
-		 * is 0.  Note that we haven't locked it, but our lock
-		 * on this bucket stops anyone overflowing into it
-		 * while we look. */
-		if (tdb_read_off(tdb, hash_off(tdb, h+1)) == 0)
-			goto delete;
-		/* Slow path. */
-		off = TDB_OFF_ERR;
-	}
-
-	if (unlikely(off == TDB_OFF_ERR)) {
-		/* Slow path, need to grab more locks and search. */
-		tdb_off_t i;
-
-		/* Warning: this may drop the lock!  Does that on error. */
-		num_locks = relock_hash_to_zero(tdb, start, F_WRLCK);
-		if (num_locks == TDB_OFF_ERR)
-			return -1;
-
-		for (i = start; i < start + num_locks; i++) {
-			off = entry_matches(tdb, i, h, &key, &rec);
-			/* Empty entry or we found it? */
-			if (off == 0 || off != TDB_OFF_ERR) {
-				old_bucket = i;
-				break;
-			}
-		}
-		if (i == start + num_locks)
-			off = 0;
-	}
-
 	if (!off) {
-		unlock_lists(tdb, start, num_locks, F_WRLCK);
+		unlock_lists(tdb, start, num, F_WRLCK);
 		tdb->ecode = TDB_ERR_NOEXIST;
 		return -1;
 	}
 
-delete:
 	/* This actually unlinks it. */
-	if (tdb_write_off(tdb, hash_off(tdb, old_bucket), 0) == -1)
+	if (tdb_write_off(tdb, hash_off(tdb, bucket), 0) == -1)
 		goto unlock_err;
 
 	/* Rehash anything following. */
-	for (i = hash_off(tdb, old_bucket+1);
-	     i != hash_off(tdb, h + num_locks);
+	for (i = hash_off(tdb, bucket+1);
+	     i != hash_off(tdb, h + num - 1);
 	     i += sizeof(tdb_off_t)) {
 		tdb_off_t off2;
 		uint64_t h2;
@@ -887,6 +853,10 @@ delete:
 		off2 = tdb_read_off(tdb, i);
 		if (unlikely(off2 == TDB_OFF_ERR))
 			goto unlock_err;
+
+		/* This can happen if we raced. */
+		if (unlikely(off2 == 0))
+			break;
 
 		/* Maybe use a bit to indicate it is in ideal place? */
 		h2 = hash_record(tdb, off2);
@@ -911,11 +881,11 @@ delete:
 			    + rec_extra_padding(&rec)) != 0)
 		goto unlock_err;
 
-	unlock_lists(tdb, start, num_locks, F_WRLCK);
+	unlock_lists(tdb, start, num, F_WRLCK);
 	return 0;
 
 unlock_err:
-	unlock_lists(tdb, start, num_locks, F_WRLCK);
+	unlock_lists(tdb, start, num, F_WRLCK);
 	return -1;
 }
 
