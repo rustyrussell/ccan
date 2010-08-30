@@ -204,9 +204,9 @@ char *temp_dir(const void *ctx)
 			err(1, "mkdir %s failed", tmpdir);
 		}
 		talloc_set_destructor(tmpdir, unlink_all);
+		if (tools_verbose)
+			printf("Created temporary directory %s\n", tmpdir);
 	}
-	if (tools_verbose)
-		printf("Created temporary directory %s\n", tmpdir);
 	return tmpdir;
 }
 
