@@ -28,7 +28,7 @@ char *talloc_basename(const void *ctx, const char *dir)
 	char *p = strrchr(dir, '/');
 
 	if (!p)
-		return (char *)dir;
+		return talloc_strdup(ctx, dir);
 	return talloc_strdup(ctx, p+1);
 }
 
