@@ -16,8 +16,9 @@ upload: fastcheck webpages
 	bzr push
 	send-web # Rusty's upload script.
 
-webpages: $(WEB_SUBDIRS) $(WEBDIR)/junkcode $(WEBDIR)/list.html $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.jpg $(BZRBROWSE) $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan $(ALL_PAGES) $(JUNKPAGES) $(JUNKBALLS)
+webpages: $(WEB_SUBDIRS) $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.jpg $(BZRBROWSE) $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan $(ALL_PAGES) junkpages
 
+junkpages:  $(WEBDIR)/list.html $(WEBDIR)/junkcode $(JUNKPAGES) $(JUNKBALLS)
 $(WEB_SUBDIRS):
 	mkdir -p $@
 
