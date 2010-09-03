@@ -26,6 +26,8 @@
 */
 
 #include "private.h"
+#include <assert.h>
+#include <ccan/build_assert/build_assert.h>
 
 static int fcntl_lock(struct tdb_context *tdb,
 		      int rw, off_t off, off_t len, bool waitflag)
@@ -255,19 +257,14 @@ static int tdb_nest_lock(struct tdb_context *tdb, tdb_off_t offset, int ltype,
 {
 	struct tdb_lock_type *new_lck;
 
-	/* Header is not valid for open lock; valgrind complains. */
-	if (offset >= TDB_HASH_LOCK_START) {
-		if (offset > TDB_HASH_LOCK_START
-		    + (1ULL << tdb->header.v.hash_bits)
-		    + (tdb->header.v.num_zones
-		       * (tdb->header.v.free_buckets+1))) {
-			tdb->ecode = TDB_ERR_LOCK;
-			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-				 "tdb_lock: invalid offset %llu ltype=%d\n",
-				 (long long)offset, ltype);
-			return -1;
-		}
+	if (offset >= TDB_HASH_LOCK_START + (1 << 30) + tdb->map_size / 8) {
+		tdb->ecode = TDB_ERR_LOCK;
+		tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
+			 "tdb_lock: invalid offset %llu ltype=%d\n",
+			 (long long)offset, ltype);
+		return -1;
 	}
+
 	if (tdb->flags & TDB_NOLOCK)
 		return 0;
 
@@ -534,6 +531,16 @@ void tdb_unlock_open(struct tdb_context *tdb)
 	tdb_nest_unlock(tdb, TDB_OPEN_LOCK, F_WRLCK);
 }
 
+int tdb_lock_expand(struct tdb_context *tdb, int ltype)
+{
+	return tdb_nest_lock(tdb, TDB_EXPANSION_LOCK, ltype, TDB_LOCK_WAIT);
+}
+
+void tdb_unlock_expand(struct tdb_context *tdb, int ltype)
+{
+	tdb_nest_unlock(tdb, TDB_EXPANSION_LOCK, ltype);
+}
+
 /* unlock entire db */
 int tdb_allrecord_unlock(struct tdb_context *tdb, int ltype)
 {
@@ -687,10 +694,21 @@ int tdb_unlock_list(struct tdb_context *tdb, tdb_off_t list, int ltype)
 	}
 }
 
-/* Free list locks come after hash locks */
-int tdb_lock_free_list(struct tdb_context *tdb, tdb_off_t flist,
-		       enum tdb_lock_flags waitflag)
+/* Hash locks use TDB_HASH_LOCK_START + the next 30 bits.
+ * Then we begin; bucket offsets are sizeof(tdb_len_t) apart, so we divide.
+ * The result is that on 32 bit systems we don't use lock values > 2^31 on
+ * files that are less than 4GB.
+ */
+static tdb_off_t free_lock_off(tdb_off_t b_off)
 {
+	return TDB_HASH_LOCK_START + (1 << 30) + b_off / sizeof(tdb_off_t);
+}
+
+int tdb_lock_free_bucket(struct tdb_context *tdb, tdb_off_t b_off,
+			 enum tdb_lock_flags waitflag)
+{
+	assert(b_off >= sizeof(struct tdb_header));
+
 	/* You're supposed to have a hash lock first! */
 	if (!(tdb->flags & TDB_NOLOCK) && !tdb_has_locks(tdb)) {
 		tdb->ecode = TDB_ERR_LOCK;
@@ -709,19 +727,15 @@ int tdb_lock_free_list(struct tdb_context *tdb, tdb_off_t flist,
 		return -1;
 	}
 
-	return tdb_nest_lock(tdb, TDB_HASH_LOCK_START
-			     + (1ULL << tdb->header.v.hash_bits)
-			     + flist, F_WRLCK, waitflag);
+	return tdb_nest_lock(tdb, free_lock_off(b_off), F_WRLCK, waitflag);
 }
 
-void tdb_unlock_free_list(struct tdb_context *tdb, tdb_off_t flist)
+void tdb_unlock_free_bucket(struct tdb_context *tdb, tdb_off_t b_off)
 {
 	if (tdb->allrecord_lock.count)
 		return;
 
-	tdb_nest_unlock(tdb, TDB_HASH_LOCK_START
-			+ (1ULL << tdb->header.v.hash_bits)
-			+ flist, F_WRLCK);
+	tdb_nest_unlock(tdb, free_lock_off(b_off), F_WRLCK);
 }
 
 /* Even if the entry isn't in this hash bucket, you'd have to lock this

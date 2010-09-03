@@ -70,6 +70,8 @@ void tdb_mmap(struct tdb_context *tdb)
 static int tdb_oob(struct tdb_context *tdb, tdb_off_t len, bool probe)
 {
 	struct stat st;
+	int ret;
+
 	if (len <= tdb->map_size)
 		return 0;
 	if (tdb->flags & TDB_INTERNAL) {
@@ -85,7 +87,14 @@ static int tdb_oob(struct tdb_context *tdb, tdb_off_t len, bool probe)
 		return -1;
 	}
 
-	if (fstat(tdb->fd, &st) == -1) {
+	if (tdb_lock_expand(tdb, F_RDLCK) != 0)
+		return -1;
+
+	ret = fstat(tdb->fd, &st);
+
+	tdb_unlock_expand(tdb, F_RDLCK);
+
+	if (ret == -1) {
 		tdb->ecode = TDB_ERR_IO;
 		return -1;
 	}
@@ -103,6 +112,7 @@ static int tdb_oob(struct tdb_context *tdb, tdb_off_t len, bool probe)
 
 	/* Unmap, update size, remap */
 	tdb_munmap(tdb);
+
 	tdb->map_size = st.st_size;
 	tdb_mmap(tdb);
 	return 0;

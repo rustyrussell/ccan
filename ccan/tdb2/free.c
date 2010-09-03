@@ -25,39 +25,6 @@
 #define MIN_DATA_LEN	\
 	(sizeof(struct tdb_free_record) - sizeof(struct tdb_used_record))
 
-/* We have a series of free lists, each one covering a "zone" of the file.
- *
- * For each zone we have a series of per-size buckets, and a final bucket for
- * "too big".
- *
- * It's possible to move the free_list_head, but *only* under the allrecord
- * lock. */
-static tdb_off_t free_list_off(struct tdb_context *tdb, unsigned int list)
-{
-	return tdb->header.v.free_off + list * sizeof(tdb_off_t);
-}
-
-/* We're a library: playing with srandom() is unfriendly.  srandom_r
- * probably lacks portability.  We don't need very random here. */
-static unsigned int quick_random(struct tdb_context *tdb)
-{
-	return getpid() + time(NULL) + (unsigned long)tdb;
-}
-
-/* Start by using a random zone to spread the load. */
-void tdb_zone_init(struct tdb_context *tdb)
-{
-	/*
-	 * We read num_zones without a proper lock, so we could have
-	 * gotten a partial read.  Since zone_bits is 1 byte long, we
-	 * can trust that; even if it's increased, the number of zones
-	 * cannot have decreased.  And using the map size means we
-	 * will not start with a zone which hasn't been filled yet.
-	 */
-	tdb->last_zone = quick_random(tdb)
-		% ((tdb->map_size >> tdb->header.v.zone_bits) + 1);
-}
-
 static unsigned fls64(uint64_t val)
 {
 #if HAVE_BUILTIN_CLZL
@@ -101,7 +68,7 @@ static unsigned fls64(uint64_t val)
 }
 
 /* In which bucket would we find a particular record size? (ignoring header) */
-unsigned int size_to_bucket(struct tdb_context *tdb, tdb_len_t data_len)
+unsigned int size_to_bucket(unsigned int zone_bits, tdb_len_t data_len)
 {
 	unsigned int bucket;
 
@@ -117,39 +84,104 @@ unsigned int size_to_bucket(struct tdb_context *tdb, tdb_len_t data_len)
 		bucket = fls64(data_len - MIN_DATA_LEN) + 2;
 	}
 
-	if (unlikely(bucket > tdb->header.v.free_buckets))
-		bucket = tdb->header.v.free_buckets;
+	if (unlikely(bucket > BUCKETS_FOR_ZONE(zone_bits)))
+		bucket = BUCKETS_FOR_ZONE(zone_bits);
 	return bucket;
 }
 
-/* What zone does a block belong in? */ 
-tdb_off_t zone_of(struct tdb_context *tdb, tdb_off_t off)
+/* Subtract 1-byte tailer and header.  Then round up to next power of 2. */
+static unsigned max_zone_bits(struct tdb_context *tdb)
 {
-	assert(tdb->header_uptodate);
+	return fls64(tdb->map_size-1-sizeof(struct tdb_header)-1) + 1;
+}
 
-	return off >> tdb->header.v.zone_bits;
+/* Start by using a random zone to spread the load: returns the offset. */
+static uint64_t random_zone(struct tdb_context *tdb)
+{
+	struct free_zone_header zhdr;
+	tdb_off_t off = sizeof(struct tdb_header);
+	tdb_len_t half_bits;
+	uint64_t randbits = 0;
+	unsigned int i;
+
+	for (i = 0; i < 64; i += fls64(RAND_MAX)) 
+		randbits ^= ((uint64_t)random()) << i;
+
+	/* FIXME: Does this work?  Test! */
+	half_bits = max_zone_bits(tdb) - 1;
+	do {
+		/* Pick left or right side (not outside file) */
+		if ((randbits & 1)
+		    && !tdb->methods->oob(tdb, off + (1ULL << half_bits)
+					  + sizeof(zhdr), true)) {
+			off += 1ULL << half_bits;
+		}
+		randbits >>= 1;
+
+		if (tdb_read_convert(tdb, off, &zhdr, sizeof(zhdr)) == -1) 
+			return TDB_OFF_ERR;
+
+		if (zhdr.zone_bits == half_bits)
+			return off;
+
+		half_bits--;
+	} while (half_bits >= INITIAL_ZONE_BITS);
+
+	tdb->ecode = TDB_ERR_CORRUPT;
+	tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
+		 "random_zone: zone at %llu smaller than %u bits?",
+		 (long long)off, INITIAL_ZONE_BITS);
+	return TDB_OFF_ERR;
+}
+
+int tdb_zone_init(struct tdb_context *tdb)
+{
+	tdb->zone_off = random_zone(tdb);
+	if (tdb->zone_off == TDB_OFF_ERR)
+		return -1;
+	if (tdb_read_convert(tdb, tdb->zone_off,
+			     &tdb->zhdr, sizeof(tdb->zhdr)) == -1) 
+		return -1;
+	return 0;
+}
+
+/* Where's the header, given a zone size of 1 << zone_bits? */
+static tdb_off_t zone_off(tdb_off_t off, unsigned int zone_bits)
+{
+	off -= sizeof(struct tdb_header);
+	return (off & ~((1ULL << zone_bits) - 1)) + sizeof(struct tdb_header);
+}
+
+/* Offset of a given bucket. */
+/* FIXME: bucket can be "unsigned" everywhere, or even uint8/16. */
+tdb_off_t bucket_off(tdb_off_t zone_off, tdb_off_t bucket)
+{
+	return zone_off
+		+ sizeof(struct free_zone_header)
+		+ bucket * sizeof(tdb_off_t);
 }
 
 /* Returns free_buckets + 1, or list number to search. */
 static tdb_off_t find_free_head(struct tdb_context *tdb, tdb_off_t bucket)
 {
-	tdb_off_t first, off;
+	tdb_off_t b;
 
 	/* Speculatively search for a non-zero bucket. */
-	first = tdb->last_zone * (tdb->header.v.free_buckets+1) + bucket;
-	off = tdb_find_nonzero_off(tdb, free_list_off(tdb, first),
-				   tdb->header.v.free_buckets + 1 - bucket);
-	return bucket + off;
+	b = tdb_find_nonzero_off(tdb, bucket_off(tdb->zone_off, bucket),
+				 BUCKETS_FOR_ZONE(tdb->zhdr.zone_bits) + 1
+				 - bucket);
+	return bucket + b;
 }
 
+/* Remove from free bucket. */
 static int remove_from_list(struct tdb_context *tdb,
-			    tdb_off_t list, struct tdb_free_record *r)
+			    tdb_off_t b_off, struct tdb_free_record *r)
 {
 	tdb_off_t off;
 
 	/* Front of list? */
 	if (r->prev == 0) {
-		off = free_list_off(tdb, list);
+		off = b_off;
 	} else {
 		off = r->prev + offsetof(struct tdb_free_record, next);
 	}
@@ -168,15 +200,15 @@ static int remove_from_list(struct tdb_context *tdb,
 	return 0;
 }
 
-/* Enqueue in this free list. */
+/* Enqueue in this free bucket. */
 static int enqueue_in_free(struct tdb_context *tdb,
-			   tdb_off_t list,
+			   tdb_off_t b_off,
 			   tdb_off_t off,
 			   struct tdb_free_record *new)
 {
 	new->prev = 0;
 	/* new->next = head. */
-	new->next = tdb_read_off(tdb, free_list_off(tdb, list));
+	new->next = tdb_read_off(tdb, b_off);
 	if (new->next == TDB_OFF_ERR)
 		return -1;
 
@@ -188,39 +220,40 @@ static int enqueue_in_free(struct tdb_context *tdb,
 			return -1;
 	}
 	/* head = new */
-	if (tdb_write_off(tdb, free_list_off(tdb, list), off) != 0)
+	if (tdb_write_off(tdb, b_off, off) != 0)
 		return -1;
-	
+
 	return tdb_write_convert(tdb, off, new, sizeof(*new));
 }
 
-/* List isn't locked. */
+/* List need not be locked. */
 int add_free_record(struct tdb_context *tdb,
+		    unsigned int zone_bits,
 		    tdb_off_t off, tdb_len_t len_with_header)
 {
 	struct tdb_free_record new;
-	tdb_off_t list;
+	tdb_off_t b_off;
 	int ret;
 
 	assert(len_with_header >= sizeof(new));
+	assert(zone_bits < (1 << 6));
 
-	new.magic = TDB_FREE_MAGIC;
+	new.magic_and_meta = TDB_FREE_MAGIC | zone_bits;
 	new.data_len = len_with_header - sizeof(struct tdb_used_record);
 
-	tdb->last_zone = zone_of(tdb, off);
-	list = tdb->last_zone * (tdb->header.v.free_buckets+1)
-		+ size_to_bucket(tdb, new.data_len);
-
-	if (tdb_lock_free_list(tdb, list, TDB_LOCK_WAIT) != 0)
+	b_off = bucket_off(zone_off(off, zone_bits),
+			   size_to_bucket(zone_bits, new.data_len));
+	if (tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) != 0)
 		return -1;
 
-	ret = enqueue_in_free(tdb, list, off, &new);
-	tdb_unlock_free_list(tdb, list);
+	ret = enqueue_in_free(tdb, b_off, off, &new);
+	tdb_unlock_free_bucket(tdb, b_off);
 	return ret;
 }
 
 /* If we have enough left over to be useful, split that off. */
 static int to_used_record(struct tdb_context *tdb,
+			  unsigned int zone_bits,
 			  tdb_off_t off,
 			  tdb_len_t needed,
 			  tdb_len_t total_len,
@@ -236,56 +269,59 @@ static int to_used_record(struct tdb_context *tdb,
 	*actual = total_len - leftover;
 
 	if (leftover) {
-		if (add_free_record(tdb, off + sizeof(used) + *actual,
+		if (add_free_record(tdb, zone_bits,
+				    off + sizeof(used) + *actual,
 				    total_len - needed))
 			return -1;
 	}
 	return 0;
 }
 
-/* Note: we unlock the current list if we coalesce or fail. */
-static int coalesce(struct tdb_context *tdb, tdb_off_t off,
-		    tdb_off_t list, tdb_len_t data_len)
+/* Note: we unlock the current bucket if we coalesce or fail. */
+static int coalesce(struct tdb_context *tdb,
+		    tdb_off_t zone_off, unsigned zone_bits,
+		    tdb_off_t off, tdb_off_t b_off, tdb_len_t data_len)
 {
 	struct tdb_free_record pad, *r;
 	tdb_off_t end = off + sizeof(struct tdb_used_record) + data_len;
 
-	while (!tdb->methods->oob(tdb, end + sizeof(*r), 1)) {
-		tdb_off_t nlist;
+	while (end < (zone_off + (1ULL << zone_bits))) {
+		tdb_off_t nb_off;
 
+		/* FIXME: do tdb_get here and below really win? */
 		r = tdb_get(tdb, end, &pad, sizeof(pad));
 		if (!r)
 			goto err;
 
-		if (r->magic != TDB_FREE_MAGIC)
+		if (frec_magic(r) != TDB_FREE_MAGIC)
 			break;
 
-		nlist = zone_of(tdb, end) * (tdb->header.v.free_buckets+1)
-			+ size_to_bucket(tdb, r->data_len);
+		nb_off = bucket_off(zone_off,
+				    size_to_bucket(zone_bits, r->data_len));
 
 		/* We may be violating lock order here, so best effort. */
-		if (tdb_lock_free_list(tdb, nlist, TDB_LOCK_NOWAIT) == -1)
+		if (tdb_lock_free_bucket(tdb, nb_off, TDB_LOCK_NOWAIT) == -1)
 			break;
 
 		/* Now we have lock, re-check. */
 		r = tdb_get(tdb, end, &pad, sizeof(pad));
 		if (!r) {
-			tdb_unlock_free_list(tdb, nlist);
+			tdb_unlock_free_bucket(tdb, nb_off);
 			goto err;
 		}
 
-		if (unlikely(r->magic != TDB_FREE_MAGIC)) {
-			tdb_unlock_free_list(tdb, nlist);
+		if (unlikely(frec_magic(r) != TDB_FREE_MAGIC)) {
+			tdb_unlock_free_bucket(tdb, nb_off);
 			break;
 		}
 
-		if (remove_from_list(tdb, nlist, r) == -1) {
-			tdb_unlock_free_list(tdb, nlist);
+		if (remove_from_list(tdb, nb_off, r) == -1) {
+			tdb_unlock_free_bucket(tdb, nb_off);
 			goto err;
 		}
 
 		end += sizeof(struct tdb_used_record) + r->data_len;
-		tdb_unlock_free_list(tdb, nlist);
+		tdb_unlock_free_bucket(tdb, nb_off);
 	}
 
 	/* Didn't find any adjacent free? */
@@ -305,59 +341,63 @@ static int coalesce(struct tdb_context *tdb, tdb_off_t off,
 		goto err;
 	}
 
-	if (remove_from_list(tdb, list, r) == -1)
+	if (remove_from_list(tdb, b_off, r) == -1)
 		goto err;
 
 	/* We have to drop this to avoid deadlocks. */
-	tdb_unlock_free_list(tdb, list);
+	tdb_unlock_free_bucket(tdb, b_off);
 
-	if (add_free_record(tdb, off, end - off) == -1)
+	if (add_free_record(tdb, zone_bits, off, end - off) == -1)
 		return -1;
 	return 1;
 
 err:
-	/* To unify error paths, we *always* unlock list. */
-	tdb_unlock_free_list(tdb, list);
+	/* To unify error paths, we *always* unlock bucket on error. */
+	tdb_unlock_free_bucket(tdb, b_off);
 	return -1;
 }
 
 /* We need size bytes to put our key and data in. */
 static tdb_off_t lock_and_alloc(struct tdb_context *tdb,
-				tdb_off_t bucket, size_t size,
+				tdb_off_t zone_off,
+				unsigned zone_bits,
+				tdb_off_t bucket,
+				size_t size,
 				tdb_len_t *actual)
 {
-	tdb_off_t list;
-	tdb_off_t off, best_off;
+	tdb_off_t off, b_off,best_off;
 	struct tdb_free_record pad, best = { 0 }, *r;
 	double multiplier;
 
 again:
-	list = tdb->last_zone * (tdb->header.v.free_buckets+1) + bucket;
+	b_off = bucket_off(zone_off, bucket);
 
-	/* Lock this list. */
-	if (tdb_lock_free_list(tdb, list, TDB_LOCK_WAIT) == -1) {
+	/* Lock this bucket. */
+	if (tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == -1) {
 		return TDB_OFF_ERR;
 	}
 
 	best.data_len = -1ULL;
 	best_off = 0;
+	/* FIXME: Start with larger multiplier if we're growing. */
 	multiplier = 1.0;
 
 	/* Walk the list to see if any are large enough, getting less fussy
 	 * as we go. */
-	off = tdb_read_off(tdb, free_list_off(tdb, list));
+	off = tdb_read_off(tdb, b_off);
 	if (unlikely(off == TDB_OFF_ERR))
 		goto unlock_err;
 
 	while (off) {
+		/* FIXME: Does tdb_get win anything here? */
 		r = tdb_get(tdb, off, &pad, sizeof(*r));
 		if (!r)
 			goto unlock_err;
 
-		if (r->magic != TDB_FREE_MAGIC) {
+		if (frec_magic(r) != TDB_FREE_MAGIC) {
 			tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 				 "lock_and_alloc: %llu non-free 0x%llx\n",
-				 (long long)off, (long long)r->magic);
+				 (long long)off, (long long)r->magic_and_meta);
 			goto unlock_err;
 		}
 
@@ -372,7 +412,8 @@ again:
 		multiplier *= 1.01;
 
 		/* Since we're going slow anyway, try coalescing here. */
-		switch (coalesce(tdb, off, list, r->data_len)) {
+		switch (coalesce(tdb, zone_off, zone_bits, off, b_off,
+				 r->data_len)) {
 		case -1:
 			/* This has already unlocked on error. */
 			return -1;
@@ -387,86 +428,76 @@ again:
 	if (best_off) {
 	use_best:
 		/* We're happy with this size: take it. */
-		if (remove_from_list(tdb, list, &best) != 0)
+		if (remove_from_list(tdb, b_off, &best) != 0)
 			goto unlock_err;
-		tdb_unlock_free_list(tdb, list);
+		tdb_unlock_free_bucket(tdb, b_off);
 
-		if (to_used_record(tdb, best_off, size, best.data_len,
-				   actual)) {
+		if (to_used_record(tdb, zone_bits, best_off, size,
+				   best.data_len, actual)) {
 			return -1;
 		}
 		return best_off;
 	}
 
-	tdb_unlock_free_list(tdb, list);
+	tdb_unlock_free_bucket(tdb, b_off);
 	return 0;
 
 unlock_err:
-	tdb_unlock_free_list(tdb, list);
+	tdb_unlock_free_bucket(tdb, b_off);
 	return TDB_OFF_ERR;
 }
 
-/* We want a really big chunk.  Look through every zone's oversize bucket */
-static tdb_off_t huge_alloc(struct tdb_context *tdb, size_t size,
-			    tdb_len_t *actual)
+static bool next_zone(struct tdb_context *tdb)
 {
-	tdb_off_t i, off;
+	tdb_off_t next = tdb->zone_off + (1ULL << tdb->zhdr.zone_bits);
 
-	for (i = 0; i < tdb->header.v.num_zones; i++) {
-		/* Try getting one from list. */
-		off = lock_and_alloc(tdb, tdb->header.v.free_buckets,
-				     size, actual);
-		if (off == TDB_OFF_ERR)
-			return TDB_OFF_ERR;
-		if (off != 0)
-			return off;
-		/* FIXME: Coalesce! */
-	}
-	return 0;
+	/* We must have a header. */
+	if (tdb->methods->oob(tdb, next + sizeof(tdb->zhdr), true))
+		return false;
+
+	tdb->zone_off = next;
+	return tdb_read_convert(tdb, next, &tdb->zhdr, sizeof(tdb->zhdr)) == 0;
 }
 
+/* Offset returned is within current zone (which it may alter). */
 static tdb_off_t get_free(struct tdb_context *tdb, size_t size,
 			  tdb_len_t *actual)
 {
-	tdb_off_t off, bucket;
-	unsigned int num_empty, step = 0;
+	tdb_off_t start_zone = tdb->zone_off, off;
+	bool wrapped = false;
 
-	bucket = size_to_bucket(tdb, size);
-
-	/* If we're after something bigger than a single zone, handle
-	 * specially. */
-	if (unlikely(sizeof(struct tdb_used_record) + size
-		     >= (1ULL << tdb->header.v.zone_bits))) {
-		return huge_alloc(tdb, size, actual);
-	}
-
-	/* Number of zones we search is proportional to the log of them. */
-	for (num_empty = 0; num_empty < fls64(tdb->header.v.num_zones);
-	     num_empty++) {
+	while (!wrapped || tdb->zone_off != start_zone) {
 		tdb_off_t b;
 
-		/* Start at exact size bucket, and search up... */
-		for (b = bucket; b <= tdb->header.v.free_buckets; b++) {
-			b = find_free_head(tdb, b);
+		/* Shortcut for really huge allocations... */
+		if ((size >> tdb->zhdr.zone_bits) != 0)
+			continue;
 
-			/* Non-empty list?  Try getting block. */
-			if (b <= tdb->header.v.free_buckets) {
-				/* Try getting one from list. */
-				off = lock_and_alloc(tdb, b, size, actual);
-				if (off == TDB_OFF_ERR)
-					return TDB_OFF_ERR;
-				if (off != 0)
-					return off;
-				/* Didn't work.  Try next bucket. */
-			}
+		/* Start at exact size bucket, and search up... */
+		b = size_to_bucket(tdb->zhdr.zone_bits, size);
+		for (b = find_free_head(tdb, b);
+		     b <= BUCKETS_FOR_ZONE(tdb->zhdr.zone_bits);
+		     b += find_free_head(tdb, b + 1)) {
+			/* Try getting one from list. */
+			off = lock_and_alloc(tdb, tdb->zone_off,
+					     tdb->zhdr.zone_bits,
+					     b, size, actual);
+			if (off == TDB_OFF_ERR)
+				return TDB_OFF_ERR;
+			if (off != 0)
+				return off;
+			/* Didn't work.  Try next bucket. */
 		}
 
-		/* Try another zone, at pseudo random.  Avoid duplicates by
-		   using an odd step. */
-		if (step == 0)
-			step = ((quick_random(tdb)) % 65536) * 2 + 1;
-		tdb->last_zone = (tdb->last_zone + step)
-			% tdb->header.v.num_zones;
+		/* Didn't work, try next zone, if it exists. */
+		if (!next_zone(tdb)) {
+			wrapped = true;
+			tdb->zone_off = sizeof(struct tdb_header);
+			if (tdb_read_convert(tdb, tdb->zone_off,
+					     &tdb->zhdr, sizeof(tdb->zhdr))) {
+				return TDB_OFF_ERR;
+			}
+		}
 	}
 	return 0;
 }
@@ -474,14 +505,16 @@ static tdb_off_t get_free(struct tdb_context *tdb, size_t size,
 int set_header(struct tdb_context *tdb,
 	       struct tdb_used_record *rec,
 	       uint64_t keylen, uint64_t datalen,
-	       uint64_t actuallen, uint64_t hash)
+	       uint64_t actuallen, uint64_t hash,
+	       unsigned int zone_bits)
 {
 	uint64_t keybits = (fls64(keylen) + 1) / 2;
 
 	/* Use top bits of hash, so it's independent of hash table size. */
 	rec->magic_and_meta
-		= (actuallen - (keylen + datalen))
-		| ((hash >> 53) << 32)
+		= zone_bits
+		| ((hash >> 59) << 6)
+		| ((actuallen - (keylen + datalen)) << 11)
 		| (keybits << 43)
 		| (TDB_MAGIC << 48);
 	rec->key_and_data_len = (keylen | (datalen << (keybits*2)));
@@ -533,8 +566,11 @@ tdb_off_t alloc(struct tdb_context *tdb, size_t keylen, size_t datalen,
 		return off;
 
 	/* Some supergiant values can't be encoded. */
-	if (set_header(tdb, &rec, keylen, datalen, actual, hash) != 0) {
-		add_free_record(tdb, off, sizeof(rec) + actual);
+	/* FIXME: Check before, and limit actual in get_free. */
+	if (set_header(tdb, &rec, keylen, datalen, actual, hash,
+		       tdb->zhdr.zone_bits) != 0) {
+		add_free_record(tdb, tdb->zhdr.zone_bits, off,
+				sizeof(rec) + actual);
 		return TDB_OFF_ERR;
 	}
 
@@ -544,223 +580,98 @@ tdb_off_t alloc(struct tdb_context *tdb, size_t keylen, size_t datalen,
 	return off;
 }
 
-static bool larger_buckets_might_help(struct tdb_context *tdb)
-{
-	/* If our buckets are already covering 1/8 of a zone, don't
-	 * bother (note: might become an 1/16 of a zone if we double
-	 * zone size). */
-	tdb_len_t size = (1ULL << tdb->header.v.zone_bits) / 8;
-
-	if (size >= MIN_DATA_LEN
-	    && size_to_bucket(tdb, size) < tdb->header.v.free_buckets) {
-		return false;
-	}
-
-	/* FIXME: Put stats in tdb_context or examine db itself! */
-	/* It's fairly cheap to do as we expand database. */
-	return true;
-}
-
 static bool zones_happy(struct tdb_context *tdb)
 {
 	/* FIXME: look at distribution of zones. */
 	return true;
 }
 
-/* Returns how much extra room we get, or TDB_OFF_ERR. */
-static tdb_len_t expand_to_fill_zones(struct tdb_context *tdb)
+/* Assume we want buckets up to the comfort factor. */
+static tdb_len_t overhead(unsigned int zone_bits)
 {
-	tdb_len_t add;
-
-	/* We can enlarge zones without enlarging file to match. */
-	add = (tdb->header.v.num_zones<<tdb->header.v.zone_bits)
-		- tdb->map_size;
-	if (add <= sizeof(struct tdb_free_record))
-		return 0;
-
-	/* Updates tdb->map_size. */
-	if (tdb->methods->expand_file(tdb, add) == -1)
-		return TDB_OFF_ERR;
-	if (add_free_record(tdb, tdb->map_size - add, add) == -1)
-		return TDB_OFF_ERR;
-	return add;
+	return sizeof(struct free_zone_header)
+		+ (BUCKETS_FOR_ZONE(zone_bits) + 1) * sizeof(tdb_off_t);
 }
 
-static int update_zones(struct tdb_context *tdb,
-			uint64_t new_num_zones,
-			uint64_t new_zone_bits,
-			uint64_t new_num_buckets,
-			tdb_len_t add)
-{
-	tdb_len_t freebucket_size;
-	const tdb_off_t *oldf;
-	tdb_off_t i, off, old_num_total, old_free_off;
-	struct tdb_used_record fhdr;
-
-	/* Updates tdb->map_size. */
-	if (tdb->methods->expand_file(tdb, add) == -1)
-		return -1;
-
-	/* Use first part as new free bucket array. */
-	off = tdb->map_size - add;
-	freebucket_size = new_num_zones
-		* (new_num_buckets + 1) * sizeof(tdb_off_t);
-
-	/* Write header. */
-	if (set_header(tdb, &fhdr, 0, freebucket_size, freebucket_size, 0))
-		return -1;
-	if (tdb_write_convert(tdb, off, &fhdr, sizeof(fhdr)) == -1)
-		return -1;
-
-	/* Adjust off to point to start of buckets, add to be remainder. */
-	add -= freebucket_size + sizeof(fhdr);
-	off += sizeof(fhdr);
-
-	/* Access the old zones. */
-	old_num_total = tdb->header.v.num_zones*(tdb->header.v.free_buckets+1);
-	old_free_off = tdb->header.v.free_off;
-	oldf = tdb_access_read(tdb, old_free_off,
-			       old_num_total * sizeof(tdb_off_t), true);
-	if (!oldf)
-		return -1;
-
-	/* Switch to using our new zone. */
-	if (zero_out(tdb, off, freebucket_size) == -1)
-		goto fail_release;
-
-	tdb->header.v.free_off = off;
-	tdb->header.v.num_zones = new_num_zones;
-	tdb->header.v.zone_bits = new_zone_bits;
-	tdb->header.v.free_buckets = new_num_buckets;
-
-	/* FIXME: If zone size hasn't changed, can simply copy pointers. */
-	/* FIXME: Coalesce? */
-	for (i = 0; i < old_num_total; i++) {
-		tdb_off_t next;
-		struct tdb_free_record rec;
-		tdb_off_t list;
-
-		for (off = oldf[i]; off; off = next) {
-			if (tdb_read_convert(tdb, off, &rec, sizeof(rec)))
-				goto fail_release;
-
-			list = zone_of(tdb, off)
-				* (tdb->header.v.free_buckets+1)
-				+ size_to_bucket(tdb, rec.data_len);
-			next = rec.next;
-		
-			if (enqueue_in_free(tdb, list, off, &rec) == -1)
-				goto fail_release;
-		}
-	}
-
-	/* Free up the old free buckets. */
-	old_free_off -= sizeof(fhdr);
-	if (tdb_read_convert(tdb, old_free_off, &fhdr, sizeof(fhdr)) == -1)
-		goto fail_release;
-	if (add_free_record(tdb, old_free_off,
-			    sizeof(fhdr)
-			    + rec_data_length(&fhdr)
-			    + rec_extra_padding(&fhdr)))
-		goto fail_release;
-
-	/* Add the rest as a new free record. */
-	if (add_free_record(tdb, tdb->map_size - add, add) == -1)
-		goto fail_release;
-
-	/* Start allocating from where the new space is. */
-	tdb->last_zone = zone_of(tdb, tdb->map_size - add);
-	tdb_access_release(tdb, oldf);
-	return write_header(tdb);
-
-fail_release:
-	tdb_access_release(tdb, oldf);
-	return -1;
-}
-
-/* Expand the database. */
+/* Expand the database (by adding a zone). */
 int tdb_expand(struct tdb_context *tdb, tdb_len_t klen, tdb_len_t dlen,
 	       bool growing)
 {
-	uint64_t new_num_buckets, new_num_zones, new_zone_bits;
-	uint64_t old_num_zones, old_size, old_zone_bits;
-	tdb_len_t add, needed;
+	uint64_t old_size;
+	tdb_off_t off;
+	uint8_t zone_bits;
+	unsigned int num_buckets;
+	tdb_len_t wanted;
+	struct free_zone_header zhdr;
+	bool enlarge_zone;
 
 	/* We need room for the record header too. */
-	needed = sizeof(struct tdb_used_record)
-		+ adjust_size(klen, dlen, growing);
+	wanted = sizeof(struct tdb_used_record)
+		+ (adjust_size(klen, dlen, growing)<<TDB_COMFORT_FACTOR_BITS);
 
-	/* tdb_allrecord_lock will update header; did zones change? */
-	old_zone_bits = tdb->header.v.zone_bits;
-	old_num_zones = tdb->header.v.num_zones;
-
-	/* FIXME: this is overkill.  An expand lock? */
-	if (tdb_allrecord_lock(tdb, F_WRLCK, TDB_LOCK_WAIT, false) == -1)
+	/* Only one person can expand file at a time. */
+	if (tdb_lock_expand(tdb, F_WRLCK) != 0)
 		return -1;
 
-	/* Someone may have expanded for us. */
-	if (old_zone_bits != tdb->header.v.zone_bits
-	    || old_num_zones != tdb->header.v.num_zones)
-		goto success;
-
-	/* They may have also expanded the underlying size (otherwise we'd
-	 * have expanded our mmap to look at those offsets already). */
+	/* Someone else may have expanded the file, so retry. */
 	old_size = tdb->map_size;
 	tdb->methods->oob(tdb, tdb->map_size + 1, true);
 	if (tdb->map_size != old_size)
 		goto success;
 
-	add = expand_to_fill_zones(tdb);
-	if (add == TDB_OFF_ERR)
+	/* zone bits tailer char is protected by EXPAND lock. */
+	if (tdb->methods->read(tdb, old_size - 1, &zone_bits, 1) == -1)
 		goto fail;
 
-	if (add >= needed) {
-		/* Allocate from this zone. */
-		tdb->last_zone = zone_of(tdb, tdb->map_size - add);
-		goto success;
-	}
+	/* If zones aren't working well, add larger zone if possible. */
+	enlarge_zone = !zones_happy(tdb);
 
-	/* Slow path.  Should we increase the number of buckets? */
-	new_num_buckets = tdb->header.v.free_buckets;
-	if (larger_buckets_might_help(tdb))
-		new_num_buckets++;
-
-	/* Now we'll need room for the new free buckets, too.  Assume
-	 * worst case (zones expand). */
-	needed += sizeof(struct tdb_used_record)
-		+ ((tdb->header.v.num_zones+1)
-		   * (new_num_buckets+1) * sizeof(tdb_off_t));
-
-	/* If we need less that one zone, and they're working well, just add
-	 * another one. */
-	if (needed < (1UL<<tdb->header.v.zone_bits) && zones_happy(tdb)) {
-		new_num_zones = tdb->header.v.num_zones+1;
-		new_zone_bits = tdb->header.v.zone_bits;
-		add = 1ULL << tdb->header.v.zone_bits;
-	} else {
-		/* Increase the zone size. */
-		new_num_zones = tdb->header.v.num_zones;
-		new_zone_bits = tdb->header.v.zone_bits+1;
-		while ((new_num_zones << new_zone_bits)
-		       < tdb->map_size + needed) {
-			new_zone_bits++;
+	/* New zone can be between zone_bits or larger if we're on the right
+	 * boundary. */
+	for (;;) {
+		/* Does this fit the allocation comfortably? */
+		if ((1ULL << zone_bits) >= overhead(zone_bits) + wanted) {
+			/* Only let enlarge_zone enlarge us once. */
+			if (!enlarge_zone)
+				break;
+			enlarge_zone = false;
 		}
-
-		/* We expand by enough full zones to meet the need. */
-		add = ((tdb->map_size + needed + (1ULL << new_zone_bits)-1)
-		       & ~((1ULL << new_zone_bits)-1))
-			- tdb->map_size;
+		if ((old_size - 1 - sizeof(struct tdb_header))
+		    & (1 << zone_bits))
+			break;
+		zone_bits++;
 	}
 
-	if (update_zones(tdb, new_num_zones, new_zone_bits, new_num_buckets,
-			 add) == -1)
+	zhdr.zone_bits = zone_bits;
+	num_buckets = BUCKETS_FOR_ZONE(zone_bits);
+
+	if (tdb->methods->expand_file(tdb, 1ULL << zone_bits) == -1)
+		goto fail;
+
+	/* Write new tailer. */
+	if (tdb->methods->write(tdb, tdb->map_size - 1, &zone_bits, 1) == -1)
+		goto fail;
+
+	/* Write new zone header (just before old tailer). */
+	off = old_size - 1;
+	if (tdb_write_convert(tdb, off, &zhdr, sizeof(zhdr)) == -1)
+		goto fail;
+
+	/* Now write empty buckets. */
+	off += sizeof(zhdr);
+	if (zero_out(tdb, off, (num_buckets+1) * sizeof(tdb_off_t)) == -1)
+		goto fail;
+	off += (num_buckets+1) * sizeof(tdb_off_t);
+
+	/* Now add the rest as our free record. */
+	if (add_free_record(tdb, zone_bits, off, tdb->map_size-1-off) == -1)
 		goto fail;
 
 success:
-	tdb_allrecord_unlock(tdb, F_WRLCK);
+	tdb_unlock_expand(tdb, F_WRLCK);
 	return 0;
 
 fail:
-	tdb_allrecord_unlock(tdb, F_WRLCK);
+	tdb_unlock_expand(tdb, F_WRLCK);
 	return -1;
 }

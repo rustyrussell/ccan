@@ -67,12 +67,10 @@ typedef uint64_t tdb_off_t;
 #define TDB_MAGIC_FOOD "TDB file\n"
 #define TDB_VERSION ((uint64_t)(0x26011967 + 7))
 #define TDB_MAGIC ((uint64_t)0x1999)
-#define TDB_FREE_MAGIC (~(uint64_t)TDB_MAGIC)
+#define TDB_FREE_MAGIC ((~(uint64_t)TDB_MAGIC) << 6)
 #define TDB_HASH_MAGIC (0xA1ABE11A01092008ULL)
 #define TDB_RECOVERY_MAGIC (0xf53bc0e7U)
 #define TDB_RECOVERY_INVALID_MAGIC (0x0)
-#define TDB_EXTRA_HASHBITS (11) /* We steal 11 bits to stash hash info. */
-#define TDB_EXTRA_HASHBITS_NUM (3)
 
 #define TDB_OFF_ERR ((tdb_off_t)-1)
 
@@ -80,13 +78,21 @@ typedef uint64_t tdb_off_t;
 #define TDB_OPEN_LOCK 0
 /* Doing a transaction. */
 #define TDB_TRANSACTION_LOCK 1
+/* Expanding file. */
+#define TDB_EXPANSION_LOCK 2
 /* Hash chain locks. */
-#define TDB_HASH_LOCK_START 2
+#define TDB_HASH_LOCK_START 3
 
-/* We start wih 256 hash buckets, 10 free buckets.  A 4k-sized zone. */
+/* We start wih 256 hash buckets, and a 64k-sized zone. */
 #define INITIAL_HASH_BITS 8
-#define INITIAL_FREE_BUCKETS 10
-#define INITIAL_ZONE_BITS 12
+#define INITIAL_ZONE_BITS 16
+
+/* Try to create zones at least 32 times larger than allocations. */
+#define TDB_COMFORT_FACTOR_BITS 5
+
+/* We ensure buckets up to size 1 << (zone_bits - TDB_COMFORT_FACTOR_BITS). */
+/* FIXME: test this matches size_to_bucket! */
+#define BUCKETS_FOR_ZONE(zone_bits) ((zone_bits) + 2 - TDB_COMFORT_FACTOR_BITS)
 
 #if !HAVE_BSWAP_64
 static inline uint64_t bswap_64(uint64_t x)
@@ -106,8 +112,9 @@ struct tdb_used_record {
 	/* For on-disk compatibility, we avoid bitfields:
 	   magic: 16,        (highest)
 	   key_len_bits: 5,
-           hash:11,
-	   extra_padding: 32 (lowest)
+	   extra_padding: 32
+	   hash_bits: 5,
+           zone_bits: 6 (lowest)
 	*/
         uint64_t magic_and_meta;
 	/* The bottom key_len_bits*2 are key length, rest is data length. */
@@ -131,12 +138,17 @@ static inline uint64_t rec_data_length(const struct tdb_used_record *r)
 
 static inline uint64_t rec_extra_padding(const struct tdb_used_record *r)
 {
-	return r->magic_and_meta & 0xFFFFFFFF;
+	return (r->magic_and_meta >> 11) & 0xFFFFFFFF;
 }
 
-static inline uint64_t rec_hash(const struct tdb_used_record *r)
+static inline unsigned int rec_zone_bits(const struct tdb_used_record *r)
 {
-	return ((r->magic_and_meta >> 32) & ((1ULL << 11) - 1));
+	return r->magic_and_meta & ((1 << 6) - 1);
+}
+
+static inline uint32_t rec_hash(const struct tdb_used_record *r)
+{
+	return (r->magic_and_meta >> 6) & ((1 << 5) - 1);
 }
 
 static inline uint16_t rec_magic(const struct tdb_used_record *r)
@@ -145,26 +157,33 @@ static inline uint16_t rec_magic(const struct tdb_used_record *r)
 }
 
 struct tdb_free_record {
-        uint64_t magic;
+        uint64_t magic_and_meta; /* Bottom 6 bits are zone bits. */
         uint64_t data_len; /* Not counting these two fields. */
 	/* This is why the minimum record size is 16 bytes.  */
 	uint64_t next, prev;
 };
+
+static inline unsigned int frec_zone_bits(const struct tdb_free_record *f)
+{
+	return f->magic_and_meta & ((1 << 6) - 1);
+}
+
+static inline uint64_t frec_magic(const struct tdb_free_record *f)
+{
+	return f->magic_and_meta & ~((1ULL << 6) - 1);
+}
 
 /* These parts can change while we have db open. */
 struct tdb_header_volatile {
 	uint64_t generation; /* Makes sure it changes on every update. */
 	uint64_t hash_bits; /* Entries in hash table. */
 	uint64_t hash_off; /* Offset of hash table. */
-	uint64_t num_zones; /* How many zones in the file. */
-	uint64_t zone_bits; /* Size of zones. */
-	uint64_t free_buckets; /* How many buckets in each zone. */
-	uint64_t free_off; /* Arrays of free entries. */
 };
 
 /* this is stored at the front of every database */
 struct tdb_header {
 	char magic_food[32]; /* for /etc/magic */
+	/* FIXME: Make me 32 bit? */
 	uint64_t version; /* version of the code */
 	uint64_t hash_test; /* result of hashing HASH_MAGIC. */
 	uint64_t hash_seed; /* "random" seed written at creation time. */
@@ -172,6 +191,16 @@ struct tdb_header {
 	struct tdb_header_volatile v;
 
 	tdb_off_t reserved[19];
+};
+
+/* Each zone has its set of free lists at the head.
+ *
+ * For each zone we have a series of per-size buckets, and a final bucket for
+ * "too big". */
+struct free_zone_header {
+	/* How much does this zone cover? */
+	uint64_t zone_bits;
+	/* tdb_off_t buckets[free_buckets + 1] */
 };
 
 enum tdb_lock_flags {
@@ -227,7 +256,9 @@ struct tdb_context {
 	struct tdb_transaction *transaction;
 	
 	/* What zone of the tdb to use, for spreading load. */
-	uint64_t last_zone; 
+	uint64_t zone_off;
+	/* Cached copy of zone header. */
+	struct free_zone_header zhdr;
 
 	/* IO methods: changes for transactions. */
 	const struct tdb_methods *methods;
@@ -268,25 +299,26 @@ tdb_off_t hash_off(struct tdb_context *tdb, uint64_t list);
 
 
 /* free.c: */
-void tdb_zone_init(struct tdb_context *tdb);
+int tdb_zone_init(struct tdb_context *tdb);
 
 /* If this fails, try tdb_expand. */
 tdb_off_t alloc(struct tdb_context *tdb, size_t keylen, size_t datalen,
 		uint64_t hash, bool growing);
 
 /* Put this record in a free list. */
-int add_free_record(struct tdb_context *tdb,
+int add_free_record(struct tdb_context *tdb, unsigned int zone_bits,
 		    tdb_off_t off, tdb_len_t len_with_header);
 
 /* Set up header for a used record. */
 int set_header(struct tdb_context *tdb,
 	       struct tdb_used_record *rec,
 	       uint64_t keylen, uint64_t datalen,
-	       uint64_t actuallen, uint64_t hash);
+	       uint64_t actuallen, uint64_t hash,
+	       unsigned int zone_bits);
 
 /* Used by tdb_check to verify. */
-unsigned int size_to_bucket(struct tdb_context *tdb, tdb_len_t data_len);
-tdb_off_t zone_of(struct tdb_context *tdb, tdb_off_t off);
+unsigned int size_to_bucket(unsigned int free_buckets, tdb_len_t data_len);
+tdb_off_t bucket_off(tdb_off_t zone_off, tdb_off_t bucket);
 
 /* io.c: */
 /* Initialize tdb->methods. */
@@ -352,10 +384,10 @@ tdb_off_t tdb_lock_list(struct tdb_context *tdb, uint64_t hash,
 			int ltype, enum tdb_lock_flags waitflag);
 int tdb_unlock_list(struct tdb_context *tdb, tdb_off_t list, int ltype);
 
-/* Lock/unlock a particular free list. */
-int tdb_lock_free_list(struct tdb_context *tdb, tdb_off_t flist,
-		       enum tdb_lock_flags waitflag);
-void tdb_unlock_free_list(struct tdb_context *tdb, tdb_off_t flist);
+/* Lock/unlock a particular free bucket. */
+int tdb_lock_free_bucket(struct tdb_context *tdb, tdb_off_t b_off,
+			 enum tdb_lock_flags waitflag);
+void tdb_unlock_free_bucket(struct tdb_context *tdb, tdb_off_t b_off);
 
 /* Do we have any locks? */
 bool tdb_has_locks(struct tdb_context *tdb);
@@ -368,6 +400,11 @@ int tdb_allrecord_unlock(struct tdb_context *tdb, int ltype);
 /* Serialize db open. */
 int tdb_lock_open(struct tdb_context *tdb);
 void tdb_unlock_open(struct tdb_context *tdb);
+
+/* Serialize db expand. */
+int tdb_lock_expand(struct tdb_context *tdb, int ltype);
+void tdb_unlock_expand(struct tdb_context *tdb, int ltype);
+
 /* Expand the file. */
 int tdb_expand(struct tdb_context *tdb, tdb_len_t klen, tdb_len_t dlen,
 	       bool growing);

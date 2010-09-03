@@ -10,7 +10,7 @@ struct tdb_layout *new_tdb_layout(void)
 	struct tdb_layout *layout = malloc(sizeof(*layout));
 	layout->num_elems = 0;
 	layout->elem = NULL;
-	layout->ftable = layout->htable = -1;
+	layout->htable = -1;
 	return layout;
 }
 
@@ -20,6 +20,18 @@ static void add(struct tdb_layout *layout, union tdb_layout_elem elem)
 			       sizeof(layout->elem[0])
 			       * (layout->num_elems+1));
 	layout->elem[layout->num_elems++] = elem;
+}
+
+void tdb_layout_add_zone(struct tdb_layout *layout,
+			 unsigned int zone_bits,
+			 bool fill_prev)
+{
+	union tdb_layout_elem elem;
+	if (fill_prev)
+		tdb_layout_add_free(layout, 0);
+	elem.base.type = ZONE;
+	elem.zone.zone_bits = zone_bits;
+	add(layout, elem);
 }
 
 void tdb_layout_add_free(struct tdb_layout *layout, tdb_len_t len)
@@ -64,23 +76,6 @@ void tdb_layout_add_hashtable(struct tdb_layout *layout,
 	add(layout, elem);
 }
 
-void tdb_layout_add_freetable(struct tdb_layout *layout,
-			      unsigned int num_zones,
-			      unsigned int zone_bits,
-			      unsigned int num_buckets,
-			      tdb_len_t extra)
-{
-	union tdb_layout_elem elem;
-	elem.base.type = FREETABLE;
-	elem.freetable.num_zones = num_zones;
-	elem.freetable.zone_bits = zone_bits;
-	elem.freetable.num_buckets = num_buckets;
-	elem.freetable.extra = extra;
-	assert(layout->ftable == -1U);
-	layout->ftable = layout->num_elems;
-	add(layout, elem);
-}
-
 static tdb_len_t free_record_len(tdb_len_t len)
 {
 	return sizeof(struct tdb_used_record) + len;
@@ -101,11 +96,10 @@ static tdb_len_t hashtable_len(struct tle_hashtable *htable)
 		+ (sizeof(tdb_off_t) << htable->hash_bits);
 }
 
-static tdb_len_t freetable_len(struct tle_freetable *ftable)
+static tdb_len_t zone_header_len(struct tle_zone *zone)
 {
-	return sizeof(struct tdb_used_record)
-		+ (sizeof(tdb_off_t) * ftable->num_zones
-		   * (ftable->num_buckets + 1));
+	return sizeof(struct free_zone_header)
+		+ sizeof(tdb_off_t) * (BUCKETS_FOR_ZONE(zone->zone_bits)+1);
 }
 
 static void set_free_record(void *mem, tdb_len_t len)
@@ -114,43 +108,47 @@ static void set_free_record(void *mem, tdb_len_t len)
 }
 
 static void set_data_record(void *mem, struct tdb_context *tdb,
+			    struct tle_zone *last_zone,
 			    struct tle_used *used)
 {
 	struct tdb_used_record *u = mem;
 
 	set_header(tdb, u, used->key.dsize, used->data.dsize,
 		   used->key.dsize + used->data.dsize + used->extra,
-		   tdb_hash(tdb, used->key.dptr, used->key.dsize));
+		   tdb_hash(tdb, used->key.dptr, used->key.dsize),
+		   last_zone->zone_bits);
 	memcpy(u + 1, used->key.dptr, used->key.dsize);
 	memcpy((char *)(u + 1) + used->key.dsize,
 	       used->data.dptr, used->data.dsize);
 }
 
 static void set_hashtable(void *mem, struct tdb_context *tdb,
+			  struct tle_zone *last_zone,
 			  struct tle_hashtable *htable)
 {
 	struct tdb_used_record *u = mem;
 	tdb_len_t len = sizeof(tdb_off_t) << htable->hash_bits;
 
-	set_header(tdb, u, 0, len, len + htable->extra, 0);
+	set_header(tdb, u, 0, len, len + htable->extra, 0,
+		   last_zone->zone_bits);
 	memset(u + 1, 0, len);
 }
 
-static void set_freetable(void *mem, struct tdb_context *tdb,
-			  struct tle_freetable *ftable)
+static void set_zone(void *mem, struct tdb_context *tdb,
+		     struct tle_zone *zone)
 {
-	struct tdb_used_record *u = mem;
-	tdb_len_t len = sizeof(tdb_off_t) * ftable->num_zones
-		* (ftable->num_buckets + 1);
-	set_header(tdb, u, 0, len, len + ftable->extra, 0);
-	memset(u + 1, 0, len);
+	struct free_zone_header *fz = mem;
+	memset(fz, 0, zone_header_len(zone));
+	fz->zone_bits = zone->zone_bits;
 }
 
 static void add_to_freetable(struct tdb_context *tdb,
+			     struct tle_zone *last_zone,
 			     tdb_off_t eoff,
 			     tdb_off_t elen)
 {
-	add_free_record(tdb, eoff, sizeof(struct tdb_used_record) + elen);
+	add_free_record(tdb, last_zone->zone_bits, eoff,
+			sizeof(struct tdb_used_record) + elen);
 }
 
 static void add_to_hashtable(struct tdb_context *tdb,
@@ -170,48 +168,62 @@ static void add_to_hashtable(struct tdb_context *tdb,
 struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 {
 	unsigned int i;
-	tdb_off_t len;
+	tdb_off_t off, len;
+	tdb_len_t zone_left;
 	struct tdb_header *hdr;
 	char *mem;
 	struct tdb_context *tdb;
+	struct tle_zone *last_zone = NULL;
 
-	assert(layout->ftable != -1U);
 	assert(layout->htable != -1U);
+	assert(layout->elem[0].base.type == ZONE);
 
-	len = sizeof(struct tdb_header);
+	zone_left = 0;
+	off = sizeof(struct tdb_header);
 
 	/* First pass of layout: calc lengths */
 	for (i = 0; i < layout->num_elems; i++) {
 		union tdb_layout_elem *e = &layout->elem[i];
-		e->base.off = len;
+		e->base.off = off;
 		switch (e->base.type) {
+		case ZONE:
+			assert(zone_left == 0);
+			len = zone_header_len(&e->zone);
+			zone_left = 1ULL << e->zone.zone_bits;
+			break;
 		case FREE:
-			len += free_record_len(e->free.len);
+			if (e->free.len == 0)
+				e->free.len = zone_left
+					- sizeof(struct tdb_used_record);
+			len = free_record_len(e->free.len);
 			break;
 		case DATA:
-			len += data_record_len(&e->used);
+			len = data_record_len(&e->used);
 			break;
 		case HASHTABLE:
-			len += hashtable_len(&e->hashtable);
-			break;
-		case FREETABLE:
-			len += freetable_len(&e->freetable);
+			len = hashtable_len(&e->hashtable);
 			break;
 		}
+		off += len;
+		assert(zone_left >= len);
+		zone_left -= len;
 	}
 
-	mem = malloc(len);
+	/* Fill final zone with free record. */
+	if (zone_left != 0) {
+		tdb_layout_add_free(layout,
+				    zone_left
+				    - sizeof(struct tdb_used_record));
+		layout->elem[layout->num_elems-1].base.off = off;
+		off += zone_left;
+	}
+
+	mem = malloc(off+1);
 	/* Now populate our header, cribbing from a real TDB header. */
 	tdb = tdb_open(NULL, TDB_INTERNAL, O_RDWR, 0, &tap_log_attr);
 	hdr = (void *)mem;
 	*hdr = tdb->header;
 	hdr->v.generation++;
-	hdr->v.num_zones = layout->elem[layout->ftable].freetable.num_zones;
-	hdr->v.zone_bits = layout->elem[layout->ftable].freetable.zone_bits;
-	hdr->v.free_buckets
-		= layout->elem[layout->ftable].freetable.num_buckets;
-	hdr->v.free_off = layout->elem[layout->ftable].base.off
-		+ sizeof(struct tdb_used_record);
 	hdr->v.hash_bits = layout->elem[layout->htable].hashtable.hash_bits;
 	hdr->v.hash_off = layout->elem[layout->htable].base.off
 		+ sizeof(struct tdb_used_record);
@@ -219,23 +231,26 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 	/* Mug the tdb we have to make it use this. */
 	free(tdb->map_ptr);
 	tdb->map_ptr = mem;
-	tdb->map_size = len;
+	tdb->map_size = off+1;
 	header_changed(tdb);
 
 	for (i = 0; i < layout->num_elems; i++) {
 		union tdb_layout_elem *e = &layout->elem[i];
 		switch (e->base.type) {
+		case ZONE:
+			set_zone(mem + e->base.off, tdb, &e->zone);
+			last_zone = &e->zone;
+			break;
 		case FREE:
 			set_free_record(mem + e->base.off, e->free.len);
 			break;
 		case DATA:
-			set_data_record(mem + e->base.off, tdb, &e->used);
+			set_data_record(mem + e->base.off, tdb, last_zone,
+					&e->used);
 			break;
 		case HASHTABLE:
-			set_hashtable(mem + e->base.off, tdb, &e->hashtable);
-			break;
-		case FREETABLE:
-			set_freetable(mem + e->base.off, tdb, &e->freetable);
+			set_hashtable(mem + e->base.off, tdb, last_zone,
+				      &e->hashtable);
 			break;
 		}
 	}
@@ -244,8 +259,12 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 	for (i = 0; i < layout->num_elems; i++) {
 		union tdb_layout_elem *e = &layout->elem[i];
 		switch (e->base.type) {
+		case ZONE:
+			last_zone = &e->zone;
+			break;
 		case FREE:
-			add_to_freetable(tdb, e->base.off, e->free.len);
+			add_to_freetable(tdb, last_zone,
+					 e->base.off, e->free.len);
 			break;
 		case DATA:
 			add_to_hashtable(tdb, e->base.off, e->used.key);
@@ -255,5 +274,7 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 		}
 	}
 
+	/* Write tailer. */
+	((uint8_t *)tdb->map_ptr)[tdb->map_size-1] = last_zone->zone_bits;
 	return tdb;
 }

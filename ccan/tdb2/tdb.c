@@ -124,12 +124,22 @@ static uint64_t random_number(struct tdb_context *tdb)
 	return ret;
 }
 
-struct new_database {
+struct new_db_head {
 	struct tdb_header hdr;
+	struct free_zone_header zhdr;
+	tdb_off_t free[BUCKETS_FOR_ZONE(INITIAL_ZONE_BITS) + 1];
 	struct tdb_used_record hrec;
 	tdb_off_t hash[1ULL << INITIAL_HASH_BITS];
-	struct tdb_used_record frec;
-	tdb_off_t free[INITIAL_FREE_BUCKETS + 1]; /* One overflow bucket */
+	struct tdb_free_record frec;
+};
+
+struct new_database {
+	struct new_db_head h;
+	/* Rest up to 1 << INITIAL_ZONE_BITS is empty. */
+	char space[(1 << INITIAL_ZONE_BITS)
+		   - (sizeof(struct new_db_head) - sizeof(struct tdb_header))];
+	uint8_t tailer;
+	/* Don't count final padding! */
 };
 
 /* initialise a new database */
@@ -137,51 +147,61 @@ static int tdb_new_database(struct tdb_context *tdb)
 {
 	/* We make it up in memory, then write it out if not internal */
 	struct new_database newdb;
-	unsigned int magic_off = offsetof(struct tdb_header, magic_food);
+	unsigned int bucket, magic_off, dbsize;
+
+	/* Don't want any extra padding! */
+	dbsize = offsetof(struct new_database, tailer) + sizeof(newdb.tailer);
 
 	/* Fill in the header */
-	newdb.hdr.version = TDB_VERSION;
-	newdb.hdr.hash_seed = random_number(tdb);
-	newdb.hdr.hash_test = TDB_HASH_MAGIC;
-	newdb.hdr.hash_test = tdb->khash(&newdb.hdr.hash_test,
-					 sizeof(newdb.hdr.hash_test),
-					 newdb.hdr.hash_seed,
-					 tdb->hash_priv);
-	memset(newdb.hdr.reserved, 0, sizeof(newdb.hdr.reserved));
-	newdb.hdr.v.generation = 0;
-
-	/* The initial zone must cover the initial database size! */
-	BUILD_ASSERT((1ULL << INITIAL_ZONE_BITS) >= sizeof(newdb));
-
-	/* Free array has 1 zone, 10 buckets.  All buckets empty. */
-	newdb.hdr.v.num_zones = 1;
-	newdb.hdr.v.zone_bits = INITIAL_ZONE_BITS;
-	newdb.hdr.v.free_buckets = INITIAL_FREE_BUCKETS;
-	newdb.hdr.v.free_off = offsetof(struct new_database, free);
-	set_header(tdb, &newdb.frec, 0,
-		   sizeof(newdb.free), sizeof(newdb.free), 0);
-	memset(newdb.free, 0, sizeof(newdb.free));
-
+	newdb.h.hdr.version = TDB_VERSION;
+	newdb.h.hdr.hash_seed = random_number(tdb);
+	newdb.h.hdr.hash_test = TDB_HASH_MAGIC;
+	newdb.h.hdr.hash_test = tdb->khash(&newdb.h.hdr.hash_test,
+					   sizeof(newdb.h.hdr.hash_test),
+					   newdb.h.hdr.hash_seed,
+					   tdb->hash_priv);
+	memset(newdb.h.hdr.reserved, 0, sizeof(newdb.h.hdr.reserved));
+	newdb.h.hdr.v.generation = 0;
 	/* Initial hashes are empty. */
-	newdb.hdr.v.hash_bits = INITIAL_HASH_BITS;
-	newdb.hdr.v.hash_off = offsetof(struct new_database, hash);
-	set_header(tdb, &newdb.hrec, 0,
-		   sizeof(newdb.hash), sizeof(newdb.hash), 0);
-	memset(newdb.hash, 0, sizeof(newdb.hash));
+	newdb.h.hdr.v.hash_bits = INITIAL_HASH_BITS;
+	newdb.h.hdr.v.hash_off = offsetof(struct new_database, h.hash);
+	set_header(tdb, &newdb.h.hrec, 0,
+		   sizeof(newdb.h.hash), sizeof(newdb.h.hash), 0,
+		   INITIAL_ZONE_BITS);
+	memset(newdb.h.hash, 0, sizeof(newdb.h.hash));
+
+	/* Create the single free entry. */
+	newdb.h.frec.magic_and_meta = TDB_FREE_MAGIC | INITIAL_ZONE_BITS;
+	newdb.h.frec.data_len = (sizeof(newdb.h.frec)
+				 - sizeof(struct tdb_used_record)
+				 + sizeof(newdb.space));
+
+	/* Free is mostly empty... */
+	newdb.h.zhdr.zone_bits = INITIAL_ZONE_BITS;
+	memset(newdb.h.free, 0, sizeof(newdb.h.free));
+
+	/* ... except for this one bucket. */
+	bucket = size_to_bucket(INITIAL_ZONE_BITS, newdb.h.frec.data_len);
+	newdb.h.free[bucket] = offsetof(struct new_database, h.frec);
+	newdb.h.frec.next = newdb.h.frec.prev = 0;
+
+	/* Tailer contains maximum number of free_zone bits. */
+	newdb.tailer = INITIAL_ZONE_BITS;
 
 	/* Magic food */
-	memset(newdb.hdr.magic_food, 0, sizeof(newdb.hdr.magic_food));
-	strcpy(newdb.hdr.magic_food, TDB_MAGIC_FOOD);
+	memset(newdb.h.hdr.magic_food, 0, sizeof(newdb.h.hdr.magic_food));
+	strcpy(newdb.h.hdr.magic_food, TDB_MAGIC_FOOD);
 
 	/* This creates an endian-converted database, as if read from disk */
+	magic_off = offsetof(struct tdb_header, magic_food);
 	tdb_convert(tdb,
-		    (char *)&newdb.hdr + magic_off,
-		    sizeof(newdb) - magic_off);
+		    (char *)&newdb.h.hdr + magic_off,
+		    dbsize - 1 - magic_off);
 
-	tdb->header = newdb.hdr;
+	tdb->header = newdb.h.hdr;
 
 	if (tdb->flags & TDB_INTERNAL) {
-		tdb->map_size = sizeof(newdb);
+		tdb->map_size = dbsize;
 		tdb->map_ptr = malloc(tdb->map_size);
 		if (!tdb->map_ptr) {
 			tdb->ecode = TDB_ERR_OOM;
@@ -196,7 +216,7 @@ static int tdb_new_database(struct tdb_context *tdb)
 	if (ftruncate(tdb->fd, 0) == -1)
 		return -1;
 
-	if (!tdb_pwrite_all(tdb->fd, &newdb, sizeof(newdb), 0)) {
+	if (!tdb_pwrite_all(tdb->fd, &newdb, dbsize, 0)) {
 		tdb->ecode = TDB_ERR_IO;
 		return -1;
 	}
@@ -222,7 +242,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb->name = NULL;
 	tdb->map_ptr = NULL;
 	tdb->fd = -1;
-	/* map_size will be set below. */
+	tdb->map_size = sizeof(struct tdb_header);
 	tdb->ecode = TDB_SUCCESS;
 	/* header will be read in below. */
 	tdb->header_uptodate = false;
@@ -280,8 +300,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		}
 		TEST_IT(tdb->flags & TDB_CONVERT);
 		tdb_convert(tdb, &tdb->header, sizeof(tdb->header));
-		/* Zones don't matter for internal db. */
-		tdb->last_zone = 0;
+		tdb_zone_init(tdb);
 		return tdb;
 	}
 
@@ -357,12 +376,16 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		goto fail;
 	}
 
-	tdb->map_size = st.st_size;
 	tdb->device = st.st_dev;
 	tdb->inode = st.st_ino;
-	tdb_mmap(tdb);
 	tdb_unlock_open(tdb);
-	tdb_zone_init(tdb);
+
+	/* This make sure we have current map_size and mmap. */
+	tdb->methods->oob(tdb, tdb->map_size + 1, true);
+
+	/* Now we can pick a random free zone to start from. */
+	if (tdb_zone_init(tdb) == -1)
+		goto fail;
 
 	tdb->next = tdbs;
 	tdbs = tdb;
@@ -543,7 +566,8 @@ static int update_rec_hdr(struct tdb_context *tdb,
 {
 	uint64_t dataroom = rec_data_length(rec) + rec_extra_padding(rec);
 
-	if (set_header(tdb, rec, keylen, datalen, keylen + dataroom, h))
+	if (set_header(tdb, rec, keylen, datalen, keylen + dataroom, h,
+		       rec_zone_bits(rec)))
 		return -1;
 
 	return tdb_write_convert(tdb, off, rec, sizeof(*rec));
@@ -645,7 +669,7 @@ again:
 	r = tdb_get(tdb, oldoff - sizeof(*r), &pad, sizeof(*r));
 	if (!r)
 		goto oldheader;
-	add_free_record(tdb, oldoff - sizeof(*r),
+	add_free_record(tdb, rec_zone_bits(r), oldoff - sizeof(*r),
 			sizeof(*r)+rec_data_length(r)+rec_extra_padding(r));
 
 	/* Now we write the modified header. */
@@ -736,6 +760,7 @@ static int replace_data(struct tdb_context *tdb,
 			uint64_t h, struct tdb_data key, struct tdb_data dbuf,
 			tdb_off_t bucket,
 			tdb_off_t old_off, tdb_len_t old_room,
+			unsigned old_zone,
 			bool growing)
 {
 	tdb_off_t new_off;
@@ -750,7 +775,7 @@ static int replace_data(struct tdb_context *tdb,
 
 	/* We didn't like the existing one: remove it. */
 	if (old_off)
-		add_free_record(tdb, old_off,
+		add_free_record(tdb, old_zone, old_off,
 				sizeof(struct tdb_used_record)
 				+ key.dsize + old_room);
 
@@ -820,7 +845,8 @@ int tdb_store(struct tdb_context *tdb,
 	}
 
 	/* If we didn't use the old record, this implies we're growing. */
-	ret = replace_data(tdb, h, key, dbuf, bucket, off, old_room, off != 0);
+	ret = replace_data(tdb, h, key, dbuf, bucket, off, old_room,
+			   rec_zone_bits(&rec), off != 0);
 	unlock_lists(tdb, start, num, F_WRLCK);
 
 	if (unlikely(ret == 1)) {
@@ -902,7 +928,8 @@ int tdb_append(struct tdb_context *tdb,
 	}
 
 	/* If they're using tdb_append(), it implies they're growing record. */
-	ret = replace_data(tdb, h, key, new_dbuf, bucket, off, old_room, true);
+	ret = replace_data(tdb, h, key, new_dbuf, bucket, off, old_room,
+			   rec_zone_bits(&rec), true);
 	unlock_lists(tdb, start, num, F_WRLCK);
 	free(newdata);
 
@@ -1012,7 +1039,7 @@ int tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 	}
 
 	/* Free the deleted entry. */
-	if (add_free_record(tdb, off,
+	if (add_free_record(tdb, rec_zone_bits(&rec), off,
 			    sizeof(struct tdb_used_record)
 			    + rec_key_length(&rec)
 			    + rec_data_length(&rec)
