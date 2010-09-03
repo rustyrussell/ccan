@@ -624,17 +624,11 @@ static void enlarge_hash(struct tdb_context *tdb)
 	if ((1ULL << tdb->header.v.hash_bits) != num)
 		goto unlock;
 
-again:
 	/* Allocate our new array. */
 	hlen = num * sizeof(tdb_off_t) * 2;
 	newoff = alloc(tdb, 0, hlen, 0, false);
 	if (unlikely(newoff == TDB_OFF_ERR))
 		goto unlock;
-	if (unlikely(newoff == 0)) {
-		if (tdb_expand(tdb, 0, hlen, false) == -1)
-			goto unlock;
-		goto again;
-	}
 	/* Step over record header! */
 	newoff += sizeof(struct tdb_used_record);
 
@@ -755,7 +749,7 @@ static tdb_off_t find_and_lock(struct tdb_context *tdb,
 				  bucket, rec);
 }
 
-/* Returns -1 on error, 0 on OK, 1 on "expand and retry." */
+/* Returns -1 on error, 0 on OK" */
 static int replace_data(struct tdb_context *tdb,
 			uint64_t h, struct tdb_data key, struct tdb_data dbuf,
 			tdb_off_t bucket,
@@ -769,9 +763,6 @@ static int replace_data(struct tdb_context *tdb,
 	new_off = alloc(tdb, key.dsize, dbuf.dsize, h, growing);
 	if (unlikely(new_off == TDB_OFF_ERR))
 		return -1;
-
-	if (unlikely(new_off == 0))
-		return 1;
 
 	/* We didn't like the existing one: remove it. */
 	if (old_off)
@@ -849,13 +840,6 @@ int tdb_store(struct tdb_context *tdb,
 			   rec_zone_bits(&rec), off != 0);
 	unlock_lists(tdb, start, num, F_WRLCK);
 
-	if (unlikely(ret == 1)) {
-		/* Expand, then try again... */
-		if (tdb_expand(tdb, key.dsize, dbuf.dsize, off != 0) == -1)
-			return -1;
-		return tdb_store(tdb, key, dbuf, flag);
-	}
-
 	/* FIXME: by simple simulation, this approximated 60% full.
 	 * Check in real case! */
 	if (unlikely(num > 4 * tdb->header.v.hash_bits - 30))
@@ -932,13 +916,6 @@ int tdb_append(struct tdb_context *tdb,
 			   rec_zone_bits(&rec), true);
 	unlock_lists(tdb, start, num, F_WRLCK);
 	free(newdata);
-
-	if (unlikely(ret == 1)) {
-		/* Expand, then try again. */
-		if (tdb_expand(tdb, key.dsize, dbuf.dsize, true) == -1)
-			return -1;
-		return tdb_append(tdb, key, dbuf);
-	}
 
 	/* FIXME: by simple simulation, this approximated 60% full.
 	 * Check in real case! */

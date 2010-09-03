@@ -405,9 +405,6 @@ void tdb_unlock_open(struct tdb_context *tdb);
 int tdb_lock_expand(struct tdb_context *tdb, int ltype);
 void tdb_unlock_expand(struct tdb_context *tdb, int ltype);
 
-/* Expand the file. */
-int tdb_expand(struct tdb_context *tdb, tdb_len_t klen, tdb_len_t dlen,
-	       bool growing);
 
 #if 0
 /* Low-level locking primitives. */

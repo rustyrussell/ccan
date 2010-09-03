@@ -533,53 +533,6 @@ int set_header(struct tdb_context *tdb,
 	return 0;
 }
 
-static tdb_len_t adjust_size(size_t keylen, size_t datalen, bool growing)
-{
-	tdb_len_t size = keylen + datalen;
-
-	if (size < MIN_DATA_LEN)
-		size = MIN_DATA_LEN;
-
-	/* Overallocate if this is coming from an enlarging store. */
-	if (growing)
-		size += datalen / 2;
-
-	/* Round to next uint64_t boundary. */
-	return (size + (sizeof(uint64_t) - 1ULL)) & ~(sizeof(uint64_t) - 1ULL);
-}
-
-/* If this fails, try tdb_expand. */
-tdb_off_t alloc(struct tdb_context *tdb, size_t keylen, size_t datalen,
-		uint64_t hash, bool growing)
-{
-	tdb_off_t off;
-	tdb_len_t size, actual;
-	struct tdb_used_record rec;
-
-	/* We don't want header to change during this! */
-	assert(tdb->header_uptodate);
-
-	size = adjust_size(keylen, datalen, growing);
-
-	off = get_free(tdb, size, &actual);
-	if (unlikely(off == TDB_OFF_ERR || off == 0))
-		return off;
-
-	/* Some supergiant values can't be encoded. */
-	/* FIXME: Check before, and limit actual in get_free. */
-	if (set_header(tdb, &rec, keylen, datalen, actual, hash,
-		       tdb->zhdr.zone_bits) != 0) {
-		add_free_record(tdb, tdb->zhdr.zone_bits, off,
-				sizeof(rec) + actual);
-		return TDB_OFF_ERR;
-	}
-
-	if (tdb_write_convert(tdb, off, &rec, sizeof(rec)) != 0)
-		return TDB_OFF_ERR;
-	
-	return off;
-}
-
 static bool zones_happy(struct tdb_context *tdb)
 {
 	/* FIXME: look at distribution of zones. */
@@ -594,8 +547,7 @@ static tdb_len_t overhead(unsigned int zone_bits)
 }
 
 /* Expand the database (by adding a zone). */
-int tdb_expand(struct tdb_context *tdb, tdb_len_t klen, tdb_len_t dlen,
-	       bool growing)
+static int tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 {
 	uint64_t old_size;
 	tdb_off_t off;
@@ -606,8 +558,7 @@ int tdb_expand(struct tdb_context *tdb, tdb_len_t klen, tdb_len_t dlen,
 	bool enlarge_zone;
 
 	/* We need room for the record header too. */
-	wanted = sizeof(struct tdb_used_record)
-		+ (adjust_size(klen, dlen, growing)<<TDB_COMFORT_FACTOR_BITS);
+	wanted = sizeof(struct tdb_used_record) + size;
 
 	/* Only one person can expand file at a time. */
 	if (tdb_lock_expand(tdb, F_WRLCK) != 0)
@@ -667,6 +618,10 @@ int tdb_expand(struct tdb_context *tdb, tdb_len_t klen, tdb_len_t dlen,
 	if (add_free_record(tdb, zone_bits, off, tdb->map_size-1-off) == -1)
 		goto fail;
 
+	/* Try allocating from this zone now. */
+	tdb->zone_off = old_size - 1;
+	tdb->zhdr = zhdr;
+
 success:
 	tdb_unlock_expand(tdb, F_WRLCK);
 	return 0;
@@ -674,4 +629,58 @@ success:
 fail:
 	tdb_unlock_expand(tdb, F_WRLCK);
 	return -1;
+}
+
+static tdb_len_t adjust_size(size_t keylen, size_t datalen, bool growing)
+{
+	tdb_len_t size = keylen + datalen;
+
+	if (size < MIN_DATA_LEN)
+		size = MIN_DATA_LEN;
+
+	/* Overallocate if this is coming from an enlarging store. */
+	if (growing)
+		size += datalen / 2;
+
+	/* Round to next uint64_t boundary. */
+	return (size + (sizeof(uint64_t) - 1ULL)) & ~(sizeof(uint64_t) - 1ULL);
+}
+
+/* This won't fail: it will expand the database if it has to. */
+tdb_off_t alloc(struct tdb_context *tdb, size_t keylen, size_t datalen,
+		uint64_t hash, bool growing)
+{
+	tdb_off_t off;
+	tdb_len_t size, actual;
+	struct tdb_used_record rec;
+
+	/* We don't want header to change during this! */
+	assert(tdb->header_uptodate);
+
+	size = adjust_size(keylen, datalen, growing);
+
+again:
+	off = get_free(tdb, size, &actual);
+	if (unlikely(off == TDB_OFF_ERR))
+		return off;
+
+	if (unlikely(off == 0)) {
+		if (tdb_expand(tdb, size) == -1)
+			return TDB_OFF_ERR;
+		goto again;
+	}
+
+	/* Some supergiant values can't be encoded. */
+	/* FIXME: Check before, and limit actual in get_free. */
+	if (set_header(tdb, &rec, keylen, datalen, actual, hash,
+		       tdb->zhdr.zone_bits) != 0) {
+		add_free_record(tdb, tdb->zhdr.zone_bits, off,
+				sizeof(rec) + actual);
+		return TDB_OFF_ERR;
+	}
+
+	if (tdb_write_convert(tdb, off, &rec, sizeof(rec)) != 0)
+		return TDB_OFF_ERR;
+	
+	return off;
 }
