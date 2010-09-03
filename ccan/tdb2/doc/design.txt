@@ -2,7 +2,7 @@ TDB2: A Redesigning The Trivial DataBase
 
 Rusty Russell, IBM Corporation
 
-26-July-2010
+1-September-2010
 
 Abstract
 
@@ -551,7 +551,7 @@ long), that LDB uses 10,000 for this hash. In general it is
 impossible to know what the 'right' answer is at database 
 creation time.
 
-3.4.1 Proposed Solution
+3.4.1 <sub:Hash-Size-Solution>Proposed Solution
 
 After comprehensive performance testing on various scalable hash 
 variants[footnote:
@@ -559,31 +559,40 @@ http://rusty.ozlabs.org/?p=89 and http://rusty.ozlabs.org/?p=94
 This was annoying because I was previously convinced that an 
 expanding tree of hashes would be very close to optimal.
 ], it became clear that it is hard to beat a straight linear hash 
-table which doubles in size when it reaches saturation. There are 
-three details which become important:
+table which doubles in size when it reaches saturation. 
 
-1. On encountering a full bucket, we use the next bucket.
+1. 
 
-2. Extra hash bits are stored with the offset, to reduce 
-  comparisons.
+2. 
 
-3. A marker entry is used on deleting an entry.
+3. 
 
-The doubling of the table must be done under a transaction; we 
-will not reduce it on deletion, so it will be an unusual case. It 
-will either be placed at the head (other entries will be moved 
-out the way so we can expand). We could have a pointer in the 
-header to the current hashtable location, but that pointer would 
-have to be read frequently to check for hashtable moves.
 
-The locking for this is slightly more complex than the chained 
-case; we currently have one lock per bucket, and that means we 
-would need to expand the lock if we overflow to the next bucket. 
-The frequency of such collisions will effect our locking 
-heuristics: we can always lock more buckets than we need.
 
-One possible optimization is to only re-check the hash size on an 
-insert or a lookup miss.
+
+
+ Unfortunately, altering the hash table introduces serious 
+locking complications: the entire hash table needs to be locked 
+to enlarge the hash table, and others might be holding locks. 
+Particularly insidious are insertions done under tdb_chainlock.
+
+Thus an expanding layered hash will be used: an array of hash 
+groups, with each hash group exploding into pointers to lower 
+hash groups once it fills, turning into a hash tree. This has 
+implications for locking: we must lock the entire group in case 
+we need to expand it, yet we don't know how deep the tree is at 
+that point.
+
+Note that bits from the hash table entries should be stolen to 
+hold more hash bits to reduce the penalty of collisions. We can 
+use the otherwise-unused lower 3 bits. If we limit the size of 
+the database to 64 exabytes, we can use the top 8 bits of the 
+hash entry as well. These 11 bits would reduce false positives 
+down to 1 in 2000 which is more than we need: we can use one of 
+the bits to indicate that the extra hash bits are valid. This 
+means we can choose not to re-hash all entries when we expand a 
+hash group; simply use the next bits we need and mark them 
+invalid.
 
 3.5 <TDB-Freelist-Is>TDB Freelist Is Highly Contended
 
@@ -660,6 +669,13 @@ to the size of the hash table, but as it is rare to walk a large
 number of free list entries we can use far fewer, say 1/32 of the 
 number of hash buckets.
 
+It seems tempting to try to reuse the hash implementation which 
+we use for records here, but we have two ways of searching for 
+free entries: for allocation we search by size (and possibly 
+zone) which produces too many clashes for our hash table to 
+handle well, and for coalescing we search by address. Thus an 
+array of doubly-linked free lists seems preferable.
+
 There are various benefits in using per-size free lists (see [sub:TDB-Becomes-Fragmented]
 ) but it's not clear this would reduce contention in the common 
 case where all processes are allocating/freeing the same size. 
@@ -717,6 +733,19 @@ could have one cheaply: see [sub:Records-Incur-A].
 I anticipate that the number of entries in each free zone would 
 be small, but it might be worth using one free entry to hold 
 pointers to the others for cache efficiency.
+
+<freelist-in-zone>If we want to avoid locking complexity 
+(enlarging the free lists when we enlarge the file) we could 
+place the array of free lists at the beginning of each zone. This 
+means existing array lists never move, but means that a record 
+cannot be larger than a zone. That in turn implies that zones 
+should be variable sized (say, power of 2), which makes the 
+question “what zone is this record in?” much harder (and “pick a 
+random zone”, but that's less common). It could be done with as 
+few as 4 bits from the record header.[footnote:
+Using 2^{16+N*3}means 0 gives a minimal 65536-byte zone, 15 gives 
+the maximal 2^{61} byte zone. Zones range in factor of 8 steps.
+]
 
 3.6 <sub:TDB-Becomes-Fragmented>TDB Becomes Fragmented
 
@@ -822,7 +851,9 @@ block:
   this is diminishing returns after a handful of bits (at 10 
   bits, it reduces 99.9% of false memcmp). As an aside, as the 
   lower bits are already incorporated in the hash table 
-  resolution, the upper bits should be used here.
+  resolution, the upper bits should be used here. Note that it's 
+  not clear that these bits will be a win, given the extra bits 
+  in the hash table itself (see [sub:Hash-Size-Solution]).
 
 5. 'magic' does not need to be enlarged: it currently reflects 
   one of 5 values (used, free, dead, recovery, and 
@@ -865,13 +896,17 @@ struct tdb_free_record {
 
         uint64_t total_length;
 
+        uint64_t prev, next;
+
         ...
 
         uint64_t tailer;
 
 };
 
-
+We might want to take some bits from the used record's top_hash 
+(and the free record which has 32 bits of padding to spare 
+anyway) if we use variable sized zones. See [freelist-in-zone].
 
 3.8 Transaction Commit Requires 4 fdatasync
 

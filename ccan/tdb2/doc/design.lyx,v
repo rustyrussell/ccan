@@ -1,9 +1,19 @@
-head	1.6;
+head	1.8;
 access;
 symbols;
 locks; strict;
 comment	@# @;
 
+
+1.8
+date	2010.09.02.02.29.05;	author rusty;	state Exp;
+branches;
+next	1.7;
+
+1.7
+date	2010.09.01.10.58.12;	author rusty;	state Exp;
+branches;
+next	1.6;
 
 1.6
 date	2010.08.02.00.21.43;	author rusty;	state Exp;
@@ -41,9 +51,9 @@ desc
 @
 
 
-1.6
+1.8
 log
-@Commit changes
+@Remove bogus footnote
 @
 text
 @#LyX 1.6.5 created this file. For more info see http://www.lyx.org/
@@ -83,7 +93,7 @@ text
 \paperpagestyle default
 \tracking_changes true
 \output_changes true
-\author "" 
+\author "Rusty Russell,,," 
 \author "" 
 \end_header
 
@@ -98,7 +108,13 @@ Rusty Russell, IBM Corporation
 \end_layout
 
 \begin_layout Date
-26-July-2010
+
+\change_deleted 0 1283307542
+26-July
+\change_inserted 0 1283307544
+1-September
+\change_unchanged
+-2010
 \end_layout
 
 \begin_layout Abstract
@@ -1372,6 +1388,16 @@ TDB contains a number of hash chains in the header; the number is specified
 \end_layout
 
 \begin_layout Subsubsection
+
+\change_inserted 0 1283336713
+\begin_inset CommandInset label
+LatexCommand label
+name "sub:Hash-Size-Solution"
+
+\end_inset
+
+
+\change_unchanged
 Proposed Solution
 \end_layout
 
@@ -1390,22 +1416,32 @@ http://rusty.ozlabs.org/?p=89 and http://rusty.ozlabs.org/?p=94 This was annoyin
 
 , it became clear that it is hard to beat a straight linear hash table which
  doubles in size when it reaches saturation.
- There are three details which become important:
+ 
+\change_deleted 0 1283307675
+There are three details which become important:
 \end_layout
 
 \begin_layout Enumerate
+
+\change_deleted 0 1283307675
 On encountering a full bucket, we use the next bucket.
 \end_layout
 
 \begin_layout Enumerate
+
+\change_deleted 0 1283307675
 Extra hash bits are stored with the offset, to reduce comparisons.
 \end_layout
 
 \begin_layout Enumerate
+
+\change_deleted 0 1283307675
 A marker entry is used on deleting an entry.
 \end_layout
 
 \begin_layout Standard
+
+\change_deleted 0 1283307675
 The doubling of the table must be done under a transaction; we will not
  reduce it on deletion, so it will be an unusual case.
  It will either be placed at the head (other entries will be moved out the
@@ -1416,6 +1452,8 @@ The doubling of the table must be done under a transaction; we will not
 \end_layout
 
 \begin_layout Standard
+
+\change_deleted 0 1283307675
 The locking for this is slightly more complex than the chained case; we
  currently have one lock per bucket, and that means we would need to expand
  the lock if we overflow to the next bucket.
@@ -1424,8 +1462,43 @@ The locking for this is slightly more complex than the chained case; we
 \end_layout
 
 \begin_layout Standard
+
+\change_deleted 0 1283307675
 One possible optimization is to only re-check the hash size on an insert
  or a lookup miss.
+
+\change_inserted 0 1283307770
+ Unfortunately, altering the hash table introduces serious locking complications
+: the entire hash table needs to be locked to enlarge the hash table, and
+ others might be holding locks.
+ Particularly insidious are insertions done under tdb_chainlock.
+\end_layout
+
+\begin_layout Standard
+
+\change_inserted 0 1283336187
+Thus an expanding layered hash will be used: an array of hash groups, with
+ each hash group exploding into pointers to lower hash groups once it fills,
+ turning into a hash tree.
+ This has implications for locking: we must lock the entire group in case
+ we need to expand it, yet we don't know how deep the tree is at that point.
+\end_layout
+
+\begin_layout Standard
+
+\change_inserted 0 1283336586
+Note that bits from the hash table entries should be stolen to hold more
+ hash bits to reduce the penalty of collisions.
+ We can use the otherwise-unused lower 3 bits.
+ If we limit the size of the database to 64 exabytes, we can use the top
+ 8 bits of the hash entry as well.
+ These 11 bits would reduce false positives down to 1 in 2000 which is more
+ than we need: we can use one of the bits to indicate that the extra hash
+ bits are valid.
+ This means we can choose not to re-hash all entries when we expand a hash
+ group; simply use the next bits we need and mark them invalid.
+\change_unchanged
+
 \end_layout
 
 \begin_layout Subsection
@@ -1552,6 +1625,8 @@ The single list lock limits our allocation rate; due to the other issues
 
 \begin_layout Subsubsection
 Proposed Solution
+\change_deleted 0 1283336858
+
 \end_layout
 
 \begin_layout Standard
@@ -1566,6 +1641,20 @@ The free list must be split to reduce contention.
  This implies that the number of free lists is related to the size of the
  hash table, but as it is rare to walk a large number of free list entries
  we can use far fewer, say 1/32 of the number of hash buckets.
+\change_inserted 0 1283336910
+
+\end_layout
+
+\begin_layout Standard
+
+\change_inserted 0 1283337052
+It seems tempting to try to reuse the hash implementation which we use for
+ records here, but we have two ways of searching for free entries: for allocatio
+n we search by size (and possibly zone) which produces too many clashes
+ for our hash table to handle well, and for coalescing we search by address.
+ Thus an array of doubly-linked free lists seems preferable.
+\change_unchanged
+
 \end_layout
 
 \begin_layout Standard
@@ -1687,6 +1776,68 @@ reference "sub:Records-Incur-A"
 I anticipate that the number of entries in each free zone would be small,
  but it might be worth using one free entry to hold pointers to the others
  for cache efficiency.
+\change_inserted 0 1283309850
+
+\end_layout
+
+\begin_layout Standard
+
+\change_inserted 0 1283337216
+\begin_inset CommandInset label
+LatexCommand label
+name "freelist-in-zone"
+
+\end_inset
+
+If we want to avoid locking complexity (enlarging the free lists when we
+ enlarge the file) we could place the array of free lists at the beginning
+ of each zone.
+ This means existing array lists never move, but means that a record cannot
+ be larger than a zone.
+ That in turn implies that zones should be variable sized (say, power of
+ 2), which makes the question 
+\begin_inset Quotes eld
+\end_inset
+
+what zone is this record in?
+\begin_inset Quotes erd
+\end_inset
+
+ much harder (and 
+\begin_inset Quotes eld
+\end_inset
+
+pick a random zone
+\begin_inset Quotes erd
+\end_inset
+
+, but that's less common).
+ It could be done with as few as 4 bits from the record header.
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+
+\change_inserted 0 1283310945
+Using 
+\begin_inset Formula $2^{16+N*3}$
+\end_inset
+
+means 0 gives a minimal 65536-byte zone, 15 gives the maximal 
+\begin_inset Formula $2^{61}$
+\end_inset
+
+ byte zone.
+ Zones range in factor of 8 steps.
+\change_unchanged
+
+\end_layout
+
+\end_inset
+
+
+\change_unchanged
+
 \end_layout
 
 \begin_layout Subsection
@@ -1888,6 +2039,19 @@ miss
  it reduces 99.9% of false memcmp).
  As an aside, as the lower bits are already incorporated in the hash table
  resolution, the upper bits should be used here.
+
+\change_inserted 0 1283336739
+ Note that it's not clear that these bits will be a win, given the extra
+ bits in the hash table itself (see 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "sub:Hash-Size-Solution"
+
+\end_inset
+
+).
+\change_unchanged
+
 \end_layout
 
 \begin_layout Enumerate
@@ -1965,6 +2129,16 @@ struct tdb_free_record {
 
 \begin_layout LyX-Code
         uint64_t total_length;
+\change_inserted 0 1283337133
+
+\end_layout
+
+\begin_layout LyX-Code
+
+\change_inserted 0 1283337139
+        uint64_t prev, next;
+\change_unchanged
+
 \end_layout
 
 \begin_layout LyX-Code
@@ -1979,7 +2153,21 @@ struct tdb_free_record {
 };
 \end_layout
 
-\begin_layout LyX-Code
+\begin_layout Standard
+
+\change_inserted 0 1283337235
+We might want to take some bits from the used record's top_hash (and the
+ free record which has 32 bits of padding to spare anyway) if we use variable
+ sized zones.
+ See 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "freelist-in-zone"
+
+\end_inset
+
+.
+\change_unchanged
 
 \end_layout
 
@@ -2328,6 +2516,60 @@ At some later point, a sync would allow recovery of the old data into the
 
 \end_body
 \end_document
+@
+
+
+1.7
+log
+@Moving hash table does not work.
+@
+text
+@a1436 12
+\begin_inset Foot
+status collapsed
+
+\begin_layout Plain Layout
+
+\change_inserted 0 1283336450
+If we make the hash offsets zone-relative, then this only restricts the
+ zone size, not the overall database size.
+\end_layout
+
+\end_inset
+
+@
+
+
+1.6
+log
+@Commit changes
+@
+text
+@d38 1
+a38 1
+\author "" 
+d53 7
+a59 1
+26-July-2010
+d1333 10
+d1361 3
+a1363 1
+ There are three details which become important:
+d1367 2
+d1373 2
+d1379 2
+d1385 2
+d1397 2
+d1407 2
+d1411 45
+d1582 2
+d1598 14
+d1733 62
+d1996 13
+d2086 10
+d2110 15
+a2124 1
+\begin_layout LyX-Code
 @
 
 
