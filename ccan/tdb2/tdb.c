@@ -185,6 +185,9 @@ static int tdb_new_database(struct tdb_context *tdb)
 	newdb.h.free[bucket] = offsetof(struct new_database, h.frec);
 	newdb.h.frec.next = newdb.h.frec.prev = 0;
 
+	/* Clear free space to keep valgrind happy, and avoid leaking stack. */
+	memset(newdb.space, 0, sizeof(newdb.space));
+
 	/* Tailer contains maximum number of free_zone bits. */
 	newdb.tailer = INITIAL_ZONE_BITS;
 
