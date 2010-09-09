@@ -64,6 +64,9 @@
  * Author: Rusty Russell
  *
  * Licence: LGPLv3 (or later)
+ *
+ * Fails:
+ *	valgrind-tests // hash needs --partial-loads-ok=yes.
  */
 int main(int argc, char *argv[])
 {

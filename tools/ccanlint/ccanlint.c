@@ -36,19 +36,20 @@ static LIST_HEAD(compulsory_tests);
 static LIST_HEAD(normal_tests);
 static LIST_HEAD(finished_tests);
 bool safe_mode = false;
-static struct btree *exclude;
+static struct btree *cmdline_exclude;
+static struct btree *info_exclude;
 static unsigned int timeout;
 
 static void usage(const char *name)
 {
-	fprintf(stderr, "Usage: %s [-s] [-n] [-v] [-t <ms>] [-d <dirname>] [-x <tests>] [-k <test>]*\n"
+	fprintf(stderr, "Usage: %s [-s] [-n] [-v] [-t <ms>] [-d <dirname>] [-x <test>]* [-k <test>]*\n"
 		"   -v: verbose mode (can specify more than once)\n"
 		"   -s: simply give one line summary\n"
 		"   -d: use this directory instead of the current one\n"
 		"   -n: do not compile anything\n"
 		"   -l: list tests ccanlint performs\n"
 		"   -k: keep results of this test (can be used multiple times)\n"
-		"   -x: exclude tests (e.g. -x trailing_whitespace,valgrind)\n"
+		"   -x: exclude tests (can be used multiple times)\n"
 		"   -t: ignore (terminate) tests that are slower than this\n",
 		name);
 	exit(1);
@@ -82,8 +83,11 @@ bool ask(const char *question)
 
 static const char *should_skip(struct manifest *m, struct ccanlint *i)
 {
-	if (btree_lookup(exclude, i->key))
+	if (btree_lookup(cmdline_exclude, i->key))
 		return "excluded on command line";
+
+	if (btree_lookup(info_exclude, i->key))
+		return "excluded in _info file";
 	
 	if (i->skip_fail)
 		return "dependency failed";
@@ -329,6 +333,27 @@ static void list_tests(void)
 	exit(0);
 }
 
+static char *strip(const void *ctx, const char *line)
+{
+	line += strcspn(line, IDENT_CHARS "-");
+	return talloc_strndup(ctx, line, strspn(line, IDENT_CHARS "-"));
+}
+
+static void add_info_fails(struct ccan_file *info)
+{
+	struct doc_section *d;
+	unsigned int i;
+
+	list_for_each(get_ccan_file_docs(info), d, list) {
+		if (!streq(d->type, "fails"))
+			continue;
+
+		for (i = 0; i < d->num_lines; i++)
+			btree_insert(info_exclude, strip(info, d->lines[i]));
+		break;
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	int c;
@@ -340,7 +365,8 @@ int main(int argc, char *argv[])
 	
 	init_tests();
 
-	exclude = btree_new(btree_strcmp);
+	cmdline_exclude = btree_new(btree_strcmp);
+	info_exclude = btree_new(btree_strcmp);
 
 	/* I'd love to use long options, but that's not standard. */
 	/* FIXME: popt ccan package? */
@@ -370,12 +396,9 @@ int main(int argc, char *argv[])
 		case 'k':
 			keep_test(optarg);
 			break;
-		case 'x': {
-			char **exclude_strs = strsplit(NULL, optarg, ",", NULL);
-			size_t i;
-			for (i = 0; exclude_strs[i]; i++)
-				btree_insert(exclude, exclude_strs[i]);
-		} break;
+		case 'x':
+			btree_insert(cmdline_exclude, optarg);
+			break;
 		case 't':
 			timeout = atoi(optarg);
 			if (!timeout)
@@ -413,6 +436,8 @@ int main(int argc, char *argv[])
 			errx(1, "%s%s failed", prefix, i->name);
 		}
 	}
+
+	add_info_fails(m->info_file);
 
 	if (verbose)
 		printf("\nNormal tests:\n");
