@@ -2,10 +2,15 @@
 #include <ccan/talloc/talloc.h>
 #include <stdlib.h>
 
+bool compile_verbose = false;
+
 /* Compile multiple object files into a single.  Returns errmsg if fails. */
 char *link_objects(const void *ctx, const char *objs, char **errmsg)
 {
 	char *file = temp_file(ctx, ".o");
+
+	if (compile_verbose)
+		printf("Linking objects into %s\n", file);
 
 	*errmsg = run_command(ctx, NULL, "ld -r -o %s %s", file, objs);
 	if (*errmsg) {
@@ -20,6 +25,8 @@ char *compile_object(const void *ctx, const char *cfile, const char *ccandir,
 		     const char *extra_cflags,
 		     const char *outfile)
 {
+	if (compile_verbose)
+		printf("Compiling %s\n", outfile);
 	return run_command(ctx, NULL, "cc " CFLAGS " -I%s %s -c -o %s %s",
 			   ccandir, extra_cflags, outfile, cfile);
 }
@@ -30,6 +37,8 @@ char *compile_and_link(const void *ctx, const char *cfile, const char *ccandir,
 		       const char *objs, const char *extra_cflags,
 		       const char *libs, const char *outfile)
 {
+	if (compile_verbose)
+		printf("Compiling and linking %s\n", outfile);
 	return run_command(ctx, NULL, "cc " CFLAGS " -I%s %s -o %s %s %s %s",
 			   ccandir, extra_cflags, outfile, cfile, objs, libs);
 }

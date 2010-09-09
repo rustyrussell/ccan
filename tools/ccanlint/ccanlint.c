@@ -413,6 +413,8 @@ int main(int argc, char *argv[])
 	if (optind < argc)
 		usage(argv[0]);
 
+	if (verbose >= 2)
+		compile_verbose = true;
 	if (verbose >= 3)
 		tools_verbose = true;
 

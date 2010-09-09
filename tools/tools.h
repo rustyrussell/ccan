@@ -43,6 +43,8 @@ bool move_file(const char *oldname, const char *newname);
  * These all compile into a temporary dir, and return the filename.
  * On failure they return NULL, and errmsg is set to compiler output.
  */
+/* If set, say what we're compiling to. */
+extern bool compile_verbose;
 /* Compile multiple object files into a single. */
 char *link_objects(const void *ctx, const char *objs, char **errmsg);
 /* Compile a single C file to an object file.  Returns errmsg if fails. */
