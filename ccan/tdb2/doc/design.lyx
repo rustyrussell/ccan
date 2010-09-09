@@ -53,8 +53,8 @@ Rusty Russell, IBM Corporation
 
 \change_deleted 0 1283307542
 26-July
-\change_inserted 0 1283307544
-1-September
+\change_inserted 0 1284016854
+9-September
 \change_unchanged
 -2010
 \end_layout
@@ -835,6 +835,18 @@ Internal locking is required to make sure that fcntl locks do not overlap
 \begin_layout Standard
 The aim is that building tdb with -DTDB_PTHREAD will result in a pthread-safe
  version of the library, and otherwise no overhead will exist.
+
+\change_inserted 0 1284016998
+ Alternatively, a hooking mechanism similar to that proposed for 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "Proposed-Solution-locking-hook"
+
+\end_inset
+
+ could be used to enable pthread locking at runtime.
+\change_unchanged
+
 \end_layout
 
 \begin_layout Subsection
@@ -1183,6 +1195,109 @@ reference "TDB_CLEAR_IF_FIRST-Imposes-Performance"
 \end_inset
 
 .
+\change_inserted 0 1284015637
+
+\end_layout
+
+\begin_layout Subsection
+
+\change_inserted 0 1284015716
+Extending The Header Is Difficult
+\end_layout
+
+\begin_layout Standard
+
+\change_inserted 0 1284015906
+We have reserved (zeroed) words in the TDB header, which can be used for
+ future features.
+ If the future features are compulsory, the version number must be updated
+ to prevent old code from accessing the database.
+ But if the future feature is optional, we have no way of telling if older
+ code is accessing the database or not.
+\end_layout
+
+\begin_layout Subsubsection
+
+\change_inserted 0 1284015637
+Proposed Solution
+\end_layout
+
+\begin_layout Standard
+
+\change_inserted 0 1284016114
+The header should contain a 
+\begin_inset Quotes eld
+\end_inset
+
+format variant
+\begin_inset Quotes erd
+\end_inset
+
+ value (64-bit).
+ This is divided into two 32-bit parts:
+\end_layout
+
+\begin_layout Enumerate
+
+\change_inserted 0 1284016149
+The lower part reflects the format variant understood by code accessing
+ the database.
+\end_layout
+
+\begin_layout Enumerate
+
+\change_inserted 0 1284016639
+The upper part reflects the format variant you must understand to write
+ to the database (otherwise you can only open for reading).
+\end_layout
+
+\begin_layout Standard
+
+\change_inserted 0 1284016821
+The latter field can only be written at creation time, the former should
+ be written under the OPEN_LOCK when opening the database for writing, if
+ the variant of the code is lower than the current lowest variant.
+\end_layout
+
+\begin_layout Standard
+
+\change_inserted 0 1284016803
+This should allow backwards-compatible features to be added, and detection
+ if older code (which doesn't understand the feature) writes to the database.
+\change_deleted 0 1284016101
+
+\end_layout
+
+\begin_layout Subsection
+
+\change_inserted 0 1284015634
+Record Headers Are Not Expandible
+\end_layout
+
+\begin_layout Standard
+
+\change_inserted 0 1284015634
+If we later want to add (say) checksums on keys and data, it would require
+ another format change, which we'd like to avoid.
+\end_layout
+
+\begin_layout Subsubsection
+
+\change_inserted 0 1284015634
+Proposed Solution
+\end_layout
+
+\begin_layout Standard
+
+\change_inserted 0 1284016847
+We often have extra padding at the tail of a record.
+ If we ensure that the first byte (if any) of this padding is zero, we will
+ have a way for future changes to detect code which doesn't understand a
+ new format: the new code would write (say) a 1 at the tail, and thus if
+ there is no tail or the first byte is 0, we would know the extension is
+ not present on that record.
+\change_unchanged
+
 \end_layout
 
 \begin_layout Section

@@ -2,7 +2,7 @@ TDB2: A Redesigning The Trivial DataBase
 
 Rusty Russell, IBM Corporation
 
-1-September-2010
+9-September-2010
 
 Abstract
 
@@ -277,7 +277,9 @@ maintained.
 
 The aim is that building tdb with -DTDB_PTHREAD will result in a 
 pthread-safe version of the library, and otherwise no overhead 
-will exist.
+will exist. Alternatively, a hooking mechanism similar to that 
+proposed for [Proposed-Solution-locking-hook] could be used to 
+enable pthread locking at runtime.
 
 2.8 *_nonblock Functions And *_mark Functions Expose 
   Implementation
@@ -472,6 +474,50 @@ it alone has opened the TDB and will erase it.
 
 Remove TDB_CLEAR_IF_FIRST. Other workarounds are possible, but 
 see [TDB_CLEAR_IF_FIRST-Imposes-Performance].
+
+2.15 Extending The Header Is Difficult
+
+We have reserved (zeroed) words in the TDB header, which can be 
+used for future features. If the future features are compulsory, 
+the version number must be updated to prevent old code from 
+accessing the database. But if the future feature is optional, we 
+have no way of telling if older code is accessing the database or 
+not.
+
+2.15.1 Proposed Solution
+
+The header should contain a “format variant” value (64-bit). This 
+is divided into two 32-bit parts:
+
+1. The lower part reflects the format variant understood by code 
+  accessing the database.
+
+2. The upper part reflects the format variant you must understand 
+  to write to the database (otherwise you can only open for 
+  reading).
+
+The latter field can only be written at creation time, the former 
+should be written under the OPEN_LOCK when opening the database 
+for writing, if the variant of the code is lower than the current 
+lowest variant.
+
+This should allow backwards-compatible features to be added, and 
+detection if older code (which doesn't understand the feature) 
+writes to the database.
+
+2.16 Record Headers Are Not Expandible
+
+If we later want to add (say) checksums on keys and data, it 
+would require another format change, which we'd like to avoid.
+
+2.16.1 Proposed Solution
+
+We often have extra padding at the tail of a record. If we ensure 
+that the first byte (if any) of this padding is zero, we will 
+have a way for future changes to detect code which doesn't 
+understand a new format: the new code would write (say) a 1 at 
+the tail, and thus if there is no tail or the first byte is 0, we 
+would know the extension is not present on that record.
 
 3 Performance And Scalability Issues
 
