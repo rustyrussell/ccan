@@ -1,6 +1,7 @@
 #include <ccan/tdb2/tdb.c>
 #include <ccan/tdb2/free.c>
 #include <ccan/tdb2/lock.c>
+#include <ccan/tdb2/hash.c>
 #include <ccan/tdb2/io.c>
 #include <ccan/tap/tap.h>
 #include "logging.h"
@@ -27,7 +28,7 @@ int main(int argc, char *argv[])
 
 	/* We should neatly encode all values. */
 	for (i = 0; i < 48; i++) {
-		uint64_t h = 1ULL << (i < 5 ? 63 - i : 63 - 4);
+		uint64_t h = 1ULL << (i < 5 ? i : 4);
 		uint64_t klen = 1ULL << (i < 16 ? i : 15);
 		uint64_t dlen = 1ULL << i;
 		uint64_t xlen = 1ULL << (i < 32 ? i : 31);
@@ -38,7 +39,7 @@ int main(int argc, char *argv[])
 		ok1(rec_key_length(&rec) == klen);
 		ok1(rec_data_length(&rec) == dlen);
 		ok1(rec_extra_padding(&rec) == xlen);
-		ok1((uint64_t)rec_hash(&rec) << (64 - 5) == h);
+		ok1((uint64_t)rec_hash(&rec) == h);
 		ok1(rec_zone_bits(&rec) == zbits);
 		ok1(rec_magic(&rec) == TDB_MAGIC);
 	}

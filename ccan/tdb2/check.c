@@ -33,63 +33,60 @@ static bool append(tdb_off_t **arr, size_t *num, tdb_off_t off)
 static bool check_header(struct tdb_context *tdb)
 {
 	uint64_t hash_test;
+	struct tdb_header hdr;
+
+	if (tdb_read_convert(tdb, 0, &hdr, sizeof(hdr)) == -1)
+		return false;
+	/* magic food should not be converted, so convert back. */
+	tdb_convert(tdb, hdr.magic_food, sizeof(hdr.magic_food));
 
 	hash_test = TDB_HASH_MAGIC;
 	hash_test = tdb_hash(tdb, &hash_test, sizeof(hash_test));
-	if (tdb->header.hash_test != hash_test) {
+	if (hdr.hash_test != hash_test) {
 		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 			 "check: hash test %llu should be %llu\n",
-			 tdb->header.hash_test, hash_test);
-		return false;
-	}
-	if (strcmp(tdb->header.magic_food, TDB_MAGIC_FOOD) != 0) {
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "check: bad magic '%.*s'\n",
-			 sizeof(tdb->header.magic_food),
-			 tdb->header.magic_food);
-		return false;
-	}
-	if (tdb->header.v.hash_bits < INITIAL_HASH_BITS) {
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "check: bad hash bits %llu\n",
-			 (long long)tdb->header.v.hash_bits);
+			 hdr.hash_test, hash_test);
 		return false;
 	}
 
-	/* We check hash_off later. */
+	if (strcmp(hdr.magic_food, TDB_MAGIC_FOOD) != 0) {
+		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
+			 "check: bad magic '%.*s'\n",
+			 sizeof(hdr.magic_food), hdr.magic_food);
+		return false;
+	}
 
 	/* Don't check reserved: they *can* be used later. */
 	return true;
 }
 
-static int off_cmp(const tdb_off_t *a, const tdb_off_t *b)
-{
-	/* Can overflow an int. */
-	return *a > *b ? 1
-		: *a < *b ? -1
-		: 0;
-}
-
-static bool check_hash_list(struct tdb_context *tdb,
+static bool check_hash_tree(struct tdb_context *tdb,
+			    tdb_off_t off, unsigned int group_bits,
+			    uint64_t hprefix,
+			    unsigned hprefix_bits,
 			    tdb_off_t used[],
-			    size_t num_used)
+			    size_t num_used,
+			    size_t *num_found);
+
+static bool check_hash_record(struct tdb_context *tdb,
+			      tdb_off_t off,
+			      uint64_t hprefix,
+			      unsigned hprefix_bits,
+			      tdb_off_t used[],
+			      size_t num_used,
+			      size_t *num_found)
 {
 	struct tdb_used_record rec;
-	tdb_len_t hashlen, i, num_nonzero;
-	tdb_off_t h;
-	size_t num_found;
 
-	hashlen = sizeof(tdb_off_t) << tdb->header.v.hash_bits;
-
-	if (tdb_read_convert(tdb, tdb->header.v.hash_off - sizeof(rec),
-			     &rec, sizeof(rec)) == -1)
+	if (tdb_read_convert(tdb, off, &rec, sizeof(rec)) == -1)
 		return false;
 
-	if (rec_data_length(&rec) != hashlen) {
+	if (rec_data_length(&rec)
+	    != sizeof(tdb_off_t) << TDB_SUBLEVEL_HASH_BITS) {
 		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 			 "tdb_check: Bad hash table length %llu vs %llu\n",
 			 (long long)rec_data_length(&rec),
-			 (long long)hashlen);
+			 (long long)sizeof(tdb_off_t)<<TDB_SUBLEVEL_HASH_BITS);
 		return false;
 	}
 	if (rec_key_length(&rec) != 0) {
@@ -105,69 +102,171 @@ static bool check_hash_list(struct tdb_context *tdb,
 		return false;
 	}
 
-	num_found = 0;
-	num_nonzero = 0;
-	for (i = 0, h = tdb->header.v.hash_off;
-	     i < (1ULL << tdb->header.v.hash_bits);
-	     i++, h += sizeof(tdb_off_t)) {
-		tdb_off_t off, *p, pos;
-		struct tdb_used_record rec;
-		uint64_t hash;
+	off += sizeof(rec);
+	return check_hash_tree(tdb, off,
+			       TDB_SUBLEVEL_HASH_BITS-TDB_HASH_GROUP_BITS,
+			       hprefix, hprefix_bits,
+			       used, num_used, num_found);
+}
 
-		off = tdb_read_off(tdb, h);
-		if (off == TDB_OFF_ERR)
-			return false;
-		if (!off) {
-			num_nonzero = 0;
-			continue;
-		}
-		/* FIXME: Check hash bits */
-		p = asearch(&off, used, num_used, off_cmp);
-		if (!p) {
-			tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-				 "tdb_check: Invalid offset %llu in hash\n",
-				 (long long)off);
-			return false;
-		}
-		/* Mark it invalid. */
-		*p ^= 1;
-		num_found++;
+static int off_cmp(const tdb_off_t *a, const tdb_off_t *b)
+{
+	/* Can overflow an int. */
+	return *a > *b ? 1
+		: *a < *b ? -1
+		: 0;
+}
 
-		if (tdb_read_convert(tdb, off, &rec, sizeof(rec)) == -1)
-			return false;
+static uint64_t get_bits(uint64_t h, unsigned num, unsigned *used)
+{
+	*used += num;
 
-		/* Check it is hashed correctly. */
-		hash = hash_record(tdb, off);
+	return (h >> (64 - *used)) & ((1U << num) - 1);
+}
 
-		/* Top bits must match header. */
-		if (hash >> (64 - 5) != rec_hash(&rec)) {
-			tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-				 "tdb_check: Bad hash magic at offset %llu"
-				 " (0x%llx vs 0x%llx)\n",
-				 (long long)off,
-				 (long long)hash, (long long)rec_hash(&rec));
-			return false;
-		}
+static bool check_hash_tree(struct tdb_context *tdb,
+			    tdb_off_t off, unsigned int group_bits,
+			    uint64_t hprefix,
+			    unsigned hprefix_bits,
+			    tdb_off_t used[],
+			    size_t num_used,
+			    size_t *num_found)
+{
+	unsigned int g, b;
+	const tdb_off_t *hash;
+	struct tdb_used_record rec;
 
-		/* It must be in the right place in hash array. */
-		pos = hash & ((1ULL << tdb->header.v.hash_bits)-1);
-		if (pos < i - num_nonzero || pos > i) {
-			/* Could be wrap from end of array?  FIXME: check? */
-			if (i != num_nonzero) {
+	hash = tdb_access_read(tdb, off,
+			       sizeof(tdb_off_t)
+			       << (group_bits + TDB_HASH_GROUP_BITS),
+			       true);
+	if (!hash)
+		return false;
+
+	for (g = 0; g < (1 << group_bits); g++) {
+		const tdb_off_t *group = hash + (g << TDB_HASH_GROUP_BITS);
+		for (b = 0; b < (1 << TDB_HASH_GROUP_BITS); b++) {
+			unsigned int bucket, i, used_bits;
+			uint64_t h;
+			tdb_off_t *p;
+			if (group[b] == 0)
+				continue;
+
+			off = group[b] & TDB_OFF_MASK;
+			p = asearch(&off, used, num_used, off_cmp);
+			if (!p) {
 				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-					 "tdb_check: Bad hash position %llu at"
-					 " offset %llu hash 0x%llx\n",
-					 (long long)i,
+					 "tdb_check: Invalid offset %llu "
+					 "in hash\n",
+					 (long long)off);
+				goto fail;
+			}
+			/* Mark it invalid. */
+			*p ^= 1;
+			(*num_found)++;
+
+			if (is_subhash(group[b])) {
+				uint64_t subprefix;
+				subprefix = (hprefix 
+				     << (group_bits + TDB_HASH_GROUP_BITS))
+					+ g * (1 << TDB_HASH_GROUP_BITS) + b;
+
+				if (!check_hash_record(tdb,
+					       group[b] & TDB_OFF_MASK,
+					       subprefix,
+					       hprefix_bits
+						       + group_bits
+						       + TDB_HASH_GROUP_BITS,
+					       used, num_used, num_found))
+					goto fail;
+				continue;
+			}
+			/* A normal entry */
+
+			/* Does it belong here at all? */
+			h = hash_record(tdb, off);
+			used_bits = 0;
+			if (get_bits(h, hprefix_bits, &used_bits) != hprefix
+			    && hprefix_bits) {
+				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
+					 "check: bad hash placement"
+					 " 0x%llx vs 0x%llx\n",
+					 (long long)h, (long long)hprefix);
+				goto fail;
+			}
+
+			/* Does it belong in this group? */
+			if (get_bits(h, group_bits, &used_bits) != g) {
+				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
+					 "check: bad group %llu vs %u\n",
+					 (long long)h, g);
+				goto fail;
+			}
+
+			/* Are bucket bits correct? */
+			bucket = group[b] & TDB_OFF_HASH_GROUP_MASK;
+			if (get_bits(h, TDB_HASH_GROUP_BITS, &used_bits)
+			    != bucket) {
+				used_bits -= TDB_HASH_GROUP_BITS;
+				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
+					 "check: bad bucket %u vs %u\n",
+					 (unsigned)get_bits(h,
+							    TDB_HASH_GROUP_BITS,
+							    &used_bits),
+					 bucket);
+				goto fail;
+			}
+
+			/* There must not be any zero entries between
+			 * the bucket it belongs in and this one! */
+			for (i = bucket;
+			     i != b;
+			     i = (i + 1) % (1 << TDB_HASH_GROUP_BITS)) {
+				if (group[i] == 0) {
+					tdb->log(tdb, TDB_DEBUG_ERROR,
+						 tdb->log_priv,
+						 "check: bad group placement"
+						 " %u vs %u\n",
+						 b, bucket);
+					goto fail;
+				}
+			}
+
+			if (tdb_read_convert(tdb, off, &rec, sizeof(rec)) == -1)
+				goto fail;
+
+			/* Bottom bits must match header. */
+			if ((h & ((1 << 5)-1)) != rec_hash(&rec)) {
+				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
+					 "tdb_check: Bad hash magic at"
+					 " offset %llu (0x%llx vs 0x%llx)\n",
 					 (long long)off,
-					 (long long)hash);
-				return false;
+					 (long long)h,
+					 (long long)rec_hash(&rec));
+				goto fail;
 			}
 		}
-		num_nonzero++;
 	}
+	tdb_access_release(tdb, hash);
+	return true;
 
-	/* hash table is one of the used blocks. */
-	if (num_found != num_used - 1) {
+fail:
+	tdb_access_release(tdb, hash);
+	return false;
+}
+
+static bool check_hash(struct tdb_context *tdb,
+		       tdb_off_t used[],
+		       size_t num_used)
+{
+	size_t num_found = 0;
+
+	if (!check_hash_tree(tdb, offsetof(struct tdb_header, hashtable),
+			     TDB_TOPLEVEL_HASH_BITS-TDB_HASH_GROUP_BITS,
+			     0, 0,  used, num_used, &num_found))
+		return false;
+
+	if (num_found != num_used) {
 		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 			 "tdb_check: Not all entries are in hash\n");
 		return false;
@@ -265,7 +364,7 @@ static tdb_len_t check_free_list(struct tdb_context *tdb,
 static tdb_off_t check_zone(struct tdb_context *tdb, tdb_off_t zone_off,
 			    tdb_off_t **used, size_t *num_used,
 			    tdb_off_t **free, size_t *num_free,
-			    bool *hash_found, unsigned int *max_zone_bits)
+			    unsigned int *max_zone_bits)
 {
 	struct free_zone_header zhdr;
 	tdb_off_t off, hdrlen;
@@ -372,9 +471,6 @@ static tdb_off_t check_zone(struct tdb_context *tdb, tdb_off_t zone_off,
 					 (long long)len, (long long)off);
 				return TDB_OFF_ERR;
 			}
-
-			if (off + sizeof(p->u) == tdb->header.v.hash_off)
-				*hash_found = true;
 		}
 	}
 	return 1ULL << zhdr.zone_bits;
@@ -388,14 +484,17 @@ int tdb_check(struct tdb_context *tdb,
 	tdb_off_t *free = NULL, *used = NULL, off;
 	tdb_len_t len;
 	size_t num_free = 0, num_used = 0, num_found = 0;
-	bool hash_found = false;
 	unsigned max_zone_bits = INITIAL_ZONE_BITS;
 	uint8_t tailer;
 
-	/* FIXME: need more locking? against expansion? */
 	/* This always ensures the header is uptodate. */
 	if (tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false) != 0)
 		return -1;
+
+	if (tdb_lock_expand(tdb, F_RDLCK) != 0) {
+		tdb_allrecord_unlock(tdb, F_RDLCK);
+		return -1;
+	}
 
 	if (!check_header(tdb))
 		goto fail;
@@ -405,7 +504,7 @@ int tdb_check(struct tdb_context *tdb,
 	     off < tdb->map_size - 1;
 	     off += len) {
 		len = check_zone(tdb, off, &used, &num_used, &free, &num_free,
-				 &hash_found, &max_zone_bits);
+				 &max_zone_bits);
 		if (len == TDB_OFF_ERR)
 			goto fail;
 	}
@@ -421,15 +520,8 @@ int tdb_check(struct tdb_context *tdb,
 		goto fail;
 	}
 
-	if (!hash_found) {
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "tdb_check: hash table not found at %llu\n",
-			 (long long)tdb->header.v.hash_off);
-		goto fail;
-	}
-
 	/* FIXME: Check key uniqueness? */
-	if (!check_hash_list(tdb, used, num_used))
+	if (!check_hash(tdb, used, num_used))
 		goto fail;
 
 	for (off = sizeof(struct tdb_header);
@@ -446,9 +538,11 @@ int tdb_check(struct tdb_context *tdb,
 	}
 
 	tdb_allrecord_unlock(tdb, F_RDLCK);
+	tdb_unlock_expand(tdb, F_RDLCK);
 	return 0;
 
 fail:
 	tdb_allrecord_unlock(tdb, F_RDLCK);
+	tdb_unlock_expand(tdb, F_RDLCK);
 	return -1;
 }

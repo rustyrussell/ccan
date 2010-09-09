@@ -10,7 +10,6 @@ struct tdb_layout *new_tdb_layout(void)
 	struct tdb_layout *layout = malloc(sizeof(*layout));
 	layout->num_elems = 0;
 	layout->elem = NULL;
-	layout->htable = -1;
 	return layout;
 }
 
@@ -63,19 +62,6 @@ void tdb_layout_add_used(struct tdb_layout *layout,
 	add(layout, elem);
 }
 
-void tdb_layout_add_hashtable(struct tdb_layout *layout,
-			      unsigned int hash_bits,
-			      tdb_len_t extra)
-{
-	union tdb_layout_elem elem;
-	elem.base.type = HASHTABLE;
-	elem.hashtable.hash_bits = hash_bits;
-	elem.hashtable.extra = extra;
-	assert(layout->htable == -1U);
-	layout->htable = layout->num_elems;
-	add(layout, elem);
-}
-
 static tdb_len_t free_record_len(tdb_len_t len)
 {
 	return sizeof(struct tdb_used_record) + len;
@@ -93,7 +79,8 @@ static tdb_len_t data_record_len(struct tle_used *used)
 static tdb_len_t hashtable_len(struct tle_hashtable *htable)
 {
 	return sizeof(struct tdb_used_record)
-		+ (sizeof(tdb_off_t) << htable->hash_bits);
+		+ (sizeof(tdb_off_t) << TDB_SUBLEVEL_HASH_BITS)
+		+ htable->extra;
 }
 
 static tdb_len_t zone_header_len(struct tle_zone *zone)
@@ -127,7 +114,7 @@ static void set_hashtable(void *mem, struct tdb_context *tdb,
 			  struct tle_hashtable *htable)
 {
 	struct tdb_used_record *u = mem;
-	tdb_len_t len = sizeof(tdb_off_t) << htable->hash_bits;
+	tdb_len_t len = sizeof(tdb_off_t) << TDB_SUBLEVEL_HASH_BITS;
 
 	set_header(tdb, u, 0, len, len + htable->extra, 0,
 		   last_zone->zone_bits);
@@ -151,17 +138,64 @@ static void add_to_freetable(struct tdb_context *tdb,
 			sizeof(struct tdb_used_record) + elen);
 }
 
+static tdb_off_t hbucket_off(tdb_off_t group_start, unsigned ingroup)
+{
+	return group_start
+		+ (ingroup % (1 << TDB_HASH_GROUP_BITS)) * sizeof(tdb_off_t);
+}
+
+/* Get bits from a value. */
+static uint32_t bits(uint64_t val, unsigned start, unsigned num)
+{
+	assert(num <= 32);
+	return (val >> start) & ((1U << num) - 1);
+}
+
+/* We take bits from the top: that way we can lock whole sections of the hash
+ * by using lock ranges. */
+static uint32_t use_bits(uint64_t h, unsigned num, unsigned *used)
+{
+	*used += num;
+	return bits(h, 64 - *used, num);
+}
+
+static tdb_off_t encode_offset(tdb_off_t new_off, unsigned bucket,
+			       uint64_t h)
+{
+	return bucket
+		| new_off
+		| ((uint64_t)bits(h, 64 - TDB_OFF_UPPER_STEAL_EXTRA,
+				  TDB_OFF_UPPER_STEAL_EXTRA)
+		   << TDB_OFF_HASH_EXTRA_BIT);
+}
+
+/* FIXME: Our hash table handling here is primitive: we don't expand! */
 static void add_to_hashtable(struct tdb_context *tdb,
 			     tdb_off_t eoff,
 			     struct tdb_data key)
 {
-	uint64_t hash = tdb_hash(tdb, key.dptr, key.dsize);
-	tdb_off_t hoff;
+	uint64_t h = tdb_hash(tdb, key.dptr, key.dsize);
+	tdb_off_t b_off, group_start;
+	unsigned i, group, in_group;
+	unsigned used = 0;
 
-	while (tdb_read_off(tdb, hoff = hash_off(tdb, hash)) != 0)
-		hash++;
+	group = use_bits(h, TDB_TOPLEVEL_HASH_BITS-TDB_HASH_GROUP_BITS, &used);
+	in_group = use_bits(h, TDB_HASH_GROUP_BITS, &used);
 
-	tdb_write_off(tdb, hoff, eoff);
+	group_start = offsetof(struct tdb_header, hashtable)
+		+ group * (sizeof(tdb_off_t) << TDB_HASH_GROUP_BITS);
+
+	for (i = 0; i < (1 << TDB_HASH_GROUP_BITS); i++) {
+		unsigned bucket = (in_group + i) % (1 << TDB_HASH_GROUP_BITS);
+
+		b_off = hbucket_off(group_start, bucket);		
+		if (tdb_read_off(tdb, b_off) == 0) {
+			tdb_write_off(tdb, b_off,
+				      encode_offset(eoff, bucket, h));
+			return;
+		}
+	}
+	abort();
 }
 
 /* FIXME: Support TDB_CONVERT */
@@ -170,12 +204,10 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 	unsigned int i;
 	tdb_off_t off, len;
 	tdb_len_t zone_left;
-	struct tdb_header *hdr;
 	char *mem;
 	struct tdb_context *tdb;
 	struct tle_zone *last_zone = NULL;
 
-	assert(layout->htable != -1U);
 	assert(layout->elem[0].base.type == ZONE);
 
 	zone_left = 0;
@@ -221,18 +253,12 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 	mem = malloc(off+1);
 	/* Now populate our header, cribbing from a real TDB header. */
 	tdb = tdb_open(NULL, TDB_INTERNAL, O_RDWR, 0, &tap_log_attr);
-	hdr = (void *)mem;
-	*hdr = tdb->header;
-	hdr->v.generation++;
-	hdr->v.hash_bits = layout->elem[layout->htable].hashtable.hash_bits;
-	hdr->v.hash_off = layout->elem[layout->htable].base.off
-		+ sizeof(struct tdb_used_record);
+	memcpy(mem, tdb->map_ptr, sizeof(struct tdb_header));
 
 	/* Mug the tdb we have to make it use this. */
 	free(tdb->map_ptr);
 	tdb->map_ptr = mem;
 	tdb->map_size = off+1;
-	header_changed(tdb);
 
 	for (i = 0; i < layout->num_elems; i++) {
 		union tdb_layout_elem *e = &layout->elem[i];

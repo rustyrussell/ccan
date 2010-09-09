@@ -2,6 +2,7 @@
 #include <ccan/tdb2/free.c>
 #include <ccan/tdb2/lock.c>
 #include <ccan/tdb2/io.c>
+#include <ccan/tdb2/hash.c>
 #include <ccan/tdb2/check.c>
 #include <ccan/tdb2/traverse.c>
 #include <ccan/tap/tap.h>
@@ -54,6 +55,7 @@ static int trav(struct tdb_context *tdb, TDB_DATA key, TDB_DATA dbuf, void *p)
 		td->high = val;
 
 	if (td->delete) {
+
 		if (tdb_delete(tdb, key) != 0) {
 			td->delete_error = tdb_error(tdb);
 			return -1;
@@ -208,7 +210,7 @@ int main(int argc, char *argv[])
 		ok1(td.low == td.high);
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 
-		/* Deleting traverse. */
+		/* Deleting traverse (delete everything). */
 		td.calls = 0;
 		td.call_limit = UINT_MAX;
 		td.low = INT_MAX;
@@ -222,7 +224,7 @@ int main(int argc, char *argv[])
 		ok1(!td.mismatch);
 		ok1(td.calls == NUM_RECORDS);
 		ok1(td.low == 0);
-		ok1(td.high == NUM_RECORDS-1);
+		ok1(td.high == NUM_RECORDS - 1);
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 		/* Now it's empty! */

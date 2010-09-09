@@ -510,10 +510,10 @@ int set_header(struct tdb_context *tdb,
 {
 	uint64_t keybits = (fls64(keylen) + 1) / 2;
 
-	/* Use top bits of hash, so it's independent of hash table size. */
+	/* Use bottom bits of hash, so it's independent of hash table size. */
 	rec->magic_and_meta
 		= zone_bits
-		| ((hash >> 59) << 6)
+		| ((hash & ((1 << 5)-1)) << 6)
 		| ((actuallen - (keylen + datalen)) << 11)
 		| (keybits << 43)
 		| (TDB_MAGIC << 48);
@@ -654,8 +654,8 @@ tdb_off_t alloc(struct tdb_context *tdb, size_t keylen, size_t datalen,
 	tdb_len_t size, actual;
 	struct tdb_used_record rec;
 
-	/* We don't want header to change during this! */
-	assert(tdb->header_uptodate);
+	/* We can't hold pointers during this: we could unmap! */
+	assert(!tdb->direct_access);
 
 	size = adjust_size(keylen, datalen, growing);
 

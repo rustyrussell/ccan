@@ -83,12 +83,35 @@ typedef uint64_t tdb_off_t;
 /* Hash chain locks. */
 #define TDB_HASH_LOCK_START 3
 
-/* We start wih 256 hash buckets, and a 64k-sized zone. */
-#define INITIAL_HASH_BITS 8
-#define INITIAL_ZONE_BITS 16
+/* Range for hash locks. */
+#define TDB_HASH_LOCK_RANGE_BITS 30
+#define TDB_HASH_LOCK_RANGE (1 << TDB_HASH_LOCK_RANGE_BITS)
 
+/* We have 1024 entries in the top level. */
+#define TDB_TOPLEVEL_HASH_BITS 10
+/* And 64 entries in each sub-level: thus 64 bits exactly after 9 levels. */
+#define TDB_SUBLEVEL_HASH_BITS 6
+/* And 8 entries in each group, ie 8 groups per sublevel. */
+#define TDB_HASH_GROUP_BITS 3
+
+/* We start with a 64k-sized zone. */
+#define INITIAL_ZONE_BITS 16
 /* Try to create zones at least 32 times larger than allocations. */
 #define TDB_COMFORT_FACTOR_BITS 5
+
+/* We steal bits from the offsets to store hash info. */
+#define TDB_OFF_HASH_GROUP_MASK ((1ULL << TDB_HASH_GROUP_BITS) - 1)
+/* We steal this many upper bits, giving a maximum offset of 64 exabytes. */
+#define TDB_OFF_UPPER_STEAL 8
+#define   TDB_OFF_UPPER_STEAL_EXTRA 7
+#define   TDB_OFF_UPPER_STEAL_TRUNCBIT 1
+/* If this is set, hash is truncated (only 1 bit is valid). */
+#define TDB_OFF_HASH_TRUNCATED_BIT 56
+/* The bit number where we store next level of hash. */
+#define TDB_OFF_HASH_EXTRA_BIT 57
+/* Convenience mask to get actual offset. */
+#define TDB_OFF_MASK \
+	(((1ULL << (64 - TDB_OFF_UPPER_STEAL)) - 1) - TDB_OFF_HASH_GROUP_MASK)
 
 /* We ensure buckets up to size 1 << (zone_bits - TDB_COMFORT_FACTOR_BITS). */
 /* FIXME: test this matches size_to_bucket! */
@@ -173,26 +196,6 @@ static inline uint64_t frec_magic(const struct tdb_free_record *f)
 	return f->magic_and_meta & ~((1ULL << 6) - 1);
 }
 
-/* These parts can change while we have db open. */
-struct tdb_header_volatile {
-	uint64_t generation; /* Makes sure it changes on every update. */
-	uint64_t hash_bits; /* Entries in hash table. */
-	uint64_t hash_off; /* Offset of hash table. */
-};
-
-/* this is stored at the front of every database */
-struct tdb_header {
-	char magic_food[32]; /* for /etc/magic */
-	/* FIXME: Make me 32 bit? */
-	uint64_t version; /* version of the code */
-	uint64_t hash_test; /* result of hashing HASH_MAGIC. */
-	uint64_t hash_seed; /* "random" seed written at creation time. */
-
-	struct tdb_header_volatile v;
-
-	tdb_off_t reserved[19];
-};
-
 /* Each zone has its set of free lists at the head.
  *
  * For each zone we have a series of per-size buckets, and a final bucket for
@@ -201,6 +204,53 @@ struct free_zone_header {
 	/* How much does this zone cover? */
 	uint64_t zone_bits;
 	/* tdb_off_t buckets[free_buckets + 1] */
+};
+
+/* this is stored at the front of every database */
+struct tdb_header {
+	char magic_food[64]; /* for /etc/magic */
+	/* FIXME: Make me 32 bit? */
+	uint64_t version; /* version of the code */
+	uint64_t hash_test; /* result of hashing HASH_MAGIC. */
+	uint64_t hash_seed; /* "random" seed written at creation time. */
+
+	tdb_off_t reserved[28];
+
+	/* Top level hash table. */
+	tdb_off_t hashtable[1ULL << TDB_TOPLEVEL_HASH_BITS];
+};
+
+/* Information about a particular (locked) hash entry. */
+struct hash_info {
+	/* Full hash value of entry. */
+	uint64_t h;
+	/* Start and length of lock acquired. */
+	tdb_off_t hlock_start;
+	tdb_len_t hlock_range;
+	/* Start of hash group. */
+	tdb_off_t group_start;
+	/* Bucket we belong in. */
+	unsigned int home_bucket;
+	/* Bucket we (or an empty space) were found in. */
+	unsigned int found_bucket;
+	/* How many bits of the hash are already used. */
+	unsigned int hash_used;
+	/* Current working group. */
+	tdb_off_t group[1 << TDB_HASH_GROUP_BITS];
+};
+
+struct traverse_info {
+	struct traverse_level {
+		tdb_off_t hashtable;
+		const tdb_off_t *entries;
+		/* We ignore groups here, and treat it as a big array. */
+		unsigned entry;
+		unsigned int total_buckets;
+	} levels[64 / TDB_SUBLEVEL_HASH_BITS];
+	unsigned int num_levels;
+	unsigned int toplevel_group;
+	/* This makes delete-everything-inside-traverse work as expected. */
+	tdb_off_t prev;
 };
 
 enum tdb_lock_flags {
@@ -224,6 +274,9 @@ struct tdb_context {
 	/* Mmap (if any), or malloc (for TDB_INTERNAL). */
 	void *map_ptr;
 
+	/* Are we accessing directly? (debugging check). */
+	int direct_access;
+
 	 /* Open file descriptor (undefined for TDB_INTERNAL). */
 	int fd;
 
@@ -236,11 +289,6 @@ struct tdb_context {
 	/* Error code for last tdb error. */
 	enum TDB_ERROR ecode; 
 
-	/* A cached copy of the header */
-	struct tdb_header header; 
-	/* (for debugging). */
-	bool header_uptodate; 
-
 	/* the flags passed to tdb_open, for tdb_reopen. */
 	uint32_t flags;
 
@@ -251,6 +299,7 @@ struct tdb_context {
 	/* Hash function. */
 	tdb_hashfn_t khash;
 	void *hash_priv;
+	uint64_t hash_seed;
 
 	/* Set if we are in a transaction. */
 	struct tdb_transaction *transaction;
@@ -284,19 +333,33 @@ struct tdb_methods {
 /*
   internal prototypes
 */
-/* tdb.c: */
-/* Returns true if header changed (and updates it). */
-bool header_changed(struct tdb_context *tdb);
-
-/* Commit header to disk. */
-int write_header(struct tdb_context *tdb);
+/* hash.c: */
+void tdb_hash_init(struct tdb_context *tdb);
 
 /* Hash random memory. */
 uint64_t tdb_hash(struct tdb_context *tdb, const void *ptr, size_t len);
 
-/* offset of hash table entry for this list/hash value */
-tdb_off_t hash_off(struct tdb_context *tdb, uint64_t list);
+/* Hash on disk. */
+uint64_t hash_record(struct tdb_context *tdb, tdb_off_t off);
 
+/* Find and lock a hash entry (or where it would be). */
+tdb_off_t find_and_lock(struct tdb_context *tdb,
+			struct tdb_data key,
+			int ltype,
+			struct hash_info *h,
+			struct tdb_used_record *rec);
+
+int replace_in_hash(struct tdb_context *tdb,
+		    struct hash_info *h,
+		    tdb_off_t new_off);
+
+int add_to_hash(struct tdb_context *tdb, struct hash_info *h,
+		tdb_off_t new_off);
+
+int delete_from_hash(struct tdb_context *tdb, struct hash_info *h);
+
+/* For tdb_check */
+bool is_subhash(tdb_off_t val);
 
 /* free.c: */
 int tdb_zone_init(struct tdb_context *tdb);
@@ -338,7 +401,13 @@ void *tdb_get(struct tdb_context *tdb, tdb_off_t off, void *pad, size_t len);
 /* Either alloc a copy, or give direct access.  Release frees or noop. */
 const void *tdb_access_read(struct tdb_context *tdb,
 			    tdb_off_t off, tdb_len_t len, bool convert);
+void *tdb_access_write(struct tdb_context *tdb,
+		       tdb_off_t off, tdb_len_t len, bool convert);
+
+/* Release result of tdb_access_read/write. */
 void tdb_access_release(struct tdb_context *tdb, const void *p);
+/* Commit result of tdb_acces_write. */
+int tdb_access_commit(struct tdb_context *tdb, void *p);
 
 /* Convenience routine to get an offset. */
 tdb_off_t tdb_read_off(struct tdb_context *tdb, tdb_off_t off);
@@ -373,16 +442,17 @@ int tdb_write_convert(struct tdb_context *tdb, tdb_off_t off,
 int tdb_read_convert(struct tdb_context *tdb, tdb_off_t off,
 		     void *rec, size_t len);
 
-/* Hash on disk. */
-uint64_t hash_record(struct tdb_context *tdb, tdb_off_t off);
 
 /* lock.c: */
 void tdb_lock_init(struct tdb_context *tdb);
 
-/* Lock/unlock a particular hash list. */
-tdb_off_t tdb_lock_list(struct tdb_context *tdb, uint64_t hash,
-			int ltype, enum tdb_lock_flags waitflag);
-int tdb_unlock_list(struct tdb_context *tdb, tdb_off_t list, int ltype);
+/* Lock/unlock a range of hashes. */
+int tdb_lock_hashes(struct tdb_context *tdb,
+		    tdb_off_t hash_lock, tdb_len_t hash_range,
+		    int ltype, enum tdb_lock_flags waitflag);
+int tdb_unlock_hashes(struct tdb_context *tdb,
+		      tdb_off_t hash_lock,
+		      tdb_len_t hash_range, int ltype);
 
 /* Lock/unlock a particular free bucket. */
 int tdb_lock_free_bucket(struct tdb_context *tdb, tdb_off_t b_off,
@@ -404,6 +474,16 @@ void tdb_unlock_open(struct tdb_context *tdb);
 /* Serialize db expand. */
 int tdb_lock_expand(struct tdb_context *tdb, int ltype);
 void tdb_unlock_expand(struct tdb_context *tdb, int ltype);
+bool tdb_has_expansion_lock(struct tdb_context *tdb);
+
+
+/* traverse.c: */
+int first_in_hash(struct tdb_context *tdb, int ltype,
+		  struct traverse_info *tinfo,
+		  TDB_DATA *kbuf, size_t *dlen);
+int next_in_hash(struct tdb_context *tdb, int ltype,
+		 struct traverse_info *tinfo,
+		 TDB_DATA *kbuf, size_t *dlen);
 
 
 #if 0

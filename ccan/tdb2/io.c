@@ -26,6 +26,7 @@
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
 #include "private.h"
+#include <assert.h>
 #include <ccan/likely/likely.h>
 
 void tdb_munmap(struct tdb_context *tdb)
@@ -71,6 +72,10 @@ static int tdb_oob(struct tdb_context *tdb, tdb_off_t len, bool probe)
 {
 	struct stat st;
 	int ret;
+
+	/* FIXME: We can't hold pointers during this: we could unmap! */
+	/* (We currently do this in traverse!) */
+//	assert(!tdb->direct_access || tdb_has_expansion_lock(tdb));
 
 	if (len <= tdb->map_size)
 		return 0;
@@ -375,44 +380,29 @@ int tdb_write_off(struct tdb_context *tdb, tdb_off_t off, tdb_off_t val)
 	return tdb_write_convert(tdb, off, &val, sizeof(val));
 }
 
-/* read a lump of data, allocating the space for it */
-void *tdb_alloc_read(struct tdb_context *tdb, tdb_off_t offset, tdb_len_t len)
+static void *_tdb_alloc_read(struct tdb_context *tdb, tdb_off_t offset,
+			     tdb_len_t len, unsigned int prefix)
 {
 	void *buf;
 
 	/* some systems don't like zero length malloc */
-	buf = malloc(len ? len : 1);
+	buf = malloc(prefix + len ? prefix + len : 1);
 	if (unlikely(!buf)) {
 		tdb->ecode = TDB_ERR_OOM;
 		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 			 "tdb_alloc_read malloc failed len=%lld\n",
-			 (long long)len);
-	} else if (unlikely(tdb->methods->read(tdb, offset, buf, len))) {
+			 (long long)prefix + len);
+	} else if (unlikely(tdb->methods->read(tdb, offset, buf+prefix, len))) {
 		free(buf);
 		buf = NULL;
 	}
 	return buf;
 }
 
-uint64_t hash_record(struct tdb_context *tdb, tdb_off_t off)
+/* read a lump of data, allocating the space for it */
+void *tdb_alloc_read(struct tdb_context *tdb, tdb_off_t offset, tdb_len_t len)
 {
-	struct tdb_used_record pad, *r;
-	const void *key;
-	uint64_t klen, hash;
-
-	r = tdb_get(tdb, off, &pad, sizeof(pad));
-	if (!r)
-		/* FIXME */
-		return 0;
-
-	klen = rec_key_length(r);
-	key = tdb_access_read(tdb, off + sizeof(pad), klen, false);
-	if (!key)
-		return 0;
-
-	hash = tdb_hash(tdb, key, klen);
-	tdb_access_release(tdb, key);
-	return hash;
+	return _tdb_alloc_read(tdb, offset, len, 0);
 }
 
 static int fill(struct tdb_context *tdb,
@@ -474,19 +464,57 @@ static int tdb_expand_file(struct tdb_context *tdb, tdb_len_t addition)
 	return 0;
 }
 
+/* This is only neded for tdb_access_commit, but used everywhere to simplify. */
+struct tdb_access_hdr {
+	tdb_off_t off;
+	tdb_len_t len;
+	bool convert;
+};
+
 const void *tdb_access_read(struct tdb_context *tdb,
 			    tdb_off_t off, tdb_len_t len, bool convert)
 {
-	const void *ret = NULL;
+	const void *ret = NULL;	
 
 	if (likely(!(tdb->flags & TDB_CONVERT)))
 		ret = tdb_direct(tdb, off, len);
 
 	if (!ret) {
-		ret = tdb_alloc_read(tdb, off, len);
-		if (convert)
-			tdb_convert(tdb, (void *)ret, len);
-	}
+		struct tdb_access_hdr *hdr;
+		hdr = _tdb_alloc_read(tdb, off, len, sizeof(*hdr));
+		if (hdr) {
+			ret = hdr + 1;
+			if (convert)
+				tdb_convert(tdb, (void *)ret, len);
+		}
+	} else
+		tdb->direct_access++;
+
+	return ret;
+}
+
+void *tdb_access_write(struct tdb_context *tdb,
+		       tdb_off_t off, tdb_len_t len, bool convert)
+{
+	void *ret = NULL;
+
+	if (likely(!(tdb->flags & TDB_CONVERT)))
+		ret = tdb_direct(tdb, off, len);
+
+	if (!ret) {
+		struct tdb_access_hdr *hdr;
+		hdr = _tdb_alloc_read(tdb, off, len, sizeof(*hdr));
+		if (hdr) {
+			hdr->off = off;
+			hdr->len = len;
+			hdr->convert = convert;
+			ret = hdr + 1;
+			if (convert)
+				tdb_convert(tdb, (void *)ret, len);
+		}
+	} else
+		tdb->direct_access++;
+
 	return ret;
 }
 
@@ -495,7 +523,30 @@ void tdb_access_release(struct tdb_context *tdb, const void *p)
 	if (!tdb->map_ptr
 	    || (char *)p < (char *)tdb->map_ptr
 	    || (char *)p >= (char *)tdb->map_ptr + tdb->map_size)
-		free((void *)p);
+		free((struct tdb_access_hdr *)p - 1);
+	else
+		tdb->direct_access--;
+}
+
+int tdb_access_commit(struct tdb_context *tdb, void *p)
+{
+	int ret = 0;
+
+	if (!tdb->map_ptr
+	    || (char *)p < (char *)tdb->map_ptr
+	    || (char *)p >= (char *)tdb->map_ptr + tdb->map_size) {
+		struct tdb_access_hdr *hdr;
+
+		hdr = (struct tdb_access_hdr *)p - 1;
+		if (hdr->convert)
+			ret = tdb_write_convert(tdb, hdr->off, p, hdr->len);
+		else
+			ret = tdb_write(tdb, hdr->off, p, hdr->len);
+		free(hdr);
+	} else
+		tdb->direct_access--;
+
+	return ret;
 }
 
 #if 0

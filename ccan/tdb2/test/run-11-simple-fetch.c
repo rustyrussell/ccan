@@ -2,6 +2,7 @@
 #include <ccan/tdb2/free.c>
 #include <ccan/tdb2/lock.c>
 #include <ccan/tdb2/io.c>
+#include <ccan/tdb2/hash.c>
 #include <ccan/tdb2/check.c>
 #include <ccan/tap/tap.h>
 #include "logging.h"
@@ -18,7 +19,7 @@ int main(int argc, char *argv[])
 
 	plan_tests(sizeof(flags) / sizeof(flags[0]) * 8 + 1);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
-		tdb = tdb_open("run-simple-fetch.tdb", flags[i],
+		tdb = tdb_open("run-11-simple-fetch.tdb", flags[i],
 			       O_RDWR|O_CREAT|O_TRUNC, 0600, &tap_log_attr);
 		ok1(tdb);
 		if (tdb) {

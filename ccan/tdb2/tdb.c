@@ -1,6 +1,5 @@
 #include "private.h"
 #include <ccan/tdb2/tdb2.h>
-#include <ccan/hash/hash.h>
 #include <ccan/build_assert/build_assert.h>
 #include <ccan/likely/likely.h>
 #include <assert.h>
@@ -16,51 +15,6 @@ null_log_fn(struct tdb_context *tdb,
 	    enum tdb_debug_level level, void *priv,
 	    const char *fmt, ...)
 {
-}
-
-/* We do a lot of work assuming our copy of the header volatile area
- * is uptodate, and usually it is.  However, once we grab a lock, we have to
- * re-check it. */
-bool header_changed(struct tdb_context *tdb)
-{
-	uint64_t gen;
-
-	if (!(tdb->flags & TDB_NOLOCK) && tdb->header_uptodate) {
-		tdb->log(tdb, TDB_DEBUG_WARNING, tdb->log_priv,
-			 "warning: header uptodate already\n");
-	}
-
-	/* We could get a partial update if we're not holding any locks. */
-	assert((tdb->flags & TDB_NOLOCK) || tdb_has_locks(tdb));
-
-	tdb->header_uptodate = true;
-	gen = tdb_read_off(tdb, offsetof(struct tdb_header, v.generation));
-	if (unlikely(gen != tdb->header.v.generation)) {
-		tdb_read_convert(tdb, offsetof(struct tdb_header, v),
-				 &tdb->header.v, sizeof(tdb->header.v));
-		return true;
-	}
-	return false;
-}
-
-int write_header(struct tdb_context *tdb)
-{
-	assert(tdb_read_off(tdb, offsetof(struct tdb_header, v.generation))
-	       == tdb->header.v.generation);
-	tdb->header.v.generation++;
-	return tdb_write_convert(tdb, offsetof(struct tdb_header, v),
-				 &tdb->header.v, sizeof(tdb->header.v));
-}
-
-static uint64_t jenkins_hash(const void *key, size_t length, uint64_t seed,
-			     void *arg)
-{
-	return hash64_stable((const unsigned char *)key, length, seed);
-}
-
-uint64_t tdb_hash(struct tdb_context *tdb, const void *ptr, size_t len)
-{
-	return tdb->khash(ptr, len, tdb->header.hash_seed, tdb->hash_priv);
 }
 
 static bool tdb_already_open(dev_t device, ino_t ino)
@@ -124,66 +78,57 @@ static uint64_t random_number(struct tdb_context *tdb)
 	return ret;
 }
 
-struct new_db_head {
+struct new_database {
 	struct tdb_header hdr;
+	/* Initial free zone. */
 	struct free_zone_header zhdr;
 	tdb_off_t free[BUCKETS_FOR_ZONE(INITIAL_ZONE_BITS) + 1];
-	struct tdb_used_record hrec;
-	tdb_off_t hash[1ULL << INITIAL_HASH_BITS];
 	struct tdb_free_record frec;
-};
-
-struct new_database {
-	struct new_db_head h;
 	/* Rest up to 1 << INITIAL_ZONE_BITS is empty. */
 	char space[(1 << INITIAL_ZONE_BITS)
-		   - (sizeof(struct new_db_head) - sizeof(struct tdb_header))];
+		   - sizeof(struct free_zone_header)
+		   - sizeof(tdb_off_t) * (BUCKETS_FOR_ZONE(INITIAL_ZONE_BITS)+1)
+		   - sizeof(struct tdb_free_record)];
 	uint8_t tailer;
 	/* Don't count final padding! */
 };
 
 /* initialise a new database */
-static int tdb_new_database(struct tdb_context *tdb)
+static int tdb_new_database(struct tdb_context *tdb, struct tdb_header *hdr)
 {
 	/* We make it up in memory, then write it out if not internal */
 	struct new_database newdb;
-	unsigned int bucket, magic_off, dbsize;
+	unsigned int bucket, magic_len, dbsize;
 
 	/* Don't want any extra padding! */
 	dbsize = offsetof(struct new_database, tailer) + sizeof(newdb.tailer);
 
 	/* Fill in the header */
-	newdb.h.hdr.version = TDB_VERSION;
-	newdb.h.hdr.hash_seed = random_number(tdb);
-	newdb.h.hdr.hash_test = TDB_HASH_MAGIC;
-	newdb.h.hdr.hash_test = tdb->khash(&newdb.h.hdr.hash_test,
-					   sizeof(newdb.h.hdr.hash_test),
-					   newdb.h.hdr.hash_seed,
-					   tdb->hash_priv);
-	memset(newdb.h.hdr.reserved, 0, sizeof(newdb.h.hdr.reserved));
-	newdb.h.hdr.v.generation = 0;
+	newdb.hdr.version = TDB_VERSION;
+	newdb.hdr.hash_seed = random_number(tdb);
+	newdb.hdr.hash_test = TDB_HASH_MAGIC;
+	newdb.hdr.hash_test = tdb->khash(&newdb.hdr.hash_test,
+					 sizeof(newdb.hdr.hash_test),
+					 newdb.hdr.hash_seed,
+					 tdb->hash_priv);
+	memset(newdb.hdr.reserved, 0, sizeof(newdb.hdr.reserved));
 	/* Initial hashes are empty. */
-	newdb.h.hdr.v.hash_bits = INITIAL_HASH_BITS;
-	newdb.h.hdr.v.hash_off = offsetof(struct new_database, h.hash);
-	set_header(tdb, &newdb.h.hrec, 0,
-		   sizeof(newdb.h.hash), sizeof(newdb.h.hash), 0,
-		   INITIAL_ZONE_BITS);
-	memset(newdb.h.hash, 0, sizeof(newdb.h.hash));
+	memset(newdb.hdr.hashtable, 0, sizeof(newdb.hdr.hashtable));
+
+	/* Free is mostly empty... */
+	newdb.zhdr.zone_bits = INITIAL_ZONE_BITS;
+	memset(newdb.free, 0, sizeof(newdb.free));
 
 	/* Create the single free entry. */
-	newdb.h.frec.magic_and_meta = TDB_FREE_MAGIC | INITIAL_ZONE_BITS;
-	newdb.h.frec.data_len = (sizeof(newdb.h.frec)
+	newdb.frec.magic_and_meta = TDB_FREE_MAGIC | INITIAL_ZONE_BITS;
+	newdb.frec.data_len = (sizeof(newdb.frec)
 				 - sizeof(struct tdb_used_record)
 				 + sizeof(newdb.space));
 
-	/* Free is mostly empty... */
-	newdb.h.zhdr.zone_bits = INITIAL_ZONE_BITS;
-	memset(newdb.h.free, 0, sizeof(newdb.h.free));
-
-	/* ... except for this one bucket. */
-	bucket = size_to_bucket(INITIAL_ZONE_BITS, newdb.h.frec.data_len);
-	newdb.h.free[bucket] = offsetof(struct new_database, h.frec);
-	newdb.h.frec.next = newdb.h.frec.prev = 0;
+	/* Add it to the correct bucket. */
+	bucket = size_to_bucket(INITIAL_ZONE_BITS, newdb.frec.data_len);
+	newdb.free[bucket] = offsetof(struct new_database, frec);
+	newdb.frec.next = newdb.frec.prev = 0;
 
 	/* Clear free space to keep valgrind happy, and avoid leaking stack. */
 	memset(newdb.space, 0, sizeof(newdb.space));
@@ -192,16 +137,16 @@ static int tdb_new_database(struct tdb_context *tdb)
 	newdb.tailer = INITIAL_ZONE_BITS;
 
 	/* Magic food */
-	memset(newdb.h.hdr.magic_food, 0, sizeof(newdb.h.hdr.magic_food));
-	strcpy(newdb.h.hdr.magic_food, TDB_MAGIC_FOOD);
+	memset(newdb.hdr.magic_food, 0, sizeof(newdb.hdr.magic_food));
+	strcpy(newdb.hdr.magic_food, TDB_MAGIC_FOOD);
 
 	/* This creates an endian-converted database, as if read from disk */
-	magic_off = offsetof(struct tdb_header, magic_food);
+	magic_len = sizeof(newdb.hdr.magic_food);
 	tdb_convert(tdb,
-		    (char *)&newdb.h.hdr + magic_off,
-		    dbsize - 1 - magic_off);
+		    (char *)&newdb.hdr + magic_len,
+		    offsetof(struct new_database, space) - magic_len);
 
-	tdb->header = newdb.h.hdr;
+	*hdr = newdb.hdr;
 
 	if (tdb->flags & TDB_INTERNAL) {
 		tdb->map_size = dbsize;
@@ -235,6 +180,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	int save_errno;
 	uint64_t hash_test;
 	unsigned v;
+	struct tdb_header hdr;
 
 	tdb = malloc(sizeof(*tdb));
 	if (!tdb) {
@@ -244,17 +190,15 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	}
 	tdb->name = NULL;
 	tdb->map_ptr = NULL;
+	tdb->direct_access = 0;
 	tdb->fd = -1;
 	tdb->map_size = sizeof(struct tdb_header);
 	tdb->ecode = TDB_SUCCESS;
-	/* header will be read in below. */
-	tdb->header_uptodate = false;
 	tdb->flags = tdb_flags;
 	tdb->log = null_log_fn;
 	tdb->log_priv = NULL;
-	tdb->khash = jenkins_hash;
-	tdb->hash_priv = NULL;
 	tdb->transaction = NULL;
+	tdb_hash_init(tdb);
 	/* last_zone will be set below. */
 	tdb_io_init(tdb);
 	tdb_lock_init(tdb);
@@ -296,13 +240,13 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	/* internal databases don't need any of the rest. */
 	if (tdb->flags & TDB_INTERNAL) {
 		tdb->flags |= (TDB_NOLOCK | TDB_NOMMAP);
-		if (tdb_new_database(tdb) != 0) {
+		if (tdb_new_database(tdb, &hdr) != 0) {
 			tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 				 "tdb_open: tdb_new_database failed!");
 			goto fail;
 		}
-		TEST_IT(tdb->flags & TDB_CONVERT);
-		tdb_convert(tdb, &tdb->header, sizeof(tdb->header));
+		tdb_convert(tdb, &hdr.hash_seed, sizeof(hdr.hash_seed));
+		tdb->hash_seed = hdr.hash_seed;
 		tdb_zone_init(tdb);
 		return tdb;
 	}
@@ -326,32 +270,32 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		goto fail;	/* errno set by tdb_brlock */
 	}
 
-	if (!tdb_pread_all(tdb->fd, &tdb->header, sizeof(tdb->header), 0)
-	    || strcmp(tdb->header.magic_food, TDB_MAGIC_FOOD) != 0) {
-		if (!(open_flags & O_CREAT) || tdb_new_database(tdb) == -1) {
+	if (!tdb_pread_all(tdb->fd, &hdr, sizeof(hdr), 0)
+	    || strcmp(hdr.magic_food, TDB_MAGIC_FOOD) != 0) {
+		if (!(open_flags & O_CREAT) || tdb_new_database(tdb, &hdr) == -1) {
 			if (errno == 0) {
 				errno = EIO; /* ie bad format or something */
 			}
 			goto fail;
 		}
-	} else if (tdb->header.version != TDB_VERSION) {
-		if (tdb->header.version == bswap_64(TDB_VERSION))
+	} else if (hdr.version != TDB_VERSION) {
+		if (hdr.version == bswap_64(TDB_VERSION))
 			tdb->flags |= TDB_CONVERT;
 		else {
 			/* wrong version */
 			tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 				 "tdb_open: %s is unknown version 0x%llx\n",
-				 name, (long long)tdb->header.version);
+				 name, (long long)hdr.version);
 			errno = EIO;
 			goto fail;
 		}
 	}
 
-	tdb_convert(tdb, &tdb->header, sizeof(tdb->header));
+	tdb_convert(tdb, &hdr, sizeof(hdr));
+	tdb->hash_seed = hdr.hash_seed;
 	hash_test = TDB_HASH_MAGIC;
-	hash_test = tdb->khash(&hash_test, sizeof(hash_test),
-			       tdb->header.hash_seed, tdb->hash_priv);
-	if (tdb->header.hash_test != hash_test) {
+	hash_test = tdb_hash(tdb, &hash_test, sizeof(hash_test));
+	if (hdr.hash_test != hash_test) {
 		/* wrong hash variant */
 		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 			 "tdb_open: %s uses a different hash function\n",
@@ -420,145 +364,6 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	return NULL;
 }
 
-tdb_off_t hash_off(struct tdb_context *tdb, uint64_t list)
-{
-	return tdb->header.v.hash_off
-		+ ((list & ((1ULL << tdb->header.v.hash_bits) - 1))
-		   * sizeof(tdb_off_t));
-}
-
-/* Returns 0 if the entry is a zero (definitely not a match).
- * Returns a valid entry offset if it's a match.  Fills in rec.
- * Otherwise returns TDB_OFF_ERR: keep searching. */
-static tdb_off_t entry_matches(struct tdb_context *tdb,
-			       uint64_t list,
-			       uint64_t hash,
-			       const struct tdb_data *key,
-			       struct tdb_used_record *rec)
-{
-	tdb_off_t off;
-	uint64_t keylen;
-	const unsigned char *rkey;
-
-	list &= ((1ULL << tdb->header.v.hash_bits) - 1);
-
-	off = tdb_read_off(tdb, tdb->header.v.hash_off
-			   + list * sizeof(tdb_off_t));
-	if (off == 0 || off == TDB_OFF_ERR)
-		return off;
-
-#if 0 /* FIXME: Check other bits. */
-	unsigned int bits, bitmask, hoffextra;
-	/* Bottom three bits show how many extra hash bits. */
-	bits = (off & ((1 << TDB_EXTRA_HASHBITS_NUM) - 1)) + 1;
-	bitmask = (1 << bits)-1;
-	hoffextra = ((off >> TDB_EXTRA_HASHBITS_NUM) & bitmask);
-	uint64_t hextra = hash >> tdb->header.v.hash_bits;
-	if ((hextra & bitmask) != hoffextra) 
-		return TDB_OFF_ERR;
-	off &= ~...;
-#endif
-
-	if (tdb_read_convert(tdb, off, rec, sizeof(*rec)) == -1)
-		return TDB_OFF_ERR;
-
-	/* FIXME: check extra bits in header! */
-	keylen = rec_key_length(rec);
-	if (keylen != key->dsize)
-		return TDB_OFF_ERR;
-
-	rkey = tdb_access_read(tdb, off + sizeof(*rec), keylen, false);
-	if (!rkey)
-		return TDB_OFF_ERR;
-	if (memcmp(rkey, key->dptr, keylen) != 0)
-		off = TDB_OFF_ERR;
-	tdb_access_release(tdb, rkey);
-	return off;
-}
-
-/* FIXME: Optimize? */
-static void unlock_lists(struct tdb_context *tdb,
-			 tdb_off_t list, tdb_len_t num,
-			 int ltype)
-{
-	tdb_off_t i;
-
-	for (i = list; i < list + num; i++)
-		tdb_unlock_list(tdb, i, ltype);
-}
-
-/* FIXME: Optimize? */
-static int lock_lists(struct tdb_context *tdb,
-		      tdb_off_t list, tdb_len_t num,
-		      int ltype)
-{
-	tdb_off_t i;
-
-	for (i = list; i < list + num; i++) {
-		if (tdb_lock_list(tdb, i, ltype, TDB_LOCK_WAIT)
-		    == TDB_OFF_ERR) {
-			unlock_lists(tdb, list, i - list, ltype);
-			return -1;
-		}
-	}
-	return 0;
-}
-
-/* We lock hashes up to the next empty offset.  We already hold the
- * lock on the start bucket, but we may need to release and re-grab
- * it.  If we fail, we hold no locks at all! */
-static tdb_len_t relock_hash_to_zero(struct tdb_context *tdb,
-				     tdb_off_t start, int ltype)
-{
-	tdb_len_t num, len;
-
-again:
-	num = 1ULL << tdb->header.v.hash_bits;
-	len = tdb_find_zero_off(tdb, hash_off(tdb, start), num - start);
-	if (unlikely(len == num - start)) {
-		/* We hit the end of the hash range.  Drop lock: we have
-		   to lock start of hash first. */
-		tdb_len_t pre_locks;
-
-		tdb_unlock_list(tdb, start, ltype);
-
-		/* Grab something, so header is stable. */
-		if (tdb_lock_list(tdb, 0, ltype, TDB_LOCK_WAIT))
-			return TDB_OFF_ERR;
-		pre_locks = tdb_find_zero_off(tdb, hash_off(tdb, 0), num);
-		/* We want to lock the zero entry as well. */
-		pre_locks++;
-		if (lock_lists(tdb, 1, pre_locks - 1, ltype) == -1) {
-			tdb_unlock_list(tdb, 0, ltype);
-			return TDB_OFF_ERR;
-		}
-
-		/* Now lock later ones. */
-		if (unlikely(lock_lists(tdb, start, len, ltype) == -1)) {
-			unlock_lists(tdb, 0, pre_locks, ltype);
-			return TDB_OFF_ERR;
-		}
-		len += pre_locks;
-	} else {
-		/* We want to lock the zero entry as well. */
-		len++;
-		/* But we already have lock on start. */
-		if (unlikely(lock_lists(tdb, start+1, len-1, ltype) == -1)) {
-			tdb_unlock_list(tdb, start, ltype);
-			return TDB_OFF_ERR;
-		}
-	}
-
-	/* Now, did we lose the race, and it's not zero any more? */
-	if (unlikely(tdb_read_off(tdb, hash_off(tdb, start + len - 1)) != 0)) {
-		/* Leave the start locked, as expected. */
-		unlock_lists(tdb, start + 1, len - 1, ltype);
-		goto again;
-	}
-
-	return len;
-}
-
 /* FIXME: modify, don't rewrite! */
 static int update_rec_hdr(struct tdb_context *tdb,
 			  tdb_off_t off,
@@ -576,186 +381,10 @@ static int update_rec_hdr(struct tdb_context *tdb,
 	return tdb_write_convert(tdb, off, rec, sizeof(*rec));
 }
 
-static int hash_add(struct tdb_context *tdb,
-		    uint64_t hash, tdb_off_t off)
-{
-	tdb_off_t i, hoff, len, num;
-
-	/* Look for next space. */
-	i = (hash & ((1ULL << tdb->header.v.hash_bits) - 1));
-	len = (1ULL << tdb->header.v.hash_bits) - i;
-	num = tdb_find_zero_off(tdb, hash_off(tdb, i), len);
-
-	if (unlikely(num == len)) {
-		/* We wrapped.  Look through start of hash table. */
-		i = 0;
-		hoff = hash_off(tdb, 0);
-		len = (1ULL << tdb->header.v.hash_bits);
-		num = tdb_find_zero_off(tdb, hoff, len);
-		if (num == len) {
-			tdb->ecode = TDB_ERR_CORRUPT;
-			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-				 "hash_add: full hash table!\n");
-			return -1;
-		}
-	}
-	if (tdb_read_off(tdb, hash_off(tdb, i + num)) != 0) {
-		tdb->ecode = TDB_ERR_CORRUPT;
-		tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-			 "hash_add: overwriting hash table?\n");
-		return -1;
-	}
-
-	/* FIXME: Encode extra hash bits! */
-	return tdb_write_off(tdb, hash_off(tdb, i + num), off);
-}
-
-/* If we fail, others will try after us. */
-static void enlarge_hash(struct tdb_context *tdb)
-{
-	tdb_off_t newoff, oldoff, i;
-	tdb_len_t hlen;
-	uint64_t num = 1ULL << tdb->header.v.hash_bits;
-	struct tdb_used_record pad, *r;
-	unsigned int records = 0;
-
-	/* FIXME: We should do this without holding locks throughout. */
-	if (tdb_allrecord_lock(tdb, F_WRLCK, TDB_LOCK_WAIT, false) == -1)
-		return;
-
-	/* Someone else enlarged for us?  Nothing to do. */
-	if ((1ULL << tdb->header.v.hash_bits) != num)
-		goto unlock;
-
-	/* Allocate our new array. */
-	hlen = num * sizeof(tdb_off_t) * 2;
-	newoff = alloc(tdb, 0, hlen, 0, false);
-	if (unlikely(newoff == TDB_OFF_ERR))
-		goto unlock;
-	/* Step over record header! */
-	newoff += sizeof(struct tdb_used_record);
-
-	/* Starts all zero. */
-	if (zero_out(tdb, newoff, hlen) == -1)
-		goto unlock;
-
-	/* Update header now so we can use normal routines. */
-	oldoff = tdb->header.v.hash_off;
-
-	tdb->header.v.hash_bits++;
-	tdb->header.v.hash_off = newoff;
-
-	/* FIXME: If the space before is empty, we know this is in its ideal
-	 * location.  Or steal a bit from the pointer to avoid rehash. */
-	for (i = 0; i < num; i++) {
-		tdb_off_t off;
-		off = tdb_read_off(tdb, oldoff + i * sizeof(tdb_off_t));
-		if (unlikely(off == TDB_OFF_ERR))
-			goto oldheader;
-		if (off && hash_add(tdb, hash_record(tdb, off), off) == -1)
-			goto oldheader;
-		if (off)
-			records++;
-	}
-
-	tdb->log(tdb, TDB_DEBUG_TRACE, tdb->log_priv,
-		 "enlarge_hash: moved %u records from %llu buckets.\n",
-		 records, (long long)num);
-
-	/* Free up old hash. */
-	r = tdb_get(tdb, oldoff - sizeof(*r), &pad, sizeof(*r));
-	if (!r)
-		goto oldheader;
-	add_free_record(tdb, rec_zone_bits(r), oldoff - sizeof(*r),
-			sizeof(*r)+rec_data_length(r)+rec_extra_padding(r));
-
-	/* Now we write the modified header. */
-	write_header(tdb);
-unlock:
-	tdb_allrecord_unlock(tdb, F_WRLCK);
-	return;
-
-oldheader:
-	tdb->header.v.hash_bits--;
-	tdb->header.v.hash_off = oldoff;
-	goto unlock;
-}
-
-
-/* This is the slow version of the routine which searches the
- * hashtable for an entry.
- * We lock every hash bucket up to and including the next zero one.
- */
-static tdb_off_t find_and_lock_slow(struct tdb_context *tdb,
-				    struct tdb_data key,
-				    uint64_t h,
-				    int ltype,
-				    tdb_off_t *start_lock,
-				    tdb_len_t *num_locks,
-				    tdb_off_t *bucket,
-				    struct tdb_used_record *rec)
-{
-	/* Warning: this may drop the lock on *bucket! */
-	*num_locks = relock_hash_to_zero(tdb, *start_lock, ltype);
-	if (*num_locks == TDB_OFF_ERR)
-		return TDB_OFF_ERR;
-
-	for (*bucket = *start_lock;
-	     *bucket < *start_lock + *num_locks;
-	     (*bucket)++) {
-		tdb_off_t off = entry_matches(tdb, *bucket, h, &key, rec);
-		/* Empty entry or we found it? */
-		if (off == 0 || off != TDB_OFF_ERR)
-			return off;
-	}
-
-	/* We didn't find a zero entry?  Something went badly wrong... */
-	unlock_lists(tdb, *start_lock, *start_lock + *num_locks, ltype);
-	tdb->ecode = TDB_ERR_CORRUPT;
-	tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-		 "find_and_lock: expected to find an empty hash bucket!\n");
-	return TDB_OFF_ERR;
-}
-
-/* This is the core routine which searches the hashtable for an entry.
- * On error, no locks are held and TDB_OFF_ERR is returned.
- * Otherwise, *num_locks locks of type ltype from *start_lock are held.
- * The bucket where the entry is (or would be) is in *bucket.
- * If not found, the return value is 0.
- * If found, the return value is the offset, and *rec is the record. */
-static tdb_off_t find_and_lock(struct tdb_context *tdb,
-			       struct tdb_data key,
-			       uint64_t h,
-			       int ltype,
-			       tdb_off_t *start_lock,
-			       tdb_len_t *num_locks,
-			       tdb_off_t *bucket,
-			       struct tdb_used_record *rec)
-{
-	tdb_off_t off;
-
-	/* FIXME: can we avoid locks for some fast paths? */
-	*start_lock = tdb_lock_list(tdb, h, ltype, TDB_LOCK_WAIT);
-	if (*start_lock == TDB_OFF_ERR)
-		return TDB_OFF_ERR;
-
-	/* Fast path. */
-	off = entry_matches(tdb, *start_lock, h, &key, rec);
-	if (likely(off != TDB_OFF_ERR)) {
-		*bucket = *start_lock;
-		*num_locks = 1;
-		return off;
-	}
-
-	/* Slow path, need to grab more locks and search. */
-	return find_and_lock_slow(tdb, key, h, ltype, start_lock, num_locks,
-				  bucket, rec);
-}
-
-/* Returns -1 on error, 0 on OK" */
+/* Returns -1 on error, 0 on OK */
 static int replace_data(struct tdb_context *tdb,
-			uint64_t h, struct tdb_data key, struct tdb_data dbuf,
-			tdb_off_t bucket,
+			struct hash_info *h,
+			struct tdb_data key, struct tdb_data dbuf,
 			tdb_off_t old_off, tdb_len_t old_room,
 			unsigned old_zone,
 			bool growing)
@@ -763,19 +392,21 @@ static int replace_data(struct tdb_context *tdb,
 	tdb_off_t new_off;
 
 	/* Allocate a new record. */
-	new_off = alloc(tdb, key.dsize, dbuf.dsize, h, growing);
+	new_off = alloc(tdb, key.dsize, dbuf.dsize, h->h, growing);
 	if (unlikely(new_off == TDB_OFF_ERR))
 		return -1;
 
 	/* We didn't like the existing one: remove it. */
-	if (old_off)
+	if (old_off) {
 		add_free_record(tdb, old_zone, old_off,
 				sizeof(struct tdb_used_record)
 				+ key.dsize + old_room);
-
-	/* FIXME: Encode extra hash bits! */
-	if (tdb_write_off(tdb, hash_off(tdb, bucket), new_off) == -1)
-		return -1;
+		if (replace_in_hash(tdb, h, new_off) == -1)
+			return -1;
+	} else {
+		if (add_to_hash(tdb, h, new_off) == -1)
+			return -1;
+	}
 
 	new_off += sizeof(struct tdb_used_record);
 	if (tdb->methods->write(tdb, new_off, key.dptr, key.dsize) == -1)
@@ -792,14 +423,13 @@ static int replace_data(struct tdb_context *tdb,
 int tdb_store(struct tdb_context *tdb,
 	      struct tdb_data key, struct tdb_data dbuf, int flag)
 {
-	tdb_off_t off, bucket, start, num;
+	struct hash_info h;
+	tdb_off_t off;
 	tdb_len_t old_room = 0;
 	struct tdb_used_record rec;
-	uint64_t h;
 	int ret;
 
-	h = tdb_hash(tdb, key.dptr, key.dsize);
-	off = find_and_lock(tdb, key, h, F_WRLCK, &start, &num, &bucket, &rec);
+	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec);
 	if (unlikely(off == TDB_OFF_ERR))
 		return -1;
 
@@ -817,13 +447,14 @@ int tdb_store(struct tdb_context *tdb,
 				/* Can modify in-place.  Easy! */
 				if (update_rec_hdr(tdb, off,
 						   key.dsize, dbuf.dsize,
-						   &rec, h))
+						   &rec, h.h))
 					goto fail;
 				if (tdb->methods->write(tdb, off + sizeof(rec)
 							+ key.dsize,
 							dbuf.dptr, dbuf.dsize))
 					goto fail;
-				unlock_lists(tdb, start, num, F_WRLCK);
+				tdb_unlock_hashes(tdb, h.hlock_start,
+						  h.hlock_range, F_WRLCK);
 				return 0;
 			}
 			/* FIXME: See if right record is free? */
@@ -839,35 +470,28 @@ int tdb_store(struct tdb_context *tdb,
 	}
 
 	/* If we didn't use the old record, this implies we're growing. */
-	ret = replace_data(tdb, h, key, dbuf, bucket, off, old_room,
+	ret = replace_data(tdb, &h, key, dbuf, off, old_room,
 			   rec_zone_bits(&rec), off != 0);
-	unlock_lists(tdb, start, num, F_WRLCK);
-
-	/* FIXME: by simple simulation, this approximated 60% full.
-	 * Check in real case! */
-	if (unlikely(num > 4 * tdb->header.v.hash_bits - 30))
-		enlarge_hash(tdb);
-
+	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
 	return ret;
 
 fail:
-	unlock_lists(tdb, start, num, F_WRLCK);
+	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
 	return -1;
 }
 
 int tdb_append(struct tdb_context *tdb,
 	       struct tdb_data key, struct tdb_data dbuf)
 {
-	tdb_off_t off, bucket, start, num;
+	struct hash_info h;
+	tdb_off_t off;
 	struct tdb_used_record rec;
 	tdb_len_t old_room = 0, old_dlen;
-	uint64_t h;
 	unsigned char *newdata;
 	struct tdb_data new_dbuf;
 	int ret;
 
-	h = tdb_hash(tdb, key.dptr, key.dsize);
-	off = find_and_lock(tdb, key, h, F_WRLCK, &start, &num, &bucket, &rec);
+	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec);
 	if (unlikely(off == TDB_OFF_ERR))
 		return -1;
 
@@ -878,7 +502,7 @@ int tdb_append(struct tdb_context *tdb,
 		/* Fast path: can append in place. */
 		if (rec_extra_padding(&rec) >= dbuf.dsize) {
 			if (update_rec_hdr(tdb, off, key.dsize,
-					   old_dlen + dbuf.dsize, &rec, h))
+					   old_dlen + dbuf.dsize, &rec, h.h))
 				goto fail;
 
 			off += sizeof(rec) + key.dsize + old_dlen;
@@ -887,7 +511,8 @@ int tdb_append(struct tdb_context *tdb,
 				goto fail;
 
 			/* FIXME: tdb_increment_seqnum(tdb); */
-			unlock_lists(tdb, start, num, F_WRLCK);
+			tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range,
+					  F_WRLCK);
 			return 0;
 		}
 		/* FIXME: Check right record free? */
@@ -915,32 +540,26 @@ int tdb_append(struct tdb_context *tdb,
 	}
 
 	/* If they're using tdb_append(), it implies they're growing record. */
-	ret = replace_data(tdb, h, key, new_dbuf, bucket, off, old_room,
-			   rec_zone_bits(&rec), true);
-	unlock_lists(tdb, start, num, F_WRLCK);
+	ret = replace_data(tdb, &h, key, new_dbuf, off,
+			   old_room, rec_zone_bits(&rec), true);
+	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
 	free(newdata);
-
-	/* FIXME: by simple simulation, this approximated 60% full.
-	 * Check in real case! */
-	if (unlikely(num > 4 * tdb->header.v.hash_bits - 30))
-		enlarge_hash(tdb);
 
 	return ret;
 
 fail:
-	unlock_lists(tdb, start, num, F_WRLCK);
+	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
 	return -1;
 }
 
 struct tdb_data tdb_fetch(struct tdb_context *tdb, struct tdb_data key)
 {
-	tdb_off_t off, start, num, bucket;
+	tdb_off_t off;
 	struct tdb_used_record rec;
-	uint64_t h;
+	struct hash_info h;
 	struct tdb_data ret;
 
-	h = tdb_hash(tdb, key.dptr, key.dsize);
-	off = find_and_lock(tdb, key, h, F_RDLCK, &start, &num, &bucket, &rec);
+	off = find_and_lock(tdb, key, F_RDLCK, &h, &rec);
 	if (unlikely(off == TDB_OFF_ERR))
 		return tdb_null;
 
@@ -953,70 +572,28 @@ struct tdb_data tdb_fetch(struct tdb_context *tdb, struct tdb_data key)
 					  ret.dsize);
 	}
 
-	unlock_lists(tdb, start, num, F_RDLCK);
+	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_RDLCK);
 	return ret;
 }
 
 int tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 {
-	tdb_off_t i, bucket, off, start, num;
+	tdb_off_t off;
 	struct tdb_used_record rec;
-	uint64_t h;
+	struct hash_info h;
 
-	h = tdb_hash(tdb, key.dptr, key.dsize);
-	start = tdb_lock_list(tdb, h, F_WRLCK, TDB_LOCK_WAIT);
-	if (unlikely(start == TDB_OFF_ERR))
-		return -1;
-
-	/* FIXME: Fastpath: if next is zero, we can delete without lock,
-	 * since this lock protects us. */
-	off = find_and_lock_slow(tdb, key, h, F_WRLCK,
-				 &start, &num, &bucket, &rec);
+	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec);
 	if (unlikely(off == TDB_OFF_ERR))
 		return -1;
 
 	if (!off) {
-		/* FIXME: We could optimize not found case if it mattered, by
-		 * reading offset after first lock: if it's zero, goto here. */
-		unlock_lists(tdb, start, num, F_WRLCK);
+		tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
 		tdb->ecode = TDB_ERR_NOEXIST;
 		return -1;
 	}
-	/* Since we found the entry, we must have locked it and a zero. */
-	assert(num >= 2);
 
-	/* This actually unlinks it. */
-	if (tdb_write_off(tdb, hash_off(tdb, bucket), 0) == -1)
+	if (delete_from_hash(tdb, &h) == -1)
 		goto unlock_err;
-
-	/* Rehash anything following. */
-	for (i = bucket+1; i != bucket + num - 1; i++) {
-		tdb_off_t hoff, off2;
-		uint64_t h2;
-
-		hoff = hash_off(tdb, i);
-		off2 = tdb_read_off(tdb, hoff);
-		if (unlikely(off2 == TDB_OFF_ERR))
-			goto unlock_err;
-
-		/* This can happen if we raced. */
-		if (unlikely(off2 == 0))
-			break;
-
-		/* Maybe use a bit to indicate it is in ideal place? */
-		h2 = hash_record(tdb, off2);
-		/* Is it happy where it is? */
-		if (hash_off(tdb, h2) == hoff)
-			continue;
-
-		/* Remove it. */
-		if (tdb_write_off(tdb, hoff, 0) == -1)
-			goto unlock_err;
-
-		/* Rehash it. */
-		if (hash_add(tdb, h2, off2) == -1)
-			goto unlock_err;
-	}
 
 	/* Free the deleted entry. */
 	if (add_free_record(tdb, rec_zone_bits(&rec), off,
@@ -1026,11 +603,11 @@ int tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 			    + rec_extra_padding(&rec)) != 0)
 		goto unlock_err;
 
-	unlock_lists(tdb, start, num, F_WRLCK);
+	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
 	return 0;
 
 unlock_err:
-	unlock_lists(tdb, start, num, F_WRLCK);
+	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
 	return -1;
 }
 

@@ -10,9 +10,12 @@ void tdb_layout_add_free(struct tdb_layout *layout, tdb_len_t len);
 void tdb_layout_add_used(struct tdb_layout *layout,
 			 TDB_DATA key, TDB_DATA data,
 			 tdb_len_t extra);
+#if 0 /* FIXME: Allow allocation of subtables */
 void tdb_layout_add_hashtable(struct tdb_layout *layout,
-			      unsigned int hash_bits,
+			      int htable_parent, /* -1 == toplevel */
+			      unsigned int bucket,
 			      tdb_len_t extra);
+#endif
 struct tdb_context *tdb_layout_get(struct tdb_layout *layout);
 
 enum layout_type {
@@ -44,7 +47,8 @@ struct tle_used {
 
 struct tle_hashtable {
 	struct tle_base base;
-	unsigned hash_bits;
+	int parent;
+	unsigned int bucket;
 	tdb_len_t extra;
 };
 
@@ -59,6 +63,5 @@ union tdb_layout_elem {
 struct tdb_layout {
 	unsigned int num_elems;
 	union tdb_layout_elem *elem;
-	unsigned int htable;
 };
 #endif /* TDB2_TEST_LAYOUT_H */

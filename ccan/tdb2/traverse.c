@@ -21,91 +21,24 @@
 static int64_t traverse(struct tdb_context *tdb, int ltype,
 			tdb_traverse_func fn, void *p)
 {
-	uint64_t i, num, count = 0;
-	tdb_off_t off, prev_bucket;
-	struct tdb_used_record rec;
+	int ret;
+	struct traverse_info tinfo;
 	struct tdb_data k, d;
-	bool finish = false;
+	int64_t count = 0;
 
-	/* FIXME: Do we need to start at 0? */
-	prev_bucket = tdb_lock_list(tdb, 0, ltype, TDB_LOCK_WAIT);
-	if (prev_bucket != 0)
-		return -1;
-
-	num = (1ULL << tdb->header.v.hash_bits);
-
-	for (i = tdb_find_nonzero_off(tdb, hash_off(tdb, 0), num);
-	     i != num && !finish;
-	     i += tdb_find_nonzero_off(tdb, hash_off(tdb, i), num - i)) {
-		if (tdb_lock_list(tdb, i, ltype, TDB_LOCK_WAIT) != i)
-			goto fail;
-
-		off = tdb_read_off(tdb, hash_off(tdb, i));
-		if (off == TDB_OFF_ERR) {
-			tdb_unlock_list(tdb, i, ltype);
-			goto fail;
-		}
-
-		/* This race can happen, but look again. */
-		if (off == 0) {
-			tdb_unlock_list(tdb, i, ltype);
-			continue;
-		}
-
-		/* Drop previous lock. */
-		tdb_unlock_list(tdb, prev_bucket, ltype);
-		prev_bucket = i;
-
-		if (tdb_read_convert(tdb, off, &rec, sizeof(rec)) != 0)
-			goto fail;
-
-		k.dsize = rec_key_length(&rec);
-		d.dsize = rec_data_length(&rec);
-		if (ltype == F_RDLCK) {
-			/* Read traverses can keep the lock. */
-			k.dptr = (void *)tdb_access_read(tdb,
-							 off + sizeof(rec),
-							 k.dsize + d.dsize,
-							 false);
-		} else {
-			k.dptr = tdb_alloc_read(tdb, off + sizeof(rec),
-						k.dsize + d.dsize);
-		}
-		if (!k.dptr)
-			goto fail;
+	for (ret = first_in_hash(tdb, ltype, &tinfo, &k, &d.dsize);
+	     ret == 1;
+	     ret = next_in_hash(tdb, ltype, &tinfo, &k, &d.dsize)) {
 		d.dptr = k.dptr + k.dsize;
+		
 		count++;
-
-		if (ltype == F_WRLCK) {
-			/* Drop lock before calling out. */
-			tdb_unlock_list(tdb, i, ltype);
-		}
-
 		if (fn && fn(tdb, k, d, p))
-			finish = true;
-
-		if (ltype == F_WRLCK) {
-			free(k.dptr);
-			/* Regain lock.  FIXME: Is this necessary? */
-			if (tdb_lock_list(tdb, i, ltype, TDB_LOCK_WAIT) != i)
-				return -1;
-
-			/* This makes deleting under ourselves a bit nicer. */
-			if (tdb_read_off(tdb, hash_off(tdb, i)) == off)
-				i++;
-		} else {
-			tdb_access_release(tdb, k.dptr);
-			i++;
-		}
+			break;
 	}
 
-	/* Drop final lock. */
-	tdb_unlock_list(tdb, prev_bucket, ltype);
+	if (ret < 0)
+		return -1;
 	return count;
-
-fail:
-	tdb_unlock_list(tdb, prev_bucket, ltype);
-	return -1;
 }
 
 int64_t tdb_traverse(struct tdb_context *tdb, tdb_traverse_func fn, void *p)
