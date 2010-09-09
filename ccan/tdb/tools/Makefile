@@ -1,4 +1,4 @@
-LDLIBS:=../../tdb.o
+LDLIBS:=../../tdb.o ../../hash.o
 CFLAGS:=-I../../.. -Wall -O3 #-g -pg
 LDFLAGS:=-L../../..
 
