@@ -450,74 +450,55 @@ int add_to_hash(struct tdb_context *tdb, struct hash_info *h, tdb_off_t new_off)
 	return add_to_hash(tdb, h, new_off);
 }
 
-/* No point holding references/copies of db once we drop lock. */
-static void release_entries(struct tdb_context *tdb,
-			    struct traverse_info *tinfo)
-{
-	unsigned int i;
-
-	for (i = 0; i < tinfo->num_levels; i++) {
-		if (tinfo->levels[i].entries) {
-			tdb_access_release(tdb, tinfo->levels[i].entries);
-			tinfo->levels[i].entries = NULL;
-		}
-	}
-}
-
 /* Traverse support: returns offset of record, or 0 or TDB_OFF_ERR. */
 static tdb_off_t iterate_hash(struct tdb_context *tdb,
 			      struct traverse_info *tinfo)
 {
-	tdb_off_t off;
+	tdb_off_t off, val;
 	unsigned int i;
 	struct traverse_level *tlevel;
 
 	tlevel = &tinfo->levels[tinfo->num_levels-1];
 
 again:
-	if (!tlevel->entries) {
-		tlevel->entries = tdb_access_read(tdb, tlevel->hashtable,
-						  sizeof(tdb_off_t)
-						  * tlevel->total_buckets,
-						  true);
-		if (!tlevel->entries)
+	for (i = tdb_find_nonzero_off(tdb, tlevel->hashtable,
+				      tlevel->entry, tlevel->total_buckets);
+	     i != tlevel->total_buckets;
+	     i = tdb_find_nonzero_off(tdb, tlevel->hashtable,
+				      i+1, tlevel->total_buckets)) {
+		val = tdb_read_off(tdb, tlevel->hashtable+sizeof(tdb_off_t)*i);
+		if (unlikely(val == TDB_OFF_ERR))
 			return TDB_OFF_ERR;
-	}
 
-	/* FIXME: Use tdb_find_nonzero_off? */ 
-	for (i = tlevel->entry; i < tlevel->total_buckets; i++) {
-		if (!tlevel->entries[i] || tlevel->entries[i] == tinfo->prev)
+		/* This makes the delete-all-in-traverse case work
+		 * (and simplifies our logic a little). */
+		if (val == tinfo->prev)
 			continue;
 
 		tlevel->entry = i;
-		off = tlevel->entries[i] & TDB_OFF_MASK;
+		off = val & TDB_OFF_MASK;
 
-		if (!is_subhash(tlevel->entries[i])) {
+		if (!is_subhash(val)) {
 			/* Found one. */
-			tinfo->prev = tlevel->entries[i];
-			release_entries(tdb, tinfo);
+			tinfo->prev = val;
 			return off;
 		}
 
-		/* When we come back, we want tne next one */
+		/* When we come back, we want the next one */
 		tlevel->entry++;
 		tinfo->num_levels++;
 		tlevel++;
 		tlevel->hashtable = off + sizeof(struct tdb_used_record);
 		tlevel->entry = 0;
-		tlevel->entries = NULL;
 		tlevel->total_buckets = (1 << TDB_SUBLEVEL_HASH_BITS);
 		goto again;
 	}
 
 	/* Nothing there? */
-	if (tinfo->num_levels == 1) {
-		release_entries(tdb, tinfo);
+	if (tinfo->num_levels == 1)
 		return 0;
-	}
 
 	/* Go back up and keep searching. */
-	tdb_access_release(tdb, tlevel->entries);
 	tinfo->num_levels--;
 	tlevel--;
 	goto again;
@@ -586,7 +567,6 @@ int first_in_hash(struct tdb_context *tdb, int ltype,
 	tinfo->toplevel_group = 0;
 	tinfo->num_levels = 1;
 	tinfo->levels[0].hashtable = offsetof(struct tdb_header, hashtable);
-	tinfo->levels[0].entries = NULL;
 	tinfo->levels[0].entry = 0;
 	tinfo->levels[0].total_buckets = (1 << TDB_HASH_GROUP_BITS);
 

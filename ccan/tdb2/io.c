@@ -73,9 +73,8 @@ static int tdb_oob(struct tdb_context *tdb, tdb_off_t len, bool probe)
 	struct stat st;
 	int ret;
 
-	/* FIXME: We can't hold pointers during this: we could unmap! */
-	/* (We currently do this in traverse!) */
-//	assert(!tdb->direct_access || tdb_has_expansion_lock(tdb));
+	/* We can't hold pointers during this: we could unmap! */
+	assert(!tdb->direct_access || tdb_has_expansion_lock(tdb));
 
 	if (len <= tdb->map_size)
 		return 0;
@@ -161,25 +160,25 @@ void *tdb_convert(const struct tdb_context *tdb, void *buf, tdb_len_t size)
 	return buf;
 }
 
-/* Return first non-zero offset in num offset array, or num. */
 /* FIXME: Return the off? */
-uint64_t tdb_find_nonzero_off(struct tdb_context *tdb, tdb_off_t off,
-			      uint64_t num)
+uint64_t tdb_find_nonzero_off(struct tdb_context *tdb,
+			      tdb_off_t base, uint64_t start, uint64_t end)
 {
 	uint64_t i;
 	const uint64_t *val;
 
 	/* Zero vs non-zero is the same unconverted: minor optimization. */
-	val = tdb_access_read(tdb, off, num * sizeof(tdb_off_t), false);
+	val = tdb_access_read(tdb, base + start * sizeof(tdb_off_t),
+			      (end - start) * sizeof(tdb_off_t), false);
 	if (!val)
-		return num;
+		return end;
 
-	for (i = 0; i < num; i++) {
+	for (i = 0; i < (end - start); i++) {
 		if (val[i])
 			break;
 	}
 	tdb_access_release(tdb, val);
-	return i;
+	return start + i;
 }
 
 /* Return first zero offset in num offset array, or num. */

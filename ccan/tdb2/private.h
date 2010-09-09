@@ -242,7 +242,6 @@ struct hash_info {
 struct traverse_info {
 	struct traverse_level {
 		tdb_off_t hashtable;
-		const tdb_off_t *entries;
 		/* We ignore groups here, and treat it as a big array. */
 		unsigned entry;
 		unsigned int total_buckets;
@@ -418,9 +417,11 @@ int tdb_write_off(struct tdb_context *tdb, tdb_off_t off, tdb_off_t val);
 /* Clear an ondisk area. */
 int zero_out(struct tdb_context *tdb, tdb_off_t off, tdb_len_t len);
 
-/* Return a non-zero offset in this array, or num. */
-tdb_off_t tdb_find_nonzero_off(struct tdb_context *tdb, tdb_off_t off,
-			       uint64_t num);
+/* Return a non-zero offset between >= start < end in this array (or end). */
+tdb_off_t tdb_find_nonzero_off(struct tdb_context *tdb,
+			       tdb_off_t base,
+			       uint64_t start,
+			       uint64_t end);
 
 /* Return a zero offset in this array, or num. */
 tdb_off_t tdb_find_zero_off(struct tdb_context *tdb, tdb_off_t off,

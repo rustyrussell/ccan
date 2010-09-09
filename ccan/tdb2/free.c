@@ -164,13 +164,10 @@ tdb_off_t bucket_off(tdb_off_t zone_off, tdb_off_t bucket)
 /* Returns free_buckets + 1, or list number to search. */
 static tdb_off_t find_free_head(struct tdb_context *tdb, tdb_off_t bucket)
 {
-	tdb_off_t b;
-
 	/* Speculatively search for a non-zero bucket. */
-	b = tdb_find_nonzero_off(tdb, bucket_off(tdb->zone_off, bucket),
-				 BUCKETS_FOR_ZONE(tdb->zhdr.zone_bits) + 1
-				 - bucket);
-	return bucket + b;
+	return tdb_find_nonzero_off(tdb, bucket_off(tdb->zone_off, 0),
+				    bucket,
+				    BUCKETS_FOR_ZONE(tdb->zhdr.zone_bits) + 1);
 }
 
 /* Remove from free bucket. */
