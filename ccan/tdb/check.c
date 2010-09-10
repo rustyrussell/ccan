@@ -39,7 +39,7 @@ static bool tdb_check_header(struct tdb_context *tdb, tdb_off_t *recovery)
 	if (hdr.version != TDB_VERSION)
 		goto corrupt;
 
-	if (hdr.rwlocks != 0)
+	if (hdr.hashcheck != hashcheck(tdb))
 		goto corrupt;
 
 	if (hdr.hash_size == 0)

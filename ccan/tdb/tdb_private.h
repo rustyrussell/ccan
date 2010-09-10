@@ -176,7 +176,7 @@ struct tdb_header {
 	char magic_food[32]; /* for /etc/magic */
 	uint32_t version; /* version of the code */
 	uint32_t hash_size; /* number of hash entries */
-	tdb_off_t rwlocks; /* obsolete - kept to detect old formats */
+	tdb_off_t hashcheck; /* 0 for default hash. */
 	tdb_off_t recovery_start; /* offset of transaction recovery region */
 	tdb_off_t sequence_number; /* used when TDB_SEQNUM is set */
 	tdb_off_t reserved[29];
@@ -248,6 +248,7 @@ struct tdb_context {
 /*
   internal prototypes
 */
+uint32_t hashcheck(struct tdb_context *tdb);
 int tdb_munmap(struct tdb_context *tdb);
 void tdb_mmap(struct tdb_context *tdb);
 int tdb_lock(struct tdb_context *tdb, int list, int ltype);

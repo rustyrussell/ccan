@@ -63,6 +63,7 @@ static int tdb_new_database(struct tdb_context *tdb, int hash_size)
 	/* Fill in the header */
 	newdb->version = TDB_VERSION;
 	newdb->hash_size = hash_size;
+	newdb->hashcheck = hashcheck(tdb);
 	if (tdb->flags & TDB_INTERNAL) {
 		tdb->map_size = size;
 		tdb->map_ptr = (char *)newdb;
@@ -143,6 +144,18 @@ static void null_log_fn(struct tdb_context *tdb, enum tdb_debug_level level, con
 {
 }
 
+uint32_t hashcheck(struct tdb_context *tdb)
+{
+	uint32_t vals[] = { TDB_VERSION, TDB_MAGIC };
+	TDB_DATA hashkey = { (unsigned char *)vals, sizeof(vals) };
+
+	/* If we're using the default hash, let old code still open the db. */
+	if (tdb->hash_fn == default_tdb_hash)
+		return 0;
+
+	/* Only let new hash-aware TDB code open it (must not be zero!) */
+	return (tdb->hash_fn(&hashkey) | 1);
+}
 
 struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 				int open_flags, mode_t mode,
@@ -288,8 +301,8 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 	if (fstat(tdb->fd, &st) == -1)
 		goto fail;
 
-	if (tdb->header.rwlocks != 0) {
-		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_open_ex: spinlocks no longer supported\n"));
+	if (tdb->header.hashcheck != hashcheck(tdb)) {
+		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_open_ex: wrong hash?\n"));
 		goto fail;
 	}
 

@@ -22,8 +22,7 @@ static unsigned int non_jenkins_hash(TDB_DATA *key)
 static void log_fn(struct tdb_context *tdb, enum tdb_debug_level level, const char *fmt, ...)
 {
 	unsigned int *count = tdb_get_logging_private(tdb);
-	/* Old code used to complain about spinlocks on new databases. */
-	if (strstr(fmt, "spinlock"))
+	if (strstr(fmt, "wrong hash"))
 		(*count)++;
 }
 
