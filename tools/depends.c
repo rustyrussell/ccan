@@ -48,7 +48,7 @@ static char *compile_info(const void *ctx, const char *dir)
 	if (!info)
 		return NULL;
 
-	info_c_file = temp_file(ctx, ".c");
+	info_c_file = maybe_temp_file(ctx, ".c", false, "_info");
 	fd = open(info_c_file, O_WRONLY|O_CREAT|O_EXCL, 0600);
 	if (fd < 0)
 		return NULL;
@@ -61,7 +61,7 @@ static char *compile_info(const void *ctx, const char *dir)
 	ccandir = talloc_dirname(ctx, dir);
 	*strrchr(ccandir, '/') = '\0';
 
-	compiled = temp_file(ctx, "");
+	compiled = maybe_temp_file(ctx, "", false, "info");
 	if (compile_and_link(ctx, info_c_file, ccandir, "", "", "",
 			     compiled))
 		return NULL;

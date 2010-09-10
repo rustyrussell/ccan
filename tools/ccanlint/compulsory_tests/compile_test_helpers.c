@@ -25,7 +25,7 @@ static char *compile(struct manifest *m,
 		     bool keep,
 		     struct ccan_file *cfile)
 {
-	cfile->compiled = maybe_temp_file(m, "", keep, cfile->fullname);
+	cfile->compiled = maybe_temp_file(m, ".o", keep, cfile->fullname);
 	return compile_object(m, cfile->fullname, ccan_dir, "",
 			      cfile->compiled);
 }

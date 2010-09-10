@@ -35,7 +35,6 @@ char *run_command(const void *ctx, unsigned int *time_ms, const char *fmt, ...);
 char *run_with_timeout(const void *ctx, const char *cmd,
 		       bool *ok, unsigned *timeout_ms);
 char *temp_dir(const void *ctx);
-char *temp_file(const void *ctx, const char *extension);
 bool move_file(const char *oldname, const char *newname);
 
 /* From compile.c.
@@ -46,7 +45,8 @@ bool move_file(const char *oldname, const char *newname);
 /* If set, say what we're compiling to. */
 extern bool compile_verbose;
 /* Compile multiple object files into a single. */
-char *link_objects(const void *ctx, const char *objs, char **errmsg);
+char *link_objects(const void *ctx, const char *basename, bool in_pwd,
+		   const char *objs, char **errmsg);
 /* Compile a single C file to an object file.  Returns errmsg if fails. */
 char *compile_object(const void *ctx, const char *cfile, const char *ccandir,
 		     const char *extra_cflags,
@@ -57,8 +57,8 @@ char *compile_and_link(const void *ctx, const char *cfile, const char *ccandir,
 		       const char *objs, const char *extra_cflags,
 		       const char *libs, const char *outfile);
 
-/* If keep is false, return a temporary file.  Otherwise, base it on srcname */
-char *maybe_temp_file(const void *ctx, const char *extension, bool keep,
+/* If in_pwd is false, return a file int temp_dir, otherwise a local file. */
+char *maybe_temp_file(const void *ctx, const char *extension, bool in_pwd,
 		      const char *srcname);
 
 /* Default wait for run_command.  Should never time out. */

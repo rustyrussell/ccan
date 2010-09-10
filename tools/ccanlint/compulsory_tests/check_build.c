@@ -51,9 +51,10 @@ static void *check_use_build(struct manifest *m,
 {
 	char *contents;
 	char *tmpfile;
+	char *basename = talloc_asprintf(m, "%s/example.c", m->dir);
 	int fd;
 
-	tmpfile = temp_file(m, ".c");
+	tmpfile = maybe_temp_file(m, ".c", keep, basename);
 
 	fd = open(tmpfile, O_WRONLY | O_CREAT | O_EXCL, 0600);
 	if (fd < 0)
@@ -74,7 +75,8 @@ static void *check_use_build(struct manifest *m,
 	close(fd);
 
 	return compile_and_link(m, tmpfile, ccan_dir, obj_list(m), "",
-				lib_list(m), temp_file(m, ""));
+				lib_list(m),
+				maybe_temp_file(m, "", keep, tmpfile));
 }
 
 static const char *describe_use_build(struct manifest *m, void *check_result)

@@ -14,10 +14,10 @@
 #include <errno.h>
 #include <err.h>
 #include <unistd.h>
+#include <assert.h>
 #include "tools.h"
 
 static char *tmpdir = NULL;
-static unsigned int count;
 bool tools_verbose = false;
 
 /* Ten minutes. */
@@ -210,28 +210,37 @@ char *temp_dir(const void *ctx)
 	return tmpdir;
 }
 
-char *temp_file(const void *ctx, const char *extension)
-{
-	char *f = talloc_asprintf(ctx, "%s/%u%s",
-				  temp_dir(ctx), count++, extension);
-	if (tools_verbose)
-		printf("Created temporary file %s\n", f);
-	return f;
-}
-
 char *maybe_temp_file(const void *ctx, const char *extension, bool keep,
 		      const char *srcname)
 {
 	size_t baselen;
-	char *f;
+	char *f, *suffix = talloc_strdup(ctx, "");
+	struct stat st;
+	unsigned int count = 0;
 
 	if (!keep)
-		return temp_file(ctx, extension);
+		srcname = talloc_basename(ctx, srcname);
+	else
+		assert(srcname[0] == '/');
 
-	baselen = strrchr(srcname, '.') - srcname;
-	f = talloc_asprintf(ctx, "%.*s%s", baselen, srcname, extension);
+	if (strrchr(srcname, '.'))
+		baselen = strrchr(srcname, '.') - srcname;
+	else
+		baselen = strlen(srcname);
+
+	do {
+		f = talloc_asprintf(ctx, "%s/%.*s%s%s",
+				    keep ? "" : temp_dir(ctx),
+				    baselen, srcname,
+				    suffix, extension);
+		talloc_free(suffix);
+		suffix = talloc_asprintf(ctx, "-%u", ++count);
+	} while (!keep && lstat(f, &st) == 0);
+
 	if (tools_verbose)
 		printf("Creating file %s\n", f);
+
+	talloc_free(suffix);
 	return f;
 }
 

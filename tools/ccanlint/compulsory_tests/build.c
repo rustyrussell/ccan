@@ -44,7 +44,7 @@ static void *do_build(struct manifest *m,
 		build.total_score = 0;
 		return NULL;
 	}
-	filename = link_objects(m, obj_list(m), &err);
+	filename = link_objects(m, m->basename, false, obj_list(m), &err);
 	if (filename && keep) {
 		char *realname = talloc_asprintf(m, "%s.o", m->dir);
 		/* We leave this object file around, all built. */
