@@ -302,6 +302,21 @@ static bool tdb_check_free_record(struct tdb_context *tdb,
 	return true;
 }
 
+/* Slow, but should be very rare. */
+static size_t dead_space(struct tdb_context *tdb, tdb_off_t off)
+{
+	size_t len;
+
+	for (len = 0; off + len < tdb->map_size; len++) {
+		char c;
+		if (tdb->methods->tdb_read(tdb, off, &c, 1, 0))
+			return 0;
+		if (c != 0 && c != 0x42)
+			break;
+	}
+	return len;
+}
+
 int tdb_check(struct tdb_context *tdb,
 	      int (*check)(TDB_DATA key, TDB_DATA data, void *private_data),
 	      void *private_data)
@@ -311,6 +326,7 @@ int tdb_check(struct tdb_context *tdb,
 	tdb_off_t off, recovery_start;
 	struct tdb_record rec;
 	bool found_recovery = false;
+	tdb_len_t dead;
 
 	if (tdb_lockall(tdb) == -1)
 		return -1;
@@ -370,8 +386,23 @@ int tdb_check(struct tdb_context *tdb,
 			if (!tdb_check_free_record(tdb, off, &rec, hashes))
 				goto free;
 			break;
-		case TDB_RECOVERY_MAGIC:
+		/* If we crash after ftruncate, we can get zeroes or fill. */
 		case TDB_RECOVERY_INVALID_MAGIC:
+		case 0x42424242:
+			if (recovery_start == off) {
+				found_recovery = true;
+				break;
+			}
+			dead = dead_space(tdb, off);
+			if (dead < sizeof(rec))
+				goto corrupt;
+
+			TDB_LOG((tdb, TDB_DEBUG_ERROR,
+				 "Dead space at %d-%d (of %u)\n",
+				 off, off + dead, tdb->map_size));
+			rec.rec_len = dead - sizeof(rec);
+			break;
+		case TDB_RECOVERY_MAGIC:
 			if (recovery_start != off) {
 				TDB_LOG((tdb, TDB_DEBUG_ERROR,
 					 "Unexpected recovery record at offset %d\n",
@@ -380,7 +411,8 @@ int tdb_check(struct tdb_context *tdb,
 			}
 			found_recovery = true;
 			break;
-		default:
+		default: ;
+		corrupt:
 			tdb->ecode = TDB_ERR_CORRUPT;
 			TDB_LOG((tdb, TDB_DEBUG_ERROR,
 				 "Bad magic 0x%x at offset %d\n",
@@ -406,9 +438,8 @@ int tdb_check(struct tdb_context *tdb,
 	/* We must have found recovery area if there was one. */
 	if (recovery_start != 0 && !found_recovery) {
 		TDB_LOG((tdb, TDB_DEBUG_ERROR,
-			 "Expected %s recovery area, got %s\n",
-			 recovery_start ? "a" : "no",
-			 found_recovery ? "one" : "none"));
+			 "Expected a recovery area at %u\n",
+			 recovery_start));
 		goto free;
 	}
 
