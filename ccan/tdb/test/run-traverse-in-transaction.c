@@ -1,4 +1,6 @@
 #define _XOPEN_SOURCE 500
+#include "lock-tracking.h"
+#define fcntl fcntl_with_lockcheck
 #include <ccan/tdb/tdb.h>
 #include <ccan/tdb/io.c>
 #include <ccan/tdb/tdb.c>
@@ -10,10 +12,11 @@
 #include <ccan/tdb/open.c>
 #include <ccan/tdb/check.c>
 #include <ccan/tap/tap.h>
+#undef fcntl_with_lockcheck
 #include <stdlib.h>
 #include <stdbool.h>
 #include <err.h>
-#include "external-transaction.h"
+#include "external-agent.h"
 
 static struct agent *agent;
 
@@ -58,21 +61,25 @@ int main(int argc, char *argv[])
 
 	ok1(tdb_store(tdb, key, data, TDB_INSERT) == 0);
 
-	ok1(external_agent_operation(agent, TRANSACTION, tdb_name(tdb)));
+	ok1(external_agent_operation(agent, OPEN, tdb_name(tdb)) == SUCCESS);
 
 	ok1(tdb_transaction_start(tdb) == 0);
-	ok1(!external_agent_operation(agent, TRANSACTION, tdb_name(tdb)));
+	ok1(external_agent_operation(agent, TRANSACTION_START, tdb_name(tdb))
+	    == WOULD_HAVE_BLOCKED);
 	tdb_traverse(tdb, traverse, NULL);
 
 	/* That should *not* release the transaction lock! */
-	ok1(!external_agent_operation(agent, TRANSACTION, tdb_name(tdb)));
+	ok1(external_agent_operation(agent, TRANSACTION_START, tdb_name(tdb))
+	    == WOULD_HAVE_BLOCKED);
 	tdb_traverse_read(tdb, traverse, NULL);
 
 	/* That should *not* release the transaction lock! */
-	ok1(!external_agent_operation(agent, TRANSACTION, tdb_name(tdb)));
+	ok1(external_agent_operation(agent, TRANSACTION_START, tdb_name(tdb))
+	    == WOULD_HAVE_BLOCKED);
 	ok1(tdb_transaction_commit(tdb) == 0);
 	/* Now we should be fine. */
-	ok1(external_agent_operation(agent, TRANSACTION, tdb_name(tdb)));
+	ok1(external_agent_operation(agent, TRANSACTION_START, tdb_name(tdb))
+	    == SUCCESS);
 
 	tdb_close(tdb);
 

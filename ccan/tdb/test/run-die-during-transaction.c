@@ -26,7 +26,7 @@ static int ftruncate_check(int fd, off_t length);
 #include <stdarg.h>
 #include <err.h>
 #include <setjmp.h>
-#include "external-transaction.h"
+#include "external-agent.h"
 
 #undef write
 #undef pwrite
@@ -38,6 +38,7 @@ static bool suppress_logging;
 static int target, current;
 static jmp_buf jmpbuf;
 #define TEST_DBNAME "run-die-during-transaction.tdb"
+#define KEY_STRING "helloworld"
 
 static void taplog(struct tdb_context *tdb,
 		   enum tdb_debug_level level,
@@ -107,8 +108,9 @@ static int ftruncate_check(int fd, off_t length)
 static bool test_death(enum operation op, struct agent *agent)
 {
 	struct tdb_context *tdb = NULL;
-	TDB_DATA key, data;
+	TDB_DATA key;
 	struct tdb_logging_context logctx = { taplog, NULL };
+	enum agent_return ret;
 	int needed_recovery = 0;
 
 	current = target = 0;
@@ -119,30 +121,44 @@ reset:
 		forget_locking();
 		in_transaction = false;
 
-		if (external_agent_operation(agent, NEEDS_RECOVERY_KEEP_OPENED,
-					     ""))
+		ret = external_agent_operation(agent, NEEDS_RECOVERY, "");
+		if (ret == SUCCESS)
 			needed_recovery++;
-
-		if (external_agent_operation(agent, op, "") != 1) {
-			diag("Step %u op failed", current);
+		else if (ret != FAILED) {
+			diag("Step %u agent NEEDS_RECOVERY = %s", current,
+			     agent_return_name(ret));
 			return false;
 		}
 
-		if (external_agent_operation(agent, NEEDS_RECOVERY_KEEP_OPENED,
-					     "")) {
-			diag("Still needs recovery after step %u", current);
+		ret = external_agent_operation(agent, op, KEY_STRING);
+		if (ret != SUCCESS) {
+			diag("Step %u op %s failed = %s", current,
+			     operation_name(op),
+			     agent_return_name(ret));
 			return false;
 		}
 
-		if (external_agent_operation(agent, CHECK_KEEP_OPENED, "")
-		    != 1) {
-			diag("Step %u check failed", current);
-#if 0
+		ret = external_agent_operation(agent, NEEDS_RECOVERY, "");
+		if (ret != FAILED) {
+			diag("Still needs recovery after step %u = %s",
+			     current, agent_return_name(ret));
 			return false;
-#endif
 		}
 
-		external_agent_operation(agent, CLOSE, "");
+		ret = external_agent_operation(agent, CHECK, "");
+		if (ret != SUCCESS) {
+			diag("Step %u check failed = %s", current,
+			     agent_return_name(ret));
+			return false;
+		}
+
+		ret = external_agent_operation(agent, CLOSE, "");
+		if (ret != SUCCESS) {
+			diag("Step %u close failed = %s", current,
+			     agent_return_name(ret));
+			return false;
+		}
+
 		/* Suppress logging as this tries to use closed fd. */
 		suppress_logging = true;
 		suppress_lockcheck = true;
@@ -158,20 +174,30 @@ reset:
 	tdb = tdb_open_ex(TEST_DBNAME, 1024, TDB_NOMMAP,
 			  O_CREAT|O_TRUNC|O_RDWR, 0600, &logctx, NULL);
 
-	if (external_agent_operation(agent, KEEP_OPENED, TEST_DBNAME) != 0)
-		errx(1, "Agent failed to open?");
+	/* Put key for agent to fetch. */
+	key.dsize = strlen(KEY_STRING);
+	key.dptr = (void *)KEY_STRING;
+	if (tdb_store(tdb, key, key, TDB_INSERT) != 0)
+		return false;
 
+	/* This is the key we insert in transaction. */
+	key.dsize--;
+
+	ret = external_agent_operation(agent, OPEN, TEST_DBNAME);
+	if (ret != SUCCESS)
+		errx(1, "Agent failed to open: %s", agent_return_name(ret));
+
+	ret = external_agent_operation(agent, FETCH, KEY_STRING);
+	if (ret != SUCCESS)
+		errx(1, "Agent failed find key: %s", agent_return_name(ret));
+
+	in_transaction = true;
 	if (tdb_transaction_start(tdb) != 0)
 		return false;
 
-	in_transaction = true;
-	key.dsize = strlen("hi");
-	key.dptr = (void *)"hi";
-	data.dptr = (void *)"world";
-	data.dsize = strlen("world");
-
-	if (tdb_store(tdb, key, data, TDB_INSERT) != 0)
+	if (tdb_store(tdb, key, key, TDB_INSERT) != 0)
 		return false;
+
 	if (tdb_transaction_commit(tdb) != 0)
 		return false;
 
@@ -180,7 +206,12 @@ reset:
 	/* We made it! */
 	diag("Completed %u runs", current);
 	tdb_close(tdb);
-	external_agent_operation(agent, CLOSE, "");
+	ret = external_agent_operation(agent, CLOSE, "");
+	if (ret != SUCCESS) {
+		diag("Step %u close failed = %s", current,
+		     agent_return_name(ret));
+		return false;
+	}
 
 	ok1(needed_recovery);
 	ok1(locking_errors == 0);
@@ -191,9 +222,7 @@ reset:
 
 int main(int argc, char *argv[])
 {
-	enum operation ops[] = { FETCH_KEEP_OPENED,
-				 STORE_KEEP_OPENED,
-				 TRANSACTION_KEEP_OPENED };
+	enum operation ops[] = { FETCH, STORE, TRANSACTION_START };
 	struct agent *agent;
 	int i;
 
@@ -204,17 +233,8 @@ int main(int argc, char *argv[])
 	if (!agent)
 		err(1, "preparing agent");
 
-	/* Nice ourselves down: we can't tell the difference between agent
-	 * blocking on lock, and agent not scheduled. */
-	nice(15);
-
 	for (i = 0; i < sizeof(ops)/sizeof(ops[0]); i++) {
-		diag("Testing %s after death",
-		     ops[i] == TRANSACTION_KEEP_OPENED ? "transaction"
-		     : ops[i] == FETCH_KEEP_OPENED ? "fetch"
-		     : ops[i] == STORE_KEEP_OPENED ? "store"
-		     : NULL);
-
+		diag("Testing %s after death", operation_name(ops[i]));
 		ok1(test_death(ops[i], agent));
 	}
 

@@ -15,6 +15,8 @@ struct lock {
 static struct lock *locks;
 int locking_errors = 0;
 bool suppress_lockcheck = false;
+bool nonblocking_locks;
+int locking_would_block = 0;
 void (*unlock_callback)(int fd);
 
 int fcntl_with_lockcheck(int fd, int cmd, ... /* arg */ )
@@ -22,6 +24,7 @@ int fcntl_with_lockcheck(int fd, int cmd, ... /* arg */ )
 	va_list ap;
 	int ret, arg3;
 	struct flock *fl;
+	bool may_block = false;
 
 	if (cmd != F_SETLK && cmd != F_SETLKW) {
 		/* This may be totally bogus, but we don't know in general. */
@@ -36,6 +39,17 @@ int fcntl_with_lockcheck(int fd, int cmd, ... /* arg */ )
 	fl = va_arg(ap, struct flock *);
 	va_end(ap);
 
+	if (cmd == F_SETLKW && nonblocking_locks) {
+		cmd = F_SETLK;
+		may_block = true;
+	}
+	ret = fcntl(fd, cmd, fl);
+
+	/* Detect when we failed, but might have been OK if we waited. */
+	if (may_block && ret == -1 && (errno == EAGAIN || errno == EACCES)) {
+		locking_would_block++;
+	}
+
 	if (fl->l_type == F_UNLCK) {
 		struct lock **l;
 		struct lock *old = NULL;
@@ -43,15 +57,17 @@ int fcntl_with_lockcheck(int fd, int cmd, ... /* arg */ )
 		for (l = &locks; *l; l = &(*l)->next) {
 			if ((*l)->off == fl->l_start
 			    && (*l)->len == fl->l_len) {
-				old = *l;
-				*l = (*l)->next;
-				free(old);
+				if (ret == 0) {
+					old = *l;
+					*l = (*l)->next;
+					free(old);
+				}
 				break;
 			}
 		}
 		if (!old && !suppress_lockcheck) {
-			diag("Unknown unlock %u@%u",
-			     (int)fl->l_len, (int)fl->l_start);
+			diag("Unknown unlock %u@%u - %i",
+			     (int)fl->l_len, (int)fl->l_start, ret);
 			locking_errors++;
 		}
 	} else {
@@ -73,8 +89,12 @@ int fcntl_with_lockcheck(int fd, int cmd, ... /* arg */ )
 
 			/* tdb_allrecord_lock does this, handle adjacent: */
 			if (fl->l_start == i_end && fl->l_type == i->type) {
-				i->len = fl->l_len ? i->len + fl->l_len : 0;
-				goto ok;
+				if (ret == 0) {
+					i->len = fl->l_len 
+						? i->len + fl->l_len
+						: 0;
+				}
+				goto done;
 			}
 		}
 		if (i) {
@@ -84,8 +104,9 @@ int fcntl_with_lockcheck(int fd, int cmd, ... /* arg */ )
 			    && fl->l_start == FREELIST_TOP
 			    && i->len == 0
 			    && fl->l_len == 0) {
-				i->type = F_WRLCK;
-				goto ok;
+				if (ret == 0)
+					i->type = F_WRLCK;
+				goto done;
 			}
 			if (!suppress_lockcheck) {
 				diag("%s lock %u@%u overlaps %u@%u",
@@ -95,15 +116,17 @@ int fcntl_with_lockcheck(int fd, int cmd, ... /* arg */ )
 				locking_errors++;
 			}
 		}
-		new = malloc(sizeof *new);
-		new->off = fl->l_start;
-		new->len = fl->l_len;
-		new->type = fl->l_type;
-		new->next = locks;
-		locks = new;
+
+		if (ret == 0) {
+			new = malloc(sizeof *new);
+			new->off = fl->l_start;
+			new->len = fl->l_len;
+			new->type = fl->l_type;
+			new->next = locks;
+			locks = new;
+		}
 	}
-ok:
-	ret = fcntl(fd, cmd, fl);
+done:
 	if (ret == 0 && fl->l_type == F_UNLCK && unlock_callback)
 		unlock_callback(fd);
 	return ret;

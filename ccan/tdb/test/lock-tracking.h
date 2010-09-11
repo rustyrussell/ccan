@@ -16,4 +16,10 @@ extern int locking_errors;
 
 /* Suppress lock checking. */
 extern bool suppress_lockcheck;
+
+/* Make all locks non-blocking. */
+extern bool nonblocking_locks;
+
+/* Number of times we failed a lock because we made it non-blocking. */
+extern int locking_would_block;
 #endif /* LOCK_TRACKING_H */

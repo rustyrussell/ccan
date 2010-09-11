@@ -26,15 +26,11 @@ static int ftruncate_check(int fd, off_t length);
 #include <stdbool.h>
 #include <stdarg.h>
 #include <err.h>
-#include "external-transaction.h"
+#include "external-agent.h"
 
 static struct agent *agent;
-static bool agent_pending;
-static bool in_transaction;
+static bool opened;
 static int errors = 0;
-static bool snapshot_uptodate;
-static char *snapshot;
-static off_t snapshot_len;
 static bool clear_if_first;
 #define TEST_DBNAME "run-open-during-transaction.tdb"
 
@@ -57,124 +53,103 @@ static void taplog(struct tdb_context *tdb,
 	diag("%s", line);
 }
 
-static void save_file_contents(int fd)
+static bool is_same(const char *snapshot, const char *latest, off_t len)
 {
-	struct stat st;
-	int res;
+	unsigned i;
 
-	/* Save copy of file. */
-	stat(TEST_DBNAME, &st);
-	if (snapshot_len != st.st_size) {
-		snapshot = realloc(snapshot, st.st_size * 2);
-		snapshot_len = st.st_size;
+	for (i = 0; i < len; i++) {
+		if (snapshot[i] != latest[i])
+			return false;
 	}
-	res = pread(fd, snapshot, snapshot_len, 0);
-	if (res != snapshot_len)
-		err(1, "Reading %zu bytes = %u", (size_t)snapshot_len, res);
-	snapshot_uptodate = true;
+	return true;
 }
 
-static void check_for_agent(int fd, bool block)
+static bool compare_file(int fd, const char *snapshot, off_t snapshot_len)
 {
+	char *contents;
+	bool same;
+
+	/* over-length read serves as length check. */
+	contents = malloc(snapshot_len+1);
+	same = pread(fd, contents, snapshot_len+1, 0) == snapshot_len
+		&& is_same(snapshot, contents, snapshot_len);
+	free(contents);
+	return same;
+}
+
+static void check_file_intact(int fd)
+{
+	enum agent_return ret;
 	struct stat st;
-	int res;
+	char *contents;
 
-	if (!external_agent_operation_check(agent, block, &res))
-		return;
-
-	if (res != 1)
-		err(1, "Agent failed open");
-	agent_pending = false;
-
-	if (!snapshot_uptodate)
-		return;
-
-	stat(TEST_DBNAME, &st);
-	if (st.st_size != snapshot_len) {
-		diag("Other open changed size from %zu -> %zu",
-		     (size_t)snapshot_len, (size_t)st.st_size);
+	fstat(fd, &st);
+	contents = malloc(st.st_size);
+	if (pread(fd, contents, st.st_size, 0) != st.st_size) {
+		diag("Read fail");
 		errors++;
 		return;
 	}
 
-	if (pread(fd, snapshot+snapshot_len, snapshot_len, 0) != snapshot_len)
-		err(1, "Reading %zu bytes", (size_t)snapshot_len);
-	if (memcmp(snapshot, snapshot+snapshot_len, snapshot_len) != 0) {
-		diag("File changed");
+	/* Ask agent to open file. */
+	ret = external_agent_operation(agent, clear_if_first ?
+				       OPEN_WITH_CLEAR_IF_FIRST :
+				       OPEN,
+				       TEST_DBNAME);
+
+	/* It's OK to open it, but it must not have changed! */
+	if (!compare_file(fd, contents, st.st_size)) {
+		diag("Agent changed file after opening %s",
+		     agent_return_name(ret));
 		errors++;
-		return;
 	}
+
+	if (ret == SUCCESS) {
+		ret = external_agent_operation(agent, CLOSE, NULL);
+		if (ret != SUCCESS) {
+			diag("Agent failed to close tdb: %s",
+			     agent_return_name(ret));
+			errors++;
+		}
+	} else if (ret != WOULD_HAVE_BLOCKED) {
+		diag("Agent opening file gave %s",
+		     agent_return_name(ret));
+		errors++;
+	}
+
+	free(contents);
 }
 
-static void check_file_contents(int fd)
+static void after_unlock(int fd)
 {
-	if (!in_transaction)
-		return;
-
-	if (agent_pending)
-		check_for_agent(fd, false);
-
-	if (!agent_pending) {
-		save_file_contents(fd);
-
-		/* Ask agent to open file. */
-		external_agent_operation_start(agent,
-					       clear_if_first ?
-					       OPEN_WITH_CLEAR_IF_FIRST :
-					       OPEN,
-					       TEST_DBNAME);
-		agent_pending = true;
-		/* Hack: give it a chance to run. */
-		sleep(0);
-	}
-
-	check_for_agent(fd, false);
+	if (opened)
+		check_file_intact(fd);
 }
-
+	
 static ssize_t pwrite_check(int fd,
 			    const void *buf, size_t count, off_t offset)
 {
-	ssize_t ret;
+	if (opened)
+		check_file_intact(fd);
 
-	check_file_contents(fd);
-
-	snapshot_uptodate = false;
-	ret = pwrite(fd, buf, count, offset);
-	if (ret != count)
-		return ret;
-
-	check_file_contents(fd);
-	return ret;
+	return pwrite(fd, buf, count, offset);
 }
 
 static ssize_t write_check(int fd, const void *buf, size_t count)
 {
-	ssize_t ret;
+	if (opened)
+		check_file_intact(fd);
 
-	check_file_contents(fd);
-
-	snapshot_uptodate = false;
-
-	ret = write(fd, buf, count);
-	if (ret != count)
-		return ret;
-
-	check_file_contents(fd);
-	return ret;
+	return write(fd, buf, count);
 }
 
 static int ftruncate_check(int fd, off_t length)
 {
-	int ret;
+	if (opened)
+		check_file_intact(fd);
 
-	check_file_contents(fd);
+	return ftruncate(fd, length);
 
-	snapshot_uptodate = false;
-
-	ret = ftruncate(fd, length);
-
-	check_file_contents(fd);
-	return ret;
 }
 
 int main(int argc, char *argv[])
@@ -189,15 +164,11 @@ int main(int argc, char *argv[])
 	TDB_DATA key, data;
 
 	plan_tests(20);
-	unlock_callback = check_file_contents;
 	agent = prepare_external_agent();
 	if (!agent)
 		err(1, "preparing agent");
 
-	/* Nice ourselves down: we can't tell the difference between agent
-	 * blocking on lock, and agent not scheduled. */
-	nice(15);
-
+	unlock_callback = after_unlock;
 	for (i = 0; i < sizeof(flags)/sizeof(flags[0]); i++) {
 		clear_if_first = (flags[i] & TDB_CLEAR_IF_FIRST);
 		diag("Test with %s and %s\n",
@@ -209,8 +180,8 @@ int main(int argc, char *argv[])
 				  &logctx, NULL);
 		ok1(tdb);
 
+		opened = true;
 		ok1(tdb_transaction_start(tdb) == 0);
-		in_transaction = true;
 		key.dsize = strlen("hi");
 		key.dptr = (void *)"hi";
 		data.dptr = (void *)"world";
@@ -218,10 +189,9 @@ int main(int argc, char *argv[])
 
 		ok1(tdb_store(tdb, key, data, TDB_INSERT) == 0);
 		ok1(tdb_transaction_commit(tdb) == 0);
-		if (agent_pending)
-			check_for_agent(tdb->fd, true);
-		ok(errors == 0, "We had %u unexpected changes", errors);
+		ok(!errors, "We had %u open errors", errors);
 
+		opened = false;
 		tdb_close(tdb);
 	}
 
