@@ -12,6 +12,7 @@
 #include <ccan/tap/tap.h>
 #include <stdlib.h>
 #include <err.h>
+#include "logging.h"
 
 int main(int argc, char *argv[])
 {
@@ -19,8 +20,8 @@ int main(int argc, char *argv[])
 	TDB_DATA key, data;
 
 	plan_tests(9);
-	tdb = tdb_open("run-check.tdb", 1, TDB_CLEAR_IF_FIRST,
-		       O_CREAT|O_TRUNC|O_RDWR, 0600);
+	tdb = tdb_open_ex("run-check.tdb", 1, TDB_CLEAR_IF_FIRST,
+			  O_CREAT|O_TRUNC|O_RDWR, 0600, &taplogctx, NULL);
 
 	ok1(tdb);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);

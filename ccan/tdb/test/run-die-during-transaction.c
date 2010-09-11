@@ -27,6 +27,7 @@ static int ftruncate_check(int fd, off_t length);
 #include <err.h>
 #include <setjmp.h>
 #include "external-agent.h"
+#include "logging.h"
 
 #undef write
 #undef pwrite
@@ -34,28 +35,10 @@ static int ftruncate_check(int fd, off_t length);
 #undef ftruncate
 
 static bool in_transaction;
-static bool suppress_logging;
 static int target, current;
 static jmp_buf jmpbuf;
 #define TEST_DBNAME "run-die-during-transaction.tdb"
 #define KEY_STRING "helloworld"
-
-static void taplog(struct tdb_context *tdb,
-		   enum tdb_debug_level level,
-		   const char *fmt, ...)
-{
-	va_list ap;
-	char line[200];
-
-	if (suppress_logging)
-		return;
-
-	va_start(ap, fmt);
-	vsprintf(line, fmt, ap);
-	va_end(ap);
-
-	diag("%s", line);
-}
 
 static void maybe_die(int fd)
 {
@@ -109,7 +92,6 @@ static bool test_death(enum operation op, struct agent *agent)
 {
 	struct tdb_context *tdb = NULL;
 	TDB_DATA key;
-	struct tdb_logging_context logctx = { taplog, NULL };
 	enum agent_return ret;
 	int needed_recovery = 0;
 
@@ -172,7 +154,7 @@ reset:
 
 	unlink(TEST_DBNAME);
 	tdb = tdb_open_ex(TEST_DBNAME, 1024, TDB_NOMMAP,
-			  O_CREAT|O_TRUNC|O_RDWR, 0600, &logctx, NULL);
+			  O_CREAT|O_TRUNC|O_RDWR, 0600, &taplogctx, NULL);
 
 	/* Put key for agent to fetch. */
 	key.dsize = strlen(KEY_STRING);

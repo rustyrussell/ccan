@@ -12,6 +12,7 @@
 #include <ccan/tap/tap.h>
 #include <stdlib.h>
 #include <err.h>
+#include "logging.h"
 
 int main(int argc, char *argv[])
 {
@@ -19,8 +20,9 @@ int main(int argc, char *argv[])
 	TDB_DATA key, data;
 
 	plan_tests(13);
-	tdb = tdb_open("run-endian.tdb", 1024, TDB_CLEAR_IF_FIRST|TDB_CONVERT,
-		       O_CREAT|O_TRUNC|O_RDWR, 0600);
+	tdb = tdb_open_ex("run-endian.tdb", 1024,
+			  TDB_CLEAR_IF_FIRST|TDB_CONVERT,
+			  O_CREAT|O_TRUNC|O_RDWR, 0600, &taplogctx, NULL);
 
 	ok1(tdb);
 	key.dsize = strlen("hi");
@@ -46,7 +48,8 @@ int main(int argc, char *argv[])
 	tdb_close(tdb);
 
 	/* Reopen: should read it */
-	tdb = tdb_open("run-endian.tdb", 1024, 0, O_RDWR, 0);
+	tdb = tdb_open_ex("run-endian.tdb", 1024, 0, O_RDWR, 0,
+			  &taplogctx, NULL);
 	ok1(tdb);
 	
 	key.dsize = strlen("hi");

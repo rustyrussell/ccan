@@ -12,6 +12,7 @@
 #include <ccan/tap/tap.h>
 #include <stdlib.h>
 #include <err.h>
+#include "logging.h"
 
 int main(int argc, char *argv[])
 {
@@ -25,9 +26,11 @@ int main(int argc, char *argv[])
 	ok1(fd >= 0);
 	ok1(write(fd, "hello world", 11) == 11);
 	close(fd);
-	tdb = tdb_open("run-bad-tdb-header.tdb", 1024, 0, O_RDWR, 0);
+	tdb = tdb_open_ex("run-bad-tdb-header.tdb", 1024, 0, O_RDWR, 0,
+			  &taplogctx, NULL);
 	ok1(!tdb);
-	tdb = tdb_open("run-bad-tdb-header.tdb", 1024, 0, O_CREAT|O_RDWR, 0600);
+	tdb = tdb_open_ex("run-bad-tdb-header.tdb", 1024, 0, O_CREAT|O_RDWR,
+			  0600, &taplogctx, NULL);
 	ok1(tdb);
 	tdb_close(tdb);
 
@@ -41,12 +44,14 @@ int main(int argc, char *argv[])
 	ok1(write(fd, &hdr, sizeof(hdr)) == sizeof(hdr));
 	close(fd);
 
-	tdb = tdb_open("run-bad-tdb-header.tdb", 1024, 0, O_RDWR|O_CREAT, 0600);
+	tdb = tdb_open_ex("run-bad-tdb-header.tdb", 1024, 0, O_RDWR|O_CREAT,
+			  0600, &taplogctx, NULL);
 	ok1(errno == EIO);
 	ok1(!tdb);
 
 	/* With truncate, will be fine. */
-	tdb = tdb_open("run-bad-tdb-header.tdb", 1024, 0, O_RDWR|O_CREAT|O_TRUNC, 0600);
+	tdb = tdb_open_ex("run-bad-tdb-header.tdb", 1024, 0,
+			  O_RDWR|O_CREAT|O_TRUNC, 0600, &taplogctx, NULL);
 	ok1(tdb);
 	tdb_close(tdb);
 

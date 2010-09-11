@@ -27,6 +27,7 @@ static int ftruncate_check(int fd, off_t length);
 #include <stdarg.h>
 #include <err.h>
 #include "external-agent.h"
+#include "logging.h"
 
 static struct agent *agent;
 static bool opened;
@@ -38,20 +39,6 @@ static bool clear_if_first;
 #undef pwrite
 #undef fcntl
 #undef ftruncate
-
-static void taplog(struct tdb_context *tdb,
-		   enum tdb_debug_level level,
-		   const char *fmt, ...)
-{
-	va_list ap;
-	char line[200];
-
-	va_start(ap, fmt);
-	vsprintf(line, fmt, ap);
-	va_end(ap);
-
-	diag("%s", line);
-}
 
 static bool is_same(const char *snapshot, const char *latest, off_t len)
 {
@@ -154,7 +141,6 @@ static int ftruncate_check(int fd, off_t length)
 
 int main(int argc, char *argv[])
 {
-	struct tdb_logging_context logctx = { taplog, NULL };
 	const int flags[] = { TDB_DEFAULT,
 			      TDB_CLEAR_IF_FIRST,
 			      TDB_NOMMAP, 
@@ -177,7 +163,7 @@ int main(int argc, char *argv[])
 		unlink(TEST_DBNAME);
 		tdb = tdb_open_ex(TEST_DBNAME, 1024, flags[i],
 				  O_CREAT|O_TRUNC|O_RDWR, 0600,
-				  &logctx, NULL);
+				  &taplogctx, NULL);
 		ok1(tdb);
 
 		opened = true;

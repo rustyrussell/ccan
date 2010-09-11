@@ -1,5 +1,6 @@
 #include "external-agent.h"
 #include "lock-tracking.h"
+#include "logging.h"
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -17,23 +18,8 @@
 
 static struct tdb_context *tdb;
 
-static void taplog(struct tdb_context *tdb,
-		   enum tdb_debug_level level,
-		   const char *fmt, ...)
-{
-	va_list ap;
-	char line[200];
-
-	va_start(ap, fmt);
-	vsprintf(line, fmt, ap);
-	va_end(ap);
-
-	diag("external: %s", line);
-}
-
 static enum agent_return do_operation(enum operation op, const char *name)
 {
-	struct tdb_logging_context logctx = { taplog, NULL };
 	TDB_DATA k;
 	enum agent_return ret;
 	TDB_DATA data;
@@ -54,7 +40,7 @@ static enum agent_return do_operation(enum operation op, const char *name)
 			return OTHER_FAILURE;
 		}
 		tdb = tdb_open_ex(name, 0, TDB_DEFAULT, O_RDWR, 0,
-				  &logctx, NULL);
+				  &taplogctx, NULL);
 		if (!tdb) {
 			if (!locking_would_block)
 				diag("Opening tdb gave %s", strerror(errno));
@@ -66,7 +52,7 @@ static enum agent_return do_operation(enum operation op, const char *name)
 		if (tdb)
 			return OTHER_FAILURE;
 		tdb = tdb_open_ex(name, 0, TDB_CLEAR_IF_FIRST, O_RDWR, 0,
-				  &logctx, NULL);
+				  &taplogctx, NULL);
 		ret = tdb ? SUCCESS : OTHER_FAILURE;
 		break;
 	case TRANSACTION_START:
@@ -146,6 +132,7 @@ struct agent *prepare_external_agent(void)
 
 	/* We want to fail, not block. */
 	nonblocking_locks = true;
+	log_prefix = "external: ";
 	while ((ret = read(command[0], name, sizeof(name))) > 0) {
 		enum agent_return result;
 
