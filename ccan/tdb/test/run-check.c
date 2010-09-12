@@ -35,12 +35,14 @@ int main(int argc, char *argv[])
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	tdb_close(tdb);
 
-	tdb = tdb_open("run-check.tdb", 1024, 0, O_RDWR, 0);
+	tdb = tdb_open_ex("run-check.tdb", 1024, 0, O_RDWR, 0,
+			  &taplogctx, NULL);
 	ok1(tdb);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	tdb_close(tdb);
 
-	tdb = tdb_open("test/tdb.corrupt", 1024, 0, O_RDWR, 0);
+	tdb = tdb_open_ex("test/tdb.corrupt", 1024, 0, O_RDWR, 0,
+			  &taplogctx, NULL);
 	ok1(tdb);
 	ok1(tdb_check(tdb, NULL, NULL) == -1);
 	ok1(tdb_error(tdb) == TDB_ERR_CORRUPT);
