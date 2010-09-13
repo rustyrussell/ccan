@@ -73,7 +73,8 @@ static void check_test(struct tdb_context *tdb)
 	/* This is how many bytes we expect to be verifiable. */
 	/* From the file header. */
 	verifiable = strlen(TDB_MAGIC_FOOD) + 1
-		+ 2 * sizeof(uint32_t) + 2 * sizeof(tdb_off_t);
+		+ 2 * sizeof(uint32_t) + 2 * sizeof(tdb_off_t)
+		+ 2 * sizeof(uint32_t);
 	/* From the free list chain and hash chains. */
 	verifiable += 3 * sizeof(tdb_off_t);
 	/* From the record headers & tailer */

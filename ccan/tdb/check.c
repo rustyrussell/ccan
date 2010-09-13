@@ -29,6 +29,7 @@
 static bool tdb_check_header(struct tdb_context *tdb, tdb_off_t *recovery)
 {
 	struct tdb_header hdr;
+	uint32_t h1, h2;
 
 	if (tdb->methods->tdb_read(tdb, 0, &hdr, sizeof(hdr), 0) == -1)
 		return false;
@@ -39,7 +40,12 @@ static bool tdb_check_header(struct tdb_context *tdb, tdb_off_t *recovery)
 	if (hdr.version != TDB_VERSION)
 		goto corrupt;
 
-	if (hdr.hashcheck != hashcheck(tdb))
+	if (hdr.rwlocks != 0)
+		goto corrupt;
+
+	tdb_header_hash(tdb, &h1, &h2);
+	if (hdr.magic1_hash && hdr.magic2_hash &&
+	    (hdr.magic1_hash != h1 || hdr.magic2_hash != h2))
 		goto corrupt;
 
 	if (hdr.hash_size == 0)

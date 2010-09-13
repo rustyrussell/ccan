@@ -176,10 +176,12 @@ struct tdb_header {
 	char magic_food[32]; /* for /etc/magic */
 	uint32_t version; /* version of the code */
 	uint32_t hash_size; /* number of hash entries */
-	tdb_off_t hashcheck; /* 0 for default hash. */
+	tdb_off_t rwlocks; /* obsolete - kept to detect old formats */
 	tdb_off_t recovery_start; /* offset of transaction recovery region */
 	tdb_off_t sequence_number; /* used when TDB_SEQNUM is set */
-	tdb_off_t reserved[29];
+	uint32_t magic1_hash; /* hash of TDB_MAGIC_FOOD. */
+	uint32_t magic2_hash; /* hash of TDB_MAGIC. */
+	tdb_off_t reserved[27];
 };
 
 struct tdb_lock_type {
@@ -248,7 +250,6 @@ struct tdb_context {
 /*
   internal prototypes
 */
-uint32_t hashcheck(struct tdb_context *tdb);
 int tdb_munmap(struct tdb_context *tdb);
 void tdb_mmap(struct tdb_context *tdb);
 int tdb_lock(struct tdb_context *tdb, int list, int ltype);
@@ -299,6 +300,7 @@ void tdb_io_init(struct tdb_context *tdb);
 int tdb_expand(struct tdb_context *tdb, tdb_off_t size);
 int tdb_rec_free_read(struct tdb_context *tdb, tdb_off_t off,
 		      struct tdb_record *rec);
-
+void tdb_header_hash(struct tdb_context *tdb,
+		     uint32_t *magic1_hash, uint32_t *magic2_hash);
 
 #endif

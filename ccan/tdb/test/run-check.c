@@ -49,13 +49,13 @@ int main(int argc, char *argv[])
 	tdb_close(tdb);
 
 	/* Big and little endian should work! */
-	tdb = tdb_open_ex("test/tdb-le.tdb", 1024, 0, O_RDWR, 0,
+	tdb = tdb_open_ex("test/old-nohash-le.tdb", 1024, 0, O_RDWR, 0,
 			  &taplogctx, NULL);
 	ok1(tdb);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	tdb_close(tdb);
 
-	tdb = tdb_open_ex("test/tdb-be.tdb", 1024, 0, O_RDWR, 0,
+	tdb = tdb_open_ex("test/old-nohash-be.tdb", 1024, 0, O_RDWR, 0,
 			  &taplogctx, NULL);
 	ok1(tdb);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);

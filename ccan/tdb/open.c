@@ -44,6 +44,25 @@ static unsigned int default_tdb_hash(TDB_DATA *key)
 	return (1103515243 * value + 12345);  
 }
 
+/* We use two hashes to double-check they're using the right hash function. */
+void tdb_header_hash(struct tdb_context *tdb,
+		     uint32_t *magic1_hash, uint32_t *magic2_hash)
+{
+	TDB_DATA hash_key;
+	uint32_t tdb_magic = TDB_MAGIC;
+
+	hash_key.dptr = (unsigned char *)TDB_MAGIC_FOOD;
+	hash_key.dsize = sizeof(TDB_MAGIC_FOOD);
+	*magic1_hash = tdb->hash_fn(&hash_key);
+
+	hash_key.dptr = CONVERT(tdb_magic);
+	hash_key.dsize = sizeof(tdb_magic);
+	*magic2_hash = tdb->hash_fn(&hash_key);
+
+	/* Make sure at least one hash is non-zero! */
+	if (*magic1_hash == 0 && *magic2_hash == 0)
+		*magic1_hash = 1;
+}
 
 /* initialise a new database with a specified hash size */
 static int tdb_new_database(struct tdb_context *tdb, int hash_size)
@@ -63,7 +82,9 @@ static int tdb_new_database(struct tdb_context *tdb, int hash_size)
 	/* Fill in the header */
 	newdb->version = TDB_VERSION;
 	newdb->hash_size = hash_size;
-	newdb->hashcheck = hashcheck(tdb);
+
+	tdb_header_hash(tdb, &newdb->magic1_hash, &newdb->magic2_hash);
+
 	if (tdb->flags & TDB_INTERNAL) {
 		tdb->map_size = size;
 		tdb->map_ptr = (char *)newdb;
@@ -144,18 +165,6 @@ static void null_log_fn(struct tdb_context *tdb, enum tdb_debug_level level, con
 {
 }
 
-uint32_t hashcheck(struct tdb_context *tdb)
-{
-	uint32_t vals[] = { TDB_VERSION, TDB_MAGIC };
-	TDB_DATA hashkey = { (unsigned char *)vals, sizeof(vals) };
-
-	/* If we're using the default hash, let old code still open the db. */
-	if (tdb->hash_fn == default_tdb_hash)
-		return 0;
-
-	/* Only let new hash-aware TDB code open it (must not be zero!) */
-	return (tdb->hash_fn(&hashkey) | 1);
-}
 
 struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 				int open_flags, mode_t mode,
@@ -168,6 +177,9 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 	unsigned char *vp;
 	uint32_t vertest;
 	unsigned v;
+	uint32_t magic1_hash;
+	uint32_t magic2_hash;
+	const char *hash_alg;
 
 	if (!(tdb = (struct tdb_context *)calloc(1, sizeof *tdb))) {
 		/* Can't log this */
@@ -189,7 +201,14 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 		tdb->log.log_fn = null_log_fn;
 		tdb->log.log_private = NULL;
 	}
-	tdb->hash_fn = hash_fn ? hash_fn : default_tdb_hash;
+
+	if (hash_fn) {
+		tdb->hash_fn = hash_fn;
+		hash_alg = "user defined";
+	} else {
+		tdb->hash_fn = default_tdb_hash;
+		hash_alg = "default";
+	}
 
 	/* cache the page size */
 	tdb->page_size = getpagesize();
@@ -301,8 +320,29 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 	if (fstat(tdb->fd, &st) == -1)
 		goto fail;
 
-	if (tdb->header.hashcheck != hashcheck(tdb)) {
-		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_open_ex: wrong hash?\n"));
+	if (tdb->header.rwlocks != 0) {
+		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_open_ex: spinlocks no longer supported\n"));
+		goto fail;
+	}
+
+	tdb_header_hash(tdb, &magic1_hash, &magic2_hash);
+
+	if ((tdb->header.magic1_hash == 0) && (tdb->header.magic2_hash == 0)) {
+		/* older TDB without magic hash references */
+	} else if ((tdb->header.magic1_hash != magic1_hash) ||
+		   (tdb->header.magic2_hash != magic2_hash)) {
+		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_open_ex: "
+			 "%s was not created with the %s hash function we are using\n"
+			 "magic1_hash[0x%08X %s 0x%08X] "
+			 "magic2_hash[0x%08X %s 0x%08X]\n",
+			 name, hash_alg,
+			 tdb->header.magic1_hash,
+			 (tdb->header.magic1_hash == magic1_hash) ? "==" : "!=",
+			 magic1_hash,
+			 tdb->header.magic2_hash,
+			 (tdb->header.magic2_hash == magic2_hash) ? "==" : "!=",
+			 magic2_hash));
+		errno = EINVAL;
 		goto fail;
 	}
 

@@ -22,9 +22,7 @@ static unsigned int jenkins_hash(TDB_DATA *key)
 static void log_fn(struct tdb_context *tdb, enum tdb_debug_level level, const char *fmt, ...)
 {
 	unsigned int *count = tdb_get_logging_private(tdb);
-	/* Old code used to complain about spinlocks when we put something
-	   here. */
-	if (strstr(fmt, "wrong hash") || strstr(fmt, "spinlock"))
+	if (strstr(fmt, "hash"))
 		(*count)++;
 }
 
@@ -34,7 +32,7 @@ int main(int argc, char *argv[])
 	unsigned int log_count;
 	struct tdb_logging_context log_ctx = { log_fn, &log_count };
 
-	plan_tests(16);
+	plan_tests(18);
 
 	/* Create with default hash. */
 	log_count = 0;
@@ -84,6 +82,7 @@ int main(int argc, char *argv[])
 			  0, &log_ctx, jenkins_hash);
 	ok1(tdb);
 	ok1(log_count == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	tdb_close(tdb);
 
 	log_count = 0;
@@ -91,6 +90,7 @@ int main(int argc, char *argv[])
 			  0, &log_ctx, jenkins_hash);
 	ok1(tdb);
 	ok1(log_count == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	tdb_close(tdb);
 
 	return exit_status();
