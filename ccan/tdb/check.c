@@ -328,7 +328,7 @@ int tdb_check(struct tdb_context *tdb,
 	bool found_recovery = false;
 	tdb_len_t dead;
 
-	if (tdb_lockall(tdb) == -1)
+	if (tdb_lockall_read(tdb) == -1)
 		return -1;
 
 	/* Make sure we know true size of the underlying file. */
@@ -444,12 +444,12 @@ int tdb_check(struct tdb_context *tdb,
 	}
 
 	free(hashes);
-	tdb_unlockall(tdb);
+	tdb_unlockall_read(tdb);
 	return 0;
 
 free:
 	free(hashes);
 unlock:
-	tdb_unlockall(tdb);
+	tdb_unlockall_read(tdb);
 	return -1;
 }
