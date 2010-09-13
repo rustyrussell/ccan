@@ -327,9 +327,17 @@ int tdb_check(struct tdb_context *tdb,
 	struct tdb_record rec;
 	bool found_recovery = false;
 	tdb_len_t dead;
+	bool locked;
 
-	if (tdb_lockall_read(tdb) == -1)
-		return -1;
+	/* Read-only databases use no locking at all: it's best-effort.
+	 * We may have a write lock already, so skip that case too. */
+	if (tdb->read_only || tdb->allrecord_lock.count != 0) {
+		locked = false;
+	} else {
+		if (tdb_lockall_read(tdb) == -1)
+			return -1;
+		locked = true;
+	}
 
 	/* Make sure we know true size of the underlying file. */
 	tdb->methods->tdb_oob(tdb, tdb->map_size + 1, 1);
@@ -444,12 +452,16 @@ int tdb_check(struct tdb_context *tdb,
 	}
 
 	free(hashes);
-	tdb_unlockall_read(tdb);
+	if (locked) {
+		tdb_unlockall_read(tdb);
+	}
 	return 0;
 
 free:
 	free(hashes);
 unlock:
-	tdb_unlockall_read(tdb);
+	if (locked) {
+		tdb_unlockall_read(tdb);
+	}
 	return -1;
 }
