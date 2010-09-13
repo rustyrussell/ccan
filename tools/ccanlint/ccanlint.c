@@ -237,10 +237,10 @@ static void init_tests(void)
 	struct btree *keys, *names;
 
 #undef REGISTER_TEST
-#define REGISTER_TEST(name, ...) register_test(&normal_tests, &name, __VA_ARGS__)
+#define REGISTER_TEST(name, ...) register_test(&normal_tests, &name, __VA_ARGS__, NULL)
 #include "generated-normal-tests"
 #undef REGISTER_TEST
-#define REGISTER_TEST(name, ...) register_test(&compulsory_tests, &name, __VA_ARGS__)
+#define REGISTER_TEST(name, ...) register_test(&compulsory_tests, &name, __VA_ARGS__, NULL)
 #include "generated-compulsory-tests"
 
 	/* Self-consistency check: make sure no two tests
