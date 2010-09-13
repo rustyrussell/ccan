@@ -282,8 +282,11 @@ struct tdb_context {
 	/* How much space has been mapped (<= current file size) */
 	tdb_len_t map_size;
 
-	/* Opened read-only? */
+	/* Operating read-only? (Opened O_RDONLY, or in traverse_read) */
 	bool read_only;
+
+	/* mmap read only? */
+	int mmap_flags;
 
 	/* Error code for last tdb error. */
 	enum TDB_ERROR ecode; 

@@ -48,8 +48,7 @@ void tdb_mmap(struct tdb_context *tdb)
 	if (tdb->flags & TDB_NOMMAP)
 		return;
 
-	tdb->map_ptr = mmap(NULL, tdb->map_size, 
-			    PROT_READ|(tdb->read_only? 0:PROT_WRITE), 
+	tdb->map_ptr = mmap(NULL, tdb->map_size, tdb->mmap_flags,
 			    MAP_SHARED, tdb->fd, 0);
 
 	/*

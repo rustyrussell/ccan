@@ -6,6 +6,8 @@
 #include "logging.h"
 
 unsigned tap_log_messages;
+const char *log_prefix = "";
+bool suppress_logging;
 
 union tdb_attribute tap_log_attr = {
 	.log = { .base = { .attr = TDB_ATTRIBUTE_LOG },
@@ -19,10 +21,16 @@ void tap_log_fn(struct tdb_context *tdb,
 	va_list ap;
 	char *p;
 
+	if (suppress_logging)
+		return;
+
 	va_start(ap, fmt);
 	if (vasprintf(&p, fmt, ap) == -1)
 		abort();
-	diag("tdb log level %u: %s", level, p);
+	/* Strip trailing \n: diag adds it. */
+	if (p[strlen(p)-1] == '\n')
+		p[strlen(p)-1] = '\0';
+	diag("tdb log level %u: %s%s", level, log_prefix, p);
 	free(p);
 	if (level != TDB_DEBUG_TRACE)
 		tap_log_messages++;

@@ -234,8 +234,11 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		tdb->read_only = true;
 		/* read only databases don't do locking */
 		tdb->flags |= TDB_NOLOCK;
-	} else
+		tdb->mmap_flags = PROT_READ;
+	} else {
 		tdb->read_only = false;
+		tdb->mmap_flags = PROT_READ | PROT_WRITE;
+	}
 
 	/* internal databases don't need any of the rest. */
 	if (tdb->flags & TDB_INTERNAL) {
