@@ -30,7 +30,7 @@ static bool tdb_check_header(struct tdb_context *tdb, tdb_off_t *recovery)
 {
 	struct tdb_header hdr;
 
-	if (tdb->methods->tdb_read(tdb, 0, &hdr, sizeof(hdr), DOCONV()) == -1)
+	if (tdb->methods->tdb_read(tdb, 0, &hdr, sizeof(hdr), 0) == -1)
 		return false;
 	if (strcmp(hdr.magic_food, TDB_MAGIC_FOOD) != 0)
 		goto corrupt;
