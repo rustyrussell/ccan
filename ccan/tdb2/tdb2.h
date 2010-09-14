@@ -57,13 +57,11 @@ extern "C" {
 #define TDB_SEQNUM   128 /* maintain a sequence number */
 #define TDB_VOLATILE   256 /* Activate the per-hashchain freelist, default 5 */
 #define TDB_ALLOW_NESTING 512 /* Allow transactions to nest */
-#define TDB_DISALLOW_NESTING 1024 /* Disallow transactions to nest */
 
 /* error codes */
 enum TDB_ERROR {TDB_SUCCESS=0, TDB_ERR_CORRUPT, TDB_ERR_IO, TDB_ERR_LOCK, 
-		TDB_ERR_OOM, TDB_ERR_EXISTS, TDB_ERR_NOLOCK, TDB_ERR_LOCK_TIMEOUT,
-		TDB_ERR_NOEXIST, TDB_ERR_EINVAL, TDB_ERR_RDONLY,
-		TDB_ERR_NESTING};
+		TDB_ERR_OOM, TDB_ERR_EXISTS, TDB_ERR_NOEXIST,
+		TDB_ERR_EINVAL, TDB_ERR_RDONLY, TDB_ERR_NESTING };
 
 /* debugging uses one of the following levels */
 enum tdb_debug_level {TDB_DEBUG_FATAL = 0, TDB_DEBUG_ERROR, 
@@ -141,6 +139,7 @@ int tdb_check(struct tdb_context *tdb,
 	      void *private_data);
 
 enum TDB_ERROR tdb_error(struct tdb_context *tdb);
+const char *tdb_errorstr(struct tdb_context *tdb);
 
 extern struct tdb_data tdb_null;
 

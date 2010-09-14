@@ -659,3 +659,21 @@ enum TDB_ERROR tdb_error(struct tdb_context *tdb)
 {
 	return tdb->ecode;
 }
+
+const char *tdb_errorstr(struct tdb_context *tdb)
+{
+	/* Gcc warns if you miss a case in the switch, so use that. */
+	switch (tdb->ecode) {
+	case TDB_SUCCESS: return "Success";
+	case TDB_ERR_CORRUPT: return "Corrupt database";
+	case TDB_ERR_IO: return "IO Error";
+	case TDB_ERR_LOCK: return "Locking error";
+	case TDB_ERR_OOM: return "Out of memory";
+	case TDB_ERR_EXISTS: return "Record exists";
+	case TDB_ERR_NESTING: return "Transaction already started";
+	case TDB_ERR_EINVAL: return "Invalid parameter";
+	case TDB_ERR_NOEXIST: return "Record does not exist";
+	case TDB_ERR_RDONLY: return "write not permitted";
+	}
+	return "Invalid error code";
+}
