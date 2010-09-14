@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <ccan/tap/tap.h>
 #include <ccan/tdb/tdb_private.h>
+#include "lock-tracking.h"
 
 struct lock {
 	struct lock *next;
@@ -132,7 +133,7 @@ done:
 	return ret;
 }
 
-int forget_locking(void)
+unsigned int forget_locking(void)
 {
 	unsigned int num = 0;
 	while (locks) {
