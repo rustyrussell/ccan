@@ -133,6 +133,8 @@ int tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key);
 int64_t tdb_traverse(struct tdb_context *tdb, tdb_traverse_func fn, void *p);
 int64_t tdb_traverse_read(struct tdb_context *tdb,
 			  tdb_traverse_func fn, void *p);
+TDB_DATA tdb_firstkey(struct tdb_context *tdb);
+TDB_DATA tdb_nextkey(struct tdb_context *tdb, TDB_DATA key);
 int tdb_close(struct tdb_context *tdb);
 int tdb_check(struct tdb_context *tdb,
 	      int (*check)(TDB_DATA key, TDB_DATA data, void *private_data),
