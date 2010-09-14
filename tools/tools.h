@@ -8,8 +8,7 @@
 
 #define SPACE_CHARS	" \f\n\r\t\v"
 
-/* FIXME: Nested functions break with -Wmissing-prototypes -Wmissing-declarations */
-#define CFLAGS "-g -Wall -Wundef -Wstrict-prototypes -Wold-style-definition -Werror"
+#define CFLAGS "-g -Wall -Wundef -Wmissing-prototypes -Wmissing-declarations -Wstrict-prototypes -Wold-style-definition -Werror"
 
 #define COVERAGE_CFLAGS "-fprofile-arcs -ftest-coverage"
 
