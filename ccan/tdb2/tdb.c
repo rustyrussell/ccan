@@ -432,7 +432,7 @@ int tdb_store(struct tdb_context *tdb,
 	struct tdb_used_record rec;
 	int ret;
 
-	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec);
+	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL);
 	if (unlikely(off == TDB_OFF_ERR))
 		return -1;
 
@@ -494,7 +494,7 @@ int tdb_append(struct tdb_context *tdb,
 	struct tdb_data new_dbuf;
 	int ret;
 
-	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec);
+	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL);
 	if (unlikely(off == TDB_OFF_ERR))
 		return -1;
 
@@ -562,7 +562,7 @@ struct tdb_data tdb_fetch(struct tdb_context *tdb, struct tdb_data key)
 	struct hash_info h;
 	struct tdb_data ret;
 
-	off = find_and_lock(tdb, key, F_RDLCK, &h, &rec);
+	off = find_and_lock(tdb, key, F_RDLCK, &h, &rec, NULL);
 	if (unlikely(off == TDB_OFF_ERR))
 		return tdb_null;
 
@@ -585,7 +585,7 @@ int tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 	struct tdb_used_record rec;
 	struct hash_info h;
 
-	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec);
+	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL);
 	if (unlikely(off == TDB_OFF_ERR))
 		return -1;
 

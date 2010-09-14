@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 
 		v = 0;
 		/* Should not find it. */
-		ok1(find_and_lock(tdb, key, F_WRLCK, &h, &rec) == 0);
+		ok1(find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL) == 0);
 		/* Should have created correct hash. */
 		ok1(h.h == tdb_hash(tdb, key.dptr, key.dsize));
 		/* Should have located space in group 0, bucket 0. */
@@ -84,7 +84,8 @@ int main(int argc, char *argv[])
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 		/* Now, this should give a successful lookup. */
-		ok1(find_and_lock(tdb, key, F_WRLCK, &h, &rec) == new_off);
+		ok1(find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL)
+		    == new_off);
 		/* Should have created correct hash. */
 		ok1(h.h == tdb_hash(tdb, key.dptr, key.dsize));
 		/* Should have located space in group 0, bucket 0. */
@@ -110,7 +111,7 @@ int main(int argc, char *argv[])
 
 		/* Test expansion. */
 		v = 1;
-		ok1(find_and_lock(tdb, key, F_WRLCK, &h, &rec) == 0);
+		ok1(find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL) == 0);
 		/* Should have created correct hash. */
 		ok1(h.h == tdb_hash(tdb, key.dptr, key.dsize));
 		/* Should have located space in group 0, bucket 1. */
@@ -146,7 +147,8 @@ int main(int argc, char *argv[])
 
 		/* Should be able to find it. */
 		v = 0;
-		ok1(find_and_lock(tdb, key, F_WRLCK, &h, &rec) == new_off);
+		ok1(find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL)
+		    == new_off);
 		/* Should have created correct hash. */
 		ok1(h.h == tdb_hash(tdb, key.dptr, key.dsize));
 		/* Should have located space in expanded group 0, bucket 0. */
@@ -178,7 +180,7 @@ int main(int argc, char *argv[])
 
 		/* Test second-level expansion: should expand 0th bucket. */
 		v = 0;
-		ok1(find_and_lock(tdb, key, F_WRLCK, &h, &rec) == 0);
+		ok1(find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL) == 0);
 		/* Should have created correct hash. */
 		ok1(h.h == tdb_hash(tdb, key.dptr, key.dsize));
 		/* Should have located space in group 0, bucket 0. */
@@ -210,7 +212,7 @@ int main(int argc, char *argv[])
 		/* Should be happy with expansion. */
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 
-		ok1(find_and_lock(tdb, key, F_WRLCK, &h, &rec) == 0);
+		ok1(find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL) == 0);
 		/* Should have created correct hash. */
 		ok1(h.h == tdb_hash(tdb, key.dptr, key.dsize));
 		/* Should have located space in group 0, bucket 0. */
@@ -241,7 +243,8 @@ int main(int argc, char *argv[])
 
 		/* Should be able to find it. */
 		v = 0;
-		ok1(find_and_lock(tdb, key, F_WRLCK, &h, &rec) == new_off);
+		ok1(find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL)
+		    == new_off);
 		/* Should have created correct hash. */
 		ok1(h.h == tdb_hash(tdb, key.dptr, key.dsize));
 		/* Should have located space in expanded group 0, bucket 0. */

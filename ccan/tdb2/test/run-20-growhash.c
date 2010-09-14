@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
 
 		/* Check first still exists. */
 		kdata = make_key(0, 0, 0, 0, 0, 0);
-		ok1(find_and_lock(tdb, key, F_RDLCK, &h, &rec) != 0);
+		ok1(find_and_lock(tdb, key, F_RDLCK, &h, &rec, NULL) != 0);
 		/* Should have created correct hash. */
 		ok1(h.h == tdb_hash(tdb, key.dptr, key.dsize));
 		/* Should have located space in group 0, bucket 0. */
@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
 			ok1(tdb_store(tdb, key, dbuf, TDB_INSERT) == 0);
 			ok1(tdb_check(tdb, NULL, NULL) == 0);
 
-			ok1(find_and_lock(tdb, key, F_RDLCK, &h, &rec) != 0);
+			ok1(find_and_lock(tdb, key, F_RDLCK, &h, &rec, NULL));
 			/* Should have created correct hash. */
 			ok1(h.h == tdb_hash(tdb, key.dptr, key.dsize));
 			/* Should have moved to subhash */
@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
 			ok1(tdb_store(tdb, key, dbuf, TDB_INSERT) == 0);
 			ok1(tdb_check(tdb, NULL, NULL) == 0);
 
-			ok1(find_and_lock(tdb, key, F_RDLCK, &h, &rec) != 0);
+			ok1(find_and_lock(tdb, key, F_RDLCK, &h, &rec, NULL));
 			/* Should have created correct hash. */
 			ok1(h.h == tdb_hash(tdb, key.dptr, key.dsize));
 			/* Should have moved to subhash */

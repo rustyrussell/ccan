@@ -349,7 +349,8 @@ tdb_off_t find_and_lock(struct tdb_context *tdb,
 			struct tdb_data key,
 			int ltype,
 			struct hash_info *h,
-			struct tdb_used_record *rec);
+			struct tdb_used_record *rec,
+			struct traverse_info *tinfo);
 
 int replace_in_hash(struct tdb_context *tdb,
 		    struct hash_info *h,

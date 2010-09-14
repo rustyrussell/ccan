@@ -131,14 +131,15 @@ bool is_subhash(tdb_off_t val)
 
 /* This is the core routine which searches the hashtable for an entry.
  * On error, no locks are held and TDB_OFF_ERR is returned.
- * Otherwise, hinfo is filled in.
+ * Otherwise, hinfo is filled in (and the optional tinfo).
  * If not found, the return value is 0.
  * If found, the return value is the offset, and *rec is the record. */
 tdb_off_t find_and_lock(struct tdb_context *tdb,
 			struct tdb_data key,
 			int ltype,
 			struct hash_info *h,
-			struct tdb_used_record *rec)
+			struct tdb_used_record *rec,
+			struct traverse_info *tinfo)
 {
 	uint32_t i, group;
 	tdb_off_t hashtable;
@@ -158,6 +159,14 @@ tdb_off_t find_and_lock(struct tdb_context *tdb,
 		return TDB_OFF_ERR;
 
 	hashtable = offsetof(struct tdb_header, hashtable);
+	if (tinfo) {
+		tinfo->toplevel_group = group;
+		tinfo->num_levels = 1;
+		tinfo->levels[0].entry = 0;
+		tinfo->levels[0].hashtable = hashtable 
+			+ (group << TDB_HASH_GROUP_BITS) * sizeof(tdb_off_t);
+		tinfo->levels[0].total_buckets = 1 << TDB_HASH_GROUP_BITS;
+	}
 
 	while (likely(h->hash_used < 64)) {
 		/* Read in the hash group. */
@@ -172,9 +181,23 @@ tdb_off_t find_and_lock(struct tdb_context *tdb,
 		if (is_subhash(h->group[h->home_bucket])) {
 			hashtable = (h->group[h->home_bucket] & TDB_OFF_MASK)
 				+ sizeof(struct tdb_used_record);
+			if (tinfo) {
+				/* When we come back, use *next* bucket */
+				tinfo->levels[tinfo->num_levels-1].entry
+					+= h->home_bucket + 1;
+			}
 			group = use_bits(h, TDB_SUBLEVEL_HASH_BITS
 					 - TDB_HASH_GROUP_BITS);
 			h->home_bucket = use_bits(h, TDB_HASH_GROUP_BITS);
+			if (tinfo) {
+				tinfo->levels[tinfo->num_levels].hashtable
+					= hashtable;
+				tinfo->levels[tinfo->num_levels].total_buckets
+					= 1 << TDB_SUBLEVEL_HASH_BITS;
+				tinfo->levels[tinfo->num_levels].entry
+					= group << TDB_HASH_GROUP_BITS;
+				tinfo->num_levels++;
+			}
 			continue;
 		}
 
@@ -189,8 +212,14 @@ tdb_off_t find_and_lock(struct tdb_context *tdb,
 			if (!h->group[h->found_bucket])
 				break;
 
-			if (match(tdb, h, &key, h->group[h->found_bucket], rec))
+			if (match(tdb, h, &key, h->group[h->found_bucket],
+				  rec)) {
+				if (tinfo) {
+					tinfo->levels[tinfo->num_levels-1].entry
+						+= h->found_bucket;
+				}
 				return h->group[h->found_bucket] & TDB_OFF_MASK;
+			}
 		}
 		/* Didn't find it: h indicates where it would go. */
 		return 0;
@@ -470,17 +499,18 @@ again:
 		if (unlikely(val == TDB_OFF_ERR))
 			return TDB_OFF_ERR;
 
+		off = val & TDB_OFF_MASK;
+
 		/* This makes the delete-all-in-traverse case work
 		 * (and simplifies our logic a little). */
-		if (val == tinfo->prev)
+		if (off == tinfo->prev)
 			continue;
 
 		tlevel->entry = i;
-		off = val & TDB_OFF_MASK;
 
 		if (!is_subhash(val)) {
 			/* Found one. */
-			tinfo->prev = val;
+			tinfo->prev = off;
 			return off;
 		}
 
@@ -572,3 +602,41 @@ int first_in_hash(struct tdb_context *tdb, int ltype,
 
 	return next_in_hash(tdb, ltype, tinfo, kbuf, dlen);
 }
+
+TDB_DATA tdb_firstkey(struct tdb_context *tdb)
+{
+	struct traverse_info tinfo;
+	struct tdb_data k;
+	switch (first_in_hash(tdb, F_RDLCK, &tinfo, &k, NULL)) {
+	case 1:
+		return k;
+	case 0:
+		tdb->ecode = TDB_SUCCESS;
+		/* Fall thru... */
+	default:
+		return tdb_null;
+	}
+}		
+
+/* We lock twice, not very efficient.  We could keep last key & tinfo cached. */
+TDB_DATA tdb_nextkey(struct tdb_context *tdb, TDB_DATA key)
+{
+	struct traverse_info tinfo;
+	struct hash_info h;
+	struct tdb_used_record rec;
+
+	tinfo.prev = find_and_lock(tdb, key, F_RDLCK, &h, &rec, &tinfo);
+	if (unlikely(tinfo.prev == TDB_OFF_ERR))
+		return tdb_null;
+	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_RDLCK);
+
+	switch (next_in_hash(tdb, F_RDLCK, &tinfo, &key, NULL)) {
+	case 1:
+		return key;
+	case 0:
+		tdb->ecode = TDB_SUCCESS;
+		/* Fall thru... */
+	default:
+		return tdb_null;
+	}
+}		
