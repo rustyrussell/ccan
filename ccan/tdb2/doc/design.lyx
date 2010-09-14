@@ -53,8 +53,8 @@ Rusty Russell, IBM Corporation
 
 \change_deleted 0 1283307542
 26-July
-\change_inserted 0 1284016854
-9-September
+\change_inserted 0 1284423485
+14-September
 \change_unchanged
 -2010
 \end_layout
@@ -476,6 +476,17 @@ The tdb_open() call was expanded to tdb_open_ex(), which added an optional
 
 \begin_layout Subsubsection
 Proposed Solution
+\change_inserted 0 1284422789
+
+\begin_inset CommandInset label
+LatexCommand label
+name "attributes"
+
+\end_inset
+
+
+\change_unchanged
+
 \end_layout
 
 \begin_layout Standard
@@ -1289,13 +1300,69 @@ Proposed Solution
 
 \begin_layout Standard
 
-\change_inserted 0 1284016847
+\change_inserted 0 1284422552
 We often have extra padding at the tail of a record.
  If we ensure that the first byte (if any) of this padding is zero, we will
  have a way for future changes to detect code which doesn't understand a
  new format: the new code would write (say) a 1 at the tail, and thus if
  there is no tail or the first byte is 0, we would know the extension is
  not present on that record.
+\end_layout
+
+\begin_layout Subsection
+
+\change_inserted 0 1284422568
+TDB Does Not Use Talloc
+\end_layout
+
+\begin_layout Standard
+
+\change_inserted 0 1284422646
+Many users of TDB (particularly Samba) use the talloc allocator, and thus
+ have to wrap TDB in a talloc context to use it conveniently.
+\end_layout
+
+\begin_layout Subsubsection
+
+\change_inserted 0 1284422656
+Proposed Solution
+\end_layout
+
+\begin_layout Standard
+
+\change_inserted 0 1284423065
+The allocation within TDB is not complicated enough to justify the use of
+ talloc, and I am reluctant to force another (excellent) library on TDB
+ users.
+ Nonetheless a compromise is possible.
+ An attribute (see 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "attributes"
+
+\end_inset
+
+) can be added later to tdb_open() to provide an alternate allocation mechanism,
+ specifically for talloc but usable by any other allocator (which would
+ ignore the 
+\begin_inset Quotes eld
+\end_inset
+
+context
+\begin_inset Quotes erd
+\end_inset
+
+ argument).
+\end_layout
+
+\begin_layout Standard
+
+\change_inserted 0 1284423042
+This would form a talloc heirarchy as expected, but the caller would still
+ have to attach a destructor to the tdb context returned from tdb_open to
+ close it.
+ All TDB_DATA fields would be children of the tdb_context, and the caller
+ would still have to manage them (using talloc_free() or talloc_steal()).
 \change_unchanged
 
 \end_layout
@@ -1875,7 +1942,7 @@ status open
 
 \begin_layout Plain Layout
 
-\change_inserted 0 1283310945
+\change_inserted 0 1284424151
 Using 
 \begin_inset Formula $2^{16+N*3}$
 \end_inset
@@ -1886,6 +1953,8 @@ means 0 gives a minimal 65536-byte zone, 15 gives the maximal
 
  byte zone.
  Zones range in factor of 8 steps.
+ Given the zone size for the zone the current record is in, we can determine
+ the start of the zone.
 \change_unchanged
 
 \end_layout
@@ -2330,6 +2399,8 @@ TDB Does Not Have Snapshot Support
 
 \begin_layout Subsubsection
 Proposed Solution
+\change_deleted 0 1284423472
+
 \end_layout
 
 \begin_layout Standard
@@ -2342,7 +2413,23 @@ use a real database
 \begin_inset Quotes erd
 \end_inset
 
+
+\change_inserted 0 1284423891
+ 
+\change_deleted 0 1284423891
 .
+
+\change_inserted 0 1284423901
+ (but see 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "replay-attribute"
+
+\end_inset
+
+).
+\change_unchanged
+
 \end_layout
 
 \begin_layout Standard
@@ -2365,6 +2452,8 @@ This would not allow arbitrary changes to the database, such as tdb_repack
 \begin_layout Standard
 We could then implement snapshots using a similar method, using multiple
  different hash tables/free tables.
+\change_inserted 0 1284423495
+
 \end_layout
 
 \begin_layout Subsection
@@ -2384,6 +2473,18 @@ Proposed Solution
 \end_layout
 
 \begin_layout Standard
+
+\change_inserted 0 1284424201
+None (but see 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "replay-attribute"
+
+\end_inset
+
+).
+ 
+\change_unchanged
 We could solve a small part of the problem by providing read-only transactions.
  These would allow one write transaction to begin, but it could not commit
  until all r/o transactions are done.
@@ -2569,6 +2670,53 @@ At some later point, a sync would allow recovery of the old data into the
  free lists (perhaps when the array of top-level pointers filled).
  On crash, tdb_open() would examine the array of top levels, and apply the
  transactions until it encountered an invalid checksum.
+\change_inserted 0 1284423555
+
+\end_layout
+
+\begin_layout Subsection
+
+\change_inserted 0 1284423617
+Tracing Is Fragile, Replay Is External
+\end_layout
+
+\begin_layout Standard
+
+\change_inserted 0 1284423719
+The current TDB has compile-time-enabled tracing code, but it often breaks
+ as it is not enabled by default.
+ In a similar way, the ctdb code has an external wrapper which does replay
+ tracing so it can coordinate cluster-wide transactions.
+\end_layout
+
+\begin_layout Subsubsection
+
+\change_inserted 0 1284423864
+Proposed Solution
+\begin_inset CommandInset label
+LatexCommand label
+name "replay-attribute"
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\change_inserted 0 1284423850
+Tridge points out that an attribute can be later added to tdb_open (see
+ 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "attributes"
+
+\end_inset
+
+) to provide replay/trace hooks, which could become the basis for this and
+ future parallel transactions and snapshot support.
+\change_unchanged
+
 \end_layout
 
 \end_body

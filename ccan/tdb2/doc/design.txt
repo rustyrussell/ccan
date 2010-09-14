@@ -2,7 +2,7 @@ TDB2: A Redesigning The Trivial DataBase
 
 Rusty Russell, IBM Corporation
 
-9-September-2010
+14-September-2010
 
 Abstract
 
@@ -74,7 +74,7 @@ optional hashing function and an optional logging function
 argument. Additional arguments to open would require the 
 introduction of a tdb_open_ex2 call etc.
 
-2.1.1 Proposed Solution
+2.1.1 Proposed Solution<attributes>
 
 tdb_open() will take a linked-list of attributes:
 
@@ -519,6 +519,28 @@ understand a new format: the new code would write (say) a 1 at
 the tail, and thus if there is no tail or the first byte is 0, we 
 would know the extension is not present on that record.
 
+2.17 TDB Does Not Use Talloc
+
+Many users of TDB (particularly Samba) use the talloc allocator, 
+and thus have to wrap TDB in a talloc context to use it 
+conveniently.
+
+2.17.1 Proposed Solution
+
+The allocation within TDB is not complicated enough to justify 
+the use of talloc, and I am reluctant to force another 
+(excellent) library on TDB users. Nonetheless a compromise is 
+possible. An attribute (see [attributes]) can be added later to 
+tdb_open() to provide an alternate allocation mechanism, 
+specifically for talloc but usable by any other allocator (which 
+would ignore the “context” argument).
+
+This would form a talloc heirarchy as expected, but the caller 
+would still have to attach a destructor to the tdb context 
+returned from tdb_open to close it. All TDB_DATA fields would be 
+children of the tdb_context, and the caller would still have to 
+manage them (using talloc_free() or talloc_steal()).
+
 3 Performance And Scalability Issues
 
 3.1 <TDB_CLEAR_IF_FIRST-Imposes-Performance>TDB_CLEAR_IF_FIRST 
@@ -790,7 +812,9 @@ question “what zone is this record in?” much harder (and “pick a
 random zone”, but that's less common). It could be done with as 
 few as 4 bits from the record header.[footnote:
 Using 2^{16+N*3}means 0 gives a minimal 65536-byte zone, 15 gives 
-the maximal 2^{61} byte zone. Zones range in factor of 8 steps.
+the maximal 2^{61} byte zone. Zones range in factor of 8 steps. 
+Given the zone size for the zone the current record is in, we can 
+determine the start of the zone.
 ]
 
 3.6 <sub:TDB-Becomes-Fragmented>TDB Becomes Fragmented
@@ -1009,7 +1033,8 @@ we need only check for recovery if this is set.
 
 3.9.1 Proposed Solution
 
-None. At some point you say “use a real database”.
+None. At some point you say “use a real database”  (but see [replay-attribute]
+).
 
 But as a thought experiment, if we implemented transactions to 
 only overwrite free entries (this is tricky: there must not be a 
@@ -1038,11 +1063,11 @@ failed.
 
 3.10.1 Proposed Solution
 
-We could solve a small part of the problem by providing read-only 
-transactions. These would allow one write transaction to begin, 
-but it could not commit until all r/o transactions are done. This 
-would require a new RO_TRANSACTION_LOCK, which would be upgraded 
-on commit.
+None (but see [replay-attribute]). We could solve a small part of 
+the problem by providing read-only transactions. These would 
+allow one write transaction to begin, but it could not commit 
+until all r/o transactions are done. This would require a new 
+RO_TRANSACTION_LOCK, which would be upgraded on commit.
 
 3.11 Default Hash Function Is Suboptimal
 
@@ -1136,4 +1161,18 @@ into the free lists (perhaps when the array of top-level pointers
 filled). On crash, tdb_open() would examine the array of top 
 levels, and apply the transactions until it encountered an 
 invalid checksum.
+
+3.15 Tracing Is Fragile, Replay Is External
+
+The current TDB has compile-time-enabled tracing code, but it 
+often breaks as it is not enabled by default. In a similar way, 
+the ctdb code has an external wrapper which does replay tracing 
+so it can coordinate cluster-wide transactions.
+
+3.15.1 Proposed Solution<replay-attribute>
+
+Tridge points out that an attribute can be later added to 
+tdb_open (see [attributes]) to provide replay/trace hooks, which 
+could become the basis for this and future parallel transactions 
+and snapshot support.
 
