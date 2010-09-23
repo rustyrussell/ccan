@@ -1,0 +1,58 @@
+#include <stdio.h>
+#include <string.h>
+#include "config.h"
+
+/**
+ * tally - running tally of integers
+ *
+ * The tally module implements simple analysis of a stream of integers.
+ * Numbers are fed in via tally_add(), and then the mean, median, mode and
+ * a histogram can be read out.
+ *
+ * Example:
+ *	#include <stdio.h>
+ *	#include <err.h>
+ *	#include <ccan/tally/tally.h>
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		struct tally *t;
+ *		unsigned int i;
+ *		size_t err;
+ *		ssize_t val;
+ *		char *histogram;
+ *
+ *		if (argc < 2)
+ *			errx(1, "Usage: %s <number>...\n", argv[0]);
+ *
+ *		t = tally_new(100);
+ *		for (i = 1; i < argc; i++)
+ *			tally_add(t, atol(argv[i]));
+ *
+ *		printf("Mean = %zi\n", tally_mean(t));
+ *		val = tally_approx_median(t, &err);
+ *		printf("Median = %zi (+/- %zu)\n", val, err);
+ *		val = tally_approx_mode(t, &err);
+ *		printf("Mode = %zi (+/- %zu)\n", val, err);
+ *		histogram = tally_histogram(t, 50, 10);
+ *		printf("Histogram:\n%s", histogram);
+ *		free(histogram);
+ *		return 0;
+ *	}
+ *
+ * Licence: LGPL (3 or any later version)
+ * Author: Rusty Russell <rusty@rustcorp.com.au>
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/build_assert\n");
+		printf("ccan/likely\n");
+		return 0;
+	}
+
+	return 1;
+}
