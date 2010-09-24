@@ -52,6 +52,17 @@ ssize_t tally_max(const struct tally *tally);
 ssize_t tally_mean(const struct tally *tally);
 
 /**
+ * tally_total - the total value passed to tally_add.
+ * @tally: the tally structure.
+ * @overflow: the overflow value (or NULL).
+ *
+ * If your total can't overflow a ssize_t, you don't need @overflow.
+ * Otherwise, @overflow is the upper ssize_t, and the return value should
+ * be treated as the lower size_t (ie. the sign bit is in @overflow).
+ */
+ssize_t tally_total(const struct tally *tally, ssize_t *overflow);
+
+/**
  * tally_approx_median - the approximate median value passed to tally_add.
  * @tally: the tally structure.
  * @err: the error in the returned value (ie. real median is +/- @err).

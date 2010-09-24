@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#define MAX_STEP_BITS (sizeof(size_t)*CHAR_BIT)
+#define SIZET_BITS (sizeof(size_t)*CHAR_BIT)
 
 /* We use power of 2 steps.  I tried being tricky, but it got buggy. */
 struct tally {
@@ -55,9 +55,9 @@ struct tally *tally_new(size_t buckets)
 static unsigned bucket_of(ssize_t min, unsigned step_bits, ssize_t val)
 {
 	/* Don't over-shift. */
-	if (step_bits == MAX_STEP_BITS)
+	if (step_bits == SIZET_BITS)
 		return 0;
-	assert(step_bits < MAX_STEP_BITS);
+	assert(step_bits < SIZET_BITS);
 	return (size_t)(val - min) >> step_bits;
 }
 
@@ -65,9 +65,9 @@ static unsigned bucket_of(ssize_t min, unsigned step_bits, ssize_t val)
 static ssize_t bucket_min(ssize_t min, unsigned step_bits, unsigned b)
 {
 	/* Don't over-shift. */
-	if (step_bits == MAX_STEP_BITS)
+	if (step_bits == SIZET_BITS)
 		return min;
-	assert(step_bits < MAX_STEP_BITS);
+	assert(step_bits < SIZET_BITS);
 	return min + ((ssize_t)b << step_bits);
 }
 
@@ -322,6 +322,33 @@ ssize_t tally_mean(const struct tally *tally)
 		return total / count;
 	}
 	return divls64(tally->total[1], tally->total[0], count);
+}
+
+ssize_t tally_total(const struct tally *tally, ssize_t *overflow)
+{
+	if (overflow) {
+		*overflow = tally->total[1];
+		return tally->total[0];
+	}
+
+	/* If result is negative, make sure we can represent it. */
+	if (tally->total[1] & (1 << (SIZET_BITS-1))) {
+		/* Must have only underflowed once, and must be able to
+		 * represent result at ssize_t. */
+		if ((~tally->total[1])+1 != 0
+		    || (ssize_t)tally->total[0] >= 0) {
+			/* Underflow, return minimum. */
+			return (ssize_t)((size_t)1 << (SIZET_BITS - 1));
+		}
+	} else {
+		/* Result is positive, must not have overflowed, and must be
+		 * able to represent as ssize_t. */
+		if (tally->total[1] || (ssize_t)tally->total[0] < 0) {
+			/* Overflow.  Return maximum. */
+			return (ssize_t)~((size_t)1 << (SIZET_BITS - 1));
+		}
+	}
+	return tally->total[0];
 }
 
 static ssize_t bucket_range(const struct tally *tally, unsigned b, size_t *err)
