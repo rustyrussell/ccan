@@ -302,5 +302,5 @@ int tdb_rec_free_read(struct tdb_context *tdb, tdb_off_t off,
 		      struct tdb_record *rec);
 void tdb_header_hash(struct tdb_context *tdb,
 		     uint32_t *magic1_hash, uint32_t *magic2_hash);
-
+unsigned int tdb_old_hash(TDB_DATA *key);
 #endif

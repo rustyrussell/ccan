@@ -149,6 +149,7 @@ void tdb_add_flags(struct tdb_context *tdb, unsigned flag);
 void tdb_remove_flags(struct tdb_context *tdb, unsigned flag);
 void tdb_enable_seqnum(struct tdb_context *tdb);
 void tdb_increment_seqnum_nonblock(struct tdb_context *tdb);
+unsigned int tdb_jenkins_hash(TDB_DATA *key);
 int tdb_check(struct tdb_context *tdb,
 	      int (*check)(TDB_DATA key, TDB_DATA data, void *private),
 	      void *private);

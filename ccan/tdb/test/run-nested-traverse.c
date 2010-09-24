@@ -11,6 +11,7 @@
 #include <ccan/tdb/error.c>
 #include <ccan/tdb/open.c>
 #include <ccan/tdb/check.c>
+#include <ccan/tdb/hash.c>
 #include <ccan/tap/tap.h>
 #undef fcntl
 #include <stdlib.h>

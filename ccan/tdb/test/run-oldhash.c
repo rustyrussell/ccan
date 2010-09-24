@@ -9,16 +9,11 @@
 #include <ccan/tdb/error.c>
 #include <ccan/tdb/open.c>
 #include <ccan/tdb/check.c>
-#include <ccan/hash/hash.h>
+#include <ccan/tdb/hash.c>
 #include <ccan/tap/tap.h>
 #include <stdlib.h>
 #include <err.h>
 #include "logging.h"
-
-static unsigned int jenkins_hash(TDB_DATA *key)
-{
-	return hash_stable(key->dptr, key->dsize, 0);
-}
 
 int main(int argc, char *argv[])
 {
@@ -41,13 +36,13 @@ int main(int argc, char *argv[])
 	tdb_close(tdb);
 
 	tdb = tdb_open_ex("test/old-nohash-le.tdb", 0, 0, O_RDWR, 0,
-			  &taplogctx, jenkins_hash);
+			  &taplogctx, tdb_jenkins_hash);
 	ok1(tdb);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	tdb_close(tdb);
 
 	tdb = tdb_open_ex("test/old-nohash-be.tdb", 0, 0, O_RDWR, 0,
-			  &taplogctx, jenkins_hash);
+			  &taplogctx, tdb_jenkins_hash);
 	ok1(tdb);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	tdb_close(tdb);

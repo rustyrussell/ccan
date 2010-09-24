@@ -9,15 +9,10 @@
 #include <ccan/tdb/error.c>
 #include <ccan/tdb/open.c>
 #include <ccan/tdb/check.c>
-#include <ccan/hash/hash.h>
+#include <ccan/tdb/hash.c>
 #include <ccan/tap/tap.h>
 #include <stdlib.h>
 #include <err.h>
-
-static unsigned int jenkins_hash(TDB_DATA *key)
-{
-	return hash_stable(key->dptr, key->dsize, 0);
-}
 
 static void log_fn(struct tdb_context *tdb, enum tdb_debug_level level, const char *fmt, ...)
 {
@@ -44,7 +39,7 @@ int main(int argc, char *argv[])
 
 	/* Fail to open with different hash. */
 	tdb = tdb_open_ex("run-wronghash-fail.tdb", 0, 0, O_RDWR, 0,
-			  &log_ctx, jenkins_hash);
+			  &log_ctx, tdb_jenkins_hash);
 	ok1(!tdb);
 	ok1(log_count == 1);
 
@@ -52,7 +47,7 @@ int main(int argc, char *argv[])
 	log_count = 0;
 	tdb = tdb_open_ex("run-wronghash-fail.tdb", 0, 0,
 			  O_CREAT|O_RDWR|O_TRUNC,
-			  0600, &log_ctx, jenkins_hash);
+			  0600, &log_ctx, tdb_jenkins_hash);
 	ok1(tdb);
 	ok1(log_count == 0);
 	tdb_close(tdb);
@@ -71,7 +66,7 @@ int main(int argc, char *argv[])
 	ok1(log_count == 1);
 
 	log_count = 0;
-	/* Fail to open with defailt hash. */
+	/* Fail to open with default hash. */
 	tdb = tdb_open_ex("run-wronghash-fail.tdb", 0, 0, O_RDWR, 0,
 			  &log_ctx, NULL);
 	ok1(!tdb);
@@ -79,7 +74,7 @@ int main(int argc, char *argv[])
 
 	log_count = 0;
 	tdb = tdb_open_ex("test/jenkins-le-hash.tdb", 0, 0, O_RDONLY,
-			  0, &log_ctx, jenkins_hash);
+			  0, &log_ctx, tdb_jenkins_hash);
 	ok1(tdb);
 	ok1(log_count == 0);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
@@ -87,7 +82,7 @@ int main(int argc, char *argv[])
 
 	log_count = 0;
 	tdb = tdb_open_ex("test/jenkins-be-hash.tdb", 0, 0, O_RDONLY,
-			  0, &log_ctx, jenkins_hash);
+			  0, &log_ctx, tdb_jenkins_hash);
 	ok1(tdb);
 	ok1(log_count == 0);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
