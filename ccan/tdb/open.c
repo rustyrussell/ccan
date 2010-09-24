@@ -151,6 +151,23 @@ static void null_log_fn(struct tdb_context *tdb, enum tdb_debug_level level, con
 {
 }
 
+static bool check_header_hash(struct tdb_context *tdb,
+			      bool default_hash, uint32_t *m1, uint32_t *m2)
+{
+	tdb_header_hash(tdb, m1, m2);
+	if (tdb->header.magic1_hash == *m1 &&
+	    tdb->header.magic2_hash == *m2) {
+		return true;
+	}
+
+	/* If they explicitly set a hash, always respect it. */
+	if (!default_hash)
+		return false;
+
+	/* Otherwise, try the other inbuilt hash. */
+	tdb->hash_fn = tdb_jenkins_hash;
+	return check_header_hash(tdb, false, m1, m2);
+}
 
 struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 				int open_flags, mode_t mode,
@@ -163,9 +180,8 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 	unsigned char *vp;
 	uint32_t vertest;
 	unsigned v;
-	uint32_t magic1_hash;
-	uint32_t magic2_hash;
 	const char *hash_alg;
+	uint32_t magic1, magic2;
 
 	if (!(tdb = (struct tdb_context *)calloc(1, sizeof *tdb))) {
 		/* Can't log this */
@@ -190,10 +206,10 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 
 	if (hash_fn) {
 		tdb->hash_fn = hash_fn;
-		hash_alg = "user defined";
+		hash_alg = "the user defined";
 	} else {
 		tdb->hash_fn = tdb_old_hash;
-		hash_alg = "default";
+		hash_alg = "either default";
 	}
 
 	/* cache the page size */
@@ -311,23 +327,20 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 		goto fail;
 	}
 
-	tdb_header_hash(tdb, &magic1_hash, &magic2_hash);
-
 	if ((tdb->header.magic1_hash == 0) && (tdb->header.magic2_hash == 0)) {
 		/* older TDB without magic hash references */
-	} else if ((tdb->header.magic1_hash != magic1_hash) ||
-		   (tdb->header.magic2_hash != magic2_hash)) {
+	} else if (!check_header_hash(tdb, !hash_fn, &magic1, &magic2)) {
 		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_open_ex: "
-			 "%s was not created with the %s hash function we are using\n"
+			 "%s was not created with %s hash function we are using\n"
 			 "magic1_hash[0x%08X %s 0x%08X] "
 			 "magic2_hash[0x%08X %s 0x%08X]\n",
 			 name, hash_alg,
 			 tdb->header.magic1_hash,
-			 (tdb->header.magic1_hash == magic1_hash) ? "==" : "!=",
-			 magic1_hash,
+			 (tdb->header.magic1_hash == magic1) ? "==" : "!=",
+			 magic1,
 			 tdb->header.magic2_hash,
-			 (tdb->header.magic2_hash == magic2_hash) ? "==" : "!=",
-			 magic2_hash));
+			 (tdb->header.magic2_hash == magic2) ? "==" : "!=",
+			 magic2));
 		errno = EINVAL;
 		goto fail;
 	}

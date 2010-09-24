@@ -25,9 +25,10 @@ int main(int argc, char *argv[])
 {
 	struct tdb_context *tdb;
 	unsigned int log_count;
+	TDB_DATA d;
 	struct tdb_logging_context log_ctx = { log_fn, &log_count };
 
-	plan_tests(18);
+	plan_tests(28);
 
 	/* Create with default hash. */
 	log_count = 0;
@@ -35,6 +36,9 @@ int main(int argc, char *argv[])
 			  O_CREAT|O_RDWR|O_TRUNC, 0600, &log_ctx, NULL);
 	ok1(tdb);
 	ok1(log_count == 0);
+	d.dptr = (void *)"Hello";
+	d.dsize = 5;
+	ok1(tdb_store(tdb, d, d, TDB_INSERT) == 0);
 	tdb_close(tdb);
 
 	/* Fail to open with different hash. */
@@ -55,20 +59,20 @@ int main(int argc, char *argv[])
 	/* Endian should be no problem. */
 	log_count = 0;
 	tdb = tdb_open_ex("test/jenkins-le-hash.tdb", 0, 0, O_RDWR, 0,
-			  &log_ctx, NULL);
+			  &log_ctx, tdb_old_hash);
 	ok1(!tdb);
 	ok1(log_count == 1);
 
 	log_count = 0;
 	tdb = tdb_open_ex("test/jenkins-be-hash.tdb", 0, 0, O_RDWR, 0,
-			  &log_ctx, NULL);
+			  &log_ctx, tdb_old_hash);
 	ok1(!tdb);
 	ok1(log_count == 1);
 
 	log_count = 0;
-	/* Fail to open with default hash. */
+	/* Fail to open with old default hash. */
 	tdb = tdb_open_ex("run-wronghash-fail.tdb", 0, 0, O_RDWR, 0,
-			  &log_ctx, NULL);
+			  &log_ctx, tdb_old_hash);
 	ok1(!tdb);
 	ok1(log_count == 1);
 
@@ -87,6 +91,32 @@ int main(int argc, char *argv[])
 	ok1(log_count == 0);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	tdb_close(tdb);
+
+	/* It should open with jenkins hash if we don't specify. */
+	log_count = 0;
+	tdb = tdb_open_ex("test/jenkins-le-hash.tdb", 0, 0, O_RDWR, 0,
+			  &log_ctx, NULL);
+	ok1(tdb);
+	ok1(log_count == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == 0);
+	tdb_close(tdb);
+
+	log_count = 0;
+	tdb = tdb_open_ex("test/jenkins-be-hash.tdb", 0, 0, O_RDWR, 0,
+			  &log_ctx, NULL);
+	ok1(tdb);
+	ok1(log_count == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == 0);
+	tdb_close(tdb);
+
+	log_count = 0;
+	tdb = tdb_open_ex("run-wronghash-fail.tdb", 0, 0, O_RDONLY,
+			  0, &log_ctx, NULL);
+	ok1(tdb);
+	ok1(log_count == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == 0);
+	tdb_close(tdb);
+
 
 	return exit_status();
 }
