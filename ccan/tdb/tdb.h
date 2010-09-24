@@ -57,6 +57,7 @@ extern "C" {
 #define TDB_VOLATILE   256 /* Activate the per-hashchain freelist, default 5 */
 #define TDB_ALLOW_NESTING 512 /* Allow transactions to nest */
 #define TDB_DISALLOW_NESTING 1024 /* Disallow transactions to nest */
+#define TDB_INCOMPATIBLE_HASH 2048 /* Better hashing: can't be opened by older tdb versions. */
 
 /* error codes */
 enum TDB_ERROR {TDB_SUCCESS=0, TDB_ERR_CORRUPT, TDB_ERR_IO, TDB_ERR_LOCK, 

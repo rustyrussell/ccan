@@ -71,6 +71,11 @@ static int tdb_new_database(struct tdb_context *tdb, int hash_size)
 
 	tdb_header_hash(tdb, &newdb->magic1_hash, &newdb->magic2_hash);
 
+	/* Make sure older tdbs (which don't check the magic hash fields)
+	 * will refuse to open this TDB. */
+	if (tdb->flags & TDB_INCOMPATIBLE_HASH)
+		newdb->rwlocks = TDB_HASH_RWLOCK_MAGIC;
+
 	if (tdb->flags & TDB_INTERNAL) {
 		tdb->map_size = size;
 		tdb->map_ptr = (char *)newdb;
@@ -165,7 +170,10 @@ static bool check_header_hash(struct tdb_context *tdb,
 		return false;
 
 	/* Otherwise, try the other inbuilt hash. */
-	tdb->hash_fn = tdb_jenkins_hash;
+	if (tdb->hash_fn == tdb_old_hash)
+		tdb->hash_fn = tdb_jenkins_hash;
+	else
+		tdb->hash_fn = tdb_old_hash;
 	return check_header_hash(tdb, false, m1, m2);
 }
 
@@ -208,7 +216,12 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 		tdb->hash_fn = hash_fn;
 		hash_alg = "the user defined";
 	} else {
-		tdb->hash_fn = tdb_old_hash;
+		/* This controls what we use when creating a tdb. */
+		if (tdb->flags & TDB_INCOMPATIBLE_HASH) {
+			tdb->hash_fn = tdb_jenkins_hash;
+		} else {
+			tdb->hash_fn = tdb_old_hash;
+		}
 		hash_alg = "either default";
 	}
 
@@ -322,13 +335,15 @@ struct tdb_context *tdb_open_ex(const char *name, int hash_size, int tdb_flags,
 	if (fstat(tdb->fd, &st) == -1)
 		goto fail;
 
-	if (tdb->header.rwlocks != 0) {
+	if (tdb->header.rwlocks != 0 &&
+	    tdb->header.rwlocks != TDB_HASH_RWLOCK_MAGIC) {
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "tdb_open_ex: spinlocks no longer supported\n"));
 		goto fail;
 	}
 
 	if ((tdb->header.magic1_hash == 0) && (tdb->header.magic2_hash == 0)) {
 		/* older TDB without magic hash references */
+		tdb->hash_fn = tdb_old_hash;
 	} else if (!check_header_hash(tdb, !hash_fn, &magic1, &magic2)) {
 		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_open_ex: "
 			 "%s was not created with %s hash function we are using\n"

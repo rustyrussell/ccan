@@ -82,6 +82,7 @@ typedef uint32_t tdb_off_t;
 #define TDB_DEAD_MAGIC (0xFEE1DEAD)
 #define TDB_RECOVERY_MAGIC (0xf53bc0e7U)
 #define TDB_RECOVERY_INVALID_MAGIC (0x0)
+#define TDB_HASH_RWLOCK_MAGIC (0xbad1a51U)
 #define TDB_ALIGNMENT 4
 #define DEFAULT_HASH_SIZE 131
 #define FREELIST_TOP (sizeof(struct tdb_header))
