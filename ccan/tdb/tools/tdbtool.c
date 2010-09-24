@@ -21,7 +21,6 @@
 */
 
 #include <ccan/tdb/tdb.h>
-#include <ccan/hash/hash.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -46,7 +45,6 @@ static int disable_mmap;
 enum commands {
 	CMD_CREATE_TDB,
 	CMD_OPEN_TDB,
-	CMD_OPENJH_TDB,
 	CMD_TRANSACTION_START,
 	CMD_TRANSACTION_COMMIT,
 	CMD_TRANSACTION_CANCEL,
@@ -80,7 +78,6 @@ typedef struct {
 COMMAND_TABLE cmd_table[] = {
 	{"create",	CMD_CREATE_TDB},
 	{"open",	CMD_OPEN_TDB},
-	{"openjh",	CMD_OPENJH_TDB},
 	{"transaction_start",	CMD_TRANSACTION_START},
 	{"transaction_commit",	CMD_TRANSACTION_COMMIT},
 	{"transaction_cancel",	CMD_TRANSACTION_CANCEL},
@@ -236,19 +233,14 @@ static void create_tdb(const char *tdbname)
 	}
 }
 
-static unsigned int jenkins_hash(TDB_DATA *key)
-{
-	return hash_any(key->dptr, key->dsize, 0);
-}
-
-static void open_tdb(const char *tdbname, tdb_hash_func hashfn)
+static void open_tdb(const char *tdbname)
 {
 	struct tdb_logging_context log_ctx;
 	log_ctx.log_fn = tdb_log;
 
 	if (tdb) tdb_close(tdb);
 	tdb = tdb_open_ex(tdbname, 0, disable_mmap?TDB_NOMMAP:0, O_RDWR, 0600,
-			  &log_ctx, hashfn);
+			  &log_ctx, NULL);
 	if (!tdb) {
 		printf("Could not open %s: %s\n", tdbname, strerror(errno));
 	}
@@ -420,12 +412,14 @@ static int traverse_fn(TDB_CONTEXT *the_tdb, TDB_DATA key, TDB_DATA dbuf, void *
 
 static void info_tdb(void)
 {
-	int count;
-	total_bytes = 0;
-	if ((count = tdb_traverse(tdb, traverse_fn, NULL)) == -1)
+	char *summary = tdb_summary(tdb, TDB_SUMMARY_HISTOGRAMS);
+
+	if (!summary) {
 		printf("Error = %s\n", tdb_errorstr(tdb));
-	else
-		printf("%d records totalling %d bytes\n", count, total_bytes);
+	} else {
+		printf("%s", summary);
+		free(summary);
+	}
 }
 
 static void speed_tdb(const char *tlimit)
@@ -586,11 +580,7 @@ static int do_command(void)
 		return 0;
 	case CMD_OPEN_TDB:
 		bIterate = 0;
-		open_tdb(arg1, NULL);
-		return 0;
-	case CMD_OPENJH_TDB:
-		bIterate = 0;
-		open_tdb(arg1, jenkins_hash);
+		open_tdb(arg1);
 		return 0;
 	case CMD_SYSTEM:
 		/* Shell command */
@@ -686,7 +676,6 @@ static int do_command(void)
 			return 0;
 		case CMD_CREATE_TDB:
 		case CMD_OPEN_TDB:
-		case CMD_OPENJH_TDB:
 		case CMD_SYSTEM:
 		case CMD_QUIT:
 			/*
