@@ -489,6 +489,8 @@ static unsigned long break_up_large_page(struct header *head,
 
 	for (i = 1; i < SMALL_PAGES_PER_LARGE_PAGE; i++) {
 		struct page_header *ph = from_pgnum(head, lpage + i, sp_bits);
+		/* Initialize this: huge_alloc reads it. */
+		ph->elements_used = 0;
 		add_small_page_to_freelist(head, ph, sp_bits);
 	}
 
