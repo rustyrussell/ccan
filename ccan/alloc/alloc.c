@@ -133,7 +133,7 @@ static unsigned int size_to_bucket(unsigned long size)
 
 static unsigned int small_page_bits(unsigned long poolsize)
 {
-	return fls(poolsize / MAX_SMALL_PAGES / 2);
+	return fls(poolsize / MAX_SMALL_PAGES - 1);
 }
 
 static struct page_header *from_pgnum(struct header *head,
@@ -404,6 +404,7 @@ void alloc_init(void *pool, unsigned long poolsize)
 	/* Add the rest of the pages as large pages. */
 	i = SMALL_PAGES_PER_LARGE_PAGE;
 	while ((i << sp_bits) + (1 << lp_bits) <= poolsize) {
+		assert(i < MAX_SMALL_PAGES);
 		ph = from_pgnum(head, i, sp_bits);
 		ph->elements_used = 0;
 		add_large_page_to_freelist(head, ph, sp_bits);
