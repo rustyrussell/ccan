@@ -19,7 +19,6 @@ struct info_docs
 {
 	bool summary;
 	bool description;
-	bool example;
 };
 
 static void *check_has_info_documentation(struct manifest *m,
@@ -28,7 +27,7 @@ static void *check_has_info_documentation(struct manifest *m,
 {
 	struct list_head *infodocs = get_ccan_file_docs(m->info_file);
 	struct doc_section *d;
-	struct info_docs id = { false, false, false };
+	struct info_docs id = { false, false };
 
 	list_for_each(infodocs, d, list) {
 		if (!streq(d->function, m->basename))
@@ -37,11 +36,9 @@ static void *check_has_info_documentation(struct manifest *m,
 			id.summary = true;
 		if (streq(d->type, "description"))
 			id.description = true;
-		if (streq(d->type, "example"))
-			id.example = true;
 	}
 
-	if (id.summary && id.description && id.example)
+	if (id.summary && id.description)
 		return NULL;
 	return talloc_memdup(m, &id, sizeof(id));
 }
@@ -109,11 +106,6 @@ static const char *describe_has_info_documentation(struct manifest *m,
 		"The lines after the first summary line in the _info file\n"
 		"documentation should describe the purpose and use of the\n"
 		"overall package\n");
-	if (!id->example)
-		reason = talloc_asprintf_append(reason,
-		"Your _info file has no module example.\n\n"
-		"There should be an Example: section of the _info documentation\n"
-		"which provides a concise toy program which uses your module\n");
 	return reason;
 }
 
@@ -121,13 +113,13 @@ static unsigned int has_info_documentation_score(struct manifest *m,
 						 void *check_result)
 {
 	struct info_docs *id = check_result;
-	return id->summary + id->description + id->example;
+	return (unsigned int)id->summary + id->description;
 }
 
 struct ccanlint has_info_documentation = {
 	.key = "info-documentation",
 	.name = "Module has documentation in _info",
-	.total_score = 3,
+	.total_score = 2,
 	.score = has_info_documentation_score,
 	.check = check_has_info_documentation,
 	.describe = describe_has_info_documentation,

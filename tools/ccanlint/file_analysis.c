@@ -174,6 +174,7 @@ struct manifest *get_manifest(const void *ctx, const char *dir)
 	list_head_init(&m->other_test_c_files);
 	list_head_init(&m->other_test_files);
 	list_head_init(&m->other_files);
+	list_head_init(&m->examples);
 	list_head_init(&m->dep_dirs);
 
 	olddir = talloc_getcwd(NULL);
