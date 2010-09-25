@@ -287,8 +287,8 @@ static bool check_free(struct tdb_context *tdb,
 		return false;
 	}
 	if (tdb->methods->oob(tdb, off
-			      + frec->data_len-sizeof(struct tdb_used_record),
-			      true))
+			      + frec->data_len+sizeof(struct tdb_used_record),
+			      false))
 		return false;
 	if (off < zone_off || off >= zone_off + (1ULL<<frec_zone_bits(frec))) {
 		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
@@ -487,7 +487,6 @@ int tdb_check(struct tdb_context *tdb,
 	unsigned max_zone_bits = INITIAL_ZONE_BITS;
 	uint8_t tailer;
 
-	/* This always ensures the header is uptodate. */
 	if (tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false) != 0)
 		return -1;
 
