@@ -19,10 +19,10 @@ int main(int argc, char *argv[])
 
 	plan_tests(39);
 	/* Hash should be the same, indep of memory alignment. */
-	val = hash(array, sizeof(array), 0);
+	val = hash(array, ARRAY_WORDS, 0);
 	for (i = 0; i < sizeof(uint32_t); i++) {
 		memcpy(array2 + i, array, sizeof(array));
-		ok(hash(array2 + i, sizeof(array), 0) != val,
+		ok(hash(array2 + i, ARRAY_WORDS, 0) != val,
 		   "hash matched at offset %i", i);
 	}
 
@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
 		for (j = 0; j < 256000; j++) {
 			for (k = 0; k < ARRAY_WORDS; k++)
 				array[k] = random();
-			results[(hash(array, sizeof(array), 0) >> i*8)&0xFF]++;
+			results[(hash(array, ARRAY_WORDS, 0) >> i*8)&0xFF]++;
 		}
 
 		for (j = 0; j < 256; j++) {
@@ -61,7 +61,8 @@ int main(int argc, char *argv[])
 		for (j = 0; j < 256000; j++) {
 			for (k = 0; k < ARRAY_WORDS; k++)
 				array[k] = random();
-			results[(hash64(array, sizeof(array), 0) >> i*8)&0xFF]++;
+			results[(hash64(array, sizeof(array)/sizeof(uint64_t),
+					0) >> i*8)&0xFF]++;
 		}
 
 		for (j = 0; j < 256; j++) {
@@ -101,11 +102,11 @@ int main(int argc, char *argv[])
 	}
 
 	if (sizeof(long) == sizeof(uint32_t))
-		ok1(hashl(array, sizeof(array), 0)
-		    == hash(array, sizeof(array), 0));
+		ok1(hashl(array, ARRAY_WORDS, 0)
+		    == hash(array, ARRAY_WORDS, 0));
 	else
-		ok1(hashl(array, sizeof(array), 0)
-		    == hash64(array, sizeof(array), 0));
+		ok1(hashl(array, ARRAY_WORDS, 0)
+		    == hash64(array, ARRAY_WORDS, 0));
 
 	/* String hash: weak, so only test bottom byte */
 	for (i = 0; i < 1; i++) {
