@@ -63,6 +63,9 @@ enum TDB_ERROR {TDB_SUCCESS=0, TDB_ERR_CORRUPT, TDB_ERR_IO, TDB_ERR_LOCK,
 		TDB_ERR_OOM, TDB_ERR_EXISTS, TDB_ERR_NOEXIST,
 		TDB_ERR_EINVAL, TDB_ERR_RDONLY, TDB_ERR_NESTING };
 
+/* flags for tdb_summary. Logical or to combine. */
+enum tdb_summary_flags { TDB_SUMMARY_HISTOGRAMS = 1 };
+
 /* debugging uses one of the following levels */
 enum tdb_debug_level {TDB_DEBUG_FATAL = 0, TDB_DEBUG_ERROR, 
 		      TDB_DEBUG_WARNING, TDB_DEBUG_TRACE};
@@ -142,6 +145,8 @@ int tdb_check(struct tdb_context *tdb,
 
 enum TDB_ERROR tdb_error(struct tdb_context *tdb);
 const char *tdb_errorstr(struct tdb_context *tdb);
+
+char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags);
 
 extern struct tdb_data tdb_null;
 
