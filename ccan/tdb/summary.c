@@ -88,11 +88,11 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 		locked = true;
 	}
 
-	freet = tally_new(100);
-	used = tally_new(100);
-	dead = tally_new(100);
-	extra = tally_new(100);
-	hash = tally_new(100);
+	freet = tally_new(HISTO_HEIGHT);
+	used = tally_new(HISTO_HEIGHT);
+	dead = tally_new(HISTO_HEIGHT);
+	extra = tally_new(HISTO_HEIGHT);
+	hash = tally_new(HISTO_HEIGHT);
 	if (!freet || !used || !dead || !extra || !hash) {
 		tdb->ecode = TDB_ERR_OOM;
 		goto unlock;
