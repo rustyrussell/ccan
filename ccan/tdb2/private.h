@@ -113,6 +113,10 @@ typedef uint64_t tdb_off_t;
 #define TDB_OFF_MASK \
 	(((1ULL << (64 - TDB_OFF_UPPER_STEAL)) - 1) - TDB_OFF_HASH_GROUP_MASK)
 
+/* We have to be able to fit a free record here. */
+#define TDB_MIN_DATA_LEN	\
+	(sizeof(struct tdb_free_record) - sizeof(struct tdb_used_record))
+
 /* We ensure buckets up to size 1 << (zone_bits - TDB_COMFORT_FACTOR_BITS). */
 /* FIXME: test this matches size_to_bucket! */
 #define BUCKETS_FOR_ZONE(zone_bits) ((zone_bits) + 2 - TDB_COMFORT_FACTOR_BITS)

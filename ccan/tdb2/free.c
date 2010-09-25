@@ -21,10 +21,6 @@
 #include <assert.h>
 #include <limits.h>
 
-/* We have to be able to fit a free record here. */
-#define MIN_DATA_LEN	\
-	(sizeof(struct tdb_free_record) - sizeof(struct tdb_used_record))
-
 static unsigned fls64(uint64_t val)
 {
 #if HAVE_BUILTIN_CLZL
@@ -73,15 +69,15 @@ unsigned int size_to_bucket(unsigned int zone_bits, tdb_len_t data_len)
 	unsigned int bucket;
 
 	/* We can't have records smaller than this. */
-	assert(data_len >= MIN_DATA_LEN);
+	assert(data_len >= TDB_MIN_DATA_LEN);
 
 	/* Ignoring the header... */
-	if (data_len - MIN_DATA_LEN <= 64) {
-		/* 0 in bucket 0, 8 in bucket 1... 64 in bucket 6. */
-		bucket = (data_len - MIN_DATA_LEN) / 8;
+	if (data_len - TDB_MIN_DATA_LEN <= 64) {
+		/* 0 in bucket 0, 8 in bucket 1... 64 in bucket 8. */
+		bucket = (data_len - TDB_MIN_DATA_LEN) / 8;
 	} else {
 		/* After that we go power of 2. */
-		bucket = fls64(data_len - MIN_DATA_LEN) + 2;
+		bucket = fls64(data_len - TDB_MIN_DATA_LEN) + 2;
 	}
 
 	if (unlikely(bucket > BUCKETS_FOR_ZONE(zone_bits)))
@@ -369,6 +365,9 @@ static tdb_off_t lock_and_alloc(struct tdb_context *tdb,
 again:
 	b_off = bucket_off(zone_off, bucket);
 
+	/* FIXME: Try non-blocking wait first, to measure contention.
+	 * If we're contented, try switching zones, and don't enlarge zone
+	 * next time (we want more zones). */
 	/* Lock this bucket. */
 	if (tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == -1) {
 		return TDB_OFF_ERR;
@@ -463,6 +462,10 @@ static tdb_off_t get_free(struct tdb_context *tdb, size_t size,
 	tdb_off_t start_zone = tdb->zone_off, off;
 	bool wrapped = false;
 
+	/* FIXME: If we don't get a hit in the first bucket we want,
+	 * try changing zones for next time.  That should help wear
+	 * zones evenly, so we don't need to search all of them before
+	 * expanding. */
 	while (!wrapped || tdb->zone_off != start_zone) {
 		tdb_off_t b;
 
@@ -567,6 +570,7 @@ static int tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 	if (tdb->map_size != old_size)
 		goto success;
 
+	/* FIXME: Tailer is a bogus optimization, remove it. */
 	/* zone bits tailer char is protected by EXPAND lock. */
 	if (tdb->methods->read(tdb, old_size - 1, &zone_bits, 1) == -1)
 		goto fail;
@@ -593,6 +597,7 @@ static int tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 	zhdr.zone_bits = zone_bits;
 	num_buckets = BUCKETS_FOR_ZONE(zone_bits);
 
+	/* FIXME: I don't think we need to expand to full zone, do we? */
 	if (tdb->methods->expand_file(tdb, 1ULL << zone_bits) == -1)
 		goto fail;
 
@@ -632,8 +637,8 @@ static tdb_len_t adjust_size(size_t keylen, size_t datalen, bool growing)
 {
 	tdb_len_t size = keylen + datalen;
 
-	if (size < MIN_DATA_LEN)
-		size = MIN_DATA_LEN;
+	if (size < TDB_MIN_DATA_LEN)
+		size = TDB_MIN_DATA_LEN;
 
 	/* Overallocate if this is coming from an enlarging store. */
 	if (growing)
