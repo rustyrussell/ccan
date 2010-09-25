@@ -377,7 +377,7 @@ static struct drawing *breed_drawing(const void *ctx,
 
 /* This is our anti-thread.  It does the time-consuming operation of
  * breeding two drawings together and scoring the result. */
-static void *breeder(struct at_pool *atp, const struct image *master)
+static void *breeder(struct at_pool *atp, struct image *master)
 {
 	const struct drawing *a, *b;
 

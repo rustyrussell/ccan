@@ -1,9 +1,7 @@
-CFLAGS=-g -O3 -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -I../../..
+CFLAGS=-g -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -I../../.. ../../talloc.o ../../alloc.o ../../noerr.o ../../read_write_all.o ../../antithread.o # -O3
+LDLIBS=-ljpeg -lm
 
-all: dns_lookup
+all: dns_lookup arabella
 
-dns_lookup: dns_lookup.c ../../../libccan.a
-	$(CC) $(CFLAGS) -o $@ $^
-
-arabella: arabella.c ../../../libccan.a
-	$(CC) $(CFLAGS) -o $@ $^ -ljpeg -lm
+clean:
+	rm -f dns_lookup arabella
