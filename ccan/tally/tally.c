@@ -15,12 +15,11 @@ struct tally {
 	ssize_t min, max;
 	size_t total[2];
 	/* This allows limited frequency analysis. */
-	size_t buckets;
-	size_t step_bits;
+	unsigned buckets, step_bits;
 	size_t counts[1 /* [buckets] */ ];
 };
 
-struct tally *tally_new(size_t buckets)
+struct tally *tally_new(unsigned buckets)
 {
 	struct tally *tally;
 
@@ -29,20 +28,8 @@ struct tally *tally_new(size_t buckets)
 		return NULL;
 	tally = malloc(sizeof(*tally) + sizeof(tally->counts[0])*buckets);
 	if (tally) {
-		/* SSIZE_MAX isn't portable, so make it one of these types. */
-		BUILD_ASSERT(sizeof(tally->min) == sizeof(int)
-			     || sizeof(tally->min) == sizeof(long)
-			     || sizeof(tally->min) == sizeof(long long));
-		if (sizeof(tally->min) == sizeof(int)) {
-			tally->min = INT_MAX;
-			tally->max = INT_MIN;
-		} else if (sizeof(tally->min) == sizeof(long)) {
-			tally->min = LONG_MAX;
-			tally->max = LONG_MIN;
-		} else if (sizeof(tally->min) == sizeof(long long)) {
-			tally->min = (ssize_t)LLONG_MAX;
-			tally->max = (ssize_t)LLONG_MIN;
-		}
+		tally->max = ((size_t)1 << (SIZET_BITS - 1));
+		tally->min = ~tally->max;
 		tally->total[0] = tally->total[1] = 0;
 		/* There is always 1 bucket. */
 		tally->buckets = buckets+1;
@@ -444,7 +431,7 @@ char *tally_histogram(const struct tally *tally,
 		memcpy(tmp->counts, tally->counts,
 		       sizeof(tally->counts[0]) * tmp->buckets);
 		while ((max_bucket = get_max_bucket(tmp)) >= height)
-			renormalize(tmp, tmp->min, tmp->max *= 2);
+			renormalize(tmp, tmp->min, tmp->max * 2);
 		/* Restore max */
 		tmp->max = tally->max;
 		tally = tmp;
@@ -463,23 +450,29 @@ char *tally_histogram(const struct tally *tally,
 		free(tmp);
 		return NULL;
 	}
+
 	for (i = 0; i < height; i++) {
-		unsigned covered = 0;
-		count = (double)tally->counts[i] / largest_bucket * width;
+		unsigned covered = 1;
+		count = (double)tally->counts[i] / largest_bucket * (width-1)+1;
 
 		if (i == 0)
 			covered = snprintf(p, width, "%zi", tally->min);
 		else if (i == height - 1)
 			covered = snprintf(p, width, "%zi", tally->max);
-		if (covered) {
-			if (covered > width)
-				covered = width;
-			p += covered;
-			if (count > covered)
-				count -= covered;
-			else
-				count = 0;
-		}
+		else if (i == bucket_of(tally->min, tally->step_bits, 0))
+			*p = '+';
+		else
+			*p = '|';
+
+		if (covered > width)
+			covered = width;
+		p += covered;
+
+		if (count > covered)
+			count -= covered;
+		else
+			count = 0;
+
 		memset(p, '*', count);
 		p += count;
 		*p = '\n';

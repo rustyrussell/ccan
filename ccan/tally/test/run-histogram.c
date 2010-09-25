@@ -8,7 +8,7 @@ int main(void)
 	char *graph, *p;
 	bool trunc;
 
-	plan_tests(100 + 1 + 10 + 1 + 100 + 1 + 10 + 1 + 10 + 2 + 1);
+	plan_tests(100 + 1 + 10 + 1 + 100 + 1 + 10 + 1 + 10 * 2 + 1);
 
 	/* Uniform distribution, easy. */
 	tally = tally_new(100);
@@ -100,11 +100,16 @@ int main(void)
 		/* Check min/max labels. */
 		if (i == 0)
 			ok1(strncmp(p, "-5*", 3) == 0);
-		if (i == 9)
+		else if (i == 9)
 			ok1(strncmp(p, "4*", 2) == 0);
+		else if (i == 5)
+			ok1(p[0] == '+'); /* 0 marker */
+		else
+			ok1(p[0] == '|');
 		p = eol + 1;
 	}
 	ok1(!*p);
+	diag("Here's the pretty: %s", graph);
 	free(graph);
 	free(tally);
 

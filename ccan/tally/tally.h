@@ -10,9 +10,11 @@ struct tally;
  *
  * This allocates a tally structure using malloc().  The greater the value
  * of @buckets, the more accurate tally_approx_median() and tally_approx_mode()
- * and tally_graph() will be, but more memory is consumed.
+ * and tally_histogram() will be, but more memory is consumed.  If you want
+ * to use tally_histogram(), the optimal bucket value is the same as that
+ * @height argument.
  */
-struct tally *tally_new(size_t buckets);
+struct tally *tally_new(unsigned int buckets);
 
 /**
  * tally_add - add a value.
