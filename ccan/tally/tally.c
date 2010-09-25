@@ -455,14 +455,17 @@ char *tally_histogram(const struct tally *tally,
 	}
 
 	for (i = 0; i < height; i++) {
-		unsigned covered = 1;
-		count = (double)tally->counts[i] / largest_bucket * (width-1)+1;
+		unsigned covered = 1, row;
 
-		if (i == 0)
+		/* People expect minimum at the bottom. */
+		row = height - i - 1;
+		count = (double)tally->counts[row] / largest_bucket * (width-1)+1;
+
+		if (row == 0)
 			covered = snprintf(p, width, "%zi", tally->min);
-		else if (i == height - 1)
+		else if (row == height - 1)
 			covered = snprintf(p, width, "%zi", tally->max);
-		else if (i == bucket_of(tally->min, tally->step_bits, 0))
+		else if (row == bucket_of(tally->min, tally->step_bits, 0))
 			*p = '+';
 		else
 			*p = '|';
