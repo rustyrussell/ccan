@@ -16,25 +16,28 @@ struct tally {
 	size_t total[2];
 	/* This allows limited frequency analysis. */
 	unsigned buckets, step_bits;
-	size_t counts[1 /* [buckets] */ ];
+	size_t counts[1 /* Actually: [buckets] */ ];
 };
 
 struct tally *tally_new(unsigned buckets)
 {
 	struct tally *tally;
 
+	/* There is always 1 bucket. */
+	if (buckets == 0)
+		buckets = 1;
+
 	/* Check for overflow. */
 	if (buckets && SIZE_MAX / buckets < sizeof(tally->counts[0]))
 		return NULL;
-	tally = malloc(sizeof(*tally) + sizeof(tally->counts[0])*buckets);
+	tally = malloc(sizeof(*tally) + sizeof(tally->counts[0])*(buckets-1));
 	if (tally) {
 		tally->max = ((size_t)1 << (SIZET_BITS - 1));
 		tally->min = ~tally->max;
 		tally->total[0] = tally->total[1] = 0;
-		/* There is always 1 bucket. */
-		tally->buckets = buckets+1;
+		tally->buckets = buckets;
 		tally->step_bits = 0;
-		memset(tally->counts, 0, sizeof(tally->counts[0])*(buckets+1));
+		memset(tally->counts, 0, sizeof(tally->counts[0])*buckets);
 	}
 	return tally;
 }
@@ -422,7 +425,7 @@ char *tally_histogram(const struct tally *tally,
 	} else {
 		/* We create a temporary then renormalize so < height. */
 		/* FIXME: Antialias properly! */
-		tmp = tally_new(tally->buckets-1);
+		tmp = tally_new(tally->buckets);
 		if (!tmp)
 			return NULL;
 		tmp->min = tally->min;

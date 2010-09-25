@@ -3,7 +3,7 @@
 
 int main(void)
 {
-	struct tally *tally = tally_new(1);
+	struct tally *tally = tally_new(2);
 
 	plan_tests(4);
 	tally->min = 0;
