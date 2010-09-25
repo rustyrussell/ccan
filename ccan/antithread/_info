@@ -5,9 +5,83 @@
 /**
  * antithread - Accelerated Native Technology Implementation of "threads"
  *
- * Threads suck.  Antithreads try not to.  FIXME.
+ * On systems with multiple CPUs, it's often faster to split work across
+ * different execution units.  Under Unix-like systems, the two methods of
+ * doing this are (POSIX) threads or processes.
  *
- * Licence: LGPL (2 or any later version)
+ * Threads have the disadvantage that they share all of the address space:
+ * using software instead of hardware isolation (eg. for malloc) is
+ * inefficient and less secure.  Various subtle errors can occur because
+ * programmers in one part of the code do not expect concurrency.
+ *
+ * Processes have the disadvantage that there is no common infrastructure
+ * for sharing memory: without this, programmers are faced with the unpalatable
+ * options of using slower options or creating their own infrastructure.
+ *
+ * The antithread module provides memory-sharing infrastructure: the programmer
+ * indicates the size of the memory to share, and then creates subprocesses
+ * which share the memory.  Pipes are used to hand pointers between the
+ * main process and the children: usually pointers into the shared memory.
+ *
+ * Example:
+ *	#include <ccan/antithread/antithread.h>
+ *	#include <ccan/talloc/talloc.h>
+ *	#include <ctype.h>
+ *	#include <stdlib.h>
+ *	#include <stdio.h>
+ *	#include <string.h>
+ *	
+ *	// Silly example: child makes rot13 copy.
+ *	static void *rot13(struct at_pool *pool, void *unused)
+ *	{
+ *		char *r, *p;
+ *		while ((r = at_read_parent(pool)) != NULL) {
+ *			unsigned int i;
+ *			// r is inside pool, so talloc off it is also inside.
+ *			p = talloc_array(r, char, strlen(r) + 1);
+ *			for (i = 0; r[i]; i++) {
+ *				if (!isalpha(r[i]))
+ *					p[i] = r[i];
+ *				else if (toupper(r[i]) < 'N')
+ *					p[i] = r[i] + 13;
+ *				else
+ *					p[i] = r[i] - 13;
+ *			}
+ *			// Tell parent about our copy.
+ *			at_tell_parent(pool, p);
+ *		}
+ *		return NULL;
+ *	}
+ *	
+ *	#define NUM_CHILDREN 4
+ *	
+ *	int main(int argc, char *argv[])
+ *	{
+ *		struct at_pool *pool;
+ *		struct athread *child[NUM_CHILDREN];
+ *		unsigned int i;
+ *	
+ *		// Create pool and some children
+ *		pool = at_pool(1024*1024);
+ *		for (i = 0; i < NUM_CHILDREN; i++)
+ *			child[i] = at_run(pool, rot13, NULL);
+ *	
+ *		// Pass out work to children.
+ *		for (i = 1; i < argc; i++)
+ *			at_tell(child[i % NUM_CHILDREN],
+ *				talloc_strdup(at_pool_ctx(pool), argv[i]));
+ *	
+ *		// Read back results.
+ *		for (i = 1; i < argc; i++)
+ *			printf("%s ", (char *)at_read(child[i % NUM_CHILDREN]));
+ *		printf("\n");
+ *	
+ *		// Freeing pool kills children, too.
+ *		talloc_free(pool);
+ *		return 0;
+ *	}
+ *
+ * Licence: GPL (3 or any later version)
  * Author: Rusty Russell <rusty@rustcorp.com.au>
  */
 int main(int argc, char *argv[])
