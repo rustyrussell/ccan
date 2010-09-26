@@ -58,6 +58,7 @@ int main(int argc, char *argv[])
 	errno = 100;
 	ok1(fclose_noerr(fp) == 0);
 	ok1(errno == 100);
+	unlink(name);
 
 	return exit_status();
 }
