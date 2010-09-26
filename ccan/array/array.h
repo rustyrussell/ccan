@@ -38,12 +38,8 @@
 #include <ccan/talloc/talloc.h>
 #endif
 
-#ifndef HAVE_ATTRIBUTE_MAY_ALIAS
-#define HAVE_ATTRIBUTE_MAY_ALIAS 1
-#endif
-
 //Use the array_alias macro to indicate that a pointer has changed but strict aliasing rules are too stupid to know it
-#if HAVE_ATTRIBUTE_MAY_ALIAS==1
+#if HAVE_ATTRIBUTE_MAY_ALIAS
 #define array_alias(ptr) /* nothing */
 #define array(type) struct {type *item; size_t size; size_t alloc;} __attribute__((__may_alias__))
 #else

@@ -4,20 +4,20 @@
 
 #if HAVE_ATTRIBUTE_COLD
 /**
- * UNLIKELY_FUNCTION_ATTRIBUTE - a function is unlikely to be called.
+ * COLD_ATTRIBUTE - a function is unlikely to be called.
  *
  * Used to mark an unlikely code path and optimize appropriately.
  * It is usually used on logging or error routines.
  *
  * Example:
- *	void UNLIKELY_FUNCTION_ATTRIBUTE moan(const char *reason)
+ *	void COLD_ATTRIBUTE moan(const char *reason)
  *	{
  *		fprintf(stderr, "Error: %s (%s)\n", reason, strerror(errno));
  *	}
  */
-#define UNLIKELY_FUNCTION_ATTRIBUTE __attribute__((cold))
+#define COLD_ATTRIBUTE __attribute__((cold))
 #else
-#define UNLIKELY_FUNCTION_ATTRIBUTE
+#define COLD_ATTRIBUTE
 #endif
 
 #if HAVE_ATTRIBUTE_PRINTF

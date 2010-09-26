@@ -17,20 +17,14 @@ static bool one_seems_unlikely(unsigned int val)
 	return false;
 }
 
-static unlikely_func bool calling_is_unlikely(void)
-{
-	return true;
-}
-
 int main(int argc, char *argv[])
 {
-	plan_tests(5);
+	plan_tests(4);
 
 	/* Without debug, we can only check that it doesn't effect functions. */
 	ok1(one_seems_likely(1));
 	ok1(!one_seems_likely(2));
 	ok1(one_seems_unlikely(1));
 	ok1(!one_seems_unlikely(2));
-	ok1(calling_is_unlikely());
 	exit(exit_status());
 }

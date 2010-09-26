@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <ccan/typesafe_cb/typesafe_cb.h>
+#include <ccan/compiler/compiler.h>
 #include "config.h"
 
 /*
@@ -37,16 +38,6 @@
 #define __TALLOC_STRING_LINE2__(s)   __TALLOC_STRING_LINE1__(s)
 #define __TALLOC_STRING_LINE3__  __TALLOC_STRING_LINE2__(__LINE__)
 #define __location__ __FILE__ ":" __TALLOC_STRING_LINE3__
-#endif
-
-#if HAVE_ATTRIBUTE_PRINTF
-/** Use gcc attribute to check printf fns.  a1 is the 1-based index of
- * the parameter containing the format, and a2 the index of the first
- * argument. Note that some gcc 2.x versions don't handle this
- * properly **/
-#define PRINTF_ATTRIBUTE(a1, a2) __attribute__ ((format (__printf__, a1, a2)))
-#else
-#define PRINTF_ATTRIBUTE(a1, a2)
 #endif
 
 /* try to make talloc_set_destructor() and talloc_steal() type safe,

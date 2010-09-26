@@ -17,7 +17,7 @@
  * 99%; marginal cases should not be marked either way.
  *
  * See Also:
- *	unlikely(), unlikely_func, likely_stats()
+ *	unlikely(), likely_stats()
  *
  * Example:
  *	// Returns false if we overflow.
@@ -39,7 +39,7 @@
  * code path and optimize appropriately; see likely() above.
  *
  * See Also:
- *	likely(), unlikely_func, likely_stats()
+ *	likely(), likely_stats(), UNLIKELY_FUNCTION_ATTRIBUTE (compiler.h)
  *
  * Example:
  *	// Prints a warning if we overflow.
@@ -66,30 +66,6 @@ long _likely_trace(bool cond, bool expect,
 		   const char *file, unsigned int line);
 #endif
 
-#if HAVE_ATTRIBUTE_COLD
-/**
- * unlikely_func - indicate that a function is unlikely to be called.
- *
- * This uses a compiler extension where available to indicate an unlikely
- * code path and optimize appropriately; see unlikely() above.
- *
- * It is usually used on logging or error routines.
- *
- * See Also:
- *	unlikely()
- *
- * Example:
- *	void unlikely_func die_moaning(const char *reason)
- *	{
- *		fprintf(stderr, "Dying: %s\n", reason);
- *		exit(1);
- *	}
- */
-#define unlikely_func __attribute__((cold))
-#else
-#define unlikely_func
-#endif
-
 #ifdef DEBUG
 /**
  * likely_stats - return description of abused likely()/unlikely()
@@ -98,7 +74,7 @@ long _likely_trace(bool cond, bool expect,
  *
  * When DEBUG is defined, likely() and unlikely() trace their results: this
  * causes a significant slowdown, but allows analysis of whether the stats
- * are correct (unlikely_func can't traced).
+ * are correct.
  *
  * This function returns a malloc'ed description of the least-correct
  * usage of likely() or unlikely().  It ignores places which have been

@@ -1,41 +1,28 @@
 #if !defined(_ilog_H)
 # define _ilog_H (1)
+# include "config.h"
 # include <stdint.h>
-
-# ifdef __GNUC_PREREQ
-/*Tag our functions as idempotent to aid optimization, if possible.*/
-#  if __GNUC_PREREQ(2,5)
-#   define IDEMPOTENT __attribute__((const))
-#  endif
-#  if __GNUC_PREREQ(3,4)
-#   include <limits.h>
+# include <ccan/compiler/compiler.h>
+# include <limits.h>
 /*Note the casts to (int) below: this prevents CLZ{32|64}_OFFS from "upgrading"
    the type of an entire expression to an (unsigned) size_t.*/
-#   if INT_MAX>=2147483647
-#    define CLZ32_OFFS ((int)sizeof(unsigned)*CHAR_BIT)
-#    define CLZ32(_x) (__builtin_clz(_x))
-#   elif LONG_MAX>=2147483647L
-#    define CLZ32_OFFS ((int)sizeof(unsigned long)*CHAR_BIT)
-#    define CLZ32(_x) (__builtin_clzl(_x))
-#   endif
-#   if INT_MAX>=9223372036854775807LL
-#    define CLZ64_OFFS ((int)sizeof(unsigned)*CHAR_BIT)
-#    define CLZ64(_x) (__builtin_clz(_x))
-#   elif LONG_MAX>=9223372036854775807LL
-#    define CLZ64_OFFS ((int)sizeof(unsigned long)*CHAR_BIT)
-#    define CLZ64(_x) (__builtin_clzl(_x))
-#   else /* long long must be >= 64 bits according to ISO C */
-#    define CLZ64_OFFS ((int)sizeof(unsigned long long)*CHAR_BIT)
-#    define CLZ64(_x) (__builtin_clzll(_x))
-#   endif
-#  endif
+# if HAVE_BUILTIN_CLZ && INT_MAX>=2147483647
+#  define CLZ32_OFFS ((int)sizeof(unsigned)*CHAR_BIT)
+#  define CLZ32(_x) (__builtin_clz(_x))
+# elif HAVE_BUILTIN_CLZL && LONG_MAX>=2147483647L
+#  define CLZ32_OFFS ((int)sizeof(unsigned long)*CHAR_BIT)
+#  define CLZ32(_x) (__builtin_clzl(_x))
 # endif
 
-/*If you have some other compiler which defines its own clz-style builtin,
-   implement a check for it here.*/
-
-# if !defined(IDEMPOTENT)
-#  define IDEMPOTENT
+# if HAVE_BUILTIN_CLZ && INT_MAX>=9223372036854775807LL
+#  define CLZ64_OFFS ((int)sizeof(unsigned)*CHAR_BIT)
+#  define CLZ64(_x) (__builtin_clz(_x))
+# elif HAVE_BUILTIN_CLZL && LONG_MAX>=9223372036854775807LL
+#  define CLZ64_OFFS ((int)sizeof(unsigned long)*CHAR_BIT)
+#  define CLZ64(_x) (__builtin_clzl(_x))
+# elif HAVE_BUILTIN_CLZLL /* long long must be >= 64 bits according to ISO C */
+#  define CLZ64_OFFS ((int)sizeof(unsigned long long)*CHAR_BIT)
+#  define CLZ64(_x) (__builtin_clzll(_x))
 # endif
 
 
@@ -49,7 +36,7 @@
  * The ILOG_32() or ILOGNZ_32() macros may be able to use a builtin function
  *  instead, which should be faster.
  */
-int ilog32(uint32_t _v)IDEMPOTENT;
+int ilog32(uint32_t _v) IDEMPOTENT_ATTRIBUTE;
 /**
  * ilog64 - Integer binary logarithm of a 64-bit value.
  * @_v: A 64-bit value.
@@ -59,9 +46,7 @@ int ilog32(uint32_t _v)IDEMPOTENT;
  * The ILOG_64() or ILOGNZ_64() macros may be able to use a builtin function
  *  instead, which should be faster.
  */
-int ilog64(uint64_t _v)IDEMPOTENT;
-
-# undef IDEMPOTENT
+int ilog64(uint64_t _v) IDEMPOTENT_ATTRIBUTE;
 
 
 # if defined(CLZ32)

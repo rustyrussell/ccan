@@ -11,6 +11,7 @@
 #include <ccan/likely/likely.h>
 #include <ccan/alignof/alignof.h>
 #include <ccan/short_types/short_types.h>
+#include <ccan/compiler/compiler.h>
 #include "config.h"
 
 /*
@@ -526,8 +527,9 @@ static bool huge_allocated(struct header *head, unsigned long offset)
 }
 
 /* They want something really big.  Aim for contiguous pages (slow). */
-static void *unlikely_func huge_alloc(void *pool, unsigned long poolsize,
-				      unsigned long size, unsigned long align)
+static COLD_ATTRIBUTE
+void *huge_alloc(void *pool, unsigned long poolsize,
+		 unsigned long size, unsigned long align)
 {
 	struct header *head = pool;
 	struct huge_alloc *ha;
@@ -645,8 +647,8 @@ done:
 	return (char *)pool + ha->off;
 }
 
-static void unlikely_func huge_free(struct header *head,
-				    unsigned long poolsize, void *free)
+static COLD_ATTRIBUTE void
+huge_free(struct header *head, unsigned long poolsize, void *free)
 {
 	unsigned long i, off, pgnum, free_off = (char *)free - (char *)head;
 	unsigned int sp_bits, lp_bits;
@@ -681,7 +683,8 @@ static void unlikely_func huge_free(struct header *head,
 	alloc_free(head, poolsize, ha);
 }
 
-static unsigned long unlikely_func huge_size(struct header *head, void *p)
+static COLD_ATTRIBUTE unsigned long
+huge_size(struct header *head, void *p)
 {
 	unsigned long i, off = (char *)p - (char *)head;
 	struct huge_alloc *ha;

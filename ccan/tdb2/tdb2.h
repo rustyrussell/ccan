@@ -40,6 +40,7 @@ extern "C" {
 /* For uint64_t */
 #include <stdint.h>
 #endif
+#include <ccan/compiler/compiler.h>
 
 /* flags to tdb_store() */
 #define TDB_REPLACE 1		/* Unused */
@@ -74,18 +75,6 @@ typedef struct tdb_data {
 	unsigned char *dptr;
 	size_t dsize;
 } TDB_DATA;
-
-#ifndef PRINTF_ATTRIBUTE
-#if (__GNUC__ >= 3)
-/** Use gcc attribute to check printf fns.  a1 is the 1-based index of
- * the parameter containing the format, and a2 the index of the first
- * argument. Note that some gcc 2.x versions don't handle this
- * properly **/
-#define PRINTF_ATTRIBUTE(a1, a2) __attribute__ ((format (__printf__, a1, a2)))
-#else
-#define PRINTF_ATTRIBUTE(a1, a2)
-#endif
-#endif
 
 struct tdb_context;
 

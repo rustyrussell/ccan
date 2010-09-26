@@ -23,6 +23,7 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
+#include <ccan/compiler/compiler.h>
 
 /**
  * plan_tests - announce the number of tests you plan to run
@@ -115,14 +116,6 @@ void plan_tests(unsigned int tests);
 		}
 
 # define skip_end } while(0)
-
-#ifndef PRINTF_ATTRIBUTE
-#ifdef __GNUC__
-#define PRINTF_ATTRIBUTE(a1, a2) __attribute__ ((format (__printf__, a1, a2)))
-#else
-#define PRINTF_ATTRIBUTE(a1, a2)
-#endif
-#endif
 
 unsigned int _gen_result(int, const char *, const char *, unsigned int,
    const char *, ...) PRINTF_ATTRIBUTE(5, 6);
