@@ -47,7 +47,7 @@ static void analyze_coverage(struct manifest *m,
 	unsigned int i, total_lines = 0;
 	bool lines_matter = false;
 
-	/* FIXME: We assume GCOV mentions all files!
+	/*
 	  Output looks like:
 	   File '../../../ccan/tdb2/private.h'
 	   Lines executed:0.00% of 8
@@ -99,10 +99,13 @@ static void analyze_coverage(struct manifest *m,
 		}
 	}
 
-	/* Nothing covered? */
-	if (total_lines == 0)
+	/* Nothing covered?  We can't tell if there's a source file which
+	 * was never executed, or there really is no code to execute, so
+	 * assume the latter: this test deserves no score. */
+	if (total_lines == 0) {
 		res->uncovered = 1.0;
-	else
+		run_coverage_tests.total_score = 0;
+	} else
 		res->uncovered = 1.0 - covered_lines / total_lines;
 }
 

@@ -150,7 +150,7 @@ static bool run_test(struct ccanlint *i,
 	else
 		this_score = 0;
 
-	bad = (this_score == 0);
+	bad = (this_score == 0 && i->total_score != 0);
 	good = (this_score >= i->total_score);
 
 	if (verbose || (bad && !quiet)) {
