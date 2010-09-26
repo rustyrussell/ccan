@@ -1,5 +1,6 @@
 #ifndef __OGG_TO_PCM_H__
 #define __OGG_TO_PCM_H__
+#include <stdint.h>
 #ifdef DEFINE_OGG_TO_PCM_GLOBALS
 #define GLOBAL
 #else
