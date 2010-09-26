@@ -28,9 +28,12 @@ int main(int argc, char *argv[])
 			continue;
 
 		/* Put some stuff in there. */
-		for (j = 0; j < 500; j++)
+		for (j = 0; j < 500; j++) {
+			/* Make sure padding varies to we get some graphs! */
+			data.dsize = j % (sizeof(j) + 1);
 			if (tdb_store(tdb, key, data, TDB_REPLACE) != 0)
 				fail("Storing in tdb");
+		}
 
 		for (j = 0;
 		     j <= TDB_SUMMARY_HISTOGRAMS;
@@ -38,7 +41,7 @@ int main(int argc, char *argv[])
 			summary = tdb_summary(tdb, j);
 			ok1(strstr(summary, "Number of records: 500\n"));
 			ok1(strstr(summary, "Smallest/average/largest keys: 4/4/4\n"));
-			ok1(strstr(summary, "Smallest/average/largest data: 4/4/4\n"));
+			ok1(strstr(summary, "Smallest/average/largest data: 0/2/4\n"));
 			ok1(strstr(summary, "Free bucket 8"));
 			ok1(strstr(summary, "Free bucket 16"));
 			ok1(strstr(summary, "Free bucket 24"));
