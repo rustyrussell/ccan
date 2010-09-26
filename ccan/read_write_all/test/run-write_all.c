@@ -24,11 +24,12 @@ static void got_signal(int sig)
 
 int main(int argc, char *argv[])
 {
-	char buffer[BUFSZ*2] = { 0 };
+	char *buffer;
 	int p2c[2];
 	int status;
 	pid_t child;
 
+	buffer = calloc(BUFSZ, 1);
 	plan_tests(4);
 
 	/* We fork and torture parent. */
@@ -43,11 +44,11 @@ int main(int argc, char *argv[])
 			exit(1);
 		if (kill(getppid(), SIGUSR1) != 0)
 			exit(2);
-		if (!read_all(p2c[0], buffer+1, sizeof(buffer)-1))
+		if (!read_all(p2c[0], buffer+1, BUFSZ-1))
 			exit(3);
-		if (memchr(buffer, 0, sizeof(buffer))) {
+		if (memchr(buffer, 0, BUFSZ)) {
 			fprintf(stderr, "buffer has 0 at offset %ti\n",
-				memchr(buffer, 0, sizeof(buffer)) - (void *)buffer);
+				memchr(buffer, 0, BUFSZ) - (void *)buffer);
 			exit(4);
 		}
 		exit(0);
@@ -56,9 +57,9 @@ int main(int argc, char *argv[])
 		err(1, "forking");
 
 	close(p2c[0]);
-	memset(buffer, 0xff, sizeof(buffer));
+	memset(buffer, 0xff, BUFSZ);
 	signal(SIGUSR1, got_signal);
-	ok1(write_all(p2c[1], buffer, sizeof(buffer)));
+	ok1(write_all(p2c[1], buffer, BUFSZ));
 	ok1(sigcount == 1);
 	ok1(wait(&status) == child);
 	ok(WIFEXITED(status) && WEXITSTATUS(status) == 0,

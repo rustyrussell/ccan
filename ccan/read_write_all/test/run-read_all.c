@@ -26,11 +26,12 @@ static void got_signal(int sig)
 
 int main(int argc, char *argv[])
 {
-	char buffer[BUFSZ*2] = { 0 };
+	char *buffer;
 	char c = 0;
 	int status;
 	pid_t child;
 
+	buffer = calloc(BUFSZ, 2);
 	plan_tests(6);
 
 	/* We fork and torture parent. */
@@ -44,7 +45,7 @@ int main(int argc, char *argv[])
 		/* Child.  Make sure parent ready, then write in two parts. */
 		if (read(p2c[0], &c, 1) != 1)
 			exit(1);
-		memset(buffer, 0xff, sizeof(buffer));
+		memset(buffer, 0xff, BUFSZ*2);
 		if (!write_all(c2p[1], buffer, BUFSZ))
 			exit(2);
 		if (kill(getppid(), SIGUSR1) != 0)
@@ -63,8 +64,8 @@ int main(int argc, char *argv[])
 	close(c2p[1]);
 	signal(SIGUSR1, got_signal);
 	ok1(write(p2c[1], &c, 1) == 1);
-	ok1(read_all(c2p[0], buffer, sizeof(buffer)));
-	ok1(memchr(buffer, 0, sizeof(buffer)) == NULL);
+	ok1(read_all(c2p[0], buffer, BUFSZ*2));
+	ok1(memchr(buffer, 0, BUFSZ*2) == NULL);
 	ok1(sigcount == 1);
 	ok1(wait(&status) == child);
 	ok(WIFEXITED(status) && WEXITSTATUS(status) == 0,
