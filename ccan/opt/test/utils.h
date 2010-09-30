@@ -8,7 +8,8 @@ extern char *err_output;
 
 extern unsigned int test_cb_called;
 char *test_noarg(void *arg);
-char *test_arg(const char *optarg, void *arg);
+char *test_arg(const char *optarg, const char *arg);
+void show_arg(char buf[OPT_SHOW_LEN], const char *arg);
 
 extern struct opt_table short_table[];
 extern struct opt_table long_table[];

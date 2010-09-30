@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 	/* Argument variants. */
 	reset_options();
 	test_cb_called = 0;
-	opt_register_arg("aaa", 'a', test_arg, "aaa", NULL);
+	opt_register_arg("aaa", 'a', test_arg, NULL, "aaa", NULL);
 	ok1(parse_args(&argc, &argv, "--aaa", "aaa", NULL));
 	ok1(argc == 1);
 	ok1(argv[0] == myname);

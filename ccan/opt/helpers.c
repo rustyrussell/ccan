@@ -5,6 +5,9 @@
 #include <stdio.h>
 #include "private.h"
 
+/* Upper bound to sprintf this simple type?  Each 3 bits < 1 digit. */
+#define CHAR_SIZE(type) (((sizeof(type)*CHAR_BIT + 2) / 3) + 1)
+
 /* FIXME: asprintf module? */
 static char *arg_bad(const char *fmt, const char *arg)
 {
@@ -116,7 +119,7 @@ char *opt_inc_intval(int *i)
 }
 
 /* Display version string. */
-char *opt_show_version_and_exit(const char *version)
+char *opt_version_and_exit(const char *version)
 {
 	printf("%s\n", version);
 	exit(0);
@@ -126,4 +129,45 @@ char *opt_usage_and_exit(const char *extra)
 {
 	printf("%s", opt_usage(opt_argv0, extra));
 	exit(0);
+}
+
+void opt_show_bool(char buf[OPT_SHOW_LEN], const bool *b)
+{
+	strncpy(buf, *b ? "true" : "false", OPT_SHOW_LEN);
+}
+
+void opt_show_invbool(char buf[OPT_SHOW_LEN], const bool *b)
+{
+	strncpy(buf, *b ? "false" : "true", OPT_SHOW_LEN);
+}
+
+void opt_show_charp(char buf[OPT_SHOW_LEN], char *const *p)
+{
+	size_t len = strlen(*p);
+	buf[0] = '"';
+	if (len > OPT_SHOW_LEN - 2)
+		len = OPT_SHOW_LEN - 2;
+	strncpy(buf+1, *p, len);
+	buf[1+len] = '"';
+}
+
+/* Set an integer value, various forms.  Sets to 1 on arg == NULL. */
+void opt_show_intval(char buf[OPT_SHOW_LEN], const int *i)
+{
+	snprintf(buf, OPT_SHOW_LEN, "%i", *i);
+}
+
+void opt_show_uintval(char buf[OPT_SHOW_LEN], const unsigned int *ui)
+{
+	snprintf(buf, OPT_SHOW_LEN, "%u", *ui);
+}
+
+void opt_show_longval(char buf[OPT_SHOW_LEN], const long *l)
+{
+	snprintf(buf, OPT_SHOW_LEN, "%li", *l);
+}
+
+void opt_show_ulongval(char buf[OPT_SHOW_LEN], const unsigned long *ul)
+{
+	snprintf(buf, OPT_SHOW_LEN, "%lu", *ul);
 }

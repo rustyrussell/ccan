@@ -12,12 +12,16 @@ enum opt_flags {
 	OPT_END = 8,		/* End of the table. */
 };
 
+/* Maximum length of arg to show in opt_usage */
+#define OPT_SHOW_LEN 80
+
 struct opt_table {
 	const char *longopt; /* --longopt, or NULL */
 	char shortopt; /* -s, or 0 */
 	enum opt_flags flags;
 	char *(*cb)(void *arg); /* OPT_NOARG */
 	char *(*cb_arg)(const char *optarg, void *arg); /* OPT_HASARG */
+	void (*show)(char buf[OPT_SHOW_LEN], const void *arg);
 	void *arg;
 	const char *desc;
 };
@@ -48,22 +52,28 @@ struct opt_table {
  * @longopt: the name of the argument (eg. "foo" for "--foo <arg>"), or NULL.
  * @shortopt: the character of the argument (eg. 'f' for "-f <arg>"), or 0.
  * @cb: the callback when the option is found (along with <arg>).
- * @arg: the argument to hand to @cb.
+ * @show: the callback to print the value in get_usage (or NULL)
+ * @arg: the argument to hand to @cb and @show
  *
  * This is a typesafe wrapper for intializing a struct opt_table.  The callback
- * is of type "bool cb(const char *, type *)",
- * "bool cb(const char *, const type *)" or "bool cb(const char *, void *)",
+ * is of type "char *cb(const char *, type *)",
+ * "char *cb(const char *, const type *)" or "char *cb(const char *, void *)",
  * where "type" is the type of the @arg argument.  The first argument to the
  * @cb is the argument found on the commandline.
+ *
+ * Similarly, if @show is not NULL, it should be of type "void *show(char *,
+ * const type *)".  It should write up to OPT_SHOW_LEN bytes into the first
+ * argument; unless it uses the entire OPT_SHOW_LEN bytes it should
+ * nul-terminate that buffer.
  *
  * At least one of @longopt and @shortopt must be non-zero.  If the
  * @cb returns false, opt_parse() will stop parsing and return false.
  *
  * See Also:
- *	OPT_WITH_ARG()
+ *	OPT_WITHOUT_ARG()
  */
-#define OPT_WITH_ARG(longopt, shortopt, cb, arg)	\
-	(longopt), (shortopt), OPT_CB_ARG((cb), (arg))
+#define OPT_WITH_ARG(longopt, shortopt, cb, show, arg)	\
+	(longopt), (shortopt), OPT_CB_ARG((cb), (show), (arg))
 
 /**
  * OPT_SUBTABLE() - macro for including another table inside a table.
@@ -74,7 +84,7 @@ struct opt_table {
  */
 #define OPT_SUBTABLE(table, desc)					\
 	{ (const char *)(table), sizeof(_check_is_entry(table)),	\
-	  OPT_SUBTABLE,	NULL, NULL, NULL, (desc) }
+	OPT_SUBTABLE,	NULL, NULL, NULL, NULL, (desc) }
 
 /**
  * opt_table_hidden - string for undocumented option tables.
@@ -125,8 +135,8 @@ void opt_register_table(const struct opt_table table[], const char *desc);
  * This is used for registering a single commandline option which takes
  * no argument.
  *
- * The callback is of type "bool cb(type *)", "bool cb(const type *)"
- * or "bool cb(void *)", where "type" is the type of the @arg
+ * The callback is of type "char *cb(type *)", "char *cb(const type *)"
+ * or "char *cb(void *)", where "type" is the type of the @arg
  * argument.
  *
  * At least one of @longopt and @shortopt must be non-zero.  If the
@@ -140,14 +150,15 @@ void opt_register_table(const struct opt_table table[], const char *desc);
  * @longopt: the name of the argument (eg. "foo" for "--foo"), or NULL.
  * @shortopt: the character of the argument (eg. 'f' for "-f"), or 0.
  * @cb: the callback when the option is found.
+ * @show: the callback when the option is found.
  * @arg: the argument to hand to @cb.
  * @desc: the verbose desction of the option (for opt_usage()), or NULL.
  *
  * This is used for registering a single commandline option which takes
  * an argument.
  *
- * The callback is of type "bool cb(const char *, type *)",
- * "bool cb(const char *, const type *)" or "bool cb(const char *, void *)",
+ * The callback is of type "char *cb(const char *, type *)",
+ * "char *cb(const char *, const type *)" or "char *cb(const char *, void *)",
  * where "type" is the type of the @arg argument.  The first argument to the
  * @cb is the argument found on the commandline.
  *
@@ -158,8 +169,8 @@ void opt_register_table(const struct opt_table table[], const char *desc);
  *	opt_register_arg("explode", 'e', explode_cb, NULL,
  *			 "Make the machine explode (developers only)");
  */
-#define opt_register_arg(longopt, shortopt, cb, arg, desc)	\
-	_opt_register((longopt), (shortopt), OPT_CB_ARG((cb), (arg)), (desc))
+#define opt_register_arg(longopt, shortopt, cb, show, arg, desc)	\
+   _opt_register((longopt), (shortopt), OPT_CB_ARG((cb), (show), (arg)), (desc))
 
 /**
  * opt_parse - parse arguments.
@@ -216,24 +227,32 @@ char *opt_usage(const char *argv0, const char *extra);
 char *opt_set_bool(bool *b);
 /* Sets @b based on arg: (yes/no/true/false). */
 char *opt_set_bool_arg(const char *arg, bool *b);
+void opt_show_bool(char buf[OPT_SHOW_LEN], const bool *b);
 /* The inverse */
 char *opt_set_invbool(bool *b);
+void opt_show_invbool(char buf[OPT_SHOW_LEN], const bool *b);
+/* Sets @b based on !arg: (yes/no/true/false). */
 char *opt_set_invbool_arg(const char *arg, bool *b);
 
 /* Set a char *. */
 char *opt_set_charp(const char *arg, char **p);
+void opt_show_charp(char buf[OPT_SHOW_LEN], char *const *p);
 
 /* Set an integer value, various forms.  Sets to 1 on arg == NULL. */
 char *opt_set_intval(const char *arg, int *i);
+void opt_show_intval(char buf[OPT_SHOW_LEN], const int *i);
 char *opt_set_uintval(const char *arg, unsigned int *ui);
+void opt_show_uintval(char buf[OPT_SHOW_LEN], const unsigned int *ui);
 char *opt_set_longval(const char *arg, long *l);
+void opt_show_longval(char buf[OPT_SHOW_LEN], const long *l);
 char *opt_set_ulongval(const char *arg, unsigned long *ul);
+void opt_show_ulongval(char buf[OPT_SHOW_LEN], const unsigned long *ul);
 
 /* Increment. */
 char *opt_inc_intval(int *i);
 
 /* Display version string to stdout, exit(0). */
-char *opt_show_version_and_exit(const char *version);
+char *opt_version_and_exit(const char *version);
 
 /* Display usage string to stdout, exit(0). */
 char *opt_usage_and_exit(const char *extra);
@@ -245,22 +264,25 @@ char *opt_usage_and_exit(const char *extra);
 	cast_if_any(char *(*)(void *), (cb), &*(cb),	\
 		    char *(*)(typeof(*(arg))*),		\
 		    char *(*)(const typeof(*(arg))*),	\
-		    char *(*)(const typeof(*(arg))*)),	\
-	NULL, (arg)
+		    char *(*)(const void *)),		\
+	NULL, NULL, (arg)
 
 /* Resolves to the four parameters for arg callbacks. */
-#define OPT_CB_ARG(cb, arg)						\
+#define OPT_CB_ARG(cb, show, arg)					\
 	OPT_HASARG, NULL,						\
 	cast_if_any(char *(*)(const char *,void *), (cb), &*(cb),	\
 		    char *(*)(const char *, typeof(*(arg))*),		\
 		    char *(*)(const char *, const typeof(*(arg))*),	\
-		    char *(*)(const char *, const typeof(*(arg))*)),	\
+		    char *(*)(const char *, const void *)),		\
+	cast_if_type(void (*)(char buf[], const void *), (show), &*(show), \
+		     void (*)(char buf[], const typeof(*(arg))*)),	\
 	(arg)
 
 /* Non-typesafe register function. */
 void _opt_register(const char *longopt, char shortopt, enum opt_flags flags,
 		   char *(*cb)(void *arg),
 		   char *(*cb_arg)(const char *optarg, void *arg),
+		   void (*show)(char buf[OPT_SHOW_LEN], const void *arg),
 		   void *arg, const char *desc);
 
 /* We use this to get typechecking for OPT_SUBTABLE */

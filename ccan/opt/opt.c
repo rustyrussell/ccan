@@ -31,6 +31,7 @@ static void add_opt(const struct opt_table *entry)
 void _opt_register(const char *longopt, char shortopt, enum opt_flags flags,
 		   char *(*cb)(void *arg),
 		   char *(*cb_arg)(const char *optarg, void *arg),
+		   void (*show)(char buf[OPT_SHOW_LEN], const void *arg),
 		   void *arg, const char *desc)
 {
 	struct opt_table opt;
@@ -39,6 +40,7 @@ void _opt_register(const char *longopt, char shortopt, enum opt_flags flags,
 	opt.flags = flags;
 	opt.cb = cb;
 	opt.cb_arg = cb_arg;
+	opt.show = show;
 	opt.arg = arg;
 	opt.desc = desc;
 	check_opt(&opt);

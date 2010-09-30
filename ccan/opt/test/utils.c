@@ -15,11 +15,16 @@ char *test_noarg(void *arg)
 	return NULL;
 }
 
-char *test_arg(const char *optarg, void *arg)
+char *test_arg(const char *optarg, const char *arg)
 {
 	test_cb_called++;
 	ok1(strcmp(optarg, arg) == 0);
 	return NULL;
+}
+
+void show_arg(char buf[OPT_SHOW_LEN], const char *arg)
+{
+	strncpy(buf, arg, OPT_SHOW_LEN);
 }
 
 char *err_output = NULL;
@@ -66,14 +71,14 @@ bool parse_args(int *argc, char ***argv, ...)
 struct opt_table short_table[] = {
 	/* Short opts, different args. */
 	{ OPT_WITHOUT_ARG(NULL, 'a', test_noarg, "a"), "Description of a" },
-	{ OPT_WITH_ARG(NULL, 'b', test_arg, "b"), "Description of b" },
+	{ OPT_WITH_ARG(NULL, 'b', test_arg, show_arg, "b"), "Description of b" },
 	OPT_ENDTABLE
 };
 
 struct opt_table long_table[] = {
 	/* Long opts, different args. */
 	{ OPT_WITHOUT_ARG("ddd", 0, test_noarg, "ddd"), "Description of ddd" },
-	{ OPT_WITH_ARG("eee", 0, test_arg, "eee"), "Description of eee" },
+	{ OPT_WITH_ARG("eee", 0, test_arg, show_arg, "eee"), },
 	OPT_ENDTABLE
 };
 
@@ -81,14 +86,15 @@ struct opt_table long_and_short_table[] = {
 	/* Short and long, different args. */
 	{ OPT_WITHOUT_ARG("ggg", 'g', test_noarg, "ggg"),
 	  "Description of ggg" },
-	{ OPT_WITH_ARG("hhh", 'h', test_arg, "hhh"), "Description of hhh"},
+	{ OPT_WITH_ARG("hhh", 'h', test_arg, NULL, "hhh"),
+	  "Description of hhh"},
 	OPT_ENDTABLE
 };
 
 /* Sub-table test. */
 struct opt_table subtables[] = {
 	/* Short and long, no description */
-	{ OPT_WITH_ARG("jjj", 'j', test_arg, "jjj") },
+	{ OPT_WITH_ARG("jjj", 'j', test_arg, show_arg, "jjj") },
 	OPT_SUBTABLE(short_table, NULL),
 	OPT_SUBTABLE(long_table, "long table options"),
 	OPT_SUBTABLE(long_and_short_table, opt_table_hidden),
