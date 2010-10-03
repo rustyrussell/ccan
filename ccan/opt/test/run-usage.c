@@ -17,13 +17,14 @@ static char *my_cb(void *p)
 int main(int argc, char *argv[])
 {
 	char *output;
-	plan_tests(18);
+
+	plan_tests(19);
 	opt_register_table(subtables, NULL);
-	opt_register_noarg("kkk", 'k', my_cb, NULL, "magic kkk option");
+	opt_register_noarg("--kkk/-k", my_cb, NULL, "magic kkk option");
 	output = opt_usage("my name", "ExTrA Args");
 	diag("%s", output);
 	ok1(strstr(output, "Usage: my name"));
-	ok1(strstr(output, "--jjj/-j <arg>"));
+	ok1(strstr(output, "--jjj/-j/--lll/-l <arg>"));
 	ok1(strstr(output, "ExTrA Args"));
 	ok1(strstr(output, "-a "));
 	ok1(strstr(output, " Description of a\n"));
@@ -34,13 +35,15 @@ int main(int argc, char *argv[])
 	ok1(strstr(output, "--eee <arg> "));
 	ok1(strstr(output, " (default: eee)\n"));
 	ok1(strstr(output, "long table options:\n"));
-	/* This table is hidden. */
-	ok1(!strstr(output, "--ggg/-g "));
-	ok1(!strstr(output, " Description of ggg\n"));
-	ok1(!strstr(output, "--hhh/-h <arg>"));
-	ok1(!strstr(output, " Description of hhh\n"));
+	ok1(strstr(output, "--ggg/-g "));
+	ok1(strstr(output, " Description of ggg\n"));
+	ok1(strstr(output, "-h/--hhh <arg>"));
+	ok1(strstr(output, " Description of hhh\n"));
 	ok1(strstr(output, "--kkk/-k"));
 	ok1(strstr(output, "magic kkk option"));
+	/* This entry is hidden. */
+	ok1(!strstr(output, "--mmm/-m"));
+
 	free(output);
 
 	return exit_status();

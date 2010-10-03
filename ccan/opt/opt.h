@@ -16,8 +16,7 @@ enum opt_flags {
 #define OPT_SHOW_LEN 80
 
 struct opt_table {
-	const char *longopt; /* --longopt, or NULL */
-	char shortopt; /* -s, or 0 */
+	const char *names; /* slash-separated names, --longopt or -s */
 	enum opt_flags flags;
 	char *(*cb)(void *arg); /* OPT_NOARG */
 	char *(*cb_arg)(const char *optarg, void *arg); /* OPT_HASARG */
@@ -28,8 +27,7 @@ struct opt_table {
 
 /**
  * OPT_WITHOUT_ARG() - macro for initializing an opt_table entry (without arg)
- * @longopt: the name of the argument (eg. "foo" for "--foo"), or NULL.
- * @shortopt: the character of the argument (eg. 'f' for "-f"), or 0.
+ * @names: the names of the option eg. "--foo", "-f" or "--foo/-f/--foobar".
  * @cb: the callback when the option is found.
  * @arg: the argument to hand to @cb.
  *
@@ -37,20 +35,19 @@ struct opt_table {
  * of type "char *cb(type *)", "char *cb(const type *)" or "char *cb(void *)",
  * where "type" is the type of the @arg argument.
  *
- * At least one of @longopt and @shortopt must be non-zero.  If the
- * @cb returns non-NULL, opt_parse() will stop parsing, use the returned
- * string to form an error message, free() the string and return false.
+ * If the @cb returns non-NULL, opt_parse() will stop parsing, use the
+ * returned string to form an error message for errlog(), free() the
+ * string and return false.
  *
  * See Also:
  *	OPT_WITH_ARG()
  */
-#define OPT_WITHOUT_ARG(longopt, shortopt, cb, arg)	\
-	(longopt), (shortopt), OPT_CB_NOARG((cb), (arg))
+#define OPT_WITHOUT_ARG(names, cb, arg) \
+	(names), OPT_CB_NOARG((cb), (arg))
 
 /**
  * OPT_WITH_ARG() - macro for initializing long and short option (with arg)
- * @longopt: the name of the argument (eg. "foo" for "--foo <arg>"), or NULL.
- * @shortopt: the character of the argument (eg. 'f' for "-f <arg>"), or 0.
+ * @names: the names of the option eg. "--foo", "-f" or "--foo/-f/--foobar".
  * @cb: the callback when the option is found (along with <arg>).
  * @show: the callback to print the value in get_usage (or NULL)
  * @arg: the argument to hand to @cb and @show
@@ -66,41 +63,31 @@ struct opt_table {
  * argument; unless it uses the entire OPT_SHOW_LEN bytes it should
  * nul-terminate that buffer.
  *
- * At least one of @longopt and @shortopt must be non-zero.  If the
- * @cb returns false, opt_parse() will stop parsing and return false.
+ * If the @cb returns non-NULL, opt_parse() will stop parsing, use the
+ * returned string to form an error message for errlog(), free() the
+ * string and return false.
  *
  * See Also:
  *	OPT_WITHOUT_ARG()
  */
-#define OPT_WITH_ARG(longopt, shortopt, cb, show, arg)	\
-	(longopt), (shortopt), OPT_CB_ARG((cb), (show), (arg))
+#define OPT_WITH_ARG(name, cb, show, arg) \
+	(name), OPT_CB_ARG((cb), (show), (arg))
 
 /**
  * OPT_SUBTABLE() - macro for including another table inside a table.
  * @table: the table to include in this table.
  * @desc: description of this subtable (for opt_usage()) or NULL.
- *
- * The @desc field can be opt_table_hidden to hide the options from opt_usage().
  */
 #define OPT_SUBTABLE(table, desc)					\
-	{ (const char *)(table), sizeof(_check_is_entry(table)),	\
-	OPT_SUBTABLE,	NULL, NULL, NULL, NULL, (desc) }
-
-/**
- * opt_table_hidden - string for undocumented option tables.
- *
- * This can be used as the desc option to OPT_SUBTABLE or passed to
- * opt_register_table() if you want the options not to be shown by
- * opt_usage().
- */
-extern const char opt_table_hidden[];
+	{ (const char *)(table), OPT_SUBTABLE,				\
+	sizeof(_check_is_entry(table)) ? NULL : NULL, NULL, NULL, NULL, (desc) }
 
 /**
  * OPT_ENDTABLE - macro to create final entry in table.
  *
  * This must be the final element in the opt_table array.
  */
-#define OPT_ENDTABLE { NULL, 0, OPT_END }
+#define OPT_ENDTABLE { NULL, OPT_END }
 
 /**
  * opt_register_table - register a table of options
@@ -111,9 +98,11 @@ extern const char opt_table_hidden[];
  *
  * Example:
  * static struct opt_table opts[] = {
- * 	{ OPT_WITHOUT_ARG("verbose", 'v', opt_inc_intval, &verbose),
+ * 	{ OPT_WITHOUT_ARG("--verbose", opt_inc_intval, &verbose),
  * 	  "Verbose mode (can be specified more than once)" },
- * 	{ OPT_WITHOUT_ARG("usage", 0, opt_usage_and_exit,
+ * 	{ OPT_WITHOUT_ARG("-v", opt_inc_intval, &verbose),
+ * 	  "Verbose mode (can be specified more than once)" },
+ * 	{ OPT_WITHOUT_ARG("--usage", opt_usage_and_exit,
  * 			  "args...\nA silly test program."),
  * 	  "Print this message." },
  * 	OPT_ENDTABLE
@@ -126,8 +115,7 @@ void opt_register_table(const struct opt_table table[], const char *desc);
 
 /**
  * opt_register_noarg - register an option with no arguments
- * @longopt: the name of the argument (eg. "foo" for "--foo"), or NULL.
- * @shortopt: the character of the argument (eg. 'f' for "-f"), or 0.
+ * @names: the names of the option eg. "--foo", "-f" or "--foo/-f/--foobar".
  * @cb: the callback when the option is found.
  * @arg: the argument to hand to @cb.
  * @desc: the verbose desction of the option (for opt_usage()), or NULL.
@@ -139,16 +127,16 @@ void opt_register_table(const struct opt_table table[], const char *desc);
  * or "char *cb(void *)", where "type" is the type of the @arg
  * argument.
  *
- * At least one of @longopt and @shortopt must be non-zero.  If the
- * @cb returns false, opt_parse() will stop parsing and return false.
+ * If the @cb returns non-NULL, opt_parse() will stop parsing, use the
+ * returned string to form an error message for errlog(), free() the
+ * string and return false.
  */
-#define opt_register_noarg(longopt, shortopt, cb, arg, desc)	\
-	_opt_register((longopt), (shortopt), OPT_CB_NOARG((cb), (arg)), (desc))
+#define opt_register_noarg(names, cb, arg, desc)			\
+	_opt_register((names), OPT_CB_NOARG((cb), (arg)), (desc))
 
 /**
  * opt_register_arg - register an option with an arguments
- * @longopt: the name of the argument (eg. "foo" for "--foo"), or NULL.
- * @shortopt: the character of the argument (eg. 'f' for "-f"), or 0.
+ * @names: the names of the option eg. "--foo", "-f" or "--foo/-f/--foobar".
  * @cb: the callback when the option is found.
  * @show: the callback when the option is found.
  * @arg: the argument to hand to @cb.
@@ -166,11 +154,11 @@ void opt_register_table(const struct opt_table table[], const char *desc);
  * @cb returns false, opt_parse() will stop parsing and return false.
  *
  * Example:
- *	opt_register_arg("explode", 'e', explode_cb, NULL,
+ *	opt_register_arg("--explode", explode_cb, NULL,
  *			 "Make the machine explode (developers only)");
  */
-#define opt_register_arg(longopt, shortopt, cb, show, arg, desc)	\
-   _opt_register((longopt), (shortopt), OPT_CB_ARG((cb), (show), (arg)), (desc))
+#define opt_register_arg(names, cb, show, arg, desc)			\
+	_opt_register((names), OPT_CB_ARG((cb), (show), (arg)), (desc))
 
 /**
  * opt_parse - parse arguments.
@@ -216,11 +204,20 @@ char *opt_invalid_argument(const char *arg);
  * @extra: extra details to print after the initial command, or NULL.
  *
  * Creates a usage message, with the program name, arguments, some extra details
- * and a table of all the options with their descriptions.
+ * and a table of all the options with their descriptions.  If an option has
+ * description opt_hidden, it is not shown here.
  *
  * The result should be passed to free().
  */
 char *opt_usage(const char *argv0, const char *extra);
+
+/**
+ * opt_hidden - string for undocumented options.
+ *
+ * This can be used as the desc parameter if you want an option not to be
+ * shown by opt_usage().
+ */
+extern const char opt_hidden[];
 
 /* Standard helpers.  You can write your own: */
 /* Sets the @b to true. */
@@ -279,7 +276,7 @@ char *opt_usage_and_exit(const char *extra);
 	(arg)
 
 /* Non-typesafe register function. */
-void _opt_register(const char *longopt, char shortopt, enum opt_flags flags,
+void _opt_register(const char *names, enum opt_flags flags,
 		   char *(*cb)(void *arg),
 		   char *(*cb_arg)(const char *optarg, void *arg),
 		   void (*show)(char buf[OPT_SHOW_LEN], const void *arg),

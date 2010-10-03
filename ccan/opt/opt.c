@@ -11,15 +11,117 @@
 #include "private.h"
 
 struct opt_table *opt_table;
-unsigned int opt_count;
+unsigned int opt_count, opt_num_short, opt_num_short_arg, opt_num_long;
 const char *opt_argv0;
+
+static const char *first_name(const char *names, unsigned *len)
+{
+	*len = strcspn(names + 1, "/");
+	return names + 1;
+}
+
+static const char *next_name(const char *names, unsigned *len)
+{
+	names += *len;
+	if (!names[0])
+		return NULL;
+	return first_name(names + 1, len);
+}
+
+/* FIXME: Combine with next_opt */
+static const char *first_opt(bool want_long, unsigned *i, unsigned *len)
+{
+	const char *p;
+	for (*i = 0; *i < opt_count; (*i)++) {
+		if (opt_table[*i].flags == OPT_SUBTABLE)
+			continue;
+		for (p = first_name(opt_table[*i].names, len);
+		     p;
+		     p = next_name(p, len)) {
+			if ((p[0] == '-') == want_long) {
+				if (want_long) {
+					/* Skip leading "-" */
+					(*len)--;
+					p++;
+				}
+				return p;
+			}
+		}
+	}
+	return NULL;
+}
+
+static const char *next_opt(const char *names, bool want_long,
+			    unsigned *i, unsigned *len)
+{
+	const char *p = next_name(names, len);
+	for (;;) {
+		while (p) {
+			if ((p[0] == '-') == want_long) {
+				if (want_long) {
+					/* Skip leading "-" */
+					(*len)--;
+					p++;
+				}
+				return p;
+			}
+			p = next_name(p, len);
+		}
+		do {
+			(*i)++;
+		} while (*i < opt_count && opt_table[*i].flags == OPT_SUBTABLE);
+		if (*i == opt_count)
+			return NULL;
+		p = first_name(opt_table[*i].names, len);
+	}
+}
+
+static const char *first_lopt(unsigned *i, unsigned *len)
+{
+	return first_opt(true, i, len);
+}
+
+static const char *next_lopt(const char *names, unsigned *i, unsigned *len)
+{
+	return next_opt(names, true, i, len);
+}
+
+const char *first_sopt(unsigned *i)
+{
+	unsigned unused_len;
+	return first_opt(false, i, &unused_len);
+}
+
+const char *next_sopt(const char *names, unsigned *i)
+{
+	unsigned unused_len = 1;
+
+	return next_opt(names, false, i, &unused_len);
+}
 
 static void check_opt(const struct opt_table *entry)
 {
+	const char *p;
+	unsigned len;
+
 	assert(entry->flags == OPT_HASARG || entry->flags == OPT_NOARG);
-	assert(entry->shortopt || entry->longopt);
-	assert(entry->shortopt != ':');
-	assert(entry->shortopt != '?' || entry->flags == OPT_NOARG);
+
+	assert(entry->names[0] == '-');
+	for (p = first_name(entry->names, &len); p; p = next_name(p, &len)) {
+		if (*p == '-') {
+			assert(len > 1);
+			opt_num_long++;
+		} else {
+			assert(len == 1);
+			assert(*p != ':');
+			opt_num_short++;
+			if (entry->flags == OPT_HASARG) {
+				opt_num_short_arg++;
+				/* FIXME: -? with ops breaks getopt_long */
+				assert(*p != '?');
+			}
+		}
+	}
 }
 
 static void add_opt(const struct opt_table *entry)
@@ -28,15 +130,14 @@ static void add_opt(const struct opt_table *entry)
 	opt_table[opt_count++] = *entry;
 }
 
-void _opt_register(const char *longopt, char shortopt, enum opt_flags flags,
+void _opt_register(const char *names, enum opt_flags flags,
 		   char *(*cb)(void *arg),
 		   char *(*cb_arg)(const char *optarg, void *arg),
 		   void (*show)(char buf[OPT_SHOW_LEN], const void *arg),
 		   void *arg, const char *desc)
 {
 	struct opt_table opt;
-	opt.longopt = longopt;
-	opt.shortopt = shortopt;
+	opt.names = names;
 	opt.flags = flags;
 	opt.cb = cb;
 	opt.cb_arg = cb_arg;
@@ -71,61 +172,66 @@ void opt_register_table(const struct opt_table entry[], const char *desc)
 
 static char *make_optstring(void)
 {
-	/* Worst case, each one is ":x:", plus nul term. */
-	char *str = malloc(1 + opt_count * 2 + 1);
-	unsigned int num, i;
+	char *str = malloc(1 + opt_num_short + opt_num_short_arg + 1);
+	const char *p;
+	unsigned int i, num = 0;
 
 	/* This tells getopt_long we want a ':' returned for missing arg. */
-	str[0] = ':';
-	num = 1;
-	for (i = 0; i < opt_count; i++) {
-		if (!opt_table[i].shortopt)
-			continue;
-		str[num++] = opt_table[i].shortopt;
+	str[num++] = ':';
+	for (p = first_sopt(&i); p; p = next_sopt(p, &i)) {
+		str[num++] = *p;
 		if (opt_table[i].flags == OPT_HASARG)
 			str[num++] = ':';
 	}
-	str[num] = '\0';
+	str[num++] = '\0';
+	assert(num == 1 + opt_num_short + opt_num_short_arg + 1);
 	return str;
 }
 
 static struct option *make_options(void)
 {
-	struct option *options = malloc(sizeof(*options) * (opt_count + 1));
-	unsigned int i, num;
+	struct option *options = malloc(sizeof(*options) * (opt_num_long + 1));
+	unsigned int i, num = 0, len;
+	const char *p;
 
-	for (num = i = 0; i < opt_count; i++) {
-		if (!opt_table[i].longopt)
-			continue;
-		options[num].name = opt_table[i].longopt;
+	for (p = first_lopt(&i, &len); p; p = next_lopt(p, &i, &len)) {
+		char *buf = malloc(len + 1);
+		memcpy(buf, p, len);
+		buf[len] = 0;
+		options[num].name = buf;
 		options[num].has_arg = (opt_table[i].flags == OPT_HASARG);
 		options[num].flag = NULL;
 		options[num].val = 0;
 		num++;
 	}
 	memset(&options[num], 0, sizeof(options[num]));
+	assert(num == opt_num_long);
 	return options;
 }
 
 static struct opt_table *find_short(char shortopt)
 {
 	unsigned int i;
-	for (i = 0; i < opt_count; i++) {
-		if (opt_table[i].shortopt == shortopt)
+	const char *p;
+
+	for (p = first_sopt(&i); p; p = next_sopt(p, &i)) {
+		if (*p == shortopt)
 			return &opt_table[i];
 	}
 	abort();
 }
 
 /* We want the index'th long entry. */
-static struct opt_table *find_long(int index)
+static struct opt_table *find_long(int index, const char **name)
 {
-	unsigned int i;
-	for (i = 0; i < opt_count; i++) {
-		if (!opt_table[i].longopt)
-			continue;
-		if (index == 0)
+	unsigned int i, len;
+	const char *p;
+
+	for (p = first_lopt(&i, &len); p; p = next_lopt(p, &i, &len)) {
+		if (index == 0) {
+			*name = p;
 			return &opt_table[i];
+		}
 		index--;
 	}
 	abort();
@@ -144,7 +250,8 @@ static void parse_fail(void (*errlog)(const char *fmt, ...),
 	if (shortopt)
 		errlog("%s: -%c: %s", opt_argv0, shortopt, problem);
 	else
-		errlog("%s: --%s: %s", opt_argv0, longopt, problem);
+		errlog("%s: --%.*s: %s", opt_argv0,
+		       strcspn(longopt, "/"), longopt, problem);
 }
 
 void dump_optstate(void);
@@ -168,10 +275,11 @@ bool opt_parse(int *argc, char *argv[], void (*errlog)(const char *fmt, ...))
 
 	/* Reset in case we're called more than once. */
 	optopt = 0;
-	optind = 1;
+	optind = 0;
 	while ((ret = getopt_long(*argc, argv, optstring, options, &longidx))
 	       != -1) {
 		char *problem;
+		const char *name;
 		bool missing = false;
 
 		/* optopt is 0 if it's an unknown long option, *or* if
@@ -190,11 +298,11 @@ bool opt_parse(int *argc, char *argv[], void (*errlog)(const char *fmt, ...))
 		if (ret != 0)
 			e = find_short(ret);
 		else
-			e = find_long(longidx);
+			e = find_long(longidx, &name);
 
 		/* Missing argument */
 		if (missing) {
-			parse_fail(errlog, e->shortopt, e->longopt,
+			parse_fail(errlog, ret, name,
 				   "option requires an argument");
 			break;
 		}
@@ -205,8 +313,7 @@ bool opt_parse(int *argc, char *argv[], void (*errlog)(const char *fmt, ...))
 			problem = e->cb(e->arg);
 
 		if (problem) {
-			parse_fail(errlog, e->shortopt, e->longopt,
-				   problem);
+			parse_fail(errlog, ret, name, problem);
 			free(problem);
 			break;
 		}
