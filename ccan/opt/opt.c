@@ -280,7 +280,6 @@ bool opt_parse(int *argc, char *argv[], void (*errlog)(const char *fmt, ...))
 	       != -1) {
 		char *problem;
 		const char *name;
-		bool missing = false;
 
 		/* optopt is 0 if it's an unknown long option, *or* if
 		 * -? is a valid short option. */
@@ -291,21 +290,16 @@ bool opt_parse(int *argc, char *argv[], void (*errlog)(const char *fmt, ...))
 				break;
 			}
 		} else if (ret == ':') {
-			missing = true;
-			ret = optopt;
+			/* Missing argument: longidx not updated :( */
+			parse_fail(errlog, optopt, argv[optind-1]+2,
+				   "option requires an argument");
+			break;
 		}
 
 		if (ret != 0)
 			e = find_short(ret);
 		else
 			e = find_long(longidx, &name);
-
-		/* Missing argument */
-		if (missing) {
-			parse_fail(errlog, ret, name,
-				   "option requires an argument");
-			break;
-		}
 
 		if (e->flags == OPT_HASARG)
 			problem = e->cb_arg(optarg, e->arg);
