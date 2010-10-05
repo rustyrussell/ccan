@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
 	plan_tests(148);
 
 	/* Simple short arg.*/
-	opt_register_noarg("-a", test_noarg, NULL, NULL);
+	opt_register_noarg("-a", test_noarg, NULL, "All");
 	ok1(parse_args(&argc, &argv, "-a", NULL));
 	ok1(argc == 1);
 	ok1(argv[0] == myname);
@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 	ok1(test_cb_called == 1);
 
 	/* Simple long arg. */
-	opt_register_noarg("--aaa", test_noarg, NULL, NULL);
+	opt_register_noarg("--aaa", test_noarg, NULL, "AAAAll");
 	ok1(parse_args(&argc, &argv, "--aaa", NULL));
 	ok1(argc == 1);
 	ok1(argv[0] == myname);
@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
 	ok1(test_cb_called == 2);
 
 	/* Both long and short args. */
-	opt_register_noarg("--aaa/-a", test_noarg, NULL, NULL);
+	opt_register_noarg("--aaa/-a", test_noarg, NULL, "AAAAAAll");
 	ok1(parse_args(&argc, &argv, "--aaa", "-a", NULL));
 	ok1(argc == 1);
 	ok1(argv[0] == myname);
@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 	/* Argument variants. */
 	reset_options();
 	test_cb_called = 0;
-	opt_register_arg("-a/--aaa", test_arg, NULL, "aaa", NULL);
+	opt_register_arg("-a/--aaa", test_arg, NULL, "aaa", "AAAAAAll");
 	ok1(parse_args(&argc, &argv, "--aaa", "aaa", NULL));
 	ok1(argc == 1);
 	ok1(argv[0] == myname);
@@ -201,7 +201,7 @@ int main(int argc, char *argv[])
 	reset_options();
 
 	/* glibc's getopt does not handle ? with arguments. */
-	opt_register_noarg("-?", test_noarg, NULL, NULL);
+	opt_register_noarg("-?", test_noarg, NULL, "Help");
 	ok1(parse_args(&argc, &argv, "-?", NULL));
 	ok1(test_cb_called == 1);
 	ok1(parse_args(&argc, &argv, "-a", NULL) == false);

@@ -32,7 +32,7 @@ static const char *next_name(const char *names, unsigned *len)
 static const char *first_opt(unsigned *i, unsigned *len)
 {
 	for (*i = 0; *i < opt_count; (*i)++) {
-		if (opt_table[*i].flags == OPT_SUBTABLE)
+		if (opt_table[*i].type == OPT_SUBTABLE)
 			continue;
 		return first_name(opt_table[*i].names, len);
 	}
@@ -42,7 +42,7 @@ static const char *first_opt(unsigned *i, unsigned *len)
 static const char *next_opt(const char *p, unsigned *i, unsigned *len)
 {
 	for (; *i < opt_count; (*i)++) {
-		if (opt_table[*i].flags == OPT_SUBTABLE)
+		if (opt_table[*i].type == OPT_SUBTABLE)
 			continue;
 		if (!p)
 			return first_name(opt_table[*i].names, len);
@@ -107,26 +107,44 @@ static void check_opt(const struct opt_table *entry)
 	const char *p;
 	unsigned len;
 
-	assert(entry->flags == OPT_HASARG || entry->flags == OPT_NOARG);
+	if (entry->type != OPT_HASARG && entry->type != OPT_NOARG)
+		errx(1, "Option %s: unknown entry type %u",
+		     entry->names, entry->type);
 
-	assert(entry->names[0] == '-');
+	if (!entry->desc)
+		errx(1, "Option %s: description cannot be NULL", entry->names);
+
+
+	if (entry->names[0] != '-')
+		errx(1, "Option %s: does not begin with '-'", entry->names);
+
 	for (p = first_name(entry->names, &len); p; p = next_name(p, &len)) {
 		if (*p == '-') {
-			assert(len > 1);
+			if (len == 1)
+				errx(1, "Option %s: invalid long option '--'",
+				     entry->names);
 			opt_num_long++;
 		} else {
-			assert(len == 1);
-			assert(*p != ':');
+			if (len != 1)
+				errx(1, "Option %s: invalid short option"
+				     " '%.*s'", entry->names, len+1, p-1);
+			if (*p == ':')
+				errx(1, "Option %s: invalid short option '-:'",
+				     entry->names);
 			opt_num_short++;
-			if (entry->flags == OPT_HASARG) {
+			if (entry->type == OPT_HASARG) {
 				opt_num_short_arg++;
-				/* FIXME: -? with ops breaks getopt_long */
-				assert(*p != '?');
+				if (*p == '?')
+					errx(1, "Option %s: '-?' cannot take"
+					     " an argument", entry->names);
 			}
 		}
 		/* Don't document args unless there are some. */
-		if (entry->flags == OPT_NOARG)
-			assert(p[len] != ' ' && p[len] != '=');
+		if (entry->type == OPT_NOARG) {
+			if (p[len] == ' ' || p[len] == '=')
+				errx(1, "Option %s: does not take arguments"
+				     "'%s'", entry->names, p+len+1);
+		}
 	}
 }
 
@@ -136,7 +154,7 @@ static void add_opt(const struct opt_table *entry)
 	opt_table[opt_count++] = *entry;
 }
 
-void _opt_register(const char *names, enum opt_flags flags,
+void _opt_register(const char *names, enum opt_type type,
 		   char *(*cb)(void *arg),
 		   char *(*cb_arg)(const char *optarg, void *arg),
 		   void (*show)(char buf[OPT_SHOW_LEN], const void *arg),
@@ -144,7 +162,7 @@ void _opt_register(const char *names, enum opt_flags flags,
 {
 	struct opt_table opt;
 	opt.names = names;
-	opt.flags = flags;
+	opt.type = type;
 	opt.cb = cb;
 	opt.cb_arg = cb_arg;
 	opt.show = show;
@@ -162,8 +180,8 @@ void opt_register_table(const struct opt_table entry[], const char *desc)
 		struct opt_table heading = OPT_SUBTABLE(NULL, desc);
 		add_opt(&heading);
 	}
-	for (i = 0; entry[i].flags != OPT_END; i++) {
-		if (entry[i].flags == OPT_SUBTABLE)
+	for (i = 0; entry[i].type != OPT_END; i++) {
+		if (entry[i].type == OPT_SUBTABLE)
 			opt_register_table(subtable_of(&entry[i]),
 					   entry[i].desc);
 		else {
@@ -186,7 +204,7 @@ static char *make_optstring(void)
 	str[num++] = ':';
 	for (p = first_sopt(&i); p; p = next_sopt(p, &i)) {
 		str[num++] = *p;
-		if (opt_table[i].flags == OPT_HASARG)
+		if (opt_table[i].type == OPT_HASARG)
 			str[num++] = ':';
 	}
 	str[num++] = '\0';
@@ -205,7 +223,7 @@ static struct option *make_options(void)
 		memcpy(buf, p, len);
 		buf[len] = 0;
 		options[num].name = buf;
-		options[num].has_arg = (opt_table[i].flags == OPT_HASARG);
+		options[num].has_arg = (opt_table[i].type == OPT_HASARG);
 		options[num].flag = NULL;
 		options[num].val = 0;
 		num++;
@@ -300,7 +318,7 @@ bool opt_parse(int *argc, char *argv[], void (*errlog)(const char *fmt, ...))
 		else
 			e = find_long(longidx, &name);
 
-		if (e->flags == OPT_HASARG)
+		if (e->type == OPT_HASARG)
 			problem = e->cb_arg(optarg, e->arg);
 		else
 			problem = e->cb(e->arg);

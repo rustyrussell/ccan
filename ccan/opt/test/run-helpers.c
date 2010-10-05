@@ -55,10 +55,10 @@ int main(int argc, char *argv[])
 	{
 		bool arg = false;
 		reset_options();
-		opt_register_noarg("-a", opt_set_bool, &arg, NULL);
+		opt_register_noarg("-a", opt_set_bool, &arg, "");
 		ok1(parse_args(&argc, &argv, "-a", NULL));
 		ok1(arg);
-		opt_register_arg("-b", opt_set_bool_arg, NULL, &arg, NULL);
+		opt_register_arg("-b", opt_set_bool_arg, NULL, &arg, "");
 		ok1(parse_args(&argc, &argv, "-b", "no", NULL));
 		ok1(!arg);
 		ok1(parse_args(&argc, &argv, "-b", "yes", NULL));
@@ -75,11 +75,11 @@ int main(int argc, char *argv[])
 	{
 		bool arg = true;
 		reset_options();
-		opt_register_noarg("-a", opt_set_invbool, &arg, NULL);
+		opt_register_noarg("-a", opt_set_invbool, &arg, "");
 		ok1(parse_args(&argc, &argv, "-a", NULL));
 		ok1(!arg);
 		opt_register_arg("-b", opt_set_invbool_arg, NULL,
-				 &arg, NULL);
+				 &arg, "");
 		ok1(parse_args(&argc, &argv, "-b", "no", NULL));
 		ok1(arg);
 		ok1(parse_args(&argc, &argv, "-b", "yes", NULL));
@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
 	{
 		char *arg = (char *)"wrong";
 		reset_options();
-		opt_register_arg("-a", opt_set_charp, NULL, &arg, NULL);
+		opt_register_arg("-a", opt_set_charp, NULL, &arg, "All");
 		ok1(parse_args(&argc, &argv, "-a", "string", NULL));
 		ok1(strcmp(arg, "string") == 0);
 	}
@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 	{
 		int arg = 1000;
 		reset_options();
-		opt_register_arg("-a", opt_set_intval, NULL, &arg, NULL);
+		opt_register_arg("-a", opt_set_intval, NULL, &arg, "All");
 		ok1(parse_args(&argc, &argv, "-a", "9999", NULL));
 		ok1(arg == 9999);
 		ok1(parse_args(&argc, &argv, "-a", "-9999", NULL));
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
 	{
 		unsigned int arg = 1000;
 		reset_options();
-		opt_register_arg("-a", opt_set_uintval, NULL, &arg, NULL);
+		opt_register_arg("-a", opt_set_uintval, NULL, &arg, "All");
 		ok1(parse_args(&argc, &argv, "-a", "9999", NULL));
 		ok1(arg == 9999);
 		ok1(!parse_args(&argc, &argv, "-a", "-9999", NULL));
@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
 	{
 		long int arg = 1000;
 		reset_options();
-		opt_register_arg("-a", opt_set_longval, NULL, &arg, NULL);
+		opt_register_arg("-a", opt_set_longval, NULL, &arg, "All");
 		ok1(parse_args(&argc, &argv, "-a", "9999", NULL));
 		ok1(arg == 9999);
 		ok1(parse_args(&argc, &argv, "-a", "-9999", NULL));
@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
 	{
 		unsigned long int arg = 1000;
 		reset_options();
-		opt_register_arg("-a", opt_set_ulongval, NULL, &arg, NULL);
+		opt_register_arg("-a", opt_set_ulongval, NULL, &arg, "All");
 		ok1(parse_args(&argc, &argv, "-a", "9999", NULL));
 		ok1(arg == 9999);
 		ok1(!parse_args(&argc, &argv, "-a", "-9999", NULL));
@@ -182,7 +182,7 @@ int main(int argc, char *argv[])
 	{
 		int arg = 1000;
 		reset_options();
-		opt_register_noarg("-a", opt_inc_intval, &arg, NULL);
+		opt_register_noarg("-a", opt_inc_intval, &arg, "");
 		ok1(parse_args(&argc, &argv, "-a", NULL));
 		ok1(arg == 1001);
 		ok1(parse_args(&argc, &argv, "-a", "-a", NULL));
@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
 		int exitval;
 		reset_options();
 		opt_register_noarg("-a",
-				   opt_version_and_exit, "1.2.3", NULL);
+				   opt_version_and_exit, "1.2.3", "");
 		exitval = setjmp(exited);
 		if (exitval == 0) {
 			parse_args(&argc, &argv, "-a", NULL);
@@ -214,7 +214,7 @@ int main(int argc, char *argv[])
 		int exitval;
 		reset_options();
 		opt_register_noarg("-a",
-				   opt_usage_and_exit, "[args]", NULL);
+				   opt_usage_and_exit, "[args]", "");
 		exitval = setjmp(exited);
 		if (exitval == 0) {
 			parse_args(&argc, &argv, "-a", NULL);

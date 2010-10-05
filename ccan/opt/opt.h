@@ -5,7 +5,7 @@
 
 /* You can use this directly to build tables, but the macros will ensure
  * consistency and type safety. */
-enum opt_flags {
+enum opt_type {
 	OPT_NOARG = 1,		/* -f/--foo */
 	OPT_HASARG = 2,		/* -f arg/--foo=arg/--foo arg */
 	OPT_SUBTABLE = 4,	/* Actually, longopt points to a subtable... */
@@ -17,7 +17,7 @@ enum opt_flags {
 
 struct opt_table {
 	const char *names; /* slash-separated names, --longopt or -s */
-	enum opt_flags flags;
+	enum opt_type type;
 	char *(*cb)(void *arg); /* OPT_NOARG */
 	char *(*cb_arg)(const char *optarg, void *arg); /* OPT_HASARG */
 	void (*show)(char buf[OPT_SHOW_LEN], const void *arg);
@@ -30,6 +30,7 @@ struct opt_table {
  * @names: the names of the option eg. "--foo", "-f" or "--foo/-f/--foobar".
  * @cb: the callback when the option is found.
  * @arg: the argument to hand to @cb.
+ * @desc: the description for opt_usage(), or opt_hidden.
  *
  * This is a typesafe wrapper for intializing a struct opt_table.  The callback
  * of type "char *cb(type *)", "char *cb(const type *)" or "char *cb(void *)",
@@ -46,8 +47,8 @@ struct opt_table {
  * See Also:
  *	OPT_WITH_ARG()
  */
-#define OPT_WITHOUT_ARG(names, cb, arg) \
-	(names), OPT_CB_NOARG((cb), (arg))
+#define OPT_WITHOUT_ARG(names, cb, arg, desc)	\
+	(names), OPT_CB_NOARG((cb), (arg)), (desc)
 
 /**
  * OPT_WITH_ARG() - macro for initializing long and short option (with arg)
@@ -55,6 +56,7 @@ struct opt_table {
  * @cb: the callback when the option is found (along with <arg>).
  * @show: the callback to print the value in get_usage (or NULL)
  * @arg: the argument to hand to @cb and @show
+ * @desc: the description for opt_usage(), or opt_hidden.
  *
  * This is a typesafe wrapper for intializing a struct opt_table.  The callback
  * is of type "char *cb(const char *, type *)",
@@ -80,8 +82,8 @@ struct opt_table {
  * See Also:
  *	OPT_WITHOUT_ARG()
  */
-#define OPT_WITH_ARG(name, cb, show, arg) \
-	(name), OPT_CB_ARG((cb), (show), (arg))
+#define OPT_WITH_ARG(name, cb, show, arg, desc)	\
+	(name), OPT_CB_ARG((cb), (show), (arg)), (desc)
 
 /**
  * OPT_SUBTABLE() - macro for including another table inside a table.
@@ -286,7 +288,7 @@ char *opt_usage_and_exit(const char *extra);
 	(arg)
 
 /* Non-typesafe register function. */
-void _opt_register(const char *names, enum opt_flags flags,
+void _opt_register(const char *names, enum opt_type type,
 		   char *(*cb)(void *arg),
 		   char *(*cb_arg)(const char *optarg, void *arg),
 		   void (*show)(char buf[OPT_SHOW_LEN], const void *arg),

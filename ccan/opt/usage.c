@@ -35,15 +35,13 @@ char *opt_usage(const char *argv0, const char *extra)
 		+ strlen("\n");
 
 	for (i = 0; i < opt_count; i++) {
-		if (opt_table[i].flags == OPT_SUBTABLE) {
+		if (opt_table[i].type == OPT_SUBTABLE) {
 			len += strlen("\n") + strlen(opt_table[i].desc)
 				+ strlen(":\n");
 		} else if (opt_table[i].desc != opt_hidden) {
 			len += strlen(opt_table[i].names) + strlen(" <arg>");
-			if (opt_table[i].desc) {
-				len += strlen(OPT_SPACE_PAD)
-					+ strlen(opt_table[i].desc) + 1;
-			}
+			len += strlen(OPT_SPACE_PAD)
+				+ strlen(opt_table[i].desc) + 1;
 			if (opt_table[i].show) {
 				len += strlen("(default: %s)")
 					+ OPT_SHOW_LEN + sizeof("...");
@@ -73,29 +71,26 @@ char *opt_usage(const char *argv0, const char *extra)
 	for (i = 0; i < opt_count; i++) {
 		if (opt_table[i].desc == opt_hidden)
 			continue;
-		if (opt_table[i].flags == OPT_SUBTABLE) {
+		if (opt_table[i].type == OPT_SUBTABLE) {
 			p += sprintf(p, "%s:\n", opt_table[i].desc);
 			continue;
 		}
 		len = sprintf(p, "%s", opt_table[i].names);
-		if (opt_table[i].flags == OPT_HASARG
+		if (opt_table[i].type == OPT_HASARG
 		    && !strchr(opt_table[i].names, ' ')
 		    && !strchr(opt_table[i].names, '='))
 			len += sprintf(p + len, " <arg>");
-		if (opt_table[i].desc || opt_table[i].show)
-			len += sprintf(p + len, "%.*s",
-				       len < strlen(OPT_SPACE_PAD)
-				       ? strlen(OPT_SPACE_PAD) - len : 1,
-				       OPT_SPACE_PAD);
+		len += sprintf(p + len, "%.*s",
+			       len < strlen(OPT_SPACE_PAD)
+			       ? strlen(OPT_SPACE_PAD) - len : 1,
+			       OPT_SPACE_PAD);
 
-		if (opt_table[i].desc)
-			len += sprintf(p + len, "%s", opt_table[i].desc);
+		len += sprintf(p + len, "%s", opt_table[i].desc);
 		if (opt_table[i].show) {
 			char buf[OPT_SHOW_LEN + sizeof("...")];
 			strcpy(buf + OPT_SHOW_LEN, "...");
 			opt_table[i].show(buf, opt_table[i].arg);
-			len += sprintf(p + len, "%s(default: %s)",
-				       opt_table[i].desc ? " " : "", buf);
+			len += sprintf(p + len, " (default: %s)", buf);
 		}
 		p += len;
 		p += sprintf(p, "\n");
