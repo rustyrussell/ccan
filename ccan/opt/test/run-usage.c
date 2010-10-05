@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
 	ok1(strstr(output, " Description of b (default: b)\n"));
 	ok1(strstr(output, "--ddd "));
 	ok1(strstr(output, " Description of ddd\n"));
-	ok1(strstr(output, "--eee <arg> "));
+	ok1(strstr(output, "--eee <filename> "));
 	ok1(strstr(output, " (default: eee)\n"));
 	ok1(strstr(output, "long table options:\n"));
 	ok1(strstr(output, "--ggg/-g "));

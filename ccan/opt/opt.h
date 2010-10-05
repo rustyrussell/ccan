@@ -39,6 +39,10 @@ struct opt_table {
  * returned string to form an error message for errlog(), free() the
  * string and return false.
  *
+ * Any number of equivalent short or long options can be listed in @names,
+ * separated by '/'.  Short options are a single hyphen followed by a single
+ * character, long options are two hypens followed by one or more characters.
+ *
  * See Also:
  *	OPT_WITH_ARG()
  */
@@ -47,7 +51,7 @@ struct opt_table {
 
 /**
  * OPT_WITH_ARG() - macro for initializing long and short option (with arg)
- * @names: the names of the option eg. "--foo", "-f" or "--foo/-f/--foobar".
+ * @names: the option names eg. "--foo=<arg>", "-f" or "-f/--foo <arg>".
  * @cb: the callback when the option is found (along with <arg>).
  * @show: the callback to print the value in get_usage (or NULL)
  * @arg: the argument to hand to @cb and @show
@@ -62,6 +66,12 @@ struct opt_table {
  * const type *)".  It should write up to OPT_SHOW_LEN bytes into the first
  * argument; unless it uses the entire OPT_SHOW_LEN bytes it should
  * nul-terminate that buffer.
+ *
+ * Any number of equivalent short or long options can be listed in @names,
+ * separated by '/'.  Short options are a single hyphen followed by a single
+ * character, long options are two hypens followed by one or more characters.
+ * A space or equals in @names is ignored for parsing, and only used
+ * for printing the usage.
  *
  * If the @cb returns non-NULL, opt_parse() will stop parsing, use the
  * returned string to form an error message for errlog(), free() the

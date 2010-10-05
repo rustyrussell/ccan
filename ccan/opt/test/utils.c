@@ -78,7 +78,7 @@ struct opt_table short_table[] = {
 struct opt_table long_table[] = {
 	/* Long opts, different args. */
 	{ OPT_WITHOUT_ARG("--ddd", test_noarg, "ddd"), "Description of ddd" },
-	{ OPT_WITH_ARG("--eee", test_arg, show_arg, "eee"), },
+	{ OPT_WITH_ARG("--eee <filename>", test_arg, show_arg, "eee"), },
 	OPT_ENDTABLE
 };
 

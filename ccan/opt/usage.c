@@ -78,7 +78,9 @@ char *opt_usage(const char *argv0, const char *extra)
 			continue;
 		}
 		len = sprintf(p, "%s", opt_table[i].names);
-		if (opt_table[i].flags == OPT_HASARG)
+		if (opt_table[i].flags == OPT_HASARG
+		    && !strchr(opt_table[i].names, ' ')
+		    && !strchr(opt_table[i].names, '='))
 			len += sprintf(p + len, " <arg>");
 		if (opt_table[i].desc || opt_table[i].show)
 			len += sprintf(p + len, "%.*s",

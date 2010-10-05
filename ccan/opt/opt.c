@@ -17,14 +17,14 @@ const char *opt_argv0;
 /* Returns string after first '-'. */
 static const char *first_name(const char *names, unsigned *len)
 {
-	*len = strcspn(names + 1, "/");
+	*len = strcspn(names + 1, "/= ");
 	return names + 1;
 }
 
 static const char *next_name(const char *names, unsigned *len)
 {
 	names += *len;
-	if (!names[0])
+	if (names[0] == ' ' || names[0] == '=' || names[0] == '\0')
 		return NULL;
 	return first_name(names + 1, len);
 }
@@ -124,6 +124,9 @@ static void check_opt(const struct opt_table *entry)
 				assert(*p != '?');
 			}
 		}
+		/* Don't document args unless there are some. */
+		if (entry->flags == OPT_NOARG)
+			assert(p[len] != ' ' && p[len] != '=');
 	}
 }
 
