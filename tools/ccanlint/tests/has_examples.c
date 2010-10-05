@@ -25,7 +25,9 @@ static char *add_example(struct manifest *m, struct ccan_file *source,
 	struct ccan_file *f;
 
 	name = maybe_temp_file(m, ".c", keep, 
-			       talloc_asprintf(m, "example-%s-%s",
+			       talloc_asprintf(m, "%s/example-%s-%s",
+					       talloc_dirname(m,
+							      source->fullname),
 					       source->name,
 					       example->function));
 	f = new_ccan_file(m, talloc_dirname(m, name), talloc_basename(m, name));
