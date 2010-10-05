@@ -83,7 +83,7 @@ static const char *next_lopt(const char *p, unsigned *i, unsigned *len)
 const char *first_sopt(unsigned *i)
 {
 	const char *p;
-	unsigned int len;
+	unsigned int len = 0 /* GCC bogus warning */;
 
 	for (p = first_opt(i, &len); p; p = next_opt(p, i, &len)) {
 		if (p[0] != '-')
@@ -215,7 +215,7 @@ static char *make_optstring(void)
 static struct option *make_options(void)
 {
 	struct option *options = malloc(sizeof(*options) * (opt_num_long + 1));
-	unsigned int i, num = 0, len;
+	unsigned int i, num = 0, len = 0 /* GCC bogus warning */;
 	const char *p;
 
 	for (p = first_lopt(&i, &len); p; p = next_lopt(p, &i, &len)) {
@@ -296,7 +296,7 @@ bool opt_parse(int *argc, char *argv[], void (*errlog)(const char *fmt, ...))
 	while ((ret = getopt_long(*argc, argv, optstring, options, &longidx))
 	       != -1) {
 		char *problem;
-		const char *name;
+		const char *name = NULL; /* GCC bogus warning */
 
 		/* optopt is 0 if it's an unknown long option, *or* if
 		 * -? is a valid short option. */
