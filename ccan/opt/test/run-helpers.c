@@ -3,6 +3,7 @@
 #include <ccan/tap/tap.h>
 #include <setjmp.h>
 #include <stdlib.h>
+#include <limits.h>
 #include "utils.h"
 
 /* We don't actually want it to exit... */
@@ -48,7 +49,7 @@ static int saved_printf(const char *fmt, ...)
 /* Test helpers. */
 int main(int argc, char *argv[])
 {
-	plan_tests(88);
+	plan_tests(96);
 
 	/* opt_set_bool */
 	{
@@ -66,6 +67,9 @@ int main(int argc, char *argv[])
 		ok1(!arg);
 		ok1(parse_args(&argc, &argv, "-b", "true", NULL));
 		ok1(arg);
+		ok1(!parse_args(&argc, &argv, "-b", "unknown", NULL));
+		ok1(arg);
+		ok1(strstr(err_output, ": -b: Invalid argument 'unknown'"));
 	}
 	/* opt_set_invbool */
 	{
@@ -84,6 +88,9 @@ int main(int argc, char *argv[])
 		ok1(arg);
 		ok1(parse_args(&argc, &argv, "-b", "true", NULL));
 		ok1(!arg);
+		ok1(!parse_args(&argc, &argv, "-b", "unknown", NULL));
+		ok1(!arg);
+		ok1(strstr(err_output, ": -b: Invalid argument 'unknown'"));
 	}
 	/* opt_set_charp */
 	{
@@ -122,6 +129,17 @@ int main(int argc, char *argv[])
 		ok1(arg == 0);
 		ok1(!parse_args(&argc, &argv, "-a", "100crap", NULL));
 		ok1(!parse_args(&argc, &argv, "-a", "4294967296", NULL));
+		if (ULONG_MAX == UINT_MAX) {
+			pass("Can't test overflow");
+			pass("Can't test error message");
+		} else {
+			char buf[30];
+			sprintf(buf, "%lu", ULONG_MAX);
+			ok1(!parse_args(&argc, &argv, "-a", buf, NULL));
+			ok1(strstr(err_output, ": -a: value '")
+			    && strstr(err_output, buf)
+			    && strstr(err_output, "' does not fit into an integer"));
+		}
 	}
 	/* opt_set_longval */
 	{

@@ -41,8 +41,6 @@ static const char *first_opt(unsigned *i, unsigned *len)
 
 static const char *next_opt(const char *p, unsigned *i, unsigned *len)
 {
-	if (!p)
-		(*i)++;
 	for (; *i < opt_count; (*i)++) {
 		if (opt_table[*i].flags == OPT_SUBTABLE)
 			continue;
@@ -257,13 +255,6 @@ static void parse_fail(void (*errlog)(const char *fmt, ...),
 	else
 		errlog("%s: --%.*s: %s", opt_argv0,
 		       strcspn(longopt, "/"), longopt, problem);
-}
-
-void dump_optstate(void);
-void dump_optstate(void)
-{
-	printf("opterr = %i, optind = %i, optopt = %i, optarg = %s\n",
-	       opterr, optind, optopt, optarg);
 }
 
 /* Parse your arguments. */
