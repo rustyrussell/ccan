@@ -14,6 +14,7 @@ struct opt_table *opt_table;
 unsigned int opt_count, opt_num_short, opt_num_short_arg, opt_num_long;
 const char *opt_argv0;
 
+/* Returns string after first '-'. */
 static const char *first_name(const char *names, unsigned *len)
 {
 	*len = strcspn(names + 1, "/");
@@ -28,75 +29,79 @@ static const char *next_name(const char *names, unsigned *len)
 	return first_name(names + 1, len);
 }
 
-/* FIXME: Combine with next_opt */
-static const char *first_opt(bool want_long, unsigned *i, unsigned *len)
+static const char *first_opt(unsigned *i, unsigned *len)
 {
-	const char *p;
 	for (*i = 0; *i < opt_count; (*i)++) {
 		if (opt_table[*i].flags == OPT_SUBTABLE)
 			continue;
-		for (p = first_name(opt_table[*i].names, len);
-		     p;
-		     p = next_name(p, len)) {
-			if ((p[0] == '-') == want_long) {
-				if (want_long) {
-					/* Skip leading "-" */
-					(*len)--;
-					p++;
-				}
-				return p;
-			}
-		}
+		return first_name(opt_table[*i].names, len);
 	}
 	return NULL;
 }
 
-static const char *next_opt(const char *names, bool want_long,
-			    unsigned *i, unsigned *len)
+static const char *next_opt(const char *p, unsigned *i, unsigned *len)
 {
-	const char *p = next_name(names, len);
-	for (;;) {
-		while (p) {
-			if ((p[0] == '-') == want_long) {
-				if (want_long) {
-					/* Skip leading "-" */
-					(*len)--;
-					p++;
-				}
-				return p;
-			}
-			p = next_name(p, len);
-		}
-		do {
-			(*i)++;
-		} while (*i < opt_count && opt_table[*i].flags == OPT_SUBTABLE);
-		if (*i == opt_count)
-			return NULL;
-		p = first_name(opt_table[*i].names, len);
+	if (!p)
+		(*i)++;
+	for (; *i < opt_count; (*i)++) {
+		if (opt_table[*i].flags == OPT_SUBTABLE)
+			continue;
+		if (!p)
+			return first_name(opt_table[*i].names, len);
+		p = next_name(p, len);
+		if (p)
+			return p;
 	}
+	return NULL;
 }
 
 static const char *first_lopt(unsigned *i, unsigned *len)
 {
-	return first_opt(true, i, len);
+	const char *p;
+	for (p = first_opt(i, len); p; p = next_opt(p, i, len)) {
+		if (p[0] == '-') {
+			/* Skip leading "-" */
+			(*len)--;
+			p++;
+			break;
+		}
+	}
+	return p;
 }
 
-static const char *next_lopt(const char *names, unsigned *i, unsigned *len)
+static const char *next_lopt(const char *p, unsigned *i, unsigned *len)
 {
-	return next_opt(names, true, i, len);
+	for (p = next_opt(p, i, len); p; p = next_opt(p, i, len)) {
+		if (p[0] == '-') {
+			/* Skip leading "-" */
+			(*len)--;
+			p++;
+			break;
+		}
+	}
+	return p;
 }
 
 const char *first_sopt(unsigned *i)
 {
-	unsigned unused_len;
-	return first_opt(false, i, &unused_len);
+	const char *p;
+	unsigned int len;
+
+	for (p = first_opt(i, &len); p; p = next_opt(p, i, &len)) {
+		if (p[0] != '-')
+			break;
+	}
+	return p;
 }
 
-const char *next_sopt(const char *names, unsigned *i)
+const char *next_sopt(const char *p, unsigned *i)
 {
-	unsigned unused_len = 1;
-
-	return next_opt(names, false, i, &unused_len);
+	unsigned int len = 1;
+	for (p = next_opt(p, i, &len); p; p = next_opt(p, i, &len)) {
+		if (p[0] != '-')
+			break;
+	}
+	return p;
 }
 
 static void check_opt(const struct opt_table *entry)
