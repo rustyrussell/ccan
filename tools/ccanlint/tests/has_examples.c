@@ -32,7 +32,7 @@ static char *add_example(struct manifest *m, struct ccan_file *source,
 					       example->function));
 	f = new_ccan_file(m, talloc_dirname(m, name), talloc_basename(m, name));
 	talloc_steal(f, name);
-	list_add(&m->examples, &f->list);
+	list_add_tail(&m->examples, &f->list);
 
 	fd = open(f->fullname, O_WRONLY | O_CREAT | O_EXCL, 0600);
 	if (fd < 0)

@@ -18,7 +18,7 @@ static const char *can_run(struct manifest *m)
 
 static char *obj_list(const struct manifest *m)
 {
-	char *list;
+	char *list = talloc_strdup(m, "");
 	struct ccan_file *i;
 
 	/* Object files for this module. */
@@ -107,12 +107,51 @@ static void strip_leading_whitespace(char **lines, unsigned prefix_len)
 	unsigned int i;
 
 	for (i = 0; lines[i]; i++)
-		lines[i] += prefix_len;
+		if (strlen(lines[i]) >= prefix_len)
+			lines[i] += prefix_len;
 }
 
-static char *mangle(struct manifest *m, struct ccan_file *example)
+/* Examples will often build on prior ones.  Try combining them. */
+static char **combine(char **lines, char **prev)
 {
-	char **lines = get_ccan_file_lines(example);
+	unsigned int i, lines_total, prev_total, count;
+	char **ret;
+
+	if (!prev)
+		return NULL;
+
+	/* If it looks internal, put prev at start. */
+	if (lines[0]
+	    && isblank(lines[0][0])
+	    && looks_internal(lines[0] + strspn(lines[0], " \t"))) {
+		count = 0;
+	} else {
+		/* Try inserting in first elided position */
+		for (count = 0; lines[count]; count++) {
+			if (strcmp(lines[count], "...") == 0)
+				break;
+		}
+		if (!lines[count])
+			return NULL;
+		count++;
+	}
+
+	for (i = 0; lines[i]; i++);
+	lines_total = i;
+
+	for (i = 0; prev[i]; i++);
+	prev_total = i;
+
+	ret = talloc_array(lines, char *, lines_total + prev_total + 1);
+	memcpy(ret, lines, count * sizeof(ret[0]));
+	memcpy(ret + count, prev, prev_total * sizeof(ret[0]));
+	memcpy(ret + count + prev_total, lines + count,
+	       (lines_total - count + 1) * sizeof(ret[0]));
+	return ret;
+}
+
+static char *mangle(struct manifest *m, char **lines)
+{
 	char *ret, *use_funcs = NULL;
 	bool in_function = false, fake_function = false, has_main = false;
 	unsigned int i;
@@ -133,7 +172,7 @@ static char *mangle(struct manifest *m, struct ccan_file *example)
 				     "#include <ccan/%s/%s.h>\n",
 				     m->basename, m->basename);
 
-	ret = talloc_asprintf_append(ret, "/* Useful dummmy functions. */\n"
+	ret = talloc_asprintf_append(ret, "/* Useful dummy functions. */\n"
 				     "int somefunc(void);\n"
 				     "int somefunc(void) { return 0; }\n");
 
@@ -179,6 +218,7 @@ static char *mangle(struct manifest *m, struct ccan_file *example)
 			    && isblank(lines[i+1][0])) {
 				/* This implies we start a function here. */
 				ret = start_main(ret);
+				has_main = true;
 				fake_function = true;
 				in_function = true;
 			}
@@ -213,7 +253,9 @@ static char *mangle(struct manifest *m, struct ccan_file *example)
 }
 
 static struct ccan_file *mangle_example(struct manifest *m,
-					struct ccan_file *example, bool keep)
+					struct ccan_file *example,
+					char **lines,
+					bool keep)
 {
 	char *name, *contents;
 	int fd;
@@ -231,7 +273,7 @@ static struct ccan_file *mangle_example(struct manifest *m,
 	if (fd < 0)
 		return NULL;
 
-	contents = mangle(m, example);
+	contents = mangle(m, lines);
 	if (write(fd, contents, strlen(contents)) != strlen(contents)) {
 		close(fd);
 		return NULL;
@@ -245,6 +287,8 @@ static void *build_examples(struct manifest *m, bool keep,
 {
 	struct ccan_file *i;
 	struct score *score = talloc(m, struct score);
+	struct ccan_file *mangle;
+	char **prev = NULL;
 
 	score->score = 0;
 	score->errors = NULL;
@@ -254,26 +298,49 @@ static void *build_examples(struct manifest *m, bool keep,
 
 		examples_compile.total_score++;
 		ret = compile(score, m, i, keep);
-		if (!ret)
+		if (!ret) {
+			prev = get_ccan_file_lines(i);
 			score->score++;
-		else {
-			struct ccan_file *mangle = mangle_example(m, i, keep);
+			continue;
+		}
 
+		talloc_free(ret);
+		mangle = mangle_example(m, i, get_ccan_file_lines(i), keep);
+		ret = compile(score, m, mangle, keep);
+		if (!ret) {
+			prev = get_ccan_file_lines(i);
+			score->score++;
+			continue;
+		}
+
+		/* Try combining with previous (successful) example... */
+		prev = combine(get_ccan_file_lines(i), prev);
+		if (prev) {
 			talloc_free(ret);
+
+			/* We're going to replace this failure. */
+			if (keep)
+				unlink(mangle->fullname);
+			talloc_free(mangle);
+
+			mangle = mangle_example(m, i, prev, keep);
 			ret = compile(score, m, mangle, keep);
-			if (!ret)
+			if (!ret) {
 				score->score++;
-			else {
-				if (!score->errors)
-					score->errors = ret;
-				else {
-					score->errors
-					= talloc_append_string(score->errors,
-							       ret);
-					talloc_free(ret);
-				}
+				continue;
 			}
 		}
+
+		if (!score->errors)
+			score->errors = ret;
+		else {
+			score->errors = talloc_append_string(score->errors,
+							     ret);
+			talloc_free(ret);
+		}
+		/* This didn't work, so not a candidate for combining. */
+		talloc_free(prev);
+		prev = NULL;
 	}
 	return score;
 }
