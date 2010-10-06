@@ -100,7 +100,6 @@ unsigned long alloc_size(void *pool, unsigned long poolsize, void *p);
  *
  * Example:
  *	#include <assert.h>
- *
  *	...
  *		assert(alloc_check(pool, 32*1024*1024));
  */
@@ -117,15 +116,12 @@ bool alloc_check(void *pool, unsigned long poolsize);
  * suspect corruption call alloc_check() first.
  *
  * Example:
- *	#include <stdio.h>
- *
- *	double *d = alloc_get(pool, 32*1024*1024,
- *			      sizeof(*d), ALIGNOF(*d));
+ *	d = alloc_get(pool, 32*1024*1024, sizeof(*d), ALIGNOF(*d));
  *	if (!d) {
  *		fprintf(stderr, "Allocation failed!\n");
  *		if (!alloc_check(pool, 32*1024*1024))
  *			errx(1, "Allocation pool is corrupt");
- *		alloc_visualize(stderr, pool, 32*1024*1024));
+ *		alloc_visualize(stderr, pool, 32*1024*1024);
  *		exit(1);
  *	}
  */
