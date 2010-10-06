@@ -53,7 +53,7 @@ void plan_tests(unsigned int tests);
  * file name, line number, and the expression itself.
  *
  * Example:
- *	ok1(init_subsystem() == 1);
+ *	ok1(somefunc() == 1);
  */
 # define ok1(e) ((e) ?							\
 		 _gen_result(1, __func__, __FILE__, __LINE__, "%s", #e) : \
@@ -69,8 +69,8 @@ void plan_tests(unsigned int tests);
  * than simply the expression itself.
  *
  * Example:
- *	ok1(init_subsystem() == 1);
- *	ok(init_subsystem() == 0, "Second initialization should fail");
+ *	ok1(somefunc() == 1);
+ *	ok(somefunc() == 0, "Second somefunc() should fail");
  */
 # define ok(e, ...) ((e) ?						\
 		     _gen_result(1, __func__, __FILE__, __LINE__,	\
@@ -86,11 +86,11 @@ void plan_tests(unsigned int tests);
  * branch and fail() in another.
  *
  * Example:
- *	x = do_something();
- *	if (!checkable(x) || check_value(x))
- *		pass("do_something() returned a valid value");
+ *	int x = somefunc();
+ *	if (x > 0)
+ *		pass("somefunc() returned a valid value");
  *	else		
- *		fail("do_something() returned an invalid value");
+ *		fail("somefunc() returned an invalid value");
  */
 # define pass(...) ok(1, __VA_ARGS__)
 
@@ -148,7 +148,7 @@ void diag(const char *fmt, ...) PRINTF_ATTRIBUTE(1, 2);
  *
  * Example:
  *	#ifdef HAVE_SOME_FEATURE
- *	ok1(test_some_feature());
+ *	ok1(somefunc());
  *	#else
  *	skip(1, "Don't have SOME_FEATURE");
  *	#endif
@@ -174,6 +174,11 @@ void skip(unsigned int n, const char *fmt, ...) PRINTF_ATTRIBUTE(2, 3);
  *   put tests in your testing script (always a good idea).
  *
  * Example:
+ * static bool dwim(void)
+ * {
+ *	return false; // NYI
+ * }
+ * ...
  *	todo_start("dwim() not returning true yet");
  *	ok(dwim(), "Did what the user wanted");
  *	todo_end();
@@ -213,7 +218,7 @@ int exit_status(void);
  * Example:
  *	plan_no_plan();
  *	while (random() % 2)
- *		ok1(some_test());
+ *		ok1(somefunc());
  *	exit(exit_status());
  */
 void plan_no_plan(void);
@@ -228,11 +233,13 @@ void plan_no_plan(void);
  * in the running kernel) use plan_skip_all() instead of plan_tests().
  *
  * Example:
- *	if (!have_some_feature) {
- *		plan_skip_all("Need some_feature support");
- *		exit(exit_status());
- *	}
+ *	#ifndef HAVE_SOME_FEATURE
+ *	plan_skip_all("Need SOME_FEATURE support");
+ *	exit(exit_status());
+ *	#else
  *	plan_tests(13);
+ *	...
+ *	#endif
  */
 void plan_skip_all(const char *reason);
 
