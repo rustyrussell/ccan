@@ -17,15 +17,15 @@
  * static char *somestring;
  * 
  * static struct opt_table opts[] = {
- * 	{ OPT_WITHOUT_ARG("verbose", 'v', opt_inc_intval, &verbose),
- * 	  "Verbose mode (can be specified more than once)" },
- * 	{ OPT_WITHOUT_ARG("someflag", 0, opt_set_bool, &someflag),
- * 	  "Set someflag" },
- * 	{ OPT_WITH_ARG("somestring", 0, opt_set_charp, &somestring),
- * 	  "Set somestring to <arg>" },
- * 	{ OPT_WITHOUT_ARG("usage", 0, opt_usage_and_exit,
- * 			  "args...\nA silly test program."),
- * 	  "Print this message." },
+ * 	{ OPT_WITHOUT_ARG("--verbose/-v", opt_inc_intval, &verbose,
+ * 	  "Verbose mode (can be specified more than once)") },
+ * 	{ OPT_WITHOUT_ARG("--someflag", opt_set_bool, &someflag,
+ * 	  "Set someflag") },
+ * 	{ OPT_WITH_ARG("--somefile=<filename>", opt_set_charp, opt_show_charp,
+ *	  &somestring, "Set somefile to <filename>") },
+ * 	{ OPT_WITHOUT_ARG("--usage/--help/-h", opt_usage_and_exit,
+ * 			  "args...\nA silly test program.",
+ * 	  "Print this message.") },
  * 	OPT_ENDTABLE
  * };
  * 
@@ -33,9 +33,9 @@
  * {
  * 	int i;
  * 
- * 	opt_register_table(opts);
+ * 	opt_register_table(opts, NULL);
  * 	// For fun, register an extra one.
- * 	opt_register_noarg("no-someflag", 0, opt_set_invbool, &someflag,
+ * 	opt_register_noarg("--no-someflag", opt_set_invbool, &someflag,
  * 			   "Unset someflag");
  * 	if (!opt_parse(&argc, argv, opt_log_stderr))
  * 		exit(1);

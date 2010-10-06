@@ -109,14 +109,15 @@ struct opt_table {
  * The table must be terminated by OPT_ENDTABLE.
  *
  * Example:
+ * static int verbose = 0;
  * static struct opt_table opts[] = {
- * 	{ OPT_WITHOUT_ARG("--verbose", opt_inc_intval, &verbose),
- * 	  "Verbose mode (can be specified more than once)" },
- * 	{ OPT_WITHOUT_ARG("-v", opt_inc_intval, &verbose),
- * 	  "Verbose mode (can be specified more than once)" },
+ * 	{ OPT_WITHOUT_ARG("--verbose", opt_inc_intval, &verbose,
+ * 	  "Verbose mode (can be specified more than once)") },
+ * 	{ OPT_WITHOUT_ARG("-v", opt_inc_intval, &verbose,
+ * 	  "Verbose mode (can be specified more than once)") },
  * 	{ OPT_WITHOUT_ARG("--usage", opt_usage_and_exit,
- * 			  "args...\nA silly test program."),
- * 	  "Print this message." },
+ * 			  "args...\nA silly test program.",
+ * 	  "Print this message.") },
  * 	OPT_ENDTABLE
  * };
  *
@@ -150,7 +151,7 @@ void opt_register_table(const struct opt_table table[], const char *desc);
  * opt_register_arg - register an option with an arguments
  * @names: the names of the option eg. "--foo", "-f" or "--foo/-f/--foobar".
  * @cb: the callback when the option is found.
- * @show: the callback when the option is found.
+ * @show: the callback to print the value in get_usage (or NULL)
  * @arg: the argument to hand to @cb.
  * @desc: the verbose desction of the option (for opt_usage()), or NULL.
  *
@@ -166,8 +167,12 @@ void opt_register_table(const struct opt_table table[], const char *desc);
  * @cb returns false, opt_parse() will stop parsing and return false.
  *
  * Example:
- *	opt_register_arg("--explode", explode_cb, NULL,
- *			 "Make the machine explode (developers only)");
+ * static char *explode(const char *optarg, void *unused)
+ * {
+ *	errx(1, "BOOM! %s", optarg);
+ * }
+ * ...
+ *	opt_register_arg("--explode/--boom", explode, NULL, NULL, opt_hidden);
  */
 #define opt_register_arg(names, cb, show, arg, desc)			\
 	_opt_register((names), OPT_CB_ARG((cb), (show), (arg)), (desc))
@@ -187,7 +192,7 @@ void opt_register_table(const struct opt_table table[], const char *desc);
  * remain, and true is returned.
  *
  * Example:
- *	if (!opt_parse(argc, argv, opt_log_stderr)) {
+ *	if (!opt_parse(&argc, argv, opt_log_stderr)) {
  *		printf("%s", opt_usage(argv[0], "<args>..."));
  *		exit(1);
  *	}
