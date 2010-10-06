@@ -24,7 +24,7 @@
  * 	int add;
  * 	
  * 	for (;;) {
- * 		array_for(i, numbers, printf("%d ", *i))
+ * 		array_for(i, numbers, printf("%d ", *i));
  * 		if (numbers.size) puts("");
  * 		
  * 		printf("array> ");
