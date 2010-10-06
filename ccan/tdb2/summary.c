@@ -163,6 +163,8 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 		*bucketsg[BUCKETS_FOR_ZONE(63)+1] = { NULL };
 	char *ret = NULL;
 
+	zonesg = hashesg = freeg = keysg = datag = extrag = uncoalg = NULL;
+
 	if (tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false) != 0)
 		return NULL;
 
@@ -222,9 +224,6 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 						      HISTO_WIDTH,
 						      HISTO_HEIGHT);
 		}
-	} else {
-		zonesg = hashesg = freeg = keysg = datag = extrag = uncoalg
-			= NULL;
 	}
 
 	/* 20 is max length of a %llu. */
