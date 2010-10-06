@@ -185,7 +185,7 @@ static bool run_test(struct ccanlint *i,
 			d->dependent->skip_fail = true;
 		}
 	}
-	return good;
+	return !bad;
 }
 
 static void register_test(struct list_head *h, struct ccanlint *test, ...)
