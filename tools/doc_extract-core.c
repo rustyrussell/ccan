@@ -54,7 +54,7 @@ static bool is_section(const char *line, bool one_liner)
 
 	if (!isupper(line[0]))
 		return false;
-	len = strspn(line, IDENT_CHARS);
+	len = strspn(line, IDENT_CHARS" ");
 	if (line[len] != ':')
 		return false;
 
