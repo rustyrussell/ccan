@@ -29,9 +29,10 @@
  * See also: hash64, hash_stable.
  *
  * Example:
- *	#include "hash/hash.h"
+ *	#include <ccan/hash/hash.h>
  *	#include <err.h>
  *	#include <stdio.h>
+ *	#include <string.h>
  *
  *	// Simple demonstration: idential strings will have the same hash, but
  *	// two different strings will probably not.
@@ -74,9 +75,10 @@
  *	hash64_stable
  *
  * Example:
- *	#include "hash/hash.h"
+ *	#include <ccan/hash/hash.h>
  *	#include <err.h>
  *	#include <stdio.h>
+ *	#include <string.h>
  *
  *	int main(int argc, char *argv[])
  *	{
@@ -159,6 +161,7 @@ static inline uint32_t hash_string(const char *string)
  *	#include <ccan/hash/hash.h>
  *	#include <err.h>
  *	#include <stdio.h>
+ *	#include <string.h>
  *
  *	// Simple demonstration: idential strings will have the same hash, but
  *	// two different strings will probably not.
@@ -204,6 +207,7 @@ static inline uint32_t hash_string(const char *string)
  *	#include <ccan/hash/hash.h>
  *	#include <err.h>
  *	#include <stdio.h>
+ *	#include <string.h>
  *
  *	int main(int argc, char *argv[])
  *	{
@@ -263,7 +267,7 @@ uint64_t hash64_stable_8(const void *key, size_t n, uint64_t base);
  * network or saved to disk).
  *
  * Example:
- *	#include "hash/hash.h"
+ *	#include <ccan/hash/hash.h>
  *
  *	// Code to keep track of memory regions.
  *	struct region {
@@ -276,17 +280,17 @@ uint64_t hash64_stable_8(const void *key, size_t n, uint64_t base);
  *
  *	static void add_region(struct region *r)
  *	{
- *		unsigned int h = hash_pointer(r->start);
+ *		unsigned int h = hash_pointer(r->start, 0);
  *
  *		r->chain = region_hash[h];
  *		region_hash[h] = r->chain;
  *	}
  *
- *	static void find_region(const void *start)
+ *	static struct region *find_region(const void *start)
  *	{
  *		struct region *r;
  *
- *		for (r = region_hash[hash_pointer(start)]; r; r = r->chain)
+ *		for (r = region_hash[hash_pointer(start, 0)]; r; r = r->chain)
  *			if (r->start == start)
  *				return r;
  *		return NULL;
