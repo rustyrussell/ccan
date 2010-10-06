@@ -29,11 +29,13 @@
  * as 0 the first time, and the current crc result from then on.
  *
  * Example:
+ *	#include <sys/uio.h>
+ *	...
  *	// Check that iovec has the crc we expect (Castagnoli version)
- *	bool check_crc(uint32_t expected, const struct iovec *iov, int iovcnt)
+ *	static bool check_crc(uint32_t expected, const struct iovec *iov, int l)
  *	{
  *		uint32_t crc = 0;
- *		while (iovcnt >= 0) {
+ *		while (l >= 0) {
  *			crc = crc32c(crc, iov->iov_base, iov->iov_len);
  *			iov++;
  *		}
@@ -52,7 +54,7 @@ uint32_t crc32c(uint32_t start_crc, const void *buf, size_t size);
  *
  * Example:
  *	// This dumb code only handles Castagnoli, so assert that here.
- *	void check_user_crc_table(const uint32_t *usertab)
+ *	static void check_user_crc_table(const uint32_t *usertab)
  *	{
  *		const uint32_t *ctab = crc32c_table();
  *		if (!ctab || memcmp(ctab, usertab, 1024) != 0)

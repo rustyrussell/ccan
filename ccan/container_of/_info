@@ -26,13 +26,18 @@
  *		struct timer timer;
  *	};
  *
+ *	static void register_timer(struct timer *timer)
+ *	{
+ *		//...
+ *	}
+ *
  *	static void my_timer_callback(struct timer *timer)
  *	{
  *		struct info *info = container_of(timer, struct info, timer);
  *		printf("my_stuff is %u\n", info->my_stuff);
  *	}
  *
- *	int main()
+ *	int main(void)
  *	{
  *		struct info info = { .my_stuff = 1 };
  *

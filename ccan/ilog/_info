@@ -22,7 +22,7 @@
  *    printf("ILOG_32(0x%08X)=%i\n",0,ILOG_32(0));
  *    for(i=1;i<=STATIC_ILOG_32(USHRT_MAX);i++){
  *      uint32_t v;
- *      v=(uint32_t)1U<<i-1;
+ *      v=(uint32_t)1U<<(i-1);
  *      //Here we know v is non-zero, so we can use ILOGNZ_32().
  *      printf("ILOG_32(0x%08X)=%i\n",v,ILOGNZ_32(v));
  *    }

@@ -14,7 +14,7 @@
  * #include <ccan/grab_file/grab_file.h>
  * #include <err.h>
  *
- * void token_list_stats(const struct token_list *tl) {
+ * static void token_list_stats(const struct token_list *tl) {
  * 	size_t comment=0, white=0, stray=0, code=0, total=0;
  * 	size_t count = 0;
  * 	const struct token *i;

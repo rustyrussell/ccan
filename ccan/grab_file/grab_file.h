@@ -14,8 +14,11 @@
  * byte after the end of the content will always be NUL.
  *
  * Example:
+ *	#include <ccan/str_talloc/str_talloc.h>
+ *	#include <ccan/talloc/talloc.h>
+ *	...
  *	// Return all of standard input, as lines.
- *	char **read_as_lines(void)
+ *	static char **read_stdin_as_lines(void)
  *	{
  *		char **lines, *all;
  *
@@ -42,7 +45,7 @@ void *grab_fd(const void *ctx, int fd, size_t *size);
  *
  * Example:
  *	// Return all of a given file, as lines.
- *	char **read_as_lines(const char *filename)
+ *	static char **read_file_as_lines(const char *filename)
  *	{
  *		char **lines, *all;
  *

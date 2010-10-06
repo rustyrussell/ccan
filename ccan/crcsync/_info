@@ -30,7 +30,7 @@
  *		size_t len, used, blocksize;
  *		char *file;
  *		struct crc_context *ctx;
- *		uint32_t *crcs;
+ *		uint64_t *crcs;
  *		long res, i;
  *	
  *		if (argc < 3 || (blocksize = atoi(argv[1])) == 0)
@@ -44,10 +44,10 @@
  *		if (argc == 3) {
  *			// Short form prints CRCs of file for use in long form.
  *			used = (len + blocksize - 1) / blocksize;
- *			crcs = malloc(used * sizeof(uint32_t));
+ *			crcs = malloc(used * sizeof(crcs[0]));
  *			crc_of_blocks(file, len, blocksize, 32, crcs);
  *			for (i = 0; i < used; i++)
- *				printf("%i ", crcs[i]);
+ *				printf("%llu ", (long long)crcs[i]);
  *			printf("\n");
  *			return 0;
  *		}
@@ -56,7 +56,7 @@
  *		for (i = 0; i < argc-3; i++)
  *			crcs[i] = atoi(argv[3+i]);
  *	
- *		ctx = crc_context_new(blocksize, 32, crcs, argc-3);
+ *		ctx = crc_context_new(blocksize, 32, crcs, argc-3, 0);
  *		for (used = 0; used < len; ) {
  *			used += crc_read_block(ctx, &res, file+used, len-used);
  *			print_result(res);

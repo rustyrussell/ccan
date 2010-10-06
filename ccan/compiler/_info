@@ -6,7 +6,7 @@
  * compiler - macros for common compiler extensions
  *
  * Abstracts away some compiler hints.  Currently these include:
- * - UNLIKELY_FUNCTION_ATTRIBUTE
+ * - COLD_ATTRIBUTE
  *	For functions not called in fast paths (aka. cold functions)
  * - PRINTF_ATTRIBUTE
  *	For functions which take printf-style parameters.
@@ -23,13 +23,13 @@
  * Author: Rusty Russell <rusty@rustcorp.com.au>
  *
  * Example:
- *	#include <ccan/compiler/attributs.h>
+ *	#include <ccan/compiler/compiler.h>
  *	#include <stdio.h>
  *	#include <stdarg.h>
  *
  *	// Example of a (slow-path) logging function.
  *	static int log_threshold = 2;
- *	static void UNLIKELY_FUNCTION_ATTRIBUTE PRINTF_ATTRIBUTE(2,3)
+ *	static void COLD_ATTRIBUTE PRINTF_ATTRIBUTE(2,3)
  *		logger(int level, const char *fmt, ...)
  *	{
  *		va_list ap;

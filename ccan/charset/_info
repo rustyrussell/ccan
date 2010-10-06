@@ -32,7 +32,7 @@
  *		if (!file)
  *			err(1, "Could not read file %s", argv[1]);
  *
- *		valid = utf8_validate(file, len));
+ *		valid = utf8_validate(file, len);
  *		printf("File contents are %s UTF-8\n", valid ? "valid" : "invalid");
  *
  *		talloc_free(file);

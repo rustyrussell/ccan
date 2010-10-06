@@ -29,12 +29,15 @@
  *      int array[] = {0,1,1,2,3,5,8,13,21,34};
  *      int *array_copy = block_pool_memdup(bp, array, sizeof(array));
  *
+ *	memset(buffer, 0xff, 4096);
+ *	printf("string = %s\n", string);
+ *	printf("array_copy[0] == %i\n", array_copy[0]);
  *      block_pool_free(bp);
  *    return 0;
  * }
  *
- *	Author: Joey Adams
- *	License: BSD
+ * Author: Joey Adams
+ * License: BSD
  */
 int main(int argc, char *argv[])
 {

@@ -9,7 +9,9 @@
  * by the compiler.  This can only be used within a function.
  *
  * Example:
- *	char *foo_to_char(struct foo *foo)
+ *	#include <stddef.h>
+ *	...
+ *	static char *foo_to_char(struct foo *foo)
  *	{
  *		// This code needs string to be at start of foo.
  *		BUILD_ASSERT(offsetof(struct foo, string) == 0);

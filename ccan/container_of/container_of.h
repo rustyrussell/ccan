@@ -15,13 +15,16 @@
  * subtraction to return the pointer to the enclosing type.
  *
  * Example:
- *	struct info
- *	{
+ *	struct foo {
+ *		int fielda, fieldb;
+ *		// ...
+ *	};
+ *	struct info {
  *		int some_other_field;
  *		struct foo my_foo;
  *	};
  *
- *	struct info *foo_to_info(struct foo *foop)
+ *	static struct info *foo_to_info(struct foo *foo)
  *	{
  *		return container_of(foo, struct info, my_foo);
  *	}
@@ -42,13 +45,7 @@
  * subtraction to return the pointer to the enclosing type.
  *
  * Example:
- *	struct info
- *	{
- *		int some_other_field;
- *		struct foo my_foo;
- *	};
- *
- *	struct info *foo_to_info(struct foo *foop)
+ *	static struct info *foo_to_i(struct foo *foo)
  *	{
  *		struct info *i = container_of_var(foo, i, my_foo);
  *		return i;

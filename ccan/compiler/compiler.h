@@ -10,10 +10,10 @@
  * It is usually used on logging or error routines.
  *
  * Example:
- *	void COLD_ATTRIBUTE moan(const char *reason)
- *	{
- *		fprintf(stderr, "Error: %s (%s)\n", reason, strerror(errno));
- *	}
+ * static void COLD_ATTRIBUTE moan(const char *reason)
+ * {
+ *	fprintf(stderr, "Error: %s (%s)\n", reason, strerror(errno));
+ * }
  */
 #define COLD_ATTRIBUTE __attribute__((cold))
 #else
@@ -23,13 +23,14 @@
 #if HAVE_ATTRIBUTE_PRINTF
 /**
  * PRINTF_ATTRIBUTE - a function takes printf-style arguments
- * nfmt: the 1-based number of the function's format argument.
- * narg: the 1-based number of the function's first variable argument.
+ * @nfmt: the 1-based number of the function's format argument.
+ * @narg: the 1-based number of the function's first variable argument.
  *
  * This allows the compiler to check your parameters as it does for printf().
  *
  * Example:
- *	void PRINTF_ATTRIBUTE(2,3) my_printf(char *prefix, char *format, ...);
+ * void PRINTF_ATTRIBUTE(2,3) my_printf(const char *prefix,
+ *					const char *fmt, ...);
  */
 #define PRINTF_ATTRIBUTE(nfmt, narg) \
 	__attribute__((format(__printf__, nfmt, narg)))
@@ -58,18 +59,14 @@
  * the compiler that if it is unused it need not emit it into the source code.
  *
  * Example:
- *	// With some config options, this is unnecessary.
- *	static UNNEEDED_ATTRIBUTE int counter;
- *	...
- *		#ifdef DEBUG
- *		counter++;
- *		#endif
- *	...
- *	// With some config options, this is unnecessary.
- *	static UNNEEDED_ATTRIBUTE int add_to_counter(int add)
- *	{
- *		counter += add;
- *	}
+ * // With some preprocessor options, this is unnecessary.
+ * static UNNEEDED_ATTRIBUTE int counter;
+ *
+ * // With some preprocessor options, this is unnecessary.
+ * static UNNEEDED_ATTRIBUTE void add_to_counter(int add)
+ * {
+ *	counter += add;
+ * }
  */
 #define UNNEEDED_ATTRIBUTE __attribute__((unused))
 
@@ -117,7 +114,7 @@
  *	const char *greek_name(enum greek greek);
  *
  *	// Inline version.
- *	static inline _greek_name(enum greek greek)
+ *	static inline char *_greek_name(enum greek greek)
  *	{
  *		switch (greek) {
  *		case ALPHA: return "alpha";

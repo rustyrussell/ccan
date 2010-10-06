@@ -18,7 +18,7 @@
  *	// We currently use 32 random values.
  *	static unsigned int vals[32];
  *
- *	void init_values(void)
+ *	static void init_values(void)
  *	{
  *		unsigned int i;
  *		for (i = 0; i < ARRAY_SIZE(vals); i++)

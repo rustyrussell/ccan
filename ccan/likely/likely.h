@@ -23,7 +23,7 @@
  *	// Returns false if we overflow.
  *	static inline bool inc_int(unsigned int *val)
  *	{
- *		*(val)++;
+ *		(*val)++;
  *		if (likely(*val))
  *			return true;
  *		return false;
@@ -45,7 +45,7 @@
  *	// Prints a warning if we overflow.
  *	static inline void inc_int(unsigned int *val)
  *	{
- *		*(val)++;
+ *		(*val)++;
  *		if (unlikely(*val == 0))
  *			fprintf(stderr, "Overflow!");
  *	}

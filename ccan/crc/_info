@@ -11,7 +11,7 @@
  * detect a single error burst of up to 32 bits.
  *
  * Example:
- *	#include <ccan/crc.h>
+ *	#include <ccan/crc/crc.h>
  *	#include <stdio.h>
  *	#include <stdlib.h>
  *
@@ -22,7 +22,7 @@
  *				"Prints 32 bit CRC of the string\n", argv[0]);
  *			exit(1);
  *		}
- *		printf("0x%08x\n", crc32c(argv[1], strlen(argv[1])));
+ *		printf("0x%08x\n", crc32c(0, argv[1], strlen(argv[1])));
  *		exit(0);
  *	}
  *

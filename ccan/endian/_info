@@ -29,6 +29,7 @@
  *		if (argc != 2)
  *			errx(1, "Usage: %s <value>", argv[0]);
  *
+ *		value = atoi(argv[1]);
  *		printf("native:        %08x\n", value);
  *		printf("little-endian: %08x\n", cpu_to_le32(value));
  *		printf("big-endian:    %08x\n", cpu_to_be32(value));

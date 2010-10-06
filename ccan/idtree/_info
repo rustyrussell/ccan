@@ -30,7 +30,8 @@
  *			       argv[i], idtree_add(idtree, argv[i], -1));
  *		}
  *		for (i = 0; i < argc; i++) {
- *			printf("id %i -> '%s'\n", i, idtree_lookup(idtree, i));
+ *			printf("id %i -> '%s'\n",
+ *			       i, (char *)idtree_lookup(idtree, i));
  *		}
  *		return 0;
  *	}

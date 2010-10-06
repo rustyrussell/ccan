@@ -37,7 +37,7 @@
  * };
  * 
  * //Define the ordering function order_by_letter_set
- * btree_search_implement
+ * static btree_search_implement
  * (
  * 	order_by_letter_set,
  * 	struct word *,
@@ -50,7 +50,7 @@
  * char *chomp(char *str);
  * char *make_letter_set(char *str);
  * 
- * void insert_word(struct btree *btree, struct word *word)
+ * static void insert_word(struct btree *btree, struct word *word)
  * {
  * 	btree_iterator iter;
  * 	
@@ -61,7 +61,7 @@
  * 	btree_insert_at(iter, word);
  * }
  * 
- * void print_anagrams(struct btree *btree, char *line)
+ * static void print_anagrams(struct btree *btree, char *line)
  * {
  * 	btree_iterator iter, end;
  * 	struct word key = {
@@ -86,7 +86,7 @@
  * 	}
  * }
  * 
- * int destroy_word(struct word *word, void *ctx)
+ * static int destroy_word(struct word *word, void *ctx)
  * {
  * 	(void) ctx;
  * 	
@@ -97,7 +97,7 @@
  * 	return 1;
  * }
  * 
- * struct btree *read_dictionary(const char *filename)
+ * static struct btree *read_dictionary(const char *filename)
  * {
  * 	FILE *f;
  * 	char line[256];
@@ -129,7 +129,7 @@
  * 	
  * 	return btree;
  * 
- * fail:
+ *   fail:
  * 	btree_delete(btree);
  * 	fprintf(stderr, "%s: %s\n", filename, strerror(errno));
  * 	return NULL;

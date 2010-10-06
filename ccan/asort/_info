@@ -19,12 +19,12 @@
  *	#include <stdio.h>
  *	#include <string.h>
  *	
- *	static int cmp(const char **a, const char **n, bool *casefold)
+ *	static int cmp(char *const *a, char *const *n, bool *casefold)
  *	{
  *		if (*casefold)
- *			return strcasecmp(*a, *b);
+ *			return strcasecmp(*a, *n);
  *		else
- *			return strcmp(*a, *b);
+ *			return strcmp(*a, *n);
  *	}
  *	
  *	int main(int argc, char *argv[])
