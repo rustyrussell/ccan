@@ -18,10 +18,21 @@
 
 const char *ccan_dir;
 
+const char *get_ccan_file_contents(struct ccan_file *f)
+{
+	if (!f->contents) {
+		f->contents = grab_file(f, f->fullname, &f->contents_size);
+		if (!f->contents)
+			err(1, "Reading file %s", f->fullname);
+	}
+	return f->contents;
+}
+
 char **get_ccan_file_lines(struct ccan_file *f)
 {
 	if (!f->lines)
-		f->lines = strsplit(f, f->contents, "\n", &f->num_lines);
+		f->lines = strsplit(f, get_ccan_file_contents(f),
+				    "\n", &f->num_lines);
 
 	return f->lines;
 }
@@ -48,6 +59,8 @@ struct ccan_file *new_ccan_file(const void *ctx, const char *dir, char *name)
 	f->compiled = NULL;
 	f->name = talloc_steal(f, name);
 	f->fullname = talloc_asprintf(f, "%s/%s", dir, f->name);
+	f->contents = NULL;
+	f->cov_compiled = NULL;
 	return f;
 }
 
@@ -90,22 +103,14 @@ static void add_files(struct manifest *m, const char *dir)
 
 		if (streq(f->name, "_info")) {
 			m->info_file = f;
-			f->contents = grab_file(f, f->name, &f->contents_size);
-			if (!f->contents)
-				err(1, "Reading file %s", f->name);
 			continue;
 		}
 
 		is_c_src = strends(f->name, ".c");
 		if (!is_c_src && !strends(f->name, ".h")) {
-			/* We don't pull in contents of non-source files */
 			dest = &m->other_files;
 			continue;
 		}
-
-		f->contents = grab_file(f, f->name, &f->contents_size);
-		if (!f->contents)
-			err(1, "Reading file %s", f->name);
 
 		if (!strchr(f->name, '/')) {
 			if (is_c_src)

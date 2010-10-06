@@ -132,7 +132,7 @@ struct ccan_file {
 	char *fullname;
 
 	/* Pristine version of the original file.
-	 * Use get_ccan_file_lines to fill this. */
+	 * Use get_ccan_file_contents to fill this. */
 	const char *contents;
 	size_t contents_size;
 
@@ -152,6 +152,9 @@ struct ccan_file {
 
 /* A new ccan_file, with the given name (talloc_steal onto returned value). */
 struct ccan_file *new_ccan_file(const void *ctx, const char *dir, char *name);
+
+/* Use this rather than accessing f->contents directly: loads on demand. */
+const char *get_ccan_file_contents(struct ccan_file *f);
 
 /* Use this rather than accessing f->lines directly: loads on demand. */
 char **get_ccan_file_lines(struct ccan_file *f);

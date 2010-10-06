@@ -25,7 +25,7 @@ static char *add_example(struct manifest *m, struct ccan_file *source,
 	struct ccan_file *f;
 
 	name = maybe_temp_file(m, ".c", keep, 
-			       talloc_asprintf(m, "%s/example-%s-%s",
+			       talloc_asprintf(m, "%s/example-%s-%s.c",
 					       talloc_dirname(m,
 							      source->fullname),
 					       source->name,
@@ -70,7 +70,7 @@ static void *extract_examples(struct manifest *m,
 
 	list_for_each(get_ccan_file_docs(m->info_file), d, list) {
 		if (streq(d->type, "example")) {
-			score->error = add_example(m, m->info_file, keep, d);;
+			score->error = add_example(m, m->info_file, keep, d);
 			if (score->error)
 				return score;
 			score->info_example = true;
