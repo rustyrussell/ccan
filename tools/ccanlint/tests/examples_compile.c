@@ -75,11 +75,46 @@ static char *start_main(char *ret)
 				      "{\n");
 }
 
+/* We only handle simple function definitions here. */
+static char *add_func(char *others, const char *line)
+{
+	const char *p, *end = strchr(line, '(') - 1;
+	while (isblank(*end)) {
+		end--;
+		if (end == line)
+			return others;
+	}
+
+	for (p = end; isalnum(*p) || *p == '_'; p--) {
+		if (p == line)
+			return others;
+	}
+
+	return talloc_asprintf_append(others, "printf(\"%%p\", %.*s);\n",
+				      end - p + 1, p);
+}
+
+static bool looks_internal(const char *p)
+{
+	return (strncmp(p, "#", 1) != 0
+		&& strncmp(p, "static", 6) != 0
+		&& strncmp(p, "struct", 6) != 0
+		&& strncmp(p, "union", 5) != 0);
+}
+
+static void strip_leading_whitespace(char **lines, unsigned prefix_len)
+{
+	unsigned int i;
+
+	for (i = 0; lines[i]; i++)
+		lines[i] += prefix_len;
+}
+
 static char *mangle(struct manifest *m, struct ccan_file *example)
 {
 	char **lines = get_ccan_file_lines(example);
-	char *ret;
-	bool in_function = false, fake_function = false;
+	char *ret, *use_funcs = NULL;
+	bool in_function = false, fake_function = false, has_main = false;
 	unsigned int i;
 
 	ret = talloc_strdup(m, "/* Prepend a heap of headers. */\n"
@@ -102,11 +137,17 @@ static char *mangle(struct manifest *m, struct ccan_file *example)
 				     "int somefunc(void);\n"
 				     "int somefunc(void) { return 0; }\n");
 
-	/* Starts indented?  Wrap it in a main() function. */
+	/* Starts indented? */
 	if (lines[0] && isblank(lines[0][0])) {
-		ret = start_main(ret);
-		fake_function = true;
-		in_function = true;
+		unsigned prefix = strspn(lines[0], " \t");
+		if (looks_internal(lines[0] + prefix)) {
+			/* Wrap it all in main(). */
+			ret = start_main(ret);
+			fake_function = true;
+			in_function = true;
+			has_main = true;
+		} else
+			strip_leading_whitespace(lines, prefix);
 	}
 
 	/* Primitive, very primitive. */
@@ -120,8 +161,15 @@ static char *mangle(struct manifest *m, struct ccan_file *example)
 			 * == function start. */
 			if (!isblank(lines[i][0])
 			    && strchr(lines[i], '(')
-			    && !strchr(lines[i], ';'))
+			    && !strchr(lines[i], ';')) {
 				in_function = true;
+				if (strncmp(lines[i], "int main", 8) == 0)
+					has_main = true;
+				if (strncmp(lines[i], "static", 6) == 0) {
+					use_funcs = add_func(use_funcs,
+							     lines[i]);
+				}
+			}
 		}
 		/* ... means elided code.  If followed by spaced line, means
 		 * next part is supposed to be inside a function. */
@@ -139,6 +187,23 @@ static char *mangle(struct manifest *m, struct ccan_file *example)
 			continue;
 		}
 		ret = talloc_asprintf_append(ret, "%s\n", lines[i]);
+	}
+
+	/* Need a main to link successfully. */
+	if (!has_main) {
+		ret = talloc_asprintf_append(ret, "int main(void)\n{\n");
+		fake_function = true;
+	}
+
+	/* Get rid of unused warnings by printing addresses of static funcs. */
+	if (use_funcs) {
+		if (!fake_function) {
+			ret = talloc_asprintf_append(ret,
+						     "int use_funcs(void);\n"
+						     "int use_funcs(void) {\n");
+			fake_function = true;
+		}
+		ret = talloc_asprintf_append(ret, "	%s\n", use_funcs);
 	}
 
 	if (fake_function)
