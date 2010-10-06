@@ -1,6 +1,7 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
 #include <ccan/talloc/talloc.h>
+#include <ccan/str/str.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -8,6 +9,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <ctype.h>
+#include <assert.h>
 
 static const char *can_run(struct manifest *m)
 {
@@ -16,10 +18,54 @@ static const char *can_run(struct manifest *m)
 	return NULL;
 }
 
-static char *obj_list(const struct manifest *m)
+/* FIXME: We should build if it doesn't exist... */
+static bool expect_obj_file(const char *dir)
+{
+	struct manifest *dep_man;
+	bool has_c_files;
+
+	dep_man = get_manifest(dir, dir);
+
+	/* If it has C files, we expect an object file built from them. */
+	has_c_files = !list_empty(&dep_man->c_files);
+	talloc_free(dep_man);
+	return has_c_files;
+}
+
+static char *add_dep(const struct manifest *m, char *list, const char *mod)
+{
+	char **deps, *obj;
+	unsigned int i;
+
+	/* Not if there's no object file for that module */
+	if (!expect_obj_file(talloc_asprintf(list, "%s/ccan/%s", ccan_dir,mod)))
+		return list;
+
+	obj = talloc_asprintf(list, "%s/ccan/%s.o", ccan_dir, mod);
+
+	/* Not anyone we've already included. */
+	if (strstr(list, obj))
+		return list;
+
+	list = talloc_asprintf_append(list, " %s", obj);
+
+	/* Get that modules depends as well... */
+	assert(!safe_mode);
+	deps = get_deps(m, talloc_asprintf(list, "%s/ccan/%s", ccan_dir, mod),
+			false, NULL);
+
+	for (i = 0; deps[i]; i++) {
+		if (strstarts(deps[i], "ccan/"))
+			list = add_dep(m, list, deps[i] + strlen("ccan/"));
+	}
+	return list;
+}
+
+static char *obj_list(const struct manifest *m, struct ccan_file *f)
 {
 	char *list = talloc_strdup(m, "");
 	struct ccan_file *i;
+	char **lines;
 
 	/* Object files for this module. */
 	list_for_each(&m->c_files, i, list)
@@ -29,6 +75,23 @@ static char *obj_list(const struct manifest *m)
 	list_for_each(&m->dep_dirs, i, list) {
 		if (i->compiled)
 			list = talloc_asprintf_append(list, " %s", i->compiled);
+	}
+
+	/* Other modules implied by includes. */
+	for (lines = get_ccan_file_lines(f); *lines; lines++) {
+		unsigned preflen = strspn(*lines, " \t");
+		if (strstarts(*lines + preflen, "#include <ccan/")) {
+			const char *mod;
+			unsigned modlen;
+
+			mod = *lines + preflen + strlen("#include <ccan/");
+			modlen = strcspn(mod, "/");
+			mod = talloc_strndup(f, mod, modlen);
+			/* Not ourselves. */
+			if (streq(m->basename, mod))
+				continue;
+			list = add_dep(m, list, mod);
+		}
 	}
 
 	return list;
@@ -54,7 +117,8 @@ static char *compile(const void *ctx,
 
 	file->compiled = maybe_temp_file(ctx, "", keep, file->fullname);
 	errmsg = compile_and_link(ctx, file->fullname, ccan_dir,
-				  obj_list(m), "", lib_list(m), file->compiled);
+				  obj_list(m, file),
+				  "", lib_list(m), file->compiled);
 	if (errmsg) {
 		talloc_free(file->compiled);
 		return errmsg;
@@ -94,21 +158,52 @@ static char *add_func(char *others, const char *line)
 				      end - p + 1, p);
 }
 
-static bool looks_internal(const char *p)
+static void strip_leading_whitespace(char **lines)
 {
-	return (strncmp(p, "#", 1) != 0
-		&& strncmp(p, "static", 6) != 0
-		&& strncmp(p, "struct", 6) != 0
-		&& strncmp(p, "union", 5) != 0);
+	unsigned int i, min_span = -1U;
+
+	for (i = 0; lines[i]; i++) {
+		unsigned int span = strspn(lines[i], " \t");
+		/* All whitespace?  Ignore */
+		if (!lines[i][span])
+			continue;
+		if (span < min_span)
+			min_span = span;
+	}
+
+	for (i = 0; lines[i]; i++)
+		if (strlen(lines[i]) >= min_span)
+			lines[i] += min_span;
 }
 
-static void strip_leading_whitespace(char **lines, unsigned prefix_len)
+static bool looks_internal(char **lines)
 {
 	unsigned int i;
 
-	for (i = 0; lines[i]; i++)
-		if (strlen(lines[i]) >= prefix_len)
-			lines[i] += prefix_len;
+	for (i = 0; lines[i]; i++) {
+		unsigned len = strspn(lines[i], IDENT_CHARS);
+
+		/* The winners. */
+		if (strstarts(lines[i], "if") && len == 2)
+			return true;
+		if (strstarts(lines[i], "for") && len == 3)
+			return true;
+		if (strstarts(lines[i], "while") && len == 5)
+			return true;
+		if (strstarts(lines[i], "do") && len == 2)
+			return true;
+
+		/* The losers. */
+		if (strchr(lines[i], '(')) {
+			if (strstarts(lines[i], "static"))
+				return false;
+			if (strends(lines[i], ")"))
+				return false;
+		}
+	}
+
+	/* No idea... Say no? */
+	return false;
 }
 
 /* Examples will often build on prior ones.  Try combining them. */
@@ -120,10 +215,10 @@ static char **combine(char **lines, char **prev)
 	if (!prev)
 		return NULL;
 
+	strip_leading_whitespace(lines);
+
 	/* If it looks internal, put prev at start. */
-	if (lines[0]
-	    && isblank(lines[0][0])
-	    && looks_internal(lines[0] + strspn(lines[0], " \t"))) {
+	if (looks_internal(lines)) {
 		count = 0;
 	} else {
 		/* Try inserting in first elided position */
@@ -132,8 +227,10 @@ static char **combine(char **lines, char **prev)
 				break;
 		}
 		if (!lines[count])
-			return NULL;
-		count++;
+			/* Try at start anyway? */
+			count = 0;
+		else
+			count++;
 	}
 
 	for (i = 0; lines[i]; i++);
@@ -159,7 +256,9 @@ static char *mangle(struct manifest *m, char **lines)
 	ret = talloc_strdup(m, "/* Prepend a heap of headers. */\n"
 			    "#include <assert.h>\n"
 			    "#include <err.h>\n"
+			    "#include <errno.h>\n"
 			    "#include <fcntl.h>\n"
+			    "#include <limits.h>\n"
 			    "#include <stdbool.h>\n"
 			    "#include <stdint.h>\n"
 			    "#include <stdio.h>\n"
@@ -176,17 +275,13 @@ static char *mangle(struct manifest *m, char **lines)
 				     "int somefunc(void);\n"
 				     "int somefunc(void) { return 0; }\n");
 
-	/* Starts indented? */
-	if (lines[0] && isblank(lines[0][0])) {
-		unsigned prefix = strspn(lines[0], " \t");
-		if (looks_internal(lines[0] + prefix)) {
-			/* Wrap it all in main(). */
-			ret = start_main(ret);
-			fake_function = true;
-			in_function = true;
-			has_main = true;
-		} else
-			strip_leading_whitespace(lines, prefix);
+	strip_leading_whitespace(lines);
+	if (looks_internal(lines)) {
+		/* Wrap it all in main(). */
+		ret = start_main(ret);
+		fake_function = true;
+		in_function = true;
+		has_main = true;
 	}
 
 	/* Primitive, very primitive. */
@@ -197,10 +292,11 @@ static char *mangle(struct manifest *m, char **lines)
 				in_function = false;
 		} else {
 			/* Character at start of line, with ( and no ;
-			 * == function start. */
+			 * == function start.  Ignore comments. */
 			if (!isblank(lines[i][0])
 			    && strchr(lines[i], '(')
-			    && !strchr(lines[i], ';')) {
+			    && !strchr(lines[i], ';')
+			    && !strstr(lines[i], "//")) {
 				in_function = true;
 				if (strncmp(lines[i], "int main", 8) == 0)
 					has_main = true;
@@ -279,6 +375,7 @@ static struct ccan_file *mangle_example(struct manifest *m,
 		return NULL;
 	}
 	close(fd);
+	f->contents = talloc_steal(f, contents);
 	return f;
 }
 
@@ -314,8 +411,8 @@ static void *build_examples(struct manifest *m, bool keep,
 		}
 
 		/* Try combining with previous (successful) example... */
-		prev = combine(get_ccan_file_lines(i), prev);
 		if (prev) {
+			prev = combine(get_ccan_file_lines(i), prev);
 			talloc_free(ret);
 
 			/* We're going to replace this failure. */
