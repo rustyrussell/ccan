@@ -21,8 +21,9 @@ static char *obj_list(const struct manifest *m)
 	char *list;
 	struct ccan_file *i;
 
-	/* This CCAN module. */
-	list = talloc_asprintf(m, " %s.o", m->dir);
+	/* Object files for this module. */
+	list_for_each(&m->c_files, i, list)
+		list = talloc_asprintf_append(list, " %s", i->compiled);
 
 	/* Other ccan modules we depend on. */
 	list_for_each(&m->dep_dirs, i, list) {
@@ -96,6 +97,10 @@ static char *mangle(struct manifest *m, struct ccan_file *example)
 	ret = talloc_asprintf_append(ret, "/* Include header from module. */\n"
 				     "#include <ccan/%s/%s.h>\n",
 				     m->basename, m->basename);
+
+	ret = talloc_asprintf_append(ret, "/* Useful dummmy functions. */\n"
+				     "int somefunc(void);\n"
+				     "int somefunc(void) { return 0; }\n");
 
 	/* Starts indented?  Wrap it in a main() function. */
 	if (lines[0] && isblank(lines[0][0])) {
