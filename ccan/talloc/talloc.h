@@ -90,9 +90,9 @@
  * is not affected by talloc_set_destructor().
  *
  * Example:
- *	unsigned int *a;
+ *	unsigned int *b, *a;
  *	a = talloc(NULL, unsigned int);
- *	talloc_set(&b, a, unsigned int);
+ *	talloc_set(&b, a);
  *	talloc_free(a);
  *	*b = 1; // This will crash!
  *
@@ -137,7 +137,7 @@
 int talloc_free(const void *ptr);
 
 /**
- * talloc_set_destructor: set a destructor for when this pointer is freed
+ * talloc_set_destructor - set a destructor for when this pointer is freed
  * @ptr: the talloc pointer to set the destructor on
  * @destructor: the function to be called
  *
@@ -170,7 +170,7 @@ int talloc_free(const void *ptr);
  *	return 0;
  * }
  *
- * int *open_file(const char *filename)
+ * static int *open_file(const char *filename)
  * {
  *	int *fd = talloc(NULL, int);
  *	*fd = open(filename, O_RDONLY);
@@ -246,6 +246,7 @@ int talloc_free(const void *ptr);
  *
  * Example:
  *	void *mem = talloc_size(NULL, 100);
+ *	memset(mem, 0xFF, 100);
  *
  * See Also:
  *	talloc, talloc_array, talloc_zero_size
@@ -342,13 +343,13 @@ void talloc_report_full(const void *ptr, FILE *f);
  *	a = talloc(NULL, unsigned int);
  *	b = talloc(NULL, unsigned int);
  *	c = talloc(a, unsigned int);
- *	// b also serves as a parent of c.
- *	talloc_reference(b, c);
+ *	// b also serves as a parent of c (don't care about errors)
+ *	(void)talloc_reference(b, c);
  */
 #define talloc_reference(ctx, ptr) (_TALLOC_TYPEOF(ptr))_talloc_reference((ctx),(ptr))
 
 /**
- * talloc_unlink: remove a specific parent from a talloc pointer.
+ * talloc_unlink - remove a specific parent from a talloc pointer.
  * @context: the parent to remove
  * @ptr: the talloc pointer
  *
@@ -363,13 +364,14 @@ void talloc_report_full(const void *ptr, FILE *f);
  * Usually you can just use talloc_free() instead of talloc_unlink(), but
  * sometimes it is useful to have the additional control on which parent is
  * removed.
+ *
  * Example:
  *	unsigned int *a, *b, *c;
  *	a = talloc(NULL, unsigned int);
  *	b = talloc(NULL, unsigned int);
  *	c = talloc(a, unsigned int);
  *	// b also serves as a parent of c.
- *	talloc_reference(b, c);
+ *	(void)talloc_reference(b, c);
  *	talloc_unlink(b, c);
  */
 int talloc_unlink(const void *context, void *ptr);

@@ -49,7 +49,7 @@
  *	}
  *
  *	// This function opens a writable pipe to the given command.
- *	struct command *open_output_cmd(const void *ctx, char *fmt, ...)
+ *	static struct command *open_output_cmd(const void *ctx, char *fmt, ...)
  *	{
  *		va_list ap;
  *		struct command *cmd = talloc(ctx, struct command);
