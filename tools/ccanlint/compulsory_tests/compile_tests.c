@@ -36,8 +36,10 @@ static char *obj_list(const struct manifest *m, bool link_with_module)
 	list_for_each(&m->other_test_c_files, i, list)
 		list = talloc_asprintf_append(list, " %s", i->compiled);
 
+	/* Our own object files. */
 	if (link_with_module)
-		list = talloc_asprintf_append(list, " %s.o", m->dir);
+		list_for_each(&m->c_files, i, list)
+			list = talloc_asprintf_append(list, " %s", i->compiled);
 
 	/* Other ccan modules. */
 	list_for_each(&m->dep_dirs, i, list) {
@@ -199,4 +201,4 @@ struct ccanlint compile_tests = {
 	.can_run = can_build,
 };
 
-REGISTER_TEST(compile_tests, &compile_test_helpers, NULL);
+REGISTER_TEST(compile_tests, &compile_test_helpers, &build_objs, NULL);
