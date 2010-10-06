@@ -81,6 +81,8 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 	bool locked;
 	size_t len, unc = 0;
 
+	freeg = keysg = datag = deadg = extrag = hashg = uncoalg = NULL;
+
 	/* Read-only databases use no locking at all: it's best-effort.
 	 * We may have a write lock already, so skip that case too. */
 	if (tdb->read_only || tdb->allrecord_lock.count != 0) {
@@ -156,8 +158,6 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 		extrag = tally_histogram(extra, HISTO_WIDTH, HISTO_HEIGHT);
 		hashg = tally_histogram(hash, HISTO_WIDTH, HISTO_HEIGHT);
 		uncoalg = tally_histogram(uncoal, HISTO_WIDTH, HISTO_HEIGHT);
-	} else {
-		freeg = keysg = datag = deadg = extrag = hashg = NULL;
 	}
 
 	/* 20 is max length of a %zu. */
