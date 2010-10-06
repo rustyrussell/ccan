@@ -107,7 +107,7 @@ static bool run_test(struct ccanlint *i,
 		     struct manifest *m)
 {
 	void *result;
-	unsigned int this_score, timeleft;
+	unsigned int this_score, max_score, timeleft;
 	const struct dependent *d;
 	const char *skip;
 	bool bad, good;
@@ -143,22 +143,25 @@ static bool run_test(struct ccanlint *i,
 		goto skip;
 	}
 
+	max_score = i->total_score;
+	if (!max_score)
+		max_score = 1;
+
 	if (!result)
-		this_score = i->total_score ? i->total_score : 1;
+		this_score = max_score;
 	else if (i->score)
 		this_score = i->score(m, result);
 	else
 		this_score = 0;
 
-	bad = (this_score == 0 && i->total_score != 0);
-	good = (this_score >= i->total_score);
+	bad = (this_score == 0);
+	good = (this_score >= max_score);
 
-	if (verbose || (bad && !quiet)) {
+	if (verbose || (!good && !quiet)) {
 		printf("  %s: %s", i->name,
 		       bad ? "FAIL" : good ? "PASS" : "PARTIAL");
-		if (i->total_score)
-			printf(" (+%u/%u)",
-				       this_score, i->total_score);
+		if (max_score > 1)
+			printf(" (+%u/%u)", this_score, max_score);
 		printf("\n");
 	}
 
@@ -185,7 +188,7 @@ static bool run_test(struct ccanlint *i,
 			d->dependent->skip_fail = true;
 		}
 	}
-	return !bad;
+	return good;
 }
 
 static void register_test(struct list_head *h, struct ccanlint *test, ...)
