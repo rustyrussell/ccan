@@ -37,6 +37,10 @@ static char *add_dep(const struct manifest *m, char *list, const char *mod)
 	char **deps, *obj;
 	unsigned int i;
 
+	/* Not ourselves. */
+	if (streq(m->basename, mod))
+		return list;
+
 	/* Not if there's no object file for that module */
 	if (!expect_obj_file(talloc_asprintf(list, "%s/ccan/%s", ccan_dir,mod)))
 		return list;
@@ -87,9 +91,6 @@ static char *obj_list(const struct manifest *m, struct ccan_file *f)
 			mod = *lines + preflen + strlen("#include <ccan/");
 			modlen = strcspn(mod, "/");
 			mod = talloc_strndup(f, mod, modlen);
-			/* Not ourselves. */
-			if (streq(m->basename, mod))
-				continue;
 			list = add_dep(m, list, mod);
 		}
 	}
@@ -179,43 +180,59 @@ static void strip_leading_whitespace(char **lines)
 static bool looks_internal(char **lines)
 {
 	unsigned int i;
+	bool last_ended = true; /* Did last line finish a statement? */
 
 	for (i = 0; lines[i]; i++) {
-		unsigned len = strspn(lines[i], IDENT_CHARS);
+		/* Skip leading whitespace. */
+		const char *line = lines[i] + strspn(lines[i], " \t");
+		unsigned len = strspn(line, IDENT_CHARS);
+
+		if (!line[0] || isblank(line[0]) || strstarts(line, "//"))
+			continue;
 
 		/* The winners. */
-		if (strstarts(lines[i], "if") && len == 2)
+		if (strstarts(line, "if") && len == 2)
 			return true;
-		if (strstarts(lines[i], "for") && len == 3)
+		if (strstarts(line, "for") && len == 3)
 			return true;
-		if (strstarts(lines[i], "while") && len == 5)
+		if (strstarts(line, "while") && len == 5)
 			return true;
-		if (strstarts(lines[i], "do") && len == 2)
+		if (strstarts(line, "do") && len == 2)
 			return true;
 
 		/* The losers. */
-		if (strchr(lines[i], '(')) {
-			if (strstarts(lines[i], "static"))
+		if (strstarts(line, "#include"))
+			return false;
+
+		if (last_ended && strchr(line, '(')) {
+			if (strstarts(line, "static"))
 				return false;
-			if (strends(lines[i], ")"))
+			if (strends(line, ")"))
 				return false;
 		}
+
+		/* Single identifier then operator == inside function. */
+		if (last_ended && len
+		    && ispunct(line[len+strspn(line+len, " ")]))
+			return true;
+
+		last_ended = (strends(line, "}")
+			      || strends(line, ";")
+			      || streq(line, "..."));
 	}
 
-	/* No idea... Say no? */
-	return false;
+	/* No idea... Say yes? */
+	return true;
 }
 
 /* Examples will often build on prior ones.  Try combining them. */
-static char **combine(char **lines, char **prev)
+static char **combine(const void *ctx, char **lines, char **prev)
 {
 	unsigned int i, lines_total, prev_total, count;
 	char **ret;
 
 	if (!prev)
 		return NULL;
-
-	strip_leading_whitespace(lines);
 
 	/* If it looks internal, put prev at start. */
 	if (looks_internal(lines)) {
@@ -239,7 +256,7 @@ static char **combine(char **lines, char **prev)
 	for (i = 0; prev[i]; i++);
 	prev_total = i;
 
-	ret = talloc_array(lines, char *, lines_total + prev_total + 1);
+	ret = talloc_array(ctx, char *, lines_total + prev_total + 1);
 	memcpy(ret, lines, count * sizeof(ret[0]));
 	memcpy(ret + count, prev, prev_total * sizeof(ret[0]));
 	memcpy(ret + count + prev_total, lines + count,
@@ -272,10 +289,11 @@ static char *mangle(struct manifest *m, char **lines)
 				     m->basename, m->basename);
 
 	ret = talloc_asprintf_append(ret, "/* Useful dummy functions. */\n"
-				     "int somefunc(void);\n"
-				     "int somefunc(void) { return 0; }\n");
+				     "extern int somefunc(void);\n"
+				     "int somefunc(void) { return 0; }\n"
+				     "extern char somestring[];\n"
+				     "char somestring[] = \"hello world\";\n");
 
-	strip_leading_whitespace(lines);
 	if (looks_internal(lines)) {
 		/* Wrap it all in main(). */
 		ret = start_main(ret);
@@ -306,12 +324,10 @@ static char *mangle(struct manifest *m, char **lines)
 				}
 			}
 		}
-		/* ... means elided code.  If followed by spaced line, means
-		 * next part is supposed to be inside a function. */
+		/* ... means elided code. */
 		if (strcmp(lines[i], "...") == 0) {
-			if (!in_function
-			    && lines[i+1]
-			    && isblank(lines[i+1][0])) {
+			if (!in_function && !has_main
+			    && looks_internal(lines + i + 1)) {
 				/* This implies we start a function here. */
 				ret = start_main(ret);
 				has_main = true;
@@ -394,16 +410,9 @@ static void *build_examples(struct manifest *m, bool keep,
 		char *ret;
 
 		examples_compile.total_score++;
+		/* Simplify our dumb parsing. */
+		strip_leading_whitespace(get_ccan_file_lines(i));
 		ret = compile(score, m, i, keep);
-		if (!ret) {
-			prev = get_ccan_file_lines(i);
-			score->score++;
-			continue;
-		}
-
-		talloc_free(ret);
-		mangle = mangle_example(m, i, get_ccan_file_lines(i), keep);
-		ret = compile(score, m, mangle, keep);
 		if (!ret) {
 			prev = get_ccan_file_lines(i);
 			score->score++;
@@ -412,20 +421,26 @@ static void *build_examples(struct manifest *m, bool keep,
 
 		/* Try combining with previous (successful) example... */
 		if (prev) {
-			prev = combine(get_ccan_file_lines(i), prev);
+			char **new = combine(i, get_ccan_file_lines(i), prev);
 			talloc_free(ret);
 
-			/* We're going to replace this failure. */
-			if (keep)
-				unlink(mangle->fullname);
-			talloc_free(mangle);
-
-			mangle = mangle_example(m, i, prev, keep);
+			mangle = mangle_example(m, i, new, keep);
 			ret = compile(score, m, mangle, keep);
 			if (!ret) {
+				prev = new;
 				score->score++;
 				continue;
 			}
+		}
+
+		/* Try standalone. */
+		talloc_free(ret);
+		mangle = mangle_example(m, i, get_ccan_file_lines(i), keep);
+		ret = compile(score, m, mangle, keep);
+		if (!ret) {
+			prev = get_ccan_file_lines(i);
+			score->score++;
+			continue;
 		}
 
 		if (!score->errors)
@@ -436,7 +451,6 @@ static void *build_examples(struct manifest *m, bool keep,
 			talloc_free(ret);
 		}
 		/* This didn't work, so not a candidate for combining. */
-		talloc_free(prev);
 		prev = NULL;
 	}
 	return score;

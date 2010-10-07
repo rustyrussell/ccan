@@ -24,12 +24,16 @@ static char *add_example(struct manifest *m, struct ccan_file *source,
 	int fd;
 	struct ccan_file *f;
 
-	name = maybe_temp_file(m, ".c", keep, 
-			       talloc_asprintf(m, "%s/example-%s-%s.c",
-					       talloc_dirname(m,
-							      source->fullname),
-					       source->name,
-					       example->function));
+	name = talloc_asprintf(m, "%s/example-%s-%s.c",
+			       talloc_dirname(m,
+					      source->fullname),
+			       source->name,
+			       example->function);
+	/* example->function == 'struct foo' */
+	while (strchr(name, ' '))
+		*strchr(name, ' ') = '_';
+
+	name = maybe_temp_file(m, ".c", keep, name);
 	f = new_ccan_file(m, talloc_dirname(m, name), talloc_basename(m, name));
 	talloc_steal(f, name);
 	list_add_tail(&m->examples, &f->list);
