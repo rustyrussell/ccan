@@ -572,7 +572,7 @@ char *talloc_asprintf(const void *t, const char *fmt, ...) PRINTF_ATTRIBUTE(2,3)
  *
  *    talloc_set_name_const(ptr, ptr)
  */
-char *talloc_append_string(char *orig, const char *append);
+char *WARN_UNUSED_RESULT talloc_append_string(char *orig, const char *append);
 
 /**
  * talloc_asprintf_append - sprintf onto the end of a talloc buffer.
@@ -586,7 +586,8 @@ char *talloc_append_string(char *orig, const char *append);
  * equivalent to:
  *   talloc_set_name_const(ptr, ptr)
  */
-char *talloc_asprintf_append(char *s, const char *fmt, ...) PRINTF_ATTRIBUTE(2,3);
+char *WARN_UNUSED_RESULT talloc_asprintf_append(char *s, const char *fmt, ...)
+	PRINTF_ATTRIBUTE(2,3);
 
 /**
  * talloc_vasprintf - vsprintf into a talloc buffer.
@@ -613,7 +614,8 @@ char *talloc_vasprintf(const void *t, const char *fmt, va_list ap) PRINTF_ATTRIB
  * The talloc_vasprintf_append() function is equivalent to
  * talloc_asprintf_append(), except it takes a va_list.
  */
-char *talloc_vasprintf_append(char *s, const char *fmt, va_list ap) PRINTF_ATTRIBUTE(2,0);
+char *WARN_UNUSED_RESULT talloc_vasprintf_append(char *s, const char *fmt, va_list ap)
+	PRINTF_ATTRIBUTE(2,0);
 
 /**
  * talloc_set_type - force the name of a pointer to a particular type
@@ -962,7 +964,7 @@ void _talloc_set_destructor(const void *ptr, int (*destructor)(void *));
 size_t talloc_reference_count(const void *ptr);
 void *_talloc_reference(const void *context, const void *ptr);
 
-void *_talloc_realloc(const void *context, void *ptr, size_t size, const char *name);
+void *WARN_UNUSED_RESULT _talloc_realloc(const void *context, void *ptr, size_t size, const char *name);
 void *talloc_parent(const void *ptr);
 const char *talloc_parent_name(const void *ptr);
 void *_talloc_steal(const void *new_ctx, const void *ptr);
@@ -971,7 +973,7 @@ void *_talloc_zero(const void *ctx, size_t size, const char *name);
 void *_talloc_memdup(const void *t, const void *p, size_t size, const char *name);
 void *_talloc_array(const void *ctx, size_t el_size, unsigned count, const char *name);
 void *_talloc_zero_array(const void *ctx, size_t el_size, unsigned count, const char *name);
-void *_talloc_realloc_array(const void *ctx, void *ptr, size_t el_size, unsigned count, const char *name);
+void *WARN_UNUSED_RESULT _talloc_realloc_array(const void *ctx, void *ptr, size_t el_size, unsigned count, const char *name);
 void *talloc_realloc_fn(const void *context, void *ptr, size_t size);
 void talloc_show_parents(const void *context, FILE *file);
 int talloc_is_parent(const void *context, const void *ptr);

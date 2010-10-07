@@ -438,14 +438,14 @@ static bool test_realloc(const struct torture_context *ctx)
 		"failed: talloc_realloc() on a referenced pointer should fail\n");
 	CHECK_BLOCKS("realloc", p1, 4);
 
-	talloc_realloc_size(NULL, p2, 0);
-	talloc_realloc_size(NULL, p2, 0);
+	ok1(talloc_realloc_size(NULL, p2, 0) == NULL);
+	ok1(talloc_realloc_size(NULL, p2, 0) == NULL);
 	CHECK_BLOCKS("realloc", p1, 3);
 
 	torture_assert("realloc", talloc_realloc_size(NULL, p1, 0x7fffffff) == NULL,
 		"failed: oversize talloc should fail\n");
 
-	talloc_realloc_size(NULL, p1, 0);
+	p1 = talloc_realloc_size(NULL, p1, 0);
 
 	CHECK_BLOCKS("realloc", root, 1);
 	CHECK_SIZE("realloc", root, 0);
@@ -948,7 +948,7 @@ int main(void)
 {
 	struct torture_context *ctx;
 
-	plan_tests(284);
+	plan_tests(288);
 	ctx = talloc_add_external(NULL, normal_realloc, test_lock, test_unlock);
 
 	torture_local_talloc(NULL);

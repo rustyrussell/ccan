@@ -136,4 +136,23 @@
 /* If we don't know, assume it's not. */
 #define IS_COMPILE_CONSTANT(expr) 0
 #endif
+
+#if HAVE_WARN_UNUSED_RESULT
+/**
+ * WARN_UNUSED_RESULT - warn if a function return value is unused.
+ *
+ * Used to mark a function where it is extremely unlikely that the caller
+ * can ignore the result, eg realloc().
+ *
+ * Example:
+ * // buf param may be freed by this; need return value!
+ * static char *WARN_UNUSED_RESULT enlarge(const char *buf, unsigned *size)
+ * {
+ *	return realloc(buf, (*size) *= 2);
+ * }
+ */
+#define WARN_UNUSED_RESULT __attribute__((warn_unused_result))
+#else
+#define WARN_UNUSED_RESULT
+#endif
 #endif /* CCAN_COMPILER_H */
