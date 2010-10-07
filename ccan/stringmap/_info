@@ -12,22 +12,22 @@
  *
  * Example:
  *
- * #include <ccan/stringmap/stringmap.h>                                                                                                                                        
+ * #include <ccan/stringmap/stringmap.h>
  *
- * static const char *get_string(void) {                                                                                                                                        
- *      static char buffer[4096];                                                                                                                                               
- *      char *tail;                                                                                                                                                             
- *      if (!fgets(buffer, sizeof(buffer), stdin))                                                                                                                              
- *              return NULL;                                                                                                                                                    
- *      tail = strchr(buffer, 0);                                                                                                                                               
- *      if (tail>buffer && tail[-1]=='\n')                                                                                                                                      
- *              *--tail = 0;                                                                                                                                                    
- *      if (!*buffer)                                                                                                                                                           
- *              return NULL;                                                                                                                                                    
- *      return buffer;                                                                                                                                                          
- * }                                                                                                                                                                            
+ * static const char *get_string(void) {
+ *      static char buffer[4096];
+ *      char *tail;
+ *      if (!fgets(buffer, sizeof(buffer), stdin))
+ *              return NULL;
+ *      tail = strchr(buffer, 0);
+ *      if (tail>buffer && tail[-1]=='\n')
+ *              *--tail = 0;
+ *      if (!*buffer)
+ *              return NULL;
+ *      return buffer;
+ * }
  *
- * int main(void) {                                                                                                                                                             
+ * int main(void) {
  *      stringmap(int) map = stringmap_new(NULL);
  *      const char *string;
  *
@@ -49,8 +49,8 @@
  *    return 0;
  * }
  *
- *	Authors: Joey Adams, Anders Magnusson
- *	License: BSD
+ * Authors: Joey Adams, Anders Magnusson
+ * License: BSD
  */
 int main(int argc, char *argv[])
 {

@@ -27,7 +27,7 @@
  *	static unsigned int values[] = { 1, 7, 11, 1235, 99999 };
  *
  *	// Return true if this value is in set, and remove it.
- *	bool remove_from_values(unsigned int val)
+ *	static bool remove_from_values(unsigned int val)
  *	{
  *		unsigned int *p;
  *		p = sparse_bsearch(&val, values, 5, val_cmp, val_valid);

@@ -87,7 +87,7 @@
  *
  *	// Define several silly callbacks.  Note they don't use void *!
  *	#define DEF_CALLBACK(name, op)			\
- *		static int name(int val, const int *arg)\
+ *		static int name(int val, int *arg)	\
  *		{					\
  *			printf("%s", #op);		\
  *			return val op *arg;		\

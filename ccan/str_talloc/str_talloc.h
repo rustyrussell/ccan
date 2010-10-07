@@ -20,7 +20,10 @@
  * @nump to find the array length.
  *
  * Example:
- *	unsigned int count_long_lines(const char *text)
+ *	#include <ccan/talloc/talloc.h>
+ *	#include <ccan/str_talloc/str_talloc.h>
+ *	...
+ *	static unsigned int count_long_lines(const char *string)
  *	{
  *		char **lines;
  *		unsigned int i, long_lines = 0;
@@ -49,10 +52,9 @@ char **strsplit(const void *ctx, const char *string, const char *delims,
  *
  * Example:
  *	// Append the string "--EOL" to each line.
- *	char *append_to_all_lines(const char *string)
+ *	static char *append_to_all_lines(const char *string)
  *	{
  *		char **lines, *ret;
- *		unsigned int i, num, newnum;
  *
  *		lines = strsplit(NULL, string, "\n", NULL);
  *		ret = strjoin(NULL, lines, "-- EOL\n");

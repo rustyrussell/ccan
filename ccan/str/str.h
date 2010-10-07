@@ -11,7 +11,7 @@
  * This macro is arguably more readable than "!strcmp(a, b)".
  *
  * Example:
- *	if (streq(str, ""))
+ *	if (streq(somestring, ""))
  *		printf("String is empty!\n");
  */
 #define streq(a,b) (strcmp((a),(b)) == 0)
@@ -22,8 +22,8 @@
  * @prefix: prefix to look for at start of str
  *
  * Example:
- *	if (strstarts(str, "foo"))
- *		printf("String %s begins with 'foo'!\n", str);
+ *	if (strstarts(somestring, "foo"))
+ *		printf("String %s begins with 'foo'!\n", somestring);
  */
 #define strstarts(str,prefix) (strncmp((str),(prefix),strlen(prefix)) == 0)
 
@@ -33,8 +33,8 @@
  * @postfix: postfix to look for at end of str
  *
  * Example:
- *	if (strends(str, "foo"))
- *		printf("String %s end with 'foo'!\n", str);
+ *	if (strends(somestring, "foo"))
+ *		printf("String %s end with 'foo'!\n", somestring);
  */
 static inline bool strends(const char *str, const char *postfix)
 {

@@ -14,10 +14,10 @@
  *	#include <err.h>
  *	#include <stdio.h>
  *	
- *	static void usage(void)
+ *	static void usage(const char *argv0)
  *	{
  *		errx(1, "Usage: %s fetch <dbfile> <key>\n"
- *		     "OR %s store <dbfile> <key> <data>");
+ *		     "OR %s store <dbfile> <key> <data>", argv0, argv0);
  *	}
  *	
  *	int main(int argc, char *argv[])
@@ -26,10 +26,9 @@
  *		TDB_DATA key, value;
  *	
  *		if (argc < 4)
- *			usage();
+ *			usage(argv[0]);
  *	
- *		tdb = tdb_open(argv[2], 1024, TDB_DEFAULT, O_CREAT|O_RDWR,
- *				0600);
+ *		tdb = tdb_open(argv[2], TDB_DEFAULT, O_CREAT|O_RDWR,0600, NULL);
  *		if (!tdb)
  *			err(1, "Opening %s", argv[2]);
  *	
@@ -38,7 +37,7 @@
  *	
  *		if (streq(argv[1], "fetch")) {
  *			if (argc != 4)
- *				usage();
+ *				usage(argv[0]);
  *			value = tdb_fetch(tdb, key);
  *			if (!value.dptr)
  *				errx(1, "fetch %s: %s",
@@ -47,14 +46,14 @@
  *			free(value.dptr);
  *		} else if (streq(argv[1], "store")) {
  *			if (argc != 5)
- *				usage();
+ *				usage(argv[0]);
  *			value.dptr = (void *)argv[4];
  *			value.dsize = strlen(argv[4]);
  *			if (tdb_store(tdb, key, value, 0) != 0)
  *				errx(1, "store %s: %s",
  *				     argv[3], tdb_errorstr(tdb));
  *		} else
- *			usage();
+ *			usage(argv[0]);
  *	
  *		return 0;
  *	}

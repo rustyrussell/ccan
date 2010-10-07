@@ -56,7 +56,7 @@ struct list_head
  *	{
  *		struct child *c;
  *
- *		printf("%s (%u children):\n", p->name, parent->num_children);
+ *		printf("%s (%u children):\n", p->name, p->num_children);
  *		list_check(&p->children, "bad child list");
  *		list_for_each(&p->children, c, list)
  *			printf(" -> %s\n", c->name);
@@ -71,10 +71,26 @@ struct list_head *list_check(const struct list_head *h, const char *abortstr);
 #endif
 
 /**
+ * LIST_HEAD - define and initalize an empty list_head
+ * @name: the name of the list.
+ *
+ * The LIST_HEAD macro defines a list_head and initializes it to an empty
+ * list.  It can be prepended by "static" to define a static list_head.
+ *
+ * Example:
+ *	static LIST_HEAD(my_global_list);
+ */
+#define LIST_HEAD(name) \
+	struct list_head name = { { &name.n, &name.n } }
+
+/**
  * list_head_init - initialize a list_head
  * @h: the list_head to set to the empty list
  *
  * Example:
+ *	...
+ *	struct parent *parent = malloc(sizeof(*parent));
+ *
  *	list_head_init(&parent->children);
  *	parent->num_children = 0;
  */
@@ -84,29 +100,14 @@ static inline void list_head_init(struct list_head *h)
 }
 
 /**
- * LIST_HEAD - define and initalized empty list_head
- * @name: the name of the list.
- *
- * The LIST_HEAD macro defines a list_head and initializes it to an empty
- * list.  It can be prepended by "static" to define a static list_head.
- *
- * Example:
- *	// Header:
- *	extern struct list_head my_list;
- *
- *	// C file:
- *	LIST_HEAD(my_list);
- */
-#define LIST_HEAD(name) \
-	struct list_head name = { { &name.n, &name.n } }
-
-/**
  * list_add - add an entry at the start of a linked list.
  * @h: the list_head to add the node to
  * @n: the list_node to add to the list.
  *
  * The list_node does not need to be initialized; it will be overwritten.
  * Example:
+ *	struct child *child;
+ *
  *	list_add(&parent->children, &child->list);
  *	parent->num_children++;
  */
@@ -179,9 +180,11 @@ static inline bool list_empty(const struct list_head *h)
  * @member: the list_node member of the type
  *
  * Example:
- *	struct child *c;
  *	// First list entry is children.next; convert back to child.
- *	c = list_entry(parent->children.next, struct child, list);
+ *	child = list_entry(parent->children.n.next, struct child, list);
+ *
+ * See Also:
+ *	list_top(), list_for_each()
  */
 #define list_entry(n, type, member) container_of(n, type, member)
 
@@ -225,9 +228,8 @@ static inline bool list_empty(const struct list_head *h)
  * a for loop, so you can break and continue as normal.
  *
  * Example:
- *	struct child *c;
- *	list_for_each(&parent->children, c, list)
- *		printf("Name: %s\n", c->name);
+ *	list_for_each(&parent->children, child, list)
+ *		printf("Name: %s\n", child->name);
  */
 #define list_for_each(h, i, member)					\
 	for (i = container_of_var(debug_list(h)->n.next, i, member);	\
@@ -246,9 +248,9 @@ static inline bool list_empty(const struct list_head *h)
  * @nxt is used to hold the next element, so you can delete @i from the list.
  *
  * Example:
- *	struct child *c, *n;
- *	list_for_each_safe(&parent->children, c, n, list) {
- *		list_del(&c->list);
+ *	struct child *next;
+ *	list_for_each_safe(&parent->children, child, next, list) {
+ *		list_del(&child->list);
  *		parent->num_children--;
  *	}
  */

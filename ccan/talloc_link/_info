@@ -29,7 +29,7 @@
  *	static struct upcache *cache;
  *	static unsigned int cache_hits = 0;
  *	#define CACHE_SIZE 4
- *	void init_upcase(void)
+ *	static void init_upcase(void)
  *	{
  *		cache = talloc_zero_array(NULL, struct upcache, CACHE_SIZE);
  *	}
@@ -70,7 +70,7 @@
  *	}
  *
  *	// If you want to keep the result, talloc_link it.
- *	const char *get_upcase(const char *str)
+ *	static const char *get_upcase(const char *str)
  *	{
  *		struct upcache *uc = lookup_upcase(str);
  *		if (!uc)
@@ -80,7 +80,7 @@
  *		return uc->upstr;
  *	}
  *
- *	void exit_upcase(void)
+ *	static void exit_upcase(void)
  *	{
  *		talloc_free(cache);
  *		printf("Cache hits: %u\n", cache_hits);

@@ -146,7 +146,7 @@
  *
  * Example:
  * // buf param may be freed by this; need return value!
- * static char *WARN_UNUSED_RESULT enlarge(const char *buf, unsigned *size)
+ * static char *WARN_UNUSED_RESULT enlarge(char *buf, unsigned *size)
  * {
  *	return realloc(buf, (*size) *= 2);
  * }
