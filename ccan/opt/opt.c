@@ -347,7 +347,19 @@ void opt_log_stderr(const char *fmt, ...)
 
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);
+	fprintf(stderr, "\n");
 	va_end(ap);
+}
+
+void opt_log_stderr_exit(const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	fprintf(stderr, "\n");
+	va_end(ap);
+	exit(1);
 }
 
 char *opt_invalid_argument(const char *arg)

@@ -181,7 +181,7 @@ void opt_register_table(const struct opt_table table[], const char *desc);
  * opt_parse - parse arguments.
  * @argc: pointer to argc
  * @argv: argv array.
- * @errlog: the function to print errors (usually opt_log_stderr).
+ * @errlog: the function to print errors
  *
  * This iterates through the command line and calls callbacks registered with
  * opt_register_table()/opt_register_arg()/opt_register_noarg().  If there
@@ -193,9 +193,12 @@ void opt_register_table(const struct opt_table table[], const char *desc);
  *
  * Example:
  *	if (!opt_parse(&argc, argv, opt_log_stderr)) {
- *		printf("%s", opt_usage(argv[0], "<args>..."));
+ *		printf("You screwed up, aborting!\n");
  *		exit(1);
  *	}
+ *
+ * See Also:
+ *	opt_log_stderr, opt_log_stderr_exit
  */
 bool opt_parse(int *argc, char *argv[], void (*errlog)(const char *fmt, ...));
 
@@ -203,9 +206,25 @@ bool opt_parse(int *argc, char *argv[], void (*errlog)(const char *fmt, ...));
  * opt_log_stderr - print message to stderr.
  * @fmt: printf-style format.
  *
- * This is the standard helper for opt_parse, to print errors.
+ * This is a helper for opt_parse, to print errors to stderr.
+ *
+ * See Also:
+ *	opt_log_stderr_exit
  */
 void opt_log_stderr(const char *fmt, ...);
+
+/**
+ * opt_log_stderr_exit - print message to stderr, then exit(1)
+ * @fmt: printf-style format.
+ *
+ * Just like opt_log_stderr, only then does exit(1).  This means that
+ * when handed to opt_parse, opt_parse will never return false.
+ *
+ * Example:
+ *	// This never returns false; just exits if there's an erorr.
+ *	opt_parse(&argc, argv, opt_log_stderr_exit);
+ */
+void opt_log_stderr_exit(const char *fmt, ...);
 
 /**
  * opt_invalid_argument - helper to allocate an "Invalid argument '%s'" string
@@ -223,6 +242,10 @@ char *opt_invalid_argument(const char *arg);
  * Creates a usage message, with the program name, arguments, some extra details
  * and a table of all the options with their descriptions.  If an option has
  * description opt_hidden, it is not shown here.
+ *
+ * If "extra" is NULL, then the extra information is taken from any
+ * registered option which calls opt_usage_and_exit().  This avoids duplicating
+ * that string in the common case.
  *
  * The result should be passed to free().
  */

@@ -7,6 +7,7 @@
 #include "utils.h"
 #include <ccan/opt/opt.c>
 #include <ccan/opt/usage.c>
+#include <ccan/opt/helpers.c>
 
 /* Test iterators. */
 int main(int argc, char *argv[])

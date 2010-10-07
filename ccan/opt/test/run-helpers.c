@@ -13,6 +13,12 @@ static jmp_buf exited;
 #define printf saved_printf
 static int saved_printf(const char *fmt, ...);
 
+#define fprintf saved_fprintf
+static int saved_fprintf(FILE *ignored, const char *fmt, ...);
+
+#define vfprintf(f, fmt, ap) saved_vprintf(fmt, ap)
+static int saved_vprintf(const char *fmt, va_list ap);
+
 #include <ccan/opt/helpers.c>
 #include <ccan/opt/opt.c>
 #include <ccan/opt/usage.c>
@@ -26,15 +32,10 @@ static void reset_options(void)
 
 static char *output = NULL;
 
-static int saved_printf(const char *fmt, ...)
+static int saved_vprintf(const char *fmt, va_list ap)
 {
-	va_list ap;
 	char *p;
-	int ret;
-
-	va_start(ap, fmt);
-	ret = vasprintf(&p, fmt, ap);
-	va_end(ap);
+	int ret = vasprintf(&p, fmt, ap);
 
 	if (output) {
 		output = realloc(output, strlen(output) + strlen(p) + 1);
@@ -42,14 +43,35 @@ static int saved_printf(const char *fmt, ...)
 		free(p);
 	} else
 		output = p;
+	return ret;
+}
 
+static int saved_printf(const char *fmt, ...)
+{
+	va_list ap;
+	int ret;
+
+	va_start(ap, fmt);
+	ret = saved_vprintf(fmt, ap);
+	va_end(ap);
+	return ret;
+}	
+
+static int saved_fprintf(FILE *ignored, const char *fmt, ...)
+{
+	va_list ap;
+	int ret;
+
+	va_start(ap, fmt);
+	ret = saved_vprintf(fmt, ap);
+	va_end(ap);
 	return ret;
 }	
 
 /* Test helpers. */
 int main(int argc, char *argv[])
 {
-	plan_tests(96);
+	plan_tests(100);
 
 	/* opt_set_bool */
 	{
@@ -337,6 +359,48 @@ int main(int argc, char *argv[])
 		opt_show_ulongval(buf, &ul);
 		ok1(strcmp(buf, "4294967295") == 0);
 		ok1(buf[OPT_SHOW_LEN] == '!');
+	}
+
+	/* opt_log_stderr. */
+	{
+		reset_options();
+		opt_register_noarg("-a",
+				   opt_usage_and_exit, "[args]", "");
+
+		argc = 2;
+		argv = malloc(sizeof(argv[0]) * 3);
+		argv[0] = "thisprog";
+		argv[1] = "--garbage";
+		argv[2] = NULL;
+		ok1(!opt_parse(&argc, argv, opt_log_stderr));
+		ok1(!strcmp(output,
+			    "thisprog: --garbage: unrecognized option\n"));
+		free(output);
+		output = NULL;
+	}
+
+	/* opt_log_stderr_exit. */
+	{
+		int exitval;
+		reset_options();
+		opt_register_noarg("-a",
+				   opt_usage_and_exit, "[args]", "");
+		exitval = setjmp(exited);
+		if (exitval == 0) {
+			argc = 2;
+			argv = malloc(sizeof(argv[0]) * 3);
+			argv[0] = "thisprog";
+			argv[1] = "--garbage";
+			argv[2] = NULL;
+			opt_parse(&argc, argv, opt_log_stderr_exit);
+			fail("opt_log_stderr_exit returned?");
+		} else {
+			ok1(exitval - 1 == 1);
+		}
+		ok1(!strcmp(output,
+			    "thisprog: --garbage: unrecognized option\n"));
+		free(output);
+		output = NULL;
 	}
 
 	return exit_status();

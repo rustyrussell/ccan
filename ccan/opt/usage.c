@@ -28,6 +28,17 @@ char *opt_usage(const char *argv0, const char *extra)
 	unsigned int i, num, len;
 	char *ret, *p;
 
+	if (!extra) {
+		extra = "";
+		for (i = 0; i < opt_count; i++) {
+			if (opt_table[i].cb == (void *)opt_usage_and_exit
+			    && opt_table[i].arg) {
+				extra = opt_table[i].arg;
+				break;
+			}
+		}
+	}
+
 	/* An overestimate of our length. */
 	len = strlen("Usage: %s ") + strlen(argv0)
 		+ strlen("[-%.*s]") + opt_num_short + 1
