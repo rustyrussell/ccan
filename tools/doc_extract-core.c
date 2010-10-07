@@ -26,8 +26,10 @@ static char **grab_doc(char **lines, unsigned int num)
 	for (i = 0; lines[i]; i++) {
 		if (streq(lines[i], "/**")) {
 			printing = true;
-			if (num != 0)
-				talloc_append_string(ret[num-1], "\n");
+			if (num != 0) {
+				ret[num-1] = talloc_append_string(ret[num-1],
+								  "\n");
+			}
 		} else if (streq(lines[i], " */")) 
 			printing = false;
 		else if (printing) {
@@ -65,18 +67,18 @@ static bool is_section(const char *line, bool one_liner)
 	return line[len] == ':' && is_blank(line+len+1);
 }
 
-/* Summary line is form '<identifier> - ' */
-static bool is_summary_line(const char *line)
+/* Summary line is form '<identifier> - ' (spaces for 'struct foo -') */
+static unsigned int is_summary_line(const char *line)
 {
 	unsigned int id_len;
 
-	id_len = strspn(line, IDENT_CHARS);
+	id_len = strspn(line, IDENT_CHARS" ");
 	if (id_len == 0)
-		return false;
-	if (!strstarts(line + id_len, " - "))
-		return false;
+		return 0;
+	if (!strstarts(line + id_len-1, " - "))
+		return 0;
 
-	return true;
+	return id_len - 1;
 }
 
 static bool empty_section(struct doc_section *d)
@@ -137,11 +139,13 @@ struct list_head *extract_doc_sections(char **rawlines, unsigned int num)
 	list_head_init(list);
 
 	for (i = 0; lines[i]; i++) {
-		if (is_summary_line(lines[i])) {
-			function = talloc_strndup(list, lines[i],
-						  strcspn(lines[i], " "));
+		unsigned funclen;
+
+		funclen = is_summary_line(lines[i]);
+		if (funclen) {
+			function = talloc_strndup(list, lines[i], funclen);
 			curr = new_section(list, function, "summary");
-			add_line(curr, strstr(lines[i], " - ") + 3);
+			add_line(curr, lines[i] + funclen + 3);
 			curr = new_section(list, function, "description");
 		} else if (is_section(lines[i], false)) {
 			char *type = talloc_strndup(curr, lines[i],
