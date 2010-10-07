@@ -235,7 +235,7 @@ char *maybe_temp_file(const void *ctx, const char *extension, bool keep,
 				    suffix, extension);
 		talloc_free(suffix);
 		suffix = talloc_asprintf(ctx, "-%u", ++count);
-	} while (!keep && lstat(f, &st) == 0);
+	} while (lstat(f, &st) == 0);
 
 	if (tools_verbose)
 		printf("Creating file %s\n", f);
