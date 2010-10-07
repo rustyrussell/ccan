@@ -48,7 +48,7 @@ struct opt_table {
  *	OPT_WITH_ARG()
  */
 #define OPT_WITHOUT_ARG(names, cb, arg, desc)	\
-	(names), OPT_CB_NOARG((cb), (arg)), (desc)
+	{ (names), OPT_CB_NOARG((cb), (arg)), (desc) }
 
 /**
  * OPT_WITH_ARG() - macro for initializing long and short option (with arg)
@@ -83,7 +83,7 @@ struct opt_table {
  *	OPT_WITHOUT_ARG()
  */
 #define OPT_WITH_ARG(name, cb, show, arg, desc)	\
-	(name), OPT_CB_ARG((cb), (show), (arg)), (desc)
+	{ (name), OPT_CB_ARG((cb), (show), (arg)), (desc) }
 
 /**
  * OPT_SUBTABLE() - macro for including another table inside a table.
@@ -111,13 +111,13 @@ struct opt_table {
  * Example:
  * static int verbose = 0;
  * static struct opt_table opts[] = {
- * 	{ OPT_WITHOUT_ARG("--verbose", opt_inc_intval, &verbose,
- * 	  "Verbose mode (can be specified more than once)") },
- * 	{ OPT_WITHOUT_ARG("-v", opt_inc_intval, &verbose,
- * 	  "Verbose mode (can be specified more than once)") },
- * 	{ OPT_WITHOUT_ARG("--usage", opt_usage_and_exit,
- * 			  "args...\nA silly test program.",
- * 	  "Print this message.") },
+ * 	OPT_WITHOUT_ARG("--verbose", opt_inc_intval, &verbose,
+ *			"Verbose mode (can be specified more than once)"),
+ * 	OPT_WITHOUT_ARG("-v", opt_inc_intval, &verbose,
+ *			"Verbose mode (can be specified more than once)"),
+ * 	OPT_WITHOUT_ARG("--usage", opt_usage_and_exit,
+ * 			"args...\nA silly test program.",
+ *			"Print this message."),
  * 	OPT_ENDTABLE
  * };
  *

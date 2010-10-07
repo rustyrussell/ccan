@@ -70,33 +70,31 @@ bool parse_args(int *argc, char ***argv, ...)
 
 struct opt_table short_table[] = {
 	/* Short opts, different args. */
-	{ OPT_WITHOUT_ARG("-a", test_noarg, "a", "Description of a") },
-	{ OPT_WITH_ARG("-b", test_arg, show_arg, "b", "Description of b") },
+	OPT_WITHOUT_ARG("-a", test_noarg, "a", "Description of a"),
+	OPT_WITH_ARG("-b", test_arg, show_arg, "b", "Description of b"),
 	OPT_ENDTABLE
 };
 
 struct opt_table long_table[] = {
 	/* Long opts, different args. */
-	{ OPT_WITHOUT_ARG("--ddd", test_noarg, "ddd", "Description of ddd") },
-	{ OPT_WITH_ARG("--eee <filename>", test_arg, show_arg, "eee", "") },
+	OPT_WITHOUT_ARG("--ddd", test_noarg, "ddd", "Description of ddd"),
+	OPT_WITH_ARG("--eee <filename>", test_arg, show_arg, "eee", ""),
 	OPT_ENDTABLE
 };
 
 struct opt_table long_and_short_table[] = {
 	/* Short and long, different args. */
-	{ OPT_WITHOUT_ARG("--ggg/-g", test_noarg, "ggg",
-			  "Description of ggg") },
-	{ OPT_WITH_ARG("-h/--hhh", test_arg, NULL, "hhh",
-		       "Description of hhh") },
+	OPT_WITHOUT_ARG("--ggg/-g", test_noarg, "ggg", "Description of ggg"),
+	OPT_WITH_ARG("-h/--hhh", test_arg, NULL, "hhh", "Description of hhh"),
 	OPT_ENDTABLE
 };
 
 /* Sub-table test. */
 struct opt_table subtables[] = {
 	/* Two short, and two long long, no description */
-	{ OPT_WITH_ARG("--jjj/-j/--lll/-l", test_arg, show_arg, "jjj", "") },
+	OPT_WITH_ARG("--jjj/-j/--lll/-l", test_arg, show_arg, "jjj", ""),
 	/* Hidden option */
-	{ OPT_WITH_ARG("--mmm/-m", test_arg, show_arg, "mmm", opt_hidden) },
+	OPT_WITH_ARG("--mmm/-m", test_arg, show_arg, "mmm", opt_hidden),
 	OPT_SUBTABLE(short_table, NULL),
 	OPT_SUBTABLE(long_table, "long table options"),
 	OPT_SUBTABLE(long_and_short_table, NULL),
