@@ -14,7 +14,7 @@
 /* 1 == Describe results for partial failures.
    2 == Describe gory details.
    3 == Describe every action. */
-extern unsigned int verbose;
+extern int verbose;
 
 struct manifest {
 	char *dir;

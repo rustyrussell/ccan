@@ -19,7 +19,6 @@
 #include "ccanlint.h"
 #include "../tools.h"
 #include <unistd.h>
-#include <getopt.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,8 +29,9 @@
 #include <ccan/str/str.h>
 #include <ccan/str_talloc/str_talloc.h>
 #include <ccan/talloc/talloc.h>
+#include <ccan/opt/opt.h>
 
-unsigned int verbose = 0;
+int verbose = 0;
 static LIST_HEAD(compulsory_tests);
 static LIST_HEAD(normal_tests);
 static LIST_HEAD(finished_tests);
@@ -39,21 +39,6 @@ bool safe_mode = false;
 static struct btree *cmdline_exclude;
 static struct btree *info_exclude;
 static unsigned int timeout;
-
-static void usage(const char *name)
-{
-	fprintf(stderr, "Usage: %s [-s] [-n] [-v] [-t <ms>] [-d <dirname>] [-x <test>]* [-k <test>]*\n"
-		"   -v: verbose mode (can specify more than once)\n"
-		"   -s: simply give one line summary\n"
-		"   -d: use this directory instead of the current one\n"
-		"   -n: do not compile anything\n"
-		"   -l: list tests ccanlint performs\n"
-		"   -k: keep results of this test (can be used multiple times)\n"
-		"   -x: exclude tests (can be used multiple times)\n"
-		"   -t: ignore (terminate) tests that are slower than this\n",
-		name);
-	exit(1);
-}
 
 #if 0
 static void indent_print(const char *string)
@@ -306,12 +291,19 @@ static struct ccanlint *find_test(const char *key)
 	return NULL;
 }
 
-static void keep_test(const char *testname)
+static char *keep_test(const char *testname, void *unused)
 {
 	struct ccanlint *i = find_test(testname);
 	if (!i)
 		errx(1, "No test %s to --keep", testname);
 	i->keep_results = true;
+	return NULL;
+}
+
+static char *skip_test(const char *testname, void *unused)
+{
+	btree_insert(cmdline_exclude, optarg);
+	return NULL;
 }
 
 static void print_tests(struct list_head *tests, const char *type)
@@ -329,7 +321,7 @@ static void print_tests(struct list_head *tests, const char *type)
 	}
 }
 
-static void list_tests(void)
+static char *list_tests(void *arg)
 {
 	print_tests(&compulsory_tests, "Compulsory");
 	print_tests(&normal_tests, "Normal");
@@ -359,63 +351,46 @@ static void add_info_fails(struct ccan_file *info)
 
 int main(int argc, char *argv[])
 {
-	int c;
 	bool summary = false;
 	unsigned int score = 0, total_score = 0;
 	struct manifest *m;
 	struct ccanlint *i;
-	const char *prefix = "", *dir = talloc_getcwd(NULL);
+	const char *prefix = "";
+	char *dir = talloc_getcwd(NULL), *base_dir = dir;
 	
 	init_tests();
 
 	cmdline_exclude = btree_new(btree_strcmp);
 	info_exclude = btree_new(btree_strcmp);
 
-	/* I'd love to use long options, but that's not standard. */
-	/* FIXME: popt ccan package? */
-	while ((c = getopt(argc, argv, "sd:vnlx:t:k:")) != -1) {
-		switch (c) {
-		case 'd':
-			if (optarg[0] != '/')
-				dir = talloc_asprintf_append(NULL, "%s/%s",
-							     dir, optarg);
-			else
-				dir = optarg;
-			prefix = talloc_append_string(talloc_basename(NULL,
-								      optarg),
-						      ": ");
-			break;
-		case 'l':
-			list_tests();
-		case 's':
-			summary = true;
-			break;
-		case 'v':
-			verbose++;
-			break;
-		case 'n':
-			safe_mode = true;
-			break;
-		case 'k':
-			keep_test(optarg);
-			break;
-		case 'x':
-			btree_insert(cmdline_exclude, optarg);
-			break;
-		case 't':
-			timeout = atoi(optarg);
-			if (!timeout)
-				errx(1, "Invalid timeout %s: 1 ms minumum",
-				     optarg);
-			break;
-		default:
-			usage(argv[0]);
-		}
-	}
+	opt_register_arg("--dir/-d", opt_set_charp, opt_show_charp, &dir,
+			 "use this directory");
+	opt_register_noarg("-n/--safe-mode", opt_set_bool, &safe_mode,
+			 "do not compile anything");
+	opt_register_noarg("-l/--list-tests", list_tests, NULL,
+			 "list tests ccanlint performs (and exit)");
+	opt_register_arg("-k/--keep <testname>", keep_test, NULL, NULL,
+			   "keep results of <testname> (can be used multiple times)");
+	opt_register_noarg("--summary/-s", opt_set_bool, &summary,
+			   "simply give one line summary");
+	opt_register_noarg("--verbose/-v", opt_inc_intval, &verbose,
+			   "verbose mode (can specify more than once)");
+	opt_register_arg("-x/--exclude <testname>", skip_test, NULL, NULL,
+			 "exclude <testname> (can be used multiple times)");
+	opt_register_arg("-t/--timeout <milleseconds>", opt_set_uintval,
+			 NULL, &timeout,
+			 "ignore (terminate) tests that are slower than this");
+	opt_register_noarg("-?/-h/--help", opt_usage_and_exit,
+			   "\nA program for checking and guiding development"
+			   " of CCAN modules.",
+			   "This usage message");
 
-	if (optind < argc)
-		usage(argv[0]);
+	opt_parse(&argc, argv, opt_log_stderr_exit);
 
+	if (dir[0] != '/')
+		dir = talloc_asprintf_append(NULL, "%s/%s", base_dir, dir);
+	if (dir != base_dir)
+		prefix = talloc_append_string(talloc_basename(NULL, dir), ": ");
 	if (verbose >= 2)
 		compile_verbose = true;
 	if (verbose >= 3)
