@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 	struct tdb_data data = { (unsigned char *)&j, sizeof(j) };
 	char *summary;
 
-	plan_tests(sizeof(flags) / sizeof(flags[0]) * (1 + 2 * 7) + 1);
+	plan_tests(sizeof(flags) / sizeof(flags[0]) * (1 + 2 * 17) + 1);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		tdb = tdb_open("run-summary.tdb", flags[i],
 			       O_RDWR|O_CREAT|O_TRUNC, 0600, &tap_log_attr);
@@ -42,9 +42,19 @@ int main(int argc, char *argv[])
 			ok1(strstr(summary, "Number of records: 500\n"));
 			ok1(strstr(summary, "Smallest/average/largest keys: 4/4/4\n"));
 			ok1(strstr(summary, "Smallest/average/largest data: 0/2/4\n"));
-			ok1(strstr(summary, "Free bucket 8"));
-			ok1(strstr(summary, "Free bucket 16"));
-			ok1(strstr(summary, "Free bucket 24"));
+			ok1(strstr(summary, "Free bucket 16:"));
+			ok1(strstr(summary, "Free bucket 24:"));
+			ok1(strstr(summary, "Free bucket 32:"));
+			ok1(strstr(summary, "Free bucket 40:"));
+			ok1(strstr(summary, "Free bucket 48:"));
+			ok1(strstr(summary, "Free bucket 56:"));
+			ok1(strstr(summary, "Free bucket 64:"));
+			ok1(strstr(summary, "Free bucket 72:"));
+			ok1(strstr(summary, "Free bucket 80:"));
+			ok1(strstr(summary, "Free bucket 88-136:"));
+			ok1(strstr(summary, "Free bucket 144-264:"));
+			ok1(strstr(summary, "Free bucket 272-520:"));
+			ok1(strstr(summary, "Free bucket 528-1032:"));
 			if (j == TDB_SUMMARY_HISTOGRAMS)
 				ok1(strstr(summary, "|")
 				    && strstr(summary, "*"));
