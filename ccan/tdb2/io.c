@@ -73,7 +73,9 @@ static int tdb_oob(struct tdb_context *tdb, tdb_off_t len, bool probe)
 	int ret;
 
 	/* We can't hold pointers during this: we could unmap! */
-	assert(!tdb->direct_access || tdb_has_expansion_lock(tdb));
+	assert(!tdb->direct_access
+	       || (tdb->flags & TDB_NOLOCK)
+	       || tdb_has_expansion_lock(tdb));
 
 	if (len <= tdb->map_size)
 		return 0;
