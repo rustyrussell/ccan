@@ -225,7 +225,7 @@
  *
  * Author: Joey Adams
  * Version: 0.1.0
- * Licence: BSD
+ * License: BSD
  */
 int main(int argc, char *argv[])
 {

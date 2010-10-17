@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
 
 	if (argc < 3)
 		errx(1, "Usage: doc_extract [--function=<funcname>] TYPE <file>...\n"
-		     "Where TYPE is functions|author|licence|maintainer|summary|description|example|all");
+		     "Where TYPE is functions|author|license|maintainer|summary|description|example|all");
 
 	if (strstarts(argv[1], "--function=")) {
 		function = argv[1] + strlen("--function=");

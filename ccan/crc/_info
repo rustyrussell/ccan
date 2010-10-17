@@ -26,7 +26,7 @@
  *		exit(0);
  *	}
  *
- * Licence: GPL (v2 or any later version)
+ * License: GPL (v2 or any later version)
  * Author: Gary S. Brown, Clay Haapala
  * Maintainer: Rusty Russell <rusty@rustcorp.com.au>
  */

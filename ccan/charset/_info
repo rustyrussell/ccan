@@ -41,7 +41,7 @@
  *	}
  *
  * Author: Joey Adams
- * Licence: MIT
+ * License: MIT
  */
 int main(int argc, char *argv[])
 {

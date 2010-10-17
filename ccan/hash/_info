@@ -13,7 +13,7 @@
  * The stable ones will always give the same results on any computer,
  * and on any version of this package.
  *
- * Licence: Public Domain
+ * License: Public Domain
  * Maintainer: Rusty Russell <rusty@rustcorp.com.au>
  * Author: Bob Jenkins <bob_jenkins@burtleburtle.net>
  */

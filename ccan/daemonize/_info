@@ -35,7 +35,7 @@
  *		exit(0);
  *	}
  *
- * Licence: BSD (2 clause, ie. MIT)
+ * License: BSD (2 clause, ie. MIT)
  */
 int main(int argc, char *argv[])
 {

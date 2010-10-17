@@ -43,7 +43,7 @@
  *
  * Author: Joey Adams
  * Version: 0.1.1
- * Licence: BSD
+ * License: BSD
  */
 int main(int argc, char *argv[])
 {

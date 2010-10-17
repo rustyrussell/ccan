@@ -36,7 +36,7 @@
  *		return 0;
  *	}
  *
- * Licence: GPL (2 or any later version)
+ * License: GPL (2 or any later version)
  * Maintainer: Rusty Russell <rusty@rustcorp.com.au>
  * Author: Jim Houston <jim.houston@ccur.com>
  */

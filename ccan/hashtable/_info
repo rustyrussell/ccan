@@ -101,7 +101,7 @@
  *		return 0;
  *	}
  *
- * Licence: GPLv2 (or later)
+ * License: GPLv2 (or later)
  * Author: Rusty Russell <rusty@rustcorp.com.au>
  */
 int main(int argc, char *argv[])

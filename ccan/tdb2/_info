@@ -62,7 +62,7 @@
  *
  * Author: Rusty Russell
  *
- * Licence: LGPLv3 (or later)
+ * License: LGPLv3 (or later)
  *
  * Fails:
  *	valgrind-tests // hash needs --partial-loads-ok=yes.

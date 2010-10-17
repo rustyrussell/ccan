@@ -13,6 +13,7 @@ $example=extract_field('example',$module_path);
 $dependencies=htmlspecialchars(shell_exec('tools/ccan_depends --direct '.$module_path));
 $extdepends=htmlspecialchars(shell_exec('tools/ccan_depends --compile --non-ccan '.$module_path));
 $licence=extract_field('licence',$module_path);
+$license=extract_field('license',$module_path);
 ?>
 <table align="center" bgcolor="lightblue" width="70%" border="0" cellpadding="3" cellspacing="1">
 <tr align="center" bgcolor="FFFFCC">
@@ -97,7 +98,15 @@ if ($example) {
 if ($licence) {
 ?>
 <tr align="left" bgcolor="FFFFCC"> 
-<td><h3>Licence: </h3> <?=$licence?></td>
+<td><h3>License: </h3> <?=$licence?></td>
+</tr>
+<?php
+}
+
+if ($license) {
+?>
+<tr align="left" bgcolor="FFFFCC"> 
+<td><h3>License: </h3> <?=$license?></td>
 </tr>
 <?php
 }
