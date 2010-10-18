@@ -41,6 +41,7 @@ static int always_transaction = 0;
 static int loopnum;
 static int count_pipe;
 static union tdb_attribute log_attr;
+static union tdb_attribute seed_attr;
 
 #ifdef PRINTF_ATTRIBUTE
 static void tdb_log(struct tdb_context *tdb, enum tdb_debug_level level, void *private, const char *format, ...) PRINTF_ATTRIBUTE(4,5);
@@ -338,7 +339,10 @@ int main(int argc, char * const *argv)
 	int kill_random = 0;
 	int *done;
 
+	log_attr.base.attr = TDB_ATTRIBUTE_LOG;
+	log_attr.base.next = &seed_attr;
 	log_attr.log.log_fn = tdb_log;
+	seed_attr.base.attr = TDB_ATTRIBUTE_SEED;
 
 	while ((c = getopt(argc, argv, "n:l:s:thk")) != -1) {
 		switch (c) {
@@ -372,6 +376,7 @@ int main(int argc, char * const *argv)
 	if (seed == -1) {
 		seed = (getpid() + time(NULL)) & 0x7FFFFFFF;
 	}
+	seed_attr.seed.seed = (((uint64_t)seed) << 32) | seed; 
 
 	if (num_procs == 1 && !kill_random) {
 		/* Don't fork for this case, makes debugging easier. */

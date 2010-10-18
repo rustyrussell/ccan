@@ -94,7 +94,9 @@ struct new_database {
 };
 
 /* initialise a new database */
-static int tdb_new_database(struct tdb_context *tdb, struct tdb_header *hdr)
+static int tdb_new_database(struct tdb_context *tdb,
+			    struct tdb_attribute_seed *seed,
+			    struct tdb_header *hdr)
 {
 	/* We make it up in memory, then write it out if not internal */
 	struct new_database newdb;
@@ -105,7 +107,10 @@ static int tdb_new_database(struct tdb_context *tdb, struct tdb_header *hdr)
 
 	/* Fill in the header */
 	newdb.hdr.version = TDB_VERSION;
-	newdb.hdr.hash_seed = random_number(tdb);
+	if (seed)
+		newdb.hdr.hash_seed = seed->seed;
+	else
+		newdb.hdr.hash_seed = random_number(tdb);
 	newdb.hdr.hash_test = TDB_HASH_MAGIC;
 	newdb.hdr.hash_test = tdb->khash(&newdb.hdr.hash_test,
 					 sizeof(newdb.hdr.hash_test),
@@ -181,6 +186,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	uint64_t hash_test;
 	unsigned v;
 	struct tdb_header hdr;
+	struct tdb_attribute_seed *seed = NULL;
 
 	tdb = malloc(sizeof(*tdb));
 	if (!tdb) {
@@ -213,6 +219,9 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 			tdb->khash = attr->hash.hash_fn;
 			tdb->hash_priv = attr->hash.hash_private;
 			break;
+		case TDB_ATTRIBUTE_SEED:
+			seed = &attr->seed;
+			break;
 		default:
 			tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 				 "tdb_open: unknown attribute type %u\n",
@@ -243,7 +252,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	/* internal databases don't need any of the rest. */
 	if (tdb->flags & TDB_INTERNAL) {
 		tdb->flags |= (TDB_NOLOCK | TDB_NOMMAP);
-		if (tdb_new_database(tdb, &hdr) != 0) {
+		if (tdb_new_database(tdb, seed, &hdr) != 0) {
 			tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 				 "tdb_open: tdb_new_database failed!");
 			goto fail;
@@ -275,7 +284,8 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 
 	if (!tdb_pread_all(tdb->fd, &hdr, sizeof(hdr), 0)
 	    || strcmp(hdr.magic_food, TDB_MAGIC_FOOD) != 0) {
-		if (!(open_flags & O_CREAT) || tdb_new_database(tdb, &hdr) == -1) {
+		if (!(open_flags & O_CREAT)
+		    || tdb_new_database(tdb, seed, &hdr) == -1) {
 			if (errno == 0) {
 				errno = EIO; /* ie bad format or something */
 			}

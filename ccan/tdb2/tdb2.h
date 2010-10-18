@@ -86,7 +86,8 @@ typedef uint64_t (*tdb_hashfn_t)(const void *key, size_t len, uint64_t seed,
 
 enum tdb_attribute_type {
 	TDB_ATTRIBUTE_LOG = 0,
-	TDB_ATTRIBUTE_HASH = 1
+	TDB_ATTRIBUTE_HASH = 1,
+	TDB_ATTRIBUTE_SEED = 2
 };
 
 struct tdb_attribute_base {
@@ -106,10 +107,16 @@ struct tdb_attribute_hash {
 	void *hash_private;
 };
 
+struct tdb_attribute_seed {
+	struct tdb_attribute_base base; /* .attr = TDB_ATTRIBUTE_SEED */
+	uint64_t seed;
+};
+
 union tdb_attribute {
 	struct tdb_attribute_base base;
 	struct tdb_attribute_log log;
 	struct tdb_attribute_hash hash;
+	struct tdb_attribute_seed seed;
 };
 		
 struct tdb_context *tdb_open(const char *name, int tdb_flags,
