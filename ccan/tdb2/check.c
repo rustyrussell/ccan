@@ -336,11 +336,11 @@ static tdb_len_t check_free_list(struct tdb_context *tdb,
 		h = bucket_off(zone_off, i);
 		for (off = tdb_read_off(tdb, h); off; off = f.next) {
 			if (off == TDB_OFF_ERR)
-				return false;
+				return TDB_OFF_ERR;
 			if (tdb_read_convert(tdb, off, &f, sizeof(f)))
-				return false;
+				return TDB_OFF_ERR;
 			if (!check_free(tdb, off, &f, prev, zone_off, i))
-				return false;
+				return TDB_OFF_ERR;
 
 			/* FIXME: Check hash bits */
 			p = asearch(&off, free, num_free, off_cmp);
@@ -350,7 +350,7 @@ static tdb_len_t check_free_list(struct tdb_context *tdb,
 					 "tdb_check: Invalid offset"
 					 " %llu in free table\n",
 					 (long long)off);
-				return false;
+				return TDB_OFF_ERR;
 			}
 			/* Mark it invalid. */
 			*p ^= 1;
