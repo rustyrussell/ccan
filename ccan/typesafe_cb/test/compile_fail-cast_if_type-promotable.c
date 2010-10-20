@@ -6,7 +6,7 @@ static void _set_some_value(void *val)
 }
 
 #define set_some_value(expr)						\
-	_set_some_value(cast_if_type(void *, (expr), (expr), int))
+	_set_some_value(cast_if_type(void *, (expr), (expr), long))
 
 int main(int argc, char *argv[])
 {
@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
 #error "Unfortunately we don't fail if cast_if_type is a noop."
 #endif
 #else
-	int x = 0;
+	long x = 0;
 #endif
 	set_some_value(x);
 	return 0;
