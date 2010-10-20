@@ -93,7 +93,7 @@ char *opt_usage(const char *argv0, const char *extra)
 			len += sprintf(p + len, " <arg>");
 		len += sprintf(p + len, "%.*s",
 			       len < strlen(OPT_SPACE_PAD)
-			       ? strlen(OPT_SPACE_PAD) - len : 1,
+			       ? (unsigned)strlen(OPT_SPACE_PAD) - len : 1,
 			       OPT_SPACE_PAD);
 
 		len += sprintf(p + len, "%s", opt_table[i].desc);
