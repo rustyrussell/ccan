@@ -1,0 +1,81 @@
+#include <string.h>
+#include "config.h"
+
+/**
+ * avl - Key-value dictionary based on AVL trees
+ *
+ * A simple, well-tested implementation of AVL trees for mapping
+ * unique keys to values.  This implementation supports insertion,
+ * removal, lookup, and traversal.
+ *
+ * An AVL tree is a self-balancing binary tree that performs
+ * insertion, removal, and lookup in O(log n) time per operation.
+ *
+ * Example:
+ * #include <ccan/avl/avl.h>
+ * 
+ * #include <stdio.h>
+ * #include <stdlib.h>
+ * #include <string.h>
+ * 
+ * struct tally {
+ * 	long count;
+ * };
+ * #define new_tally() calloc(1, sizeof(struct tally))
+ * 
+ * static void chomp(char *str)
+ * {
+ * 	char *end = strchr(str, 0);
+ * 	if (end > str && end[-1] == '\n')
+ * 		end[-1] = 0;
+ * }
+ * 
+ * int main(void)
+ * {
+ * 	AVL          *avl = avl_new((AvlCompare) strcmp);
+ * 	AvlIter       i;
+ * 	struct tally *tally;
+ * 	char          line[256];
+ * 	
+ * 	while (fgets(line, sizeof(line), stdin))
+ * 	{
+ * 		chomp(line);
+ * 		
+ * 		tally = avl_lookup(avl, line);
+ * 		if (tally == NULL)
+ * 			avl_insert(avl, strdup(line), tally = new_tally());
+ * 		
+ * 		tally->count++;
+ * 	}
+ * 	
+ * 	avl_foreach(i, avl) {
+ * 		char         *line  = i.key;
+ * 		struct tally *tally = i.value;
+ * 		
+ * 		printf("% 5ld: %s\n", tally->count, line);
+ * 		
+ * 		free(line);
+ * 		free(tally);
+ * 	}
+ * 	
+ * 	avl_free(avl);
+ * 	
+ * 	return 0;
+ * }
+ *
+ * Licence: ISC
+ * Author: Joey Adams <joeyadams3.14159@gmail.com>
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		/* Nothing */
+		return 0;
+	}
+
+	return 1;
+}
