@@ -311,7 +311,8 @@ static int tdb_write(struct tdb_context *tdb, tdb_off_t off,
 			tdb->ecode = TDB_ERR_IO;
 			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
 				 "tdb_write failed at %llu len=%llu (%s)\n",
-				 off, len, strerror(errno));
+				 (long long)off, (long long)len,
+				 strerror(errno));
 			return -1;
 		}
 	}

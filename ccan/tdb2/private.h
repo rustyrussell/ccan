@@ -23,6 +23,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <sys/time.h>
 #include <sys/mman.h>
 #include <unistd.h>
@@ -59,10 +60,6 @@
 
 typedef uint64_t tdb_len_t;
 typedef uint64_t tdb_off_t;
-
-#ifndef offsetof
-#define offsetof(t,f) ((unsigned int)&((t *)0)->f)
-#endif
 
 #define TDB_MAGIC_FOOD "TDB file\n"
 #define TDB_VERSION ((uint64_t)(0x26011967 + 7))

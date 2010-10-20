@@ -537,7 +537,7 @@ again:
 /* Return 1 if we find something, 0 if not, -1 on error. */
 int next_in_hash(struct tdb_context *tdb, int ltype,
 		 struct traverse_info *tinfo,
-		 TDB_DATA *kbuf, unsigned int *dlen)
+		 TDB_DATA *kbuf, size_t *dlen)
 {
 	const unsigned group_bits = TDB_TOPLEVEL_HASH_BITS-TDB_HASH_GROUP_BITS;
 	tdb_off_t hlock_start, hlock_range, off;
@@ -591,7 +591,7 @@ int next_in_hash(struct tdb_context *tdb, int ltype,
 /* Return 1 if we find something, 0 if not, -1 on error. */
 int first_in_hash(struct tdb_context *tdb, int ltype,
 		  struct traverse_info *tinfo,
-		  TDB_DATA *kbuf, unsigned int *dlen)
+		  TDB_DATA *kbuf, size_t *dlen)
 {
 	tinfo->prev = 0;
 	tinfo->toplevel_group = 0;

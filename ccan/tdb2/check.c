@@ -45,14 +45,15 @@ static bool check_header(struct tdb_context *tdb)
 	if (hdr.hash_test != hash_test) {
 		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 			 "check: hash test %llu should be %llu\n",
-			 hdr.hash_test, hash_test);
+			 (long long)hdr.hash_test,
+			 (long long)hash_test);
 		return false;
 	}
 
 	if (strcmp(hdr.magic_food, TDB_MAGIC_FOOD) != 0) {
 		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 			 "check: bad magic '%.*s'\n",
-			 sizeof(hdr.magic_food), hdr.magic_food);
+			 (unsigned)sizeof(hdr.magic_food), hdr.magic_food);
 		return false;
 	}
 
@@ -263,7 +264,7 @@ static bool check_hash(struct tdb_context *tdb,
 
 	if (!check_hash_tree(tdb, offsetof(struct tdb_header, hashtable),
 			     TDB_TOPLEVEL_HASH_BITS-TDB_HASH_GROUP_BITS,
-			     0, 0,  used, num_used, &num_found))
+			     0, 0, used, num_used, &num_found))
 		return false;
 
 	if (num_found != num_used) {
