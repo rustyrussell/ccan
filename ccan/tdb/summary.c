@@ -19,7 +19,7 @@
 #include <ccan/tally/tally.h>
 
 #define SUMMARY_FORMAT \
-	"Size of file/data: %zu/%zu\n" \
+	"Size of file/data: %u/%zu\n" \
 	"Number of records: %zu\n" \
 	"Smallest/average/largest keys: %zu/%zu/%zu\n%s" \
 	"Smallest/average/largest data: %zu/%zu/%zu\n%s" \

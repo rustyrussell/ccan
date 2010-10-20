@@ -25,7 +25,7 @@ static void taplog(struct tdb_context *tdb,
 
 	/* Strip trailing \n: diag adds it. */
 	if (line[0] && line[strlen(line)-1] == '\n')
-		diag("%s%.*s", log_prefix, strlen(line)-1, line);
+		diag("%s%.*s", log_prefix, (unsigned)strlen(line)-1, line);
 	else
 		diag("%s%s", log_prefix, line);
 }

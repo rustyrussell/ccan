@@ -72,7 +72,7 @@ typedef uint32_t tdb_len_t;
 typedef uint32_t tdb_off_t;
 
 #ifndef offsetof
-#define offsetof(t,f) ((unsigned int)&((t *)0)->f)
+#define offsetof(t,f) ((size_t)&((t *)0)->f)
 #endif
 
 #define TDB_MAGIC_FOOD "TDB file\n"
