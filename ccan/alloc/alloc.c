@@ -108,7 +108,7 @@ struct page_header {
  */
 static unsigned long bucket_to_size(unsigned int bucket)
 {
-	unsigned long base = 1 << (bucket / INTER_BUCKET_SPACE);
+	unsigned long base = 1UL << (bucket / INTER_BUCKET_SPACE);
 	return base + ((bucket % INTER_BUCKET_SPACE)
 		       << (bucket / INTER_BUCKET_SPACE))
 		/ INTER_BUCKET_SPACE;
@@ -127,9 +127,9 @@ static unsigned int size_to_bucket(unsigned long size)
 	unsigned int base = fls(size/2);
 	unsigned long overshoot;
 
-	overshoot = size - (1 << base);
+	overshoot = size - (1UL << base);
 	return base * INTER_BUCKET_SPACE
-		+ ((overshoot * INTER_BUCKET_SPACE + (1 << base)-1) >> base);
+		+ ((overshoot * INTER_BUCKET_SPACE + (1UL << base)-1) >> base);
 }
 
 static unsigned int small_page_bits(unsigned long poolsize)
@@ -167,7 +167,7 @@ static unsigned long page_header_size(unsigned int align_bits,
 	size = sizeof(struct page_header)
 		- sizeof(((struct page_header *)0)->used)
 		+ used_size(num_elements);
-	return align_up(size, 1 << align_bits);
+	return align_up(size, 1UL << align_bits);
 }
 
 static void add_to_list(struct header *head,
@@ -294,17 +294,17 @@ static void add_to_bucket_full_list(struct header *head,
 
 static void clear_bit(unsigned long bitmap[], unsigned int off)
 {
-	bitmap[off / BITS_PER_LONG] &= ~(1 << (off % BITS_PER_LONG));
+	bitmap[off / BITS_PER_LONG] &= ~(1UL << (off % BITS_PER_LONG));
 }
 
 static bool test_bit(const unsigned long bitmap[], unsigned int off)
 {
-	return bitmap[off / BITS_PER_LONG] & (1 << (off % BITS_PER_LONG));
+	return bitmap[off / BITS_PER_LONG] & (1UL << (off % BITS_PER_LONG));
 }
 
 static void set_bit(unsigned long bitmap[], unsigned int off)
 {
-	bitmap[off / BITS_PER_LONG] |= (1 << (off % BITS_PER_LONG));
+	bitmap[off / BITS_PER_LONG] |= (1UL << (off % BITS_PER_LONG));
 }
 
 /* There must be a bit to be found. */
@@ -324,7 +324,7 @@ static unsigned long elements_per_page(unsigned long align_bits,
 	unsigned long num, overhead;
 
 	/* First approximation: no extra room for bitmap. */
-	overhead = align_up(sizeof(struct page_header), 1 << align_bits);
+	overhead = align_up(sizeof(struct page_header), 1UL << align_bits);
 	num = (psize - overhead) / esize;
 
 	while (page_header_size(align_bits, num) + esize * num > psize)
@@ -394,7 +394,7 @@ void alloc_init(void *pool, unsigned long poolsize)
 	clear_bit(head->pagesize, 0);
 
 	/* Skip over page(s) used by header, add rest to free list */
-	for (i = align_up(header_size, (1 << sp_bits)) >> sp_bits;
+	for (i = align_up(header_size, (1UL << sp_bits)) >> sp_bits;
 	     i < SMALL_PAGES_PER_LARGE_PAGE;
 	     i++) {
 		ph = from_pgnum(head, i, sp_bits);
@@ -404,7 +404,7 @@ void alloc_init(void *pool, unsigned long poolsize)
 
 	/* Add the rest of the pages as large pages. */
 	i = SMALL_PAGES_PER_LARGE_PAGE;
-	while ((i << sp_bits) + (1 << lp_bits) <= poolsize) {
+	while ((i << sp_bits) + (1UL << lp_bits) <= poolsize) {
 		assert(i < MAX_SMALL_PAGES);
 		ph = from_pgnum(head, i, sp_bits);
 		ph->elements_used = 0;
@@ -547,7 +547,7 @@ void *huge_alloc(void *pool, unsigned long poolsize,
 	header_size = sizeof(*head) + sizeof(head->bs) * (max_bucket(lp_bits)-1);
 
 	num = 0;
-	for (i = (header_size + (1 << sp_bits) - 1) >> sp_bits;
+	for (i = (header_size + (1UL << sp_bits) - 1) >> sp_bits;
 	     i << sp_bits < poolsize;
 	     i++) {
 		struct page_header *pg;
@@ -555,7 +555,7 @@ void *huge_alloc(void *pool, unsigned long poolsize,
 
 		/* Skip over large pages. */
 		if (test_bit(head->pagesize, i >> BITS_FROM_SMALL_TO_LARGE_PAGE)) {
-			i += (1 << BITS_FROM_SMALL_TO_LARGE_PAGE)-1;
+			i += (1UL << BITS_FROM_SMALL_TO_LARGE_PAGE)-1;
 			continue;
 		}
 
@@ -596,7 +596,7 @@ void *huge_alloc(void *pool, unsigned long poolsize,
 	recombine_small_pages(head, poolsize, sp_bits);
 
 	num = 0;
-	for (i = (header_size + (1 << lp_bits) - 1) >> lp_bits;
+	for (i = (header_size + (1UL << lp_bits) - 1) >> lp_bits;
 	     (i << lp_bits) < poolsize; i++) {
 		struct page_header *pg;
 		unsigned long off = (i << lp_bits);
@@ -667,13 +667,17 @@ huge_free(struct header *head, unsigned long poolsize, void *free)
 	pgnum = free_off >> sp_bits;
 
 	if (test_bit(head->pagesize, pgnum >> BITS_FROM_SMALL_TO_LARGE_PAGE)) {
-		for (off = ha->off; off < ha->off + ha->len; off += 1 << lp_bits) {
+		for (off = ha->off;
+		     off < ha->off + ha->len;
+		     off += 1UL << lp_bits) {
 			add_large_page_to_freelist(head,
 						   (void *)((char *)head + off),
 						   sp_bits);
 		}
 	} else {
-		for (off = ha->off; off < ha->off + ha->len; off += 1 << sp_bits) {
+		for (off = ha->off;
+		     off < ha->off + ha->len;
+		     off += 1UL << sp_bits) {
 			add_small_page_to_freelist(head,
 						   (void *)((char *)head + off),
 						   sp_bits);
@@ -1008,7 +1012,7 @@ bool alloc_check(void *pool, unsigned long poolsize)
 	prev = 0;
 	for (i = head->small_free_list; i; i = ph->next) {
 		/* Bad pointer? */
-		if (out_of_bounds(i, sp_bits, 1 << sp_bits, poolsize))
+		if (out_of_bounds(i, sp_bits, 1UL << sp_bits, poolsize))
 			return check_fail();
 		/* Large page? */
 		if (test_bit(head->pagesize, i >> BITS_FROM_SMALL_TO_LARGE_PAGE))
@@ -1028,7 +1032,7 @@ bool alloc_check(void *pool, unsigned long poolsize)
 	prev = 0;
 	for (i = head->large_free_list; i; i = ph->next) {
 		/* Bad pointer? */
-		if (out_of_bounds(i, sp_bits, 1 << lp_bits, poolsize))
+		if (out_of_bounds(i, sp_bits, 1UL << lp_bits, poolsize))
 			return check_fail();
 		/* Not large page? */
 		if (!test_bit(head->pagesize, i >> BITS_FROM_SMALL_TO_LARGE_PAGE))
@@ -1085,7 +1089,7 @@ bool alloc_check(void *pool, unsigned long poolsize)
 		if (ha->prev != prev)
 			return check_fail();
 
-		for (j = ha->off; j < ha->off + ha->len; j += (1 << sp_bits)) {
+		for (j = ha->off; j < ha->off + ha->len; j += (1UL<<sp_bits)) {
 			/* Already seen this page? */
 			if (test_bit(pages, j >> sp_bits))
 				return check_fail();
@@ -1172,7 +1176,7 @@ static unsigned long visualize_bucket(FILE *out, struct header *head,
 	overhead += print_overhead(out, "page post-header alignments",
 				   (hdr_size - hdr_min) * num_pages, poolsize);
 	/* Between last element and end of page. */
-	page_size = (1 << sp_bits);
+	page_size = (1UL << sp_bits);
 	if (large_page_bucket(bucket, sp_bits))
 		page_size <<= BITS_FROM_SMALL_TO_LARGE_PAGE;
 
@@ -1207,11 +1211,11 @@ void alloc_visualize(FILE *out, void *pool, unsigned long poolsize)
 	fprintf(out, "Large page size %lu, small page size %lu.\n",
 		1UL << lp_bits, 1UL << sp_bits);
 	overhead += print_overhead(out, "unused pool tail",
-				   poolsize % (1 << lp_bits), poolsize);
+				   poolsize % (1UL << lp_bits), poolsize);
 	fprintf(out, "Main header %lu bytes (%lu small pages).\n",
-		header_size, align_up(header_size, 1 << sp_bits) >> sp_bits);
+		header_size, align_up(header_size, 1UL << sp_bits) >> sp_bits);
 	overhead += print_overhead(out, "partial header page",
-				   align_up(header_size, 1 << sp_bits)
+				   align_up(header_size, 1UL << sp_bits)
 				   - header_size, poolsize);
 	/* Total large pages. */
 	i = count_bits(head->pagesize, poolsize >> lp_bits);
