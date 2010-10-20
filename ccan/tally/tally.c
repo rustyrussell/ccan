@@ -322,7 +322,7 @@ ssize_t tally_total(const struct tally *tally, ssize_t *overflow)
 	}
 
 	/* If result is negative, make sure we can represent it. */
-	if (tally->total[1] & (1 << (SIZET_BITS-1))) {
+	if (tally->total[1] & ((size_t)1 << (SIZET_BITS-1))) {
 		/* Must have only underflowed once, and must be able to
 		 * represent result at ssize_t. */
 		if ((~tally->total[1])+1 != 0

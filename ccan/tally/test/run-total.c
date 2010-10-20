@@ -38,14 +38,17 @@ int main(void)
 	tally_add(tally, max);
 	total = tally_total(tally, &overflow);
 	ok1(overflow == 0);
-	ok1((size_t)total == 0xFFFFFFFE);
+	ok1((size_t)total == (size_t)-2);
 	ok1(tally_total(tally, NULL) == max);
 
 	/* Overflow into upper size_t. */
 	tally_add(tally, max);
 	total = tally_total(tally, &overflow);
 	ok1(overflow == 1);
-	ok1((size_t)total == 0x7FFFFFFD);
+	if (sizeof(size_t) == 4)
+		ok1((size_t)total == 0x7FFFFFFD);
+	else if (sizeof(size_t) == 8)
+		ok1((size_t)total == 0x7FFFFFFFFFFFFFFDULL);
 	ok1(tally_total(tally, NULL) == max);
 	free(tally);
 
