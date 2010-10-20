@@ -156,7 +156,7 @@ static char *add_func(char *others, const char *line)
 	}
 
 	return talloc_asprintf_append(others, "printf(\"%%p\", %.*s);\n",
-				      end - p + 1, p);
+				      (unsigned)(end - p + 1), p);
 }
 
 static void strip_leading_whitespace(char **lines)

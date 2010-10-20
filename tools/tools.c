@@ -213,7 +213,7 @@ char *temp_dir(const void *ctx)
 char *maybe_temp_file(const void *ctx, const char *extension, bool keep,
 		      const char *srcname)
 {
-	size_t baselen;
+	unsigned baselen;
 	char *f, *suffix = talloc_strdup(ctx, "");
 	struct stat st;
 	unsigned int count = 0;
