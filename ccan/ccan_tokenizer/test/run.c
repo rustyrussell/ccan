@@ -147,7 +147,7 @@ static void test_read_cstring(void) {
 				queue_skip(mq);
 		}
 		if (i<e)
-			printf("Item %u is incorrect\n", i);
+			printf("Item %zu is incorrect\n", i);
 		ok(i==e, "Is message queue correct?");
 		ok(!queue_count(mq), "Message queue should be empty now.");
 	}
@@ -685,7 +685,7 @@ static void test_scan_number_single(const char *str_pipes,
 		return;
 	}
 	if (sn.dots_found != dots_found) {
-		fail("%s : sn.dots_found is %d; should be %d", str_pipes,
+		fail("%s : sn.dots_found is %zu; should be %zu", str_pipes,
 			sn.dots_found, dots_found);
 		return;
 	}
