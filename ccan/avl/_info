@@ -63,7 +63,7 @@
  * 	return 0;
  * }
  *
- * Licence: ISC
+ * License: ISC
  * Author: Joey Adams <joeyadams3.14159@gmail.com>
  */
 int main(int argc, char *argv[])

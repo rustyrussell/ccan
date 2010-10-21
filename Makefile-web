@@ -64,10 +64,10 @@ $(WEBDIR)/info/%.html: $(WEBDIR)/tarballs/%.tar.bz2 $(WEBDIR)/tarballs/with-deps
 	URLPREFIX=../ php5 web/staticmoduleinfo.php `pwd`/ccan/$* > $@
 
 $(WEBDIR)/tarballs/%.tar.bz2: ccan/%/_info
-	tar -c -j -f $@ `bzr ls --recursive --versioned --kind=file ccan/$*` `bzr ls --recursive --versioned --kind=symlink ccan/$*` $$(for l in $$(bzr ls --recursive --versioned --kind=symlink ccan/$* | xargs -r ls -l | sed 's,.*/,,'); do echo licences/$$l; done | sort -u)
+	tar -c -j -f $@ `bzr ls --recursive --versioned --kind=file ccan/$*` `bzr ls --recursive --versioned --kind=symlink ccan/$*` $$(for l in $$(bzr ls --recursive --versioned --kind=symlink ccan/$* | xargs -r ls -l | sed 's,.*/,,'); do echo licenses/$$l; done | sort -u)
 
 $(WEBDIR)/tarballs/with-deps/%.tar.bz2: ccan/%/_info tools/ccan_depends
-	tar cfj $@ $$(echo ccan/$* $$(tools/ccan_depends ccan/$*) | xargs -n 1 bzr ls --recursive --versioned --kind=file) $$(echo ccan/$* $$(tools/ccan_depends ccan/$*) | xargs -n 1 bzr ls --recursive --versioned --kind=symlink) $$(for l in $$(echo ccan/$* $$(tools/ccan_depends ccan/$*) | xargs -r -n 1 bzr ls --recursive --versioned --kind=symlink | xargs -r ls -l | sed 's,.*/,,'); do echo licences/$$l; done | sort -u)
+	tar cfj $@ $$(echo ccan/$* $$(tools/ccan_depends ccan/$*) | xargs -n 1 bzr ls --recursive --versioned --kind=file) $$(echo ccan/$* $$(tools/ccan_depends ccan/$*) | xargs -n 1 bzr ls --recursive --versioned --kind=symlink) $$(for l in $$(echo ccan/$* $$(tools/ccan_depends ccan/$*) | xargs -r -n 1 bzr ls --recursive --versioned --kind=symlink | xargs -r ls -l | sed 's,.*/,,'); do echo licenses/$$l; done | sort -u)
 
 distclean: distclean-web
 
