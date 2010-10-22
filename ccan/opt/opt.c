@@ -17,7 +17,7 @@ const char *opt_argv0;
 /* Returns string after first '-'. */
 static const char *first_name(const char *names, unsigned *len)
 {
-	*len = strcspn(names + 1, "/= ");
+	*len = strcspn(names + 1, "|= ");
 	return names + 1;
 }
 
@@ -275,7 +275,7 @@ static void parse_fail(void (*errlog)(const char *fmt, ...),
 		errlog("%s: -%c: %s", opt_argv0, shortopt, problem);
 	else
 		errlog("%s: --%.*s: %s", opt_argv0,
-		       strcspn(longopt, "/"), longopt, problem);
+		       strcspn(longopt, "|"), longopt, problem);
 }
 
 /* Parse your arguments. */

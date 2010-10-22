@@ -363,24 +363,24 @@ int main(int argc, char *argv[])
 	cmdline_exclude = btree_new(btree_strcmp);
 	info_exclude = btree_new(btree_strcmp);
 
-	opt_register_arg("--dir/-d", opt_set_charp, opt_show_charp, &dir,
+	opt_register_arg("--dir|-d", opt_set_charp, opt_show_charp, &dir,
 			 "use this directory");
-	opt_register_noarg("-n/--safe-mode", opt_set_bool, &safe_mode,
+	opt_register_noarg("-n|--safe-mode", opt_set_bool, &safe_mode,
 			 "do not compile anything");
-	opt_register_noarg("-l/--list-tests", list_tests, NULL,
+	opt_register_noarg("-l|--list-tests", list_tests, NULL,
 			 "list tests ccanlint performs (and exit)");
-	opt_register_arg("-k/--keep <testname>", keep_test, NULL, NULL,
+	opt_register_arg("-k|--keep <testname>", keep_test, NULL, NULL,
 			   "keep results of <testname> (can be used multiple times)");
-	opt_register_noarg("--summary/-s", opt_set_bool, &summary,
+	opt_register_noarg("--summary|-s", opt_set_bool, &summary,
 			   "simply give one line summary");
-	opt_register_noarg("--verbose/-v", opt_inc_intval, &verbose,
+	opt_register_noarg("--verbose|-v", opt_inc_intval, &verbose,
 			   "verbose mode (can specify more than once)");
-	opt_register_arg("-x/--exclude <testname>", skip_test, NULL, NULL,
+	opt_register_arg("-x|--exclude <testname>", skip_test, NULL, NULL,
 			 "exclude <testname> (can be used multiple times)");
-	opt_register_arg("-t/--timeout <milleseconds>", opt_set_uintval,
+	opt_register_arg("-t|--timeout <milleseconds>", opt_set_uintval,
 			 NULL, &timeout,
 			 "ignore (terminate) tests that are slower than this");
-	opt_register_noarg("-?/-h/--help", opt_usage_and_exit,
+	opt_register_noarg("-?|-h|--help", opt_usage_and_exit,
 			   "\nA program for checking and guiding development"
 			   " of CCAN modules.",
 			   "This usage message");

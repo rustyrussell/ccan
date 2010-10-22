@@ -6,8 +6,8 @@
 /* You can use this directly to build tables, but the macros will ensure
  * consistency and type safety. */
 enum opt_type {
-	OPT_NOARG = 1,		/* -f/--foo */
-	OPT_HASARG = 2,		/* -f arg/--foo=arg/--foo arg */
+	OPT_NOARG = 1,		/* -f|--foo */
+	OPT_HASARG = 2,		/* -f arg|--foo=arg|--foo arg */
 	OPT_SUBTABLE = 4,	/* Actually, longopt points to a subtable... */
 	OPT_END = 8,		/* End of the table. */
 };
@@ -16,7 +16,7 @@ enum opt_type {
 #define OPT_SHOW_LEN 80
 
 struct opt_table {
-	const char *names; /* slash-separated names, --longopt or -s */
+	const char *names; /* pipe-separated names, --longopt or -s */
 	enum opt_type type;
 	char *(*cb)(void *arg); /* OPT_NOARG */
 	char *(*cb_arg)(const char *optarg, void *arg); /* OPT_HASARG */
@@ -27,7 +27,7 @@ struct opt_table {
 
 /**
  * OPT_WITHOUT_ARG() - macro for initializing an opt_table entry (without arg)
- * @names: the names of the option eg. "--foo", "-f" or "--foo/-f/--foobar".
+ * @names: the names of the option eg. "--foo", "-f" or "--foo|-f|--foobar".
  * @cb: the callback when the option is found.
  * @arg: the argument to hand to @cb.
  * @desc: the description for opt_usage(), or opt_hidden.
@@ -41,7 +41,7 @@ struct opt_table {
  * string and return false.
  *
  * Any number of equivalent short or long options can be listed in @names,
- * separated by '/'.  Short options are a single hyphen followed by a single
+ * separated by '|'.  Short options are a single hyphen followed by a single
  * character, long options are two hypens followed by one or more characters.
  *
  * See Also:
@@ -52,7 +52,7 @@ struct opt_table {
 
 /**
  * OPT_WITH_ARG() - macro for initializing long and short option (with arg)
- * @names: the option names eg. "--foo=<arg>", "-f" or "-f/--foo <arg>".
+ * @names: the option names eg. "--foo=<arg>", "-f" or "-f|--foo <arg>".
  * @cb: the callback when the option is found (along with <arg>).
  * @show: the callback to print the value in get_usage (or NULL)
  * @arg: the argument to hand to @cb and @show
@@ -70,7 +70,7 @@ struct opt_table {
  * nul-terminate that buffer.
  *
  * Any number of equivalent short or long options can be listed in @names,
- * separated by '/'.  Short options are a single hyphen followed by a single
+ * separated by '|'.  Short options are a single hyphen followed by a single
  * character, long options are two hypens followed by one or more characters.
  * A space or equals in @names is ignored for parsing, and only used
  * for printing the usage.
@@ -128,7 +128,7 @@ void opt_register_table(const struct opt_table table[], const char *desc);
 
 /**
  * opt_register_noarg - register an option with no arguments
- * @names: the names of the option eg. "--foo", "-f" or "--foo/-f/--foobar".
+ * @names: the names of the option eg. "--foo", "-f" or "--foo|-f|--foobar".
  * @cb: the callback when the option is found.
  * @arg: the argument to hand to @cb.
  * @desc: the verbose desction of the option (for opt_usage()), or NULL.
@@ -149,7 +149,7 @@ void opt_register_table(const struct opt_table table[], const char *desc);
 
 /**
  * opt_register_arg - register an option with an arguments
- * @names: the names of the option eg. "--foo", "-f" or "--foo/-f/--foobar".
+ * @names: the names of the option eg. "--foo", "-f" or "--foo|-f|--foobar".
  * @cb: the callback when the option is found.
  * @show: the callback to print the value in get_usage (or NULL)
  * @arg: the argument to hand to @cb.
@@ -172,7 +172,7 @@ void opt_register_table(const struct opt_table table[], const char *desc);
  *	errx(1, "BOOM! %s", optarg);
  * }
  * ...
- *	opt_register_arg("--explode/--boom", explode, NULL, NULL, opt_hidden);
+ *	opt_register_arg("--explode|--boom", explode, NULL, NULL, opt_hidden);
  */
 #define opt_register_arg(names, cb, show, arg, desc)			\
 	_opt_register((names), OPT_CB_ARG((cb), (show), (arg)), (desc))

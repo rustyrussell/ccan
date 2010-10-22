@@ -84,17 +84,17 @@ struct opt_table long_table[] = {
 
 struct opt_table long_and_short_table[] = {
 	/* Short and long, different args. */
-	OPT_WITHOUT_ARG("--ggg/-g", test_noarg, "ggg", "Description of ggg"),
-	OPT_WITH_ARG("-h/--hhh", test_arg, NULL, "hhh", "Description of hhh"),
+	OPT_WITHOUT_ARG("--ggg|-g", test_noarg, "ggg", "Description of ggg"),
+	OPT_WITH_ARG("-h|--hhh", test_arg, NULL, "hhh", "Description of hhh"),
 	OPT_ENDTABLE
 };
 
 /* Sub-table test. */
 struct opt_table subtables[] = {
 	/* Two short, and two long long, no description */
-	OPT_WITH_ARG("--jjj/-j/--lll/-l", test_arg, show_arg, "jjj", ""),
+	OPT_WITH_ARG("--jjj|-j|--lll|-l", test_arg, show_arg, "jjj", ""),
 	/* Hidden option */
-	OPT_WITH_ARG("--mmm/-m", test_arg, show_arg, "mmm", opt_hidden),
+	OPT_WITH_ARG("--mmm|-m", test_arg, show_arg, "mmm", opt_hidden),
 	OPT_SUBTABLE(short_table, NULL),
 	OPT_SUBTABLE(long_table, "long table options"),
 	OPT_SUBTABLE(long_and_short_table, NULL),
