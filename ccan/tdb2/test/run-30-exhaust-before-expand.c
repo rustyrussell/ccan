@@ -8,12 +8,6 @@
 #include <err.h>
 #include "logging.h"
 
-static uint64_t fixedhash(const void *key, size_t len, uint64_t seed, void *p)
-{
-	return hash64_stable((const unsigned char *)key, len,
-			     *(uint64_t *)p);
-}
-
 int main(int argc, char *argv[])
 {
 	unsigned int i, j;
@@ -21,13 +15,7 @@ int main(int argc, char *argv[])
 	int flags[] = { TDB_INTERNAL, TDB_DEFAULT, TDB_NOMMAP,
 			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT,
 			TDB_NOMMAP|TDB_CONVERT };
-	uint64_t seed = 0;
-	union tdb_attribute fixed_hattr
-		= { .hash = { .base = { TDB_ATTRIBUTE_HASH },
-			      .hash_fn = fixedhash,
-			      .hash_private = &seed } };
 
-	fixed_hattr.base.next = &tap_log_attr;
 	plan_tests(sizeof(flags) / sizeof(flags[0]) * 5 + 1);
 
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
@@ -45,9 +33,9 @@ int main(int argc, char *argv[])
 			continue;
 
 		/* We don't want the hash to expand, so we use one alloc to
-		 * chew up over 90% of the space first. */
+		 * chew up over most of the space first. */
 		j = -1;
-		d.dsize = (1 << INITIAL_ZONE_BITS) * 9 / 10;
+		d.dsize = (1 << INITIAL_ZONE_BITS) - 500;
 		d.dptr = malloc(d.dsize);
 		ok1(tdb_store(tdb, k, d, TDB_INSERT) == 0);
 		ok1(tdb->map_size == sizeof(struct tdb_header)
