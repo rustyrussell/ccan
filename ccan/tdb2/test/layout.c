@@ -3,11 +3,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <err.h>
 #include "logging.h"
 
-struct tdb_layout *new_tdb_layout(void)
+struct tdb_layout *new_tdb_layout(const char *filename)
 {
 	struct tdb_layout *layout = malloc(sizeof(*layout));
+	layout->filename = filename;
 	layout->num_elems = 0;
 	layout->elem = NULL;
 	return layout;
@@ -302,5 +304,19 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 
 	/* Write tailer. */
 	((uint8_t *)tdb->map_ptr)[tdb->map_size-1] = last_zone->zone_bits;
+
+	/* Get physical if they asked for it. */
+	if (layout->filename) {
+		int fd = open(layout->filename, O_WRONLY|O_TRUNC|O_CREAT,
+			      0600);
+		if (fd < 0)
+			err(1, "opening %s for writing", layout->filename);
+		write(fd, tdb->map_ptr, tdb->map_size);
+		close(fd);
+		tdb_close(tdb);
+		/* NOMMAP is for lockcheck. */
+		tdb = tdb_open(layout->filename, TDB_NOMMAP, O_RDWR, 0,
+			       &tap_log_attr);
+	}
 	return tdb;
 }

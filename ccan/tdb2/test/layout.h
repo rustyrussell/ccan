@@ -2,7 +2,7 @@
 #define TDB2_TEST_LAYOUT_H
 #include <ccan/tdb2/private.h>
 
-struct tdb_layout *new_tdb_layout(void);
+struct tdb_layout *new_tdb_layout(const char *filename);
 void tdb_layout_add_zone(struct tdb_layout *layout,
 			 unsigned int zone_bits,
 			 bool fill_prev);
@@ -61,6 +61,7 @@ union tdb_layout_elem {
 };
 
 struct tdb_layout {
+	const char *filename;
 	unsigned int num_elems;
 	union tdb_layout_elem *elem;
 };
