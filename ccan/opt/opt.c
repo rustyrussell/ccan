@@ -1,7 +1,6 @@
 #include <ccan/opt/opt.h>
 #include <string.h>
 #include <errno.h>
-#include <getopt.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <err.h>
@@ -53,7 +52,7 @@ static const char *next_opt(const char *p, unsigned *i, unsigned *len)
 	return NULL;
 }
 
-static const char *first_lopt(unsigned *i, unsigned *len)
+const char *first_lopt(unsigned *i, unsigned *len)
 {
 	const char *p;
 	for (p = first_opt(i, len); p; p = next_opt(p, i, len)) {
@@ -67,7 +66,7 @@ static const char *first_lopt(unsigned *i, unsigned *len)
 	return p;
 }
 
-static const char *next_lopt(const char *p, unsigned *i, unsigned *len)
+const char *next_lopt(const char *p, unsigned *i, unsigned *len)
 {
 	for (p = next_opt(p, i, len); p; p = next_opt(p, i, len)) {
 		if (p[0] == '-') {
@@ -128,22 +127,15 @@ static void check_opt(const struct opt_table *entry)
 			if (len != 1)
 				errx(1, "Option %s: invalid short option"
 				     " '%.*s'", entry->names, len+1, p-1);
-			if (*p == ':')
-				errx(1, "Option %s: invalid short option '-:'",
-				     entry->names);
 			opt_num_short++;
-			if (entry->type == OPT_HASARG) {
+			if (entry->type == OPT_HASARG)
 				opt_num_short_arg++;
-				if (*p == '?')
-					errx(1, "Option %s: '-?' cannot take"
-					     " an argument", entry->names);
-			}
 		}
 		/* Don't document args unless there are some. */
 		if (entry->type == OPT_NOARG) {
 			if (p[len] == ' ' || p[len] == '=')
 				errx(1, "Option %s: does not take arguments"
-				     "'%s'", entry->names, p+len+1);
+				     " '%s'", entry->names, p+len+1);
 		}
 	}
 }
@@ -194,151 +186,19 @@ void opt_register_table(const struct opt_table entry[], const char *desc)
 		opt_table[start].arg = (void *)(intptr_t)(opt_count - start);
 }
 
-static char *make_optstring(void)
-{
-	char *str = malloc(1 + opt_num_short + opt_num_short_arg + 1);
-	const char *p;
-	unsigned int i, num = 0;
-
-	/* This tells getopt_long we want a ':' returned for missing arg. */
-	str[num++] = ':';
-	for (p = first_sopt(&i); p; p = next_sopt(p, &i)) {
-		str[num++] = *p;
-		if (opt_table[i].type == OPT_HASARG)
-			str[num++] = ':';
-	}
-	str[num++] = '\0';
-	assert(num == 1 + opt_num_short + opt_num_short_arg + 1);
-	return str;
-}
-
-static struct option *make_options(void)
-{
-	struct option *options = malloc(sizeof(*options) * (opt_num_long + 1));
-	unsigned int i, num = 0, len = 0 /* GCC bogus warning */;
-	const char *p;
-
-	for (p = first_lopt(&i, &len); p; p = next_lopt(p, &i, &len)) {
-		char *buf = malloc(len + 1);
-		memcpy(buf, p, len);
-		buf[len] = 0;
-		options[num].name = buf;
-		options[num].has_arg = (opt_table[i].type == OPT_HASARG);
-		options[num].flag = NULL;
-		options[num].val = 0;
-		num++;
-	}
-	memset(&options[num], 0, sizeof(options[num]));
-	assert(num == opt_num_long);
-	return options;
-}
-
-static struct opt_table *find_short(char shortopt)
-{
-	unsigned int i;
-	const char *p;
-
-	for (p = first_sopt(&i); p; p = next_sopt(p, &i)) {
-		if (*p == shortopt)
-			return &opt_table[i];
-	}
-	abort();
-}
-
-/* We want the index'th long entry. */
-static struct opt_table *find_long(int index, const char **name)
-{
-	unsigned int i, len;
-	const char *p;
-
-	for (p = first_lopt(&i, &len); p; p = next_lopt(p, &i, &len)) {
-		if (index == 0) {
-			*name = p;
-			return &opt_table[i];
-		}
-		index--;
-	}
-	abort();
-}
-
-/* glibc does this as:
-/tmp/opt-example: invalid option -- 'x'
-/tmp/opt-example: unrecognized option '--long'
-/tmp/opt-example: option '--someflag' doesn't allow an argument
-/tmp/opt-example: option '--s' is ambiguous
-/tmp/opt-example: option requires an argument -- 's'
-*/
-static void parse_fail(void (*errlog)(const char *fmt, ...),
-		       char shortopt, const char *longopt, const char *problem)
-{
-	if (shortopt)
-		errlog("%s: -%c: %s", opt_argv0, shortopt, problem);
-	else
-		errlog("%s: --%.*s: %s", opt_argv0,
-		       strcspn(longopt, "|"), longopt, problem);
-}
-
 /* Parse your arguments. */
 bool opt_parse(int *argc, char *argv[], void (*errlog)(const char *fmt, ...))
 {
-	char *optstring = make_optstring();
-	struct option *options = make_options();
-	int ret, longidx = 0;
-	struct opt_table *e;
+	int ret;
+	unsigned offset = 0;
 
-	/* We will do our own error reporting. */
-	opterr = 0;
+	/* This helps opt_usage. */
 	opt_argv0 = argv[0];
 
-	/* Reset in case we're called more than once. */
-	optopt = 0;
-	optind = 0;
-	while ((ret = getopt_long(*argc, argv, optstring, options, &longidx))
-	       != -1) {
-		char *problem;
-		const char *name = NULL; /* GCC bogus warning */
+	while ((ret = parse_one(argc, argv, &offset, errlog)) == 1);
 
-		/* optopt is 0 if it's an unknown long option, *or* if
-		 * -? is a valid short option. */
-		if (ret == '?') {
-			if (optopt || strncmp(argv[optind-1], "--", 2) == 0) {
-				parse_fail(errlog, optopt, argv[optind-1]+2,
-					   "unrecognized option");
-				break;
-			}
-		} else if (ret == ':') {
-			/* Missing argument: longidx not updated :( */
-			parse_fail(errlog, optopt, argv[optind-1]+2,
-				   "option requires an argument");
-			break;
-		}
-
-		if (ret != 0)
-			e = find_short(ret);
-		else
-			e = find_long(longidx, &name);
-
-		if (e->type == OPT_HASARG)
-			problem = e->cb_arg(optarg, e->arg);
-		else
-			problem = e->cb(e->arg);
-
-		if (problem) {
-			parse_fail(errlog, ret, name, problem);
-			free(problem);
-			break;
-		}
-	}
-	free(optstring);
-	free(options);
-	if (ret != -1)
-		return false;
-
-	/* We hide everything but remaining arguments. */
-	memmove(&argv[1], &argv[optind], sizeof(argv[1]) * (*argc-optind+1));
-	*argc -= optind - 1;
-
-	return ret == -1 ? true : false;
+	/* parse_one returns 0 on finish, -1 on error */
+	return (ret == 0);
 }
 
 void opt_log_stderr(const char *fmt, ...)

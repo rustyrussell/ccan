@@ -91,10 +91,8 @@ char *opt_set_longval(const char *arg, long *l)
 	*l = strtol(arg, &endp, 0);
 	if (*endp || !arg[0])
 		return arg_bad("'%s' is not a number", arg);
-	if (errno == ERANGE)
-		return arg_bad("'%s' is out of range", arg);
 	if (errno)
-		return opt_invalid_argument(arg);
+		return arg_bad("'%s' is out of range", arg);
 	return NULL;
 }
 

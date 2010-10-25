@@ -8,10 +8,18 @@
 #include <ccan/opt/opt.c>
 #include <ccan/opt/usage.c>
 #include <ccan/opt/helpers.c>
+#include <ccan/opt/parse.c>
 
 static char *my_cb(void *p)
 {
 	return NULL;
+}
+
+static void reset_options(void)
+{
+	free(opt_table);
+	opt_table = NULL;
+	opt_count = opt_num_short = opt_num_short_arg = opt_num_long = 0;
 }
 
 /* Test helpers. */
@@ -19,7 +27,7 @@ int main(int argc, char *argv[])
 {
 	char *output;
 
-	plan_tests(38);
+	plan_tests(42);
 	opt_register_table(subtables, NULL);
 	opt_register_noarg("--kkk|-k", my_cb, NULL, "magic kkk option");
 	opt_register_noarg("-?", opt_usage_and_exit, "<MyArgs>...",
@@ -71,6 +79,20 @@ int main(int argc, char *argv[])
 	ok1(strstr(output, "magic kkk option"));
 	/* This entry is hidden. */
 	ok1(!strstr(output, "--mmm|-m"));
+	free(output);
+
+	reset_options();
+	/* Empty table test. */
+	output = opt_usage("nothing", NULL);
+	ok1(strstr(output, "Usage: nothing \n"));
+	free(output);
+
+	/* No short args. */
+	opt_register_noarg("--aaa", test_noarg, NULL, "AAAAll");
+	output = opt_usage("onearg", NULL);
+	ok1(strstr(output, "Usage: onearg \n"));
+	ok1(strstr(output, "--aaa"));
+	ok1(strstr(output, "AAAAll"));
 	free(output);
 
 	return exit_status();

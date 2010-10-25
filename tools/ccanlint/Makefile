@@ -12,7 +12,7 @@ CORE_OBJS := tools/ccanlint/ccanlint.o \
 	ccan/btree/btree.o \
 	ccan/talloc/talloc.o ccan/noerr/noerr.o \
 	ccan/read_write_all/read_write_all.o \
-	ccan/opt/opt.o ccan/opt/usage.o ccan/opt/helpers.o
+	ccan/opt/opt.o ccan/opt/usage.o ccan/opt/helpers.o ccan/opt/parse.o
 
 OBJS := $(CORE_OBJS) $(TEST_OBJS)
 

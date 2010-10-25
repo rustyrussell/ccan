@@ -4,6 +4,7 @@
 #include <ccan/opt/opt.c>
 #include <ccan/opt/usage.c>
 #include <ccan/opt/helpers.c>
+#include <ccan/opt/parse.c>
 #include "utils.h"
 
 int main(int argc, char *argv[])

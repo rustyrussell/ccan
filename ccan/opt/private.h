@@ -10,5 +10,10 @@ extern const char *opt_argv0;
 
 const char *first_sopt(unsigned *i);
 const char *next_sopt(const char *names, unsigned *i);
+const char *first_lopt(unsigned *i, unsigned *len);
+const char *next_lopt(const char *p, unsigned *i, unsigned *len);
+
+int parse_one(int *argc, char *argv[], unsigned *offset,
+	      void (*errlog)(const char *fmt, ...));
 
 #endif /* CCAN_OPT_PRIVATE_H */

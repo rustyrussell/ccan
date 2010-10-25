@@ -22,6 +22,7 @@ static int saved_vprintf(const char *fmt, va_list ap);
 #include <ccan/opt/helpers.c>
 #include <ccan/opt/opt.c>
 #include <ccan/opt/usage.c>
+#include <ccan/opt/parse.c>
 
 static void reset_options(void)
 {
