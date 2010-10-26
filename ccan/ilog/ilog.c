@@ -16,18 +16,18 @@
     year=1998,
     note="\url{http://supertech.csail.mit.edu/papers/debruijn.pdf}"
   }*/
-#if !defined(ILOG_NODEBRUIJN)&& \
- !defined(CLZ32)||!defined(CLZ64)&&LONG_MAX<9223372036854775807LL
-static const unsigned char DEBRUIJN_IDX32[32]={
+static UNNEEDED_ATTRIBUTE const unsigned char DEBRUIJN_IDX32[32]={
    0, 1,28, 2,29,14,24, 3,30,22,20,15,25,17, 4, 8,
   31,27,13,23,21,19,16, 7,26,12,18, 6,11, 5,10, 9
 };
-#endif
+
+/* We always compile these in, in case someone takes address of function. */
+#undef ilog32_nz
+#undef ilog32
+#undef ilog64_nz
+#undef ilog64
 
 int ilog32(uint32_t _v){
-#if defined(CLZ32)
-  return (CLZ32_OFFS-CLZ32(_v))&-!!_v;
-#else
 /*On a Pentium M, this branchless version tested as the fastest version without
    multiplications on 1,000,000,000 random 32-bit integers, edging out a
    similar version with branches, and a 256-entry LUT version.*/
@@ -62,13 +62,14 @@ int ilog32(uint32_t _v){
   ret+=DEBRUIJN_IDX32[_v*0x77CB531U>>27&0x1F];
   return ret;
 # endif
-#endif
+}
+
+int ilog32_nz(uint32_t _v)
+{
+  return ilog32(_v);
 }
 
 int ilog64(uint64_t _v){
-#if defined(CLZ64)
-  return (CLZ64_OFFS-CLZ64(_v))&-!!_v;
-#else
 # if defined(ILOG_NODEBRUIJN)
   uint32_t v;
   int      ret;
@@ -130,5 +131,10 @@ int ilog64(uint64_t _v){
   return ret;
 #  endif
 # endif
-#endif
 }
+
+int ilog64_nz(uint64_t _v)
+{
+  return ilog64(_v);
+}
+

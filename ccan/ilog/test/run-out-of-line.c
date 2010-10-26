@@ -22,6 +22,11 @@ static int test_ilog64(uint64_t _v){
 int main(int _argc,const char *_argv[]){
   int i;
   int j;
+  int (*il32)(uint32_t) = ilog32;
+  int (*il64)(uint64_t) = ilog64;
+  int (*il32_nz)(uint32_t) = ilog32_nz;
+  int (*il64_nz)(uint64_t) = ilog64_nz;
+
   /*This is how many tests you plan to run.*/
   plan_tests(33 * NTRIALS * 3 + 65 * NTRIALS * 3);
   for(i=0;i<=32;i++){
@@ -32,8 +37,8 @@ int main(int _argc,const char *_argv[]){
       int l;
       l=test_ilog32(v);
       ok1(STATIC_ILOG_32(v)==l);
-      ok1(ilog32(v)==l);
-      ok1(ilog32_nz(v) == l || v == 0);
+      ok1(il32(v)==l);
+      ok1(il32_nz(v) == l || v == 0);
       /*Also try a few more pseudo-random values with at most the same number
          of bits.*/
       v=(1103515245U*v+12345U)&0xFFFFFFFFU>>((33-i)>>1)>>((32-i)>>1);
@@ -48,8 +53,8 @@ int main(int _argc,const char *_argv[]){
       int l;
       l=test_ilog64(v);
       ok1(STATIC_ILOG_64(v)==l);
-      ok1(ilog64(v)==l);
-      ok1(ilog64_nz(v) == l || v == 0);
+      ok1(il64(v)==l);
+      ok1(il64_nz(v) == l || v == 0);
       /*Also try a few more pseudo-random values with at most the same number
          of bits.*/
       v=(uint64_t)((2862933555777941757ULL*v+3037000493ULL)

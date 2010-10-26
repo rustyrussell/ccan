@@ -17,50 +17,14 @@
 */
 #include "private.h"
 #include <ccan/likely/likely.h>
+#include <ccan/ilog/ilog.h>
 #include <time.h>
 #include <assert.h>
 #include <limits.h>
 
 static unsigned fls64(uint64_t val)
 {
-#if HAVE_BUILTIN_CLZL
-	if (val <= ULONG_MAX) {
-		/* This is significantly faster! */
-		return val ? sizeof(long) * CHAR_BIT - __builtin_clzl(val) : 0;
-	} else {
-#endif
-	uint64_t r = 64;
-
-	if (!val)
-		return 0;
-	if (!(val & 0xffffffff00000000ull)) {
-		val <<= 32;
-		r -= 32;
-	}
-	if (!(val & 0xffff000000000000ull)) {
-		val <<= 16;
-		r -= 16;
-	}
-	if (!(val & 0xff00000000000000ull)) {
-		val <<= 8;
-		r -= 8;
-	}
-	if (!(val & 0xf000000000000000ull)) {
-		val <<= 4;
-		r -= 4;
-	}
-	if (!(val & 0xc000000000000000ull)) {
-		val <<= 2;
-		r -= 2;
-	}
-	if (!(val & 0x8000000000000000ull)) {
-		val <<= 1;
-		r -= 1;
-	}
-	return r;
-#if HAVE_BUILTIN_CLZL
-	}
-#endif
+	return ilog64(val);
 }
 
 /* In which bucket would we find a particular record size? (ignoring header) */

@@ -1,40 +1,17 @@
 #include "bitops.h"
 #include "config.h"
+#include <ccan/build_assert/build_assert.h>
 #include <ccan/short_types/short_types.h>
+#include <ccan/ilog/ilog.h>
 #include <limits.h>
 
 unsigned int fls(unsigned long val)
 {
-#if HAVE_BUILTIN_CLZL
-	/* This is significantly faster! */
-	return val ? sizeof(long) * CHAR_BIT - __builtin_clzl(val) : 0;
-#else
-	unsigned int r = 32;
-
-	if (!val)
-		return 0;
-	if (!(val & 0xffff0000u)) {
-		val <<= 16;
-		r -= 16;
-	}
-	if (!(val & 0xff000000u)) {
-		val <<= 8;
-		r -= 8;
-	}
-	if (!(val & 0xf0000000u)) {
-		val <<= 4;
-		r -= 4;
-	}
-	if (!(val & 0xc0000000u)) {
-		val <<= 2;
-		r -= 2;
-	}
-	if (!(val & 0x80000000u)) {
-		val <<= 1;
-		r -= 1;
-	}
-	return r;
-#endif
+	BUILD_ASSERT(sizeof(val) == sizeof(u32) || sizeof(val) == sizeof(u64));
+	if (sizeof(val) == sizeof(u32))
+		return ilog32(val);
+	else
+		return ilog64(val);
 }
 
 /* FIXME: Move to bitops. */

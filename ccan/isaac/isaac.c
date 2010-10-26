@@ -170,7 +170,7 @@ static float isaac_float_bits(isaac_ctx *_ctx,uint32_t _bits,int _base){
      FLT_MANT_DIG+1 consecutive one bits.
     Even the fallback C implementation of ILOGNZ_32() yields an implementation
      25% faster than the frexp() method.*/
-  nbits_needed=FLT_MANT_DIG-ILOGNZ_32(_bits);
+  nbits_needed=FLT_MANT_DIG-ilog32_nz(_bits);
 #if FLT_MANT_DIG>32
   ret=ldexpf((float)_bits,_base);
 # if FLT_MANT_DIG>65
@@ -221,7 +221,7 @@ static double isaac_double_bits(isaac_ctx *_ctx,uint32_t _bits,int _base){
     _base-=32;
     _bits=isaac_next_uint32(_ctx);
   }
-  nbits_needed=DBL_MANT_DIG-ILOGNZ_32(_bits);
+  nbits_needed=DBL_MANT_DIG-ilog32_nz(_bits);
 #if DBL_MANT_DIG>32
   ret=ldexp((double)_bits,_base);
 # if DBL_MANT_DIG>65

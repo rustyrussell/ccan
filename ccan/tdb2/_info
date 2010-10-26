@@ -78,6 +78,7 @@ int main(int argc, char *argv[])
 		printf("ccan/asearch\n");
 		printf("ccan/compiler\n");
 		printf("ccan/build_assert\n");
+		printf("ccan/ilog\n");
 		printf("ccan/tally\n");
 		return 0;
 	}
