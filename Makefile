@@ -94,7 +94,7 @@ libccan.a(%.o): ccan/%.o
 	$(AR) r $@ $<
 
 clean: tools-clean
-	$(RM) `find . -name '*.o'` `find . -name '.depends'` `find . -name '*.a'`  `find . -name info` `find . -name '*.d'`
+	$(RM) `find * -name '*.o'` `find * -name '.depends'` `find * -name '*.a'`  `find * -name info` `find * -name '*.d'`
 	$(RM) inter-depends lib-depends test-depends ccan/*-Makefile
 
 # Creates a dependency from the tests to the object files which it needs.

@@ -2,7 +2,7 @@
 WEBDIR=/home/rusty/www/html/ccan
 
 # Ignore EXCLUDE when making webpages.
-REALLY_ALL=$(patsubst ccan/%/_info, %, $(shell bzr ls -R ccan | grep '/_info$$'))
+REALLY_ALL=$(patsubst ccan/%/_info, %, $(wildcard ccan/*/_info))
 ALL_PAGES=$(patsubst %, $(WEBDIR)/info/%.html, $(REALLY_ALL))
 DIRECT_TARBALLS=$(patsubst %, $(WEBDIR)/tarballs/%.tar.bz2, $(REALLY_ALL))
 DEPEND_TARBALLS=$(patsubst %, $(WEBDIR)/tarballs/with-deps/%.tar.bz2, $(REALLY_ALL))
@@ -10,28 +10,29 @@ WEB_SUBDIRS=$(WEBDIR)/tarballs $(WEBDIR)/junkcode $(WEBDIR)/tarballs/with-deps $
 JUNKDIRS=$(wildcard junkcode/*)
 JUNKPAGES=$(JUNKDIRS:%=$(WEBDIR)/%.html)
 JUNKBALLS=$(JUNKDIRS:%=$(WEBDIR)/%.tar.bz2)
-BZRBROWSE=$(WEBDIR)/bzrbrowse.cgi $(WEBDIR)/file.png $(WEBDIR)/folder.png $(WEBDIR)/symlink.png
 
-upload: fastcheck webpages
-	bzr push
-	send-web # Rusty's upload script.
+upload: fastcheck
+	git push origin HEAD:master
 
-webpages: $(WEB_SUBDIRS) $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.jpg $(BZRBROWSE) $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan $(ALL_PAGES) junkpages
+clean-tree:
+	! git status --porcelain | grep .
 
-junkpages:  $(WEBDIR)/list.html $(WEBDIR)/junkcode $(JUNKPAGES) $(JUNKBALLS)
-$(WEB_SUBDIRS):
+webpages: clean-tree $(WEB_SUBDIRS) $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.jpg $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan $(ALL_PAGES) junkpages
+
+junkpages: $(WEBDIR)/list.html $(WEBDIR)/junkcode $(JUNKPAGES) $(JUNKBALLS)
+$(WEB_SUBDIRS): $(WEBDIR)
 	mkdir -p $@
 
 $(WEBDIR)/junkcode/%.tar.bz2: junkcode/% $(WEBDIR)/junkcode
-	(bzr ls --recursive --versioned --kind=file --null $<; bzr ls --recursive --versioned --kind=symlink --null $<) | xargs -0 -x tar cvfj $@ 
+	git ls-files -z $< | xargs -0 -x tar cvfj $@ 
 
 $(WEBDIR)/junkcode/%.html: $(WEBDIR)/junkcode/%.tar.bz2
 	cd $(WEBDIR) && tar xfj junkcode/$*.tar.bz2
 	php5 web/staticjunkcode.php junkcode/$* $* > $@
 
-# We want tarball to contain ccan/
-$(WEBDIR)/ccan.tar.bz2: config.h Makefile Makefile-ccan $(shell bzr ls --versioned --kind=file --recursive ccan) $(shell bzr ls --versioned --recursive --kind=file tools) $(shell bzr ls --versioned --kind=symlink --recursive ccan) $(shell bzr ls --versioned --recursive --kind=symlink tools)
-	DIR=`pwd` && cd /tmp && ln -sf "$$DIR" ccan && tar cvfj $@ `for f in $^; do echo ccan/$$f; done` && rm ccan
+# We want tarball to contain ccan/; we put junkcode in, but don't depend on it.
+$(WEBDIR)/ccan.tar.bz2: config.h Makefile Makefile-ccan $(shell git ls-files ccan tools licenses)
+	DIR=`pwd` && cd /tmp && ln -sf "$$DIR" ccan && tar cvfj $@ `for f in $^; do echo ccan/$$f; done` ccan/junkcode && rm ccan
 
 $(ALL_PAGES): tools/doc_extract web/staticmoduleinfo.php
 
@@ -57,17 +58,14 @@ $(WEBDIR)/Makefile-ccan: Makefile-ccan
 $(WEBDIR)/ccan.jpg: web/ccan.jpg
 	cp $< $@
 
-$(BZRBROWSE): $(WEBDIR)/%: web/bzrbrowse/%
-	cp $< $@
-
 $(WEBDIR)/info/%.html: $(WEBDIR)/tarballs/%.tar.bz2 $(WEBDIR)/tarballs/with-deps/%.tar.bz2
 	URLPREFIX=../ php5 web/staticmoduleinfo.php `pwd`/ccan/$* > $@
 
-$(WEBDIR)/tarballs/%.tar.bz2: ccan/%/_info
-	tar -c -j -f $@ `bzr ls --recursive --versioned --kind=file ccan/$*` `bzr ls --recursive --versioned --kind=symlink ccan/$*` $$(for l in $$(bzr ls --recursive --versioned --kind=symlink ccan/$* | xargs -r ls -l | sed 's,.*/,,'); do echo licenses/$$l; done | sort -u)
+$(WEBDIR)/tarballs/%.tar.bz2: ccan/%/_info clean-tree
+	tar -c -j -f $@ $$(git ls-files ccan/$*) $$(git ls-files ccan/$* | xargs -n1 -r readlink | sed -n 's,^../../,,p' | sort -u)
 
-$(WEBDIR)/tarballs/with-deps/%.tar.bz2: ccan/%/_info tools/ccan_depends
-	tar cfj $@ $$(echo ccan/$* $$(tools/ccan_depends ccan/$*) | xargs -n 1 bzr ls --recursive --versioned --kind=file) $$(echo ccan/$* $$(tools/ccan_depends ccan/$*) | xargs -n 1 bzr ls --recursive --versioned --kind=symlink) $$(for l in $$(echo ccan/$* $$(tools/ccan_depends ccan/$*) | xargs -r -n 1 bzr ls --recursive --versioned --kind=symlink | xargs -r ls -l | sed 's,.*/,,'); do echo licenses/$$l; done | sort -u)
+$(WEBDIR)/tarballs/with-deps/%.tar.bz2: ccan/%/_info tools/ccan_depends clean-tree
+	tar -c -j -f $@ $$(git ls-files $$(echo ccan/$* $$(tools/ccan_depends ccan/$*) ) ) $$(git ls-files $$(echo ccan/$* $$(tools/ccan_depends ccan/$*) ) | xargs -n1 -r readlink | sed -n 's,^../../,,p' | sort -u)
 
 distclean: distclean-web
 

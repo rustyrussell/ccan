@@ -1,5 +1,7 @@
 .depends
 *.d
+*.o
+ccan/*-Makefile
 *~
 tools/ccan_depends
 tools/doc_extract

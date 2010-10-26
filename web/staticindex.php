@@ -18,33 +18,36 @@ CCAN is loosely modelled after the successful <a href="http://cpan.org">CPAN pro
 for Perl code development and sharing.
 </p>
 
-<h2>Getting The Code</h2>
+<h2>Get The Code</h2>
 
+<p> You can get each module as a tarball (<a href="list.html">see
+list</a>), get a tarball of <a href="ccan.tar.bz2">the whole repository</a> with tools,
+or clone our <a href="http://git.ozlabs.org/?p=ccan">git repository</a> (<tt>git clone git://git.ozlabs.org/~ccan/ccan</tt>).
+</p>
+
+<h2>Use The Code</h2>
 <p>
-Once you <a href="list.html">grab some modules</a>, there are two basic
-ways to use it:
+There are two ways to use it:
 <ol>
-<li> Just hack it to compile in your project.
+<li> Put modules into a ccan/ subdirectory into your project.  Add a "config.h" (like
+     <a href="example-config.h">this example</a>) and compile every .c file
+     in ccan/* (as in this <a href="Makefile-ccan">Makefile</a>)).
 
-<li> Use it in place by giving it a "config.h" (steal
-     <a href="example-config.h">this example</a>) and compiling all the .c
-       files (simply, or as in this <a href="Makefile-ccan">Makefile</a>).
+<li> Alternatively, just hack whatever parts you want so it compiles in
+your project.
 </ol>
 </p>
 
+<h2>Add Code</h2>
 <p>
-There's also a
-<a href="http://bazaar-vcs.org/">Bazaar</a> repository for all the CCAN
-infrastructure at http://ccan.ozlabs.org/repo (<a href="http://ccan.ozlabs.org/browse">browse</a>).
+We always welcome new code!  Copy an existing module and run the "ccanlint"
+tool over it, or just send any code you have lying around any let someone
+else polish it up.
 </p>
 
-<h2>Module Contributions</h2>
-
-<p>
-We welcome new code!  The guide to creating new modules is a work in
-progress (just copy an existing module), but anyone can send code to
+<p>Anyone can send code or a git pull request to
 the <a href="http://ozlabs.org/mailman/listinfo/ccan">friendly
-mailing list</a> or just <a href="upload.html">upload it</a>.
+mailing list</a> or just <a href="upload.html">upload it using the web form</a>.
 </p>
 
 <p>
@@ -67,10 +70,5 @@ We also have an IRC channel: #ccan on <a href="http://freenode.net">Freenode</a>
 <p>
 We also have a <a href="Wiki/">wiki</a>; feel free to enhance it.
 </p>
-
-<p>
-<i>Rusty Russell</i>
-</p>
-
 <hr>
 </body></html>
