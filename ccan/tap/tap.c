@@ -260,7 +260,7 @@ _tap_init(void)
 		/* stdout needs to be unbuffered so that the output appears
 		   in the same place relative to stderr output as it does 
 		   with Test::Harness */
-		setbuf(stdout, 0);
+//		setbuf(stdout, 0);
 		run_once = 1;
 	}
 }

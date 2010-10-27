@@ -66,8 +66,8 @@ int main(int argc, char *argv[])
 	int p[2];
 	int stdoutfd;
 
+	setbuf(stdout, 0);
 	printf("1..1\n");
-	fflush(stdout);
 	stderrfd = dup(STDERR_FILENO);
 	if (stderrfd < 0)
 		err(1, "dup of stderr failed");
