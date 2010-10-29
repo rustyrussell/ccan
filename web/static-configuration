@@ -17,8 +17,8 @@ $frommail = "ccan@ozlabs.org";
 //tar home dir
 $tar_dir = 'tarballs';
 
-//where bzr repo is: attach module name to browse
-$repo_base = 'http://ccan.ozlabs.org/browse/ccan/';
+//where repo is: attach module name to browse
+$repo_base = 'http://git.ozlabs.org/?p=ccan;a=tree;f=ccan/';
 
 function extract_field($field,$module)
 {
