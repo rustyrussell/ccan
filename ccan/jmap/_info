@@ -1,0 +1,97 @@
+#include <stdio.h>
+#include <string.h>
+#include "config.h"
+
+/**
+ * jmap - map from indices to values (based on libJudy)
+ *
+ * This provides a convenient wrapper for using JudyL arrays; using
+ * integers or pointers as an index, Judy arrays provide an efficient
+ * map to integers or pointers.
+ *
+ * jmap.h simply contains wrappers for a size_t-indexed size_t values, and
+ * jmap_type.h contain a wrapper macro for size_t->pointer maps and pointer
+ * ->pointer maps.
+ *
+ * Example:
+ * // Silly example of associating data with arguments by pointer and int.
+ * #include <string.h>
+ * #include <stdio.h>
+ * #include <ccan/jmap/jmap_type.h>
+ * 
+ * struct opt_detail {
+ * 	bool is_long;
+ * 	unsigned int length; // == 1 if !is_long.
+ * };
+ * 
+ * // Define jmap_arg_<op> and jmap_arg, for int -> argv.
+ * JMAP_DEFINE_UINTIDX_TYPE(char, arg);
+ * // Define jmap_opt_<op> and jmap_opt, for argv -> struct opt_detail *.
+ * JMAP_DEFINE_PTRIDX_TYPE(char, struct opt_detail, opt);
+ * 
+ * int main(int argc, char *argv[])
+ * {
+ * 	int i;
+ * 	// This map is equivalent to the argv[] array.  Silly example.
+ * 	struct jmap_arg *arg = jmap_arg_new();
+ * 	struct jmap_opt *opt = jmap_opt_new();
+ * 	struct opt_detail *d;
+ * 
+ * 	// Note: this is not correct for real parsing!
+ * 	for (i = 0; i < argc; i++) {
+ * 		jmap_arg_add(arg, i, argv[i]);
+ * 		if (i < 1 || argv[i][0] != '-')
+ * 			continue;
+ * 		d = malloc(sizeof(*d));
+ * 		if (argv[i][1] == '-') {
+ * 			// --<stuff>
+ * 			d->is_long = true;
+ * 			d->length = strlen(argv[i]+2);
+ * 		} else {
+ * 			// -<opt1>
+ * 			d->is_long = false;
+ * 			d->length = 1;
+ * 		}
+ * 		jmap_opt_add(opt, argv[i], d);
+ * 	}
+ * 
+ * 	printf("Found %u options:\n", jmap_opt_count(opt));
+ * 	for (i = jmap_arg_first(arg,-1); i!=-1; i = jmap_arg_next(arg,i,-1)) {
+ * 		char *a = jmap_arg_get(arg, i);
+ * 		d = jmap_opt_get(opt, a);
+ * 		printf("  Arg %i ('%s') is a %s of %u chars\n",
+ * 		       i, a,
+ * 		       d == NULL ? "normal argument"
+ * 		       : d->is_long ? "long option"
+ * 		       : "short option",
+ * 		       d == NULL ? strlen(a) : d->length);
+ * 		// We no longer need it, so free it here.
+ * 		free(d);
+ * 	}
+ * 	jmap_opt_free(opt);
+ * 	jmap_arg_free(arg);
+ * 	return 0;
+ * }
+ * 
+ * License: LGPL (2 or any later version)
+ * Author: Rusty Russell <rusty@rustcorp.com.au>
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/build_assert\n");
+		printf("ccan/compiler\n");
+		printf("Judy\n");
+		return 0;
+	}
+
+	if (strcmp(argv[1], "libs") == 0) {
+		printf("Judy\n");
+		return 0;
+	}
+
+	return 1;
+}
