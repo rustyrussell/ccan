@@ -1,0 +1,70 @@
+#include <stdio.h>
+#include <string.h>
+#include "config.h"
+
+/**
+ * foreach - macro for simple iteration of arrays
+ *
+ * The foreach_int and foreach_ptr macros allow simple iteration of
+ * static arrays.  This is very efficient with good compiler support
+ * (ie. gcc), and not too bad (ie. a few compares and mallocs) for
+ * other compilers.
+ *
+ * License: LGPL (3 or any later version)
+ * Author: Rusty Russell <rusty@rustcorp.com.au>
+ *
+ * Example:
+ *	// Figure out how to get usage: message out of a program.
+ *	#include <ccan/foreach/foreach.h>
+ *	#include <stdio.h>
+ *	#include <stdlib.h>
+ *	#include <string.h>
+ *	#include <err.h>
+ *
+ *	// Returns true if program outputs "usage:"
+ *	static bool try_usage(const char *prog, const char *arg)
+ *	{
+ *		char *command;
+ *		FILE *in;
+ *		int status;
+ *
+ *		command = malloc(strlen(prog) + 1 + strlen(arg) + 1 +
+ *				 sizeof("</dev/null 2>&1 | grep -qiw usage:"));
+ *		sprintf(command, "%s %s </dev/null 2>&1 | grep -qiw usage:",
+ *			prog, arg);
+ *		in = popen(command, "r");
+ *		if (!in)
+ *			err(2, "running '%s'", command);
+ *		status = pclose(in);
+ *		free(command);
+ *		return (WIFEXITED(status) && WEXITSTATUS(status) == 0);
+ *	}
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		const char *arg;
+ *
+ *		if (argc != 2)
+ *			errx(1, "Usage: %s <progname>\n"
+ *			     "Figures out how to get usage message", argv[0]);
+ *		foreach_ptr(arg, "--help", "-h", "--usage", "-?", "") {
+ *			if (try_usage(argv[1], arg)) {
+ *				printf("%s %s\n", argv[1], arg);
+ *				exit(0);
+ *			}
+ *		}
+ *		printf("%s is unhelpful\n", argv[1]);
+ *		exit(1);
+ *	}
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		return 0;
+	}
+
+	return 1;
+}
