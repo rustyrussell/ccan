@@ -14,9 +14,13 @@
 # dependencies you don't have.
 EXCLUDE=wwviaudio ogg_to_pcm
 
-# Anything with an _info file is a module.
-ALL=$(filter-out $(EXCLUDE), $(patsubst ccan/%/_info, %, $(wildcard ccan/*/_info)))
-ALL_DEPENDS=$(patsubst %, ccan/%/.depends, $(ALL))
+# Where make scores puts the results
+SCOREDIR=scores/$(shell whoami)/$(shell uname -s)-$(shell uname -m)-$(CC)
+
+ALL=$(filter-out $(EXCLUDE), $(REALLY_ALL))
+
+ALL_DEPENDS=$(patsubst %, ccan/%/.depends, $(REALLY_ALL))
+
 # Not all modules have tests.
 ALL_TESTS=$(patsubst ccan/%/test/, %, $(foreach dir, $(ALL), $(wildcard ccan/$(dir)/test/)))
 
@@ -69,6 +73,18 @@ check: $(ALL_TESTS:%=summary-check-%)
 
 distclean: clean
 	rm -f $(ALL_DEPENDS)
+
+scores: $(SCOREDIR)/SUMMARY
+
+$(SCOREDIR)/SUMMARY: $(patsubst ccan/%/_info, $(SCOREDIR)/score-%, $(wildcard ccan/*/_info))
+	git describe --always > $@
+	uname -a >> $@
+	$(CC) -v >> $@
+	cat $^ | grep 'Total score:' >> $@
+
+$(SCOREDIR)/score-%: ccan/%/_info tools/ccanlint/ccanlint $(OBJFILES)
+	mkdir -p $(SCOREDIR)
+	tools/ccanlint/ccanlint -v -s -d ccan/$* > $@ || true
 
 $(ALL_DEPENDS): %/.depends: %/_info tools/ccan_depends
 	tools/ccan_depends $* > $@ || ( rm -f $@; exit 1 )

@@ -13,8 +13,14 @@ default: libccan.a
 DEPGEN=-MD
 -include ccan/*/*.d
 
-# Every directory with .c files is included.
-DIRS=$(filter-out $(foreach d,$(EXCLUDE),ccan/$d), $(patsubst %/, %, $(sort $(dir $(wildcard ccan/*/*.c)))))
+# Anything with an _info file is a module.
+REALLY_ALL=$(patsubst ccan/%/_info, %, $(wildcard ccan/*/_info))
+
+# Exclude any modules we can't build.
+ALL=$(filter-out $(EXCLUDE), $(REALLY_ALL))
+
+# Anything with C files needs building; dir leaves / on, sort uniquifies
+DIRS=$(patsubst %/, %, $(sort $(foreach m, $(ALL), $(dir $(wildcard ccan/$m/*.c)))))
 
 # Generate everyone's separate Makefiles.
 -include $(foreach dir, $(DIRS), $(dir)-Makefile)
