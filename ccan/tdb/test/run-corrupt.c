@@ -43,9 +43,11 @@ static void tdb_flip_bit(struct tdb_context *tdb, unsigned int bit)
 		((unsigned char *)tdb->map_ptr)[off] ^= mask;
 	else {
 		unsigned char c;
-		pread(tdb->fd, &c, 1, off);
+		if (pread(tdb->fd, &c, 1, off) != 1)
+			err(1, "pread");
 		c ^= mask;
-		pwrite(tdb->fd, &c, 1, off);
+		if (pwrite(tdb->fd, &c, 1, off) != 1)
+			err(1, "pwrite");
 	}
 }
 
