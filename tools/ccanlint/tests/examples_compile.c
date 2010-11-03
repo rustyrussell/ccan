@@ -132,12 +132,12 @@ struct score {
 	char *errors;
 };
 
-static char *start_main(char *ret)
+static char *start_main(char *ret, const char *why)
 {
 	return talloc_asprintf_append(ret,
-				      "/* Fake function wrapper inserted */\n"
-				      "int main(int argc, char *argv[])\n"
-				      "{\n");
+	      "/* The example %s, so fake function wrapper inserted */\n"
+	      "int main(int argc, char *argv[])\n"
+	      "{\n", why);
 }
 
 /* We only handle simple function definitions here. */
@@ -177,7 +177,7 @@ static void strip_leading_whitespace(char **lines)
 			lines[i] += min_span;
 }
 
-static bool looks_internal(char **lines)
+static bool looks_internal(char **lines, char **why)
 {
 	unsigned int i;
 	bool last_ended = true; /* Did last line finish a statement? */
@@ -191,30 +191,46 @@ static bool looks_internal(char **lines)
 			continue;
 
 		/* The winners. */
-		if (strstarts(line, "if") && len == 2)
+		if (strstarts(line, "if") && len == 2) {
+			*why = "starts with if";
 			return true;
-		if (strstarts(line, "for") && len == 3)
+		}
+		if (strstarts(line, "for") && len == 3) {
+			*why = "starts with for";
 			return true;
-		if (strstarts(line, "while") && len == 5)
+		}
+		if (strstarts(line, "while") && len == 5) {
+			*why = "starts with while";
 			return true;
-		if (strstarts(line, "do") && len == 2)
+		}
+		if (strstarts(line, "do") && len == 2) {
+			*why = "starts with do";
 			return true;
+		}
 
 		/* The losers. */
-		if (strstarts(line, "#include"))
+		if (strstarts(line, "#include")) {
+			*why = "starts with #include";
 			return false;
+		}
 
 		if (last_ended && strchr(line, '(')) {
-			if (strstarts(line, "static"))
+			if (strstarts(line, "static")) {
+				*why = "starts with static and contains (";
 				return false;
-			if (strends(line, ")"))
+			}
+			if (strends(line, ")")) {
+				*why = "contains ( and ends with )";
 				return false;
+			}
 		}
 
 		/* Single identifier then operator == inside function. */
 		if (last_ended && len
-		    && ispunct(line[len+strspn(line+len, " ")]))
+		    && ispunct(line[len+strspn(line+len, " ")])) {
+			*why = "starts with identifier then punctuation";
 			return true;
+		}
 
 		last_ended = (strends(line, "}")
 			      || strends(line, ";")
@@ -222,6 +238,7 @@ static bool looks_internal(char **lines)
 	}
 
 	/* No idea... Say yes? */
+	*why = "gave no clues";
 	return true;
 }
 
@@ -230,24 +247,35 @@ static char **combine(const void *ctx, char **lines, char **prev)
 {
 	unsigned int i, lines_total, prev_total, count;
 	char **ret;
+	const char *reasoning;
+	char *why = NULL;
 
 	if (!prev)
 		return NULL;
 
 	/* If it looks internal, put prev at start. */
-	if (looks_internal(lines)) {
+	if (looks_internal(lines, &why)) {
 		count = 0;
+		reasoning = "seemed to belong inside a function";
 	} else {
 		/* Try inserting in first elided position */
 		for (count = 0; lines[count]; count++) {
 			if (strcmp(lines[count], "...") == 0)
 				break;
 		}
-		if (!lines[count])
+		if (!lines[count]) {
 			/* Try at start anyway? */
 			count = 0;
-		else
+			reasoning = "didn't seem to belong inside"
+				" a function, so we prepended the previous"
+				" example";
+		} else {
+			reasoning = "didn't seem to belong inside"
+				" a function, so we put the previous example"
+				" at the first ...";
+
 			count++;
+		}
 	}
 
 	for (i = 0; lines[i]; i++);
@@ -256,17 +284,19 @@ static char **combine(const void *ctx, char **lines, char **prev)
 	for (i = 0; prev[i]; i++);
 	prev_total = i;
 
-	ret = talloc_array(ctx, char *, lines_total + prev_total + 1);
-	memcpy(ret, lines, count * sizeof(ret[0]));
-	memcpy(ret + count, prev, prev_total * sizeof(ret[0]));
-	memcpy(ret + count + prev_total, lines + count,
+	ret = talloc_array(ctx, char *, 1 +lines_total + prev_total + 1);
+	ret[0] = talloc_asprintf(ret, "/* The example %s, thus %s */\n",
+				 why, reasoning);
+	memcpy(ret+1, lines, count * sizeof(ret[0]));
+	memcpy(ret+1 + count, prev, prev_total * sizeof(ret[0]));
+	memcpy(ret+1 + count + prev_total, lines + count,
 	       (lines_total - count + 1) * sizeof(ret[0]));
 	return ret;
 }
 
 static char *mangle(struct manifest *m, char **lines)
 {
-	char *ret, *use_funcs = NULL;
+	char *ret, *use_funcs = NULL, *why;
 	bool in_function = false, fake_function = false, has_main = false;
 	unsigned int i;
 
@@ -294,13 +324,16 @@ static char *mangle(struct manifest *m, char **lines)
 				     "extern char somestring[];\n"
 				     "char somestring[] = \"hello world\";\n");
 
-	if (looks_internal(lines)) {
+	if (looks_internal(lines, &why)) {
 		/* Wrap it all in main(). */
-		ret = start_main(ret);
+		ret = start_main(ret, why);
 		fake_function = true;
 		in_function = true;
 		has_main = true;
-	}
+	} else
+		ret = talloc_asprintf_append(ret,
+			     "/* The example %s, so didn't wrap in main() */\n",
+				     why);
 
 	/* Primitive, very primitive. */
 	for (i = 0; lines[i]; i++) {
@@ -327,9 +360,9 @@ static char *mangle(struct manifest *m, char **lines)
 		/* ... means elided code. */
 		if (strcmp(lines[i], "...") == 0) {
 			if (!in_function && !has_main
-			    && looks_internal(lines + i + 1)) {
+			    && looks_internal(lines + i + 1, &why)) {
 				/* This implies we start a function here. */
-				ret = start_main(ret);
+				ret = start_main(ret, why);
 				has_main = true;
 				fake_function = true;
 				in_function = true;
@@ -341,14 +374,18 @@ static char *mangle(struct manifest *m, char **lines)
 		ret = talloc_asprintf_append(ret, "%s\n", lines[i]);
 	}
 
-	/* Need a main to link successfully. */
 	if (!has_main) {
-		ret = talloc_asprintf_append(ret, "int main(void)\n{\n");
+		ret = talloc_asprintf_append(ret,
+			     "/* Need a main to link successfully. */\n"
+			     "int main(void)\n{\n");
 		fake_function = true;
 	}
 
-	/* Get rid of unused warnings by printing addresses of static funcs. */
 	if (use_funcs) {
+		ret = talloc_asprintf_append(ret,
+					     "/* Get rid of unused warnings"
+					     " by printing addresses of"
+					     " static funcs. */");
 		if (!fake_function) {
 			ret = talloc_asprintf_append(ret,
 						     "int use_funcs(void);\n"
@@ -400,14 +437,15 @@ static void *build_examples(struct manifest *m, bool keep,
 {
 	struct ccan_file *i;
 	struct score *score = talloc(m, struct score);
-	struct ccan_file *mangle;
 	char **prev = NULL;
 
 	score->score = 0;
-	score->errors = NULL;
+	score->errors = talloc_strdup(score, "");
 
+	examples_compile.total_score = 0;
 	list_for_each(&m->examples, i, list) {
-		char *ret;
+		char *ret, *ret1 = NULL, *ret2;
+		struct ccan_file *mangle1 = NULL, *mangle2;
 
 		examples_compile.total_score++;
 		/* Simplify our dumb parsing. */
@@ -422,11 +460,10 @@ static void *build_examples(struct manifest *m, bool keep,
 		/* Try combining with previous (successful) example... */
 		if (prev) {
 			char **new = combine(i, get_ccan_file_lines(i), prev);
-			talloc_free(ret);
 
-			mangle = mangle_example(m, i, new, keep);
-			ret = compile(score, m, mangle, keep);
-			if (!ret) {
+			mangle1 = mangle_example(m, i, new, keep);
+			ret1 = compile(score, m, mangle1, keep);
+			if (!ret1) {
 				prev = new;
 				score->score++;
 				continue;
@@ -434,22 +471,38 @@ static void *build_examples(struct manifest *m, bool keep,
 		}
 
 		/* Try standalone. */
-		talloc_free(ret);
-		mangle = mangle_example(m, i, get_ccan_file_lines(i), keep);
-		ret = compile(score, m, mangle, keep);
-		if (!ret) {
+		mangle2 = mangle_example(m, i, get_ccan_file_lines(i), keep);
+		ret2 = compile(score, m, mangle2, keep);
+		if (!ret2) {
 			prev = get_ccan_file_lines(i);
 			score->score++;
 			continue;
 		}
 
-		if (!score->errors)
-			score->errors = ret;
-		else {
-			score->errors = talloc_append_string(score->errors,
-							     ret);
-			talloc_free(ret);
+		score->errors = talloc_asprintf_append(score->errors,
+				       "%s: tried standalone example:\n"
+				       "%s\n"
+				       "Errors: %s\n\n",
+				       i->name,
+				       get_ccan_file_contents(i),
+				       ret);
+		if (mangle1) {
+			score->errors = talloc_asprintf_append(score->errors,
+					       "%s: tried combining with"
+					       " previous example:\n"
+					       "%s\n"
+					       "Errors: %s\n\n",
+					       i->name,
+					       get_ccan_file_contents(mangle1),
+					       ret1);
 		}
+		score->errors = talloc_asprintf_append(score->errors,
+				       "%s: tried adding headers, wrappers:\n"
+				       "%s\n"
+				       "Errors: %s\n\n",
+				       i->name,
+				       get_ccan_file_contents(mangle2),
+				       ret2);
 		/* This didn't work, so not a candidate for combining. */
 		prev = NULL;
 	}
@@ -475,6 +528,7 @@ struct ccanlint examples_compile = {
 	.key = "examples-compile",
 	.name = "Module examples compile",
 	.score = score_examples,
+	.total_score = 3, /* This gets changed to # examples, if they exist */
 	.check = build_examples,
 	.describe = describe,
 	.can_run = can_run,
