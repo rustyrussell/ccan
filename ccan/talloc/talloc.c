@@ -801,21 +801,25 @@ static int talloc_destroy_pointer(void ***pptr)
 void _talloc_set(void *ptr, const void *ctx, size_t size, const char *name)
 {
 	void ***child;
-	void **pptr = ptr;
+	void *p;
 
-	*pptr = talloc_named_const(ctx, size, name);
-	if (unlikely(!*pptr))
-		return;
+	p = talloc_named_const(ctx, size, name);
+	if (unlikely(!p))
+		goto set_ptr;
 
-	child = talloc(*pptr, void **);
+	child = talloc(p, void **);
 	if (unlikely(!child)) {
-		talloc_free(*pptr);
-		*pptr = NULL;
-		return;
+		talloc_free(p);
+		p = NULL;
+		goto set_ptr;
 	}
-	*child = pptr;
+	*child = ptr;
 	talloc_set_name_const(child, "talloc_set destructor");
 	talloc_set_destructor(child, talloc_destroy_pointer);
+
+set_ptr:
+	/* memcpy rather than cast avoids aliasing problems. */
+	memcpy(ptr, &p, sizeof(p));
 }
 
 /*
