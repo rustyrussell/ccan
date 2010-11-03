@@ -30,7 +30,7 @@ or clone our <a href="http://git.ozlabs.org/?p=ccan">git repository</a> (<tt>git
 There are two ways to use it:
 <ol>
 <li> Put modules into a ccan/ subdirectory into your project.  Add a "config.h" (like
-     <a href="example-config.h">this example</a>) and compile every .c file
+     <a href="example-config.h">this example</a>, or generate one using <a href="http://git.ozlabs.org/?p=ccan;a=blob_plain;f=tools/configurator/configurator.c">the configurator</a>) and compile every .c file
      in ccan/* (as in this <a href="Makefile-ccan">Makefile</a>)).
 
 <li> Alternatively, just hack whatever parts you want so it compiles in
