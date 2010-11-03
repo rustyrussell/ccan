@@ -264,8 +264,11 @@ static inline void jmap_##name##_putval(struct jmap_##name *map,	\
 static inline type **jmap_##name##_firstval(const struct jmap_##name *map, \
 					    itype **index)		\
 {									\
-	return (type **)jmap_firstval((const struct jmap *)map,		\
-				      (size_t *)index);			\
+	size_t idx;							\
+	type **ret;							\
+	ret = (type **)jmap_firstval((const struct jmap *)map, &idx);	\
+	*index = (void *)idx;						\
+	return ret;							\
 }									\
 static inline type **jmap_##name##_nextval(const struct jmap_##name *map, \
 					   itype **index)		\

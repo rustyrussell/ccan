@@ -1,7 +1,11 @@
 #ifndef CCAN_JMAP_H
 #define CCAN_JMAP_H
+#include <stddef.h>
+#define _WORD_T
+typedef size_t Word_t, *PWord_t;
 #include <Judy.h>
 #include <stdbool.h>
+#include <string.h>
 #include <ccan/compiler/compiler.h>
 #include <assert.h>
 #ifdef DEBUG
@@ -68,7 +72,7 @@ static inline void jmap_debug_del_access(struct jmap *map, size_t **val)
 		map->acc_value = NULL;
 #endif
 	/* Set it to some invalid value.  Not NULL, they might rely on that! */
-	assert((*val = (void *)jmap_new) != NULL);
+	assert(memset(val, 0x42, sizeof(*val)));
 }
 
 static inline void jmap_debug_access(struct jmap *map)
@@ -126,9 +130,9 @@ static inline const char *jmap_error(struct jmap *map)
  */
 static inline bool jmap_add(struct jmap *map, size_t index, size_t value)
 {
-	Word_t *val;
+	size_t *val;
 	jmap_debug_access(map);
-	val = (void *)JudyLIns(&map->judy, index, &map->err);
+	val = (size_t *)JudyLIns(&map->judy, index, &map->err);
 	if (val == PJERR)
 		return false;
 	*val = value;
@@ -150,8 +154,8 @@ static inline bool jmap_add(struct jmap *map, size_t index, size_t value)
  */
 static inline bool jmap_set(const struct jmap *map, size_t index, size_t value)
 {
-	Word_t *val;
-	val = (void *)JudyLGet(map->judy, index, (JError_t *)&map->err);
+	size_t *val;
+	val = (size_t *)JudyLGet(map->judy, index, (JError_t *)&map->err);
 	if (val && val != PJERR) {
 		*val = value;
 		return true;
@@ -204,8 +208,8 @@ static inline bool jmap_test(const struct jmap *map, size_t index)
 static inline size_t jmap_get(const struct jmap *map, size_t index,
 			      size_t invalid)
 {
-	Word_t *val;
-	val = (void *)JudyLGet(map->judy, index, (JError_t *)&map->err);
+	size_t *val;
+	val = (size_t *)JudyLGet(map->judy, index, (JError_t *)&map->err);
 	if (!val || val == PJERR)
 		return invalid;
 	return *val;
@@ -252,7 +256,7 @@ static inline size_t jmap_popcount(const struct jmap *map,
 static inline size_t jmap_nth(const struct jmap *map,
 			      size_t n, size_t invalid)
 {
-	Word_t index;
+	size_t index;
 	if (!JudyLByCount(map->judy, n+1, &index, (JError_t *)&map->err))
 		index = invalid;
 	return index;
@@ -277,7 +281,7 @@ static inline size_t jmap_nth(const struct jmap *map,
  */
 static inline size_t jmap_first(const struct jmap *map, size_t invalid)
 {
-	Word_t index = 0;
+	size_t index = 0;
 	if (!JudyLFirst(map->judy, &index, (JError_t *)&map->err))
 		index = invalid;
 	else
@@ -298,7 +302,7 @@ static inline size_t jmap_first(const struct jmap *map, size_t invalid)
 static inline size_t jmap_next(const struct jmap *map, size_t prev,
 			       size_t invalid)
 {
-	if (!JudyLNext(map->judy, (Word_t *)&prev, (JError_t *)&map->err))
+	if (!JudyLNext(map->judy, &prev, (JError_t *)&map->err))
 		prev = invalid;
 	else
 		assert(prev != invalid);
@@ -321,7 +325,7 @@ static inline size_t jmap_next(const struct jmap *map, size_t prev,
  */
 static inline size_t jmap_last(const struct jmap *map, size_t invalid)
 {
-	Word_t index = -1;
+	size_t index = -1;
 	if (!JudyLLast(map->judy, &index, (JError_t *)&map->err))
 		index = invalid;
 	else
@@ -342,7 +346,7 @@ static inline size_t jmap_last(const struct jmap *map, size_t invalid)
 static inline size_t jmap_prev(const struct jmap *map, size_t prev,
 			       size_t invalid)
 {
-	if (!JudyLPrev(map->judy, (Word_t *)&prev, (JError_t *)&map->err))
+	if (!JudyLPrev(map->judy, &prev, (JError_t *)&map->err))
 		prev = invalid;
 	else
 		assert(prev != invalid);
@@ -380,7 +384,7 @@ static inline size_t jmap_prev(const struct jmap *map, size_t prev,
 static inline size_t *jmap_getval(struct jmap *map, size_t index)
 {
 	size_t *val;
-	val = (void *)JudyLGet(map->judy, index, (JError_t *)&map->err);
+	val = (size_t *)JudyLGet(map->judy, index, (JError_t *)&map->err);
 	jmap_debug_add_access(map, index, val, "jmap_getval");
 	return val;
 }
@@ -432,7 +436,7 @@ static inline size_t *jmap_nthval(const struct jmap *map,
 				  size_t n, size_t *index)
 {
 	size_t *val;
-	val = (size_t *)JudyLByCount(map->judy, n+1, (Word_t *)index,
+	val = (size_t *)JudyLByCount(map->judy, n+1, index,
 				     (JError_t *)&map->err);
 	jmap_debug_add_access(map, *index, val, "jmap_nthval");
 	return val;
@@ -461,8 +465,7 @@ static inline size_t *jmap_firstval(const struct jmap *map, size_t *index)
 {
 	size_t *val;
 	*index = 0;
-	val = (size_t *)JudyLFirst(map->judy, (Word_t *)index,
-				   (JError_t *)&map->err);
+	val = (size_t *)JudyLFirst(map->judy, index, (JError_t *)&map->err);
 	jmap_debug_add_access(map, *index, val, "jmap_firstval");
 	return val;
 }
@@ -481,8 +484,7 @@ static inline size_t *jmap_firstval(const struct jmap *map, size_t *index)
 static inline size_t *jmap_nextval(const struct jmap *map, size_t *index)
 {
 	size_t *val;
-	val = (size_t *)JudyLNext(map->judy, (Word_t *)index,
-				  (JError_t *)&map->err);
+	val = (size_t *)JudyLNext(map->judy, index, (JError_t *)&map->err);
 	jmap_debug_add_access(map, *index, val, "jmap_nextval");
 	return val;
 }
@@ -499,8 +501,7 @@ static inline size_t *jmap_lastval(const struct jmap *map, size_t *index)
 {
 	size_t *val;
 	*index = -1;
-	val = (size_t *)JudyLLast(map->judy, (Word_t *)index,
-				  (JError_t *)&map->err);
+	val = (size_t *)JudyLLast(map->judy, index, (JError_t *)&map->err);
 	jmap_debug_add_access(map, *index, val, "jmap_lastval");
 	return val;
 }
@@ -519,8 +520,7 @@ static inline size_t *jmap_lastval(const struct jmap *map, size_t *index)
 static inline size_t *jmap_prevval(const struct jmap *map, size_t *index)
 {
 	size_t *val;
-	val = (size_t *)JudyLPrev(map->judy, (Word_t *)index,
-				  (JError_t *)&map->err);
+	val = (size_t *)JudyLPrev(map->judy, index, (JError_t *)&map->err);
 	jmap_debug_add_access(map, *index, val, "jmap_prevval");
 	return val;
 }

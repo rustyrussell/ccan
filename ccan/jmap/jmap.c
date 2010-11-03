@@ -7,8 +7,8 @@ struct jmap *jmap_new(void)
 {
 	struct jmap *map;
 
-	/* Judy uses Word_t, we use size_t. */
-	BUILD_ASSERT(sizeof(size_t) == sizeof(Word_t));
+	/* Judy uses unsigned long for Word_t, we use size_t. */
+	BUILD_ASSERT(sizeof(size_t) == sizeof(unsigned long));
 
 	map = malloc(sizeof(*map));
 	if (map) {

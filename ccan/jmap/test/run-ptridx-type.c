@@ -18,25 +18,25 @@ int main(int argc, char *argv[])
 {
 	struct jmap_foo *map;
 	struct foo *foo[NUM], **foop;
-	struct idx *idx[NUM], *index;
+	struct idx *idx[NUM+1], *index;
 
 	unsigned int i;
 
 	plan_tests(25 + NUM*2 + 6);
-	for (i = 0; i < NUM; i++)
+	for (i = 0; i < NUM+1; i++)
 		foo[i] = malloc(20);
 
 	qsort(foo, NUM, sizeof(foo[0]), cmp_ptr);
 
 	/* idx[i] == foo[i] + 1, for easy checking */
-	for (i = 0; i < NUM; i++)
+	for (i = 0; i < NUM+1; i++)
 		idx[i] = (void *)((char *)foo[i] + 1);
 
 	map = jmap_foo_new();
 	ok1(jmap_foo_error(map) == NULL);
 
-	ok1(jmap_foo_test(map, idx[i]) == false);
-	ok1(jmap_foo_get(map, idx[i]) == (struct foo *)NULL);
+	ok1(jmap_foo_test(map, idx[NUM]) == false);
+	ok1(jmap_foo_get(map, idx[NUM]) == (struct foo *)NULL);
 	ok1(jmap_foo_count(map) == 0);
 	ok1(jmap_foo_first(map) == (struct idx *)NULL);
 	ok1(jmap_foo_del(map, idx[0]) == false);
