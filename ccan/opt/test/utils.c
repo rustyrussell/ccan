@@ -35,7 +35,9 @@ static void save_err_output(const char *fmt, ...)
 	char *p;
 
 	va_start(ap, fmt);
-	vasprintf(&p, fmt, ap);
+	/* Check return, for fascist gcc */
+	if (vasprintf(&p, fmt, ap) == -1)
+		p = NULL;
 	va_end(ap);
 
 	if (err_output) {

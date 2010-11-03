@@ -20,7 +20,7 @@ static void reset_options(void)
 /* Test iterators. */
 int main(int argc, char *argv[])
 {
-	unsigned j, i, len;
+	unsigned j, i, len = 0;
 	const char *p;
 
 	plan_tests(37 * 2);
