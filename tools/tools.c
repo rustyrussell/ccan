@@ -131,7 +131,7 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 		*timeout_ms = 0;
 	else
 		*timeout_ms -= ms;
-
+	close(p[0]);
 	if (tools_verbose) {
 		printf("%s", ret);
 		printf("Finished: %u ms, %s %u\n", ms,

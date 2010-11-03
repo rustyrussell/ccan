@@ -28,7 +28,8 @@ char *compile_object(const void *ctx, const char *cfile, const char *ccandir,
 {
 	if (compile_verbose)
 		printf("Compiling %s\n", outfile);
-	return run_command(ctx, NULL, "cc " CFLAGS " -I%s %s -c -o %s %s",
+	return run_command(ctx, NULL, CCAN_COMPILER " " CCAN_CFLAGS
+			   " -I%s %s -c -o %s %s",
 			   ccandir, extra_cflags, outfile, cfile);
 }
 
@@ -40,6 +41,7 @@ char *compile_and_link(const void *ctx, const char *cfile, const char *ccandir,
 {
 	if (compile_verbose)
 		printf("Compiling and linking %s\n", outfile);
-	return run_command(ctx, NULL, "cc " CFLAGS " -I%s %s -o %s %s %s %s",
+	return run_command(ctx, NULL, CCAN_COMPILER " " CCAN_CFLAGS
+			   " -I%s %s -o %s %s %s %s",
 			   ccandir, extra_cflags, outfile, cfile, objs, libs);
 }

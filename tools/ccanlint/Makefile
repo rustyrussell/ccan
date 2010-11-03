@@ -25,7 +25,7 @@ tools/ccanlint/generated-compulsory-tests: $(COMPULSORY_TEST_CFILES)
 $(TEST_OBJS): tools/ccanlint/generated-normal-tests tools/ccanlint/generated-compulsory-tests
 
 # Otherwise, ccanlint.c et al. may fail to build
-$(CORE_OBJS): tools/ccanlint/generated-normal-tests tools/ccanlint/generated-compulsory-tests
+$(CORE_OBJS): tools/ccanlint/generated-normal-tests tools/ccanlint/generated-compulsory-tests config.h
 
 tools/ccanlint/ccanlint: $(OBJS)
 

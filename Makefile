@@ -88,7 +88,7 @@ summary-fastcheck-%: tools/ccanlint/ccanlint $(OBJFILES)
 	tools/ccanlint/ccanlint -t $(FASTTIMEOUT) -s -d ccan/$*
 
 ccan/%/info: ccan/%/_info
-	$(CC) $(CFLAGS) -o $@ -x c $<
+	$(CC) $(CCAN_CFLAGS) -o $@ -x c $<
 
 libccan.a(%.o): ccan/%.o
 	$(AR) r $@ $<
@@ -105,6 +105,9 @@ inter-depends: $(ALL_DEPENDS) Makefile
 # first 
 test-depends: $(ALL_DEPENDS) Makefile
 	for f in $(ALL_DEPENDS); do echo check-`basename \`dirname $$f\``: `sed -n 's,ccan/\(.*\),check-\1,p' < $$f`; done > $@
+
+config.h: tools/configurator/configurator Makefile Makefile-ccan
+	@tools/configurator/configurator $(CC) $(CCAN_CFLAGS) > config.h
 
 include tools/Makefile
 -include inter-depends

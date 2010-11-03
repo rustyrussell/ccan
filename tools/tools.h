@@ -1,14 +1,20 @@
 #ifndef CCAN_TOOLS_H
 #define CCAN_TOOLS_H
 #include <stdbool.h>
+#include "config.h"
+
+#ifndef CCAN_COMPILER
+#define CCAN_COMPILER "cc"
+#endif
+#ifndef CCAN_CFLAGS
+#define CCAN_CFLAGS "-g -Wall -Wundef -Wmissing-prototypes -Wmissing-declarations -Wstrict-prototypes -Wold-style-definition -Werror"
+#endif
 
 #define IDENT_CHARS	"ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
 			"abcdefghijklmnopqrstuvwxyz" \
 			"01234567889_"
 
 #define SPACE_CHARS	" \f\n\r\t\v"
-
-#define CFLAGS "-g -Wall -Wundef -Wmissing-prototypes -Wmissing-declarations -Wstrict-prototypes -Wold-style-definition -Werror"
 
 #define COVERAGE_CFLAGS "-fprofile-arcs -ftest-coverage"
 
