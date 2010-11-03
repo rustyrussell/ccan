@@ -237,6 +237,8 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 		case HASHTABLE:
 			len = hashtable_len(&e->hashtable);
 			break;
+		default:
+			abort();
 		}
 		off += len;
 		assert(zone_left >= len);
@@ -311,7 +313,8 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 			      0600);
 		if (fd < 0)
 			err(1, "opening %s for writing", layout->filename);
-		write(fd, tdb->map_ptr, tdb->map_size);
+		if (write(fd, tdb->map_ptr, tdb->map_size) != tdb->map_size)
+			err(1, "writing %s", layout->filename);
 		close(fd);
 		tdb_close(tdb);
 		/* NOMMAP is for lockcheck. */
