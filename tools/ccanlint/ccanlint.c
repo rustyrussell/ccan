@@ -407,12 +407,13 @@ int main(int argc, char *argv[])
 		    talloc_asprintf(m, "%s/test", temp_dir(NULL))) != 0)
 		err(1, "Creating test symlink in %s", temp_dir(NULL));
 
-	/* If you don't pass the compulsory tests, you don't even get a score */
+	/* If you don't pass the compulsory tests, you get a score of 0. */
 	if (verbose)
 		printf("Compulsory tests:\n");
 
 	while ((i = get_next_test(&compulsory_tests)) != NULL) {
 		if (!run_test(i, summary, &score, &total_score, m)) {
+			printf("%sTotal score: 0/%u\n", prefix, total_score);
 			errx(1, "%s%s failed", prefix, i->name);
 		}
 	}

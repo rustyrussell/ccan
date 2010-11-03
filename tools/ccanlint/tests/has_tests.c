@@ -31,7 +31,7 @@ static void *check_has_tests(struct manifest *m,
 	if (list_empty(&m->api_tests)
 	    && list_empty(&m->run_tests)
 	    && list_empty(&m->compile_ok_tests)) {
-		if (list_empty(&m->compile_fail_tests)) 
+		if (list_empty(&m->compile_fail_tests))
 			return "You have no tests in the test directory";
 		else
 			return "You have no positive tests in the test directory";
@@ -124,13 +124,14 @@ static void handle_no_tests(struct manifest *m, void *check_result)
 	fputs("}\n", run);
 
 	fclose(run);
-}	
+}
 
 struct ccanlint has_tests = {
 	.key = "has-tests",
 	.name = "Module has tests",
 	.check = check_has_tests,
 	.describe = describe_has_tests,
+	.total_score = 1,
 	.handle = handle_no_tests,
 };
 

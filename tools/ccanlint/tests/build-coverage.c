@@ -190,6 +190,7 @@ struct ccanlint compile_coverage_tests = {
 	.key = "compile-coverage-tests",
 	.name = "Module tests compile with profiling",
 	.check = do_compile_coverage_tests,
+	.total_score = 1,
 	.describe = describe_compile_coverage_tests,
 	.can_run = can_run_coverage,
 };

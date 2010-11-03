@@ -37,6 +37,7 @@ static void *do_run_tests(struct manifest *m,
 	char *cmdout;
 
 	list_head_init(list);
+	run_tests.total_score = 0;
 
 	list_for_each(&m->run_tests, i, list) {
 		run_tests.total_score++;
@@ -115,6 +116,7 @@ struct ccanlint run_tests = {
 	.key = "run",
 	.name = "Module's run and api tests pass",
 	.score = score_run_tests,
+	.total_score = 1,
 	.check = do_run_tests,
 	.describe = describe_run_tests,
 	.can_run = can_run,

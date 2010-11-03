@@ -506,6 +506,11 @@ static void *build_examples(struct manifest *m, bool keep,
 		/* This didn't work, so not a candidate for combining. */
 		prev = NULL;
 	}
+
+	if (strcmp(score->errors, "") == 0) {
+		talloc_free(score);
+		return NULL;
+	}
 	return score;
 }
 

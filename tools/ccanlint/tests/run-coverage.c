@@ -209,4 +209,4 @@ struct ccanlint run_coverage_tests = {
 	.describe = describe_run_coverage_tests,
 };
 
-REGISTER_TEST(run_coverage_tests, &compile_coverage_tests, NULL);
+REGISTER_TEST(run_coverage_tests, &compile_coverage_tests, &run_tests, NULL);

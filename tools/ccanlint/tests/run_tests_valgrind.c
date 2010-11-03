@@ -41,6 +41,7 @@ static void *do_run_tests_vg(struct manifest *m,
 	char *cmdout;
 
 	list_head_init(list);
+	run_tests_vg.total_score = 0;
 
 	list_for_each(&m->run_tests, i, list) {
 		run_tests_vg.total_score++;
@@ -123,6 +124,7 @@ struct ccanlint run_tests_vg = {
 	.key = "valgrind-tests",
 	.name = "Module's run and api tests succeed under valgrind",
 	.score = score_run_tests_vg,
+	.total_score = 1,
 	.check = do_run_tests_vg,
 	.describe = describe_run_tests_vg,
 	.can_run = can_run_vg,

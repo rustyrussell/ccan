@@ -21,7 +21,7 @@ static const char *can_build(struct manifest *m)
 	return NULL;
 }
 
-static char *compile(struct manifest *m, 
+static char *compile(struct manifest *m,
 		     bool keep,
 		     struct ccan_file *cfile)
 {
@@ -37,6 +37,7 @@ static void *do_compile_test_helpers(struct manifest *m,
 	char *cmdout = NULL;
 	struct ccan_file *i;
 
+	compile_tests.total_score = 0;
 	list_for_each(&m->other_test_c_files, i, list) {
 		compile_tests.total_score++;
 		cmdout = compile(m, keep, i);
@@ -64,4 +65,4 @@ struct ccanlint compile_test_helpers = {
 	.can_run = can_build,
 };
 
-REGISTER_TEST(compile_test_helpers, &depends_built);
+REGISTER_TEST(compile_test_helpers, &depends_built, &has_tests, NULL);
