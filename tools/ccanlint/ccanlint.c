@@ -30,6 +30,7 @@
 #include <ccan/str_talloc/str_talloc.h>
 #include <ccan/talloc/talloc.h>
 #include <ccan/opt/opt.h>
+#include <ccan/foreach/foreach.h>
 
 int verbose = 0;
 static LIST_HEAD(compulsory_tests);
@@ -74,11 +75,11 @@ static const char *should_skip(struct manifest *m, struct ccanlint *i)
 	if (btree_lookup(info_exclude, i->key))
 		return "excluded in _info file";
 	
+	if (i->skip)
+		return i->skip;
+
 	if (i->skip_fail)
 		return "dependency failed";
-
-	if (i->skip)
-		return "dependency was skipped";
 
 	if (i->can_run)
 		return i->can_run(m);
@@ -105,7 +106,7 @@ static bool run_test(struct ccanlint *i,
 
 	if (skip) {
 	skip:
-		if (verbose)
+		if (verbose && !streq(skip, "not relevant to target"))
 			printf("  %s: skipped (%s)\n", i->name, skip);
 
 		/* If we're skipping this because a prereq failed, we fail. */
@@ -115,7 +116,9 @@ static bool run_test(struct ccanlint *i,
 		list_del(&i->list);
 		list_add_tail(&finished_tests, &i->list);
 		list_for_each(&i->dependencies, d, node) {
-			d->dependent->skip = true;
+			if (d->dependent->skip)
+				continue;
+			d->dependent->skip = "dependency was skipped";
 			d->dependent->skip_fail = i->skip_fail;
 		}
 		return true;
@@ -169,7 +172,9 @@ static bool run_test(struct ccanlint *i,
 	if (bad) {
 		/* Skip any tests which depend on this one. */
 		list_for_each(&i->dependencies, d, node) {
-			d->dependent->skip = true;
+			if (d->dependent->skip)
+				continue;
+			d->dependent->skip = "dependency failed";
 			d->dependent->skip_fail = true;
 		}
 	}
@@ -349,6 +354,32 @@ static void add_info_fails(struct ccan_file *info)
 	}
 }
 
+static bool depends_on(struct ccanlint *i, struct ccanlint *target)
+{
+	const struct dependent *d;
+
+	if (i == target)
+		return true;
+
+	list_for_each(&i->dependencies, d, node) {
+		if (depends_on(d->dependent, target))
+			return true;
+	}
+	return false;
+}
+
+/* O(N^2), who cares? */
+static void skip_unrelated_tests(struct ccanlint *target)
+{
+	struct ccanlint *i;
+	struct list_head *list;
+
+	foreach_ptr(list, &compulsory_tests, &normal_tests)
+		list_for_each(list, i, list)
+			if (!depends_on(i, target))
+				i->skip = "not relevant to target";
+}
+
 int main(int argc, char *argv[])
 {
 	bool summary = false;
@@ -356,7 +387,7 @@ int main(int argc, char *argv[])
 	struct manifest *m;
 	struct ccanlint *i;
 	const char *prefix = "";
-	char *dir = talloc_getcwd(NULL), *base_dir = dir;
+	char *dir = talloc_getcwd(NULL), *base_dir = dir, *target = NULL;
 	
 	init_tests();
 
@@ -380,6 +411,9 @@ int main(int argc, char *argv[])
 	opt_register_arg("-t|--timeout <milleseconds>", opt_set_uintval,
 			 NULL, &timeout,
 			 "ignore (terminate) tests that are slower than this");
+	opt_register_arg("--target <testname>", opt_set_charp,
+			 NULL, &target,
+			 "only run one test (and its prerequisites)");
 	opt_register_noarg("-?|-h|--help", opt_usage_and_exit,
 			   "\nA program for checking and guiding development"
 			   " of CCAN modules.",
@@ -406,6 +440,15 @@ int main(int argc, char *argv[])
 	if (symlink(talloc_asprintf(m, "%s/test", dir),
 		    talloc_asprintf(m, "%s/test", temp_dir(NULL))) != 0)
 		err(1, "Creating test symlink in %s", temp_dir(NULL));
+
+	if (target) {
+		struct ccanlint *test;
+
+		test = find_test(target);
+		if (!test)
+			err(1, "Unknown test to run '%s'", target);
+		skip_unrelated_tests(test);
+	}
 
 	/* If you don't pass the compulsory tests, you get a score of 0. */
 	if (verbose)

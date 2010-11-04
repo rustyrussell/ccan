@@ -79,7 +79,7 @@ struct ccanlint {
 	/* How many things do we (still) depend on? */
 	unsigned int num_depends;
 	/* Did we skip a dependency?  If so, must skip this, too. */
-	bool skip;
+	const char *skip;
 	/* Did we fail a dependency?  If so, skip and mark as fail. */
 	bool skip_fail;
 	/* Did the user want to keep these results? */
