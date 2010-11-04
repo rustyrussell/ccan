@@ -26,12 +26,18 @@ static void reset_options(void)
 int main(int argc, char *argv[])
 {
 	char *output;
+	char *longname = strdup("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+	char *shortname = strdup("shortname");
 
-	plan_tests(42);
+	plan_tests(48);
 	opt_register_table(subtables, NULL);
 	opt_register_noarg("--kkk|-k", my_cb, NULL, "magic kkk option");
 	opt_register_noarg("-?", opt_usage_and_exit, "<MyArgs>...",
 			   "This message");
+	opt_register_arg("--longname", opt_set_charp, opt_show_charp,
+			 &longname, "a really long option default");
+	opt_register_arg("--shortname", opt_set_charp, opt_show_charp,
+			 &shortname, "a short option default");
 	output = opt_usage("my name", "ExTrA Args");
 	diag("%s", output);
 	ok1(strstr(output, "Usage: my name"));
@@ -77,6 +83,12 @@ int main(int argc, char *argv[])
 	ok1(strstr(output, " Description of hhh\n"));
 	ok1(strstr(output, "--kkk|-k"));
 	ok1(strstr(output, "magic kkk option"));
+	ok1(strstr(output, "--longname"));
+	ok1(strstr(output, "a really long option default"));
+	ok1(strstr(output, "(default: \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"...)"));
+	ok1(strstr(output, "--shortname"));
+	ok1(strstr(output, "a short option default"));
+	ok1(strstr(output, "(default: \"shortname\")"));
 	/* This entry is hidden. */
 	ok1(!strstr(output, "--mmm|-m"));
 	free(output);
