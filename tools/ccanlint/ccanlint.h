@@ -34,6 +34,7 @@ struct manifest {
 
 	struct list_head other_files;
 	struct list_head examples;
+	struct list_head mangled_examples;
 
 	/* From tests/check_depends_exist.c */
 	struct list_head dep_dirs;

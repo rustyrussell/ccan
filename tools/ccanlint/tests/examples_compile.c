@@ -122,6 +122,7 @@ static char *compile(const void *ctx,
 				  "", lib_list(m), file->compiled);
 	if (errmsg) {
 		talloc_free(file->compiled);
+		file->compiled = NULL;
 		return errmsg;
 	}
 	return NULL;
@@ -429,6 +430,7 @@ static struct ccan_file *mangle_example(struct manifest *m,
 	}
 	close(fd);
 	f->contents = talloc_steal(f, contents);
+	list_add(&m->mangled_examples, &f->list);
 	return f;
 }
 
@@ -450,8 +452,17 @@ static void *build_examples(struct manifest *m, bool keep,
 		examples_compile.total_score++;
 		/* Simplify our dumb parsing. */
 		strip_leading_whitespace(get_ccan_file_lines(i));
-		ret = compile(score, m, i, keep);
+		ret = compile(i, m, i, keep);
 		if (!ret) {
+			prev = get_ccan_file_lines(i);
+			score->score++;
+			continue;
+		}
+
+		/* Try standalone. */
+		mangle1 = mangle_example(m, i, get_ccan_file_lines(i), keep);
+		ret1 = compile(i, m, mangle1, keep);
+		if (!ret1) {
 			prev = get_ccan_file_lines(i);
 			score->score++;
 			continue;
@@ -461,22 +472,13 @@ static void *build_examples(struct manifest *m, bool keep,
 		if (prev) {
 			char **new = combine(i, get_ccan_file_lines(i), prev);
 
-			mangle1 = mangle_example(m, i, new, keep);
-			ret1 = compile(score, m, mangle1, keep);
-			if (!ret1) {
+			mangle2 = mangle_example(m, i, new, keep);
+			ret2 = compile(i, m, mangle1, keep);
+			if (!ret2) {
 				prev = new;
 				score->score++;
 				continue;
 			}
-		}
-
-		/* Try standalone. */
-		mangle2 = mangle_example(m, i, get_ccan_file_lines(i), keep);
-		ret2 = compile(score, m, mangle2, keep);
-		if (!ret2) {
-			prev = get_ccan_file_lines(i);
-			score->score++;
-			continue;
 		}
 
 		score->errors = talloc_asprintf_append(score->errors,
@@ -486,23 +488,24 @@ static void *build_examples(struct manifest *m, bool keep,
 				       i->name,
 				       get_ccan_file_contents(i),
 				       ret);
-		if (mangle1) {
-			score->errors = talloc_asprintf_append(score->errors,
-					       "%s: tried combining with"
-					       " previous example:\n"
-					       "%s\n"
-					       "Errors: %s\n\n",
-					       i->name,
-					       get_ccan_file_contents(mangle1),
-					       ret1);
-		}
 		score->errors = talloc_asprintf_append(score->errors,
 				       "%s: tried adding headers, wrappers:\n"
 				       "%s\n"
 				       "Errors: %s\n\n",
 				       i->name,
+				       get_ccan_file_contents(mangle1),
+				       ret1);
+
+		if (mangle2) {
+			score->errors = talloc_asprintf_append(score->errors,
+				       "%s\n"
+				       "%s: tried combining with"
+				       " previous example:\n"
+				       "Errors: %s\n\n",
+				       i->name,
 				       get_ccan_file_contents(mangle2),
 				       ret2);
+		}
 		/* This didn't work, so not a candidate for combining. */
 		prev = NULL;
 	}
