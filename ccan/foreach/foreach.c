@@ -1,10 +1,10 @@
+#if !HAVE_COMPOUND_LITERALS || !HAVE_FOR_LOOP_DECLARATION
 #include <ccan/foreach/foreach.h>
 #include <ccan/list/list.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdarg.h>
 
-#if !HAVE_COMPOUND_LITERALS || !HAVE_FOR_LOOP_DECLARATION
 /* This list is normally very short. */
 static LIST_HEAD(iters);
 

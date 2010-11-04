@@ -8,7 +8,6 @@
 #include <ccan/grab_file/grab_file.c>
 #include <ccan/tap/tap.h>
 #include <ccan/str_talloc/str_talloc.h>
-#include <ccan/str/str.h>
 
 int 
 main(int argc, char *argv[])
@@ -21,10 +20,10 @@ main(int argc, char *argv[])
 	str = grab_file(NULL, "test/run-grab.c", NULL);
 	split = strsplit(NULL, str, "\n", NULL);
 	length = strlen(split[0]);
-	ok1(streq(split[0], "/* This is test for grab_file() function"));
+	ok1(!strcmp(split[0], "/* This is test for grab_file() function"));
 	for (i = 1; split[i]; i++)	
 		length += strlen(split[i]);
-	ok1(streq(split[i-1], "/* End of grab_file() test */"));
+	ok1(!strcmp(split[i-1], "/* End of grab_file() test */"));
 	if (stat("test/run-grab.c", &st) != 0) 
 		/* FIXME: ditto */
 		if (stat("ccan/grab_file/test/run-grab.c", &st) != 0) 

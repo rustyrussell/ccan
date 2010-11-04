@@ -63,6 +63,9 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
+#if !HAVE_COMPOUND_LITERALS || !HAVE_FOR_LOOP_DECLARATION
+		printf("ccan/list\n");
+#endif
 		return 0;
 	}
 
