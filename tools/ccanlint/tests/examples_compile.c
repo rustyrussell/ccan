@@ -446,8 +446,8 @@ static void *build_examples(struct manifest *m, bool keep,
 
 	examples_compile.total_score = 0;
 	list_for_each(&m->examples, i, list) {
-		char *ret, *ret1 = NULL, *ret2;
-		struct ccan_file *mangle1 = NULL, *mangle2;
+		char *ret, *ret1, *ret2 = NULL;
+		struct ccan_file *mangle1, *mangle2 = NULL;
 
 		examples_compile.total_score++;
 		/* Simplify our dumb parsing. */
