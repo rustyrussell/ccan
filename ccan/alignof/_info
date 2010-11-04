@@ -19,10 +19,13 @@
  *	#include <stdlib.h>
  *	#include <ccan/alignof/alignof.h>
  *
+ *	// Output contains "ALIGNOF(char) == 1"
+ *	// Will also print out whether an onstack char array can hold a long.
  *	int main(int argc, char *argv[])
  *	{
  *		char arr[sizeof(int)];
  *
+ *		printf("ALIGNOF(char) == %zu\n", ALIGNOF(char));
  *		if ((unsigned long)arr % ALIGNOF(int)) {
  *			printf("arr %p CANNOT hold an int\n", arr);
  *			exit(1);
