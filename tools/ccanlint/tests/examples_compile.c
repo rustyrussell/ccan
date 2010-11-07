@@ -473,7 +473,7 @@ static void *build_examples(struct manifest *m, bool keep,
 			char **new = combine(i, get_ccan_file_lines(i), prev);
 
 			mangle2 = mangle_example(m, i, new, keep);
-			ret2 = compile(i, m, mangle1, keep);
+			ret2 = compile(i, m, mangle2, keep);
 			if (!ret2) {
 				prev = new;
 				score->score++;
@@ -498,9 +498,9 @@ static void *build_examples(struct manifest *m, bool keep,
 
 		if (mangle2) {
 			score->errors = talloc_asprintf_append(score->errors,
-				       "%s\n"
 				       "%s: tried combining with"
 				       " previous example:\n"
+				       "%s\n"
 				       "Errors: %s\n\n",
 				       i->name,
 				       get_ccan_file_contents(mangle2),
