@@ -1,8 +1,6 @@
 #ifndef CCAN_JMAP_H
 #define CCAN_JMAP_H
 #include <stddef.h>
-#define _WORD_T
-typedef size_t Word_t, *PWord_t;
 #include <Judy.h>
 #include <stdbool.h>
 #include <string.h>
@@ -42,15 +40,16 @@ struct jmap {
 	/* Used if !NDEBUG */
 	int num_accesses;
 	/* Used if DEBUG */
-	size_t *acc_value;
-	size_t acc_index;
+	unsigned long *acc_value;
+	unsigned long acc_index;
 	const char *funcname;
 };
 const char *COLD_ATTRIBUTE jmap_error_(struct jmap *map);
 
 /* Debugging checks. */
 static inline void jmap_debug_add_access(const struct jmap *map,
-					 size_t index, size_t *val,
+					 unsigned long index,
+					 unsigned long *val,
 					 const char *funcname)
 {
 #ifdef DEBUG
@@ -64,7 +63,7 @@ static inline void jmap_debug_add_access(const struct jmap *map,
 		assert(++((struct jmap *)map)->num_accesses);
 }
 
-static inline void jmap_debug_del_access(struct jmap *map, size_t **val)
+static inline void jmap_debug_del_access(struct jmap *map, unsigned long **val)
 {
 	assert(--map->num_accesses >= 0);
 #ifdef DEBUG
@@ -80,7 +79,7 @@ static inline void jmap_debug_access(struct jmap *map)
 #ifdef DEBUG
 	if (map->num_accesses && map->acc_value)
 		fprintf(stderr,
-			"jmap: still got index %zu, val %zu (%p) from %s\n",
+			"jmap: still got index %lu, val %lu (%p) from %s\n",
 			map->acc_index, *map->acc_value, map->acc_value,
 			map->funcname);
 #endif
@@ -128,11 +127,12 @@ static inline const char *jmap_error(struct jmap *map)
  *	if (!jmap_add(map, 0, 1))
  *		err(1, "jmap_add failed!");
  */
-static inline bool jmap_add(struct jmap *map, size_t index, size_t value)
+static inline bool jmap_add(struct jmap *map,
+			    unsigned long index, unsigned long value)
 {
-	size_t *val;
+	unsigned long *val;
 	jmap_debug_access(map);
-	val = (size_t *)JudyLIns(&map->judy, index, &map->err);
+	val = (unsigned long *)JudyLIns(&map->judy, index, &map->err);
 	if (val == PJERR)
 		return false;
 	*val = value;
@@ -152,10 +152,12 @@ static inline bool jmap_add(struct jmap *map, size_t index, size_t value)
  *	if (!jmap_set(map, 0, 2))
  *		err(1, "jmap_set: index 0 not found");
  */
-static inline bool jmap_set(const struct jmap *map, size_t index, size_t value)
+static inline bool jmap_set(const struct jmap *map,
+			    unsigned long index, unsigned long value)
 {
-	size_t *val;
-	val = (size_t *)JudyLGet(map->judy, index, (JError_t *)&map->err);
+	unsigned long *val;
+	val = (unsigned long *)JudyLGet(map->judy, index,
+					(JError_t *)&map->err);
 	if (val && val != PJERR) {
 		*val = value;
 		return true;
@@ -172,7 +174,7 @@ static inline bool jmap_set(const struct jmap *map, size_t index, size_t value)
  *	if (!jmap_del(map, 0))
  *		err(1, "jmap_del failed!");
  */
-static inline bool jmap_del(struct jmap *map, size_t index)
+static inline bool jmap_del(struct jmap *map, unsigned long index)
 {
 	jmap_debug_access(map);
 	return JudyLDel(&map->judy, index, &map->err) == 1;
@@ -187,7 +189,7 @@ static inline bool jmap_del(struct jmap *map, size_t index)
  *	jmap_add(map, 0, 1);
  *	assert(jmap_test(map, 0));
  */
-static inline bool jmap_test(const struct jmap *map, size_t index)
+static inline bool jmap_test(const struct jmap *map, unsigned long index)
 {
 	return JudyLGet(map->judy, index, (JError_t *)&map->err) != NULL;
 }
@@ -205,11 +207,13 @@ static inline bool jmap_test(const struct jmap *map, size_t index)
  * See Also:
  *	jmap_getval()
  */
-static inline size_t jmap_get(const struct jmap *map, size_t index,
-			      size_t invalid)
+static inline unsigned long jmap_get(const struct jmap *map,
+				     unsigned long index,
+				     unsigned long invalid)
 {
-	size_t *val;
-	val = (size_t *)JudyLGet(map->judy, index, (JError_t *)&map->err);
+	unsigned long *val;
+	val = (unsigned long *)JudyLGet(map->judy, index,
+					(JError_t *)&map->err);
 	if (!val || val == PJERR)
 		return invalid;
 	return *val;
@@ -224,8 +228,9 @@ static inline size_t jmap_get(const struct jmap *map, size_t index,
  * Example:
  *	assert(jmap_popcount(map, 0, 1000) <= jmap_popcount(map, 0, 2000));
  */
-static inline size_t jmap_popcount(const struct jmap *map,
-				   size_t start, size_t end_incl)
+static inline unsigned long jmap_popcount(const struct jmap *map,
+					  unsigned long start,
+					  unsigned long end_incl)
 {
 	return JudyLCount(map->judy, start, end_incl, (JError_t *)&map->err);
 }
@@ -241,22 +246,22 @@ static inline size_t jmap_popcount(const struct jmap *map,
  * map).  Otherwise you can use jmap_nthval().
  *
  * Example:
- *	size_t i, index;
+ *	unsigned long i, index;
  *
  *	// We know 0 isn't in map.
  *	assert(!jmap_test(map, 0));
  *	for (i = 0; (index = jmap_nth(map, i, 0)) != 0; i++) {
  *		assert(jmap_popcount(map, 0, index) == i);
- *		printf("Index %zu = %zu\n", i, index);
+ *		printf("Index %lu = %lu\n", i, index);
  *	}
  *
  * See Also:
  *	jmap_nthval();
  */
-static inline size_t jmap_nth(const struct jmap *map,
-			      size_t n, size_t invalid)
+static inline unsigned long jmap_nth(const struct jmap *map,
+				     unsigned long n, unsigned long invalid)
 {
-	size_t index;
+	unsigned long index;
 	if (!JudyLByCount(map->judy, n+1, &index, (JError_t *)&map->err))
 		index = invalid;
 	return index;
@@ -273,15 +278,16 @@ static inline size_t jmap_nth(const struct jmap *map,
  *	assert(!jmap_test(map, 0));
  *	printf("Map indices (increasing order):");
  *	for (i = jmap_first(map, 0); i; i = jmap_next(map, i, 0))
- *		printf(" %zu", i);
+ *		printf(" %lu", i);
  *	printf("\n");
  *
  * See Also:
  *	jmap_firstval()
  */
-static inline size_t jmap_first(const struct jmap *map, size_t invalid)
+static inline unsigned long jmap_first(const struct jmap *map,
+				       unsigned long invalid)
 {
-	size_t index = 0;
+	unsigned long index = 0;
 	if (!JudyLFirst(map->judy, &index, (JError_t *)&map->err))
 		index = invalid;
 	else
@@ -299,8 +305,9 @@ static inline size_t jmap_first(const struct jmap *map, size_t invalid)
  * See Also:
  *	jmap_nextval()
  */
-static inline size_t jmap_next(const struct jmap *map, size_t prev,
-			       size_t invalid)
+static inline unsigned long jmap_next(const struct jmap *map,
+				      unsigned long prev,
+				      unsigned long invalid)
 {
 	if (!JudyLNext(map->judy, &prev, (JError_t *)&map->err))
 		prev = invalid;
@@ -318,14 +325,15 @@ static inline size_t jmap_next(const struct jmap *map, size_t prev,
  *	assert(!jmap_test(map, 0));
  *	printf("Map indices (increasing order):");
  *	for (i = jmap_last(map, 0); i; i = jmap_prev(map, i, 0))
- *		printf(" %zu", i);
+ *		printf(" %lu", i);
  *	printf("\n");
  * See Also:
  *	jmap_lastval()
  */
-static inline size_t jmap_last(const struct jmap *map, size_t invalid)
+static inline unsigned long jmap_last(const struct jmap *map,
+				      unsigned long invalid)
 {
-	size_t index = -1;
+	unsigned long index = -1;
 	if (!JudyLLast(map->judy, &index, (JError_t *)&map->err))
 		index = invalid;
 	else
@@ -343,8 +351,9 @@ static inline size_t jmap_last(const struct jmap *map, size_t invalid)
  * See Also:
  *	jmap_prevval()
  */
-static inline size_t jmap_prev(const struct jmap *map, size_t prev,
-			       size_t invalid)
+static inline unsigned long jmap_prev(const struct jmap *map,
+				      unsigned long prev,
+				      unsigned long invalid)
 {
 	if (!JudyLPrev(map->judy, &prev, (JError_t *)&map->err))
 		prev = invalid;
@@ -367,7 +376,7 @@ static inline size_t jmap_prev(const struct jmap *map, size_t prev,
  * have called jmap_putval().
  *
  * Example:
- *	size_t *p;
+ *	unsigned long *p;
  *	jmap_add(map, 0, 1);
  *	p = jmap_getval(map, 0);
  *	if (!p)
@@ -381,10 +390,11 @@ static inline size_t jmap_prev(const struct jmap *map, size_t prev,
  * See Also:
  *	jmap_putval(), jmap_firstval()
  */
-static inline size_t *jmap_getval(struct jmap *map, size_t index)
+static inline unsigned long *jmap_getval(struct jmap *map, unsigned long index)
 {
-	size_t *val;
-	val = (size_t *)JudyLGet(map->judy, index, (JError_t *)&map->err);
+	unsigned long *val;
+	val = (unsigned long *)JudyLGet(map->judy, index,
+					(JError_t *)&map->err);
 	jmap_debug_add_access(map, index, val, "jmap_getval");
 	return val;
 }
@@ -404,7 +414,7 @@ static inline size_t *jmap_getval(struct jmap *map, size_t index)
  *	jmap_getval(), jmap_nthval(), jmap_firstval(), jmap_nextval(),
  *		jmap_lastval(), jmap_prevval().
  */
-static inline void jmap_putval(struct jmap *map, size_t **p)
+static inline void jmap_putval(struct jmap *map, unsigned long **p)
 {
 	jmap_debug_del_access(map, p);
 }
@@ -419,24 +429,24 @@ static inline void jmap_putval(struct jmap *map, size_t **p)
  * You must use jmap_putval() on the pointer once you are done with it.
  *
  * Example:
- *	size_t *val;
+ *	unsigned long *val;
  *
  *	// We know 0 isn't in map.
  *	assert(!jmap_test(map, 0));
  *	for (i = 0; (val = jmap_nthval(map, i, &index)) != NULL; i++) {
  *		assert(jmap_popcount(map, 0, index) == i);
- *		printf("Index %zu = %zu, value = %zu\n", i, index, *val);
+ *		printf("Index %lu = %lu, value = %lu\n", i, index, *val);
  *		jmap_putval(map, &val);
  *	}
  *
  * See Also:
  *	jmap_nth();
  */
-static inline size_t *jmap_nthval(const struct jmap *map,
-				  size_t n, size_t *index)
+static inline unsigned long *jmap_nthval(const struct jmap *map,
+					 unsigned long n, unsigned long *index)
 {
-	size_t *val;
-	val = (size_t *)JudyLByCount(map->judy, n+1, index,
+	unsigned long *val;
+	val = (unsigned long *)JudyLByCount(map->judy, n+1, index,
 				     (JError_t *)&map->err);
 	jmap_debug_add_access(map, *index, val, "jmap_nthval");
 	return val;
@@ -461,11 +471,13 @@ static inline size_t *jmap_nthval(const struct jmap *map,
  * See Also:
  *	jmap_first, jmap_nextval()
  */
-static inline size_t *jmap_firstval(const struct jmap *map, size_t *index)
+static inline unsigned long *jmap_firstval(const struct jmap *map,
+					   unsigned long *index)
 {
-	size_t *val;
+	unsigned long *val;
 	*index = 0;
-	val = (size_t *)JudyLFirst(map->judy, index, (JError_t *)&map->err);
+	val = (unsigned long *)JudyLFirst(map->judy, index,
+					  (JError_t *)&map->err);
 	jmap_debug_add_access(map, *index, val, "jmap_firstval");
 	return val;
 }
@@ -481,10 +493,12 @@ static inline size_t *jmap_firstval(const struct jmap *map, size_t *index)
  * See Also:
  *	jmap_firstval(), jmap_putval()
  */
-static inline size_t *jmap_nextval(const struct jmap *map, size_t *index)
+static inline unsigned long *jmap_nextval(const struct jmap *map,
+					  unsigned long *index)
 {
-	size_t *val;
-	val = (size_t *)JudyLNext(map->judy, index, (JError_t *)&map->err);
+	unsigned long *val;
+	val = (unsigned long *)JudyLNext(map->judy, index,
+					 (JError_t *)&map->err);
 	jmap_debug_add_access(map, *index, val, "jmap_nextval");
 	return val;
 }
@@ -497,11 +511,13 @@ static inline size_t *jmap_nextval(const struct jmap *map, size_t *index)
  * See Also:
  *	jmap_last(), jmap_putval()
  */
-static inline size_t *jmap_lastval(const struct jmap *map, size_t *index)
+static inline unsigned long *jmap_lastval(const struct jmap *map,
+					  unsigned long *index)
 {
-	size_t *val;
+	unsigned long *val;
 	*index = -1;
-	val = (size_t *)JudyLLast(map->judy, index, (JError_t *)&map->err);
+	val = (unsigned long *)JudyLLast(map->judy, index,
+					 (JError_t *)&map->err);
 	jmap_debug_add_access(map, *index, val, "jmap_lastval");
 	return val;
 }
@@ -517,10 +533,12 @@ static inline size_t *jmap_lastval(const struct jmap *map, size_t *index)
  * See Also:
  *	jmap_lastval(), jmap_putval()
  */
-static inline size_t *jmap_prevval(const struct jmap *map, size_t *index)
+static inline unsigned long *jmap_prevval(const struct jmap *map,
+					  unsigned long *index)
 {
-	size_t *val;
-	val = (size_t *)JudyLPrev(map->judy, index, (JError_t *)&map->err);
+	unsigned long *val;
+	val = (unsigned long *)JudyLPrev(map->judy, index,
+					 (JError_t *)&map->err);
 	jmap_debug_add_access(map, *index, val, "jmap_prevval");
 	return val;
 }

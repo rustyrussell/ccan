@@ -5,7 +5,7 @@
 int main(int argc, char *argv[])
 {
 	struct jmap *map;
-	size_t i, *value;
+	unsigned long i, *value;
 	const char *err;
 
 	plan_tests(53);

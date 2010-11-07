@@ -8,7 +8,7 @@
 int main(int argc, char *argv[])
 {
 	struct jmap *map;
-	size_t *value;
+	unsigned long *value;
 	int status;
 
 	plan_tests(9);

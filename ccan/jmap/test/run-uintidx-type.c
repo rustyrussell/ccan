@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
 {
 	struct jmap_foo *map;
 	struct foo *foo[NUM], **foop;
-	unsigned int i;
+	unsigned long i;
 
 	plan_tests(37 + NUM*2 + 19);
 	for (i = 0; i < NUM; i++)

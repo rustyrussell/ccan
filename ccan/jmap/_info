@@ -55,7 +55,7 @@
  * 		jmap_opt_add(opt, argv[i], d);
  * 	}
  * 
- * 	printf("Found %u options:\n", jmap_opt_count(opt));
+ * 	printf("Found %lu options:\n", jmap_opt_count(opt));
  * 	for (i = jmap_arg_first(arg,-1); i!=-1; i = jmap_arg_next(arg,i,-1)) {
  * 		char *a = jmap_arg_get(arg, i);
  * 		d = jmap_opt_get(opt, a);
