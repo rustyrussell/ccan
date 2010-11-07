@@ -73,7 +73,7 @@ static inline const char *jbit_error(struct jbitset *set)
  * Example:
  *	assert(!jbit_test(set, 0));
  */
-static inline bool jbit_test(const struct jbitset *set, size_t index)
+static inline bool jbit_test(const struct jbitset *set, unsigned long index)
 {
 	return Judy1Test(set->judy, index, (JError_t *)&set->err);
 }
@@ -89,7 +89,7 @@ static inline bool jbit_test(const struct jbitset *set, size_t index)
  *	if (jbit_set(set, 0))
  *		err(1, "Bit 0 was already set?!");
  */
-static inline bool jbit_set(struct jbitset *set, size_t index)
+static inline bool jbit_set(struct jbitset *set, unsigned long index)
 {
 	return Judy1Set(&set->judy, index, &set->err);
 }
@@ -105,7 +105,7 @@ static inline bool jbit_set(struct jbitset *set, size_t index)
  *	if (jbit_clear(set, 0))
  *		err(1, "Bit 0 was already clear?!");
  */
-static inline bool jbit_clear(struct jbitset *set, size_t index)
+static inline bool jbit_clear(struct jbitset *set, unsigned long index)
 {
 	return Judy1Unset(&set->judy, index, &set->err);
 }
@@ -119,8 +119,9 @@ static inline bool jbit_clear(struct jbitset *set, size_t index)
  * Example:
  *	assert(jbit_popcount(set, 0, 1000) <= jbit_popcount(set, 0, 2000));
  */
-static inline size_t jbit_popcount(const struct jbitset *set,
-				   size_t start, size_t end_incl)
+static inline unsigned long jbit_popcount(const struct jbitset *set,
+					  unsigned long start,
+					  unsigned long end_incl)
 {
 	return Judy1Count(set->judy, start, end_incl, (JError_t *)&set->err);
 }
@@ -135,7 +136,8 @@ static inline size_t jbit_popcount(const struct jbitset *set,
  * convenient known-invalid value (ie. something which is never in the
  * set).  Otherwise, and a wrapper function like this can be used:
  *
- *	static bool jbit_nth_index(struct jbitset *set, size_t n, size_t *idx)
+ *	static bool jbit_nth_index(struct jbitset *set,
+ *				   unsigned long n, unsigned long *idx)
  *	{
  *		// Zero might be valid, if it's first in set.
  *		if (n == 0 && jbit_test(set, 0)) {
@@ -147,7 +149,7 @@ static inline size_t jbit_popcount(const struct jbitset *set,
  *	}
  *
  * Example:
- *	size_t i, val;
+ *	unsigned long i, val;
  *
  *	// We know 0 isn't in set.
  *	assert(!jbit_test(set, 0));
@@ -156,10 +158,10 @@ static inline size_t jbit_popcount(const struct jbitset *set,
  *		printf("Value %zu = %zu\n", i, val);
  *	}
  */
-static inline size_t jbit_nth(const struct jbitset *set,
-			      size_t n, size_t invalid)
+static inline unsigned long jbit_nth(const struct jbitset *set,
+				     unsigned long n, unsigned long invalid)
 {
-	Word_t index;
+	unsigned long index;
 	if (!Judy1ByCount(set->judy, n+1, &index, (JError_t *)&set->err))
 		index = invalid;
 	return index;
@@ -179,9 +181,10 @@ static inline size_t jbit_nth(const struct jbitset *set,
  *		printf(" %zu", i);
  *	printf("\n");
  */
-static inline size_t jbit_first(const struct jbitset *set, size_t invalid)
+static inline unsigned long jbit_first(const struct jbitset *set,
+				       unsigned long invalid)
 {
-	Word_t index = 0;
+	unsigned long index = 0;
 	if (!Judy1First(set->judy, &index, (JError_t *)&set->err))
 		index = invalid;
 	else
@@ -198,10 +201,11 @@ static inline size_t jbit_first(const struct jbitset *set, size_t invalid)
  * This is usually used to find an adjacent bit which is set, after
  * jbit_first.
  */
-static inline size_t jbit_next(const struct jbitset *set, size_t prev,
-			       size_t invalid)
+static inline unsigned long jbit_next(const struct jbitset *set,
+				      unsigned long prev,
+				      unsigned long invalid)
 {
-	if (!Judy1Next(set->judy, (Word_t *)&prev, (JError_t *)&set->err))
+	if (!Judy1Next(set->judy, &prev, (JError_t *)&set->err))
 		prev = invalid;
 	else
 		assert(prev != invalid);
@@ -220,9 +224,10 @@ static inline size_t jbit_next(const struct jbitset *set, size_t prev,
  *		printf(" %zu", i);
  *	printf("\n");
  */
-static inline size_t jbit_last(const struct jbitset *set, size_t invalid)
+static inline unsigned long jbit_last(const struct jbitset *set,
+				      unsigned long invalid)
 {
-	Word_t index = -1;
+	unsigned long index = -1;
 	if (!Judy1Last(set->judy, &index, (JError_t *)&set->err))
 		index = invalid;
 	else
@@ -239,10 +244,11 @@ static inline size_t jbit_last(const struct jbitset *set, size_t invalid)
  * This is usually used to find an adjacent bit which is set, after
  * jbit_last.
  */
-static inline size_t jbit_prev(const struct jbitset *set, size_t prev,
-			       size_t invalid)
+static inline unsigned long jbit_prev(const struct jbitset *set,
+				      unsigned long prev,
+				      unsigned long invalid)
 {
-	if (!Judy1Prev(set->judy, (Word_t *)&prev, (JError_t *)&set->err))
+	if (!Judy1Prev(set->judy, &prev, (JError_t *)&set->err))
 		prev = invalid;
 	else
 		assert(prev != invalid);
@@ -256,10 +262,10 @@ static inline size_t jbit_prev(const struct jbitset *set, size_t prev,
  *
  * This allows for iterating the inverse of the bitmap.
  */
-static inline size_t jbit_first_clear(const struct jbitset *set,
-				      size_t invalid)
+static inline unsigned long jbit_first_clear(const struct jbitset *set,
+					     unsigned long invalid)
 {
-	Word_t index = 0;
+	unsigned long index = 0;
 	if (!Judy1FirstEmpty(set->judy, &index, (JError_t *)&set->err))
 		index = invalid;
 	else
@@ -267,19 +273,21 @@ static inline size_t jbit_first_clear(const struct jbitset *set,
 	return index;
 }
 
-static inline size_t jbit_next_clear(const struct jbitset *set, size_t prev,
-				     size_t invalid)
+static inline unsigned long jbit_next_clear(const struct jbitset *set,
+					    unsigned long prev,
+					    unsigned long invalid)
 {
-	if (!Judy1NextEmpty(set->judy, (Word_t *)&prev, (JError_t *)&set->err))
+	if (!Judy1NextEmpty(set->judy, &prev, (JError_t *)&set->err))
 		prev = invalid;
 	else
 		assert(prev != invalid);
 	return prev;
 }
 
-static inline size_t jbit_last_clear(const struct jbitset *set, size_t invalid)
+static inline unsigned long jbit_last_clear(const struct jbitset *set,
+					    unsigned long invalid)
 {
-	Word_t index = -1;
+	unsigned long index = -1;
 	if (!Judy1LastEmpty(set->judy, &index, (JError_t *)&set->err))
 		index = invalid;
 	else
@@ -287,10 +295,11 @@ static inline size_t jbit_last_clear(const struct jbitset *set, size_t invalid)
 	return index;
 }
 
-static inline size_t jbit_prev_clear(const struct jbitset *set, size_t prev,
-				     size_t invalid)
+static inline unsigned long jbit_prev_clear(const struct jbitset *set,
+					    unsigned long prev,
+					    unsigned long invalid)
 {
-	if (!Judy1PrevEmpty(set->judy, (Word_t *)&prev, (JError_t *)&set->err))
+	if (!Judy1PrevEmpty(set->judy, &prev, (JError_t *)&set->err))
 		prev = invalid;
 	else
 		assert(prev != invalid);

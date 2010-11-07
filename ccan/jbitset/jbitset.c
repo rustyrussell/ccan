@@ -7,8 +7,10 @@ struct jbitset *jbit_new(void)
 {
 	struct jbitset *set;
 
-	/* Judy uses Word_t, we use size_t. */
-	BUILD_ASSERT(sizeof(size_t) == sizeof(Word_t));
+	/* Judy uses Word_t, we use unsigned long directly. */
+	BUILD_ASSERT(sizeof(unsigned long) == sizeof(Word_t));
+	/* We pack pointers into jbitset (in jbitset_type.h) */
+	BUILD_ASSERT(sizeof(Word_t) >= sizeof(void *));
 
 	set = malloc(sizeof(*set));
 	if (set) {
