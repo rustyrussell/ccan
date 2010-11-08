@@ -330,7 +330,7 @@ int main(int argc, char *argv[])
 	fflush(stdout);
 	gettimeofday(&start, NULL);
 	for (i = 0; i < num; i++) {
-		unsigned int n = num * 6 + i * 9;
+		unsigned int n = num * (5 + 9) + i * 9;
 		if (htable_obj_get(ht, &n))
 			abort();
 	}

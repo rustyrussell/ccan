@@ -66,8 +66,8 @@ struct htable *htable_new(size_t (*rehash)(const void *elem, void *priv),
 		ht->priv = priv;
 		ht->elems = 0;
 		ht->deleted = 0;
-		ht->max = (1 << ht->bits) * 2 / 3;
-		ht->max_with_deleted = (1 << ht->bits) * 4 / 5;
+		ht->max = ((size_t)1 << ht->bits) * 3 / 4;
+		ht->max_with_deleted = ((size_t)1 << ht->bits) * 9 / 10;
 		/* This guarantees we enter update_common first add. */
 		ht->common_mask = -1;
 		ht->common_bits = 0;
