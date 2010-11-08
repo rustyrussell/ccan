@@ -77,6 +77,7 @@ static void handle_no_tests(struct manifest *m, void *check_result)
 {
 	FILE *run;
 	struct ccan_file *i;
+	char *test_dir = talloc_asprintf(m, "%s/test", m->dir);
 
 	if (check_result == test_is_not_dir)
 		return;
@@ -84,7 +85,7 @@ static void handle_no_tests(struct manifest *m, void *check_result)
 	if (!ask("Should I create a template test/run.c file for you?"))
 		return;
 
-	if (mkdir("test", 0700) != 0) {
+	if (mkdir(test_dir, 0700) != 0) {
 		if (errno != EEXIST)
 			err(1, "Creating test/ directory");
 	}
@@ -93,12 +94,14 @@ static void handle_no_tests(struct manifest *m, void *check_result)
 	if (!run)
 		err(1, "Trying to create a test/run.c");
 
-	fputs("/* Include the main header first, to test it works */\n", run);
-	fprintf(run, "#include \"%s/%s.h\"\n", m->basename, m->basename);
-	fputs("/* Include the C files directly. */\n", run);
-	list_for_each(&m->c_files, i, list)
-		fprintf(run, "#include \"%s/%s\"\n", m->basename, i->name);
-	fputs("#include \"tap/tap.h\"\n", run);
+	fprintf(run, "#include <ccan/%s/%s.h>\n", m->basename, m->basename);
+	if (!list_empty(&m->c_files)) {
+		fputs("/* Include the C files directly. */\n", run);
+		list_for_each(&m->c_files, i, list)
+			fprintf(run, "#include <ccan/%s/%s>\n",
+				m->basename, i->name);
+	}
+	fputs("#include <ccan/tap/tap.h>\n", run);
 	fputs("\n", run);
 
 	fputs("int main(void)\n", run);
