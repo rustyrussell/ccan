@@ -1,4 +1,4 @@
-/* 
+/*
    Copyright (C) 2010 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
    
    This program is free software; you can redistribute it and/or modify
@@ -14,10 +14,8 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
-
-#ifndef _U_
-#define _U_
-#endif
+#ifndef CCAN_ISCSI_SCSI_LOWLEVEL_H
+#define CCAN_ISCSI_SCSI_LOWLEVEL_H
 
 #define SCSI_CDB_MAX_SIZE			16
 
@@ -165,7 +163,7 @@ struct scsi_inquiry_standard {
        char vendor_identification[8+1];
        char product_identification[16+1];
        char product_revision_level[4+1];
-}; 
+};
 
 struct scsi_task *scsi_cdb_inquiry(int evpd, int page_code, int alloc_len);
 
@@ -192,3 +190,4 @@ void *scsi_datain_unmarshall(struct scsi_task *task);
 struct scsi_task *scsi_cdb_read10(int lba, int xferlen, int blocksize);
 struct scsi_task *scsi_cdb_write10(int lba, int xferlen, int fua, int fuanv, int blocksize);
 
+#endif /* CCAN_ISCSI_SCSI_LOWLEVEL_H */

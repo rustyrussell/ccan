@@ -1,4 +1,4 @@
-/* 
+/*
    Copyright (C) 2010 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
    
    This program is free software; you can redistribute it and/or modify
@@ -14,12 +14,10 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
+#ifndef CCAN_ISCSI_PRIVATE_H
+#define CCAN_ISCSI_PRIVATE_H
 
 #include <stdint.h>
-
-#ifndef _U_
-#define _U_
-#endif
 
 #ifndef discard_const
 #define discard_const(ptr) ((void *)((intptr_t)(ptr)))
@@ -141,3 +139,5 @@ int iscsi_process_logout_reply(struct iscsi_context *iscsi, struct iscsi_pdu *pd
 int iscsi_process_scsi_reply(struct iscsi_context *iscsi, struct iscsi_pdu *pdu, const unsigned char *hdr, int size);
 int iscsi_process_scsi_data_in(struct iscsi_context *iscsi, struct iscsi_pdu *pdu, const unsigned char *hdr, int size, int *is_finished);
 int iscsi_process_nop_out_reply(struct iscsi_context *iscsi, struct iscsi_pdu *pdu, const unsigned char *hdr, int size);
+
+#endif /* CCAN_ISCSI_PRIVATE_H */

@@ -1,4 +1,4 @@
-/* 
+/*
    Unix SMB/CIFS implementation.
    some simple double linked list macros
 

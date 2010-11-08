@@ -1,4 +1,4 @@
-/* 
+/*
    Copyright (C) 2010 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
    
    This program is free software; you can redistribute it and/or modify
@@ -50,16 +50,16 @@ static void iscsi_scsi_response_cb(struct iscsi_context *iscsi, int status, void
 
 	switch (status) {
 	case ISCSI_STATUS_CHECK_CONDITION:
-		scsi_cbdata->callback(iscsi, ISCSI_STATUS_CHECK_CONDITION, task, scsi_cbdata->private_data);	
+		scsi_cbdata->callback(iscsi, ISCSI_STATUS_CHECK_CONDITION, task, scsi_cbdata->private_data);
 		return;
 	
 
 	case ISCSI_STATUS_GOOD:
-		scsi_cbdata->callback(iscsi, ISCSI_STATUS_GOOD, task, scsi_cbdata->private_data);	
+		scsi_cbdata->callback(iscsi, ISCSI_STATUS_GOOD, task, scsi_cbdata->private_data);
 		return;
 	default:
 		printf("Cant handle  scsi status %d yet\n", status);
-		scsi_cbdata->callback(iscsi, ISCSI_STATUS_ERROR, task, scsi_cbdata->private_data);	
+		scsi_cbdata->callback(iscsi, ISCSI_STATUS_ERROR, task, scsi_cbdata->private_data);
 	}
 }
 
@@ -228,12 +228,12 @@ int iscsi_process_scsi_reply(struct iscsi_context *iscsi, struct iscsi_pdu *pdu,
 		task->sense.key        = task->datain.data[4] & 0x0f;
 		task->sense.ascq       = ntohs(*(uint16_t *)&(task->datain.data[14]));
 
-		pdu->callback(iscsi, ISCSI_STATUS_CHECK_CONDITION, task, pdu->private_data);	
+		pdu->callback(iscsi, ISCSI_STATUS_CHECK_CONDITION, task, pdu->private_data);
 		break;
 	default:
 		printf("Unknown status :%d\n", status);
 
-		pdu->callback(iscsi, ISCSI_STATUS_ERROR, task, pdu->private_data);	
+		pdu->callback(iscsi, ISCSI_STATUS_ERROR, task, pdu->private_data);
 		return -1;
 	}
 

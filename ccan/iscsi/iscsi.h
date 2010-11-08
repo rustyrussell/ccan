@@ -1,4 +1,4 @@
-/* 
+/*
    Copyright (C) 2010 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
    
    This program is free software; you can redistribute it and/or modify
@@ -14,6 +14,8 @@
    You should have received a copy of the GNU General Public License
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
+#ifndef CCAN_ISCSI_H
+#define CCAN_ISCSI_H
 
 struct iscsi_context;
 struct sockaddr;
@@ -103,7 +105,7 @@ enum icsi_status { ISCSI_STATUS_GOOD		=0,
 		   ISCSI_STATUS_ERROR		=0x0f000001 };
 
 
-/* 
+/*
  * Generic callback for completion of iscsi_*_async().
  * command_data depends on status.
  */
@@ -125,7 +127,7 @@ typedef void (*iscsi_command_cb)(struct iscsi_context *iscsi, int status, void *
  *    ISCSI_STATUS_GOOD     : Connection was successful. Command_data is NULL.
  *                            In this case the callback will be invoked a second time once the connection
  *                            is torn down.
- * 
+ *
  *    ISCSI_STATUS_ERROR    : Either failed to establish the connection, or an already established connection
  *                            has failed with an error.
  *
@@ -226,7 +228,7 @@ int iscsi_nop_out_async(struct iscsi_context *iscsi, iscsi_command_cb cb, unsign
  *
  * status :
  *   ISCSI_STATUS_GOOD the scsi command completed successfullt on the target.
- *   If this scsi command returns DATA-IN, that data is stored in an scsi_task structure 
+ *   If this scsi command returns DATA-IN, that data is stored in an scsi_task structure
  *   returned in the command_data parameter. This buffer will be automatically freed once the callback
  *   returns.
  *
@@ -259,4 +261,4 @@ int iscsi_write10_async(struct iscsi_context *iscsi, int lun, iscsi_command_cb c
 int iscsi_modesense6_async(struct iscsi_context *iscsi, int lun, iscsi_command_cb cb, int dbd, int pc, int page_code, int sub_page_code, unsigned char alloc_len, void *private_data);
 
 
-
+#endif /* CCAN_ISCSI_H */

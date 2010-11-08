@@ -1,4 +1,4 @@
-/* 
+/*
    Copyright (C) 2010 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
    
    This program is free software; you can redistribute it and/or modify
@@ -43,8 +43,11 @@ int iscsi_connect_async(struct iscsi_context *iscsi, const char *target, iscsi_c
 	int port = 3260;
 	char *str;
 	char *addr;
-	struct sockaddr_storage s;
-	struct sockaddr_in *sin = (struct sockaddr_in *)&s;
+	union {
+		struct sockaddr sa;
+		struct sockaddr_storage ss;
+		struct sockaddr_in sin;
+	} s;
 	int socksize;
 
 	if (iscsi == NULL) {
@@ -75,22 +78,22 @@ int iscsi_connect_async(struct iscsi_context *iscsi, const char *target, iscsi_c
 		str[0] = 0;
 	}
 
-	sin->sin_family = AF_INET;
-	sin->sin_port   = htons(port);
-	if (inet_pton(AF_INET, addr, &sin->sin_addr) != 1) {
+	s.sin.sin_family = AF_INET;
+	s.sin.sin_port   = htons(port);
+	if (inet_pton(AF_INET, addr, &s.sin.sin_addr) != 1) {
 		printf("failed to convert to ip address\n");
 		free(addr);
 		return -4;
 	}
 	free(addr);
 
-	switch (s.ss_family) {
+	switch (s.ss.ss_family) {
 	case AF_INET:
 		iscsi->fd = socket(AF_INET, SOCK_STREAM, 0);
 		socksize = sizeof(struct sockaddr_in);
 		break;
 	default:
-		printf("Unknown family :%d\n", s.ss_family);
+		printf("Unknown family :%d\n", s.ss.ss_family);
 		return -5;
 
 	}
@@ -106,13 +109,13 @@ int iscsi_connect_async(struct iscsi_context *iscsi, const char *target, iscsi_c
 
 	set_nonblocking(iscsi->fd);
 
-	if (connect(iscsi->fd, (struct sockaddr *)&s, socksize) != 0 && errno != EINPROGRESS) {
+	if (connect(iscsi->fd, &s.sa, socksize) != 0 && errno != EINPROGRESS) {
 		printf("Connect failed errno : %s (%d)\n", strerror(errno), errno);
 		return -7;
-	}		
+	}
 
 	return 0;
-}	    
+}
 
 int iscsi_disconnect(struct iscsi_context *iscsi)
 {
@@ -153,7 +156,7 @@ int iscsi_which_events(struct iscsi_context *iscsi)
 
 	if (iscsi->is_connected == 0) {
 		events |= POLLOUT;
-	}	
+	}
 
 	if (iscsi->outqueue) {
 		events |= POLLOUT;

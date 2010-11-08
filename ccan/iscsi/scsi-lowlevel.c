@@ -1,4 +1,4 @@
-/* 
+/*
    Copyright (C) 2010 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
    
    This program is free software; you can redistribute it and/or modify
@@ -15,7 +15,7 @@
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 /*
- * would be nice if this could grow into a full blown library for scsi to 
+ * would be nice if this could grow into a full blown library for scsi to
  * 1, build a CDB
  * 2, check how big a complete data-in structure needs to be
  * 3, unmarshall data-in into a real structure
@@ -29,6 +29,7 @@
 #include <strings.h>
 #include <stdint.h>
 #include <arpa/inet.h>
+#include <ccan/compiler/compiler.h>
 #include "scsi-lowlevel.h"
 #include "dlinklist.h"
 
@@ -44,7 +45,7 @@ void scsi_free_scsi_task(struct scsi_task *task)
 	free(task);
 }
 
-void *scsi_malloc(struct scsi_task *task, size_t size)
+static void *scsi_malloc(struct scsi_task *task, size_t size)
 {
 	struct scsi_allocated_memory *mem;
 
@@ -161,7 +162,7 @@ static struct scsi_reportluns_list *scsi_reportluns_datain_unmarshall(struct scs
 	}
 	
 	return list;
-}	
+}
 
 
 /*
@@ -199,7 +200,8 @@ struct scsi_task *scsi_cdb_readcapacity10(int lba, int pmi)
 /*
  * parse the data in blob and calcualte the size of a full readcapacity10 datain structure
  */
-static int scsi_readcapacity10_datain_getfullsize(struct scsi_task *task _U_)
+static int scsi_readcapacity10_datain_getfullsize(struct scsi_task *task
+						  UNNEEDED_ATTRIBUTE)
 {
 	return 8;
 }
@@ -282,7 +284,7 @@ static int scsi_inquiry_datain_getfullsize(struct scsi_task *task)
 /*
  * unmarshall the data in blob for inquiry into a structure
  */
-void *scsi_inquiry_datain_unmarshall(struct scsi_task *task)
+static void *scsi_inquiry_datain_unmarshall(struct scsi_task *task)
 {
 	struct scsi_inquiry_standard *inq;
 

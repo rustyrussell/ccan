@@ -1,6 +1,6 @@
 LIBS=
 CC=gcc
-CFLAGS=-g -O0 -Wall -W -I../.. "-D_U_=__attribute__((unused))"
+CFLAGS=-g -O0 -Wall -W -I../..
 LIBISCSI_OBJ = socket.o init.o login.o nop.o pdu.o discovery.o scsi-command.o scsi-lowlevel.o
 
 all: tools/iscsiclient

@@ -1,4 +1,4 @@
-/* 
+/*
    Copyright (C) 2010 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
    
    This program is free software; you can redistribute it and/or modify
@@ -90,7 +90,7 @@ static void iscsi_free_discovery_addresses(struct iscsi_discovery_address *addre
 		free(addresses);
 		addresses = next;
 	}
-}	
+}
 
 int iscsi_process_text_reply(struct iscsi_context *iscsi, struct iscsi_pdu *pdu, const unsigned char *hdr, int size)
 {
@@ -121,7 +121,7 @@ int iscsi_process_text_reply(struct iscsi_context *iscsi, struct iscsi_pdu *pdu,
 			pdu->callback(iscsi, ISCSI_STATUS_ERROR, NULL, pdu->private_data);
 			iscsi_free_discovery_addresses(targets);
 			return -1;
-		} 
+		}
 
 		/* parse the strings */
 		if (!strncmp((char *)hdr, "TargetName=", 11)) {

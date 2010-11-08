@@ -1,4 +1,4 @@
-/* 
+/*
    Copyright (C) 2010 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
    
    This program is free software; you can redistribute it and/or modify
@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include <ccan/compiler/compiler.h>
 #include "iscsi.h"
 #include "iscsi-private.h"
 
@@ -212,7 +213,7 @@ int iscsi_process_login_reply(struct iscsi_context *iscsi, struct iscsi_pdu *pdu
 	 *     some parameters.
 	 *     we should also do proper handshaking if the target is not yet prepared to transition
 	 *     to the next stage
-	 */ 
+	 */
 	status = ntohs(*(uint16_t *)&hdr[36]);
 	if (status != 0) {
 		pdu->callback(iscsi, ISCSI_STATUS_ERROR, NULL, pdu->private_data);
@@ -267,7 +268,7 @@ int iscsi_logout_async(struct iscsi_context *iscsi, iscsi_command_cb cb, void *p
 	return 0;
 }
 
-int iscsi_process_logout_reply(struct iscsi_context *iscsi, struct iscsi_pdu *pdu, const unsigned char *hdr, int size _U_)
+int iscsi_process_logout_reply(struct iscsi_context *iscsi, struct iscsi_pdu *pdu, const unsigned char *hdr, int size UNNEEDED_ATTRIBUTE)
 {
 	iscsi->is_loggedin = 0;
 	pdu->callback(iscsi, ISCSI_STATUS_GOOD, NULL, pdu->private_data);

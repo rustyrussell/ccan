@@ -1,4 +1,4 @@
-/* 
+/*
    Copyright (C) 2010 by Ronnie Sahlberg <ronniesahlberg@gmail.com>
    
    This program is free software; you can redistribute it and/or modify
@@ -104,7 +104,7 @@ int iscsi_add_data(struct iscsi_data *data, unsigned char *dptr, int dsize, int 
 		aligned = (aligned+3)&0xfffffffc;
 	}
 	buf = malloc(aligned);
-	if (buf == NULL) {	
+	if (buf == NULL) {
 		printf("failed to allocate buffer for %d bytes\n", len);
 		return -2;
 	}
@@ -125,9 +125,6 @@ int iscsi_add_data(struct iscsi_data *data, unsigned char *dptr, int dsize, int 
 
 int iscsi_pdu_add_data(struct iscsi_context *iscsi, struct iscsi_pdu *pdu, unsigned char *dptr, int dsize)
 {
-	int len, aligned;
-	unsigned char *buf;
- 
 	if (pdu == NULL) {
 		printf("trying to add data to NULL pdu\n");
 		return -1;
