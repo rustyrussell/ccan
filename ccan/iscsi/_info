@@ -1,0 +1,28 @@
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * iscsi - async library for iscsi functionality
+ *
+ * The iscsi module is a work in progress.
+ *
+ * It aims to become a full async library for iscsi functionality,
+ * including all features required to establish and maintain a iscsi
+ * session, as well as a low level scsi library to create scsi cdb's
+ * and parse/unmarshall data-in structures.
+ *
+ * License: GPL (3 or any later version)
+ * Author: Ronnie Sahlberg <ronniesahlberg@gmail.com>
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		return 0;
+	}
+
+	return 1;
+}
+
