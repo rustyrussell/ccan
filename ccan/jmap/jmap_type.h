@@ -19,7 +19,7 @@
  *	const char *jmap_@name_error(struct jmap_@name *map);
  *
  *	// Add, set, delete, test and get.
- *	bool jmap_@name_add(const struct jmap_@name *map,
+ *	bool jmap_@name_add(struct jmap_@name *map,
  *			    unsigned long idx, const type *value);
  *	bool jmap_@name_set(const struct jmap_@name *map,
  *			   unsigned long idx, const type *value);
