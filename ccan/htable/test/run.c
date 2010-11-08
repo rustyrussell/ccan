@@ -96,13 +96,14 @@ static bool check_mask(struct htable *ht, uint64_t val[], unsigned num)
 int main(int argc, char *argv[])
 {
 	unsigned int i;
+	uintptr_t perfect_bit;
 	struct htable *ht;
 	uint64_t val[NUM_VALS];
 	uint64_t dne;
 	void *p;
 	struct htable_iter iter;
 
-	plan_tests(19);
+	plan_tests(23);
 	for (i = 0; i < NUM_VALS; i++)
 		val[i] = i;
 	dne = i;
@@ -143,6 +144,8 @@ int main(int argc, char *argv[])
 	htable_add(ht, hash(&val[NUM_VALS-1], NULL), &val[NUM_VALS-1]);
 	ok1(ht->common_mask == 0);
 	ok1(ht->common_bits == 0);
+	/* Get rid of bogus pointer before we trip over it! */
+	htable_del(ht, 0, (void *)~(uintptr_t)&val[NUM_VALS-1]);
 
 	/* Add the rest. */
 	add_vals(ht, val, NUM_VALS-1);
@@ -150,6 +153,24 @@ int main(int argc, char *argv[])
 	/* Check we can find them all. */
 	find_vals(ht, val, NUM_VALS);
 	ok1(!htable_get(ht, hash(&dne, NULL), objcmp, &dne));
+
+	htable_free(ht);
+
+	/* Corner cases: wipe out the perfect bit using bogus pointer. */
+	ht = htable_new(hash, NULL);
+	htable_add(ht, 0, (void *)((uintptr_t)&val[NUM_VALS-1]));
+	ok1(ht->perfect_bit);
+	perfect_bit = ht->perfect_bit;
+	htable_add(ht, 0, (void *)((uintptr_t)&val[NUM_VALS-1]
+				   | perfect_bit));
+	ok1(ht->perfect_bit == 0);
+	htable_del(ht, 0, (void *)((uintptr_t)&val[NUM_VALS-1] | perfect_bit));
+
+	/* Enlarging should restore it... */
+	add_vals(ht, val, NUM_VALS-1);
+
+	ok1(ht->perfect_bit != 0);
+	htable_free(ht);
 
 	return exit_status();
 }

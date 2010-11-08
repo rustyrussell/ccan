@@ -2,6 +2,7 @@
 #include <ccan/compiler/compiler.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <stdbool.h>
 #include <assert.h>
 
@@ -170,7 +171,16 @@ static COLD_ATTRIBUTE bool double_table(struct htable *ht)
 	ht->max *= 2;
 	ht->max_with_deleted *= 2;
 
-	/* FIXME: If we lost our perfect bit, we could reclaim it here! */
+	/* If we lost our "perfect bit", get it back now. */
+	if (!ht->perfect_bit && ht->common_mask) {
+		for (i = 0; i < sizeof(ht->common_mask) * CHAR_BIT; i++) {
+			if (ht->common_mask & ((size_t)1 << i)) {
+				ht->perfect_bit = (size_t)1 << i;
+				break;
+			}
+		}
+	}
+
 	for (i = 0; i < oldnum; i++) {
 		if (entry_is_valid(e = oldtable[i])) {
 			void *p = get_raw_ptr(ht, e);
