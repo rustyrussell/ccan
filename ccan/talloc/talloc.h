@@ -79,6 +79,29 @@
 #define talloc(ctx, type) (type *)talloc_named_const(ctx, sizeof(type), #type)
 
 /**
+ * TALLOC_CTX - indicate that a pointer is used as a talloc parent.
+ *
+ * As talloc is a hierarchial memory allocator, every talloc chunk is a
+ * potential parent to other talloc chunks. So defining a separate type for a
+ * talloc chunk is not strictly necessary. TALLOC_CTX is defined nevertheless,
+ * as it provides an indicator for function arguments.
+ *
+ * Example:
+ *	struct foo {
+ *		int val;
+ *	};
+ *
+ *	static struct foo *foo_new(TALLOC_CTX *mem_ctx)
+ *	{
+ *		struct foo *foo = talloc(mem_ctx, struct foo);
+ *		if (foo)
+ *			foo->val = 0;
+ *	return foo;
+ *	}
+ */
+typedef void TALLOC_CTX;
+
+/**
  * talloc_set - allocate dynamic memory for a type, into a pointer
  * @ptr: pointer to the pointer to assign.
  * @ctx: context to be parent of this allocation, or NULL.
