@@ -73,8 +73,11 @@ static size_t perfect(const struct htable *ht)
 		if (!entry_is_valid(ht->table[i]))
 			continue;
 		if (hash_bucket(ht, ht->rehash(get_raw_ptr(ht, ht->table[i]),
-					       ht->priv)) == i)
+					       ht->priv)) == i) {
+			assert((ht->table[i] & ht->perfect_bit)
+			       == ht->perfect_bit);
 			placed_perfect++;
+		}
 	}
 	return placed_perfect;
 }
