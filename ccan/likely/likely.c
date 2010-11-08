@@ -1,10 +1,10 @@
 #ifdef DEBUG
 #include <ccan/likely/likely.h>
 #include <ccan/hash/hash.h>
-#include <ccan/hashtable/hashtable.h>
+#include <ccan/htable/htable.h>
 #include <stdlib.h>
 #include <stdio.h>
-static struct hashtable *htable;
+static struct htable *htable;
 
 struct trace {
 	const char *condstr;
@@ -31,7 +31,7 @@ static bool hash_cmp(const void *htelem, void *cmpdata)
 		&& t1->expect == t2->expect;
 }
 
-static unsigned long rehash(const void *elem, void *priv)
+static size_t rehash(const void *elem, void *priv)
 {
 	return hash_trace(elem);
 }
@@ -52,7 +52,7 @@ static struct trace *add_trace(const char *condstr,
 {
 	struct trace *trace = malloc(sizeof(*trace));
 	init_trace(trace, condstr, file, line, expect);
-	hashtable_add(htable, hash_trace(trace), trace);
+	htable_add(htable, hash_trace(trace), trace);
 	return trace;
 }
 
@@ -63,10 +63,10 @@ long _likely_trace(bool cond, bool expect,
 	struct trace *p, trace;
 
 	if (!htable)
-		htable = hashtable_new(rehash, NULL);
+		htable = htable_new(rehash, NULL);
 
 	init_trace(&trace, condstr, file, line, expect);
-	p = hashtable_find(htable, hash_trace(&trace), hash_cmp, &trace);
+	p = htable_get(htable, hash_trace(&trace), hash_cmp, &trace);
 	if (!p)
 		p = add_trace(condstr, file, line, expect);
 
@@ -88,22 +88,23 @@ static double right_ratio(const struct trace *t)
 	return (double)t->right / t->count;
 }
 
-static bool get_stats(struct trace *trace, struct get_stats_info *info)
+static void get_stats(struct trace *trace, struct get_stats_info *info)
 {
 	if (trace->count < info->min_hits)
-		return false;
+		return;
 
 	if (right_ratio(trace) < info->worst_ratio) {
 		info->worst = trace;
 		info->worst_ratio = right_ratio(trace);
 	}
-	return false;
 }
 
 const char *likely_stats(unsigned int min_hits, unsigned int percent)
 {
 	struct get_stats_info info;
+	struct htable_iter i;
 	char *ret;
+	struct trace *trace;
 
 	if (!htable)
 		return NULL;
@@ -113,7 +114,11 @@ const char *likely_stats(unsigned int min_hits, unsigned int percent)
 	info.worst_ratio = 2;
 
 	/* This is O(n), but it's not likely called that often. */
-	hashtable_traverse(htable, struct trace, get_stats, &info);
+	for (trace = htable_first(htable, &i);
+	     trace;
+	     trace = htable_next(htable,&i)) {
+		get_stats(trace, &info);
+	}
 
 	if (info.worst_ratio * 100 > percent)
 		return NULL;
@@ -128,7 +133,7 @@ const char *likely_stats(unsigned int min_hits, unsigned int percent)
 		(unsigned)(info.worst_ratio * 100),
 		info.worst->right, info.worst->count);
 
-	hashtable_del(htable, hash_trace(info.worst), info.worst);
+	htable_del(htable, hash_trace(info.worst), info.worst);
 	free(info.worst);
 
 	return ret;

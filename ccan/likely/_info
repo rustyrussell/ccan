@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
 
 	if (strcmp(argv[1], "depends") == 0) {
 		printf("ccan/str\n");
-		printf("ccan/hashtable\n");
+		printf("ccan/htable\n");
 		printf("ccan/hash\n");
 		return 0;
 	}
