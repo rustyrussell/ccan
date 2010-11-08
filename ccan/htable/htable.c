@@ -15,7 +15,7 @@ struct htable {
 	size_t (*rehash)(const void *elem, void *priv);
 	void *priv;
 	unsigned int bits;
-	size_t elems, max;
+	size_t elems, deleted, max, max_with_deleted;
 	/* These are the bits which are the same in all pointers. */
 	uintptr_t common_mask, common_bits;
 	uintptr_t *table;
@@ -62,7 +62,9 @@ struct htable *htable_new(size_t (*rehash)(const void *elem, void *priv),
 		ht->rehash = rehash;
 		ht->priv = priv;
 		ht->elems = 0;
-		ht->max = (1 << ht->bits) * 3 / 4;
+		ht->deleted = 0;
+		ht->max = (1 << ht->bits) * 2 / 3;
+		ht->max_with_deleted = (1 << ht->bits) * 4 / 5;
 		/* This guarantees we enter update_common first add. */
 		ht->common_mask = -1;
 		ht->common_bits = 0;
@@ -150,7 +152,7 @@ static COLD_ATTRIBUTE bool double_table(struct htable *ht)
 {
 	unsigned int i;
 	size_t oldnum = (size_t)1 << ht->bits;
-	size_t *oldtable, e;
+	uintptr_t *oldtable, e;
 
 	oldtable = ht->table;
 	ht->table = calloc(1 << (ht->bits+1), sizeof(size_t));
@@ -160,6 +162,7 @@ static COLD_ATTRIBUTE bool double_table(struct htable *ht)
 	}
 	ht->bits++;
 	ht->max *= 2;
+	ht->max_with_deleted *= 2;
 
 	for (i = 0; i < oldnum; i++) {
 		if (entry_is_valid(e = oldtable[i])) {
@@ -167,8 +170,31 @@ static COLD_ATTRIBUTE bool double_table(struct htable *ht)
 			ht_add(ht, p, ht->rehash(p, ht->priv));
 		}
 	}
+	ht->deleted = 0;
 	free(oldtable);
 	return true;
+}
+
+static COLD_ATTRIBUTE void rehash_table(struct htable *ht)
+{
+	size_t start, i;
+	uintptr_t e;
+
+	/* Beware wrap cases: we need to start from first empty bucket. */
+	for (start = 0; ht->table[start]; start++);
+
+	for (i = 0; i < (size_t)1 << ht->bits; i++) {
+		size_t h = (i + start) & ((1 << ht->bits)-1);
+		e = ht->table[h];
+		if (!e)
+			continue;
+		ht->table[h] = 0;
+		if (e != HTABLE_DELETED) {
+			void *p = get_raw_ptr(ht, e);
+			ht_add(ht, p, ht->rehash(p, ht->priv));
+		}
+	}
+	ht->deleted = 0;
 }
 
 /* We stole some bits, now we need to put them back... */
@@ -207,6 +233,8 @@ bool htable_add(struct htable *ht, size_t hash, const void *p)
 {
 	if (ht->elems+1 > ht->max && !double_table(ht))
 		return false;
+	if (ht->elems+1 + ht->deleted > ht->max_with_deleted)
+		rehash_table(ht);
 	assert(p);
 	if (((uintptr_t)p & ht->common_mask) != ht->common_bits)
 		update_common(ht, p);
@@ -214,26 +242,6 @@ bool htable_add(struct htable *ht, size_t hash, const void *p)
 	ht_add(ht, p, hash);
 	ht->elems++;
 	return true;
-}
-
-/* If every one of the following buckets are DELETED (up to the next unused
-   one), we can actually mark them all unused. */
-static void delete_run(struct htable *ht, unsigned int num)
-{
-	unsigned int i, last = num + 1;
-	size_t mask = (((size_t)1 << ht->bits)-1);
-
-	while (ht->table[last & mask]) {
-		if (entry_is_valid(ht->table[last & mask]))
-			return;
-		last++;
-	}
-
-	/* Now see if we can step backwards to find previous deleted ones. */
-	for (i = num-1; ht->table[i & mask] == HTABLE_DELETED; i--);
-
-	for (i++; i < last; i++)
-		ht->table[i & ((1 << ht->bits)-1)] = 0;
 }
 
 bool htable_del(struct htable *ht, size_t h, const void *p)
@@ -257,5 +265,5 @@ void htable_delval(struct htable *ht, struct htable_iter *i)
 
 	ht->elems--;
 	ht->table[i->off] = HTABLE_DELETED;
-	delete_run(ht, i->off);
+	ht->deleted++;
 }
