@@ -14,7 +14,7 @@
 #include <string.h>
 #include <ctype.h>
 
-static const char *can_build(struct manifest *m)
+static const char *can_run(struct manifest *m)
 {
 	if (safe_mode)
 		return "Safe mode enabled";
@@ -30,39 +30,35 @@ static char *compile(struct manifest *m,
 			      cfile->compiled);
 }
 
-static void *do_compile_test_helpers(struct manifest *m,
-				     bool keep,
-				     unsigned int *timeleft)
+static void do_compile_test_helpers(struct manifest *m,
+				    bool keep,
+				    unsigned int *timeleft,
+				    struct score *score)
 {
-	char *cmdout = NULL;
 	struct ccan_file *i;
 
-	compile_tests.total_score = 0;
-	list_for_each(&m->other_test_c_files, i, list) {
-		compile_tests.total_score++;
-		cmdout = compile(m, keep, i);
-		if (cmdout)
-			return talloc_asprintf(m,
-					       "Failed to compile helper C"
-					       " code file %s:\n%s",
-					       i->name, cmdout);
-	}
-	return NULL;
-}
+	if (list_empty(&m->other_test_c_files))
+		score->total = 0;
 
-static const char *describe_compile_test_helpers(struct manifest *m,
-						 void *check_result)
-{
-	return check_result;
+	list_for_each(&m->other_test_c_files, i, list) {
+		char *cmdout = compile(m, keep, i);
+		if (cmdout) {
+			score->error = "Failed to compile helper C files";
+			score_file_error(score, i, 0, cmdout);
+		}
+	}
+
+	if (!score->error) {
+		score->pass = true;
+		score->score = score->total;
+	}
 }
 
 struct ccanlint compile_test_helpers = {
 	.key = "compile-helpers",
 	.name = "Module test helper objects compile",
-	.total_score = 1,
 	.check = do_compile_test_helpers,
-	.describe = describe_compile_test_helpers,
-	.can_run = can_build,
+	.can_run = can_run,
 };
 
 REGISTER_TEST(compile_test_helpers, &depends_built, &has_tests, NULL);

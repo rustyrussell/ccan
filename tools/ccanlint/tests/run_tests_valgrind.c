@@ -2,6 +2,7 @@
 #include <tools/tools.h>
 #include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
+#include <ccan/foreach/foreach.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -18,102 +19,55 @@
 static const char *can_run_vg(struct manifest *m)
 {
 	unsigned int timeleft = default_timeout_ms;
-	char *output = run_command(m, &timeleft, "valgrind -q --error-exitcode=0 true");
+	char *output = run_command(m, &timeleft,
+				   "valgrind -q --error-exitcode=0 true");
 
 	if (output)
 		return talloc_asprintf(m, "No valgrind support: %s", output);
 	return NULL;
 }
 
-struct run_tests_result {
-	struct list_node list;
-	struct ccan_file *file;
-	const char *output;
-};
-
-static void *do_run_tests_vg(struct manifest *m,
+/* FIXME: Run examples, too! */
+static void do_run_tests_vg(struct manifest *m,
 			     bool keep,
-			     unsigned int *timeleft)
+			    unsigned int *timeleft,
+			    struct score *score)
 {
-	struct list_head *list = talloc(m, struct list_head);
-	struct run_tests_result *res;
 	struct ccan_file *i;
+	struct list_head *list;
 	char *cmdout;
 
-	list_head_init(list);
-	run_tests_vg.total_score = 0;
-
-	list_for_each(&m->run_tests, i, list) {
-		run_tests_vg.total_score++;
-		cmdout = run_command(m, timeleft,
+	score->total = 0;
+	foreach_ptr(list, &m->run_tests, &m->api_tests) {
+		list_for_each(list, i, list) {
+			score->total++;
+			cmdout = run_command(m, timeleft,
 				     "valgrind -q --error-exitcode=100 %s",
 				     i->compiled);
-		if (cmdout) {
-			res = talloc(list, struct run_tests_result);
-			res->file = i;
-			res->output = talloc_steal(res, cmdout);
-			list_add_tail(list, &res->list);
+			if (cmdout) {
+				score->error = "Running under valgrind";
+				score_file_error(score, i, 0, cmdout);
+			} else
+				score->score++;
 		}
 	}
 
-	list_for_each(&m->api_tests, i, list) {
-		run_tests_vg.total_score++;
-		cmdout = run_command(m, timeleft,
-				     "valgrind -q --error-exitcode=100 %s",
-				     i->compiled);
-		if (cmdout) {
-			res = talloc(list, struct run_tests_result);
-			res->file = i;
-			res->output = talloc_steal(res, cmdout);
-			list_add_tail(list, &res->list);
-		}
-	}
-
-	if (list_empty(list)) {
-		talloc_free(list);
-		list = NULL;
-	}
-
-	return list;
-}
-
-static unsigned int score_run_tests_vg(struct manifest *m, void *check_result)
-{
-	struct list_head *list = check_result;
-	struct run_tests_result *i;
-	unsigned int score = run_tests_vg.total_score;
-
-	list_for_each(list, i, list)
-		score--;
-	return score;
-}
-
-static const char *describe_run_tests_vg(struct manifest *m,
-					 void *check_result)
-{
-	struct list_head *list = check_result;
-	char *descrip = talloc_strdup(check_result, "Running tests under valgrind failed:\n");
-	struct run_tests_result *i;
-
-	list_for_each(list, i, list)
-		descrip = talloc_asprintf_append(descrip, "Running %s:\n%s",
-						 i->file->name, i->output);
-	return descrip;
+	if (score->score == score->total)
+		score->pass = true;
 }
 
 /* Gcc's warn_unused_result is fascist bullshit. */
 #define doesnt_matter()
 
-static void run_under_debugger_vg(struct manifest *m, void *check_result)
+static void run_under_debugger_vg(struct manifest *m, struct score *score)
 {
-	struct list_head *list = check_result;
-	struct run_tests_result *first;
+	struct file_error *first;
 	char *command;
 
 	if (!ask("Should I run the first failing test under the debugger?"))
 		return;
 
-	first = list_top(list, struct run_tests_result, list);
+	first = list_top(&score->per_file_errors, struct file_error, list);
 	command = talloc_asprintf(m, "valgrind --db-attach=yes %s",
 				  first->file->compiled);
 	if (system(command))
@@ -123,11 +77,8 @@ static void run_under_debugger_vg(struct manifest *m, void *check_result)
 struct ccanlint run_tests_vg = {
 	.key = "valgrind-tests",
 	.name = "Module's run and api tests succeed under valgrind",
-	.score = score_run_tests_vg,
-	.total_score = 1,
-	.check = do_run_tests_vg,
-	.describe = describe_run_tests_vg,
 	.can_run = can_run_vg,
+	.check = do_run_tests_vg,
 	.handle = run_under_debugger_vg
 };
 

@@ -46,12 +46,11 @@ static bool has_dep(struct manifest *m, const char *depname, bool tap_ok)
 	return false;
 }
 
-static void *check_depends_accurate(struct manifest *m,
-				    bool keep,
-				    unsigned int *timeleft)
+static void check_depends_accurate(struct manifest *m,
+				   bool keep,
+				   unsigned int *timeleft, struct score *score)
 {
 	struct list_head *list;
-	char *report = talloc_strdup(m, "");
 
 	foreach_ptr(list, &m->c_files, &m->h_files,
 		    &m->run_tests, &m->api_tests,
@@ -61,7 +60,7 @@ static void *check_depends_accurate(struct manifest *m,
 		bool tap_ok;
 
 		/* Including ccan/tap is fine for tests. */
-		tap_ok =  (list != &m->c_files && list != &m->h_files);
+		tap_ok = (list != &m->c_files && list != &m->h_files);
 
 		list_for_each(list, f, list) {
 			unsigned int i;
@@ -79,35 +78,25 @@ static void *check_depends_accurate(struct manifest *m,
 				if (!strchr(strchr(p, '/') + 1, '/'))
 					continue;
 				*strchr(strchr(p, '/') + 1, '/') = '\0';
-				if (!has_dep(m, p, tap_ok))
-					report = talloc_asprintf_append(report,
-					       "%s:%u:%s\n",
-					       f->name, i+1, lines[i]);
+				if (has_dep(m, p, tap_ok))
+					continue;
+				score->error = "Includes a ccan module"
+					" not listed in _info";
+				score_file_error(score, f, i+1, lines[i]);
 			}
 		}
 	}
 
-	if (streq(report, "")) {
-		talloc_free(report);
-		report = NULL;
+	if (!score->error) {
+		score->pass = true;
+		score->score = score->total;
 	}
-	return report;
-}
-
-static const char *describe_depends_accurage(struct manifest *m,
-					     void *check_result)
-{
-	return talloc_asprintf(check_result, 
-			       "You include ccan modules you don't list as dependencies:\n"
-			       "%s", (char *)check_result);
 }
 
 struct ccanlint depends_accurate = {
 	.key = "depends-accurate",
 	.name = "Module's CCAN dependencies are the only ccan files #included",
-	.total_score = 1,
 	.check = check_depends_accurate,
-	.describe = describe_depends_accurage,
 };
 
 REGISTER_TEST(depends_accurate, &depends_exist, NULL);

@@ -14,29 +14,24 @@
 #include <string.h>
 #include <ctype.h>
 
-static char *add_dep(char *sofar, struct manifest *m, const char *dep)
+static void add_dep(struct manifest *m, const char *dep, struct score *score)
 {
 	struct stat st;
 	struct ccan_file *f;
 
 	f = new_ccan_file(m, ccan_dir, talloc_strdup(m, dep));
 	if (stat(f->fullname, &st) != 0) {
-		return talloc_asprintf_append(sofar,
-					      "ccan/%s: expected it in"
-					      " directory %s\n",
-					      dep, f->fullname);
-	}
-
-	list_add_tail(&m->dep_dirs, &f->list);
-	return sofar;
+		score->error = "Depends don't exist";
+		score_file_error(score, f, 0, "could not stat");
+	} else
+		list_add_tail(&m->dep_dirs, &f->list);
 }
 
-static void *check_depends_exist(struct manifest *m,
-				 bool keep,
-				 unsigned int *timeleft)
+static void check_depends_exist(struct manifest *m,
+				bool keep,
+				unsigned int *timeleft, struct score *score)
 {
 	unsigned int i;
-	char *report = NULL;
 	char **deps;
 	char *updir = talloc_strdup(m, m->dir);
 
@@ -52,25 +47,18 @@ static void *check_depends_exist(struct manifest *m,
 		if (!strstarts(deps[i], "ccan/"))
 			continue;
 
-		report = add_dep(report, m, deps[i]);
+		add_dep(m, deps[i], score);
 	}
-	return report;
-}
-
-static const char *describe_depends_exist(struct manifest *m,
-					  void *check_result)
-{
-	return talloc_asprintf(check_result,
-			       "The following dependencies are are expected:\n"
-			       "%s", (char *)check_result);
+	if (!score->error) {
+		score->pass = true;
+		score->score = score->total;
+	}
 }
 
 struct ccanlint depends_exist = {
 	.key = "depends-exist",
 	.name = "Module's CCAN dependencies are present",
-	.total_score = 1,
 	.check = check_depends_exist,
-	.describe = describe_depends_exist,
 };
 
 REGISTER_TEST(depends_exist, NULL);

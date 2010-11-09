@@ -56,28 +56,22 @@ static char *add_example(struct manifest *m, struct ccan_file *source,
 }
 
 /* FIXME: We should have one example per function in header. */
-struct score {
-	bool info_example, header_example;
-	char *error;
-};
-
-static void *extract_examples(struct manifest *m,
-			      bool keep,
-			      unsigned int *timeleft)
+static void extract_examples(struct manifest *m,
+			     bool keep,
+			     unsigned int *timeleft,
+			     struct score *score)
 {
 	struct ccan_file *f;
 	struct doc_section *d;
-	struct score *score = talloc(m, struct score);
+	bool have_info_example = false, have_header_example = false;
 
-	score->info_example = score->header_example = false;
-	score->error = NULL;
-
+	score->total = 2;
 	list_for_each(get_ccan_file_docs(m->info_file), d, list) {
 		if (streq(d->type, "example")) {
 			score->error = add_example(m, m->info_file, keep, d);
 			if (score->error)
-				return score;
-			score->info_example = true;
+				return;
+			have_info_example = true;
 		}
 	}
 
@@ -91,57 +85,35 @@ static void *extract_examples(struct manifest *m,
 			if (streq(d->type, "example")) {
 				score->error = add_example(m, f, keep, d);
 				if (score->error)
-					return score;
-				score->header_example = true;
+					return;
+				have_header_example = true;
 			}
 		}
 	}
-	return score;
-}
 
-static unsigned int score_examples(struct manifest *m, void *check_result)
-{
-	struct score *score = check_result;
-	int total = 0;
-
-	if (score->error)
-		return 0;
-	total += score->info_example;
-	total += score->header_example;
-	return total;
-}
-
-static const char *describe_examples(struct manifest *m,
-				     void *check_result)
-{
-	struct score *score = check_result;
-	char *descrip = NULL;
-
-	if (score->error)
-		return score->error;
-
-	if (!score->info_example)
-		descrip = talloc_asprintf(score,
-		"Your _info file has no module example.\n\n"
-		"There should be an Example: section of the _info documentation\n"
-		"which provides a concise toy program which uses your module\n");
-
-	if (!score->header_example)
-		descrip = talloc_asprintf(score,
-		 "%sMain header file file has no examples\n\n"
-		 "There should be an Example: section for each public function\n"
-		  "demonstrating its use\n", descrip ? descrip : "");
-
-	return descrip;
+	if (!have_info_example && !have_header_example) {
+		score->error = "You don't have any Example: sections";
+		score->score = 0;
+	} else if (!have_info_example) {
+		score->error = "You don't have an Example: section in _info";
+		score->score = 1;
+		score->pass = true;
+	} else if (!have_header_example) {
+		score->error = talloc_asprintf(score,
+			       "You don't have an Example: section in %s.h",
+			       m->basename);
+		score->score = 1;
+		score->pass = true;
+	} else {
+		score->score = score->total;
+		score->pass = true;
+	}
 }
 
 struct ccanlint has_examples = {
 	.key = "has-examples",
 	.name = "_info and header files have examples",
-	.score = score_examples,
 	.check = extract_examples,
-	.describe = describe_examples,
-	.total_score = 2,
 };
 
 REGISTER_TEST(has_examples, &has_info, NULL);

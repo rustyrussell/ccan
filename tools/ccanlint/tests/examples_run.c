@@ -14,15 +14,15 @@
 
 static const char *can_run(struct manifest *m)
 {
+	struct list_head *list;
+
 	if (safe_mode)
 		return "Safe mode enabled";
-	return NULL;
+	foreach_ptr(list, &m->examples, &m->mangled_examples)
+		if (!list_empty(list))
+			return NULL;
+	return "No examples";
 }
-
-struct score {
-	unsigned int score;
-	char *errors;
-};
 
 /* Very dumb scanner, allocates %s-strings. */
 static bool scan_forv(const void *ctx,
@@ -224,25 +224,20 @@ static char *unexpected(struct ccan_file *i, const char *input,
 	return output;
 }
 
-static void *run_examples(struct manifest *m, bool keep,
-			  unsigned int *timeleft)
+static void run_examples(struct manifest *m, bool keep,
+			 unsigned int *timeleft, struct score *score)
 {
 	struct ccan_file *i;
 	struct list_head *list;
-	struct score *score = talloc(m, struct score);
 
-	score->score = 0;
-	score->errors = talloc_strdup(score, "");
+	score->total = 0;
+	score->pass = true;
 
-	examples_run.total_score = 0;
 	foreach_ptr(list, &m->examples, &m->mangled_examples) {
 		list_for_each(list, i, list) {
 			char **lines, *expect, *input, *output;
 			unsigned int linenum = 0;
 			bool exact;
-
-			if (i->compiled == NULL)
-				continue;
 
 			lines = get_ccan_file_lines(i);
 
@@ -252,52 +247,34 @@ static void *run_examples(struct manifest *m, bool keep,
 			     linenum++,
 				     expect = find_expect(i, lines, &input,
 							  &exact, &linenum)) {
-				examples_run.total_score++;
+				char *err;
+				score->total++;
+				if (i->compiled == NULL)
+					continue;
+
 				output = unexpected(i, input, expect, exact);
-				if (!output)
+				if (!output) {
 					score->score++;
-				else {
-					score->errors = talloc_asprintf_append(
-						score->errors,
-						"%s: output '%s' didn't"
-						" %s '%s'\n",
-						i->name, output,
-						exact ? "match" : "contain",
-						expect);
+					continue;
 				}
+				err = talloc_asprintf(score,
+						      "output '%s' didn't"
+						      " %s '%s'\n",
+						      output,
+						      exact
+						      ? "match" : "contain",
+						      expect);
+				score_file_error(score, i, linenum+1, err);
+				score->pass = false;
 			}
 		}
 	}
-
-	if (strcmp(score->errors, "") == 0) {
-		talloc_free(score);
-		return NULL;
-	}
-	return score;
-}
-
-static unsigned int score_examples(struct manifest *m, void *check_result)
-{
-	struct score *score = check_result;
-	return score->score;
-}
-
-static const char *describe(struct manifest *m, void *check_result)
-{
-	struct score *score = check_result;
-	if (verbose)
-		return talloc_asprintf(m, "Wrong output running examples:\n"
-				       "%s", score->errors);
-	return NULL;
 }
 
 struct ccanlint examples_run = {
 	.key = "examples-run",
 	.name = "Module examples with expected output give that output",
-	.score = score_examples,
-	.total_score = 3, /* This gets changed to # testable, if we run. */
 	.check = run_examples,
-	.describe = describe,
 	.can_run = can_run,
 };
 

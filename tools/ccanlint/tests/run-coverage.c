@@ -4,6 +4,7 @@
 #include <ccan/str_talloc/str_talloc.h>
 #include <ccan/grab_file/grab_file.h>
 #include <ccan/str/str.h>
+#include <ccan/foreach/foreach.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -16,15 +17,9 @@
 #include <string.h>
 #include <ctype.h>
 
-struct coverage_result {
-	float uncovered;
-	const char *what;
-	char *output;
-};
-
-static bool find_source_file(struct manifest *m, const char *filename)
+static bool find_source_file(const struct manifest *m, const char *filename)
 {
-	struct ccan_file *i;
+	const struct ccan_file *i;
 
 	list_for_each(&m->c_files, i, list) {
 		if (streq(i->fullname, filename))
@@ -37,12 +32,25 @@ static bool find_source_file(struct manifest *m, const char *filename)
 	return false;
 }
 
-/* FIXME: Don't know how stable this is.  Read cov files directly? */
-static void analyze_coverage(struct manifest *m,
-			     struct coverage_result *res, const char *output,
-			     bool full_gcov)
+/* 1 point for 50%, 2 points for 75%, 3 points for 87.5%... */
+static unsigned int score_coverage(float covered, unsigned total)
 {
-	char **lines = strsplit(res, output, "\n", NULL);
+	float thresh, uncovered = 1.0 - covered;
+	unsigned int i;
+
+	for (i = 0, thresh = 0.5; i < total; i++, thresh /= 2) {
+		if (uncovered > thresh)
+			break;
+	}
+	return i;
+}
+
+
+/* FIXME: Don't know how stable this is.  Read cov files directly? */
+static void analyze_coverage(struct manifest *m, bool full_gcov,
+			     const char *output, struct score *score)
+{
+	char **lines = strsplit(score, output, "\n", NULL);
 	float covered_lines = 0.0;
 	unsigned int i, total_lines = 0;
 	bool lines_matter = false;
@@ -81,17 +89,14 @@ static void analyze_coverage(struct manifest *m,
 			apostrophe = strchr(filename, '\'');
 			*apostrophe = '\0';
 			if (lines_matter) {
-				file = grab_file(res, filename, NULL);
+				file = grab_file(score, filename, NULL);
 				if (!file) {
-					res->what = talloc_asprintf(res,
+					score->error = talloc_asprintf(score,
 							    "Reading %s",
 							    filename);
-					res->output = talloc_strdup(res,
-							    strerror(errno));
 					return;
 				}
-				res->output = talloc_append_string(res->output,
-								   file);
+				printf("%s", file);
 			}
 			if (tools_verbose)
 				printf("Unlinking %s", filename);
@@ -99,114 +104,65 @@ static void analyze_coverage(struct manifest *m,
 		}
 	}
 
+	score->pass = true;
+
 	/* Nothing covered?  We can't tell if there's a source file which
 	 * was never executed, or there really is no code to execute, so
 	 * assume the latter: this test deserves no score. */
-	if (total_lines == 0) {
-		res->uncovered = 1.0;
-		run_coverage_tests.total_score = 0;
-	} else
-		res->uncovered = 1.0 - covered_lines / total_lines;
+	if (total_lines == 0)
+		score->total = score->score = 0;
+	else {
+		score->total = 5;
+		score->score = score_coverage(covered_lines / total_lines,
+					      score->total);
+	}
 }
 
-static void *do_run_coverage_tests(struct manifest *m,
-				   bool keep,
-				   unsigned int *timeleft)
+static void do_run_coverage_tests(struct manifest *m,
+				  bool keep,
+				  unsigned int *timeleft, struct score *score)
 {
-	struct coverage_result *res;
 	struct ccan_file *i;
 	char *cmdout;
 	char *covcmd;
 	bool ok;
 	bool full_gcov = (verbose > 1);
-
-	res = talloc(m, struct coverage_result);
-	res->what = NULL;
-	res->output = talloc_strdup(res, "");
-	res->uncovered = 1.0;
+	struct list_head *list;
 
 	/* This tells gcov where we put those .gcno files. */
 	covcmd = talloc_asprintf(m, "gcov %s -o %s",
 				 full_gcov ? "" : "-n",
-				 talloc_dirname(res, m->info_file->compiled));
+				 talloc_dirname(score, m->info_file->compiled));
 
 	/* Run them all. */
-	list_for_each(&m->run_tests, i, list) {
-		cmdout = run_command(m, timeleft, i->cov_compiled);
-		if (cmdout) {
-			res->what = i->fullname;
-			res->output = talloc_steal(res, cmdout);
-			return res;
+	foreach_ptr(list, &m->run_tests, &m->api_tests) {
+		list_for_each(list, i, list) {
+			cmdout = run_command(m, timeleft, i->cov_compiled);
+			if (cmdout) {
+				score->error = "Running test with coverage";
+				score_file_error(score, i, 0, cmdout);
+				return;
+			}
+			covcmd = talloc_asprintf_append(covcmd, " %s",
+							i->fullname);
 		}
-		covcmd = talloc_asprintf_append(covcmd, " %s", i->fullname);
-	}
-
-	list_for_each(&m->api_tests, i, list) {
-		cmdout = run_command(m, timeleft, i->cov_compiled);
-		if (cmdout) {
-			res->what = i->fullname;
-			res->output = talloc_steal(res, cmdout);
-			return res;
-		}
-		covcmd = talloc_asprintf_append(covcmd, " %s", i->fullname);
 	}
 
 	/* Now run gcov: we want output even if it succeeds. */
 	cmdout = run_with_timeout(m, covcmd, &ok, timeleft);
 	if (!ok) {
-		res->what = "Running gcov";
-		res->output = talloc_steal(res, cmdout);
-		return res;
+		score->error = talloc_asprintf(score, "Running gcov: %s",
+					       cmdout);
+		return;
 	}
 
-	analyze_coverage(m, res, cmdout, full_gcov);
-
-	return res;
-}
-
-/* 1 point for 50%, 2 points for 75%, 3 points for 87.5%... */
-static unsigned int score_coverage(struct manifest *m, void *check_result)
-{
-	struct coverage_result *res = check_result;
-	float thresh;
-	unsigned int i;
-
-	for (i = 0, thresh = 0.5;
-	     i < run_coverage_tests.total_score;
-	     i++, thresh /= 2) {
-		if (res->uncovered > thresh)
-			break;
-	}
-	return i;
-}
-
-static const char *describe_run_coverage_tests(struct manifest *m,
-					       void *check_result)
-{
-	struct coverage_result *res = check_result;
-	bool full_gcov = (verbose > 1);
-	char *ret;
-
-	if (res->what)
-		return talloc_asprintf(m, "%s: %s", res->what, res->output);
-
-	if (!verbose)
-		return NULL;
-
-	ret = talloc_asprintf(m, "Tests achieved %0.2f%% coverage",
-			      (1.0 - res->uncovered) * 100);
-	if (full_gcov)
-		ret = talloc_asprintf_append(ret, "\n%s", res->output);
-	return ret;
+	analyze_coverage(m, full_gcov, cmdout, score);
 }
 
 struct ccanlint run_coverage_tests = {
 	.key = "test-coverage",
 	.name = "Code coverage of module tests",
-	.total_score = 5,
-	.score = score_coverage,
 	.check = do_run_coverage_tests,
-	.describe = describe_run_coverage_tests,
 };
 
 REGISTER_TEST(run_coverage_tests, &compile_coverage_tests, &run_tests, NULL);

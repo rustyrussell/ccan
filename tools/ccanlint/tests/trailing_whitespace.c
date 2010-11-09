@@ -1,10 +1,11 @@
 /* Trailing whitespace test.  Almost embarrassing, but trivial. */
 #include <tools/ccanlint/ccanlint.h>
 #include <ccan/talloc/talloc.h>
+#include <ccan/foreach/foreach.h>
 #include <ccan/str/str.h>
 
 /* FIXME: only print full analysis if verbose >= 2.  */
-static char *report_on_trailing_whitespace(const char *line)
+static char *get_trailing_whitespace(const char *line)
 {
 	const char *e = strchr(line, 0);
 	while (e>line && (e[-1]==' ' || e[-1]=='\t'))
@@ -20,36 +21,38 @@ static char *report_on_trailing_whitespace(const char *line)
 	return talloc_asprintf(line, "'%s'", line);
 }
 
-static void *check_trailing_whitespace(struct manifest *m,
-				       bool keep,
-				       unsigned int *timeleft)
+static void check_trailing_whitespace(struct manifest *m,
+				      bool keep,
+				      unsigned int *timeleft,
+				      struct score *score)
 {
-	char *report;
+	struct list_head *list;
+	struct ccan_file *f;
+	unsigned int i;
 
-	report = report_on_lines(&m->c_files, report_on_trailing_whitespace,
-				 NULL);
-	report = report_on_lines(&m->h_files, report_on_trailing_whitespace,
-				 report);
-
-	return report;
-}
-
-static const char *describe_trailing_whitespace(struct manifest *m,
-						void *check_result)
-{
-	if (!verbose)
-		return NULL;
-	return talloc_asprintf(check_result, 
-			       "Some source files have trailing whitespace:\n"
-			       "%s", (char *)check_result);
+	foreach_ptr(list, &m->c_files, &m->h_files) {
+		list_for_each(list, f, list) {
+			char **lines = get_ccan_file_lines(f);
+			for (i = 0; i < f->num_lines; i++) {
+				char *err = get_trailing_whitespace(lines[i]);
+				if (err) {
+					score->error = "Trailing whitespace"
+						"found";
+					score_file_error(score, f, i+1, err);
+				}
+			}
+		}
+	}
+	if (!score->error) {
+		score->pass = true;
+		score->score = score->total;
+	}
 }
 
 struct ccanlint trailing_whitespace = {
 	.key = "trailing-whitespace",
 	.name = "Module's source code has no trailing whitespace",
-	.total_score = 1,
 	.check = check_trailing_whitespace,
-	.describe = describe_trailing_whitespace,
 };
 
 

@@ -42,6 +42,20 @@ struct manifest {
 
 struct manifest *get_manifest(const void *ctx, const char *dir);
 
+struct file_error {
+	struct list_node list;
+	struct ccan_file *file;
+	unsigned int line; /* 0 not to print */
+	const char *error;
+};
+
+struct score {
+	bool pass;
+	unsigned int score, total;
+	const char *error;
+	struct list_head per_file_errors;
+};
+
 struct ccanlint {
 	struct list_node list;
 
@@ -51,27 +65,18 @@ struct ccanlint {
 	/* Unique name of test */
 	const char *name;
 
-	/* Total score that this test is worth. */
-	unsigned int total_score;
-
 	/* Can we run this test?  Return string explaining why, if not. */
 	const char *(*can_run)(struct manifest *m);
 
-	/* If this returns non-NULL, it means the check failed.
-	 * keep is set if you should keep the results.
-	 * If timeleft is set to 0, means it timed out. */
-	void *(*check)(struct manifest *m, bool keep, unsigned int *timeleft);
-
-	/* The non-NULL return from check is passed to one of these: */
-
-	/* So, what did this get out of the total_score?  (NULL means 0). */
-	unsigned int (*score)(struct manifest *m, void *check_result);
-
-	/* Verbose description of what was wrong. */
-	const char *(*describe)(struct manifest *m, void *check_result);
+	/* keep is set if you should keep the results.
+	 * If timeleft is set to 0, means it timed out.
+	 * score is the result, and a talloc context freed after all our
+	 * depends are done. */
+	void (*check)(struct manifest *m,
+		      bool keep, unsigned int *timeleft, struct score *score);
 
 	/* Can we do something about it? (NULL if not) */
-	void (*handle)(struct manifest *m, void *check_result);
+	void (*handle)(struct manifest *m, struct score *score);
 
 	/* Internal use fields: */
 	/* Who depends on us? */
@@ -184,11 +189,9 @@ char *get_symbol_token(void *ctx, const char **line);
 struct list_head *get_ccan_file_docs(struct ccan_file *f);
 
 
-/* Call the reporting on every line in the file.  sofar contains
- * previous results. */
-char *report_on_lines(struct list_head *files,
-		      char *(*report)(const char *),
-		      char *sofar);
+/* Add an error about this file (and line, if non-zero) to the score struct */
+void score_file_error(struct score *, struct ccan_file *f, unsigned line,
+		      const char *error);
 
 /* Normal tests. */
 extern struct ccanlint trailing_whitespace;

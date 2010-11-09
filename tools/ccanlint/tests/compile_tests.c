@@ -82,124 +82,64 @@ static char *compile(const void *ctx,
 	return NULL;
 }
 
-struct compile_tests_result {
-	struct list_node list;
-	const char *filename;
-	const char *description;
-	const char *output;
-};
-
-static void *do_compile_tests(struct manifest *m,
-			      bool keep,
-			      unsigned int *timeleft)
+static void do_compile_tests(struct manifest *m,
+			     bool keep,
+			     unsigned int *timeleft, struct score *score)
 {
-	struct list_head *list = talloc(m, struct list_head);
 	char *cmdout;
 	struct ccan_file *i;
-	struct compile_tests_result *res;
 
-	list_head_init(list);
-
-	compile_tests.total_score = 0;
 	list_for_each(&m->compile_ok_tests, i, list) {
-		compile_tests.total_score++;
-		cmdout = compile(list, m, i, false, false, keep);
+		cmdout = compile(score, m, i, false, false, keep);
 		if (cmdout) {
-			res = talloc(list, struct compile_tests_result);
-			res->filename = i->name;
-			res->description = "failed to compile";
-			res->output = talloc_steal(res, cmdout);
-			list_add_tail(list, &res->list);
+			score->error = "Failed to compile tests";
+			score_file_error(score, i, 0, cmdout);
 		}
 	}
 
 	list_for_each(&m->run_tests, i, list) {
-		compile_tests.total_score++;
-		cmdout = compile(m, m, i, false, false, keep);
+		cmdout = compile(score, m, i, false, false, keep);
 		if (cmdout) {
-			res = talloc(list, struct compile_tests_result);
-			res->filename = i->name;
-			res->description = "failed to compile";
-			res->output = talloc_steal(res, cmdout);
-			list_add_tail(list, &res->list);
+			score->error = "Failed to compile tests";
+			score_file_error(score, i, 0, cmdout);
 		}
 	}
 
 	list_for_each(&m->api_tests, i, list) {
-		compile_tests.total_score++;
-		cmdout = compile(m, m, i, false, true, keep);
+		cmdout = compile(score, m, i, false, true, keep);
 		if (cmdout) {
-			res = talloc(list, struct compile_tests_result);
-			res->filename = i->name;
-			res->description = "failed to compile";
-			res->output = talloc_steal(res, cmdout);
-			list_add_tail(list, &res->list);
+			score->error = "Failed to compile tests";
+			score_file_error(score, i, 0, cmdout);
 		}
 	}
+
+	/* The compile fail tests are a bit weird, handle them separately */
+	if (score->error)
+		return;
 
 	list_for_each(&m->compile_fail_tests, i, list) {
-		compile_tests.total_score++;
-		cmdout = compile(list, m, i, false, false, false);
+		cmdout = compile(score, m, i, false, false, false);
 		if (cmdout) {
-			res = talloc(list, struct compile_tests_result);
-			res->filename = i->name;
-			res->description = "failed to compile without -DFAIL";
-			res->output = talloc_steal(res, cmdout);
-			list_add_tail(list, &res->list);
-		} else {
-			cmdout = compile(list, m, i, true, false, false);
-			if (!cmdout) {
-				res = talloc(list, struct compile_tests_result);
-				res->filename = i->name;
-				res->description = "compiled successfully"
-					" with -DFAIL";
-				res->output = "";
-				list_add_tail(list, &res->list);
-			}
+			score->error = "Failed to compile without -DFAIL";
+			score_file_error(score, i, 0, cmdout);
+			return;
+		}
+		cmdout = compile(score, m, i, true, false, false);
+		if (!cmdout) {
+			score->error = "Compiled successfully with -DFAIL?";
+			score_file_error(score, i, 0, NULL);
+			return;
 		}
 	}
 
-	if (list_empty(list)) {
-		talloc_free(list);
-		list = NULL;
-	}
-
-	return list;
-}
-
-static unsigned int score_compile_tests(struct manifest *m,
-					void *check_result)
-{
-	struct list_head *list = check_result;
-	struct compile_tests_result *i;
-	unsigned int score = compile_tests.total_score;
-
-	list_for_each(list, i, list)
-		score--;
-	return score;
-}
-
-static const char *describe_compile_tests(struct manifest *m,
-					  void *check_result)
-{
-	struct list_head *list = check_result;
-	struct compile_tests_result *i;
-	char *descrip = talloc_strdup(list, "Compilation tests failed:\n");
-
-	list_for_each(list, i, list)
-		descrip = talloc_asprintf_append(descrip, "%s %s\n%s",
-						 i->filename, i->description,
-						 i->output);
-	return descrip;
+	score->pass = true;
+	score->score = score->total;
 }
 
 struct ccanlint compile_tests = {
 	.key = "compile-tests",
 	.name = "Module tests compile",
-	.score = score_compile_tests,
-	.total_score = 1,
 	.check = do_compile_tests,
-	.describe = describe_compile_tests,
 	.can_run = can_build,
 };
 

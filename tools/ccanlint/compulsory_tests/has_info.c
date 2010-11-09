@@ -12,21 +12,20 @@
 #include <ccan/noerr/noerr.h>
 #include <ccan/talloc/talloc.h>
 
-static void *check_has_info(struct manifest *m,
-			    bool keep,
-			    unsigned int *timeleft)
+static void check_has_info(struct manifest *m,
+			   bool keep,
+			   unsigned int *timeleft,
+			   struct score *score)
 {
-	if (m->info_file)
-		return NULL;
-	return m;
-}
-
-static const char *describe_has_info(struct manifest *m, void *check_result)
-{
-	return "You have no _info file.\n\n"
+	if (m->info_file) {
+		score->pass = true;
+		score->score = score->total;
+	} else {
+		score->error = "You have no _info file.\n\n"
 	"The file _info contains the metadata for a ccan package: things\n"
 	"like the dependencies, the documentation for the package as a whole\n"
 	"and license information.\n";
+	}
 }
 
 static const char template[] = 
@@ -55,7 +54,7 @@ static const char template[] =
 	"	return 1;\n"
 	"}\n";
 
-static void create_info_template(struct manifest *m, void *check_result)
+static void create_info_template(struct manifest *m, struct score *score)
 {
 	FILE *info;
 	const char *filename;
@@ -79,7 +78,6 @@ struct ccanlint has_info = {
 	.key = "info",
 	.name = "Module has _info file",
 	.check = check_has_info,
-	.describe = describe_has_info,
 	.handle = create_info_template,
 };
 

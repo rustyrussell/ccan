@@ -10,45 +10,20 @@
 #include <err.h>
 #include <ccan/talloc/talloc.h>
 
-static char test_is_not_dir[] = "test is not a directory";
-
-static void *check_has_tests(struct manifest *m,
-			     bool keep,
-			     unsigned int *timeleft)
+static void handle_no_tests(struct manifest *m, struct score *score)
 {
-	struct stat st;
+	FILE *run;
+	struct ccan_file *i;
 	char *test_dir = talloc_asprintf(m, "%s/test", m->dir);
 
-	if (lstat(test_dir, &st) != 0) {
-		if (errno != ENOENT)
-			err(1, "statting %s", test_dir);
-		return "You have no test directory";
-	}
-
-	if (!S_ISDIR(st.st_mode))
-		return test_is_not_dir;
-
-	if (list_empty(&m->api_tests)
-	    && list_empty(&m->run_tests)
-	    && list_empty(&m->compile_ok_tests)) {
-		if (list_empty(&m->compile_fail_tests))
-			return "You have no tests in the test directory";
-		else
-			return "You have no positive tests in the test directory";
-	}
-	return NULL;
-}
-
-static const char *describe_has_tests(struct manifest *m, void *check_result)
-{
-	return talloc_asprintf(m, "%s\n\n"
-        "CCAN modules have a directory called test/ which contains tests.\n"
+	printf(
+	"CCAN modules have a directory called test/ which contains tests.\n"
 	"There are four kinds of tests: api, run, compile_ok and compile_fail:\n"
 	"you can tell which type of test a C file is by its name, eg 'run.c'\n"
 	"and 'run-simple.c' are both run tests.\n\n"
 
 	"The simplest kind of test is a run test, which must compile with no\n"
-	"warnings, and then run: it is expected to use libtap to report its\n"
+	"warnings, and then run: it is expected to use ccan/tap to report its\n"
 	"results in a simple and portable format.  It should #include the C\n"
 	"files from the module directly (so it can probe the internals): the\n"
 	"module will not be linked in.  The test will be run in a temporary\n"
@@ -67,20 +42,8 @@ static const char *describe_has_tests(struct manifest *m, void *check_result)
 	"when it's not defined: this helps ensure unrelated errors don't make\n"
 	"compilation fail.\n\n"
 
-	"Note that the tests are not linked against the files in the\n"
-	"above: you should directly #include those C files you want.  This\n"
-	"allows access to static functions and use special effects inside\n"
-	"test files\n", (char *)check_result);
-}
-
-static void handle_no_tests(struct manifest *m, void *check_result)
-{
-	FILE *run;
-	struct ccan_file *i;
-	char *test_dir = talloc_asprintf(m, "%s/test", m->dir);
-
-	if (check_result == test_is_not_dir)
-		return;
+	"Note that only API tests are linked against the files in the module!\n"
+		);
 
 	if (!ask("Should I create a template test/run.c file for you?"))
 		return;
@@ -101,41 +64,70 @@ static void handle_no_tests(struct manifest *m, void *check_result)
 			fprintf(run, "#include <ccan/%s/%s>\n",
 				m->basename, i->name);
 	}
-	fputs("#include <ccan/tap/tap.h>\n", run);
-	fputs("\n", run);
-
-	fputs("int main(void)\n", run);
-	fputs("{\n", run);
-	fputs("\t/* This is how many tests you plan to run */\n", run);
-	fputs("\tplan_tests(3);\n", run);
-	fputs("\n", run);
-	fputs("\t/* Simple thing we expect to succeed */\n", run);
-	fputs("\tok1(some_test())\n", run);
-	fputs("\t/* Same, with an explicit description of the test. */\n", run);
-	fputs("\tok(some_test(), \"%s with no args should return 1\", \"some_test\")\n", run);
-	fputs("\t/* How to print out messages for debugging. */\n", run);
-	fputs("\tdiag(\"Address of some_test is %p\", &some_test)\n", run);
-	fputs("\t/* Conditional tests must be explicitly skipped. */\n", run);
-	fputs("#if HAVE_SOME_FEATURE\n", run);
-	fputs("\tok1(test_some_feature())\n", run);
-	fputs("#else\n", run);
-	fputs("\tskip(1, \"Don\'t have SOME_FEATURE\")\n", run);
-	fputs("#endif\n", run);
-	fputs("\n", run);
-	fputs("\t/* This exits depending on whether all tests passed */\n", run);
-	fputs("\treturn exit_status();\n", run);
-	fputs("}\n", run);
-
+	fprintf(run, "%s",
+		"#include <ccan/tap/tap.h>\n\n"
+		"int main(void)\n"
+		"{\n"
+		"	/* This is how many tests you plan to run */\n"
+		"	plan_tests(3);\n"
+		"\n"
+		"	/* Simple thing we expect to succeed */\n"
+		"	ok1(some_test())\n"
+		"	/* Same, with an explicit description of the test. */\n"
+		"	ok(some_test(), \"%s with no args should return 1\", \"some_test\")\n"
+		"	/* How to print out messages for debugging. */\n"
+		"	diag(\"Address of some_test is %p\", &some_test)\n"
+		"	/* Conditional tests must be explicitly skipped. */\n"
+		"#if HAVE_SOME_FEATURE\n"
+		"	ok1(test_some_feature())\n"
+		"#else\n"
+		"	skip(1, \"Don\'t have SOME_FEATURE\")\n"
+		"#endif\n"
+		"\n"
+		"	/* This exits depending on whether all tests passed */\n"
+		"	return exit_status();\n"
+		"}\n");
 	fclose(run);
+}
+
+static void check_has_tests(struct manifest *m,
+			    bool keep,
+			    unsigned int *timeleft, struct score *score)
+{
+	struct stat st;
+	char *test_dir = talloc_asprintf(m, "%s/test", m->dir);
+
+	if (lstat(test_dir, &st) != 0) {
+		score->error = "No test directory";
+		if (errno != ENOENT)
+			err(1, "statting %s", test_dir);
+		has_tests.handle = handle_no_tests;
+		return;
+	}
+
+	if (!S_ISDIR(st.st_mode)) {
+		score->error = "test is not a directory";
+		return;
+	}
+
+	if (list_empty(&m->api_tests)
+	    && list_empty(&m->run_tests)
+	    && list_empty(&m->compile_ok_tests)) {
+		if (list_empty(&m->compile_fail_tests)) {
+			score->error = "No tests in test directory";
+			has_tests.handle = handle_no_tests;
+		} else
+			score->error = "No positive tests in test directory";
+		return;
+	}
+	score->pass = true;
+	score->score = score->total;
 }
 
 struct ccanlint has_tests = {
 	.key = "has-tests",
 	.name = "Module has tests",
 	.check = check_has_tests,
-	.describe = describe_has_tests,
-	.total_score = 1,
-	.handle = handle_no_tests,
 };
 
 REGISTER_TEST(has_tests, NULL);

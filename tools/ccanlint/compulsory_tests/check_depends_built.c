@@ -35,13 +35,12 @@ static bool expect_obj_file(const char *dir)
 	return has_c_files;
 }
 
-static void *check_depends_built(struct manifest *m,
-				 bool keep,
-				 unsigned int *timeleft)
+static void check_depends_built(struct manifest *m,
+				bool keep,
+				unsigned int *timeleft, struct score *score)
 {
 	struct ccan_file *i;
 	struct stat st;
-	char *report = NULL;
 
 	list_for_each(&m->dep_dirs, i, list) {
 		if (!expect_obj_file(i->fullname))
@@ -49,9 +48,11 @@ static void *check_depends_built(struct manifest *m,
 
 		i->compiled = talloc_asprintf(i, "%s.o", i->fullname);
 		if (stat(i->compiled, &st) != 0) {
-			report = talloc_asprintf_append(report,
-							"object file %s\n",
-							i->compiled);
+			score->error = "Dependencies are not built";
+			score_file_error(score, i, 0,
+					 talloc_asprintf(score,
+							"object file %s",
+							 i->compiled));
 			i->compiled = NULL;
 		}			
 	}
@@ -61,30 +62,21 @@ static void *check_depends_built(struct manifest *m,
 	    && (!list_empty(&m->run_tests) || !list_empty(&m->api_tests))) {
 		char *tapobj = talloc_asprintf(m, "%s/ccan/tap.o", ccan_dir);
 		if (stat(tapobj, &st) != 0) {
-			report = talloc_asprintf_append(report,
-							"object file %s"
-							" (for tests)\n",
-							tapobj);
+			score->error = talloc_asprintf(score,
+					       "tap object file not built");
 		}
 	}
 
-	return talloc_steal(m, report);
-}
-
-static const char *describe_depends_built(struct manifest *m,
-					  void *check_result)
-{
-	return talloc_asprintf(check_result, 
-			       "The following dependencies are not built:\n"
-			       "%s", (char *)check_result);
+	if (!score->error) {
+		score->pass = true;
+		score->score = score->total;
+	}
 }
 
 struct ccanlint depends_built = {
 	.key = "depends-built",
 	.name = "Module's CCAN dependencies are already built",
-	.total_score = 1,
 	.check = check_depends_built,
-	.describe = describe_depends_built,
 	.can_run = can_build,
 };
 

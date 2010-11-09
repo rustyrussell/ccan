@@ -15,38 +15,7 @@
 #include <ccan/noerr/noerr.h>
 #include <ccan/grab_file/grab_file.h>
 
-struct info_docs
-{
-	bool summary;
-	bool description;
-};
-
-static void *check_has_info_documentation(struct manifest *m,
-					  bool keep,
-					  unsigned int *timeleft)
-{
-	struct list_head *infodocs = get_ccan_file_docs(m->info_file);
-	struct doc_section *d;
-	struct info_docs id = { false, false };
-
-	list_for_each(infodocs, d, list) {
-		if (!streq(d->function, m->basename))
-			continue;
-		if (streq(d->type, "summary"))
-			id.summary = true;
-		if (streq(d->type, "description"))
-			id.description = true;
-	}
-
-	if (id.summary && id.description)
-		return NULL;
-	return talloc_memdup(m, &id, sizeof(id));
-}
-
-/* This is defined below. */
-extern struct ccanlint has_info_documentation;
-
-static void create_info_template_doc(struct manifest *m, void *check_result)
+static void create_info_template_doc(struct manifest *m, struct score *score)
 {
 	int fd = open("_info.new", O_WRONLY|O_CREAT|O_EXCL, 0666);
 	FILE *new;
@@ -87,42 +56,44 @@ static void create_info_template_doc(struct manifest *m, void *check_result)
 	}
 }
 
-static const char *describe_has_info_documentation(struct manifest *m,
-						   void *check_result)
+static void check_has_info_documentation(struct manifest *m,
+					 bool keep,
+					 unsigned int *timeleft,
+					 struct score *score)
 {
-	struct info_docs *id = check_result;
-	char *reason = talloc_strdup(m, "");
+	struct list_head *infodocs = get_ccan_file_docs(m->info_file);
+	struct doc_section *d;
+	bool summary = false, description = false;
 
-	if (!id->summary) {
-		has_info_documentation.handle = create_info_template_doc;
-		reason = talloc_asprintf_append(reason,
-		"Your _info file has no module documentation.\n\n"
-		"CCAN modules use /**-style comments for documentation: the\n"
-	        "overall documentation belongs in the _info metafile.\n");
+	list_for_each(infodocs, d, list) {
+		if (!streq(d->function, m->basename))
+			continue;
+		if (streq(d->type, "summary"))
+			summary = true;
+		if (streq(d->type, "description"))
+			description = true;
 	}
-	if (!id->description)
-		reason = talloc_asprintf_append(reason,
-		"Your _info file has no module description.\n\n"
+
+	if (summary && description) {
+		score->score = score->total;
+		score->pass = true;
+	} else if (!summary) {
+		score->error = "_info file has no module documentation.\n\n"
+		"CCAN modules use /**-style comments for documentation: the\n"
+		"overall documentation belongs in the _info metafile.\n";
+		has_info_documentation.handle = create_info_template_doc;
+	}
+	else if (!description) 
+		score->error = "_info file has no module description.\n\n"
 		"The lines after the first summary line in the _info file\n"
 		"documentation should describe the purpose and use of the\n"
-		"overall package\n");
-	return reason;
-}
-
-static unsigned int has_info_documentation_score(struct manifest *m,
-						 void *check_result)
-{
-	struct info_docs *id = check_result;
-	return (unsigned int)id->summary + id->description;
+		"overall package\n";
 }
 
 struct ccanlint has_info_documentation = {
 	.key = "info-documentation",
 	.name = "Module has documentation in _info",
-	.total_score = 2,
-	.score = has_info_documentation_score,
 	.check = check_has_info_documentation,
-	.describe = describe_has_info_documentation,
 };
 
 REGISTER_TEST(has_info_documentation, NULL);

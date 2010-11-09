@@ -15,6 +15,8 @@ static const char *can_run(struct manifest *m)
 {
 	if (safe_mode)
 		return "Safe mode enabled";
+	if (list_empty(&m->examples))
+		return "No examples to compile";
 	return NULL;
 }
 
@@ -127,11 +129,6 @@ static char *compile(const void *ctx,
 	}
 	return NULL;
 }
-
-struct score {
-	unsigned int score;
-	char *errors;
-};
 
 static char *start_main(char *ret, const char *why)
 {
@@ -434,22 +431,21 @@ static struct ccan_file *mangle_example(struct manifest *m,
 	return f;
 }
 
-static void *build_examples(struct manifest *m, bool keep,
-			    unsigned int *timeleft)
+static void build_examples(struct manifest *m, bool keep,
+			   unsigned int *timeleft, struct score *score)
 {
 	struct ccan_file *i;
-	struct score *score = talloc(m, struct score);
 	char **prev = NULL;
 
-	score->score = 0;
-	score->errors = talloc_strdup(score, "");
+	score->total = 0;
+	score->pass = true;
 
-	examples_compile.total_score = 0;
 	list_for_each(&m->examples, i, list) {
 		char *ret, *ret1, *ret2 = NULL;
 		struct ccan_file *mangle1, *mangle2 = NULL;
+		char *err;
 
-		examples_compile.total_score++;
+		score->total++;
 		/* Simplify our dumb parsing. */
 		strip_leading_whitespace(get_ccan_file_lines(i));
 		ret = compile(i, m, i, keep);
@@ -481,64 +477,46 @@ static void *build_examples(struct manifest *m, bool keep,
 			}
 		}
 
-		score->errors = talloc_asprintf_append(score->errors,
-				       "%s: tried standalone example:\n"
-				       "%s\n"
-				       "Errors: %s\n\n",
-				       i->name,
-				       get_ccan_file_contents(i),
-				       ret);
-		score->errors = talloc_asprintf_append(score->errors,
-				       "%s: tried adding headers, wrappers:\n"
-				       "%s\n"
-				       "Errors: %s\n\n",
-				       i->name,
-				       get_ccan_file_contents(mangle1),
-				       ret1);
+		score->pass = false;
+		score->error = "Compiling extracted examples failed";
+		if (!verbose) {
+			if (mangle2) 
+				err = "Standalone, adding headers, "
+					"and including previous "
+					"example all failed";
+			else
+				err = "Standalone compile and"
+					" adding headers both failed";
+		} else {
+			err = talloc_asprintf("Standalone example:\n"
+					      "%s\n"
+					      "Errors: %s\n\n"
+					      "Adding headers, wrappers:\n"
+					      "%s\n"
+					      "Errors: %s\n\n",
+					      get_ccan_file_contents(i),
+					      ret,
+					      get_ccan_file_contents(mangle1),
+					      ret1);
 
-		if (mangle2) {
-			score->errors = talloc_asprintf_append(score->errors,
-				       "%s: tried combining with"
-				       " previous example:\n"
+			if (mangle2)
+				err = talloc_asprintf_append(err, 
+				       "Combining with previous example:\n"
 				       "%s\n"
 				       "Errors: %s\n\n",
-				       i->name,
 				       get_ccan_file_contents(mangle2),
 				       ret2);
 		}
+		score_file_error(score, i, 0, err);
 		/* This didn't work, so not a candidate for combining. */
 		prev = NULL;
 	}
-
-	if (strcmp(score->errors, "") == 0) {
-		talloc_free(score);
-		return NULL;
-	}
-	return score;
-}
-
-static unsigned int score_examples(struct manifest *m, void *check_result)
-{
-	struct score *score = check_result;
-	return score->score;
-}
-
-static const char *describe(struct manifest *m, void *check_result)
-{
-	struct score *score = check_result;
-	if (verbose >= 2 && score->errors)
-		return talloc_asprintf(m, "Compile errors building examples:\n"
-				       "%s", score->errors);
-	return NULL;
 }
 
 struct ccanlint examples_compile = {
 	.key = "examples-compile",
 	.name = "Module examples compile",
-	.score = score_examples,
-	.total_score = 3, /* This gets changed to # examples, if they exist */
 	.check = build_examples,
-	.describe = describe,
 	.can_run = can_run,
 };
 

@@ -33,42 +33,41 @@ static char *obj_list(const struct manifest *m)
 	return list;
 }
 
-static void *do_build(struct manifest *m,
-		      bool keep,
-		      unsigned int *timeleft)
+static void do_build(struct manifest *m,
+		     bool keep,
+		     unsigned int *timeleft,
+		     struct score *score)
 {
-	char *filename, *err;
+	char *filename, *errstr;
 
 	if (list_empty(&m->c_files)) {
 		/* No files?  No score, but we "pass". */
-		build.total_score = 0;
-		return NULL;
+		score->total = 0;
+		score->pass = true;
+		return;
 	}
-	filename = link_objects(m, m->basename, false, obj_list(m), &err);
-	if (filename && keep) {
+
+	filename = link_objects(m, m->basename, false, obj_list(m), &errstr);
+	if (!filename) {
+		score->error = "The object file didn't build";
+		score_file_error(score, NULL, 0, errstr);
+		return;
+	}
+
+	if (keep) {
 		char *realname = talloc_asprintf(m, "%s.o", m->dir);
 		/* We leave this object file around, all built. */
 		if (!move_file(filename, realname))
-			return talloc_asprintf(m, "Failed to rename %s to %s",
-					       filename, realname);
-		return NULL;
+			err(1, "Renaming %s to %s", filename, realname);
 	}
-	return err;
-}
-
-static const char *describe_build(struct manifest *m, void *check_result)
-{
-	return talloc_asprintf(check_result, 
-			       "The object file for the module didn't build:\n"
-			       "%s", (char *)check_result);
+	score->pass = true;
+	score->score = score->total;
 }
 
 struct ccanlint build = {
 	.key = "build",
 	.name = "Module can be built from object files",
-	.total_score = 1,
 	.check = do_build,
-	.describe = describe_build,
 	.can_run = can_build,
 };
 

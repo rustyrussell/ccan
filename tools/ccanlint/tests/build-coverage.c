@@ -25,8 +25,9 @@ static const char *can_run_coverage(struct manifest *m)
 	return NULL;
 }
 
-static char *build_module_objs_with_coverage(struct manifest *m, bool keep,
-					     char **modobjs)
+static bool build_module_objs_with_coverage(struct manifest *m, bool keep,
+					    struct score *score,
+					    char **modobjs)
 {
 	struct ccan_file *i;
 
@@ -39,13 +40,15 @@ static char *build_module_objs_with_coverage(struct manifest *m, bool keep,
 		err = compile_object(m, fullfile, ccan_dir, "",
 				     i->cov_compiled);
 		if (err) {
+			score_file_error(score, i, 0, err);
 			talloc_free(i->cov_compiled);
-			return err;
+			i->cov_compiled = NULL;
+			return false;
 		}
 		*modobjs = talloc_asprintf_append(*modobjs,
 						  " %s", i->cov_compiled);
 	}
-	return NULL;
+	return true;
 }
 
 static char *obj_list(const struct manifest *m, const char *modobjs)
@@ -101,97 +104,53 @@ static char *cov_compile(const void *ctx,
 				  lib_list(m), file->cov_compiled);
 	if (errmsg) {
 		talloc_free(file->cov_compiled);
+		file->cov_compiled = NULL;
 		return errmsg;
 	}
 
 	return NULL;
 }
 
-struct compile_tests_result {
-	struct list_node list;
-	const char *filename;
-	const char *description;
-	const char *output;
-};
-
-static void *do_compile_coverage_tests(struct manifest *m,
-				       bool keep,
-				       unsigned int *timeleft)
+/* FIXME: Coverage from testable examples as well. */
+static void do_compile_coverage_tests(struct manifest *m,
+				      bool keep,
+				      unsigned int *timeleft,
+				      struct score *score)
 {
-	struct list_head *list = talloc(m, struct list_head);
 	char *cmdout, *modobjs = NULL;
 	struct ccan_file *i;
-	struct compile_tests_result *res;
 
-	list_head_init(list);
-
-	if (!list_empty(&m->api_tests)) {
-		cmdout = build_module_objs_with_coverage(m, keep, &modobjs);
-		if (cmdout) {
-			res = talloc(list, struct compile_tests_result);
-			res->filename = "Module objects with coverage";
-			res->description = "failed to compile";
-			res->output = talloc_steal(res, cmdout);
-			list_add_tail(list, &res->list);
-			return list;
-		}
+	if (!list_empty(&m->api_tests)
+	    && !build_module_objs_with_coverage(m, keep, score, &modobjs)) {
+		score->error = "Failed to compile module objects with coverage";
+		return;
 	}
 
 	list_for_each(&m->run_tests, i, list) {
-		compile_tests.total_score++;
 		cmdout = cov_compile(m, m, i, NULL, keep);
 		if (cmdout) {
-			res = talloc(list, struct compile_tests_result);
-			res->filename = i->name;
-			res->description = "failed to compile";
-			res->output = talloc_steal(res, cmdout);
-			list_add_tail(list, &res->list);
+			score->error = "Failed to compile test with coverage";
+			score_file_error(score, i, 0, cmdout);
 		}
 	}
 
 	list_for_each(&m->api_tests, i, list) {
-		compile_tests.total_score++;
 		cmdout = cov_compile(m, m, i, modobjs, keep);
 		if (cmdout) {
-			res = talloc(list, struct compile_tests_result);
-			res->filename = i->name;
-			res->description = "failed to compile";
-			res->output = talloc_steal(res, cmdout);
-			list_add_tail(list, &res->list);
+			score->error = "Failed to compile test with coverage";
+			score_file_error(score, i, 0, cmdout);
 		}
 	}
-
-	if (list_empty(list)) {
-		talloc_free(list);
-		list = NULL;
+	if (!score->error) {
+		score->pass = true;
+		score->score = score->total;
 	}
-
-	return list;
-}
-
-static const char *describe_compile_coverage_tests(struct manifest *m,
-						   void *check_result)
-{
-	struct list_head *list = check_result;
-	struct compile_tests_result *i;
-	char *descrip;
-
-	descrip = talloc_strdup(list,
-				"Compilation of tests for coverage failed:\n");
-
-	list_for_each(list, i, list)
-		descrip = talloc_asprintf_append(descrip, "%s %s\n%s",
-						 i->filename, i->description,
-						 i->output);
-	return descrip;
 }
 
 struct ccanlint compile_coverage_tests = {
 	.key = "compile-coverage-tests",
 	.name = "Module tests compile with profiling",
 	.check = do_compile_coverage_tests,
-	.total_score = 1,
-	.describe = describe_compile_coverage_tests,
 	.can_run = can_run_coverage,
 };
 

@@ -88,30 +88,37 @@ static const char *should_skip(struct manifest *m, struct ccanlint *i)
 
 static bool run_test(struct ccanlint *i,
 		     bool quiet,
-		     unsigned int *score,
-		     unsigned int *total_score,
+		     unsigned int *running_score,
+		     unsigned int *running_total,
 		     struct manifest *m)
 {
-	void *result;
-	unsigned int this_score, max_score, timeleft;
+	unsigned int timeleft;
 	const struct dependent *d;
 	const char *skip;
-	bool bad, good;
+	struct score *score;
 
 	//one less test to run through
 	list_for_each(&i->dependencies, d, node)
 		d->dependent->num_depends--;
+
+	score = talloc(m, struct score);
+	list_head_init(&score->per_file_errors);
+	score->error = NULL;
+	score->pass = false;
+	score->score = 0;
+	score->total = 1;
 
 	skip = should_skip(m, i);
 
 	if (skip) {
 	skip:
 		if (verbose && !streq(skip, "not relevant to target"))
-			printf("  %s: skipped (%s)\n", i->name, skip);
+			printf("%s: skipped (%s)\n", i->name, skip);
 
-		/* If we're skipping this because a prereq failed, we fail. */
+		/* If we're skipping this because a prereq failed, we fail:
+		 * count it as a score of 1. */
 		if (i->skip_fail)
-			*total_score += i->total_score;
+			(*running_total)++;
 			
 		list_del(&i->list);
 		list_add_tail(&finished_tests, &i->list);
@@ -121,55 +128,52 @@ static bool run_test(struct ccanlint *i,
 			d->dependent->skip = "dependency was skipped";
 			d->dependent->skip_fail = i->skip_fail;
 		}
-		return true;
+		return i->skip_fail ? false : true;
 	}
 
 	timeleft = timeout ? timeout : default_timeout_ms;
-	result = i->check(m, i->keep_results, &timeleft);
+	i->check(m, i->keep_results, &timeleft, score);
 	if (timeout && timeleft == 0) {
 		skip = "timeout";
 		goto skip;
 	}
 
-	max_score = i->total_score;
-	if (!max_score)
-		max_score = 1;
-
-	if (!result)
-		this_score = max_score;
-	else if (i->score)
-		this_score = i->score(m, result);
-	else
-		this_score = 0;
-
-	bad = (this_score == 0);
-	good = (this_score >= max_score);
-
-	if (verbose || (!good && !quiet)) {
-		printf("  %s: %s", i->name,
-		       bad ? "FAIL" : good ? "PASS" : "PARTIAL");
-		if (max_score > 1)
-			printf(" (+%u/%u)", this_score, max_score);
+	assert(score->score <= score->total);
+	if ((!score->pass && !quiet)
+	    || (score->score < score->total && verbose)
+	    || verbose > 1) {
+		printf("%s: %s", i->name, score->pass ? "PASS" : "FAIL");
+		if (score->total > 1)
+			printf(" (+%u/%u)", score->score, score->total);
 		printf("\n");
 	}
 
-	if (!quiet && result) {
-		const char *desc;
-		if (i->describe && (desc = i->describe(m, result)) != NULL) 
-			printf("    %s\n", desc);
+	if (!quiet && !score->pass) {
+		struct file_error *f;
+
+		if (score->error)
+			printf("%s:\n", score->error);
+
+		list_for_each(&score->per_file_errors, f, list) {
+			if (f->line)
+				printf("%s:%u:%s\n",
+				       f->file->fullname, f->line, f->error);
+			else if (f->file)
+				printf("%s:%s\n", f->file->fullname, f->error);
+			else
+				printf("%s\n", f->error);
+		}
 		if (i->handle)
-			i->handle(m, result);
+			i->handle(m, score);
 	}
 
-	if (i->total_score) {
-		*score += this_score;
-		*total_score += i->total_score;
-	}
+	*running_score += score->score;
+	*running_total += score->total;
 
 	list_del(&i->list);
 	list_add_tail(&finished_tests, &i->list);
 
-	if (bad) {
+	if (!score->pass) {
 		/* Skip any tests which depend on this one. */
 		list_for_each(&i->dependencies, d, node) {
 			if (d->dependent->skip)
@@ -178,7 +182,7 @@ static bool run_test(struct ccanlint *i,
 			d->dependent->skip_fail = true;
 		}
 	}
-	return good;
+	return score->pass;
 }
 
 static void register_test(struct list_head *h, struct ccanlint *test, ...)
@@ -451,9 +455,6 @@ int main(int argc, char *argv[])
 	}
 
 	/* If you don't pass the compulsory tests, you get a score of 0. */
-	if (verbose)
-		printf("Compulsory tests:\n");
-
 	while ((i = get_next_test(&compulsory_tests)) != NULL) {
 		if (!run_test(i, summary, &score, &total_score, m)) {
 			printf("%sTotal score: 0/%u\n", prefix, total_score);
@@ -462,9 +463,6 @@ int main(int argc, char *argv[])
 	}
 
 	add_info_fails(m->info_file);
-
-	if (verbose)
-		printf("\nNormal tests:\n");
 	while ((i = get_next_test(&normal_tests)) != NULL)
 		run_test(i, summary, &score, &total_score, m);
 

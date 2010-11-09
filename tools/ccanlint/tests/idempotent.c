@@ -17,12 +17,69 @@
 static const char explain[] 
 = "Headers usually start with the C preprocessor lines to prevent multiple\n"
   "inclusions.  These look like the following:\n"
-  "#ifndef MY_HEADER_H\n"
-  "#define MY_HEADER_H\n"
+  "#ifndef CCAN_<MODNAME>_H\n"
+  "#define CCAN_<MODNAME>_H\n"
   "...\n"
-  "#endif /* MY_HEADER_H */\n";
+  "#endif /* CCAN_<MODNAME>_H */\n";
 
-static char *report_idem(struct ccan_file *f, char *sofar)
+static void fix_name(char *name)
+{
+	unsigned int i, j;
+
+	for (i = j = 0; name[i]; i++) {
+		if (isalnum(name[i]) || name[i] == '_')
+			name[j++] = toupper(name[i]);
+	}
+	name[j] = '\0';
+}
+
+static void handle_idem(struct manifest *m, struct score *score)
+{
+	struct file_error *e;
+
+	list_for_each(&score->per_file_errors, e, list) {
+		char *name, *q, *tmpname;
+		FILE *out;
+		unsigned int i;
+
+		/* Main header gets CCAN_FOO_H, others CCAN_FOO_XXX_H */
+		if (strstarts(e->file->name, m->basename)
+		    || strlen(e->file->name) != strlen(m->basename) + 2)
+			name = talloc_asprintf(score, "CCAN_%s_H", m->basename);
+		else
+			name = talloc_asprintf(score, "CCAN_%s_%s_H",
+					       m->basename, e->file->name);
+		fix_name(name);
+
+		q = talloc_asprintf(score,
+			    "Should I wrap %s in #ifndef/#define %s for you?",
+			    e->file->name, name);
+		if (!ask(q))
+			continue;
+
+		tmpname = maybe_temp_file(score, ".h", false, e->file->name);
+		out = fopen(tmpname, "w");
+		if (!out)
+			err(1, "Opening %s", tmpname);
+		if (fprintf(out, "#ifndef %s\n#define %s\n", name, name) < 0)
+			err(1, "Writing %s", tmpname);
+
+		for (i = 0; i < e->file->num_lines; i++)
+			if (fprintf(out, "%s\n", e->file->lines[i]) < 0)
+				err(1, "Writing %s", tmpname);
+
+		if (fprintf(out, "#endif /* %s */\n", name) < 0)
+			err(1, "Writing %s", tmpname);
+		
+		if (fclose(out) != 0)
+			err(1, "Closing %s", tmpname);
+
+		if (!move_file(tmpname, e->file->fullname))
+			err(1, "Moving %s to %s", tmpname, e->file->fullname);
+	}
+}
+
+static bool check_idem(struct ccan_file *f, struct score *score)
 {
 	struct line_info *line_info;
 	unsigned int i, first_preproc_line;
@@ -31,44 +88,48 @@ static char *report_idem(struct ccan_file *f, char *sofar)
 	line_info = get_ccan_line_info(f);
 	if (f->num_lines < 3)
 		/* FIXME: We assume small headers probably uninteresting. */
-		return sofar;
+		return true;
 
+	score->error = "Headers are not idempotent";
 	for (i = 0; i < f->num_lines; i++) {
 		if (line_info[i].type == DOC_LINE
 		    || line_info[i].type == COMMENT_LINE)
 			continue;
-		if (line_info[i].type == CODE_LINE)
-			return talloc_asprintf_append(sofar,
-			      "%s:%u:expect first non-comment line to be #ifndef.\n", f->name, i+1);
-		else if (line_info[i].type == PREPROC_LINE)
+		if (line_info[i].type == CODE_LINE) {
+			score_file_error(score, f, i+1,
+					 "Expect first non-comment line to be"
+					 " #ifndef.");
+			return false;
+		} else if (line_info[i].type == PREPROC_LINE)
 			break;
 	}
 
 	/* No code at all?  Don't complain. */
 	if (i == f->num_lines)
-		return sofar;
+		return true;
 
 	first_preproc_line = i;
 	for (i = first_preproc_line+1; i < f->num_lines; i++) {
 		if (line_info[i].type == DOC_LINE
 		    || line_info[i].type == COMMENT_LINE)
 			continue;
-		if (line_info[i].type == CODE_LINE)
-			return talloc_asprintf_append(sofar,
-			      "%s:%u:expect second line to be #define.\n", f->name, i+1);
-		else if (line_info[i].type == PREPROC_LINE)
+		if (line_info[i].type == CODE_LINE) {
+			score_file_error(score, f, i+1,
+					 "Expect second non-comment line to be"
+					 " #define.");
+			return false;
+		} else if (line_info[i].type == PREPROC_LINE)
 			break;
 	}
 
 	/* No code at all?  Weird. */
 	if (i == f->num_lines)
-		return sofar;
+		return true;
 
 	/* We expect a condition on this line. */
 	if (!line_info[i].cond) {
-		return talloc_asprintf_append(sofar,
-					      "%s:%u:expected #ifndef.\n",
-					      f->name, first_preproc_line+1);
+		score_file_error(score, f, i+1, "Expected #ifndef");
+		return false;
 	}
 
 	line = f->lines[i];
@@ -76,24 +137,27 @@ static char *report_idem(struct ccan_file *f, char *sofar)
 	/* We expect the condition to be ! IFDEF <symbol>. */
 	if (line_info[i].cond->type != PP_COND_IFDEF
 	    || !line_info[i].cond->inverse) {
-		return talloc_asprintf_append(sofar,
-					      "%s:%u:expected #ifndef.\n",
-					      f->name, first_preproc_line+1);
+		score_file_error(score, f, i+1, "Expected #ifndef");
+		return false;
 	}
 
 	/* And this to be #define <symbol> */
 	if (!get_token(&line, "#"))
 		abort();
 	if (!get_token(&line, "define")) {
-		return talloc_asprintf_append(sofar,
-			      "%s:%u:expected '#define %s'.\n",
-			      f->name, i+1, line_info[i].cond->symbol);
+		char *str = talloc_asprintf(score,
+					    "expected '#define %s'",
+					    line_info[i].cond->symbol);
+		score_file_error(score, f, i+1, str);
+		return false;
 	}
 	sym = get_symbol_token(f, &line);
 	if (!sym || !streq(sym, line_info[i].cond->symbol)) {
-		return talloc_asprintf_append(sofar,
-			      "%s:%u:expected '#define %s'.\n",
-			      f->name, i+1, line_info[i].cond->symbol);
+		char *str = talloc_asprintf(score,
+					    "expected '#define %s'",
+					    line_info[i].cond->symbol);
+		score_file_error(score, f, i+1, str);
+		return false;
 	}
 
 	/* Rest of code should all be covered by that conditional. */
@@ -103,42 +167,35 @@ static char *report_idem(struct ccan_file *f, char *sofar)
 		    || line_info[i].type == COMMENT_LINE)
 			continue;
 		if (get_ccan_line_pp(line_info[i].cond, sym, &val, NULL)
-		    != NOT_COMPILED)
-			return talloc_asprintf_append(sofar,
-			      "%s:%u:code outside idempotent region.\n",
-			      f->name, i+1);
+		    != NOT_COMPILED) {
+			score_file_error(score, f, i+1, "code outside"
+					 " idempotent region");
+			return false;
+		}
 	}
 
-	return sofar;
+	return true;
 }
 
-static void *check_idempotent(struct manifest *m,
-			      bool keep,
-			      unsigned int *timeleft)
+static void check_idempotent(struct manifest *m,
+			     bool keep,
+			     unsigned int *timeleft, struct score *score)
 {
 	struct ccan_file *f;
-	char *report = NULL;
 
-	list_for_each(&m->h_files, f, list)
-		report = report_idem(f, report);
-
-	return report;
-}
-
-static const char *describe_idempotent(struct manifest *m, void *check_result)
-{
-	return talloc_asprintf(check_result, 
-			       "Some headers not idempotent:\n"
-			       "%s\n%s", (char *)check_result,
-			       explain);
+	list_for_each(&m->h_files, f, list) {
+		if (!check_idem(f, score))
+			return;
+	}
+	score->pass = true;
+	score->score = score->total;
 }
 
 struct ccanlint idempotent = {
 	.key = "idempotent",
 	.name = "Module headers are #ifndef/#define wrapped",
-	.total_score = 1,
 	.check = check_idempotent,
-	.describe = describe_idempotent,
+	.handle = handle_idem,
 };
 
 REGISTER_TEST(idempotent, NULL);

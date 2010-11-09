@@ -2,6 +2,7 @@
 #include <tools/tools.h>
 #include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
+#include <ccan/foreach/foreach.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -21,91 +22,43 @@ static const char *can_run(struct manifest *m)
 	return NULL;
 }
 
-struct run_tests_result {
-	struct list_node list;
-	struct ccan_file *file;
-	const char *output;
-};
-
-static void *do_run_tests(struct manifest *m,
-			  bool keep,
-			  unsigned int *timeleft)
+static void do_run_tests(struct manifest *m,
+			 bool keep,
+			 unsigned int *timeleft,
+			 struct score *score)
 {
-	struct list_head *list = talloc(m, struct list_head);
-	struct run_tests_result *res;
+	struct list_head *list;
 	struct ccan_file *i;
 	char *cmdout;
 
-	list_head_init(list);
-	run_tests.total_score = 0;
-
-	list_for_each(&m->run_tests, i, list) {
-		run_tests.total_score++;
-		cmdout = run_command(m, timeleft, i->compiled);
-		if (cmdout) {
-			res = talloc(list, struct run_tests_result);
-			res->file = i;
-			res->output = talloc_steal(res, cmdout);
-			list_add_tail(list, &res->list);
+	score->total = 0;
+	foreach_ptr(list, &m->run_tests, &m->api_tests) {
+		list_for_each(list, i, list) {
+			score->total++;
+			cmdout = run_command(m, timeleft, i->compiled);
+			if (cmdout)
+				score_file_error(score, i, 0, cmdout);
+			else
+				score->score++;
 		}
 	}
 
-	list_for_each(&m->api_tests, i, list) {
-		run_tests.total_score++;
-		cmdout = run_command(m, timeleft, i->compiled);
-		if (cmdout) {
-			res = talloc(list, struct run_tests_result);
-			res->file = i;
-			res->output = talloc_steal(res, cmdout);
-			list_add_tail(list, &res->list);
-		}
-	}
-
-	if (list_empty(list)) {
-		talloc_free(list);
-		list = NULL;
-	}
-
-	return list;
-}
-
-static unsigned int score_run_tests(struct manifest *m, void *check_result)
-{
-	struct list_head *list = check_result;
-	struct run_tests_result *i;
-	unsigned int score = run_tests.total_score;
-
-	list_for_each(list, i, list)
-		score--;
-	return score;
-}
-
-static const char *describe_run_tests(struct manifest *m,
-					  void *check_result)
-{
-	struct list_head *list = check_result;
-	char *descrip = talloc_strdup(check_result, "Running tests failed:\n");
-	struct run_tests_result *i;
-
-	list_for_each(list, i, list)
-		descrip = talloc_asprintf_append(descrip, "Running %s:\n%s",
-						 i->file->name, i->output);
-	return descrip;
+	if (score->score == score->total)
+		score->pass = true;
 }
 
 /* Gcc's warn_unused_result is fascist bullshit. */
 #define doesnt_matter()
 
-static void run_under_debugger(struct manifest *m, void *check_result)
+static void run_under_debugger(struct manifest *m, struct score *score)
 {
 	char *command;
-	struct list_head *list = check_result;
-	struct run_tests_result *first;
+	struct file_error *first;
 
 	if (!ask("Should I run the first failing test under the debugger?"))
 		return;
 
-	first = list_top(list, struct run_tests_result, list);
+	first = list_top(&score->per_file_errors, struct file_error, list);
 	command = talloc_asprintf(m, "gdb -ex 'break tap.c:136' -ex 'run' %s",
 				  first->file->compiled);
 	if (system(command))
@@ -115,12 +68,9 @@ static void run_under_debugger(struct manifest *m, void *check_result)
 struct ccanlint run_tests = {
 	.key = "run",
 	.name = "Module's run and api tests pass",
-	.score = score_run_tests,
-	.total_score = 1,
 	.check = do_run_tests,
-	.describe = describe_run_tests,
+	.handle = run_under_debugger,
 	.can_run = can_run,
-	.handle = run_under_debugger
 };
 
 REGISTER_TEST(run_tests, &compile_tests, NULL);

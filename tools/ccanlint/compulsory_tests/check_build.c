@@ -45,9 +45,9 @@ static char *lib_list(const struct manifest *m)
 	return ret;
 }
 
-static void *check_use_build(struct manifest *m,
-			     bool keep,
-			     unsigned int *timeleft)
+static void check_use_build(struct manifest *m,
+			    bool keep,
+			    unsigned int *timeleft, struct score *score)
 {
 	char *contents;
 	char *tmpfile;
@@ -58,8 +58,7 @@ static void *check_use_build(struct manifest *m,
 
 	fd = open(tmpfile, O_WRONLY | O_CREAT | O_EXCL, 0600);
 	if (fd < 0)
-		return talloc_asprintf(m, "Creating temporary file: %s",
-				       strerror(errno));
+		err(1, "Creating temporary file %s", tmpfile);
 
 	contents = talloc_asprintf(tmpfile,
 				   "#include <ccan/%s/%s.h>\n"
@@ -68,30 +67,23 @@ static void *check_use_build(struct manifest *m,
 				   "	return 0;\n"
 				   "}\n",
 				   m->basename, m->basename);
-	if (write(fd, contents, strlen(contents)) != strlen(contents)) {
-		close(fd);
-		return "Failure writing to temporary file";
-	}
+	if (write(fd, contents, strlen(contents)) != strlen(contents))
+		err(1, "Failure writing to temporary file %s", tmpfile);
 	close(fd);
 
-	return compile_and_link(m, tmpfile, ccan_dir, obj_list(m), "",
-				lib_list(m),
-				maybe_temp_file(m, "", keep, tmpfile));
-}
-
-static const char *describe_use_build(struct manifest *m, void *check_result)
-{
-	return talloc_asprintf(check_result, 
-			       "Linking against module:\n"
-			       "%s", (char *)check_result);
+	score->error = compile_and_link(m, tmpfile, ccan_dir, obj_list(m), "",
+					lib_list(m),
+					maybe_temp_file(m, "", keep, tmpfile));
+	if (!score->error) {
+		score->pass = true;
+		score->score = score->total;
+	}
 }
 
 struct ccanlint check_build = {
 	.key = "check-link",
 	.name = "Module can be linked against trivial program",
-	.total_score = 1,
 	.check = check_use_build,
-	.describe = describe_use_build,
 	.can_run = can_build,
 };
 

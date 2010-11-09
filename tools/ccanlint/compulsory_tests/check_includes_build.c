@@ -32,12 +32,12 @@ static struct ccan_file *main_header(struct manifest *m)
 			return f;
 	}
 	/* Should not happen: we depend on has_main_header */
-	return NULL;
+	abort();
 }
 
-static void *check_includes_build(struct manifest *m,
-				  bool keep,
-				  unsigned int *timeleft)
+static void check_includes_build(struct manifest *m,
+				 bool keep,
+				 unsigned int *timeleft, struct score *score)
 {
 	char *contents;
 	char *tmpsrc, *tmpobj;
@@ -49,34 +49,29 @@ static void *check_includes_build(struct manifest *m,
 
 	fd = open(tmpsrc, O_WRONLY | O_CREAT | O_EXCL, 0600);
 	if (fd < 0)
-		return talloc_asprintf(m, "Creating temporary file %s: %s",
-				       tmpsrc, strerror(errno));
+		err(1, "Creating temporary file %s", tmpsrc);
 
 	contents = talloc_asprintf(tmpsrc, "#include <ccan/%s/%s.h>\n",
 				   m->basename, m->basename);
-	if (write(fd, contents, strlen(contents)) != strlen(contents)) {
-		close(fd);
-		return "Failure writing to temporary file";
-	}
+	if (write(fd, contents, strlen(contents)) != strlen(contents))
+		err(1, "writing to temporary file %s", tmpsrc);
 	close(fd);
 
-	return compile_object(m, tmpsrc, ccan_dir, "", tmpobj);
-}
-
-static const char *describe_includes_build(struct manifest *m,
-					   void *check_result)
-{
-	return talloc_asprintf(check_result, 
-			       "#include of the main header file:\n"
-			       "%s", (char *)check_result);
+	score->error = compile_object(m, tmpsrc, ccan_dir, "", tmpobj);
+	if (score->error) {
+		score->error = talloc_asprintf(score,
+				       "#include of the main header file:\n%s",
+				       score->error);
+	} else {
+		score->pass = true;
+		score->score = score->total;
+	}
 }
 
 struct ccanlint includes_build = {
 	.key = "include-main",
 	.name = "Modules main header compiles",
-	.total_score = 1,
 	.check = check_includes_build,
-	.describe = describe_includes_build,
 	.can_run = can_build,
 };
 

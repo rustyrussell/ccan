@@ -21,42 +21,37 @@ static const char *can_build(struct manifest *m)
 	return NULL;
 }
 
-static void *check_objs_build(struct manifest *m,
-			      bool keep, unsigned int *timeleft)
+static void check_objs_build(struct manifest *m,
+			     bool keep,
+			     unsigned int *timeleft, struct score *score)
 {
-	char *report = NULL;
 	struct ccan_file *i;
+
+	if (list_empty(&m->c_files))
+		score->total = 0;
 
 	list_for_each(&m->c_files, i, list) {
 		char *err;
 		char *fullfile = talloc_asprintf(m, "%s/%s", m->dir, i->name);
 
-		/* One point for each obj file. */
-		build_objs.total_score++;
-
 		i->compiled = maybe_temp_file(m, "", keep, fullfile);
 		err = compile_object(m, fullfile, ccan_dir, "", i->compiled);
 		if (err) {
 			talloc_free(i->compiled);
-			if (report)
-				report = talloc_append_string(report, err);
-			else
-				report = err;
+			score->error = "Compiling object files";
+			score_file_error(score, i, 0, err);
 		}
 	}
-	return report;
-}
-
-static const char *describe_objs_build(struct manifest *m, void *check_result)
-{
-	return check_result;
+	if (!score->error) {
+		score->pass = true;
+		score->score = score->total;
+	}
 }
 
 struct ccanlint build_objs = {
 	.key = "build-objects",
 	.name = "Module object files can be built",
 	.check = check_objs_build,
-	.describe = describe_objs_build,
 	.can_run = can_build,
 };
 

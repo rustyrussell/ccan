@@ -139,30 +139,6 @@ static void add_files(struct manifest *m, const char *dir)
 	closedir(d);
 }
 
-char *report_on_lines(struct list_head *files,
-		      char *(*report)(const char *),
-		      char *sofar)
-{
-	struct ccan_file *f;
-
-	list_for_each(files, f, list) {
-		unsigned int i;
-		char **lines = get_ccan_file_lines(f);
-
-		for (i = 0; i < f->num_lines; i++) {
-			char *r = report(lines[i]);
-			if (!r)
-				continue;
-
-			sofar = talloc_asprintf_append(sofar,
-						       "%s:%u:%s\n",
-						       f->name, i+1, r);
-			talloc_free(r);
-		}
-	}
-	return sofar;
-}
-
 struct manifest *get_manifest(const void *ctx, const char *dir)
 {
 	struct manifest *m = talloc(ctx, struct manifest);
@@ -574,3 +550,12 @@ enum line_compiled get_ccan_line_pp(struct pp_conditions *cond,
 	return ret;
 }
 
+void score_file_error(struct score *score, struct ccan_file *f, unsigned line,
+		      const char *error)
+{
+	struct file_error *fe = talloc(score, struct file_error);
+	fe->file = f;
+	fe->line = line;
+	fe->error = error;
+	list_add(&score->per_file_errors, &fe->list);
+}
