@@ -580,7 +580,7 @@ char *talloc_strndup(const void *t, const char *p, size_t n);
  *
  *   talloc_set_name_const(ptr, ptr)
  */
-char *talloc_asprintf(const void *t, const char *fmt, ...) PRINTF_ATTRIBUTE(2,3);
+char *talloc_asprintf(const void *t, const char *fmt, ...) PRINTF_FMT(2,3);
 
 /**
  * talloc_append_string - concatenate onto a tallocated string 
@@ -610,7 +610,7 @@ char *WARN_UNUSED_RESULT talloc_append_string(char *orig, const char *append);
  *   talloc_set_name_const(ptr, ptr)
  */
 char *WARN_UNUSED_RESULT talloc_asprintf_append(char *s, const char *fmt, ...)
-	PRINTF_ATTRIBUTE(2,3);
+	PRINTF_FMT(2,3);
 
 /**
  * talloc_vasprintf - vsprintf into a talloc buffer.
@@ -626,7 +626,8 @@ char *WARN_UNUSED_RESULT talloc_asprintf_append(char *s, const char *fmt, ...)
  *
  *   talloc_set_name_const(ptr, ptr)
  */
-char *talloc_vasprintf(const void *t, const char *fmt, va_list ap) PRINTF_ATTRIBUTE(2,0);
+char *talloc_vasprintf(const void *t, const char *fmt, va_list ap)
+	PRINTF_FMT(2,0);
 
 /**
  * talloc_vasprintf_append - sprintf onto the end of a talloc buffer.
@@ -638,7 +639,7 @@ char *talloc_vasprintf(const void *t, const char *fmt, va_list ap) PRINTF_ATTRIB
  * talloc_asprintf_append(), except it takes a va_list.
  */
 char *WARN_UNUSED_RESULT talloc_vasprintf_append(char *s, const char *fmt, va_list ap)
-	PRINTF_ATTRIBUTE(2,0);
+	PRINTF_FMT(2,0);
 
 /**
  * talloc_set_type - force the name of a pointer to a particular type
@@ -714,7 +715,8 @@ int talloc_increase_ref_count(const void *ptr);
  * without releasing the name. All of the memory is released when the ptr is
  * freed using talloc_free().
  */
-const char *talloc_set_name(const void *ptr, const char *fmt, ...) PRINTF_ATTRIBUTE(2,3);
+const char *talloc_set_name(const void *ptr, const char *fmt, ...)
+	PRINTF_FMT(2,3);
 
 /**
  * talloc_set_name_const - set a talloc pointer name to a string constant
@@ -745,7 +747,7 @@ void talloc_set_name_const(const void *ptr, const char *name);
  *   talloc_set_name(ptr, fmt, ....);
  */
 void *talloc_named(const void *context, size_t size, 
-		   const char *fmt, ...) PRINTF_ATTRIBUTE(3,4);
+		   const char *fmt, ...) PRINTF_FMT(3,4);
 
 /**
  * talloc_named_const - create a specifically-named talloc pointer
@@ -788,7 +790,7 @@ void *talloc_check_name(const void *ptr, const char *name);
  *
  *   talloc_named(NULL, 0, fmt, ...);
  */
-void *talloc_init(const char *fmt, ...) PRINTF_ATTRIBUTE(1,2);
+void *talloc_init(const char *fmt, ...) PRINTF_FMT(1,2);
 
 /**
  * talloc_total_size - get the bytes used by the pointer and its children

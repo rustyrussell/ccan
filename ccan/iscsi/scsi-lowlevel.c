@@ -201,7 +201,7 @@ struct scsi_task *scsi_cdb_readcapacity10(int lba, int pmi)
  * parse the data in blob and calcualte the size of a full readcapacity10 datain structure
  */
 static int scsi_readcapacity10_datain_getfullsize(struct scsi_task *task
-						  UNNEEDED_ATTRIBUTE)
+						  UNUSED)
 {
 	return 8;
 }

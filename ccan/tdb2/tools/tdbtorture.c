@@ -43,8 +43,8 @@ static int count_pipe;
 static union tdb_attribute log_attr;
 static union tdb_attribute seed_attr;
 
-#ifdef PRINTF_ATTRIBUTE
-static void tdb_log(struct tdb_context *tdb, enum tdb_debug_level level, void *private, const char *format, ...) PRINTF_ATTRIBUTE(4,5);
+#ifdef PRINTF_FMT
+static void tdb_log(struct tdb_context *tdb, enum tdb_debug_level level, void *private, const char *format, ...) PRINTF_FMT(4,5);
 #endif
 static void tdb_log(struct tdb_context *tdb, enum tdb_debug_level level, void *private, const char *format, ...)
 {

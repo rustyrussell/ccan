@@ -80,7 +80,7 @@ struct tdb_context;
 
 /* FIXME: Make typesafe */
 typedef int (*tdb_traverse_func)(struct tdb_context *, TDB_DATA, TDB_DATA, void *);
-typedef void (*tdb_logfn_t)(struct tdb_context *, enum tdb_debug_level, void *priv, const char *, ...) PRINTF_ATTRIBUTE(4, 5);
+typedef void (*tdb_logfn_t)(struct tdb_context *, enum tdb_debug_level, void *priv, const char *, ...) PRINTF_FMT(4, 5);
 typedef uint64_t (*tdb_hashfn_t)(const void *key, size_t len, uint64_t seed,
 				 void *priv);
 

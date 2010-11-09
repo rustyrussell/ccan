@@ -268,7 +268,7 @@ int iscsi_logout_async(struct iscsi_context *iscsi, iscsi_command_cb cb, void *p
 	return 0;
 }
 
-int iscsi_process_logout_reply(struct iscsi_context *iscsi, struct iscsi_pdu *pdu, const unsigned char *hdr, int size UNNEEDED_ATTRIBUTE)
+int iscsi_process_logout_reply(struct iscsi_context *iscsi, struct iscsi_pdu *pdu, const unsigned char *hdr, int size UNUSED)
 {
 	iscsi->is_loggedin = 0;
 	pdu->callback(iscsi, ISCSI_STATUS_GOOD, NULL, pdu->private_data);

@@ -4,95 +4,111 @@
 
 #if HAVE_ATTRIBUTE_COLD
 /**
- * COLD_ATTRIBUTE - a function is unlikely to be called.
+ * COLD - a function is unlikely to be called.
  *
  * Used to mark an unlikely code path and optimize appropriately.
  * It is usually used on logging or error routines.
  *
  * Example:
- * static void COLD_ATTRIBUTE moan(const char *reason)
+ * static void COLD moan(const char *reason)
  * {
  *	fprintf(stderr, "Error: %s (%s)\n", reason, strerror(errno));
  * }
  */
-#define COLD_ATTRIBUTE __attribute__((cold))
+#define COLD __attribute__((cold))
 #else
-#define COLD_ATTRIBUTE
+#define COLD
 #endif
 
 #if HAVE_ATTRIBUTE_PRINTF
 /**
- * PRINTF_ATTRIBUTE - a function takes printf-style arguments
+ * PRINTF_FMT - a function takes printf-style arguments
  * @nfmt: the 1-based number of the function's format argument.
  * @narg: the 1-based number of the function's first variable argument.
  *
  * This allows the compiler to check your parameters as it does for printf().
  *
  * Example:
- * void PRINTF_ATTRIBUTE(2,3) my_printf(const char *prefix,
- *					const char *fmt, ...);
+ * void PRINTF_FMT(2,3) my_printf(const char *prefix, const char *fmt, ...);
  */
-#define PRINTF_ATTRIBUTE(nfmt, narg) \
+#define PRINTF_FMT(nfmt, narg) \
 	__attribute__((format(__printf__, nfmt, narg)))
 #else
-#define PRINTF_ATTRIBUTE(nfmt, narg)
+#define PRINTF_FMT(nfmt, narg)
 #endif
 
 #if HAVE_ATTRIBUTE_CONST
 /**
- * IDEMPOTENT_ATTRIBUTE - a function's return depends only on its argument
+ * IDEMPOTENT - a function's return depends only on its argument
  *
  * This allows the compiler to assume that the function will return the exact
  * same value for the exact same arguments.  This implies that the function
  * must not use global variables, or dereference pointer arguments.
  */
-#define IDEMPOTENT_ATTRIBUTE __attribute__((const))
+#define IDEMPOTENT __attribute__((const))
 #else
-#define IDEMPOTENT_ATTRIBUTE
+#define IDEMPOTENT
 #endif
 
 #if HAVE_ATTRIBUTE_UNUSED
 /**
- * UNNEEDED_ATTRIBUTE - a parameter/variable/function may not be needed
+ * UNNEEDED - a variable/function may not be needed
  *
- * This suppresses warnings about unused variables or parameters, but tells
+ * This suppresses warnings about unused variables or functions, but tells
  * the compiler that if it is unused it need not emit it into the source code.
  *
  * Example:
  * // With some preprocessor options, this is unnecessary.
- * static UNNEEDED_ATTRIBUTE int counter;
+ * static UNNEEDED int counter;
  *
  * // With some preprocessor options, this is unnecessary.
- * static UNNEEDED_ATTRIBUTE void add_to_counter(int add)
+ * static UNNEEDED void add_to_counter(int add)
  * {
  *	counter += add;
  * }
  */
-#define UNNEEDED_ATTRIBUTE __attribute__((unused))
+#define UNNEEDED __attribute__((unused))
 
 #if HAVE_ATTRIBUTE_USED
 /**
- * NEEDED_ATTRIBUTE - a parameter/variable/function is needed
+ * NEEDED - a variable/function is needed
  *
- * This suppresses warnings about unused variables or parameters, but tells
+ * This suppresses warnings about unused variables or functions, but tells
  * the compiler that it must exist even if it (seems) unused.
  *
  * Example:
  *	// Even if this is unused, these are vital for debugging.
- *	static UNNEEDED_ATTRIBUTE int counter;
- *	static UNNEEDED_ATTRIBUTE void dump_counter(void)
+ *	static NEEDED int counter;
+ *	static NEEDED void dump_counter(void)
  *	{
  *		printf("Counter is %i\n", counter);
  *	}
  */
-#define NEEDED_ATTRIBUTE __attribute__((used))
+#define NEEDED __attribute__((used))
 #else
 /* Before used, unused functions and vars were always emitted. */
-#define NEEDED_ATTRIBUTE __attribute__((unused))
+#define NEEDED __attribute__((unused))
 #endif
+
+/**
+ * UNUSED - a parameter is unused
+ *
+ * Some compilers (eg. gcc with -W or -Wunused) warn about unused
+ * function parameters.  This suppresses such warnings and indicates
+ * to the reader that it's deliberate.
+ *
+ * Example:
+ *	// This is used as a callback, so needs to have this prototype.
+ *	static int some_callback(void *unused UNUSED)
+ *	{
+ *		return 0;
+ *	}
+ */
+#define UNUSED __attribute__((unused))
 #else
-#define UNNEEDED_ATTRIBUTE
-#define NEEDED_ATTRIBUTE
+#define UNNEEDED
+#define NEEDED
+#define UNUSED
 #endif
 
 #if HAVE_BUILTIN_CONSTANT_P

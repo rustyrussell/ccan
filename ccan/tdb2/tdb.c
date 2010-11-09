@@ -10,7 +10,7 @@ struct tdb_data tdb_null = { .dptr = NULL, .dsize = 0 };
 /* all contexts, to ensure no double-opens (fcntl locks don't nest!) */
 static struct tdb_context *tdbs = NULL;
 
-PRINTF_ATTRIBUTE(4, 5) static void
+PRINTF_FMT(4, 5) static void
 null_log_fn(struct tdb_context *tdb,
 	    enum tdb_debug_level level, void *priv,
 	    const char *fmt, ...)

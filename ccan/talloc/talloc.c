@@ -664,7 +664,7 @@ int talloc_unlink(const void *context, void *ptr)
 /*
   add a name to an existing pointer - va_list version
 */
-static inline const char *talloc_set_name_v(const void *ptr, const char *fmt, va_list ap) PRINTF_ATTRIBUTE(2,0);
+static inline const char *talloc_set_name_v(const void *ptr, const char *fmt, va_list ap) PRINTF_FMT(2,0);
 
 static inline const char *talloc_set_name_v(const void *ptr, const char *fmt, va_list ap)
 {

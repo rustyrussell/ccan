@@ -151,7 +151,7 @@ struct tdb_context *tdb_open(const char *name, int hash_size, int tdb_flags,
 }
 
 /* a default logging function */
-static void null_log_fn(struct tdb_context *tdb, enum tdb_debug_level level, const char *fmt, ...) PRINTF_ATTRIBUTE(3, 4);
+static void null_log_fn(struct tdb_context *tdb, enum tdb_debug_level level, const char *fmt, ...) PRINTF_FMT(3, 4);
 static void null_log_fn(struct tdb_context *tdb, enum tdb_debug_level level, const char *fmt, ...)
 {
 }
