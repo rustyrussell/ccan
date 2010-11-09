@@ -31,7 +31,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <poll.h>
-#include "libnfs.h"
+#include <ccan/nfs/nfs.h>
 
 struct client {
        char *server;

@@ -29,10 +29,10 @@
 #include <utime.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include "libnfs.h"
+#include "nfs.h"
 #include "libnfs-raw.h"
-#include "libnfs-raw-mount.h"
-#include "libnfs-raw-nfs.h"
+#include "rpc/mount.h"
+#include "rpc/nfs.h"
 
 struct nfsfh {
        struct nfs_fh3 fh;

@@ -18,10 +18,10 @@
 #include <stdio.h>
 #include <errno.h>
 #include <rpc/xdr.h>
-#include "libnfs.h"
+#include "nfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
-#include "libnfs-raw-nfsacl.h"
+#include "rpc/nfsacl.h"
 
 
 int rpc_nfsacl_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)

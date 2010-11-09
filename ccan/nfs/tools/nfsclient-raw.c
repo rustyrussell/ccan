@@ -25,9 +25,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <poll.h>
-#include "libnfs.h"
-#include "libnfs-raw.h"
-#include "libnfs-raw-mount.h"
+#include <ccan/nfs/nfs.h>
+#include <ccan/nfs/libnfs-raw.h>
+#include <ccan/nfs/rpc/mount.h>
 
 struct client {
        char *server;

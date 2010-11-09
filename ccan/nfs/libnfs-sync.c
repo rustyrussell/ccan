@@ -29,10 +29,10 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <poll.h>
-#include "libnfs.h"
+#include "nfs.h"
 #include "libnfs-raw.h"
-#include "libnfs-raw-mount.h"
-#include "libnfs-raw-nfs.h"
+#include "rpc/mount.h"
+#include "rpc/nfs.h"
 
 struct sync_cb_data {
        int is_finished;

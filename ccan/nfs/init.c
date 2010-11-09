@@ -23,7 +23,7 @@
 #include <strings.h>
 #include <rpc/xdr.h>
 #include "dlinklist.h"
-#include "libnfs.h"
+#include "nfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
 

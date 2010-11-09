@@ -17,10 +17,10 @@
 
 #include <stdio.h>
 #include <rpc/xdr.h>
-#include "libnfs.h"
+#include "nfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
-#include "libnfs-raw-portmap.h"
+#include "rpc/portmap.h"
 
 
 int rpc_pmap_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)

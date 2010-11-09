@@ -33,7 +33,7 @@
 #include <sys/statvfs.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include "libnfs.h"
+#include <ccan/nfs/nfs.h>
 #include <rpc/rpc.h>            /* for authunix_create() */
 
 struct client {

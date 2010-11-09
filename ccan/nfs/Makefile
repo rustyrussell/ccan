@@ -1,79 +1,79 @@
 CC=gcc
-CFLAGS=-g -O0 -Wall -W -I. "-D_U_=__attribute__((unused))" -D_FILE_OFFSET_BITS=64
+CFLAGS=-g -O0 -Wall -W -I../.. "-D_U_=__attribute__((unused))" -D_FILE_OFFSET_BITS=64
 LIBS=
 
 LIBNFS_OBJ = libnfs-raw-mount.o libnfs-raw-portmap.o libnfs-raw-nfs.o libnfs-raw-nfsacl.o mount.o nfs.o nfsacl.o portmap.o pdu.o init.o socket.o libnfs.o libnfs-sync.o
 
-all: nfsclient-raw nfsclient-async nfsclient-sync
+all: tools/nfsclient-raw tools/nfsclient-async tools/nfsclient-sync
 
-nfsclient-async: nfsclient-async.c libnfs.a
-	$(CC) -o $@ nfsclient-async.c libnfs.a $(LIBS)
+tools/nfsclient-async: tools/nfsclient-async.c libnfs.a
+	$(CC) $(CFLAGS) -o $@ tools/nfsclient-async.c libnfs.a $(LIBS)
 
-nfsclient-sync: nfsclient-sync.c libnfs.a
-	$(CC) -o $@ nfsclient-sync.c libnfs.a $(LIBS)
+tools/nfsclient-sync: tools/nfsclient-sync.c libnfs.a
+	$(CC) $(CFLAGS) -o $@ tools/nfsclient-sync.c libnfs.a $(LIBS)
 
-nfsclient-raw: nfsclient-raw.c libnfs.a
-	$(CC) -o $@ nfsclient-raw.c libnfs.a $(LIBS)
+tools/nfsclient-raw: tools/nfsclient-raw.c libnfs.a
+	$(CC) $(CFLAGS) -o $@ tools/nfsclient-raw.c libnfs.a $(LIBS)
 
 libnfs.a: $(LIBNFS_OBJ)
 	@echo Creating library $@
 	ar r libnfs.a $(LIBNFS_OBJ) 
 	ranlib libnfs.a
 
-libnfs-raw-mount.h: mount.x
+rpc/mount.h: rpc/mount.x
 	@echo Generating $@
-	rpcgen -h mount.x > libnfs-raw-mount.h
+	rpcgen -h rpc/mount.x > $@
 
-libnfs-raw-mount.c: mount.x
+libnfs-raw-mount.c: rpc/mount.x
 	@echo Generating $@
-	rpcgen -c mount.x | sed -e "s/#include \"mount.h\"/#include \"libnfs-raw-mount.h\"/" > libnfs-raw-mount.c
+	rpcgen -c rpc/mount.x > libnfs-raw-mount.c
 
-libnfs-raw-mount.o: libnfs-raw-mount.c libnfs-raw-mount.h
+libnfs-raw-mount.o: libnfs-raw-mount.c rpc/mount.h
 	@echo Compiling $@
 	gcc -g -c libnfs-raw-mount.c -o $@
 
-libnfs-raw-nfs.h: nfs.x
+rpc/nfs.h: rpc/nfs.x
 	@echo Generating $@
-	rpcgen -h nfs.x > libnfs-raw-nfs.h
+	rpcgen -h rpc/nfs.x > $@
 
-libnfs-raw-nfs.c: nfs.x
+libnfs-raw-nfs.c: rpc/nfs.x
 	@echo Generating $@
-	rpcgen -c nfs.x | sed -e "s/#include \"nfs.h\"/#include \"libnfs-raw-nfs.h\"/" > libnfs-raw-nfs.c
+	rpcgen -c rpc/nfs.x > $@
 
-libnfs-raw-nfs.o: libnfs-raw-nfs.c libnfs-raw-nfs.h
+libnfs-raw-nfs.o: libnfs-raw-nfs.c rpc/nfs.h
 	@echo Compiling $@
 	gcc -g -c libnfs-raw-nfs.c -o $@
 
-libnfs-raw-nfsacl.h: nfsacl.x
+rpc/nfsacl.h: rpc/nfsacl.x
 	@echo Generating $@
-	rpcgen -h nfsacl.x > libnfs-raw-nfsacl.h
+	rpcgen -h rpc/nfsacl.x > $@
 
-libnfs-raw-nfsacl.c: nfsacl.x
+libnfs-raw-nfsacl.c: rpc/nfsacl.x
 	@echo Generating $@
-	rpcgen -c nfsacl.x | sed -e "s/#include \"nfsacl.h\"/#include \"libnfs-raw-nfsacl.h\"/" > libnfs-raw-nfsacl.c
+	rpcgen -c rpc/nfsacl.x > $@
 
-libnfs-raw-nfsacl.o: libnfs-raw-nfsacl.c libnfs-raw-nfsacl.h
+libnfs-raw-nfsacl.o: libnfs-raw-nfsacl.c rpc/nfsacl.h
 	@echo Compiling $@
 	gcc -g -c libnfs-raw-nfsacl.c -o $@
 
-libnfs-raw-portmap.h: portmap.x
+rpc/portmap.h: rpc/portmap.x
 	@echo Generating $@
-	rpcgen -h portmap.x > libnfs-raw-portmap.h
+	rpcgen -h rpc/portmap.x > $@
 
-libnfs-raw-portmap.c: portmap.x
+libnfs-raw-portmap.c: rpc/portmap.x
 	@echo Generating $@
-	rpcgen -c portmap.x | sed -e "s/#include \"portmap.h\"/#include \"libnfs-raw-portmap.h\"/" > libnfs-raw-portmap.c
+	rpcgen -c rpc/portmap.x > $@
 
-libnfs-raw-portmap.o: libnfs-raw-portmap.c libnfs-raw-portmap.h
+libnfs-raw-portmap.o: libnfs-raw-portmap.c rpc/portmap.h
 	@echo Compiling $@
 	gcc -g -c libnfs-raw-portmap.c -o $@
 
 clean:
 	rm -f *.o
 	rm -f *.a
-	rm -f libnfs-raw-mount.h libnfs-raw-mount.c
-	rm -f libnfs-raw-nfs.h libnfs-raw-nfs.c
-	rm -f libnfs-raw-nfsacl.h libnfs-raw-nfsacl.c
-	rm -f libnfs-raw-portmap.h libnfs-raw-portmap.c
-	rm -f nfsclient-raw nfsclient-async nfsclient-sync
+	rm -f rpc/mount.h libnfs-raw-mount.c
+	rm -f rpc/nfs.h libnfs-raw-nfs.c
+	rm -f rpc/nfsacl.h libnfs-raw-nfsacl.c
+	rm -f rpc/portmap.h libnfs-raw-portmap.c
+	rm -f tools/nfsclient-raw tools/nfsclient-async tools/nfsclient-sync
 

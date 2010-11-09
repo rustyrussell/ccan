@@ -19,10 +19,10 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <rpc/xdr.h>
-#include "libnfs.h"
+#include "nfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
-#include "libnfs-raw-nfs.h"
+#include "rpc/nfs.h"
 
 
 

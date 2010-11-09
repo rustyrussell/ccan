@@ -25,7 +25,7 @@
 #include <rpc/xdr.h>
 #include <arpa/inet.h>
 #include <sys/ioctl.h>
-#include "libnfs.h"
+#include "nfs.h"
 #include "libnfs-raw.h"
 #include "libnfs-private.h"
 #include "dlinklist.h"
