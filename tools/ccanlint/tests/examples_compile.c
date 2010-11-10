@@ -142,7 +142,7 @@ static char *start_main(char *ret, const char *why)
 static char *add_func(char *others, const char *line)
 {
 	const char *p, *end = strchr(line, '(') - 1;
-	while (isblank(*end)) {
+	while (isspace(*end)) {
 		end--;
 		if (end == line)
 			return others;
@@ -185,7 +185,7 @@ static bool looks_internal(char **lines, char **why)
 		const char *line = lines[i] + strspn(lines[i], " \t");
 		unsigned len = strspn(line, IDENT_CHARS);
 
-		if (!line[0] || isblank(line[0]) || strstarts(line, "//"))
+		if (!line[0] || isspace(line[0]) || strstarts(line, "//"))
 			continue;
 
 		/* The winners. */
@@ -342,7 +342,7 @@ static char *mangle(struct manifest *m, char **lines)
 		} else {
 			/* Character at start of line, with ( and no ;
 			 * == function start.  Ignore comments. */
-			if (!isblank(lines[i][0])
+			if (!isspace(lines[i][0])
 			    && strchr(lines[i], '(')
 			    && !strchr(lines[i], ';')
 			    && !strstr(lines[i], "//")) {
