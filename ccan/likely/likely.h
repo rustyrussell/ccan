@@ -39,7 +39,7 @@
  * code path and optimize appropriately; see likely() above.
  *
  * See Also:
- *	likely(), likely_stats(), UNLIKELY_FUNCTION_ATTRIBUTE (compiler.h)
+ *	likely(), likely_stats(), COLD (compiler.h)
  *
  * Example:
  *	// Prints a warning if we overflow.

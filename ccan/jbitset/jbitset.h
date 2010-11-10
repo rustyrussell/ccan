@@ -33,7 +33,7 @@ struct jbitset {
 	JError_t err;
 	const char *errstr;
 };
-const char *COLD_ATTRIBUTE jbit_error_(struct jbitset *set);
+const char *COLD jbit_error_(struct jbitset *set);
 
 /**
  * jbit_error - test for an error in the a previous jbit_ operation.

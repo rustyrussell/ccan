@@ -82,7 +82,7 @@ typedef struct TDB_DATA {
 typedef struct tdb_context TDB_CONTEXT;
 
 typedef int (*tdb_traverse_func)(struct tdb_context *, TDB_DATA, TDB_DATA, void *);
-typedef void (*tdb_log_func)(struct tdb_context *, enum tdb_debug_level, const char *, ...) PRINTF_ATTRIBUTE(3, 4);
+typedef void (*tdb_log_func)(struct tdb_context *, enum tdb_debug_level, const char *, ...) PRINTF_FMT(3, 4);
 typedef unsigned int (*tdb_hash_func)(TDB_DATA *key);
 
 struct tdb_logging_context {

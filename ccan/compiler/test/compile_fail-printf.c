@@ -1,6 +1,6 @@
 #include <ccan/compiler/compiler.h>
 
-static void PRINTF_ATTRIBUTE(2,3) my_printf(int x, const char *fmt, ...)
+static void PRINTF_FMT(2,3) my_printf(int x, const char *fmt, ...)
 {
 }
 

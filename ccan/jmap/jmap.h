@@ -44,7 +44,7 @@ struct jmap {
 	unsigned long acc_index;
 	const char *funcname;
 };
-const char *COLD_ATTRIBUTE jmap_error_(struct jmap *map);
+const char *COLD jmap_error_(struct jmap *map);
 
 /* Debugging checks. */
 static inline void jmap_debug_add_access(const struct jmap *map,

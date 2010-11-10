@@ -41,8 +41,8 @@ static int loopnum;
 static int count_pipe;
 static struct tdb_logging_context log_ctx;
 
-#ifdef PRINTF_ATTRIBUTE
-static void tdb_log(struct tdb_context *tdb, enum tdb_debug_level level, const char *format, ...) PRINTF_ATTRIBUTE(3,4);
+#ifdef PRINTF_FMT
+static void tdb_log(struct tdb_context *tdb, enum tdb_debug_level level, const char *format, ...) PRINTF_FMT(3,4);
 #endif
 static void tdb_log(struct tdb_context *tdb, enum tdb_debug_level level, const char *format, ...)
 {

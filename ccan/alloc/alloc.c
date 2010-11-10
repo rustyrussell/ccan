@@ -527,9 +527,8 @@ static bool huge_allocated(struct header *head, unsigned long offset)
 }
 
 /* They want something really big.  Aim for contiguous pages (slow). */
-static COLD_ATTRIBUTE
-void *huge_alloc(void *pool, unsigned long poolsize,
-		 unsigned long size, unsigned long align)
+static COLD void *huge_alloc(void *pool, unsigned long poolsize,
+			     unsigned long size, unsigned long align)
 {
 	struct header *head = pool;
 	struct huge_alloc *ha;
@@ -647,7 +646,7 @@ done:
 	return (char *)pool + ha->off;
 }
 
-static COLD_ATTRIBUTE void
+static COLD void
 huge_free(struct header *head, unsigned long poolsize, void *free)
 {
 	unsigned long i, off, pgnum, free_off = (char *)free - (char *)head;
@@ -687,8 +686,7 @@ huge_free(struct header *head, unsigned long poolsize, void *free)
 	alloc_free(head, poolsize, ha);
 }
 
-static COLD_ATTRIBUTE unsigned long
-huge_size(struct header *head, void *p)
+static COLD unsigned long huge_size(struct header *head, void *p)
 {
 	unsigned long i, off = (char *)p - (char *)head;
 	struct huge_alloc *ha;
