@@ -23,9 +23,12 @@ static void take_any(struct any *any)
 
 int main(int argc, char *argv[])
 {
+#if HAVE_TYPEOF
+	/* Otherwise we get unused warnings for these. */
 	struct foo *foo = NULL;
 	struct bar *bar = NULL;
 	struct baz *baz = NULL;
+#endif
 	struct other *arg = NULL;
 
 	take_any(cast_if_any(struct any *, arg, foo,

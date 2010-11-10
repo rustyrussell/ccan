@@ -51,7 +51,7 @@
 #define check_types_match(expr1, expr2)		\
 	((typeof(expr1) *)0 != (typeof(expr2) *)0)
 #else
-#include "build_assert/build_assert.h"
+#include <ccan/build_assert/build_assert.h>
 /* Without typeof, we can only test the sizes. */
 #define check_type(expr, type)					\
 	EXPR_BUILD_ASSERT(sizeof(expr) == sizeof(type))

@@ -51,12 +51,13 @@
  *		return i;
  *	}
  */
-#ifdef HAVE_TYPEOF
+#if HAVE_TYPEOF
 #define container_of_var(member_ptr, var, member) \
 	container_of(member_ptr, typeof(*var), member)
 #else
-#define container_of_var(member_ptr, var, member) \
-	((void *)((char *)(member_ptr) - offsetof(containing_type, member)))
+#define container_of_var(member_ptr, var, member)		\
+	((void *)((char *)(member_ptr)				\
+		  - ((char *)&(var)->member - (char *)(var))))
 #endif
 
 #endif /* CCAN_CONTAINER_OF_H */

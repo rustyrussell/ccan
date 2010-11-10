@@ -14,6 +14,9 @@ int main(int argc, char *argv[])
 #ifdef FAIL
 	/* b is a char, but intp is an int * */
 	foop = container_of_var(intp, foop, b);
+#if !HAVE_TYPEOF
+#error "Unfortunately we don't fail if we don't have typeof."
+#endif
 #else
 	foop = NULL;
 #endif

@@ -218,7 +218,7 @@ static void unbreak_backslash_broken_lines(struct token_list *tl, tok_message_qu
 	txt.item[txt.size] = 0;
 	
 	//convert the line start offsets to pointers
-	array_for(i, tlines, *i = txt.item + (size_t)*i);
+	array_for_t(i, tlines, const char *, *i = txt.item + (size_t)*i);
 	
 	tl->olines = olines.item;
 	tl->olines_size = olines.size;
@@ -401,7 +401,7 @@ struct token_list *tokenize(const char *orig, size_t orig_size,
 	s = tl->txt;
 	e = s + tl->txt_size;
 	
-	array_appends(array, {
+	array_appends_t(array, struct token, {
 		.type = TOK_STARTLINE,
 		.txt = s,
 		.txt_size = 0

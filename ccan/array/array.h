@@ -97,11 +97,14 @@
 //We do just fine by ourselves
 #define array_pop(array) ((array).item[--(array).size])
 
+#define array_for_t(var, array, type, ...) do {type *var=(void*)(array).item; size_t _r=(array).size, _i=0; for (;_r--;_i++, var++) { __VA_ARGS__ ;} } while(0)
+
+#define array_appends_t(array, type, ...) do {type __src[] = {__VA_ARGS__}; array_append_items(array, __src, sizeof(__src)/sizeof(*__src));} while(0)
 
 #if HAVE_TYPEOF==1
-#define array_appends(array, ...) do {typeof((*(array).item)) __src[] = {__VA_ARGS__}; array_append_items(array, __src, sizeof(__src)/sizeof(*__src));} while(0)
+#define array_appends(array, ...) array_appends_t(array, typeof((*(array).item)), __VA_ARGS__))
 #define array_prepends(array, ...) do {typeof((*(array).item)) __src[] = {__VA_ARGS__}; array_prepend_items(array, __src, sizeof(__src)/sizeof(*__src));} while(0)
-#define array_for(var, array, ...) do {typeof(*(array).item) *var=(void*)(array).item; size_t _r=(array).size, _i=0; for (;_r--;_i++, var++) { __VA_ARGS__ ;} } while(0)
+#define array_for(var, array, ...) array_for_t(var, array, typeof(*(array).item), __VA_ARGS__)
 #define array_rof(var, array, ...) do {typeof(*(array).item) *var=(void*)(array).item; size_t _i=(array).size, _r=0; var += _i; for (;_i--;_r++) { var--; __VA_ARGS__ ;} } while(0)
 #endif
 
