@@ -557,5 +557,5 @@ void score_file_error(struct score *score, struct ccan_file *f, unsigned line,
 	fe->file = f;
 	fe->line = line;
 	fe->error = error;
-	list_add(&score->per_file_errors, &fe->list);
+	list_add_tail(&score->per_file_errors, &fe->list);
 }
