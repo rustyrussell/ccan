@@ -11,9 +11,13 @@
 
 #define REGISTER_TEST(name, ...) 
 
-/* 1 == Describe results for partial failures.
-   2 == Describe gory details.
-   3 == Describe every action. */
+/* 0 == Describe failed tests.
+   1 == Describe results for partial failures.
+   2 == One line per test, plus details of failures.
+
+   Mainly for debugging ccanlint:
+   3 == Describe every object built.
+   4 == Describe every action. */
 extern int verbose;
 
 struct manifest {

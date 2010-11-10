@@ -1,6 +1,7 @@
 /*
  * ccanlint: assorted checks and advice for a ccan package
  * Copyright (C) 2008 Rusty Russell, Idris Soule
+ * Copyright (C) 2010 Rusty Russell, Idris Soule
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -409,7 +410,7 @@ int main(int argc, char *argv[])
 	opt_register_noarg("--summary|-s", opt_set_bool, &summary,
 			   "simply give one line summary");
 	opt_register_noarg("--verbose|-v", opt_inc_intval, &verbose,
-			   "verbose mode (can specify more than once)");
+			   "verbose mode (up to -vvvv)");
 	opt_register_arg("-x|--exclude <testname>", skip_test, NULL, NULL,
 			 "exclude <testname> (can be used multiple times)");
 	opt_register_arg("-t|--timeout <milleseconds>", opt_set_uintval,
@@ -429,9 +430,9 @@ int main(int argc, char *argv[])
 		dir = talloc_asprintf_append(NULL, "%s/%s", base_dir, dir);
 	if (dir != base_dir)
 		prefix = talloc_append_string(talloc_basename(NULL, dir), ": ");
-	if (verbose >= 2)
-		compile_verbose = true;
 	if (verbose >= 3)
+		compile_verbose = true;
+	if (verbose >= 4)
 		tools_verbose = true;
 
 	/* We move into temporary directory, so gcov dumps its files there. */
