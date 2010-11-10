@@ -106,8 +106,9 @@ static inline void list_head_init(struct list_head *h)
  *
  * The list_node does not need to be initialized; it will be overwritten.
  * Example:
- *	struct child *child;
+ *	struct child *child = malloc(sizeof(*child));
  *
+ *	child->name = "marvin";
  *	list_add(&parent->children, &child->list);
  *	parent->num_children++;
  */
