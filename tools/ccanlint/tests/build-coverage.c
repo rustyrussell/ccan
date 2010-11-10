@@ -81,7 +81,7 @@ static char *obj_list(const struct manifest *m, const char *modobjs)
 static char *lib_list(const struct manifest *m)
 {
 	unsigned int i, num;
-	char **libs = get_libs(m, ".", &num, &m->info_file->compiled);
+	char **libs = get_libs(m, m->dir, &num, &m->info_file->compiled);
 	char *ret = talloc_strdup(m, "");
 
 	for (i = 0; i < num; i++)

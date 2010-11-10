@@ -103,7 +103,7 @@ static char *obj_list(const struct manifest *m, struct ccan_file *f)
 static char *lib_list(const struct manifest *m)
 {
 	unsigned int i, num;
-	char **libs = get_libs(m, ".", &num, &m->info_file->compiled);
+	char **libs = get_libs(m, m->dir, &num, &m->info_file->compiled);
 	char *ret = talloc_strdup(m, "");
 
 	for (i = 0; i < num; i++)
@@ -542,4 +542,4 @@ struct ccanlint examples_compile = {
 	.can_run = can_run,
 };
 
-REGISTER_TEST(examples_compile, &has_examples, NULL);
+REGISTER_TEST(examples_compile, &has_examples, &build_objs, NULL);
