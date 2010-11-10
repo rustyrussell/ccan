@@ -82,12 +82,12 @@ static void check_has_info_documentation(struct manifest *m,
 		"CCAN modules use /**-style comments for documentation: the\n"
 		"overall documentation belongs in the _info metafile.\n";
 		has_info_documentation.handle = create_info_template_doc;
-	}
-	else if (!description) 
+	} else if (!description)  {
 		score->error = "_info file has no module description.\n\n"
 		"The lines after the first summary line in the _info file\n"
 		"documentation should describe the purpose and use of the\n"
 		"overall package\n";
+	}
 }
 
 struct ccanlint has_info_documentation = {

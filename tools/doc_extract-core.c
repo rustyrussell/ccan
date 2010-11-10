@@ -52,13 +52,20 @@ static bool is_blank(const char *line)
 
 static bool is_section(const char *line, bool one_liner)
 {
-	unsigned int len;
+	unsigned int len = 0;
 
-	if (!isupper(line[0]))
-		return false;
-	len = strspn(line, IDENT_CHARS" ");
-	if (line[len] != ':')
-		return false;
+	/* Any number of upper case words separated by spaces, ending in : */
+	for (;;) {
+		if (!isupper(line[len]))
+			return false;
+		len += strspn(line+len, IDENT_CHARS);
+		if (line[len] == ':')
+			break;
+
+		if (line[len] != ' ')
+			return false;
+		len++;
+	}
 
 	/* If it can be a one-liner, a space is sufficient.*/
 	if (one_liner)
