@@ -488,7 +488,8 @@ static void build_examples(struct manifest *m, bool keep,
 				err = "Standalone compile and"
 					" adding headers both failed";
 		} else {
-			err = talloc_asprintf("Standalone example:\n"
+			err = talloc_asprintf(score,
+					      "Standalone example:\n"
 					      "%s\n"
 					      "Errors: %s\n\n"
 					      "Adding headers, wrappers:\n"
