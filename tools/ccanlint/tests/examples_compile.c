@@ -431,6 +431,23 @@ static struct ccan_file *mangle_example(struct manifest *m,
 	return f;
 }
 
+/* If an example has expected output, it's complete and should not be
+ * included in future examples. */
+static bool has_expected_output(char **lines)
+{
+	unsigned int i;
+
+	for (i = 0; lines[i]; i++) {
+		char *p = lines[i] + strspn(lines[i], " \t");
+		if (!strstarts(p, "//"))
+			continue;
+		p += strspn(p, "/ ");
+		if (strncasecmp(p, "given", strlen("given")) == 0)
+			return true;
+	}
+	return false;
+}
+
 static void build_examples(struct manifest *m, bool keep,
 			   unsigned int *timeleft, struct score *score)
 {
@@ -450,31 +467,35 @@ static void build_examples(struct manifest *m, bool keep,
 		strip_leading_whitespace(get_ccan_file_lines(i));
 		ret = compile(i, m, i, keep);
 		if (!ret) {
-			prev = get_ccan_file_lines(i);
+			char **lines = get_ccan_file_lines(i);
+			if (!has_expected_output(lines))
+				prev = lines;
 			score->score++;
 			continue;
 		}
 
-		/* Try standalone. */
-		mangle1 = mangle_example(m, i, get_ccan_file_lines(i), keep);
-		ret1 = compile(i, m, mangle1, keep);
-		if (!ret1) {
-			prev = get_ccan_file_lines(i);
-			score->score++;
-			continue;
-		}
-
-		/* Try combining with previous (successful) example... */
 		if (prev) {
 			char **new = combine(i, get_ccan_file_lines(i), prev);
 
 			mangle2 = mangle_example(m, i, new, keep);
 			ret2 = compile(i, m, mangle2, keep);
 			if (!ret2) {
-				prev = new;
+				if (!has_expected_output(new))
+					prev = new;
 				score->score++;
 				continue;
 			}
+		}
+
+		/* Try standalone. */
+		mangle1 = mangle_example(m, i, get_ccan_file_lines(i), keep);
+		ret1 = compile(i, m, mangle1, keep);
+		if (!ret1) {
+			char **lines = get_ccan_file_lines(i);
+			if (!has_expected_output(lines))
+				prev = lines;
+			score->score++;
+			continue;
 		}
 
 		score->pass = false;
