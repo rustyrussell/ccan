@@ -153,7 +153,8 @@ static bool run_test(struct ccanlint *i,
 		struct file_error *f;
 
 		if (score->error)
-			printf("%s:\n", score->error);
+			printf("%s%s\n", score->error,
+			       list_empty(&score->per_file_errors) ? "" : ":");
 
 		list_for_each(&score->per_file_errors, f, list) {
 			if (f->line)
