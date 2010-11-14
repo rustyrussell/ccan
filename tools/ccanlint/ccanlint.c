@@ -151,6 +151,7 @@ static bool run_test(struct ccanlint *i,
 
 	if ((!quiet && !score->pass) || verbose) {
 		struct file_error *f;
+		unsigned int lines = 1;
 
 		if (score->error)
 			printf("%s%s\n", score->error,
@@ -164,6 +165,10 @@ static bool run_test(struct ccanlint *i,
 				printf("%s:%s\n", f->file->fullname, f->error);
 			else
 				printf("%s\n", f->error);
+			if (verbose < 2 && ++lines > 5) {
+				printf("... more (use -vv to see them all)\n");
+				break;
+			}
 		}
 		if (!quiet && !score->pass && i->handle)
 			i->handle(m, score);
