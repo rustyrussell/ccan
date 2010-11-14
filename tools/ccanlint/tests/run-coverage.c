@@ -125,7 +125,6 @@ static void do_run_coverage_tests(struct manifest *m,
 	struct ccan_file *i;
 	char *cmdout;
 	char *covcmd;
-	bool ok;
 	bool full_gcov = (verbose > 1);
 	struct list_head *list;
 
@@ -137,20 +136,20 @@ static void do_run_coverage_tests(struct manifest *m,
 	/* Run them all. */
 	foreach_ptr(list, &m->run_tests, &m->api_tests) {
 		list_for_each(list, i, list) {
-			cmdout = run_command(m, timeleft, i->cov_compiled);
-			if (cmdout) {
+			if (run_command(score, timeleft, &cmdout,
+					"%s", i->cov_compiled)) {
+				covcmd = talloc_asprintf_append(covcmd, " %s",
+								i->fullname);
+			} else {
 				score->error = "Running test with coverage";
 				score_file_error(score, i, 0, cmdout);
 				return;
 			}
-			covcmd = talloc_asprintf_append(covcmd, " %s",
-							i->fullname);
 		}
 	}
 
 	/* Now run gcov: we want output even if it succeeds. */
-	cmdout = run_with_timeout(m, covcmd, &ok, timeleft);
-	if (!ok) {
+	if (!run_command(score, timeleft, &cmdout, "%s", covcmd)) {
 		score->error = talloc_asprintf(score, "Running gcov: %s",
 					       cmdout);
 		return;

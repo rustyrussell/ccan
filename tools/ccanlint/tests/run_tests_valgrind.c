@@ -19,10 +19,10 @@
 static const char *can_run_vg(struct manifest *m)
 {
 	unsigned int timeleft = default_timeout_ms;
-	char *output = run_command(m, &timeleft,
-				   "valgrind -q --error-exitcode=0 true");
+	char *output;
 
-	if (output)
+	if (!run_command(m, &timeleft, &output,
+			 "valgrind -q --error-exitcode=0 true"))
 		return talloc_asprintf(m, "No valgrind support: %s", output);
 	return NULL;
 }
@@ -41,14 +41,14 @@ static void do_run_tests_vg(struct manifest *m,
 	foreach_ptr(list, &m->run_tests, &m->api_tests) {
 		list_for_each(list, i, list) {
 			score->total++;
-			cmdout = run_command(m, timeleft,
-				     "valgrind -q --error-exitcode=100 %s",
-				     i->compiled);
-			if (cmdout) {
+			if (run_command(score, timeleft, &cmdout,
+					"valgrind -q --error-exitcode=100 %s",
+					i->compiled)) {
+				score->score++;
+			} else {
 				score->error = "Running under valgrind";
 				score_file_error(score, i, 0, cmdout);
-			} else
-				score->score++;
+			}
 		}
 	}
 

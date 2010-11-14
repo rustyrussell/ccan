@@ -18,9 +18,9 @@
 static const char *can_run_coverage(struct manifest *m)
 {
 	unsigned int timeleft = default_timeout_ms;
-	char *output = run_command(m, &timeleft, "gcov -h");
+	char *output;
 
-	if (output)
+	if (!run_command(m, &timeleft, &output, "gcov -h"))
 		return talloc_asprintf(m, "No gcov support: %s", output);
 	return NULL;
 }
@@ -37,9 +37,8 @@ static bool build_module_objs_with_coverage(struct manifest *m, bool keep,
 		char *fullfile = talloc_asprintf(m, "%s/%s", m->dir, i->name);
 
 		i->cov_compiled = maybe_temp_file(m, "", keep, fullfile);
-		err = compile_object(m, fullfile, ccan_dir, "",
-				     i->cov_compiled);
-		if (err) {
+		if (!compile_object(m, fullfile, ccan_dir, "",
+				    i->cov_compiled, &err)) {
 			score_file_error(score, i, 0, err);
 			talloc_free(i->cov_compiled);
 			i->cov_compiled = NULL;
@@ -95,19 +94,18 @@ static char *cov_compile(const void *ctx,
 			 const char *modobjs,
 			 bool keep)
 {
-	char *errmsg;
+	char *output;
 
 	file->cov_compiled = maybe_temp_file(ctx, "", keep, file->fullname);
-	errmsg = compile_and_link(ctx, file->fullname, ccan_dir,
-				  obj_list(m, modobjs),
-				  COVERAGE_CFLAGS,
-				  lib_list(m), file->cov_compiled);
-	if (errmsg) {
+	if (!compile_and_link(ctx, file->fullname, ccan_dir,
+			      obj_list(m, modobjs),
+			      COVERAGE_CFLAGS,
+			      lib_list(m), file->cov_compiled, &output)) {
 		talloc_free(file->cov_compiled);
 		file->cov_compiled = NULL;
-		return errmsg;
+		return output;
 	}
-
+	talloc_free(output);
 	return NULL;
 }
 

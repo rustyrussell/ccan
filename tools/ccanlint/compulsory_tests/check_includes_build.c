@@ -40,7 +40,7 @@ static void check_includes_build(struct manifest *m,
 				 unsigned int *timeleft, struct score *score)
 {
 	char *contents;
-	char *tmpsrc, *tmpobj;
+	char *tmpsrc, *tmpobj, *cmdout;
 	int fd;
 	struct ccan_file *mainh = main_header(m);
 
@@ -57,14 +57,13 @@ static void check_includes_build(struct manifest *m,
 		err(1, "writing to temporary file %s", tmpsrc);
 	close(fd);
 
-	score->error = compile_object(m, tmpsrc, ccan_dir, "", tmpobj);
-	if (score->error) {
-		score->error = talloc_asprintf(score,
-				       "#include of the main header file:\n%s",
-				       score->error);
-	} else {
+	if (compile_object(score, tmpsrc, ccan_dir, "", tmpobj, &cmdout)) {
 		score->pass = true;
 		score->score = score->total;
+	} else {
+		score->error = talloc_asprintf(score,
+				       "#include of the main header file:\n%s",
+				       cmdout);
 	}
 }
 

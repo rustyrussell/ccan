@@ -143,35 +143,35 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 	return ret;
 }
 
-/* Returns output if command fails. */
-char *run_command(const void *ctx, unsigned int *time_ms, const char *fmt, ...)
+/* Tallocs *output off ctx; return false if command fails. */
+bool run_command(const void *ctx, unsigned int *time_ms, char **output,
+		 const char *fmt, ...)
 {
 	va_list ap;
-	char *cmd, *contents;
+	char *cmd;
 	bool ok;
 	unsigned int default_time = default_timeout_ms;
 
 	if (!time_ms)
 		time_ms = &default_time;
-	else if (*time_ms == 0)
-		return talloc_strdup(ctx, "\n== TIMED OUT ==\n");
+	else if (*time_ms == 0) {
+		*output = talloc_strdup(ctx, "\n== TIMED OUT ==\n");
+		return false;
+	}
 
 	va_start(ap, fmt);
 	cmd = talloc_vasprintf(ctx, fmt, ap);
 	va_end(ap);
 
-	contents = run_with_timeout(ctx, cmd, &ok, time_ms);
-	if (ok) {
-		talloc_free(contents);
-		return NULL;
-	}
-
-	if (!contents)
+	*output = run_with_timeout(ctx, cmd, &ok, time_ms);
+	if (ok)
+		return true;
+	if (!*output)
 		err(1, "Problem running child");
 	if (*time_ms == 0)
-		contents = talloc_asprintf_append(contents,
-						  "\n== TIMED OUT ==\n");
-	return contents;
+		*output = talloc_asprintf_append(*output,
+						 "\n== TIMED OUT ==\n");
+	return false;
 }
 
 static int unlink_all(char *dir)

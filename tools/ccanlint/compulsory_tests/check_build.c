@@ -50,7 +50,7 @@ static void check_use_build(struct manifest *m,
 			    unsigned int *timeleft, struct score *score)
 {
 	char *contents;
-	char *tmpfile;
+	char *tmpfile, *cmdout;
 	char *basename = talloc_asprintf(m, "%s/example.c", m->dir);
 	int fd;
 
@@ -71,12 +71,14 @@ static void check_use_build(struct manifest *m,
 		err(1, "Failure writing to temporary file %s", tmpfile);
 	close(fd);
 
-	score->error = compile_and_link(m, tmpfile, ccan_dir, obj_list(m), "",
-					lib_list(m),
-					maybe_temp_file(m, "", keep, tmpfile));
-	if (!score->error) {
+	if (compile_and_link(score, tmpfile, ccan_dir, obj_list(m), "",
+			     lib_list(m),
+			     maybe_temp_file(m, "", keep, tmpfile),
+			     &cmdout)) {
 		score->pass = true;
 		score->score = score->total;
+	} else {
+		score->error = cmdout;
 	}
 }
 

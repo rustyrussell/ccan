@@ -39,7 +39,7 @@ lines_from_cmd(const void *ctx, unsigned int *num, char *format, ...)
  * temp_file helps here. */
 static char *compile_info(const void *ctx, const char *dir)
 {
-	char *info_c_file, *info, *ccandir, *compiled;
+	char *info_c_file, *info, *ccandir, *compiled, *output;
 	size_t len;
 	int fd;
 
@@ -63,9 +63,9 @@ static char *compile_info(const void *ctx, const char *dir)
 
 	compiled = maybe_temp_file(ctx, "", false, "info");
 	if (compile_and_link(ctx, info_c_file, ccandir, "", "", "",
-			     compiled))
-		return NULL;
-	return compiled;
+			     compiled, &output))
+		return compiled;
+	return NULL;
 }
 
 static char **get_one_deps(const void *ctx, const char *dir,

@@ -71,14 +71,14 @@ static char *compile(const void *ctx,
 	char *errmsg;
 
 	file->compiled = maybe_temp_file(ctx, "", keep, file->fullname);
-	errmsg = compile_and_link(ctx, file->fullname, ccan_dir,
-				  obj_list(m, link_with_module),
-				  fail ? "-DFAIL" : "",
-				  lib_list(m), file->compiled);
-	if (errmsg) {
+	if (!compile_and_link(ctx, file->fullname, ccan_dir,
+			      obj_list(m, link_with_module),
+			      fail ? "-DFAIL" : "",
+			      lib_list(m), file->compiled, &errmsg)) {
 		talloc_free(file->compiled);
 		return errmsg;
 	}
+	talloc_free(errmsg);
 	return NULL;
 }
 

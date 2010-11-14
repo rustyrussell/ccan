@@ -35,11 +35,11 @@ static void do_run_tests(struct manifest *m,
 	foreach_ptr(list, &m->run_tests, &m->api_tests) {
 		list_for_each(list, i, list) {
 			score->total++;
-			cmdout = run_command(m, timeleft, i->compiled);
-			if (cmdout)
-				score_file_error(score, i, 0, cmdout);
-			else
+			if (run_command(m, timeleft, &cmdout, "%s",
+					i->compiled))
 				score->score++;
+			else
+				score_file_error(score, i, 0, cmdout);
 		}
 	}
 

@@ -31,16 +31,17 @@ static void check_objs_build(struct manifest *m,
 		score->total = 0;
 
 	list_for_each(&m->c_files, i, list) {
-		char *err;
+		char *output;
 		char *fullfile = talloc_asprintf(m, "%s/%s", m->dir, i->name);
 
 		i->compiled = maybe_temp_file(m, "", keep, fullfile);
-		err = compile_object(m, fullfile, ccan_dir, "", i->compiled);
-		if (err) {
+		if (!compile_object(m, fullfile, ccan_dir, "", i->compiled,
+				    &output)) {
 			talloc_free(i->compiled);
 			score->error = "Compiling object files";
-			score_file_error(score, i, 0, err);
+			score_file_error(score, i, 0, output);
 		}
+		talloc_free(output);
 	}
 	if (!score->error) {
 		score->pass = true;

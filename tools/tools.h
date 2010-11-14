@@ -1,6 +1,7 @@
 #ifndef CCAN_TOOLS_H
 #define CCAN_TOOLS_H
 #include <stdbool.h>
+#include <ccan/compiler/compiler.h>
 #include "config.h"
 
 #ifndef CCAN_COMPILER
@@ -36,7 +37,10 @@ extern bool tools_verbose;
 char *talloc_basename(const void *ctx, const char *dir);
 char *talloc_dirname(const void *ctx, const char *dir);
 char *talloc_getcwd(const void *ctx);
-char *run_command(const void *ctx, unsigned int *time_ms, const char *fmt, ...);
+bool PRINTF_FMT(4,5) run_command(const void *ctx,
+				 unsigned int *time_ms,
+				 char **output,
+				 const char *fmt, ...);
 char *run_with_timeout(const void *ctx, const char *cmd,
 		       bool *ok, unsigned *timeout_ms);
 char *temp_dir(const void *ctx);
@@ -52,15 +56,14 @@ extern bool compile_verbose;
 /* Compile multiple object files into a single. */
 char *link_objects(const void *ctx, const char *basename, bool in_pwd,
 		   const char *objs, char **errmsg);
-/* Compile a single C file to an object file.  Returns errmsg if fails. */
-char *compile_object(const void *ctx, const char *cfile, const char *ccandir,
-		     const char *extra_cflags,
-		     const char *outfile);
-/* Compile and link single C file, with object files, libs, etc.  NULL on
- * success, error output on fail. */
-char *compile_and_link(const void *ctx, const char *cfile, const char *ccandir,
-		       const char *objs, const char *extra_cflags,
-		       const char *libs, const char *outfile);
+/* Compile a single C file to an object file.  Returns false if fails. */
+bool compile_object(const void *ctx, const char *cfile, const char *ccandir,
+		    const char *extra_cflags,
+		    const char *outfile, char **output);
+/* Compile and link single C file, with object files, libs, etc. */
+bool compile_and_link(const void *ctx, const char *cfile, const char *ccandir,
+		      const char *objs, const char *extra_cflags,
+		      const char *libs, const char *outfile, char **output);
 
 /* If in_pwd is false, return a file int temp_dir, otherwise a local file. */
 char *maybe_temp_file(const void *ctx, const char *extension, bool in_pwd,
