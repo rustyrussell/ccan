@@ -24,13 +24,14 @@ static const char explain[]
 
 static void fix_name(char *name)
 {
-	unsigned int i, j;
+	unsigned int i;
 
-	for (i = j = 0; name[i]; i++) {
-		if (isalnum(name[i]) || name[i] == '_')
-			name[j++] = toupper(name[i]);
+	for (i = 0; name[i]; i++) {
+		if (isalnum(name[i]))
+			name[i] = toupper(name[i]);
+		else
+			name[i] = '_';
 	}
-	name[j] = '\0';
 }
 
 static void handle_idem(struct manifest *m, struct score *score)
@@ -44,10 +45,10 @@ static void handle_idem(struct manifest *m, struct score *score)
 
 		/* Main header gets CCAN_FOO_H, others CCAN_FOO_XXX_H */
 		if (strstarts(e->file->name, m->basename)
-		    || strlen(e->file->name) != strlen(m->basename) + 2)
+		    || strlen(e->file->name) == strlen(m->basename) + 2)
 			name = talloc_asprintf(score, "CCAN_%s_H", m->basename);
 		else
-			name = talloc_asprintf(score, "CCAN_%s_%s_H",
+			name = talloc_asprintf(score, "CCAN_%s_%s",
 					       m->basename, e->file->name);
 		fix_name(name);
 
@@ -183,13 +184,13 @@ static void check_idempotent(struct manifest *m,
 	struct ccan_file *f;
 
 	list_for_each(&m->h_files, f, list) {
-		if (!check_idem(f, score)) {
+		if (!check_idem(f, score))
 			score->error = "Headers are not idempotent";
-			return;
-		}
 	}
-	score->pass = true;
-	score->score = score->total;
+	if (!score->error) {
+		score->pass = true;
+		score->score = score->total;
+	}
 }
 
 struct ccanlint idempotent = {
