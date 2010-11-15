@@ -9,6 +9,9 @@
  * Note: various files are generated from the XDR descriptions in the rpc/
  * directory using rpcgen.
  *
+ * Author: Ronnie Sahlberg <ronniesahlberg@gmail.com>
+ * License: GPL
+ *
  * Example:
  * #include <ccan/nfs/nfs.h>
  * #include <err.h>

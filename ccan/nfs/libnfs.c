@@ -29,6 +29,7 @@
 #include <utime.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <ccan/compiler/compiler.h>
 #include "nfs.h"
 #include "libnfs-raw.h"
 #include "rpc/mount.h"
@@ -45,7 +46,7 @@ struct nfsdir {
        struct nfsdirent *current;
 };
 
-void nfs_free_nfsdir(struct nfsdir *nfsdir)
+static void nfs_free_nfsdir(struct nfsdir *nfsdir)
 {
 	while (nfsdir->entries) {
 		struct nfsdirent *dirent = nfsdir->entries->next;
@@ -155,7 +156,7 @@ void nfs_destroy_context(struct nfs_context *nfs)
 	free(nfs);
 }
 
-void free_nfs_cb_data(struct nfs_cb_data *data)
+static void free_nfs_cb_data(struct nfs_cb_data *data)
 {
 	if (data->saved_path != NULL) {
 		free(data->saved_path);
@@ -179,7 +180,7 @@ void free_nfs_cb_data(struct nfs_cb_data *data)
 
 
 
-static void nfs_mount_10_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_mount_10_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
@@ -473,7 +474,7 @@ int nfs_mount_async(struct nfs_context *nfs, const char *server, const char *exp
  * Functions to first look up a path, component by component, and then finally call a specific function once
  * the filehandle for the final component is found.
  */
-static void nfs_lookup_path_1_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_lookup_path_1_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
@@ -596,7 +597,7 @@ static int nfs_lookuppath_async(struct nfs_context *nfs, const char *path, nfs_c
 /*
  * Async stat()
  */
-static void nfs_stat_1_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_stat_1_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	GETATTR3res *res;
 	struct nfs_cb_data *data = private_data;
@@ -668,7 +669,7 @@ int nfs_stat_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *p
 /*
  * Async open()
  */
-static void nfs_open_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_open_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	ACCESS3res *res;
 	struct nfs_cb_data *data = private_data;
@@ -781,7 +782,7 @@ int nfs_open_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb c
 /*
  * Async pread()
  */
-static void nfs_pread_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_pread_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
@@ -851,7 +852,7 @@ int nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, n
 /*
  * Async pwrite()
  */
-static void nfs_pwrite_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_pwrite_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
@@ -972,7 +973,7 @@ int nfs_fstat_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, voi
 /*
  * Async fsync()
  */
-static void nfs_fsync_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_fsync_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
@@ -1032,7 +1033,7 @@ int nfs_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, voi
 /*
  * Async ftruncate()
  */
-static void nfs_ftruncate_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_ftruncate_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
@@ -1135,7 +1136,7 @@ int nfs_truncate_async(struct nfs_context *nfs, const char *path, nfs_off_t leng
 /*
  * Async mkdir()
  */
-static void nfs_mkdir_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_mkdir_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	MKDIR3res *res;
 	struct nfs_cb_data *data = private_data;
@@ -1216,7 +1217,7 @@ int nfs_mkdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *
 /*
  * Async rmdir()
  */
-static void nfs_rmdir_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_rmdir_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	RMDIR3res *res;
 	struct nfs_cb_data *data = private_data;
@@ -1296,7 +1297,7 @@ int nfs_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *
 /*
  * Async creat()
  */
-static void nfs_create_2_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_create_2_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	LOOKUP3res *res;
 	struct nfs_cb_data *data = private_data;
@@ -1344,7 +1345,7 @@ static void nfs_create_2_cb(struct rpc_context *rpc _U_, int status, void *comma
 
 
 
-static void nfs_creat_1_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_creat_1_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	CREATE3res *res;
 	struct nfs_cb_data *data = private_data;
@@ -1428,7 +1429,7 @@ int nfs_creat_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb 
 /*
  * Async unlink()
  */
-static void nfs_unlink_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_unlink_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	REMOVE3res *res;
 	struct nfs_cb_data *data = private_data;
@@ -1509,7 +1510,7 @@ int nfs_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void 
 /*
  * Async opendir()
  */
-static void nfs_opendir_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_opendir_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	READDIR3res *res;
 	struct nfs_cb_data *data = private_data;
@@ -1626,7 +1627,7 @@ int nfs_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void
 }
 
 
-struct nfsdirent *nfs_readdir(struct nfs_context *nfs _U_, struct nfsdir *nfsdir)
+struct nfsdirent *nfs_readdir(struct nfs_context *nfs UNUSED, struct nfsdir *nfsdir)
 {
 	struct nfsdirent *nfsdirent = nfsdir->current;
 
@@ -1637,7 +1638,7 @@ struct nfsdirent *nfs_readdir(struct nfs_context *nfs _U_, struct nfsdir *nfsdir
 }
 
 
-void nfs_closedir(struct nfs_context *nfs _U_, struct nfsdir *nfsdir)
+void nfs_closedir(struct nfs_context *nfs UNUSED, struct nfsdir *nfsdir)
 {
 	nfs_free_nfsdir(nfsdir);
 }
@@ -1659,7 +1660,7 @@ struct lseek_cb_data {
        void *private_data;
 };
 
-static void nfs_lseek_1_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_lseek_1_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	GETATTR3res *res;
 	struct lseek_cb_data *data = private_data;
@@ -1730,7 +1731,7 @@ int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offs
 /*
  * Async statvfs()
  */
-static void nfs_statvfs_1_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_statvfs_1_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	FSSTAT3res *res;
 	struct nfs_cb_data *data = private_data;
@@ -1799,7 +1800,7 @@ int nfs_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void
 /*
  * Async readlink()
  */
-static void nfs_readlink_1_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_readlink_1_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	READLINK3res *res;
 	struct nfs_cb_data *data = private_data;
@@ -1856,7 +1857,7 @@ int nfs_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb, voi
 /*
  * Async chmod()
  */
-static void nfs_chmod_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_chmod_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
@@ -1955,7 +1956,7 @@ int nfs_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode, nfs
 /*
  * Async chown()
  */
-static void nfs_chown_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_chown_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
@@ -2092,7 +2093,7 @@ int nfs_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int 
 /*
  * Async utimes()
  */
-static void nfs_utimes_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_utimes_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	struct nfs_cb_data *data = private_data;
 	struct nfs_context *nfs = data->nfs;
@@ -2208,7 +2209,7 @@ int nfs_utime_async(struct nfs_context *nfs, const char *path, struct utimbuf *t
 /*
  * Async access()
  */
-static void nfs_access_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_access_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	ACCESS3res *res;
 	struct nfs_cb_data *data = private_data;
@@ -2321,7 +2322,7 @@ static void free_nfs_symlink_data(void *mem)
 	free(data);
 }
 
-static void nfs_symlink_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_symlink_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	SYMLINK3res *res;
 	struct nfs_cb_data *data = private_data;
@@ -2447,7 +2448,7 @@ static void free_nfs_rename_data(void *mem)
 	free(data);
 }
 
-static void nfs_rename_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_rename_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	RENAME3res *res;
 	struct nfs_cb_data *data = private_data;
@@ -2603,7 +2604,7 @@ static void free_nfs_link_data(void *mem)
 	free(data);
 }
 
-static void nfs_link_cb(struct rpc_context *rpc _U_, int status, void *command_data, void *private_data)
+static void nfs_link_cb(struct rpc_context *rpc UNUSED, int status, void *command_data, void *private_data)
 {
 	LINK3res *res;
 	struct nfs_cb_data *data = private_data;

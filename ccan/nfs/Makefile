@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-g -O0 -Wall -W -I../.. "-D_U_=__attribute__((unused))"
+CFLAGS=-g -O0 -Wall -W -I../..
 LIBS=
 
 LIBNFS_OBJ = libnfs-raw-mount.o libnfs-raw-portmap.o libnfs-raw-nfs.o libnfs-raw-nfsacl.o mount.o nfs.o nfsacl.o portmap.o pdu.o init.o socket.o libnfs.o libnfs-sync.o

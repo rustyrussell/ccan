@@ -19,6 +19,7 @@
 #include <strings.h>
 #include <rpc/xdr.h>
 #include <rpc/rpc_msg.h>
+#include <ccan/compiler/compiler.h>
 #include "dlinklist.h"
 #include "nfs.h"
 #include "libnfs-raw.h"
@@ -69,7 +70,7 @@ struct rpc_pdu *rpc_allocate_pdu(struct rpc_context *rpc, int program, int versi
 	return pdu;
 }
 
-void rpc_free_pdu(struct rpc_context *rpc _U_, struct rpc_pdu *pdu)
+void rpc_free_pdu(struct rpc_context *rpc UNUSED, struct rpc_pdu *pdu)
 {
 	if (pdu->outdata.data != NULL) {
 		free(pdu->outdata.data);

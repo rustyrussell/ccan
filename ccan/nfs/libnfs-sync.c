@@ -29,6 +29,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <poll.h>
+#include <ccan/compiler/compiler.h>
 #include "nfs.h"
 #include "libnfs-raw.h"
 #include "rpc/mount.h"
@@ -75,7 +76,7 @@ static void wait_for_reply(struct nfs_context *nfs, struct sync_cb_data *cb_data
 /*
  * connect to the server and mount the export
  */
-static void mount_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void mount_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -108,7 +109,7 @@ int nfs_mount_sync(struct nfs_context *nfs, const char *server, const char *expo
 /*
  * stat()
  */
-static void stat_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void stat_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -146,7 +147,7 @@ int nfs_stat_sync(struct nfs_context *nfs, const char *path, struct stat *st)
 /*
  * open()
  */
-static void open_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void open_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 	struct nfsfh *fh, **nfsfh;
@@ -187,7 +188,7 @@ int nfs_open_sync(struct nfs_context *nfs, const char *path, int mode, struct nf
 /*
  * pread()
  */
-static void pread_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void pread_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 	char *buffer;
@@ -231,7 +232,7 @@ int nfs_read_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, ch
 /*
  * close()
  */
-static void close_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void close_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 	cb_data->is_finished = 1;
@@ -286,7 +287,7 @@ int nfs_fstat_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st
 /*
  * pwrite()
  */
-static void pwrite_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void pwrite_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 	cb_data->is_finished = 1;
@@ -326,7 +327,7 @@ int nfs_write_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, c
 /*
  * fsync()
  */
-static void fsync_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void fsync_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 	cb_data->is_finished = 1;
@@ -360,7 +361,7 @@ int nfs_fsync_sync(struct nfs_context *nfs, struct nfsfh *nfsfh)
 /*
  * ftruncate()
  */
-static void ftruncate_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void ftruncate_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 	cb_data->is_finished = 1;
@@ -393,7 +394,7 @@ int nfs_ftruncate_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t l
 /*
  * truncate()
  */
-static void truncate_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void truncate_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 	cb_data->is_finished = 1;
@@ -428,7 +429,7 @@ int nfs_truncate_sync(struct nfs_context *nfs, const char *path, nfs_off_t lengt
 /*
  * mkdir()
  */
-static void mkdir_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void mkdir_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 	cb_data->is_finished = 1;
@@ -463,7 +464,7 @@ int nfs_mkdir_sync(struct nfs_context *nfs, const char *path)
 /*
  * rmdir()
  */
-static void rmdir_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void rmdir_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 	cb_data->is_finished = 1;
@@ -496,7 +497,7 @@ int nfs_rmdir_sync(struct nfs_context *nfs, const char *path)
 /*
  * creat()
  */
-static void creat_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void creat_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 	struct nfsfh *fh, **nfsfh;
@@ -537,7 +538,7 @@ int nfs_creat_sync(struct nfs_context *nfs, const char *path, int mode, struct n
 /*
  * unlink()
  */
-static void unlink_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void unlink_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -571,7 +572,7 @@ int nfs_unlink_sync(struct nfs_context *nfs, const char *path)
 /*
  * opendir()
  */
-static void opendir_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void opendir_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 	struct nfsdir *dir, **nfsdir;
@@ -610,7 +611,7 @@ int nfs_opendir_sync(struct nfs_context *nfs, const char *path, struct nfsdir **
 /*
  * lseek()
  */
-static void lseek_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void lseek_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -649,7 +650,7 @@ int nfs_lseek_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offse
 /*
  * statvfs()
  */
-static void statvfs_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void statvfs_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -688,7 +689,7 @@ int nfs_statvfs_sync(struct nfs_context *nfs, const char *path, struct statvfs *
 /*
  * readlink()
  */
-static void readlink_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void readlink_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -732,7 +733,7 @@ int nfs_readlink_sync(struct nfs_context *nfs, const char *path, char *buf, int 
 /*
  * chmod()
  */
-static void chmod_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void chmod_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -767,7 +768,7 @@ int nfs_chmod_sync(struct nfs_context *nfs, const char *path, int mode)
 /*
  * fchmod()
  */
-static void fchmod_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void fchmod_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -802,7 +803,7 @@ int nfs_fchmod_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode)
 /*
  * chown()
  */
-static void chown_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void chown_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -834,7 +835,7 @@ int nfs_chown_sync(struct nfs_context *nfs, const char *path, int uid, int gid)
 /*
  * fchown()
  */
-static void fchown_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void fchown_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -868,7 +869,7 @@ int nfs_fchown_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int g
 /*
  * utimes()
  */
-static void utimes_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void utimes_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -902,7 +903,7 @@ int nfs_utimes_sync(struct nfs_context *nfs, const char *path, struct timeval *t
 /*
  * utime()
  */
-static void utime_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void utime_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -937,7 +938,7 @@ int nfs_utime_sync(struct nfs_context *nfs, const char *path, struct utimbuf *ti
 /*
  * access()
  */
-static void access_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void access_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -971,7 +972,7 @@ int nfs_access_sync(struct nfs_context *nfs, const char *path, int mode)
 /*
  * symlink()
  */
-static void symlink_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void symlink_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -1005,7 +1006,7 @@ int nfs_symlink_sync(struct nfs_context *nfs, const char *oldpath, const char *n
 /*
  * rename()
  */
-static void rename_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void rename_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
@@ -1039,7 +1040,7 @@ int nfs_rename_sync(struct nfs_context *nfs, const char *oldpath, const char *ne
 /*
  * link()
  */
-static void link_cb(int status, struct nfs_context *nfs _U_, void *data, void *private_data)
+static void link_cb(int status, struct nfs_context *nfs UNUSED, void *data, void *private_data)
 {
 	struct sync_cb_data *cb_data = private_data;
 
