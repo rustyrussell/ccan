@@ -347,7 +347,17 @@ static int coalesce(struct tdb_context *tdb,
 	if (remove_from_list(tdb, b_off, off, r) == -1)
 		goto err;
 
-	/* We have to drop this to avoid deadlocks. */
+	r = tdb_access_write(tdb, off, sizeof(*r), true);
+	if (!r)
+		goto err;
+
+	/* We have to drop this to avoid deadlocks, so make sure record
+	 * doesn't get coalesced by someone else! */
+	r->magic_and_meta = TDB_COALESCING_MAGIC | zone_bits;
+	r->data_len = end - off - sizeof(struct tdb_used_record);
+	if (tdb_access_commit(tdb, r) != 0)
+		goto err;
+
 	tdb_unlock_free_bucket(tdb, b_off);
 
 	if (add_free_record(tdb, zone_bits, off, end - off) == -1)
