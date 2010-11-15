@@ -71,6 +71,8 @@ static struct test tests[] = {
 	  "return __builtin_expect(argc == 1, 1) ? 0 : 1;" },
 	{ "HAVE_BUILTIN_FFSL", INSIDE_MAIN, NULL,
 	  "return __builtin_ffsl(0L) == 0 ? 0 : 1;" },
+	{ "HAVE_BUILTIN_FFSLL", INSIDE_MAIN, NULL,
+	  "return __builtin_ffsll(0LL) == 0 ? 0 : 1;" },
 	{ "HAVE_BUILTIN_POPCOUNTL", INSIDE_MAIN, NULL,
 	  "return __builtin_popcountl(255L) == 8 ? 0 : 1;" },
 	{ "HAVE_BUILTIN_TYPES_COMPATIBLE_P", INSIDE_MAIN, NULL,
