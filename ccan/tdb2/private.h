@@ -65,6 +65,7 @@ typedef uint64_t tdb_off_t;
 #define TDB_VERSION ((uint64_t)(0x26011967 + 7))
 #define TDB_MAGIC ((uint64_t)0x1999)
 #define TDB_FREE_MAGIC ((~(uint64_t)TDB_MAGIC) << 6)
+#define TDB_COALESCING_MAGIC (0xBAD1DEA2FEEDULL << 6)
 #define TDB_HASH_MAGIC (0xA1ABE11A01092008ULL)
 #define TDB_RECOVERY_MAGIC (0xf53bc0e7U)
 #define TDB_RECOVERY_INVALID_MAGIC (0x0)

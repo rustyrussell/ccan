@@ -407,7 +407,8 @@ static tdb_off_t check_zone(struct tdb_context *tdb, tdb_off_t zone_off,
 		p = tdb_get(tdb, off, &pad, sizeof(pad));
 		if (!p)
 			return TDB_OFF_ERR;
-		if (frec_magic(&p->f) == TDB_FREE_MAGIC) {
+		if (frec_magic(&p->f) == TDB_FREE_MAGIC
+		    || frec_magic(&p->f) == TDB_COALESCING_MAGIC) {
 			if (frec_zone_bits(&p->f) != zhdr.zone_bits) {
 				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 					 "tdb_check: Bad free zone bits %u"
@@ -416,9 +417,6 @@ static tdb_off_t check_zone(struct tdb_context *tdb, tdb_off_t zone_off,
 					 (long long)off);
 				return TDB_OFF_ERR;
 			}
-			/* This record is free! */
-			if (!append(free, num_free, off))
-				return TDB_OFF_ERR;
 			len = sizeof(p->u) + p->f.data_len;
 			if (off + len > zone_off + (1ULL << zhdr.zone_bits)) {
 				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
@@ -427,6 +425,10 @@ static tdb_off_t check_zone(struct tdb_context *tdb, tdb_off_t zone_off,
 					 (long long)len, (long long)off);
 				return TDB_OFF_ERR;
 			}
+			/* This record is free! */
+			if (frec_magic(&p->f) == TDB_FREE_MAGIC
+			    && !append(free, num_free, off))
+				return TDB_OFF_ERR;
 		} else {
 			uint64_t klen, dlen, extra;
 

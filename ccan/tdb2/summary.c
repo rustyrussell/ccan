@@ -89,7 +89,7 @@ static tdb_len_t summarize_zone(struct tdb_context *tdb, tdb_off_t zone_off,
 		p = tdb_get(tdb, off, &pad, sizeof(pad));
 		if (!p)
 			return TDB_OFF_ERR;
-		if (frec_magic(&p->f) == TDB_FREE_MAGIC) {
+		if (rec_magic(&p->u) != TDB_MAGIC) {
 			len = p->f.data_len;
 			tally_add(free, len);
 			bucketlen[size_to_bucket(frec_zone_bits(&p->f), len)]++;
