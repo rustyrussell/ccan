@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 	client.export = EXPORT;
 	client.is_finished = 0;
 	char buf[16];
-	off_t offset;
+	nfs_off_t offset;
 	struct statvfs svfs;
 
 	nfs = nfs_init_context();

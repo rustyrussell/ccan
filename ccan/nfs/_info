@@ -1,0 +1,58 @@
+#include <string.h>
+#include <stdio.h>
+
+/**
+ * nfs - nfs client library
+ *
+ * This code offers a POSIX-like interface directly to an NFS server.
+ *
+ * Note: various files are generated from the XDR descriptions in the rpc/
+ * directory using rpcgen.
+ *
+ * Example:
+ * #include <ccan/nfs/nfs.h>
+ * #include <err.h>
+ * #include <stdio.h>
+ * #include <sys/types.h>
+ * #include <sys/stat.h>
+ * #include <unistd.h>
+ *
+ * int main(int argc, char *argv[])
+ * {
+ *	struct nfs_context *nfs;
+ *	struct stat st;
+ *
+ *	if (argc != 4)
+ *		errx(1, "Usage: %s <serveraddr> <export> <filename>", argv[0]);
+ *	nfs = nfs_init_context();
+ *	if (!nfs)
+ *		err(1, "Initializing nfs context");
+ *
+ *	if (nfs_mount_sync(nfs, argv[1], argv[2]) != 0)
+ * 		errx(1, "Failed to mount nfs share: %s", nfs_get_error(nfs));
+ *
+ *	if (nfs_stat_sync(nfs, argv[3], &st) != 0)
+ *		errx(1, "Failed to stat(%s): %s", argv[3], nfs_get_error(nfs));
+ *
+ *	printf("Mode %04o\n", st.st_mode);
+ *	printf("Size %u\n", (int)st.st_size);
+ *	printf("Inode %u\n", (int)st.st_ino);
+ *
+ *	nfs_destroy_context(nfs);
+ *	printf("nfsclient finished\n");
+ *	return 0;
+ *}
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/compiler\n");
+		return 0;
+	}
+
+	return 1;
+}

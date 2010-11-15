@@ -37,7 +37,7 @@
 struct sync_cb_data {
        int is_finished;
        int status;
-       off_t offset;
+       nfs_off_t offset;
        void *return_data;
        int return_int;
 };
@@ -203,7 +203,7 @@ static void pread_cb(int status, struct nfs_context *nfs _U_, void *data, void *
 	memcpy(buffer, (char *)data, status);
 }
 
-int nfs_pread_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, char *buffer)
+int nfs_pread_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offset, size_t count, char *buffer)
 {
 	struct sync_cb_data cb_data;
 
@@ -298,7 +298,7 @@ static void pwrite_cb(int status, struct nfs_context *nfs _U_, void *data, void 
 	}
 }
 
-int nfs_pwrite_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, char *buf)
+int nfs_pwrite_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offset, size_t count, char *buf)
 {
 	struct sync_cb_data cb_data;
 
@@ -372,7 +372,7 @@ static void ftruncate_cb(int status, struct nfs_context *nfs _U_, void *data, vo
 	}
 }
 
-int nfs_ftruncate_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t length)
+int nfs_ftruncate_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t length)
 {
 	struct sync_cb_data cb_data;
 
@@ -405,7 +405,7 @@ static void truncate_cb(int status, struct nfs_context *nfs _U_, void *data, voi
 	}
 }
 
-int nfs_truncate_sync(struct nfs_context *nfs, const char *path, off_t length)
+int nfs_truncate_sync(struct nfs_context *nfs, const char *path, nfs_off_t length)
 {
 	struct sync_cb_data cb_data;
 
@@ -623,11 +623,11 @@ static void lseek_cb(int status, struct nfs_context *nfs _U_, void *data, void *
 	}
 
 	if (cb_data->return_data != NULL) {
-		memcpy(cb_data->return_data, data, sizeof(off_t));
+		memcpy(cb_data->return_data, data, sizeof(nfs_off_t));
 	}
 }
 
-int nfs_lseek_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, int whence, off_t *current_offset)
+int nfs_lseek_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offset, int whence, nfs_off_t *current_offset)
 {
 	struct sync_cb_data cb_data;
 

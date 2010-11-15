@@ -17,7 +17,10 @@
 /*
  * This is the highlevel interface to access NFS resources using a posix-like interface
  */
+#include <sys/types.h>
 #include <stdint.h>
+
+typedef uint64_t nfs_off_t;
 
 struct nfs_context;
 
@@ -226,14 +229,14 @@ int nfs_close_sync(struct nfs_context *nfs, struct nfsfh *nfsfh);
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, nfs_cb cb, void *private_data);
+int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offset, size_t count, nfs_cb cb, void *private_data);
 /*
  * Sync pread()
  * Function returns
  *    >=0 : numer of bytes read.
  * -errno : An error occured.
  */
-int nfs_pread_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, char *buf);
+int nfs_pread_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offset, size_t count, char *buf);
 
 
 
@@ -282,14 +285,14 @@ int nfs_read_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, ch
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, char *buf, nfs_cb cb, void *private_data);
+int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offset, size_t count, char *buf, nfs_cb cb, void *private_data);
 /*
  * Sync pwrite()
  * Function returns
  *    >=0 : numer of bytes written.
  * -errno : An error occured.
  */
-int nfs_pwrite_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, size_t count, char *buf);
+int nfs_pwrite_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offset, size_t count, char *buf);
 
 
 /*
@@ -330,18 +333,18 @@ int nfs_write_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, c
  *
  * When the callback is invoked, status indicates the result:
  *    >=0 : Success.
- *          data is off_t * for the current position.
+ *          data is nfs_off_t * for the current position.
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, int whence, nfs_cb cb, void *private_data);
+int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offset, int whence, nfs_cb cb, void *private_data);
 /*
  * Sync lseek()
  * Function returns
  *    >=0 : numer of bytes read.
  * -errno : An error occured.
  */
-int nfs_lseek_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t offset, int whence, off_t *current_offset);
+int nfs_lseek_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offset, int whence, nfs_off_t *current_offset);
 
 
 /*
@@ -385,14 +388,14 @@ int nfs_fsync_sync(struct nfs_context *nfs, struct nfsfh *nfsfh);
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_truncate_async(struct nfs_context *nfs, const char *path, off_t length, nfs_cb cb, void *private_data);
+int nfs_truncate_async(struct nfs_context *nfs, const char *path, nfs_off_t length, nfs_cb cb, void *private_data);
 /*
  * Sync truncate()
  * Function returns
  *      0 : Success
  * -errno : An error occured.
  */
-int nfs_truncate_sync(struct nfs_context *nfs, const char *path, off_t length);
+int nfs_truncate_sync(struct nfs_context *nfs, const char *path, nfs_off_t length);
 
 
 
@@ -411,14 +414,14 @@ int nfs_truncate_sync(struct nfs_context *nfs, const char *path, off_t length);
  * -errno : An error occured.
  *          data is the error string.
  */
-int nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t length, nfs_cb cb, void *private_data);
+int nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t length, nfs_cb cb, void *private_data);
 /*
  * Sync ftruncate()
  * Function returns
  *      0 : Success
  * -errno : An error occured.
  */
-int nfs_ftruncate_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, off_t length);
+int nfs_ftruncate_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t length);
 
 
 
@@ -907,4 +910,4 @@ int nfs_link_sync(struct nfs_context *nfs, const char *oldpath, const char *newp
 
 
 //qqq replace later with lseek(cur, 0)
-off_t nfs_get_current_offset(struct nfsfh *nfsfh);
+nfs_off_t nfs_get_current_offset(struct nfsfh *nfsfh);
