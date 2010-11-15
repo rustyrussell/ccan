@@ -256,29 +256,21 @@ static size_t adjust_size(size_t keylen, size_t datalen, bool want_extra)
 }
 
 /* If we have enough left over to be useful, split that off. */
-static int to_used_record(struct tdb_context *tdb,
-			  unsigned int zone_bits,
-			  tdb_off_t off,
-			  tdb_len_t needed,
-			  tdb_len_t total_len,
-			  tdb_len_t *actual)
+static size_t record_leftover(size_t keylen, size_t datalen,
+			      bool want_extra, size_t total_len)
 {
-	struct tdb_used_record used;
-	tdb_len_t leftover;
+	ssize_t leftover;
 
-	leftover = total_len - needed;
-	if (leftover < sizeof(struct tdb_free_record))
-		leftover = 0;
+	/* We might *want* extra, but not have it, so leftover is negative. */
+	leftover = total_len - adjust_size(keylen, datalen, want_extra);
+	if (leftover < (ssize_t)sizeof(struct tdb_free_record))
+		return 0;
 
-	*actual = total_len - leftover;
+	/* If we want extra anwyay, don't split unless we have 2x size. */
+	if (want_extra && leftover <= datalen / 2)
+		return 0;
 
-	if (leftover) {
-		if (add_free_record(tdb, zone_bits,
-				    off + sizeof(used) + *actual,
-				    total_len - needed))
-			return -1;
-	}
-	return 0;
+	return leftover;
 }
 
 /* Note: we unlock the current bucket if we coalesce or fail. */
@@ -373,12 +365,14 @@ static tdb_off_t lock_and_alloc(struct tdb_context *tdb,
 				tdb_off_t zone_off,
 				unsigned zone_bits,
 				tdb_off_t bucket,
-				size_t size,
-				tdb_len_t *actual)
+				size_t keylen, size_t datalen,
+				bool want_extra,
+				unsigned hashlow)
 {
 	tdb_off_t off, b_off,best_off;
 	struct tdb_free_record pad, best = { 0 }, *r;
 	double multiplier;
+	size_t size = keylen + datalen;
 
 again:
 	b_off = bucket_off(zone_off, bucket);
@@ -393,8 +387,12 @@ again:
 
 	best.data_len = -1ULL;
 	best_off = 0;
-	/* FIXME: Start with larger multiplier if we're growing. */
-	multiplier = 1.0;
+
+	/* Get slack if we're after extra. */
+	if (want_extra)
+		multiplier = 1.5;
+	else
+		multiplier = 1.0;
 
 	/* Walk the list to see if any are large enough, getting less fussy
 	 * as we go. */
@@ -421,7 +419,7 @@ again:
 		}
 
 		if (best.data_len < size * multiplier && best_off)
-			goto use_best;
+			break;
 
 		multiplier *= 1.01;
 
@@ -440,15 +438,34 @@ again:
 
 	/* If we found anything at all, use it. */
 	if (best_off) {
-	use_best:
+		struct tdb_used_record rec;
+		size_t leftover;
+
 		/* We're happy with this size: take it. */
 		if (remove_from_list(tdb, b_off, best_off, &best) != 0)
 			goto unlock_err;
+
+		leftover = record_leftover(keylen, datalen, want_extra,
+					   best.data_len);
+
+		/* We need to mark non-free before we drop lock, otherwise
+		 * coalesce() could try to merge it! */
+		if (set_header(tdb, &rec, keylen, datalen,
+			       best.data_len - leftover,
+			       hashlow, zone_bits) != 0)
+			goto unlock_err;
+
+		if (tdb_write_convert(tdb, best_off, &rec, sizeof(rec)) != 0)
+			goto unlock_err;
+
 		tdb_unlock_free_bucket(tdb, b_off);
 
-		if (to_used_record(tdb, zone_bits, best_off, size,
-				   best.data_len, actual)) {
-			return -1;
+		if (leftover) {
+			if (add_free_record(tdb, zone_bits,
+					    best_off + sizeof(rec)
+					    + best.data_len - leftover,
+					    leftover))
+				return TDB_OFF_ERR;
 		}
 		return best_off;
 	}
@@ -474,11 +491,17 @@ static bool next_zone(struct tdb_context *tdb)
 }
 
 /* Offset returned is within current zone (which it may alter). */
-static tdb_off_t get_free(struct tdb_context *tdb, size_t size,
-			  tdb_len_t *actual)
+static tdb_off_t get_free(struct tdb_context *tdb,
+			  size_t keylen, size_t datalen, bool want_extra,
+			  unsigned hashlow)
 {
 	tdb_off_t start_zone = tdb->zone_off, off;
 	bool wrapped = false;
+	size_t size = adjust_size(keylen, datalen, want_extra);
+
+	/* If they are growing, add 50% to get to higher bucket. */
+	if (want_extra)
+		size += datalen / 2;
 
 	/* FIXME: If we don't get a hit in the first bucket we want,
 	 * try changing zones for next time.  That should help wear
@@ -489,7 +512,7 @@ static tdb_off_t get_free(struct tdb_context *tdb, size_t size,
 
 		/* Shortcut for really huge allocations... */
 		if ((size >> tdb->zhdr.zone_bits) != 0)
-			continue;
+			goto next;
 
 		/* Start at exact size bucket, and search up... */
 		b = size_to_bucket(tdb->zhdr.zone_bits, size);
@@ -499,7 +522,8 @@ static tdb_off_t get_free(struct tdb_context *tdb, size_t size,
 			/* Try getting one from list. */
 			off = lock_and_alloc(tdb, tdb->zone_off,
 					     tdb->zhdr.zone_bits,
-					     b, size, actual);
+					     b, keylen, datalen, want_extra,
+					     hashlow);
 			if (off == TDB_OFF_ERR)
 				return TDB_OFF_ERR;
 			if (off != 0)
@@ -507,6 +531,7 @@ static tdb_off_t get_free(struct tdb_context *tdb, size_t size,
 			/* Didn't work.  Try next bucket. */
 		}
 
+	next:
 		/* Didn't work, try next zone, if it exists. */
 		if (!next_zone(tdb)) {
 			wrapped = true;
@@ -656,36 +681,18 @@ tdb_off_t alloc(struct tdb_context *tdb, size_t keylen, size_t datalen,
 		uint64_t hash, bool growing)
 {
 	tdb_off_t off;
-	tdb_len_t size, actual;
-	struct tdb_used_record rec;
 
 	/* We can't hold pointers during this: we could unmap! */
 	assert(!tdb->direct_access);
 
-	size = adjust_size(keylen, datalen, growing);
+	for (;;) {
+		off = get_free(tdb, keylen, datalen, growing, hash);
+		if (likely(off != 0))
+			break;
 
-again:
-	off = get_free(tdb, size, &actual);
-	if (unlikely(off == TDB_OFF_ERR))
-		return off;
-
-	if (unlikely(off == 0)) {
-		if (tdb_expand(tdb, size) == -1)
+		if (tdb_expand(tdb, adjust_size(keylen, datalen, growing)))
 			return TDB_OFF_ERR;
-		goto again;
 	}
 
-	/* Some supergiant values can't be encoded. */
-	/* FIXME: Check before, and limit actual in get_free. */
-	if (set_header(tdb, &rec, keylen, datalen, actual, hash,
-		       tdb->zhdr.zone_bits) != 0) {
-		add_free_record(tdb, tdb->zhdr.zone_bits, off,
-				sizeof(rec) + actual);
-		return TDB_OFF_ERR;
-	}
-
-	if (tdb_write_convert(tdb, off, &rec, sizeof(rec)) != 0)
-		return TDB_OFF_ERR;
-	
 	return off;
 }
