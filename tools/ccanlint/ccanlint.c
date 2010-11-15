@@ -59,7 +59,7 @@ static void indent_print(const char *string)
 
 bool ask(const char *question)
 {
-	char reply[2];
+	char reply[80];
 
 	printf("%s ", question);
 	fflush(stdout);
