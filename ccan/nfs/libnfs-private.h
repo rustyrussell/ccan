@@ -1,3 +1,5 @@
+#ifndef CCAN_NFS_LIBNFS_PRIVATE_H
+#define CCAN_NFS_LIBNFS_PRIVATE_H
 /* 
    Copyright (C) by Ronnie Sahlberg <ronniesahlberg@gmail.com> 2010
    
@@ -66,3 +68,4 @@ int rpc_get_pdu_size(char *buf);
 int rpc_process_pdu(struct rpc_context *rpc, char *buf, int size);
 void rpc_error_all_pdus(struct rpc_context *rpc, char *error);
 
+#endif /* CCAN_NFS_LIBNFS_PRIVATE_H */

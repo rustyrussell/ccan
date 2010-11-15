@@ -1,3 +1,5 @@
+#ifndef CCAN_NFS_H
+#define CCAN_NFS_H
 /* 
    Copyright (C) by Ronnie Sahlberg <ronniesahlberg@gmail.com> 2010
    
@@ -911,3 +913,4 @@ int nfs_link_sync(struct nfs_context *nfs, const char *oldpath, const char *newp
 
 //qqq replace later with lseek(cur, 0)
 nfs_off_t nfs_get_current_offset(struct nfsfh *nfsfh);
+#endif /* CCAN_NFS_H */

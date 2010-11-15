@@ -1,3 +1,5 @@
+#ifndef CCAN_NFS_LIBNFS_RAW_H
+#define CCAN_NFS_LIBNFS_RAW_H
 /* 
    Copyright (C) by Ronnie Sahlberg <ronniesahlberg@gmail.com> 2010
    
@@ -557,3 +559,4 @@ int rpc_nfs_link_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *file,
  */
 int rpc_nfsacl_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
 
+#endif /* CCAN_NFS_LIBNFS_RAW_H */
