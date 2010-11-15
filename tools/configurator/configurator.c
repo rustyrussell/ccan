@@ -12,7 +12,7 @@
 #include <string.h>
 
 #define DEFAULT_COMPILER "cc"
-#define DEFAULT_FLAGS "-g -Wall -Wundef -Wmissing-prototypes -Wmissing-declarations -Wstrict-prototypes -Wold-style-definition -Werror"
+#define DEFAULT_FLAGS "-g -Wall -Wundef -Wmissing-prototypes -Wmissing-declarations -Wstrict-prototypes -Wold-style-definition"
 
 #define OUTPUT_FILE "configurator.out"
 #define INPUT_FILE "configuratortest.c"

@@ -111,23 +111,20 @@ static char *lib_list(const struct manifest *m)
 	return ret;
 }
 
-static char *compile(const void *ctx,
-		     struct manifest *m,
-		     struct ccan_file *file,
-		     bool keep)
+static bool compile(const void *ctx,
+		    struct manifest *m,
+		    struct ccan_file *file,
+		    bool keep, char **output)
 {
-	char *errmsg;
-
 	file->compiled = maybe_temp_file(ctx, "", keep, file->fullname);
 	if (!compile_and_link(ctx, file->fullname, ccan_dir,
 			      obj_list(m, file),
-			      "", lib_list(m), file->compiled, &errmsg)) {
+			      "", lib_list(m), file->compiled, output)) {
 		talloc_free(file->compiled);
 		file->compiled = NULL;
-		return errmsg;
+		return false;
 	}
-	talloc_free(errmsg);
-	return NULL;
+	return true;
 }
 
 static char *start_main(char *ret, const char *why)
@@ -383,7 +380,7 @@ static char *mangle(struct manifest *m, char **lines)
 		ret = talloc_asprintf_append(ret,
 					     "/* Get rid of unused warnings"
 					     " by printing addresses of"
-					     " static funcs. */");
+					     " static funcs. */\n");
 		if (!fake_function) {
 			ret = talloc_asprintf_append(ret,
 						     "int use_funcs(void);\n"
@@ -448,90 +445,148 @@ static bool has_expected_output(char **lines)
 	return false;
 }
 
+static unsigned int try_compiling(struct manifest *m,
+				  struct ccan_file *i,
+				  char **prev,
+				  bool keep,
+				  struct ccan_file *mangled[3],
+				  bool res[3],
+				  char *err[3],
+				  char **lines[3])
+{
+	unsigned int num;
+
+	/* Try standalone. */
+	mangled[0] = i;
+	res[0] = compile(i, m, mangled[0], keep, &err[0]);
+	lines[0] = get_ccan_file_lines(i);
+	if (res[0] && streq(err[0], ""))
+		return 1;
+
+	if (prev) {
+		lines[1] = combine(i, get_ccan_file_lines(i), prev);
+
+		mangled[1] = mangle_example(m, i, lines[1], keep);
+		res[1] = compile(i, m, mangled[1], keep, &err[1]);
+		if (res[1] && streq(err[1], "")) {
+			return 2;
+		}
+		num = 2;
+	} else
+		num = 1;
+
+	/* Try standalone. */
+	lines[num] = get_ccan_file_lines(i);
+	mangled[num] = mangle_example(m, i, lines[num], keep);
+	res[num] = compile(i, m, mangled[num], keep, &err[num]);
+
+	return num+1;
+}
+
 static void build_examples(struct manifest *m, bool keep,
 			   unsigned int *timeleft, struct score *score)
 {
 	struct ccan_file *i;
 	char **prev = NULL;
+	bool warnings = false;
 
 	score->total = 0;
 	score->pass = true;
 
 	list_for_each(&m->examples, i, list) {
-		char *ret, *ret1, *ret2 = NULL;
-		struct ccan_file *mangle1, *mangle2 = NULL;
-		char *err;
+		char *err[3];
+		struct ccan_file *file[3] = { NULL, NULL, NULL };
+		bool res[3];
+		unsigned num, j;
+		char **lines[3];
+		char *error;
 
 		score->total++;
+
 		/* Simplify our dumb parsing. */
 		strip_leading_whitespace(get_ccan_file_lines(i));
-		ret = compile(i, m, i, keep);
-		if (!ret) {
-			char **lines = get_ccan_file_lines(i);
-			if (!has_expected_output(lines))
-				prev = lines;
-			score->score++;
-			continue;
-		}
 
-		if (prev) {
-			char **new = combine(i, get_ccan_file_lines(i), prev);
+		num = try_compiling(m, i, prev, keep, file, res, err, lines);
 
-			mangle2 = mangle_example(m, i, new, keep);
-			ret2 = compile(i, m, mangle2, keep);
-			if (!ret2) {
-				if (!has_expected_output(new))
-					prev = new;
+		/* First look for a compile without any warnings. */
+		for (j = 0; j < num; j++) {
+			if (res[j] && streq(err[j], "")) {
+				if (!has_expected_output(lines[j]))
+					prev = lines[j];
 				score->score++;
-				continue;
+				goto next;
 			}
 		}
 
-		/* Try standalone. */
-		mangle1 = mangle_example(m, i, get_ccan_file_lines(i), keep);
-		ret1 = compile(i, m, mangle1, keep);
-		if (!ret1) {
-			char **lines = get_ccan_file_lines(i);
-			if (!has_expected_output(lines))
-				prev = lines;
-			score->score++;
-			continue;
+		/* Now accept anything which succeeded. */
+		for (j = 0; j < num; j++) {
+			if (res[j]) {
+				if (!has_expected_output(lines[j]))
+					prev = lines[j];
+				score->score++;
+				warnings = true;
+				score->error = "Compiling extracted example"
+					" gave warnings";
+				score_file_error(score, file[j], 0, err[j]);
+				goto next;
+			}
 		}
 
 		score->pass = false;
 		score->error = "Compiling extracted examples failed";
 		if (!verbose) {
-			if (mangle2) 
-				err = "Standalone, adding headers, "
+			if (num == 3)
+				error = "Standalone, adding headers, "
 					"and including previous "
 					"example all failed";
 			else
-				err = "Standalone compile and"
+				error = "Standalone compile and"
 					" adding headers both failed";
 		} else {
-			err = talloc_asprintf(score,
-					      "Standalone example:\n"
-					      "%s\n"
-					      "Errors: %s\n\n"
-					      "Adding headers, wrappers:\n"
-					      "%s\n"
-					      "Errors: %s\n\n",
-					      get_ccan_file_contents(i),
-					      ret,
-					      get_ccan_file_contents(mangle1),
-					      ret1);
-
-			if (mangle2)
-				err = talloc_asprintf_append(err, 
-				       "Combining with previous example:\n"
-				       "%s\n"
-				       "Errors: %s\n\n",
-				       get_ccan_file_contents(mangle2),
-				       ret2);
+			if (num == 3) {
+				error = talloc_asprintf(score,
+				      "Standalone example:\n"
+				      "%s\n"
+				      "Errors: %s\n\n"
+				      "Combining with previous example:\n"
+				      "%s\n"
+				      "Errors: %s\n\n"
+				      "Adding headers, wrappers:\n"
+				      "%s\n"
+				      "Errors: %s\n\n",
+				      get_ccan_file_contents(file[0]),
+				      err[0],
+				      get_ccan_file_contents(file[1]),
+				      err[1],
+				      get_ccan_file_contents(file[2]),
+				      err[2]);
+			} else {
+				error = talloc_asprintf(score,
+				      "Standalone example:\n"
+				      "%s\n"
+				      "Errors: %s\n\n"
+				      "Adding headers, wrappers:\n"
+				      "%s\n"
+				      "Errors: %s\n\n",
+				      get_ccan_file_contents(file[0]),
+				      err[0],
+				      get_ccan_file_contents(file[1]),
+				      err[1]);
+			}
 		}
-		score_file_error(score, i, 0, err);
+		score_file_error(score, i, 0, error);
 		/* This didn't work, so not a candidate for combining. */
 		prev = NULL;
+
+	next:
+		;
+	}
+
+	/* An extra point if they all compiled without warnings. */
+	if (!list_empty(&m->examples)) {
+		score->total++;
+		if (!warnings)
+			score->score++;
 	}
 }
 

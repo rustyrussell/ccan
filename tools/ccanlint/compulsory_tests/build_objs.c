@@ -26,26 +26,34 @@ static void check_objs_build(struct manifest *m,
 			     unsigned int *timeleft, struct score *score)
 {
 	struct ccan_file *i;
+	bool errors = false, warnings = false;
 
 	if (list_empty(&m->c_files))
 		score->total = 0;
+	else
+		score->total = 2;
 
 	list_for_each(&m->c_files, i, list) {
 		char *output;
 		char *fullfile = talloc_asprintf(m, "%s/%s", m->dir, i->name);
 
 		i->compiled = maybe_temp_file(m, "", keep, fullfile);
-		if (!compile_object(m, fullfile, ccan_dir, "", i->compiled,
+		if (!compile_object(score, fullfile, ccan_dir, "", i->compiled,
 				    &output)) {
 			talloc_free(i->compiled);
 			score->error = "Compiling object files";
 			score_file_error(score, i, 0, output);
+			errors = true;
+		} else if (!streq(output, "")) {
+			score->error = "Compiling object files gave warnings";
+			score_file_error(score, i, 0, output);
+			warnings = true;
 		}
-		talloc_free(output);
 	}
-	if (!score->error) {
+
+	if (!errors) {
 		score->pass = true;
-		score->score = score->total;
+		score->score = score->total - warnings;
 	}
 }
 

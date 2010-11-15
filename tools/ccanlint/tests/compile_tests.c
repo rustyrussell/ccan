@@ -2,6 +2,7 @@
 #include <tools/tools.h>
 #include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
+#include <ccan/foreach/foreach.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -61,25 +62,22 @@ static char *lib_list(const struct manifest *m)
 	return ret;
 }
 
-static char *compile(const void *ctx,
-		     struct manifest *m,
-		     struct ccan_file *file,
-		     bool fail,
-		     bool link_with_module,
-		     bool keep)
+static bool compile(const void *ctx,
+		    struct manifest *m,
+		    struct ccan_file *file,
+		    bool fail,
+		    bool link_with_module,
+		    bool keep, char **output)
 {
-	char *errmsg;
-
 	file->compiled = maybe_temp_file(ctx, "", keep, file->fullname);
 	if (!compile_and_link(ctx, file->fullname, ccan_dir,
 			      obj_list(m, link_with_module),
 			      fail ? "-DFAIL" : "",
-			      lib_list(m), file->compiled, &errmsg)) {
+			      lib_list(m), file->compiled, output)) {
 		talloc_free(file->compiled);
-		return errmsg;
+		return false;
 	}
-	talloc_free(errmsg);
-	return NULL;
+	return true;
 }
 
 static void do_compile_tests(struct manifest *m,
@@ -88,44 +86,42 @@ static void do_compile_tests(struct manifest *m,
 {
 	char *cmdout;
 	struct ccan_file *i;
+	struct list_head *list;
+	bool errors = false, warnings = false;
 
-	list_for_each(&m->compile_ok_tests, i, list) {
-		cmdout = compile(score, m, i, false, false, keep);
-		if (cmdout) {
-			score->error = "Failed to compile tests";
-			score_file_error(score, i, 0, cmdout);
-		}
-	}
-
-	list_for_each(&m->run_tests, i, list) {
-		cmdout = compile(score, m, i, false, false, keep);
-		if (cmdout) {
-			score->error = "Failed to compile tests";
-			score_file_error(score, i, 0, cmdout);
-		}
-	}
-
-	list_for_each(&m->api_tests, i, list) {
-		cmdout = compile(score, m, i, false, true, keep);
-		if (cmdout) {
-			score->error = "Failed to compile tests";
-			score_file_error(score, i, 0, cmdout);
+	foreach_ptr(list, &m->compile_ok_tests, &m->run_tests, &m->api_tests) {
+		list_for_each(list, i, list) {
+			if (!compile(score, m, i, false, list == &m->api_tests,
+				     keep, &cmdout)) {
+				score->error = "Failed to compile tests";
+				score_file_error(score, i, 0, cmdout);
+				errors = true;
+			} else if (!streq(cmdout, "")) {
+				score->error = "Test compiled with warnings";
+				score_file_error(score, i, 0, cmdout);
+				warnings = true;
+			}
 		}
 	}
 
 	/* The compile fail tests are a bit weird, handle them separately */
-	if (score->error)
+	if (errors)
 		return;
 
+	/* For historical reasons, "fail" often means "gives warnings" */
 	list_for_each(&m->compile_fail_tests, i, list) {
-		cmdout = compile(score, m, i, false, false, false);
-		if (cmdout) {
+		if (!compile(score, m, i, false, false, false, &cmdout)) {
 			score->error = "Failed to compile without -DFAIL";
 			score_file_error(score, i, 0, cmdout);
 			return;
 		}
-		cmdout = compile(score, m, i, true, false, false);
-		if (!cmdout) {
+		if (!streq(cmdout, "")) {
+			score->error = "Compile with warnigns without -DFAIL";
+			score_file_error(score, i, 0, cmdout);
+			return;
+		}
+		if (compile(score, m, i, true, false, false, &cmdout)
+		    && streq(cmdout, "")) {
 			score->error = "Compiled successfully with -DFAIL?";
 			score_file_error(score, i, 0, NULL);
 			return;
@@ -133,7 +129,8 @@ static void do_compile_tests(struct manifest *m,
 	}
 
 	score->pass = true;
-	score->score = score->total;
+	score->total = 2;
+	score->score = 1 + !warnings;
 }
 
 struct ccanlint compile_tests = {

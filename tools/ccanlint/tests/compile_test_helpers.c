@@ -21,18 +21,14 @@ static const char *can_run(struct manifest *m)
 	return NULL;
 }
 
-static char *compile(struct manifest *m,
-		     bool keep,
-		     struct ccan_file *cfile)
+static bool compile(struct manifest *m,
+		    bool keep,
+		    struct ccan_file *cfile,
+		    char **output)
 {
-	char *output;
 	cfile->compiled = maybe_temp_file(m, ".o", keep, cfile->fullname);
-	if (compile_object(m, cfile->fullname, ccan_dir, "",
-			   cfile->compiled, &output)) {
-		talloc_free(output);
-		return NULL;
-	}
-	return output;
+	return compile_object(m, cfile->fullname, ccan_dir, "",
+			      cfile->compiled, output);
 }
 
 static void do_compile_test_helpers(struct manifest *m,
@@ -41,21 +37,30 @@ static void do_compile_test_helpers(struct manifest *m,
 				    struct score *score)
 {
 	struct ccan_file *i;
+	bool errors = false, warnings = false;
 
 	if (list_empty(&m->other_test_c_files))
 		score->total = 0;
+	else
+		score->total = 2;
 
 	list_for_each(&m->other_test_c_files, i, list) {
-		char *cmdout = compile(m, keep, i);
-		if (cmdout) {
+		char *cmdout;
+
+		if (!compile(m, keep, i, &cmdout)) {
+			errors = true;
 			score->error = "Failed to compile helper C files";
+			score_file_error(score, i, 0, cmdout);
+		} else if (!streq(cmdout, "")) {
+			warnings = true;
+			score->error = "Helper C files gave warnings";
 			score_file_error(score, i, 0, cmdout);
 		}
 	}
 
-	if (!score->error) {
+	if (!errors) {
 		score->pass = true;
-		score->score = score->total;
+		score->score = score->total - warnings;
 	}
 }
 
