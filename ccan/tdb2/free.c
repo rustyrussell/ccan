@@ -319,6 +319,13 @@ static int coalesce(struct tdb_context *tdb,
 			break;
 		}
 
+		if (unlikely(bucket_off(zone_off,
+					size_to_bucket(zone_bits, r->data_len))
+			     != nb_off)) {
+			tdb_unlock_free_bucket(tdb, nb_off);
+			break;
+		}
+
 		if (remove_from_list(tdb, nb_off, end, r) == -1) {
 			tdb_unlock_free_bucket(tdb, nb_off);
 			goto err;
