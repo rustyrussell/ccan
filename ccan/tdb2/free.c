@@ -516,7 +516,7 @@ static tdb_off_t get_free(struct tdb_context *tdb, size_t size,
 int set_header(struct tdb_context *tdb,
 	       struct tdb_used_record *rec,
 	       uint64_t keylen, uint64_t datalen,
-	       uint64_t actuallen, uint64_t hash,
+	       uint64_t actuallen, unsigned hashlow,
 	       unsigned int zone_bits)
 {
 	uint64_t keybits = (fls64(keylen) + 1) / 2;
@@ -524,7 +524,7 @@ int set_header(struct tdb_context *tdb,
 	/* Use bottom bits of hash, so it's independent of hash table size. */
 	rec->magic_and_meta
 		= zone_bits
-		| ((hash & ((1 << 5)-1)) << 6)
+		| ((hashlow & ((1 << 5)-1)) << 6)
 		| ((actuallen - (keylen + datalen)) << 11)
 		| (keybits << 43)
 		| (TDB_MAGIC << 48);

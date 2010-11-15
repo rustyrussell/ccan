@@ -380,7 +380,7 @@ int add_free_record(struct tdb_context *tdb, unsigned int zone_bits,
 int set_header(struct tdb_context *tdb,
 	       struct tdb_used_record *rec,
 	       uint64_t keylen, uint64_t datalen,
-	       uint64_t actuallen, uint64_t hash,
+	       uint64_t actuallen, unsigned hashlow,
 	       unsigned int zone_bits);
 
 /* Used by tdb_check to verify. */
