@@ -61,7 +61,7 @@ static void extract_examples(struct manifest *m,
 			     unsigned int *timeleft,
 			     struct score *score)
 {
-	struct ccan_file *f;
+	struct ccan_file *f, *mainh = NULL; /* gcc complains uninitialized */
 	struct doc_section *d;
 	bool have_info_example = false, have_header_example = false;
 
@@ -81,6 +81,7 @@ static void extract_examples(struct manifest *m,
 		    || strlen(f->name) != strlen(m->basename) + 2)
 			continue;
 
+		mainh = f;
 		list_for_each(get_ccan_file_docs(f), d, list) {
 			if (streq(d->type, "example")) {
 				score->error = add_example(m, f, keep, d);
@@ -91,23 +92,21 @@ static void extract_examples(struct manifest *m,
 		}
 	}
 
-	if (!have_info_example && !have_header_example) {
-		score->error = "You don't have any Example: sections";
-		score->score = 0;
-	} else if (!have_info_example) {
-		score->error = "You don't have an Example: section in _info";
-		score->score = 1;
-		score->pass = true;
-	} else if (!have_header_example) {
-		score->error = talloc_asprintf(score,
-			       "You don't have an Example: section in %s.h",
-			       m->basename);
-		score->score = 1;
-		score->pass = true;
-	} else {
+	if (have_info_example && have_header_example) {
 		score->score = score->total;
 		score->pass = true;
+		return;
 	}
+
+	score->error = "Expect examples in header and _info";
+	if (!have_info_example)
+		score_file_error(score, m->info_file, 0, "No Example: section");
+	if (!have_header_example)
+		score_file_error(score, mainh, 0, "No Example: section");
+
+	score->score = have_info_example + have_header_example;
+	/* We pass if we find any example. */
+	score->pass = score->score != 0;
 }
 
 struct ccanlint has_examples = {

@@ -149,7 +149,7 @@ static bool run_test(struct ccanlint *i,
 		printf("\n");
 	}
 
-	if (!quiet && !score->pass) {
+	if ((!quiet && !score->pass) || verbose) {
 		struct file_error *f;
 
 		if (score->error)
@@ -165,7 +165,7 @@ static bool run_test(struct ccanlint *i,
 			else
 				printf("%s\n", f->error);
 		}
-		if (i->handle)
+		if (!quiet && !score->pass && i->handle)
 			i->handle(m, score);
 	}
 

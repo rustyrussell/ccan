@@ -192,7 +192,6 @@ char *get_symbol_token(void *ctx, const char **line);
 /* Similarly for ->doc_sections */
 struct list_head *get_ccan_file_docs(struct ccan_file *f);
 
-
 /* Add an error about this file (and line, if non-zero) to the score struct */
 void score_file_error(struct score *, struct ccan_file *f, unsigned line,
 		      const char *error);

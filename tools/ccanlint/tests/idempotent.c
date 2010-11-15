@@ -90,7 +90,6 @@ static bool check_idem(struct ccan_file *f, struct score *score)
 		/* FIXME: We assume small headers probably uninteresting. */
 		return true;
 
-	score->error = "Headers are not idempotent";
 	for (i = 0; i < f->num_lines; i++) {
 		if (line_info[i].type == DOC_LINE
 		    || line_info[i].type == COMMENT_LINE)
@@ -184,8 +183,10 @@ static void check_idempotent(struct manifest *m,
 	struct ccan_file *f;
 
 	list_for_each(&m->h_files, f, list) {
-		if (!check_idem(f, score))
+		if (!check_idem(f, score)) {
+			score->error = "Headers are not idempotent";
 			return;
+		}
 	}
 	score->pass = true;
 	score->score = score->total;
