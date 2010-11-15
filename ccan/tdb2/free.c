@@ -240,6 +240,21 @@ int add_free_record(struct tdb_context *tdb,
 	return ret;
 }
 
+static size_t adjust_size(size_t keylen, size_t datalen, bool want_extra)
+{
+	size_t size = keylen + datalen;
+
+	/* We want at least 50% growth for data. */
+	if (want_extra)
+		size += datalen/2;
+
+	if (size < TDB_MIN_DATA_LEN)
+		size = TDB_MIN_DATA_LEN;
+
+	/* Round to next uint64_t boundary. */
+	return (size + (sizeof(uint64_t) - 1ULL)) & ~(sizeof(uint64_t) - 1ULL);
+}
+
 /* If we have enough left over to be useful, split that off. */
 static int to_used_record(struct tdb_context *tdb,
 			  unsigned int zone_bits,
@@ -627,21 +642,6 @@ success:
 fail:
 	tdb_unlock_expand(tdb, F_WRLCK);
 	return -1;
-}
-
-static tdb_len_t adjust_size(size_t keylen, size_t datalen, bool growing)
-{
-	tdb_len_t size = keylen + datalen;
-
-	if (size < TDB_MIN_DATA_LEN)
-		size = TDB_MIN_DATA_LEN;
-
-	/* Overallocate if this is coming from an enlarging store. */
-	if (growing)
-		size += datalen / 2;
-
-	/* Round to next uint64_t boundary. */
-	return (size + (sizeof(uint64_t) - 1ULL)) & ~(sizeof(uint64_t) - 1ULL);
 }
 
 /* This won't fail: it will expand the database if it has to. */
