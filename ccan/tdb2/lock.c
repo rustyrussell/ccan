@@ -278,6 +278,15 @@ static int tdb_nest_lock(struct tdb_context *tdb, tdb_off_t offset, int ltype,
 		return 0;
 	}
 
+	if (tdb->num_lockrecs
+	    && offset >= TDB_HASH_LOCK_START
+	    && offset < TDB_HASH_LOCK_START + TDB_HASH_LOCK_RANGE) {
+		tdb->ecode = TDB_ERR_LOCK;
+		tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
+			 "tdb_nest_lock: already have a hash lock?\n");
+		return -1;
+	}
+
 	new_lck = (struct tdb_lock_type *)realloc(
 		tdb->lockrecs,
 		sizeof(*tdb->lockrecs) * (tdb->num_lockrecs+1));
@@ -754,34 +763,6 @@ void tdb_unlock_free_bucket(struct tdb_context *tdb, tdb_off_t b_off)
 		return;
 
 	tdb_nest_unlock(tdb, free_lock_off(b_off), F_WRLCK);
-}
-
-/* Even if the entry isn't in this hash bucket, you'd have to lock this
- * bucket to find it. */
-static int chainlock(struct tdb_context *tdb, const TDB_DATA *key,
-		     int ltype, enum tdb_lock_flags waitflag,
-		     const char *func)
-{
-	int ret;
-	uint64_t h = tdb_hash(tdb, key->dptr, key->dsize);
-
-	ret = tdb_lock_hashes(tdb, h, 1, ltype, waitflag);
-	tdb_trace_1rec(tdb, func, *key);
-	return ret;
-}
-
-/* lock/unlock one hash chain. This is meant to be used to reduce
-   contention - it cannot guarantee how many records will be locked */
-int tdb_chainlock(struct tdb_context *tdb, TDB_DATA key)
-{
-	return chainlock(tdb, &key, F_WRLCK, TDB_LOCK_WAIT, "tdb_chainlock");
-}
-
-int tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key)
-{
-	uint64_t h = tdb_hash(tdb, key.dptr, key.dsize);
-	tdb_trace_1rec(tdb, "tdb_chainunlock", key);
-	return tdb_unlock_hashes(tdb, h, 1, F_WRLCK);
 }
 
 #if 0

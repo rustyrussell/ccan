@@ -129,6 +129,13 @@ bool is_subhash(tdb_off_t val)
 	return val >> (64-TDB_OFF_UPPER_STEAL) == (1<<TDB_OFF_UPPER_STEAL) - 1;
 }
 
+/* FIXME: Guess the depth, don't over-lock! */
+static tdb_off_t hlock_range(tdb_off_t group, tdb_off_t *size)
+{
+	*size = 1ULL << (64 - (TDB_TOPLEVEL_HASH_BITS - TDB_HASH_GROUP_BITS));
+	return group << (64 - (TDB_TOPLEVEL_HASH_BITS - TDB_HASH_GROUP_BITS));
+}
+
 /* This is the core routine which searches the hashtable for an entry.
  * On error, no locks are held and TDB_OFF_ERR is returned.
  * Otherwise, hinfo is filled in (and the optional tinfo).
@@ -149,11 +156,7 @@ tdb_off_t find_and_lock(struct tdb_context *tdb,
 	group = use_bits(h, TDB_TOPLEVEL_HASH_BITS - TDB_HASH_GROUP_BITS);
 	h->home_bucket = use_bits(h, TDB_HASH_GROUP_BITS);
 
-	/* FIXME: Guess the depth, don't over-lock! */
-	h->hlock_start = (tdb_off_t)group
-		<< (64 - (TDB_TOPLEVEL_HASH_BITS - TDB_HASH_GROUP_BITS));
-	h->hlock_range = 1ULL << (64 - (TDB_TOPLEVEL_HASH_BITS
-					- TDB_HASH_GROUP_BITS));
+	h->hlock_start = hlock_range(group, &h->hlock_range);
 	if (tdb_lock_hashes(tdb, h->hlock_start, h->hlock_range, ltype,
 			    TDB_LOCK_WAIT))
 		return TDB_OFF_ERR;
@@ -609,4 +612,47 @@ int first_in_hash(struct tdb_context *tdb, int ltype,
 	tinfo->levels[0].total_buckets = (1 << TDB_HASH_GROUP_BITS);
 
 	return next_in_hash(tdb, ltype, tinfo, kbuf, dlen);
+}
+
+/* Even if the entry isn't in this hash bucket, you'd have to lock this
+ * bucket to find it. */
+static int chainlock(struct tdb_context *tdb, const TDB_DATA *key,
+		     int ltype, enum tdb_lock_flags waitflag,
+		     const char *func)
+{
+	int ret;
+	uint64_t h = tdb_hash(tdb, key->dptr, key->dsize);
+	tdb_off_t lockstart, locksize;
+	unsigned int group, gbits;
+
+	gbits = TDB_TOPLEVEL_HASH_BITS - TDB_HASH_GROUP_BITS;
+	group = bits(h, 64 - gbits, gbits);
+
+	lockstart = hlock_range(group, &locksize);
+
+	ret = tdb_lock_hashes(tdb, lockstart, locksize, ltype, waitflag);
+	tdb_trace_1rec(tdb, func, *key);
+	return ret;
+}
+
+/* lock/unlock one hash chain. This is meant to be used to reduce
+   contention - it cannot guarantee how many records will be locked */
+int tdb_chainlock(struct tdb_context *tdb, TDB_DATA key)
+{
+	return chainlock(tdb, &key, F_WRLCK, TDB_LOCK_WAIT, "tdb_chainlock");
+}
+
+int tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key)
+{
+	uint64_t h = tdb_hash(tdb, key.dptr, key.dsize);
+	tdb_off_t lockstart, locksize;
+	unsigned int group, gbits;
+
+	gbits = TDB_TOPLEVEL_HASH_BITS - TDB_HASH_GROUP_BITS;
+	group = bits(h, 64 - gbits, gbits);
+
+	lockstart = hlock_range(group, &locksize);
+
+	tdb_trace_1rec(tdb, "tdb_chainunlock", key);
+	return tdb_unlock_hashes(tdb, lockstart, locksize, F_WRLCK);
 }
