@@ -1,4 +1,4 @@
-/* 
+/*
    Copyright (C) by Ronnie Sahlberg <ronniesahlberg@gmail.com> 2010
    
    This program is free software; you can redistribute it and/or modify
@@ -129,8 +129,8 @@ int rpc_nfs_getattr_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh
 		return -1;
 	}
 
-	args.object.data.data_len = fh->data.data_len; 
-	args.object.data.data_val = fh->data.data_val; 
+	args.object.data.data_len = fh->data.data_len;
+	args.object.data.data_val = fh->data.data_val;
 
 	if (xdr_GETATTR3args(&pdu->xdr, &args) == 0) {
 		rpc_set_error(rpc, "XDR error: Failed to encode GETATTR3args");
@@ -158,8 +158,8 @@ int rpc_nfs_lookup_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
 		return -1;
 	}
 
-	args.what.dir.data.data_len = fh->data.data_len; 
-	args.what.dir.data.data_val = fh->data.data_val; 
+	args.what.dir.data.data_len = fh->data.data_len;
+	args.what.dir.data.data_val = fh->data.data_val;
 	args.what.name              = name;
 
 	if (xdr_LOOKUP3args(&pdu->xdr, &args) == 0) {
@@ -490,7 +490,7 @@ int rpc_nfs_readdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh
 	args.dir.data.data_len = fh->data.data_len;
 	args.dir.data.data_val = fh->data.data_val;
 	args.cookie = cookie;
-	memcpy(&args.cookieverf, cookieverf, sizeof(cookieverf3)); 
+	memcpy(&args.cookieverf, cookieverf, sizeof(cookieverf3));
 	args.count = count;
 
 	if (xdr_READDIR3args(&pdu->xdr, &args) == 0) {
@@ -519,8 +519,8 @@ int rpc_nfs_fsstat_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
 		return -1;
 	}
 
-	args.fsroot.data.data_len = fh->data.data_len; 
-	args.fsroot.data.data_val = fh->data.data_val; 
+	args.fsroot.data.data_len = fh->data.data_len;
+	args.fsroot.data.data_val = fh->data.data_val;
 
 	if (xdr_FSSTAT3args(&pdu->xdr, &args) == 0) {
 		rpc_set_error(rpc, "XDR error: Failed to encode FSSTAT3args");
@@ -549,8 +549,8 @@ int rpc_nfs_readlink_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *f
 		return -1;
 	}
 
-	args.symlink.data.data_len = fh->data.data_len; 
-	args.symlink.data.data_val = fh->data.data_val; 
+	args.symlink.data.data_len = fh->data.data_len;
+	args.symlink.data.data_val = fh->data.data_val;
 
 	if (xdr_READLINK3args(&pdu->xdr, &args) == 0) {
 		rpc_set_error(rpc, "XDR error: Failed to encode READLINK3args");

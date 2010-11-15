@@ -1,6 +1,6 @@
 #ifndef CCAN_NFS_LIBNFS_RAW_H
 #define CCAN_NFS_LIBNFS_RAW_H
-/* 
+/*
    Copyright (C) by Ronnie Sahlberg <ronniesahlberg@gmail.com> 2010
    
    This program is free software; you can redistribute it and/or modify
@@ -71,7 +71,7 @@ int rpc_disconnect(struct rpc_context *rpc, char *error);
 void rpc_set_error(struct rpc_context *rpc, char *error_string, ...);
 
 
-/* 
+/*
  * PORTMAP FUNCTIONS
  */
 
@@ -110,7 +110,7 @@ int rpc_pmap_getport_async(struct rpc_context *rpc, int program, int version, rp
 
 
 
-/* 
+/*
  * MOUNT FUNCTIONS
  */
 char *mountstat3_to_str(int stat);
@@ -215,7 +215,7 @@ int rpc_mount_export_async(struct rpc_context *rpc, rpc_cb cb, void *private_dat
 
 
 
-/* 
+/*
  * NFS FUNCTIONS
  */
 struct nfs_fh3;
@@ -540,7 +540,7 @@ int rpc_nfs_link_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *file,
 
 
 
-/* 
+/*
  * NFSACL FUNCTIONS
  */
 /*

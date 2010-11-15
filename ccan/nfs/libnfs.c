@@ -1,4 +1,4 @@
-/* 
+/*
    Copyright (C) by Ronnie Sahlberg <ronniesahlberg@gmail.com> 2010
    
    This program is free software; you can redistribute it and/or modify
@@ -365,7 +365,7 @@ static void nfs_mount_3_cb(struct rpc_context *rpc, int status, void *command_da
 	struct nfs_context *nfs = data->nfs;
 	uint32_t mount_port;
 
-	if (status == RPC_STATUS_ERROR) {	
+	if (status == RPC_STATUS_ERROR) {
 		data->cb(-EFAULT, nfs, command_data, data->private_data);
 		free_nfs_cb_data(data);
 		return;

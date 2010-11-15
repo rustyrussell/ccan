@@ -1,6 +1,6 @@
 #ifndef CCAN_NFS_LIBNFS_PRIVATE_H
 #define CCAN_NFS_LIBNFS_PRIVATE_H
-/* 
+/*
    Copyright (C) by Ronnie Sahlberg <ronniesahlberg@gmail.com> 2010
    
    This program is free software; you can redistribute it and/or modify

@@ -1,4 +1,4 @@
-/* 
+/*
    Copyright (C) by Ronnie Sahlberg <ronniesahlberg@gmail.com> 2010
    
    This program is free software; you can redistribute it and/or modify
@@ -48,7 +48,7 @@ int rpc_which_events(struct rpc_context *rpc)
 
 	if (rpc->is_connected == 0) {
 		events |= POLLOUT;
-	}	
+	}
 
 	if (rpc->outqueue) {
 		events |= POLLOUT;
@@ -280,10 +280,10 @@ int rpc_connect_async(struct rpc_context *rpc, const char *server, int port, int
 		rpc_set_error(rpc, "connect() to server failed");
 		printf("%s\n", rpc->error_string);
 		return -4;
-	}		
+	}
 
 	return 0;
-}	    
+}
 
 int rpc_disconnect(struct rpc_context *rpc, char *error)
 {
