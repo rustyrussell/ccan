@@ -132,7 +132,8 @@ static tdb_off_t find_free_head(struct tdb_context *tdb, tdb_off_t bucket)
 
 /* Remove from free bucket. */
 static int remove_from_list(struct tdb_context *tdb,
-			    tdb_off_t b_off, struct tdb_free_record *r)
+			    tdb_off_t b_off, tdb_off_t r_off,
+			    struct tdb_free_record *r)
 {
 	tdb_off_t off;
 
@@ -142,6 +143,16 @@ static int remove_from_list(struct tdb_context *tdb,
 	} else {
 		off = r->prev + offsetof(struct tdb_free_record, next);
 	}
+
+#ifdef DEBUG
+	if (tdb_read_off(tdb, off) != r_off) {
+		tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
+			 "remove_from_list: %llu bad prev in list %llu\n",
+			 (long long)r_off, (long long)b_off);
+		return -1;
+	}
+#endif
+
 	/* r->prev->next = r->next */
 	if (tdb_write_off(tdb, off, r->next)) {
 		return -1;
@@ -150,6 +161,16 @@ static int remove_from_list(struct tdb_context *tdb,
 	if (r->next != 0) {
 		off = r->next + offsetof(struct tdb_free_record, prev);
 		/* r->next->prev = r->prev */
+
+#ifdef DEBUG
+		if (tdb_read_off(tdb, off) != r_off) {
+			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
+				 "remove_from_list: %llu bad list %llu\n",
+				 (long long)r_off, (long long)b_off);
+			return -1;
+		}
+#endif
+
 		if (tdb_write_off(tdb, off, r->prev)) {
 			return -1;
 		}
@@ -170,6 +191,17 @@ static int enqueue_in_free(struct tdb_context *tdb,
 		return -1;
 
 	if (new->next) {
+#ifdef DEBUG
+		if (tdb_read_off(tdb,
+				 new->next
+				 + offsetof(struct tdb_free_record, prev))
+		    != 0) {
+			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
+				 "enqueue_in_free: %llu bad head prev %llu\n",
+				 (long long)new->next, (long long)b_off);
+			return -1;
+		}
+#endif
 		/* next->prev = new. */
 		if (tdb_write_off(tdb, new->next
 				  + offsetof(struct tdb_free_record, prev),
@@ -272,7 +304,7 @@ static int coalesce(struct tdb_context *tdb,
 			break;
 		}
 
-		if (remove_from_list(tdb, nb_off, r) == -1) {
+		if (remove_from_list(tdb, nb_off, end, r) == -1) {
 			tdb_unlock_free_bucket(tdb, nb_off);
 			goto err;
 		}
@@ -298,7 +330,7 @@ static int coalesce(struct tdb_context *tdb,
 		goto err;
 	}
 
-	if (remove_from_list(tdb, b_off, r) == -1)
+	if (remove_from_list(tdb, b_off, off, r) == -1)
 		goto err;
 
 	/* We have to drop this to avoid deadlocks. */
@@ -388,7 +420,7 @@ again:
 	if (best_off) {
 	use_best:
 		/* We're happy with this size: take it. */
-		if (remove_from_list(tdb, b_off, &best) != 0)
+		if (remove_from_list(tdb, b_off, best_off, &best) != 0)
 			goto unlock_err;
 		tdb_unlock_free_bucket(tdb, b_off);
 
