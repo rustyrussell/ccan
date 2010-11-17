@@ -469,7 +469,10 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	add_info_fails(m->info_file);
+	/* --target overrides _info excludes */
+	if (!target)
+		add_info_fails(m->info_file);
+
 	while ((i = get_next_test(&normal_tests)) != NULL)
 		run_test(i, summary, &score, &total_score, m);
 
