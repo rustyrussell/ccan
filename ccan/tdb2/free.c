@@ -559,7 +559,7 @@ static tdb_off_t get_free(struct tdb_context *tdb,
 		b = size_to_bucket(tdb->zhdr.zone_bits, size);
 		for (b = find_free_head(tdb, b);
 		     b <= BUCKETS_FOR_ZONE(tdb->zhdr.zone_bits);
-		     b += find_free_head(tdb, b + 1)) {
+		     b = find_free_head(tdb, b + 1)) {
 			/* Try getting one from list. */
 			off = lock_and_alloc(tdb, tdb->zone_off,
 					     tdb->zhdr.zone_bits,
