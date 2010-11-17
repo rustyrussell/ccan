@@ -66,7 +66,7 @@ static tdb_len_t summarize_zone(struct tdb_context *tdb, tdb_off_t zone_off,
 				unsigned int *num_buckets)
 {
 	struct free_zone_header zhdr;
-	tdb_off_t off;
+	tdb_off_t off, end;
 	tdb_len_t len;
 	unsigned int hdrlen;
 	tdb_len_t unc = 0;
@@ -79,9 +79,12 @@ static tdb_len_t summarize_zone(struct tdb_context *tdb, tdb_off_t zone_off,
 
 	hdrlen = sizeof(zhdr)
 		+ (BUCKETS_FOR_ZONE(zhdr.zone_bits) + 1) * sizeof(tdb_off_t);
-	for (off = zone_off + hdrlen;
-	     off < zone_off + (1ULL << zhdr.zone_bits);
-	     off += len) {
+
+	end = zone_off + (1ULL << zhdr.zone_bits);
+	if (end > tdb->map_size)
+		end = tdb->map_size;
+
+	for (off = zone_off + hdrlen; off < end; off += len) {
 		union {
 			struct tdb_used_record u;
 			struct tdb_free_record f;

@@ -25,36 +25,47 @@ int main(int argc, char *argv[])
 		if (!tdb)
 			continue;
 
-		/* First expand. Should add a zone, doubling file size.. */
-		val = tdb->map_size - 1 - sizeof(struct tdb_header);
+		/* First expand. Should not fill zone. */
+		val = tdb->map_size - sizeof(struct tdb_header);
 		ok1(tdb_expand(tdb, 1) == 0);
-		ok1(tdb->map_size == 2 * val + 1 + sizeof(struct tdb_header));
+		ok1(tdb->map_size < sizeof(struct tdb_header)
+		    + (1 << INITIAL_ZONE_BITS));
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 
-		/* Second expand, add another zone of same size. */
-		ok1(tdb_expand(tdb, 1) == 0);
-		ok1(tdb->map_size == 3 * val + 1 + sizeof(struct tdb_header));
+		/* Fill zone. */
+		val = (1<<INITIAL_ZONE_BITS)
+			- sizeof(struct tdb_used_record)
+			- (tdb->map_size - sizeof(struct tdb_header));
+		ok1(tdb_expand(tdb, val) == 0);
+		ok1(tdb->map_size == sizeof(struct tdb_header)
+		    + (1 << INITIAL_ZONE_BITS));
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 
-		/* Large expand, but can only add 4th zone of same size. */
-		ok1(tdb_expand(tdb, 4*val) == 0);
-		ok1(tdb->map_size == 4 * val + 1 + sizeof(struct tdb_header));
+		/* Second expand, adds another zone of same size. */
+		ok1(tdb_expand(tdb, 4 << INITIAL_ZONE_BITS) == 0);
+		ok1(tdb->map_size ==
+		    (2<<INITIAL_ZONE_BITS) + sizeof(struct tdb_header));
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 		/* Large expand now will double file. */
-		ok1(tdb_expand(tdb, 4*val) == 0);
-		ok1(tdb->map_size == 8 * val + 1 + sizeof(struct tdb_header));
+		ok1(tdb_expand(tdb, 4 << INITIAL_ZONE_BITS) == 0);
+		ok1(tdb->map_size ==
+		    (4<<INITIAL_ZONE_BITS) + sizeof(struct tdb_header));
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 		/* And again? */
-		ok1(tdb_expand(tdb, 4*val) == 0);
-		ok1(tdb->map_size == 16 * val + 1 + sizeof(struct tdb_header));
+		ok1(tdb_expand(tdb, 4 << INITIAL_ZONE_BITS) == 0);
+		ok1(tdb->map_size ==
+		    (8<<INITIAL_ZONE_BITS) + sizeof(struct tdb_header));
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 
-		/* Below comfort level, will add a single 8*val zone. */
-		ok1(tdb_expand(tdb, ((8*val) >> TDB_COMFORT_FACTOR_BITS)
+		/* Below comfort level, won't fill zone. */
+		ok1(tdb_expand(tdb,
+			       ((3 << INITIAL_ZONE_BITS)
+				>> TDB_COMFORT_FACTOR_BITS)
 			       - sizeof(struct tdb_used_record)) == 0);
-		ok1(tdb->map_size == 24 * val + 1 + sizeof(struct tdb_header));
+		ok1(tdb->map_size < (12<<INITIAL_ZONE_BITS)
+		    + sizeof(struct tdb_header));
 		tdb_close(tdb);
 	}
 

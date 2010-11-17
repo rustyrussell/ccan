@@ -27,6 +27,44 @@ static unsigned fls64(uint64_t val)
 	return ilog64(val);
 }
 
+static unsigned ffs64(uint64_t val)
+{
+#if HAVE_BUILTIN_FFSLL
+	return __builtin_ffsll(val);
+#else
+	unsigned r = 0;
+
+	if (!val)
+		return 0;
+
+	if (!(val & 0xffffffff)) {
+		val >>= 32;
+		r += 32;
+	}
+	if (!(val & 0xffff)) {
+		val >>= 16;
+		r += 16;
+	}
+	if (!(val & 0xff)) {
+		val >>= 8;
+		r += 8;
+	}
+	if (!(val & 0xf)) {
+		val >>= 4;
+		r += 4;
+	}
+	if (!(val & 0x3)) {
+		val >>= 2;
+		r += 2;
+	}
+	if (!(val & 0x1)) {
+		val >>= 1;
+		r += 1;
+	}
+	return r;
+#endif
+}
+
 /* In which bucket would we find a particular record size? (ignoring header) */
 unsigned int size_to_bucket(unsigned int zone_bits, tdb_len_t data_len)
 {
@@ -49,58 +87,50 @@ unsigned int size_to_bucket(unsigned int zone_bits, tdb_len_t data_len)
 	return bucket;
 }
 
-/* Subtract 1-byte tailer and header.  Then round up to next power of 2. */
-static unsigned max_zone_bits(struct tdb_context *tdb)
+/* Binary search for the zone for this offset. */
+static tdb_off_t off_to_zone(struct tdb_context *tdb, tdb_off_t off,
+			     struct free_zone_header *zhdr)
 {
-	return fls64(tdb->map_size-1-sizeof(struct tdb_header)-1) + 1;
-}
+	tdb_off_t start, end;
 
-/* Start by using a random zone to spread the load: returns the offset. */
-static uint64_t random_zone(struct tdb_context *tdb)
-{
-	struct free_zone_header zhdr;
-	tdb_off_t off = sizeof(struct tdb_header);
-	tdb_len_t half_bits;
-	uint64_t randbits = 0;
-	unsigned int i;
+	start = sizeof(struct tdb_header);
+	end = start + (1ULL << fls64(tdb->map_size - start));
 
-	for (i = 0; i < 64; i += fls64(RAND_MAX)) 
-		randbits ^= ((uint64_t)random()) << i;
-
-	/* FIXME: Does this work?  Test! */
-	half_bits = max_zone_bits(tdb) - 1;
-	do {
-		/* Pick left or right side (not outside file) */
-		if ((randbits & 1)
-		    && !tdb->methods->oob(tdb, off + (1ULL << half_bits)
-					  + sizeof(zhdr), true)) {
-			off += 1ULL << half_bits;
-		}
-		randbits >>= 1;
-
-		if (tdb_read_convert(tdb, off, &zhdr, sizeof(zhdr)) == -1) 
+	for (;;) {
+		if (tdb_read_convert(tdb, start, zhdr, sizeof(*zhdr)) == -1)
 			return TDB_OFF_ERR;
 
-		if (zhdr.zone_bits == half_bits)
-			return off;
+		/* Is it inside this zone? */
+		if (off < start + (1ULL << zhdr->zone_bits))
+			return start;
 
-		half_bits--;
-	} while (half_bits >= INITIAL_ZONE_BITS);
+		/* In practice, start + end won't overflow. */
+		if (off >= (start + end) / 2)
+			start = (start + end) / 2;
+		else
+			end = (start + end) / 2;
+	}
+}
 
-	tdb->ecode = TDB_ERR_CORRUPT;
-	tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-		 "random_zone: zone at %llu smaller than %u bits?",
-		 (long long)off, INITIAL_ZONE_BITS);
-	return TDB_OFF_ERR;
+static tdb_off_t last_zone(struct tdb_context *tdb,
+			   struct free_zone_header *zhdr)
+{
+	return off_to_zone(tdb, tdb->map_size - 1, zhdr);
 }
 
 int tdb_zone_init(struct tdb_context *tdb)
 {
-	tdb->zone_off = random_zone(tdb);
+	unsigned int i;
+	uint64_t randoff = 0;
+
+	/* We start in a random zone, to spread the load. */
+	for (i = 0; i < 64; i += fls64(RAND_MAX))
+		randoff ^= ((uint64_t)random()) << i;
+	randoff = sizeof(struct tdb_header)
+		+ (randoff % (tdb->map_size - sizeof(struct tdb_header)));
+
+	tdb->zone_off = off_to_zone(tdb, randoff, &tdb->zhdr);
 	if (tdb->zone_off == TDB_OFF_ERR)
-		return -1;
-	if (tdb_read_convert(tdb, tdb->zone_off,
-			     &tdb->zhdr, sizeof(tdb->zhdr)) == -1) 
 		return -1;
 	return 0;
 }
@@ -225,7 +255,7 @@ int add_free_record(struct tdb_context *tdb,
 	int ret;
 
 	assert(len_with_header >= sizeof(new));
-	assert(zone_bits < (1 << 6));
+	assert(zone_bits < 64);
 
 	new.magic_and_meta = TDB_FREE_MAGIC | zone_bits;
 	new.data_len = len_with_header - sizeof(struct tdb_used_record);
@@ -279,9 +309,15 @@ static int coalesce(struct tdb_context *tdb,
 		    tdb_off_t off, tdb_off_t b_off, tdb_len_t data_len)
 {
 	struct tdb_free_record pad, *r;
-	tdb_off_t end = off + sizeof(struct tdb_used_record) + data_len;
+	tdb_off_t zone_end, end;
 
-	while (end < (zone_off + (1ULL << zone_bits))) {
+	end = off + sizeof(struct tdb_used_record) + data_len;
+	zone_end = zone_off + (1ULL << zone_bits);
+
+	if (tdb->methods->oob(tdb, zone_end, true))
+		zone_end = tdb->map_size;
+
+	while (end < zone_end) {
 		tdb_off_t nb_off;
 
 		/* FIXME: do tdb_get here and below really win? */
@@ -586,10 +622,9 @@ int set_header(struct tdb_context *tdb,
 	return 0;
 }
 
-static bool zones_happy(struct tdb_context *tdb)
+static bool zones_contended(struct tdb_context *tdb)
 {
-	/* FIXME: look at distribution of zones. */
-	return true;
+	return false;
 }
 
 /* Assume we want buckets up to the comfort factor. */
@@ -604,11 +639,9 @@ static int tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 {
 	uint64_t old_size;
 	tdb_off_t off;
-	uint8_t zone_bits;
-	unsigned int num_buckets;
-	tdb_len_t wanted;
+	unsigned int num_buckets, zone_bits;
+	tdb_len_t wanted, expand;
 	struct free_zone_header zhdr;
-	bool enlarge_zone;
 
 	/* We need room for the record header too. */
 	wanted = sizeof(struct tdb_used_record) + size;
@@ -623,43 +656,63 @@ static int tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 	if (tdb->map_size != old_size)
 		goto success;
 
-	/* FIXME: Tailer is a bogus optimization, remove it. */
-	/* zone bits tailer char is protected by EXPAND lock. */
-	if (tdb->methods->read(tdb, old_size - 1, &zone_bits, 1) == -1)
+	/* Treat last zone as minimum reasonable zone size. */
+	off = last_zone(tdb, &zhdr);
+	if (off == TDB_OFF_ERR)
 		goto fail;
 
-	/* If zones aren't working well, add larger zone if possible. */
-	enlarge_zone = !zones_happy(tdb);
+	/* Zone isn't fully expanded? */
+	if (tdb->map_size < off + (1ULL << zhdr.zone_bits)) {
+		expand = off + (1ULL << zhdr.zone_bits) - tdb->map_size;
+		/* Expand more than we want. */
+		if (expand > (wanted << TDB_COMFORT_FACTOR_BITS))
+			expand = (wanted << TDB_COMFORT_FACTOR_BITS);
+		if (tdb->methods->expand_file(tdb, expand) == -1)
+			goto fail;
+		/* We need to drop this lock before adding free record. */
+		tdb_unlock_expand(tdb, F_WRLCK);
 
-	/* New zone can be between zone_bits or larger if we're on the right
-	 * boundary. */
-	for (;;) {
-		/* Does this fit the allocation comfortably? */
-		if ((1ULL << zone_bits) >= overhead(zone_bits) + wanted) {
-			/* Only let enlarge_zone enlarge us once. */
-			if (!enlarge_zone)
-				break;
-			enlarge_zone = false;
-		}
-		if ((old_size - 1 - sizeof(struct tdb_header))
-		    & (1 << zone_bits))
-			break;
-		zone_bits++;
+		/* Allocate from here. */
+		tdb->zone_off = off;
+		tdb->zhdr = zhdr;
+
+		/* FIXME: If this isn't sufficient, we search again... */
+		return add_free_record(tdb, zhdr.zone_bits,
+				       tdb->map_size - expand, expand);
+	}
+
+	/* We are never allowed to cross a power-of-two boundary, and our
+	 * minimum zone size is 1 << INITIAL_ZONE_BITS.
+	 *
+	 * If our filesize is 128k, we can add a 64k or a 128k zone.  If it's
+	 * 192k, we can only add a 64k zone.
+	 *
+	 * In other words, our max zone size is (1 << (ffs(filesize) - 1)) */
+	zone_bits = ffs64(old_size - sizeof(struct tdb_header)) - 1;
+	assert(zone_bits >= INITIAL_ZONE_BITS);
+
+	/* Big zones generally good, but more zones wanted if contended. */
+	if (zones_contended(tdb)) {
+		/* If it suffices, make zone same size as last one. */
+		if (zhdr.zone_bits < zone_bits
+		    && (1ULL << zhdr.zone_bits) >= overhead(zone_bits)+wanted)
+			zone_bits = zhdr.zone_bits;
 	}
 
 	zhdr.zone_bits = zone_bits;
 	num_buckets = BUCKETS_FOR_ZONE(zone_bits);
 
-	/* FIXME: I don't think we need to expand to full zone, do we? */
-	if (tdb->methods->expand_file(tdb, 1ULL << zone_bits) == -1)
+	/* Expand the file by more than we need right now. */
+	expand = 1ULL << zone_bits;
+	if (expand > overhead(zone_bits) + (wanted << TDB_COMFORT_FACTOR_BITS))
+		expand = overhead(zone_bits)
+			+ (wanted << TDB_COMFORT_FACTOR_BITS);
+
+	if (tdb->methods->expand_file(tdb, expand) == -1)
 		goto fail;
 
-	/* Write new tailer. */
-	if (tdb->methods->write(tdb, tdb->map_size - 1, &zone_bits, 1) == -1)
-		goto fail;
-
-	/* Write new zone header (just before old tailer). */
-	off = old_size - 1;
+	/* Write new zone header (at old end). */
+	off = old_size;
 	if (tdb_write_convert(tdb, off, &zhdr, sizeof(zhdr)) == -1)
 		goto fail;
 
@@ -670,11 +723,12 @@ static int tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 	off += (num_buckets+1) * sizeof(tdb_off_t);
 
 	/* Now add the rest as our free record. */
-	if (add_free_record(tdb, zone_bits, off, tdb->map_size-1-off) == -1)
+	if (add_free_record(tdb, zone_bits, off, expand - overhead(zone_bits))
+	    == -1)
 		goto fail;
 
 	/* Try allocating from this zone now. */
-	tdb->zone_off = old_size - 1;
+	tdb->zone_off = old_size;
 	tdb->zhdr = zhdr;
 
 success:

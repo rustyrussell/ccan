@@ -39,12 +39,12 @@ int main(int argc, char *argv[])
 		d.dptr = malloc(d.dsize);
 		ok1(tdb_store(tdb, k, d, TDB_INSERT) == 0);
 		ok1(tdb->map_size == sizeof(struct tdb_header)
-		    + (1 << INITIAL_ZONE_BITS)+1);
+		    + (1 << INITIAL_ZONE_BITS));
 
 		/* Insert minimal-length records until we add a zone. */ 
 		for (j = 0;
 		     tdb->map_size == sizeof(struct tdb_header)
-			     + (1 << INITIAL_ZONE_BITS)+1;
+			     + (1 << INITIAL_ZONE_BITS);
 		     j++) {
 			if (tdb_store(tdb, k, k, TDB_INSERT) != 0)
 				err(1, "Failed to store record %i", j);

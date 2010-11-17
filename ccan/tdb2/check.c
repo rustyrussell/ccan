@@ -368,7 +368,7 @@ static tdb_off_t check_zone(struct tdb_context *tdb, tdb_off_t zone_off,
 			    unsigned int *max_zone_bits)
 {
 	struct free_zone_header zhdr;
-	tdb_off_t off, hdrlen;
+	tdb_off_t off, hdrlen, end;
 	tdb_len_t len;
 
 	if (tdb_read_convert(tdb, zone_off, &zhdr, sizeof(zhdr)) == -1)
@@ -391,15 +391,18 @@ static tdb_off_t check_zone(struct tdb_context *tdb, tdb_off_t zone_off,
 		return TDB_OFF_ERR;
 	}
 
-	/* Zone must be within file! */
-	if (tdb->methods->oob(tdb, zone_off + (1ULL << zhdr.zone_bits), false))
-		return TDB_OFF_ERR;
-
+	/* Zone header must be within file! */
 	hdrlen = sizeof(zhdr)
 		+ (BUCKETS_FOR_ZONE(zhdr.zone_bits) + 1) * sizeof(tdb_off_t);
-	for (off = zone_off + hdrlen;
-	     off < zone_off + (1ULL << zhdr.zone_bits);
-	     off += len) {
+
+	if (tdb->methods->oob(tdb, zone_off + hdrlen, true))
+		return TDB_OFF_ERR;
+
+	end = zone_off + (1ULL << zhdr.zone_bits);
+	if (end > tdb->map_size)
+		end = tdb->map_size;
+
+	for (off = zone_off + hdrlen; off < end; off += len) {
 		union {
 			struct tdb_used_record u;
 			struct tdb_free_record f;
@@ -476,7 +479,7 @@ static tdb_off_t check_zone(struct tdb_context *tdb, tdb_off_t zone_off,
 			}
 		}
 	}
-	return 1ULL << zhdr.zone_bits;
+	return off - zone_off;
 }
 
 /* FIXME: call check() function. */
@@ -488,7 +491,6 @@ int tdb_check(struct tdb_context *tdb,
 	tdb_len_t len;
 	size_t num_free = 0, num_used = 0, num_found = 0;
 	unsigned max_zone_bits = INITIAL_ZONE_BITS;
-	uint8_t tailer;
 
 	if (tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false) != 0)
 		return -1;
@@ -503,23 +505,12 @@ int tdb_check(struct tdb_context *tdb,
 
 	/* First we do a linear scan, checking all records. */
 	for (off = sizeof(struct tdb_header);
-	     off < tdb->map_size - 1;
+	     off < tdb->map_size;
 	     off += len) {
 		len = check_zone(tdb, off, &used, &num_used, &free, &num_free,
 				 &max_zone_bits);
 		if (len == TDB_OFF_ERR)
 			goto fail;
-	}
-
-	/* Check tailer. */
-	if (tdb->methods->read(tdb, tdb->map_size - 1, &tailer, 1) == -1)
-		goto fail;
-	if (tailer != max_zone_bits) {
-		tdb->ecode = TDB_ERR_CORRUPT;
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "tdb_check: Bad tailer value %u vs %u\n", tailer,
-			 max_zone_bits);
-		goto fail;
 	}
 
 	/* FIXME: Check key uniqueness? */

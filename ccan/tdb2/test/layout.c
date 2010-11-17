@@ -245,16 +245,7 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 		zone_left -= len;
 	}
 
-	/* Fill final zone with free record. */
-	if (zone_left != 0) {
-		tdb_layout_add_free(layout,
-				    zone_left
-				    - sizeof(struct tdb_used_record));
-		layout->elem[layout->num_elems-1].base.off = off;
-		off += zone_left;
-	}
-
-	mem = malloc(off+1);
+	mem = malloc(off);
 	/* Now populate our header, cribbing from a real TDB header. */
 	tdb = tdb_open(NULL, TDB_INTERNAL, O_RDWR, 0, &tap_log_attr);
 	memcpy(mem, tdb->map_ptr, sizeof(struct tdb_header));
@@ -262,7 +253,7 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 	/* Mug the tdb we have to make it use this. */
 	free(tdb->map_ptr);
 	tdb->map_ptr = mem;
-	tdb->map_size = off+1;
+	tdb->map_size = off;
 
 	for (i = 0; i < layout->num_elems; i++) {
 		union tdb_layout_elem *e = &layout->elem[i];
@@ -304,9 +295,6 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 		}
 	}
 
-	/* Write tailer. */
-	((uint8_t *)tdb->map_ptr)[tdb->map_size-1] = last_zone->zone_bits;
-
 	/* Get physical if they asked for it. */
 	if (layout->filename) {
 		int fd = open(layout->filename, O_WRONLY|O_TRUNC|O_CREAT,
@@ -321,5 +309,6 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 		tdb = tdb_open(layout->filename, TDB_NOMMAP, O_RDWR, 0,
 			       &tap_log_attr);
 	}
+
 	return tdb;
 }

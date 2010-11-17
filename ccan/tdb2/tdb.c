@@ -83,14 +83,6 @@ struct new_database {
 	/* Initial free zone. */
 	struct free_zone_header zhdr;
 	tdb_off_t free[BUCKETS_FOR_ZONE(INITIAL_ZONE_BITS) + 1];
-	struct tdb_free_record frec;
-	/* Rest up to 1 << INITIAL_ZONE_BITS is empty. */
-	char space[(1 << INITIAL_ZONE_BITS)
-		   - sizeof(struct free_zone_header)
-		   - sizeof(tdb_off_t) * (BUCKETS_FOR_ZONE(INITIAL_ZONE_BITS)+1)
-		   - sizeof(struct tdb_free_record)];
-	uint8_t tailer;
-	/* Don't count final padding! */
 };
 
 /* initialise a new database */
@@ -100,10 +92,7 @@ static int tdb_new_database(struct tdb_context *tdb,
 {
 	/* We make it up in memory, then write it out if not internal */
 	struct new_database newdb;
-	unsigned int bucket, magic_len, dbsize;
-
-	/* Don't want any extra padding! */
-	dbsize = offsetof(struct new_database, tailer) + sizeof(newdb.tailer);
+	unsigned int magic_len;
 
 	/* Fill in the header */
 	newdb.hdr.version = TDB_VERSION;
@@ -120,26 +109,9 @@ static int tdb_new_database(struct tdb_context *tdb,
 	/* Initial hashes are empty. */
 	memset(newdb.hdr.hashtable, 0, sizeof(newdb.hdr.hashtable));
 
-	/* Free is mostly empty... */
+	/* Free is empty. */
 	newdb.zhdr.zone_bits = INITIAL_ZONE_BITS;
 	memset(newdb.free, 0, sizeof(newdb.free));
-
-	/* Create the single free entry. */
-	newdb.frec.magic_and_meta = TDB_FREE_MAGIC | INITIAL_ZONE_BITS;
-	newdb.frec.data_len = (sizeof(newdb.frec)
-				 - sizeof(struct tdb_used_record)
-				 + sizeof(newdb.space));
-
-	/* Add it to the correct bucket. */
-	bucket = size_to_bucket(INITIAL_ZONE_BITS, newdb.frec.data_len);
-	newdb.free[bucket] = offsetof(struct new_database, frec);
-	newdb.frec.next = newdb.frec.prev = 0;
-
-	/* Clear free space to keep valgrind happy, and avoid leaking stack. */
-	memset(newdb.space, 0, sizeof(newdb.space));
-
-	/* Tailer contains maximum number of free_zone bits. */
-	newdb.tailer = INITIAL_ZONE_BITS;
 
 	/* Magic food */
 	memset(newdb.hdr.magic_food, 0, sizeof(newdb.hdr.magic_food));
@@ -148,13 +120,12 @@ static int tdb_new_database(struct tdb_context *tdb,
 	/* This creates an endian-converted database, as if read from disk */
 	magic_len = sizeof(newdb.hdr.magic_food);
 	tdb_convert(tdb,
-		    (char *)&newdb.hdr + magic_len,
-		    offsetof(struct new_database, space) - magic_len);
+		    (char *)&newdb.hdr + magic_len, sizeof(newdb) - magic_len);
 
 	*hdr = newdb.hdr;
 
 	if (tdb->flags & TDB_INTERNAL) {
-		tdb->map_size = dbsize;
+		tdb->map_size = sizeof(newdb);
 		tdb->map_ptr = malloc(tdb->map_size);
 		if (!tdb->map_ptr) {
 			tdb->ecode = TDB_ERR_OOM;
@@ -169,7 +140,7 @@ static int tdb_new_database(struct tdb_context *tdb,
 	if (ftruncate(tdb->fd, 0) == -1)
 		return -1;
 
-	if (!tdb_pwrite_all(tdb->fd, &newdb, dbsize, 0)) {
+	if (!tdb_pwrite_all(tdb->fd, &newdb, sizeof(newdb), 0)) {
 		tdb->ecode = TDB_ERR_IO;
 		return -1;
 	}

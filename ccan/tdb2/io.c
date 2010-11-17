@@ -123,27 +123,13 @@ static int tdb_oob(struct tdb_context *tdb, tdb_off_t len, bool probe)
 	return 0;
 }
 
-static void *tdb_direct(struct tdb_context *tdb, tdb_off_t off, size_t len)
-{
-	if (unlikely(!tdb->map_ptr))
-		return NULL;
-
-	/* FIXME: We can do a subset of this! */
-	if (tdb->transaction)
-		return NULL;
-
-	if (unlikely(tdb_oob(tdb, off + len, true) == -1))
-		return NULL;
-	return (char *)tdb->map_ptr + off;
-}
-
 /* Either make a copy into pad and return that, or return ptr into mmap. */
 /* Note: pad has to be a real object, so we can't get here if len
  * overflows size_t */
 void *tdb_get(struct tdb_context *tdb, tdb_off_t off, void *pad, size_t len)
 {
 	if (likely(!(tdb->flags & TDB_CONVERT))) {
-		void *ret = tdb_direct(tdb, off, len);
+		void *ret = tdb->methods->direct(tdb, off, len);
 		if (ret)
 			return ret;
 	}
@@ -205,7 +191,7 @@ uint64_t tdb_find_zero_off(struct tdb_context *tdb, tdb_off_t off,
 int zero_out(struct tdb_context *tdb, tdb_off_t off, tdb_len_t len)
 {
 	char buf[8192] = { 0 };
-	void *p = tdb_direct(tdb, off, len);
+	void *p = tdb->methods->direct(tdb, off, len);
 	if (p) {
 		memset(p, 0, len);
 		return 0;
@@ -478,7 +464,7 @@ const void *tdb_access_read(struct tdb_context *tdb,
 	const void *ret = NULL;	
 
 	if (likely(!(tdb->flags & TDB_CONVERT)))
-		ret = tdb_direct(tdb, off, len);
+		ret = tdb->methods->direct(tdb, off, len);
 
 	if (!ret) {
 		struct tdb_access_hdr *hdr;
@@ -500,7 +486,7 @@ void *tdb_access_write(struct tdb_context *tdb,
 	void *ret = NULL;
 
 	if (likely(!(tdb->flags & TDB_CONVERT)))
-		ret = tdb_direct(tdb, off, len);
+		ret = tdb->methods->direct(tdb, off, len);
 
 	if (!ret) {
 		struct tdb_access_hdr *hdr;
@@ -658,11 +644,22 @@ int tdb_rec_write(struct tdb_context *tdb, tdb_off_t offset, struct tdb_record *
 }
 #endif
 
+static void *tdb_direct(struct tdb_context *tdb, tdb_off_t off, size_t len)
+{
+	if (unlikely(!tdb->map_ptr))
+		return NULL;
+
+	if (unlikely(tdb_oob(tdb, off + len, true) == -1))
+		return NULL;
+	return (char *)tdb->map_ptr + off;
+}
+
 static const struct tdb_methods io_methods = {
 	tdb_read,
 	tdb_write,
 	tdb_oob,
 	tdb_expand_file,
+	tdb_direct,
 };
 
 /*

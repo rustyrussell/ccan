@@ -39,8 +39,9 @@ int main(int argc, char *argv[])
 	/* No coalescing can be done due to EOF */
 	layout = new_tdb_layout(NULL);
 	tdb_layout_add_zone(layout, zone_bits, false);
+	len = 1024;
+	tdb_layout_add_free(layout, len);
 	tdb = tdb_layout_get(layout);
-	len = layout->elem[1].free.len;
 	zone_off = layout->elem[0].base.off;
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == len);
@@ -81,11 +82,11 @@ int main(int argc, char *argv[])
 	layout = new_tdb_layout(NULL);
 	tdb_layout_add_zone(layout, zone_bits, false);
 	tdb_layout_add_free(layout, 1024);
+	tdb_layout_add_free(layout, 2048);
 	tdb = tdb_layout_get(layout);
 	zone_off = layout->elem[0].base.off;
-	len = layout->elem[2].free.len;
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == 1024);
-	ok1(free_record_length(tdb, layout->elem[2].base.off) == len);
+	ok1(free_record_length(tdb, layout->elem[2].base.off) == 2048);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 	/* Figure out which bucket (first) free entry is. */
@@ -96,7 +97,7 @@ int main(int argc, char *argv[])
 		     b_off, 1024) == 1);
 	ok1(!tdb_has_locks(tdb));
 	ok1(free_record_length(tdb, layout->elem[1].base.off)
-	    == 1024 + sizeof(struct tdb_used_record) + len);
+	    == 1024 + sizeof(struct tdb_used_record) + 2048);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	tdb_close(tdb);
 
@@ -129,12 +130,12 @@ int main(int argc, char *argv[])
 	tdb_layout_add_zone(layout, zone_bits, false);
 	tdb_layout_add_free(layout, 1024);
 	tdb_layout_add_free(layout, 512);
+	tdb_layout_add_free(layout, 256);
 	tdb = tdb_layout_get(layout);
 	zone_off = layout->elem[0].base.off;
-	len = layout->elem[3].free.len;
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == 1024);
 	ok1(free_record_length(tdb, layout->elem[2].base.off) == 512);
-	ok1(free_record_length(tdb, layout->elem[3].base.off) == len);
+	ok1(free_record_length(tdb, layout->elem[3].base.off) == 256);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 	/* Figure out which bucket free entry is. */
@@ -146,7 +147,7 @@ int main(int argc, char *argv[])
 	ok1(!tdb_has_locks(tdb));
 	ok1(free_record_length(tdb, layout->elem[1].base.off)
 	    == 1024 + sizeof(struct tdb_used_record) + 512
-	    + sizeof(struct tdb_used_record) + len);
+	    + sizeof(struct tdb_used_record) + 256);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	tdb_close(tdb);
 
