@@ -64,8 +64,9 @@
  *
  * License: LGPLv3 (or later)
  *
- * Fails:
- *	valgrind-tests // hash needs --partial-loads-ok=yes.
+ * Ccanlint:
+ *	// hash fails because it accesses data in 4 byte quantities for speed.
+ *	valgrind-tests --partial-loads-ok=yes
  */
 int main(int argc, char *argv[])
 {

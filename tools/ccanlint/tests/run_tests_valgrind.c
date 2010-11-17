@@ -42,11 +42,12 @@ static void do_run_tests_vg(struct manifest *m,
 		list_for_each(list, i, list) {
 			score->total++;
 			if (run_command(score, timeleft, &cmdout,
-					"valgrind -q --error-exitcode=100 %s",
+					"valgrind -q --error-exitcode=100%s %s",
+					run_tests_vg.options ?
+					run_tests_vg.options : "",
 					i->compiled)) {
 				score->score++;
 			} else {
-				score->error = "Running under valgrind";
 				score_file_error(score, i, 0, cmdout);
 			}
 		}
@@ -79,7 +80,8 @@ struct ccanlint run_tests_vg = {
 	.name = "Module's run and api tests succeed under valgrind",
 	.can_run = can_run_vg,
 	.check = do_run_tests_vg,
-	.handle = run_under_debugger_vg
+	.handle = run_under_debugger_vg,
+	.takes_options = true
 };
 
 REGISTER_TEST(run_tests_vg, &run_tests, NULL);

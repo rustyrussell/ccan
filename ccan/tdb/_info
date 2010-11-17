@@ -65,7 +65,9 @@
  *
  * License: LGPLv3 (or later)
  *
- * Fails: valgrind-tests // valgrind breaks fcntl locks.
+ * Ccanlint:
+ *	// valgrind breaks fcntl locks.
+ *	valgrind-tests FAIL
  */
 int main(int argc, char *argv[])
 {

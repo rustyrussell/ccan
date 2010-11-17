@@ -344,24 +344,64 @@ static char *list_tests(void *arg)
 	exit(0);
 }
 
-static char *strip(const void *ctx, const char *line)
+/* Remove empty lines. */
+static char **collapse(char **lines, unsigned int *nump)
 {
-	line += strcspn(line, IDENT_CHARS "-");
-	return talloc_strndup(ctx, line, strspn(line, IDENT_CHARS "-"));
+	unsigned int i, j;
+	for (i = j = 0; lines[i]; i++) {
+		if (lines[i][0])
+			lines[j++] = lines[i];
+	}
+	if (nump)
+		*nump = j;
+	return lines;
 }
 
-static void add_info_fails(struct ccan_file *info)
+static void add_info_options(struct ccan_file *info, bool mark_fails)
 {
 	struct doc_section *d;
 	unsigned int i;
+	struct ccanlint *test;
 
 	list_for_each(get_ccan_file_docs(info), d, list) {
-		if (!streq(d->type, "fails"))
+		if (!streq(d->type, "ccanlint"))
 			continue;
 
-		for (i = 0; i < d->num_lines; i++)
-			btree_insert(info_exclude, strip(info, d->lines[i]));
-		break;
+		for (i = 0; i < d->num_lines; i++) {
+			char **words = collapse(strsplit(d, d->lines[i], " \t",
+							 NULL), NULL);
+			if (!words[0])
+				continue;
+
+			if (strncmp(words[0], "//", 2) == 0)
+				continue;
+
+			test = find_test(words[0]);
+			if (!test) {
+				warnx("%s: unknown ccanlint test '%s'",
+				      info->fullname, words[0]);
+				continue;
+			}
+
+			if (!words[1]) {
+				warnx("%s: no argument to test '%s'",
+				      info->fullname, words[0]);
+				continue;
+			}
+
+			/* Known failure? */
+			if (strcasecmp(words[1], "FAIL") == 0) {
+				if (mark_fails)
+					btree_insert(info_exclude, words[0]);
+			} else {
+				if (!test->takes_options)
+					warnx("%s: %s doesn't take options",
+					      info->fullname, words[0]);
+				/* Copy line exactly into options. */
+				test->options = strstr(d->lines[i], words[0])
+					+ strlen(words[0]);
+			}
+		}
 	}
 }
 
@@ -469,9 +509,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/* --target overrides _info excludes */
-	if (!target)
-		add_info_fails(m->info_file);
+	/* --target overrides known FAIL from _info */
+	add_info_options(m->info_file, !target);
 
 	while ((i = get_next_test(&normal_tests)) != NULL)
 		run_test(i, summary, &score, &total_score, m);

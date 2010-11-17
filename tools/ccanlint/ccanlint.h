@@ -82,6 +82,11 @@ struct ccanlint {
 	/* Can we do something about it? (NULL if not) */
 	void (*handle)(struct manifest *m, struct score *score);
 
+	/* Options from _info. */
+	char *options;
+	/* If not set, we'll give an error if they try to set options. */
+	bool takes_options;
+
 	/* Internal use fields: */
 	/* Who depends on us? */
 	struct list_head dependencies;
