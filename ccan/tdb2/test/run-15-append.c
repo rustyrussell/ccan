@@ -5,16 +5,31 @@
 #include <ccan/tdb2/hash.c>
 #include <ccan/tdb2/check.c>
 #include <ccan/tap/tap.h>
+#include <ccan/ilog/ilog.h>
 #include "logging.h"
 
 #define MAX_SIZE 13100
 #define SIZE_STEP 131
 
+static tdb_off_t tdb_offset(struct tdb_context *tdb, struct tdb_data key)
+{
+	tdb_off_t off;
+	struct tdb_used_record rec;
+	struct hash_info h;
+
+	off = find_and_lock(tdb, key, F_RDLCK, &h, &rec, NULL);
+	if (unlikely(off == TDB_OFF_ERR))
+		return 0;
+	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_RDLCK);
+	return off;
+}
+
 int main(int argc, char *argv[])
 {
-	unsigned int i, j;
+	unsigned int i, j, moves;
 	struct tdb_context *tdb;
 	unsigned char *buffer;
+	tdb_off_t oldoff = 0, newoff;
 	int flags[] = { TDB_INTERNAL, TDB_DEFAULT, TDB_NOMMAP,
 			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT, 
 			TDB_NOMMAP|TDB_CONVERT };
@@ -26,7 +41,7 @@ int main(int argc, char *argv[])
 		buffer[i] = i;
 
 	plan_tests(sizeof(flags) / sizeof(flags[0])
-		   * ((2 + MAX_SIZE/SIZE_STEP * 4) * 2 + 6)
+		   * ((3 + MAX_SIZE/SIZE_STEP * 4) * 2 + 6)
 		   + 1);
 
 	/* Using tdb_store. */
@@ -37,6 +52,7 @@ int main(int argc, char *argv[])
 		if (!tdb)
 			continue;
 
+		moves = 0;
 		for (j = 0; j < MAX_SIZE; j += SIZE_STEP) {
 			data.dptr = buffer;
 			data.dsize = j;
@@ -46,8 +62,14 @@ int main(int argc, char *argv[])
 			ok1(data.dsize == j);
 			ok1(memcmp(data.dptr, buffer, data.dsize) == 0);
 			free(data.dptr);
+			newoff = tdb_offset(tdb, key);
+			if (newoff != oldoff)
+				moves++;
+			oldoff = newoff;
 		}
 		ok1(!tdb_has_locks(tdb));
+		/* We should increase by 50% each time... */
+		ok(moves <= ilog64(j / SIZE_STEP)*2, "Moved %u times", moves);
 		tdb_close(tdb);
 	}
 
@@ -60,6 +82,7 @@ int main(int argc, char *argv[])
 		if (!tdb)
 			continue;
 
+		moves = 0;
 		for (j = 0; j < MAX_SIZE; j += SIZE_STEP) {
 			data.dptr = buffer + prev_len;
 			data.dsize = j - prev_len;
@@ -70,8 +93,14 @@ int main(int argc, char *argv[])
 			ok1(memcmp(data.dptr, buffer, data.dsize) == 0);
 			free(data.dptr);
 			prev_len = data.dsize;
+			newoff = tdb_offset(tdb, key);
+			if (newoff != oldoff)
+				moves++;
+			oldoff = newoff;
 		}
 		ok1(!tdb_has_locks(tdb));
+		/* We should increase by 50% each time... */
+		ok(moves <= ilog64(j / SIZE_STEP)*2, "Moved %u times", moves);
 		tdb_close(tdb);
 	}
 

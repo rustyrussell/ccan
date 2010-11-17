@@ -270,13 +270,9 @@ int add_free_record(struct tdb_context *tdb,
 	return ret;
 }
 
-static size_t adjust_size(size_t keylen, size_t datalen, bool want_extra)
+static size_t adjust_size(size_t keylen, size_t datalen)
 {
 	size_t size = keylen + datalen;
-
-	/* We want at least 50% growth for data. */
-	if (want_extra)
-		size += datalen/2;
 
 	if (size < TDB_MIN_DATA_LEN)
 		size = TDB_MIN_DATA_LEN;
@@ -291,13 +287,11 @@ static size_t record_leftover(size_t keylen, size_t datalen,
 {
 	ssize_t leftover;
 
-	/* We might *want* extra, but not have it, so leftover is negative. */
-	leftover = total_len - adjust_size(keylen, datalen, want_extra);
-	if (leftover < (ssize_t)sizeof(struct tdb_free_record))
-		return 0;
+	if (want_extra)
+		datalen += datalen / 2;
+	leftover = total_len - adjust_size(keylen, datalen);
 
-	/* If we want extra anwyay, don't split unless we have 2x size. */
-	if (want_extra && leftover <= datalen / 2)
+	if (leftover < (ssize_t)sizeof(struct tdb_free_record))
 		return 0;
 
 	return leftover;
@@ -418,7 +412,7 @@ static tdb_off_t lock_and_alloc(struct tdb_context *tdb,
 	tdb_off_t off, b_off,best_off;
 	struct tdb_free_record pad, best = { 0 }, *r;
 	double multiplier;
-	size_t size = keylen + datalen;
+	size_t size = adjust_size(keylen, datalen);
 
 again:
 	b_off = bucket_off(zone_off, bucket);
@@ -494,6 +488,7 @@ again:
 		leftover = record_leftover(keylen, datalen, want_extra,
 					   best.data_len);
 
+		assert(keylen + datalen + leftover <= best.data_len);
 		/* We need to mark non-free before we drop lock, otherwise
 		 * coalesce() could try to merge it! */
 		if (set_header(tdb, &rec, keylen, datalen,
@@ -543,7 +538,7 @@ static tdb_off_t get_free(struct tdb_context *tdb,
 {
 	tdb_off_t start_zone = tdb->zone_off, off;
 	bool wrapped = false;
-	size_t size = adjust_size(keylen, datalen, want_extra);
+	size_t size = adjust_size(keylen, datalen);
 
 	/* If they are growing, add 50% to get to higher bucket. */
 	if (want_extra)
@@ -754,7 +749,7 @@ tdb_off_t alloc(struct tdb_context *tdb, size_t keylen, size_t datalen,
 		if (likely(off != 0))
 			break;
 
-		if (tdb_expand(tdb, adjust_size(keylen, datalen, growing)))
+		if (tdb_expand(tdb, adjust_size(keylen, datalen)))
 			return TDB_OFF_ERR;
 	}
 
