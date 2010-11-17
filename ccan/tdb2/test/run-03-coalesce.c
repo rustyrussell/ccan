@@ -21,16 +21,15 @@ static tdb_len_t free_record_length(struct tdb_context *tdb, tdb_off_t off)
 
 int main(int argc, char *argv[])
 {
-	tdb_off_t b_off, zone_off;
+	tdb_off_t b_off;
 	struct tdb_context *tdb;
 	struct tdb_layout *layout;
 	struct tdb_data data, key;
 	tdb_len_t len;
-	unsigned int zone_bits = 16;
 
 	/* FIXME: Test TDB_CONVERT */
 
-	plan_tests(45);
+	plan_tests(38);
 	data.dptr = (void *)"world";
 	data.dsize = 5;
 	key.dptr = (void *)"hello";
@@ -38,20 +37,18 @@ int main(int argc, char *argv[])
 
 	/* No coalescing can be done due to EOF */
 	layout = new_tdb_layout(NULL);
-	tdb_layout_add_zone(layout, zone_bits, false);
+	tdb_layout_add_freelist(layout);
 	len = 1024;
 	tdb_layout_add_free(layout, len);
 	tdb = tdb_layout_get(layout);
-	zone_off = layout->elem[0].base.off;
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == len);
 
 	/* Figure out which bucket free entry is. */
-	b_off = bucket_off(zone_off, size_to_bucket(zone_bits, len));
+	b_off = bucket_off(tdb->flist_off, size_to_bucket(len));
 	/* Lock and fail to coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
-	ok1(coalesce(tdb, zone_off, zone_bits, layout->elem[1].base.off,
-		     b_off, len) == 0);
+	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, len) == 0);
 	tdb_unlock_free_bucket(tdb, b_off);
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == len);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
@@ -59,20 +56,18 @@ int main(int argc, char *argv[])
 
 	/* No coalescing can be done due to used record */
 	layout = new_tdb_layout(NULL);
-	tdb_layout_add_zone(layout, zone_bits, false);
+	tdb_layout_add_freelist(layout);
 	tdb_layout_add_free(layout, 1024);
 	tdb_layout_add_used(layout, key, data, 6);
 	tdb = tdb_layout_get(layout);
-	zone_off = layout->elem[0].base.off;
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == 1024);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 	/* Figure out which bucket free entry is. */
-	b_off = bucket_off(zone_off, size_to_bucket(zone_bits, 1024));
+	b_off = bucket_off(tdb->flist_off, size_to_bucket(1024));
 	/* Lock and fail to coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
-	ok1(coalesce(tdb, zone_off, zone_bits, layout->elem[1].base.off,
-		     b_off, 1024) == 0);
+	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024) == 0);
 	tdb_unlock_free_bucket(tdb, b_off);
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == 1024);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
@@ -80,21 +75,19 @@ int main(int argc, char *argv[])
 
 	/* Coalescing can be done due to two free records, then EOF */
 	layout = new_tdb_layout(NULL);
-	tdb_layout_add_zone(layout, zone_bits, false);
+	tdb_layout_add_freelist(layout);
 	tdb_layout_add_free(layout, 1024);
 	tdb_layout_add_free(layout, 2048);
 	tdb = tdb_layout_get(layout);
-	zone_off = layout->elem[0].base.off;
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == 1024);
 	ok1(free_record_length(tdb, layout->elem[2].base.off) == 2048);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 	/* Figure out which bucket (first) free entry is. */
-	b_off = bucket_off(zone_off, size_to_bucket(zone_bits, 1024));
+	b_off = bucket_off(tdb->flist_off, size_to_bucket(1024));
 	/* Lock and coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
-	ok1(coalesce(tdb, zone_off, zone_bits, layout->elem[1].base.off,
-		     b_off, 1024) == 1);
+	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024) == 1);
 	ok1(!tdb_has_locks(tdb));
 	ok1(free_record_length(tdb, layout->elem[1].base.off)
 	    == 1024 + sizeof(struct tdb_used_record) + 2048);
@@ -103,22 +96,20 @@ int main(int argc, char *argv[])
 
 	/* Coalescing can be done due to two free records, then data */
 	layout = new_tdb_layout(NULL);
-	tdb_layout_add_zone(layout, zone_bits, false);
+	tdb_layout_add_freelist(layout);
 	tdb_layout_add_free(layout, 1024);
 	tdb_layout_add_free(layout, 512);
 	tdb_layout_add_used(layout, key, data, 6);
 	tdb = tdb_layout_get(layout);
-	zone_off = layout->elem[0].base.off;
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == 1024);
 	ok1(free_record_length(tdb, layout->elem[2].base.off) == 512);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 	/* Figure out which bucket free entry is. */
-	b_off = bucket_off(zone_off, size_to_bucket(zone_bits, 1024));
+	b_off = bucket_off(tdb->flist_off, size_to_bucket(1024));
 	/* Lock and coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
-	ok1(coalesce(tdb, zone_off, zone_bits, layout->elem[1].base.off,
-		     b_off, 1024) == 1);
+	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024) == 1);
 	ok1(!tdb_has_locks(tdb));
 	ok1(free_record_length(tdb, layout->elem[1].base.off)
 	    == 1024 + sizeof(struct tdb_used_record) + 512);
@@ -127,49 +118,25 @@ int main(int argc, char *argv[])
 
 	/* Coalescing can be done due to three free records, then EOF */
 	layout = new_tdb_layout(NULL);
-	tdb_layout_add_zone(layout, zone_bits, false);
+	tdb_layout_add_freelist(layout);
 	tdb_layout_add_free(layout, 1024);
 	tdb_layout_add_free(layout, 512);
 	tdb_layout_add_free(layout, 256);
 	tdb = tdb_layout_get(layout);
-	zone_off = layout->elem[0].base.off;
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == 1024);
 	ok1(free_record_length(tdb, layout->elem[2].base.off) == 512);
 	ok1(free_record_length(tdb, layout->elem[3].base.off) == 256);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 	/* Figure out which bucket free entry is. */
-	b_off = bucket_off(zone_off, size_to_bucket(zone_bits, 1024));
+	b_off = bucket_off(tdb->flist_off, size_to_bucket(1024));
 	/* Lock and coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
-	ok1(coalesce(tdb, zone_off, zone_bits, layout->elem[1].base.off,
-		     b_off, 1024) == 1);
+	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024) == 1);
 	ok1(!tdb_has_locks(tdb));
 	ok1(free_record_length(tdb, layout->elem[1].base.off)
 	    == 1024 + sizeof(struct tdb_used_record) + 512
 	    + sizeof(struct tdb_used_record) + 256);
-	ok1(tdb_check(tdb, NULL, NULL) == 0);
-	tdb_close(tdb);
-
-	/* Coalescing across two zones isn't possible. */
-	layout = new_tdb_layout(NULL);
-	tdb_layout_add_zone(layout, zone_bits, false);
-	tdb_layout_add_zone(layout, zone_bits, true);
-	tdb = tdb_layout_get(layout);
-	zone_off = layout->elem[0].base.off;
-	len = layout->elem[1].free.len;
-	ok1(free_record_length(tdb, layout->elem[1].base.off) == len);
-	ok1(tdb_check(tdb, NULL, NULL) == 0);
-
-	/* Figure out which list free entry is. */
-	b_off = bucket_off(zone_off, size_to_bucket(zone_bits, len));
-	/* Lock and coalesce. */
-	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
-	ok1(coalesce(tdb, zone_off, zone_bits, layout->elem[1].base.off,
-		     b_off, len) == 0);
-	tdb_unlock_free_bucket(tdb, b_off);
-	ok1(!tdb_has_locks(tdb));
-	ok1(free_record_length(tdb, layout->elem[1].base.off) == len);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	tdb_close(tdb);
 

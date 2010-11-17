@@ -169,7 +169,7 @@ int main(int argc, char *argv[])
 
 		/* Simple delete should work. */
 		ok1(delete_from_hash(tdb, &h) == 0);
-		ok1(add_free_record(tdb, rec_zone_bits(&rec), new_off,
+		ok1(add_free_record(tdb, new_off,
 				    sizeof(struct tdb_used_record)
 				    + rec_key_length(&rec)
 				    + rec_data_length(&rec)

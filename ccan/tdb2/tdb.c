@@ -80,9 +80,7 @@ static uint64_t random_number(struct tdb_context *tdb)
 
 struct new_database {
 	struct tdb_header hdr;
-	/* Initial free zone. */
-	struct free_zone_header zhdr;
-	tdb_off_t free[BUCKETS_FOR_ZONE(INITIAL_ZONE_BITS) + 1];
+	struct tdb_freelist flist;
 };
 
 /* initialise a new database */
@@ -110,8 +108,10 @@ static int tdb_new_database(struct tdb_context *tdb,
 	memset(newdb.hdr.hashtable, 0, sizeof(newdb.hdr.hashtable));
 
 	/* Free is empty. */
-	newdb.zhdr.zone_bits = INITIAL_ZONE_BITS;
-	memset(newdb.free, 0, sizeof(newdb.free));
+	newdb.hdr.free_list = offsetof(struct new_database, flist);
+	memset(&newdb.flist, 0, sizeof(newdb.flist));
+	set_header(NULL, &newdb.flist.hdr, 0,
+		   sizeof(newdb.flist.buckets), sizeof(newdb.flist.buckets), 1);
 
 	/* Magic food */
 	memset(newdb.hdr.magic_food, 0, sizeof(newdb.hdr.magic_food));
@@ -176,7 +176,6 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb->log_priv = NULL;
 	tdb->transaction = NULL;
 	tdb_hash_init(tdb);
-	/* last_zone will be set below. */
 	tdb_io_init(tdb);
 	tdb_lock_init(tdb);
 
@@ -230,7 +229,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		}
 		tdb_convert(tdb, &hdr.hash_seed, sizeof(hdr.hash_seed));
 		tdb->hash_seed = hdr.hash_seed;
-		tdb_zone_init(tdb);
+		tdb_flist_init(tdb);
 		return tdb;
 	}
 
@@ -314,8 +313,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	/* This make sure we have current map_size and mmap. */
 	tdb->methods->oob(tdb, tdb->map_size + 1, true);
 
-	/* Now we can pick a random free zone to start from. */
-	if (tdb_zone_init(tdb) == -1)
+	if (tdb_flist_init(tdb) == -1)
 		goto fail;
 
 	tdb->next = tdbs;
@@ -358,8 +356,7 @@ static int update_rec_hdr(struct tdb_context *tdb,
 {
 	uint64_t dataroom = rec_data_length(rec) + rec_extra_padding(rec);
 
-	if (set_header(tdb, rec, keylen, datalen, keylen + dataroom, h,
-		       rec_zone_bits(rec)))
+	if (set_header(tdb, rec, keylen, datalen, keylen + dataroom, h))
 		return -1;
 
 	return tdb_write_convert(tdb, off, rec, sizeof(*rec));
@@ -370,7 +367,6 @@ static int replace_data(struct tdb_context *tdb,
 			struct hash_info *h,
 			struct tdb_data key, struct tdb_data dbuf,
 			tdb_off_t old_off, tdb_len_t old_room,
-			unsigned old_zone,
 			bool growing)
 {
 	tdb_off_t new_off;
@@ -382,7 +378,7 @@ static int replace_data(struct tdb_context *tdb,
 
 	/* We didn't like the existing one: remove it. */
 	if (old_off) {
-		add_free_record(tdb, old_zone, old_off,
+		add_free_record(tdb, old_off,
 				sizeof(struct tdb_used_record)
 				+ key.dsize + old_room);
 		if (replace_in_hash(tdb, h, new_off) == -1)
@@ -454,8 +450,7 @@ int tdb_store(struct tdb_context *tdb,
 	}
 
 	/* If we didn't use the old record, this implies we're growing. */
-	ret = replace_data(tdb, &h, key, dbuf, off, old_room,
-			   rec_zone_bits(&rec), off != 0);
+	ret = replace_data(tdb, &h, key, dbuf, off, old_room, off != 0);
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
 	return ret;
 
@@ -524,8 +519,7 @@ int tdb_append(struct tdb_context *tdb,
 	}
 
 	/* If they're using tdb_append(), it implies they're growing record. */
-	ret = replace_data(tdb, &h, key, new_dbuf, off,
-			   old_room, rec_zone_bits(&rec), true);
+	ret = replace_data(tdb, &h, key, new_dbuf, off, old_room, true);
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
 	free(newdata);
 
@@ -580,7 +574,7 @@ int tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 		goto unlock_err;
 
 	/* Free the deleted entry. */
-	if (add_free_record(tdb, rec_zone_bits(&rec), off,
+	if (add_free_record(tdb, off,
 			    sizeof(struct tdb_used_record)
 			    + rec_key_length(&rec)
 			    + rec_data_length(&rec)

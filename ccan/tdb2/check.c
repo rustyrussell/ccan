@@ -237,7 +237,7 @@ static bool check_hash_tree(struct tdb_context *tdb,
 				goto fail;
 
 			/* Bottom bits must match header. */
-			if ((h & ((1 << 5)-1)) != rec_hash(&rec)) {
+			if ((h & ((1 << 11)-1)) != rec_hash(&rec)) {
 				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 					 "tdb_check: Bad hash magic at"
 					 " offset %llu (0x%llx vs 0x%llx)\n",
@@ -267,7 +267,8 @@ static bool check_hash(struct tdb_context *tdb,
 			     0, 0, used, num_used, &num_found))
 		return false;
 
-	if (num_found != num_used) {
+	/* 1 is for the free list. */
+	if (num_found != num_used - 1) {
 		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 			 "tdb_check: Not all entries are in hash\n");
 		return false;
@@ -278,8 +279,7 @@ static bool check_hash(struct tdb_context *tdb,
 static bool check_free(struct tdb_context *tdb,
 		       tdb_off_t off,
 		       const struct tdb_free_record *frec,
-		       tdb_off_t prev,
-		       tdb_off_t zone_off, unsigned int bucket)
+		       tdb_off_t prev, unsigned int bucket)
 {
 	if (frec_magic(frec) != TDB_FREE_MAGIC) {
 		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
@@ -291,20 +291,11 @@ static bool check_free(struct tdb_context *tdb,
 			      + frec->data_len+sizeof(struct tdb_used_record),
 			      false))
 		return false;
-	if (off < zone_off || off >= zone_off + (1ULL<<frec_zone_bits(frec))) {
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "tdb_check: offset %llu outside zone %llu-%llu\n",
-			 (long long)off,
-			 (long long)zone_off,
-			 (long long)zone_off + (1ULL<<frec_zone_bits(frec)));
-		return false;
-	}
-	if (size_to_bucket(frec_zone_bits(frec), frec->data_len) != bucket) {
+	if (size_to_bucket(frec->data_len) != bucket) {
 		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 			 "tdb_check: offset %llu in wrong bucket %u vs %u\n",
 			 (long long)off,
-			 bucket,
-			 size_to_bucket(frec_zone_bits(frec), frec->data_len));
+			 bucket, size_to_bucket(frec->data_len));
 		return false;
 	}
 	if (prev != frec->prev) {
@@ -317,31 +308,41 @@ static bool check_free(struct tdb_context *tdb,
 	return true;
 }
 		       
-static tdb_len_t check_free_list(struct tdb_context *tdb,
-				 tdb_off_t zone_off,
-				 tdb_off_t free[],
-				 size_t num_free,
-				 size_t *num_found)
+static bool check_free_list(struct tdb_context *tdb,
+			    tdb_off_t flist_off,
+			    tdb_off_t free[],
+			    size_t num_free,
+			    size_t *num_found)
 {
-	struct free_zone_header zhdr;
+	struct tdb_freelist flist;
 	tdb_off_t h;
 	unsigned int i;
 
-	if (tdb_read_convert(tdb, zone_off, &zhdr, sizeof(zhdr)) == -1)
-		return TDB_OFF_ERR;
+	if (tdb_read_convert(tdb, flist_off, &flist, sizeof(flist)) == -1)
+		return false;
 
-	for (i = 0; i <= BUCKETS_FOR_ZONE(zhdr.zone_bits); i++) {
+	if (rec_magic(&flist.hdr) != TDB_MAGIC
+	    || rec_key_length(&flist.hdr) != 0
+	    || rec_data_length(&flist.hdr) != sizeof(flist) - sizeof(flist.hdr)
+	    || rec_hash(&flist.hdr) != 1) {
+		tdb->log(tdb, TDB_DEBUG_ERROR,
+			 tdb->log_priv,
+			 "tdb_check: Invalid header on free list\n");
+		return false;
+	}
+
+	for (i = 0; i < TDB_FREE_BUCKETS; i++) {
 		tdb_off_t off, prev = 0, *p;
 		struct tdb_free_record f;
 
-		h = bucket_off(zone_off, i);
+		h = bucket_off(flist_off, i);
 		for (off = tdb_read_off(tdb, h); off; off = f.next) {
 			if (off == TDB_OFF_ERR)
-				return TDB_OFF_ERR;
+				return false;
 			if (tdb_read_convert(tdb, off, &f, sizeof(f)))
-				return TDB_OFF_ERR;
-			if (!check_free(tdb, off, &f, prev, zone_off, i))
-				return TDB_OFF_ERR;
+				return false;
+			if (!check_free(tdb, off, &f, prev, i))
+				return false;
 
 			/* FIXME: Check hash bits */
 			p = asearch(&off, free, num_free, off_cmp);
@@ -351,7 +352,7 @@ static tdb_len_t check_free_list(struct tdb_context *tdb,
 					 "tdb_check: Invalid offset"
 					 " %llu in free table\n",
 					 (long long)off);
-				return TDB_OFF_ERR;
+				return false;
 			}
 			/* Mark it invalid. */
 			*p ^= 1;
@@ -359,79 +360,38 @@ static tdb_len_t check_free_list(struct tdb_context *tdb,
 			prev = off;
 		}
 	}
-	return 1ULL << zhdr.zone_bits;
+	return true;
 }
 
-static tdb_off_t check_zone(struct tdb_context *tdb, tdb_off_t zone_off,
-			    tdb_off_t **used, size_t *num_used,
-			    tdb_off_t **free, size_t *num_free,
-			    unsigned int *max_zone_bits)
+static bool check_linear(struct tdb_context *tdb,
+			 tdb_off_t **used, size_t *num_used,
+			 tdb_off_t **free, size_t *num_free)
 {
-	struct free_zone_header zhdr;
-	tdb_off_t off, hdrlen, end;
+	tdb_off_t off;
 	tdb_len_t len;
 
-	if (tdb_read_convert(tdb, zone_off, &zhdr, sizeof(zhdr)) == -1)
-		return TDB_OFF_ERR;
-
-	if (zhdr.zone_bits < INITIAL_ZONE_BITS) {
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "check: bad zone_bits %llu at zone %llu\n",
-			 (long long)zhdr.zone_bits, (long long)zone_off);
-		return TDB_OFF_ERR;
-	}
-
-	/* Zone bits can only increase... */
-	if (zhdr.zone_bits > *max_zone_bits)
-		*max_zone_bits = zhdr.zone_bits;
-	else if (zhdr.zone_bits < *max_zone_bits) {
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "check: small zone_bits %llu at zone %llu\n",
-			 (long long)zhdr.zone_bits, (long long)zone_off);
-		return TDB_OFF_ERR;
-	}
-
-	/* Zone header must be within file! */
-	hdrlen = sizeof(zhdr)
-		+ (BUCKETS_FOR_ZONE(zhdr.zone_bits) + 1) * sizeof(tdb_off_t);
-
-	if (tdb->methods->oob(tdb, zone_off + hdrlen, true))
-		return TDB_OFF_ERR;
-
-	end = zone_off + (1ULL << zhdr.zone_bits);
-	if (end > tdb->map_size)
-		end = tdb->map_size;
-
-	for (off = zone_off + hdrlen; off < end; off += len) {
+	for (off = sizeof(struct tdb_header); off < tdb->map_size; off += len) {
 		union {
 			struct tdb_used_record u;
 			struct tdb_free_record f;
 		} pad, *p;
 		p = tdb_get(tdb, off, &pad, sizeof(pad));
 		if (!p)
-			return TDB_OFF_ERR;
+			return false;
 		if (frec_magic(&p->f) == TDB_FREE_MAGIC
 		    || frec_magic(&p->f) == TDB_COALESCING_MAGIC) {
-			if (frec_zone_bits(&p->f) != zhdr.zone_bits) {
-				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-					 "tdb_check: Bad free zone bits %u"
-					 " at offset %llu\n",
-					 frec_zone_bits(&p->f),
-					 (long long)off);
-				return TDB_OFF_ERR;
-			}
 			len = sizeof(p->u) + p->f.data_len;
-			if (off + len > zone_off + (1ULL << zhdr.zone_bits)) {
+			if (off + len > tdb->map_size) {
 				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 					 "tdb_check: free overlength %llu"
 					 " at offset %llu\n",
 					 (long long)len, (long long)off);
-				return TDB_OFF_ERR;
+				return false;
 			}
 			/* This record is free! */
 			if (frec_magic(&p->f) == TDB_FREE_MAGIC
 			    && !append(free, num_free, off))
-				return TDB_OFF_ERR;
+				return false;
 		} else {
 			uint64_t klen, dlen, extra;
 
@@ -442,32 +402,23 @@ static tdb_off_t check_zone(struct tdb_context *tdb, tdb_off_t zone_off,
 					 " at offset %llu\n",
 					 (long long)rec_magic(&p->u),
 					 (long long)off);
-				return TDB_OFF_ERR;
+				return false;
 			}
 
-			if (rec_zone_bits(&p->u) != zhdr.zone_bits) {
-				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-					 "tdb_check: Bad zone bits %u"
-					 " at offset %llu\n",
-					 rec_zone_bits(&p->u),
-					 (long long)off);
-				return TDB_OFF_ERR;
-			}
-			
 			if (!append(used, num_used, off))
-				return TDB_OFF_ERR;
+				return false;
 
 			klen = rec_key_length(&p->u);
 			dlen = rec_data_length(&p->u);
 			extra = rec_extra_padding(&p->u);
 
 			len = sizeof(p->u) + klen + dlen + extra;
-			if (off + len > zone_off + (1ULL << zhdr.zone_bits)) {
+			if (off + len > tdb->map_size) {
 				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 					 "tdb_check: used overlength %llu"
 					 " at offset %llu\n",
 					 (long long)len, (long long)off);
-				return TDB_OFF_ERR;
+				return false;
 			}
 
 			if (len < sizeof(p->f)) {
@@ -475,11 +426,11 @@ static tdb_off_t check_zone(struct tdb_context *tdb, tdb_off_t zone_off,
 					 "tdb_check: too short record %llu at"
 					 " %llu\n",
 					 (long long)len, (long long)off);
-				return TDB_OFF_ERR;
+				return false;
 			}
 		}
 	}
-	return off - zone_off;
+	return true;
 }
 
 /* FIXME: call check() function. */
@@ -487,10 +438,8 @@ int tdb_check(struct tdb_context *tdb,
 	      int (*check)(TDB_DATA key, TDB_DATA data, void *private_data),
 	      void *private_data)
 {
-	tdb_off_t *free = NULL, *used = NULL, off;
-	tdb_len_t len;
+	tdb_off_t *free = NULL, *used = NULL;
 	size_t num_free = 0, num_used = 0, num_found = 0;
-	unsigned max_zone_bits = INITIAL_ZONE_BITS;
 
 	if (tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false) != 0)
 		return -1;
@@ -504,26 +453,16 @@ int tdb_check(struct tdb_context *tdb,
 		goto fail;
 
 	/* First we do a linear scan, checking all records. */
-	for (off = sizeof(struct tdb_header);
-	     off < tdb->map_size;
-	     off += len) {
-		len = check_zone(tdb, off, &used, &num_used, &free, &num_free,
-				 &max_zone_bits);
-		if (len == TDB_OFF_ERR)
-			goto fail;
-	}
+	if (!check_linear(tdb, &used, &num_used, &free, &num_free))
+		goto fail;
 
 	/* FIXME: Check key uniqueness? */
 	if (!check_hash(tdb, used, num_used))
 		goto fail;
 
-	for (off = sizeof(struct tdb_header);
-	     off < tdb->map_size - 1;
-	     off += len) {
-		len = check_free_list(tdb, off, free, num_free, &num_found);
-		if (len == TDB_OFF_ERR)
-			goto fail;
-	}
+	if (!check_free_list(tdb, tdb->flist_off, free, num_free, &num_found))
+		goto fail;
+
 	if (num_found != num_free) {
 		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 			 "tdb_check: Not all entries are in free table\n");

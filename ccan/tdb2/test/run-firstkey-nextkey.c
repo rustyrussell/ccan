@@ -44,15 +44,21 @@ int main(int argc, char *argv[])
 	struct trav_data td;
 	TDB_DATA k, k2;
 	struct tdb_context *tdb;
+	union tdb_attribute seed_attr;
+
 	int flags[] = { TDB_INTERNAL, TDB_DEFAULT, TDB_NOMMAP,
 			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT, 
 			TDB_NOMMAP|TDB_CONVERT };
+
+	seed_attr.base.attr = TDB_ATTRIBUTE_SEED;
+	seed_attr.base.next = &tap_log_attr;
+	seed_attr.seed.seed = 6334326220117065685ULL;
 
 	plan_tests(sizeof(flags) / sizeof(flags[0])
 		   * (NUM_RECORDS*4 + (NUM_RECORDS-1)*2 + 20) + 1);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		tdb = tdb_open("run-traverse.tdb", flags[i],
-			       O_RDWR|O_CREAT|O_TRUNC, 0600, &tap_log_attr);
+			       O_RDWR|O_CREAT|O_TRUNC, 0600, &seed_attr);
 		ok1(tdb);
 		if (!tdb)
 			continue;

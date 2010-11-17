@@ -257,7 +257,7 @@ static int tdb_nest_lock(struct tdb_context *tdb, tdb_off_t offset, int ltype,
 {
 	struct tdb_lock_type *new_lck;
 
-	if (offset >= TDB_HASH_LOCK_START + TDB_HASH_LOCK_RANGE + tdb->map_size / 8) {
+	if (offset > TDB_HASH_LOCK_START + TDB_HASH_LOCK_RANGE + tdb->map_size / 8) {
 		tdb->ecode = TDB_ERR_LOCK;
 		tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
 			 "tdb_nest_lock: invalid offset %llu ltype=%d\n",
