@@ -64,8 +64,8 @@ typedef uint64_t tdb_off_t;
 #define TDB_MAGIC_FOOD "TDB file\n"
 #define TDB_VERSION ((uint64_t)(0x26011967 + 7))
 #define TDB_MAGIC ((uint64_t)0x1999)
-#define TDB_FREE_MAGIC ((~(uint64_t)TDB_MAGIC) << 6)
-#define TDB_COALESCING_MAGIC (0xBAD1DEA2FEEDULL << 6)
+#define TDB_FREE_MAGIC ((uint64_t)0xFE)
+#define TDB_COALESCING_MAGIC ((uint64_t)0xFD)
 #define TDB_HASH_MAGIC (0xA1ABE11A01092008ULL)
 #define TDB_RECOVERY_MAGIC (0xf53bc0e7U)
 #define TDB_RECOVERY_INVALID_MAGIC (0x0)
@@ -173,7 +173,7 @@ static inline uint16_t rec_magic(const struct tdb_used_record *r)
 }
 
 struct tdb_free_record {
-        uint64_t magic_and_meta;
+        uint64_t magic_and_meta; /* TDB_OFF_UPPER_STEAL bits of magic */
         uint64_t data_len; /* Not counting these two fields. */
 	/* This is why the minimum record size is 16 bytes.  */
 	uint64_t next, prev;
@@ -181,7 +181,12 @@ struct tdb_free_record {
 
 static inline uint64_t frec_magic(const struct tdb_free_record *f)
 {
-	return f->magic_and_meta;
+	return f->magic_and_meta >> (64 - TDB_OFF_UPPER_STEAL);
+}
+
+static inline uint64_t frec_flist(const struct tdb_free_record *f)
+{
+	return f->magic_and_meta & ((1ULL << (64 - TDB_OFF_UPPER_STEAL)) - 1);
 }
 
 /* this is stored at the front of every database */
@@ -201,6 +206,7 @@ struct tdb_header {
 
 struct tdb_freelist {
 	struct tdb_used_record hdr;
+	tdb_off_t next;
 	tdb_off_t buckets[TDB_FREE_BUCKETS];
 };
 
@@ -349,6 +355,10 @@ bool is_subhash(tdb_off_t val);
 
 /* free.c: */
 int tdb_flist_init(struct tdb_context *tdb);
+
+/* check.c needs these to iterate through free lists. */
+tdb_off_t first_flist(struct tdb_context *tdb);
+tdb_off_t next_flist(struct tdb_context *tdb, tdb_off_t flist);
 
 /* If this fails, try tdb_expand. */
 tdb_off_t alloc(struct tdb_context *tdb, size_t keylen, size_t datalen,

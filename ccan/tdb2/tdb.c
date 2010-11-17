@@ -111,7 +111,8 @@ static int tdb_new_database(struct tdb_context *tdb,
 	newdb.hdr.free_list = offsetof(struct new_database, flist);
 	memset(&newdb.flist, 0, sizeof(newdb.flist));
 	set_header(NULL, &newdb.flist.hdr, 0,
-		   sizeof(newdb.flist.buckets), sizeof(newdb.flist.buckets), 1);
+		   sizeof(newdb.flist) - sizeof(newdb.flist.hdr),
+		   sizeof(newdb.flist) - sizeof(newdb.flist.hdr), 1);
 
 	/* Magic food */
 	memset(newdb.hdr.magic_food, 0, sizeof(newdb.hdr.magic_food));

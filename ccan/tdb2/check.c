@@ -258,17 +258,17 @@ fail:
 
 static bool check_hash(struct tdb_context *tdb,
 		       tdb_off_t used[],
-		       size_t num_used)
+		       size_t num_used, size_t num_flists)
 {
-	size_t num_found = 0;
+	/* Free lists also show up as used. */
+	size_t num_found = num_flists;
 
 	if (!check_hash_tree(tdb, offsetof(struct tdb_header, hashtable),
 			     TDB_TOPLEVEL_HASH_BITS-TDB_HASH_GROUP_BITS,
 			     0, 0, used, num_used, &num_found))
 		return false;
 
-	/* 1 is for the free list. */
-	if (num_found != num_used - 1) {
+	if (num_found != num_used) {
 		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 			 "tdb_check: Not all entries are in hash\n");
 		return false;
@@ -279,7 +279,7 @@ static bool check_hash(struct tdb_context *tdb,
 static bool check_free(struct tdb_context *tdb,
 		       tdb_off_t off,
 		       const struct tdb_free_record *frec,
-		       tdb_off_t prev, unsigned int bucket)
+		       tdb_off_t prev, tdb_off_t flist_off, unsigned int bucket)
 {
 	if (frec_magic(frec) != TDB_FREE_MAGIC) {
 		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
@@ -287,6 +287,13 @@ static bool check_free(struct tdb_context *tdb,
 			 (long long)off, (long long)frec->magic_and_meta);
 		return false;
 	}
+	if (frec_flist(frec) != flist_off) {
+		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
+			 "tdb_check: offset %llu bad freelist 0x%llx\n",
+			 (long long)off, (long long)frec_flist(frec));
+		return false;
+	}
+
 	if (tdb->methods->oob(tdb, off
 			      + frec->data_len+sizeof(struct tdb_used_record),
 			      false))
@@ -341,7 +348,7 @@ static bool check_free_list(struct tdb_context *tdb,
 				return false;
 			if (tdb_read_convert(tdb, off, &f, sizeof(f)))
 				return false;
-			if (!check_free(tdb, off, &f, prev, i))
+			if (!check_free(tdb, off, &f, prev, flist_off, i))
 				return false;
 
 			/* FIXME: Check hash bits */
@@ -438,8 +445,8 @@ int tdb_check(struct tdb_context *tdb,
 	      int (*check)(TDB_DATA key, TDB_DATA data, void *private_data),
 	      void *private_data)
 {
-	tdb_off_t *free = NULL, *used = NULL;
-	size_t num_free = 0, num_used = 0, num_found = 0;
+	tdb_off_t *free = NULL, *used = NULL, flist;
+	size_t num_free = 0, num_used = 0, num_found = 0, num_flists = 0;
 
 	if (tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false) != 0)
 		return -1;
@@ -456,11 +463,16 @@ int tdb_check(struct tdb_context *tdb,
 	if (!check_linear(tdb, &used, &num_used, &free, &num_free))
 		goto fail;
 
-	/* FIXME: Check key uniqueness? */
-	if (!check_hash(tdb, used, num_used))
-		goto fail;
+	for (flist = first_flist(tdb); flist; flist = next_flist(tdb, flist)) {
+		if (flist == TDB_OFF_ERR)
+			goto fail;
+		if (!check_free_list(tdb, flist, free, num_free, &num_found))
+			goto fail;
+		num_flists++;
+	}
 
-	if (!check_free_list(tdb, tdb->flist_off, free, num_free, &num_found))
+	/* FIXME: Check key uniqueness? */
+	if (!check_hash(tdb, used, num_used, num_flists))
 		goto fail;
 
 	if (num_found != num_free) {

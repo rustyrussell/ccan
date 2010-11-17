@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
 	layout = new_tdb_layout(NULL);
 	tdb_layout_add_freelist(layout);
 	len = 1024;
-	tdb_layout_add_free(layout, len);
+	tdb_layout_add_free(layout, len, 0);
 	tdb = tdb_layout_get(layout);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == len);
@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 	/* No coalescing can be done due to used record */
 	layout = new_tdb_layout(NULL);
 	tdb_layout_add_freelist(layout);
-	tdb_layout_add_free(layout, 1024);
+	tdb_layout_add_free(layout, 1024, 0);
 	tdb_layout_add_used(layout, key, data, 6);
 	tdb = tdb_layout_get(layout);
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == 1024);
@@ -76,8 +76,8 @@ int main(int argc, char *argv[])
 	/* Coalescing can be done due to two free records, then EOF */
 	layout = new_tdb_layout(NULL);
 	tdb_layout_add_freelist(layout);
-	tdb_layout_add_free(layout, 1024);
-	tdb_layout_add_free(layout, 2048);
+	tdb_layout_add_free(layout, 1024, 0);
+	tdb_layout_add_free(layout, 2048, 0);
 	tdb = tdb_layout_get(layout);
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == 1024);
 	ok1(free_record_length(tdb, layout->elem[2].base.off) == 2048);
@@ -97,8 +97,8 @@ int main(int argc, char *argv[])
 	/* Coalescing can be done due to two free records, then data */
 	layout = new_tdb_layout(NULL);
 	tdb_layout_add_freelist(layout);
-	tdb_layout_add_free(layout, 1024);
-	tdb_layout_add_free(layout, 512);
+	tdb_layout_add_free(layout, 1024, 0);
+	tdb_layout_add_free(layout, 512, 0);
 	tdb_layout_add_used(layout, key, data, 6);
 	tdb = tdb_layout_get(layout);
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == 1024);
@@ -119,9 +119,9 @@ int main(int argc, char *argv[])
 	/* Coalescing can be done due to three free records, then EOF */
 	layout = new_tdb_layout(NULL);
 	tdb_layout_add_freelist(layout);
-	tdb_layout_add_free(layout, 1024);
-	tdb_layout_add_free(layout, 512);
-	tdb_layout_add_free(layout, 256);
+	tdb_layout_add_free(layout, 1024, 0);
+	tdb_layout_add_free(layout, 512, 0);
+	tdb_layout_add_free(layout, 256, 0);
 	tdb = tdb_layout_get(layout);
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == 1024);
 	ok1(free_record_length(tdb, layout->elem[2].base.off) == 512);

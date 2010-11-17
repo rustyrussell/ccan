@@ -4,7 +4,8 @@
 
 struct tdb_layout *new_tdb_layout(const char *filename);
 void tdb_layout_add_freelist(struct tdb_layout *layout);
-void tdb_layout_add_free(struct tdb_layout *layout, tdb_len_t len);
+void tdb_layout_add_free(struct tdb_layout *layout, tdb_len_t len,
+			 unsigned flist);
 void tdb_layout_add_used(struct tdb_layout *layout,
 			 TDB_DATA key, TDB_DATA data,
 			 tdb_len_t extra);
@@ -33,6 +34,7 @@ struct tle_freelist {
 struct tle_free {
 	struct tle_base base;
 	tdb_len_t len;
+	unsigned flist_num;
 };
 
 struct tle_used {

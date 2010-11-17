@@ -49,12 +49,36 @@ unsigned int size_to_bucket(tdb_len_t data_len)
 	return bucket;
 }
 
+tdb_off_t first_flist(struct tdb_context *tdb)
+{
+	return tdb_read_off(tdb, offsetof(struct tdb_header, free_list));
+}
+
+tdb_off_t next_flist(struct tdb_context *tdb, tdb_off_t flist)
+{
+	return tdb_read_off(tdb, flist + offsetof(struct tdb_freelist, next));
+}
+
 int tdb_flist_init(struct tdb_context *tdb)
 {
-	tdb->flist_off = tdb_read_off(tdb,
-				      offsetof(struct tdb_header, free_list));
-	if (tdb->flist_off == TDB_OFF_ERR)
-		return -1;
+	/* Use reservoir sampling algorithm to select a free list at random. */
+	unsigned int rnd, max = 0;
+	tdb_off_t off;
+
+	tdb->flist_off = off = first_flist(tdb);
+
+	while (off) {
+		if (off == TDB_OFF_ERR)
+			return -1;
+
+		rnd = random();
+		if (rnd >= max) {
+			tdb->flist_off = off;
+			max = rnd;
+		}
+
+		off = next_flist(tdb, off);
+	}
 	return 0;
 }
 
@@ -66,10 +90,12 @@ tdb_off_t bucket_off(tdb_off_t flist_off, unsigned bucket)
 }
 
 /* Returns free_buckets + 1, or list number to search. */
-static tdb_off_t find_free_head(struct tdb_context *tdb, tdb_off_t bucket)
+static tdb_off_t find_free_head(struct tdb_context *tdb,
+				tdb_off_t flist_off,
+				tdb_off_t bucket)
 {
 	/* Speculatively search for a non-zero bucket. */
-	return tdb_find_nonzero_off(tdb, bucket_off(tdb->flist_off, 0),
+	return tdb_find_nonzero_off(tdb, bucket_off(flist_off, 0),
 				    bucket, TDB_FREE_BUCKETS);
 }
 
@@ -168,7 +194,8 @@ int add_free_record(struct tdb_context *tdb,
 
 	assert(len_with_header >= sizeof(new));
 
-	new.magic_and_meta = TDB_FREE_MAGIC;
+	new.magic_and_meta = TDB_FREE_MAGIC << (64 - TDB_OFF_UPPER_STEAL)
+		| tdb->flist_off;
 	new.data_len = len_with_header - sizeof(struct tdb_used_record);
 
 	b_off = bucket_off(tdb->flist_off, size_to_bucket(new.data_len));
@@ -227,8 +254,7 @@ static int coalesce(struct tdb_context *tdb,
 		if (frec_magic(r) != TDB_FREE_MAGIC)
 			break;
 
-		/* FIXME: Use flist from record */
-		nb_off = bucket_off(tdb->flist_off,size_to_bucket(r->data_len));
+		nb_off = bucket_off(frec_flist(r), size_to_bucket(r->data_len));
 
 		/* We may be violating lock order here, so best effort. */
 		if (tdb_lock_free_bucket(tdb, nb_off, TDB_LOCK_NOWAIT) == -1)
@@ -246,7 +272,7 @@ static int coalesce(struct tdb_context *tdb,
 			break;
 		}
 
-		if (unlikely(bucket_off(tdb->flist_off,
+		if (unlikely(bucket_off(frec_flist(r),
 					size_to_bucket(r->data_len))
 			     != nb_off)) {
 			tdb_unlock_free_bucket(tdb, nb_off);
@@ -288,7 +314,7 @@ static int coalesce(struct tdb_context *tdb,
 
 	/* We have to drop this to avoid deadlocks, so make sure record
 	 * doesn't get coalesced by someone else! */
-	r->magic_and_meta = TDB_COALESCING_MAGIC;
+	r->magic_and_meta = TDB_COALESCING_MAGIC << (64 - TDB_OFF_UPPER_STEAL);
 	r->data_len = end - off - sizeof(struct tdb_used_record);
 	if (tdb_access_commit(tdb, r) != 0)
 		goto err;
@@ -425,8 +451,9 @@ static tdb_off_t get_free(struct tdb_context *tdb,
 			  size_t keylen, size_t datalen, bool want_extra,
 			  unsigned hashlow)
 {
-	tdb_off_t off;
+	tdb_off_t off, flist;
 	unsigned start_b, b;
+	bool wrapped = false;
 
 	/* If they are growing, add 50% to get to higher bucket. */
 	if (want_extra)
@@ -435,20 +462,34 @@ static tdb_off_t get_free(struct tdb_context *tdb,
 	else
 		start_b = size_to_bucket(adjust_size(keylen, datalen));
 
-	/* Start at exact size bucket, and search up... */
-	for (b = find_free_head(tdb, start_b);
-	     b < TDB_FREE_BUCKETS;
-	     b = find_free_head(tdb, b + 1)) {
-		/* Try getting one from list. */
-		off = lock_and_alloc(tdb, tdb->flist_off,
-				     b, keylen, datalen, want_extra,
-				     hashlow);
-		if (off == TDB_OFF_ERR)
-			return TDB_OFF_ERR;
-		if (off != 0)
-			return off;
-		/* Didn't work.  Try next bucket. */
+	flist = tdb->flist_off;
+	while (!wrapped || flist != tdb->flist_off) {
+		/* Start at exact size bucket, and search up... */
+		for (b = find_free_head(tdb, flist, start_b);
+		     b < TDB_FREE_BUCKETS;
+		     b = find_free_head(tdb, flist, b + 1)) {
+			/* Try getting one from list. */
+			off = lock_and_alloc(tdb, flist,
+					     b, keylen, datalen, want_extra,
+					     hashlow);
+			if (off == TDB_OFF_ERR)
+				return TDB_OFF_ERR;
+			if (off != 0) {
+				/* Worked?  Stay using this list. */
+				tdb->flist_off = flist;
+				return off;
+			}
+			/* Didn't work.  Try next bucket. */
+		}
+
+		/* Hmm, try next list. */
+		flist = next_flist(tdb, flist);
+		if (flist == 0) {
+			wrapped = true;
+			flist = first_flist(tdb);
+		}
 	}
+
 	return 0;
 }
 
