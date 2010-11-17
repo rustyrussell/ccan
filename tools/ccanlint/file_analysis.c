@@ -4,6 +4,8 @@
 #include <ccan/str_talloc/str_talloc.h>
 #include <ccan/grab_file/grab_file.h>
 #include <ccan/noerr/noerr.h>
+#include <ccan/foreach/foreach.h>
+#include <ccan/asort/asort.h>
 #include "../tools.h"
 #include <unistd.h>
 #include <sys/types.h>
@@ -139,11 +141,36 @@ static void add_files(struct manifest *m, const char *dir)
 	closedir(d);
 }
 
+static int cmp_names(struct ccan_file *const *a, struct ccan_file *const *b,
+		     void *unused)
+{
+	return strcmp((*a)->name, (*b)->name);
+}
+
+static void sort_files(struct list_head *list)
+{
+	struct ccan_file **files = NULL, *f;
+	unsigned int i, num;
+
+	num = 0;
+	while ((f = list_top(list, struct ccan_file, list)) != NULL) {
+		files = talloc_realloc(NULL, files, struct ccan_file *, num+1);
+		files[num++] = f;
+		list_del(&f->list);
+	}
+	asort(files, num, cmp_names, NULL);
+
+	for (i = 0; i < num; i++)
+		list_add_tail(list, &files[i]->list);
+	talloc_free(files);
+}
+
 struct manifest *get_manifest(const void *ctx, const char *dir)
 {
 	struct manifest *m = talloc(ctx, struct manifest);
 	char *olddir;
 	unsigned int len;
+	struct list_head *list;
 
 	m->info_file = NULL;
 	list_head_init(&m->c_files);
@@ -190,6 +217,11 @@ struct manifest *get_manifest(const void *ctx, const char *dir)
 	}
 
 	add_files(m, "");
+
+	/* Nicer to run tests in a predictable order. */
+	foreach_ptr(list, &m->api_tests, &m->run_tests, &m->compile_ok_tests,
+		    &m->compile_fail_tests)
+		sort_files(list);
 
 	if (chdir(olddir) != 0)
 		err(1, "Returning to original directory '%s'", olddir);

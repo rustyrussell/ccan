@@ -9,6 +9,7 @@ CORE_OBJS := tools/ccanlint/ccanlint.o \
 	tools/tools.o \
 	tools/compile.o \
 	ccan/str_talloc/str_talloc.o ccan/grab_file/grab_file.o \
+	ccan/asort/asort.o \
 	ccan/btree/btree.o \
 	ccan/talloc/talloc.o ccan/noerr/noerr.o \
 	ccan/foreach/foreach.o \
