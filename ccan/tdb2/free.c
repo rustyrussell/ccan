@@ -450,15 +450,17 @@ again:
 		if (tdb_write_convert(tdb, best_off, &rec, sizeof(rec)) != 0)
 			goto unlock_err;
 
-		tdb_unlock_free_bucket(tdb, b_off);
-
+		/* Bucket of leftover will be <= current bucket, so nested
+		 * locking is allowed. */
 		if (leftover) {
 			if (add_free_record(tdb,
 					    best_off + sizeof(rec)
 					    + frec_len(&best) - leftover,
 					    leftover))
-				return TDB_OFF_ERR;
+				best_off = TDB_OFF_ERR;
 		}
+		tdb_unlock_free_bucket(tdb, b_off);
+
 		return best_off;
 	}
 
