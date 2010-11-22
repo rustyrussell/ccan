@@ -566,6 +566,14 @@ static int tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 		return -1;
 	}
 
+	/* always make room for at least 100 more records, and at
+           least 25% more space. */
+	if (size * TDB_EXTENSION_FACTOR > tdb->map_size / 4)
+		wanted = size * TDB_EXTENSION_FACTOR;
+	else
+		wanted = tdb->map_size / 4;
+	wanted = adjust_size(0, wanted);
+
 	/* Only one person can expand file at a time. */
 	if (tdb_lock_expand(tdb, F_WRLCK) != 0)
 		return -1;
@@ -578,7 +586,7 @@ static int tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 		return 0;
 	}
 
-	if (tdb->methods->expand_file(tdb, wanted*TDB_EXTENSION_FACTOR) == -1) {
+	if (tdb->methods->expand_file(tdb, wanted) == -1) {
 		tdb_unlock_expand(tdb, F_WRLCK);
 		return -1;
 	}
@@ -586,7 +594,7 @@ static int tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 	/* We need to drop this lock before adding free record. */
 	tdb_unlock_expand(tdb, F_WRLCK);
 
-	return add_free_record(tdb, old_size, wanted * TDB_EXTENSION_FACTOR);
+	return add_free_record(tdb, old_size, wanted);
 }
 
 /* This won't fail: it will expand the database if it has to. */

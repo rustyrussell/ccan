@@ -92,8 +92,8 @@ typedef uint64_t tdb_off_t;
 /* And 8 entries in each group, ie 8 groups per sublevel. */
 #define TDB_HASH_GROUP_BITS 3
 
-/* Extend file by least 32 times larger than needed. */
-#define TDB_EXTENSION_FACTOR 32
+/* Extend file by least 100 times larger than needed. */
+#define TDB_EXTENSION_FACTOR 100
 
 /* We steal bits from the offsets to store hash info. */
 #define TDB_OFF_HASH_GROUP_MASK ((1ULL << TDB_HASH_GROUP_BITS) - 1)
