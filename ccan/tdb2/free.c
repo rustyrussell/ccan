@@ -244,12 +244,15 @@ static size_t record_leftover(size_t keylen, size_t datalen,
 	return leftover;
 }
 
-/* FIXME: Shortcut common case where tdb->flist == flist */
 static tdb_off_t flist_offset(struct tdb_context *tdb, unsigned int flist)
 {
-	tdb_off_t off = first_flist(tdb);
+	tdb_off_t off;
 	unsigned int i;
 
+	if (likely(tdb->flist == flist))
+		return tdb->flist_off;
+
+	off = first_flist(tdb);
 	for (i = 0; i < flist; i++)
 		off = next_flist(tdb, off);
 	return off;
