@@ -270,10 +270,14 @@ static int tdb_nest_lock(struct tdb_context *tdb, tdb_off_t offset, int ltype,
 
 	new_lck = find_nestlock(tdb, offset);
 	if (new_lck) {
-		/*
-		 * Just increment the in-memory struct, posix locks
-		 * don't stack.
-		 */
+		if (new_lck->ltype == F_RDLCK && ltype == F_WRLCK) {
+			tdb->ecode = TDB_ERR_LOCK;
+			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
+				 "tdb_nest_lock: offset %llu has read lock\n",
+				 (long long)offset);
+			return -1;
+		}
+		/* Just increment the struct, posix locks don't stack. */
 		new_lck->count++;
 		return 0;
 	}
@@ -454,7 +458,8 @@ int tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
 		return -1;
 	}
 
-	if (tdb->allrecord_lock.count && tdb->allrecord_lock.ltype == ltype) {
+	if (tdb->allrecord_lock.count
+	    && (ltype == F_RDLCK || tdb->allrecord_lock.ltype == F_WRLCK)) {
 		tdb->allrecord_lock.count++;
 		return 0;
 	}
