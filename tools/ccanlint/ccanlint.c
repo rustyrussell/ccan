@@ -318,7 +318,7 @@ static char *keep_test(const char *testname, void *unused)
 
 static char *skip_test(const char *testname, void *unused)
 {
-	btree_insert(cmdline_exclude, optarg);
+	btree_insert(cmdline_exclude, testname);
 	return NULL;
 }
 
