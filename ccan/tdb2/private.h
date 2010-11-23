@@ -507,59 +507,6 @@ int next_in_hash(struct tdb_context *tdb, int ltype,
 int tdb_transaction_recover(struct tdb_context *tdb);
 bool tdb_needs_recovery(struct tdb_context *tdb);
 
-#if 0
-/* Low-level locking primitives. */
-int tdb_nest_lock(struct tdb_context *tdb, tdb_off_t offset, int ltype,
-		  enum tdb_lock_flags flags);
-int tdb_nest_unlock(struct tdb_context *tdb, tdb_off_t offset, int ltype);
-
-int tdb_munmap(struct tdb_context *tdb);
-void tdb_mmap(struct tdb_context *tdb);
-int tdb_lock(struct tdb_context *tdb, int list, int ltype);
-int tdb_lock_nonblock(struct tdb_context *tdb, int list, int ltype);
-bool tdb_have_locks(struct tdb_context *tdb);
-int tdb_unlock(struct tdb_context *tdb, int list, int ltype);
-int tdb_brlock(struct tdb_context *tdb,
-	       int rw_type, tdb_off_t offset, size_t len,
-	       enum tdb_lock_flags flags);
-int tdb_brunlock(struct tdb_context *tdb,
-		 int rw_type, tdb_off_t offset, size_t len);
-bool tdb_have_extra_locks(struct tdb_context *tdb);
-void tdb_release_extra_locks(struct tdb_context *tdb);
-int tdb_transaction_lock(struct tdb_context *tdb, int ltype);
-int tdb_transaction_unlock(struct tdb_context *tdb, int ltype);
-int tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
-		       enum tdb_lock_flags flags, bool upgradable);
-int tdb_allrecord_unlock(struct tdb_context *tdb, int ltype);
-int tdb_allrecord_upgrade(struct tdb_context *tdb);
-int tdb_write_lock_record(struct tdb_context *tdb, tdb_off_t off);
-int tdb_write_unlock_record(struct tdb_context *tdb, tdb_off_t off);
-int tdb_ofs_read(struct tdb_context *tdb, tdb_off_t offset, tdb_off_t *d);
-int tdb_ofs_write(struct tdb_context *tdb, tdb_off_t offset, tdb_off_t *d);
-int tdb_free(struct tdb_context *tdb, tdb_off_t offset, struct tdb_record *rec);
-tdb_off_t tdb_allocate(struct tdb_context *tdb, tdb_len_t length, struct tdb_record *rec);
-int tdb_ofs_read(struct tdb_context *tdb, tdb_off_t offset, tdb_off_t *d);
-int tdb_ofs_write(struct tdb_context *tdb, tdb_off_t offset, tdb_off_t *d);
-int tdb_lock_record(struct tdb_context *tdb, tdb_off_t off);
-int tdb_unlock_record(struct tdb_context *tdb, tdb_off_t off);
-bool tdb_needs_recovery(struct tdb_context *tdb);
-int tdb_rec_read(struct tdb_context *tdb, tdb_off_t offset, struct tdb_record *rec);
-int tdb_rec_write(struct tdb_context *tdb, tdb_off_t offset, struct tdb_record *rec);
-int tdb_do_delete(struct tdb_context *tdb, tdb_off_t rec_ptr, struct tdb_record *rec);
-unsigned char *tdb_alloc_read(struct tdb_context *tdb, tdb_off_t offset, tdb_len_t len);
-int tdb_parse_data(struct tdb_context *tdb, TDB_DATA key,
-		   tdb_off_t offset, tdb_len_t len,
-		   int (*parser)(TDB_DATA key, TDB_DATA data,
-				 void *private_data),
-		   void *private_data);
-tdb_off_t tdb_find_lock_hash(struct tdb_context *tdb, TDB_DATA key, uint32_t hash, int locktype,
-			   struct tdb_record *rec);
-void tdb_io_init(struct tdb_context *tdb);
-int tdb_expand(struct tdb_context *tdb, tdb_off_t size);
-int tdb_rec_free_read(struct tdb_context *tdb, tdb_off_t off,
-		      struct tdb_record *rec);
-#endif
-
 #ifdef TDB_TRACE
 void tdb_trace(struct tdb_context *tdb, const char *op);
 void tdb_trace_seqnum(struct tdb_context *tdb, uint32_t seqnum, const char *op);
