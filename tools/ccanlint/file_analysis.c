@@ -173,6 +173,7 @@ struct manifest *get_manifest(const void *ctx, const char *dir)
 	struct list_head *list;
 
 	m->info_file = NULL;
+	m->compiled = NULL;
 	list_head_init(&m->c_files);
 	list_head_init(&m->h_files);
 	list_head_init(&m->api_tests);
@@ -184,7 +185,7 @@ struct manifest *get_manifest(const void *ctx, const char *dir)
 	list_head_init(&m->other_files);
 	list_head_init(&m->examples);
 	list_head_init(&m->mangled_examples);
-	list_head_init(&m->dep_dirs);
+	list_head_init(&m->deps);
 
 	olddir = talloc_getcwd(NULL);
 	if (!olddir)

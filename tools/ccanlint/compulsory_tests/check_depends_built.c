@@ -13,6 +13,7 @@
 #include <err.h>
 #include <string.h>
 #include <ctype.h>
+#include "build.h"
 
 static const char *can_build(struct manifest *m)
 {
@@ -21,50 +22,63 @@ static const char *can_build(struct manifest *m)
 	return NULL;
 }
 
-/* FIXME: recursive ccanlint if they ask for it. */
-static bool expect_obj_file(const char *dir)
+static bool expect_obj_file(struct manifest *m)
 {
-	struct manifest *dep_man;
-	bool has_c_files;
-
-	dep_man = get_manifest(dir, dir);
-
 	/* If it has C files, we expect an object file built from them. */
-	has_c_files = !list_empty(&dep_man->c_files);
-	talloc_free(dep_man);
-	return has_c_files;
+	return !list_empty(&m->c_files);
+}
+
+static char *build_subdir_objs(struct manifest *m)
+{
+	struct ccan_file *i;
+
+	list_for_each(&m->c_files, i, list) {
+		char *fullfile = talloc_asprintf(m, "%s/%s", m->dir, i->name);
+		char *output;
+
+		i->compiled = maybe_temp_file(m, "", false, fullfile);
+		if (!compile_object(m, fullfile, ccan_dir, "", i->compiled,
+				    &output)) {
+			talloc_free(i->compiled);
+			i->compiled = NULL;
+			return talloc_asprintf(m,
+					       "Dependency %s"
+					       " did not build:\n%s",
+					       m->basename, output);
+		}
+	}
+	return NULL;
 }
 
 static void check_depends_built(struct manifest *m,
 				bool keep,
 				unsigned int *timeleft, struct score *score)
 {
-	struct ccan_file *i;
+	struct manifest *i;
 	struct stat st;
 
-	list_for_each(&m->dep_dirs, i, list) {
-		if (!expect_obj_file(i->fullname))
+	list_for_each(&m->deps, i, list) {
+		char *errstr;
+		if (!expect_obj_file(i))
 			continue;
 
-		i->compiled = talloc_asprintf(i, "%s.o", i->fullname);
-		if (stat(i->compiled, &st) != 0) {
-			score->error = "Dependencies are not built";
-			score_file_error(score, i, 0,
-					 talloc_asprintf(score,
-							"object file %s",
-							 i->compiled));
-			i->compiled = NULL;
-		}			
-	}
+		i->compiled = talloc_asprintf(i, "%s.o", i->dir);
+		if (stat(i->compiled, &st) == 0)
+			continue;
 
-	/* We may need libtap for testing, unless we're "tap" */
-	if (!streq(m->basename, "tap")
-	    && (!list_empty(&m->run_tests) || !list_empty(&m->api_tests))) {
-		char *tapobj = talloc_asprintf(m, "%s/ccan/tap.o", ccan_dir);
-		if (stat(tapobj, &st) != 0) {
+		if (verbose >= 2)
+			printf("  Building dependency %s\n", i->dir);
+		score->error = build_subdir_objs(i);
+		if (score->error)
+			return;
+		i->compiled = build_module(i, keep, &errstr);
+		if (!i->compiled) {
 			score->error = talloc_asprintf(score,
-					       "tap object file not built");
-		}
+						       "Dependency %s"
+						       " did not build:\n%s",
+						       i->basename, errstr);
+			return;
+		}			
 	}
 
 	if (!score->error) {
@@ -75,7 +89,7 @@ static void check_depends_built(struct manifest *m,
 
 struct ccanlint depends_built = {
 	.key = "depends-built",
-	.name = "Module's CCAN dependencies are already built",
+	.name = "Module's CCAN dependencies can be found or built",
 	.check = check_depends_built,
 	.can_run = can_build,
 };

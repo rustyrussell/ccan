@@ -67,10 +67,12 @@ static char *add_dep(const struct manifest *m, char *list, const char *mod)
 	return list;
 }
 
+/* FIXME: Merge this into one place. */
 static char *obj_list(const struct manifest *m, struct ccan_file *f)
 {
 	char *list = talloc_strdup(m, "");
 	struct ccan_file *i;
+	struct manifest *subm;
 	char **lines;
 
 	/* Object files for this module. */
@@ -78,9 +80,10 @@ static char *obj_list(const struct manifest *m, struct ccan_file *f)
 		list = talloc_asprintf_append(list, " %s", i->compiled);
 
 	/* Other ccan modules we depend on. */
-	list_for_each(&m->dep_dirs, i, list) {
-		if (i->compiled)
-			list = talloc_asprintf_append(list, " %s", i->compiled);
+	list_for_each(&m->deps, subm, list) {
+		if (subm->compiled)
+			list = talloc_asprintf_append(list, " %s",
+						      subm->compiled);
 	}
 
 	/* Other modules implied by includes. */

@@ -28,19 +28,16 @@ static char *strip_spaces(const void *ctx, char *line)
 	return p;
 }
 
-static bool has_dep(struct manifest *m, const char *depname, bool tap_ok)
+static bool has_dep(struct manifest *m, const char *depname)
 {
-	struct ccan_file *f;
-
-	if (tap_ok && streq(depname, "ccan/tap"))
-		return true;
+	struct manifest *i;
 
 	/* We can include ourselves, of course. */
-	if (streq(depname + strlen("ccan/"), m->basename))
+	if (streq(depname, m->basename))
 		return true;
 
-	list_for_each(&m->dep_dirs, f, list) {
-		if (streq(f->name, depname))
+	list_for_each(&m->deps, i, list) {
+		if (streq(i->basename, depname))
 			return true;
 	}
 	return false;
@@ -57,10 +54,6 @@ static void check_depends_accurate(struct manifest *m,
 		    &m->compile_ok_tests, &m->compile_fail_tests,
 		    &m->other_test_c_files) {
 		struct ccan_file *f;
-		bool tap_ok;
-
-		/* Including ccan/tap is fine for tests. */
-		tap_ok = (list != &m->c_files && list != &m->h_files);
 
 		list_for_each(list, f, list) {
 			unsigned int i;
@@ -74,11 +67,11 @@ static void check_depends_accurate(struct manifest *m,
 				if (!strstarts(p, "#include<ccan/")
 				    && !strstarts(p, "#include\"ccan/"))
 					continue;
-				p += strlen("#include\"");
+				p += strlen("#include\"ccan/");
 				if (!strchr(strchr(p, '/') + 1, '/'))
 					continue;
 				*strchr(strchr(p, '/') + 1, '/') = '\0';
-				if (has_dep(m, p, tap_ok))
+				if (has_dep(m, p))
 					continue;
 				score->error = "Includes a ccan module"
 					" not listed in _info";

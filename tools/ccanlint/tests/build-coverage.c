@@ -50,16 +50,12 @@ static bool build_module_objs_with_coverage(struct manifest *m, bool keep,
 	return true;
 }
 
+/* FIXME: Merge this into one place. */
 static char *obj_list(const struct manifest *m, const char *modobjs)
 {
-	char *list;
+	char *list = talloc_strdup(m, "");
 	struct ccan_file *i;
-
-	/* We expect to be linked with tap, unless that's us. */
-	if (!streq(m->basename, "tap"))
-		list = talloc_asprintf(m, "%s/ccan/tap.o", ccan_dir);
-	else
-		list = talloc_strdup(m, "");
+	struct manifest *subm;
 
 	/* Objects from any other C files. */
 	list_for_each(&m->other_test_c_files, i, list)
@@ -69,9 +65,10 @@ static char *obj_list(const struct manifest *m, const char *modobjs)
 		list = talloc_append_string(list, modobjs);
 
 	/* Other ccan modules (don't need coverage versions of those). */
-	list_for_each(&m->dep_dirs, i, list) {
-		if (i->compiled)
-			list = talloc_asprintf_append(list, " %s", i->compiled);
+	list_for_each(&m->deps, subm, list) {
+		if (subm->compiled)
+			list = talloc_asprintf_append(list, " %s",
+						      subm->compiled);
 	}
 
 	return list;

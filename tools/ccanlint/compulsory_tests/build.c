@@ -13,6 +13,7 @@
 #include <err.h>
 #include <string.h>
 #include <ctype.h>
+#include "build.h"
 
 static const char *can_build(struct manifest *m)
 {
@@ -33,12 +34,27 @@ static char *obj_list(const struct manifest *m)
 	return list;
 }
 
+char *build_module(struct manifest *m, bool keep, char **errstr)
+{
+	char *name = link_objects(m, m->basename, false, obj_list(m), errstr);
+	if (name) {
+		if (keep) {
+			char *realname = talloc_asprintf(m, "%s.o", m->dir);
+			/* We leave this object file around, all built. */
+			if (!move_file(name, realname))
+				err(1, "Renaming %s to %s", name, realname);
+			name = realname;
+		}
+	}
+	return name;
+}
+
 static void do_build(struct manifest *m,
 		     bool keep,
 		     unsigned int *timeleft,
 		     struct score *score)
 {
-	char *filename, *errstr;
+	char *errstr;
 
 	if (list_empty(&m->c_files)) {
 		/* No files?  No score, but we "pass". */
@@ -47,19 +63,12 @@ static void do_build(struct manifest *m,
 		return;
 	}
 
-	filename = link_objects(m, m->basename, false, obj_list(m), &errstr);
-	if (!filename) {
-		score->error = "The object file didn't build";
+	m->compiled = build_module(m, keep, &errstr);
+	if (!m->compiled) {
 		score_file_error(score, NULL, 0, errstr);
 		return;
 	}
 
-	if (keep) {
-		char *realname = talloc_asprintf(m, "%s.o", m->dir);
-		/* We leave this object file around, all built. */
-		if (!move_file(filename, realname))
-			err(1, "Renaming %s to %s", filename, realname);
-	}
 	score->pass = true;
 	score->score = score->total;
 }

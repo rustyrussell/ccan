@@ -26,6 +26,11 @@ struct manifest {
 	char *basename;
 	struct ccan_file *info_file;
 
+	/* Linked off deps. */
+	struct list_node list;
+	/* Where our final compiled output is */
+	char *compiled;
+
 	struct list_head c_files;
 	struct list_head h_files;
 
@@ -41,7 +46,7 @@ struct manifest {
 	struct list_head mangled_examples;
 
 	/* From tests/check_depends_exist.c */
-	struct list_head dep_dirs;
+	struct list_head deps;
 };
 
 struct manifest *get_manifest(const void *ctx, const char *dir);

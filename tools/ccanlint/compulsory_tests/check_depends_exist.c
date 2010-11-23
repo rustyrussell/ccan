@@ -14,17 +14,23 @@
 #include <string.h>
 #include <ctype.h>
 
-static void add_dep(struct manifest *m, const char *dep, struct score *score)
+static bool add_dep(struct manifest *m, const char *dep, struct score *score)
 {
 	struct stat st;
-	struct ccan_file *f;
+	struct manifest *subm;
+	char *dir = talloc_asprintf(m, "%s/%s", ccan_dir, dep);
 
-	f = new_ccan_file(m, ccan_dir, talloc_strdup(m, dep));
-	if (stat(f->fullname, &st) != 0) {
-		score->error = "Depends don't exist";
-		score_file_error(score, f, 0, "could not stat");
-	} else
-		list_add_tail(&m->dep_dirs, &f->list);
+	/* FIXME: get_manifest has a tendency to exit. */
+	if (stat(dir, &st) != 0) {
+		score->error
+			= talloc_asprintf(m,
+					  "Could not stat dependency %s: %s",
+					  dir, strerror(errno));
+		return false;
+	}
+	subm = get_manifest(m, dir);
+	list_add_tail(&m->deps, &subm->list);
+	return true;
 }
 
 static void check_depends_exist(struct manifest *m,
@@ -47,12 +53,19 @@ static void check_depends_exist(struct manifest *m,
 		if (!strstarts(deps[i], "ccan/"))
 			continue;
 
-		add_dep(m, deps[i], score);
+		if (!add_dep(m, deps[i], score))
+			return;
 	}
-	if (!score->error) {
-		score->pass = true;
-		score->score = score->total;
+
+	/* We may need libtap for testing, unless we're "tap" */
+	if (!streq(m->basename, "tap")
+	    && (!list_empty(&m->run_tests) || !list_empty(&m->api_tests))) {
+		if (!add_dep(m, "ccan/tap", score))
+			return;
 	}
+
+	score->pass = true;
+	score->score = score->total;
 }
 
 struct ccanlint depends_exist = {

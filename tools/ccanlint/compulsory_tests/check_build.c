@@ -24,12 +24,13 @@ static const char *can_build(struct manifest *m)
 static char *obj_list(const struct manifest *m)
 {
 	char *list = talloc_strdup(m, "");
-	struct ccan_file *i;
+	struct manifest *i;
 
 	/* Other CCAN deps. */
-	list_for_each(&m->dep_dirs, i, list) {
+	list_for_each(&m->deps, i, list) {
 		if (i->compiled)
-			list = talloc_asprintf_append(list, "%s ", i->compiled);
+			list = talloc_asprintf_append(list, "%s ",
+						      i->compiled);
 	}
 	return list;
 }
