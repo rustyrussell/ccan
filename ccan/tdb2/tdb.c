@@ -103,6 +103,7 @@ static int tdb_new_database(struct tdb_context *tdb,
 					 sizeof(newdb.hdr.hash_test),
 					 newdb.hdr.hash_seed,
 					 tdb->hash_priv);
+	newdb.hdr.recovery = 0;
 	memset(newdb.hdr.reserved, 0, sizeof(newdb.hdr.reserved));
 	/* Initial hashes are empty. */
 	memset(newdb.hdr.hashtable, 0, sizeof(newdb.hdr.hashtable));
@@ -246,7 +247,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
         fcntl(tdb->fd, F_SETFD, v | FD_CLOEXEC);
 
 	/* ensure there is only one process initialising at once */
-	if (tdb_lock_open(tdb) == -1) {
+	if (tdb_lock_open(tdb, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK) == -1) {
 		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 			 "tdb_open: failed to get open lock on %s: %s\n",
 			 name, strerror(errno));
@@ -313,6 +314,12 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 
 	/* This make sure we have current map_size and mmap. */
 	tdb->methods->oob(tdb, tdb->map_size + 1, true);
+
+	/* Now it's fully formed, recover if necessary. */
+	if (tdb_needs_recovery(tdb) && tdb_lock_and_recover(tdb) == -1) {
+		errno = EIO;
+		goto fail;
+	}
 
 	if (tdb_flist_init(tdb) == -1)
 		goto fail;

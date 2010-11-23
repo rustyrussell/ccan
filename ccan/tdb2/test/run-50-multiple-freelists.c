@@ -5,6 +5,7 @@
 #include <ccan/tdb2/hash.c>
 #include <ccan/tdb2/check.c>
 #include <ccan/tap/tap.h>
+#include <ccan/tdb2/transaction.c>
 #include "logging.h"
 #include "layout.h"
 

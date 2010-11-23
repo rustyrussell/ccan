@@ -7,11 +7,9 @@ enum operation {
 	OPEN,
 	FETCH,
 	STORE,
-#if 0
 	TRANSACTION_START,
 	TRANSACTION_COMMIT,
 	NEEDS_RECOVERY,
-#endif
 	CHECK,
 	CLOSE,
 };

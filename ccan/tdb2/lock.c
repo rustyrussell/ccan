@@ -190,7 +190,6 @@ static int tdb_brunlock(struct tdb_context *tdb,
 	return ret;
 }
 
-#if 0
 /*
   upgrade a read lock to a write lock. This needs to be handled in a
   special way as some OSes (such as solaris) have too conservative
@@ -217,8 +216,7 @@ int tdb_allrecord_upgrade(struct tdb_context *tdb)
 	while (count--) {
 		struct timeval tv;
 		if (tdb_brlock(tdb, F_WRLCK,
-			       TDB_HASH_LOCK_START
-			       + (1ULL << tdb->header.v.hash_bits), 0,
+			       TDB_HASH_LOCK_START, 0,
 			       TDB_LOCK_WAIT|TDB_LOCK_PROBE) == 0) {
 			tdb->allrecord_lock.ltype = F_WRLCK;
 			tdb->allrecord_lock.off = 0;
@@ -236,7 +234,6 @@ int tdb_allrecord_upgrade(struct tdb_context *tdb)
 		 "tdb_allrecord_upgrade failed\n");
 	return -1;
 }
-#endif
 
 static struct tdb_lock_type *find_nestlock(struct tdb_context *tdb,
 					   tdb_off_t offset)
@@ -249,6 +246,27 @@ static struct tdb_lock_type *find_nestlock(struct tdb_context *tdb,
 		}
 	}
 	return NULL;
+}
+
+int tdb_lock_and_recover(struct tdb_context *tdb)
+{
+	int ret;
+
+	if (tdb_allrecord_lock(tdb, F_WRLCK, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK,
+			       false) == -1) {
+		return -1;
+	}
+
+	if (tdb_lock_open(tdb, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK) == -1) {
+		tdb_allrecord_unlock(tdb, F_WRLCK);
+		return -1;
+	}
+	ret = tdb_transaction_recover(tdb);
+
+	tdb_unlock_open(tdb);
+	tdb_allrecord_unlock(tdb, F_WRLCK);
+
+	return ret;
 }
 
 /* lock an offset in the database. */
@@ -310,46 +328,27 @@ static int tdb_nest_lock(struct tdb_context *tdb, tdb_off_t offset, int ltype,
 		return -1;
 	}
 
+	/* First time we grab a lock, perhaps someone died in commit? */
+	if (!(flags & TDB_LOCK_NOCHECK)
+	    && tdb->num_lockrecs == 0
+	    && unlikely(tdb_needs_recovery(tdb))) {
+		tdb_brunlock(tdb, ltype, offset, 1);
+
+		if (tdb_lock_and_recover(tdb) == -1) {
+			return -1;
+		}
+
+		if (tdb_brlock(tdb, ltype, offset, 1, flags)) {
+			return -1;
+		}
+	}
+
 	tdb->lockrecs[tdb->num_lockrecs].off = offset;
 	tdb->lockrecs[tdb->num_lockrecs].count = 1;
 	tdb->lockrecs[tdb->num_lockrecs].ltype = ltype;
 	tdb->num_lockrecs++;
 
 	return 0;
-}
-
-static int tdb_lock_and_recover(struct tdb_context *tdb)
-{
-#if 0 /* FIXME */
-
-	int ret;
-
-	/* We need to match locking order in transaction commit. */
-	if (tdb_brlock(tdb, F_WRLCK, FREELIST_TOP, 0, TDB_LOCK_WAIT)) {
-		return -1;
-	}
-
-	if (tdb_brlock(tdb, F_WRLCK, OPEN_LOCK, 1, TDB_LOCK_WAIT)) {
-		tdb_brunlock(tdb, F_WRLCK, FREELIST_TOP, 0);
-		return -1;
-	}
-
-	ret = tdb_transaction_recover(tdb);
-
-	tdb_brunlock(tdb, F_WRLCK, OPEN_LOCK, 1);
-	tdb_brunlock(tdb, F_WRLCK, FREELIST_TOP, 0);
-
-	return ret;
-#else
-	abort();
-	return -1;
-#endif
-}
-
-static bool tdb_needs_recovery(struct tdb_context *tdb)
-{
-	/* FIXME */
-	return false;
 }
 
 static int tdb_nest_unlock(struct tdb_context *tdb, tdb_off_t off, int ltype)
@@ -390,14 +389,12 @@ static int tdb_nest_unlock(struct tdb_context *tdb, tdb_off_t off, int ltype)
 	return ret;
 }
 
-#if 0
 /*
   get the transaction lock
  */
-int tdb_transaction_lock(struct tdb_context *tdb, int ltype,
-			 enum tdb_lock_flags lockflags)
+int tdb_transaction_lock(struct tdb_context *tdb, int ltype)
 {
-	return tdb_nest_lock(tdb, TRANSACTION_LOCK, ltype, lockflags);
+	return tdb_nest_lock(tdb, TDB_TRANSACTION_LOCK, ltype, TDB_LOCK_WAIT);
 }
 
 /*
@@ -405,9 +402,8 @@ int tdb_transaction_lock(struct tdb_context *tdb, int ltype,
  */
 int tdb_transaction_unlock(struct tdb_context *tdb, int ltype)
 {
-	return tdb_nest_unlock(tdb, TRANSACTION_LOCK, ltype, false);
+	return tdb_nest_unlock(tdb, TDB_TRANSACTION_LOCK, ltype);
 }
-#endif
 
 /* We only need to lock individual bytes, but Linux merges consecutive locks
  * so we lock in contiguous ranges. */
@@ -474,7 +470,7 @@ int tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
 		return -1;
 	}
 
-	if (tdb_has_locks(tdb)) {
+	if (tdb_has_hash_locks(tdb)) {
 		/* can't combine global and chain locks */
 		tdb->ecode = TDB_ERR_LOCK;
 		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
@@ -522,7 +518,7 @@ again:
 	tdb->allrecord_lock.off = upgradable;
 
 	/* Now check for needing recovery. */
-	if (unlikely(tdb_needs_recovery(tdb))) {
+	if (!(flags & TDB_LOCK_NOCHECK) && unlikely(tdb_needs_recovery(tdb))) {
 		tdb_allrecord_unlock(tdb, ltype);
 		if (tdb_lock_and_recover(tdb) == -1) {
 			return -1;
@@ -533,9 +529,9 @@ again:
 	return 0;
 }
 
-int tdb_lock_open(struct tdb_context *tdb)
+int tdb_lock_open(struct tdb_context *tdb, enum tdb_lock_flags flags)
 {
-	return tdb_nest_lock(tdb, TDB_OPEN_LOCK, F_WRLCK, TDB_LOCK_WAIT);
+	return tdb_nest_lock(tdb, TDB_OPEN_LOCK, F_WRLCK, flags);
 }
 
 void tdb_unlock_open(struct tdb_context *tdb)
@@ -543,9 +539,16 @@ void tdb_unlock_open(struct tdb_context *tdb)
 	tdb_nest_unlock(tdb, TDB_OPEN_LOCK, F_WRLCK);
 }
 
+bool tdb_has_open_lock(struct tdb_context *tdb)
+{
+	return find_nestlock(tdb, TDB_OPEN_LOCK) != NULL;
+}
+
 int tdb_lock_expand(struct tdb_context *tdb, int ltype)
 {
-	return tdb_nest_lock(tdb, TDB_EXPANSION_LOCK, ltype, TDB_LOCK_WAIT);
+	/* Lock doesn't protect data, so don't check (we recurse if we do!) */
+	return tdb_nest_lock(tdb, TDB_EXPANSION_LOCK, ltype,
+			     TDB_LOCK_WAIT | TDB_LOCK_NOCHECK);
 }
 
 void tdb_unlock_expand(struct tdb_context *tdb, int ltype)
@@ -598,9 +601,17 @@ bool tdb_has_expansion_lock(struct tdb_context *tdb)
 	return find_nestlock(tdb, TDB_EXPANSION_LOCK) != NULL;
 }
 
-bool tdb_has_locks(struct tdb_context *tdb)
+bool tdb_has_hash_locks(struct tdb_context *tdb)
 {
-	return tdb->allrecord_lock.count || tdb->num_lockrecs;
+	unsigned int i;
+
+	for (i=0; i<tdb->num_lockrecs; i++) {
+		if (tdb->lockrecs[i].off >= TDB_HASH_LOCK_START
+		    && tdb->lockrecs[i].off < (TDB_HASH_LOCK_START
+					       + TDB_HASH_LOCK_RANGE))
+			return true;
+	}
+	return false;
 }
 
 #if 0

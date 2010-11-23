@@ -4,6 +4,7 @@
 #include <ccan/tdb2/io.c>
 #include <ccan/tdb2/hash.c>
 #include <ccan/tdb2/check.c>
+#include <ccan/tdb2/transaction.c>
 #include <ccan/tap/tap.h>
 #include "logging.h"
 #include "layout.h"
@@ -88,7 +89,7 @@ int main(int argc, char *argv[])
 	/* Lock and coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
 	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024) == 1);
-	ok1(!tdb_has_locks(tdb));
+	ok1(tdb->allrecord_lock.count == 0 && tdb->num_lockrecs == 0);
 	ok1(free_record_length(tdb, layout->elem[1].base.off)
 	    == 1024 + sizeof(struct tdb_used_record) + 2048);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
@@ -110,7 +111,7 @@ int main(int argc, char *argv[])
 	/* Lock and coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
 	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024) == 1);
-	ok1(!tdb_has_locks(tdb));
+	ok1(tdb->allrecord_lock.count == 0 && tdb->num_lockrecs == 0);
 	ok1(free_record_length(tdb, layout->elem[1].base.off)
 	    == 1024 + sizeof(struct tdb_used_record) + 512);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
@@ -133,7 +134,7 @@ int main(int argc, char *argv[])
 	/* Lock and coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
 	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024) == 1);
-	ok1(!tdb_has_locks(tdb));
+	ok1(tdb->allrecord_lock.count == 0 && tdb->num_lockrecs == 0);
 	ok1(free_record_length(tdb, layout->elem[1].base.off)
 	    == 1024 + sizeof(struct tdb_used_record) + 512
 	    + sizeof(struct tdb_used_record) + 256);

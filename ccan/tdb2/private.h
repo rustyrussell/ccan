@@ -67,8 +67,8 @@ typedef uint64_t tdb_off_t;
 #define TDB_FREE_MAGIC ((uint64_t)0xFE)
 #define TDB_COALESCING_MAGIC ((uint64_t)0xFD)
 #define TDB_HASH_MAGIC (0xA1ABE11A01092008ULL)
-#define TDB_RECOVERY_MAGIC (0xf53bc0e7U)
-#define TDB_RECOVERY_INVALID_MAGIC (0x0)
+#define TDB_RECOVERY_MAGIC (0xf53bc0e7ad124589ULL)
+#define TDB_RECOVERY_INVALID_MAGIC (0x0ULL)
 
 #define TDB_OFF_ERR ((tdb_off_t)-1)
 
@@ -189,6 +189,16 @@ static inline uint64_t frec_flist(const struct tdb_free_record *f)
 	return f->magic_and_meta & ((1ULL << (64 - TDB_OFF_UPPER_STEAL)) - 1);
 }
 
+struct tdb_recovery_record {
+	uint64_t magic;
+	/* Length of record. */
+	uint64_t max_len;
+	/* Length used. */
+	uint64_t len;
+	/* Old length of file before transaction. */
+	uint64_t eof;
+};
+
 /* this is stored at the front of every database */
 struct tdb_header {
 	char magic_food[64]; /* for /etc/magic */
@@ -197,8 +207,9 @@ struct tdb_header {
 	uint64_t hash_test; /* result of hashing HASH_MAGIC. */
 	uint64_t hash_seed; /* "random" seed written at creation time. */
 	tdb_off_t free_list; /* (First) free list. */
+	tdb_off_t recovery; /* Transaction recovery area. */
 
-	tdb_off_t reserved[27];
+	tdb_off_t reserved[26];
 
 	/* Top level hash table. */
 	tdb_off_t hashtable[1ULL << TDB_TOPLEVEL_HASH_BITS];
@@ -248,6 +259,8 @@ enum tdb_lock_flags {
 	TDB_LOCK_WAIT = 1,
 	/* If set, don't log an error on failure. */
 	TDB_LOCK_PROBE = 2,
+	/* If set, don't check for recovery (used by recovery code). */
+	TDB_LOCK_NOCHECK = 4,
 };
 
 struct tdb_lock_type {
@@ -456,23 +469,31 @@ int tdb_lock_free_bucket(struct tdb_context *tdb, tdb_off_t b_off,
 			 enum tdb_lock_flags waitflag);
 void tdb_unlock_free_bucket(struct tdb_context *tdb, tdb_off_t b_off);
 
-/* Do we have any locks? */
-bool tdb_has_locks(struct tdb_context *tdb);
+/* Serialize transaction start. */
+int tdb_transaction_lock(struct tdb_context *tdb, int ltype);
+int tdb_transaction_unlock(struct tdb_context *tdb, int ltype);
+
+/* Do we have any hash locks (ie. via tdb_chainlock) ? */
+bool tdb_has_hash_locks(struct tdb_context *tdb);
 
 /* Lock entire database. */
 int tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
 		       enum tdb_lock_flags flags, bool upgradable);
 int tdb_allrecord_unlock(struct tdb_context *tdb, int ltype);
+int tdb_allrecord_upgrade(struct tdb_context *tdb);
 
 /* Serialize db open. */
-int tdb_lock_open(struct tdb_context *tdb);
+int tdb_lock_open(struct tdb_context *tdb, enum tdb_lock_flags flags);
 void tdb_unlock_open(struct tdb_context *tdb);
+bool tdb_has_open_lock(struct tdb_context *tdb);
 
 /* Serialize db expand. */
 int tdb_lock_expand(struct tdb_context *tdb, int ltype);
 void tdb_unlock_expand(struct tdb_context *tdb, int ltype);
 bool tdb_has_expansion_lock(struct tdb_context *tdb);
 
+/* If it needs recovery, grab all the locks and do it. */
+int tdb_lock_and_recover(struct tdb_context *tdb);
 
 /* traverse.c: */
 int first_in_hash(struct tdb_context *tdb, int ltype,
@@ -482,6 +503,9 @@ int next_in_hash(struct tdb_context *tdb, int ltype,
 		 struct traverse_info *tinfo,
 		 TDB_DATA *kbuf, size_t *dlen);
 
+/* transaction.c: */
+int tdb_transaction_recover(struct tdb_context *tdb);
+bool tdb_needs_recovery(struct tdb_context *tdb);
 
 #if 0
 /* Low-level locking primitives. */

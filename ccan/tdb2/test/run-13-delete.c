@@ -4,6 +4,7 @@
 #include <ccan/tdb2/io.c>
 #include <ccan/tdb2/hash.c>
 #include <ccan/tdb2/check.c>
+#include <ccan/tdb2/transaction.c>
 #include <ccan/tap/tap.h>
 #include "logging.h"
 
@@ -159,7 +160,7 @@ int main(int argc, char *argv[])
 		/* Check mixed bitpattern. */
 		test_val(tdb, 0x123456789ABCDEF0ULL);
 
-		ok1(!tdb_has_locks(tdb));
+		ok1(tdb->allrecord_lock.count == 0 && tdb->num_lockrecs == 0);
 		tdb_close(tdb);
 
 		/* Deleting these entries in the db gave problems. */

@@ -3,6 +3,7 @@
 #include <ccan/tdb2/lock.c>
 #include <ccan/tdb2/io.c>
 #include <ccan/tdb2/hash.c>
+#include <ccan/tdb2/transaction.c>
 #include <ccan/tdb2/check.c>
 #include <ccan/tap/tap.h>
 #include "logging.h"

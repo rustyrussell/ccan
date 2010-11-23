@@ -30,7 +30,7 @@ static bool append(tdb_off_t **arr, size_t *num, tdb_off_t off)
 	return true;
 }
 
-static bool check_header(struct tdb_context *tdb)
+static bool check_header(struct tdb_context *tdb, tdb_off_t *recovery)
 {
 	uint64_t hash_test;
 	struct tdb_header hdr;
@@ -55,6 +55,16 @@ static bool check_header(struct tdb_context *tdb)
 			 "check: bad magic '%.*s'\n",
 			 (unsigned)sizeof(hdr.magic_food), hdr.magic_food);
 		return false;
+	}
+
+	*recovery = hdr.recovery;
+	if (*recovery) {
+		if (*recovery < sizeof(hdr) || *recovery > tdb->map_size) {
+			tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
+				 "tdb_check: invalid recovery offset %zu\n",
+				 (size_t)*recovery);
+			return false;
+		}
 	}
 
 	/* Don't check reserved: they *can* be used later. */
@@ -370,23 +380,73 @@ static bool check_free_list(struct tdb_context *tdb,
 	return true;
 }
 
+/* Slow, but should be very rare. */
+static size_t dead_space(struct tdb_context *tdb, tdb_off_t off)
+{
+	size_t len;
+
+	for (len = 0; off + len < tdb->map_size; len++) {
+		char c;
+		if (tdb->methods->read(tdb, off, &c, 1))
+			return 0;
+		if (c != 0 && c != 0x43)
+			break;
+	}
+	return len;
+}
+
 static bool check_linear(struct tdb_context *tdb,
 			 tdb_off_t **used, size_t *num_used,
-			 tdb_off_t **free, size_t *num_free)
+			 tdb_off_t **free, size_t *num_free,
+			 tdb_off_t recovery)
 {
 	tdb_off_t off;
 	tdb_len_t len;
+	bool found_recovery = false;
 
 	for (off = sizeof(struct tdb_header); off < tdb->map_size; off += len) {
 		union {
 			struct tdb_used_record u;
 			struct tdb_free_record f;
+			struct tdb_recovery_record r;
 		} pad, *p;
 		p = tdb_get(tdb, off, &pad, sizeof(pad));
 		if (!p)
 			return false;
-		if (frec_magic(&p->f) == TDB_FREE_MAGIC
-		    || frec_magic(&p->f) == TDB_COALESCING_MAGIC) {
+
+		/* If we crash after ftruncate, we can get zeroes or fill. */
+		if (p->r.magic == TDB_RECOVERY_INVALID_MAGIC
+		    || p->r.magic ==  0x4343434343434343ULL) {
+			if (recovery == off) {
+				found_recovery = true;
+				len = sizeof(p->r) + p->r.max_len;
+			} else {
+				len = dead_space(tdb, off);
+				if (len < sizeof(p->r)) {
+					tdb->log(tdb, TDB_DEBUG_ERROR,
+						 tdb->log_priv,
+						 "tdb_check: invalid dead space"
+						 " at %zu\n", (size_t)off);
+					return false;
+				}
+
+				tdb->log(tdb, TDB_DEBUG_WARNING, tdb->log_priv,
+					 "Dead space at %zu-%zu (of %zu)\n",
+					 (size_t)off, (size_t)(off + len),
+					 (size_t)tdb->map_size);
+			}
+		} else if (p->r.magic == TDB_RECOVERY_MAGIC) {
+			if (recovery != off) {
+				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
+					 "tdb_check: unexpected recovery"
+					 " record at offset %zu\n",
+					 (size_t)off);
+				return false;
+			}
+			found_recovery = true;
+			len = sizeof(p->r) + p->r.max_len;
+		} else if (frec_magic(&p->f) == TDB_FREE_MAGIC
+			   || frec_magic(&p->f) == TDB_COALESCING_MAGIC) {
 			len = sizeof(p->u) + p->f.data_len;
 			if (off + len > tdb->map_size) {
 				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
@@ -437,6 +497,15 @@ static bool check_linear(struct tdb_context *tdb,
 			}
 		}
 	}
+
+	/* We must have found recovery area if there was one. */
+	if (recovery != 0 && !found_recovery) {
+		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
+			 "tdb_check: expected a recovery area at %zu\n",
+			 (size_t)recovery);
+		return false;
+	}
+
 	return true;
 }
 
@@ -445,7 +514,7 @@ int tdb_check(struct tdb_context *tdb,
 	      int (*check)(TDB_DATA key, TDB_DATA data, void *private_data),
 	      void *private_data)
 {
-	tdb_off_t *free = NULL, *used = NULL, flist;
+	tdb_off_t *free = NULL, *used = NULL, flist, recovery;
 	size_t num_free = 0, num_used = 0, num_found = 0, num_flists = 0;
 
 	if (tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false) != 0)
@@ -456,11 +525,11 @@ int tdb_check(struct tdb_context *tdb,
 		return -1;
 	}
 
-	if (!check_header(tdb))
+	if (!check_header(tdb, &recovery))
 		goto fail;
 
 	/* First we do a linear scan, checking all records. */
-	if (!check_linear(tdb, &used, &num_used, &free, &num_free))
+	if (!check_linear(tdb, &used, &num_used, &free, &num_free, recovery))
 		goto fail;
 
 	for (flist = first_flist(tdb); flist; flist = next_flist(tdb, flist)) {

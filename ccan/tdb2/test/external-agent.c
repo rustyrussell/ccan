@@ -1,5 +1,6 @@
 #include "external-agent.h"
 #include "logging.h"
+#include "lock-tracking.h"
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -16,11 +17,6 @@
 
 static struct tdb_context *tdb;
 
-#if 1 /* FIXME */
-static unsigned int locking_would_block = 0;
-static bool nonblocking_locks = false;
-#endif
-
 static enum agent_return do_operation(enum operation op, const char *name)
 {
 	TDB_DATA k;
@@ -31,6 +27,8 @@ static enum agent_return do_operation(enum operation op, const char *name)
 		diag("external: No tdb open!");
 		return OTHER_FAILURE;
 	}
+
+	diag("external: %s", operation_name(op));
 
 	k.dptr = (void *)name;
 	k.dsize = strlen(name);
@@ -46,6 +44,7 @@ static enum agent_return do_operation(enum operation op, const char *name)
 		if (!tdb) {
 			if (!locking_would_block)
 				diag("Opening tdb gave %s", strerror(errno));
+			forget_locking();
 			ret = OTHER_FAILURE;
 		} else
 			ret = SUCCESS;
@@ -68,7 +67,6 @@ static enum agent_return do_operation(enum operation op, const char *name)
 	case STORE:
 		ret = tdb_store(tdb, k, k, 0) == 0 ? SUCCESS : OTHER_FAILURE;
 		break;
-#if 0 /* FIXME */
 	case TRANSACTION_START:
 		ret = tdb_transaction_start(tdb) == 0 ? SUCCESS : OTHER_FAILURE;
 		break;
@@ -78,7 +76,6 @@ static enum agent_return do_operation(enum operation op, const char *name)
 	case NEEDS_RECOVERY:
 		ret = tdb_needs_recovery(tdb) ? SUCCESS : FAILED;
 		break;
-#endif
 	case CHECK:
 		ret = tdb_check(tdb, NULL, NULL) == 0 ? SUCCESS : OTHER_FAILURE;
 		break;
@@ -183,11 +180,9 @@ const char *operation_name(enum operation op)
 	case FETCH: return "FETCH";
 	case STORE: return "STORE";
 	case CHECK: return "CHECK";
-#if 0
 	case TRANSACTION_START: return "TRANSACTION_START";
 	case TRANSACTION_COMMIT: return "TRANSACTION_COMMIT";
 	case NEEDS_RECOVERY: return "NEEDS_RECOVERY";
-#endif
 	case CLOSE: return "CLOSE";
 	}
 	return "**INVALID**";

@@ -142,6 +142,11 @@ int tdb_check(struct tdb_context *tdb,
 enum TDB_ERROR tdb_error(struct tdb_context *tdb);
 const char *tdb_errorstr(struct tdb_context *tdb);
 
+int tdb_transaction_start(struct tdb_context *tdb);
+void tdb_transaction_cancel(struct tdb_context *tdb);
+int tdb_transaction_prepare_commit(struct tdb_context *tdb);
+int tdb_transaction_commit(struct tdb_context *tdb);
+
 char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags);
 
 extern struct tdb_data tdb_null;
