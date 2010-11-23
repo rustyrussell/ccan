@@ -382,10 +382,10 @@ int add_free_record(struct tdb_context *tdb,
 		    tdb_off_t off, tdb_len_t len_with_header);
 
 /* Set up header for a used record. */
-int set_header(struct tdb_context *tdb,
-	       struct tdb_used_record *rec,
-	       uint64_t keylen, uint64_t datalen,
-	       uint64_t actuallen, unsigned hashlow);
+int set_used_header(struct tdb_context *tdb,
+		    struct tdb_used_record *rec,
+		    uint64_t keylen, uint64_t datalen,
+		    uint64_t actuallen, unsigned hashlow);
 
 /* Used by tdb_check to verify. */
 unsigned int size_to_bucket(tdb_len_t data_len);

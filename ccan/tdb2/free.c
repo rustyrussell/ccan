@@ -418,9 +418,9 @@ again:
 		assert(keylen + datalen + leftover <= best.data_len);
 		/* We need to mark non-free before we drop lock, otherwise
 		 * coalesce() could try to merge it! */
-		if (set_header(tdb, &rec, keylen, datalen,
-			       best.data_len - leftover,
-			       hashlow) != 0)
+		if (set_used_header(tdb, &rec, keylen, datalen,
+				    best.data_len - leftover,
+				    hashlow) != 0)
 			goto unlock_err;
 
 		if (tdb_write_convert(tdb, best_off, &rec, sizeof(rec)) != 0)
@@ -493,10 +493,10 @@ static tdb_off_t get_free(struct tdb_context *tdb,
 	return 0;
 }
 
-int set_header(struct tdb_context *tdb,
-	       struct tdb_used_record *rec,
-	       uint64_t keylen, uint64_t datalen,
-	       uint64_t actuallen, unsigned hashlow)
+int set_used_header(struct tdb_context *tdb,
+		    struct tdb_used_record *rec,
+		    uint64_t keylen, uint64_t datalen,
+		    uint64_t actuallen, unsigned hashlow)
 {
 	uint64_t keybits = (fls64(keylen) + 1) / 2;
 

@@ -111,9 +111,9 @@ static int tdb_new_database(struct tdb_context *tdb,
 	/* Free is empty. */
 	newdb.hdr.free_list = offsetof(struct new_database, flist);
 	memset(&newdb.flist, 0, sizeof(newdb.flist));
-	set_header(NULL, &newdb.flist.hdr, 0,
-		   sizeof(newdb.flist) - sizeof(newdb.flist.hdr),
-		   sizeof(newdb.flist) - sizeof(newdb.flist.hdr), 1);
+	set_used_header(NULL, &newdb.flist.hdr, 0,
+			sizeof(newdb.flist) - sizeof(newdb.flist.hdr),
+			sizeof(newdb.flist) - sizeof(newdb.flist.hdr), 1);
 
 	/* Magic food */
 	memset(newdb.hdr.magic_food, 0, sizeof(newdb.hdr.magic_food));
@@ -364,7 +364,7 @@ static int update_rec_hdr(struct tdb_context *tdb,
 {
 	uint64_t dataroom = rec_data_length(rec) + rec_extra_padding(rec);
 
-	if (set_header(tdb, rec, keylen, datalen, keylen + dataroom, h))
+	if (set_used_header(tdb, rec, keylen, datalen, keylen + dataroom, h))
 		return -1;
 
 	return tdb_write_convert(tdb, off, rec, sizeof(*rec));

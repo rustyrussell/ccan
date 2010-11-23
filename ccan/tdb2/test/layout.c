@@ -97,9 +97,9 @@ static void set_data_record(void *mem, struct tdb_context *tdb,
 {
 	struct tdb_used_record *u = mem;
 
-	set_header(tdb, u, used->key.dsize, used->data.dsize,
-		   used->key.dsize + used->data.dsize + used->extra,
-		   tdb_hash(tdb, used->key.dptr, used->key.dsize));
+	set_used_header(tdb, u, used->key.dsize, used->data.dsize,
+			used->key.dsize + used->data.dsize + used->extra,
+			tdb_hash(tdb, used->key.dptr, used->key.dsize));
 	memcpy(u + 1, used->key.dptr, used->key.dsize);
 	memcpy((char *)(u + 1) + used->key.dsize,
 	       used->data.dptr, used->data.dsize);
@@ -111,7 +111,7 @@ static void set_hashtable(void *mem, struct tdb_context *tdb,
 	struct tdb_used_record *u = mem;
 	tdb_len_t len = sizeof(tdb_off_t) << TDB_SUBLEVEL_HASH_BITS;
 
-	set_header(tdb, u, 0, len, len + htable->extra, 0);
+	set_used_header(tdb, u, 0, len, len + htable->extra, 0);
 	memset(u + 1, 0, len);
 }
 
@@ -121,9 +121,9 @@ static void set_freelist(void *mem, struct tdb_context *tdb,
 {
 	struct tdb_freelist *flist = mem;
 	memset(flist, 0, sizeof(*flist));
-	set_header(tdb, &flist->hdr, 0,
-		   sizeof(*flist) - sizeof(flist->hdr),
-		   sizeof(*flist) - sizeof(flist->hdr), 1);
+	set_used_header(tdb, &flist->hdr, 0,
+			sizeof(*flist) - sizeof(flist->hdr),
+			sizeof(*flist) - sizeof(flist->hdr), 1);
 
 	if (last_flist) {
 		flist = (struct tdb_freelist *)((char *)hdr + last_flist);
