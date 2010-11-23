@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT,
 			TDB_NOMMAP|TDB_CONVERT };
 
-	plan_tests(sizeof(flags) / sizeof(flags[0]) * 7 + 1);
+	plan_tests(sizeof(flags) / sizeof(flags[0]) * 9 + 1);
 
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		TDB_DATA k;
@@ -51,8 +51,11 @@ int main(int argc, char *argv[])
 			continue;
 
 		ok1(empty_freelist(tdb));
+		/* Need some hash lock for expand. */
+		ok1(tdb_lock_hashes(tdb, 0, 1, F_WRLCK, TDB_LOCK_WAIT) == 0);
 		/* Create some free space. */
 		ok1(tdb_expand(tdb, 1) == 0);
+		ok1(tdb_unlock_hashes(tdb, 0, 1, F_WRLCK) == 0);
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 		ok1(!empty_freelist(tdb));
 

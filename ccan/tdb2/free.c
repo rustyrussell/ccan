@@ -530,6 +530,14 @@ static int tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 	/* We need room for the record header too. */
 	wanted = sizeof(struct tdb_used_record) + size;
 
+	/* Need to hold a hash lock to expand DB: transactions rely on it. */
+	if (!(tdb->flags & TDB_NOLOCK)
+	    && !tdb->allrecord_lock.count && !tdb_has_hash_locks(tdb)) {
+		tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
+			 "tdb_expand: must hold lock during expand\n");
+		return -1;
+	}
+
 	/* Only one person can expand file at a time. */
 	if (tdb_lock_expand(tdb, F_WRLCK) != 0)
 		return -1;

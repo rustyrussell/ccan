@@ -454,7 +454,6 @@ static void _tdb_transaction_cancel(struct tdb_context *tdb)
 	tdb->methods = tdb->transaction->io_methods;
 
 	tdb_transaction_unlock(tdb, F_WRLCK);
-	tdb_unlock_expand(tdb, F_WRLCK);
 
 	if (tdb_has_open_lock(tdb))
 		tdb_unlock_open(tdb);
@@ -516,10 +515,6 @@ int tdb_transaction_start(struct tdb_context *tdb)
 		goto fail_allrecord_lock;
 	}
 
-	if (tdb_lock_expand(tdb, F_WRLCK) != 0) {
-		goto fail_expand_lock;
-	}
-
 	/* make sure we know about any file expansions already done by
 	   anyone else */
 	tdb->methods->oob(tdb, tdb->map_size + 1, true);
@@ -531,8 +526,6 @@ int tdb_transaction_start(struct tdb_context *tdb)
 	tdb->methods = &transaction_methods;
 	return 0;
 
-fail_expand_lock:
-	tdb_allrecord_unlock(tdb, F_RDLCK);
 fail_allrecord_lock:
 	tdb_transaction_unlock(tdb, F_WRLCK);
 	SAFE_FREE(tdb->transaction->blocks);
@@ -884,6 +877,7 @@ static int _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 		return -1;
 	}
 
+	/* Since we have whole db locked, we don't need the expansion lock. */
 	if (!(tdb->flags & TDB_NOSYNC)) {
 		/* write the recovery data to the end of the file */
 		if (transaction_setup_recovery(tdb, &tdb->transaction->magic_offset) == -1) {
