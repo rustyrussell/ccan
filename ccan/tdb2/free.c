@@ -118,8 +118,8 @@ static int remove_from_list(struct tdb_context *tdb,
 
 #ifdef DEBUG
 	if (tdb_read_off(tdb, off) != r_off) {
-		tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-			 "remove_from_list: %llu bad prev in list %llu\n",
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_FATAL,
+			 "remove_from_list: %llu bad prev in list %llu",
 			 (long long)r_off, (long long)b_off);
 		return -1;
 	}
@@ -136,9 +136,9 @@ static int remove_from_list(struct tdb_context *tdb,
 
 #ifdef DEBUG
 		if (tdb_read_off(tdb, off) & TDB_OFF_MASK != r_off) {
-			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-				 "remove_from_list: %llu bad list %llu\n",
-				 (long long)r_off, (long long)b_off);
+			tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_FATAL,
+				   "remove_from_list: %llu bad list %llu",
+				   (long long)r_off, (long long)b_off);
 			return -1;
 		}
 #endif
@@ -176,9 +176,10 @@ static int enqueue_in_free(struct tdb_context *tdb,
 				 new.next + offsetof(struct tdb_free_record,
 						     magic_and_prev))
 		    != magic) {
-			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-				 "enqueue_in_free: %llu bad head prev %llu\n",
-				 (long long)new.next, (long long)b_off);
+			tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_FATAL,
+				   "enqueue_in_free: %llu bad head"
+				   " prev %llu",
+				   (long long)new.next, (long long)b_off);
 			return -1;
 		}
 #endif
@@ -331,10 +332,9 @@ static int coalesce(struct tdb_context *tdb,
 		goto err;
 
 	if (frec_len(&rec) != data_len) {
-		tdb->ecode = TDB_ERR_CORRUPT;
-		tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-			 "coalesce: expected data len %llu not %llu\n",
-			 (long long)data_len, (long long)frec_len(&rec));
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_FATAL,
+			   "coalesce: expected data len %zu not %zu",
+			   (size_t)data_len, (size_t)frec_len(&rec));
 		goto err;
 	}
 
@@ -412,8 +412,8 @@ again:
 
 		if (frec_magic(r) != TDB_FREE_MAGIC) {
 			tdb_access_release(tdb, r);
-			tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-				 "lock_and_alloc: %llu non-free 0x%llx\n",
+			tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_FATAL,
+				 "lock_and_alloc: %llu non-free 0x%llx",
 				 (long long)off, (long long)r->magic_and_prev);
 			goto unlock_err;
 		}
@@ -566,9 +566,8 @@ int set_used_header(struct tdb_context *tdb,
 	if (rec_key_length(rec) != keylen
 	    || rec_data_length(rec) != datalen
 	    || rec_extra_padding(rec) != actuallen - (keylen + datalen)) {
-		tdb->ecode = TDB_ERR_IO;
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "Could not encode k=%llu,d=%llu,a=%llu\n",
+		tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_ERROR,
+			 "Could not encode k=%llu,d=%llu,a=%llu",
 			 (long long)keylen, (long long)datalen,
 			 (long long)actuallen);
 		return -1;
@@ -588,8 +587,8 @@ static int tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 	/* Need to hold a hash lock to expand DB: transactions rely on it. */
 	if (!(tdb->flags & TDB_NOLOCK)
 	    && !tdb->allrecord_lock.count && !tdb_has_hash_locks(tdb)) {
-		tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-			 "tdb_expand: must hold lock during expand\n");
+		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_DEBUG_ERROR,
+			   "tdb_expand: must hold lock during expand");
 		return -1;
 	}
 

@@ -67,7 +67,7 @@ enum TDB_ERROR {TDB_SUCCESS=0, TDB_ERR_CORRUPT, TDB_ERR_IO, TDB_ERR_LOCK,
 /* flags for tdb_summary. Logical or to combine. */
 enum tdb_summary_flags { TDB_SUMMARY_HISTOGRAMS = 1 };
 
-/* debugging uses one of the following levels */
+/* logging uses one of the following levels */
 enum tdb_debug_level {TDB_DEBUG_FATAL = 0, TDB_DEBUG_ERROR, 
 		      TDB_DEBUG_WARNING, TDB_DEBUG_TRACE};
 
@@ -80,7 +80,7 @@ struct tdb_context;
 
 /* FIXME: Make typesafe */
 typedef int (*tdb_traverse_func)(struct tdb_context *, TDB_DATA, TDB_DATA, void *);
-typedef void (*tdb_logfn_t)(struct tdb_context *, enum tdb_debug_level, void *priv, const char *, ...) PRINTF_FMT(4, 5);
+typedef void (*tdb_logfn_t)(struct tdb_context *, enum tdb_debug_level, void *, const char *);
 typedef uint64_t (*tdb_hashfn_t)(const void *key, size_t len, uint64_t seed,
 				 void *priv);
 
@@ -161,8 +161,8 @@ int tdb_check(struct tdb_context *tdb,
 	      int (*check)(TDB_DATA key, TDB_DATA data, void *private_data),
 	      void *private_data);
 
-enum TDB_ERROR tdb_error(struct tdb_context *tdb);
-const char *tdb_errorstr(struct tdb_context *tdb);
+enum TDB_ERROR tdb_error(const struct tdb_context *tdb);
+const char *tdb_errorstr(const struct tdb_context *tdb);
 
 int tdb_transaction_start(struct tdb_context *tdb);
 void tdb_transaction_cancel(struct tdb_context *tdb);

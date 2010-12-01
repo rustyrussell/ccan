@@ -1,7 +1,5 @@
-#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
 #include <ccan/tap/tap.h>
 #include "logging.h"
 
@@ -16,24 +14,13 @@ union tdb_attribute tap_log_attr = {
 
 void tap_log_fn(struct tdb_context *tdb,
 		enum tdb_debug_level level, void *priv,
-		const char *fmt, ...)
+		const char *message)
 {
-	va_list ap;
-	char *p;
-
 	if (suppress_logging)
 		return;
 
-	va_start(ap, fmt);
-	if (vasprintf(&p, fmt, ap) == -1)
-		abort();
-	/* Strip trailing \n: diag adds it. */
-	if (p[strlen(p)-1] == '\n')
-		p[strlen(p)-1] = '\0';
-	diag("tdb log level %u: %s%s", level, log_prefix, p);
-	free(p);
+	diag("tdb log level %u: %s%s", level, log_prefix, message);
 	if (level != TDB_DEBUG_TRACE)
 		tap_log_messages++;
-	va_end(ap);
 }
 

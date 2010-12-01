@@ -36,6 +36,7 @@
 #include "config.h"
 #include <ccan/tdb2/tdb2.h>
 #include <ccan/likely/likely.h>
+#include <ccan/compiler/compiler.h>
 #ifdef HAVE_BYTESWAP_H
 #include <byteswap.h>
 #endif
@@ -308,8 +309,8 @@ struct tdb_context {
 	uint32_t flags;
 
 	/* Logging function */
-	tdb_logfn_t log;
-	void *log_priv;
+	tdb_logfn_t logfn;
+	void *log_private;
 
 	/* Hash function. */
 	tdb_hashfn_t khash;
@@ -328,7 +329,7 @@ struct tdb_context {
 
 	/* Lock information */
 	struct tdb_lock_type allrecord_lock;
-	uint64_t num_lockrecs;
+	size_t num_lockrecs;
 	struct tdb_lock_type *lockrecs;
 
 	struct tdb_attribute_stats *stats;
@@ -528,6 +529,12 @@ int next_in_hash(struct tdb_context *tdb, int ltype,
 /* transaction.c: */
 int tdb_transaction_recover(struct tdb_context *tdb);
 bool tdb_needs_recovery(struct tdb_context *tdb);
+
+/* tdb.c: */
+void COLD tdb_logerr(struct tdb_context *tdb,
+		     enum TDB_ERROR ecode,
+		     enum tdb_debug_level level,
+		     const char *fmt, ...);
 
 #ifdef TDB_TRACE
 void tdb_trace(struct tdb_context *tdb, const char *op);

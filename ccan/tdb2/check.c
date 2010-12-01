@@ -43,25 +43,25 @@ static bool check_header(struct tdb_context *tdb, tdb_off_t *recovery)
 	hash_test = TDB_HASH_MAGIC;
 	hash_test = tdb_hash(tdb, &hash_test, sizeof(hash_test));
 	if (hdr.hash_test != hash_test) {
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "check: hash test %llu should be %llu\n",
-			 (long long)hdr.hash_test,
-			 (long long)hash_test);
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
+			   "check: hash test %llu should be %llu",
+			   (long long)hdr.hash_test,
+			   (long long)hash_test);
 		return false;
 	}
 
 	if (strcmp(hdr.magic_food, TDB_MAGIC_FOOD) != 0) {
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "check: bad magic '%.*s'\n",
-			 (unsigned)sizeof(hdr.magic_food), hdr.magic_food);
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
+			   "check: bad magic '%.*s'",
+			   (unsigned)sizeof(hdr.magic_food), hdr.magic_food);
 		return false;
 	}
 
 	*recovery = hdr.recovery;
 	if (*recovery) {
 		if (*recovery < sizeof(hdr) || *recovery > tdb->map_size) {
-			tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-				 "tdb_check: invalid recovery offset %zu\n",
+			tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
+				 "tdb_check: invalid recovery offset %zu",
 				 (size_t)*recovery);
 			return false;
 		}
@@ -98,21 +98,22 @@ static bool check_hash_record(struct tdb_context *tdb,
 
 	if (rec_data_length(&rec)
 	    != sizeof(tdb_off_t) << TDB_SUBLEVEL_HASH_BITS) {
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "tdb_check: Bad hash table length %llu vs %llu\n",
-			 (long long)rec_data_length(&rec),
-			 (long long)sizeof(tdb_off_t)<<TDB_SUBLEVEL_HASH_BITS);
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
+			   "tdb_check: Bad hash table length %llu vs %llu",
+			   (long long)rec_data_length(&rec),
+			   (long long)sizeof(tdb_off_t)
+			   << TDB_SUBLEVEL_HASH_BITS);
 		return false;
 	}
 	if (rec_key_length(&rec) != 0) {
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "tdb_check: Bad hash table key length %llu\n",
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
+			 "tdb_check: Bad hash table key length %llu",
 			 (long long)rec_key_length(&rec));
 		return false;
 	}
 	if (rec_hash(&rec) != 0) {
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "tdb_check: Bad hash table hash value %llu\n",
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
+			 "tdb_check: Bad hash table hash value %llu",
 			 (long long)rec_hash(&rec));
 		return false;
 	}
@@ -172,10 +173,10 @@ static bool check_hash_tree(struct tdb_context *tdb,
 			off = group[b] & TDB_OFF_MASK;
 			p = asearch(&off, used, num_used, off_cmp);
 			if (!p) {
-				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-					 "tdb_check: Invalid offset %llu "
-					 "in hash\n",
-					 (long long)off);
+				tdb_logerr(tdb, TDB_ERR_CORRUPT,
+					   TDB_DEBUG_ERROR,
+					   "tdb_check: Invalid offset %llu "
+					   "in hash", (long long)off);
 				goto fail;
 			}
 			/* Mark it invalid. */
@@ -206,18 +207,20 @@ static bool check_hash_tree(struct tdb_context *tdb,
 			used_bits = 0;
 			if (get_bits(h, hprefix_bits, &used_bits) != hprefix
 			    && hprefix_bits) {
-				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-					 "check: bad hash placement"
-					 " 0x%llx vs 0x%llx\n",
+				tdb_logerr(tdb, TDB_ERR_CORRUPT,
+					   TDB_DEBUG_ERROR,
+					   "check: bad hash placement"
+					   " 0x%llx vs 0x%llx",
 					 (long long)h, (long long)hprefix);
 				goto fail;
 			}
 
 			/* Does it belong in this group? */
 			if (get_bits(h, group_bits, &used_bits) != g) {
-				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-					 "check: bad group %llu vs %u\n",
-					 (long long)h, g);
+				tdb_logerr(tdb, TDB_ERR_CORRUPT,
+					   TDB_DEBUG_ERROR,
+					   "check: bad group %llu vs %u",
+					   (long long)h, g);
 				goto fail;
 			}
 
@@ -226,11 +229,12 @@ static bool check_hash_tree(struct tdb_context *tdb,
 			if (get_bits(h, TDB_HASH_GROUP_BITS, &used_bits)
 			    != bucket) {
 				used_bits -= TDB_HASH_GROUP_BITS;
-				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-					 "check: bad bucket %u vs %u\n",
+				tdb_logerr(tdb, TDB_ERR_CORRUPT,
+					   TDB_DEBUG_ERROR,
+					 "check: bad bucket %u vs %u",
 					 (unsigned)get_bits(h,
-							    TDB_HASH_GROUP_BITS,
-							    &used_bits),
+							TDB_HASH_GROUP_BITS,
+							&used_bits),
 					 bucket);
 				goto fail;
 			}
@@ -241,26 +245,27 @@ static bool check_hash_tree(struct tdb_context *tdb,
 			     i != b;
 			     i = (i + 1) % (1 << TDB_HASH_GROUP_BITS)) {
 				if (group[i] == 0) {
-					tdb->log(tdb, TDB_DEBUG_ERROR,
-						 tdb->log_priv,
-						 "check: bad group placement"
-						 " %u vs %u\n",
-						 b, bucket);
+					tdb_logerr(tdb, TDB_ERR_CORRUPT,
+						   TDB_DEBUG_ERROR,
+						   "check: bad group placement"
+						   " %u vs %u",
+						   b, bucket);
 					goto fail;
 				}
 			}
 
-			if (tdb_read_convert(tdb, off, &rec, sizeof(rec)) == -1)
+			if (tdb_read_convert(tdb, off, &rec, sizeof(rec)))
 				goto fail;
 
 			/* Bottom bits must match header. */
 			if ((h & ((1 << 11)-1)) != rec_hash(&rec)) {
-				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-					 "tdb_check: Bad hash magic at"
-					 " offset %llu (0x%llx vs 0x%llx)\n",
-					 (long long)off,
-					 (long long)h,
-					 (long long)rec_hash(&rec));
+				tdb_logerr(tdb, TDB_ERR_CORRUPT,
+					   TDB_DEBUG_ERROR,
+					   "tdb_check: Bad hash magic at"
+					   " offset %llu (0x%llx vs 0x%llx)",
+					   (long long)off,
+					   (long long)h,
+					   (long long)rec_hash(&rec));
 				goto fail;
 			}
 
@@ -305,8 +310,8 @@ static bool check_hash(struct tdb_context *tdb,
 		return false;
 
 	if (num_found != num_used) {
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "tdb_check: Not all entries are in hash\n");
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
+			   "tdb_check: Not all entries are in hash");
 		return false;
 	}
 	return true;
@@ -318,15 +323,15 @@ static bool check_free(struct tdb_context *tdb,
 		       tdb_off_t prev, unsigned int flist, unsigned int bucket)
 {
 	if (frec_magic(frec) != TDB_FREE_MAGIC) {
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "tdb_check: offset %llu bad magic 0x%llx\n",
-			 (long long)off, (long long)frec->magic_and_prev);
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
+			   "tdb_check: offset %llu bad magic 0x%llx",
+			   (long long)off, (long long)frec->magic_and_prev);
 		return false;
 	}
 	if (frec_flist(frec) != flist) {
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "tdb_check: offset %llu bad freelist %u\n",
-			 (long long)off, frec_flist(frec));
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
+			   "tdb_check: offset %llu bad freelist %u",
+			   (long long)off, frec_flist(frec));
 		return false;
 	}
 
@@ -335,17 +340,17 @@ static bool check_free(struct tdb_context *tdb,
 			      false))
 		return false;
 	if (size_to_bucket(frec_len(frec)) != bucket) {
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "tdb_check: offset %llu in wrong bucket %u vs %u\n",
-			 (long long)off,
-			 bucket, size_to_bucket(frec_len(frec)));
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
+			   "tdb_check: offset %llu in wrong bucket %u vs %u",
+			   (long long)off,
+			   bucket, size_to_bucket(frec_len(frec)));
 		return false;
 	}
 	if (prev != frec_prev(frec)) {
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "tdb_check: offset %llu bad prev %llu vs %llu\n",
-			 (long long)off,
-			 (long long)prev, (long long)frec_len(frec));
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
+			   "tdb_check: offset %llu bad prev %llu vs %llu",
+			   (long long)off,
+			   (long long)prev, (long long)frec_len(frec));
 		return false;
 	}
 	return true;
@@ -369,9 +374,8 @@ static bool check_free_list(struct tdb_context *tdb,
 	    || rec_key_length(&flist.hdr) != 0
 	    || rec_data_length(&flist.hdr) != sizeof(flist) - sizeof(flist.hdr)
 	    || rec_hash(&flist.hdr) != 1) {
-		tdb->log(tdb, TDB_DEBUG_ERROR,
-			 tdb->log_priv,
-			 "tdb_check: Invalid header on free list\n");
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
+			   "tdb_check: Invalid header on free list");
 		return false;
 	}
 
@@ -391,11 +395,11 @@ static bool check_free_list(struct tdb_context *tdb,
 			/* FIXME: Check hash bits */
 			p = asearch(&off, free, num_free, off_cmp);
 			if (!p) {
-				tdb->log(tdb, TDB_DEBUG_ERROR,
-					 tdb->log_priv,
-					 "tdb_check: Invalid offset"
-					 " %llu in free table\n",
-					 (long long)off);
+				tdb_logerr(tdb, TDB_ERR_CORRUPT,
+					   TDB_DEBUG_ERROR,
+					   "tdb_check: Invalid offset"
+					   " %llu in free table",
+					   (long long)off);
 				return false;
 			}
 			/* Mark it invalid. */
@@ -453,38 +457,42 @@ static bool check_linear(struct tdb_context *tdb,
 			} else {
 				len = dead_space(tdb, off);
 				if (len < sizeof(rec.r)) {
-					tdb->log(tdb, TDB_DEBUG_ERROR,
-						 tdb->log_priv,
-						 "tdb_check: invalid dead space"
-						 " at %zu\n", (size_t)off);
+					tdb_logerr(tdb, TDB_ERR_CORRUPT,
+						   TDB_DEBUG_ERROR,
+						   "tdb_check: invalid dead"
+						   " space at %zu",
+						   (size_t)off);
 					return false;
 				}
 
-				tdb->log(tdb, TDB_DEBUG_WARNING, tdb->log_priv,
-					 "Dead space at %zu-%zu (of %zu)\n",
-					 (size_t)off, (size_t)(off + len),
-					 (size_t)tdb->map_size);
+				tdb_logerr(tdb, TDB_SUCCESS, TDB_DEBUG_WARNING,
+					   "Dead space at %zu-%zu (of %zu)",
+					   (size_t)off, (size_t)(off + len),
+					   (size_t)tdb->map_size);
 			}
 		} else if (rec.r.magic == TDB_RECOVERY_MAGIC) {
 			if (tdb_read_convert(tdb, off, &rec, sizeof(rec.r)))
 				return false;
 			if (recovery != off) {
-				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-					 "tdb_check: unexpected recovery"
-					 " record at offset %zu\n",
-					 (size_t)off);
+				tdb_logerr(tdb, TDB_ERR_CORRUPT,
+					   TDB_DEBUG_ERROR,
+					   "tdb_check: unexpected recovery"
+					   " record at offset %zu",
+					   (size_t)off);
 				return false;
 			}
 			if (rec.r.len > rec.r.max_len) {
-				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-					 "tdb_check: invalid recovery length"
-					 " %zu\n", (size_t)rec.r.len);
+				tdb_logerr(tdb, TDB_ERR_CORRUPT,
+					   TDB_DEBUG_ERROR,
+					   "tdb_check: invalid recovery length"
+					   " %zu", (size_t)rec.r.len);
 				return false;
 			}
 			if (rec.r.eof > tdb->map_size) {
-				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-					 "tdb_check: invalid old EOF"
-					 " %zu\n", (size_t)rec.r.eof);
+				tdb_logerr(tdb, TDB_ERR_CORRUPT,
+					   TDB_DEBUG_ERROR,
+					   "tdb_check: invalid old EOF"
+					   " %zu", (size_t)rec.r.eof);
 				return false;
 			}
 			found_recovery = true;
@@ -493,10 +501,11 @@ static bool check_linear(struct tdb_context *tdb,
 			   || frec_magic(&rec.f) == TDB_COALESCING_MAGIC) {
 			len = sizeof(rec.u) + frec_len(&rec.f);
 			if (off + len > tdb->map_size) {
-				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-					 "tdb_check: free overlength %llu"
-					 " at offset %llu\n",
-					 (long long)len, (long long)off);
+				tdb_logerr(tdb, TDB_ERR_CORRUPT,
+					   TDB_DEBUG_ERROR,
+					   "tdb_check: free overlength %llu"
+					   " at offset %llu",
+					   (long long)len, (long long)off);
 				return false;
 			}
 			/* This record is free! */
@@ -508,11 +517,12 @@ static bool check_linear(struct tdb_context *tdb,
 
 			/* This record is used! */
 			if (rec_magic(&rec.u) != TDB_MAGIC) {
-				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-					 "tdb_check: Bad magic 0x%llx"
-					 " at offset %llu\n",
-					 (long long)rec_magic(&rec.u),
-					 (long long)off);
+				tdb_logerr(tdb, TDB_ERR_CORRUPT,
+					   TDB_DEBUG_ERROR,
+					   "tdb_check: Bad magic 0x%llx"
+					   " at offset %zu",
+					   (long long)rec_magic(&rec.u),
+					   (size_t)off);
 				return false;
 			}
 
@@ -525,18 +535,20 @@ static bool check_linear(struct tdb_context *tdb,
 
 			len = sizeof(rec.u) + klen + dlen + extra;
 			if (off + len > tdb->map_size) {
-				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-					 "tdb_check: used overlength %llu"
-					 " at offset %llu\n",
-					 (long long)len, (long long)off);
+				tdb_logerr(tdb, TDB_ERR_CORRUPT,
+					   TDB_DEBUG_ERROR,
+					   "tdb_check: used overlength %llu"
+					   " at offset %llu",
+					   (long long)len, (long long)off);
 				return false;
 			}
 
 			if (len < sizeof(rec.f)) {
-				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-					 "tdb_check: too short record %llu at"
-					 " %llu\n",
-					 (long long)len, (long long)off);
+				tdb_logerr(tdb, TDB_ERR_CORRUPT,
+					   TDB_DEBUG_ERROR,
+					   "tdb_check: too short record %llu"
+					   " at %llu",
+					   (long long)len, (long long)off);
 				return false;
 			}
 		}
@@ -544,9 +556,9 @@ static bool check_linear(struct tdb_context *tdb,
 
 	/* We must have found recovery area if there was one. */
 	if (recovery != 0 && !found_recovery) {
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "tdb_check: expected a recovery area at %zu\n",
-			 (size_t)recovery);
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
+			   "tdb_check: expected a recovery area at %zu",
+			   (size_t)recovery);
 		return false;
 	}
 
@@ -589,8 +601,8 @@ int tdb_check(struct tdb_context *tdb,
 		goto fail;
 
 	if (num_found != num_free) {
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "tdb_check: Not all entries are in free table\n");
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
+			   "tdb_check: Not all entries are in free table");
 		return -1;
 	}
 

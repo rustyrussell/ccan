@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
 
 	hattr.base.next = &tap_log_attr;
 
-	plan_tests(sizeof(flags) / sizeof(flags[0]) * 50 + 1);
+	plan_tests(sizeof(flags) / sizeof(flags[0]) * 53 + 1);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		tdb = tdb_open("run-traverse.tdb", flags[i],
 			       O_RDWR|O_CREAT|O_TRUNC, 0600, &hattr);
@@ -182,6 +182,7 @@ int main(int argc, char *argv[])
 		ok1(td.low <= NUM_RECORDS / 2);
 		ok1(td.high > NUM_RECORDS / 2);
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
+		ok1(tap_log_messages == 0);
 
 		/* Growing traverse.  Expect failure on r/o traverse. */
 		tgd.calls = 0;
@@ -193,6 +194,8 @@ int main(int argc, char *argv[])
 		ok1(tgd.error == TDB_ERR_RDONLY);
 		ok1(tgd.calls == 1);
 		ok1(!tgd.mismatch);
+		ok1(tap_log_messages == 1);
+		tap_log_messages = 0;
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 		/* Deleting traverse.  Expect failure on r/o traverse. */
@@ -209,6 +212,8 @@ int main(int argc, char *argv[])
 		ok1(!td.mismatch);
 		ok1(td.calls == 1);
 		ok1(td.low == td.high);
+		ok1(tap_log_messages == 1);
+		tap_log_messages = 0;
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 		/* Deleting traverse (delete everything). */

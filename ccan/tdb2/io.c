@@ -56,9 +56,9 @@ void tdb_mmap(struct tdb_context *tdb)
 	 */
 	if (tdb->map_ptr == MAP_FAILED) {
 		tdb->map_ptr = NULL;
-		tdb->log(tdb, TDB_DEBUG_WARNING, tdb->log_priv,
-			 "tdb_mmap failed for size %lld (%s)\n", 
-			 (long long)tdb->map_size, strerror(errno));
+		tdb_logerr(tdb, TDB_SUCCESS, TDB_DEBUG_WARNING,
+			   "tdb_mmap failed for size %lld (%s)",
+			   (long long)tdb->map_size, strerror(errno));
 	}
 }
 
@@ -70,7 +70,6 @@ void tdb_mmap(struct tdb_context *tdb)
 static int tdb_oob(struct tdb_context *tdb, tdb_off_t len, bool probe)
 {
 	struct stat st;
-	int ret;
 
 	/* We can't hold pointers during this: we could unmap! */
 	assert(!tdb->direct_access
@@ -81,11 +80,9 @@ static int tdb_oob(struct tdb_context *tdb, tdb_off_t len, bool probe)
 		return 0;
 	if (tdb->flags & TDB_INTERNAL) {
 		if (!probe) {
-			/* Ensure ecode is set for log fn. */
-			tdb->ecode = TDB_ERR_IO;
-			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
+			tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_FATAL,
 				 "tdb_oob len %lld beyond internal"
-				 " malloc size %lld\n",
+				 " malloc size %lld",
 				 (long long)len,
 				 (long long)tdb->map_size);
 		}
@@ -95,22 +92,20 @@ static int tdb_oob(struct tdb_context *tdb, tdb_off_t len, bool probe)
 	if (tdb_lock_expand(tdb, F_RDLCK) != 0)
 		return -1;
 
-	ret = fstat(tdb->fd, &st);
-
-	tdb_unlock_expand(tdb, F_RDLCK);
-
-	if (ret == -1) {
-		tdb->ecode = TDB_ERR_IO;
+	if (fstat(tdb->fd, &st) != 0) {
+		tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_FATAL,
+			   "Failed to fstat file: %s", strerror(errno));
+		tdb_unlock_expand(tdb, F_RDLCK);
 		return -1;
 	}
 
+	tdb_unlock_expand(tdb, F_RDLCK);
+
 	if (st.st_size < (size_t)len) {
 		if (!probe) {
-			/* Ensure ecode is set for log fn. */
-			tdb->ecode = TDB_ERR_IO;
-			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-				 "tdb_oob len %lld beyond eof at %lld\n",
-				 (long long)len, (long long)st.st_size);
+			tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_FATAL,
+				   "tdb_oob len %zu beyond eof at %zu",
+				   (size_t)len, st.st_size);
 		}
 		return -1;
 	}
@@ -180,11 +175,7 @@ int zero_out(struct tdb_context *tdb, tdb_off_t off, tdb_len_t len)
 	char buf[8192] = { 0 };
 	void *p = tdb->methods->direct(tdb, off, len);
 
-	if (tdb->read_only) {
-		tdb->ecode = TDB_ERR_RDONLY;
-		return -1;
-	}
-
+	assert(!tdb->read_only);
 	if (p) {
 		memset(p, 0, len);
 		return 0;
@@ -275,13 +266,15 @@ bool tdb_read_all(int fd, void *buf, size_t len)
 static int tdb_write(struct tdb_context *tdb, tdb_off_t off, 
 		     const void *buf, tdb_len_t len)
 {
-	if (len == 0) {
-		return 0;
+	if (tdb->read_only) {
+		tdb_logerr(tdb, TDB_ERR_RDONLY, TDB_DEBUG_WARNING,
+			   "Write to read-only database");
+		return -1;
 	}
 
-	if (tdb->read_only) {
-		tdb->ecode = TDB_ERR_RDONLY;
-		return -1;
+	/* FIXME: Bogus optimization? */
+	if (len == 0) {
+		return 0;
 	}
 
 	if (tdb->methods->oob(tdb, off + len, 0) != 0)
@@ -291,11 +284,9 @@ static int tdb_write(struct tdb_context *tdb, tdb_off_t off,
 		memcpy(off + (char *)tdb->map_ptr, buf, len);
 	} else {
 		if (!tdb_pwrite_all(tdb->fd, buf, len, off)) {
-			tdb->ecode = TDB_ERR_IO;
-			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-				 "tdb_write failed at %llu len=%llu (%s)\n",
-				 (long long)off, (long long)len,
-				 strerror(errno));
+			tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_FATAL,
+				   "tdb_write failed at %zu len=%zu (%s)",
+				   (size_t)off, (size_t)len, strerror(errno));
 			return -1;
 		}
 	}
@@ -314,14 +305,12 @@ static int tdb_read(struct tdb_context *tdb, tdb_off_t off, void *buf,
 		memcpy(buf, off + (char *)tdb->map_ptr, len);
 	} else {
 		if (!tdb_pread_all(tdb->fd, buf, len, off)) {
-			/* Ensure ecode is set for log fn. */
-			tdb->ecode = TDB_ERR_IO;
-			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-				 "tdb_read failed at %lld "
-				 "len=%lld (%s) map_size=%lld\n",
-				 (long long)off, (long long)len,
+			tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_FATAL,
+				   "tdb_read failed at %zu "
+				   "len=%zu (%s) map_size=%zu",
+				 (size_t)off, (size_t)len,
 				 strerror(errno),
-				 (long long)tdb->map_size);
+				 (size_t)tdb->map_size);
 			return -1;
 		}
 	}
@@ -335,10 +324,9 @@ int tdb_write_convert(struct tdb_context *tdb, tdb_off_t off,
 	if (unlikely((tdb->flags & TDB_CONVERT))) {
 		void *conv = malloc(len);
 		if (!conv) {
-			tdb->ecode = TDB_ERR_OOM;
-			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-				 "tdb_write: no memory converting %zu bytes\n",
-				 len);
+			tdb_logerr(tdb, TDB_ERR_OOM, TDB_DEBUG_FATAL,
+				   "tdb_write: no memory converting"
+				   " %zu bytes", len);
 			return -1;
 		}
 		memcpy(conv, rec, len);
@@ -362,7 +350,8 @@ int tdb_read_convert(struct tdb_context *tdb, tdb_off_t off,
 int tdb_write_off(struct tdb_context *tdb, tdb_off_t off, tdb_off_t val)
 {
 	if (tdb->read_only) {
-		tdb->ecode = TDB_ERR_RDONLY;
+		tdb_logerr(tdb, TDB_ERR_RDONLY, TDB_DEBUG_WARNING,
+			   "Write to read-only database");
 		return -1;
 	}
 
@@ -383,12 +372,12 @@ static void *_tdb_alloc_read(struct tdb_context *tdb, tdb_off_t offset,
 
 	/* some systems don't like zero length malloc */
 	buf = malloc(prefix + len ? prefix + len : 1);
-	if (unlikely(!buf)) {
-		tdb->ecode = TDB_ERR_OOM;
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "tdb_alloc_read malloc failed len=%lld\n",
-			 (long long)prefix + len);
-	} else if (unlikely(tdb->methods->read(tdb, offset, buf+prefix, len))) {
+	if (!buf) {
+		tdb_logerr(tdb, TDB_ERR_OOM, TDB_DEBUG_ERROR,
+			   "tdb_alloc_read malloc failed len=%zu",
+			   (size_t)(prefix + len));
+	} else if (unlikely(tdb->methods->read(tdb, offset, buf+prefix,
+					       len) == -1)) {
 		free(buf);
 		buf = NULL;
 	}
@@ -409,9 +398,8 @@ static int fill(struct tdb_context *tdb,
 		size_t n = len > size ? size : len;
 
 		if (!tdb_pwrite_all(tdb->fd, buf, n, off)) {
-			tdb->ecode = TDB_ERR_IO;
-			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-				 "fill write failed: giving up!\n");
+			tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_FATAL,
+				 "fill write failed: giving up!");
 			return -1;
 		}
 		len -= n;
@@ -427,14 +415,16 @@ static int tdb_expand_file(struct tdb_context *tdb, tdb_len_t addition)
 	char buf[8192];
 
 	if (tdb->read_only) {
-		tdb->ecode = TDB_ERR_RDONLY;
+		tdb_logerr(tdb, TDB_ERR_RDONLY, TDB_DEBUG_WARNING,
+			   "Expand on read-only database");
 		return -1;
 	}
 
 	if (tdb->flags & TDB_INTERNAL) {
 		char *new = realloc(tdb->map_ptr, tdb->map_size + addition);
 		if (!new) {
-			tdb->ecode = TDB_ERR_OOM;
+			tdb_logerr(tdb, TDB_ERR_OOM, TDB_DEBUG_FATAL,
+				   "No memory to expand database");
 			return -1;
 		}
 		tdb->map_ptr = new;
@@ -495,7 +485,8 @@ void *tdb_access_write(struct tdb_context *tdb,
 	void *ret = NULL;
 
 	if (tdb->read_only) {
-		tdb->ecode = TDB_ERR_RDONLY;
+		tdb_logerr(tdb, TDB_ERR_RDONLY, TDB_DEBUG_WARNING,
+			   "Write to read-only database");
 		return NULL;
 	}
 

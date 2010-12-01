@@ -561,10 +561,11 @@ int next_in_hash(struct tdb_context *tdb, int ltype,
 				return -1;
 			}
 			if (rec_magic(&rec) != TDB_MAGIC) {
-				tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-					 "next_in_hash:"
-					 " corrupt record at %llu\n",
-					 (long long)off);
+				tdb_logerr(tdb, TDB_ERR_CORRUPT,
+					   TDB_DEBUG_FATAL,
+					   "next_in_hash:"
+					   " corrupt record at %llu",
+					   (long long)off);
 				return -1;
 			}
 

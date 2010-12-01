@@ -164,7 +164,8 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 	buckets = tally_new(HISTO_HEIGHT);
 	if (!flists || !hashes || !freet || !keys || !data || !extra
 	    || !uncoal || !buckets) {
-		tdb->ecode = TDB_ERR_OOM;
+		tdb_logerr(tdb, TDB_ERR_OOM, TDB_DEBUG_ERROR,
+			   "tdb_summary: failed to allocate tally structures");
 		goto unlock;
 	}
 
