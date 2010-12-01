@@ -1,4 +1,4 @@
-#LyX 1.6.5 created this file. For more info see http://www.lyx.org/
+#LyX 1.6.7 created this file. For more info see http://www.lyx.org/
 \lyxformat 345
 \begin_document
 \begin_header
@@ -50,13 +50,7 @@ Rusty Russell, IBM Corporation
 \end_layout
 
 \begin_layout Date
-
-\change_deleted 0 1283307542
-26-July
-\change_inserted 0 1284423485
-14-September
-\change_unchanged
--2010
+1-December-2010
 \end_layout
 
 \begin_layout Abstract
@@ -476,16 +470,12 @@ The tdb_open() call was expanded to tdb_open_ex(), which added an optional
 
 \begin_layout Subsubsection
 Proposed Solution
-\change_inserted 0 1284422789
-
 \begin_inset CommandInset label
 LatexCommand label
 name "attributes"
 
 \end_inset
 
-
-\change_unchanged
 
 \end_layout
 
@@ -590,6 +580,14 @@ This allows future attributes to be added, even if this expands the size
  of the union.
 \end_layout
 
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Complete.
+\end_layout
+
 \begin_layout Subsection
 tdb_traverse Makes Impossible Guarantees
 \end_layout
@@ -629,6 +627,16 @@ Abandon the guarantee.
  You will see every record if no changes occur during your traversal, otherwise
  you will see some subset.
  You can prevent changes by using a transaction or the locking API.
+\end_layout
+
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Complete.
+ Delete-during-traverse will still delete every record, too (assuming no
+ other changes).
 \end_layout
 
 \begin_layout Subsection
@@ -685,6 +693,14 @@ least-surprise
 -obscure case.
 \end_layout
 
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Incomplete; nesting flag is still defined as per tdb1.
+\end_layout
+
 \begin_layout Subsection
 Incorrect Hash Function is Not Detected
 \end_layout
@@ -704,6 +720,14 @@ Proposed Solution
 The header should contain an example hash result (eg.
  the hash of 0xdeadbeef), and tdb_open_ex() should check that the given
  hash function produces the same answer, or fail the tdb_open call.
+\end_layout
+
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Complete.
 \end_layout
 
 \begin_layout Subsection
@@ -748,6 +772,16 @@ With the scalability problems of the freelist solved, this API can be removed.
  The TDB_VOLATILE flag may still be useful as a hint that store and delete
  of records will be at least as common as fetch in order to allow some internal
  tuning, but initially will become a no-op.
+\end_layout
+
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Incomplete.
+ TDB_VOLATILE still defined, but implementation should fail on unknown flags
+ to be future-proof.
 \end_layout
 
 \begin_layout Subsection
@@ -802,6 +836,14 @@ I do not see benefit in an additional tdb_open flag to indicate whether
  an API.
 \end_layout
 
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Incomplete.
+\end_layout
+
 \begin_layout Subsection
 TDB API Is Not POSIX Thread-safe
 \end_layout
@@ -846,8 +888,6 @@ Internal locking is required to make sure that fcntl locks do not overlap
 \begin_layout Standard
 The aim is that building tdb with -DTDB_PTHREAD will result in a pthread-safe
  version of the library, and otherwise no overhead will exist.
-
-\change_inserted 0 1284016998
  Alternatively, a hooking mechanism similar to that proposed for 
 \begin_inset CommandInset ref
 LatexCommand ref
@@ -856,8 +896,14 @@ reference "Proposed-Solution-locking-hook"
 \end_inset
 
  could be used to enable pthread locking at runtime.
-\change_unchanged
+\end_layout
 
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Incomplete.
 \end_layout
 
 \begin_layout Subsection
@@ -975,6 +1021,14 @@ This is flexible enough to handle any potential locking scenario, even when
 It also keeps the complexity out of the API, and in ctdbd where it is needed.
 \end_layout
 
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Incomplete.
+\end_layout
+
 \begin_layout Subsection
 tdb_chainlock Functions Expose Implementation
 \end_layout
@@ -1056,6 +1110,14 @@ It may be possible to make this race-free in some implementations by having
 
 \end_layout
 
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Incomplete.
+\end_layout
+
 \begin_layout Subsection
 The API Uses Gratuitous Typedefs, Capitals
 \end_layout
@@ -1132,6 +1194,14 @@ It should simply take an extra argument, since we are prepared to break
  the API/ABI.
 \end_layout
 
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Complete.
+\end_layout
+
 \begin_layout Subsection
 Various Callback Functions Are Not Typesafe
 \end_layout
@@ -1171,6 +1241,14 @@ With careful use of macros, we can create callback functions which give
 See CCAN's typesafe_cb module at http://ccan.ozlabs.org/info/typesafe_cb.html
 \end_layout
 
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Incomplete.
+\end_layout
+
 \begin_layout Subsection
 TDB_CLEAR_IF_FIRST Must Be Specified On All Opens, tdb_reopen_all Problematic
 \end_layout
@@ -1206,19 +1284,21 @@ reference "TDB_CLEAR_IF_FIRST-Imposes-Performance"
 \end_inset
 
 .
-\change_inserted 0 1284015637
+\end_layout
 
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Incomplete, TDB_CLEAR_IF_FIRST still defined, but not implemented.
 \end_layout
 
 \begin_layout Subsection
-
-\change_inserted 0 1284015716
 Extending The Header Is Difficult
 \end_layout
 
 \begin_layout Standard
-
-\change_inserted 0 1284015906
 We have reserved (zeroed) words in the TDB header, which can be used for
  future features.
  If the future features are compulsory, the version number must be updated
@@ -1228,14 +1308,10 @@ We have reserved (zeroed) words in the TDB header, which can be used for
 \end_layout
 
 \begin_layout Subsubsection
-
-\change_inserted 0 1284015637
 Proposed Solution
 \end_layout
 
 \begin_layout Standard
-
-\change_inserted 0 1284016114
 The header should contain a 
 \begin_inset Quotes eld
 \end_inset
@@ -1249,58 +1325,48 @@ format variant
 \end_layout
 
 \begin_layout Enumerate
-
-\change_inserted 0 1284016149
 The lower part reflects the format variant understood by code accessing
  the database.
 \end_layout
 
 \begin_layout Enumerate
-
-\change_inserted 0 1284016639
 The upper part reflects the format variant you must understand to write
  to the database (otherwise you can only open for reading).
 \end_layout
 
 \begin_layout Standard
-
-\change_inserted 0 1284016821
 The latter field can only be written at creation time, the former should
  be written under the OPEN_LOCK when opening the database for writing, if
  the variant of the code is lower than the current lowest variant.
 \end_layout
 
 \begin_layout Standard
-
-\change_inserted 0 1284016803
 This should allow backwards-compatible features to be added, and detection
  if older code (which doesn't understand the feature) writes to the database.
-\change_deleted 0 1284016101
+\end_layout
 
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Incomplete.
 \end_layout
 
 \begin_layout Subsection
-
-\change_inserted 0 1284015634
 Record Headers Are Not Expandible
 \end_layout
 
 \begin_layout Standard
-
-\change_inserted 0 1284015634
 If we later want to add (say) checksums on keys and data, it would require
  another format change, which we'd like to avoid.
 \end_layout
 
 \begin_layout Subsubsection
-
-\change_inserted 0 1284015634
 Proposed Solution
 \end_layout
 
 \begin_layout Standard
-
-\change_inserted 0 1284422552
 We often have extra padding at the tail of a record.
  If we ensure that the first byte (if any) of this padding is zero, we will
  have a way for future changes to detect code which doesn't understand a
@@ -1309,28 +1375,28 @@ We often have extra padding at the tail of a record.
  not present on that record.
 \end_layout
 
-\begin_layout Subsection
+\begin_layout Subsubsection
+Status
+\end_layout
 
-\change_inserted 0 1284422568
+\begin_layout Standard
+Incomplete.
+\end_layout
+
+\begin_layout Subsection
 TDB Does Not Use Talloc
 \end_layout
 
 \begin_layout Standard
-
-\change_inserted 0 1284422646
 Many users of TDB (particularly Samba) use the talloc allocator, and thus
  have to wrap TDB in a talloc context to use it conveniently.
 \end_layout
 
 \begin_layout Subsubsection
-
-\change_inserted 0 1284422656
 Proposed Solution
 \end_layout
 
 \begin_layout Standard
-
-\change_inserted 0 1284423065
 The allocation within TDB is not complicated enough to justify the use of
  talloc, and I am reluctant to force another (excellent) library on TDB
  users.
@@ -1356,15 +1422,19 @@ context
 \end_layout
 
 \begin_layout Standard
-
-\change_inserted 0 1284423042
 This would form a talloc heirarchy as expected, but the caller would still
  have to attach a destructor to the tdb context returned from tdb_open to
  close it.
  All TDB_DATA fields would be children of the tdb_context, and the caller
  would still have to manage them (using talloc_free() or talloc_steal()).
-\change_unchanged
+\end_layout
 
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Deferred.
 \end_layout
 
 \begin_layout Section
@@ -1422,6 +1492,14 @@ Remove the flag.
  point.
 \end_layout
 
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Incomplete; TDB_CLEAR_IF_FIRST still defined, but does nothing.
+\end_layout
+
 \begin_layout Subsection
 TDB Files Have a 4G Limit
 \end_layout
@@ -1469,6 +1547,14 @@ Old versions of tdb will fail to open the new TDB files (since 28 August
  be erased and initialized as a fresh tdb!)
 \end_layout
 
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Complete.
+\end_layout
+
 \begin_layout Subsection
 TDB Records Have a 4G Limit
 \end_layout
@@ -1498,6 +1584,14 @@ reference "sub:Records-Incur-A"
 ).
 \end_layout
 
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Complete.
+\end_layout
+
 \begin_layout Subsection
 Hash Size Is Determined At TDB Creation Time
 \end_layout
@@ -1512,16 +1606,12 @@ TDB contains a number of hash chains in the header; the number is specified
 \end_layout
 
 \begin_layout Subsubsection
-
-\change_inserted 0 1283336713
 \begin_inset CommandInset label
 LatexCommand label
 name "sub:Hash-Size-Solution"
 
 \end_inset
 
-
-\change_unchanged
 Proposed Solution
 \end_layout
 
@@ -1540,58 +1630,6 @@ http://rusty.ozlabs.org/?p=89 and http://rusty.ozlabs.org/?p=94 This was annoyin
 
 , it became clear that it is hard to beat a straight linear hash table which
  doubles in size when it reaches saturation.
- 
-\change_deleted 0 1283307675
-There are three details which become important:
-\end_layout
-
-\begin_layout Enumerate
-
-\change_deleted 0 1283307675
-On encountering a full bucket, we use the next bucket.
-\end_layout
-
-\begin_layout Enumerate
-
-\change_deleted 0 1283307675
-Extra hash bits are stored with the offset, to reduce comparisons.
-\end_layout
-
-\begin_layout Enumerate
-
-\change_deleted 0 1283307675
-A marker entry is used on deleting an entry.
-\end_layout
-
-\begin_layout Standard
-
-\change_deleted 0 1283307675
-The doubling of the table must be done under a transaction; we will not
- reduce it on deletion, so it will be an unusual case.
- It will either be placed at the head (other entries will be moved out the
- way so we can expand).
- We could have a pointer in the header to the current hashtable location,
- but that pointer would have to be read frequently to check for hashtable
- moves.
-\end_layout
-
-\begin_layout Standard
-
-\change_deleted 0 1283307675
-The locking for this is slightly more complex than the chained case; we
- currently have one lock per bucket, and that means we would need to expand
- the lock if we overflow to the next bucket.
- The frequency of such collisions will effect our locking heuristics: we
- can always lock more buckets than we need.
-\end_layout
-
-\begin_layout Standard
-
-\change_deleted 0 1283307675
-One possible optimization is to only re-check the hash size on an insert
- or a lookup miss.
-
-\change_inserted 0 1283307770
  Unfortunately, altering the hash table introduces serious locking complications
 : the entire hash table needs to be locked to enlarge the hash table, and
  others might be holding locks.
@@ -1599,8 +1637,6 @@ One possible optimization is to only re-check the hash size on an insert
 \end_layout
 
 \begin_layout Standard
-
-\change_inserted 0 1283336187
 Thus an expanding layered hash will be used: an array of hash groups, with
  each hash group exploding into pointers to lower hash groups once it fills,
  turning into a hash tree.
@@ -1609,8 +1645,6 @@ Thus an expanding layered hash will be used: an array of hash groups, with
 \end_layout
 
 \begin_layout Standard
-
-\change_inserted 0 1283336586
 Note that bits from the hash table entries should be stolen to hold more
  hash bits to reduce the penalty of collisions.
  We can use the otherwise-unused lower 3 bits.
@@ -1621,8 +1655,14 @@ Note that bits from the hash table entries should be stolen to hold more
  bits are valid.
  This means we can choose not to re-hash all entries when we expand a hash
  group; simply use the next bits we need and mark them invalid.
-\change_unchanged
+\end_layout
 
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Complete.
 \end_layout
 
 \begin_layout Subsection
@@ -1749,8 +1789,6 @@ The single list lock limits our allocation rate; due to the other issues
 
 \begin_layout Subsubsection
 Proposed Solution
-\change_deleted 0 1283336858
-
 \end_layout
 
 \begin_layout Standard
@@ -1765,20 +1803,14 @@ The free list must be split to reduce contention.
  This implies that the number of free lists is related to the size of the
  hash table, but as it is rare to walk a large number of free list entries
  we can use far fewer, say 1/32 of the number of hash buckets.
-\change_inserted 0 1283336910
-
 \end_layout
 
 \begin_layout Standard
-
-\change_inserted 0 1283337052
 It seems tempting to try to reuse the hash implementation which we use for
  records here, but we have two ways of searching for free entries: for allocatio
 n we search by size (and possibly zone) which produces too many clashes
  for our hash table to handle well, and for coalescing we search by address.
  Thus an array of doubly-linked free lists seems preferable.
-\change_unchanged
-
 \end_layout
 
 \begin_layout Standard
@@ -1792,24 +1824,28 @@ reference "sub:TDB-Becomes-Fragmented"
 ) but it's not clear this would reduce contention in the common case where
  all processes are allocating/freeing the same size.
  Thus we almost certainly need to divide in other ways: the most obvious
- is to divide the file into zones, and using a free list (or set of free
+ is to divide the file into zones, and using a free list (or table of free
  lists) for each.
  This approximates address ordering.
 \end_layout
 
 \begin_layout Standard
-Note that this means we need to split the free lists when we expand the
- file; this is probably acceptable when we double the hash table size, since
- that is such an expensive operation already.
- In the case of increasing the file size, there is an optimization we can
- use: if we use M in the formula above as the file size rounded up to the
- next power of 2, we only need reshuffle free lists when the file size crosses
- a power of 2 boundary, 
-\emph on
-and 
-\emph default
-reshuffling the free lists is trivial: we simply merge every consecutive
- pair of free lists.
+Unfortunately it is difficult to know what heuristics should be used to
+ determine zone sizes, and our transaction code relies on being able to
+ create a 
+\begin_inset Quotes eld
+\end_inset
+
+recovery area
+\begin_inset Quotes erd
+\end_inset
+
+ by simply appending to the file (difficult if it would need to create a
+ new zone header).
+ Thus we use a linked-list of free tables; currently we only ever create
+ one, but if there is more than one we choose one at random to use.
+ In future we may use heuristics to add new free tables on contention.
+ We only expand the file when all free tables are exhausted.
 \end_layout
 
 \begin_layout Standard
@@ -1818,7 +1854,7 @@ The basic algorithm is as follows.
 \end_layout
 
 \begin_layout Enumerate
-Identify the correct zone.
+Identify the correct free list.
 \end_layout
 
 \begin_layout Enumerate
@@ -1826,12 +1862,12 @@ Lock the corresponding list.
 \end_layout
 
 \begin_layout Enumerate
-Re-check the zone (we didn't have a lock, sizes could have changed): relock
+Re-check the list (we didn't have a lock, sizes could have changed): relock
  if necessary.
 \end_layout
 
 \begin_layout Enumerate
-Place the freed entry in the list for that zone.
+Place the freed entry in the list.
 \end_layout
 
 \begin_layout Standard
@@ -1840,23 +1876,11 @@ Allocation is a little more complicated, as we perform delayed coalescing
 \end_layout
 
 \begin_layout Enumerate
-Pick a zone either the zone we last freed into, or based on a 
-\begin_inset Quotes eld
-\end_inset
-
-random
-\begin_inset Quotes erd
-\end_inset
-
- number.
+Pick a free table; usually the previous one.
 \end_layout
 
 \begin_layout Enumerate
 Lock the corresponding list.
-\end_layout
-
-\begin_layout Enumerate
-Re-check the zone: relock if necessary.
 \end_layout
 
 \begin_layout Enumerate
@@ -1865,7 +1889,11 @@ If the top entry is -large enough, remove it from the list and return it.
 
 \begin_layout Enumerate
 Otherwise, coalesce entries in the list.If there was no entry large enough,
- unlock the list and try the next zone.
+ unlock the list and try the next largest list
+\end_layout
+
+\begin_layout Enumerate
+If no list has an entry which meets our needs, try the next free table.
 \end_layout
 
 \begin_layout Enumerate
@@ -1897,73 +1925,8 @@ reference "sub:Records-Incur-A"
 \end_layout
 
 \begin_layout Standard
-I anticipate that the number of entries in each free zone would be small,
- but it might be worth using one free entry to hold pointers to the others
- for cache efficiency.
-\change_inserted 0 1283309850
-
-\end_layout
-
-\begin_layout Standard
-
-\change_inserted 0 1283337216
-\begin_inset CommandInset label
-LatexCommand label
-name "freelist-in-zone"
-
-\end_inset
-
-If we want to avoid locking complexity (enlarging the free lists when we
- enlarge the file) we could place the array of free lists at the beginning
- of each zone.
- This means existing array lists never move, but means that a record cannot
- be larger than a zone.
- That in turn implies that zones should be variable sized (say, power of
- 2), which makes the question 
-\begin_inset Quotes eld
-\end_inset
-
-what zone is this record in?
-\begin_inset Quotes erd
-\end_inset
-
- much harder (and 
-\begin_inset Quotes eld
-\end_inset
-
-pick a random zone
-\begin_inset Quotes erd
-\end_inset
-
-, but that's less common).
- It could be done with as few as 4 bits from the record header.
-\begin_inset Foot
-status open
-
-\begin_layout Plain Layout
-
-\change_inserted 0 1284424151
-Using 
-\begin_inset Formula $2^{16+N*3}$
-\end_inset
-
-means 0 gives a minimal 65536-byte zone, 15 gives the maximal 
-\begin_inset Formula $2^{61}$
-\end_inset
-
- byte zone.
- Zones range in factor of 8 steps.
- Given the zone size for the zone the current record is in, we can determine
- the start of the zone.
-\change_unchanged
-
-\end_layout
-
-\end_inset
-
-
-\change_unchanged
-
+Each free entry has the free table number in the header: less than 255.
+ It also contains a doubly-linked list for easy deletion.
 \end_layout
 
 \begin_layout Subsection
@@ -2165,8 +2128,6 @@ miss
  it reduces 99.9% of false memcmp).
  As an aside, as the lower bits are already incorporated in the hash table
  resolution, the upper bits should be used here.
-
-\change_inserted 0 1283336739
  Note that it's not clear that these bits will be a win, given the extra
  bits in the hash table itself (see 
 \begin_inset CommandInset ref
@@ -2176,8 +2137,6 @@ reference "sub:Hash-Size-Solution"
 \end_inset
 
 ).
-\change_unchanged
-
 \end_layout
 
 \begin_layout Enumerate
@@ -2214,11 +2173,11 @@ struct tdb_used_record {
 \end_layout
 
 \begin_layout LyX-Code
-        uint32_t magic : 16,
+        uint32_t used_magic : 16,
 \end_layout
 
 \begin_layout LyX-Code
-                 prev_is_free: 1,
+
 \end_layout
 
 \begin_layout LyX-Code
@@ -2226,7 +2185,7 @@ struct tdb_used_record {
 \end_layout
 
 \begin_layout LyX-Code
-                 top_hash: 10;
+                 top_hash: 11;
 \end_layout
 
 \begin_layout LyX-Code
@@ -2250,29 +2209,27 @@ struct tdb_free_record {
 \end_layout
 
 \begin_layout LyX-Code
-        uint32_t free_magic;
+        uint64_t free_magic: 8,
 \end_layout
 
 \begin_layout LyX-Code
-        uint64_t total_length;
-\change_inserted 0 1283337133
-
+                   prev : 56;
 \end_layout
 
 \begin_layout LyX-Code
-
-\change_inserted 0 1283337139
-        uint64_t prev, next;
-\change_unchanged
 
 \end_layout
 
 \begin_layout LyX-Code
-        ...
+        uint64_t free_table: 8,
 \end_layout
 
 \begin_layout LyX-Code
-        uint64_t tailer;
+                 total_length : 56
+\end_layout
+
+\begin_layout LyX-Code
+        uint64_t next;;
 \end_layout
 
 \begin_layout LyX-Code
@@ -2281,20 +2238,19 @@ struct tdb_free_record {
 
 \begin_layout Standard
 
-\change_inserted 0 1283337235
-We might want to take some bits from the used record's top_hash (and the
- free record which has 32 bits of padding to spare anyway) if we use variable
- sized zones.
- See 
-\begin_inset CommandInset ref
-LatexCommand ref
-reference "freelist-in-zone"
-
-\end_inset
-
-.
+\change_deleted 0 1291206079
+ 
 \change_unchanged
+Note that by limiting valid offsets to 56 bits, we can pack everything we
+ need into 3 64-byte words, meaning our minimum record size is 8 bytes.
+\end_layout
 
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Complete.
 \end_layout
 
 \begin_layout Subsection
@@ -2387,6 +2343,14 @@ Checking for recovery means identifying the latest bundle with a valid checksum
  a transaction in progress; we need only check for recovery if this is set.
 \end_layout
 
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Deferred.
+\end_layout
+
 \begin_layout Subsection
 \begin_inset CommandInset label
 LatexCommand label
@@ -2398,13 +2362,7 @@ TDB Does Not Have Snapshot Support
 \end_layout
 
 \begin_layout Subsubsection
-Proposed Solution
-\change_deleted 0 1284423472
-
-\end_layout
-
-\begin_layout Standard
-None.
+Proposed SolutionNone.
  At some point you say 
 \begin_inset Quotes eld
 \end_inset
@@ -2413,13 +2371,6 @@ use a real database
 \begin_inset Quotes erd
 \end_inset
 
-
-\change_inserted 0 1284423891
- 
-\change_deleted 0 1284423891
-.
-
-\change_inserted 0 1284423901
  (but see 
 \begin_inset CommandInset ref
 LatexCommand ref
@@ -2428,8 +2379,6 @@ reference "replay-attribute"
 \end_inset
 
 ).
-\change_unchanged
-
 \end_layout
 
 \begin_layout Standard
@@ -2452,8 +2401,14 @@ This would not allow arbitrary changes to the database, such as tdb_repack
 \begin_layout Standard
 We could then implement snapshots using a similar method, using multiple
  different hash tables/free tables.
-\change_inserted 0 1284423495
+\end_layout
 
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Deferred.
 \end_layout
 
 \begin_layout Subsection
@@ -2473,8 +2428,6 @@ Proposed Solution
 \end_layout
 
 \begin_layout Standard
-
-\change_inserted 0 1284424201
 None (but see 
 \begin_inset CommandInset ref
 LatexCommand ref
@@ -2483,13 +2436,19 @@ reference "replay-attribute"
 \end_inset
 
 ).
- 
-\change_unchanged
-We could solve a small part of the problem by providing read-only transactions.
+ We could solve a small part of the problem by providing read-only transactions.
  These would allow one write transaction to begin, but it could not commit
  until all r/o transactions are done.
  This would require a new RO_TRANSACTION_LOCK, which would be upgraded on
  commit.
+\end_layout
+
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Deferred.
 \end_layout
 
 \begin_layout Subsection
@@ -2532,6 +2491,14 @@ The seed should be created at tdb-creation time from some random source,
  hash bombing.
 \end_layout
 
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Complete.
+\end_layout
+
 \begin_layout Subsection
 \begin_inset CommandInset label
 LatexCommand label
@@ -2567,6 +2534,14 @@ reference "traverse-Proposed-Solution"
 \end_inset
 
 .
+\end_layout
+
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Complete.
 \end_layout
 
 \begin_layout Subsection
@@ -2670,19 +2645,13 @@ At some later point, a sync would allow recovery of the old data into the
  free lists (perhaps when the array of top-level pointers filled).
  On crash, tdb_open() would examine the array of top levels, and apply the
  transactions until it encountered an invalid checksum.
-\change_inserted 0 1284423555
-
 \end_layout
 
 \begin_layout Subsection
-
-\change_inserted 0 1284423617
 Tracing Is Fragile, Replay Is External
 \end_layout
 
 \begin_layout Standard
-
-\change_inserted 0 1284423719
 The current TDB has compile-time-enabled tracing code, but it often breaks
  as it is not enabled by default.
  In a similar way, the ctdb code has an external wrapper which does replay
@@ -2690,8 +2659,6 @@ The current TDB has compile-time-enabled tracing code, but it often breaks
 \end_layout
 
 \begin_layout Subsubsection
-
-\change_inserted 0 1284423864
 Proposed Solution
 \begin_inset CommandInset label
 LatexCommand label
@@ -2703,8 +2670,6 @@ name "replay-attribute"
 \end_layout
 
 \begin_layout Standard
-
-\change_inserted 0 1284423850
 Tridge points out that an attribute can be later added to tdb_open (see
  
 \begin_inset CommandInset ref
@@ -2715,8 +2680,14 @@ reference "attributes"
 
 ) to provide replay/trace hooks, which could become the basis for this and
  future parallel transactions and snapshot support.
-\change_unchanged
+\end_layout
 
+\begin_layout Subsubsection
+Status
+\end_layout
+
+\begin_layout Standard
+Deferred.
 \end_layout
 
 \end_body

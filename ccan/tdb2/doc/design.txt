@@ -2,7 +2,7 @@ TDB2: A Redesigning The Trivial DataBase
 
 Rusty Russell, IBM Corporation
 
-14-September-2010
+1-December-2010
 
 Abstract
 
@@ -129,6 +129,10 @@ union tdb_attribute {
 This allows future attributes to be added, even if this expands 
 the size of the union.
 
+2.1.2 Status
+
+Complete.
+
 2.2 tdb_traverse Makes Impossible Guarantees
 
 tdb_traverse (and tdb_firstkey/tdb_nextkey) predate transactions, 
@@ -147,6 +151,11 @@ Abandon the guarantee. You will see every record if no changes
 occur during your traversal, otherwise you will see some subset. 
 You can prevent changes by using a transaction or the locking 
 API.
+
+2.2.2 Status
+
+Complete. Delete-during-traverse will still delete every record, 
+too (assuming no other changes).
 
 2.3 Nesting of Transactions Is Fraught
 
@@ -182,6 +191,10 @@ However, this behavior can be simulated with a wrapper which uses
 tdb_add_flags() and tdb_remove_flags(), so the API should not be 
 expanded for this relatively-obscure case.
 
+2.3.2 Status
+
+Incomplete; nesting flag is still defined as per tdb1.
+
 2.4 Incorrect Hash Function is Not Detected
 
 tdb_open_ex() allows the calling code to specify a different hash 
@@ -194,6 +207,10 @@ is that records are missing from tdb_fetch().
 The header should contain an example hash result (eg. the hash of 
 0xdeadbeef), and tdb_open_ex() should check that the given hash 
 function produces the same answer, or fail the tdb_open call.
+
+2.4.2 Status
+
+Complete.
 
 2.5 tdb_set_max_dead/TDB_VOLATILE Expose Implementation
 
@@ -215,6 +232,11 @@ can be removed. The TDB_VOLATILE flag may still be useful as a
 hint that store and delete of records will be at least as common 
 as fetch in order to allow some internal tuning, but initially 
 will become a no-op.
+
+2.5.2 Status
+
+Incomplete. TDB_VOLATILE still defined, but implementation should 
+fail on unknown flags to be future-proof.
 
 2.6 <TDB-Files-Cannot>TDB Files Cannot Be Opened Multiple Times 
   In The Same Process
@@ -251,6 +273,10 @@ whether re-opening is allowed, as though there may be some
 benefit to adding a call to detect when a tdb_context is shared, 
 to allow other to create such an API.
 
+2.6.2 Status
+
+Incomplete.
+
 2.7 TDB API Is Not POSIX Thread-safe
 
 The TDB API uses an error code which can be queried after an 
@@ -280,6 +306,10 @@ pthread-safe version of the library, and otherwise no overhead
 will exist. Alternatively, a hooking mechanism similar to that 
 proposed for [Proposed-Solution-locking-hook] could be used to 
 enable pthread locking at runtime.
+
+2.7.2 Status
+
+Incomplete.
 
 2.8 *_nonblock Functions And *_mark Functions Expose 
   Implementation
@@ -343,6 +373,10 @@ locks it doesn't need to obtain.
 It also keeps the complexity out of the API, and in ctdbd where 
 it is needed.
 
+2.8.2 Status
+
+Incomplete.
+
 2.9 tdb_chainlock Functions Expose Implementation
 
 tdb_chainlock locks some number of records, including the record 
@@ -391,6 +425,10 @@ EINVAL if the signal occurs before the kernel is entered,
 otherwise EAGAIN.
 ]
 
+2.10.2 Status
+
+Incomplete.
+
 2.11 The API Uses Gratuitous Typedefs, Capitals
 
 typedefs are useful for providing source compatibility when types 
@@ -433,6 +471,10 @@ the tdb_open_ex for logging.
 It should simply take an extra argument, since we are prepared to 
 break the API/ABI.
 
+2.12.2 Status
+
+Complete.
+
 2.13 Various Callback Functions Are Not Typesafe
 
 The callback functions in tdb_set_logging_function (after [tdb_log_func-Doesnt-Take]
@@ -455,6 +497,10 @@ their parameter.
 See CCAN's typesafe_cb module at 
 http://ccan.ozlabs.org/info/typesafe_cb.html
 
+2.13.2 Status
+
+Incomplete.
+
 2.14 TDB_CLEAR_IF_FIRST Must Be Specified On All Opens, 
   tdb_reopen_all Problematic
 
@@ -474,6 +520,11 @@ it alone has opened the TDB and will erase it.
 
 Remove TDB_CLEAR_IF_FIRST. Other workarounds are possible, but 
 see [TDB_CLEAR_IF_FIRST-Imposes-Performance].
+
+2.14.2 Status
+
+Incomplete, TDB_CLEAR_IF_FIRST still defined, but not 
+implemented.
 
 2.15 Extending The Header Is Difficult
 
@@ -505,6 +556,10 @@ This should allow backwards-compatible features to be added, and
 detection if older code (which doesn't understand the feature) 
 writes to the database.
 
+2.15.2 Status
+
+Incomplete.
+
 2.16 Record Headers Are Not Expandible
 
 If we later want to add (say) checksums on keys and data, it 
@@ -518,6 +573,10 @@ have a way for future changes to detect code which doesn't
 understand a new format: the new code would write (say) a 1 at 
 the tail, and thus if there is no tail or the first byte is 0, we 
 would know the extension is not present on that record.
+
+2.16.2 Status
+
+Incomplete.
 
 2.17 TDB Does Not Use Talloc
 
@@ -540,6 +599,10 @@ would still have to attach a destructor to the tdb context
 returned from tdb_open to close it. All TDB_DATA fields would be 
 children of the tdb_context, and the caller would still have to 
 manage them (using talloc_free() or talloc_steal()).
+
+2.17.2 Status
+
+Deferred.
 
 3 Performance And Scalability Issues
 
@@ -570,6 +633,10 @@ Remove the flag. It was a neat idea, but even trivial servers
 tend to know when they are initializing for the first time and 
 can simply unlink the old tdb at that point.
 
+3.1.2 Status
+
+Incomplete; TDB_CLEAR_IF_FIRST still defined, but does nothing.
+
 3.2 TDB Files Have a 4G Limit
 
 This seems to be becoming an issue (so much for “trivial”!), 
@@ -596,6 +663,10 @@ Old versions of tdb will fail to open the new TDB files (since 28
 August 2009, commit 398d0c29290: prior to that any unrecognized 
 file format would be erased and initialized as a fresh tdb!)
 
+3.2.2 Status
+
+Complete.
+
 3.3 TDB Records Have a 4G Limit
 
 This has not been a reported problem, and the API uses size_t 
@@ -609,6 +680,10 @@ platforms which try to access such records (the current
 implementation would return TDB_ERR_OOM in a similar case). It 
 seems unlikely that 32 bit keys will be a limitation, so the 
 implementation may not support this (see [sub:Records-Incur-A]).
+
+3.3.2 Status
+
+Complete.
 
 3.4 Hash Size Is Determined At TDB Creation Time
 
@@ -628,20 +703,9 @@ This was annoying because I was previously convinced that an
 expanding tree of hashes would be very close to optimal.
 ], it became clear that it is hard to beat a straight linear hash 
 table which doubles in size when it reaches saturation. 
-
-1. 
-
-2. 
-
-3. 
-
-
-
-
-
- Unfortunately, altering the hash table introduces serious 
-locking complications: the entire hash table needs to be locked 
-to enlarge the hash table, and others might be holding locks. 
+Unfortunately, altering the hash table introduces serious locking 
+complications: the entire hash table needs to be locked to 
+enlarge the hash table, and others might be holding locks. 
 Particularly insidious are insertions done under tdb_chainlock.
 
 Thus an expanding layered hash will be used: an array of hash 
@@ -661,6 +725,10 @@ the bits to indicate that the extra hash bits are valid. This
 means we can choose not to re-hash all entries when we expand a 
 hash group; simply use the next bits we need and mark them 
 invalid.
+
+3.4.2 Status
+
+Complete.
 
 3.5 <TDB-Freelist-Is>TDB Freelist Is Highly Contended
 
@@ -749,45 +817,45 @@ There are various benefits in using per-size free lists (see [sub:TDB-Becomes-Fr
 case where all processes are allocating/freeing the same size. 
 Thus we almost certainly need to divide in other ways: the most 
 obvious is to divide the file into zones, and using a free list 
-(or set of free lists) for each. This approximates address 
+(or table of free lists) for each. This approximates address 
 ordering.
 
-Note that this means we need to split the free lists when we 
-expand the file; this is probably acceptable when we double the 
-hash table size, since that is such an expensive operation 
-already. In the case of increasing the file size, there is an 
-optimization we can use: if we use M in the formula above as the 
-file size rounded up to the next power of 2, we only need 
-reshuffle free lists when the file size crosses a power of 2 
-boundary, and reshuffling the free lists is trivial: we simply 
-merge every consecutive pair of free lists.
+Unfortunately it is difficult to know what heuristics should be 
+used to determine zone sizes, and our transaction code relies on 
+being able to create a “recovery area” by simply appending to the 
+file (difficult if it would need to create a new zone header). 
+Thus we use a linked-list of free tables; currently we only ever 
+create one, but if there is more than one we choose one at random 
+to use. In future we may use heuristics to add new free tables on 
+contention. We only expand the file when all free tables are 
+exhausted.
 
 The basic algorithm is as follows. Freeing is simple:
 
-1. Identify the correct zone.
+1. Identify the correct free list.
 
 2. Lock the corresponding list.
 
-3. Re-check the zone (we didn't have a lock, sizes could have 
+3. Re-check the list (we didn't have a lock, sizes could have 
   changed): relock if necessary.
 
-4. Place the freed entry in the list for that zone.
+4. Place the freed entry in the list.
 
 Allocation is a little more complicated, as we perform delayed 
 coalescing at this point:
 
-1. Pick a zone either the zone we last freed into, or based on a “
-  random” number.
+1. Pick a free table; usually the previous one.
 
 2. Lock the corresponding list.
 
-3. Re-check the zone: relock if necessary.
-
-4. If the top entry is -large enough, remove it from the list and 
+3. If the top entry is -large enough, remove it from the list and 
   return it.
 
-5. Otherwise, coalesce entries in the list.If there was no entry 
-  large enough, unlock the list and try the next zone.
+4. Otherwise, coalesce entries in the list.If there was no entry 
+  large enough, unlock the list and try the next largest list
+
+5. If no list has an entry which meets our needs, try the next 
+  free table.
 
 6. If no zone satisfies, expand the file.
 
@@ -798,24 +866,9 @@ ordering seems to be fairly good for keeping fragmentation low
 does not need a tailer to coalesce, though if we needed one we 
 could have one cheaply: see [sub:Records-Incur-A]. 
 
-I anticipate that the number of entries in each free zone would 
-be small, but it might be worth using one free entry to hold 
-pointers to the others for cache efficiency.
-
-<freelist-in-zone>If we want to avoid locking complexity 
-(enlarging the free lists when we enlarge the file) we could 
-place the array of free lists at the beginning of each zone. This 
-means existing array lists never move, but means that a record 
-cannot be larger than a zone. That in turn implies that zones 
-should be variable sized (say, power of 2), which makes the 
-question “what zone is this record in?” much harder (and “pick a 
-random zone”, but that's less common). It could be done with as 
-few as 4 bits from the record header.[footnote:
-Using 2^{16+N*3}means 0 gives a minimal 65536-byte zone, 15 gives 
-the maximal 2^{61} byte zone. Zones range in factor of 8 steps. 
-Given the zone size for the zone the current record is in, we can 
-determine the start of the zone.
-]
+Each free entry has the free table number in the header: less 
+than 255. It also contains a doubly-linked list for easy 
+deletion.
 
 3.6 <sub:TDB-Becomes-Fragmented>TDB Becomes Fragmented
 
@@ -944,13 +997,13 @@ This produces a 16 byte used header like this:
 
 struct tdb_used_record {
 
-        uint32_t magic : 16,
+        uint32_t used_magic : 16,
 
-                 prev_is_free: 1,
+
 
                  key_data_divide: 5,
 
-                 top_hash: 10;
+                 top_hash: 11;
 
         uint32_t extra_octets;
 
@@ -962,21 +1015,27 @@ And a free record like this:
 
 struct tdb_free_record {
 
-        uint32_t free_magic;
+        uint64_t free_magic: 8,
 
-        uint64_t total_length;
+                   prev : 56;
 
-        uint64_t prev, next;
 
-        ...
 
-        uint64_t tailer;
+        uint64_t free_table: 8,
+
+                 total_length : 56
+
+        uint64_t next;;
 
 };
 
-We might want to take some bits from the used record's top_hash 
-(and the free record which has 32 bits of padding to spare 
-anyway) if we use variable sized zones. See [freelist-in-zone].
+Note that by limiting valid offsets to 56 bits, we can pack 
+everything we need into 3 64-byte words, meaning our minimum 
+record size is 8 bytes.
+
+3.7.2 Status
+
+Complete.
 
 3.8 Transaction Commit Requires 4 fdatasync
 
@@ -1029,12 +1088,14 @@ but need only be done at open. For running databases, a separate
 header field can be used to indicate a transaction in progress; 
 we need only check for recovery if this is set.
 
+3.8.2 Status
+
+Deferred.
+
 3.9 <sub:TDB-Does-Not>TDB Does Not Have Snapshot Support
 
-3.9.1 Proposed Solution
-
-None. At some point you say “use a real database”  (but see [replay-attribute]
-).
+3.9.1 Proposed SolutionNone. At some point you say “use a real 
+  database” (but see [replay-attribute]).
 
 But as a thought experiment, if we implemented transactions to 
 only overwrite free entries (this is tricky: there must not be a 
@@ -1053,6 +1114,10 @@ rewrite some sections of the hash, too.
 We could then implement snapshots using a similar method, using 
 multiple different hash tables/free tables.
 
+3.9.2 Status
+
+Deferred.
+
 3.10 Transactions Cannot Operate in Parallel
 
 This would be useless for ldb, as it hits the index records with 
@@ -1068,6 +1133,10 @@ the problem by providing read-only transactions. These would
 allow one write transaction to begin, but it could not commit 
 until all r/o transactions are done. This would require a new 
 RO_TRANSACTION_LOCK, which would be upgraded on commit.
+
+3.10.2 Status
+
+Deferred.
 
 3.11 Default Hash Function Is Suboptimal
 
@@ -1090,6 +1159,10 @@ The seed should be created at tdb-creation time from some random
 source, and placed in the header. This is far from foolproof, but 
 adds a little bit of protection against hash bombing.
 
+3.11.2 Status
+
+Complete.
+
 3.12 <Reliable-Traversal-Adds>Reliable Traversal Adds Complexity
 
 We lock a record during traversal iteration, and try to grab that 
@@ -1103,6 +1176,10 @@ indefinitely.
 3.12.1 Proposed Solution
 
 Remove reliability guarantees; see [traverse-Proposed-Solution].
+
+3.12.2 Status
+
+Complete.
 
 3.13 Fcntl Locking Adds Overhead
 
@@ -1175,4 +1252,8 @@ Tridge points out that an attribute can be later added to
 tdb_open (see [attributes]) to provide replay/trace hooks, which 
 could become the basis for this and future parallel transactions 
 and snapshot support.
+
+3.15.2 Status
+
+Deferred.
 
