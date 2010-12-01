@@ -42,17 +42,19 @@ uint64_t tdb_hash(struct tdb_context *tdb, const void *ptr, size_t len)
 
 uint64_t hash_record(struct tdb_context *tdb, tdb_off_t off)
 {
-	struct tdb_used_record pad, *r;
+	const struct tdb_used_record *r;
 	const void *key;
 	uint64_t klen, hash;
 
-	r = tdb_get(tdb, off, &pad, sizeof(pad));
+	r = tdb_access_read(tdb, off, sizeof(*r), true);
 	if (!r)
 		/* FIXME */
 		return 0;
 
 	klen = rec_key_length(r);
-	key = tdb_access_read(tdb, off + sizeof(pad), klen, false);
+	tdb_access_release(tdb, r);
+
+	key = tdb_access_read(tdb, off + sizeof(*r), klen, false);
 	if (!key)
 		return 0;
 

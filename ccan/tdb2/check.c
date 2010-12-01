@@ -436,24 +436,23 @@ static bool check_linear(struct tdb_context *tdb,
 			struct tdb_used_record u;
 			struct tdb_free_record f;
 			struct tdb_recovery_record r;
-		} pad, *p;
+		} rec;
 		/* r is larger: only get that if we need to. */
-		p = tdb_get(tdb, off, &pad, sizeof(pad.f));
-		if (!p)
+		if (tdb_read_convert(tdb, off, &rec, sizeof(rec.f)) == -1)
 			return false;
 
 		/* If we crash after ftruncate, we can get zeroes or fill. */
-		if (p->r.magic == TDB_RECOVERY_INVALID_MAGIC
-		    || p->r.magic ==  0x4343434343434343ULL) {
-			p = tdb_get(tdb, off, &pad, sizeof(pad.r));
-			if (!p)
+		if (rec.r.magic == TDB_RECOVERY_INVALID_MAGIC
+		    || rec.r.magic ==  0x4343434343434343ULL) {
+			if (tdb_read_convert(tdb, off, &rec, sizeof(rec.r)))
 				return false;
+
 			if (recovery == off) {
 				found_recovery = true;
-				len = sizeof(p->r) + p->r.max_len;
+				len = sizeof(rec.r) + rec.r.max_len;
 			} else {
 				len = dead_space(tdb, off);
-				if (len < sizeof(p->r)) {
+				if (len < sizeof(rec.r)) {
 					tdb->log(tdb, TDB_DEBUG_ERROR,
 						 tdb->log_priv,
 						 "tdb_check: invalid dead space"
@@ -466,9 +465,8 @@ static bool check_linear(struct tdb_context *tdb,
 					 (size_t)off, (size_t)(off + len),
 					 (size_t)tdb->map_size);
 			}
-		} else if (p->r.magic == TDB_RECOVERY_MAGIC) {
-			p = tdb_get(tdb, off, &pad, sizeof(pad.r));
-			if (!p)
+		} else if (rec.r.magic == TDB_RECOVERY_MAGIC) {
+			if (tdb_read_convert(tdb, off, &rec, sizeof(rec.r)))
 				return false;
 			if (recovery != off) {
 				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
@@ -477,23 +475,23 @@ static bool check_linear(struct tdb_context *tdb,
 					 (size_t)off);
 				return false;
 			}
-			if (p->r.len > p->r.max_len) {
+			if (rec.r.len > rec.r.max_len) {
 				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 					 "tdb_check: invalid recovery length"
-					 " %zu\n", (size_t)p->r.len);
+					 " %zu\n", (size_t)rec.r.len);
 				return false;
 			}
-			if (p->r.eof > tdb->map_size) {
+			if (rec.r.eof > tdb->map_size) {
 				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 					 "tdb_check: invalid old EOF"
-					 " %zu\n", (size_t)p->r.eof);
+					 " %zu\n", (size_t)rec.r.eof);
 				return false;
 			}
 			found_recovery = true;
-			len = sizeof(p->r) + p->r.max_len;
-		} else if (frec_magic(&p->f) == TDB_FREE_MAGIC
-			   || frec_magic(&p->f) == TDB_COALESCING_MAGIC) {
-			len = sizeof(p->u) + frec_len(&p->f);
+			len = sizeof(rec.r) + rec.r.max_len;
+		} else if (frec_magic(&rec.f) == TDB_FREE_MAGIC
+			   || frec_magic(&rec.f) == TDB_COALESCING_MAGIC) {
+			len = sizeof(rec.u) + frec_len(&rec.f);
 			if (off + len > tdb->map_size) {
 				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 					 "tdb_check: free overlength %llu"
@@ -502,18 +500,18 @@ static bool check_linear(struct tdb_context *tdb,
 				return false;
 			}
 			/* This record is free! */
-			if (frec_magic(&p->f) == TDB_FREE_MAGIC
+			if (frec_magic(&rec.f) == TDB_FREE_MAGIC
 			    && !append(free, num_free, off))
 				return false;
 		} else {
 			uint64_t klen, dlen, extra;
 
 			/* This record is used! */
-			if (rec_magic(&p->u) != TDB_MAGIC) {
+			if (rec_magic(&rec.u) != TDB_MAGIC) {
 				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 					 "tdb_check: Bad magic 0x%llx"
 					 " at offset %llu\n",
-					 (long long)rec_magic(&p->u),
+					 (long long)rec_magic(&rec.u),
 					 (long long)off);
 				return false;
 			}
@@ -521,11 +519,11 @@ static bool check_linear(struct tdb_context *tdb,
 			if (!append(used, num_used, off))
 				return false;
 
-			klen = rec_key_length(&p->u);
-			dlen = rec_data_length(&p->u);
-			extra = rec_extra_padding(&p->u);
+			klen = rec_key_length(&rec.u);
+			dlen = rec_data_length(&rec.u);
+			extra = rec_extra_padding(&rec.u);
 
-			len = sizeof(p->u) + klen + dlen + extra;
+			len = sizeof(rec.u) + klen + dlen + extra;
 			if (off + len > tdb->map_size) {
 				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 					 "tdb_check: used overlength %llu"
@@ -534,7 +532,7 @@ static bool check_linear(struct tdb_context *tdb,
 				return false;
 			}
 
-			if (len < sizeof(p->f)) {
+			if (len < sizeof(rec.f)) {
 				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 					 "tdb_check: too short record %llu at"
 					 " %llu\n",

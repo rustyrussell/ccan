@@ -123,19 +123,6 @@ static int tdb_oob(struct tdb_context *tdb, tdb_off_t len, bool probe)
 	return 0;
 }
 
-/* Either make a copy into pad and return that, or return ptr into mmap. */
-/* Note: pad has to be a real object, so we can't get here if len
- * overflows size_t */
-void *tdb_get(struct tdb_context *tdb, tdb_off_t off, void *pad, size_t len)
-{
-	if (likely(!(tdb->flags & TDB_CONVERT))) {
-		void *ret = tdb->methods->direct(tdb, off, len);
-		if (ret)
-			return ret;
-	}
-	return tdb_read_convert(tdb, off, pad, len) == -1 ? NULL : pad;
-}
-
 /* Endian conversion: we only ever deal with 8 byte quantities */
 void *tdb_convert(const struct tdb_context *tdb, void *buf, tdb_len_t size)
 {
@@ -208,13 +195,11 @@ int zero_out(struct tdb_context *tdb, tdb_off_t off, tdb_len_t len)
 
 tdb_off_t tdb_read_off(struct tdb_context *tdb, tdb_off_t off)
 {
-	tdb_off_t pad, *ret;
+	tdb_off_t ret;
 
-	ret = tdb_get(tdb, off, &pad, sizeof(pad));
-	if (!ret) {
+	if (tdb_read_convert(tdb, off, &ret, sizeof(ret)) == -1)
 		return TDB_OFF_ERR;
-	}
-	return *ret;
+	return ret;
 }
 
 /* Even on files, we can get partial writes due to signals. */
@@ -505,14 +490,19 @@ void *tdb_access_write(struct tdb_context *tdb,
 	return ret;
 }
 
+bool is_direct(const struct tdb_context *tdb, const void *p)
+{
+	return (tdb->map_ptr
+		&& (char *)p >= (char *)tdb->map_ptr
+		&& (char *)p < (char *)tdb->map_ptr + tdb->map_size);
+}
+
 void tdb_access_release(struct tdb_context *tdb, const void *p)
 {
-	if (!tdb->map_ptr
-	    || (char *)p < (char *)tdb->map_ptr
-	    || (char *)p >= (char *)tdb->map_ptr + tdb->map_size)
-		free((struct tdb_access_hdr *)p - 1);
-	else
+	if (is_direct(tdb, p))
 		tdb->direct_access--;
+	else
+		free((struct tdb_access_hdr *)p - 1);
 }
 
 int tdb_access_commit(struct tdb_context *tdb, void *p)

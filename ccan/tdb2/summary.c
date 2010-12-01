@@ -50,25 +50,29 @@ static bool summarize(struct tdb_context *tdb,
 	tdb_len_t unc = 0;
 
 	for (off = sizeof(struct tdb_header); off < tdb->map_size; off += len) {
-		union {
+		const union {
 			struct tdb_used_record u;
 			struct tdb_free_record f;
 			struct tdb_recovery_record r;
-		} pad, *p;
+		} *p;
 		/* We might not be able to get the whole thing. */
-		p = tdb_get(tdb, off, &pad, sizeof(p->f));
+		p = tdb_access_read(tdb, off, sizeof(p->f), true);
 		if (!p)
 			return false;
 		if (p->r.magic == TDB_RECOVERY_INVALID_MAGIC
 		    || p->r.magic == TDB_RECOVERY_MAGIC) {
+			if (unc) {
+				tally_add(uncoal, unc);
+				unc = 0;
+			}
 			len = sizeof(p->r) + p->r.max_len;
-		} else if (rec_magic(&p->u) != TDB_MAGIC) {
+		} else if (frec_magic(&p->f) == TDB_FREE_MAGIC) {
 			len = frec_len(&p->f);
 			tally_add(free, len);
 			tally_add(buckets, size_to_bucket(len));
 			len += sizeof(p->u);
 			unc++;
-		} else if (frec_magic(&p->f) == TDB_FREE_MAGIC) {
+		} else if (rec_magic(&p->u) == TDB_MAGIC) {
 			if (unc) {
 				tally_add(uncoal, unc);
 				unc = 0;
@@ -98,6 +102,7 @@ static bool summarize(struct tdb_context *tdb,
 			tally_add(extra, rec_extra_padding(&p->u));
 		} else
 			len = dead_space(tdb, off);
+		tdb_access_release(tdb, p);
 	}
 	if (unc)
 		tally_add(uncoal, unc);

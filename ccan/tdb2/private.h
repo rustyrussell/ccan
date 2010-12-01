@@ -418,15 +418,14 @@ void *tdb_convert(const struct tdb_context *tdb, void *buf, tdb_len_t size);
 void tdb_munmap(struct tdb_context *tdb);
 void tdb_mmap(struct tdb_context *tdb);
 
-/* Either make a copy into pad and return that, or return ptr into mmap.
- * Converts endian (ie. will use pad in that case). */
-void *tdb_get(struct tdb_context *tdb, tdb_off_t off, void *pad, size_t len);
-
 /* Either alloc a copy, or give direct access.  Release frees or noop. */
 const void *tdb_access_read(struct tdb_context *tdb,
 			    tdb_off_t off, tdb_len_t len, bool convert);
 void *tdb_access_write(struct tdb_context *tdb,
 		       tdb_off_t off, tdb_len_t len, bool convert);
+
+/* Is this pointer direct?  (Otherwise it's malloced) */
+bool is_direct(const struct tdb_context *tdb, const void *p);
 
 /* Release result of tdb_access_read/write. */
 void tdb_access_release(struct tdb_context *tdb, const void *p);
