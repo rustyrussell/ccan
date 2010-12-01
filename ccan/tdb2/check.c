@@ -572,7 +572,7 @@ int tdb_check(struct tdb_context *tdb,
 	if (num_found != num_free) {
 		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 			 "tdb_check: Not all entries are in free table\n");
-		return false;
+		return -1;
 	}
 
 	tdb_allrecord_unlock(tdb, F_RDLCK);
