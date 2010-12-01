@@ -315,37 +315,37 @@ static bool check_hash(struct tdb_context *tdb,
 static bool check_free(struct tdb_context *tdb,
 		       tdb_off_t off,
 		       const struct tdb_free_record *frec,
-		       tdb_off_t prev, tdb_off_t flist_off, unsigned int bucket)
+		       tdb_off_t prev, unsigned int flist, unsigned int bucket)
 {
 	if (frec_magic(frec) != TDB_FREE_MAGIC) {
 		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 			 "tdb_check: offset %llu bad magic 0x%llx\n",
-			 (long long)off, (long long)frec->magic_and_meta);
+			 (long long)off, (long long)frec->magic_and_prev);
 		return false;
 	}
-	if (frec_flist(frec) != flist_off) {
+	if (frec_flist(frec) != flist) {
 		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "tdb_check: offset %llu bad freelist 0x%llx\n",
-			 (long long)off, (long long)frec_flist(frec));
+			 "tdb_check: offset %llu bad freelist %u\n",
+			 (long long)off, frec_flist(frec));
 		return false;
 	}
 
 	if (tdb->methods->oob(tdb, off
-			      + frec->data_len+sizeof(struct tdb_used_record),
+			      + frec_len(frec) + sizeof(struct tdb_used_record),
 			      false))
 		return false;
-	if (size_to_bucket(frec->data_len) != bucket) {
+	if (size_to_bucket(frec_len(frec)) != bucket) {
 		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 			 "tdb_check: offset %llu in wrong bucket %u vs %u\n",
 			 (long long)off,
-			 bucket, size_to_bucket(frec->data_len));
+			 bucket, size_to_bucket(frec_len(frec)));
 		return false;
 	}
-	if (prev != frec->prev) {
+	if (prev != frec_prev(frec)) {
 		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 			 "tdb_check: offset %llu bad prev %llu vs %llu\n",
 			 (long long)off,
-			 (long long)prev, (long long)frec->prev);
+			 (long long)prev, (long long)frec_len(frec));
 		return false;
 	}
 	return true;
@@ -353,6 +353,7 @@ static bool check_free(struct tdb_context *tdb,
 		       
 static bool check_free_list(struct tdb_context *tdb,
 			    tdb_off_t flist_off,
+			    unsigned flist_num,
 			    tdb_off_t free[],
 			    size_t num_free,
 			    size_t *num_found)
@@ -384,7 +385,7 @@ static bool check_free_list(struct tdb_context *tdb,
 				return false;
 			if (tdb_read_convert(tdb, off, &f, sizeof(f)))
 				return false;
-			if (!check_free(tdb, off, &f, prev, flist_off, i))
+			if (!check_free(tdb, off, &f, prev, flist_num, i))
 				return false;
 
 			/* FIXME: Check hash bits */
@@ -436,13 +437,17 @@ static bool check_linear(struct tdb_context *tdb,
 			struct tdb_free_record f;
 			struct tdb_recovery_record r;
 		} pad, *p;
-		p = tdb_get(tdb, off, &pad, sizeof(pad));
+		/* r is larger: only get that if we need to. */
+		p = tdb_get(tdb, off, &pad, sizeof(pad.f));
 		if (!p)
 			return false;
 
 		/* If we crash after ftruncate, we can get zeroes or fill. */
 		if (p->r.magic == TDB_RECOVERY_INVALID_MAGIC
 		    || p->r.magic ==  0x4343434343434343ULL) {
+			p = tdb_get(tdb, off, &pad, sizeof(pad.r));
+			if (!p)
+				return false;
 			if (recovery == off) {
 				found_recovery = true;
 				len = sizeof(p->r) + p->r.max_len;
@@ -462,6 +467,9 @@ static bool check_linear(struct tdb_context *tdb,
 					 (size_t)tdb->map_size);
 			}
 		} else if (p->r.magic == TDB_RECOVERY_MAGIC) {
+			p = tdb_get(tdb, off, &pad, sizeof(pad.r));
+			if (!p)
+				return false;
 			if (recovery != off) {
 				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 					 "tdb_check: unexpected recovery"
@@ -469,11 +477,23 @@ static bool check_linear(struct tdb_context *tdb,
 					 (size_t)off);
 				return false;
 			}
+			if (p->r.len > p->r.max_len) {
+				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
+					 "tdb_check: invalid recovery length"
+					 " %zu\n", (size_t)p->r.len);
+				return false;
+			}
+			if (p->r.eof > tdb->map_size) {
+				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
+					 "tdb_check: invalid old EOF"
+					 " %zu\n", (size_t)p->r.eof);
+				return false;
+			}
 			found_recovery = true;
 			len = sizeof(p->r) + p->r.max_len;
 		} else if (frec_magic(&p->f) == TDB_FREE_MAGIC
 			   || frec_magic(&p->f) == TDB_COALESCING_MAGIC) {
-			len = sizeof(p->u) + p->f.data_len;
+			len = sizeof(p->u) + frec_len(&p->f);
 			if (off + len > tdb->map_size) {
 				tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
 					 "tdb_check: free overlength %llu"
@@ -560,7 +580,8 @@ int tdb_check(struct tdb_context *tdb,
 	for (flist = first_flist(tdb); flist; flist = next_flist(tdb, flist)) {
 		if (flist == TDB_OFF_ERR)
 			goto fail;
-		if (!check_free_list(tdb, flist, free, num_free, &num_found))
+		if (!check_free_list(tdb, flist, num_flists, free, num_free,
+				     &num_found))
 			goto fail;
 		num_flists++;
 	}

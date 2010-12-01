@@ -136,9 +136,11 @@ static void set_freelist(void *mem, struct tdb_context *tdb,
 static void add_to_freetable(struct tdb_context *tdb,
 			     tdb_off_t eoff,
 			     tdb_off_t elen,
+			     unsigned flist,
 			     struct tle_freelist *freelist)
 {
 	tdb->flist_off = freelist->base.off;
+	tdb->flist = flist;
 	add_free_record(tdb, eoff, sizeof(struct tdb_used_record) + elen);
 }
 
@@ -288,6 +290,7 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 		switch (e->base.type) {
 		case FREE:
 			add_to_freetable(tdb, e->base.off, e->free.len,
+					 e->free.flist_num,
 					 find_flist(layout, e->free.flist_num));
 			break;
 		case DATA:

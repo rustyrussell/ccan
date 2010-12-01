@@ -17,7 +17,7 @@ static tdb_len_t free_record_length(struct tdb_context *tdb, tdb_off_t off)
 		return TDB_OFF_ERR;
 	if (frec_magic(&f) != TDB_FREE_MAGIC)
 		return TDB_OFF_ERR;
-	return f.data_len;
+	return frec_len(&f);
 }
 
 int main(int argc, char *argv[])

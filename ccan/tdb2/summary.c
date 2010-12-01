@@ -63,7 +63,7 @@ static bool summarize(struct tdb_context *tdb,
 		    || p->r.magic == TDB_RECOVERY_MAGIC) {
 			len = sizeof(p->r) + p->r.max_len;
 		} else if (rec_magic(&p->u) != TDB_MAGIC) {
-			len = p->f.data_len;
+			len = frec_len(&p->f);
 			tally_add(free, len);
 			tally_add(buckets, size_to_bucket(len));
 			len += sizeof(p->u);

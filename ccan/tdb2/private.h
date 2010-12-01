@@ -173,20 +173,30 @@ static inline uint16_t rec_magic(const struct tdb_used_record *r)
 }
 
 struct tdb_free_record {
-        uint64_t magic_and_meta; /* TDB_OFF_UPPER_STEAL bits of magic */
-        uint64_t data_len; /* Not counting these two fields. */
-	/* This is why the minimum record size is 16 bytes.  */
-	uint64_t next, prev;
+        uint64_t magic_and_prev; /* TDB_OFF_UPPER_STEAL bits magic, then prev */
+        uint64_t flist_and_len; /* Len not counting these two fields. */
+	/* This is why the minimum record size is 8 bytes.  */
+	uint64_t next;
 };
+
+static inline uint64_t frec_prev(const struct tdb_free_record *f)
+{
+	return f->magic_and_prev & ((1ULL << (64 - TDB_OFF_UPPER_STEAL)) - 1);
+}
 
 static inline uint64_t frec_magic(const struct tdb_free_record *f)
 {
-	return f->magic_and_meta >> (64 - TDB_OFF_UPPER_STEAL);
+	return f->magic_and_prev >> (64 - TDB_OFF_UPPER_STEAL);
 }
 
-static inline uint64_t frec_flist(const struct tdb_free_record *f)
+static inline uint64_t frec_len(const struct tdb_free_record *f)
 {
-	return f->magic_and_meta & ((1ULL << (64 - TDB_OFF_UPPER_STEAL)) - 1);
+	return f->flist_and_len & ((1ULL << (64 - TDB_OFF_UPPER_STEAL))-1);
+}
+
+static inline unsigned frec_flist(const struct tdb_free_record *f)
+{
+	return f->flist_and_len >> (64 - TDB_OFF_UPPER_STEAL);
 }
 
 struct tdb_recovery_record {
@@ -311,6 +321,7 @@ struct tdb_context {
 	
 	/* What freelist are we using? */
 	uint64_t flist_off;
+	unsigned int flist;
 
 	/* IO methods: changes for transactions. */
 	const struct tdb_methods *methods;
