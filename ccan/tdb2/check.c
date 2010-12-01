@@ -77,7 +77,9 @@ static bool check_hash_tree(struct tdb_context *tdb,
 			    unsigned hprefix_bits,
 			    tdb_off_t used[],
 			    size_t num_used,
-			    size_t *num_found);
+			    size_t *num_found,
+			    int (*check)(TDB_DATA, TDB_DATA, void *),
+			    void *private_data);
 
 static bool check_hash_record(struct tdb_context *tdb,
 			      tdb_off_t off,
@@ -85,7 +87,9 @@ static bool check_hash_record(struct tdb_context *tdb,
 			      unsigned hprefix_bits,
 			      tdb_off_t used[],
 			      size_t num_used,
-			      size_t *num_found)
+			      size_t *num_found,
+			      int (*check)(TDB_DATA, TDB_DATA, void *),
+			      void *private_data)
 {
 	struct tdb_used_record rec;
 
@@ -117,7 +121,7 @@ static bool check_hash_record(struct tdb_context *tdb,
 	return check_hash_tree(tdb, off,
 			       TDB_SUBLEVEL_HASH_BITS-TDB_HASH_GROUP_BITS,
 			       hprefix, hprefix_bits,
-			       used, num_used, num_found);
+			       used, num_used, num_found, check, private_data);
 }
 
 static int off_cmp(const tdb_off_t *a, const tdb_off_t *b)
@@ -141,7 +145,9 @@ static bool check_hash_tree(struct tdb_context *tdb,
 			    unsigned hprefix_bits,
 			    tdb_off_t used[],
 			    size_t num_used,
-			    size_t *num_found)
+			    size_t *num_found,
+			    int (*check)(TDB_DATA, TDB_DATA, void *),
+			    void *private_data)
 {
 	unsigned int g, b;
 	const tdb_off_t *hash;
@@ -188,7 +194,8 @@ static bool check_hash_tree(struct tdb_context *tdb,
 					       hprefix_bits
 						       + group_bits
 						       + TDB_HASH_GROUP_BITS,
-					       used, num_used, num_found))
+					       used, num_used, num_found,
+					       check, private_data))
 					goto fail;
 				continue;
 			}
@@ -256,6 +263,22 @@ static bool check_hash_tree(struct tdb_context *tdb,
 					 (long long)rec_hash(&rec));
 				goto fail;
 			}
+
+			if (check) {
+				TDB_DATA key, data;
+				key.dsize = rec_key_length(&rec);
+				data.dsize = rec_data_length(&rec);
+				key.dptr = (void *)tdb_access_read(tdb,
+						   off + sizeof(rec),
+						   key.dsize + data.dsize,
+						   false);
+				if (!key.dptr)
+					goto fail;
+				data.dptr = key.dptr + key.dsize;
+				if (check(key, data, private_data) != 0)
+					goto fail;
+				tdb_access_release(tdb, key.dptr);
+			}
 		}
 	}
 	tdb_access_release(tdb, hash);
@@ -268,14 +291,17 @@ fail:
 
 static bool check_hash(struct tdb_context *tdb,
 		       tdb_off_t used[],
-		       size_t num_used, size_t num_flists)
+		       size_t num_used, size_t num_flists,
+		       int (*check)(TDB_DATA, TDB_DATA, void *),
+		       void *private_data)
 {
 	/* Free lists also show up as used. */
 	size_t num_found = num_flists;
 
 	if (!check_hash_tree(tdb, offsetof(struct tdb_header, hashtable),
 			     TDB_TOPLEVEL_HASH_BITS-TDB_HASH_GROUP_BITS,
-			     0, 0, used, num_used, &num_found))
+			     0, 0, used, num_used, &num_found,
+			     check, private_data))
 		return false;
 
 	if (num_found != num_used) {
@@ -509,7 +535,6 @@ static bool check_linear(struct tdb_context *tdb,
 	return true;
 }
 
-/* FIXME: call check() function. */
 int tdb_check(struct tdb_context *tdb,
 	      int (*check)(TDB_DATA key, TDB_DATA data, void *private_data),
 	      void *private_data)
@@ -541,7 +566,7 @@ int tdb_check(struct tdb_context *tdb,
 	}
 
 	/* FIXME: Check key uniqueness? */
-	if (!check_hash(tdb, used, num_used, num_flists))
+	if (!check_hash(tdb, used, num_used, num_flists, check, private_data))
 		goto fail;
 
 	if (num_found != num_free) {
