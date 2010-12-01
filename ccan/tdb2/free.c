@@ -278,7 +278,8 @@ static int coalesce(struct tdb_context *tdb,
 		if (!r)
 			goto err;
 
-		if (frec_magic(r) != TDB_FREE_MAGIC) {
+		if (frec_magic(r) != TDB_FREE_MAGIC
+		    || frec_flist(r) == TDB_FLIST_NONE) {
 			tdb_access_release(tdb, r);
 			break;
 		}
@@ -343,11 +344,11 @@ static int coalesce(struct tdb_context *tdb,
 
 	/* We have to drop this to avoid deadlocks, so make sure record
 	 * doesn't get coalesced by someone else! */
-	rec.magic_and_prev = TDB_COALESCING_MAGIC
-		<< (64 - TDB_OFF_UPPER_STEAL);
-	/* FIXME: Use 255 as invalid free list? */
-	rec.flist_and_len = end - off - sizeof(struct tdb_used_record);
-	if (tdb_write_convert(tdb, off, &rec, sizeof(rec)) != 0)
+	rec.flist_and_len = (TDB_FLIST_NONE << (64 - TDB_OFF_UPPER_STEAL))
+		| (end - off - sizeof(struct tdb_used_record));
+	if (tdb_write_off(tdb, off + offsetof(struct tdb_free_record,
+					      flist_and_len),
+			  rec.flist_and_len) != 0)
 		goto err;
 
 	add_stat(tdb, alloc_coalesce_succeeded, 1);

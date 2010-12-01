@@ -497,8 +497,7 @@ static bool check_linear(struct tdb_context *tdb,
 			}
 			found_recovery = true;
 			len = sizeof(rec.r) + rec.r.max_len;
-		} else if (frec_magic(&rec.f) == TDB_FREE_MAGIC
-			   || frec_magic(&rec.f) == TDB_COALESCING_MAGIC) {
+		} else if (frec_magic(&rec.f) == TDB_FREE_MAGIC) {
 			len = sizeof(rec.u) + frec_len(&rec.f);
 			if (off + len > tdb->map_size) {
 				tdb_logerr(tdb, TDB_ERR_CORRUPT,
@@ -508,8 +507,8 @@ static bool check_linear(struct tdb_context *tdb,
 					   (long long)len, (long long)off);
 				return false;
 			}
-			/* This record is free! */
-			if (frec_magic(&rec.f) == TDB_FREE_MAGIC
+			/* This record should be in free lists. */
+			if (frec_flist(&rec.f) != TDB_FLIST_NONE
 			    && !append(free, num_free, off))
 				return false;
 		} else {

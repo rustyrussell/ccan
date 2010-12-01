@@ -66,7 +66,6 @@ typedef uint64_t tdb_off_t;
 #define TDB_VERSION ((uint64_t)(0x26011967 + 7))
 #define TDB_MAGIC ((uint64_t)0x1999)
 #define TDB_FREE_MAGIC ((uint64_t)0xFE)
-#define TDB_COALESCING_MAGIC ((uint64_t)0xFD)
 #define TDB_HASH_MAGIC (0xA1ABE11A01092008ULL)
 #define TDB_RECOVERY_MAGIC (0xf53bc0e7ad124589ULL)
 #define TDB_RECOVERY_INVALID_MAGIC (0x0ULL)
@@ -116,6 +115,9 @@ typedef uint64_t tdb_off_t;
 /* We have to be able to fit a free record here. */
 #define TDB_MIN_DATA_LEN	\
 	(sizeof(struct tdb_free_record) - sizeof(struct tdb_used_record))
+
+/* Indicates this entry is not on an flist (can happen during coalescing) */
+#define TDB_FLIST_NONE ((1ULL << TDB_OFF_UPPER_STEAL) - 1)
 
 #if !HAVE_BSWAP_64
 static inline uint64_t bswap_64(uint64_t x)
