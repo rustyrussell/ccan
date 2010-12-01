@@ -108,10 +108,14 @@ static bool match(struct tdb_context *tdb,
 	if (tdb_read_convert(tdb, off, rec, sizeof(*rec)) == -1)
 		return ret;
 
-	/* FIXME: check extra bits in header? */
 	if (rec_key_length(rec) != key->dsize) {
 		add_stat(tdb, compare_wrong_keylen, 1);
 		return ret;
+	}
+
+	if ((h->h & ((1 << 11)-1)) != rec_hash(rec)) {
+		add_stat(tdb, compare_wrong_rechash, 1);
+		return false;
 	}
 
 	rkey = tdb_access_read(tdb, off + sizeof(*rec), key->dsize, false);
