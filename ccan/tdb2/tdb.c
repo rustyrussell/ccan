@@ -1,21 +1,13 @@
 #include "private.h"
 #include <ccan/tdb2/tdb2.h>
-#include <ccan/build_assert/build_assert.h>
-#include <ccan/likely/likely.h>
 #include <assert.h>
+#include <stdarg.h>
 
 /* The null return. */
 struct tdb_data tdb_null = { .dptr = NULL, .dsize = 0 };
 
 /* all contexts, to ensure no double-opens (fcntl locks don't nest!) */
 static struct tdb_context *tdbs = NULL;
-
-PRINTF_FMT(4, 5) static void
-null_log_fn(struct tdb_context *tdb,
-	    enum tdb_debug_level level, void *priv,
-	    const char *fmt, ...)
-{
-}
 
 static bool tdb_already_open(dev_t device, ino_t ino)
 {
@@ -39,8 +31,8 @@ static uint64_t random_number(struct tdb_context *tdb)
 	fd = open("/dev/urandom", O_RDONLY);
 	if (fd >= 0) {
 		if (tdb_read_all(fd, &ret, sizeof(ret))) {
-			tdb->log(tdb, TDB_DEBUG_TRACE, tdb->log_priv,
-				 "tdb_open: random from /dev/urandom\n");
+			tdb_logerr(tdb, TDB_SUCCESS, TDB_DEBUG_TRACE,
+				 "tdb_open: random from /dev/urandom");
 			close(fd);
 			return ret;
 		}
@@ -55,9 +47,9 @@ static uint64_t random_number(struct tdb_context *tdb)
 			char reply[1 + sizeof(uint64_t)];
 			int r = read(fd, reply, sizeof(reply));
 			if (r > 1) {
-				tdb->log(tdb, TDB_DEBUG_TRACE, tdb->log_priv,
-					 "tdb_open: %u random bytes from"
-					 " /dev/egd-pool\n", r-1);
+				tdb_logerr(tdb, TDB_SUCCESS, TDB_DEBUG_TRACE,
+					   "tdb_open: %u random bytes from"
+					   " /dev/egd-pool", r-1);
 				/* Copy at least some bytes. */
 				memcpy(&ret, reply+1, r - 1);
 				if (reply[0] == sizeof(uint64_t)
@@ -73,14 +65,14 @@ static uint64_t random_number(struct tdb_context *tdb)
 	/* Fallback: pid and time. */
 	gettimeofday(&now, NULL);
 	ret = getpid() * 100132289ULL + now.tv_sec * 1000000ULL + now.tv_usec;
-	tdb->log(tdb, TDB_DEBUG_TRACE, tdb->log_priv,
-		 "tdb_open: random from getpid and time\n");
+	tdb_logerr(tdb, TDB_SUCCESS, TDB_DEBUG_TRACE,
+		   "tdb_open: random from getpid and time");
 	return ret;
 }
 
 struct new_database {
 	struct tdb_header hdr;
-	struct tdb_freelist flist;
+	struct tdb_freetable ftable;
 };
 
 /* initialise a new database */
@@ -109,11 +101,11 @@ static int tdb_new_database(struct tdb_context *tdb,
 	memset(newdb.hdr.hashtable, 0, sizeof(newdb.hdr.hashtable));
 
 	/* Free is empty. */
-	newdb.hdr.free_list = offsetof(struct new_database, flist);
-	memset(&newdb.flist, 0, sizeof(newdb.flist));
-	set_header(NULL, &newdb.flist.hdr, 0,
-		   sizeof(newdb.flist) - sizeof(newdb.flist.hdr),
-		   sizeof(newdb.flist) - sizeof(newdb.flist.hdr), 1);
+	newdb.hdr.free_table = offsetof(struct new_database, ftable);
+	memset(&newdb.ftable, 0, sizeof(newdb.ftable));
+	set_header(NULL, &newdb.ftable.hdr, TDB_FTABLE_MAGIC, 0,
+		   sizeof(newdb.ftable) - sizeof(newdb.ftable.hdr),
+		   sizeof(newdb.ftable) - sizeof(newdb.ftable.hdr), 0);
 
 	/* Magic food */
 	memset(newdb.hdr.magic_food, 0, sizeof(newdb.hdr.magic_food));
@@ -130,7 +122,8 @@ static int tdb_new_database(struct tdb_context *tdb,
 		tdb->map_size = sizeof(newdb);
 		tdb->map_ptr = malloc(tdb->map_size);
 		if (!tdb->map_ptr) {
-			tdb->ecode = TDB_ERR_OOM;
+			tdb_logerr(tdb, TDB_ERR_OOM, TDB_DEBUG_FATAL,
+				   "tdb_new_database: failed to allocate");
 			return -1;
 		}
 		memcpy(tdb->map_ptr, &newdb, tdb->map_size);
@@ -143,7 +136,9 @@ static int tdb_new_database(struct tdb_context *tdb,
 		return -1;
 
 	if (!tdb_pwrite_all(tdb->fd, &newdb, sizeof(newdb), 0)) {
-		tdb->ecode = TDB_ERR_IO;
+		tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_FATAL,
+			   "tdb_new_database: failed to write: %s",
+			   strerror(errno));
 		return -1;
 	}
 	return 0;
@@ -155,7 +150,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 {
 	struct tdb_context *tdb;
 	struct stat st;
-	int save_errno;
+	int saved_errno = 0;
 	uint64_t hash_test;
 	unsigned v;
 	struct tdb_header hdr;
@@ -165,7 +160,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	if (!tdb) {
 		/* Can't log this */
 		errno = ENOMEM;
-		goto fail;
+		return NULL;
 	}
 	tdb->name = NULL;
 	tdb->map_ptr = NULL;
@@ -174,9 +169,10 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb->map_size = sizeof(struct tdb_header);
 	tdb->ecode = TDB_SUCCESS;
 	tdb->flags = tdb_flags;
-	tdb->log = null_log_fn;
-	tdb->log_priv = NULL;
+	tdb->logfn = NULL;
 	tdb->transaction = NULL;
+	tdb->stats = NULL;
+	tdb->access = NULL;
 	tdb_hash_init(tdb);
 	tdb_io_init(tdb);
 	tdb_lock_init(tdb);
@@ -184,8 +180,8 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	while (attr) {
 		switch (attr->base.attr) {
 		case TDB_ATTRIBUTE_LOG:
-			tdb->log = attr->log.log_fn;
-			tdb->log_priv = attr->log.log_private;
+			tdb->logfn = attr->log.log_fn;
+			tdb->log_private = attr->log.log_private;
 			break;
 		case TDB_ATTRIBUTE_HASH:
 			tdb->khash = attr->hash.hash_fn;
@@ -194,20 +190,24 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		case TDB_ATTRIBUTE_SEED:
 			seed = &attr->seed;
 			break;
+		case TDB_ATTRIBUTE_STATS:
+			tdb->stats = &attr->stats;
+			/* They have stats we don't know about?  Tell them. */
+			if (tdb->stats->size > sizeof(attr->stats))
+				tdb->stats->size = sizeof(attr->stats);
+			break;
 		default:
-			tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-				 "tdb_open: unknown attribute type %u\n",
-				 attr->base.attr);
-			errno = EINVAL;
+			tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_DEBUG_ERROR,
+				   "tdb_open: unknown attribute type %u",
+				   attr->base.attr);
 			goto fail;
 		}
 		attr = attr->base.next;
 	}
 
 	if ((open_flags & O_ACCMODE) == O_WRONLY) {
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "tdb_open: can't open tdb %s write-only\n", name);
-		errno = EINVAL;
+		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_DEBUG_ERROR,
+			   "tdb_open: can't open tdb %s write-only", name);
 		goto fail;
 	}
 
@@ -225,21 +225,21 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	if (tdb->flags & TDB_INTERNAL) {
 		tdb->flags |= (TDB_NOLOCK | TDB_NOMMAP);
 		if (tdb_new_database(tdb, seed, &hdr) != 0) {
-			tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-				 "tdb_open: tdb_new_database failed!");
 			goto fail;
 		}
 		tdb_convert(tdb, &hdr.hash_seed, sizeof(hdr.hash_seed));
 		tdb->hash_seed = hdr.hash_seed;
-		tdb_flist_init(tdb);
+		tdb_ftable_init(tdb);
 		return tdb;
 	}
 
 	if ((tdb->fd = open(name, open_flags, mode)) == -1) {
-		tdb->log(tdb, TDB_DEBUG_WARNING, tdb->log_priv,
-			 "tdb_open: could not open file %s: %s\n",
-			 name, strerror(errno));
-		goto fail;	/* errno set by open(2) */
+		/* errno set by open(2) */
+		saved_errno = errno;
+		tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_ERROR,
+			   "tdb_open: could not open file %s: %s",
+			   name, strerror(errno));
+		goto fail;
 	}
 
 	/* on exec, don't inherit the fd */
@@ -248,19 +248,19 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 
 	/* ensure there is only one process initialising at once */
 	if (tdb_lock_open(tdb, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK) == -1) {
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "tdb_open: failed to get open lock on %s: %s\n",
-			 name, strerror(errno));
-		goto fail;	/* errno set by tdb_brlock */
+		/* errno set by tdb_brlock */
+		saved_errno = errno;
+		goto fail;
 	}
 
 	if (!tdb_pread_all(tdb->fd, &hdr, sizeof(hdr), 0)
 	    || strcmp(hdr.magic_food, TDB_MAGIC_FOOD) != 0) {
-		if (!(open_flags & O_CREAT)
-		    || tdb_new_database(tdb, seed, &hdr) == -1) {
-			if (errno == 0) {
-				errno = EIO; /* ie bad format or something */
-			}
+		if (!(open_flags & O_CREAT)) {
+			tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_ERROR,
+				   "tdb_open: %s is not a tdb file", name);
+			goto fail;
+		}
+		if (tdb_new_database(tdb, seed, &hdr) == -1) {
 			goto fail;
 		}
 	} else if (hdr.version != TDB_VERSION) {
@@ -268,10 +268,9 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 			tdb->flags |= TDB_CONVERT;
 		else {
 			/* wrong version */
-			tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-				 "tdb_open: %s is unknown version 0x%llx\n",
-				 name, (long long)hdr.version);
-			errno = EIO;
+			tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_ERROR,
+				   "tdb_open: %s is unknown version 0x%llx",
+				   name, (long long)hdr.version);
 			goto fail;
 		}
 	}
@@ -282,29 +281,34 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	hash_test = tdb_hash(tdb, &hash_test, sizeof(hash_test));
 	if (hdr.hash_test != hash_test) {
 		/* wrong hash variant */
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "tdb_open: %s uses a different hash function\n",
-			 name);
-		errno = EIO;
+		tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_ERROR,
+			   "tdb_open: %s uses a different hash function",
+			   name);
 		goto fail;
 	}
 
-	if (fstat(tdb->fd, &st) == -1)
+	if (fstat(tdb->fd, &st) == -1) {
+		saved_errno = errno;
+		tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_ERROR,
+			   "tdb_open: could not stat open %s: %s",
+			   name, strerror(errno));
 		goto fail;
+	}
 
 	/* Is it already in the open list?  If so, fail. */
 	if (tdb_already_open(st.st_dev, st.st_ino)) {
 		/* FIXME */
-		tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-			 "tdb_open: %s (%d,%d) is already open in this process\n",
-			 name, (int)st.st_dev, (int)st.st_ino);
-		errno = EBUSY;
+		tdb_logerr(tdb, TDB_ERR_NESTING, TDB_DEBUG_ERROR,
+			   "tdb_open: %s (%d,%d) is already open in this"
+			   " process",
+			   name, (int)st.st_dev, (int)st.st_ino);
 		goto fail;
 	}
 
 	tdb->name = strdup(name);
 	if (!tdb->name) {
-		errno = ENOMEM;
+		tdb_logerr(tdb, TDB_ERR_OOM, TDB_DEBUG_ERROR,
+			   "tdb_open: failed to allocate name");
 		goto fail;
 	}
 
@@ -317,11 +321,10 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 
 	/* Now it's fully formed, recover if necessary. */
 	if (tdb_needs_recovery(tdb) && tdb_lock_and_recover(tdb) == -1) {
-		errno = EIO;
 		goto fail;
 	}
 
-	if (tdb_flist_init(tdb) == -1)
+	if (tdb_ftable_init(tdb) == -1)
 		goto fail;
 
 	tdb->next = tdbs;
@@ -329,10 +332,30 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	return tdb;
 
  fail:
-	save_errno = errno;
-
-	if (!tdb)
-		return NULL;
+	/* Map ecode to some logical errno. */
+	if (!saved_errno) {
+		switch (tdb->ecode) {
+		case TDB_ERR_CORRUPT:
+		case TDB_ERR_IO:
+			saved_errno = EIO;
+			break;
+		case TDB_ERR_LOCK:
+			saved_errno = EWOULDBLOCK;
+			break;
+		case TDB_ERR_OOM:
+			saved_errno = ENOMEM;
+			break;
+		case TDB_ERR_EINVAL:
+			saved_errno = EINVAL;
+			break;
+		case TDB_ERR_NESTING:
+			saved_errno = EBUSY;
+			break;
+		default:
+			saved_errno = EINVAL;
+			break;
+		}
+	}
 
 #ifdef TDB_TRACE
 	close(tdb->tracefd);
@@ -346,15 +369,14 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	free((char *)tdb->name);
 	if (tdb->fd != -1)
 		if (close(tdb->fd) != 0)
-			tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
-				 "tdb_open: failed to close tdb->fd"
-				 " on error!\n");
+			tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_ERROR,
+				   "tdb_open: failed to close tdb->fd"
+				   " on error!");
 	free(tdb);
-	errno = save_errno;
+	errno = saved_errno;
 	return NULL;
 }
 
-/* FIXME: modify, don't rewrite! */
 static int update_rec_hdr(struct tdb_context *tdb,
 			  tdb_off_t off,
 			  tdb_len_t keylen,
@@ -364,7 +386,8 @@ static int update_rec_hdr(struct tdb_context *tdb,
 {
 	uint64_t dataroom = rec_data_length(rec) + rec_extra_padding(rec);
 
-	if (set_header(tdb, rec, keylen, datalen, keylen + dataroom, h))
+	if (set_header(tdb, rec, TDB_USED_MAGIC, keylen, datalen,
+		       keylen + dataroom, h))
 		return -1;
 
 	return tdb_write_convert(tdb, off, rec, sizeof(*rec));
@@ -380,12 +403,14 @@ static int replace_data(struct tdb_context *tdb,
 	tdb_off_t new_off;
 
 	/* Allocate a new record. */
-	new_off = alloc(tdb, key.dsize, dbuf.dsize, h->h, growing);
+	new_off = alloc(tdb, key.dsize, dbuf.dsize, h->h, TDB_USED_MAGIC,
+			growing);
 	if (unlikely(new_off == TDB_OFF_ERR))
 		return -1;
 
 	/* We didn't like the existing one: remove it. */
 	if (old_off) {
+		add_stat(tdb, frees, 1);
 		add_free_record(tdb, old_off,
 				sizeof(struct tdb_used_record)
 				+ key.dsize + old_room);
@@ -445,7 +470,6 @@ int tdb_store(struct tdb_context *tdb,
 						  h.hlock_range, F_WRLCK);
 				return 0;
 			}
-			/* FIXME: See if right record is free? */
 		} else {
 			if (flag == TDB_MODIFY) {
 				/* if the record doesn't exist and we
@@ -502,15 +526,13 @@ int tdb_append(struct tdb_context *tdb,
 					  F_WRLCK);
 			return 0;
 		}
-		/* FIXME: Check right record free? */
 
 		/* Slow path. */
 		newdata = malloc(key.dsize + old_dlen + dbuf.dsize);
 		if (!newdata) {
-			tdb->ecode = TDB_ERR_OOM;
-			tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-				 "tdb_append: cannot allocate %llu bytes!\n",
-				 (long long)key.dsize + old_dlen + dbuf.dsize);
+			tdb_logerr(tdb, TDB_ERR_OOM, TDB_DEBUG_FATAL,
+				   "tdb_append: failed to allocate %zu bytes",
+				   (size_t)(key.dsize+old_dlen+dbuf.dsize));
 			goto fail;
 		}
 		if (tdb->methods->read(tdb, off + sizeof(rec) + key.dsize,
@@ -582,6 +604,7 @@ int tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 		goto unlock_err;
 
 	/* Free the deleted entry. */
+	add_stat(tdb, frees, 1);
 	if (add_free_record(tdb, off,
 			    sizeof(struct tdb_used_record)
 			    + rec_key_length(&rec)
@@ -602,12 +625,11 @@ int tdb_close(struct tdb_context *tdb)
 	struct tdb_context **i;
 	int ret = 0;
 
-	/* FIXME:
+	tdb_trace(tdb, "tdb_close");
+
 	if (tdb->transaction) {
 		tdb_transaction_cancel(tdb);
 	}
-	*/
-	tdb_trace(tdb, "tdb_close");
 
 	if (tdb->map_ptr) {
 		if (tdb->flags & TDB_INTERNAL)
@@ -638,12 +660,12 @@ int tdb_close(struct tdb_context *tdb)
 	return ret;
 }
 
-enum TDB_ERROR tdb_error(struct tdb_context *tdb)
+enum TDB_ERROR tdb_error(const struct tdb_context *tdb)
 {
 	return tdb->ecode;
 }
 
-const char *tdb_errorstr(struct tdb_context *tdb)
+const char *tdb_errorstr(const struct tdb_context *tdb)
 {
 	/* Gcc warns if you miss a case in the switch, so use that. */
 	switch (tdb->ecode) {
@@ -659,4 +681,39 @@ const char *tdb_errorstr(struct tdb_context *tdb)
 	case TDB_ERR_RDONLY: return "write not permitted";
 	}
 	return "Invalid error code";
+}
+
+void COLD tdb_logerr(struct tdb_context *tdb,
+		     enum TDB_ERROR ecode,
+		     enum tdb_debug_level level,
+		     const char *fmt, ...)
+{
+	char *message;
+	va_list ap;
+	size_t len;
+	/* tdb_open paths care about errno, so save it. */
+	int saved_errno = errno;
+
+	tdb->ecode = ecode;
+
+	if (!tdb->logfn)
+		return;
+
+	/* FIXME: Doesn't assume asprintf. */
+	va_start(ap, fmt);
+	len = vsnprintf(NULL, 0, fmt, ap);
+	va_end(ap);
+
+	message = malloc(len + 1);
+	if (!message) {
+		tdb->logfn(tdb, level, tdb->log_private,
+			   "out of memory formatting message");
+		return;
+	}
+	va_start(ap, fmt);
+	len = vsprintf(message, fmt, ap);
+	va_end(ap);
+	tdb->logfn(tdb, level, tdb->log_private, message);
+	free(message);
+	errno = saved_errno;
 }

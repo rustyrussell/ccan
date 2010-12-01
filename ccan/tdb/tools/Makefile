@@ -2,7 +2,7 @@ LDLIBS:=../../tdb.o ../../tally.o
 CFLAGS:=-I../../.. -Wall -O3 #-g -pg
 LDFLAGS:=-L../../..
 
-default: replay_trace tdbtorture tdbdump tdbtool starvation mktdb
+default: replay_trace tdbtorture tdbdump tdbtool starvation mktdb speed
 
 benchmark: replay_trace
 	@trap "rm -f /tmp/trace.$$$$" 0; for f in benchmarks/*.rz; do if runzip -k $$f -o /tmp/trace.$$$$ && echo -n "$$f": && ./replay_trace --quiet -n 5 replay.tdb /tmp/trace.$$$$ && rm /tmp/trace.$$$$; then rm -f /tmp/trace.$$$$; else exit 1; fi; done
@@ -30,4 +30,4 @@ check: replay_trace
 	@sed 's/\(^[0-9]* traverse\) .*/\1fn/' < $^ > $@
 
 clean:
-	rm -f replay_trace tdbtorture tdbdump tdbtool *.o
+	rm -f replay_trace tdbtorture tdbdump tdbtool speed *.o

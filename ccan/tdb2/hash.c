@@ -42,17 +42,19 @@ uint64_t tdb_hash(struct tdb_context *tdb, const void *ptr, size_t len)
 
 uint64_t hash_record(struct tdb_context *tdb, tdb_off_t off)
 {
-	struct tdb_used_record pad, *r;
+	const struct tdb_used_record *r;
 	const void *key;
 	uint64_t klen, hash;
 
-	r = tdb_get(tdb, off, &pad, sizeof(pad));
+	r = tdb_access_read(tdb, off, sizeof(*r), true);
 	if (!r)
 		/* FIXME */
 		return 0;
 
 	klen = rec_key_length(r);
-	key = tdb_access_read(tdb, off + sizeof(pad), klen, false);
+	tdb_access_release(tdb, r);
+
+	key = tdb_access_read(tdb, off + sizeof(*r), klen, false);
 	if (!key)
 		return 0;
 
@@ -76,6 +78,30 @@ static uint32_t use_bits(struct hash_info *h, unsigned num)
 	return bits(h->h, 64 - h->hash_used, num);
 }
 
+static bool key_matches(struct tdb_context *tdb,
+			const struct tdb_used_record *rec,
+			tdb_off_t off,
+			const struct tdb_data *key)
+{
+	bool ret = false;
+	const char *rkey;
+
+	if (rec_key_length(rec) != key->dsize) {
+		add_stat(tdb, compare_wrong_keylen, 1);
+		return ret;
+	}
+
+	rkey = tdb_access_read(tdb, off + sizeof(*rec), key->dsize, false);
+	if (!rkey)
+		return ret;
+	if (memcmp(rkey, key->dptr, key->dsize) == 0)
+		ret = true;
+	else
+		add_stat(tdb, compare_wrong_keycmp, 1);
+	tdb_access_release(tdb, rkey);
+	return ret;
+}
+
 /* Does entry match? */
 static bool match(struct tdb_context *tdb,
 		  struct hash_info *h,
@@ -83,38 +109,33 @@ static bool match(struct tdb_context *tdb,
 		  tdb_off_t val,
 		  struct tdb_used_record *rec)
 {
-	bool ret;
-	const unsigned char *rkey;
 	tdb_off_t off;
 
-	/* FIXME: Handle hash value truncated. */
-	if (bits(val, TDB_OFF_HASH_TRUNCATED_BIT, 1))
-		abort();
-
+	add_stat(tdb, compares, 1);
 	/* Desired bucket must match. */
-	if (h->home_bucket != (val & TDB_OFF_HASH_GROUP_MASK))
+	if (h->home_bucket != (val & TDB_OFF_HASH_GROUP_MASK)) {
+		add_stat(tdb, compare_wrong_bucket, 1);
 		return false;
+	}
 
 	/* Top bits of offset == next bits of hash. */
 	if (bits(val, TDB_OFF_HASH_EXTRA_BIT, TDB_OFF_UPPER_STEAL_EXTRA)
 	    != bits(h->h, 64 - h->hash_used - TDB_OFF_UPPER_STEAL_EXTRA,
-		    TDB_OFF_UPPER_STEAL_EXTRA))
+		    TDB_OFF_UPPER_STEAL_EXTRA)) {
+		add_stat(tdb, compare_wrong_offsetbits, 1);
 		return false;
+	}
 
 	off = val & TDB_OFF_MASK;
 	if (tdb_read_convert(tdb, off, rec, sizeof(*rec)) == -1)
 		return false;
 
-	/* FIXME: check extra bits in header? */
-	if (rec_key_length(rec) != key->dsize)
+	if ((h->h & ((1 << 11)-1)) != rec_hash(rec)) {
+		add_stat(tdb, compare_wrong_rechash, 1);
 		return false;
+	}
 
-	rkey = tdb_access_read(tdb, off + sizeof(*rec), key->dsize, false);
-	if (!rkey)
-		return false;
-	ret = (memcmp(rkey, key->dptr, key->dsize) == 0);
-	tdb_access_release(tdb, rkey);
-	return ret;
+	return key_matches(tdb, rec, off, key);
 }
 
 static tdb_off_t hbucket_off(tdb_off_t group_start, unsigned bucket)
@@ -123,10 +144,9 @@ static tdb_off_t hbucket_off(tdb_off_t group_start, unsigned bucket)
 		+ (bucket % (1 << TDB_HASH_GROUP_BITS)) * sizeof(tdb_off_t);
 }
 
-/* Truncated hashes can't be all 1: that's how we spot a sub-hash */
 bool is_subhash(tdb_off_t val)
 {
-	return val >> (64-TDB_OFF_UPPER_STEAL) == (1<<TDB_OFF_UPPER_STEAL) - 1;
+	return (val >> TDB_OFF_UPPER_STEAL_SUBHASH_BIT) & 1;
 }
 
 /* FIXME: Guess the depth, don't over-lock! */
@@ -134,6 +154,65 @@ static tdb_off_t hlock_range(tdb_off_t group, tdb_off_t *size)
 {
 	*size = 1ULL << (64 - (TDB_TOPLEVEL_HASH_BITS - TDB_HASH_GROUP_BITS));
 	return group << (64 - (TDB_TOPLEVEL_HASH_BITS - TDB_HASH_GROUP_BITS));
+}
+
+static tdb_off_t COLD find_in_chain(struct tdb_context *tdb,
+				    struct tdb_data key,
+				    tdb_off_t chain,
+				    struct hash_info *h,
+				    struct tdb_used_record *rec,
+				    struct traverse_info *tinfo)
+{
+	tdb_off_t off, next;
+
+	/* In case nothing is free, we set these to zero. */
+	h->home_bucket = h->found_bucket = 0;
+
+	for (off = chain; off; off = next) {
+		unsigned int i;
+
+		h->group_start = off;
+		if (tdb_read_convert(tdb, off, h->group, sizeof(h->group)))
+			return TDB_OFF_ERR;
+
+		for (i = 0; i < (1 << TDB_HASH_GROUP_BITS); i++) {
+			tdb_off_t recoff;
+			if (!h->group[i]) {
+				/* Remember this empty bucket. */
+				h->home_bucket = h->found_bucket = i;
+				continue;
+			}
+
+			/* We can insert extra bits via add_to_hash
+			 * empty bucket logic. */
+			recoff = h->group[i] & TDB_OFF_MASK;
+			if (tdb_read_convert(tdb, recoff, rec, sizeof(*rec)))
+				return TDB_OFF_ERR;
+
+			if (key_matches(tdb, rec, recoff, &key)) {
+				h->home_bucket = h->found_bucket = i;
+
+				if (tinfo) {
+					tinfo->levels[tinfo->num_levels]
+						.hashtable = off;
+					tinfo->levels[tinfo->num_levels]
+						.total_buckets
+						= 1 << TDB_HASH_GROUP_BITS;
+					tinfo->levels[tinfo->num_levels].entry
+						= i;
+					tinfo->num_levels++;
+				}
+				return recoff;
+			}
+		}
+		next = tdb_read_off(tdb, off
+				    + offsetof(struct tdb_chain, next));
+		if (next == TDB_OFF_ERR)
+			return TDB_OFF_ERR;
+		if (next)
+			next += sizeof(struct tdb_used_record);
+	}
+	return 0;
 }
 
 /* This is the core routine which searches the hashtable for an entry.
@@ -171,7 +250,7 @@ tdb_off_t find_and_lock(struct tdb_context *tdb,
 		tinfo->levels[0].total_buckets = 1 << TDB_HASH_GROUP_BITS;
 	}
 
-	while (likely(h->hash_used < 64)) {
+	while (h->hash_used <= 64) {
 		/* Read in the hash group. */
 		h->group_start = hashtable
 			+ group * (sizeof(tdb_off_t) << TDB_HASH_GROUP_BITS);
@@ -228,8 +307,7 @@ tdb_off_t find_and_lock(struct tdb_context *tdb,
 		return 0;
 	}
 
-	/* FIXME: We hit the bottom.  Chain! */
-	abort();
+	return find_in_chain(tdb, key, hashtable, h, rec, tinfo);
 
 fail:
 	tdb_unlock_hashes(tdb, h->hlock_start, h->hlock_range, ltype);
@@ -239,8 +317,8 @@ fail:
 /* I wrote a simple test, expanding a hash to 2GB, for the following
  * cases:
  * 1) Expanding all the buckets at once,
- * 2) Expanding the most-populated bucket,
- * 3) Expanding the bucket we wanted to place the new entry ito.
+ * 2) Expanding the bucket we wanted to place the new entry into.
+ * 3) Expanding the most-populated bucket,
  *
  * I measured the worst/average/best density during this process.
  * 1) 3%/16%/30%
@@ -315,6 +393,41 @@ int replace_in_hash(struct tdb_context *tdb,
 			     encode_offset(new_off, h));
 }
 
+/* We slot in anywhere that's empty in the chain. */
+static int COLD add_to_chain(struct tdb_context *tdb,
+			     tdb_off_t subhash,
+			     tdb_off_t new_off)
+{
+	size_t entry = tdb_find_zero_off(tdb, subhash, 1<<TDB_HASH_GROUP_BITS);
+
+	if (entry == 1 << TDB_HASH_GROUP_BITS) {
+		tdb_off_t next;
+
+		next = tdb_read_off(tdb, subhash
+				    + offsetof(struct tdb_chain, next));
+		if (next == TDB_OFF_ERR)
+			return -1;
+
+		if (!next) {
+			next = alloc(tdb, 0, sizeof(struct tdb_chain), 0,
+				     TDB_CHAIN_MAGIC, false);
+			if (next == TDB_OFF_ERR)
+				return -1;
+			if (zero_out(tdb, next+sizeof(struct tdb_used_record),
+				     sizeof(struct tdb_chain)))
+				return -1;
+			if (tdb_write_off(tdb, subhash
+					  + offsetof(struct tdb_chain, next),
+					  next) != 0)
+				return -1;
+		}
+		return add_to_chain(tdb, next, new_off);
+	}
+
+	return tdb_write_off(tdb, subhash + entry * sizeof(tdb_off_t),
+			     new_off);
+}
+
 /* Add into a newly created subhash. */
 static int add_to_subhash(struct tdb_context *tdb, tdb_off_t subhash,
 			  unsigned hash_used, tdb_off_t val)
@@ -325,14 +438,12 @@ static int add_to_subhash(struct tdb_context *tdb, tdb_off_t subhash,
 
 	h.hash_used = hash_used;
 
-	/* FIXME chain if hash_used == 64 */
 	if (hash_used + TDB_SUBLEVEL_HASH_BITS > 64)
-		abort();
+		return add_to_chain(tdb, subhash, off);
 
-	/* FIXME: Do truncated hash bits if we can! */
 	h.h = hash_record(tdb, off);
 	gnum = use_bits(&h, TDB_SUBLEVEL_HASH_BITS-TDB_HASH_GROUP_BITS);
-	h.group_start = subhash	+ sizeof(struct tdb_used_record)
+	h.group_start = subhash
 		+ gnum * (sizeof(tdb_off_t) << TDB_HASH_GROUP_BITS);
 	h.home_bucket = use_bits(&h, TDB_HASH_GROUP_BITS);
 
@@ -346,20 +457,29 @@ static int add_to_subhash(struct tdb_context *tdb, tdb_off_t subhash,
 
 static int expand_group(struct tdb_context *tdb, struct hash_info *h)
 {
-	unsigned bucket, num_vals, i;
+	unsigned bucket, num_vals, i, magic;
+	size_t subsize;
 	tdb_off_t subhash;
 	tdb_off_t vals[1 << TDB_HASH_GROUP_BITS];
 
 	/* Attach new empty subhash under fullest bucket. */
 	bucket = fullest_bucket(tdb, h->group, h->home_bucket);
 
-	subhash = alloc(tdb, 0, sizeof(tdb_off_t) << TDB_SUBLEVEL_HASH_BITS,
-			0, false);
+	if (h->hash_used == 64) {
+		add_stat(tdb, alloc_chain, 1);
+		subsize = sizeof(struct tdb_chain);
+		magic = TDB_CHAIN_MAGIC;
+	} else {
+		add_stat(tdb, alloc_subhash, 1);
+		subsize = (sizeof(tdb_off_t) << TDB_SUBLEVEL_HASH_BITS);
+		magic = TDB_HTABLE_MAGIC;
+	}
+
+	subhash = alloc(tdb, 0, subsize, 0, magic, false);
 	if (subhash == TDB_OFF_ERR)
 		return -1;
 
-	if (zero_out(tdb, subhash + sizeof(struct tdb_used_record),
-		     sizeof(tdb_off_t) << TDB_SUBLEVEL_HASH_BITS) == -1)
+	if (zero_out(tdb, subhash + sizeof(struct tdb_used_record), subsize))
 		return -1;
 
 	/* Remove any which are destined for bucket or are in wrong place. */
@@ -377,7 +497,10 @@ static int expand_group(struct tdb_context *tdb, struct hash_info *h)
 	/* assert(num_vals); */
 
 	/* Overwrite expanded bucket with subhash pointer. */
-	h->group[bucket] = subhash | ~((1ULL << (64 - TDB_OFF_UPPER_STEAL))-1);
+	h->group[bucket] = subhash | (1ULL << TDB_OFF_UPPER_STEAL_SUBHASH_BIT);
+
+	/* Point to actual contents of record. */
+	subhash += sizeof(struct tdb_used_record);
 
 	/* Put values back. */
 	for (i = 0; i < num_vals; i++) {
@@ -433,10 +556,6 @@ int delete_from_hash(struct tdb_context *tdb, struct hash_info *h)
 
 int add_to_hash(struct tdb_context *tdb, struct hash_info *h, tdb_off_t new_off)
 {
-	/* FIXME: chain! */
-	if (h->hash_used >= 64)
-		abort();
-
 	/* We hit an empty bucket during search?  That's where it goes. */
 	if (!h->group[h->found_bucket]) {
 		h->group[h->found_bucket] = encode_offset(new_off, h);
@@ -444,6 +563,9 @@ int add_to_hash(struct tdb_context *tdb, struct hash_info *h, tdb_off_t new_off)
 		return tdb_write_convert(tdb, h->group_start,
 					 h->group, sizeof(h->group));
 	}
+
+	if (h->hash_used > 64)
+		return add_to_chain(tdb, h->group_start, new_off);
 
 	/* We're full.  Expand. */
 	if (expand_group(tdb, h) == -1)
@@ -523,13 +645,31 @@ again:
 		tlevel++;
 		tlevel->hashtable = off + sizeof(struct tdb_used_record);
 		tlevel->entry = 0;
-		tlevel->total_buckets = (1 << TDB_SUBLEVEL_HASH_BITS);
+		/* Next level is a chain? */
+		if (unlikely(tinfo->num_levels == TDB_MAX_LEVELS + 1))
+			tlevel->total_buckets = (1 << TDB_HASH_GROUP_BITS);
+		else
+			tlevel->total_buckets = (1 << TDB_SUBLEVEL_HASH_BITS);
 		goto again;
 	}
 
 	/* Nothing there? */
 	if (tinfo->num_levels == 1)
 		return 0;
+
+	/* Handle chained entries. */
+	if (unlikely(tinfo->num_levels == TDB_MAX_LEVELS + 1)) {
+		tlevel->hashtable = tdb_read_off(tdb, tlevel->hashtable
+						 + offsetof(struct tdb_chain,
+							    next));
+		if (tlevel->hashtable == TDB_OFF_ERR)
+			return TDB_OFF_ERR;
+		if (tlevel->hashtable) {
+			tlevel->hashtable += sizeof(struct tdb_used_record);
+			tlevel->entry = 0;
+			goto again;
+		}
+	}
 
 	/* Go back up and keep searching. */
 	tinfo->num_levels--;
@@ -563,11 +703,12 @@ int next_in_hash(struct tdb_context *tdb, int ltype,
 						  ltype);
 				return -1;
 			}
-			if (rec_magic(&rec) != TDB_MAGIC) {
-				tdb->log(tdb, TDB_DEBUG_FATAL, tdb->log_priv,
-					 "next_in_hash:"
-					 " corrupt record at %llu\n",
-					 (long long)off);
+			if (rec_magic(&rec) != TDB_USED_MAGIC) {
+				tdb_logerr(tdb, TDB_ERR_CORRUPT,
+					   TDB_DEBUG_FATAL,
+					   "next_in_hash:"
+					   " corrupt record at %llu",
+					   (long long)off);
 				return -1;
 			}
 

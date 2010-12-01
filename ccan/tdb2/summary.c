@@ -37,33 +37,43 @@ static int count_hash(struct tdb_context *tdb,
 
 static bool summarize(struct tdb_context *tdb,
 		      struct tally *hashes,
-		      struct tally *flists,
+		      struct tally *ftables,
 		      struct tally *free,
 		      struct tally *keys,
 		      struct tally *data,
 		      struct tally *extra,
 		      struct tally *uncoal,
-		      struct tally *buckets)
+		      struct tally *buckets,
+		      struct tally *chains)
 {
 	tdb_off_t off;
 	tdb_len_t len;
 	tdb_len_t unc = 0;
 
 	for (off = sizeof(struct tdb_header); off < tdb->map_size; off += len) {
-		union {
+		const union {
 			struct tdb_used_record u;
 			struct tdb_free_record f;
-		} pad, *p;
-		p = tdb_get(tdb, off, &pad, sizeof(pad));
+			struct tdb_recovery_record r;
+		} *p;
+		/* We might not be able to get the whole thing. */
+		p = tdb_access_read(tdb, off, sizeof(p->f), true);
 		if (!p)
 			return false;
-		if (rec_magic(&p->u) != TDB_MAGIC) {
-			len = p->f.data_len;
+		if (p->r.magic == TDB_RECOVERY_INVALID_MAGIC
+		    || p->r.magic == TDB_RECOVERY_MAGIC) {
+			if (unc) {
+				tally_add(uncoal, unc);
+				unc = 0;
+			}
+			len = sizeof(p->r) + p->r.max_len;
+		} else if (frec_magic(&p->f) == TDB_FREE_MAGIC) {
+			len = frec_len(&p->f);
 			tally_add(free, len);
 			tally_add(buckets, size_to_bucket(len));
 			len += sizeof(p->u);
 			unc++;
-		} else {
+		} else if (rec_magic(&p->u) == TDB_USED_MAGIC) {
 			if (unc) {
 				tally_add(uncoal, unc);
 				unc = 0;
@@ -73,25 +83,35 @@ static bool summarize(struct tdb_context *tdb,
 				+ rec_data_length(&p->u)
 				+ rec_extra_padding(&p->u);
 
-			/* FIXME: Use different magic for hashes, flists. */
-			if (!rec_key_length(&p->u) && rec_hash(&p->u) < 2) {
-				if (rec_hash(&p->u) == 0) {
-					int count = count_hash(tdb,
-							off + sizeof(p->u),
-							TDB_SUBLEVEL_HASH_BITS);
-					if (count == -1)
-						return false;
-					tally_add(hashes, count);
-				} else {
-					tally_add(flists,
-						  rec_data_length(&p->u));
-				}
-			} else {
-				tally_add(keys, rec_key_length(&p->u));
-				tally_add(data, rec_data_length(&p->u));
-			}
+			tally_add(keys, rec_key_length(&p->u));
+			tally_add(data, rec_data_length(&p->u));
 			tally_add(extra, rec_extra_padding(&p->u));
-		}
+		} else if (rec_magic(&p->u) == TDB_HTABLE_MAGIC) {
+			int count = count_hash(tdb,
+					       off + sizeof(p->u),
+					       TDB_SUBLEVEL_HASH_BITS);
+			if (count == -1)
+				return false;
+			tally_add(hashes, count);
+			tally_add(extra, rec_extra_padding(&p->u));
+			len = sizeof(p->u)
+				+ rec_data_length(&p->u)
+				+ rec_extra_padding(&p->u);
+		} else if (rec_magic(&p->u) == TDB_FTABLE_MAGIC) {
+			len = sizeof(p->u)
+				+ rec_data_length(&p->u)
+				+ rec_extra_padding(&p->u);
+			tally_add(ftables, rec_data_length(&p->u));
+			tally_add(extra, rec_extra_padding(&p->u));
+		} else if (rec_magic(&p->u) == TDB_CHAIN_MAGIC) {
+			len = sizeof(p->u)
+				+ rec_data_length(&p->u)
+				+ rec_extra_padding(&p->u);
+			tally_add(chains, 1);
+			tally_add(extra, rec_extra_padding(&p->u));
+		} else
+			len = dead_space(tdb, off);
+		tdb_access_release(tdb, p);
 	}
 	if (unc)
 		tally_add(uncoal, unc);
@@ -110,6 +130,7 @@ static bool summarize(struct tdb_context *tdb,
 	"Smallest/average/largest uncoalesced runs: %zu/%zu/%zu\n%s" \
 	"Number of free lists: %zu\n%s" \
 	"Toplevel hash used: %u of %u\n" \
+	"Number of chains: %zu\n" \
 	"Number of subhashes: %zu\n" \
 	"Smallest/average/largest subhash entries: %zu/%zu/%zu\n%s" \
 	"Percentage keys/data/padding/free/rechdrs/freehdrs/hashes: %.0f/%.0f/%.0f/%.0f/%.0f/%.0f/%.0f\n"
@@ -127,8 +148,8 @@ static bool summarize(struct tdb_context *tdb,
 char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 {
 	tdb_len_t len;
-	struct tally *flists, *hashes, *freet, *keys, *data, *extra, *uncoal,
-		*buckets;
+	struct tally *ftables, *hashes, *freet, *keys, *data, *extra, *uncoal,
+		*buckets, *chains;
 	char *hashesg, *freeg, *keysg, *datag, *extrag, *uncoalg, *bucketsg;
 	char *ret = NULL;
 
@@ -143,7 +164,7 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 	}
 
 	/* Start stats off empty. */
-	flists = tally_new(HISTO_HEIGHT);
+	ftables = tally_new(HISTO_HEIGHT);
 	hashes = tally_new(HISTO_HEIGHT);
 	freet = tally_new(HISTO_HEIGHT);
 	keys = tally_new(HISTO_HEIGHT);
@@ -151,14 +172,16 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 	extra = tally_new(HISTO_HEIGHT);
 	uncoal = tally_new(HISTO_HEIGHT);
 	buckets = tally_new(HISTO_HEIGHT);
-	if (!flists || !hashes || !freet || !keys || !data || !extra
-	    || !uncoal || !buckets) {
-		tdb->ecode = TDB_ERR_OOM;
+	chains = tally_new(HISTO_HEIGHT);
+	if (!ftables || !hashes || !freet || !keys || !data || !extra
+	    || !uncoal || !buckets || !chains) {
+		tdb_logerr(tdb, TDB_ERR_OOM, TDB_DEBUG_ERROR,
+			   "tdb_summary: failed to allocate tally structures");
 		goto unlock;
 	}
 
-	if (!summarize(tdb, hashes, flists, freet, keys, data, extra, uncoal,
-		       buckets))
+	if (!summarize(tdb, hashes, ftables, freet, keys, data, extra, uncoal,
+		       buckets, chains))
 		goto unlock;
 
 	if (flags & TDB_SUMMARY_HISTOGRAMS) {
@@ -206,6 +229,7 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 		      count_hash(tdb, offsetof(struct tdb_header, hashtable),
 				 TDB_TOPLEVEL_HASH_BITS),
 		      1 << TDB_TOPLEVEL_HASH_BITS,
+		      tally_num(chains),
 		      tally_num(hashes),
 		      tally_min(hashes), tally_mean(hashes), tally_max(hashes),
 		      hashesg ? hashesg : "",
@@ -215,11 +239,12 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 		      tally_total(freet, NULL) * 100.0 / tdb->map_size,
 		      (tally_num(keys) + tally_num(freet) + tally_num(hashes))
 		      * sizeof(struct tdb_used_record) * 100.0 / tdb->map_size,
-		      tally_num(flists) * sizeof(struct tdb_freelist)
+		      tally_num(ftables) * sizeof(struct tdb_freetable)
 		      * 100.0 / tdb->map_size,
 		      (tally_num(hashes)
 		       * (sizeof(tdb_off_t) << TDB_SUBLEVEL_HASH_BITS)
-		       + (sizeof(tdb_off_t) << TDB_TOPLEVEL_HASH_BITS))
+		       + (sizeof(tdb_off_t) << TDB_TOPLEVEL_HASH_BITS)
+		       + sizeof(struct tdb_chain) * tally_num(chains))
 		      * 100.0 / tdb->map_size);
 
 unlock:
@@ -237,6 +262,8 @@ unlock:
 	free(data);
 	free(extra);
 	free(uncoal);
+	free(ftables);
+	free(chains);
 
 	tdb_allrecord_unlock(tdb, F_RDLCK);
 	tdb_unlock_expand(tdb, F_RDLCK);

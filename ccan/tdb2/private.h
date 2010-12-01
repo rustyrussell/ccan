@@ -36,6 +36,7 @@
 #include "config.h"
 #include <ccan/tdb2/tdb2.h>
 #include <ccan/likely/likely.h>
+#include <ccan/compiler/compiler.h>
 #ifdef HAVE_BYTESWAP_H
 #include <byteswap.h>
 #endif
@@ -63,9 +64,11 @@ typedef uint64_t tdb_off_t;
 
 #define TDB_MAGIC_FOOD "TDB file\n"
 #define TDB_VERSION ((uint64_t)(0x26011967 + 7))
-#define TDB_MAGIC ((uint64_t)0x1999)
+#define TDB_USED_MAGIC ((uint64_t)0x1999)
+#define TDB_HTABLE_MAGIC ((uint64_t)0x1888)
+#define TDB_CHAIN_MAGIC ((uint64_t)0x1777)
+#define TDB_FTABLE_MAGIC ((uint64_t)0x1666)
 #define TDB_FREE_MAGIC ((uint64_t)0xFE)
-#define TDB_COALESCING_MAGIC ((uint64_t)0xFD)
 #define TDB_HASH_MAGIC (0xA1ABE11A01092008ULL)
 #define TDB_RECOVERY_MAGIC (0xf53bc0e7ad124589ULL)
 #define TDB_RECOVERY_INVALID_MAGIC (0x0ULL)
@@ -91,20 +94,22 @@ typedef uint64_t tdb_off_t;
 #define TDB_SUBLEVEL_HASH_BITS 6
 /* And 8 entries in each group, ie 8 groups per sublevel. */
 #define TDB_HASH_GROUP_BITS 3
+/* This is currently 10: beyond this we chain. */
+#define TDB_MAX_LEVELS (1+(64-TDB_TOPLEVEL_HASH_BITS) / TDB_SUBLEVEL_HASH_BITS)
 
-/* Extend file by least 32 times larger than needed. */
-#define TDB_EXTENSION_FACTOR 32
+/* Extend file by least 100 times larger than needed. */
+#define TDB_EXTENSION_FACTOR 100
 
 /* We steal bits from the offsets to store hash info. */
 #define TDB_OFF_HASH_GROUP_MASK ((1ULL << TDB_HASH_GROUP_BITS) - 1)
 /* We steal this many upper bits, giving a maximum offset of 64 exabytes. */
 #define TDB_OFF_UPPER_STEAL 8
 #define   TDB_OFF_UPPER_STEAL_EXTRA 7
-#define   TDB_OFF_UPPER_STEAL_TRUNCBIT 1
-/* If this is set, hash is truncated (only 1 bit is valid). */
-#define TDB_OFF_HASH_TRUNCATED_BIT 56
-/* The bit number where we store next level of hash. */
+/* The bit number where we store extra hash bits. */
 #define TDB_OFF_HASH_EXTRA_BIT 57
+#define TDB_OFF_UPPER_STEAL_SUBHASH_BIT 56
+
+/* The bit number where we store the extra hash bits. */
 /* Convenience mask to get actual offset. */
 #define TDB_OFF_MASK \
 	(((1ULL << (64 - TDB_OFF_UPPER_STEAL)) - 1) - TDB_OFF_HASH_GROUP_MASK)
@@ -115,6 +120,9 @@ typedef uint64_t tdb_off_t;
 /* We have to be able to fit a free record here. */
 #define TDB_MIN_DATA_LEN	\
 	(sizeof(struct tdb_free_record) - sizeof(struct tdb_used_record))
+
+/* Indicates this entry is not on an flist (can happen during coalescing) */
+#define TDB_FTABLE_NONE ((1ULL << TDB_OFF_UPPER_STEAL) - 1)
 
 #if !HAVE_BSWAP_64
 static inline uint64_t bswap_64(uint64_t x)
@@ -173,20 +181,30 @@ static inline uint16_t rec_magic(const struct tdb_used_record *r)
 }
 
 struct tdb_free_record {
-        uint64_t magic_and_meta; /* TDB_OFF_UPPER_STEAL bits of magic */
-        uint64_t data_len; /* Not counting these two fields. */
-	/* This is why the minimum record size is 16 bytes.  */
-	uint64_t next, prev;
+        uint64_t magic_and_prev; /* TDB_OFF_UPPER_STEAL bits magic, then prev */
+        uint64_t ftable_and_len; /* Len not counting these two fields. */
+	/* This is why the minimum record size is 8 bytes.  */
+	uint64_t next;
 };
+
+static inline uint64_t frec_prev(const struct tdb_free_record *f)
+{
+	return f->magic_and_prev & ((1ULL << (64 - TDB_OFF_UPPER_STEAL)) - 1);
+}
 
 static inline uint64_t frec_magic(const struct tdb_free_record *f)
 {
-	return f->magic_and_meta >> (64 - TDB_OFF_UPPER_STEAL);
+	return f->magic_and_prev >> (64 - TDB_OFF_UPPER_STEAL);
 }
 
-static inline uint64_t frec_flist(const struct tdb_free_record *f)
+static inline uint64_t frec_len(const struct tdb_free_record *f)
 {
-	return f->magic_and_meta & ((1ULL << (64 - TDB_OFF_UPPER_STEAL)) - 1);
+	return f->ftable_and_len & ((1ULL << (64 - TDB_OFF_UPPER_STEAL))-1);
+}
+
+static inline unsigned frec_ftable(const struct tdb_free_record *f)
+{
+	return f->ftable_and_len >> (64 - TDB_OFF_UPPER_STEAL);
 }
 
 struct tdb_recovery_record {
@@ -199,6 +217,12 @@ struct tdb_recovery_record {
 	uint64_t eof;
 };
 
+/* If we bottom out of the subhashes, we chain. */
+struct tdb_chain {
+	tdb_off_t rec[1 << TDB_HASH_GROUP_BITS];
+	tdb_off_t next;
+};
+
 /* this is stored at the front of every database */
 struct tdb_header {
 	char magic_food[64]; /* for /etc/magic */
@@ -206,7 +230,7 @@ struct tdb_header {
 	uint64_t version; /* version of the code */
 	uint64_t hash_test; /* result of hashing HASH_MAGIC. */
 	uint64_t hash_seed; /* "random" seed written at creation time. */
-	tdb_off_t free_list; /* (First) free list. */
+	tdb_off_t free_table; /* (First) free table. */
 	tdb_off_t recovery; /* Transaction recovery area. */
 
 	tdb_off_t reserved[26];
@@ -215,7 +239,7 @@ struct tdb_header {
 	tdb_off_t hashtable[1ULL << TDB_TOPLEVEL_HASH_BITS];
 };
 
-struct tdb_freelist {
+struct tdb_freetable {
 	struct tdb_used_record hdr;
 	tdb_off_t next;
 	tdb_off_t buckets[TDB_FREE_BUCKETS];
@@ -246,7 +270,7 @@ struct traverse_info {
 		/* We ignore groups here, and treat it as a big array. */
 		unsigned entry;
 		unsigned int total_buckets;
-	} levels[64 / TDB_SUBLEVEL_HASH_BITS];
+	} levels[TDB_MAX_LEVELS + 1];
 	unsigned int num_levels;
 	unsigned int toplevel_group;
 	/* This makes delete-everything-inside-traverse work as expected. */
@@ -267,6 +291,15 @@ struct tdb_lock_type {
 	uint32_t off;
 	uint32_t count;
 	uint32_t ltype;
+};
+
+/* This is only needed for tdb_access_commit, but used everywhere to
+ * simplify. */
+struct tdb_access_hdr {
+	struct tdb_access_hdr *next;
+	tdb_off_t off;
+	tdb_len_t len;
+	bool convert;
 };
 
 struct tdb_context {
@@ -298,8 +331,8 @@ struct tdb_context {
 	uint32_t flags;
 
 	/* Logging function */
-	tdb_logfn_t log;
-	void *log_priv;
+	tdb_logfn_t logfn;
+	void *log_private;
 
 	/* Hash function. */
 	tdb_hashfn_t khash;
@@ -309,16 +342,22 @@ struct tdb_context {
 	/* Set if we are in a transaction. */
 	struct tdb_transaction *transaction;
 	
-	/* What freelist are we using? */
-	uint64_t flist_off;
+	/* What free table are we using? */
+	tdb_off_t ftable_off;
+	unsigned int ftable;
 
 	/* IO methods: changes for transactions. */
 	const struct tdb_methods *methods;
 
 	/* Lock information */
 	struct tdb_lock_type allrecord_lock;
-	uint64_t num_lockrecs;
+	size_t num_lockrecs;
 	struct tdb_lock_type *lockrecs;
+
+	struct tdb_attribute_stats *stats;
+
+	/* Direct access information */
+	struct tdb_access_hdr *access;
 
 	/* Single list of all TDBs, to avoid multiple opens. */
 	struct tdb_context *next;
@@ -331,7 +370,7 @@ struct tdb_methods {
 	int (*write)(struct tdb_context *, tdb_off_t, const void *, tdb_len_t);
 	int (*oob)(struct tdb_context *, tdb_off_t, bool);
 	int (*expand_file)(struct tdb_context *, tdb_len_t);
-	void *(*direct)(struct tdb_context *, tdb_off_t, size_t);
+	void *(*direct)(struct tdb_context *, tdb_off_t, size_t, bool);
 };
 
 /*
@@ -367,29 +406,32 @@ int delete_from_hash(struct tdb_context *tdb, struct hash_info *h);
 bool is_subhash(tdb_off_t val);
 
 /* free.c: */
-int tdb_flist_init(struct tdb_context *tdb);
+int tdb_ftable_init(struct tdb_context *tdb);
 
 /* check.c needs these to iterate through free lists. */
-tdb_off_t first_flist(struct tdb_context *tdb);
-tdb_off_t next_flist(struct tdb_context *tdb, tdb_off_t flist);
+tdb_off_t first_ftable(struct tdb_context *tdb);
+tdb_off_t next_ftable(struct tdb_context *tdb, tdb_off_t ftable);
 
-/* If this fails, try tdb_expand. */
+/* This returns space or TDB_OFF_ERR. */
 tdb_off_t alloc(struct tdb_context *tdb, size_t keylen, size_t datalen,
-		uint64_t hash, bool growing);
+		uint64_t hash, unsigned magic, bool growing);
 
 /* Put this record in a free list. */
 int add_free_record(struct tdb_context *tdb,
 		    tdb_off_t off, tdb_len_t len_with_header);
 
-/* Set up header for a used record. */
+/* Set up header for a used/ftable/htable/chain record. */
 int set_header(struct tdb_context *tdb,
 	       struct tdb_used_record *rec,
-	       uint64_t keylen, uint64_t datalen,
+	       unsigned magic, uint64_t keylen, uint64_t datalen,
 	       uint64_t actuallen, unsigned hashlow);
 
 /* Used by tdb_check to verify. */
 unsigned int size_to_bucket(tdb_len_t data_len);
-tdb_off_t bucket_off(tdb_off_t flist_off, unsigned bucket);
+tdb_off_t bucket_off(tdb_off_t ftable_off, unsigned bucket);
+
+/* Used by tdb_summary */
+size_t dead_space(struct tdb_context *tdb, tdb_off_t off);
 
 /* io.c: */
 /* Initialize tdb->methods. */
@@ -401,10 +443,6 @@ void *tdb_convert(const struct tdb_context *tdb, void *buf, tdb_len_t size);
 /* Unmap and try to map the tdb. */
 void tdb_munmap(struct tdb_context *tdb);
 void tdb_mmap(struct tdb_context *tdb);
-
-/* Either make a copy into pad and return that, or return ptr into mmap.
- * Converts endian (ie. will use pad in that case). */
-void *tdb_get(struct tdb_context *tdb, tdb_off_t off, void *pad, size_t len);
 
 /* Either alloc a copy, or give direct access.  Release frees or noop. */
 const void *tdb_access_read(struct tdb_context *tdb,
@@ -452,6 +490,13 @@ int tdb_write_convert(struct tdb_context *tdb, tdb_off_t off,
 int tdb_read_convert(struct tdb_context *tdb, tdb_off_t off,
 		     void *rec, size_t len);
 
+/* Adds a stat, if it's in range. */
+void add_stat_(struct tdb_context *tdb, uint64_t *stat, size_t val);
+#define add_stat(tdb, statname, val)					\
+	do {								\
+		if (unlikely((tdb)->stats))				\
+			add_stat_((tdb), &(tdb)->stats->statname, (val)); \
+	} while (0)
 
 /* lock.c: */
 void tdb_lock_init(struct tdb_context *tdb);
@@ -506,6 +551,12 @@ int next_in_hash(struct tdb_context *tdb, int ltype,
 /* transaction.c: */
 int tdb_transaction_recover(struct tdb_context *tdb);
 bool tdb_needs_recovery(struct tdb_context *tdb);
+
+/* tdb.c: */
+void COLD tdb_logerr(struct tdb_context *tdb,
+		     enum TDB_ERROR ecode,
+		     enum tdb_debug_level level,
+		     const char *fmt, ...);
 
 #ifdef TDB_TRACE
 void tdb_trace(struct tdb_context *tdb, const char *op);

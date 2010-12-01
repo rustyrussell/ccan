@@ -17,7 +17,7 @@ static tdb_len_t free_record_length(struct tdb_context *tdb, tdb_off_t off)
 		return TDB_OFF_ERR;
 	if (frec_magic(&f) != TDB_FREE_MAGIC)
 		return TDB_OFF_ERR;
-	return f.data_len;
+	return frec_len(&f);
 }
 
 int main(int argc, char *argv[])
@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
 
 	/* No coalescing can be done due to EOF */
 	layout = new_tdb_layout(NULL);
-	tdb_layout_add_freelist(layout);
+	tdb_layout_add_freetable(layout);
 	len = 1024;
 	tdb_layout_add_free(layout, len, 0);
 	tdb = tdb_layout_get(layout);
@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == len);
 
 	/* Figure out which bucket free entry is. */
-	b_off = bucket_off(tdb->flist_off, size_to_bucket(len));
+	b_off = bucket_off(tdb->ftable_off, size_to_bucket(len));
 	/* Lock and fail to coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
 	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, len) == 0);
@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 
 	/* No coalescing can be done due to used record */
 	layout = new_tdb_layout(NULL);
-	tdb_layout_add_freelist(layout);
+	tdb_layout_add_freetable(layout);
 	tdb_layout_add_free(layout, 1024, 0);
 	tdb_layout_add_used(layout, key, data, 6);
 	tdb = tdb_layout_get(layout);
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 	/* Figure out which bucket free entry is. */
-	b_off = bucket_off(tdb->flist_off, size_to_bucket(1024));
+	b_off = bucket_off(tdb->ftable_off, size_to_bucket(1024));
 	/* Lock and fail to coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
 	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024) == 0);
@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
 
 	/* Coalescing can be done due to two free records, then EOF */
 	layout = new_tdb_layout(NULL);
-	tdb_layout_add_freelist(layout);
+	tdb_layout_add_freetable(layout);
 	tdb_layout_add_free(layout, 1024, 0);
 	tdb_layout_add_free(layout, 2048, 0);
 	tdb = tdb_layout_get(layout);
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 	/* Figure out which bucket (first) free entry is. */
-	b_off = bucket_off(tdb->flist_off, size_to_bucket(1024));
+	b_off = bucket_off(tdb->ftable_off, size_to_bucket(1024));
 	/* Lock and coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
 	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024) == 1);
@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 
 	/* Coalescing can be done due to two free records, then data */
 	layout = new_tdb_layout(NULL);
-	tdb_layout_add_freelist(layout);
+	tdb_layout_add_freetable(layout);
 	tdb_layout_add_free(layout, 1024, 0);
 	tdb_layout_add_free(layout, 512, 0);
 	tdb_layout_add_used(layout, key, data, 6);
@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 	/* Figure out which bucket free entry is. */
-	b_off = bucket_off(tdb->flist_off, size_to_bucket(1024));
+	b_off = bucket_off(tdb->ftable_off, size_to_bucket(1024));
 	/* Lock and coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
 	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024) == 1);
@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
 
 	/* Coalescing can be done due to three free records, then EOF */
 	layout = new_tdb_layout(NULL);
-	tdb_layout_add_freelist(layout);
+	tdb_layout_add_freetable(layout);
 	tdb_layout_add_free(layout, 1024, 0);
 	tdb_layout_add_free(layout, 512, 0);
 	tdb_layout_add_free(layout, 256, 0);
@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 	/* Figure out which bucket free entry is. */
-	b_off = bucket_off(tdb->flist_off, size_to_bucket(1024));
+	b_off = bucket_off(tdb->ftable_off, size_to_bucket(1024));
 	/* Lock and coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
 	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024) == 1);
