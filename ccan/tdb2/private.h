@@ -290,6 +290,15 @@ struct tdb_lock_type {
 	uint32_t ltype;
 };
 
+/* This is only needed for tdb_access_commit, but used everywhere to
+ * simplify. */
+struct tdb_access_hdr {
+	struct tdb_access_hdr *next;
+	tdb_off_t off;
+	tdb_len_t len;
+	bool convert;
+};
+
 struct tdb_context {
 	/* Filename of the database. */
 	const char *name;
@@ -343,6 +352,9 @@ struct tdb_context {
 	struct tdb_lock_type *lockrecs;
 
 	struct tdb_attribute_stats *stats;
+
+	/* Direct access information */
+	struct tdb_access_hdr *access;
 
 	/* Single list of all TDBs, to avoid multiple opens. */
 	struct tdb_context *next;
@@ -434,9 +446,6 @@ const void *tdb_access_read(struct tdb_context *tdb,
 			    tdb_off_t off, tdb_len_t len, bool convert);
 void *tdb_access_write(struct tdb_context *tdb,
 		       tdb_off_t off, tdb_len_t len, bool convert);
-
-/* Is this pointer direct?  (Otherwise it's malloced) */
-bool is_direct(const struct tdb_context *tdb, const void *p);
 
 /* Release result of tdb_access_read/write. */
 void tdb_access_release(struct tdb_context *tdb, const void *p);

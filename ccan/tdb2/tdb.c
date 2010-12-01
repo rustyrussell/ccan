@@ -172,6 +172,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb->logfn = NULL;
 	tdb->transaction = NULL;
 	tdb->stats = NULL;
+	tdb->access = NULL;
 	tdb_hash_init(tdb);
 	tdb_io_init(tdb);
 	tdb_lock_init(tdb);
@@ -376,7 +377,6 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	return NULL;
 }
 
-/* FIXME: modify, don't rewrite! */
 static int update_rec_hdr(struct tdb_context *tdb,
 			  tdb_off_t off,
 			  tdb_len_t keylen,
@@ -468,7 +468,6 @@ int tdb_store(struct tdb_context *tdb,
 						  h.hlock_range, F_WRLCK);
 				return 0;
 			}
-			/* FIXME: See if right record is free? */
 		} else {
 			if (flag == TDB_MODIFY) {
 				/* if the record doesn't exist and we
@@ -525,7 +524,6 @@ int tdb_append(struct tdb_context *tdb,
 					  F_WRLCK);
 			return 0;
 		}
-		/* FIXME: Check right record free? */
 
 		/* Slow path. */
 		newdata = malloc(key.dsize + old_dlen + dbuf.dsize);

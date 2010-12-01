@@ -452,13 +452,6 @@ static int tdb_expand_file(struct tdb_context *tdb, tdb_len_t addition)
 	return 0;
 }
 
-/* This is only neded for tdb_access_commit, but used everywhere to simplify. */
-struct tdb_access_hdr {
-	tdb_off_t off;
-	tdb_len_t len;
-	bool convert;
-};
-
 const void *tdb_access_read(struct tdb_context *tdb,
 			    tdb_off_t off, tdb_len_t len, bool convert)
 {
@@ -471,6 +464,8 @@ const void *tdb_access_read(struct tdb_context *tdb,
 		struct tdb_access_hdr *hdr;
 		hdr = _tdb_alloc_read(tdb, off, len, sizeof(*hdr));
 		if (hdr) {
+			hdr->next = tdb->access;
+			tdb->access = hdr;
 			ret = hdr + 1;
 			if (convert)
 				tdb_convert(tdb, (void *)ret, len);
@@ -499,6 +494,8 @@ void *tdb_access_write(struct tdb_context *tdb,
 		struct tdb_access_hdr *hdr;
 		hdr = _tdb_alloc_read(tdb, off, len, sizeof(*hdr));
 		if (hdr) {
+			hdr->next = tdb->access;
+			tdb->access = hdr;
 			hdr->off = off;
 			hdr->len = len;
 			hdr->convert = convert;
@@ -512,35 +509,41 @@ void *tdb_access_write(struct tdb_context *tdb,
 	return ret;
 }
 
-bool is_direct(const struct tdb_context *tdb, const void *p)
+static struct tdb_access_hdr **find_hdr(struct tdb_context *tdb, const void *p)
 {
-	return (tdb->map_ptr
-		&& (char *)p >= (char *)tdb->map_ptr
-		&& (char *)p < (char *)tdb->map_ptr + tdb->map_size);
+	struct tdb_access_hdr **hp;
+
+	for (hp = &tdb->access; *hp; hp = &(*hp)->next) {
+		if (*hp + 1 == p)
+			return hp;
+	}
+	return NULL;
 }
 
 void tdb_access_release(struct tdb_context *tdb, const void *p)
 {
-	if (is_direct(tdb, p))
+	struct tdb_access_hdr *hdr, **hp = find_hdr(tdb, p);
+
+	if (hp) {
+		hdr = *hp;
+		*hp = hdr->next;
+		free(hdr);
+	} else
 		tdb->direct_access--;
-	else
-		free((struct tdb_access_hdr *)p - 1);
 }
 
 int tdb_access_commit(struct tdb_context *tdb, void *p)
 {
+	struct tdb_access_hdr *hdr, **hp = find_hdr(tdb, p);
 	int ret = 0;
 
-	if (!tdb->map_ptr
-	    || (char *)p < (char *)tdb->map_ptr
-	    || (char *)p >= (char *)tdb->map_ptr + tdb->map_size) {
-		struct tdb_access_hdr *hdr;
-
-		hdr = (struct tdb_access_hdr *)p - 1;
+	if (hp) {
+		hdr = *hp;
 		if (hdr->convert)
 			ret = tdb_write_convert(tdb, hdr->off, p, hdr->len);
 		else
 			ret = tdb_write(tdb, hdr->off, p, hdr->len);
+		*hp = hdr->next;
 		free(hdr);
 	} else
 		tdb->direct_access--;

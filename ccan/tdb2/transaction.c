@@ -365,8 +365,37 @@ static int transaction_expand_file(struct tdb_context *tdb, tdb_off_t addition)
 static void *transaction_direct(struct tdb_context *tdb, tdb_off_t off,
 				size_t len, bool write)
 {
-	/* FIXME */
-	return NULL;
+	size_t blk = off / getpagesize(), end_blk;
+
+	/* This is wrong for zero-length blocks, but will fail gracefully */
+	end_blk = (off + len - 1) / getpagesize();
+
+	/* Can only do direct if in single block and we've already copied. */
+	if (write) {
+		if (blk != end_blk)
+			return NULL;
+		if (blk >= tdb->transaction->num_blocks)
+			return NULL;
+		if (tdb->transaction->blocks[blk] == NULL)
+			return NULL;
+		return tdb->transaction->blocks[blk] + off % getpagesize();
+	}
+
+	/* Single which we have copied? */
+	if (blk == end_blk
+	    && blk < tdb->transaction->num_blocks
+	    && tdb->transaction->blocks[blk])
+		return tdb->transaction->blocks[blk] + off % getpagesize();
+
+	/* Otherwise must be all not copied. */
+	while (blk < end_blk) {
+		if (blk >= tdb->transaction->num_blocks)
+			break;
+		if (tdb->transaction->blocks[blk])
+			return NULL;
+		blk++;
+	}
+	return tdb->transaction->io_methods->direct(tdb, off, len, write);
 }
 
 static const struct tdb_methods transaction_methods = {
