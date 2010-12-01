@@ -409,8 +409,8 @@ static int COLD add_to_chain(struct tdb_context *tdb,
 			return -1;
 
 		if (!next) {
-			next = alloc(tdb, 0, sizeof(struct tdb_chain), 2,
-				     false);
+			next = alloc(tdb, 0, sizeof(struct tdb_chain), 0,
+				     TDB_CHAIN_MAGIC, false);
 			if (next == TDB_OFF_ERR)
 				return -1;
 			if (zero_out(tdb, next+sizeof(struct tdb_used_record),
@@ -457,7 +457,7 @@ static int add_to_subhash(struct tdb_context *tdb, tdb_off_t subhash,
 
 static int expand_group(struct tdb_context *tdb, struct hash_info *h)
 {
-	unsigned bucket, num_vals, i, hash;
+	unsigned bucket, num_vals, i, magic;
 	size_t subsize;
 	tdb_off_t subhash;
 	tdb_off_t vals[1 << TDB_HASH_GROUP_BITS];
@@ -468,14 +468,14 @@ static int expand_group(struct tdb_context *tdb, struct hash_info *h)
 	if (h->hash_used == 64) {
 		add_stat(tdb, alloc_chain, 1);
 		subsize = sizeof(struct tdb_chain);
-		hash = 2;
+		magic = TDB_CHAIN_MAGIC;
 	} else {
 		add_stat(tdb, alloc_subhash, 1);
 		subsize = (sizeof(tdb_off_t) << TDB_SUBLEVEL_HASH_BITS);
-		hash = 0;
+		magic = TDB_HTABLE_MAGIC;
 	}
 
-	subhash = alloc(tdb, 0, subsize, hash, false);
+	subhash = alloc(tdb, 0, subsize, 0, magic, false);
 	if (subhash == TDB_OFF_ERR)
 		return -1;
 
@@ -703,7 +703,7 @@ int next_in_hash(struct tdb_context *tdb, int ltype,
 						  ltype);
 				return -1;
 			}
-			if (rec_magic(&rec) != TDB_MAGIC) {
+			if (rec_magic(&rec) != TDB_USED_MAGIC) {
 				tdb_logerr(tdb, TDB_ERR_CORRUPT,
 					   TDB_DEBUG_FATAL,
 					   "next_in_hash:"

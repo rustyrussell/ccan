@@ -22,11 +22,11 @@ int main(int argc, char *argv[])
 	data.dsize = 5;
 	key.dsize = 5;
 
-	/* Create a TDB with three free lists. */
+	/* Create a TDB with three free tables. */
 	layout = new_tdb_layout(NULL);
-	tdb_layout_add_freelist(layout);
-	tdb_layout_add_freelist(layout);
-	tdb_layout_add_freelist(layout);
+	tdb_layout_add_freetable(layout);
+	tdb_layout_add_freetable(layout);
+	tdb_layout_add_freetable(layout);
 	tdb_layout_add_free(layout, 80, 0);
 	/* Used record prevent coalescing. */
 	tdb_layout_add_used(layout, key, data, 6);
@@ -40,24 +40,28 @@ int main(int argc, char *argv[])
 	tdb = tdb_layout_get(layout);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 
-	off = get_free(tdb, 0, 80 - sizeof(struct tdb_used_record), 0, 0);
+	off = get_free(tdb, 0, 80 - sizeof(struct tdb_used_record), 0,
+		       TDB_USED_MAGIC, 0);
 	ok1(off == layout->elem[3].base.off);
-	ok1(tdb->flist_off == layout->elem[0].base.off);
+	ok1(tdb->ftable_off == layout->elem[0].base.off);
 
-	off = get_free(tdb, 0, 160 - sizeof(struct tdb_used_record), 0, 0);
+	off = get_free(tdb, 0, 160 - sizeof(struct tdb_used_record), 0,
+		       TDB_USED_MAGIC, 0);
 	ok1(off == layout->elem[5].base.off);
-	ok1(tdb->flist_off == layout->elem[1].base.off);
+	ok1(tdb->ftable_off == layout->elem[1].base.off);
 
-	off = get_free(tdb, 0, 320 - sizeof(struct tdb_used_record), 0, 0);
+	off = get_free(tdb, 0, 320 - sizeof(struct tdb_used_record), 0,
+		       TDB_USED_MAGIC, 0);
 	ok1(off == layout->elem[7].base.off);
-	ok1(tdb->flist_off == layout->elem[2].base.off);
+	ok1(tdb->ftable_off == layout->elem[2].base.off);
 
-	off = get_free(tdb, 0, 40 - sizeof(struct tdb_used_record), 0, 0);
+	off = get_free(tdb, 0, 40 - sizeof(struct tdb_used_record), 0,
+		       TDB_USED_MAGIC, 0);
 	ok1(off == layout->elem[9].base.off);
-	ok1(tdb->flist_off == layout->elem[0].base.off);
+	ok1(tdb->ftable_off == layout->elem[0].base.off);
 
 	/* Now we fail. */
-	off = get_free(tdb, 0, 0, 1, 0);
+	off = get_free(tdb, 0, 0, 1, TDB_USED_MAGIC, 0);
 	ok1(off == 0);
 
 	tdb_close(tdb);

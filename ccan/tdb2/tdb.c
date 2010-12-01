@@ -72,7 +72,7 @@ static uint64_t random_number(struct tdb_context *tdb)
 
 struct new_database {
 	struct tdb_header hdr;
-	struct tdb_freelist flist;
+	struct tdb_freetable ftable;
 };
 
 /* initialise a new database */
@@ -101,11 +101,11 @@ static int tdb_new_database(struct tdb_context *tdb,
 	memset(newdb.hdr.hashtable, 0, sizeof(newdb.hdr.hashtable));
 
 	/* Free is empty. */
-	newdb.hdr.free_list = offsetof(struct new_database, flist);
-	memset(&newdb.flist, 0, sizeof(newdb.flist));
-	set_used_header(NULL, &newdb.flist.hdr, 0,
-			sizeof(newdb.flist) - sizeof(newdb.flist.hdr),
-			sizeof(newdb.flist) - sizeof(newdb.flist.hdr), 1);
+	newdb.hdr.free_table = offsetof(struct new_database, ftable);
+	memset(&newdb.ftable, 0, sizeof(newdb.ftable));
+	set_header(NULL, &newdb.ftable.hdr, TDB_FTABLE_MAGIC, 0,
+		   sizeof(newdb.ftable) - sizeof(newdb.ftable.hdr),
+		   sizeof(newdb.ftable) - sizeof(newdb.ftable.hdr), 0);
 
 	/* Magic food */
 	memset(newdb.hdr.magic_food, 0, sizeof(newdb.hdr.magic_food));
@@ -229,7 +229,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		}
 		tdb_convert(tdb, &hdr.hash_seed, sizeof(hdr.hash_seed));
 		tdb->hash_seed = hdr.hash_seed;
-		tdb_flist_init(tdb);
+		tdb_ftable_init(tdb);
 		return tdb;
 	}
 
@@ -324,7 +324,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		goto fail;
 	}
 
-	if (tdb_flist_init(tdb) == -1)
+	if (tdb_ftable_init(tdb) == -1)
 		goto fail;
 
 	tdb->next = tdbs;
@@ -386,7 +386,8 @@ static int update_rec_hdr(struct tdb_context *tdb,
 {
 	uint64_t dataroom = rec_data_length(rec) + rec_extra_padding(rec);
 
-	if (set_used_header(tdb, rec, keylen, datalen, keylen + dataroom, h))
+	if (set_header(tdb, rec, TDB_USED_MAGIC, keylen, datalen,
+		       keylen + dataroom, h))
 		return -1;
 
 	return tdb_write_convert(tdb, off, rec, sizeof(*rec));
@@ -402,7 +403,8 @@ static int replace_data(struct tdb_context *tdb,
 	tdb_off_t new_off;
 
 	/* Allocate a new record. */
-	new_off = alloc(tdb, key.dsize, dbuf.dsize, h->h, growing);
+	new_off = alloc(tdb, key.dsize, dbuf.dsize, h->h, TDB_USED_MAGIC,
+			growing);
 	if (unlikely(new_off == TDB_OFF_ERR))
 		return -1;
 

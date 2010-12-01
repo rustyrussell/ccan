@@ -495,12 +495,12 @@ again:
 		return -1;
 	}
 
-	/* Lock free lists: there to end of file. */
+	/* Lock free tables: there to end of file. */
 	if (tdb_brlock(tdb, ltype, TDB_HASH_LOCK_START + TDB_HASH_LOCK_RANGE,
 		       0, flags)) {
 		if (!(flags & TDB_LOCK_PROBE)) {
 			tdb_logerr(tdb, tdb->ecode, TDB_DEBUG_ERROR,
-				 "tdb_allrecord_lock freelist failed");
+				 "tdb_allrecord_lock freetables failed");
 		}
 		tdb_brunlock(tdb, ltype, TDB_HASH_LOCK_START, 
 			     TDB_HASH_LOCK_RANGE);

@@ -65,7 +65,8 @@ int main(int argc, char *argv[])
 		/* FIXME: Check lock length */
 
 		/* Allocate a new record. */
-		new_off = alloc(tdb, key.dsize, dbuf.dsize, h.h, false);
+		new_off = alloc(tdb, key.dsize, dbuf.dsize, h.h,
+				TDB_USED_MAGIC, false);
 		ok1(new_off != TDB_OFF_ERR);
 
 		/* We should be able to add it now. */
@@ -225,7 +226,8 @@ int main(int argc, char *argv[])
 
 		/* We should be able to add it now. */
 		/* Allocate a new record. */
-		new_off = alloc(tdb, key.dsize, dbuf.dsize, h.h, false);
+		new_off = alloc(tdb, key.dsize, dbuf.dsize, h.h,
+				TDB_USED_MAGIC, false);
 		ok1(new_off != TDB_OFF_ERR);
 		ok1(add_to_hash(tdb, &h, new_off) == 0);
 

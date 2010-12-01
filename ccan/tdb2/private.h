@@ -64,7 +64,10 @@ typedef uint64_t tdb_off_t;
 
 #define TDB_MAGIC_FOOD "TDB file\n"
 #define TDB_VERSION ((uint64_t)(0x26011967 + 7))
-#define TDB_MAGIC ((uint64_t)0x1999)
+#define TDB_USED_MAGIC ((uint64_t)0x1999)
+#define TDB_HTABLE_MAGIC ((uint64_t)0x1888)
+#define TDB_CHAIN_MAGIC ((uint64_t)0x1777)
+#define TDB_FTABLE_MAGIC ((uint64_t)0x1666)
 #define TDB_FREE_MAGIC ((uint64_t)0xFE)
 #define TDB_HASH_MAGIC (0xA1ABE11A01092008ULL)
 #define TDB_RECOVERY_MAGIC (0xf53bc0e7ad124589ULL)
@@ -119,7 +122,7 @@ typedef uint64_t tdb_off_t;
 	(sizeof(struct tdb_free_record) - sizeof(struct tdb_used_record))
 
 /* Indicates this entry is not on an flist (can happen during coalescing) */
-#define TDB_FLIST_NONE ((1ULL << TDB_OFF_UPPER_STEAL) - 1)
+#define TDB_FTABLE_NONE ((1ULL << TDB_OFF_UPPER_STEAL) - 1)
 
 #if !HAVE_BSWAP_64
 static inline uint64_t bswap_64(uint64_t x)
@@ -179,7 +182,7 @@ static inline uint16_t rec_magic(const struct tdb_used_record *r)
 
 struct tdb_free_record {
         uint64_t magic_and_prev; /* TDB_OFF_UPPER_STEAL bits magic, then prev */
-        uint64_t flist_and_len; /* Len not counting these two fields. */
+        uint64_t ftable_and_len; /* Len not counting these two fields. */
 	/* This is why the minimum record size is 8 bytes.  */
 	uint64_t next;
 };
@@ -196,12 +199,12 @@ static inline uint64_t frec_magic(const struct tdb_free_record *f)
 
 static inline uint64_t frec_len(const struct tdb_free_record *f)
 {
-	return f->flist_and_len & ((1ULL << (64 - TDB_OFF_UPPER_STEAL))-1);
+	return f->ftable_and_len & ((1ULL << (64 - TDB_OFF_UPPER_STEAL))-1);
 }
 
-static inline unsigned frec_flist(const struct tdb_free_record *f)
+static inline unsigned frec_ftable(const struct tdb_free_record *f)
 {
-	return f->flist_and_len >> (64 - TDB_OFF_UPPER_STEAL);
+	return f->ftable_and_len >> (64 - TDB_OFF_UPPER_STEAL);
 }
 
 struct tdb_recovery_record {
@@ -227,7 +230,7 @@ struct tdb_header {
 	uint64_t version; /* version of the code */
 	uint64_t hash_test; /* result of hashing HASH_MAGIC. */
 	uint64_t hash_seed; /* "random" seed written at creation time. */
-	tdb_off_t free_list; /* (First) free list. */
+	tdb_off_t free_table; /* (First) free table. */
 	tdb_off_t recovery; /* Transaction recovery area. */
 
 	tdb_off_t reserved[26];
@@ -236,7 +239,7 @@ struct tdb_header {
 	tdb_off_t hashtable[1ULL << TDB_TOPLEVEL_HASH_BITS];
 };
 
-struct tdb_freelist {
+struct tdb_freetable {
 	struct tdb_used_record hdr;
 	tdb_off_t next;
 	tdb_off_t buckets[TDB_FREE_BUCKETS];
@@ -339,9 +342,9 @@ struct tdb_context {
 	/* Set if we are in a transaction. */
 	struct tdb_transaction *transaction;
 	
-	/* What freelist are we using? */
-	uint64_t flist_off;
-	unsigned int flist;
+	/* What free table are we using? */
+	tdb_off_t ftable_off;
+	unsigned int ftable;
 
 	/* IO methods: changes for transactions. */
 	const struct tdb_methods *methods;
@@ -403,29 +406,29 @@ int delete_from_hash(struct tdb_context *tdb, struct hash_info *h);
 bool is_subhash(tdb_off_t val);
 
 /* free.c: */
-int tdb_flist_init(struct tdb_context *tdb);
+int tdb_ftable_init(struct tdb_context *tdb);
 
 /* check.c needs these to iterate through free lists. */
-tdb_off_t first_flist(struct tdb_context *tdb);
-tdb_off_t next_flist(struct tdb_context *tdb, tdb_off_t flist);
+tdb_off_t first_ftable(struct tdb_context *tdb);
+tdb_off_t next_ftable(struct tdb_context *tdb, tdb_off_t ftable);
 
-/* If this fails, try tdb_expand. */
+/* This returns space or TDB_OFF_ERR. */
 tdb_off_t alloc(struct tdb_context *tdb, size_t keylen, size_t datalen,
-		uint64_t hash, bool growing);
+		uint64_t hash, unsigned magic, bool growing);
 
 /* Put this record in a free list. */
 int add_free_record(struct tdb_context *tdb,
 		    tdb_off_t off, tdb_len_t len_with_header);
 
-/* Set up header for a used record. */
-int set_used_header(struct tdb_context *tdb,
-		    struct tdb_used_record *rec,
-		    uint64_t keylen, uint64_t datalen,
-		    uint64_t actuallen, unsigned hashlow);
+/* Set up header for a used/ftable/htable/chain record. */
+int set_header(struct tdb_context *tdb,
+	       struct tdb_used_record *rec,
+	       unsigned magic, uint64_t keylen, uint64_t datalen,
+	       uint64_t actuallen, unsigned hashlow);
 
 /* Used by tdb_check to verify. */
 unsigned int size_to_bucket(tdb_len_t data_len);
-tdb_off_t bucket_off(tdb_off_t flist_off, unsigned bucket);
+tdb_off_t bucket_off(tdb_off_t ftable_off, unsigned bucket);
 
 /* Used by tdb_summary */
 size_t dead_space(struct tdb_context *tdb, tdb_off_t off);

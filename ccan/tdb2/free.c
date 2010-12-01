@@ -49,24 +49,24 @@ unsigned int size_to_bucket(tdb_len_t data_len)
 	return bucket;
 }
 
-tdb_off_t first_flist(struct tdb_context *tdb)
+tdb_off_t first_ftable(struct tdb_context *tdb)
 {
-	return tdb_read_off(tdb, offsetof(struct tdb_header, free_list));
+	return tdb_read_off(tdb, offsetof(struct tdb_header, free_table));
 }
 
-tdb_off_t next_flist(struct tdb_context *tdb, tdb_off_t flist)
+tdb_off_t next_ftable(struct tdb_context *tdb, tdb_off_t ftable)
 {
-	return tdb_read_off(tdb, flist + offsetof(struct tdb_freelist, next));
+	return tdb_read_off(tdb, ftable + offsetof(struct tdb_freetable,next));
 }
 
-int tdb_flist_init(struct tdb_context *tdb)
+int tdb_ftable_init(struct tdb_context *tdb)
 {
 	/* Use reservoir sampling algorithm to select a free list at random. */
 	unsigned int rnd, max = 0, count = 0;
 	tdb_off_t off;
 
-	tdb->flist_off = off = first_flist(tdb);
-	tdb->flist = 0;
+	tdb->ftable_off = off = first_ftable(tdb);
+	tdb->ftable = 0;
 
 	while (off) {
 		if (off == TDB_OFF_ERR)
@@ -74,31 +74,31 @@ int tdb_flist_init(struct tdb_context *tdb)
 
 		rnd = random();
 		if (rnd >= max) {
-			tdb->flist_off = off;
-			tdb->flist = count;
+			tdb->ftable_off = off;
+			tdb->ftable = count;
 			max = rnd;
 		}
 
-		off = next_flist(tdb, off);
+		off = next_ftable(tdb, off);
 		count++;
 	}
 	return 0;
 }
 
 /* Offset of a given bucket. */
-tdb_off_t bucket_off(tdb_off_t flist_off, unsigned bucket)
+tdb_off_t bucket_off(tdb_off_t ftable_off, unsigned bucket)
 {
-	return flist_off + offsetof(struct tdb_freelist, buckets)
+	return ftable_off + offsetof(struct tdb_freetable, buckets)
 		+ bucket * sizeof(tdb_off_t);
 }
 
 /* Returns free_buckets + 1, or list number to search. */
 static tdb_off_t find_free_head(struct tdb_context *tdb,
-				tdb_off_t flist_off,
+				tdb_off_t ftable_off,
 				tdb_off_t bucket)
 {
 	/* Speculatively search for a non-zero bucket. */
-	return tdb_find_nonzero_off(tdb, bucket_off(flist_off, 0),
+	return tdb_find_nonzero_off(tdb, bucket_off(ftable_off, 0),
 				    bucket, TDB_FREE_BUCKETS);
 }
 
@@ -159,8 +159,8 @@ static int enqueue_in_free(struct tdb_context *tdb,
 	struct tdb_free_record new;
 	uint64_t magic = (TDB_FREE_MAGIC << (64 - TDB_OFF_UPPER_STEAL));
 
-	/* We only need to set flist_and_len; rest is set in enqueue_in_free */
-	new.flist_and_len = ((uint64_t)tdb->flist << (64 - TDB_OFF_UPPER_STEAL))
+	/* We only need to set ftable_and_len; rest is set in enqueue_in_free */
+	new.ftable_and_len = ((uint64_t)tdb->ftable << (64 - TDB_OFF_UPPER_STEAL))
 		| len;
 	/* prev = 0. */
 	new.magic_and_prev = magic;
@@ -209,7 +209,7 @@ int add_free_record(struct tdb_context *tdb,
 
 	len = len_with_header - sizeof(struct tdb_used_record);
 
-	b_off = bucket_off(tdb->flist_off, size_to_bucket(len));
+	b_off = bucket_off(tdb->ftable_off, size_to_bucket(len));
 	if (tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) != 0)
 		return -1;
 
@@ -245,17 +245,17 @@ static size_t record_leftover(size_t keylen, size_t datalen,
 	return leftover;
 }
 
-static tdb_off_t flist_offset(struct tdb_context *tdb, unsigned int flist)
+static tdb_off_t ftable_offset(struct tdb_context *tdb, unsigned int ftable)
 {
 	tdb_off_t off;
 	unsigned int i;
 
-	if (likely(tdb->flist == flist))
-		return tdb->flist_off;
+	if (likely(tdb->ftable == ftable))
+		return tdb->ftable_off;
 
-	off = first_flist(tdb);
-	for (i = 0; i < flist; i++)
-		off = next_flist(tdb, off);
+	off = first_ftable(tdb);
+	for (i = 0; i < ftable; i++)
+		off = next_ftable(tdb, off);
 	return off;
 }
 
@@ -272,21 +272,21 @@ static int coalesce(struct tdb_context *tdb,
 	while (end < tdb->map_size) {
 		const struct tdb_free_record *r;
 		tdb_off_t nb_off;
-		unsigned flist, bucket;
+		unsigned ftable, bucket;
 
 		r = tdb_access_read(tdb, end, sizeof(*r), true);
 		if (!r)
 			goto err;
 
 		if (frec_magic(r) != TDB_FREE_MAGIC
-		    || frec_flist(r) == TDB_FLIST_NONE) {
+		    || frec_ftable(r) == TDB_FTABLE_NONE) {
 			tdb_access_release(tdb, r);
 			break;
 		}
 
-		flist = frec_flist(r);
+		ftable = frec_ftable(r);
 		bucket = size_to_bucket(frec_len(r));
-		nb_off = bucket_off(flist_offset(tdb, flist), bucket);
+		nb_off = bucket_off(ftable_offset(tdb, ftable), bucket);
 		tdb_access_release(tdb, r);
 
 		/* We may be violating lock order here, so best effort. */
@@ -307,7 +307,7 @@ static int coalesce(struct tdb_context *tdb,
 			break;
 		}
 
-		if (unlikely(frec_flist(&rec) != flist)
+		if (unlikely(frec_ftable(&rec) != ftable)
 		    || unlikely(size_to_bucket(frec_len(&rec)) != bucket)) {
 			add_stat(tdb, alloc_coalesce_race, 1);
 			tdb_unlock_free_bucket(tdb, nb_off);
@@ -344,11 +344,11 @@ static int coalesce(struct tdb_context *tdb,
 
 	/* We have to drop this to avoid deadlocks, so make sure record
 	 * doesn't get coalesced by someone else! */
-	rec.flist_and_len = (TDB_FLIST_NONE << (64 - TDB_OFF_UPPER_STEAL))
+	rec.ftable_and_len = (TDB_FTABLE_NONE << (64 - TDB_OFF_UPPER_STEAL))
 		| (end - off - sizeof(struct tdb_used_record));
 	if (tdb_write_off(tdb, off + offsetof(struct tdb_free_record,
-					      flist_and_len),
-			  rec.flist_and_len) != 0)
+					      ftable_and_len),
+			  rec.ftable_and_len) != 0)
 		goto err;
 
 	add_stat(tdb, alloc_coalesce_succeeded, 1);
@@ -366,10 +366,11 @@ err:
 
 /* We need size bytes to put our key and data in. */
 static tdb_off_t lock_and_alloc(struct tdb_context *tdb,
-				tdb_off_t flist_off,
+				tdb_off_t ftable_off,
 				tdb_off_t bucket,
 				size_t keylen, size_t datalen,
 				bool want_extra,
+				unsigned magic,
 				unsigned hashlow)
 {
 	tdb_off_t off, b_off,best_off;
@@ -379,7 +380,7 @@ static tdb_off_t lock_and_alloc(struct tdb_context *tdb,
 
 	add_stat(tdb, allocs, 1);
 again:
-	b_off = bucket_off(flist_off, bucket);
+	b_off = bucket_off(ftable_off, bucket);
 
 	/* FIXME: Try non-blocking wait first, to measure contention. */
 	/* Lock this bucket. */
@@ -387,7 +388,7 @@ again:
 		return TDB_OFF_ERR;
 	}
 
-	best.flist_and_len = -1ULL;
+	best.ftable_and_len = -1ULL;
 	best_off = 0;
 
 	/* Get slack if we're after extra. */
@@ -462,9 +463,8 @@ again:
 		assert(keylen + datalen + leftover <= frec_len(&best));
 		/* We need to mark non-free before we drop lock, otherwise
 		 * coalesce() could try to merge it! */
-		if (set_used_header(tdb, &rec, keylen, datalen,
-				    frec_len(&best) - leftover,
-				    hashlow) != 0)
+		if (set_header(tdb, &rec, magic, keylen, datalen,
+			       frec_len(&best) - leftover, hashlow) != 0)
 			goto unlock_err;
 
 		if (tdb_write_convert(tdb, best_off, &rec, sizeof(rec)) != 0)
@@ -496,10 +496,10 @@ unlock_err:
 /* Get a free block from current free list, or 0 if none. */
 static tdb_off_t get_free(struct tdb_context *tdb,
 			  size_t keylen, size_t datalen, bool want_extra,
-			  unsigned hashlow)
+			  unsigned magic, unsigned hashlow)
 {
-	tdb_off_t off, flist_off;
-	unsigned start_b, b, flist;
+	tdb_off_t off, ftable_off;
+	unsigned start_b, b, ftable;
 	bool wrapped = false;
 
 	/* If they are growing, add 50% to get to higher bucket. */
@@ -509,17 +509,17 @@ static tdb_off_t get_free(struct tdb_context *tdb,
 	else
 		start_b = size_to_bucket(adjust_size(keylen, datalen));
 
-	flist_off = tdb->flist_off;
-	flist = tdb->flist;
-	while (!wrapped || flist_off != tdb->flist_off) {
+	ftable_off = tdb->ftable_off;
+	ftable = tdb->ftable;
+	while (!wrapped || ftable_off != tdb->ftable_off) {
 		/* Start at exact size bucket, and search up... */
-		for (b = find_free_head(tdb, flist_off, start_b);
+		for (b = find_free_head(tdb, ftable_off, start_b);
 		     b < TDB_FREE_BUCKETS;
-		     b = find_free_head(tdb, flist_off, b + 1)) {
+		     b = find_free_head(tdb, ftable_off, b + 1)) {
 			/* Try getting one from list. */
-			off = lock_and_alloc(tdb, flist_off,
+			off = lock_and_alloc(tdb, ftable_off,
 					     b, keylen, datalen, want_extra,
-					     hashlow);
+					     magic, hashlow);
 			if (off == TDB_OFF_ERR)
 				return TDB_OFF_ERR;
 			if (off != 0) {
@@ -528,31 +528,31 @@ static tdb_off_t get_free(struct tdb_context *tdb,
 				if (b == TDB_FREE_BUCKETS - 1)
 					add_stat(tdb, alloc_bucket_max, 1);
 				/* Worked?  Stay using this list. */
-				tdb->flist_off = flist_off;
-				tdb->flist = flist;
+				tdb->ftable_off = ftable_off;
+				tdb->ftable = ftable;
 				return off;
 			}
 			/* Didn't work.  Try next bucket. */
 		}
 
-		/* Hmm, try next list. */
-		flist_off = next_flist(tdb, flist_off);
-		flist++;
+		/* Hmm, try next table. */
+		ftable_off = next_ftable(tdb, ftable_off);
+		ftable++;
 
-		if (flist_off == 0) {
+		if (ftable_off == 0) {
 			wrapped = true;
-			flist_off = first_flist(tdb);
-			flist = 0;
+			ftable_off = first_ftable(tdb);
+			ftable = 0;
 		}
 	}
 
 	return 0;
 }
 
-int set_used_header(struct tdb_context *tdb,
-		    struct tdb_used_record *rec,
-		    uint64_t keylen, uint64_t datalen,
-		    uint64_t actuallen, unsigned hashlow)
+int set_header(struct tdb_context *tdb,
+	       struct tdb_used_record *rec,
+	       unsigned magic, uint64_t keylen, uint64_t datalen,
+	       uint64_t actuallen, unsigned hashlow)
 {
 	uint64_t keybits = (fls64(keylen) + 1) / 2;
 
@@ -560,7 +560,7 @@ int set_used_header(struct tdb_context *tdb,
 	rec->magic_and_meta = (hashlow & ((1 << 11)-1))
 		| ((actuallen - (keylen + datalen)) << 11)
 		| (keybits << 43)
-		| (TDB_MAGIC << 48);
+		| ((uint64_t)magic << 48);
 	rec->key_and_data_len = (keylen | (datalen << (keybits*2)));
 
 	/* Encoding can fail on big values. */
@@ -627,7 +627,7 @@ static int tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 
 /* This won't fail: it will expand the database if it has to. */
 tdb_off_t alloc(struct tdb_context *tdb, size_t keylen, size_t datalen,
-		uint64_t hash, bool growing)
+		uint64_t hash, unsigned magic, bool growing)
 {
 	tdb_off_t off;
 
@@ -635,7 +635,7 @@ tdb_off_t alloc(struct tdb_context *tdb, size_t keylen, size_t datalen,
 	assert(!tdb->direct_access);
 
 	for (;;) {
-		off = get_free(tdb, keylen, datalen, growing, hash);
+		off = get_free(tdb, keylen, datalen, growing, magic, hash);
 		if (likely(off != 0))
 			break;
 

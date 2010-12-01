@@ -23,20 +23,20 @@ static void add(struct tdb_layout *layout, union tdb_layout_elem elem)
 	layout->elem[layout->num_elems++] = elem;
 }
 
-void tdb_layout_add_freelist(struct tdb_layout *layout)
+void tdb_layout_add_freetable(struct tdb_layout *layout)
 {
 	union tdb_layout_elem elem;
-	elem.base.type = FREELIST;
+	elem.base.type = FREETABLE;
 	add(layout, elem);
 }
 
 void tdb_layout_add_free(struct tdb_layout *layout, tdb_len_t len,
-			 unsigned flist)
+			 unsigned ftable)
 {
 	union tdb_layout_elem elem;
 	elem.base.type = FREE;
 	elem.free.len = len;
-	elem.free.flist_num = flist;
+	elem.free.ftable_num = ftable;
 	add(layout, elem);
 }
 
@@ -82,9 +82,9 @@ static tdb_len_t hashtable_len(struct tle_hashtable *htable)
 		+ htable->extra;
 }
 
-static tdb_len_t freelist_len(struct tle_freelist *flist)
+static tdb_len_t freetable_len(struct tle_freetable *ftable)
 {
-	return sizeof(struct tdb_freelist);
+	return sizeof(struct tdb_freetable);
 }
 
 static void set_free_record(void *mem, tdb_len_t len)
@@ -97,9 +97,9 @@ static void set_data_record(void *mem, struct tdb_context *tdb,
 {
 	struct tdb_used_record *u = mem;
 
-	set_used_header(tdb, u, used->key.dsize, used->data.dsize,
-			used->key.dsize + used->data.dsize + used->extra,
-			tdb_hash(tdb, used->key.dptr, used->key.dsize));
+	set_header(tdb, u, TDB_USED_MAGIC, used->key.dsize, used->data.dsize,
+		   used->key.dsize + used->data.dsize + used->extra,
+		   tdb_hash(tdb, used->key.dptr, used->key.dsize));
 	memcpy(u + 1, used->key.dptr, used->key.dsize);
 	memcpy((char *)(u + 1) + used->key.dsize,
 	       used->data.dptr, used->data.dsize);
@@ -111,36 +111,36 @@ static void set_hashtable(void *mem, struct tdb_context *tdb,
 	struct tdb_used_record *u = mem;
 	tdb_len_t len = sizeof(tdb_off_t) << TDB_SUBLEVEL_HASH_BITS;
 
-	set_used_header(tdb, u, 0, len, len + htable->extra, 0);
+	set_header(tdb, u, TDB_HTABLE_MAGIC, 0, len, len + htable->extra, 0);
 	memset(u + 1, 0, len);
 }
 
-static void set_freelist(void *mem, struct tdb_context *tdb,
-			 struct tle_freelist *freelist, struct tdb_header *hdr,
-			 tdb_off_t last_flist)
+static void set_freetable(void *mem, struct tdb_context *tdb,
+			 struct tle_freetable *freetable, struct tdb_header *hdr,
+			 tdb_off_t last_ftable)
 {
-	struct tdb_freelist *flist = mem;
-	memset(flist, 0, sizeof(*flist));
-	set_used_header(tdb, &flist->hdr, 0,
-			sizeof(*flist) - sizeof(flist->hdr),
-			sizeof(*flist) - sizeof(flist->hdr), 1);
+	struct tdb_freetable *ftable = mem;
+	memset(ftable, 0, sizeof(*ftable));
+	set_header(tdb, &ftable->hdr, TDB_FTABLE_MAGIC, 0,
+			sizeof(*ftable) - sizeof(ftable->hdr),
+			sizeof(*ftable) - sizeof(ftable->hdr), 0);
 
-	if (last_flist) {
-		flist = (struct tdb_freelist *)((char *)hdr + last_flist);
-		flist->next = freelist->base.off;
+	if (last_ftable) {
+		ftable = (struct tdb_freetable *)((char *)hdr + last_ftable);
+		ftable->next = freetable->base.off;
 	} else {
-		hdr->free_list = freelist->base.off;
+		hdr->free_table = freetable->base.off;
 	}
 }
 
 static void add_to_freetable(struct tdb_context *tdb,
 			     tdb_off_t eoff,
 			     tdb_off_t elen,
-			     unsigned flist,
-			     struct tle_freelist *freelist)
+			     unsigned ftable,
+			     struct tle_freetable *freetable)
 {
-	tdb->flist_off = freelist->base.off;
-	tdb->flist = flist;
+	tdb->ftable_off = freetable->base.off;
+	tdb->ftable = ftable;
 	add_free_record(tdb, eoff, sizeof(struct tdb_used_record) + elen);
 }
 
@@ -204,15 +204,15 @@ static void add_to_hashtable(struct tdb_context *tdb,
 	abort();
 }
 
-static struct tle_freelist *find_flist(struct tdb_layout *layout, unsigned num)
+static struct tle_freetable *find_ftable(struct tdb_layout *layout, unsigned num)
 {
 	unsigned i;
 
 	for (i = 0; i < layout->num_elems; i++) {
-		if (layout->elem[i].base.type != FREELIST)
+		if (layout->elem[i].base.type != FREETABLE)
 			continue;
 		if (num == 0)
-			return &layout->elem[i].flist;
+			return &layout->elem[i].ftable;
 		num--;
 	}
 	abort();
@@ -222,7 +222,7 @@ static struct tle_freelist *find_flist(struct tdb_layout *layout, unsigned num)
 struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 {
 	unsigned int i;
-	tdb_off_t off, len, last_flist;
+	tdb_off_t off, len, last_ftable;
 	char *mem;
 	struct tdb_context *tdb;
 
@@ -233,8 +233,8 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 		union tdb_layout_elem *e = &layout->elem[i];
 		e->base.off = off;
 		switch (e->base.type) {
-		case FREELIST:
-			len = freelist_len(&e->flist);
+		case FREETABLE:
+			len = freetable_len(&e->ftable);
 			break;
 		case FREE:
 			len = free_record_len(e->free.len);
@@ -261,14 +261,14 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 	tdb->map_ptr = mem;
 	tdb->map_size = off;
 
-	last_flist = 0;
+	last_ftable = 0;
 	for (i = 0; i < layout->num_elems; i++) {
 		union tdb_layout_elem *e = &layout->elem[i];
 		switch (e->base.type) {
-		case FREELIST:
-			set_freelist(mem + e->base.off, tdb, &e->flist,
-				     (struct tdb_header *)mem, last_flist);
-			last_flist = e->base.off;
+		case FREETABLE:
+			set_freetable(mem + e->base.off, tdb, &e->ftable,
+				     (struct tdb_header *)mem, last_ftable);
+			last_ftable = e->base.off;
 			break;
 		case FREE:
 			set_free_record(mem + e->base.off, e->free.len);
@@ -281,8 +281,8 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 			break;
 		}
 	}
-	/* Must have a free list! */
-	assert(last_flist);
+	/* Must have a free table! */
+	assert(last_ftable);
 
 	/* Now fill the free and hash tables. */
 	for (i = 0; i < layout->num_elems; i++) {
@@ -290,8 +290,8 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 		switch (e->base.type) {
 		case FREE:
 			add_to_freetable(tdb, e->base.off, e->free.len,
-					 e->free.flist_num,
-					 find_flist(layout, e->free.flist_num));
+					 e->free.ftable_num,
+					 find_ftable(layout, e->free.ftable_num));
 			break;
 		case DATA:
 			add_to_hashtable(tdb, e->base.off, e->used.key);
@@ -301,7 +301,7 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 		}
 	}
 
-	tdb->flist_off = find_flist(layout, 0)->base.off;
+	tdb->ftable_off = find_ftable(layout, 0)->base.off;
 
 	/* Get physical if they asked for it. */
 	if (layout->filename) {

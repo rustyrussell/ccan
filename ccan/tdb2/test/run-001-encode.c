@@ -18,14 +18,14 @@ int main(int argc, char *argv[])
 
 	/* We should be able to encode any data value. */
 	for (i = 0; i < 64; i++)
-		ok1(set_used_header(&tdb, &rec, 0, 1ULL << i, 1ULL << i, 0)
-		    == 0);
+		ok1(set_header(&tdb, &rec, TDB_USED_MAGIC, 0, 1ULL << i,
+			       1ULL << i, 0) == 0);
 
 	/* And any key and data with < 64 bits between them. */
 	for (i = 0; i < 32; i++) {
 		tdb_len_t dlen = 1ULL >> (63 - i), klen = 1ULL << i;
-		ok1(set_used_header(&tdb, &rec, klen, dlen, klen + dlen, 0)
-		    == 0);
+		ok1(set_header(&tdb, &rec, TDB_USED_MAGIC, klen, dlen,
+			       klen + dlen, 0)  == 0);
 	}
 
 	/* We should neatly encode all values. */
@@ -34,13 +34,13 @@ int main(int argc, char *argv[])
 		uint64_t klen = 1ULL << (i < 16 ? i : 15);
 		uint64_t dlen = 1ULL << i;
 		uint64_t xlen = 1ULL << (i < 32 ? i : 31);
-		ok1(set_used_header(&tdb, &rec, klen, dlen, klen+dlen+xlen, h)
-		    == 0);
+		ok1(set_header(&tdb, &rec, TDB_USED_MAGIC, klen, dlen,
+			       klen+dlen+xlen, h) == 0);
 		ok1(rec_key_length(&rec) == klen);
 		ok1(rec_data_length(&rec) == dlen);
 		ok1(rec_extra_padding(&rec) == xlen);
 		ok1((uint64_t)rec_hash(&rec) == h);
-		ok1(rec_magic(&rec) == TDB_MAGIC);
+		ok1(rec_magic(&rec) == TDB_USED_MAGIC);
 	}
 	ok1(tap_log_messages == 0);
 	return exit_status();

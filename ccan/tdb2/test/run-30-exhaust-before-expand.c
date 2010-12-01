@@ -9,13 +9,13 @@
 #include <err.h>
 #include "logging.h"
 
-static bool empty_freelist(struct tdb_context *tdb)
+static bool empty_freetable(struct tdb_context *tdb)
 {
-	struct tdb_freelist free;
+	struct tdb_freetable free;
 	unsigned int i;
 
-	/* Now, free list should be completely exhausted in zone 0 */
-	if (tdb_read_convert(tdb, tdb->flist_off, &free, sizeof(free)) != 0)
+	/* Now, free table should be completely exhausted in zone 0 */
+	if (tdb_read_convert(tdb, tdb->ftable_off, &free, sizeof(free)) != 0)
 		abort();
 
 	for (i = 0; i < sizeof(free.buckets)/sizeof(free.buckets[0]); i++) {
@@ -50,26 +50,26 @@ int main(int argc, char *argv[])
 		if (!tdb)
 			continue;
 
-		ok1(empty_freelist(tdb));
+		ok1(empty_freetable(tdb));
 		/* Need some hash lock for expand. */
 		ok1(tdb_lock_hashes(tdb, 0, 1, F_WRLCK, TDB_LOCK_WAIT) == 0);
 		/* Create some free space. */
 		ok1(tdb_expand(tdb, 1) == 0);
 		ok1(tdb_unlock_hashes(tdb, 0, 1, F_WRLCK) == 0);
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
-		ok1(!empty_freelist(tdb));
+		ok1(!empty_freetable(tdb));
 
 		size = tdb->map_size;
 		/* Insert minimal-length records until we expand. */
 		for (j = 0; tdb->map_size == size; j++) {
-			was_empty = empty_freelist(tdb);
+			was_empty = empty_freetable(tdb);
 			if (tdb_store(tdb, k, k, TDB_INSERT) != 0)
 				err(1, "Failed to store record %i", j);
 		}
 
 		/* Would have been empty before expansion, but no longer. */
 		ok1(was_empty);
-		ok1(!empty_freelist(tdb));
+		ok1(!empty_freetable(tdb));
 		tdb_close(tdb);
 	}
 

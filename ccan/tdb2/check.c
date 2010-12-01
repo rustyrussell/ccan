@@ -95,6 +95,13 @@ static bool check_hash_chain(struct tdb_context *tdb,
 	if (tdb_read_convert(tdb, off, &rec, sizeof(rec)) == -1)
 		return false;
 
+	if (rec_magic(&rec) != TDB_CHAIN_MAGIC) {
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
+			   "tdb_check: Bad hash chain magic %llu",
+			   (long long)rec_magic(&rec));
+		return false;
+	}
+
 	if (rec_data_length(&rec) != sizeof(struct tdb_chain)) {
 		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
 			   "tdb_check: Bad hash chain length %llu vs %zu",
@@ -108,7 +115,7 @@ static bool check_hash_chain(struct tdb_context *tdb,
 			 (long long)rec_key_length(&rec));
 		return false;
 	}
-	if (rec_hash(&rec) != 2) {
+	if (rec_hash(&rec) != 0) {
 		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
 			 "tdb_check: Bad hash chain hash value %llu",
 			 (long long)rec_hash(&rec));
@@ -149,6 +156,12 @@ static bool check_hash_record(struct tdb_context *tdb,
 	if (tdb_read_convert(tdb, off, &rec, sizeof(rec)) == -1)
 		return false;
 
+	if (rec_magic(&rec) != TDB_HTABLE_MAGIC) {
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
+			   "tdb_check: Bad hash table magic %llu",
+			   (long long)rec_magic(&rec));
+		return false;
+	}
 	if (rec_data_length(&rec)
 	    != sizeof(tdb_off_t) << TDB_SUBLEVEL_HASH_BITS) {
 		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
@@ -376,12 +389,12 @@ fail:
 
 static bool check_hash(struct tdb_context *tdb,
 		       tdb_off_t used[],
-		       size_t num_used, size_t num_flists,
+		       size_t num_used, size_t num_ftables,
 		       int (*check)(TDB_DATA, TDB_DATA, void *),
 		       void *private_data)
 {
-	/* Free lists also show up as used. */
-	size_t num_found = num_flists;
+	/* Free tables also show up as used. */
+	size_t num_found = num_ftables;
 
 	if (!check_hash_tree(tdb, offsetof(struct tdb_header, hashtable),
 			     TDB_TOPLEVEL_HASH_BITS-TDB_HASH_GROUP_BITS,
@@ -400,7 +413,8 @@ static bool check_hash(struct tdb_context *tdb,
 static bool check_free(struct tdb_context *tdb,
 		       tdb_off_t off,
 		       const struct tdb_free_record *frec,
-		       tdb_off_t prev, unsigned int flist, unsigned int bucket)
+		       tdb_off_t prev, unsigned int ftable,
+		       unsigned int bucket)
 {
 	if (frec_magic(frec) != TDB_FREE_MAGIC) {
 		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
@@ -408,10 +422,10 @@ static bool check_free(struct tdb_context *tdb,
 			   (long long)off, (long long)frec->magic_and_prev);
 		return false;
 	}
-	if (frec_flist(frec) != flist) {
+	if (frec_ftable(frec) != ftable) {
 		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
-			   "tdb_check: offset %llu bad freelist %u",
-			   (long long)off, frec_flist(frec));
+			   "tdb_check: offset %llu bad freetable %u",
+			   (long long)off, frec_ftable(frec));
 		return false;
 	}
 
@@ -436,26 +450,26 @@ static bool check_free(struct tdb_context *tdb,
 	return true;
 }
 		       
-static bool check_free_list(struct tdb_context *tdb,
-			    tdb_off_t flist_off,
-			    unsigned flist_num,
-			    tdb_off_t free[],
-			    size_t num_free,
-			    size_t *num_found)
+static bool check_free_table(struct tdb_context *tdb,
+			     tdb_off_t ftable_off,
+			     unsigned ftable_num,
+			     tdb_off_t free[],
+			     size_t num_free,
+			     size_t *num_found)
 {
-	struct tdb_freelist flist;
+	struct tdb_freetable ft;
 	tdb_off_t h;
 	unsigned int i;
 
-	if (tdb_read_convert(tdb, flist_off, &flist, sizeof(flist)) == -1)
+	if (tdb_read_convert(tdb, ftable_off, &ft, sizeof(ft)) == -1)
 		return false;
 
-	if (rec_magic(&flist.hdr) != TDB_MAGIC
-	    || rec_key_length(&flist.hdr) != 0
-	    || rec_data_length(&flist.hdr) != sizeof(flist) - sizeof(flist.hdr)
-	    || rec_hash(&flist.hdr) != 1) {
+	if (rec_magic(&ft.hdr) != TDB_FTABLE_MAGIC
+	    || rec_key_length(&ft.hdr) != 0
+	    || rec_data_length(&ft.hdr) != sizeof(ft) - sizeof(ft.hdr)
+	    || rec_hash(&ft.hdr) != 0) {
 		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
-			   "tdb_check: Invalid header on free list");
+			   "tdb_check: Invalid header on free table");
 		return false;
 	}
 
@@ -463,13 +477,13 @@ static bool check_free_list(struct tdb_context *tdb,
 		tdb_off_t off, prev = 0, *p;
 		struct tdb_free_record f;
 
-		h = bucket_off(flist_off, i);
+		h = bucket_off(ftable_off, i);
 		for (off = tdb_read_off(tdb, h); off; off = f.next) {
 			if (off == TDB_OFF_ERR)
 				return false;
 			if (tdb_read_convert(tdb, off, &f, sizeof(f)))
 				return false;
-			if (!check_free(tdb, off, &f, prev, flist_num, i))
+			if (!check_free(tdb, off, &f, prev, ftable_num, i))
 				return false;
 
 			/* FIXME: Check hash bits */
@@ -588,23 +602,16 @@ static bool check_linear(struct tdb_context *tdb,
 				return false;
 			}
 			/* This record should be in free lists. */
-			if (frec_flist(&rec.f) != TDB_FLIST_NONE
+			if (frec_ftable(&rec.f) != TDB_FTABLE_NONE
 			    && !append(free, num_free, off))
 				return false;
-		} else {
+		} else if (rec_magic(&rec.u) == TDB_USED_MAGIC
+			   || rec_magic(&rec.u) == TDB_CHAIN_MAGIC
+			   || rec_magic(&rec.u) == TDB_HTABLE_MAGIC
+			   || rec_magic(&rec.u) == TDB_FTABLE_MAGIC) {
 			uint64_t klen, dlen, extra;
 
 			/* This record is used! */
-			if (rec_magic(&rec.u) != TDB_MAGIC) {
-				tdb_logerr(tdb, TDB_ERR_CORRUPT,
-					   TDB_DEBUG_ERROR,
-					   "tdb_check: Bad magic 0x%llx"
-					   " at offset %zu",
-					   (long long)rec_magic(&rec.u),
-					   (size_t)off);
-				return false;
-			}
-
 			if (!append(used, num_used, off))
 				return false;
 
@@ -630,6 +637,12 @@ static bool check_linear(struct tdb_context *tdb,
 					   (long long)len, (long long)off);
 				return false;
 			}
+		} else {
+			tdb_logerr(tdb, TDB_ERR_CORRUPT,
+				   TDB_DEBUG_ERROR,
+				   "tdb_check: Bad magic 0x%llx at offset %zu",
+				   (long long)rec_magic(&rec.u), (size_t)off);
+			return false;
 		}
 	}
 
@@ -648,8 +661,8 @@ int tdb_check(struct tdb_context *tdb,
 	      int (*check)(TDB_DATA key, TDB_DATA data, void *private_data),
 	      void *private_data)
 {
-	tdb_off_t *free = NULL, *used = NULL, flist, recovery;
-	size_t num_free = 0, num_used = 0, num_found = 0, num_flists = 0;
+	tdb_off_t *free = NULL, *used = NULL, ft, recovery;
+	size_t num_free = 0, num_used = 0, num_found = 0, num_ftables = 0;
 
 	if (tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false) != 0)
 		return -1;
@@ -666,17 +679,17 @@ int tdb_check(struct tdb_context *tdb,
 	if (!check_linear(tdb, &used, &num_used, &free, &num_free, recovery))
 		goto fail;
 
-	for (flist = first_flist(tdb); flist; flist = next_flist(tdb, flist)) {
-		if (flist == TDB_OFF_ERR)
+	for (ft = first_ftable(tdb); ft; ft = next_ftable(tdb, ft)) {
+		if (ft == TDB_OFF_ERR)
 			goto fail;
-		if (!check_free_list(tdb, flist, num_flists, free, num_free,
-				     &num_found))
+		if (!check_free_table(tdb, ft, num_ftables, free, num_free,
+				      &num_found))
 			goto fail;
-		num_flists++;
+		num_ftables++;
 	}
 
 	/* FIXME: Check key uniqueness? */
-	if (!check_hash(tdb, used, num_used, num_flists, check, private_data))
+	if (!check_hash(tdb, used, num_used, num_ftables, check, private_data))
 		goto fail;
 
 	if (num_found != num_free) {
