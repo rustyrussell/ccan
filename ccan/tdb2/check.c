@@ -81,6 +81,55 @@ static bool check_hash_tree(struct tdb_context *tdb,
 			    int (*check)(TDB_DATA, TDB_DATA, void *),
 			    void *private_data);
 
+static bool check_hash_chain(struct tdb_context *tdb,
+			     tdb_off_t off,
+			     uint64_t hash,
+			     tdb_off_t used[],
+			     size_t num_used,
+			     size_t *num_found,
+			     int (*check)(TDB_DATA, TDB_DATA, void *),
+			     void *private_data)
+{
+	struct tdb_used_record rec;
+
+	if (tdb_read_convert(tdb, off, &rec, sizeof(rec)) == -1)
+		return false;
+
+	if (rec_data_length(&rec) != sizeof(struct tdb_chain)) {
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
+			   "tdb_check: Bad hash chain length %llu vs %zu",
+			   (long long)rec_data_length(&rec),
+			   sizeof(struct tdb_chain));
+		return false;
+	}
+	if (rec_key_length(&rec) != 0) {
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
+			 "tdb_check: Bad hash chain key length %llu",
+			 (long long)rec_key_length(&rec));
+		return false;
+	}
+	if (rec_hash(&rec) != 2) {
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_ERROR,
+			 "tdb_check: Bad hash chain hash value %llu",
+			 (long long)rec_hash(&rec));
+		return false;
+	}
+
+	off += sizeof(rec);
+	if (!check_hash_tree(tdb, off, 0, hash, 64,
+			     used, num_used, num_found, check, private_data))
+		return false;
+
+	off = tdb_read_off(tdb, off + offsetof(struct tdb_chain, next));
+	if (off == TDB_OFF_ERR)
+		return false;
+	if (off == 0)
+		return true;
+	(*num_found)++;
+	return check_hash_chain(tdb, off, hash, used, num_used, num_found,
+				check, private_data);
+}
+
 static bool check_hash_record(struct tdb_context *tdb,
 			      tdb_off_t off,
 			      uint64_t hprefix,
@@ -92,6 +141,10 @@ static bool check_hash_record(struct tdb_context *tdb,
 			      void *private_data)
 {
 	struct tdb_used_record rec;
+
+	if (hprefix_bits >= 64)
+		return check_hash_chain(tdb, off, hprefix, used, num_used,
+					num_found, check, private_data);
 
 	if (tdb_read_convert(tdb, off, &rec, sizeof(rec)) == -1)
 		return false;
@@ -183,6 +236,32 @@ static bool check_hash_tree(struct tdb_context *tdb,
 			*p ^= 1;
 			(*num_found)++;
 
+			if (hprefix_bits == 64) {
+				/* Chained entries are unordered. */
+				if (is_subhash(group[b])) {
+					tdb_logerr(tdb, TDB_ERR_CORRUPT,
+						   TDB_DEBUG_ERROR,
+						   "tdb_check: Invalid chain"
+						   " entry subhash");
+					goto fail;
+				}
+				h = hash_record(tdb, off);
+				if (h != hprefix) {
+					tdb_logerr(tdb, TDB_ERR_CORRUPT,
+						   TDB_DEBUG_ERROR,
+						   "check: bad hash chain"
+						   " placement"
+						   " 0x%llx vs 0x%llx",
+						   (long long)h,
+						   (long long)hprefix);
+					goto fail;
+				}
+				if (tdb_read_convert(tdb, off, &rec,
+						     sizeof(rec)))
+					goto fail;
+				goto check;
+			}
+
 			if (is_subhash(group[b])) {
 				uint64_t subprefix;
 				subprefix = (hprefix 
@@ -269,6 +348,7 @@ static bool check_hash_tree(struct tdb_context *tdb,
 				goto fail;
 			}
 
+		check:
 			if (check) {
 				TDB_DATA key, data;
 				key.dsize = rec_key_length(&rec);

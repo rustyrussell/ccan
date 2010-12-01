@@ -118,6 +118,7 @@ struct tdb_attribute_stats {
 	size_t size; /* = sizeof(struct tdb_attribute_stats) */
 	uint64_t allocs;
 	uint64_t   alloc_subhash;
+	uint64_t   alloc_chain;
 	uint64_t   alloc_bucket_exact;
 	uint64_t   alloc_bucket_max;
 	uint64_t   alloc_leftover;

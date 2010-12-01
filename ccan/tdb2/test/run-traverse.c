@@ -56,7 +56,6 @@ static int trav(struct tdb_context *tdb, TDB_DATA key, TDB_DATA dbuf, void *p)
 		td->high = val;
 
 	if (td->delete) {
-
 		if (tdb_delete(tdb, key) != 0) {
 			td->delete_error = tdb_error(tdb);
 			return -1;

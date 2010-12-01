@@ -91,6 +91,8 @@ typedef uint64_t tdb_off_t;
 #define TDB_SUBLEVEL_HASH_BITS 6
 /* And 8 entries in each group, ie 8 groups per sublevel. */
 #define TDB_HASH_GROUP_BITS 3
+/* This is currently 10: beyond this we chain. */
+#define TDB_MAX_LEVELS (1+(64-TDB_TOPLEVEL_HASH_BITS) / TDB_SUBLEVEL_HASH_BITS)
 
 /* Extend file by least 100 times larger than needed. */
 #define TDB_EXTENSION_FACTOR 100
@@ -212,6 +214,12 @@ struct tdb_recovery_record {
 	uint64_t eof;
 };
 
+/* If we bottom out of the subhashes, we chain. */
+struct tdb_chain {
+	tdb_off_t rec[1 << TDB_HASH_GROUP_BITS];
+	tdb_off_t next;
+};
+
 /* this is stored at the front of every database */
 struct tdb_header {
 	char magic_food[64]; /* for /etc/magic */
@@ -259,7 +267,7 @@ struct traverse_info {
 		/* We ignore groups here, and treat it as a big array. */
 		unsigned entry;
 		unsigned int total_buckets;
-	} levels[64 / TDB_SUBLEVEL_HASH_BITS];
+	} levels[TDB_MAX_LEVELS + 1];
 	unsigned int num_levels;
 	unsigned int toplevel_group;
 	/* This makes delete-everything-inside-traverse work as expected. */

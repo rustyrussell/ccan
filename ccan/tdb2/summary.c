@@ -43,7 +43,8 @@ static bool summarize(struct tdb_context *tdb,
 		      struct tally *data,
 		      struct tally *extra,
 		      struct tally *uncoal,
-		      struct tally *buckets)
+		      struct tally *buckets,
+		      struct tally *chains)
 {
 	tdb_off_t off;
 	tdb_len_t len;
@@ -83,7 +84,7 @@ static bool summarize(struct tdb_context *tdb,
 				+ rec_extra_padding(&p->u);
 
 			/* FIXME: Use different magic for hashes, flists. */
-			if (!rec_key_length(&p->u) && rec_hash(&p->u) < 2) {
+			if (!rec_key_length(&p->u) && rec_hash(&p->u) < 3) {
 				if (rec_hash(&p->u) == 0) {
 					int count = count_hash(tdb,
 							off + sizeof(p->u),
@@ -91,9 +92,11 @@ static bool summarize(struct tdb_context *tdb,
 					if (count == -1)
 						return false;
 					tally_add(hashes, count);
-				} else {
+				} else if (rec_hash(&p->u) == 1) {
 					tally_add(flists,
 						  rec_data_length(&p->u));
+				} else if (rec_hash(&p->u) == 2) {
+					tally_add(chains, 1);
 				}
 			} else {
 				tally_add(keys, rec_key_length(&p->u));
@@ -121,6 +124,7 @@ static bool summarize(struct tdb_context *tdb,
 	"Smallest/average/largest uncoalesced runs: %zu/%zu/%zu\n%s" \
 	"Number of free lists: %zu\n%s" \
 	"Toplevel hash used: %u of %u\n" \
+	"Number of chains: %zu\n" \
 	"Number of subhashes: %zu\n" \
 	"Smallest/average/largest subhash entries: %zu/%zu/%zu\n%s" \
 	"Percentage keys/data/padding/free/rechdrs/freehdrs/hashes: %.0f/%.0f/%.0f/%.0f/%.0f/%.0f/%.0f\n"
@@ -139,7 +143,7 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 {
 	tdb_len_t len;
 	struct tally *flists, *hashes, *freet, *keys, *data, *extra, *uncoal,
-		*buckets;
+		*buckets, *chains;
 	char *hashesg, *freeg, *keysg, *datag, *extrag, *uncoalg, *bucketsg;
 	char *ret = NULL;
 
@@ -162,15 +166,16 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 	extra = tally_new(HISTO_HEIGHT);
 	uncoal = tally_new(HISTO_HEIGHT);
 	buckets = tally_new(HISTO_HEIGHT);
+	chains = tally_new(HISTO_HEIGHT);
 	if (!flists || !hashes || !freet || !keys || !data || !extra
-	    || !uncoal || !buckets) {
+	    || !uncoal || !buckets || !chains) {
 		tdb_logerr(tdb, TDB_ERR_OOM, TDB_DEBUG_ERROR,
 			   "tdb_summary: failed to allocate tally structures");
 		goto unlock;
 	}
 
 	if (!summarize(tdb, hashes, flists, freet, keys, data, extra, uncoal,
-		       buckets))
+		       buckets, chains))
 		goto unlock;
 
 	if (flags & TDB_SUMMARY_HISTOGRAMS) {
@@ -218,6 +223,7 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 		      count_hash(tdb, offsetof(struct tdb_header, hashtable),
 				 TDB_TOPLEVEL_HASH_BITS),
 		      1 << TDB_TOPLEVEL_HASH_BITS,
+		      tally_num(chains),
 		      tally_num(hashes),
 		      tally_min(hashes), tally_mean(hashes), tally_max(hashes),
 		      hashesg ? hashesg : "",
@@ -231,7 +237,8 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 		      * 100.0 / tdb->map_size,
 		      (tally_num(hashes)
 		       * (sizeof(tdb_off_t) << TDB_SUBLEVEL_HASH_BITS)
-		       + (sizeof(tdb_off_t) << TDB_TOPLEVEL_HASH_BITS))
+		       + (sizeof(tdb_off_t) << TDB_TOPLEVEL_HASH_BITS)
+		       + sizeof(struct tdb_chain) * tally_num(chains))
 		      * 100.0 / tdb->map_size);
 
 unlock:
@@ -249,6 +256,7 @@ unlock:
 	free(data);
 	free(extra);
 	free(uncoal);
+	free(chains);
 
 	tdb_allrecord_unlock(tdb, F_RDLCK);
 	tdb_unlock_expand(tdb, F_RDLCK);

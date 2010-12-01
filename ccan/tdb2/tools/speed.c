@@ -49,6 +49,8 @@ static void dump_and_clear_stats(struct tdb_attribute_stats *stats)
 	       (unsigned long long)stats->allocs);
 	printf("  alloc_subhash = %llu\n",
 	       (unsigned long long)stats->alloc_subhash);
+	printf("  alloc_chain = %llu\n",
+	       (unsigned long long)stats->alloc_chain);
 	printf("  alloc_bucket_exact = %llu\n",
 	       (unsigned long long)stats->alloc_bucket_exact);
 	printf("  alloc_bucket_max = %llu\n",
