@@ -179,6 +179,12 @@ int zero_out(struct tdb_context *tdb, tdb_off_t off, tdb_len_t len)
 {
 	char buf[8192] = { 0 };
 	void *p = tdb->methods->direct(tdb, off, len);
+
+	if (tdb->read_only) {
+		tdb->ecode = TDB_ERR_RDONLY;
+		return -1;
+	}
+
 	if (p) {
 		memset(p, 0, len);
 		return 0;
@@ -196,6 +202,12 @@ int zero_out(struct tdb_context *tdb, tdb_off_t off, tdb_len_t len)
 tdb_off_t tdb_read_off(struct tdb_context *tdb, tdb_off_t off)
 {
 	tdb_off_t ret;
+
+	if (likely(!(tdb->flags & TDB_CONVERT))) {
+		tdb_off_t *p = tdb->methods->direct(tdb, off, sizeof(*p));
+		if (p)
+			return *p;
+	}
 
 	if (tdb_read_convert(tdb, off, &ret, sizeof(ret)) == -1)
 		return TDB_OFF_ERR;
@@ -349,6 +361,18 @@ int tdb_read_convert(struct tdb_context *tdb, tdb_off_t off,
 
 int tdb_write_off(struct tdb_context *tdb, tdb_off_t off, tdb_off_t val)
 {
+	if (tdb->read_only) {
+		tdb->ecode = TDB_ERR_RDONLY;
+		return -1;
+	}
+
+	if (likely(!(tdb->flags & TDB_CONVERT))) {
+		tdb_off_t *p = tdb->methods->direct(tdb, off, sizeof(*p));
+		if (p) {
+			*p = val;
+			return 0;
+		}
+	}
 	return tdb_write_convert(tdb, off, &val, sizeof(val));
 }
 
@@ -469,6 +493,11 @@ void *tdb_access_write(struct tdb_context *tdb,
 		       tdb_off_t off, tdb_len_t len, bool convert)
 {
 	void *ret = NULL;
+
+	if (tdb->read_only) {
+		tdb->ecode = TDB_ERR_RDONLY;
+		return NULL;
+	}
 
 	if (likely(!(tdb->flags & TDB_CONVERT)))
 		ret = tdb->methods->direct(tdb, off, len);
