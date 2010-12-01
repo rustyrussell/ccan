@@ -602,12 +602,11 @@ int tdb_close(struct tdb_context *tdb)
 	struct tdb_context **i;
 	int ret = 0;
 
-	/* FIXME:
+	tdb_trace(tdb, "tdb_close");
+
 	if (tdb->transaction) {
 		tdb_transaction_cancel(tdb);
 	}
-	*/
-	tdb_trace(tdb, "tdb_close");
 
 	if (tdb->map_ptr) {
 		if (tdb->flags & TDB_INTERNAL)
