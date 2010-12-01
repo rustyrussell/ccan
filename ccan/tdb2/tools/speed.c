@@ -65,6 +65,18 @@ static void dump_and_clear_stats(struct tdb_attribute_stats *stats)
 	       (unsigned long long)stats->alloc_coalesce_succeeded);
 	printf("       alloc_coalesce_num_merged = %llu\n",
 	       (unsigned long long)stats->alloc_coalesce_num_merged);
+	printf("compares = %llu\n",
+	       (unsigned long long)stats->compares);
+	printf("  compare_wrong_bucket = %llu\n",
+	       (unsigned long long)stats->compare_wrong_bucket);
+	printf("  compare_wrong_offsetbits = %llu\n",
+	       (unsigned long long)stats->compare_wrong_offsetbits);
+	printf("  compare_wrong_keylen = %llu\n",
+	       (unsigned long long)stats->compare_wrong_keylen);
+	printf("  compare_wrong_rechash = %llu\n",
+	       (unsigned long long)stats->compare_wrong_rechash);
+	printf("  compare_wrong_keycmp = %llu\n",
+	       (unsigned long long)stats->compare_wrong_keycmp);
 	printf("expands = %llu\n",
 	       (unsigned long long)stats->expands);
 	printf("frees = %llu\n",

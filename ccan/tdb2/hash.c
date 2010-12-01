@@ -85,32 +85,42 @@ static bool match(struct tdb_context *tdb,
 		  tdb_off_t val,
 		  struct tdb_used_record *rec)
 {
-	bool ret;
+	bool ret = false;
 	const unsigned char *rkey;
 	tdb_off_t off;
 
+	add_stat(tdb, compares, 1);
 	/* Desired bucket must match. */
-	if (h->home_bucket != (val & TDB_OFF_HASH_GROUP_MASK))
-		return false;
+	if (h->home_bucket != (val & TDB_OFF_HASH_GROUP_MASK)) {
+		add_stat(tdb, compare_wrong_bucket, 1);
+		return ret;
+	}
 
 	/* Top bits of offset == next bits of hash. */
 	if (bits(val, TDB_OFF_HASH_EXTRA_BIT, TDB_OFF_UPPER_STEAL_EXTRA)
 	    != bits(h->h, 64 - h->hash_used - TDB_OFF_UPPER_STEAL_EXTRA,
-		    TDB_OFF_UPPER_STEAL_EXTRA))
-		return false;
+		    TDB_OFF_UPPER_STEAL_EXTRA)) {
+		add_stat(tdb, compare_wrong_offsetbits, 1);
+		return ret;
+	}
 
 	off = val & TDB_OFF_MASK;
 	if (tdb_read_convert(tdb, off, rec, sizeof(*rec)) == -1)
-		return false;
+		return ret;
 
 	/* FIXME: check extra bits in header? */
-	if (rec_key_length(rec) != key->dsize)
-		return false;
+	if (rec_key_length(rec) != key->dsize) {
+		add_stat(tdb, compare_wrong_keylen, 1);
+		return ret;
+	}
 
 	rkey = tdb_access_read(tdb, off + sizeof(*rec), key->dsize, false);
 	if (!rkey)
-		return false;
-	ret = (memcmp(rkey, key->dptr, key->dsize) == 0);
+		return ret;
+	if (memcmp(rkey, key->dptr, key->dsize) == 0)
+		ret = true;
+	else
+		add_stat(tdb, compare_wrong_keycmp, 1);
 	tdb_access_release(tdb, rkey);
 	return ret;
 }

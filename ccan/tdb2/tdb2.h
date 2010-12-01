@@ -126,6 +126,12 @@ struct tdb_attribute_stats {
 	uint64_t     alloc_coalesce_race;
 	uint64_t     alloc_coalesce_succeeded;
 	uint64_t        alloc_coalesce_num_merged;
+	uint64_t compares;
+	uint64_t   compare_wrong_bucket;
+	uint64_t   compare_wrong_offsetbits;
+	uint64_t   compare_wrong_keylen;
+	uint64_t   compare_wrong_rechash;
+	uint64_t   compare_wrong_keycmp;
 	uint64_t expands;
 	uint64_t frees;
 	uint64_t locks;
