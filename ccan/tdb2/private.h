@@ -100,11 +100,11 @@ typedef uint64_t tdb_off_t;
 /* We steal this many upper bits, giving a maximum offset of 64 exabytes. */
 #define TDB_OFF_UPPER_STEAL 8
 #define   TDB_OFF_UPPER_STEAL_EXTRA 7
-#define   TDB_OFF_UPPER_STEAL_TRUNCBIT 1
-/* If this is set, hash is truncated (only 1 bit is valid). */
-#define TDB_OFF_HASH_TRUNCATED_BIT 56
-/* The bit number where we store next level of hash. */
+/* The bit number where we store extra hash bits. */
 #define TDB_OFF_HASH_EXTRA_BIT 57
+#define TDB_OFF_UPPER_STEAL_SUBHASH_BIT 56
+
+/* The bit number where we store the extra hash bits. */
 /* Convenience mask to get actual offset. */
 #define TDB_OFF_MASK \
 	(((1ULL << (64 - TDB_OFF_UPPER_STEAL)) - 1) - TDB_OFF_HASH_GROUP_MASK)

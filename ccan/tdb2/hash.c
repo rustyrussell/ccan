@@ -89,10 +89,6 @@ static bool match(struct tdb_context *tdb,
 	const unsigned char *rkey;
 	tdb_off_t off;
 
-	/* FIXME: Handle hash value truncated. */
-	if (bits(val, TDB_OFF_HASH_TRUNCATED_BIT, 1))
-		abort();
-
 	/* Desired bucket must match. */
 	if (h->home_bucket != (val & TDB_OFF_HASH_GROUP_MASK))
 		return false;
@@ -125,10 +121,9 @@ static tdb_off_t hbucket_off(tdb_off_t group_start, unsigned bucket)
 		+ (bucket % (1 << TDB_HASH_GROUP_BITS)) * sizeof(tdb_off_t);
 }
 
-/* Truncated hashes can't be all 1: that's how we spot a sub-hash */
 bool is_subhash(tdb_off_t val)
 {
-	return val >> (64-TDB_OFF_UPPER_STEAL) == (1<<TDB_OFF_UPPER_STEAL) - 1;
+	return (val >> TDB_OFF_UPPER_STEAL_SUBHASH_BIT) & 1;
 }
 
 /* FIXME: Guess the depth, don't over-lock! */
@@ -241,8 +236,8 @@ fail:
 /* I wrote a simple test, expanding a hash to 2GB, for the following
  * cases:
  * 1) Expanding all the buckets at once,
- * 2) Expanding the most-populated bucket,
- * 3) Expanding the bucket we wanted to place the new entry ito.
+ * 2) Expanding the bucket we wanted to place the new entry into.
+ * 3) Expanding the most-populated bucket,
  *
  * I measured the worst/average/best density during this process.
  * 1) 3%/16%/30%
@@ -331,7 +326,6 @@ static int add_to_subhash(struct tdb_context *tdb, tdb_off_t subhash,
 	if (hash_used + TDB_SUBLEVEL_HASH_BITS > 64)
 		abort();
 
-	/* FIXME: Do truncated hash bits if we can! */
 	h.h = hash_record(tdb, off);
 	gnum = use_bits(&h, TDB_SUBLEVEL_HASH_BITS-TDB_HASH_GROUP_BITS);
 	h.group_start = subhash	+ sizeof(struct tdb_used_record)
@@ -380,7 +374,7 @@ static int expand_group(struct tdb_context *tdb, struct hash_info *h)
 	/* assert(num_vals); */
 
 	/* Overwrite expanded bucket with subhash pointer. */
-	h->group[bucket] = subhash | ~((1ULL << (64 - TDB_OFF_UPPER_STEAL))-1);
+	h->group[bucket] = subhash | (1ULL << TDB_OFF_UPPER_STEAL_SUBHASH_BIT);
 
 	/* Put values back. */
 	for (i = 0; i < num_vals; i++) {
