@@ -381,7 +381,7 @@ static bool check_free_list(struct tdb_context *tdb,
 }
 
 /* Slow, but should be very rare. */
-static size_t dead_space(struct tdb_context *tdb, tdb_off_t off)
+size_t dead_space(struct tdb_context *tdb, tdb_off_t off)
 {
 	size_t len;
 

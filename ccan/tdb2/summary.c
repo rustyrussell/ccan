@@ -53,17 +53,22 @@ static bool summarize(struct tdb_context *tdb,
 		union {
 			struct tdb_used_record u;
 			struct tdb_free_record f;
+			struct tdb_recovery_record r;
 		} pad, *p;
-		p = tdb_get(tdb, off, &pad, sizeof(pad));
+		/* We might not be able to get the whole thing. */
+		p = tdb_get(tdb, off, &pad, sizeof(p->f));
 		if (!p)
 			return false;
-		if (rec_magic(&p->u) != TDB_MAGIC) {
+		if (p->r.magic == TDB_RECOVERY_INVALID_MAGIC
+		    || p->r.magic == TDB_RECOVERY_MAGIC) {
+			len = sizeof(p->r) + p->r.max_len;
+		} else if (rec_magic(&p->u) != TDB_MAGIC) {
 			len = p->f.data_len;
 			tally_add(free, len);
 			tally_add(buckets, size_to_bucket(len));
 			len += sizeof(p->u);
 			unc++;
-		} else {
+		} else if (frec_magic(&p->f) == TDB_FREE_MAGIC) {
 			if (unc) {
 				tally_add(uncoal, unc);
 				unc = 0;
@@ -91,7 +96,8 @@ static bool summarize(struct tdb_context *tdb,
 				tally_add(data, rec_data_length(&p->u));
 			}
 			tally_add(extra, rec_extra_padding(&p->u));
-		}
+		} else
+			len = dead_space(tdb, off);
 	}
 	if (unc)
 		tally_add(uncoal, unc);

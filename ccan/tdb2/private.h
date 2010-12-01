@@ -391,6 +391,9 @@ int set_header(struct tdb_context *tdb,
 unsigned int size_to_bucket(tdb_len_t data_len);
 tdb_off_t bucket_off(tdb_off_t flist_off, unsigned bucket);
 
+/* Used by tdb_summary */
+size_t dead_space(struct tdb_context *tdb, tdb_off_t off);
+
 /* io.c: */
 /* Initialize tdb->methods. */
 void tdb_io_init(struct tdb_context *tdb);
