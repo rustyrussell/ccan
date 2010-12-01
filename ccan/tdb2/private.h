@@ -331,6 +331,8 @@ struct tdb_context {
 	uint64_t num_lockrecs;
 	struct tdb_lock_type *lockrecs;
 
+	struct tdb_attribute_stats *stats;
+
 	/* Single list of all TDBs, to avoid multiple opens. */
 	struct tdb_context *next;
 	dev_t device;	
@@ -466,6 +468,13 @@ int tdb_write_convert(struct tdb_context *tdb, tdb_off_t off,
 int tdb_read_convert(struct tdb_context *tdb, tdb_off_t off,
 		     void *rec, size_t len);
 
+/* Adds a stat, if it's in range. */
+void add_stat_(struct tdb_context *tdb, uint64_t *stat, size_t val);
+#define add_stat(tdb, statname, val)					\
+	do {								\
+		if (unlikely((tdb)->stats))				\
+			add_stat_((tdb), &(tdb)->stats->statname, (val)); \
+	} while (0)
 
 /* lock.c: */
 void tdb_lock_init(struct tdb_context *tdb);

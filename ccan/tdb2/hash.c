@@ -358,6 +358,7 @@ static int expand_group(struct tdb_context *tdb, struct hash_info *h)
 	if (subhash == TDB_OFF_ERR)
 		return -1;
 
+	add_stat(tdb, alloc_subhash, 1);
 	if (zero_out(tdb, subhash + sizeof(struct tdb_used_record),
 		     sizeof(tdb_off_t) << TDB_SUBLEVEL_HASH_BITS) == -1)
 		return -1;

@@ -43,6 +43,43 @@ static int count_record(struct tdb_context *tdb,
 	return 0;
 }
 
+static void dump_and_clear_stats(struct tdb_attribute_stats *stats)
+{
+	printf("allocs = %llu\n",
+	       (unsigned long long)stats->allocs);
+	printf("  alloc_subhash = %llu\n",
+	       (unsigned long long)stats->alloc_subhash);
+	printf("  alloc_bucket_exact = %llu\n",
+	       (unsigned long long)stats->alloc_bucket_exact);
+	printf("  alloc_bucket_max = %llu\n",
+	       (unsigned long long)stats->alloc_bucket_max);
+	printf("  alloc_leftover = %llu\n",
+	       (unsigned long long)stats->alloc_leftover);
+	printf("  alloc_coalesce_tried = %llu\n",
+	       (unsigned long long)stats->alloc_coalesce_tried);
+	printf("    alloc_coalesce_lockfail = %llu\n",
+	       (unsigned long long)stats->alloc_coalesce_lockfail);
+	printf("    alloc_coalesce_race = %llu\n",
+	       (unsigned long long)stats->alloc_coalesce_race);
+	printf("    alloc_coalesce_succeeded = %llu\n",
+	       (unsigned long long)stats->alloc_coalesce_succeeded);
+	printf("       alloc_coalesce_num_merged = %llu\n",
+	       (unsigned long long)stats->alloc_coalesce_num_merged);
+	printf("expands = %llu\n",
+	       (unsigned long long)stats->expands);
+	printf("frees = %llu\n",
+	       (unsigned long long)stats->frees);
+	printf("locks = %llu\n",
+	       (unsigned long long)stats->locks);
+	printf("   lock_lowlevel = %llu\n",
+	       (unsigned long long)stats->lock_lowlevel);
+	printf("   lock_nonblock = %llu\n",
+	       (unsigned long long)stats->lock_nonblock);
+
+	/* Now clear. */
+	memset(&stats->allocs, 0, (char *)(stats+1) - (char *)&stats->allocs);
+}
+
 int main(int argc, char *argv[])
 {
 	unsigned int i, j, num = 1000, stage = 0, stopat = -1;
@@ -51,12 +88,17 @@ int main(int argc, char *argv[])
 	TDB_DATA key, data;
 	struct tdb_context *tdb;
 	struct timeval start, stop;
-	union tdb_attribute seed;
+	union tdb_attribute seed, stats;
 
 	/* Try to keep benchmarks even. */
 	seed.base.attr = TDB_ATTRIBUTE_SEED;
 	seed.base.next = NULL;
 	seed.seed.seed = 0;
+
+	memset(&stats, 0, sizeof(stats));
+	stats.base.attr = TDB_ATTRIBUTE_STATS;
+	stats.base.next = NULL;
+	stats.stats.size = sizeof(stats);
 
 	if (argv[1] && strcmp(argv[1], "--internal") == 0) {
 		flags = TDB_INTERNAL;
@@ -65,6 +107,11 @@ int main(int argc, char *argv[])
 	}
 	if (argv[1] && strcmp(argv[1], "--transaction") == 0) {
 		transaction = true;
+		argc--;
+		argv++;
+	}
+	if (argv[1] && strcmp(argv[1], "--stats") == 0) {
+		seed.base.next = &stats;
 		argc--;
 		argv++;
 	}
@@ -105,6 +152,9 @@ int main(int argc, char *argv[])
 		errx(1, "committing transaction: %s", tdb_errorstr(tdb));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
+
+	if (seed.base.next)
+		dump_and_clear_stats(&stats.stats);
 	if (++stage == stopat)
 		exit(0);
 
@@ -126,6 +176,8 @@ int main(int argc, char *argv[])
 		errx(1, "committing transaction: %s", tdb_errorstr(tdb));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
+	if (seed.base.next)
+		dump_and_clear_stats(&stats.stats);
 	if (++stage == stopat)
 		exit(0);
 
@@ -146,6 +198,8 @@ int main(int argc, char *argv[])
 		errx(1, "committing transaction: %s", tdb_errorstr(tdb));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
+	if (seed.base.next)
+		dump_and_clear_stats(&stats.stats);
 	if (++stage == stopat)
 		exit(0);
 
@@ -165,6 +219,8 @@ int main(int argc, char *argv[])
 		errx(1, "committing transaction: %s", tdb_errorstr(tdb));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
+	if (seed.base.next)
+		dump_and_clear_stats(&stats.stats);
 	if (++stage == stopat)
 		exit(0);
 
@@ -185,6 +241,8 @@ int main(int argc, char *argv[])
 		errx(1, "committing transaction: %s", tdb_errorstr(tdb));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
+	if (seed.base.next)
+		dump_and_clear_stats(&stats.stats);
 	if (++stage == stopat)
 		exit(0);
 
@@ -205,6 +263,8 @@ int main(int argc, char *argv[])
 		errx(1, "committing transaction: %s", tdb_errorstr(tdb));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
+	if (seed.base.next)
+		dump_and_clear_stats(&stats.stats);
 	if (++stage == stopat)
 		exit(0);
 
@@ -247,6 +307,11 @@ int main(int argc, char *argv[])
 		errx(1, "committing transaction: %s", tdb_errorstr(tdb));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
+
+	if (seed.base.next)
+		dump_and_clear_stats(&stats.stats);
+	if (++stage == stopat)
+		exit(0);
 
 	return 0;
 }

@@ -40,10 +40,13 @@ static int fcntl_lock(struct tdb_context *tdb,
 	fl.l_len = len;
 	fl.l_pid = 0;
 
+	add_stat(tdb, lock_lowlevel, 1);
 	if (waitflag)
 		return fcntl(tdb->fd, F_SETLKW, &fl);
-	else
+	else {
+		add_stat(tdb, lock_nonblock, 1);
 		return fcntl(tdb->fd, F_SETLK, &fl);
+	}
 }
 
 static int fcntl_unlock(struct tdb_context *tdb, int rw, off_t off, off_t len)
@@ -286,6 +289,8 @@ static int tdb_nest_lock(struct tdb_context *tdb, tdb_off_t offset, int ltype,
 	if (tdb->flags & TDB_NOLOCK)
 		return 0;
 
+	add_stat(tdb, locks, 1);
+
 	new_lck = find_nestlock(tdb, offset);
 	if (new_lck) {
 		if (new_lck->ltype == F_RDLCK && ltype == F_WRLCK) {
@@ -486,6 +491,7 @@ int tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
 		return -1;
 	}
 
+	add_stat(tdb, locks, 1);
 again:
 	/* Lock hashes, gradually. */
 	if (tdb_lock_gradual(tdb, ltype, flags, TDB_HASH_LOCK_START,

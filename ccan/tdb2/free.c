@@ -262,6 +262,7 @@ static int coalesce(struct tdb_context *tdb,
 	struct tdb_free_record pad, *r;
 	tdb_off_t end;
 
+	add_stat(tdb, alloc_coalesce_tried, 1);
 	end = off + sizeof(struct tdb_used_record) + data_len;
 
 	while (end < tdb->map_size) {
@@ -281,8 +282,10 @@ static int coalesce(struct tdb_context *tdb,
 		nb_off = bucket_off(flist_offset(tdb, flist), bucket);
 
 		/* We may be violating lock order here, so best effort. */
-		if (tdb_lock_free_bucket(tdb, nb_off, TDB_LOCK_NOWAIT) == -1)
+		if (tdb_lock_free_bucket(tdb, nb_off, TDB_LOCK_NOWAIT) == -1) {
+			add_stat(tdb, alloc_coalesce_lockfail, 1);
 			break;
+		}
 
 		/* Now we have lock, re-check. */
 		r = tdb_get(tdb, end, &pad, sizeof(pad));
@@ -292,12 +295,14 @@ static int coalesce(struct tdb_context *tdb,
 		}
 
 		if (unlikely(frec_magic(r) != TDB_FREE_MAGIC)) {
+			add_stat(tdb, alloc_coalesce_race, 1);
 			tdb_unlock_free_bucket(tdb, nb_off);
 			break;
 		}
 
 		if (unlikely(frec_flist(r) != flist)
 		    || unlikely(size_to_bucket(frec_len(r)) != bucket)) {
+			add_stat(tdb, alloc_coalesce_race, 1);
 			tdb_unlock_free_bucket(tdb, nb_off);
 			break;
 		}
@@ -309,6 +314,7 @@ static int coalesce(struct tdb_context *tdb,
 
 		end += sizeof(struct tdb_used_record) + frec_len(r);
 		tdb_unlock_free_bucket(tdb, nb_off);
+		add_stat(tdb, alloc_coalesce_num_merged, 1);
 	}
 
 	/* Didn't find any adjacent free? */
@@ -343,6 +349,7 @@ static int coalesce(struct tdb_context *tdb,
 	if (tdb_access_commit(tdb, r) != 0)
 		goto err;
 
+	add_stat(tdb, alloc_coalesce_succeeded, 1);
 	tdb_unlock_free_bucket(tdb, b_off);
 
 	if (add_free_record(tdb, off, end - off) == -1)
@@ -368,6 +375,7 @@ static tdb_off_t lock_and_alloc(struct tdb_context *tdb,
 	double multiplier;
 	size_t size = adjust_size(keylen, datalen);
 
+	add_stat(tdb, allocs, 1);
 again:
 	b_off = bucket_off(flist_off, bucket);
 
@@ -453,6 +461,7 @@ again:
 		/* Bucket of leftover will be <= current bucket, so nested
 		 * locking is allowed. */
 		if (leftover) {
+			add_stat(tdb, alloc_leftover, 1);
 			if (add_free_record(tdb,
 					    best_off + sizeof(rec)
 					    + frec_len(&best) - leftover,
@@ -502,6 +511,10 @@ static tdb_off_t get_free(struct tdb_context *tdb,
 			if (off == TDB_OFF_ERR)
 				return TDB_OFF_ERR;
 			if (off != 0) {
+				if (b == start_b)
+					add_stat(tdb, alloc_bucket_exact, 1);
+				if (b == TDB_FREE_BUCKETS - 1)
+					add_stat(tdb, alloc_bucket_max, 1);
 				/* Worked?  Stay using this list. */
 				tdb->flist_off = flist_off;
 				tdb->flist = flist;
@@ -513,6 +526,7 @@ static tdb_off_t get_free(struct tdb_context *tdb,
 		/* Hmm, try next list. */
 		flist_off = next_flist(tdb, flist_off);
 		flist++;
+
 		if (flist_off == 0) {
 			wrapped = true;
 			flist_off = first_flist(tdb);
@@ -596,6 +610,7 @@ static int tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 	/* We need to drop this lock before adding free record. */
 	tdb_unlock_expand(tdb, F_WRLCK);
 
+	add_stat(tdb, expands, 1);
 	return add_free_record(tdb, old_size, wanted);
 }
 

@@ -443,7 +443,7 @@ static int tdb_expand_file(struct tdb_context *tdb, tdb_len_t addition)
 		   file isn't sparse, which would be very bad if we ran out of
 		   disk. This must be done with write, not via mmap */
 		memset(buf, 0x43, sizeof(buf));
-		if (fill(tdb, buf, sizeof(buf), tdb->map_size, addition) == -1)
+		if (0 || fill(tdb, buf, sizeof(buf), tdb->map_size, addition) == -1)
 			return -1;
 		tdb->map_size += addition;
 		tdb_mmap(tdb);
@@ -544,6 +544,12 @@ static void *tdb_direct(struct tdb_context *tdb, tdb_off_t off, size_t len)
 	if (unlikely(tdb_oob(tdb, off + len, true) == -1))
 		return NULL;
 	return (char *)tdb->map_ptr + off;
+}
+
+void add_stat_(struct tdb_context *tdb, uint64_t *stat, size_t val)
+{
+	if ((uintptr_t)stat < (uintptr_t)tdb->stats + tdb->stats->size)
+		*stat += val;
 }
 
 static const struct tdb_methods io_methods = {

@@ -177,6 +177,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb->log = null_log_fn;
 	tdb->log_priv = NULL;
 	tdb->transaction = NULL;
+	tdb->stats = NULL;
 	tdb_hash_init(tdb);
 	tdb_io_init(tdb);
 	tdb_lock_init(tdb);
@@ -193,6 +194,12 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 			break;
 		case TDB_ATTRIBUTE_SEED:
 			seed = &attr->seed;
+			break;
+		case TDB_ATTRIBUTE_STATS:
+			tdb->stats = &attr->stats;
+			/* They have stats we don't know about?  Tell them. */
+			if (tdb->stats->size > sizeof(attr->stats))
+				tdb->stats->size = sizeof(attr->stats);
 			break;
 		default:
 			tdb->log(tdb, TDB_DEBUG_ERROR, tdb->log_priv,
@@ -386,6 +393,7 @@ static int replace_data(struct tdb_context *tdb,
 
 	/* We didn't like the existing one: remove it. */
 	if (old_off) {
+		add_stat(tdb, frees, 1);
 		add_free_record(tdb, old_off,
 				sizeof(struct tdb_used_record)
 				+ key.dsize + old_room);
@@ -582,6 +590,7 @@ int tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 		goto unlock_err;
 
 	/* Free the deleted entry. */
+	add_stat(tdb, frees, 1);
 	if (add_free_record(tdb, off,
 			    sizeof(struct tdb_used_record)
 			    + rec_key_length(&rec)

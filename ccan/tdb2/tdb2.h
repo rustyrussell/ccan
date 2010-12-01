@@ -87,7 +87,8 @@ typedef uint64_t (*tdb_hashfn_t)(const void *key, size_t len, uint64_t seed,
 enum tdb_attribute_type {
 	TDB_ATTRIBUTE_LOG = 0,
 	TDB_ATTRIBUTE_HASH = 1,
-	TDB_ATTRIBUTE_SEED = 2
+	TDB_ATTRIBUTE_SEED = 2,
+	TDB_ATTRIBUTE_STATS = 3
 };
 
 struct tdb_attribute_base {
@@ -112,11 +113,32 @@ struct tdb_attribute_seed {
 	uint64_t seed;
 };
 
+struct tdb_attribute_stats {
+	struct tdb_attribute_base base; /* .attr = TDB_ATTRIBUTE_STATS */
+	size_t size; /* = sizeof(struct tdb_attribute_stats) */
+	uint64_t allocs;
+	uint64_t   alloc_subhash;
+	uint64_t   alloc_bucket_exact;
+	uint64_t   alloc_bucket_max;
+	uint64_t   alloc_leftover;
+	uint64_t   alloc_coalesce_tried;
+	uint64_t     alloc_coalesce_lockfail;
+	uint64_t     alloc_coalesce_race;
+	uint64_t     alloc_coalesce_succeeded;
+	uint64_t        alloc_coalesce_num_merged;
+	uint64_t expands;
+	uint64_t frees;
+	uint64_t locks;
+	uint64_t    lock_lowlevel;
+	uint64_t    lock_nonblock;
+};
+
 union tdb_attribute {
 	struct tdb_attribute_base base;
 	struct tdb_attribute_log log;
 	struct tdb_attribute_hash hash;
 	struct tdb_attribute_seed seed;
+	struct tdb_attribute_stats stats;
 };
 		
 struct tdb_context *tdb_open(const char *name, int tdb_flags,
