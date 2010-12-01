@@ -363,7 +363,7 @@ static int transaction_expand_file(struct tdb_context *tdb, tdb_off_t addition)
 }
 
 static void *transaction_direct(struct tdb_context *tdb, tdb_off_t off,
-				size_t len)
+				size_t len, bool write)
 {
 	/* FIXME */
 	return NULL;

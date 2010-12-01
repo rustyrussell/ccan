@@ -173,7 +173,7 @@ uint64_t tdb_find_zero_off(struct tdb_context *tdb, tdb_off_t off,
 int zero_out(struct tdb_context *tdb, tdb_off_t off, tdb_len_t len)
 {
 	char buf[8192] = { 0 };
-	void *p = tdb->methods->direct(tdb, off, len);
+	void *p = tdb->methods->direct(tdb, off, len, true);
 
 	assert(!tdb->read_only);
 	if (p) {
@@ -195,7 +195,8 @@ tdb_off_t tdb_read_off(struct tdb_context *tdb, tdb_off_t off)
 	tdb_off_t ret;
 
 	if (likely(!(tdb->flags & TDB_CONVERT))) {
-		tdb_off_t *p = tdb->methods->direct(tdb, off, sizeof(*p));
+		tdb_off_t *p = tdb->methods->direct(tdb, off, sizeof(*p),
+						    false);
 		if (p)
 			return *p;
 	}
@@ -356,7 +357,8 @@ int tdb_write_off(struct tdb_context *tdb, tdb_off_t off, tdb_off_t val)
 	}
 
 	if (likely(!(tdb->flags & TDB_CONVERT))) {
-		tdb_off_t *p = tdb->methods->direct(tdb, off, sizeof(*p));
+		tdb_off_t *p = tdb->methods->direct(tdb, off, sizeof(*p),
+						    true);
 		if (p) {
 			*p = val;
 			return 0;
@@ -463,7 +465,7 @@ const void *tdb_access_read(struct tdb_context *tdb,
 	const void *ret = NULL;	
 
 	if (likely(!(tdb->flags & TDB_CONVERT)))
-		ret = tdb->methods->direct(tdb, off, len);
+		ret = tdb->methods->direct(tdb, off, len, false);
 
 	if (!ret) {
 		struct tdb_access_hdr *hdr;
@@ -491,7 +493,7 @@ void *tdb_access_write(struct tdb_context *tdb,
 	}
 
 	if (likely(!(tdb->flags & TDB_CONVERT)))
-		ret = tdb->methods->direct(tdb, off, len);
+		ret = tdb->methods->direct(tdb, off, len, true);
 
 	if (!ret) {
 		struct tdb_access_hdr *hdr;
@@ -546,7 +548,8 @@ int tdb_access_commit(struct tdb_context *tdb, void *p)
 	return ret;
 }
 
-static void *tdb_direct(struct tdb_context *tdb, tdb_off_t off, size_t len)
+static void *tdb_direct(struct tdb_context *tdb, tdb_off_t off, size_t len,
+			bool write)
 {
 	if (unlikely(!tdb->map_ptr))
 		return NULL;

@@ -355,7 +355,7 @@ struct tdb_methods {
 	int (*write)(struct tdb_context *, tdb_off_t, const void *, tdb_len_t);
 	int (*oob)(struct tdb_context *, tdb_off_t, bool);
 	int (*expand_file)(struct tdb_context *, tdb_len_t);
-	void *(*direct)(struct tdb_context *, tdb_off_t, size_t);
+	void *(*direct)(struct tdb_context *, tdb_off_t, size_t, bool);
 };
 
 /*
