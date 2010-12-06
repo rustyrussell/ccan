@@ -291,6 +291,19 @@ static char **combine(const void *ctx, char **lines, char **prev)
 	return ret;
 }
 
+/* Only handles very simple comments. */
+static char *strip_comment(const void *ctx, const char *orig_line)
+{
+	char *p, *ret = talloc_strdup(ctx, orig_line);
+
+	p = strstr(ret, "/*");
+	if (!p)
+		p = strstr(ret, "//");
+	if (p)
+		*p = '\0';
+	return ret;
+}
+
 static char *mangle(struct manifest *m, char **lines)
 {
 	char *ret, *use_funcs = NULL, *why;
@@ -334,28 +347,30 @@ static char *mangle(struct manifest *m, char **lines)
 
 	/* Primitive, very primitive. */
 	for (i = 0; lines[i]; i++) {
+		char *line = strip_comment(ret, lines[i]);
+
 		/* } at start of line ends a function. */
 		if (in_function) {
-			if (lines[i][0] == '}')
+			if (line[0] == '}')
 				in_function = false;
 		} else {
 			/* Character at start of line, with ( and no ;
 			 * == function start.  Ignore comments. */
-			if (!isspace(lines[i][0])
-			    && strchr(lines[i], '(')
-			    && !strchr(lines[i], ';')
-			    && !strstr(lines[i], "//")) {
+			if (!isspace(line[0])
+			    && strchr(line, '(')
+			    && !strchr(line, ';')
+			    && !strstr(line, "//")) {
 				in_function = true;
-				if (strncmp(lines[i], "int main", 8) == 0)
+				if (strncmp(line, "int main", 8) == 0)
 					has_main = true;
-				if (strncmp(lines[i], "static", 6) == 0) {
+				if (strncmp(line, "static", 6) == 0) {
 					use_funcs = add_func(use_funcs,
-							     lines[i]);
+							     line);
 				}
 			}
 		}
 		/* ... means elided code. */
-		if (strcmp(lines[i], "...") == 0) {
+		if (strcmp(line, "...") == 0) {
 			if (!in_function && !has_main
 			    && looks_internal(lines + i + 1, &why)) {
 				/* This implies we start a function here. */
