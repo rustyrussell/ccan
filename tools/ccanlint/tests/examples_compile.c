@@ -529,7 +529,14 @@ static void build_examples(struct manifest *m, bool keep,
 				warnings = true;
 				score->error = "Compiling extracted example"
 					" gave warnings";
-				score_file_error(score, file[j], 0, err[j]);
+				error = talloc_asprintf(score,
+					"Example:\n"
+					"%s\n"
+					"Compiler:\n"
+					"%s",
+					get_ccan_file_contents(file[j]),
+					err[j]);
+				score_file_error(score, file[j], 0, error);
 				goto next;
 			}
 		}
