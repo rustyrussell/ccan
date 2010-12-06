@@ -236,7 +236,7 @@ build_up:
 static int sub_remove(struct idtree *idp, int shift, int id)
 {
 	struct idtree_layer *p = idp->top;
-	struct idtree_layer **pa[MAX_LEVEL];
+	struct idtree_layer **pa[1+MAX_LEVEL];
 	struct idtree_layer ***paa = &pa[0];
 	int n;
 
@@ -276,7 +276,8 @@ void *idtree_lookup(const struct idtree *idp, int id)
 	 * This tests to see if bits outside the current tree are
 	 * present.  If so, tain't one of ours!
 	 */
-	if ((id & ~(~0 << MAX_ID_SHIFT)) >> (n + IDTREE_BITS))
+	if (n + IDTREE_BITS < 31 &&
+	    (id & ~(~0 << MAX_ID_SHIFT)) >> (n + IDTREE_BITS))
 	     return NULL;
 
 	/* Mask off upper bits we don't use for the search. */
