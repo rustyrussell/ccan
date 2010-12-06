@@ -80,4 +80,4 @@ struct ccanlint build = {
 	.can_run = can_build,
 };
 
-REGISTER_TEST(build, &depends_built, NULL);
+REGISTER_TEST(build, &depends_built, &build_objs, NULL);

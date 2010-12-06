@@ -71,13 +71,12 @@ static char *add_dep(const struct manifest *m, char *list, const char *mod)
 static char *obj_list(const struct manifest *m, struct ccan_file *f)
 {
 	char *list = talloc_strdup(m, "");
-	struct ccan_file *i;
 	struct manifest *subm;
 	char **lines;
 
-	/* Object files for this module. */
-	list_for_each(&m->c_files, i, list)
-		list = talloc_asprintf_append(list, " %s", i->compiled);
+	/* This module. */
+	if (m->compiled)
+		list = talloc_asprintf_append(list, " %s", m->compiled);
 
 	/* Other ccan modules we depend on. */
 	list_for_each(&m->deps, subm, list) {
@@ -600,4 +599,4 @@ struct ccanlint examples_compile = {
 	.can_run = can_run,
 };
 
-REGISTER_TEST(examples_compile, &has_examples, &build_objs, NULL);
+REGISTER_TEST(examples_compile, &has_examples, &build, NULL);
