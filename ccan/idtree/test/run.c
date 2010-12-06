@@ -2,7 +2,7 @@
 #include <ccan/tap/tap.h>
 #include <limits.h>
 
-#define ALLOC_MAX 32
+#define ALLOC_MAX (2 * IDTREE_SIZE)
 
 int main(int argc, char *argv[])
 {
