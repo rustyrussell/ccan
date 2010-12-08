@@ -26,7 +26,7 @@ static const char *can_run(struct manifest *m)
 
 /* Very dumb scanner, allocates %s-strings. */
 static bool scan_forv(const void *ctx,
-		      const char *input, const char *fmt, const va_list *args)
+		      const char *input, const char *fmt, va_list *args)
 {
 	va_list ap;
 	bool ret;
