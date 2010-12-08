@@ -442,7 +442,7 @@ trbt_delete_case1(trbt_node_t *node)
 }
 
 static void
-delete_node(trbt_node_t *node, int from_destructor)
+delete_node(trbt_node_t *node)
 {
 	trbt_node_t *parent, *child, dc;
 	trbt_node_t *temp = NULL;
@@ -477,7 +477,7 @@ delete_node(trbt_node_t *node, int from_destructor)
 		/* then delete the temp node.
 		   this node is guaranteed to have at least one leaf
 		   child */
-		delete_node(temp, from_destructor);
+		delete_node(temp);
 		goto finished;
 	}
 
@@ -550,15 +550,11 @@ delete_node(trbt_node_t *node, int from_destructor)
 	}
 
 finished:
-	if (!from_destructor) {
-		talloc_free(node);
-	}
-
 	/* if we came from a destructor and temp!=NULL  this means we
 	   did the node-swap but now the tree still contains the old
 	   node  which was freed in the destructor. Not good.
 	*/
-	if (from_destructor && temp) {
+	if (temp) {
 		temp->key32    = node->key32;
 		temp->rb_color = node->rb_color;
 
@@ -601,7 +597,7 @@ finished:
  */
 static int node_destructor(trbt_node_t *node)
 {
-	delete_node(node, 1);
+	delete_node(node);
 
 	return 0;
 }
@@ -744,7 +740,7 @@ trbt_delete32(trbt_tree_t *tree, uint32_t key)
 
 	while(node){
 		if(key==node->key32){
-			delete_node(node, 0);
+			talloc_free(node);
 			return;
 		}
 		if(key<node->key32){
