@@ -267,9 +267,10 @@ static bool run_test(const char *cmd, struct test *test)
 		if (system("cat " INPUT_FILE) == -1);
 
 	output = run(cmd, &status);
-	if (status != 0) {
+	if (status != 0 || strstr(output, "warning")) {
 		if (verbose)
-			printf("Compile fail for %s, status %i: %s\n",
+			printf("Compile %s for %s, status %i: %s\n",
+			       status ? "fail" : "warning",
 			       test->name, status, output);
 		if (test->style == EXECUTE)
 			errx(1, "Test for %s did not compile:\n%s",
