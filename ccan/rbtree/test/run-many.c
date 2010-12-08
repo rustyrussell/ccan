@@ -55,7 +55,6 @@ int main(void)
 {
 	trbt_tree_t *rb;
 	void *ctx = talloc_init("toplevel");
-	unsigned int i;
 
 	plan_tests(7);
 
