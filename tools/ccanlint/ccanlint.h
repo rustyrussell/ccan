@@ -168,6 +168,9 @@ struct ccan_file {
 
 	/* Compiled with coverage information. */
 	char *cov_compiled;
+
+	/* Leak output from valgrind. */
+	char *leak_info;
 };
 
 /* A new ccan_file, with the given name (talloc_steal onto returned value). */
