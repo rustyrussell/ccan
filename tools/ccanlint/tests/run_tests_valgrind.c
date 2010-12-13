@@ -171,7 +171,9 @@ static void run_under_debugger_vg(struct manifest *m, struct score *score)
 		return;
 
 	first = list_top(&score->per_file_errors, struct file_error, list);
-	command = talloc_asprintf(m, "valgrind --db-attach=yes %s",
+	command = talloc_asprintf(m, "valgrind --db-attach=yes%s %s",
+				  run_tests_vg.options ?
+				  run_tests_vg.options : "",
 				  first->file->compiled);
 	if (system(command))
 		doesnt_matter();
