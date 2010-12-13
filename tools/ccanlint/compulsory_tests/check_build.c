@@ -90,4 +90,4 @@ struct ccanlint check_build = {
 	.can_run = can_build,
 };
 
-REGISTER_TEST(check_build, &build, NULL);
+REGISTER_TEST(check_build, &build, &depends_built, NULL);
