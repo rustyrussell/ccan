@@ -497,7 +497,7 @@ int main(int argc, char *argv[])
 
 		test = find_test(target);
 		if (!test)
-			err(1, "Unknown test to run '%s'", target);
+			errx(1, "Unknown test to run '%s'", target);
 		skip_unrelated_tests(test);
 	}
 
