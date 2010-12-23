@@ -102,6 +102,9 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 			tally_add(data, rec.data_len);
 			tally_add(extra, rec.rec_len - (rec.key_len
 							+ rec.data_len));
+			if (unc > 1)
+				tally_add(uncoal, unc - 1);
+			unc = 0;
 			break;
 		case TDB_FREE_MAGIC:
 			tally_add(freet, rec.rec_len);
@@ -122,15 +125,9 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 				 rec.magic, off));
 			goto unlock;
 		}
-
-		if (unc &&
-		    (rec.magic == TDB_MAGIC || rec.magic == TDB_DEAD_MAGIC)) {
-			tally_add(uncoal, unc);
-			unc = 0;
-		}
 	}
-	if (unc)
-		tally_add(uncoal, unc);
+	if (unc > 1)
+		tally_add(uncoal, unc - 1);
 
 	for (off = 0; off < tdb->header.hash_size; off++)
 		tally_add(hash, get_hash_length(tdb, off));
