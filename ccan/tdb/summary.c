@@ -37,21 +37,6 @@
 #define HISTO_WIDTH 70
 #define HISTO_HEIGHT 20
 
-/* Slow, but should be very rare. */
-static size_t dead_space(struct tdb_context *tdb, tdb_off_t off)
-{
-	size_t len;
-
-	for (len = 0; off + len < tdb->map_size; len++) {
-		char c;
-		if (tdb->methods->tdb_read(tdb, off, &c, 1, 0))
-			return 0;
-		if (c != 0 && c != 0x42)
-			break;
-	}
-	return len;
-}
-
 static size_t get_hash_length(struct tdb_context *tdb, unsigned int i)
 {
 	tdb_off_t rec_ptr;
@@ -126,7 +111,7 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 		case TDB_RECOVERY_INVALID_MAGIC:
 		case 0x42424242:
 			unc++;
-			rec.rec_len = dead_space(tdb, off) - sizeof(rec);
+			rec.rec_len = tdb_dead_space(tdb, off) - sizeof(rec);
 			/* Fall through */
 		case TDB_DEAD_MAGIC:
 			tally_add(dead, rec.rec_len);

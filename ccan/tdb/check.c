@@ -309,7 +309,7 @@ static bool tdb_check_free_record(struct tdb_context *tdb,
 }
 
 /* Slow, but should be very rare. */
-static size_t dead_space(struct tdb_context *tdb, tdb_off_t off)
+size_t tdb_dead_space(struct tdb_context *tdb, tdb_off_t off)
 {
 	size_t len;
 
@@ -407,7 +407,7 @@ int tdb_check(struct tdb_context *tdb,
 				found_recovery = true;
 				break;
 			}
-			dead = dead_space(tdb, off);
+			dead = tdb_dead_space(tdb, off);
 			if (dead < sizeof(rec))
 				goto corrupt;
 
