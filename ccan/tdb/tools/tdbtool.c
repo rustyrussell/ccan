@@ -412,7 +412,7 @@ static int traverse_fn(TDB_CONTEXT *the_tdb, TDB_DATA key, TDB_DATA dbuf, void *
 
 static void info_tdb(void)
 {
-	char *summary = tdb_summary(tdb, TDB_SUMMARY_HISTOGRAMS);
+	char *summary = tdb_summary(tdb);
 
 	if (!summary) {
 		printf("Error = %s\n", tdb_errorstr(tdb));
