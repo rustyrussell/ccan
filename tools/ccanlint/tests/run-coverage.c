@@ -32,12 +32,16 @@ static bool find_source_file(const struct manifest *m, const char *filename)
 	return false;
 }
 
-/* 1 point for 50%, 2 points for 75%, 3 points for 87.5%... */
+/* 1 point for 50%, 2 points for 75%, 3 points for 87.5%...  Bonus for 100%. */
 static unsigned int score_coverage(float covered, unsigned total)
 {
 	float thresh, uncovered = 1.0 - covered;
 	unsigned int i;
 
+	if (covered == 1.0)
+		return total;
+
+	total--;
 	for (i = 0, thresh = 0.5; i < total; i++, thresh /= 2) {
 		if (uncovered > thresh)
 			break;
@@ -112,7 +116,7 @@ static void analyze_coverage(struct manifest *m, bool full_gcov,
 	if (total_lines == 0)
 		score->total = score->score = 0;
 	else {
-		score->total = 5;
+		score->total = 6;
 		score->score = score_coverage(covered_lines / total_lines,
 					      score->total);
 	}
