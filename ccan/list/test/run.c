@@ -20,11 +20,14 @@ int main(int argc, char *argv[])
 	struct parent parent;
 	struct child c1, c2, c3, *c, *n;
 	unsigned int i;
+	struct list_head list = LIST_HEAD_INIT(list);
 
-	plan_tests(47);
-	/* Test LIST_HEAD, list_empty and check_list */
+	plan_tests(49);
+	/* Test LIST_HEAD, LIST_HEAD_INIT, list_empty and check_list */
 	ok1(list_empty(&static_list));
 	ok1(list_check(&static_list, NULL));
+	ok1(list_empty(&list));
+	ok1(list_check(&list, NULL));
 
 	parent.num_children = 0;
 	list_head_init(&parent.children);
