@@ -1,0 +1,73 @@
+#include <stdio.h>
+#include <string.h>
+#include "config.h"
+
+/**
+ * tlist - typesafe double linked list routines
+ *
+ * The list header contains routines for manipulating double linked lists;
+ * this extends it so you can create list head types which only accomodate
+ * a specific entry type.
+ *
+ * You use TLIST_TYPE() to define the specific struct tlist_<name>, then use
+ * the tlist_* variants of the various list_* operations.
+ *
+ * Example:
+ *	#include <err.h>
+ *	#include <stdio.h>
+ *	#include <stdlib.h>
+ *	#include <ccan/tlist/tlist.h>
+ *
+ *	// Defines struct tlist_children
+ *	TLIST_TYPE(children, struct child);
+ *	struct parent {
+ *		const char *name;
+ *		struct tlist_children children;
+ *		unsigned int num_children;
+ *	};
+ *
+ *	struct child {
+ *		const char *name;
+ *		struct list_node list;
+ *	};
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		struct parent p;
+ *		struct child *c;
+ *		unsigned int i;
+ *
+ *		if (argc < 2)
+ *			errx(1, "Usage: %s parent children...", argv[0]);
+ *
+ *		p.name = argv[1];
+ *		tlist_init(&p.children);
+ *		for (i = 2; i < argc; i++) {
+ *			c = malloc(sizeof(*c));
+ *			c->name = argv[i];
+ *			tlist_add(&p.children, c, list);
+ *			p.num_children++;
+ *		}
+ *
+ *		printf("%s has %u children:", p.name, p.num_children);
+ *		tlist_for_each(&p.children, c, list)
+ *			printf("%s ", c->name);
+ *		printf("\n");
+ *		return 0;
+ *	}
+ *
+ * License: LGPL
+ * Author: Rusty Russell <rusty@rustcorp.com.au>
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/list\n");
+		return 0;
+	}
+
+	return 1;
+}
