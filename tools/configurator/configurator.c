@@ -85,6 +85,8 @@ static struct test tests[] = {
 	{ "HAVE_FOR_LOOP_DECLARATION", INSIDE_MAIN, NULL,
 	  "for (int i = 0; i < argc; i++) { return 0; };\n"
 	  "return 1;" },
+	{ "HAVE_FLEXIBLE_ARRAY_MEMBER", OUTSIDE_MAIN, NULL,
+	  "struct foo { unsigned int x; int arr[]; };" },
 	{ "HAVE_GETPAGESIZE", DEFINES_FUNC, NULL,
 	  "#include <unistd.h>\n"
 	  "static int func(void) { return getpagesize(); }" },
