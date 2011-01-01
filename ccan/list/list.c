@@ -2,11 +2,28 @@
 #include <stdlib.h>
 #include "list.h"
 
-struct list_head *list_check(const struct list_head *h, const char *abortstr)
+struct list_node *list_check_node(const struct list_node *node,
+				  const char *abortstr)
 {
-	const struct list_node *n, *p;
+	const struct list_node *p, *n;
 	int count = 0;
 
+	for (p = node, n = node->next; n != node; p = n, n = n->next) {
+		count++;
+		if (n->prev != p) {
+			if (!abortstr)
+				return NULL;
+			fprintf(stderr,
+				"%s: prev corrupt in node %p (%u) of %p\n",
+				abortstr, n, count, node);
+			abort();
+		}
+	}
+	return (struct list_node *)node;
+}
+
+struct list_head *list_check(const struct list_head *h, const char *abortstr)
+{
 	if (h->n.next == &h->n) {
 		if (h->n.prev != &h->n) {
 			if (!abortstr)
@@ -18,16 +35,7 @@ struct list_head *list_check(const struct list_head *h, const char *abortstr)
 		return (struct list_head *)h;
 	}
 
-	for (p = &h->n, n = h->n.next; n != &h->n; p = n, n = n->next) {
-		count++;
-		if (n->prev != p) {
-			if (!abortstr)
-				return NULL;
-			fprintf(stderr,
-				"%s: prev corrupt in node %p (%u) of %p\n",
-				abortstr, n, count, h);
-			abort();
-		}
-	}
+	if (!list_check_node(&h->n, abortstr))
+		return NULL;
 	return (struct list_head *)h;
 }

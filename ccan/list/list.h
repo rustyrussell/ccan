@@ -39,7 +39,7 @@ struct list_head
 };
 
 /**
- * list_check - check a list for consistency
+ * list_check - check head of a list for consistency
  * @h: the list_head
  * @abortstr: the location to print on aborting, or NULL.
  *
@@ -50,6 +50,8 @@ struct list_head
  *
  * Returns the list head if the list is consistent, NULL if not (it
  * can never return NULL if @abortstr is set).
+ *
+ * See also: list_check_node()
  *
  * Example:
  *	static void dump_parent(struct parent *p)
@@ -63,6 +65,25 @@ struct list_head
  *	}
  */
 struct list_head *list_check(const struct list_head *h, const char *abortstr);
+
+/**
+ * list_check_node - check node of a list for consistency
+ * @n: the list_node
+ * @abortstr: the location to print on aborting, or NULL.
+ *
+ * Check consistency of the list node is in (it must be in one).
+ *
+ * See also: list_check()
+ *
+ * Example:
+ *	static void dump_child(const struct child *c)
+ *	{
+ *		list_check_node(&c->list, "bad child list");
+ *		printf("%s\n", c->name);
+ *	}
+ */
+struct list_node *list_check_node(const struct list_node *n,
+				  const char *abortstr);
 
 #ifdef CCAN_LIST_DEBUG
 #define debug_list(h) list_check((h), __func__)

@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
 	struct child c1, c2, c3, *c, *n;
 	unsigned int i;
 
-	plan_tests(44);
+	plan_tests(47);
 	/* Test LIST_HEAD, list_empty and check_list */
 	ok1(list_empty(&static_list));
 	ok1(list_check(&static_list, NULL));
@@ -70,6 +70,11 @@ int main(int argc, char *argv[])
 	ok1(c3.list.prev == &c2.list);
 	/* Test list_check */
 	ok1(list_check(&parent.children, NULL));
+
+	/* Test list_check_node */
+	ok1(list_check_node(&c1.list, NULL));
+	ok1(list_check_node(&c2.list, NULL));
+	ok1(list_check_node(&c3.list, NULL));
 
 	/* Test list_top */
 	ok1(list_top(&parent.children, struct child, list) == &c1);
