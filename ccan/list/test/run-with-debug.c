@@ -102,21 +102,23 @@ int main(int argc, char *argv[])
 	}
 	ok1(i == 3);
 
-	/* Test list_for_each_safe and list_del. */
+	/* Test list_for_each_safe, list_del and list_del_from. */
 	i = 0;
 	list_for_each_safe(&parent.children, c, n, list) {
 		switch (i++) {
 		case 0:
-			ok1(c == &c1);
+			ok1(c == &c1);	
+			list_del(&c->list);
 			break;
 		case 1:
 			ok1(c == &c2);
+			list_del_from(&parent.children, &c->list);
 			break;
 		case 2:
 			ok1(c == &c3);
+			list_del_from(&parent.children, &c->list);
 			break;
 		}
-		list_del(&c->list);
 		ok1(list_check(&parent.children, NULL));
 		if (i > 2)
 			break;

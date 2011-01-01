@@ -1,6 +1,7 @@
 #ifndef CCAN_LIST_H
 #define CCAN_LIST_H
 #include <stdbool.h>
+#include <assert.h>
 #include <ccan/container_of/container_of.h>
 
 /**
@@ -164,8 +165,29 @@ static inline void list_add_tail(struct list_head *h, struct list_node *n)
 }
 
 /**
- * list_del - delete an entry from a linked list.
+ * list_empty - is a list empty?
+ * @h: the list_head
+ *
+ * If the list is empty, returns true.
+ *
+ * Example:
+ *	assert(list_empty(&parent->children) == (parent->num_children == 0));
+ */
+static inline bool list_empty(const struct list_head *h)
+{
+	(void)list_debug(h);
+	return h->n.next == &h->n;
+}
+
+/**
+ * list_del - delete an entry from an (unknown) linked list.
  * @n: the list_node to delete from the list.
+ *
+ * Note that this leaves @n in an undefined state; it can be added to
+ * another list, but not deleted again.
+ *
+ * See also:
+ *	list_del_from()
  *
  * Example:
  *	list_del(&child->list);
@@ -183,18 +205,33 @@ static inline void list_del(struct list_node *n)
 }
 
 /**
- * list_empty - is a list empty?
- * @h: the list_head
+ * list_del_from - delete an entry from a known linked list.
+ * @h: the list_head the node is in.
+ * @n: the list_node to delete from the list.
  *
- * If the list is empty, returns true.
+ * This explicitly indicates which list a node is expected to be in,
+ * which is better documentation and can catch more bugs.
+ *
+ * See also: list_del()
  *
  * Example:
- *	assert(list_empty(&parent->children) == (parent->num_children == 0));
+ *	list_del_from(&parent->children, &child->list);
+ *	parent->num_children--;
  */
-static inline bool list_empty(const struct list_head *h)
+static inline void list_del_from(struct list_head *h, struct list_node *n)
 {
-	(void)list_debug(h);
-	return h->n.next == &h->n;
+#ifdef CCAN_LIST_DEBUG
+	{
+		/* Thorough check: make sure it was in list! */
+		struct list_node *i;
+		for (i = h->n.next; i != n; i = i->next)
+			assert(i != &h->n);
+	}
+#endif /* CCAN_LIST_DEBUG */
+
+	/* Quick test that catches a surprising number of bugs. */
+	assert(!list_empty(h));
+	list_del(n);
 }
 
 /**
