@@ -86,9 +86,11 @@ struct list_node *list_check_node(const struct list_node *n,
 				  const char *abortstr);
 
 #ifdef CCAN_LIST_DEBUG
-#define debug_list(h) list_check((h), __func__)
+#define list_debug(h) list_check((h), __func__)
+#define list_debug_node(n) list_check_node((n), __func__)
 #else
-#define debug_list(h) (h)
+#define list_debug(h) (h)
+#define list_debug_node(n) (n)
 #endif
 
 /**
@@ -139,7 +141,7 @@ static inline void list_add(struct list_head *h, struct list_node *n)
 	n->prev = &h->n;
 	h->n.next->prev = n;
 	h->n.next = n;
-	(void)debug_list(h);
+	(void)list_debug(h);
 }
 
 /**
@@ -158,7 +160,7 @@ static inline void list_add_tail(struct list_head *h, struct list_node *n)
 	n->prev = h->n.prev;
 	h->n.prev->next = n;
 	h->n.prev = n;
-	(void)debug_list(h);
+	(void)list_debug(h);
 }
 
 /**
@@ -171,9 +173,9 @@ static inline void list_add_tail(struct list_head *h, struct list_node *n)
  */
 static inline void list_del(struct list_node *n)
 {
+	(void)list_debug_node(n);
 	n->next->prev = n->prev;
 	n->prev->next = n->next;
-	(void)debug_list(n->next);
 #ifdef CCAN_LIST_DEBUG
 	/* Catch use-after-del. */
 	n->next = n->prev = NULL;
@@ -191,7 +193,7 @@ static inline void list_del(struct list_node *n)
  */
 static inline bool list_empty(const struct list_head *h)
 {
-	(void)debug_list(h);
+	(void)list_debug(h);
 	return h->n.next == &h->n;
 }
 
@@ -254,7 +256,7 @@ static inline bool list_empty(const struct list_head *h)
  *		printf("Name: %s\n", child->name);
  */
 #define list_for_each(h, i, member)					\
-	for (i = container_of_var(debug_list(h)->n.next, i, member);	\
+	for (i = container_of_var(list_debug(h)->n.next, i, member);	\
 	     &i->member != &(h)->n;					\
 	     i = container_of_var(i->member.next, i, member))
 
@@ -277,7 +279,7 @@ static inline bool list_empty(const struct list_head *h)
  *	}
  */
 #define list_for_each_safe(h, i, nxt, member)				\
-	for (i = container_of_var(debug_list(h)->n.next, i, member),	\
+	for (i = container_of_var(list_debug(h)->n.next, i, member),	\
 		nxt = container_of_var(i->member.next, i, member);	\
 	     &i->member != &(h)->n;					\
 	     i = nxt, nxt = container_of_var(i->member.next, i, member))
