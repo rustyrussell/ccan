@@ -108,26 +108,24 @@ static void do_run_tests_vg(struct manifest *m,
 			score->total++;
 			/* FIXME: Valgrind's output sucks.  XML is unreadable by
 			 * humans, and you can't have both. */
-			if (run_command(score, timeleft, &cmdout,
-					"valgrind -q --leak-check=full"
-					" --log-fd=3 %s %s"
-					" 3> valgrind.log",
-					run_tests_vg.options ?
-					run_tests_vg.options : "",
-					i->compiled)) {
-				output = grab_file(i, "valgrind.log", NULL);
-				if (!output || output[0] == '\0') {
-					err = NULL;
-				} else {
-					i->leak_info = get_leaks(output, &err);
-				}
-				if (err) {
-					score_file_error(score, i, 0, err);
-				} else
-					score->score++;
+			run_command(score, timeleft, &cmdout,
+				    "valgrind -q --error-exitcode=101"
+				    " --leak-check=full"
+				    " --log-fd=3 %s %s"
+				    " 3> valgrind.log",
+				    run_tests_vg.options ?
+				    run_tests_vg.options : "",
+				    i->compiled);
+			output = grab_file(i, "valgrind.log", NULL);
+			if (!output || output[0] == '\0') {
+				err = NULL;
 			} else {
-				score_file_error(score, i, 0, cmdout);
+				i->leak_info = get_leaks(output, &err);
 			}
+			if (err)
+				score_file_error(score, i, 0, err);
+			else
+				score->score++;
 		}
 	}
 
