@@ -44,6 +44,9 @@ static struct test tests[] = {
 	  "static int __attribute__((const)) func(int x) { return x; }" },
 	{ "HAVE_ATTRIBUTE_MAY_ALIAS", OUTSIDE_MAIN, NULL,
 	  "typedef short __attribute__((__may_alias__)) short_a;" },
+	{ "HAVE_ATTRIBUTE_NORETURN", DEFINES_FUNC, NULL,
+	  "#include <stdlib.h>\n"
+	  "static void __attribute__((noreturn)) func(int x) { exit(x); }" },
 	{ "HAVE_ATTRIBUTE_PRINTF", DEFINES_FUNC, NULL,
 	  "static void __attribute__((format(__printf__, 1, 2))) func(const char *fmt, ...) { }" },
 	{ "HAVE_ATTRIBUTE_UNUSED", OUTSIDE_MAIN, NULL,

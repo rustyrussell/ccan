@@ -20,6 +20,24 @@
 #define COLD
 #endif
 
+#if HAVE_ATTRIBUTE_NORETURN
+/**
+ * NORETURN - a function does not return
+ *
+ * Used to mark a function which exits; useful for suppressing warnings.
+ *
+ * Example:
+ * static void NORETURN fail(const char *reason)
+ * {
+ *	fprintf(stderr, "Error: %s (%s)\n", reason, strerror(errno));
+ *	exit(1);
+ * }
+ */
+#define NORETURN __attribute__((noreturn))
+#else
+#define NORETURN
+#endif
+
 #if HAVE_ATTRIBUTE_PRINTF
 /**
  * PRINTF_FMT - a function takes printf-style arguments
