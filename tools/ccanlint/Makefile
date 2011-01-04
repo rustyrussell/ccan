@@ -12,7 +12,9 @@ CORE_OBJS := tools/ccanlint/ccanlint.o \
 	ccan/asort/asort.o \
 	ccan/btree/btree.o \
 	ccan/talloc/talloc.o ccan/noerr/noerr.o \
+	ccan/talloc_link/talloc_link.o ccan/noerr/noerr.o \
 	ccan/foreach/foreach.o \
+	ccan/hash/hash.o ccan/htable/htable.o \
 	ccan/read_write_all/read_write_all.o \
 	ccan/opt/opt.o ccan/opt/usage.o ccan/opt/helpers.o ccan/opt/parse.o
 

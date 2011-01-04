@@ -2,6 +2,9 @@
 #include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
 #include <ccan/str_talloc/str_talloc.h>
+#include <ccan/talloc_link/talloc_link.h>
+#include <ccan/hash/hash.h>
+#include <ccan/htable/htable_type.h>
 #include <ccan/grab_file/grab_file.h>
 #include <ccan/noerr/noerr.h>
 #include <ccan/foreach/foreach.h>
@@ -19,6 +22,24 @@
 #include <assert.h>
 
 const char *ccan_dir;
+
+static size_t dir_hash(const char *name)
+{
+	return hash(name, strlen(name), 0);
+}
+
+static const char *manifest_name(const struct manifest *m)
+{
+	return m->dir;
+}
+
+static bool dir_cmp(const char *dir1, const char *dir2)
+{
+	return strcmp(dir1, dir2) == 0;
+}
+
+HTABLE_DEFINE_TYPE(struct manifest, manifest_name, dir_hash, dir_cmp, manifest);
+static struct htable_manifest *manifests;
 
 const char *get_ccan_file_contents(struct ccan_file *f)
 {
@@ -167,13 +188,33 @@ static void sort_files(struct list_head *list)
 
 struct manifest *get_manifest(const void *ctx, const char *dir)
 {
-	struct manifest *m = talloc(ctx, struct manifest);
-	char *olddir;
+	struct manifest *m;
+	char *olddir, *canon_dir;
 	unsigned int len;
 	struct list_head *list;
 
+	if (!manifests)
+		manifests = htable_manifest_new();
+
+	olddir = talloc_getcwd(NULL);
+	if (!olddir)
+		err(1, "Getting current directory");
+
+	if (chdir(dir) != 0)
+		err(1, "Failed to chdir to %s", dir);
+
+	canon_dir = talloc_getcwd(olddir);
+	if (!canon_dir)
+		err(1, "Getting current directory");
+
+	m = htable_manifest_get(manifests, canon_dir);
+	if (m)
+		goto done;
+
+	m = talloc_linked(ctx, talloc(NULL, struct manifest));
 	m->info_file = NULL;
 	m->compiled = NULL;
+	m->dir = talloc_steal(m, canon_dir);
 	list_head_init(&m->c_files);
 	list_head_init(&m->h_files);
 	list_head_init(&m->api_tests);
@@ -186,17 +227,6 @@ struct manifest *get_manifest(const void *ctx, const char *dir)
 	list_head_init(&m->examples);
 	list_head_init(&m->mangled_examples);
 	list_head_init(&m->deps);
-
-	olddir = talloc_getcwd(NULL);
-	if (!olddir)
-		err(1, "Getting current directory");
-
-	if (chdir(dir) != 0)
-		err(1, "Failed to chdir to %s", dir);
-
-	m->dir = talloc_getcwd(m);
-	if (!m->dir)
-		err(1, "Getting current directory");
 
 	len = strlen(m->dir);
 	while (len && m->dir[len-1] == '/')
@@ -224,6 +254,9 @@ struct manifest *get_manifest(const void *ctx, const char *dir)
 		    &m->compile_fail_tests)
 		sort_files(list);
 
+	htable_manifest_add(manifests, m);
+
+done:
 	if (chdir(olddir) != 0)
 		err(1, "Returning to original directory '%s'", olddir);
 	talloc_free(olddir);
