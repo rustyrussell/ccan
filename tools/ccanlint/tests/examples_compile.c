@@ -10,6 +10,8 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <assert.h>
+#include <err.h>
+#include "../compulsory_tests/build.h"
 
 static const char *can_run(struct manifest *m)
 {
@@ -20,85 +22,83 @@ static const char *can_run(struct manifest *m)
 	return NULL;
 }
 
-/* FIXME: We should build if it doesn't exist... */
-static bool expect_obj_file(const char *dir)
+static void add_mod(struct manifest ***deps, struct manifest *m)
 {
-	struct manifest *dep_man;
-	bool has_c_files;
-
-	dep_man = get_manifest(dir, dir);
-
-	/* If it has C files, we expect an object file built from them. */
-	has_c_files = !list_empty(&dep_man->c_files);
-	talloc_free(dep_man);
-	return has_c_files;
+	unsigned int num = talloc_get_size(*deps) / sizeof(*deps);
+	*deps = talloc_realloc(NULL, *deps, struct manifest *, num + 1);
+	(*deps)[num] = m;
 }
 
-static char *add_dep(const struct manifest *m, char *list, const char *mod)
+static bool have_mod(struct manifest *deps[], const char *basename)
 {
-	char **deps, *obj;
 	unsigned int i;
 
-	/* Not ourselves. */
-	if (streq(m->basename, mod))
-		return list;
+	for (i = 0; i < talloc_get_size(deps) / sizeof(*deps); i++)
+		if (strcmp(deps[i]->basename, basename) == 0)
+			return true;
+	return false;
+}
 
-	/* Not if there's no object file for that module */
-	if (!expect_obj_file(talloc_asprintf(list, "%s/ccan/%s", ccan_dir,mod)))
-		return list;
+static void add_dep(struct manifest ***deps, const char *basename)
+{
+	unsigned int i;
+	struct manifest *m;
+	char *errstr;
 
-	obj = talloc_asprintf(list, "%s/ccan/%s.o", ccan_dir, mod);
+	if (have_mod(*deps, basename))
+		return;
 
-	/* Not anyone we've already included. */
-	if (strstr(list, obj))
-		return list;
+	m = get_manifest(*deps, talloc_asprintf(*deps, "%s/ccan/%s",
+						ccan_dir, basename));
+	errstr = build_submodule(m);
+	if (errstr)
+		errx(1, "%s", errstr);
 
-	list = talloc_asprintf_append(list, " %s", obj);
+	add_mod(deps, m);
 
 	/* Get that modules depends as well... */
 	assert(!safe_mode);
-	deps = get_deps(m, talloc_asprintf(list, "%s/ccan/%s", ccan_dir, mod),
-			false, NULL);
+	if (m->info_file) {
+		char **infodeps;
 
-	for (i = 0; deps[i]; i++) {
-		if (strstarts(deps[i], "ccan/"))
-			list = add_dep(m, list, deps[i] + strlen("ccan/"));
+		infodeps = get_deps(m, m->dir, false, &m->info_file->compiled);
+
+		for (i = 0; infodeps[i]; i++) {
+			if (strstarts(infodeps[i], "ccan/"))
+				add_dep(deps, infodeps[i] + strlen("ccan/"));
+		}
 	}
-	return list;
 }
 
-/* FIXME: Merge this into one place. */
-static char *obj_list(const struct manifest *m, struct ccan_file *f)
+static char *obj_list(struct manifest *m, struct ccan_file *f)
 {
-	char *list = talloc_strdup(m, "");
-	struct manifest *subm;
-	char **lines;
+	struct manifest **deps = talloc_array(f, struct manifest *, 0);
+	char **lines, *list;
+	unsigned int i;
 
-	/* This module. */
-	if (m->compiled)
-		list = talloc_asprintf_append(list, " %s", m->compiled);
-
-	/* Other ccan modules we depend on. */
-	list_for_each(&m->deps, subm, list) {
-		if (subm->compiled)
-			list = talloc_asprintf_append(list, " %s",
-						      subm->compiled);
-	}
+	/* This one for a start. */
+	add_dep(&deps, m->basename);
 
 	/* Other modules implied by includes. */
 	for (lines = get_ccan_file_lines(f); *lines; lines++) {
 		unsigned preflen = strspn(*lines, " \t");
 		if (strstarts(*lines + preflen, "#include <ccan/")) {
-			const char *mod;
-			unsigned modlen;
+			char *modname;
 
-			mod = *lines + preflen + strlen("#include <ccan/");
-			modlen = strcspn(mod, "/");
-			mod = talloc_strndup(f, mod, modlen);
-			list = add_dep(m, list, mod);
+			modname = talloc_strdup(f, *lines + preflen
+						+ strlen("#include <ccan/"));
+			modname[strcspn(modname, "/")] = '\0';
+			if (!have_mod(deps, modname))
+				add_dep(&deps, modname);
 		}
 	}
 
+	list = talloc_strdup(f, "");
+	for (i = 0; i < talloc_get_size(deps) / sizeof(*deps); i++) {
+		if (deps[i]->compiled)
+			list = talloc_asprintf_append(list, " %s",
+						      deps[i]->compiled);
+	}
 	return list;
 }
 

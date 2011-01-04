@@ -50,41 +50,54 @@ static char *build_subdir_objs(struct manifest *m)
 	return NULL;
 }
 
+char *build_submodule(struct manifest *m)
+{
+	char *errstr;
+	struct stat st;
+
+	if (m->compiled)
+		return NULL;
+
+	if (!expect_obj_file(m))
+		return NULL;
+
+	m->compiled = talloc_asprintf(m, "%s.o", m->dir);
+	if (stat(m->compiled, &st) == 0)
+		return NULL;
+
+	if (verbose >= 2)
+		printf("  Building dependency %s\n", m->dir);
+
+	errstr = build_subdir_objs(m);
+	if (errstr)
+		return errstr;
+
+	m->compiled = build_module(m, false, &errstr);
+	if (!m->compiled)
+		return errstr;
+	return NULL;
+}
+
 static void check_depends_built(struct manifest *m,
 				bool keep,
 				unsigned int *timeleft, struct score *score)
 {
 	struct manifest *i;
-	struct stat st;
 
 	list_for_each(&m->deps, i, list) {
-		char *errstr;
-		if (!expect_obj_file(i))
-			continue;
+		char *errstr = build_submodule(i);
 
-		i->compiled = talloc_asprintf(i, "%s.o", i->dir);
-		if (stat(i->compiled, &st) == 0)
-			continue;
-
-		if (verbose >= 2)
-			printf("  Building dependency %s\n", i->dir);
-		score->error = build_subdir_objs(i);
-		if (score->error)
-			return;
-		i->compiled = build_module(i, keep, &errstr);
-		if (!i->compiled) {
+		if (errstr) {
 			score->error = talloc_asprintf(score,
 						       "Dependency %s"
 						       " did not build:\n%s",
 						       i->basename, errstr);
 			return;
-		}			
+		}
 	}
 
-	if (!score->error) {
-		score->pass = true;
-		score->score = score->total;
-	}
+	score->pass = true;
+	score->score = score->total;
 }
 
 struct ccanlint depends_built = {
