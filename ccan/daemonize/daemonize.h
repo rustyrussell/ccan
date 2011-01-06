@@ -6,11 +6,12 @@
  * daemonize - turn this process into a daemon.
  *
  * This routine forks us off to become a daemon.  It returns false on failure
- * (ie. fork() failed) and sets errno.
+ * (eg. fork(), chdir or open failed) and sets errno.
  *
  * Side effects for programmers to be aware of:
  *  - PID changes (our parent exits, we become child of init)
- *  - stdin, stdout and stderr file descriptors are closed
+ *  - stdin and stdout file descriptors are closed
+ *  - stderr is reopened to /dev/null so you don't reuse it
  *  - Current working directory changes to /
  *  - Umask is set to 0.
  */

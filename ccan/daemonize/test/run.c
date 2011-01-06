@@ -43,8 +43,12 @@ int main(int argc, char *argv[])
 			= read(STDIN_FILENO, buffer, 1) == -1 ? errno : 0;
 		daemonized.write_to_stdout
 			= write(STDOUT_FILENO, buffer, 1) == -1 ? errno : 0;
-		daemonized.write_to_stderr
-			= write(STDERR_FILENO, buffer, 1) == -1 ? errno : 0;
+		if (write(STDERR_FILENO, buffer, 1) != 1) {
+			daemonized.write_to_stderr = errno;
+			if (daemonized.write_to_stderr == 0)
+				daemonized.write_to_stderr = -1;
+		} else
+			daemonized.write_to_stderr = 0;
 
 		/* Make sure parent exits. */
 		while (getppid() == pid)
@@ -64,7 +68,7 @@ int main(int argc, char *argv[])
 	ok1(daemonized.in_root_dir);
 	ok1(daemonized.read_from_stdin == EBADF);
 	ok1(daemonized.write_to_stdout == EBADF);
-	ok1(daemonized.write_to_stderr == EBADF);
+	ok1(daemonized.write_to_stderr == 0);
 
 	return exit_status();
 }
