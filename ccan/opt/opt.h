@@ -298,7 +298,7 @@ char *opt_usage_and_exit(const char *extra);
 /* Resolves to the four parameters for non-arg callbacks. */
 #define OPT_CB_NOARG(cb, arg)				\
 	OPT_NOARG,					\
-	cast_if_any(char *(*)(void *), (cb), &*(cb),	\
+	cast_if_any(char *(*)(void *), (cb), (cb)+0,	\
 		    char *(*)(typeof(*(arg))*),		\
 		    char *(*)(const typeof(*(arg))*),	\
 		    char *(*)(const void *)),		\
@@ -307,11 +307,11 @@ char *opt_usage_and_exit(const char *extra);
 /* Resolves to the four parameters for arg callbacks. */
 #define OPT_CB_ARG(cb, show, arg)					\
 	OPT_HASARG, NULL,						\
-	cast_if_any(char *(*)(const char *,void *), (cb), &*(cb),	\
+	cast_if_any(char *(*)(const char *,void *), (cb), (cb)+0,	\
 		    char *(*)(const char *, typeof(*(arg))*),		\
 		    char *(*)(const char *, const typeof(*(arg))*),	\
 		    char *(*)(const char *, const void *)),		\
-	cast_if_type(void (*)(char buf[], const void *), (show), &*(show), \
+	cast_if_type(void (*)(char buf[], const void *), (show), (show)+0, \
 		     void (*)(char buf[], const typeof(*(arg))*)),	\
 	(arg)
 
