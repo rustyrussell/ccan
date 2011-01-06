@@ -74,4 +74,4 @@ struct ccanlint depends_exist = {
 	.check = check_depends_exist,
 };
 
-REGISTER_TEST(depends_exist, NULL);
+REGISTER_TEST(depends_exist, &has_info, NULL);
