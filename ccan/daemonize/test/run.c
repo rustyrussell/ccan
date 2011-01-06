@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <err.h>
 #include <errno.h>
+#include <string.h>
 
 struct child_data {
 	pid_t pid;
@@ -34,6 +35,8 @@ int main(int argc, char *argv[])
 		char buffer[2];
 		pid = getpid();
 		daemonize();
+		/* Keep valgrind happy about uninitialized bytes. */
+		memset(&daemonized, 0, sizeof(daemonized));
 		daemonized.pid = getpid();
 		daemonized.in_root_dir = (getcwd(buffer, 2) != NULL);
 		daemonized.read_from_stdin
