@@ -344,6 +344,44 @@ static char *list_tests(void *arg)
 	exit(0);
 }
 
+static void test_dgraph_vertices(struct list_head *tests, const char *style)
+{
+	const struct ccanlint *i;
+
+	list_for_each(tests, i, list) {
+		/*
+		 * todo: escape labels in case ccanlint test keys have
+		 *       characters interpreted as GraphViz syntax.
+		 */
+		printf("\t\"%p\" [label=\"%s\"%s]\n", i, i->key, style);
+	}
+}
+
+static void test_dgraph_edges(struct list_head *tests)
+{
+	const struct ccanlint *i;
+	const struct dependent *d;
+
+	list_for_each(tests, i, list)
+		list_for_each(&i->dependencies, d, node)
+			printf("\t\"%p\" -> \"%p\"\n", d->dependent, i);
+}
+
+static char *test_dependency_graph(void *arg)
+{
+	puts("digraph G {");
+
+	test_dgraph_vertices(&compulsory_tests, ", style=filled, fillcolor=yellow");
+	test_dgraph_vertices(&normal_tests,     "");
+
+	test_dgraph_edges(&compulsory_tests);
+	test_dgraph_edges(&normal_tests);
+
+	puts("}");
+
+	exit(0);
+}
+
 /* Remove empty lines. */
 static char **collapse(char **lines, unsigned int *nump)
 {
@@ -451,6 +489,8 @@ int main(int argc, char *argv[])
 			 "do not compile anything");
 	opt_register_noarg("-l|--list-tests", list_tests, NULL,
 			 "list tests ccanlint performs (and exit)");
+	opt_register_noarg("--test-dep-graph", test_dependency_graph, NULL,
+			 "print dependency graph of tests in Graphviz .dot format");
 	opt_register_arg("-k|--keep <testname>", keep_test, NULL, NULL,
 			   "keep results of <testname> (can be used multiple times)");
 	opt_register_noarg("--summary|-s", opt_set_bool, &summary,
