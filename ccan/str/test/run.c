@@ -73,8 +73,13 @@ int main(int argc, char *argv[])
 				ok1(!strstarts(strings[i], strings[j]));
 				ok1(!strends(reva, revb));
 			}
+			free(reva);
+			free(revb);
 		}
 	}
+
+	for (i = 0; i < n; i++)
+		free(strings[i]);
 
 	ok1(streq(stringify(NUM_SUBSTRINGS),
 		  "((sizeof(substrings) / sizeof(substrings[0])) - 1)"));
