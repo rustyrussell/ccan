@@ -82,9 +82,10 @@ static unsigned int is_summary_line(const char *line)
 	id_len = strspn(line, IDENT_CHARS" ");
 	if (id_len == 0)
 		return 0;
+	if (strspn(line, " ") == id_len)
+		return 0;
 	if (!strstarts(line + id_len-1, " - "))
 		return 0;
-
 	return id_len - 1;
 }
 
