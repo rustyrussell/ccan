@@ -149,11 +149,11 @@ static void check_has_license(struct manifest *m,
 	score->score = score->total;
 }
 
-struct ccanlint has_license = {
+struct ccanlint license_exists = {
 	.key = "license_exists",
 	.name = "Module has License: entry in _info, and LICENSE symlink/file",
 	.check = check_has_license,
 	.needs = "info_exists"
 };
 
-REGISTER_TEST(has_license);
+REGISTER_TEST(license_exists);

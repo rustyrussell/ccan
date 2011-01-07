@@ -15,7 +15,7 @@
 #include <ccan/noerr/noerr.h>
 #include <ccan/grab_file/grab_file.h>
 
-extern struct ccanlint has_info_documentation;
+extern struct ccanlint info_documentation_exists;
 
 static void create_info_template_doc(struct manifest *m, struct score *score)
 {
@@ -58,7 +58,7 @@ static void create_info_template_doc(struct manifest *m, struct score *score)
 	}
 }
 
-static void check_has_info_documentation(struct manifest *m,
+static void check_info_documentation_exists(struct manifest *m,
 					 bool keep,
 					 unsigned int *timeleft,
 					 struct score *score)
@@ -83,7 +83,7 @@ static void check_has_info_documentation(struct manifest *m,
 		score->error = "_info file has no module documentation.\n\n"
 		"CCAN modules use /**-style comments for documentation: the\n"
 		"overall documentation belongs in the _info metafile.\n";
-		has_info_documentation.handle = create_info_template_doc;
+		info_documentation_exists.handle = create_info_template_doc;
 	} else if (!description)  {
 		score->error = "_info file has no module description.\n\n"
 		"The lines after the first summary line in the _info file\n"
@@ -92,11 +92,11 @@ static void check_has_info_documentation(struct manifest *m,
 	}
 }
 
-struct ccanlint has_info_documentation = {
+struct ccanlint info_documentation_exists = {
 	.key = "info_documentation_exists",
 	.name = "Module has documentation in _info",
-	.check = check_has_info_documentation,
+	.check = check_info_documentation_exists,
 	.needs = "info_exists"
 };
 
-REGISTER_TEST(has_info_documentation);
+REGISTER_TEST(info_documentation_exists);

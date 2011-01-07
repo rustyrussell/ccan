@@ -65,7 +65,7 @@ static void run_under_debugger(struct manifest *m, struct score *score)
 		doesnt_matter();
 }
 
-struct ccanlint run_tests = {
+struct ccanlint tests_pass = {
 	.key = "tests_pass",
 	.name = "Module's run and api tests pass",
 	.check = do_run_tests,
@@ -74,4 +74,4 @@ struct ccanlint run_tests = {
 	.needs = "tests_compile"
 };
 
-REGISTER_TEST(run_tests);
+REGISTER_TEST(tests_pass);

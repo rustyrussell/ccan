@@ -73,7 +73,7 @@ static void do_build(struct manifest *m,
 	score->score = score->total;
 }
 
-struct ccanlint build = {
+struct ccanlint module_builds = {
 	.key = "module_builds",
 	.name = "Module can be built from object files",
 	.check = do_build,
@@ -81,4 +81,4 @@ struct ccanlint build = {
 	.needs = "objects_build"
 };
 
-REGISTER_TEST(build);
+REGISTER_TEST(module_builds);

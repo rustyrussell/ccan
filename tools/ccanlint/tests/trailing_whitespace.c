@@ -49,7 +49,7 @@ static void check_trailing_whitespace(struct manifest *m,
 	}
 }
 
-struct ccanlint trailing_whitespace = {
+struct ccanlint no_trailing_whitespace = {
 	.key = "no_trailing_whitespace",
 	.name = "Module's source code has no trailing whitespace",
 	.check = check_trailing_whitespace,
@@ -57,4 +57,4 @@ struct ccanlint trailing_whitespace = {
 };
 
 
-REGISTER_TEST(trailing_whitespace);
+REGISTER_TEST(no_trailing_whitespace);

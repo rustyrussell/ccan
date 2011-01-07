@@ -130,7 +130,7 @@ static void do_compile_tests(struct manifest *m,
 	score->score = 1 + !warnings;
 }
 
-struct ccanlint compile_tests = {
+struct ccanlint tests_compile = {
 	.key = "tests_compile",
 	.name = "Module tests compile",
 	.check = do_compile_tests,
@@ -138,4 +138,4 @@ struct ccanlint compile_tests = {
 	.needs = "tests_helpers_compile objects_build"
 };
 
-REGISTER_TEST(compile_tests);
+REGISTER_TEST(tests_compile);

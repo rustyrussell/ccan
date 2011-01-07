@@ -64,7 +64,7 @@ static void do_compile_test_helpers(struct manifest *m,
 	}
 }
 
-struct ccanlint compile_test_helpers = {
+struct ccanlint tests_helpers_compile = {
 	.key = "tests_helpers_compile",
 	.name = "Module test helper objects compile",
 	.check = do_compile_test_helpers,
@@ -72,4 +72,4 @@ struct ccanlint compile_test_helpers = {
 	.needs = "depends_build tests_exist"
 };
 
-REGISTER_TEST(compile_test_helpers);
+REGISTER_TEST(tests_helpers_compile);

@@ -57,7 +57,7 @@ static void check_objs_build(struct manifest *m,
 	}
 }
 
-struct ccanlint build_objs = {
+struct ccanlint objects_build = {
 	.key = "objects_build",
 	.name = "Module object files can be built",
 	.check = check_objs_build,
@@ -65,4 +65,4 @@ struct ccanlint build_objs = {
 	.needs = "depends_exist"
 };
 
-REGISTER_TEST(build_objs);
+REGISTER_TEST(objects_build);

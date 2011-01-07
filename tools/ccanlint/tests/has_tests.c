@@ -10,7 +10,7 @@
 #include <err.h>
 #include <ccan/talloc/talloc.h>
 
-extern struct ccanlint has_tests;
+extern struct ccanlint tests_exist;
 
 static void handle_no_tests(struct manifest *m, struct score *score)
 {
@@ -92,7 +92,7 @@ static void handle_no_tests(struct manifest *m, struct score *score)
 	fclose(run);
 }
 
-static void check_has_tests(struct manifest *m,
+static void check_tests_exist(struct manifest *m,
 			    bool keep,
 			    unsigned int *timeleft, struct score *score)
 {
@@ -103,7 +103,7 @@ static void check_has_tests(struct manifest *m,
 		score->error = "No test directory";
 		if (errno != ENOENT)
 			err(1, "statting %s", test_dir);
-		has_tests.handle = handle_no_tests;
+		tests_exist.handle = handle_no_tests;
 		return;
 	}
 
@@ -117,7 +117,7 @@ static void check_has_tests(struct manifest *m,
 	    && list_empty(&m->compile_ok_tests)) {
 		if (list_empty(&m->compile_fail_tests)) {
 			score->error = "No tests in test directory";
-			has_tests.handle = handle_no_tests;
+			tests_exist.handle = handle_no_tests;
 		} else
 			score->error = "No positive tests in test directory";
 		return;
@@ -126,11 +126,11 @@ static void check_has_tests(struct manifest *m,
 	score->score = score->total;
 }
 
-struct ccanlint has_tests = {
+struct ccanlint tests_exist = {
 	.key = "tests_exist",
 	.name = "Module has test directory with tests in it",
-	.check = check_has_tests,
+	.check = check_tests_exist,
 	.needs = ""
 };
 
-REGISTER_TEST(has_tests);
+REGISTER_TEST(tests_exist);

@@ -179,7 +179,7 @@ static void run_under_debugger_vg(struct manifest *m, struct score *score)
 		doesnt_matter();
 }
 
-struct ccanlint run_tests_vg = {
+struct ccanlint tests_pass_valgrind = {
 	.key = "tests_pass_valgrind",
 	.name = "Module's run and api tests succeed under valgrind",
 	.can_run = can_run_vg,
@@ -189,13 +189,13 @@ struct ccanlint run_tests_vg = {
 	.needs = "tests_pass"
 };
 
-REGISTER_TEST(run_tests_vg);
+REGISTER_TEST(tests_pass_valgrind);
 
-struct ccanlint run_tests_vg_leak = {
+struct ccanlint tests_pass_valgrind_noleaks = {
 	.key = "tests_pass_valgrind_noleaks",
 	.name = "Module's run and api tests leak memory",
 	.check = do_leakcheck_vg,
 	.needs = "tests_pass_valgrind"
 };
 
-REGISTER_TEST(run_tests_vg_leak);
+REGISTER_TEST(tests_pass_valgrind_noleaks);

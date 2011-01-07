@@ -83,7 +83,7 @@ static void check_use_build(struct manifest *m,
 	}
 }
 
-struct ccanlint check_build = {
+struct ccanlint module_links = {
 	.key = "module_links",
 	.name = "Module can be linked against trivial program",
 	.check = check_use_build,
@@ -91,4 +91,4 @@ struct ccanlint check_build = {
 	.needs = "module_builds depends_build"
 };
 
-REGISTER_TEST(check_build);
+REGISTER_TEST(module_links);

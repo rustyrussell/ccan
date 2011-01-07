@@ -142,7 +142,7 @@ static void do_compile_coverage_tests(struct manifest *m,
 	}
 }
 
-struct ccanlint compile_coverage_tests = {
+struct ccanlint tests_compile_coverage = {
 	.key = "tests_compile_coverage",
 	.name = "Module tests compile with " COVERAGE_CFLAGS,
 	.check = do_compile_coverage_tests,
@@ -150,4 +150,4 @@ struct ccanlint compile_coverage_tests = {
 	.needs = "tests_compile"
 };
 
-REGISTER_TEST(compile_coverage_tests);
+REGISTER_TEST(tests_compile_coverage);

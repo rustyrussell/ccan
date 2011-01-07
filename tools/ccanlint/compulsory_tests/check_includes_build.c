@@ -67,7 +67,7 @@ static void check_includes_build(struct manifest *m,
 	}
 }
 
-struct ccanlint includes_build = {
+struct ccanlint main_header_compiles = {
 	.key = "main_header_compiles",
 	.name = "Modules main header compiles",
 	.check = check_includes_build,
@@ -75,4 +75,4 @@ struct ccanlint includes_build = {
 	.needs = "depends_exist main_header_exists"
 };
 
-REGISTER_TEST(includes_build);
+REGISTER_TEST(main_header_compiles);

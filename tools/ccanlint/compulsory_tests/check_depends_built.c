@@ -100,7 +100,7 @@ static void check_depends_built(struct manifest *m,
 	score->score = score->total;
 }
 
-struct ccanlint depends_built = {
+struct ccanlint depends_build = {
 	.key = "depends_build",
 	.name = "Module's CCAN dependencies can be found or built",
 	.check = check_depends_built,
@@ -108,4 +108,4 @@ struct ccanlint depends_built = {
 	.needs = "depends_exist"
 };
 
-REGISTER_TEST(depends_built);
+REGISTER_TEST(depends_build);

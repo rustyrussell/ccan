@@ -74,7 +74,7 @@ static void create_info_template(struct manifest *m, struct score *score)
 	fclose(info);
 }
 
-struct ccanlint has_info = {
+struct ccanlint info_exists = {
 	.key = "info_exists",
 	.name = "Module has _info file",
 	.check = check_has_info,
@@ -82,4 +82,4 @@ struct ccanlint has_info = {
 	.needs = ""
 };
 
-REGISTER_TEST(has_info);
+REGISTER_TEST(info_exists);
