@@ -193,7 +193,7 @@ REGISTER_TEST(tests_pass_valgrind);
 
 struct ccanlint tests_pass_valgrind_noleaks = {
 	.key = "tests_pass_valgrind_noleaks",
-	.name = "Module's run and api tests leak memory",
+	.name = "Module's run and api tests have no memory leaks",
 	.check = do_leakcheck_vg,
 	.needs = "tests_pass_valgrind"
 };
