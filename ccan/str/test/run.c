@@ -1,9 +1,9 @@
 #include <ccan/str/str.h>
+#include <ccan/str/str.c>
 #include <stdlib.h>
 #include <stdio.h>
 #include <ccan/tap/tap.h>
 
-/* FIXME: ccanize */
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
 static char *substrings[] = { "far", "bar", "baz", "b", "ba", "z", "ar", NULL };
@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	plan_tests(n * n * 5 + 3);
+	plan_tests(n * n * 5 + 16);
 	for (i = 0; i < n; i++) {
 		for (j = 0; j < n; j++) {
 			unsigned int k, identical = 0;
@@ -86,6 +86,20 @@ int main(int argc, char *argv[])
 	ok1(streq(stringify(ARRAY_SIZE(substrings)),
 		  "(sizeof(substrings) / sizeof(substrings[0]))"));
 	ok1(streq(stringify(i == 0), "i == 0"));
+
+	ok1(strcount("aaaaaa", "b") == 0);
+	ok1(strcount("aaaaaa", "a") == 6);
+	ok1(strcount("aaaaaa", "aa") == 3);
+	ok1(strcount("aaaaaa", "aaa") == 2);
+	ok1(strcount("aaaaaa", "aaaa") == 1);
+	ok1(strcount("aaaaaa", "aaaaa") == 1);
+	ok1(strcount("aaaaaa", "aaaaaa") == 1);
+	ok1(strcount("aaa aaa", "b") == 0);
+	ok1(strcount("aaa aaa", "a") == 6);
+	ok1(strcount("aaa aaa", "aa") == 2);
+	ok1(strcount("aaa aaa", "aaa") == 2);
+	ok1(strcount("aaa aaa", "aaaa") == 0);
+	ok1(strcount("aaa aaa", "aaaaa") == 0);
 
 	return exit_status();
 }				
