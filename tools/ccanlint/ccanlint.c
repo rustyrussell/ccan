@@ -142,7 +142,7 @@ static bool run_test(struct ccanlint *i,
 	if ((!score->pass && !quiet)
 	    || (score->score < score->total && verbose)
 	    || verbose > 1) {
-		printf("%s: %s", i->name, score->pass ? "PASS" : "FAIL");
+		printf("%s (%s): %s", i->name, i->key, score->pass ? "PASS" : "FAIL");
 		if (score->total > 1)
 			printf(" (+%u/%u)", score->score, score->total);
 		printf("\n");
