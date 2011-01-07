@@ -166,6 +166,7 @@ struct ccanlint run_coverage_tests = {
 	.key = "tests_coverage",
 	.name = "Module's tests cover all the code",
 	.check = do_run_coverage_tests,
+	.needs = "tests_compile_coverage tests_pass"
 };
 
-REGISTER_TEST(run_coverage_tests, &compile_coverage_tests, &run_tests, NULL);
+REGISTER_TEST(run_coverage_tests);

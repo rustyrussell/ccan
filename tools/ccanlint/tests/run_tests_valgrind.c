@@ -17,6 +17,8 @@
 #include <string.h>
 #include <ctype.h>
 
+struct ccanlint run_tests_vg;
+
 /* Note: we already test safe_mode in run_tests.c */
 static const char *can_run_vg(struct manifest *m)
 {
@@ -183,15 +185,17 @@ struct ccanlint run_tests_vg = {
 	.can_run = can_run_vg,
 	.check = do_run_tests_vg,
 	.handle = run_under_debugger_vg,
-	.takes_options = true
+	.takes_options = true,
+	.needs = "tests_pass"
 };
 
-REGISTER_TEST(run_tests_vg, &run_tests, NULL);
+REGISTER_TEST(run_tests_vg);
 
 struct ccanlint run_tests_vg_leak = {
 	.key = "tests_pass_valgrind_noleaks",
 	.name = "Module's run and api tests leak memory",
 	.check = do_leakcheck_vg,
+	.needs = "tests_pass_valgrind"
 };
 
-REGISTER_TEST(run_tests_vg_leak, &run_tests_vg, NULL);
+REGISTER_TEST(run_tests_vg_leak);

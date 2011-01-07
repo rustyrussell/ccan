@@ -198,6 +198,7 @@ struct ccanlint idempotent = {
 	.name = "Module headers are #ifndef/#define wrapped",
 	.check = check_idempotent,
 	.handle = handle_idem,
+	.needs = ""
 };
 
-REGISTER_TEST(idempotent, NULL);
+REGISTER_TEST(idempotent);

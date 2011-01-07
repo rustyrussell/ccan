@@ -88,6 +88,7 @@ struct ccanlint check_build = {
 	.name = "Module can be linked against trivial program",
 	.check = check_use_build,
 	.can_run = can_build,
+	.needs = "module_builds depends_build"
 };
 
-REGISTER_TEST(check_build, &build, &depends_built, NULL);
+REGISTER_TEST(check_build);

@@ -4,11 +4,6 @@
 #include <stdbool.h>
 #include "../doc_extract.h"
 
-#define REGISTER_TEST(name, ...) extern struct ccanlint name
-#include "generated-compulsory-tests"
-#include "generated-normal-tests"
-#undef REGISTER_TEST
-
 #define REGISTER_TEST(name, ...) 
 
 /* 0 == Describe failed tests.
@@ -91,6 +86,9 @@ struct ccanlint {
 	char *options;
 	/* If not set, we'll give an error if they try to set options. */
 	bool takes_options;
+
+	/* comma-separated list of dependency keys. */
+	const char *needs;
 
 	/* Internal use fields: */
 	/* Who depends on us? */

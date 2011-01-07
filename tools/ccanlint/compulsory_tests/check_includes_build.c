@@ -72,6 +72,7 @@ struct ccanlint includes_build = {
 	.name = "Modules main header compiles",
 	.check = check_includes_build,
 	.can_run = can_build,
+	.needs = "depends_exist main_header_exists"
 };
 
-REGISTER_TEST(includes_build, &depends_exist, &has_main_header, NULL);
+REGISTER_TEST(includes_build);

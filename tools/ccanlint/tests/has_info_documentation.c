@@ -15,6 +15,8 @@
 #include <ccan/noerr/noerr.h>
 #include <ccan/grab_file/grab_file.h>
 
+extern struct ccanlint has_info_documentation;
+
 static void create_info_template_doc(struct manifest *m, struct score *score)
 {
 	int fd = open("_info.new", O_WRONLY|O_CREAT|O_EXCL, 0666);
@@ -94,6 +96,7 @@ struct ccanlint has_info_documentation = {
 	.key = "info_documentation_exists",
 	.name = "Module has documentation in _info",
 	.check = check_has_info_documentation,
+	.needs = "info_exists"
 };
 
-REGISTER_TEST(has_info_documentation, &has_info, NULL);
+REGISTER_TEST(has_info_documentation);

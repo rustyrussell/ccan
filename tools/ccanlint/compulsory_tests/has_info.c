@@ -79,6 +79,7 @@ struct ccanlint has_info = {
 	.name = "Module has _info file",
 	.check = check_has_info,
 	.handle = create_info_template,
+	.needs = ""
 };
 
-REGISTER_TEST(has_info, NULL);
+REGISTER_TEST(has_info);

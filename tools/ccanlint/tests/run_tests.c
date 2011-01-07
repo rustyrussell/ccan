@@ -71,6 +71,7 @@ struct ccanlint run_tests = {
 	.check = do_run_tests,
 	.handle = run_under_debugger,
 	.can_run = can_run,
+	.needs = "tests_compile"
 };
 
-REGISTER_TEST(run_tests, &compile_tests, NULL);
+REGISTER_TEST(run_tests);

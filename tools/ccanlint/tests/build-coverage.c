@@ -147,6 +147,7 @@ struct ccanlint compile_coverage_tests = {
 	.name = "Module tests compile with " COVERAGE_CFLAGS,
 	.check = do_compile_coverage_tests,
 	.can_run = can_run_coverage,
+	.needs = "tests_compile"
 };
 
-REGISTER_TEST(compile_coverage_tests, &compile_tests, NULL);
+REGISTER_TEST(compile_coverage_tests);

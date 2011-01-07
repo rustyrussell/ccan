@@ -78,6 +78,7 @@ struct ccanlint build = {
 	.name = "Module can be built from object files",
 	.check = do_build,
 	.can_run = can_build,
+	.needs = "objects_build"
 };
 
-REGISTER_TEST(build, &build_objs, NULL);
+REGISTER_TEST(build);

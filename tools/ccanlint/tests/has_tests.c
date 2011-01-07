@@ -10,6 +10,8 @@
 #include <err.h>
 #include <ccan/talloc/talloc.h>
 
+extern struct ccanlint has_tests;
+
 static void handle_no_tests(struct manifest *m, struct score *score)
 {
 	FILE *run;
@@ -128,6 +130,7 @@ struct ccanlint has_tests = {
 	.key = "tests_exist",
 	.name = "Module has test directory with tests in it",
 	.check = check_has_tests,
+	.needs = ""
 };
 
-REGISTER_TEST(has_tests, NULL);
+REGISTER_TEST(has_tests);

@@ -135,6 +135,7 @@ struct ccanlint compile_tests = {
 	.name = "Module tests compile",
 	.check = do_compile_tests,
 	.can_run = can_build,
+	.needs = "tests_helpers_compile objects_build"
 };
 
-REGISTER_TEST(compile_tests, &compile_test_helpers, &build_objs, NULL);
+REGISTER_TEST(compile_tests);

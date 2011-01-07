@@ -276,6 +276,7 @@ struct ccanlint examples_run = {
 	.name = "Module examples with expected output give that output",
 	.check = run_examples,
 	.can_run = can_run,
+	.needs = "examples_compile"
 };
 
-REGISTER_TEST(examples_run, &examples_compile, NULL);
+REGISTER_TEST(examples_run);

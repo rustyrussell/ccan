@@ -11,6 +11,8 @@
 #include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
 
+struct ccanlint has_license;
+
 static struct doc_section *find_license(const struct manifest *m)
 {
 	struct doc_section *d;
@@ -151,6 +153,7 @@ struct ccanlint has_license = {
 	.key = "license_exists",
 	.name = "Module has License: entry in _info, and LICENSE symlink/file",
 	.check = check_has_license,
+	.needs = "info_exists"
 };
 
-REGISTER_TEST(has_license, &has_info, NULL);
+REGISTER_TEST(has_license);

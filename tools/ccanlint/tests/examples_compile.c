@@ -619,6 +619,7 @@ struct ccanlint examples_compile = {
 	.name = "Module examples compile",
 	.check = build_examples,
 	.can_run = can_run,
+	.needs = "examples_exist module_builds"
 };
 
-REGISTER_TEST(examples_compile, &has_examples, &build, NULL);
+REGISTER_TEST(examples_compile);

@@ -37,6 +37,7 @@ struct ccanlint has_main_header = {
 	.key = "main_header_exists",
 	.name = "Module has main header file",
 	.check = check_has_main_header,
+	.needs = ""
 };
 
-REGISTER_TEST(has_main_header, NULL);
+REGISTER_TEST(has_main_header);

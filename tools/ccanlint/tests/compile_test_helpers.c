@@ -69,6 +69,7 @@ struct ccanlint compile_test_helpers = {
 	.name = "Module test helper objects compile",
 	.check = do_compile_test_helpers,
 	.can_run = can_run,
+	.needs = "depends_build tests_exist"
 };
 
-REGISTER_TEST(compile_test_helpers, &depends_built, &has_tests, NULL);
+REGISTER_TEST(compile_test_helpers);

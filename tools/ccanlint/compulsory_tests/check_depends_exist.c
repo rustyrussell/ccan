@@ -72,6 +72,7 @@ struct ccanlint depends_exist = {
 	.key = "depends_exist",
 	.name = "Module's CCAN dependencies can be found",
 	.check = check_depends_exist,
+	.needs = "info_exists"
 };
 
-REGISTER_TEST(depends_exist, &has_info, NULL);
+REGISTER_TEST(depends_exist);

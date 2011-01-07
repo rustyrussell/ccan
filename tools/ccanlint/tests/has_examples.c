@@ -113,6 +113,7 @@ struct ccanlint has_examples = {
 	.key = "examples_exist",
 	.name = "_info and main header file have Example: sections",
 	.check = extract_examples,
+	.needs = "info_exists"
 };
 
-REGISTER_TEST(has_examples, &has_info, NULL);
+REGISTER_TEST(has_examples);

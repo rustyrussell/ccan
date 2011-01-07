@@ -20,7 +20,6 @@
 #include "ccanlint.h"
 #include "../tools.h"
 #include <unistd.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -192,30 +191,9 @@ static bool run_test(struct ccanlint *i,
 	return score->pass;
 }
 
-static void register_test(struct list_head *h, struct ccanlint *test, ...)
+static void register_test(struct list_head *h, struct ccanlint *test)
 {
-	va_list ap;
-	struct ccanlint *depends;
-	struct dependent *dchild;
-
 	list_add(h, &test->list);
-
-	va_start(ap, test);
-	/* Careful: we might have been initialized by a dependent. */
-	if (test->dependencies.n.next == NULL)
-		list_head_init(&test->dependencies);
-
-	//dependent(s) args (if any), last one is NULL
-	while ((depends = va_arg(ap, struct ccanlint *)) != NULL) {
-		dchild = malloc(sizeof(*dchild));
-		dchild->dependent = test;
-		/* The thing we depend on might not be initialized yet! */
-		if (depends->dependencies.n.next == NULL)
-			list_head_init(&depends->dependencies);
-		list_add_tail(&depends->dependencies, &dchild->node);
-		test->num_depends++;
-	}
-	va_end(ap);
 }
 
 /**
@@ -235,63 +213,6 @@ static inline struct ccanlint *get_next_test(struct list_head *test)
 	errx(1, "Can't make process; test dependency cycle");
 }
 
-static void init_tests(void)
-{
-	const struct ccanlint *i;
-	struct btree *keys, *names;
-
-#undef REGISTER_TEST
-#define REGISTER_TEST(name, ...) register_test(&normal_tests, &name, __VA_ARGS__, NULL)
-#include "generated-normal-tests"
-#undef REGISTER_TEST
-#define REGISTER_TEST(name, ...) register_test(&compulsory_tests, &name, __VA_ARGS__, NULL)
-#include "generated-compulsory-tests"
-
-	/* Self-consistency check: make sure no two tests
-	   have the same key or name. */
-	keys = btree_new(btree_strcmp);
-	names = btree_new(btree_strcmp);
-	list_for_each(&compulsory_tests, i, list) {
-		if (!btree_insert(keys, i->key))
-			errx(1, "BUG: Duplicate test key '%s'", i->key);
-		if (!btree_insert(keys, i->name))
-			errx(1, "BUG: Duplicate test name '%s'", i->name);
-	}
-	list_for_each(&normal_tests, i, list) {
-		if (!btree_insert(keys, i->key))
-			errx(1, "BUG: Duplicate test key '%s'", i->key);
-		if (!btree_insert(keys, i->name))
-			errx(1, "BUG: Duplicate test name '%s'", i->name);
-	}
-	btree_delete(keys);
-	btree_delete(names);
-	
-	if (!verbose)
-		return;
-
-	printf("\nCompulsory Tests\n");
-	list_for_each(&compulsory_tests, i, list) {
-		printf("%s depends on %u others\n", i->name, i->num_depends);
-		if (!list_empty(&i->dependencies)) {
-			const struct dependent *d;
-			printf("These depend on us:\n");
-			list_for_each(&i->dependencies, d, node)
-				printf("\t%s\n", d->dependent->name);
-		}
-	}
-
-	printf("\nNormal Tests\n");
-	list_for_each(&normal_tests, i, list) {
-		printf("%s depends on %u others\n", i->name, i->num_depends);
-		if (!list_empty(&i->dependencies)) {
-			const struct dependent *d;
-			printf("These depend on us:\n");
-			list_for_each(&i->dependencies, d, node)
-				printf("\t%s\n", d->dependent->name);
-		}
-	}
-}
-
 static struct ccanlint *find_test(const char *key)
 {
 	struct ccanlint *i;
@@ -305,6 +226,88 @@ static struct ccanlint *find_test(const char *key)
 			return i;
 
 	return NULL;
+}
+
+#undef REGISTER_TEST
+#define REGISTER_TEST(name, ...) extern struct ccanlint name
+#include "generated-normal-tests"
+#include "generated-compulsory-tests"
+
+static void init_tests(void)
+{
+	struct ccanlint *c;
+	struct btree *keys, *names;
+	struct list_head *list;
+
+#undef REGISTER_TEST
+#define REGISTER_TEST(name) register_test(&normal_tests, &name)
+#include "generated-normal-tests"
+#undef REGISTER_TEST
+#define REGISTER_TEST(name) register_test(&compulsory_tests, &name)
+#include "generated-compulsory-tests"
+
+	/* Initialize dependency lists. */
+	foreach_ptr(list, &compulsory_tests, &normal_tests) {
+		list_for_each(list, c, list) {
+			list_head_init(&c->dependencies);
+		}
+	}
+
+	/* Resolve dependencies. */
+	foreach_ptr(list, &compulsory_tests, &normal_tests) {
+		list_for_each(list, c, list) {
+			char **deps = strsplit(NULL, c->needs, " ", NULL);
+			unsigned int i;
+
+			for (i = 0; deps[i]; i++) {
+				struct ccanlint *dep;
+				struct dependent *dchild;
+
+				dep = find_test(deps[i]);
+				if (!dep)
+					errx(1, "BUG: unknown dep '%s' for %s",
+					     deps[i], c->key);
+				dchild = talloc(NULL, struct dependent);
+				dchild->dependent = c;
+				list_add_tail(&dep->dependencies,
+					      &dchild->node);
+				c->num_depends++;
+			}
+			talloc_free(deps);
+		}
+	}
+
+	/* Self-consistency check: make sure no two tests
+	   have the same key or name. */
+	keys = btree_new(btree_strcmp);
+	names = btree_new(btree_strcmp);
+	foreach_ptr(list, &compulsory_tests, &normal_tests) {
+		list_for_each(list, c, list) {
+			if (!btree_insert(keys, c->key))
+				errx(1, "BUG: Duplicate test key '%s'",
+				     c->key);
+			if (!btree_insert(names, c->name))
+				errx(1, "BUG: Duplicate test name '%s'",
+				     c->name);
+		}
+	}
+	btree_delete(keys);
+	btree_delete(names);
+
+	if (!verbose)
+		return;
+
+	foreach_ptr(list, &compulsory_tests, &normal_tests) {
+		printf("\%s Tests\n",
+		       list == &compulsory_tests ? "Compulsory" : "Normal");
+
+		if (!list_empty(&c->dependencies)) {
+			const struct dependent *d;
+			printf("These depend on us:\n");
+			list_for_each(&c->dependencies, d, node)
+				printf("\t%s\n", d->dependent->name);
+		}
+	}
 }
 
 static char *keep_test(const char *testname, void *unused)
