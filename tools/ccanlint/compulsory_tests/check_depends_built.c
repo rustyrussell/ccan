@@ -101,7 +101,7 @@ static void check_depends_built(struct manifest *m,
 }
 
 struct ccanlint depends_built = {
-	.key = "depends-built",
+	.key = "depends_build",
 	.name = "Module's CCAN dependencies can be found or built",
 	.check = check_depends_built,
 	.can_run = can_build,

@@ -615,7 +615,7 @@ static void build_examples(struct manifest *m, bool keep,
 }
 
 struct ccanlint examples_compile = {
-	.key = "examples-compile",
+	.key = "examples_compile",
 	.name = "Module examples compile",
 	.check = build_examples,
 	.can_run = can_run,

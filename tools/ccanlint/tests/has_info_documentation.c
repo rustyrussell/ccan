@@ -91,7 +91,7 @@ static void check_has_info_documentation(struct manifest *m,
 }
 
 struct ccanlint has_info_documentation = {
-	.key = "info-documentation",
+	.key = "info_documentation_exists",
 	.name = "Module has documentation in _info",
 	.check = check_has_info_documentation,
 };

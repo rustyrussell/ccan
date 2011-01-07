@@ -69,8 +69,8 @@ static void check_depends_exist(struct manifest *m,
 }
 
 struct ccanlint depends_exist = {
-	.key = "depends-exist",
-	.name = "Module's CCAN dependencies are present",
+	.key = "depends_exist",
+	.name = "Module's CCAN dependencies can be found",
 	.check = check_depends_exist,
 };
 

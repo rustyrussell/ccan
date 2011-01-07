@@ -68,7 +68,7 @@ static void check_includes_build(struct manifest *m,
 }
 
 struct ccanlint includes_build = {
-	.key = "include-main",
+	.key = "main_header_compiles",
 	.name = "Modules main header compiles",
 	.check = check_includes_build,
 	.can_run = can_build,

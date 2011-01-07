@@ -131,7 +131,7 @@ static void do_compile_tests(struct manifest *m,
 }
 
 struct ccanlint compile_tests = {
-	.key = "compile-tests",
+	.key = "tests_compile",
 	.name = "Module tests compile",
 	.check = do_compile_tests,
 	.can_run = can_build,

@@ -75,7 +75,7 @@ static void create_info_template(struct manifest *m, struct score *score)
 }
 
 struct ccanlint has_info = {
-	.key = "info",
+	.key = "info_exists",
 	.name = "Module has _info file",
 	.check = check_has_info,
 	.handle = create_info_template,

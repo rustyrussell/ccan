@@ -148,8 +148,8 @@ static void check_has_license(struct manifest *m,
 }
 
 struct ccanlint has_license = {
-	.key = "has-license",
-	.name = "Module has license",
+	.key = "license_exists",
+	.name = "Module has License: entry in _info, and LICENSE symlink/file",
 	.check = check_has_license,
 };
 

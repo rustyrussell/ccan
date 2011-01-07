@@ -65,7 +65,7 @@ static void do_compile_test_helpers(struct manifest *m,
 }
 
 struct ccanlint compile_test_helpers = {
-	.key = "compile-helpers",
+	.key = "tests_helpers_compile",
 	.name = "Module test helper objects compile",
 	.check = do_compile_test_helpers,
 	.can_run = can_run,

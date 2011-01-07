@@ -74,7 +74,7 @@ static void do_build(struct manifest *m,
 }
 
 struct ccanlint build = {
-	.key = "build",
+	.key = "module_builds",
 	.name = "Module can be built from object files",
 	.check = do_build,
 	.can_run = can_build,

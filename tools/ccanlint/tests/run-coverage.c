@@ -163,8 +163,8 @@ static void do_run_coverage_tests(struct manifest *m,
 }
 
 struct ccanlint run_coverage_tests = {
-	.key = "test-coverage",
-	.name = "Code coverage of module tests",
+	.key = "tests_coverage",
+	.name = "Module's tests cover all the code",
 	.check = do_run_coverage_tests,
 };
 

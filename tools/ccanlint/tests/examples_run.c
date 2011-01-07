@@ -272,7 +272,7 @@ static void run_examples(struct manifest *m, bool keep,
 }
 
 struct ccanlint examples_run = {
-	.key = "examples-run",
+	.key = "examples_run",
 	.name = "Module examples with expected output give that output",
 	.check = run_examples,
 	.can_run = can_run,

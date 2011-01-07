@@ -125,8 +125,8 @@ static void check_has_tests(struct manifest *m,
 }
 
 struct ccanlint has_tests = {
-	.key = "has-tests",
-	.name = "Module has tests",
+	.key = "tests_exist",
+	.name = "Module has test directory with tests in it",
 	.check = check_has_tests,
 };
 

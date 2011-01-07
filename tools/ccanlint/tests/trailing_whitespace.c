@@ -50,7 +50,7 @@ static void check_trailing_whitespace(struct manifest *m,
 }
 
 struct ccanlint trailing_whitespace = {
-	.key = "trailing-whitespace",
+	.key = "no_trailing_whitespace",
 	.name = "Module's source code has no trailing whitespace",
 	.check = check_trailing_whitespace,
 };

@@ -84,7 +84,7 @@ static void check_use_build(struct manifest *m,
 }
 
 struct ccanlint check_build = {
-	.key = "check-link",
+	.key = "module_links",
 	.name = "Module can be linked against trivial program",
 	.check = check_use_build,
 	.can_run = can_build,

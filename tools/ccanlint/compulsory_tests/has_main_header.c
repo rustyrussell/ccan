@@ -34,7 +34,7 @@ static void check_has_main_header(struct manifest *m,
 }
 
 struct ccanlint has_main_header = {
-	.key = "has-main-header",
+	.key = "main_header_exists",
 	.name = "Module has main header file",
 	.check = check_has_main_header,
 };

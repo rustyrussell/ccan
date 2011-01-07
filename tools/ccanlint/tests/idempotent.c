@@ -194,7 +194,7 @@ static void check_idempotent(struct manifest *m,
 }
 
 struct ccanlint idempotent = {
-	.key = "idempotent",
+	.key = "headers_idempotent",
 	.name = "Module headers are #ifndef/#define wrapped",
 	.check = check_idempotent,
 	.handle = handle_idem,

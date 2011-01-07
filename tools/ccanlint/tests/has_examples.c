@@ -110,8 +110,8 @@ static void extract_examples(struct manifest *m,
 }
 
 struct ccanlint has_examples = {
-	.key = "has-examples",
-	.name = "_info and header files have examples",
+	.key = "examples_exist",
+	.name = "_info and main header file have Example: sections",
 	.check = extract_examples,
 };
 

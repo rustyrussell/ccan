@@ -87,8 +87,8 @@ static void check_depends_accurate(struct manifest *m,
 }
 
 struct ccanlint depends_accurate = {
-	.key = "depends-accurate",
-	.name = "Module's CCAN dependencies are the only ccan files #included",
+	.key = "depends_accurate",
+	.name = "Module's CCAN dependencies are the only CCAN files #included",
 	.check = check_depends_accurate,
 };
 

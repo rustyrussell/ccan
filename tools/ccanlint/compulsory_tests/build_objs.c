@@ -58,7 +58,7 @@ static void check_objs_build(struct manifest *m,
 }
 
 struct ccanlint build_objs = {
-	.key = "build-objects",
+	.key = "objects_build",
 	.name = "Module object files can be built",
 	.check = check_objs_build,
 	.can_run = can_build,
