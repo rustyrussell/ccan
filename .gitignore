@@ -16,3 +16,4 @@ lib-depends
 tools/_infotojson/infotojson
 tools/ccanlint/test/run-file_analysis
 tools/configurator/configurator
+scores/
