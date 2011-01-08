@@ -15,7 +15,7 @@
 EXCLUDE=wwviaudio ogg_to_pcm jmap jbitset nfs
 
 # Where make scores puts the results
-SCOREDIR=scores/$(shell whoami)/$(shell uname -s)-$(shell uname -m)-$(CC)
+SCOREDIR=scores/$(shell whoami)/$(shell uname -s)-$(shell uname -m)-$(CC)-$(shell git describe --always --dirty)
 
 ALL=$(filter-out $(EXCLUDE), $(REALLY_ALL))
 
