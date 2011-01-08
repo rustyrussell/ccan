@@ -11,6 +11,7 @@
 #include <ctype.h>
 #include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
+#include <ccan/str_talloc/str_talloc.h>
 #include "doc_extract.h"
 #include "tools.h"
 
@@ -50,28 +51,17 @@ static bool is_blank(const char *line)
 	return line && line[strspn(line, " \t\n")] == '\0';
 }
 
-static bool is_section(const char *line, bool one_liner)
+static char *is_section(const void *ctx, const char *line, char **value)
 {
-	unsigned int len = 0;
+	char *secname;
 
 	/* Any number of upper case words separated by spaces, ending in : */
-	for (;;) {
-		if (!isupper(line[len]))
-			return false;
-		len += strspn(line+len, IDENT_CHARS);
-		if (line[len] == ':')
-			break;
+	if (!strreg(ctx, line,
+		    "^([A-Z][a-zA-Z0-9_]*( [A-Z][a-zA-Z0-9_]*)*):[ \t\n]*(.*)",
+		    &secname, NULL, value))
+		return NULL;
 
-		if (line[len] != ' ')
-			return false;
-		len++;
-	}
-
-	/* If it can be a one-liner, a space is sufficient.*/
-	if (one_liner)
-		return (line[len+1] == ' ' || line[len+1] == '\t');
-
-	return line[len] == ':' && is_blank(line+len+1);
+	return secname;
 }
 
 /* Summary line is form '<identifier> - ' (spaces for 'struct foo -') */
@@ -148,6 +138,7 @@ struct list_head *extract_doc_sections(char **rawlines, unsigned int num)
 
 	for (i = 0; lines[i]; i++) {
 		unsigned funclen;
+		char *type, *extra;
 
 		funclen = is_summary_line(lines[i]);
 		if (funclen) {
@@ -155,20 +146,15 @@ struct list_head *extract_doc_sections(char **rawlines, unsigned int num)
 			curr = new_section(list, function, "summary");
 			add_line(curr, lines[i] + funclen + 3);
 			curr = new_section(list, function, "description");
-		} else if (is_section(lines[i], false)) {
-			char *type = talloc_strndup(curr, lines[i],
-						    strcspn(lines[i], ":"));
+		} else if ((type = is_section(list, lines[i], &extra)) != NULL){
 			curr = new_section(list, function, type);
-		} else if (is_section(lines[i], true)) {
-			unsigned int sectlen = strcspn(lines[i], ":");
-			char *type = talloc_strndup(curr, lines[i], sectlen);
-			curr = new_section(list, function, type);
-			add_line(curr, lines[i] + sectlen + 1
-				 + strspn(lines[i] + sectlen + 1, " \t"));
+			if (!streq(extra, "")) {
+				add_line(curr, extra);
+				curr = NULL;
+			}
 		} else {
-			if (!curr)
-				continue;
-			add_line(curr, lines[i]);
+			if (curr)
+				add_line(curr, lines[i]);
 		}
 	}
 	talloc_free(lines);
