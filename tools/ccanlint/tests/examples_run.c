@@ -248,10 +248,10 @@ static void run_examples(struct manifest *m, bool keep,
 				     expect = find_expect(i, lines, &input,
 							  &exact, &linenum)) {
 				char *err;
-				score->total++;
 				if (i->compiled == NULL)
 					continue;
 
+				score->total++;
 				output = unexpected(i, input, expect, exact);
 				if (!output) {
 					score->score++;
