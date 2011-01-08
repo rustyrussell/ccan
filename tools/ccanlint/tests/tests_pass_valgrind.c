@@ -121,6 +121,7 @@ static void do_run_tests_vg(struct manifest *m,
 			output = grab_file(i, "valgrind.log", NULL);
 			if (!output || output[0] == '\0') {
 				err = NULL;
+				i->leak_info = NULL;
 			} else {
 				i->leak_info = get_leaks(output, &err);
 			}
