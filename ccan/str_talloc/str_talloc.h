@@ -63,4 +63,47 @@ char **strsplit(const void *ctx, const char *string, const char *delims,
  *	}
  */
 char *strjoin(const void *ctx, char *strings[], const char *delim);
+
+/**
+ * strreg - match and extract from a string via (extended) regular expressions.
+ * @ctx: the context to tallocate from (often NULL)
+ * @string: the string to try to match.
+ * @regex: the regular expression to match.
+ * ...: pointers to strings to allocate for subexpressions.
+ *
+ * Returns true if we matched, in which case any parenthesized
+ * expressions in @regex are allocated and placed in the char **
+ * arguments following @regex.  NULL arguments mean the match is not
+ * saved.  The order of the strings is the order
+ * of opening braces in the expression: in the case of repeated
+ * expressions (eg "([a-z])*") the last one is saved, in the case of
+ * non-existent matches (eg "([a-z]*)?") the pointer is set to NULL.
+ *
+ * Allocation failures or malformed regular expressions return false.
+ *
+ * See Also:
+ *	regcomp(3), regex(3).
+ *
+ * Example:
+ *	// Given 'My name is Rusty' outputs 'Hello Rusty!'
+ *	// Given 'my first name is Rusty Russell' outputs 'Hello Rusty Russell!'
+ *	// Given 'My name isnt Rusty Russell' outputs 'Hello there!'
+ *	int main(int argc, char *argv[])
+ *	{
+ *		char *person, *input;
+ *
+ *		// Join args and trim trailing space.
+ *		input = strjoin(NULL, argv+1, " ");
+ *		if (strlen(input) != 0)
+ *			input[strlen(input)-1] = '\0';
+ *
+ *		if (strreg(NULL, input, "[Mm]y (first )?name is ([A-Za-z ]+)",
+ *			   NULL, &person))
+ *			printf("Hello %s!\n", person);
+ *		else
+ *			printf("Hello there!\n");
+ *		return 0;
+ *	}
+ */
+bool strreg(const void *ctx, const char *string, const char *regex, ...);
 #endif /* CCAN_STR_TALLOC_H */

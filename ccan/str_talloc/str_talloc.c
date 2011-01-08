@@ -4,7 +4,12 @@
 #include <limits.h>
 #include <stdlib.h>
 #include "str_talloc.h"
+#include <sys/types.h>
+#include <regex.h>
+#include <stdarg.h>
+#include <unistd.h>
 #include <ccan/talloc/talloc.h>
+#include <ccan/str/str.h>
 
 char **strsplit(const void *ctx, const char *string, const char *delims,
 		 unsigned int *nump)
@@ -39,5 +44,48 @@ char *strjoin(const void *ctx, char *strings[], const char *delim)
 		ret = talloc_append_string(ret, strings[i]);
 		ret = talloc_append_string(ret, delim);
 	}
+	return ret;
+}
+
+bool strreg(const void *ctx, const char *string, const char *regex, ...)
+{
+	size_t nmatch = 1 + strcount(regex, "(");
+	regmatch_t *matches = talloc_array(ctx, regmatch_t, nmatch);
+	regex_t r;
+	bool ret;
+
+	if (!matches || regcomp(&r, regex, REG_EXTENDED) != 0)
+		return false;
+
+	if (regexec(&r, string, nmatch, matches, 0) == 0) {
+		unsigned int i;
+		va_list ap;
+
+		ret = true;
+		va_start(ap, regex);
+		for (i = 1; i < nmatch; i++) {
+			char **arg;
+			arg = va_arg(ap, char **);
+			if (arg) {
+				/* eg. ([a-z])? can give "no match". */
+				if (matches[i].rm_so == -1)
+					*arg = NULL;
+				else {
+					*arg = talloc_strndup(ctx,
+						      string + matches[i].rm_so,
+						      matches[i].rm_eo
+						      - matches[i].rm_so);
+					if (!*arg) {
+						ret = false;
+						break;
+					}
+				}
+			}
+		}
+		va_end(ap);
+	} else
+		ret = false;
+	talloc_free(matches);
+	regfree(&r);
 	return ret;
 }
