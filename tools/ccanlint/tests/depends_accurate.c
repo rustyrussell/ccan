@@ -2,6 +2,7 @@
 #include <tools/tools.h>
 #include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
+#include <ccan/str_talloc/str_talloc.h>
 #include <ccan/foreach/foreach.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -14,19 +15,6 @@
 #include <err.h>
 #include <string.h>
 #include <ctype.h>
-
-static char *strip_spaces(const void *ctx, char *line)
-{
-	char *p = talloc_strdup(ctx, line);
-	unsigned int i, j;
-
-	for (i = 0, j = 0; p[i]; i++) {
-		if (!isspace(p[i]))
-			p[j++] = p[i];
-	}
-	p[j] = '\0';
-	return p;
-}
 
 static bool has_dep(struct manifest *m, const char *depname)
 {
@@ -60,18 +48,12 @@ static void check_depends_accurate(struct manifest *m,
 			char **lines = get_ccan_file_lines(f);
 
 			for (i = 0; lines[i]; i++) {
-				char *p;
-				if (lines[i][strspn(lines[i], " \t")] != '#')
+				char *mod;
+				if (!strreg(f, lines[i],
+					    "^[ \t]*#[ \t]*include[ \t]*[<\"]"
+					    "ccan/+([^/]+)/", &mod))
 					continue;
-				p = strip_spaces(f, lines[i]);
-				if (!strstarts(p, "#include<ccan/")
-				    && !strstarts(p, "#include\"ccan/"))
-					continue;
-				p += strlen("#include\"ccan/");
-				if (!strchr(strchr(p, '/') + 1, '/'))
-					continue;
-				*strchr(strchr(p, '/') + 1, '/') = '\0';
-				if (has_dep(m, p))
+				if (has_dep(m, mod))
 					continue;
 				score->error = "Includes a ccan module"
 					" not listed in _info";
