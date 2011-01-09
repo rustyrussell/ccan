@@ -300,10 +300,20 @@ static int show_tmpdir(char *dir)
 
 static char *keep_test(const char *testname, void *unused)
 {
-	struct ccanlint *i = find_test(testname);
-	if (!i)
-		errx(1, "No test %s to --keep", testname);
-	i->keep_results = true;
+	struct ccanlint *i;
+
+	if (streq(testname, "all")) {
+		struct list_head *list;
+		foreach_ptr(list, &compulsory_tests, &normal_tests) {
+			list_for_each(list, i, list)
+				i->keep_results = true;
+		}
+	} else {
+		i = find_test(testname);
+		if (!i)
+			errx(1, "No test %s to --keep", testname);
+		i->keep_results = true;
+	}
 
 	/* Don't automatically destroy temporary dir. */
 	talloc_set_destructor(temp_dir(NULL), show_tmpdir);
@@ -486,7 +496,8 @@ int main(int argc, char *argv[])
 	opt_register_noarg("--test-dep-graph", test_dependency_graph, NULL,
 			 "print dependency graph of tests in Graphviz .dot format");
 	opt_register_arg("-k|--keep <testname>", keep_test, NULL, NULL,
-			   "keep results of <testname> (can be used multiple times)");
+			 "keep results of <testname>"
+			 " (can be used multiple times, or 'all')");
 	opt_register_noarg("--summary|-s", opt_set_bool, &summary,
 			   "simply give one line summary");
 	opt_register_noarg("--verbose|-v", opt_inc_intval, &verbose,
