@@ -292,12 +292,21 @@ static void init_tests(void)
 	}
 }
 
+static int show_tmpdir(char *dir)
+{
+	printf("You can find ccanlint working files in '%s'\n", dir);
+	return 0;
+}
+
 static char *keep_test(const char *testname, void *unused)
 {
 	struct ccanlint *i = find_test(testname);
 	if (!i)
 		errx(1, "No test %s to --keep", testname);
 	i->keep_results = true;
+
+	/* Don't automatically destroy temporary dir. */
+	talloc_set_destructor(temp_dir(NULL), show_tmpdir);
 	return NULL;
 }
 
@@ -495,6 +504,10 @@ int main(int argc, char *argv[])
 			   " of CCAN modules.",
 			   "This usage message");
 
+	/* We move into temporary directory, so gcov dumps its files there. */
+	if (chdir(temp_dir(talloc_autofree_context())) != 0)
+		err(1, "Error changing to %s temporary dir", temp_dir(NULL));
+
 	opt_parse(&argc, argv, opt_log_stderr_exit);
 
 	if (dir[0] != '/')
@@ -507,10 +520,6 @@ int main(int argc, char *argv[])
 		compile_verbose = true;
 	if (verbose >= 4)
 		tools_verbose = true;
-
-	/* We move into temporary directory, so gcov dumps its files there. */
-	if (chdir(temp_dir(talloc_autofree_context())) != 0)
-		err(1, "Error changing to %s temporary dir", temp_dir(NULL));
 
 	m = get_manifest(talloc_autofree_context(), dir);
 

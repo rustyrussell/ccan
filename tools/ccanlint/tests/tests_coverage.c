@@ -127,15 +127,26 @@ static void do_run_coverage_tests(struct manifest *m,
 				  unsigned int *timeleft, struct score *score)
 {
 	struct ccan_file *i;
-	char *cmdout;
+	char *cmdout, *outdir;
 	char *covcmd;
 	bool full_gcov = (verbose > 1);
 	struct list_head *list;
 
 	/* This tells gcov where we put those .gcno files. */
+	outdir = talloc_dirname(score, m->info_file->compiled);
 	covcmd = talloc_asprintf(m, "gcov %s -o %s",
 				 full_gcov ? "" : "-n",
-				 talloc_dirname(score, m->info_file->compiled));
+				 outdir);
+
+	/* Unlink these files afterwards. */
+	if (!keep) {
+		talloc_set_destructor(talloc_asprintf(score,
+						      "%s/run.gcno", outdir),
+				      unlink_file_destructor);
+		talloc_set_destructor(talloc_asprintf(score,
+						      "%s/run.gcda", outdir),
+				      unlink_file_destructor);
+	}
 
 	/* Run them all. */
 	foreach_ptr(list, &m->run_tests, &m->api_tests) {

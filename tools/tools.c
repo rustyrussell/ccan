@@ -210,6 +210,12 @@ char *temp_dir(const void *ctx)
 	return tmpdir;
 }
 
+int unlink_file_destructor(char *filename)
+{
+	unlink(filename);
+	return 0;
+}
+
 char *maybe_temp_file(const void *ctx, const char *extension, bool keep,
 		      const char *srcname)
 {
@@ -218,11 +224,7 @@ char *maybe_temp_file(const void *ctx, const char *extension, bool keep,
 	struct stat st;
 	unsigned int count = 0;
 
-	if (!keep)
-		srcname = talloc_basename(ctx, srcname);
-	else
-		assert(srcname[0] == '/');
-
+	srcname = talloc_basename(ctx, srcname);
 	if (strrchr(srcname, '.'))
 		baselen = strrchr(srcname, '.') - srcname;
 	else
@@ -230,7 +232,7 @@ char *maybe_temp_file(const void *ctx, const char *extension, bool keep,
 
 	do {
 		f = talloc_asprintf(ctx, "%s/%.*s%s%s",
-				    keep ? "" : temp_dir(ctx),
+				    temp_dir(ctx),
 				    baselen, srcname,
 				    suffix, extension);
 		talloc_free(suffix);
@@ -238,7 +240,10 @@ char *maybe_temp_file(const void *ctx, const char *extension, bool keep,
 	} while (lstat(f, &st) == 0);
 
 	if (tools_verbose)
-		printf("Creating file %s\n", f);
+		printf("Creating %sfile %s\n", keep ? "" : "temporary ", f);
+
+	if (!keep)
+		talloc_set_destructor(f, unlink_file_destructor);
 
 	talloc_free(suffix);
 	return f;

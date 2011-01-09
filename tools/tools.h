@@ -72,4 +72,7 @@ char *maybe_temp_file(const void *ctx, const char *extension, bool in_pwd,
 /* Default wait for run_command.  Should never time out. */
 extern const unsigned int default_timeout_ms;
 
+/* Talloc destructor which unlinks file. */
+int unlink_file_destructor(char *filename);
+
 #endif /* CCAN_TOOLS_H */

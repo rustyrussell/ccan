@@ -122,6 +122,9 @@ static bool compile(const void *ctx,
 	if (!compile_and_link(ctx, file->fullname, ccan_dir,
 			      obj_list(m, file),
 			      "", lib_list(m), file->compiled, output)) {
+		/* Don't keep failures. */
+		if (keep)
+			unlink(file->compiled);
 		talloc_free(file->compiled);
 		file->compiled = NULL;
 		return false;
