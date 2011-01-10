@@ -958,6 +958,19 @@ size_t talloc_get_size(const void *ctx);
 void *talloc_find_parent_byname(const void *ctx, const char *name);
 
 /**
+ * talloc_set_allocator - set the allocations function(s) for talloc.
+ * @malloc: the malloc function
+ * @free: the free function
+ * @realloc: the realloc function
+ *
+ * Instead of using the standard malloc, free and realloc, talloc will use
+ * these replacements.  @realloc will never be called with size 0 or ptr NULL.
+ */
+void talloc_set_allocator(void *(*malloc)(size_t size),
+			  void (*free)(void *ptr),
+			  void *(*realloc)(void *ptr, size_t size));
+
+/**
  * talloc_add_external - create an externally allocated node
  * @ctx: the parent
  * @realloc: the realloc() equivalent

@@ -82,6 +82,10 @@
 static void *null_context;
 static pid_t *autofree_context;
 
+static void *(*tc_malloc)(size_t size) = malloc;
+static void (*tc_free)(void *ptr) = free;
+static void *(*tc_realloc)(void *ptr, size_t size) = realloc;
+
 static void *(*tc_external_realloc)(const void *parent, void *ptr, size_t size);
 static void (*tc_lock)(const void *ctx);
 static void (*tc_unlock)(void);
@@ -283,7 +287,7 @@ static inline void *__talloc(const void *context, size_t size)
 		}
 	}
 
-	tc = (struct talloc_chunk *)malloc(TC_HDR_SIZE+size);
+	tc = (struct talloc_chunk *)tc_malloc(TC_HDR_SIZE+size);
 alloc_done:
 	return init_talloc(parent, tc, size, external);
 }
@@ -571,7 +575,7 @@ static inline int _talloc_free(const void *ptr)
 	if (unlikely(tc->flags & TALLOC_FLAG_EXT_ALLOC))
 		tc_external_realloc(oldparent, tc, 0);
 	else
-		free(tc);
+		tc_free(tc);
 
 	return 0;
 }
@@ -923,13 +927,13 @@ void *_talloc_realloc(const void *context, void *ptr, size_t size, const char *n
 		tc->flags |= TALLOC_FLAG_FREE;
 
 #if ALWAYS_REALLOC
-		new_ptr = malloc(size + TC_HDR_SIZE);
+		new_ptr = tc_malloc(size + TC_HDR_SIZE);
 		if (new_ptr) {
 			memcpy(new_ptr, tc, tc->size + TC_HDR_SIZE);
-			free(tc);
+			tc_free(tc);
 		}
 #else
-		new_ptr = realloc(tc, size + TC_HDR_SIZE);
+		new_ptr = tc_realloc(tc, size + TC_HDR_SIZE);
 #endif
 	}
 
@@ -1611,6 +1615,15 @@ int talloc_is_parent(const void *context, const void *ptr)
 	ret = _talloc_is_parent(context, ptr);
 	unlock();
 	return ret;
+}
+
+void talloc_set_allocator(void *(*malloc)(size_t size),
+			  void (*free)(void *ptr),
+			  void *(*realloc)(void *ptr, size_t size))
+{
+	tc_malloc = malloc;
+	tc_free = free;
+	tc_realloc = realloc;
 }
 
 void *talloc_add_external(const void *ctx,
