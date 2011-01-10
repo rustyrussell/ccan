@@ -1,7 +1,24 @@
+#include <ccan/failtest/failtest.h>
 #include <ccan/rbtree/rbtree.c>
 #include <ccan/tap/tap.h>
 #include <ccan/talloc/talloc.h>
 #include <string.h>
+
+/* We want to test talloc failure paths. */
+static void *my_malloc(size_t size)
+{
+	return malloc(size);
+}
+
+static void my_free(void *ptr)
+{
+	free(ptr);
+}
+
+static void *my_realloc(void *ptr, size_t size)
+{
+	return realloc(ptr, size);
+}
 
 static void *insert_callback(void *param, void *data)
 {
@@ -17,6 +34,8 @@ int main(void)
 
 	/* This is how many tests you plan to run */
 	plan_tests(19);
+
+	talloc_set_allocator(my_malloc, my_free, my_realloc);
 
 	rb = trbt_create(ctx, 0);
 	ok1(rb);
@@ -73,5 +92,5 @@ int main(void)
 	talloc_free(ctx);
 
 	/* This exits depending on whether all tests passed */
-	return exit_status();
+	failtest_exit(exit_status());
 }

@@ -3,8 +3,25 @@
 #include <ccan/talloc/talloc.h>
 #include <string.h>
 #include <stdbool.h>
+#include <ccan/failtest/failtest_override.h>
+#include <ccan/failtest/failtest.h>
+#define NUM_ELEMS 100
 
-#define NUM_ELEMS 10000
+/* We want to test talloc failure paths. */
+static void *my_malloc(size_t size)
+{
+	return malloc(size);
+}
+
+static void my_free(void *ptr)
+{
+	free(ptr);
+}
+
+static void *my_realloc(void *ptr, size_t size)
+{
+	return realloc(ptr, size);
+}
 
 static bool lookup_all(trbt_tree_t *rb, bool exist)
 {
@@ -26,15 +43,25 @@ static bool lookup_all(trbt_tree_t *rb, bool exist)
 
 static bool add_one(trbt_tree_t *rb, bool exist, unsigned int i)
 {
-	int *p = trbt_insert32(rb, i, talloc_memdup(rb, &i, sizeof(i)));
+	int *new = talloc_memdup(rb, &i, sizeof(i));
+	int *p;
+
+	if (!new)
+		return false;
+
+	p = trbt_insert32(rb, i, new);
 	if (p) {
 		if (!exist)
 			return false;
 		if (*p != i)
 			return false;
-	} else
+	} else {
 		if (exist)
 			return false;
+		else
+			if (!trbt_lookup32(rb, i))
+				return false;
+	}
 	return true;
 }
 
@@ -63,12 +90,26 @@ static void delete_all(trbt_tree_t *rb)
 	}
 }
 
-int main(void)
-{
-	trbt_tree_t *rb;
-	void *ctx = talloc_strdup(NULL, "toplevel");
+static void *ctx;
+static trbt_tree_t *rb;
 
+static void exit_test(void)
+{
+	talloc_free(rb);
+	ok1(talloc_total_blocks(ctx) == 1);
+	talloc_free(ctx);
+	failtest_exit(exit_status());
+}
+
+int main(int argc, char *argv[])
+{
+	failtest_init(argc, argv);
+	tap_fail_callback = exit_test;
 	plan_tests(8);
+
+	ctx = talloc_strdup(NULL, "toplevel");
+
+	talloc_set_allocator(my_malloc, my_free, my_realloc);
 
 	rb = trbt_create(ctx, 0);
 	ok1(rb);
@@ -100,5 +141,5 @@ int main(void)
 	talloc_free(ctx);
 
 	/* This exits depending on whether all tests passed */
-	return exit_status();
+	failtest_exit(exit_status());
 }
