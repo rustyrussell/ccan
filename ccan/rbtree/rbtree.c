@@ -19,16 +19,16 @@
 #include <ccan/rbtree/rbtree.h>
 
 static void
-tree_destructor_traverse_node(TALLOC_CTX *mem_ctx, trbt_node_t *node)
+tree_destructor_traverse_node(trbt_node_t *node)
 {
 	talloc_set_destructor(node, NULL);
 	if (node->left) {
-		tree_destructor_traverse_node(mem_ctx, node->left);
+		tree_destructor_traverse_node(node->left);
 	}
 	if (node->right) {
-		tree_destructor_traverse_node(mem_ctx, node->right);
+		tree_destructor_traverse_node(node->right);
 	}
-	talloc_steal(mem_ctx, node);
+	talloc_free(node);
 }
 
 /*
@@ -36,7 +36,6 @@ tree_destructor_traverse_node(TALLOC_CTX *mem_ctx, trbt_node_t *node)
  */
 static int tree_destructor(trbt_tree_t *tree)
 {
-	TALLOC_CTX *tmp_ctx;
 	trbt_node_t *node;
 
 	if (tree == NULL) {
@@ -48,17 +47,14 @@ static int tree_destructor(trbt_tree_t *tree)
 		return 0;
 	}
 
-	/* traverse the tree and remove the node destructor and steal
-	   the node to the temporary context.
+	/* traverse the tree and remove the node destructor then delete it.
 	   we dont want to use the existing destructor for the node
 	   since that will remove the nodes one by one from the tree.
 	   since the entire tree will be completely destroyed we dont care
 	   if it is inconsistent or unbalanced while freeing the
 	   individual nodes
 	*/
-	tmp_ctx = talloc_new(NULL);
-	tree_destructor_traverse_node(tmp_ctx, node);
-	talloc_free(tmp_ctx);
+	tree_destructor_traverse_node(node);
 
 	return 0;
 }
