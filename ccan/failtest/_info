@@ -1,0 +1,69 @@
+#include <stdio.h>
+#include <string.h>
+#include "config.h"
+
+/**
+ * failtest - unit test helpers for testing malloc and other failures.
+ *
+ * The failtest module overrides various standard functions, and forks
+ * your unit test at those points to test failure paths.  The failing
+ * child are expected to fail (eg. when malloc fails), but should not
+ * leak memory or crash.
+ *
+ * The unit test is a normal CCAN tap-style test, except it should
+ * start by calling failtest_init() and end by calling
+ * failtest_exit().  
+ *
+ * You can control what functions fail: see failtest_hook.
+ *
+ * Example:
+ *	#include <stdio.h>
+ *	#include <stdlib.h>
+ *	#include <string.h>
+ *	#include <ccan/tap/tap.h>
+ *	#include <ccan/failtest/failtest_override.h>
+ *	#include <ccan/failtest/failtest.h>
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		void *a, *b;
+ *
+ *		failtest_init(argc, argv);
+ *		plan_tests(3);
+ *
+ *		// Simple malloc test.
+ *		a = malloc(100);
+ *		if (ok1(a)) {
+ *			// Fill the memory.
+ *			memset(a, 'x', 100);
+ *			b = realloc(a, 200);
+ *			if (ok1(b)) {
+ *				// Fill the rest of the memory.
+ *				memset(b + 100, 'y', 100);
+ *				// Check it got a copy of a as expected.
+ *				ok1(strspn(b, "x") == 100);
+ *				free(b);
+ *			} else {
+ *				// Easy to miss: free a on realloc failure!
+ *				free(a);
+ *			}
+ *		}
+ *		failtest_exit(exit_status());
+ *	}
+ *
+ * License: LGPL
+ * Author: Rusty Russell <rusty@rustcorp.com.au>
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/compiler\n");
+		printf("ccan/read_write_all\n");
+		return 0;
+	}
+
+	return 1;
+}
