@@ -12,11 +12,11 @@ static void *insert_callback(void *param, void *data)
 int main(void)
 {
 	trbt_tree_t *rb;
-	void *ctx = talloc_init("toplevel");
+	void *ctx = talloc_strdup(NULL, "toplevel");
 	char *data, *data2;
 
 	/* This is how many tests you plan to run */
-	plan_tests(18);
+	plan_tests(19);
 
 	rb = trbt_create(ctx, 0);
 	ok1(rb);
@@ -55,15 +55,22 @@ int main(void)
 	/* Insert with callback on existing. */
 	trbt_insert32_callback(rb, 0, insert_callback, data2);
 	ok1(strcmp(trbt_lookup32(rb, 0), "insert_callback") == 0);
+	talloc_free(data2);
 
 	/* Delete. */
+	data2 = trbt_lookup32(rb, 1);
 	trbt_delete32(rb, 1);
 	ok1(trbt_lookup32(rb, 1) == NULL);
 	ok1(trbt_lookup32(rb, 0));
+	talloc_free(data2);
 
 	/* This should free everything. */
 	talloc_free(trbt_lookup32(rb, 0));
 	talloc_free(rb);
+
+	/* No memory leaks? */
+	ok1(talloc_total_blocks(ctx) == 1);
+	talloc_free(ctx);
 
 	/* This exits depending on whether all tests passed */
 	return exit_status();

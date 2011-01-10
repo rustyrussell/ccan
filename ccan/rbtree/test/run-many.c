@@ -66,9 +66,9 @@ static void delete_all(trbt_tree_t *rb)
 int main(void)
 {
 	trbt_tree_t *rb;
-	void *ctx = talloc_init("toplevel");
+	void *ctx = talloc_strdup(NULL, "toplevel");
 
-	plan_tests(7);
+	plan_tests(8);
 
 	rb = trbt_create(ctx, 0);
 	ok1(rb);
@@ -94,6 +94,10 @@ int main(void)
 
 	/* All are children of rb, so this is clean. */
 	talloc_free(rb);
+
+	/* No memory leaks? */
+	ok1(talloc_total_blocks(ctx) == 1);
+	talloc_free(ctx);
 
 	/* This exits depending on whether all tests passed */
 	return exit_status();
