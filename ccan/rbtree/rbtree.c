@@ -671,6 +671,8 @@ trbt_insert32(trbt_tree_t *tree, uint32_t key, void *data)
 				trbt_node_t *new_node;
 
 				new_node = trbt_create_node(tree, node, key, data);
+				if (!new_node)
+					return NULL;
 				node->left=new_node;
 				node=new_node;
 
@@ -685,6 +687,8 @@ trbt_insert32(trbt_tree_t *tree, uint32_t key, void *data)
 				trbt_node_t *new_node;
 
 				new_node = trbt_create_node(tree, node, key, data);
+				if (!new_node)
+					return NULL;
 				node->right=new_node;
 				node=new_node;
 				break;
