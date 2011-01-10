@@ -24,20 +24,27 @@ static bool lookup_all(trbt_tree_t *rb, bool exist)
 	return true;
 }
 
+static bool add_one(trbt_tree_t *rb, bool exist, unsigned int i)
+{
+	int *p = trbt_insert32(rb, i, talloc_memdup(rb, &i, sizeof(i)));
+	if (p) {
+		if (!exist)
+			return false;
+		if (*p != i)
+			return false;
+	} else
+		if (exist)
+			return false;
+	return true;
+}
+
 static bool insert_all(trbt_tree_t *rb, bool exist)
 {
 	unsigned int i;
 
 	for (i = 0; i < NUM_ELEMS; i++) {
-		int *p = trbt_insert32(rb, i, talloc_memdup(rb, &i, sizeof(i)));
-		if (p) {
-			if (!exist)
-				return false;
-			if (*p != i)
-				return false;
-		} else
-			if (exist)
-				return false;
+		if (!add_one(rb, exist, i))
+			return false;
 	}
 	return true;
 }
@@ -46,7 +53,12 @@ static void delete_all(trbt_tree_t *rb)
 {
 	unsigned int i;
 
-	for (i = 0; i < NUM_ELEMS; i++) {
+	/* Don't delete them in the obvious order. */
+	for (i = 0; i < NUM_ELEMS / 2; i++) {
+		trbt_delete32(rb, i);
+	}
+
+	for (i = NUM_ELEMS-1; i >= NUM_ELEMS / 2; i--) {
 		trbt_delete32(rb, i);
 	}
 }
