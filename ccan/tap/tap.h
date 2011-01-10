@@ -243,4 +243,11 @@ void plan_no_plan(void);
  */
 void plan_skip_all(const char *reason);
 
+/**
+ * tap_fail_callback - function to call when we fail
+ *
+ * This can be used to ease debugging, or exit on the first failure.
+ */
+void (*tap_fail_callback)(void);
+
 #endif /* C99 or gcc */

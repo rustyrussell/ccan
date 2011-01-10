@@ -179,6 +179,9 @@ _gen_result(int ok, const char *func, const char *file, unsigned int line,
 
 	UNLOCK;
 
+	if (!ok && tap_fail_callback)
+		tap_fail_callback();
+
 	/* We only care (when testing) that ok is positive, but here we
 	   specifically only want to return 1 or 0 */
 	return ok ? 1 : 0;
