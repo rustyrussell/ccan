@@ -948,7 +948,7 @@ int main(void)
 {
 	struct torture_context *ctx;
 
-	plan_tests(288);
+	plan_tests(289);
 	ctx = talloc_add_external(NULL, normal_realloc, test_lock, test_unlock);
 
 	torture_local_talloc(NULL);
@@ -979,6 +979,10 @@ int main(void)
 	ok(allocations_used() == 0, "%u allocations still used?",
 	   allocations_used());
 
+	/* This closes the leak, but make sure we're not freeing unexpected. */
+	ok1(!talloc_chunk_from_ptr(null_context)->child);
+	talloc_disable_null_tracking();
+	
 	return exit_status();
 }
 

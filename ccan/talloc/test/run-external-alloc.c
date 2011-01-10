@@ -32,7 +32,7 @@ static void ext_unlock(void)
 int main(void)
 {
 	char *p, *p2, *head;
-	plan_tests(13);
+	plan_tests(15);
 
 	expected_parent = NULL;
 	head = talloc_add_external(NULL, ext_realloc, ext_lock, ext_unlock);
@@ -61,6 +61,10 @@ int main(void)
 	expected_parent = head;
 	talloc_free(p);
 	ok1(ext_free_count == 2);
+
+	expected_parent = NULL;
+	talloc_free(head);
+	ok1(ext_free_count == 3);
 
 	ok1(lock_count == unlock_count);
 
