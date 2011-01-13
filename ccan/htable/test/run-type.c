@@ -7,6 +7,8 @@
 #define NUM_VALS (1 << HTABLE_BASE_BITS)
 
 struct obj {
+	/* Makes sure we don't try to treat and obj as a key or vice versa */
+	unsigned char unused;
 	unsigned int key;
 };
 
@@ -25,9 +27,9 @@ static size_t objhash(const unsigned int *key)
 	return h;
 }
 
-static bool cmp(const unsigned int *key1, const unsigned int *key2)
+static bool cmp(const struct obj *obj, const unsigned int *key)
 {
-	return *key1 == *key2;
+	return obj->key == *key;
 }
 
 HTABLE_DEFINE_TYPE(struct obj, objkey, objhash, cmp, obj);

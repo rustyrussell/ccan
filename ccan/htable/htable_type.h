@@ -63,7 +63,7 @@ static inline type *htable_##name##_get(const struct htable_##name *ht,	\
 					const HTABLE_KTYPE(keyof) k)	\
 {									\
 	/* Typecheck for cmpfn */					\
-	(void)sizeof(cmpfn(keyof((const type *)NULL),			\
+	(void)sizeof(cmpfn((const type *)NULL,				\
 			   keyof((const type *)NULL)));			\
 	return (type *)htable_get((const struct htable *)ht,		\
 				  hashfn(k),				\

@@ -33,9 +33,9 @@ static const char *manifest_name(const struct manifest *m)
 	return m->dir;
 }
 
-static bool dir_cmp(const char *dir1, const char *dir2)
+static bool dir_cmp(const struct manifest *m, const char *dir)
 {
-	return strcmp(dir1, dir2) == 0;
+	return strcmp(m->dir, dir) == 0;
 }
 
 HTABLE_DEFINE_TYPE(struct manifest, manifest_name, dir_hash, dir_cmp, manifest);
