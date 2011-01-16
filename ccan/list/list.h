@@ -95,7 +95,7 @@ struct list_node *list_check_node(const struct list_node *n,
 #endif
 
 /**
- * LIST_HEAD_INIT - initalizer for an empty list_head
+ * LIST_HEAD_INIT - initializer for an empty list_head
  * @name: the name of the list.
  *
  * Explicit initializer for an empty list.
@@ -109,7 +109,7 @@ struct list_node *list_check_node(const struct list_node *n,
 #define LIST_HEAD_INIT(name) { { &name.n, &name.n } }
 
 /**
- * LIST_HEAD - define and initalize an empty list_head
+ * LIST_HEAD - define and initialize an empty list_head
  * @name: the name of the list.
  *
  * The LIST_HEAD macro defines a list_head and initializes it to an empty
