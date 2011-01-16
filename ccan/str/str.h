@@ -62,8 +62,10 @@ static inline bool strends(const char *str, const char *postfix)
  * @needle: a substring
  *
  * Example:
- *	#define PRINT_COND_IF_FALSE(cond) \
- *		((cond) || printf("%s is false!", stringify(cond)))
+ *	int i;
+ *      i = strcount("aaa aaa", "a");  // i = 6;
+ *      i = strcount("aaa aaa", "ab"); // i = 0;
+ *      i = strcount("aaa aaa", "aa"); // i = 2;
  */
 size_t strcount(const char *haystack, const char *needle);
 
