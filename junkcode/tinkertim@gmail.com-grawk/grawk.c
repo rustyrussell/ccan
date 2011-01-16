@@ -124,7 +124,7 @@ static void usage(void)
 		"awk-style print statement; defines "
 		"output fields\n");
 	printf("\nExamples:\n");
-	printf("  Retreive joe123's home directory from /etc/passwd:\n");
+	printf("  Retrieve joe123's home directory from /etc/passwd:\n");
 	printf("\t%s -F : \"joe123\" '$6' /etc/passwd\n", progname);
 	printf("\n  Find fields 2 3 and 4 on lines that begin with @ from stdin:\n");
 	printf("\tcat file.txt | %s \"^@\" '$2,$3,$4'\n", progname);

@@ -15,7 +15,7 @@
  **
  ** codedr@gmail.com
  **
- ** Licence: Public Domain
+ ** License: Public Domain
  */
 
 int

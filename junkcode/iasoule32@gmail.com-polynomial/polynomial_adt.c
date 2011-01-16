@@ -14,7 +14,7 @@ PolyAdt *create_adt(int hp)
 
 void insert_term(PolyAdt *pAdt, float c, int e)
 {
-    assert(pAdt != NULL); //assume client code didnt call create_adt()
+    assert(pAdt != NULL); //assume client code didn't call create_adt()
     Node *n = malloc(sizeof(Node));
        
     if(pAdt->head == NULL)
