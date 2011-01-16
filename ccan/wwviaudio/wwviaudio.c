@@ -226,7 +226,7 @@ static void decode_paerror(PaError rc)
 {
 	if (rc == paNoError)
 		return;
-	fprintf(stderr, "An error occured while using the portaudio stream\n");
+	fprintf(stderr, "An error occurred while using the portaudio stream\n");
 	fprintf(stderr, "Error number: %d\n", rc);
 	fprintf(stderr, "Error message: %s\n", Pa_GetErrorText(rc));
 }
