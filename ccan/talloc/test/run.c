@@ -937,7 +937,7 @@ static void *normal_realloc(const void *parent, void *ptr, size_t size)
 	}
 
 	allocations[i] = realloc(ptr, size);
-	/* Not guarenteed by realloc. */
+	/* Not guaranteed by realloc. */
 	if (!size)
 		allocations[i] = NULL;
 
