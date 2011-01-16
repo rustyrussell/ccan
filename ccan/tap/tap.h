@@ -195,7 +195,7 @@ void todo_end(void);
 /**
  * exit_status - the value that main should return.
  *
- * For maximum compatability your test program should return a particular exit
+ * For maximum compatibility your test program should return a particular exit
  * code (ie. 0 if all tests were run, and every test which was expected to
  * succeed succeeded).
  *
