@@ -126,7 +126,7 @@ array_growalloc(array, newAlloc) sees if the array can currently hold newAlloc i
 	if not, it increases the alloc to satisfy this requirement, allocating slack
 	space to avoid having to reallocate for every size increment.
 
-array_from_string(array, str) copys a string to an array_char.
+array_from_string(array, str) copies a string to an array_char.
 
 array_push(array, item) pushes an item to the end of the array.
 array_pop_nocheck(array) pops it back out.  Be sure there is at least one item in the array before calling.

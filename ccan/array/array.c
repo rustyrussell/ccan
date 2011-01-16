@@ -6,7 +6,7 @@ int array_alias_helper(const void *a, const void *b) {
 	return 0;
 }
 
-//grows the allocated size to accomodate the size
+//grows the allocated size to accommodate the size
 void array_resize_helper(array_char *a, size_t itemSize) {
 	a->alloc = (a->size+63)&~63;
 	#ifndef ARRAY_USE_TALLOC
