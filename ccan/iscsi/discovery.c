@@ -155,7 +155,7 @@ int iscsi_process_text_reply(struct iscsi_context *iscsi, struct iscsi_pdu *pdu,
 				return -1;
 			}
 		} else {
-			printf("Dont know how to handle discovery string : %s\n", hdr);
+			printf("Don't know how to handle discovery string : %s\n", hdr);
 			pdu->callback(iscsi, ISCSI_STATUS_ERROR, NULL, pdu->private_data);
 			iscsi_free_discovery_addresses(targets);
 			return -1;

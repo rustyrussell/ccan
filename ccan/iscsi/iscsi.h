@@ -131,7 +131,7 @@ typedef void (*iscsi_command_cb)(struct iscsi_context *iscsi, int status, void *
  *    ISCSI_STATUS_ERROR    : Either failed to establish the connection, or an already established connection
  *                            has failed with an error.
  *
- * The callback will NOT be invoked if the session is explicitely torn down through a call to
+ * The callback will NOT be invoked if the session is explicitly torn down through a call to
  * iscsi_disconnect() or iscsi_destroy_context().
  */
 int iscsi_connect_async(struct iscsi_context *iscsi, const char *target, iscsi_command_cb cb, void *private_data);

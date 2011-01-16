@@ -241,7 +241,7 @@ int iscsi_process_pdu(struct iscsi_context *iscsi, const unsigned char *hdr, int
 			}
 			break;
 		default:
-			printf("Dont know how to handle opcode %d\n", opcode);
+			printf("Don't know how to handle opcode %d\n", opcode);
 			return -2;
 		}
 

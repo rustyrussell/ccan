@@ -205,7 +205,7 @@ int iscsi_process_login_reply(struct iscsi_context *iscsi, struct iscsi_pdu *pdu
 	int status;
 
 	if (size < ISCSI_HEADER_SIZE) {
-		printf("dont have enough data to read status from login reply\n");
+		printf("don't have enough data to read status from login reply\n");
 		return -1;
 	}
 
