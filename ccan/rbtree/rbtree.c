@@ -48,9 +48,9 @@ static int tree_destructor(trbt_tree_t *tree)
 	}
 
 	/* traverse the tree and remove the node destructor then delete it.
-	   we dont want to use the existing destructor for the node
+	   we don't want to use the existing destructor for the node
 	   since that will remove the nodes one by one from the tree.
-	   since the entire tree will be completely destroyed we dont care
+	   since the entire tree will be completely destroyed we don't care
 	   if it is inconsistent or unbalanced while freeing the
 	   individual nodes
 	*/
@@ -489,7 +489,7 @@ delete_node(trbt_node_t *node)
 	   Once the delete of the node is finished, we remove this dummy
 	   node, which is simple to do since it is guaranteed that it will
 	   still not have any children after the delete operation.
-	   This is because we dont represent the leaf-nodes as actual nodes
+	   This is because we don't represent the leaf-nodes as actual nodes
 	   in this implementation.
 	 */
 	if (!child) {
@@ -528,7 +528,7 @@ delete_node(trbt_node_t *node)
 	   This is simple since this dummy node originally had no children
 	   and we are guaranteed that it will also not have any children
 	   after the node has been deleted and any possible rotations
-	   have occured.
+	   have occurred.
 
 	   The only special case is if this was the last node of the tree
 	   in which case we have to reset the root to NULL as well.
