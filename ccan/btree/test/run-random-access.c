@@ -290,7 +290,7 @@ static int test_insert(struct btree *btree, size_t key[], size_t count)
 	if (!find(btree, key, k))
 		return 0;
 	
-	/* Make sure key's presense is consistent with our array. */
+	/* Make sure key's presence is consistent with our array. */
 	found = btree_find_first(btree, &key[k], iter);
 	if (key[k]) {
 		if (!found || iter->item != &key[k])
