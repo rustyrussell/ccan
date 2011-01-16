@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
 			k = k2;
 		}
 
-		/* But arbitary orderings should work too. */
+		/* But arbitrary orderings should work too. */
 		for (j = td.calls-1; j > 0; j--) {
 			k.dptr = (unsigned char *)&td.records[j-1];
 			k.dsize = sizeof(td.records[j-1]);
