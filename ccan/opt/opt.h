@@ -32,7 +32,7 @@ struct opt_table {
  * @arg: the argument to hand to @cb.
  * @desc: the description for opt_usage(), or opt_hidden.
  *
- * This is a typesafe wrapper for intializing a struct opt_table.  The callback
+ * This is a typesafe wrapper for initializing a struct opt_table.  The callback
  * of type "char *cb(type *)", "char *cb(const type *)" or "char *cb(void *)",
  * where "type" is the type of the @arg argument.
  *
@@ -42,7 +42,7 @@ struct opt_table {
  *
  * Any number of equivalent short or long options can be listed in @names,
  * separated by '|'.  Short options are a single hyphen followed by a single
- * character, long options are two hypens followed by one or more characters.
+ * character, long options are two hyphens followed by one or more characters.
  *
  * See Also:
  *	OPT_WITH_ARG()
@@ -58,7 +58,7 @@ struct opt_table {
  * @arg: the argument to hand to @cb and @show
  * @desc: the description for opt_usage(), or opt_hidden.
  *
- * This is a typesafe wrapper for intializing a struct opt_table.  The callback
+ * This is a typesafe wrapper for initializing a struct opt_table.  The callback
  * is of type "char *cb(const char *, type *)",
  * "char *cb(const char *, const type *)" or "char *cb(const char *, void *)",
  * where "type" is the type of the @arg argument.  The first argument to the
@@ -71,7 +71,7 @@ struct opt_table {
  *
  * Any number of equivalent short or long options can be listed in @names,
  * separated by '|'.  Short options are a single hyphen followed by a single
- * character, long options are two hypens followed by one or more characters.
+ * character, long options are two hyphens followed by one or more characters.
  * A space or equals in @names is ignored for parsing, and only used
  * for printing the usage.
  *
@@ -131,7 +131,7 @@ void opt_register_table(const struct opt_table table[], const char *desc);
  * @names: the names of the option eg. "--foo", "-f" or "--foo|-f|--foobar".
  * @cb: the callback when the option is found.
  * @arg: the argument to hand to @cb.
- * @desc: the verbose desction of the option (for opt_usage()), or NULL.
+ * @desc: the verbose description of the option (for opt_usage()), or NULL.
  *
  * This is used for registering a single commandline option which takes
  * no argument.
@@ -153,7 +153,7 @@ void opt_register_table(const struct opt_table table[], const char *desc);
  * @cb: the callback when the option is found.
  * @show: the callback to print the value in get_usage (or NULL)
  * @arg: the argument to hand to @cb.
- * @desc: the verbose desction of the option (for opt_usage()), or NULL.
+ * @desc: the verbose description of the option (for opt_usage()), or NULL.
  *
  * This is used for registering a single commandline option which takes
  * an argument.
