@@ -213,7 +213,7 @@ TDB_DATA tdb_fetch(struct tdb_context *tdb, TDB_DATA key)
  * function. The parsing function is executed under the chain read lock, so it
  * should be fast and should not block on other syscalls.
  *
- * DONT CALL OTHER TDB CALLS FROM THE PARSER, THIS MIGHT LEAD TO SEGFAULTS.
+ * DON'T CALL OTHER TDB CALLS FROM THE PARSER, THIS MIGHT LEAD TO SEGFAULTS.
  *
  * For mmapped tdb's that do not have a transaction open it points the parsing
  * function directly at the mmap area, it avoids the malloc/memcpy in this

@@ -39,7 +39,7 @@ static tdb_off_t tdb_next_lock(struct tdb_context *tdb, struct tdb_traverse_lock
 	/* Lock each chain from the start one. */
 	for (; tlock->hash < tdb->header.hash_size; tlock->hash++) {
 		if (!tlock->off && tlock->hash != 0) {
-			/* this is an optimisation for the common case where
+			/* this is an optimization for the common case where
 			   the hash chain is empty, which is particularly
 			   common for the use of tdb with ldb, where large
 			   hashes are used. In that case we spend most of our
@@ -53,7 +53,7 @@ static tdb_off_t tdb_next_lock(struct tdb_context *tdb, struct tdb_traverse_lock
 			   lock, so instead we get the lock and re-fetch the
 			   value below.
 			   
-			   Notice that not doing this optimisation on the
+			   Notice that not doing this optimization on the
 			   first hash chain is critical. We must guarantee
 			   that we have done at least one fcntl lock at the
 			   start of a search to guarantee that memory is

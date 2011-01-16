@@ -98,7 +98,7 @@ static int update_tailer(struct tdb_context *tdb, tdb_off_t offset,
 }
 
 /* Add an element into the freelist. Merge adjacent records if
-   neccessary. */
+   necessary. */
 int tdb_free(struct tdb_context *tdb, tdb_off_t offset, struct tdb_record *rec)
 {
 	/* Allocation and tailer lock */
