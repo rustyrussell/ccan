@@ -51,7 +51,7 @@ typedef void (*rpc_cb)(struct rpc_context *rpc, int status, void *data, void *pr
  * Async connection to the tcp port at server:port.
  * Function returns
  *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the connection. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : The tcp connection was successfully established.
@@ -79,12 +79,12 @@ void rpc_set_error(struct rpc_context *rpc, char *error_string, ...);
  * Call PORTMAPPER/NULL
  * Function returns
  *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the connection. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
  *                      data is NULL.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the portmapper.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -96,12 +96,12 @@ int rpc_pmap_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
  * Call PORTMAPPER/GETPORT.
  * Function returns
  *  0 : The connection was initiated. Once the connection establish finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the connection. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the connection. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the portmapper daemon.
  *                      data is a (uint32_t *), containing the port returned.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the portmapper.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the portmapper.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -120,12 +120,12 @@ int mountstat3_to_errno(int error);
  * Call MOUNT/NULL
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
  *                      data is NULL.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the mount daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -136,12 +136,12 @@ int rpc_mount_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
  * Call MOUNT/MNT
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
  *                      data is  mountres3 *.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the mount daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -152,12 +152,12 @@ int rpc_mount_mnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void *
  * Call MOUNT/DUMP
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
  *                      data is a mountlist.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the mount daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -168,12 +168,12 @@ int rpc_mount_dump_async(struct rpc_context *rpc, rpc_cb cb, void *private_data)
  * Call MOUNT/UMNT
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
  *                      data NULL.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the mount daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -184,12 +184,12 @@ int rpc_mount_umnt_async(struct rpc_context *rpc, rpc_cb cb, char *export, void 
  * Call MOUNT/UMNTALL
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
  *                      data NULL.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the mount daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -200,12 +200,12 @@ int rpc_mount_umntall_async(struct rpc_context *rpc, rpc_cb cb, void *private_da
  * Call MOUNT/EXPORT
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the mount daemon.
  *                      data is an exports.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the mount daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the mount daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -226,12 +226,12 @@ int nfsstat3_to_errno(int error);
  * Call NFS/NULL
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
  *                      data is NULL.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the nfs daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -242,12 +242,12 @@ int rpc_nfs_null_async(struct rpc_context *rpc, rpc_cb cb, void *private_data);
  * Call NFS/GETATTR
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
  *                      data is GETATTR3res
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the nfs daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -258,12 +258,12 @@ int rpc_nfs_getattr_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh
  * Call NFS/LOOKUP
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
  *                      data is LOOKUP3res
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the nfs daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -274,12 +274,12 @@ int rpc_nfs_lookup_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
  * Call NFS/ACCESS
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
  *                      data is ACCESS3res
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the nfs daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -290,12 +290,12 @@ int rpc_nfs_access_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
  * Call NFS/READ
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
  *                      data is ACCESS3res
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the nfs daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -306,12 +306,12 @@ int rpc_nfs_read_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, n
  * Call NFS/WRITE
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
  *                      data is WRITE3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the nfs daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -322,12 +322,12 @@ int rpc_nfs_write_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, 
  * Call NFS/COMMIT
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
  *                      data is COMMIT3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the nfs daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -339,12 +339,12 @@ int rpc_nfs_commit_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
  * Call NFS/SETATTR
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
  *                      data is SETATTR3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the nfs daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -358,12 +358,12 @@ int rpc_nfs_setattr_async(struct rpc_context *rpc, rpc_cb cb, struct SETATTR3arg
  * Call NFS/MKDIR
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
  *                      data is MKDIR3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the nfs daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -378,12 +378,12 @@ int rpc_nfs_mkdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, 
  * Call NFS/RMDIR
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
  *                      data is RMDIR3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the nfs daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -397,12 +397,12 @@ int rpc_nfs_rmdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh, 
  * Call NFS/CREATE
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
  *                      data is CREATE3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the nfs daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -416,12 +416,12 @@ int rpc_nfs_create_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
  * Call NFS/REMOVE
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
  *                      data is REMOVE3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the nfs daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -434,12 +434,12 @@ int rpc_nfs_remove_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
  * Call NFS/REMOVE
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
  *                      data is READDIR3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the nfs daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -450,12 +450,12 @@ int rpc_nfs_readdir_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh
  * Call NFS/FSSTAT
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
  *                      data is FSSTAT3res
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the nfs daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -469,12 +469,12 @@ int rpc_nfs_fsstat_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh,
  * Call NFS/READLINK
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
  *                      data is READLINK3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the nfs daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -487,12 +487,12 @@ int rpc_nfs_readlink_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *f
  * Call NFS/SYMLINK
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
  *                      data is SYMLINK3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the nfs daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -504,12 +504,12 @@ int rpc_nfs_symlink_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *fh
  * Call NFS/RENAME
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
  *                      data is RENAME3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the nfs daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -522,12 +522,12 @@ int rpc_nfs_rename_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *old
  * Call NFS/LINK
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
  *                      data is LINK3res *
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the nfs daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.
@@ -547,12 +547,12 @@ int rpc_nfs_link_async(struct rpc_context *rpc, rpc_cb cb, struct nfs_fh3 *file,
  * Call NFSACL/NULL
  * Function returns
  *  0 : The call was initiated. The callback will be invoked when the call completes.
- * <0 : An error occured when trying to set up the call. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the call. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  * RPC_STATUS_SUCCESS : We got a successful response from the nfs daemon.
  *                      data is NULL.
- * RPC_STATUS_ERROR   : An error occured when trying to contact the nfs daemon.
+ * RPC_STATUS_ERROR   : An error occurred when trying to contact the nfs daemon.
  *                      data is the error string.
  * RPC_STATUS_CANCEL : The connection attempt was aborted before it could complete.
  *                     data is NULL.

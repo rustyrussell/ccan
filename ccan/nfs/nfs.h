@@ -85,19 +85,19 @@ struct nfsfh;
  * This function will try to connect to the server and mount the export.
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  *          data is NULL
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_mount_async(struct nfs_context *nfs, const char *server, const char *export, nfs_cb cb, void *private_data);
 /*
  * Sync nfs mount.
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 int nfs_mount_sync(struct nfs_context *nfs, const char *server, const char *export);
@@ -112,12 +112,12 @@ int nfs_mount_sync(struct nfs_context *nfs, const char *server, const char *expo
  * Async stat(<filename>)
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  *          data is struct stat *
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 struct stat;
@@ -125,7 +125,7 @@ int nfs_stat_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *p
 /*
  * Sync stat(<filename>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 int nfs_stat_sync(struct nfs_context *nfs, const char *path, struct stat *st);
@@ -138,19 +138,19 @@ int nfs_stat_sync(struct nfs_context *nfs, const char *path, struct stat *st);
  * Async fstat(nfsfh *)
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  *          data is struct stat *
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_fstat_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, void *private_data);
 /*
  * Sync fstat(nfsfh *)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 int nfs_fstat_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st);
@@ -167,20 +167,20 @@ int nfs_fstat_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, struct stat *st
  *
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  *          data is a struct *nfsfh;
  *          The nfsfh is close using nfs_close().
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_open_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
 /*
  * Sync open(<filename>)
  * Function returns
- *      0 : The operation was successfull. *nfsfh is filled in.
+ *      0 : The operation was successful. *nfsfh is filled in.
  * -errno : The command failed.
  */
 int nfs_open_sync(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh);
@@ -196,19 +196,19 @@ int nfs_open_sync(struct nfs_context *nfs, const char *path, int mode, struct nf
  *
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  *          data is NULL.
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_close_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, void *private_data);
 /*
  * Sync close(nfsfh)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 int nfs_close_sync(struct nfs_context *nfs, struct nfsfh *nfsfh);
@@ -222,13 +222,13 @@ int nfs_close_sync(struct nfs_context *nfs, struct nfsfh *nfsfh);
  *
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *    >=0 : Success.
  *          status is numer of bytes read.
  *          data is a pointer to the returned data.
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offset, size_t count, nfs_cb cb, void *private_data);
@@ -236,7 +236,7 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offs
  * Sync pread()
  * Function returns
  *    >=0 : numer of bytes read.
- * -errno : An error occured.
+ * -errno : An error occurred.
  */
 int nfs_pread_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offset, size_t count, char *buf);
 
@@ -250,13 +250,13 @@ int nfs_pread_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offse
  *
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *    >=0 : Success.
  *          status is numer of bytes read.
  *          data is a pointer to the returned data.
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, nfs_cb cb, void *private_data);
@@ -264,7 +264,7 @@ int nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, n
  * Sync read()
  * Function returns
  *    >=0 : numer of bytes read.
- * -errno : An error occured.
+ * -errno : An error occurred.
  */
 int nfs_read_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *buf);
 
@@ -279,12 +279,12 @@ int nfs_read_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, ch
  *
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *    >=0 : Success.
  *          status is numer of bytes written.
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offset, size_t count, char *buf, nfs_cb cb, void *private_data);
@@ -292,7 +292,7 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t off
  * Sync pwrite()
  * Function returns
  *    >=0 : numer of bytes written.
- * -errno : An error occured.
+ * -errno : An error occurred.
  */
 int nfs_pwrite_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offset, size_t count, char *buf);
 
@@ -305,12 +305,12 @@ int nfs_pwrite_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offs
  *
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *    >=0 : Success.
  *          status is numer of bytes written.
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *buf, nfs_cb cb, void *private_data);
@@ -318,7 +318,7 @@ int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, 
  * Sync write()
  * Function returns
  *    >=0 : numer of bytes written.
- * -errno : An error occured.
+ * -errno : An error occurred.
  */
 int nfs_write_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *buf);
 
@@ -331,12 +331,12 @@ int nfs_write_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, c
  *
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *    >=0 : Success.
  *          data is nfs_off_t * for the current position.
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offset, int whence, nfs_cb cb, void *private_data);
@@ -344,7 +344,7 @@ int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offs
  * Sync lseek()
  * Function returns
  *    >=0 : numer of bytes read.
- * -errno : An error occured.
+ * -errno : An error occurred.
  */
 int nfs_lseek_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offset, int whence, nfs_off_t *current_offset);
 
@@ -357,11 +357,11 @@ int nfs_lseek_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offse
  *
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, void *private_data);
@@ -369,7 +369,7 @@ int nfs_fsync_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_cb cb, voi
  * Sync fsync()
  * Function returns
  *      0 : Success
- * -errno : An error occured.
+ * -errno : An error occurred.
  */
 int nfs_fsync_sync(struct nfs_context *nfs, struct nfsfh *nfsfh);
 
@@ -383,11 +383,11 @@ int nfs_fsync_sync(struct nfs_context *nfs, struct nfsfh *nfsfh);
  *
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_truncate_async(struct nfs_context *nfs, const char *path, nfs_off_t length, nfs_cb cb, void *private_data);
@@ -395,7 +395,7 @@ int nfs_truncate_async(struct nfs_context *nfs, const char *path, nfs_off_t leng
  * Sync truncate()
  * Function returns
  *      0 : Success
- * -errno : An error occured.
+ * -errno : An error occurred.
  */
 int nfs_truncate_sync(struct nfs_context *nfs, const char *path, nfs_off_t length);
 
@@ -409,11 +409,11 @@ int nfs_truncate_sync(struct nfs_context *nfs, const char *path, nfs_off_t lengt
  *
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t length, nfs_cb cb, void *private_data);
@@ -421,7 +421,7 @@ int nfs_ftruncate_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t 
  * Sync ftruncate()
  * Function returns
  *      0 : Success
- * -errno : An error occured.
+ * -errno : An error occurred.
  */
 int nfs_ftruncate_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t length);
 
@@ -438,11 +438,11 @@ int nfs_ftruncate_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t l
  *
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_mkdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
@@ -450,7 +450,7 @@ int nfs_mkdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *
  * Sync mkdir()
  * Function returns
  *      0 : Success
- * -errno : An error occured.
+ * -errno : An error occurred.
  */
 int nfs_mkdir_sync(struct nfs_context *nfs, const char *path);
 
@@ -464,11 +464,11 @@ int nfs_mkdir_sync(struct nfs_context *nfs, const char *path);
  *
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
@@ -476,7 +476,7 @@ int nfs_rmdir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *
  * Sync rmdir()
  * Function returns
  *      0 : Success
- * -errno : An error occured.
+ * -errno : An error occurred.
  */
 int nfs_rmdir_sync(struct nfs_context *nfs, const char *path);
 
@@ -491,12 +491,12 @@ int nfs_rmdir_sync(struct nfs_context *nfs, const char *path);
  *
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  *          data is a struct *nfsfh;
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_creat_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
@@ -504,7 +504,7 @@ int nfs_creat_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb 
  * Sync creat()
  * Function returns
  *      0 : Success
- * -errno : An error occured.
+ * -errno : An error occurred.
  */
 int nfs_creat_sync(struct nfs_context *nfs, const char *path, int mode, struct nfsfh **nfsfh);
 
@@ -520,12 +520,12 @@ int nfs_creat_sync(struct nfs_context *nfs, const char *path, int mode, struct n
  *
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  *          data is NULL
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
@@ -533,7 +533,7 @@ int nfs_unlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void 
  * Sync unlink()
  * Function returns
  *      0 : Success
- * -errno : An error occured.
+ * -errno : An error occurred.
  */
 int nfs_unlink_sync(struct nfs_context *nfs, const char *path);
 
@@ -549,14 +549,14 @@ struct nfsdir;
  *
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When struct nfsdir * is returned, this resource is closed/freed by calling nfs_closedir()
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  *          data is struct nfsdir *
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void *private_data);
@@ -564,7 +564,7 @@ int nfs_opendir_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void
  * Sync opendir()
  * Function returns
  *      0 : Success
- * -errno : An error occured.
+ * -errno : An error occurred.
  */
 int nfs_opendir_sync(struct nfs_context *nfs, const char *path, struct nfsdir **nfsdir);
 
@@ -602,12 +602,12 @@ void nfs_closedir(struct nfs_context *nfs, struct nfsdir *nfsdir);
  * Async statvfs(<dirname>)
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  *          data is struct statvfs *
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 struct statvfs;
@@ -615,7 +615,7 @@ int nfs_statvfs_async(struct nfs_context *nfs, const char *path, nfs_cb cb, void
 /*
  * Sync statvfs(<dirname>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 int nfs_statvfs_sync(struct nfs_context *nfs, const char *path, struct statvfs *svfs);
@@ -628,13 +628,13 @@ int nfs_statvfs_sync(struct nfs_context *nfs, const char *path, struct statvfs *
  * Async readlink(<name>)
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  *          data is a char *
  *          data is only valid during the callback and is automatically freed when the callback returns.
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 struct statvfs;
@@ -642,7 +642,7 @@ int nfs_readlink_async(struct nfs_context *nfs, const char *path, nfs_cb cb, voi
 /*
  * Sync readlink(<name>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 int nfs_readlink_sync(struct nfs_context *nfs, const char *path, char *buf, int bufsize);
@@ -656,19 +656,19 @@ int nfs_readlink_sync(struct nfs_context *nfs, const char *path, char *buf, int 
  * Async chmod(<name>)
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  *          data is NULL
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_chmod_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
 /*
  * Sync chmod(<name>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 int nfs_chmod_sync(struct nfs_context *nfs, const char *path, int mode);
@@ -682,19 +682,19 @@ int nfs_chmod_sync(struct nfs_context *nfs, const char *path, int mode);
  * Async fchmod(<handle>)
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  *          data is NULL
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_fchmod_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode, nfs_cb cb, void *private_data);
 /*
  * Sync fchmod(<handle>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 int nfs_fchmod_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode);
@@ -708,19 +708,19 @@ int nfs_fchmod_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, int mode);
  * Async chown(<name>)
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  *          data is NULL
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_chown_async(struct nfs_context *nfs, const char *path, int uid, int gid, nfs_cb cb, void *private_data);
 /*
  * Sync chown(<name>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 int nfs_chown_sync(struct nfs_context *nfs, const char *path, int uid, int gid);
@@ -734,19 +734,19 @@ int nfs_chown_sync(struct nfs_context *nfs, const char *path, int uid, int gid);
  * Async fchown(<handle>)
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  *          data is NULL
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_fchown_async(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid, nfs_cb cb, void *private_data);
 /*
  * Sync fchown(<handle>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 int nfs_fchown_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int gid);
@@ -761,19 +761,19 @@ int nfs_fchown_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, int uid, int g
  * Async utimes(<path>)
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  *          data is NULL
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_utimes_async(struct nfs_context *nfs, const char *path, struct timeval *times, nfs_cb cb, void *private_data);
 /*
  * Sync utimes(<path>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 int nfs_utimes_sync(struct nfs_context *nfs, const char *path, struct timeval *times);
@@ -786,12 +786,12 @@ int nfs_utimes_sync(struct nfs_context *nfs, const char *path, struct timeval *t
  * Async utime(<path>)
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  *          data is NULL
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 struct utimbuf;
@@ -799,7 +799,7 @@ int nfs_utime_async(struct nfs_context *nfs, const char *path, struct utimbuf *t
 /*
  * Sync utime(<path>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 int nfs_utime_sync(struct nfs_context *nfs, const char *path, struct utimbuf *times);
@@ -814,19 +814,19 @@ int nfs_utime_sync(struct nfs_context *nfs, const char *path, struct utimbuf *ti
  * Async access(<path>)
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  *          data is NULL
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_access_async(struct nfs_context *nfs, const char *path, int mode, nfs_cb cb, void *private_data);
 /*
  * Sync access(<path>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 int nfs_access_sync(struct nfs_context *nfs, const char *path, int mode);
@@ -841,19 +841,19 @@ int nfs_access_sync(struct nfs_context *nfs, const char *path, int mode);
  * Async symlink(<path>)
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  *          data is NULL
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_symlink_async(struct nfs_context *nfs, const char *oldpath, const char *newpath, nfs_cb cb, void *private_data);
 /*
  * Sync symlink(<path>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 int nfs_symlink_sync(struct nfs_context *nfs, const char *oldpath, const char *newpath);
@@ -866,19 +866,19 @@ int nfs_symlink_sync(struct nfs_context *nfs, const char *oldpath, const char *n
  * Async rename(<oldpath>, <newpath>)
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  *          data is NULL
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_rename_async(struct nfs_context *nfs, const char *oldpath, const char *newpath, nfs_cb cb, void *private_data);
 /*
  * Sync rename(<oldpath>, <newpath>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 int nfs_rename_sync(struct nfs_context *nfs, const char *oldpath, const char *newpath);
@@ -892,19 +892,19 @@ int nfs_rename_sync(struct nfs_context *nfs, const char *oldpath, const char *ne
  * Async link(<oldpath>, <newpath>)
  * Function returns
  *  0 : The operation was initiated. Once the operation finishes, the callback will be invoked.
- * <0 : An error occured when trying to set up the operation. The callback will not be invoked.
+ * <0 : An error occurred when trying to set up the operation. The callback will not be invoked.
  *
  * When the callback is invoked, status indicates the result:
  *      0 : Success.
  *          data is NULL
- * -errno : An error occured.
+ * -errno : An error occurred.
  *          data is the error string.
  */
 int nfs_link_async(struct nfs_context *nfs, const char *oldpath, const char *newpath, nfs_cb cb, void *private_data);
 /*
  * Sync link(<oldpath>, <newpath>)
  * Function returns
- *      0 : The operation was successfull.
+ *      0 : The operation was successful.
  * -errno : The command failed.
  */
 int nfs_link_sync(struct nfs_context *nfs, const char *oldpath, const char *newpath);
