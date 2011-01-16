@@ -33,7 +33,7 @@
  *
  * This module implements a simple dictionary object, i.e. a list
  * of string/string associations. This object is useful to store e.g.
- * informations retrieved from a configuration file (ini files).
+ * information retrieved from a configuration file (ini files).
  */
 
 #include "dictionary.h"
