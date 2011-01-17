@@ -80,7 +80,7 @@ static void handle_idem(struct manifest *m, struct score *score)
 	}
 }
 
-static bool check_idem(struct ccan_file *f, struct score *score)
+static void check_idem(struct ccan_file *f, struct score *score)
 {
 	struct line_info *line_info;
 	unsigned int i, first_preproc_line;
@@ -89,7 +89,7 @@ static bool check_idem(struct ccan_file *f, struct score *score)
 	line_info = get_ccan_line_info(f);
 	if (f->num_lines < 3)
 		/* FIXME: We assume small headers probably uninteresting. */
-		return true;
+		return;
 
 	for (i = 0; i < f->num_lines; i++) {
 		if (line_info[i].type == DOC_LINE
@@ -99,14 +99,14 @@ static bool check_idem(struct ccan_file *f, struct score *score)
 			score_file_error(score, f, i+1,
 					 "Expect first non-comment line to be"
 					 " #ifndef.");
-			return false;
+			return;
 		} else if (line_info[i].type == PREPROC_LINE)
 			break;
 	}
 
 	/* No code at all?  Don't complain. */
 	if (i == f->num_lines)
-		return true;
+		return;
 
 	first_preproc_line = i;
 	for (i = first_preproc_line+1; i < f->num_lines; i++) {
@@ -117,19 +117,19 @@ static bool check_idem(struct ccan_file *f, struct score *score)
 			score_file_error(score, f, i+1,
 					 "Expect second non-comment line to be"
 					 " #define.");
-			return false;
+			return;
 		} else if (line_info[i].type == PREPROC_LINE)
 			break;
 	}
 
 	/* No code at all?  Weird. */
 	if (i == f->num_lines)
-		return true;
+		return;
 
 	/* We expect a condition on this line. */
 	if (!line_info[i].cond) {
 		score_file_error(score, f, i+1, "Expected #ifndef");
-		return false;
+		return;
 	}
 
 	line = f->lines[i];
@@ -138,7 +138,7 @@ static bool check_idem(struct ccan_file *f, struct score *score)
 	if (line_info[i].cond->type != PP_COND_IFDEF
 	    || !line_info[i].cond->inverse) {
 		score_file_error(score, f, i+1, "Expected #ifndef");
-		return false;
+		return;
 	}
 
 	/* And this to be #define <symbol> */
@@ -149,7 +149,7 @@ static bool check_idem(struct ccan_file *f, struct score *score)
 					    "expected '#define %s'",
 					    line_info[i].cond->symbol);
 		score_file_error(score, f, i+1, str);
-		return false;
+		return;
 	}
 	sym = get_symbol_token(f, &line);
 	if (!sym || !streq(sym, line_info[i].cond->symbol)) {
@@ -157,7 +157,7 @@ static bool check_idem(struct ccan_file *f, struct score *score)
 					    "expected '#define %s'",
 					    line_info[i].cond->symbol);
 		score_file_error(score, f, i+1, str);
-		return false;
+		return;
 	}
 
 	/* Rest of code should all be covered by that conditional. */
@@ -170,11 +170,9 @@ static bool check_idem(struct ccan_file *f, struct score *score)
 		    != NOT_COMPILED) {
 			score_file_error(score, f, i+1, "code outside"
 					 " idempotent region");
-			return false;
+			return;
 		}
 	}
-
-	return true;
 }
 
 static void check_idempotent(struct manifest *m,
@@ -184,8 +182,7 @@ static void check_idempotent(struct manifest *m,
 	struct ccan_file *f;
 
 	list_for_each(&m->h_files, f, list) {
-		if (!check_idem(f, score))
-			score->error = "Headers are not idempotent";
+		check_idem(f, score);
 	}
 	if (!score->error) {
 		score->pass = true;

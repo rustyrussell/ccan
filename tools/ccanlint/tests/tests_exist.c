@@ -100,7 +100,7 @@ static void check_tests_exist(struct manifest *m,
 	char *test_dir = talloc_asprintf(m, "%s/test", m->dir);
 
 	if (lstat(test_dir, &st) != 0) {
-		score->error = "No test directory";
+		score->error = talloc_strdup(score, "No test directory");
 		if (errno != ENOENT)
 			err(1, "statting %s", test_dir);
 		tests_exist.handle = handle_no_tests;
@@ -108,7 +108,7 @@ static void check_tests_exist(struct manifest *m,
 	}
 
 	if (!S_ISDIR(st.st_mode)) {
-		score->error = "test is not a directory";
+		score->error = talloc_strdup(score, "test is not a directory");
 		return;
 	}
 
@@ -116,10 +116,12 @@ static void check_tests_exist(struct manifest *m,
 	    && list_empty(&m->run_tests)
 	    && list_empty(&m->compile_ok_tests)) {
 		if (list_empty(&m->compile_fail_tests)) {
-			score->error = "No tests in test directory";
+			score->error = talloc_strdup(score,
+					     "No tests in test directory");
 			tests_exist.handle = handle_no_tests;
 		} else
-			score->error = "No positive tests in test directory";
+			score->error = talloc_strdup(score,
+				     "No positive tests in test directory");
 		return;
 	}
 	score->pass = true;

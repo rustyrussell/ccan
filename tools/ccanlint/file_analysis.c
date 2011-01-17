@@ -617,11 +617,35 @@ enum line_compiled get_ccan_line_pp(struct pp_conditions *cond,
 }
 
 void score_file_error(struct score *score, struct ccan_file *f, unsigned line,
-		      const char *error)
+		      const char *errorfmt, ...)
 {
+	va_list ap;
+
 	struct file_error *fe = talloc(score, struct file_error);
 	fe->file = f;
 	fe->line = line;
-	fe->error = error;
 	list_add_tail(&score->per_file_errors, &fe->list);
+
+	if (!score->error)
+		score->error = talloc_strdup(score, "");
+	
+	if (verbose < 2 && strcount(score->error, "\n") > 5)
+		return;
+
+	if (line)
+		score->error = talloc_asprintf_append(score->error,
+						      "%s:%u:",
+						      f->fullname, line);
+	else
+		score->error = talloc_asprintf_append(score->error,
+						      "%s:", f->fullname);
+
+	va_start(ap, errorfmt);
+	score->error = talloc_vasprintf_append(score->error, errorfmt, ap);
+	va_end(ap);
+	score->error = talloc_append_string(score->error, "\n");
+
+	if (verbose < 2 && strcount(score->error, "\n") > 5)
+		score->error = talloc_append_string(score->error,
+				    "... more (use -vv to see them all)\n");
 }

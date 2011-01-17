@@ -21,10 +21,11 @@ static void check_has_info(struct manifest *m,
 		score->pass = true;
 		score->score = score->total;
 	} else {
-		score->error = "You have no _info file.\n\n"
+		score->error = talloc_strdup(score,
+	"You have no _info file.\n\n"
 	"The file _info contains the metadata for a ccan package: things\n"
 	"like the dependencies, the documentation for the package as a whole\n"
-	"and license information.\n";
+	"and license information.\n");
 	}
 }
 

@@ -35,11 +35,8 @@ static void check_trailing_whitespace(struct manifest *m,
 			char **lines = get_ccan_file_lines(f);
 			for (i = 0; i < f->num_lines; i++) {
 				char *err = get_trailing_whitespace(lines[i]);
-				if (err) {
-					score->error = "Trailing whitespace"
-						" found";
+				if (err)
 					score_file_error(score, f, i+1, err);
-				}
 			}
 		}
 	}

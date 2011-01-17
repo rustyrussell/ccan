@@ -41,12 +41,15 @@ static void check_objs_build(struct manifest *m,
 		if (!compile_object(score, fullfile, ccan_dir, "", i->compiled,
 				    &output)) {
 			talloc_free(i->compiled);
-			score->error = "Compiling object files";
-			score_file_error(score, i, 0, output);
+			score_file_error(score, i, 0,
+					 "Compiling object files:\n%s",
+					 output);
 			errors = true;
 		} else if (!streq(output, "")) {
-			score->error = "Compiling object files gave warnings";
-			score_file_error(score, i, 0, output);
+			score_file_error(score, i, 0,
+					 "Compiling object files gave"
+					 " warnings:\n%s",
+					 output);
 			warnings = true;
 		}
 	}

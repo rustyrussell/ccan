@@ -80,15 +80,17 @@ static void check_info_documentation_exists(struct manifest *m,
 		score->score = score->total;
 		score->pass = true;
 	} else if (!summary) {
-		score->error = "_info file has no module documentation.\n\n"
+		score->error = talloc_strdup(score,
+		"_info file has no module documentation.\n\n"
 		"CCAN modules use /**-style comments for documentation: the\n"
-		"overall documentation belongs in the _info metafile.\n";
+		"overall documentation belongs in the _info metafile.\n");
 		info_documentation_exists.handle = create_info_template_doc;
 	} else if (!description)  {
-		score->error = "_info file has no module description.\n\n"
+		score->error = talloc_strdup(score,
+		"_info file has no module description.\n\n"
 		"The lines after the first summary line in the _info file\n"
 		"documentation should describe the purpose and use of the\n"
-		"overall package\n";
+		"overall package\n");
 	}
 }
 

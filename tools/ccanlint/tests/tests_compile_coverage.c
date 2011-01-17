@@ -2,6 +2,7 @@
 #include <tools/tools.h>
 #include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
+#include <ccan/foreach/foreach.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -114,26 +115,23 @@ static void do_compile_coverage_tests(struct manifest *m,
 {
 	char *cmdout, *modobjs = NULL;
 	struct ccan_file *i;
+	struct list_head *h;
 
 	if (!list_empty(&m->api_tests)
 	    && !build_module_objs_with_coverage(m, keep, score, &modobjs)) {
-		score->error = "Failed to compile module objects with coverage";
+		score->error = talloc_strdup(score,
+			     "Failed to compile module objects with coverage");
 		return;
 	}
 
-	list_for_each(&m->run_tests, i, list) {
-		cmdout = cov_compile(m, m, i, NULL, keep);
-		if (cmdout) {
-			score->error = "Failed to compile test with coverage";
-			score_file_error(score, i, 0, cmdout);
-		}
-	}
-
-	list_for_each(&m->api_tests, i, list) {
-		cmdout = cov_compile(m, m, i, modobjs, keep);
-		if (cmdout) {
-			score->error = "Failed to compile test with coverage";
-			score_file_error(score, i, 0, cmdout);
+	foreach_ptr(h, &m->run_tests, &m->api_tests) {
+		list_for_each(h, i, list) {
+			cmdout = cov_compile(m, m, i, NULL, keep);
+			if (cmdout) {
+				score_file_error(score, i, 0,
+				  "Failed to compile test with coverage: %s",
+				  cmdout);
+			}
 		}
 	}
 	if (!score->error) {

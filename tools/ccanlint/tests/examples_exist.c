@@ -98,7 +98,6 @@ static void extract_examples(struct manifest *m,
 		return;
 	}
 
-	score->error = "Expect examples in header and _info";
 	if (!have_info_example)
 		score_file_error(score, m->info_file, 0, "No Example: section");
 	if (!have_header_example)

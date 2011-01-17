@@ -542,25 +542,23 @@ static void build_examples(struct manifest *m, bool keep,
 					prev = lines[j];
 				score->score++;
 				warnings = true;
-				score->error = "Compiling extracted example"
-					" gave warnings";
-				error = talloc_asprintf(score,
-					"Example:\n"
-					"%s\n"
-					"Compiler:\n"
-					"%s",
-					get_ccan_file_contents(file[j]),
-					err[j]);
-				score_file_error(score, file[j], 0, error);
+				score_file_error(score, file[j], 0,
+						 "Compiling extracted example"
+						 " gave warnings:\n"
+						 "Example:\n"
+						 "%s\n"
+						 "Compiler:\n"
+						 "%s",
+						 get_ccan_file_contents(file[j]),
+						 err[j]);
 				goto next;
 			}
 		}
 
 		score->pass = false;
-		score->error = "Compiling extracted examples failed";
 		if (!verbose) {
 			if (num == 3)
-				error = "Standalone, adding headers, "
+				error = "Compiling standalone, adding headers, "
 					"and including previous "
 					"example all failed";
 			else

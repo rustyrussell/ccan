@@ -49,14 +49,13 @@ struct manifest *get_manifest(const void *ctx, const char *dir);
 struct file_error {
 	struct list_node list;
 	struct ccan_file *file;
-	unsigned int line; /* 0 not to print */
-	const char *error;
+	unsigned int line;
 };
 
 struct score {
 	bool pass;
 	unsigned int score, total;
-	const char *error;
+	char *error;
 	struct list_head per_file_errors;
 };
 
@@ -203,9 +202,9 @@ char *get_symbol_token(void *ctx, const char **line);
 /* Similarly for ->doc_sections */
 struct list_head *get_ccan_file_docs(struct ccan_file *f);
 
-/* Add an error about this file (and line, if non-zero) to the score struct */
+/* Append message about this file (and line, if non-zero) to the score->error */
 void score_file_error(struct score *, struct ccan_file *f, unsigned line,
-		      const char *error);
+		      const char *errorfmt, ...);
 
 /* Normal tests. */
 extern struct ccanlint trailing_whitespace;

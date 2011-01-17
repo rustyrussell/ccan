@@ -149,26 +149,8 @@ static bool run_test(struct ccanlint *i,
 	}
 
 	if ((!quiet && !score->pass) || verbose) {
-		struct file_error *f;
-		unsigned int lines = 1;
-
 		if (score->error)
-			printf("%s%s\n", score->error,
-			       list_empty(&score->per_file_errors) ? "" : ":");
-
-		list_for_each(&score->per_file_errors, f, list) {
-			if (f->line)
-				printf("%s:%u:%s\n",
-				       f->file->fullname, f->line, f->error);
-			else if (f->file)
-				printf("%s:%s\n", f->file->fullname, f->error);
-			else
-				printf("%s\n", f->error);
-			if (verbose < 2 && ++lines > 5) {
-				printf("... more (use -vv to see them all)\n");
-				break;
-			}
-		}
+			printf("%s", score->error);
 		if (!quiet && !score->pass && i->handle)
 			i->handle(m, score);
 	}

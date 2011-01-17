@@ -145,8 +145,9 @@ static void do_run_coverage_tests(struct manifest *m,
 				covcmd = talloc_asprintf_append(covcmd, " %s",
 								i->fullname);
 			} else {
-				score->error = "Running test with coverage";
-				score_file_error(score, i, 0, cmdout);
+				score_file_error(score, i, 0,
+						 "Running test with coverage"
+						 " failed: %s", cmdout);
 				return;
 			}
 		}

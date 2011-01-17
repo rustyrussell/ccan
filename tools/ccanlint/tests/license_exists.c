@@ -90,7 +90,7 @@ static void check_has_license(struct manifest *m,
 
 	d = find_license(m);
 	if (!d) {
-		score->error = "No License: tag in _info";
+		score->error = talloc_strdup(score, "No License: tag in _info");
 		return;
 	}
 	expected = expected_link(m, d);
@@ -111,7 +111,8 @@ static void check_has_license(struct manifest *m,
 			return;
 		}
 		if (errno == ENOENT) {
-			score->error = "LICENSE does not exist";
+			score->error = talloc_strdup(score,
+						     "LICENSE does not exist");
 			if (expected)
 				has_license.handle = handle_license_link;
 			return;

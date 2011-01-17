@@ -49,12 +49,12 @@ static void do_compile_test_helpers(struct manifest *m,
 
 		if (!compile(m, keep, i, &cmdout)) {
 			errors = true;
-			score->error = "Failed to compile helper C files";
-			score_file_error(score, i, 0, cmdout);
+			score_file_error(score, i, 0, "Compile failed:\n%s",
+					 cmdout);
 		} else if (!streq(cmdout, "")) {
 			warnings = true;
-			score->error = "Helper C files gave warnings";
-			score_file_error(score, i, 0, cmdout);
+			score_file_error(score, i, 0,
+					 "Compile gave warnings:\n%s", cmdout);
 		}
 	}
 

@@ -90,12 +90,14 @@ static void do_compile_tests(struct manifest *m,
 		list_for_each(list, i, list) {
 			if (!compile(score, m, i, false, list == &m->api_tests,
 				     keep, &cmdout)) {
-				score->error = "Failed to compile tests";
-				score_file_error(score, i, 0, cmdout);
+				score_file_error(score, i, 0,
+						 "Compile failed:\n%s",
+						 cmdout);
 				errors = true;
 			} else if (!streq(cmdout, "")) {
-				score->error = "Test compiled with warnings";
-				score_file_error(score, i, 0, cmdout);
+				score_file_error(score, i, 0,
+						 "Compile gave warnings:\n%s",
+						 cmdout);
 				warnings = true;
 			}
 		}
@@ -108,19 +110,22 @@ static void do_compile_tests(struct manifest *m,
 	/* For historical reasons, "fail" often means "gives warnings" */
 	list_for_each(&m->compile_fail_tests, i, list) {
 		if (!compile(score, m, i, false, false, false, &cmdout)) {
-			score->error = "Failed to compile without -DFAIL";
-			score_file_error(score, i, 0, cmdout);
+			score_file_error(score, i, 0,
+					 "Compile without -DFAIL failed:\n%s",
+					 cmdout);
 			return;
 		}
 		if (!streq(cmdout, "")) {
-			score->error = "Compile with warnigns without -DFAIL";
-			score_file_error(score, i, 0, cmdout);
+			score_file_error(score, i, 0,
+					 "Compile gave warnings"
+					 " without -DFAIL:\n%s",
+					 cmdout);
 			return;
 		}
 		if (compile(score, m, i, true, false, false, &cmdout)
 		    && streq(cmdout, "")) {
-			score->error = "Compiled successfully with -DFAIL?";
-			score_file_error(score, i, 0, NULL);
+			score_file_error(score, i, 0,
+					 "Compiled successfully with -DFAIL?");
 			return;
 		}
 	}

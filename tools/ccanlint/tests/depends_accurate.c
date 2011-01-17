@@ -55,9 +55,9 @@ static void check_depends_accurate(struct manifest *m,
 					continue;
 				if (has_dep(m, mod))
 					continue;
-				score->error = "Includes a ccan module"
-					" not listed in _info";
-				score_file_error(score, f, i+1, lines[i]);
+				score_file_error(score, f, i+1,
+						 "%s not listed in _info",
+						 mod);
 			}
 		}
 	}
