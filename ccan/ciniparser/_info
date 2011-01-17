@@ -4,6 +4,7 @@
 
 /**
  * ciniparser - easily parse and manipulate ini style configuration files
+ *
  * A dictionary object is allocated which contains string keys and values.
  * Functions to read string values return statically allocated objects,
  * there is no need to free them (also, do not modify them directly).
