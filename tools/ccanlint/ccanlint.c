@@ -499,6 +499,8 @@ int main(int argc, char *argv[])
 
 	if (dir[0] != '/')
 		dir = talloc_asprintf_append(NULL, "%s/%s", base_dir, dir);
+	while (strends(dir, "/"))
+		dir[strlen(dir)-1] = '\0';
 	if (dir != base_dir)
 		prefix = talloc_append_string(talloc_basename(NULL, dir), ": ");
 	if (verbose >= 3)
