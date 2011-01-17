@@ -3,8 +3,7 @@
 #include "config.h"
 
 /**
- * block_pool - An efficient allocator for blocks that don't need to be
- * resized or freed.
+ * block_pool - An efficient allocator for blocks that don't need to be resized or freed.
  *
  * block_pool allocates blocks by packing them into buffers, making the
  * overhead per block virtually zero.  Because of this, you cannot resize or
