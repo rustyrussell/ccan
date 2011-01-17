@@ -13,6 +13,8 @@ static void check_info_summary_single_line(struct manifest *m,
 	struct doc_section *d;
 
 	score->pass = true;
+	score->score = 1;
+
 	list_for_each(infodocs, d, list) {
 		const char *after;
 
