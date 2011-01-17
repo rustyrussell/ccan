@@ -7,6 +7,8 @@ struct doc_section {
 	struct list_node list;
 	const char *function;
 	const char *type;
+	/* Where did I come from? */
+	unsigned int srcline;
 	unsigned int num_lines;
 	char **lines;
 };

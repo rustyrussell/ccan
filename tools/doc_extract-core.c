@@ -15,13 +15,14 @@
 #include "doc_extract.h"
 #include "tools.h"
 
-static char **grab_doc(char **lines, unsigned int num)
+static char **grab_doc(char **lines, unsigned int num, unsigned int **linemap)
 {
 	char **ret;
 	unsigned int i;
 	bool printing = false;
 
 	ret = talloc_array(NULL, char *, num+1);
+	*linemap = talloc_array(ret, unsigned int, num);
 
 	num = 0;
 	for (i = 0; lines[i]; i++) {
@@ -40,6 +41,7 @@ static char **grab_doc(char **lines, unsigned int num)
 				ret[num++] = talloc_strdup(ret, lines[i]+2);
 			else
 				errx(1, "Malformed line %u", i);
+			(*linemap)[num-1] = i;
 		}
 	}
 	ret[num] = NULL;
@@ -91,7 +93,8 @@ static bool empty_section(struct doc_section *d)
 
 static struct doc_section *new_section(struct list_head *list,
 				       const char *function,
-				       const char *type)
+				       const char *type,
+				       unsigned int srcline)
 {
 	struct doc_section *d;
 	char *lowertype;
@@ -113,6 +116,7 @@ static struct doc_section *new_section(struct list_head *list,
 	d->type = lowertype;
 	d->lines = NULL;
 	d->num_lines = 0;
+	d->srcline = srcline;
 
 	list_add_tail(list, &d->list);
 	return d;
@@ -127,7 +131,8 @@ static void add_line(struct doc_section *curr, const char *line)
 
 struct list_head *extract_doc_sections(char **rawlines, unsigned int num)
 {
-	char **lines = grab_doc(rawlines, num);
+	unsigned int *linemap;
+	char **lines = grab_doc(rawlines, num, &linemap);
 	const char *function = NULL;
 	struct doc_section *curr = NULL;
 	unsigned int i;
@@ -143,11 +148,13 @@ struct list_head *extract_doc_sections(char **rawlines, unsigned int num)
 		funclen = is_summary_line(lines[i]);
 		if (funclen) {
 			function = talloc_strndup(list, lines[i], funclen);
-			curr = new_section(list, function, "summary");
+			curr = new_section(list, function, "summary",
+					   linemap[i]);
 			add_line(curr, lines[i] + funclen + 3);
-			curr = new_section(list, function, "description");
+			curr = new_section(list, function, "description",
+					   linemap[i]);
 		} else if ((type = is_section(list, lines[i], &extra)) != NULL){
-			curr = new_section(list, function, type);
+			curr = new_section(list, function, type, linemap[i]);
 			if (!streq(extra, "")) {
 				add_line(curr, extra);
 				curr = NULL;
