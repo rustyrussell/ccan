@@ -66,12 +66,19 @@ static unsigned int fd_orig_num = 0;
 
 static const char info_to_arg[] = "mceoprw";
 
+/* Dummy call used for failtest_undo wrappers. */
+static struct failtest_call unrecorded_call;
+
 static struct failtest_call *add_history_(enum failtest_call_type type,
 					  const char *file,
 					  unsigned int line,
 					  const void *elem,
 					  size_t elem_size)
 {
+	/* NULL file is how we suppress failure. */
+	if (!file)
+		return &unrecorded_call;
+
 	history = realloc(history, (history_num + 1) * sizeof(*history));
 	history[history_num].type = type;
 	history[history_num].file = file;
@@ -171,6 +178,9 @@ static bool should_fail(struct failtest_call *call)
 	enum info_type type = UNEXPECTED;
 	char *out = NULL;
 	size_t outlen = 0;
+
+	if (call == &unrecorded_call)
+		return false;
 
 	if (failpath) {
 		if (tolower(*failpath) != info_to_arg[call->type])
@@ -341,6 +351,9 @@ int failtest_open(const char *pathname, int flags,
 		va_end(ap);
 	}
 	p = add_history(FAILTEST_OPEN, file, line, &call);
+	/* Avoid memory leak! */
+	if (p == &unrecorded_call)
+		free((char *)call.pathname);
 	if (should_fail(p)) {
 		p->u.open.ret = -1;
 		/* FIXME: Play with error codes? */

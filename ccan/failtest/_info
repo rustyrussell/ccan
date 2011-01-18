@@ -8,7 +8,8 @@
  * The failtest module overrides various standard functions, and forks
  * your unit test at those points to test failure paths.  The failing
  * child are expected to fail (eg. when malloc fails), but should not
- * leak memory or crash.
+ * leak memory or crash.  After including failtest_override.h, you can
+ * include failtest_restore.h to return to non-failing versions.
  *
  * The unit test is a normal CCAN tap-style test, except it should
  * start by calling failtest_init() and end by calling
