@@ -52,11 +52,11 @@ static bool blank_line(const char *line)
 static char *get_leaks(const char *output, char **errs)
 {
 	char *leaks = talloc_strdup(output, "");
-	unsigned int i, num;
-	char **lines = strsplit(output, output, "\n", &num);
+	unsigned int i;
+	char **lines = strsplit(output, output, "\n");
 
 	*errs = talloc_strdup(output, "");
-	for (i = 0; i < num; i++) {
+	for (i = 0; i < talloc_array_length(lines) - 1; i++) {
 		if (strstr(lines[i], " lost ")) {
 			/* A leak... */
 			if (strstr(lines[i], " definitely lost ")) {

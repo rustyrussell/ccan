@@ -872,11 +872,11 @@ static struct op *load_tracefile(char *filename[],
 	if (!contents)
 		err(1, "Reading %s", filename[file]);
 
-	lines = strsplit(contents, contents, "\n", NULL);
+	lines = strsplit(contents, contents, "\n");
 	if (!lines[0])
 		errx(1, "%s is empty", filename[file]);
 
-	words = strsplit(lines, lines[0], " ", NULL);
+	words = strsplit(lines, lines[0], " ");
 	if (!streq(words[1], "tdb_open"))
 		fail(filename[file], 1, "does not start with tdb_open");
 
@@ -887,7 +887,7 @@ static struct op *load_tracefile(char *filename[],
 	for (i = 1; lines[i]; i++) {
 		const struct op_table *opt;
 
-		words = strsplit(lines, lines[i], " ", NULL);
+		words = strsplit(lines, lines[i], " ");
 		if (!words[0] || !words[1])
 			fail(filename[file], i+1,
 			     "Expected seqnum number and op");

@@ -15,14 +15,14 @@
 #include "doc_extract.h"
 #include "tools.h"
 
-static char **grab_doc(char **lines, unsigned int num, unsigned int **linemap)
+static char **grab_doc(char **lines, unsigned int **linemap)
 {
 	char **ret;
-	unsigned int i;
+	unsigned int i, num;
 	bool printing = false;
 
-	ret = talloc_array(NULL, char *, num+1);
-	*linemap = talloc_array(ret, unsigned int, num);
+	ret = talloc_array(NULL, char *, talloc_array_length(lines));
+	*linemap = talloc_array(ret, unsigned int, talloc_array_length(lines));
 
 	num = 0;
 	for (i = 0; lines[i]; i++) {
@@ -129,10 +129,10 @@ static void add_line(struct doc_section *curr, const char *line)
 	curr->lines[curr->num_lines++] = talloc_strdup(curr->lines, line);
 }
 
-struct list_head *extract_doc_sections(char **rawlines, unsigned int num)
+struct list_head *extract_doc_sections(char **rawlines)
 {
 	unsigned int *linemap;
-	char **lines = grab_doc(rawlines, num, &linemap);
+	char **lines = grab_doc(rawlines, &linemap);
 	const char *function = NULL;
 	struct doc_section *curr = NULL;
 	unsigned int i;

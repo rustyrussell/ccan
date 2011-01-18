@@ -8,7 +8,6 @@
  * @ctx: the context to tallocate from (often NULL)
  * @string: the string to split
  * @delims: delimiters where lines should be split.
- * @nump: optional pointer to place resulting number of lines
  *
  * This function splits a single string into multiple strings.  The
  * original string is untouched: an array is allocated (using talloc)
@@ -16,8 +15,9 @@
  * in empty substrings.  By definition, no delimiters will appear in
  * the substrings.
  *
- * The final char * in the array will be NULL, so you can use this or
- * @nump to find the array length.
+ * The final char * in the array will be NULL, talloc_array_length() of the
+ * returned value is 1 greater than the number of valid elements in
+ * the array.
  *
  * Example:
  *	#include <ccan/talloc/talloc.h>
@@ -29,7 +29,7 @@
  *		unsigned int i, long_lines = 0;
  *
  *		// Can only fail on out-of-memory.
- *		lines = strsplit(NULL, string, "\n", NULL);
+ *		lines = strsplit(NULL, string, "\n");
  *		for (i = 0; lines[i] != NULL; i++)
  *			if (strlen(lines[i]) > 80)
  *				long_lines++;
@@ -37,8 +37,7 @@
  *		return long_lines;
  *	}
  */
-char **strsplit(const void *ctx, const char *string, const char *delims,
-		 unsigned int *nump);
+char **strsplit(const void *ctx, const char *string, const char *delims);
 
 /**
  * strjoin - Join an array of substrings into one long string
@@ -56,7 +55,7 @@ char **strsplit(const void *ctx, const char *string, const char *delims,
  *	{
  *		char **lines, *ret;
  *
- *		lines = strsplit(NULL, string, "\n", NULL);
+ *		lines = strsplit(NULL, string, "\n");
  *		ret = strjoin(NULL, lines, "-- EOL\n");
  *		talloc_free(lines);
  *		return ret;

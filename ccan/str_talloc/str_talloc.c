@@ -11,8 +11,7 @@
 #include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
 
-char **strsplit(const void *ctx, const char *string, const char *delims,
-		 unsigned int *nump)
+char **strsplit(const void *ctx, const char *string, const char *delims)
 {
 	char **lines = NULL;
 	unsigned int max = 64, num = 0;
@@ -30,9 +29,9 @@ char **strsplit(const void *ctx, const char *string, const char *delims,
 			lines = talloc_realloc(ctx, lines, char *, max*=2 + 1);
 	}
 	lines[num] = NULL;
-	if (nump)
-		*nump = num;
-	return lines;
+
+	/* Shrink, so talloc_get_size works */
+	return talloc_realloc(ctx, lines, char *, num+1);
 }
 
 char *strjoin(const void *ctx, char *strings[], const char *delim)

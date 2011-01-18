@@ -54,9 +54,10 @@ const char *get_ccan_file_contents(struct ccan_file *f)
 char **get_ccan_file_lines(struct ccan_file *f)
 {
 	if (!f->lines)
-		f->lines = strsplit(f, get_ccan_file_contents(f),
-				    "\n", &f->num_lines);
+		f->lines = strsplit(f, get_ccan_file_contents(f), "\n");
 
+	/* FIXME: is f->num_lines necessary? */
+	f->num_lines = talloc_array_length(f->lines) - 1;
 	return f->lines;
 }
 
@@ -64,7 +65,7 @@ struct list_head *get_ccan_file_docs(struct ccan_file *f)
 {
 	if (!f->doc_sections) {
 		get_ccan_file_lines(f);
-		f->doc_sections = extract_doc_sections(f->lines, f->num_lines);
+		f->doc_sections = extract_doc_sections(f->lines);
 	}
 	return f->doc_sections;
 }

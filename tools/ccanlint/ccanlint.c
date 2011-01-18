@@ -238,7 +238,7 @@ static void init_tests(void)
 	/* Resolve dependencies. */
 	foreach_ptr(list, &compulsory_tests, &normal_tests) {
 		list_for_each(list, c, list) {
-			char **deps = strsplit(NULL, c->needs, " ", NULL);
+			char **deps = strsplit(NULL, c->needs, " ");
 			unsigned int i;
 
 			for (i = 0; deps[i]; i++) {
@@ -410,8 +410,8 @@ static void add_info_options(struct ccan_file *info, bool mark_fails)
 			continue;
 
 		for (i = 0; i < d->num_lines; i++) {
-			char **words = collapse(strsplit(d, d->lines[i], " \t",
-							 NULL), NULL);
+			char **words = collapse(strsplit(d, d->lines[i], " \t"),
+						NULL);
 			if (!words[0])
 				continue;
 

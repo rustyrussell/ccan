@@ -12,8 +12,8 @@
 #include <unistd.h>
 #include <errno.h>
 
-static char ** __attribute__((format(printf, 3, 4)))
-lines_from_cmd(const void *ctx, unsigned int *num, char *format, ...)
+static char ** __attribute__((format(printf, 2, 3)))
+lines_from_cmd(const void *ctx, char *format, ...)
 {
 	va_list ap;
 	char *cmd, *buffer;
@@ -32,7 +32,7 @@ lines_from_cmd(const void *ctx, unsigned int *num, char *format, ...)
 		err(1, "Reading from '%s'", cmd);
 	pclose(p);
 
-	return strsplit(ctx, buffer, "\n", num);
+	return strsplit(ctx, buffer, "\n");
 }
 
 /* Be careful about trying to compile over running programs (parallel make).
@@ -80,9 +80,11 @@ static char **get_one_deps(const void *ctx, const char *dir,
 	}
 
 	cmd = talloc_asprintf(ctx, "%s depends", *infofile);
-	deps = lines_from_cmd(cmd, num, "%s", cmd);
+	deps = lines_from_cmd(cmd, "%s", cmd);
 	if (!deps)
 		err(1, "Could not run '%s'", cmd);
+	/* FIXME: Do we need num arg? */
+	*num = talloc_array_length(deps) - 1;
 	return deps;
 }
 
@@ -120,7 +122,7 @@ static char **get_one_safe_deps(const void *ctx,
 				char **infofile)
 {
 	char **deps, **lines, *raw, *fname;
-	unsigned int i, n = 0;
+	unsigned int i, n;
 
 	fname = talloc_asprintf(ctx, "%s/_info", dir);
 	raw = grab_file(fname, fname, NULL);
@@ -128,9 +130,9 @@ static char **get_one_safe_deps(const void *ctx,
 		errx(1, "Could not open %s", fname);
 
 	/* Replace \n by actual line breaks, and split it. */
-	lines = strsplit(raw, replace(raw, raw, "\\n", "\n"), "\n", &n);
+	lines = strsplit(raw, replace(raw, raw, "\\n", "\n"), "\n");
 
-	deps = talloc_array(ctx, char *, n+1);
+	deps = talloc_array(ctx, char *, talloc_array_length(lines));
 
 	for (n = i = 0; lines[i]; i++) {
 		char *str;
@@ -222,9 +224,11 @@ char **get_libs(const void *ctx, const char *dir,
 	}
 
 	cmd = talloc_asprintf(ctx, "%s libs", *infofile);
-	libs = lines_from_cmd(cmd, num, "%s", cmd);
+	libs = lines_from_cmd(cmd, "%s", cmd);
 	if (!libs)
 		err(1, "Could not run '%s'", cmd);
+	/* FIXME: Do we need num arg? */
+	*num = talloc_array_length(libs) - 1;
 	return libs;
 }
 

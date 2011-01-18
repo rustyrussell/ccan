@@ -25,7 +25,7 @@
  *		textfile = grab_file(NULL, argv[1], NULL);
  *		if (!textfile)
  *			err(1, "Failed reading %s", argv[1]);
- *		lines = strsplit(textfile, textfile, "\n", NULL);
+ *		lines = strsplit(textfile, textfile, "\n");
  *	
  *		// Join them back together with two linefeeds.
  *		printf("%s", strjoin(textfile, lines, "\n\n"));

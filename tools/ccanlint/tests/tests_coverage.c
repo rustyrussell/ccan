@@ -54,7 +54,7 @@ static unsigned int score_coverage(float covered, unsigned total)
 static void analyze_coverage(struct manifest *m, bool full_gcov,
 			     const char *output, struct score *score)
 {
-	char **lines = strsplit(score, output, "\n", NULL);
+	char **lines = strsplit(score, output, "\n");
 	float covered_lines = 0.0;
 	unsigned int i, total_lines = 0;
 	bool lines_matter = false;

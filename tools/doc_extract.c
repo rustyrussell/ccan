@@ -27,16 +27,15 @@ int main(int argc, char *argv[])
 	type = argv[1];
 	for (i = 2; i < argc; i++) {
 		char *file, **lines;
-		unsigned int num;
 		struct list_head *list;
 		struct doc_section *d;
 
 		file = grab_file(NULL, argv[i], NULL);
 		if (!file)
 			err(1, "Reading file %s", argv[i]);
-		lines = strsplit(file, file, "\n", &num);
+		lines = strsplit(file, file, "\n");
 
-		list = extract_doc_sections(lines, num);
+		list = extract_doc_sections(lines);
 		if (list_empty(list))
 			errx(1, "No documentation in file %s", argv[i]);
 		talloc_free(file);

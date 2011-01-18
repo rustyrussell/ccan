@@ -25,7 +25,7 @@
  *		all = grab_fd(NULL, 0, NULL);
  *		if (!all)
  *			return NULL;
- *		lines = strsplit(NULL, all, "\n", NULL);
+ *		lines = strsplit(NULL, all, "\n");
  *		talloc_free(all);
  *		return lines;
  *	}
@@ -52,7 +52,7 @@ void *grab_fd(const void *ctx, int fd, size_t *size);
  *		all = grab_file(NULL, filename, NULL);
  *		if (!all)
  *			return NULL;
- *		lines = strsplit(NULL, all, "\n", NULL);
+ *		lines = strsplit(NULL, all, "\n");
  *		talloc_free(all);
  *		return lines;
  *	}

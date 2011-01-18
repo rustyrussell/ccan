@@ -4,34 +4,26 @@
 #include <ccan/str_talloc/str_talloc.c>
 #include <ccan/tap/tap.h>
 
-/* FIXME: ccanize */
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
 static char *substrings[] = { "far", "bar", "baz", "b", "ba", "z", "ar", NULL };
 
 int main(int argc, char *argv[])
 {
-	unsigned int n;
 	char **split, *str;
 	void *ctx;
 
-	plan_tests(19);
-	split = strsplit(NULL, "hello  world", " ", &n);
-	ok1(n == 3);
+	plan_tests(16);
+	split = strsplit(NULL, "hello  world", " ");
+	ok1(talloc_array_length(split) == 4);
 	ok1(!strcmp(split[0], "hello"));
 	ok1(!strcmp(split[1], ""));
 	ok1(!strcmp(split[2], "world"));
 	ok1(split[3] == NULL);
 	talloc_free(split);
 
-	split = strsplit(NULL, "hello  world", " ", NULL);
-	ok1(!strcmp(split[0], "hello"));
-	ok1(!strcmp(split[1], ""));
-	ok1(!strcmp(split[2], "world"));
-	ok1(split[3] == NULL);
-	talloc_free(split);
-
-	split = strsplit(NULL, "hello  world", "o ", NULL);
+	split = strsplit(NULL, "hello  world", "o ");
+	ok1(talloc_array_length(split) == 6);
 	ok1(!strcmp(split[0], "hell"));
 	ok1(!strcmp(split[1], ""));
 	ok1(!strcmp(split[2], ""));
@@ -40,7 +32,7 @@ int main(int argc, char *argv[])
 	ok1(split[5] == NULL);
 
 	ctx = split;
-	split = strsplit(ctx, "hello  world", "o ", NULL);
+	split = strsplit(ctx, "hello  world", "o ");
 	ok1(talloc_parent(split) == ctx);
 	talloc_free(ctx);
 

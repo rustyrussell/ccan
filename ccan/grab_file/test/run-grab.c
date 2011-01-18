@@ -18,7 +18,7 @@ main(int argc, char *argv[])
 	struct 		stat st;
 
 	str = grab_file(NULL, "test/run-grab.c", NULL);
-	split = strsplit(NULL, str, "\n", NULL);
+	split = strsplit(NULL, str, "\n");
 	length = strlen(split[0]);
 	ok1(!strcmp(split[0], "/* This is test for grab_file() function"));
 	for (i = 1; split[i]; i++)	

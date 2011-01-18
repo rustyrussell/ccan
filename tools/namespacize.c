@@ -445,7 +445,7 @@ static struct replace *read_replacement_file(const char *depdir)
 		return NULL;
 	}
 
-	for (line = strsplit(file, file, "\n", NULL); *line; line++)
+	for (line = strsplit(file, file, "\n"); *line; line++)
 		add_replace(&repl, *line);
 	return repl;
 }
