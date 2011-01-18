@@ -522,12 +522,33 @@ void failtest_init(int argc, char *argv[])
 	}
 }
 
+/* Free up memory, so valgrind doesn't report leaks. */
+static void free_everything(void)
+{
+	unsigned int i;
+
+	for (i = 0; i < writes_num; i++) {
+		free(writes[i].data);
+		if (writes[i].hdr.offset != (off_t)-1)
+			free(writes[i].olddata);
+	}
+	free(writes);
+	free(fd_orig);
+	for (i = 0; i < history_num; i++) {
+		if (history[i].type == FAILTEST_OPEN)
+			free((char *)history[i].u.open.pathname);
+	}
+	free(history);
+}
+
 void failtest_exit(int status)
 {
 	unsigned int i;
 
-	if (control_fd == -1)
+	if (control_fd == -1) {
+		free_everything();
 		exit(status);
+	}
 
 	if (failtest_exit_check) {
 		if (!failtest_exit_check(history, history_num))
@@ -555,6 +576,7 @@ void failtest_exit(int status)
 			close(fd_orig[i].fd);
 	}
 
+	free_everything();
 	tell_parent(SUCCESS);
 	exit(0);
 }
