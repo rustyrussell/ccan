@@ -10,7 +10,7 @@
 #include <err.h>
 #include <ccan/talloc/talloc.h>
 
-extern struct ccanlint tests_exist;
+REGISTER_TEST(tests_exist);
 
 static void handle_no_tests(struct manifest *m, struct score *score)
 {
@@ -135,4 +135,3 @@ struct ccanlint tests_exist = {
 	.needs = ""
 };
 
-REGISTER_TEST(tests_exist);

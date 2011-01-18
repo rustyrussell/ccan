@@ -15,7 +15,7 @@
 #include <ccan/noerr/noerr.h>
 #include <ccan/grab_file/grab_file.h>
 
-extern struct ccanlint info_documentation_exists;
+REGISTER_TEST(info_documentation_exists);
 
 static void create_info_template_doc(struct manifest *m, struct score *score)
 {
@@ -101,4 +101,3 @@ struct ccanlint info_documentation_exists = {
 	.needs = "info_exists"
 };
 
-REGISTER_TEST(info_documentation_exists);

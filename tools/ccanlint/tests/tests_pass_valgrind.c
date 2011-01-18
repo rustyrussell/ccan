@@ -17,7 +17,7 @@
 #include <string.h>
 #include <ctype.h>
 
-struct ccanlint run_tests_vg;
+REGISTER_TEST(tests_pass_valgrind);
 
 /* Note: we already test safe_mode in run_tests.c */
 static const char *can_run_vg(struct manifest *m)
@@ -115,8 +115,8 @@ static void do_run_tests_vg(struct manifest *m,
 				    " --leak-check=full"
 				    " --log-fd=3 %s %s"
 				    " 3> valgrind.log",
-				    run_tests_vg.options ?
-				    run_tests_vg.options : "",
+				    tests_pass_valgrind.options ?
+				    tests_pass_valgrind.options : "",
 				    i->compiled);
 			output = grab_file(i, "valgrind.log", NULL);
 			if (!output || output[0] == '\0') {
@@ -173,8 +173,8 @@ static void run_under_debugger_vg(struct manifest *m, struct score *score)
 
 	first = list_top(&score->per_file_errors, struct file_error, list);
 	command = talloc_asprintf(m, "valgrind --db-attach=yes%s %s",
-				  run_tests_vg.options ?
-				  run_tests_vg.options : "",
+				  tests_pass_valgrind.options ?
+				  tests_pass_valgrind.options : "",
 				  first->file->compiled);
 	if (system(command))
 		doesnt_matter();
@@ -189,8 +189,6 @@ struct ccanlint tests_pass_valgrind = {
 	.takes_options = true,
 	.needs = "tests_pass"
 };
-
-REGISTER_TEST(tests_pass_valgrind);
 
 struct ccanlint tests_pass_valgrind_noleaks = {
 	.key = "tests_pass_valgrind_noleaks",

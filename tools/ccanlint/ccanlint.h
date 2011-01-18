@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include "../doc_extract.h"
 
-#define REGISTER_TEST(name, ...) 
+#define REGISTER_TEST(name, ...) extern struct ccanlint name
 
 /* 0 == Describe failed tests.
    1 == Describe results for partial failures.

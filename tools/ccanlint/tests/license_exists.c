@@ -11,7 +11,7 @@
 #include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
 
-struct ccanlint has_license;
+REGISTER_TEST(license_exists);
 
 static struct doc_section *find_license(const struct manifest *m)
 {
@@ -114,7 +114,7 @@ static void check_has_license(struct manifest *m,
 			score->error = talloc_strdup(score,
 						     "LICENSE does not exist");
 			if (expected)
-				has_license.handle = handle_license_link;
+				license_exists.handle = handle_license_link;
 			return;
 		}
 		err(1, "readlink on %s", license);
@@ -156,5 +156,3 @@ struct ccanlint license_exists = {
 	.check = check_has_license,
 	.needs = "info_exists"
 };
-
-REGISTER_TEST(license_exists);
