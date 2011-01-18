@@ -5,7 +5,7 @@
 /**
  * opt - simple command line parsing
  *
- * Simple but powerful command line parsing, built on top of getopt_long.
+ * Simple but powerful command line parsing.
  *
  * Example:
  * #include <ccan/opt/opt.h>

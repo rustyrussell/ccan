@@ -3,27 +3,7 @@
 #include <ccan/typesafe_cb/typesafe_cb.h>
 #include <stdbool.h>
 
-/* You can use this directly to build tables, but the macros will ensure
- * consistency and type safety. */
-enum opt_type {
-	OPT_NOARG = 1,		/* -f|--foo */
-	OPT_HASARG = 2,		/* -f arg|--foo=arg|--foo arg */
-	OPT_SUBTABLE = 4,	/* Actually, longopt points to a subtable... */
-	OPT_END = 8,		/* End of the table. */
-};
-
-/* Maximum length of arg to show in opt_usage */
-#define OPT_SHOW_LEN 80
-
-struct opt_table {
-	const char *names; /* pipe-separated names, --longopt or -s */
-	enum opt_type type;
-	char *(*cb)(void *arg); /* OPT_NOARG */
-	char *(*cb_arg)(const char *optarg, void *arg); /* OPT_HASARG */
-	void (*show)(char buf[OPT_SHOW_LEN], const void *arg);
-	void *arg;
-	const char *desc;
-};
+struct opt_table;
 
 /**
  * OPT_WITHOUT_ARG() - macro for initializing an opt_table entry (without arg)
@@ -124,7 +104,7 @@ struct opt_table {
  * ...
  *	opt_register_table(opts, NULL);
  */
-void opt_register_table(const struct opt_table table[], const char *desc);
+void opt_register_table(const struct opt_table *table, const char *desc);
 
 /**
  * opt_register_noarg - register an option with no arguments
@@ -259,6 +239,9 @@ char *opt_usage(const char *argv0, const char *extra);
  */
 extern const char opt_hidden[];
 
+/* Maximum length of arg to show in opt_usage */
+#define OPT_SHOW_LEN 80
+
 /* Standard helpers.  You can write your own: */
 /* Sets the @b to true. */
 char *opt_set_bool(bool *b);
@@ -295,6 +278,25 @@ char *opt_version_and_exit(const char *version);
 char *opt_usage_and_exit(const char *extra);
 
 /* Below here are private declarations. */
+/* You can use this directly to build tables, but the macros will ensure
+ * consistency and type safety. */
+enum opt_type {
+	OPT_NOARG = 1,		/* -f|--foo */
+	OPT_HASARG = 2,		/* -f arg|--foo=arg|--foo arg */
+	OPT_SUBTABLE = 4,	/* Actually, longopt points to a subtable... */
+	OPT_END = 8,		/* End of the table. */
+};
+
+struct opt_table {
+	const char *names; /* pipe-separated names, --longopt or -s */
+	enum opt_type type;
+	char *(*cb)(void *arg); /* OPT_NOARG */
+	char *(*cb_arg)(const char *optarg, void *arg); /* OPT_HASARG */
+	void (*show)(char buf[OPT_SHOW_LEN], const void *arg);
+	void *arg;
+	const char *desc;
+};
+
 /* Resolves to the four parameters for non-arg callbacks. */
 #define OPT_CB_NOARG(cb, arg)				\
 	OPT_NOARG,					\
