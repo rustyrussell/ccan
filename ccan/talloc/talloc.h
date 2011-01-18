@@ -252,7 +252,7 @@ int talloc_free(const void *ptr);
  *	b = talloc_array(a, unsigned int, 100);
  *
  * See Also:
- *	talloc, talloc_zero_array
+ *	talloc, talloc_zero_array, talloc_array_length
  */
 #define talloc_array(ctx, type, count) (type *)_talloc_array(ctx, sizeof(type), count, #type)
 
@@ -936,12 +936,25 @@ void talloc_enable_leak_report_full(void);
 void *talloc_autofree_context(void);
 
 /**
- * talloc_get_size - get the size of an allocation
+ * talloc_array_length - get the number of elements in a talloc array
+ * @p: the talloc pointer whose allocation to measure.
+ *
+ * This assumes that @p has been allocated as the same type.  NULL returns 0.
+ *
+ * See Also:
+ *	talloc_get_size
+ */
+#define talloc_array_length(p) (talloc_get_size(p) / sizeof((*p)))
+
+/**
+ * talloc_get_size - get the requested size of an allocation
  * @ctx: the talloc pointer whose allocation to measure.
  *
  * This function lets you know the amount of memory alloced so far by this
- * context. It does NOT account for subcontext memory.  This can be used to
- * calculate the size of an array.
+ * context. It does NOT account for subcontext memory.
+ *
+ * See Also:
+ *	talloc_array_length
  */
 size_t talloc_get_size(const void *ctx);
 
