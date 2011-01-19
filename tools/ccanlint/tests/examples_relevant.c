@@ -30,6 +30,11 @@ static void examples_relevant_check(struct manifest *m,
 			if (!streq(d->type, "example"))
 				continue;
 
+			if (!d->function) {
+				score_file_error(score, f, d->srcline+1,
+						 "Function name not found in summary line");
+				continue;
+			}
 			for (i = 0; i < d->num_lines; i++) {
 				if (strstr(d->lines[i], d->function))
 					found = true;
