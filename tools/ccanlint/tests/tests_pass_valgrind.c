@@ -112,6 +112,7 @@ static void do_run_tests_vg(struct manifest *m,
 			 * humans, and you can't have both. */
 			run_command(score, timeleft, &cmdout,
 				    "valgrind -q --error-exitcode=101"
+				    " --child-silent-after-fork=yes"
 				    " --leak-check=full"
 				    " --log-fd=3 %s %s"
 				    " 3> valgrind.log",
