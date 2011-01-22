@@ -149,8 +149,10 @@ static bool run_test(struct ccanlint *i,
 	}
 
 	if ((!quiet && !score->pass) || verbose) {
-		if (score->error)
-			printf("%s", score->error);
+		if (score->error) {
+			printf("%s%s", score->error,
+			       strends(score->error, "\n") ? "" : "\n");
+		}
 		if (!quiet && !score->pass && i->handle)
 			i->handle(m, score);
 	}
