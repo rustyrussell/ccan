@@ -1,0 +1,67 @@
+#include <string.h>
+#include "config.h"
+
+/**
+ * net - simple IPv4/IPv6 client library
+ *
+ * This code makes it simple to support IPv4 and IPv6 without speed penalty.
+ *
+ * License: MIT
+ *
+ * Author: Rusty Russell <rusty@rustcorp.com.au>
+ *
+ * Example:
+ *	#include <ccan/net/net.h>
+ *	#include <sys/types.h>
+ *	#include <sys/socket.h>
+ *	#include <stdio.h>
+ *	#include <err.h>
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		struct addrinfo *addr;
+ *		const char *dest, *port;
+ *		int fd;
+ *		struct sockaddr saddr;
+ *		socklen_t slen = sizeof(saddr);
+ *	
+ *		if (argc == 2) {
+ *			dest = argv[1];
+ *			port = "http";
+ *		} else if (argc == 3) {
+ *			dest = argv[1];
+ *			port = argv[2];
+ *		} else
+ *			errx(1, "Usage: test-net <target> [<port>]");
+ *	
+ *		addr = net_client_lookup(dest, port, AF_UNSPEC, SOCK_STREAM);
+ *		if (!addr)
+ *			err(1, "Failed to look up %s", dest);
+ *	
+ *		fd = net_connect(addr);
+ *		if (fd < 0)
+ *			err(1, "Failed to connect to %s", dest);
+ *	
+ *		if (getsockname(fd, &saddr, &slen) == 0)
+ *			printf("Connected via %s\n",
+ *			       saddr.sa_family == AF_INET6 ? "IPv6"
+ *			       : saddr.sa_family == AF_INET ? "IPv4"
+ *			       : "UNKNOWN??");
+ *		else
+ *			err(1, "Failed to get socket type for connection");
+ *		return 0;
+ *	}
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/noerr\n");
+		return 0;
+	}
+
+	return 1;
+}
