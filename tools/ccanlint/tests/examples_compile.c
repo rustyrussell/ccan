@@ -599,7 +599,7 @@ static void build_examples(struct manifest *m, bool keep,
 				      err[1]);
 			}
 		}
-		score_file_error(score, i, 0, error);
+		score_file_error(score, i, 0, "%s", error);
 		/* This didn't work, so not a candidate for combining. */
 		prev = NULL;
 
