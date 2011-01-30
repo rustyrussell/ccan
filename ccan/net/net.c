@@ -1,5 +1,4 @@
 #include <ccan/net/net.h>
-#include <ccan/noerr/noerr.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <poll.h>
@@ -64,7 +63,7 @@ static void remove_fd(struct pollfd pfd[],
 
 int net_connect(const struct addrinfo *addrinfo)
 {
-	int sockfd = -1;
+	int sockfd = -1, saved_errno;
 	unsigned int i, num;
 	const struct addrinfo *ipv4 = NULL, *ipv6 = NULL;
 	const struct addrinfo *addr[MAX_PROTOS];
@@ -142,8 +141,10 @@ got_one:
 		sockfd = pfd[i].fd;
 
 out:
+	saved_errno = errno;
 	for (i = 0; i < num; i++)
 		if (pfd[i].fd != sockfd)
-			close_noerr(pfd[i].fd);
+			close(pfd[i].fd);
+	errno = saved_errno;
 	return sockfd;
 }

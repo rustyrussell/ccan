@@ -3,6 +3,7 @@
 #include <ccan/tap/tap.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <stdio.h>
 #include <err.h>
 
 static unsigned int server(int protocol, int type)
