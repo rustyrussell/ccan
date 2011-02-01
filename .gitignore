@@ -1,6 +1,7 @@
 .depends
 *.d
 *.o
+libccan.a
 ccan/*-Makefile
 *~
 tools/ccan_depends
