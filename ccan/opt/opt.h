@@ -79,7 +79,7 @@ struct opt_table;
  *
  * This must be the final element in the opt_table array.
  */
-#define OPT_ENDTABLE { NULL, OPT_END }
+#define OPT_ENDTABLE { NULL, OPT_END, NULL, NULL, NULL, NULL, NULL }
 
 /**
  * opt_register_table - register a table of options
