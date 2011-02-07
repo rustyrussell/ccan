@@ -1,5 +1,6 @@
 #ifndef CCAN_OPT_H
 #define CCAN_OPT_H
+#include <ccan/compiler/compiler.h>
 #include <ccan/typesafe_cb/typesafe_cb.h>
 #include <stdbool.h>
 
@@ -325,6 +326,6 @@ void _opt_register(const char *names, enum opt_type type,
 		   void *arg, const char *desc);
 
 /* We use this to get typechecking for OPT_SUBTABLE */
-static inline int _check_is_entry(struct opt_table *e) { return 0; }
+static inline int _check_is_entry(struct opt_table *e UNUSED) { return 0; }
 
 #endif /* CCAN_OPT_H */
