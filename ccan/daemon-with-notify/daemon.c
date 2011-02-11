@@ -50,7 +50,7 @@ void sigusr1_handler(int sig)
     _exit(EXIT_SUCCESS);
 }
 
-int daemon_is_ready()
+int daemon_is_ready(void)
 {
   kill(parent_pid, SIGUSR1);
   return 0;
