@@ -1,5 +1,4 @@
-#include <ccan/daemonize/daemonize.h>
-#include <ccan/daemonize/daemonize.c>
+#include <ccan/daemon-with-notify/daemon.h>
 #include <ccan/tap/tap.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -34,7 +33,8 @@ int main(int argc, char *argv[])
 	if (pid == 0) {
 		char buffer[2];
 		pid = getpid();
-		daemonize();
+		daemonize(0, 0, 1);
+		daemon_is_ready();
 		/* Keep valgrind happy about uninitialized bytes. */
 		memset(&daemonized, 0, sizeof(daemonized));
 		daemonized.pid = getpid();
