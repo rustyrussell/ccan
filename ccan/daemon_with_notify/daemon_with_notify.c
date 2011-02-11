@@ -38,7 +38,7 @@
 #include <unistd.h>
 #include <sys/select.h>
 
-#include <ccan/daemon-with-notify/daemon-with-notify.h>
+#include <ccan/daemon_with_notify/daemon_with_notify.h>
 
 void sigusr1_handler(int sig);
 

@@ -3,8 +3,7 @@
 #include "config.h"
 
 /**
- * daemon-with-notify - turn a process into a daemon with parent exiting when
- *                      child has decided that it has started correctly.
+ * daemon_with_notify - daemonize a process, can wait for child to signal readiness
  *
  * Daemons should detach themselves thoroughly from the process which launched
  * them, and not prevent any filesystems from being unmounted.  daemonize()
@@ -16,7 +15,7 @@
  * failing exit code and init scripts can pick this up easily.
  *
  * Example:
- *	#include <ccan/daemon-with-notify/daemon-with-notify.h>
+ *	#include <ccan/daemon_with_notify/daemon_with_notify.h>
  *	#include <ccan/str/str.h>
  *	#include <err.h>
  *	#include <unistd.h>
@@ -43,7 +42,8 @@
  *		exit(0);
  *	}
  *
- * License: BSD-MIT
+ * License: BSD
+ * Author: Stewart Smith <stewart@flamingspork.com>
  */
 int main(int argc, char *argv[])
 {
@@ -60,3 +60,4 @@ int main(int argc, char *argv[])
 
 	return 1;
 }
+

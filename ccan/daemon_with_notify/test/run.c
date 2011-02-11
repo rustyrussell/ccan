@@ -1,5 +1,5 @@
-#include <ccan/daemon-with-notify/daemon-with-notify.h>
-#include <ccan/daemon-with-notify/daemon-with-notify.c>
+#include <ccan/daemon_with_notify/daemon_with_notify.h>
+#include <ccan/daemon_with_notify/daemon_with_notify.c>
 #include <ccan/tap/tap.h>
 #include <stdlib.h>
 #include <unistd.h>
