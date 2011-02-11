@@ -38,8 +38,8 @@
 #include <unistd.h>
 #include <sys/select.h>
 
-int daemonize(int nochdir, int noclose, int wait_sigusr1);
-int daemon_is_ready(void);
+#include <ccan/daemon-with-notify/daemon.h>
+
 void sigusr1_handler(int sig);
 
 pid_t parent_pid;
