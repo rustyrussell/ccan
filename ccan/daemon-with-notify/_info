@@ -37,9 +37,9 @@
  *			} else
  *				usage(argv[1]);
  *		}
- *		sleep(10); /* do some init here */
+ *		sleep(10); // do some init here
  *		daemon_is_ready();
- *		sleep(20); /* will be done in child, detached from parent */
+ *		sleep(20); // will be done in child, detached from parent
  *		exit(0);
  *	}
  *
