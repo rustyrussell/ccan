@@ -16,7 +16,7 @@
  * failing exit code and init scripts can pick this up easily.
  *
  * Example:
- *	#include <ccan/daemon-with-notify/daemon.h>
+ *	#include <ccan/daemon-with-notify/daemon-with-notify.h>
  *	#include <ccan/str/str.h>
  *	#include <err.h>
  *	#include <unistd.h>
