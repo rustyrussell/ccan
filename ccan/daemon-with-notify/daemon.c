@@ -1,5 +1,3 @@
-/*    $Header: /cvsroot/wikipedia/willow/src/bin/willow/daemon.c,v 1.1 2005/05/02 19:15:21 kateturner Exp $    */
-/*    $NetBSD: daemon.c,v 1.9 2003/08/07 16:42:46 agc Exp $    */
 /*-
  * Copyright (c) 1990, 1993
  *    The Regents of the University of California.  All rights reserved.
@@ -30,11 +28,6 @@
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
-#if defined __SUNPRO_C || defined __DECC || defined __HP_cc
-# pragma ident "@(#)$Header: /cvsroot/wikipedia/willow/src/bin/willow/daemon.c,v 1.1 2005/05/02 19:15:21 kateturner Exp $"
-# pragma ident "$NetBSD: daemon.c,v 1.9 2003/08/07 16:42:46 agc Exp $"
-#endif
 
 #include <fcntl.h>
 #include <stdio.h>
