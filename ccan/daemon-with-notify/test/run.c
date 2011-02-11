@@ -1,4 +1,5 @@
-#include <ccan/daemon-with-notify/daemon.h>
+#include <ccan/daemon-with-notify/daemon-with-notify.h>
+#include <ccan/daemon-with-notify/daemon-with-notify.c>
 #include <ccan/tap/tap.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -9,7 +10,7 @@
 struct child_data {
 	pid_t pid;
 	pid_t ppid;
-	bool in_root_dir;
+	int in_root_dir;
 	int read_from_stdin, write_to_stdout, write_to_stderr;
 };
 
@@ -66,8 +67,8 @@ int main(int argc, char *argv[])
 	ok1(daemonized.pid != pid);
 	ok1(daemonized.ppid == 1);
 	ok1(daemonized.in_root_dir);
-	ok1(daemonized.read_from_stdin == EBADF);
-	ok1(daemonized.write_to_stdout == EBADF);
+	ok1(daemonized.read_from_stdin == 0);
+	ok1(daemonized.write_to_stdout == 0);
 	ok1(daemonized.write_to_stderr == 0);
 
 	return exit_status();
