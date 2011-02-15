@@ -588,12 +588,17 @@ int failtest_open(const char *pathname,
 	/* Avoid memory leak! */
 	if (p == &unrecorded_call)
 		free((char *)call.pathname);
-	if (should_fail(p)) {
+	p->u.open.ret = open(pathname, call.flags, call.mode);
+
+	if (!failpath && p->u.open.ret == -1) {
+		p->fail = false;
+		p->error = errno;
+	} else if (should_fail(p)) {
+		close(p->u.open.ret);
 		p->u.open.ret = -1;
 		/* FIXME: Play with error codes? */
 		p->error = EACCES;
 	} else {
-		p->u.open.ret = open(pathname, call.flags, call.mode);
 		set_cleanup(p, cleanup_open, struct open_call);
 	}
 	errno = p->error;
