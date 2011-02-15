@@ -15,7 +15,11 @@ int main(void)
 
 	plan_tests(5);
 
-	fd = open("run-write-scratchpad", O_RDWR|O_CREAT, 0600);
+	fd = failtest_open("run-write-scratchpad", "run-write.c", 1,
+			   O_RDWR|O_CREAT, 0600);
+	/* Child will fail, ignore. */
+	if (fd < 0)
+		failtest_exit(0);
 	write(fd, buf, strlen(buf));
 	ok1(lseek(fd, 0, SEEK_CUR) == strlen(buf));
 

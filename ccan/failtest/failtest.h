@@ -64,7 +64,6 @@ struct open_call {
 	const char *pathname;
 	int flags;
 	mode_t mode;
-	int dup_fd;
 };
 
 struct pipe_call {
@@ -87,10 +86,6 @@ struct write_call {
 	const void *buf;
 	size_t count;
 	off_t off;
-	off_t old_filelen;
-	off_t saved_len;
-	void *saved_contents;
-	int dup_fd;
 };
 
 struct fcntl_call {

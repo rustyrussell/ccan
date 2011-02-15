@@ -235,24 +235,23 @@ struct saved_file {
 	struct saved_file *next;
 	int fd;
 	void *contents;
-	off_t len;
+	off_t off, len;
 };
 
 static struct saved_file *save_file(struct saved_file *next, int fd)
 {
 	struct saved_file *s = malloc(sizeof(*s));
-	off_t orig = lseek(fd, 0, SEEK_CUR);
-
-	/* Special file?  Erk... */
-	assert(orig != -1);
 
 	s->next = next;
 	s->fd = fd;
+	s->off = lseek(fd, 0, SEEK_CUR);
+	/* Special file?  Erk... */
+	assert(s->off != -1);
 	s->len = lseek(fd, 0, SEEK_END);
 	lseek(fd, 0, SEEK_SET);
 	s->contents = malloc(s->len);
 	read(fd, s->contents, s->len);
-	lseek(fd, orig, SEEK_SET);
+	lseek(fd, s->off, SEEK_SET);
 	return s;
 }
 	
@@ -264,34 +263,26 @@ static struct saved_file *save_files(void)
 {
 	struct saved_file *files = NULL;
 	int i;
-	fd_set closed;
 
 	/* Figure out the set of live fds. */
-	FD_ZERO(&closed);
 	for (i = history_num - 2; i >= 0; i--) {
-		/* FIXME: Handle dup. */
-		if (history[i].type == FAILTEST_CLOSE) {
-			assert(!FD_ISSET(history[i].u.close.fd, &closed));
-			FD_SET(history[i].u.close.fd, &closed);
-		} else if (history[i].type == FAILTEST_OPEN) {
+		if (history[i].type == FAILTEST_OPEN) {
 			int fd = history[i].u.open.ret;
 			/* Only do successful, writable fds. */
 			if (fd < 0)
 				continue;
 
-			/* If it wasn't closed again... */
-			if (!FD_ISSET(fd, &closed)) {
-				if ((history[i].u.open.flags & O_RDWR)
-				    == O_RDWR) {
-					files = save_file(files, fd);
-				} else if ((history[i].u.open.flags & O_WRONLY)
-					   == O_WRONLY) {
-					/* FIXME: Handle O_WRONLY.  Open with
-					 * O_RDWR? */
-					abort();
-				}
-			} else
-				FD_CLR(history[i].u.open.ret, &closed);
+			/* If it was closed, cleanup == NULL. */
+			if (!history[i].cleanup)
+				continue;
+
+			if ((history[i].u.open.flags & O_RDWR) == O_RDWR) {
+				files = save_file(files, fd);
+			} else if ((history[i].u.open.flags & O_WRONLY)
+				   == O_WRONLY) {
+				/* FIXME: Handle O_WRONLY.  Open with O_RDWR? */
+				abort();
+			}
 		}
 	}
 
@@ -302,12 +293,12 @@ static void restore_files(struct saved_file *s)
 {
 	while (s) {
 		struct saved_file *next = s->next;
-		off_t orig = lseek(s->fd, 0, SEEK_CUR);
 
 		lseek(s->fd, 0, SEEK_SET);
 		write(s->fd, s->contents, s->len);
+		ftruncate(s->fd, s->len);
 		free(s->contents);
-		lseek(s->fd, orig, SEEK_SET);
+		lseek(s->fd, s->off, SEEK_SET);
 		free(s);
 		s = next;
 	}
@@ -604,7 +595,6 @@ int failtest_open(const char *pathname,
 	} else {
 		p->u.open.ret = open(pathname, call.flags, call.mode);
 		set_cleanup(p, cleanup_open, struct open_call);
-		p->u.open.dup_fd = p->u.open.ret;
 	}
 	errno = p->error;
 	return p->u.open.ret;
@@ -639,11 +629,6 @@ int failtest_pipe(int pipefd[2], const char *file, unsigned line)
 	return p->u.pipe.ret;
 }
 
-static void cleanup_read(struct read_call *call)
-{
-	lseek(call->fd, call->off, SEEK_SET);
-}
-
 ssize_t failtest_pread(int fd, void *buf, size_t count, off_t off,
 		       const char *file, unsigned line)
 {
@@ -661,19 +646,9 @@ ssize_t failtest_pread(int fd, void *buf, size_t count, off_t off,
 		p->error = EIO;
 	} else {
 		p->u.read.ret = pread(fd, buf, count, off);
-		set_cleanup(p, cleanup_read, struct read_call);
 	}
 	errno = p->error;
 	return p->u.read.ret;
-}
-
-static void cleanup_write(struct write_call *call)
-{
-	lseek(call->dup_fd, call->off, SEEK_SET);
-	write(call->dup_fd, call->saved_contents, call->saved_len);
-	lseek(call->dup_fd, call->off, SEEK_SET);
-	ftruncate(call->dup_fd, call->old_filelen);
-	free(call->saved_contents);
 }
 
 ssize_t failtest_pwrite(int fd, const void *buf, size_t count, off_t off,
@@ -682,37 +657,11 @@ ssize_t failtest_pwrite(int fd, const void *buf, size_t count, off_t off,
 	struct failtest_call *p;
 	struct write_call call;
 
-	call.fd = call.dup_fd = fd;
+	call.fd = fd;
 	call.buf = buf;
 	call.count = count;
 	call.off = off;
 	p = add_history(FAILTEST_WRITE, file, line, &call);
-
-	/* Save old contents if we can */
-	if (p->u.write.off != -1) {
-		ssize_t ret;
-		p->u.write.old_filelen = lseek(fd, 0, SEEK_END);
-
-		/* Write past end of file?  Nothing to save.*/
-		if (p->u.write.old_filelen <= p->u.write.off)
-			p->u.write.saved_len = 0;
-		/* Write which goes over end of file?  Partial save. */
-		else if (p->u.write.off + count > p->u.write.old_filelen)
-			p->u.write.saved_len = p->u.write.old_filelen
-				- p->u.write.off;
-		/* Full save. */
-		else
-			p->u.write.saved_len = count;
-
-		p->u.write.saved_contents = malloc(p->u.write.saved_len);
-		lseek(fd, p->u.write.off, SEEK_SET);
-		ret = read(fd, p->u.write.saved_contents, p->u.write.saved_len);
-		if (ret != p->u.write.saved_len)
-			err(1, "Expected %i bytes, got %i",
-			    (int)p->u.write.saved_len, (int)ret);
-		lseek(fd, p->u.write.off, SEEK_SET);
-		set_cleanup(p, cleanup_write, struct write_call);
-	}
 
 	/* If we're a child, tell parent about write. */
 	if (control_fd != -1) {
@@ -841,49 +790,39 @@ add_lock(struct lock_info *locks, int fd, off_t start, off_t end, int type)
 	return locks;
 }
 
-/* We only trap this so we can dup fds in case we need to restore. */
+/* We trap this so we can record it: we don't fail it. */
 int failtest_close(int fd)
 {
-	int new_fd = -1, i;
+	int i;
 
 	if (fd < 0)
 		return close(fd);
 
-	/* Trace history to find source of fd, and if we need to cleanup writes. */
+	/* Trace history to find source of fd. */
 	for (i = history_num-1; i >= 0; i--) {
 		switch (history[i].type) {
-		case FAILTEST_WRITE:
-			if (history[i].u.write.fd != fd)
-				break;
-			if (!history[i].cleanup)
-				break;
-			/* We need to save fd so we can restore file. */
-			if (new_fd == -1)
-				new_fd = dup(fd);
-			history[i].u.write.dup_fd = new_fd;
-			break;
-		case FAILTEST_READ:
-			/* We don't need to cleanup reads on closed fds. */
-			if (history[i].u.read.fd != fd)
-				break;
-			history[i].cleanup = NULL;
-			break;
 		case FAILTEST_PIPE:
-			/* From a pipe?  We don't ever restore pipes... */
+			/* From a pipe? */
 			if (history[i].u.pipe.fds[0] == fd) {
-				assert(new_fd == -1);
+				assert(!history[i].u.pipe.closed[0]);
 				history[i].u.pipe.closed[0] = true;
+				if (history[i].u.pipe.closed[1])
+					history[i].cleanup = NULL;
 				goto out;
 			}
 			if (history[i].u.pipe.fds[1] == fd) {
-				assert(new_fd == -1);
+				assert(!history[i].u.pipe.closed[1]);
 				history[i].u.pipe.closed[1] = true;
+				if (history[i].u.pipe.closed[0])
+					history[i].cleanup = NULL;
 				goto out;
 			}
 			break;
 		case FAILTEST_OPEN:
 			if (history[i].u.open.ret == fd) {
-				history[i].u.open.dup_fd = new_fd;
+				assert((void *)history[i].cleanup
+				       == (void *)cleanup_open);
+				history[i].cleanup = NULL;
 				goto out;
 			}
 			break;
