@@ -17,8 +17,8 @@ int main(void)
 	ok1((p = failtest_malloc(10, "run-failpath.c", 1)) != NULL);
 	ok1(failtest_calloc(10, 5, "run-failpath.c", 1) != NULL);
 	ok1((p = failtest_realloc(p, 100, "run-failpath.c", 1)) != NULL);
-	ok1((fd = failtest_open("failpath-scratch", O_RDWR|O_CREAT,
-				"run-failpath.c", 1, 0600)) >= 0);
+	ok1((fd = failtest_open("failpath-scratch", "run-failpath.c", 1,
+				O_RDWR|O_CREAT, 0600)) >= 0);
 	ok1(failtest_pipe(fds, "run-failpath.c", 1) == 0);
 	ok1(failtest_write(fd, "xxxx", 4, "run-failpath.c", 1) == 4);
 	lseek(fd, 0, SEEK_SET);
@@ -28,8 +28,8 @@ int main(void)
 	ok1(failtest_malloc(10, "run-failpath.c", 1) == NULL);
 	ok1(failtest_calloc(10, 5, "run-failpath.c", 1) == NULL);
 	ok1(failtest_realloc(p, 100, "run-failpath.c", 1) == NULL);
-	ok1(failtest_open("failpath-scratch", O_RDWR|O_CREAT,
-			  "run-failpath.c", 1, 0600) == -1);
+	ok1(failtest_open("failpath-scratch", "run-failpath.c", 1,
+			  O_RDWR|O_CREAT, 0600) == -1);
 	ok1(failtest_pipe(fds, "run-failpath.c", 1) == -1);
 	ok1(failtest_write(fd, "xxxx", 4, "run-failpath.c", 1) == -1);
 	lseek(fd, 0, SEEK_SET);

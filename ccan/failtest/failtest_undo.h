@@ -15,8 +15,8 @@
 	failtest_realloc((ptr), (size), NULL, 0)
 
 #undef open
-#define open(pathname, flags, ...) \
-	failtest_open((pathname), (flags), NULL, 0, __VA_ARGS__)
+#define open(pathname, ...) \
+	failtest_open((pathname), NULL, 0, __VA_ARGS__)
 
 #undef pipe
 #define pipe(pipefd) \

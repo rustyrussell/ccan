@@ -418,17 +418,17 @@ void *failtest_realloc(void *ptr, size_t size, const char *file, unsigned line)
 	return p->u.realloc.ret;
 }
 
-int failtest_open(const char *pathname, int flags,
+int failtest_open(const char *pathname,
 		  const char *file, unsigned line, ...)
 {
 	struct failtest_call *p;
 	struct open_call call;
+	va_list ap;
 
 	call.pathname = strdup(pathname);
-	call.flags = flags;
-	if (flags & O_CREAT) {
-		va_list ap;
-		va_start(ap, line);
+	va_start(ap, line);
+	call.flags = va_arg(ap, int);
+	if (call.flags & O_CREAT) {
 		call.mode = va_arg(ap, mode_t);
 		va_end(ap);
 	}
@@ -441,7 +441,7 @@ int failtest_open(const char *pathname, int flags,
 		/* FIXME: Play with error codes? */
 		p->error = EACCES;
 	} else {
-		p->u.open.ret = open(pathname, flags, call.mode);
+		p->u.open.ret = open(pathname, call.flags, call.mode);
 	}
 	errno = p->error;
 	return p->u.open.ret;

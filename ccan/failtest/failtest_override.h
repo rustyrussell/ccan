@@ -24,8 +24,8 @@
 #include <unistd.h>
 
 #undef open
-#define open(pathname, flags, ...) \
-	failtest_open((pathname), (flags), __FILE__, __LINE__, __VA_ARGS__)
+#define open(pathname, ...) \
+	failtest_open((pathname), __FILE__, __LINE__, __VA_ARGS__)
 
 #undef pipe
 #define pipe(pipefd) \
