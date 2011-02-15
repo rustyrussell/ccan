@@ -25,6 +25,7 @@ static int tracefd = -1;
 unsigned int failtest_timeout_ms = 20000;
 
 const char *failpath;
+const char *debugpath;
 
 enum info_type {
 	WRITE,
@@ -326,6 +327,29 @@ static bool should_fail(struct failtest_call *call)
 				     info_to_arg[call->type], *failpath);
 			call->fail = isupper(*(failpath++));
 			return call->fail;
+		}
+	}
+
+	/* Attach debugger if they asked for it. */
+	if (debugpath && history_num == strlen(debugpath)) {
+		unsigned int i;
+
+		for (i = 0; i < history_num; i++) {
+			char c = info_to_arg[history[i].type];
+			if (history[i].fail)
+				c = toupper(c);
+			if (c != debugpath[i])
+				break;
+		}
+		if (i == history_num) {
+			char str[80];
+
+			/* Don't timeout. */
+			signal(SIGUSR1, SIG_IGN);
+			sprintf(str, "xterm -e gdb /proc/%d/exe %d &",
+				getpid(), getpid());
+			system(str);
+			sleep(5);
 		}
 	}
 
@@ -927,6 +951,9 @@ void failtest_init(int argc, char *argv[])
 		} else if (strcmp(argv[i], "--tracepath") == 0) {
 			tracefd = dup(STDERR_FILENO);
 			failtest_timeout_ms = -1;
+		} else if (!strncmp(argv[i], "--debugpath=",
+				    strlen("--debugpath="))) {
+			debugpath = argv[i] + strlen("--debugpath=");
 		}
 	}
 	gettimeofday(&start, NULL);
