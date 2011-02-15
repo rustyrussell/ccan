@@ -42,6 +42,9 @@
 #undef close
 #define close(fd) failtest_close(fd)
 
+#undef fcntl
+#define fcntl(fd, ...) failtest_fcntl((fd), __FILE__, __LINE__, __VA_ARGS__)
+
 #include <ccan/failtest/failtest_proto.h>
 
 #endif /* CCAN_FAILTEST_OVERRIDE_H */

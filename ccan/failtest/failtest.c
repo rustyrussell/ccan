@@ -10,10 +10,11 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
-#include <fcntl.h>
+#include <assert.h>
 #include <ccan/read_write_all/read_write_all.h>
 #include <ccan/failtest/failtest_proto.h>
 #include <ccan/failtest/failtest.h>
+#include <ccan/build_assert/build_assert.h>
 
 bool (*failtest_hook)(struct failtest_call *history, unsigned num)
 = failtest_default_hook;
@@ -24,6 +25,7 @@ const char *failpath;
 
 enum info_type {
 	WRITE,
+	RELEASE_LOCKS,
 	FAILURE,
 	SUCCESS,
 	UNEXPECTED
@@ -49,6 +51,13 @@ struct write_info {
 	char *olddata;
 };
 
+struct lock_info {
+	int fd;
+	/* end is inclusive: you can't have a 0-byte lock. */
+	off_t start, end;
+	int type;
+};
+
 bool (*failtest_exit_check)(struct failtest_call *history, unsigned num);
 
 static struct failtest_call *history = NULL;
@@ -64,7 +73,11 @@ static unsigned int child_writes_num = 0;
 static struct fd_orig *fd_orig = NULL;
 static unsigned int fd_orig_num = 0;
 
-static const char info_to_arg[] = "mceoprw";
+static pid_t lock_owner;
+static struct lock_info *locks = NULL;
+static unsigned int lock_num = 0;
+
+static const char info_to_arg[] = "mceoprwf";
 
 /* Dummy call used for failtest_undo wrappers. */
 static struct failtest_call unrecorded_call;
@@ -171,6 +184,72 @@ static void hand_down(int signal)
 	kill(child, signal);
 }
 
+static void release_locks(void)
+{
+	/* Locks were never acquired/reacquired? */
+	if (lock_owner == 0)
+		return;
+
+	/* We own them?  Release them all. */
+	if (lock_owner == getpid()) {
+		unsigned int i;
+		struct flock fl;
+		fl.l_type = F_UNLCK;
+		fl.l_whence = SEEK_SET;
+		fl.l_start = 0;
+		fl.l_len = 0;
+
+		for (i = 0; i < lock_num; i++)
+			fcntl(locks[i].fd, F_SETLK, &fl);
+	} else {
+		/* Our parent must have them; pass request up. */
+		enum info_type type = RELEASE_LOCKS;
+		assert(control_fd != -1);
+		write_all(control_fd, &type, sizeof(type));
+	}
+	lock_owner = 0;
+}
+
+/* off_t is a signed type.  Getting its max is non-trivial. */
+static off_t off_max(void)
+{
+	BUILD_ASSERT(sizeof(off_t) == 4 || sizeof(off_t) == 8);
+	if (sizeof(off_t) == 4)
+		return (off_t)0x7FFFFFF;
+	else
+		return (off_t)0x7FFFFFFFFFFFFFFULL;
+}
+
+static void get_locks(void)
+{
+	unsigned int i;
+	struct flock fl;
+
+	if (lock_owner == getpid())
+		return;
+
+	if (lock_owner != 0) {
+		enum info_type type = RELEASE_LOCKS;
+		assert(control_fd != -1);
+		write_all(control_fd, &type, sizeof(type));
+	}
+
+	fl.l_whence = SEEK_SET;
+
+	for (i = 0; i < lock_num; i++) {
+		fl.l_type = locks[i].type;
+		fl.l_start = locks[i].start;
+		if (locks[i].end == off_max())
+			fl.l_len = 0;
+		else
+			fl.l_len = locks[i].end - locks[i].start + 1;
+
+		if (fcntl(locks[i].fd, F_SETLKW, &fl) != 0)
+			abort();
+	}
+	lock_owner = getpid();
+}
+
 static bool should_fail(struct failtest_call *call)
 {
 	int status;
@@ -251,6 +330,9 @@ static bool should_fail(struct failtest_call *call)
 				if (type == WRITE) {
 					if (!read_write_info(control[0]))
 						break;
+				} else if (type == RELEASE_LOCKS) {
+					release_locks();
+					/* FIXME: Tell them we're done... */
 				}
 			}
 		} else if (pfd[0].revents & POLLHUP) {
@@ -494,6 +576,69 @@ ssize_t failtest_write(int fd, const void *buf, size_t count,
 	return p->u.write.ret;
 }
 
+static struct lock_info *WARN_UNUSED_RESULT
+add_lock(struct lock_info *locks, int fd, off_t start, off_t end, int type)
+{
+	unsigned int i;
+	struct lock_info *l;
+
+	for (i = 0; i < lock_num; i++) {
+		l = &locks[i];
+
+		if (l->fd != fd)
+			continue;
+		/* Four cases we care about:
+		 * Start overlap:
+		 *	l =    |      |
+		 *	new = |   |
+		 * Mid overlap:
+		 *	l =    |      |
+		 *	new =    |  |
+		 * End overlap:
+		 *	l =    |      |
+		 *	new =      |    |
+		 * Total overlap:
+		 *	l =    |      |
+		 *	new = |         |
+		 */
+		if (start > l->start && end < l->end) {
+			/* Mid overlap: trim entry, add new one. */
+			off_t new_start, new_end;
+			new_start = end + 1;
+			new_end = l->end;
+			l->end = start - 1;
+			locks = add_lock(locks,
+					 fd, new_start, new_end, l->type);
+			l = &locks[i];
+		} else if (start <= l->start && end >= l->end) {
+			/* Total overlap: eliminate entry. */
+			l->end = 0;
+			l->start = 1;
+		} else if (end >= l->start && end < l->end) {
+			/* Start overlap: trim entry. */
+			l->start = end + 1;
+		} else if (start > l->start && start <= l->end) {
+			/* End overlap: trim entry. */
+			l->end = start-1;
+		}
+		/* Nothing left?  Remove it. */
+		if (l->end < l->start) {
+			memmove(l, l + 1, (--lock_num - i) * sizeof(l[0]));
+			i--;
+		}
+	}
+
+	if (type != F_UNLCK) {
+		locks = realloc(locks, (lock_num + 1) * sizeof(*locks));
+		l = &locks[lock_num++];
+		l->fd = fd;
+		l->start = start;
+		l->end = end;
+		l->type = type;
+	}
+	return locks;
+}
+
 /* We only trap this so we can dup fds in case we need to restore. */
 int failtest_close(int fd)
 {
@@ -511,7 +656,84 @@ int failtest_close(int fd)
 		if (writes[i].hdr.fd == fd)
 			writes[i].hdr.fd = newfd;
 	}
+
+	locks = add_lock(locks, fd, 0, off_max(), F_UNLCK);
 	return close(fd);
+}
+
+/* Zero length means "to end of file" */
+static off_t end_of(off_t start, off_t len)
+{
+	if (len == 0)
+		return off_max();
+	return start + len - 1;
+}
+
+/* FIXME: This only handles locks, really. */
+int failtest_fcntl(int fd, const char *file, unsigned line, int cmd, ...)
+{
+	struct failtest_call *p;
+	struct fcntl_call call;
+	va_list ap;
+
+	call.fd = fd;
+	call.cmd = cmd;
+
+	/* Argument extraction. */
+	switch (cmd) {
+	case F_SETFL:
+	case F_SETFD:
+		va_start(ap, cmd);
+		call.arg.l = va_arg(ap, long);
+		va_end(ap);
+		return fcntl(fd, cmd, call.arg.l);
+	case F_GETFD:
+	case F_GETFL:
+		return fcntl(fd, cmd);
+	case F_GETLK:
+		get_locks();
+		va_start(ap, cmd);
+		call.arg.fl = *va_arg(ap, struct flock *);
+		va_end(ap);
+		return fcntl(fd, cmd, &call.arg.fl);
+	case F_SETLK:
+	case F_SETLKW:
+		va_start(ap, cmd);
+		call.arg.fl = *va_arg(ap, struct flock *);
+		va_end(ap);
+		break;
+	default:
+		/* This means you need to implement it here. */
+		err(1, "failtest: unknown fcntl %u", cmd);
+	}
+
+	p = add_history(FAILTEST_FCNTL, file, line, &call);
+	get_locks();
+
+	if (should_fail(p)) {
+		p->u.fcntl.ret = -1;
+		if (p->u.fcntl.cmd == F_SETLK)
+			p->error = EAGAIN;
+		else
+			p->error = EDEADLK;
+	} else {
+		p->u.fcntl.ret = fcntl(p->u.fcntl.fd, p->u.fcntl.cmd,
+				       &p->u.fcntl.arg.fl);
+		if (p->u.fcntl.ret == -1)
+			p->error = errno;
+		else {
+			/* We don't handle anything else yet. */
+			assert(p->u.fcntl.arg.fl.l_whence == SEEK_SET);
+			locks = add_lock(locks,
+					 p->u.fcntl.fd,
+					 p->u.fcntl.arg.fl.l_start,
+					 end_of(p->u.fcntl.arg.fl.l_start,
+						p->u.fcntl.arg.fl.l_len),
+					 p->u.fcntl.arg.fl.l_type);
+		}
+	}
+	errno = p->error;
+	return p->u.fcntl.ret;
 }
 
 void failtest_init(int argc, char *argv[])

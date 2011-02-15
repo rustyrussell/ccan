@@ -2,6 +2,7 @@
 #define CCAN_FAILTEST_H
 #include <sys/types.h>
 #include <stdbool.h>
+#include <fcntl.h>
 #include <ccan/compiler/compiler.h>
 
 /**
@@ -38,6 +39,7 @@ enum failtest_call_type {
 	FAILTEST_PIPE,
 	FAILTEST_READ,
 	FAILTEST_WRITE,
+	FAILTEST_FCNTL,
 };
 
 struct calloc_call {
@@ -83,6 +85,17 @@ struct write_call {
 	size_t count;
 };
 
+struct fcntl_call {
+	int ret;
+	int fd;
+	int cmd;
+	union {
+		struct flock fl;
+		long l;
+		int i;
+	} arg;
+};
+
 /**
  * struct failtest_call - description of a call redirected to failtest module
  * @type: the call type
@@ -115,6 +128,7 @@ struct failtest_call {
 		struct pipe_call pipe;
 		struct read_call read;
 		struct write_call write;
+		struct fcntl_call fcntl;
 	} u;
 };
 

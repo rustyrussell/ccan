@@ -33,4 +33,8 @@
 #undef close
 #define close(fd) failtest_close(fd)
 
+#undef fcntl
+#define fcntl(fd, ...) \
+	failtest_fcntl((fd), NULL, 0, __VA_ARGS__)
+
 #endif /* CCAN_FAILTEST_RESTORE_H */
