@@ -39,6 +39,14 @@
 #define write(fd, buf, count) \
 	failtest_write((fd), (buf), (count), __FILE__, __LINE__)
 
+#undef pread
+#define pread(fd, buf, count, off)				\
+	failtest_pread((fd), (buf), (count), (off), __FILE__, __LINE__)
+
+#undef pwrite
+#define pwrite(fd, buf, count, off)					\
+	failtest_pwrite((fd), (buf), (count), (off), __FILE__, __LINE__)
+
 #undef close
 #define close(fd) failtest_close(fd)
 

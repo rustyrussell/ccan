@@ -466,14 +466,15 @@ int failtest_pipe(int pipefd[2], const char *file, unsigned line)
 	return p->u.pipe.ret;
 }
 
-ssize_t failtest_read(int fd, void *buf, size_t count,
-		      const char *file, unsigned line)
+ssize_t failtest_pread(int fd, void *buf, size_t count, off_t off,
+		       const char *file, unsigned line)
 {
 	struct failtest_call *p;
 	struct read_call call;
 	call.fd = fd;
 	call.buf = buf;
 	call.count = count;
+	call.off = off;
 	p = add_history(FAILTEST_READ, file, line, &call);
 
 	/* This is going to change seek offset, so save it. */
@@ -485,7 +486,7 @@ ssize_t failtest_read(int fd, void *buf, size_t count,
 		p->u.read.ret = -1;
 		p->error = EIO;
 	} else {
-		p->u.read.ret = read(fd, buf, count);
+		p->u.read.ret = pread(fd, buf, count, off);
 	}
 	errno = p->error;
 	return p->u.read.ret;
@@ -497,8 +498,8 @@ static struct write_info *new_write(void)
 	return &writes[writes_num++];
 }
 
-ssize_t failtest_write(int fd, const void *buf, size_t count,
-		       const char *file, unsigned line)
+ssize_t failtest_pwrite(int fd, const void *buf, size_t count, off_t off,
+			const char *file, unsigned line)
 {
 	struct failtest_call *p;
 	struct write_call call;
@@ -507,6 +508,7 @@ ssize_t failtest_write(int fd, const void *buf, size_t count,
 	call.fd = fd;
 	call.buf = buf;
 	call.count = count;
+	call.off = off;
 	p = add_history(FAILTEST_WRITE, file, line, &call);
 
 	offset = lseek(fd, 0, SEEK_CUR);
@@ -570,10 +572,24 @@ ssize_t failtest_write(int fd, const void *buf, size_t count,
 				return p->u.write.ret;
 			}
 		}
-		p->u.write.ret = write(fd, buf, count);
+		p->u.write.ret = pwrite(fd, buf, count, off);
 	}
 	errno = p->error;
 	return p->u.write.ret;
+}
+
+ssize_t failtest_read(int fd, void *buf, size_t count,
+		      const char *file, unsigned line)
+{
+	return failtest_pread(fd, buf, count, lseek(fd, 0, SEEK_CUR),
+			      file, line);
+}
+
+ssize_t failtest_write(int fd, const void *buf, size_t count,
+		       const char *file, unsigned line)
+{
+	return failtest_pwrite(fd, buf, count, lseek(fd, 0, SEEK_CUR),
+			       file, line);
 }
 
 static struct lock_info *WARN_UNUSED_RESULT

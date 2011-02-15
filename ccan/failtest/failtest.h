@@ -76,6 +76,7 @@ struct read_call {
 	int fd;
 	void *buf;
 	size_t count;
+	off_t off;
 };
 
 struct write_call {
@@ -83,6 +84,7 @@ struct write_call {
 	int fd;
 	const void *buf;
 	size_t count;
+	off_t off;
 };
 
 struct fcntl_call {
