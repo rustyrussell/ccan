@@ -231,6 +231,88 @@ static void trace_str(const char *str)
 	err(1, "Writing trace.");
 }
 
+struct saved_file {
+	struct saved_file *next;
+	int fd;
+	void *contents;
+	off_t len;
+};
+
+static struct saved_file *save_file(struct saved_file *next, int fd)
+{
+	struct saved_file *s = malloc(sizeof(*s));
+	off_t orig = lseek(fd, 0, SEEK_CUR);
+
+	/* Special file?  Erk... */
+	assert(orig != -1);
+
+	s->next = next;
+	s->fd = fd;
+	s->len = lseek(fd, 0, SEEK_END);
+	lseek(fd, 0, SEEK_SET);
+	s->contents = malloc(s->len);
+	read(fd, s->contents, s->len);
+	lseek(fd, orig, SEEK_SET);
+	return s;
+}
+	
+/* We have little choice but to save and restore open files: mmap means we
+ * can really intercept changes in the child.
+ *
+ * We could do non-mmap'ed files on demand, however. */
+static struct saved_file *save_files(void)
+{
+	struct saved_file *files = NULL;
+	int i;
+	fd_set closed;
+
+	/* Figure out the set of live fds. */
+	FD_ZERO(&closed);
+	for (i = history_num - 2; i >= 0; i--) {
+		/* FIXME: Handle dup. */
+		if (history[i].type == FAILTEST_CLOSE) {
+			assert(!FD_ISSET(history[i].u.close.fd, &closed));
+			FD_SET(history[i].u.close.fd, &closed);
+		} else if (history[i].type == FAILTEST_OPEN) {
+			int fd = history[i].u.open.ret;
+			/* Only do successful, writable fds. */
+			if (fd < 0)
+				continue;
+
+			/* If it wasn't closed again... */
+			if (!FD_ISSET(fd, &closed)) {
+				if ((history[i].u.open.flags & O_RDWR)
+				    == O_RDWR) {
+					files = save_file(files, fd);
+				} else if ((history[i].u.open.flags & O_WRONLY)
+					   == O_WRONLY) {
+					/* FIXME: Handle O_WRONLY.  Open with
+					 * O_RDWR? */
+					abort();
+				}
+			} else
+				FD_CLR(history[i].u.open.ret, &closed);
+		}
+	}
+
+	return files;
+}
+
+static void restore_files(struct saved_file *s)
+{
+	while (s) {
+		struct saved_file *next = s->next;
+		off_t orig = lseek(s->fd, 0, SEEK_CUR);
+
+		lseek(s->fd, 0, SEEK_SET);
+		write(s->fd, s->contents, s->len);
+		free(s->contents);
+		lseek(s->fd, orig, SEEK_SET);
+		free(s);
+		s = next;
+	}
+}
+
 static bool should_fail(struct failtest_call *call)
 {
 	int status;
@@ -238,6 +320,7 @@ static bool should_fail(struct failtest_call *call)
 	enum info_type type = UNEXPECTED;
 	char *out = NULL;
 	size_t outlen = 0;
+	struct saved_file *files;
 
 	if (call == &unrecorded_call)
 		return false;
@@ -259,6 +342,8 @@ static bool should_fail(struct failtest_call *call)
 		call->fail = false;
 		return false;
 	}
+
+	files = save_files();
 
 	/* We're going to fail in the child. */
 	call->fail = true;
@@ -370,6 +455,8 @@ static bool should_fail(struct failtest_call *call)
 
 	free(out);
 	signal(SIGUSR1, SIG_DFL);
+
+	restore_files(files);
 
 	/* We continue onwards without failing. */
 	call->fail = false;
