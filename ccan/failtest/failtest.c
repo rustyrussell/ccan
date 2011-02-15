@@ -663,8 +663,9 @@ ssize_t failtest_pwrite(int fd, const void *buf, size_t count, off_t off,
 	call.off = off;
 	p = add_history(FAILTEST_WRITE, file, line, &call);
 
-	/* If we're a child, tell parent about write. */
-	if (control_fd != -1) {
+	/* If we're a child, we need to make sure we write the same thing
+	 * to non-files as the parent does, so tell it. */
+	if (control_fd != -1 && off == (off_t)-1) {
 		enum info_type type = WRITE;
 
 		write_all(control_fd, &type, sizeof(type));
@@ -678,7 +679,7 @@ ssize_t failtest_pwrite(int fd, const void *buf, size_t count, off_t off,
 		p->error = EIO;
 	} else {
 		/* FIXME: We assume same write order in parent and child */
-		if (child_writes_num != 0) {
+		if (off == (off_t)-1 && child_writes_num != 0) {
 			if (child_writes[0].fd != fd)
 				errx(1, "Child wrote to fd %u, not %u?",
 				     child_writes[0].fd, fd);
