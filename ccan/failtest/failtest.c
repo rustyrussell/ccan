@@ -980,14 +980,14 @@ void failtest_exit(int status)
 {
 	int i;
 
-	if (control_fd == -1) {
-		free_everything();
-		exit(status);
-	}
-
 	if (failtest_exit_check) {
 		if (!failtest_exit_check(history, history_num))
 			child_fail(NULL, 0, "failtest_exit_check failed\n");
+	}
+
+	if (control_fd == -1) {
+		free_everything();
+		exit(status);
 	}
 
 	/* Cleanup everything, in reverse order. */
