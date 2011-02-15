@@ -2,51 +2,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <ccan/tap/tap.h>
-
-#define printf saved_printf
-static int saved_printf(const char *fmt, ...);
-
-#define fprintf saved_fprintf
-static int saved_fprintf(FILE *ignored, const char *fmt, ...);
-
 /* Include the C files directly. */
 #include <ccan/failtest/failtest.c>
-
-static char *output = NULL;
-
-static int saved_vprintf(const char *fmt, va_list ap)
-{
-	int ret = vsnprintf(NULL, 0, fmt, ap);
-	int len = 0;
-
-	if (output)
-		len = strlen(output);
-
-	output = realloc(output, len + ret + 1);
-	return vsprintf(output + len, fmt, ap);
-}
-
-static int saved_printf(const char *fmt, ...)
-{
-	va_list ap;
-	int ret;
-
-	va_start(ap, fmt);
-	ret = saved_vprintf(fmt, ap);
-	va_end(ap);
-	return ret;
-}	
-
-static int saved_fprintf(FILE *ignored, const char *fmt, ...)
-{
-	va_list ap;
-	int ret;
-
-	va_start(ap, fmt);
-	ret = saved_vprintf(fmt, ap);
-	va_end(ap);
-	return ret;
-}	
 
 int main(void)
 {
@@ -60,6 +17,7 @@ int main(void)
 	struct write_call write_call;
 	char buf[20];
 	unsigned int i;
+	char *path;
 
 	/* This is how many tests you plan to run */
 	plan_tests(47);
@@ -149,18 +107,16 @@ int main(void)
 	for (i = 0; i < history_num; i++)
 		history[i].fail = false;
 
-	print_reproduce();
-	ok1(strcmp(output, "To reproduce: --failpath=cmeoprw\n") == 0);
-	free(output);
-	output = NULL;
+	path = failpath_string();
+	ok1(strcmp(path, "cmeoprw") == 0);
+	free(path);
 
 	for (i = 0; i < history_num; i++)
 		history[i].fail = true;
 
-	print_reproduce();
-	ok1(strcmp(output, "To reproduce: --failpath=CMEOPRW\n") == 0);
-	free(output);
-	output = NULL;
+	path = failpath_string();
+	ok1(strcmp(path, "CMEOPRW") == 0);
+	free(path);
 
 	return exit_status();
 }

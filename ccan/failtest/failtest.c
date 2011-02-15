@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <assert.h>
 #include <ccan/read_write_all/read_write_all.h>
 #include <ccan/failtest/failtest_proto.h>
@@ -18,6 +19,8 @@
 
 bool (*failtest_hook)(struct failtest_call *history, unsigned num)
 = failtest_default_hook;
+
+static int tracefd = -1;
 
 unsigned int failtest_timeout_ms = 20000;
 
@@ -63,6 +66,7 @@ bool (*failtest_exit_check)(struct failtest_call *history, unsigned num);
 static struct failtest_call *history = NULL;
 static unsigned int history_num = 0;
 static int control_fd = -1;
+static struct timeval start;
 
 static struct write_info *writes = NULL;
 static unsigned int writes_num = 0;
@@ -143,18 +147,18 @@ static bool read_write_info(int fd)
 	return true;
 }
 
-static void print_reproduce(void)
+static char *failpath_string(void)
 {
 	unsigned int i;
+	char *ret = malloc(history_num + 1);
 
-	printf("To reproduce: --failpath=");
 	for (i = 0; i < history_num; i++) {
+		ret[i] = info_to_arg[history[i].type];
 		if (history[i].fail)
-			printf("%c", toupper(info_to_arg[history[i].type]));
-		else
-			printf("%c", info_to_arg[history[i].type]);
+			ret[i] = toupper(ret[i]);
 	}
-	printf("\n");
+	ret[i] = '\0';
+	return ret;
 }
 
 static void tell_parent(enum info_type type)
@@ -166,13 +170,15 @@ static void tell_parent(enum info_type type)
 static void child_fail(const char *out, size_t outlen, const char *fmt, ...)
 {
 	va_list ap;
+	char *path = failpath_string();
 
 	va_start(ap, fmt);
 	vfprintf(stderr, fmt, ap);
 	va_end(ap);
 
 	fprintf(stderr, "%.*s", (int)outlen, out);
-	print_reproduce();
+	printf("To reproduce: --failpath=%s\n", path);
+	free(path);
 	tell_parent(FAILURE);
 	exit(1);
 }
@@ -250,6 +256,18 @@ static void get_locks(void)
 	lock_owner = getpid();
 }
 
+static void trace_str(const char *str)
+{
+	ssize_t ret;
+
+	while ((ret = write(tracefd, str, strlen(str))) <= 0) {
+		str += ret;
+		if (!*str)
+			return;
+	}
+	err(1, "Writing trace.");
+}
+
 static bool should_fail(struct failtest_call *call)
 {
 	int status;
@@ -286,6 +304,31 @@ static bool should_fail(struct failtest_call *call)
 		err(1, "forking failed");
 
 	if (child == 0) {
+		if (tracefd != -1) {
+			struct timeval now;
+			char str[50], *p;
+			gettimeofday(&now, NULL);
+			if (now.tv_usec < start.tv_usec) {
+				now.tv_sec--;
+				now.tv_usec += 1000000;
+			}
+			now.tv_usec -= start.tv_usec;
+			now.tv_sec -= start.tv_sec;
+			sprintf(str, "%u (%u.%02u): ", getpid(),
+				(int)now.tv_sec, (int)now.tv_usec / 10000);
+			trace_str(str);
+			p = failpath_string();
+			trace_str(p);
+			free(p);
+			trace_str("(");
+			p = strchr(history[history_num-1].file, '/');
+			if (p)
+				trace_str(p+1);
+			else
+				trace_str(history[history_num-1].file);
+			sprintf(str, ":%u)\n", history[history_num-1].line);
+			trace_str(str);
+		}
 		close(control[0]);
 		close(output[0]);
 		dup2(output[1], STDOUT_FILENO);
@@ -755,10 +798,17 @@ int failtest_fcntl(int fd, const char *file, unsigned line, int cmd, ...)
 
 void failtest_init(int argc, char *argv[])
 {
-	if (argc == 2
-	    && strncmp(argv[1], "--failpath=", strlen("--failpath=")) == 0) {
-		failpath = argv[1] + strlen("--failpath=");
+	unsigned int i;
+
+	for (i = 1; i < argc; i++) {
+		if (!strncmp(argv[i], "--failpath=", strlen("--failpath="))) {
+			failpath = argv[i] + strlen("--failpath=");
+		} else if (strcmp(argv[i], "--tracepath") == 0) {
+			tracefd = dup(STDERR_FILENO);
+			failtest_timeout_ms = -1;
+		}
 	}
+	gettimeofday(&start, NULL);
 }
 
 /* Free up memory, so valgrind doesn't report leaks. */
