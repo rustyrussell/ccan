@@ -455,9 +455,13 @@ static bool should_fail(struct failtest_call *call)
 	close(output[0]);
 	close(control[0]);
 	waitpid(child, &status, 0);
-	if (!WIFEXITED(status))
-		child_fail(out, outlen, "Killed by signal %u: ",
-			   WTERMSIG(status));
+	if (!WIFEXITED(status)) {
+		if (WTERMSIG(status) == SIGUSR1)
+			child_fail(out, outlen, "Timed out");
+		else
+			child_fail(out, outlen, "Killed by signal %u: ",
+				   WTERMSIG(status));
+	}
 	/* Child printed failure already, just pass up exit code. */
 	if (type == FAILURE) {
 		fprintf(stderr, "%.*s", (int)outlen, out);
