@@ -265,7 +265,8 @@ static bool should_fail(struct failtest_call *call)
 		if (tolower(*failpath) != info_to_arg[call->type])
 			errx(1, "Failpath expected '%c' got '%c'\n",
 			     info_to_arg[call->type], *failpath);
-		return isupper(*(failpath++));
+		call->fail = isupper(*(failpath++));
+		return call->fail;
 	}
 
 	if (!failtest_hook(history, history_num)) {
