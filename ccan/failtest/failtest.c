@@ -34,17 +34,6 @@ enum info_type {
 	UNEXPECTED
 };
 
-struct write_info_hdr {
-	size_t len;
-	off_t offset;
-	int fd;
-};
-
-struct write_info {
-	struct write_info_hdr hdr;
-	char *data;
-};
-
 struct lock_info {
 	int fd;
 	/* end is inclusive: you can't have a 0-byte lock. */
@@ -59,10 +48,7 @@ static unsigned int history_num = 0;
 static int control_fd = -1;
 static struct timeval start;
 
-static struct write_info *writes = NULL;
-static unsigned int writes_num = 0;
-
-static struct write_info *child_writes = NULL;
+static struct write_call *child_writes = NULL;
 static unsigned int child_writes_num = 0;
 
 static pid_t lock_owner;
@@ -106,16 +92,18 @@ bool failtest_default_hook(struct failtest_call *history, unsigned num)
 
 static bool read_write_info(int fd)
 {
-	struct write_info_hdr hdr;
+	struct write_call *w;
+	char *buf;
 
-	if (!read_all(fd, &hdr, sizeof(hdr)))
-		return false;
-
+	/* We don't need all of this, but it's simple. */
 	child_writes = realloc(child_writes,
 			       (child_writes_num+1) * sizeof(child_writes[0]));
-	child_writes[child_writes_num].hdr = hdr;
-	child_writes[child_writes_num].data = malloc(hdr.len);
-	if (!read_all(fd, child_writes[child_writes_num].data, hdr.len))
+	w = &child_writes[child_writes_num];
+	if (!read_all(fd, w, sizeof(*w)))
+		return false;
+
+	w->buf = buf = malloc(w->count);
+	if (!read_all(fd, buf, w->count))
 		return false;
 
 	child_writes_num++;
@@ -592,12 +580,6 @@ ssize_t failtest_pread(int fd, void *buf, size_t count, off_t off,
 	return p->u.read.ret;
 }
 
-static struct write_info *new_write(void)
-{
-	writes = realloc(writes, (writes_num + 1) * sizeof(*writes));
-	return &writes[writes_num++];
-}
-
 static void cleanup_write(struct write_call *call)
 {
 	lseek(call->dup_fd, call->off, SEEK_SET);
@@ -647,17 +629,11 @@ ssize_t failtest_pwrite(int fd, const void *buf, size_t count, off_t off,
 
 	/* If we're a child, tell parent about write. */
 	if (control_fd != -1) {
-		struct write_info *winfo = new_write();
 		enum info_type type = WRITE;
 
-		winfo->hdr.len = count;
-		winfo->hdr.fd = fd;
-		winfo->data = malloc(count);
-		memcpy(winfo->data, buf, count);
-		winfo->hdr.offset = off;
 		write_all(control_fd, &type, sizeof(type));
-		write_all(control_fd, &winfo->hdr, sizeof(winfo->hdr));
-		write_all(control_fd, winfo->data, count);
+		write_all(control_fd, &p->u.write, sizeof(p->u.write));
+		write_all(control_fd, buf, count);
 	}
 
 	/* FIXME: Try partial write returns. */
@@ -667,22 +643,22 @@ ssize_t failtest_pwrite(int fd, const void *buf, size_t count, off_t off,
 	} else {
 		/* FIXME: We assume same write order in parent and child */
 		if (child_writes_num != 0) {
-			if (child_writes[0].hdr.fd != fd)
+			if (child_writes[0].fd != fd)
 				errx(1, "Child wrote to fd %u, not %u?",
-				     child_writes[0].hdr.fd, fd);
-			if (child_writes[0].hdr.offset != p->u.write.off)
+				     child_writes[0].fd, fd);
+			if (child_writes[0].off != p->u.write.off)
 				errx(1, "Child wrote to offset %zu, not %zu?",
-				     (size_t)child_writes[0].hdr.offset,
+				     (size_t)child_writes[0].off,
 				     (size_t)p->u.write.off);
-			if (child_writes[0].hdr.len != count)
+			if (child_writes[0].count != count)
 				errx(1, "Child wrote length %zu, not %zu?",
-				     child_writes[0].hdr.len, count);
-			if (memcmp(child_writes[0].data, buf, count)) {
+				     child_writes[0].count, count);
+			if (memcmp(child_writes[0].buf, buf, count)) {
 				child_fail(NULL, 0,
 					   "Child wrote differently to"
 					   " fd %u than we did!\n", fd);
 			}
-			free(child_writes[0].data);
+			free((char *)child_writes[0].buf);
 			child_writes_num--;
 			memmove(&child_writes[0], &child_writes[1],
 				sizeof(child_writes[0]) * child_writes_num);
@@ -928,11 +904,6 @@ void failtest_init(int argc, char *argv[])
 static void free_everything(void)
 {
 	unsigned int i;
-
-	for (i = 0; i < writes_num; i++) {
-		free(writes[i].data);
-	}
-	free(writes);
 
 	/* We don't do this in cleanup: needed even for failed opens. */
 	for (i = 0; i < history_num; i++) {
