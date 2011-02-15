@@ -64,19 +64,21 @@ struct open_call {
 	const char *pathname;
 	int flags;
 	mode_t mode;
+	int dup_fd;
 };
 
 struct pipe_call {
 	int ret;
 	int fds[2];
+	bool closed[2];
 };
 
 struct read_call {
 	ssize_t ret;
+	off_t off;
 	int fd;
 	void *buf;
 	size_t count;
-	off_t off;
 };
 
 struct write_call {
@@ -85,6 +87,10 @@ struct write_call {
 	const void *buf;
 	size_t count;
 	off_t off;
+	off_t old_filelen;
+	off_t saved_len;
+	void *saved_contents;
+	int dup_fd;
 };
 
 struct fcntl_call {
@@ -121,6 +127,8 @@ struct failtest_call {
 	bool fail;
 	/* What we set errno to. */
 	int error;
+	/* How do we clean this up? */
+	void (*cleanup)(void *u);
 	/* The actual call data. */
 	union {
 		struct calloc_call calloc;

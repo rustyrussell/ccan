@@ -45,8 +45,8 @@ int main(void)
 	realloc_call.ret = realloc(malloc_call.ret, 3);
 	realloc_call.ptr = malloc_call.ret;
 	realloc_call.size = 3;
-	call = add_history(FAILTEST_REALLOC, "run-history.c",
-			   3, &realloc_call);
+	call = add_history(FAILTEST_REALLOC, "run-history.c", 3,
+			   &realloc_call);
 	ok1(call->type == FAILTEST_REALLOC);
 	ok1(strcmp(call->file, "run-history.c") == 0);
 	ok1(call->line == 3);

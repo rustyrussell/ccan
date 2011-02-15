@@ -8,6 +8,7 @@ void *failtest_calloc(size_t nmemb, size_t size,
 void *failtest_malloc(size_t size, const char *file, unsigned line);
 void *failtest_realloc(void *ptr, size_t size,
 		       const char *file, unsigned line);
+void failtest_free(void *ptr);
 int failtest_open(const char *pathname,
 		  const char *file, unsigned line, ...);
 int failtest_pipe(int pipefd[2], const char *file, unsigned line);

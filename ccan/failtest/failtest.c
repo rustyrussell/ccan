@@ -40,18 +40,9 @@ struct write_info_hdr {
 	int fd;
 };
 
-struct fd_orig {
-	int fd;
-	off_t offset;
-	size_t size;
-	bool dupped;
-};
-
 struct write_info {
 	struct write_info_hdr hdr;
 	char *data;
-	size_t oldlen;
-	char *olddata;
 };
 
 struct lock_info {
@@ -73,9 +64,6 @@ static unsigned int writes_num = 0;
 
 static struct write_info *child_writes = NULL;
 static unsigned int child_writes_num = 0;
-
-static struct fd_orig *fd_orig = NULL;
-static unsigned int fd_orig_num = 0;
 
 static pid_t lock_owner;
 static struct lock_info *locks = NULL;
@@ -100,6 +88,7 @@ static struct failtest_call *add_history_(enum failtest_call_type type,
 	history[history_num].type = type;
 	history[history_num].file = file;
 	history[history_num].line = line;
+	history[history_num].cleanup = NULL;
 	memcpy(&history[history_num].u, elem, elem_size);
 	return &history[history_num++];
 }
@@ -107,22 +96,8 @@ static struct failtest_call *add_history_(enum failtest_call_type type,
 #define add_history(type, file, line, elem) \
 	add_history_((type), (file), (line), (elem), sizeof(*(elem)))
 
-static void save_fd_orig(int fd)
-{
-	unsigned int i;
-
-	for (i = 0; i < fd_orig_num; i++)
-		if (fd_orig[i].fd == fd)
-			return;
-
-	fd_orig = realloc(fd_orig, (fd_orig_num + 1) * sizeof(*fd_orig));
-	fd_orig[fd_orig_num].fd = fd;
-	fd_orig[fd_orig_num].dupped = false;
-	fd_orig[fd_orig_num].offset = lseek(fd, 0, SEEK_CUR);
-	fd_orig[fd_orig_num].size = lseek(fd, 0, SEEK_END);
-	lseek(fd, fd_orig[fd_orig_num].offset, SEEK_SET);
-	fd_orig_num++;
-}
+#define set_cleanup(call, clean, type)			\
+	(call)->cleanup = (void *)((void)sizeof(clean((type *)NULL)), (clean))
 
 bool failtest_default_hook(struct failtest_call *history, unsigned num)
 {
@@ -413,6 +388,11 @@ static bool should_fail(struct failtest_call *call)
 	return false;
 }
 
+static void cleanup_calloc(struct calloc_call *call)
+{
+	free(call->ret);
+}
+
 void *failtest_calloc(size_t nmemb, size_t size,
 		      const char *file, unsigned line)
 {
@@ -427,9 +407,15 @@ void *failtest_calloc(size_t nmemb, size_t size,
 		p->error = ENOMEM;
 	} else {
 		p->u.calloc.ret = calloc(nmemb, size);
+		set_cleanup(p, cleanup_calloc, struct calloc_call);
 	}
 	errno = p->error;
 	return p->u.calloc.ret;
+}
+
+static void cleanup_malloc(struct malloc_call *call)
+{
+	free(call->ret);
 }
 
 void *failtest_malloc(size_t size, const char *file, unsigned line)
@@ -444,9 +430,47 @@ void *failtest_malloc(size_t size, const char *file, unsigned line)
 		p->error = ENOMEM;
 	} else {
 		p->u.calloc.ret = malloc(size);
+		set_cleanup(p, cleanup_malloc, struct malloc_call);
 	}
 	errno = p->error;
 	return p->u.calloc.ret;
+}
+
+static void cleanup_realloc(struct realloc_call *call)
+{
+	free(call->ret);
+}
+
+/* Walk back and find out if we got this ptr from a previous routine. */
+static void fixup_ptr_history(void *ptr, unsigned int last)
+{
+	int i;
+
+	/* Start at end of history, work back. */
+	for (i = last - 1; i >= 0; i--) {
+		switch (history[i].type) {
+		case FAILTEST_REALLOC:
+			if (history[i].u.realloc.ret == ptr) {
+				history[i].cleanup = NULL;
+				return;
+			}
+			break;
+		case FAILTEST_MALLOC:
+			if (history[i].u.malloc.ret == ptr) {
+				history[i].cleanup = NULL;
+				return;
+			}
+			break;
+		case FAILTEST_CALLOC:
+			if (history[i].u.calloc.ret == ptr) {
+				history[i].cleanup = NULL;
+				return;
+			}
+			break;
+		default:
+			break;
+		}
+	}
 }
 
 void *failtest_realloc(void *ptr, size_t size, const char *file, unsigned line)
@@ -461,10 +485,23 @@ void *failtest_realloc(void *ptr, size_t size, const char *file, unsigned line)
 		p->u.realloc.ret = NULL;
 		p->error = ENOMEM;
 	} else {
+		fixup_ptr_history(ptr, history_num-1);
 		p->u.realloc.ret = realloc(ptr, size);
+		set_cleanup(p, cleanup_realloc, struct realloc_call);
 	}
 	errno = p->error;
 	return p->u.realloc.ret;
+}
+
+void failtest_free(void *ptr)
+{
+	fixup_ptr_history(ptr, history_num);
+	free(ptr);
+}
+
+static void cleanup_open(struct open_call *call)
+{
+	close(call->ret);
 }
 
 int failtest_open(const char *pathname,
@@ -491,9 +528,19 @@ int failtest_open(const char *pathname,
 		p->error = EACCES;
 	} else {
 		p->u.open.ret = open(pathname, call.flags, call.mode);
+		set_cleanup(p, cleanup_open, struct open_call);
+		p->u.open.dup_fd = p->u.open.ret;
 	}
 	errno = p->error;
 	return p->u.open.ret;
+}
+
+static void cleanup_pipe(struct pipe_call *call)
+{
+	if (!call->closed[0])
+		close(call->fds[0]);
+	if (!call->closed[1])
+		close(call->fds[1]);
 }
 
 int failtest_pipe(int pipefd[2], const char *file, unsigned line)
@@ -508,11 +555,18 @@ int failtest_pipe(int pipefd[2], const char *file, unsigned line)
 		p->error = EMFILE;
 	} else {
 		p->u.pipe.ret = pipe(p->u.pipe.fds);
+		p->u.pipe.closed[0] = p->u.pipe.closed[1] = false;
+		set_cleanup(p, cleanup_pipe, struct pipe_call);
 	}
 	/* This causes valgrind to notice if they use pipefd[] after failure */
 	memcpy(pipefd, p->u.pipe.fds, sizeof(p->u.pipe.fds));
 	errno = p->error;
 	return p->u.pipe.ret;
+}
+
+static void cleanup_read(struct read_call *call)
+{
+	lseek(call->fd, call->off, SEEK_SET);
 }
 
 ssize_t failtest_pread(int fd, void *buf, size_t count, off_t off,
@@ -526,16 +580,13 @@ ssize_t failtest_pread(int fd, void *buf, size_t count, off_t off,
 	call.off = off;
 	p = add_history(FAILTEST_READ, file, line, &call);
 
-	/* This is going to change seek offset, so save it. */
-	if (control_fd != -1)
-		save_fd_orig(fd);
-
 	/* FIXME: Try partial read returns. */
 	if (should_fail(p)) {
 		p->u.read.ret = -1;
 		p->error = EIO;
 	} else {
 		p->u.read.ret = pread(fd, buf, count, off);
+		set_cleanup(p, cleanup_read, struct read_call);
 	}
 	errno = p->error;
 	return p->u.read.ret;
@@ -547,40 +598,63 @@ static struct write_info *new_write(void)
 	return &writes[writes_num++];
 }
 
+static void cleanup_write(struct write_call *call)
+{
+	lseek(call->dup_fd, call->off, SEEK_SET);
+	write(call->dup_fd, call->saved_contents, call->saved_len);
+	lseek(call->dup_fd, call->off, SEEK_SET);
+	ftruncate(call->dup_fd, call->old_filelen);
+	free(call->saved_contents);
+}
+
 ssize_t failtest_pwrite(int fd, const void *buf, size_t count, off_t off,
 			const char *file, unsigned line)
 {
 	struct failtest_call *p;
 	struct write_call call;
-	off_t offset;
 
-	call.fd = fd;
+	call.fd = call.dup_fd = fd;
 	call.buf = buf;
 	call.count = count;
 	call.off = off;
 	p = add_history(FAILTEST_WRITE, file, line, &call);
 
-	offset = lseek(fd, 0, SEEK_CUR);
+	/* Save old contents if we can */
+	if (p->u.write.off != -1) {
+		ssize_t ret;
+		p->u.write.old_filelen = lseek(fd, 0, SEEK_END);
 
-	/* If we're a child, save contents and tell parent about write. */
+		/* Write past end of file?  Nothing to save.*/
+		if (p->u.write.old_filelen <= p->u.write.off)
+			p->u.write.saved_len = 0;
+		/* Write which goes over end of file?  Partial save. */
+		else if (p->u.write.off + count > p->u.write.old_filelen)
+			p->u.write.saved_len = p->u.write.old_filelen
+				- p->u.write.off;
+		/* Full save. */
+		else
+			p->u.write.saved_len = count;
+
+		p->u.write.saved_contents = malloc(p->u.write.saved_len);
+		lseek(fd, p->u.write.off, SEEK_SET);
+		ret = read(fd, p->u.write.saved_contents, p->u.write.saved_len);
+		if (ret != p->u.write.saved_len)
+			err(1, "Expected %i bytes, got %i",
+			    (int)p->u.write.saved_len, (int)ret);
+		lseek(fd, p->u.write.off, SEEK_SET);
+		set_cleanup(p, cleanup_write, struct write_call);
+	}
+
+	/* If we're a child, tell parent about write. */
 	if (control_fd != -1) {
 		struct write_info *winfo = new_write();
 		enum info_type type = WRITE;
-
-		save_fd_orig(fd);
 
 		winfo->hdr.len = count;
 		winfo->hdr.fd = fd;
 		winfo->data = malloc(count);
 		memcpy(winfo->data, buf, count);
-		winfo->hdr.offset = offset;
-		if (winfo->hdr.offset != (off_t)-1) {
-			lseek(fd, offset, SEEK_SET);
-			winfo->olddata = malloc(count);
-			winfo->oldlen = read(fd, winfo->olddata, count);
-			if (winfo->oldlen == -1)
-				winfo->oldlen = 0;
-		}
+		winfo->hdr.offset = off;
 		write_all(control_fd, &type, sizeof(type));
 		write_all(control_fd, &winfo->hdr, sizeof(winfo->hdr));
 		write_all(control_fd, winfo->data, count);
@@ -596,10 +670,10 @@ ssize_t failtest_pwrite(int fd, const void *buf, size_t count, off_t off,
 			if (child_writes[0].hdr.fd != fd)
 				errx(1, "Child wrote to fd %u, not %u?",
 				     child_writes[0].hdr.fd, fd);
-			if (child_writes[0].hdr.offset != offset)
+			if (child_writes[0].hdr.offset != p->u.write.off)
 				errx(1, "Child wrote to offset %zu, not %zu?",
 				     (size_t)child_writes[0].hdr.offset,
-				     (size_t)offset);
+				     (size_t)p->u.write.off);
 			if (child_writes[0].hdr.len != count)
 				errx(1, "Child wrote length %zu, not %zu?",
 				     child_writes[0].hdr.len, count);
@@ -615,7 +689,7 @@ ssize_t failtest_pwrite(int fd, const void *buf, size_t count, off_t off,
 
 			/* Is this is a socket or pipe, child wrote it
 			   already. */
-			if (offset == (off_t)-1) {
+			if (p->u.write.off == (off_t)-1) {
 				p->u.write.ret = count;
 				errno = p->error;
 				return p->u.write.ret;
@@ -707,21 +781,55 @@ add_lock(struct lock_info *locks, int fd, off_t start, off_t end, int type)
 /* We only trap this so we can dup fds in case we need to restore. */
 int failtest_close(int fd)
 {
-	unsigned int i;
-	int newfd = -1;
+	int new_fd = -1, i;
 
-	for (i = 0; i < fd_orig_num; i++) {
-		if (fd_orig[i].fd == fd) {
-			fd_orig[i].fd = newfd = dup(fd);
-			fd_orig[i].dupped = true;
+	if (fd < 0)
+		return close(fd);
+
+	/* Trace history to find source of fd, and if we need to cleanup writes. */
+	for (i = history_num-1; i >= 0; i--) {
+		switch (history[i].type) {
+		case FAILTEST_WRITE:
+			if (history[i].u.write.fd != fd)
+				break;
+			if (!history[i].cleanup)
+				break;
+			/* We need to save fd so we can restore file. */
+			if (new_fd == -1)
+				new_fd = dup(fd);
+			history[i].u.write.dup_fd = new_fd;
+			break;
+		case FAILTEST_READ:
+			/* We don't need to cleanup reads on closed fds. */
+			if (history[i].u.read.fd != fd)
+				break;
+			history[i].cleanup = NULL;
+			break;
+		case FAILTEST_PIPE:
+			/* From a pipe?  We don't ever restore pipes... */
+			if (history[i].u.pipe.fds[0] == fd) {
+				assert(new_fd == -1);
+				history[i].u.pipe.closed[0] = true;
+				goto out;
+			}
+			if (history[i].u.pipe.fds[1] == fd) {
+				assert(new_fd == -1);
+				history[i].u.pipe.closed[1] = true;
+				goto out;
+			}
+			break;
+		case FAILTEST_OPEN:
+			if (history[i].u.open.ret == fd) {
+				history[i].u.open.dup_fd = new_fd;
+				goto out;
+			}
+			break;
+		default:
+			break;
 		}
 	}
 
-	for (i = 0; i < writes_num; i++) {
-		if (writes[i].hdr.fd == fd)
-			writes[i].hdr.fd = newfd;
-	}
-
+out:
 	locks = add_lock(locks, fd, 0, off_max(), F_UNLCK);
 	return close(fd);
 }
@@ -823,11 +931,10 @@ static void free_everything(void)
 
 	for (i = 0; i < writes_num; i++) {
 		free(writes[i].data);
-		if (writes[i].hdr.offset != (off_t)-1)
-			free(writes[i].olddata);
 	}
 	free(writes);
-	free(fd_orig);
+
+	/* We don't do this in cleanup: needed even for failed opens. */
 	for (i = 0; i < history_num; i++) {
 		if (history[i].type == FAILTEST_OPEN)
 			free((char *)history[i].u.open.pathname);
@@ -837,7 +944,7 @@ static void free_everything(void)
 
 void failtest_exit(int status)
 {
-	unsigned int i;
+	int i;
 
 	if (control_fd == -1) {
 		free_everything();
@@ -849,26 +956,10 @@ void failtest_exit(int status)
 			child_fail(NULL, 0, "failtest_exit_check failed\n");
 	}
 
-	/* Restore any stuff we overwrote. */
-	for (i = 0; i < writes_num; i++) {
-		if (writes[i].hdr.offset == (off_t)-1)
-			continue;
-		if (writes[i].oldlen != 0) {
-			lseek(writes[i].hdr.fd, writes[i].hdr.offset,
-			      SEEK_SET);
-			write(writes[i].hdr.fd, writes[i].olddata,
-			      writes[i].oldlen);
-		}
-	}
-
-	/* Fix up fd offsets, restore sizes. */
-	for (i = 0; i < fd_orig_num; i++) {
-		lseek(fd_orig[i].fd, fd_orig[i].offset, SEEK_SET);
-		ftruncate(fd_orig[i].fd, fd_orig[i].size);
-		/* Free up any file descriptors we dup'ed. */
-		if (fd_orig[i].dupped)
-			close(fd_orig[i].fd);
-	}
+	/* Cleanup everything, in reverse order. */
+	for (i = history_num - 1; i >= 0; i--)
+		if (history[i].cleanup)
+			history[i].cleanup(&history[i].u);
 
 	free_everything();
 	tell_parent(SUCCESS);

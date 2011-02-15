@@ -17,6 +17,10 @@
 #define realloc(ptr, size)					\
 	failtest_realloc((ptr), (size), __FILE__, __LINE__)
 
+#undef free
+#define free(ptr) \
+	failtest_free(ptr)
+
 /* Replacement of I/O. */
 #include <sys/types.h>
 #include <sys/stat.h>
