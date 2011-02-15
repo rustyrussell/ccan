@@ -317,21 +317,28 @@ static NORETURN void failtest_cleanup(bool forced_cleanup, int status)
 {
 	int i;
 
+	/* For children, we don't care if they "failed" the testing. */
+	if (control_fd != -1)
+		status = 0;
+
 	if (forced_cleanup)
 		history_num--;
 
 	/* Cleanup everything, in reverse order. */
-	for (i = history_num - 1; i >= 0; i--)
-		if (history[i].cleanup)
-			history[i].cleanup(&history[i].u);
+	for (i = history_num - 1; i >= 0; i--) {
+		if (!history[i].cleanup)
+			continue;
+		if (!forced_cleanup) {
+			printf("Leak at %s:%u\n",
+			       history[i].file, history[i].line);
+			status = 1;
+		}
+		history[i].cleanup(&history[i].u);
+	}
 
 	free_everything();
-
-	if (control_fd == -1)
-		exit(status);
-
 	tell_parent(SUCCESS);
-	exit(0);
+	exit(status);
 }
 
 static bool should_fail(struct failtest_call *call)
