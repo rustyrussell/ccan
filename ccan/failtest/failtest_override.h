@@ -52,7 +52,7 @@
 	failtest_pwrite((fd), (buf), (count), (off), __FILE__, __LINE__)
 
 #undef close
-#define close(fd) failtest_close(fd)
+#define close(fd) failtest_close(fd, __FILE__, __LINE__)
 
 #undef fcntl
 #define fcntl(fd, ...) failtest_fcntl((fd), __FILE__, __LINE__, __VA_ARGS__)

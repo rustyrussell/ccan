@@ -41,7 +41,7 @@ int main(void)
 	ok1(err == EACCES);
 
 	/* Clean up. */
-	failtest_close(fd);
+	failtest_close(fd, "run-open.c", 1);
 	close(pfd[0]);
 	close(pfd[1]);
 
@@ -59,7 +59,7 @@ int main(void)
 	ok1(read(fd, buf, strlen("Hello world!")) == strlen("Hello world!"));
 	ok1(strcmp(buf, "Hello world!") == 0);
 	/* Clean up. */
-	failtest_close(fd);
+	failtest_close(fd, "run-open.c", 1);
 	close(pfd[0]);
 	close(pfd[1]);
 

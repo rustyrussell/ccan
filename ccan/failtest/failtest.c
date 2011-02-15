@@ -56,7 +56,7 @@ static pid_t lock_owner;
 static struct lock_info *locks = NULL;
 static unsigned int lock_num = 0;
 
-static const char info_to_arg[] = "mceoprwf";
+static const char info_to_arg[] = "mceoxprwf";
 
 /* Dummy call used for failtest_undo wrappers. */
 static struct failtest_call unrecorded_call;
@@ -825,9 +825,20 @@ add_lock(struct lock_info *locks, int fd, off_t start, off_t end, int type)
 }
 
 /* We trap this so we can record it: we don't fail it. */
-int failtest_close(int fd)
+int failtest_close(int fd, const char *file, unsigned line)
 {
 	int i;
+	struct close_call call;
+	struct failtest_call *p;
+
+	call.fd = fd;
+	p = add_history(FAILTEST_CLOSE, file, line, &call);
+	p->fail = false;
+
+	/* Consume close from failpath. */
+	if (failpath)
+		if (should_fail(p))
+			abort();
 
 	if (fd < 0)
 		return close(fd);

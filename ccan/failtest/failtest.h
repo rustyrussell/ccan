@@ -36,6 +36,7 @@ enum failtest_call_type {
 	FAILTEST_CALLOC,
 	FAILTEST_REALLOC,
 	FAILTEST_OPEN,
+	FAILTEST_CLOSE,
 	FAILTEST_PIPE,
 	FAILTEST_READ,
 	FAILTEST_WRITE,
@@ -64,6 +65,10 @@ struct open_call {
 	const char *pathname;
 	int flags;
 	mode_t mode;
+};
+
+struct close_call {
+	int fd;
 };
 
 struct pipe_call {
@@ -130,6 +135,7 @@ struct failtest_call {
 		struct malloc_call malloc;
 		struct realloc_call realloc;
 		struct open_call open;
+		struct close_call close;
 		struct pipe_call pipe;
 		struct read_call read;
 		struct write_call write;
