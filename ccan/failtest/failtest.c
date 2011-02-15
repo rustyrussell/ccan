@@ -17,8 +17,7 @@
 #include <ccan/failtest/failtest.h>
 #include <ccan/build_assert/build_assert.h>
 
-bool (*failtest_hook)(struct failtest_call *history, unsigned num)
-= failtest_default_hook;
+enum failtest_result (*failtest_hook)(struct failtest_call *, unsigned);
 
 static int tracefd = -1;
 
@@ -48,6 +47,7 @@ static struct failtest_call *history = NULL;
 static unsigned int history_num = 0;
 static int control_fd = -1;
 static struct timeval start;
+static unsigned int probe_count = 0;
 
 static struct write_call *child_writes = NULL;
 static unsigned int child_writes_num = 0;
@@ -85,11 +85,6 @@ static struct failtest_call *add_history_(enum failtest_call_type type,
 
 #define set_cleanup(call, clean, type)			\
 	(call)->cleanup = (void *)((void)sizeof(clean((type *)NULL)), (clean))
-
-bool failtest_default_hook(struct failtest_call *history, unsigned num)
-{
-	return true;
-}
 
 static bool read_write_info(int fd)
 {
@@ -305,6 +300,40 @@ static void restore_files(struct saved_file *s)
 	}
 }
 
+/* Free up memory, so valgrind doesn't report leaks. */
+static void free_everything(void)
+{
+	unsigned int i;
+
+	/* We don't do this in cleanup: needed even for failed opens. */
+	for (i = 0; i < history_num; i++) {
+		if (history[i].type == FAILTEST_OPEN)
+			free((char *)history[i].u.open.pathname);
+	}
+	free(history);
+}
+
+static NORETURN void failtest_cleanup(bool forced_cleanup, int status)
+{
+	int i;
+
+	if (forced_cleanup)
+		history_num--;
+
+	/* Cleanup everything, in reverse order. */
+	for (i = history_num - 1; i >= 0; i--)
+		if (history[i].cleanup)
+			history[i].cleanup(&history[i].u);
+
+	free_everything();
+
+	if (control_fd == -1)
+		exit(status);
+
+	tell_parent(SUCCESS);
+	exit(0);
+}
+
 static bool should_fail(struct failtest_call *call)
 {
 	int status;
@@ -313,6 +342,10 @@ static bool should_fail(struct failtest_call *call)
 	char *out = NULL;
 	size_t outlen = 0;
 	struct saved_file *files;
+
+	/* Are we probing? */
+	if (probe_count && --probe_count == 0)
+		failtest_cleanup(true, 0);
 
 	if (call == &unrecorded_call)
 		return false;
@@ -353,9 +386,24 @@ static bool should_fail(struct failtest_call *call)
 		}
 	}
 
-	if (!failtest_hook(history, history_num)) {
-		call->fail = false;
-		return false;
+	if (failtest_hook) {
+		switch (failtest_hook(history, history_num)) {
+		case FAIL_OK:
+			break;
+		case FAIL_DONT_FAIL:
+			call->fail = false;
+			return false;
+		case FAIL_PROBE:
+			/* Already down probe path?  Stop now. */
+			if (probe_count)
+				failtest_cleanup(true, 0);
+			/* FIXME: We should run *parent* and run probe until
+			 * calls match up again. */
+			probe_count = 3;
+			break;
+		default:
+			abort();
+		}
 	}
 
 	files = save_files();
@@ -974,39 +1022,12 @@ void failtest_init(int argc, char *argv[])
 	gettimeofday(&start, NULL);
 }
 
-/* Free up memory, so valgrind doesn't report leaks. */
-static void free_everything(void)
-{
-	unsigned int i;
-
-	/* We don't do this in cleanup: needed even for failed opens. */
-	for (i = 0; i < history_num; i++) {
-		if (history[i].type == FAILTEST_OPEN)
-			free((char *)history[i].u.open.pathname);
-	}
-	free(history);
-}
-
 void failtest_exit(int status)
 {
-	int i;
-
 	if (failtest_exit_check) {
 		if (!failtest_exit_check(history, history_num))
 			child_fail(NULL, 0, "failtest_exit_check failed\n");
 	}
 
-	if (control_fd == -1) {
-		free_everything();
-		exit(status);
-	}
-
-	/* Cleanup everything, in reverse order. */
-	for (i = history_num - 1; i >= 0; i--)
-		if (history[i].cleanup)
-			history[i].cleanup(&history[i].u);
-
-	free_everything();
-	tell_parent(SUCCESS);
-	exit(0);
+	failtest_cleanup(false, status);
 }

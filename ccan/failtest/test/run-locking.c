@@ -10,9 +10,10 @@
 #define SIZE 8
 
 /* We don't want to fork and fail; we're just testing lock recording. */
-static bool dont_fail(struct failtest_call *history, unsigned num)
+static enum failtest_result dont_fail(struct failtest_call *history,
+				      unsigned num)
 {
-	return false;
+	return FAIL_DONT_FAIL;
 }
 
 static bool place_lock(int fd, char lockarr[], unsigned pos, unsigned size,

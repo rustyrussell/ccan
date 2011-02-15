@@ -143,30 +143,42 @@ struct failtest_call {
 	} u;
 };
 
+enum failtest_result {
+	/* Yes try failing this call. */
+	FAIL_OK,
+	/* No, don't try failing this call. */
+	FAIL_DONT_FAIL,
+	/* Try failing this call but don't go too far down that path. */
+	FAIL_PROBE,
+};
+
 /**
  * failtest_hook - whether a certain call should fail or not.
  * @history: the ordered history of all failtest calls.
  * @num: the number of elements in @history (greater than 0)
  *
  * The default value of this hook is failtest_default_hook(), which returns
- * true (ie. yes, fail the call).
+ * FAIL_OK (ie. yes, fail the call).
  *
  * You can override it, and avoid failing certain calls.  The parameters
  * of the call (but not the return value(s)) will be filled in for the last
  * call.
  *
  * Example:
- *	static bool dont_fail_allocations(struct failtest_call *history,
- *					  unsigned num)
+ *	static enum failtest_result dont_fail_alloc(struct failtest_call *hist,
+ *						    unsigned num)
  *	{
- *		return history[num-1].type != FAILTEST_MALLOC
- *			&& history[num-1].type != FAILTEST_CALLOC
- *			&& history[num-1].type != FAILTEST_REALLOC;
+ *		if (hist[num-1].type == FAILTEST_MALLOC
+ *			|| hist[num-1].type == FAILTEST_CALLOC
+ *			|| hist[num-1].type == FAILTEST_REALLOC)
+ *			return FAIL_DONT_FAIL;
+ *		return FAIL_OK;
  *	}
  *	...
- *		failtest_hook = dont_fail_allocations;
+ *		failtest_hook = dont_fail_alloc;
  */
-extern bool (*failtest_hook)(struct failtest_call *history, unsigned num);
+extern enum failtest_result
+(*failtest_hook)(struct failtest_call *history, unsigned num);
 
 /**
  * failtest_exit_check - hook for additional checks on a failed child.
@@ -182,9 +194,6 @@ extern bool (*failtest_hook)(struct failtest_call *history, unsigned num);
  */
 extern bool (*failtest_exit_check)(struct failtest_call *history,
 				   unsigned num);
-
-/* This usually fails the call. */
-bool failtest_default_hook(struct failtest_call *history, unsigned num);
 
 /**
  * failtest_timeout_ms - how long to wait before killing child.
