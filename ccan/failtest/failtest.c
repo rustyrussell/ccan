@@ -280,11 +280,16 @@ static bool should_fail(struct failtest_call *call)
 		return false;
 
 	if (failpath) {
-		if (tolower(*failpath) != info_to_arg[call->type])
-			errx(1, "Failpath expected '%c' got '%c'\n",
-			     info_to_arg[call->type], *failpath);
-		call->fail = isupper(*(failpath++));
-		return call->fail;
+		/* + means continue after end, like normal. */
+		if (*failpath == '+')
+			failpath = NULL;
+		else {
+			if (tolower(*failpath) != info_to_arg[call->type])
+				errx(1, "Failpath expected '%c' got '%c'\n",
+				     info_to_arg[call->type], *failpath);
+			call->fail = isupper(*(failpath++));
+			return call->fail;
+		}
 	}
 
 	if (!failtest_hook(history, history_num)) {
