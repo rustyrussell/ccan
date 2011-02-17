@@ -39,7 +39,7 @@ static void do_run_tests(struct manifest *m,
 					i->compiled))
 				score->score++;
 			else
-				score_file_error(score, i, 0, cmdout);
+				score_file_error(score, i, 0, "%s", cmdout);
 		}
 	}
 
