@@ -110,6 +110,10 @@ static void analyze_coverage(struct manifest *m, bool full_gcov,
 
 	score->pass = true;
 
+	if (verbose > 1)
+		printf("%u of %u lines covered\n",
+		       (unsigned)covered_lines, total_lines);
+
 	/* Nothing covered?  We can't tell if there's a source file which
 	 * was never executed, or there really is no code to execute, so
 	 * assume the latter: this test deserves no score. */
