@@ -201,6 +201,12 @@ bool opt_parse(int *argc, char *argv[], void (*errlog)(const char *fmt, ...))
 	return (ret == 0);
 }
 
+void opt_free_table(void)
+{
+	free(opt_table);
+	opt_table=0;
+}
+
 void opt_log_stderr(const char *fmt, ...)
 {
 	va_list ap;

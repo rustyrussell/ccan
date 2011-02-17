@@ -184,6 +184,14 @@ void opt_register_table(const struct opt_table *table, const char *desc);
 bool opt_parse(int *argc, char *argv[], void (*errlog)(const char *fmt, ...));
 
 /**
+ * opt_free_table - free the table.
+ *
+ * This frees the internal memory. Call this as the last
+ * opt function.
+ */
+void opt_free_table(void);
+
+/**
  * opt_log_stderr - print message to stderr.
  * @fmt: printf-style format.
  *
