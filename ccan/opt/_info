@@ -17,13 +17,13 @@
  * static char *somestring;
  * 
  * static struct opt_table opts[] = {
- * 	OPT_WITHOUT_ARG("--verbose/-v", opt_inc_intval, &verbose,
+ * 	OPT_WITHOUT_ARG("--verbose|-v", opt_inc_intval, &verbose,
  *			"Verbose mode (can be specified more than once)"),
  * 	OPT_WITHOUT_ARG("--someflag", opt_set_bool, &someflag,
  *			"Set someflag"),
  * 	OPT_WITH_ARG("--somefile=<filename>", opt_set_charp, opt_show_charp,
  *		     &somestring, "Set somefile to <filename>"),
- * 	OPT_WITHOUT_ARG("--usage/--help/-h", opt_usage_and_exit,
+ * 	OPT_WITHOUT_ARG("--usage|--help|-h", opt_usage_and_exit,
  * 			"args...\nA silly test program.",
  *			"Print this message."),
  * 	OPT_ENDTABLE
