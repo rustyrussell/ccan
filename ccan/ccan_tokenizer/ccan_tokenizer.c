@@ -170,18 +170,41 @@ struct tokenizer *tokenizer_new(void *ctx) {
 
 #endif
 
+static int talloc_darray_destructor(void *ptr);
+
+/*
+ * darray(T) *talloc_darray(const void *context);
+ *
+ * Create a new darray anchored in a talloc buffer.
+ * When this pointer is freed, the darray will be freed as well.
+ */
+static void *talloc_darray(const void *context)
+{
+	void *ret = talloc(context, darray(void));
+	darray_init(*(darray(void)*)ret);
+	talloc_set_destructor(ret, talloc_darray_destructor);
+	return ret;
+}
+
+static int talloc_darray_destructor(void *ptr)
+{
+	darray(void) *arr = ptr;
+	free(arr->item);
+	return 0;
+}
+
 #define MESSAGE_PATH "tokenize/"
 
 static void unbreak_backslash_broken_lines(struct token_list *tl, tok_message_queue *mq) {
 	const char *s = tl->orig, *e = s+tl->orig_size;
-	array_char txt = array_new(tl);
-	array(const char*) olines = array_new(tl);
-	array(const char*) tlines = array_new(tl);
+	darray_char         *txt    = talloc_darray(tl);
+	darray(const char*) *olines = talloc_darray(tl);
+	darray(const char*) *tlines = talloc_darray(tl);
 	
 	do {
 		const char *line_start = s, *line_end;
 		const char *lnw; //last non-white
-		size_t start_offset = txt.size;
+		size_t start_offset = txt->size;
 		
 		//scan to the next line and find the last non-white character in the line
 		while (s<e && !creturn(*s)) s++;
@@ -197,35 +220,39 @@ static void unbreak_backslash_broken_lines(struct token_list *tl, tok_message_qu
 		
 		//add the backslash-break-free version of the text
 		if (lnw>line_start && lnw[-1]=='\\' && line_end<e) {
-			array_append_items(txt, line_start, lnw-1-line_start);
+			darray_append_items(*txt, line_start, lnw-1-line_start);
 			if (lnw<e && cspace(*lnw)) {
 				tok_msg_warn(spaces_after_backslash_break, lnw,
 					"Trailing spaces after backslash-broken line");
 			}
 		} else
-			array_append_items(txt, line_start, s-line_start);
+			darray_append_items(*txt, line_start, s-line_start);
 		
 		//add the line starts for this line
-		array_append(olines, line_start);
-		array_append(tlines, (const char*)start_offset);
+		darray_append(*olines, line_start);
+		darray_append(*tlines, (const char*)start_offset);
 			//Since the txt buffer moves when expanded, we're storing offsets
 			//  for now.  Once we're done building txt, we can add the base
 			//  of it to all the offsets to make them pointers.
 	} while (s<e);
 	
 	//stick a null terminator at the end of the text
-	array_realloc(txt, txt.size+1);
-	txt.item[txt.size] = 0;
+	darray_realloc(*txt, txt->size+1);
+	txt->item[txt->size] = 0;
 	
 	//convert the line start offsets to pointers
-	array_for_t(i, tlines, const char *, *i = txt.item + (size_t)*i);
+	{
+		const char **i;
+		darray_foreach(i, *tlines)
+			*i = txt->item + (size_t)(*i);
+	}
 	
-	tl->olines = olines.item;
-	tl->olines_size = olines.size;
-	tl->txt = txt.item;
-	tl->txt_size = txt.size;
-	tl->tlines = tlines.item;
-	tl->tlines_size = tlines.size;
+	tl->olines = olines->item;
+	tl->olines_size = olines->size;
+	tl->txt = txt->item;
+	tl->txt_size = txt->size;
+	tl->tlines = tlines->item;
+	tl->tlines_size = tlines->size;
 }
 
 static void normal_keyword(struct token *tok) {
@@ -366,7 +393,7 @@ static void finalize(struct token_list *tl, struct token *start, struct token *e
 		struct token tok = {__VA_ARGS__}; \
 		tok.txt = orig; \
 		tok.txt_size = s-orig; \
-		array_append(array, tok); \
+		darray_append(*arr, tok); \
 	} while (0)
 
 #define cstray(c) (ccontrol(c) || cextended(c) || (c)=='@' || (c)=='`' || (c)=='\\')
@@ -379,12 +406,12 @@ static void free_tokenizer_dict(void) {
 	talloc_free(tokenizer_dict);
 }
 
-struct token_list *tokenize(const char *orig, size_t orig_size,
+struct token_list *tokenize(const void *tcontext, const char *orig, size_t orig_size,
 				tok_message_queue *mq) {
-	struct token_list *tl = talloc(orig, struct token_list);
+	struct token_list *tl = talloc(tcontext, struct token_list);
 	const char *s, *e;
 	size_t stray_count=0, cr_count=0;
-	array(struct token) array = array_new(tl);
+	darray(struct token) *arr = talloc_darray(tl);
 	int only_pound_include = 0;
 	
 	if (!tokenizer_dict) {
@@ -401,7 +428,7 @@ struct token_list *tokenize(const char *orig, size_t orig_size,
 	s = tl->txt;
 	e = s + tl->txt_size;
 	
-	array_appends_t(array, struct token, {
+	darray_appends_t(*arr, struct token, {
 		.type = TOK_STARTLINE,
 		.txt = s,
 		.txt_size = 0
@@ -453,7 +480,7 @@ struct token_list *tokenize(const char *orig, size_t orig_size,
 			s = read_cnumber(&tok, s-1, e, mq);
 			tok.txt = orig;
 			tok.txt_size = s-orig;
-			array_append(array, tok);
+			darray_append(*arr, tok);
 			
 		} else if (csymbol(c) || cident(c)) {
 			if (only_pound_include && (c=='"' || c=='<')) { //include string
@@ -475,13 +502,13 @@ struct token_list *tokenize(const char *orig, size_t orig_size,
 					{.include = include});
 				
 			} else if (c=='\'' || c=='\"') { //character or string literal
-				array_char string = array_new(tl);
-				s = read_cstring(&string, s, e, c, mq);
+				darray_char *string = talloc_darray(tl);
+				s = read_cstring(string, s, e, c, mq);
 				if (s<e) s++; //advance past endquote (if available)
 				add(.type = c=='\'' ? TOK_CHAR : TOK_STRING,
 				    {.string = string});
 				
-				if (c=='\'' && string.size==0) {
+				if (c=='\'' && string->size==0) {
 					tok_msg_error(empty_char_constant, orig,
 						"Empty character constant");
 				}
@@ -520,8 +547,8 @@ struct token_list *tokenize(const char *orig, size_t orig_size,
 							{.opkw = ent->id});
 						if (ent->id == INCLUDE) {
 							//hacky way to lex #include string properly
-							struct token *ts = array.item;
-							struct token *tp = ts+array.size-1;
+							struct token *ts = arr->item;
+							struct token *tp = ts+arr->size-1;
 							while (tp>ts && token_is_ignored(tp-1))
 								tp--;
 							if (tp>ts && token_is_op(tp-1, '#')) {
@@ -563,7 +590,7 @@ struct token_list *tokenize(const char *orig, size_t orig_size,
 			"Text contains non-standard line terminators");
 	}
 	
-	finalize(tl, array.item, array.item+array.size);
+	finalize(tl, arr->item, arr->item+arr->size);
 	
 	return tl;
 }
@@ -646,9 +673,9 @@ int tok_point_lookup(struct tok_point *out, const char *ptr,
 	}
 }
 
-static char *escape_string(array_char *buf, const char *str, size_t size) {
+static char *escape_string(darray_char *buf, const char *str, size_t size) {
 	const char *s = str, *e = s+size;
-	array_from_lit(*buf, "");
+	darray_from_lit(*buf, "");
 	
 	for (;s<e;s++) {
 		char buffer[8];
@@ -668,7 +695,7 @@ static char *escape_string(array_char *buf, const char *str, size_t size) {
 				buffer[0] = c;
 				buffer[1] = 0;
 		}
-		array_append_string(*buf, esc);
+		darray_append_string(*buf, esc);
 	}
 	
 	return buf->item;
@@ -816,7 +843,7 @@ int token_list_sanity_check(const struct token_list *tl, FILE *err) {
 		
 		//Make sure txt and orig match exactly except for backslash line breaks
 		if (!txt_orig_matches(i->txt, i->txt_size, i->orig, i->orig_size)) {
-			array_char buf = array_new(NULL);
+			darray_char buf = darray_new();
 			fprintf(err,
 				"txt and orig do not match:\n"
 				"\ttxt  = \"%s\"\n",
@@ -824,7 +851,7 @@ int token_list_sanity_check(const struct token_list *tl, FILE *err) {
 			fprintf(err, "\torig = \"%s\"\n",
 				escape_string(&buf, i->orig, i->orig_size) );
 			
-			array_free(buf);
+			darray_free(buf);
 			return 0;
 		}
 		
@@ -961,7 +988,7 @@ static char *sprint_token_flags(char buf[3], struct token_flags flags) {
 
 void token_list_dump(const struct token_list *tl, FILE *f) {
 	struct token *tok;
-	array_char buf = array_new(NULL);
+	darray_char buf = darray_new();
 	size_t i = 0;
 	char buf2[8];
 	const char *token_type_str[] = {
@@ -994,7 +1021,7 @@ void token_list_dump(const struct token_list *tl, FILE *f) {
 		#endif
 	}
 	
-	array_free(buf);
+	darray_free(buf);
 }
 
 void tok_message_print(struct tok_message *m, struct token_list *tl) {

@@ -28,7 +28,7 @@
 #ifndef CCAN_TOKENIZER_H
 #define CCAN_TOKENIZER_H
 
-#include <ccan/array/array.h>
+#include <ccan/darray/darray.h>
 #include "charflag.h"
 #include "dict.h"
 #include "queue.h"
@@ -180,7 +180,7 @@ struct token {
 		struct tok_integer integer;
 		struct tok_floating floating;
 		int opkw; //operator or keyword ID (e.g. '+', INC_OP (++), ADD_ASSIGN (+=))
-		array_char string; //applies to TOK_CHAR and TOK_STRING
+		darray_char *string; //applies to TOK_CHAR and TOK_STRING
 		char *include; //applies to TOK_STRING_IQUOTE and TOK_STRING_IANGLE
 	};
 	
@@ -245,8 +245,8 @@ extern struct dict *tokenizer_dict;
 
 typedef queue(struct tok_message) tok_message_queue;
 
-//the token_list is allocated as a child of orig
-struct token_list *tokenize(const char *orig, size_t orig_size, tok_message_queue *mq);
+//the token_list is allocated as a child of tcontext
+struct token_list *tokenize(const void *tcontext, const char *orig, size_t orig_size, tok_message_queue *mq);
 
 size_t token_list_count(const struct token_list *tl);
 
@@ -300,7 +300,7 @@ void tok_message_queue_dump(const tok_message_queue *mq);
 
 /* Miscellaneous internal components */
 
-char *read_cstring(array_char *out, const char *s, const char *e, char quoteChar, tok_message_queue *mq);
+char *read_cstring(darray_char *out, const char *s, const char *e, char quoteChar, tok_message_queue *mq);
 char *read_cnumber(struct token *tok, const char *s, const char *e, tok_message_queue *mq);
 
 

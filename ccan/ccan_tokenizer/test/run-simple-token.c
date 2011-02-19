@@ -49,7 +49,7 @@ static struct token_list *test_tokens(const char *orig, unsigned int size)
 	char *string = talloc_strdup(NULL, orig);
 	unsigned int i;
 
-	toks = tokenize(string, strlen(string), MQ);
+	toks = tokenize(string, string, strlen(string), MQ);
 	ok1(token_list_sanity_check(toks, stdout));
 	
 	ok1(token_list_count(toks) == strlen(string)/size + 1);
@@ -71,7 +71,7 @@ static struct token_list *test_tokens_spaced(const char *orig,
 	char *string = spacify(orig, size);
 	unsigned int i;
 
-	toks = tokenize(string, strlen(string), MQ);
+	toks = tokenize(string, string, strlen(string), MQ);
 	ok1(token_list_sanity_check(toks, stdout));
 	
 	ok1(token_list_count(toks) == strlen(orig)/size*2 + 1);
@@ -98,7 +98,7 @@ static struct token_list *test_tokens_backslashed(const char *orig,
 	const char *string = backslashify(orig);
 	unsigned int i;
 
-	toks = tokenize(string, strlen(string), MQ);
+	toks = tokenize(string, string, strlen(string), MQ);
 	ok1(token_list_sanity_check(toks, stdout));
 	
 	ok1(token_list_count(toks) == strlen(orig)/size + 1);
@@ -173,7 +173,7 @@ int main(void)
 
 	/* char literal */
 	str = talloc_strdup(NULL, char_token);
-	toks = tokenize(str, strlen(str), MQ);
+	toks = tokenize(str, str, strlen(str), MQ);
 	ok1(token_list_sanity_check(toks, stdout));
 	ok1(token_list_count(toks) == 2);
 	ok1(item(0).type == TOK_STARTLINE);
@@ -187,7 +187,7 @@ int main(void)
 
 	/* string literal */
 	str = talloc_strdup(NULL, string_token);
-	toks = tokenize(str, strlen(str), MQ);
+	toks = tokenize(str, str, strlen(str), MQ);
 	ok1(token_list_sanity_check(toks, stdout));
 	ok1(token_list_count(toks) == 2);
 	ok1(item(0).type == TOK_STARTLINE);
@@ -201,7 +201,7 @@ int main(void)
 
 	/* Identifiers */
 	str = talloc_strdup(NULL, ident_tokens);
-	toks = tokenize(str, strlen(str), MQ);
+	toks = tokenize(str, str, strlen(str), MQ);
 	ok1(token_list_sanity_check(toks, stdout));
 	token_list_dump(toks, stdout);
 	ok1(token_list_count(toks) == 10);
@@ -248,7 +248,7 @@ int main(void)
 
 	/* Identifiers */
 	backslashed_idents = backslashify(ident_tokens);
-	toks = tokenize(backslashed_idents, strlen(backslashed_idents), MQ);
+	toks = tokenize(backslashed_idents, backslashed_idents, strlen(backslashed_idents), MQ);
 	ok1(token_list_sanity_check(toks, stdout));
 	ok1(token_list_count(toks) == 10);
 	ok1(item(0).type == TOK_STARTLINE);

@@ -11,16 +11,16 @@ static char *strdup_rng(const char *s, const char *e) {
 
 //Reads a C string starting at s until quoteChar is found or e is reached
 //  Returns the pointer to the terminating quote character or e if none was found
-char *read_cstring(array_char *out, const char *s, const char *e, char quoteChar, tok_message_queue *mq) {
+char *read_cstring(darray_char *out, const char *s, const char *e, char quoteChar, tok_message_queue *mq) {
 	const char * const tokstart = s;
 	const char *p;
 	int has_endquote=0, has_newlines=0;
 	
 	//tok_msg_debug(called, s, "Called read_cstring on `%s`", s);
 	
-	#define append(startptr,endptr) array_append_items(*out, startptr, (endptr)-(startptr))
-	#define append_char(theChar) array_append(*out, theChar)
-	#define append_zero() do {array_append(*out, 0); out->size--;} while(0)
+	#define append(startptr,endptr) darray_append_items(*out, startptr, (endptr)-(startptr))
+	#define append_char(theChar) darray_append(*out, theChar)
+	#define append_zero() do {darray_append(*out, 0); out->size--;} while(0)
 	
 	p = s;
 	while (p<e) {

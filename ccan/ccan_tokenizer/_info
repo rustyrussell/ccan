@@ -64,7 +64,7 @@
  * 		err(1, "Could not read file %s", argv[1]);
  *
  * 	//tokenize the contents
- * 	tl = tokenize(file, len, &mq);
+ * 	tl = tokenize(file, file, len, &mq);
  *
  * 	//print warnings, errors, etc.
  * 	while (queue_count(mq)) {
@@ -81,6 +81,8 @@
  *
  * 	return 0;
  * }
+ *
+ * License: BSD
  */
 int main(int argc, char *argv[])
 {
@@ -89,7 +91,8 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
-		printf("ccan/array\n");
+		printf("ccan/darray\n");
+		printf("ccan/talloc\n");
 		return 0;
 	}
 

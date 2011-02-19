@@ -41,7 +41,7 @@
 #define array_count_pair(type, ...) (const type []){__VA_ARGS__}, sizeof((const type []){__VA_ARGS__})/sizeof(type)
 
 static void test_read_cstring(void) {
-	#define next() do {array_free(str); array_init(str, NULL); csp++;} while(0)
+	#define next() do {darray_free(str); darray_init(str); csp++;} while(0)
 	#define cs (*csp)
 	#define verify_quotechar(correct, correct_continuation_offset, quotechar) do { \
 		const size_t s = sizeof(correct)-1; \
@@ -69,7 +69,7 @@ static void test_read_cstring(void) {
 	};
 	const char * const *csp = cstrings;
 	const char *p;
-	array_char str = array_new(NULL);
+	darray_char str = darray_new();
 	tok_message_queue mq;
 	
 	queue_init(mq, NULL);
@@ -107,7 +107,7 @@ static void test_read_cstring(void) {
 	//Check a series of hex escapes
 	verify("\x50\x35\x12\xEF\xFE\x12\x45", 32);
 	
-	array_free(str);
+	darray_free(str);
 	
 	//tok_message_queue_dump(&mq);
 	
@@ -896,7 +896,7 @@ struct tokenizer_test {
 };
 
 #define T(txt, ...) {txt, sizeof(txt)-1, array_count_pair(struct token, __VA_ARGS__)}
-#define string(txt) {.string={.item = (txt), .size = sizeof(txt)-1}}
+#define string(txt) {.string=(darray_char[1]){{.item = (txt), .size = sizeof(txt)-1}}}
 #define opkw(v) {.opkw = (v)}
 #define txt(t) .txt = (t), .txt_size = sizeof(t)-1
 #define integer(...) {.integer={__VA_ARGS__}}
@@ -1226,7 +1226,7 @@ static void test_tokenizer_single(struct tokenizer_test *t, tok_message_queue *m
 		goto done; \
 	} while(0)
 	
-	tl = tokenize(txt, txt_size, mq);
+	tl = tokenize(txt, txt, txt_size, mq);
 	
 	if (tl->orig != txt || tl->orig_size != txt_size)
 		failed("tokenize() did not replicate orig/orig_size from arguments");
@@ -1271,10 +1271,10 @@ static void test_tokenizer_single(struct tokenizer_test *t, tok_message_queue *m
 			case TOK_CHAR:
 			case TOK_STRING:
 				//anything using string
-				if (tok_gen->string.size != tok_correct->string.size ||
-					memcmp(tok_gen->string.item, tok_correct->string.item,
-					tok_gen->string.size) ||
-					tok_gen->string.item[tok_gen->string.size] != 0 )
+				if (tok_gen->string->size != tok_correct->string->size ||
+					memcmp(tok_gen->string->item, tok_correct->string->item,
+					tok_gen->string->size) ||
+					tok_gen->string->item[tok_gen->string->size] != 0 )
 					failed("Token \"%s\": String value incorrect", tok_correct->txt);
 				break;
 			case TOK_STRING_IQUOTE:
@@ -1309,7 +1309,7 @@ done:
 
 static void test_tokenizer_file(const char *file_name, tok_message_queue *mq) {
 	FILE *f = fopen(file_name, "rb");
-	array_char text = array_new(NULL);
+	darray_char *text = talloc_darray(NULL);
 	const size_t inc = 1024;
 	struct token_list *tl;
 	
@@ -1321,10 +1321,10 @@ static void test_tokenizer_file(const char *file_name, tok_message_queue *mq) {
 	for (;;) {
 		size_t read_len;
 		
-		array_realloc(text, text.size+inc+1);
-		read_len = fread(text.item+text.size, 1, inc, f);
-		text.size += read_len;
-		text.item[text.size] = 0;
+		darray_realloc(*text, text->size+inc+1);
+		read_len = fread(text->item+text->size, 1, inc, f);
+		text->size += read_len;
+		text->item[text->size] = 0;
 		
 		if (read_len < inc)
 			break;
@@ -1335,7 +1335,7 @@ static void test_tokenizer_file(const char *file_name, tok_message_queue *mq) {
 		goto end;
 	}
 	
-	tl = tokenize(text.item, text.size, mq);
+	tl = tokenize(text, text->item, text->size, mq);
 	tl->filename = file_name;
 	
 	//printf("File '%s' has %zu tokens\n", file_name, token_list_count(tl));
@@ -1354,7 +1354,7 @@ static void test_tokenizer_file(const char *file_name, tok_message_queue *mq) {
 	}*/
 	
 end:
-	array_free(text);
+	talloc_free(text);
 	if (f)
 		fclose(f);
 }
