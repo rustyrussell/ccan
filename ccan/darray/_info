@@ -1,0 +1,56 @@
+#include <string.h>
+#include "config.h"
+
+#include "ccan/darray/darray.h"
+
+/**
+ * darray - Generic resizable arrays
+ *
+ * darray is a set of macros for managing dynamically-allocated arrays.
+ * It removes the tedium of managing realloc'd arrays with pointer, size, and
+ * allocated size.
+ *
+ * Example:
+ * #include <ccan/darray/darray.h>
+ * #include <stdio.h>
+ * 
+ * int main(void) {
+ * 	darray(int) numbers = darray_new();
+ * 	char buffer[32];
+ * 	
+ * 	for (;;) {
+ * 		int *i;
+ * 		darray_foreach(i, numbers)
+ * 			printf("%d ", *i);
+ * 		if (darray_size(numbers) > 0)
+ * 			puts("");
+ * 		
+ * 		printf("darray> ");
+ * 		fgets(buffer, sizeof(buffer), stdin);
+ * 		if (*buffer == '\0' || *buffer == '\n')
+ * 			break;
+ * 		
+ * 		darray_append(numbers, atoi(buffer));
+ * 	}
+ * 	
+ * 	darray_free(numbers);
+ * 	
+ * 	return 0;
+ * }
+ *
+ * Author: Joey Adams
+ * Version: 0.2
+ * License: BSD
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		/* Nothing. */
+		return 0;
+	}
+
+	return 1;
+}

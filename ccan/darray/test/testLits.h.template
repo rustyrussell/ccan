@@ -1,30 +1,26 @@
-static int testarray_from_lit(void);
-static int testarray_append_lit(void);
-static int testarray_prepend_lit(void);
+static int testdarray_from_lit(void);
+static int testdarray_append_lit(void);
+static int testdarray_prepend_lit(void);
 
 static void testLits(void) {
-	testing(array_from_lit);
-	ok1(testarray_from_lit());
+	testing(darray_from_lit);
+	ok1(testdarray_from_lit());
 	
-	testing(testarray_append_lit);
-	ok1(testarray_append_lit());
+	testing(testdarray_append_lit);
+	ok1(testdarray_append_lit());
 	
-	testing(testarray_prepend_lit);
-	ok1(testarray_prepend_lit());
+	testing(testdarray_prepend_lit);
+	ok1(testdarray_prepend_lit());
 }
 
-static int testarray_from_lit(void) {
-	#ifndef ARRAY_USE_TALLOC
-	array_char a = array_new();
-	#else
-	array_char a = array_new(NULL);
-	#endif
+static int testdarray_from_lit(void) {
+	darray_char a = darray_new();
 	size_t testsPassed = 0;
 	size_t len = 0;
 	
 	@forEachRandomString
 		/* Test @i */
-		array_from_lit(a, @str);
+		darray_from_lit(a, @str);
 		len = strlen(@str);
 		if (len != sizeof(@str)-1)
 			goto end;
@@ -34,17 +30,13 @@ static int testarray_from_lit(void) {
 			goto end;
 		if (strcmp(a.item, @str))
 			goto end;
-		array_free(a);
-		#ifndef ARRAY_USE_TALLOC
-		array_init(a);
-		#else
-		array_init(a, NULL);
-		#endif
+		darray_free(a);
+		darray_init(a);
 		testsPassed++;
 	@end
 	
 end:
-	array_free(a);
+	darray_free(a);
 	return testsPassed == @amount;
 }
 
@@ -53,14 +45,10 @@ typedef struct {
 	size_t size;
 } testLits_string;
 
-static int testarray_append_lit(void) {
-	#ifndef ARRAY_USE_TALLOC
-	array_char a = array_new();
-	array(testLits_string) strings = array_new();
-	#else
-	array_char a = array_new(NULL);
-	array(testLits_string) strings = array_new(NULL);
-	#endif
+static int testdarray_append_lit(void) {
+	darray_char a = darray_new();
+	darray(testLits_string) strings = darray_new();
+	testLits_string *i;
 	size_t testsPassed = 0;
 	size_t oldSize;
 	testLits_string append;
@@ -70,7 +58,7 @@ static int testarray_append_lit(void) {
 		/* Test @i */
 		append.size = sizeof(@str)-1;
 		oldSize = a.size;
-		array_append_lit(a, @str);
+		darray_append_lit(a, @str);
 		if (a.size != oldSize+append.size)
 			goto end;
 		if (a.size > a.alloc)
@@ -80,19 +68,21 @@ static int testarray_append_lit(void) {
 		if (memcmp(a.item+oldSize, @str, a.size-oldSize))
 			goto end;
 		append.item = strdup(@str);
-		array_append(strings, append);
+		darray_append(strings, append);
 		testsPassed++;
 	@end
 	
 	if (strings.size != @amount)
 		goto end;
-	array_for(i, strings,
+	
+	darray_foreach(i, strings) {
 		if (a.size-offs < i->size)
 			goto end;
 		if (memcmp(a.item+offs, i->item, i->size))
 			goto end;
 		offs += i->size;
-	);
+	};
+	
 	if (offs != a.size)
 		goto end;
 	if (a.item[offs])
@@ -100,20 +90,17 @@ static int testarray_append_lit(void) {
 	testsPassed++;
 	
 end:
-	array_free(a);
-	array_for(i, strings, free(i->item));
-	array_free(strings);
+	darray_free(a);
+	darray_foreach(i, strings)
+		free(i->item);
+	darray_free(strings);
 	return testsPassed == @amount+1;
 }
 
-static int testarray_prepend_lit(void) {
-	#ifndef ARRAY_USE_TALLOC
-	array_char a = array_new();
-	array(testLits_string) strings = array_new();
-	#else
-	array_char a = array_new(NULL);
-	array(testLits_string) strings = array_new(NULL);
-	#endif
+static int testdarray_prepend_lit(void) {
+	darray_char a = darray_new();
+	darray(testLits_string) strings = darray_new();
+	testLits_string *i;
 	size_t testsPassed = 0;
 	size_t oldSize;
 	testLits_string append;
@@ -123,7 +110,7 @@ static int testarray_prepend_lit(void) {
 		/* Test @i */
 		append.size = sizeof(@str)-1;
 		oldSize = a.size;
-		array_prepend_lit(a, @str);
+		darray_prepend_lit(a, @str);
 		if (a.size != oldSize+append.size)
 			goto end;
 		if (a.size > a.alloc)
@@ -133,7 +120,7 @@ static int testarray_prepend_lit(void) {
 		if (memcmp(a.item, @str, a.size-oldSize))
 			goto end;
 		append.item = strdup(@str);
-		array_append(strings, append);
+		darray_append(strings, append);
 		testsPassed++;
 	@end
 	
@@ -142,20 +129,21 @@ static int testarray_prepend_lit(void) {
 		goto end;
 	if (strings.size != @amount)
 		goto end;
-	array_for(i, strings,
+	darray_foreach(i, strings) {
 		if (offs < i->size)
 			goto end;
 		offs -= i->size;
 		if (memcmp(a.item+offs, i->item, i->size))
 			goto end;
-	);
+	};
 	if (offs)
 		goto end;
 	testsPassed++;
 	
 end:
-	array_free(a);
-	array_for(i, strings, free(i->item));
-	array_free(strings);
+	darray_free(a);
+	darray_foreach(i, strings)
+		free(i->item);
+	darray_free(strings);
 	return testsPassed == @amount+1;
 }
