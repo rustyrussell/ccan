@@ -42,7 +42,7 @@
  *		exit(0);
  *	}
  *
- * License: BSD
+ * License: BSD (3 clause)
  * Author: Stewart Smith <stewart@flamingspork.com>
  */
 int main(int argc, char *argv[])
