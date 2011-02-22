@@ -106,7 +106,7 @@ int main(void)
 	struct addrinfo *addr;
 	int fd, status;
 	struct sockaddr saddr;
-	socklen_t slen = sizeof(saddr);
+	socklen_t slen;
 	char buf[20];
 	unsigned int port;
 
@@ -119,6 +119,7 @@ int main(void)
 	fd = net_connect(addr);
 	ok1(fd >= 0);
 
+	slen = sizeof(saddr);
 	ok1(getsockname(fd, &saddr, &slen) == 0);
 	diag("family = %d", saddr.sa_family);
 	ok1(saddr.sa_family == AF_INET);
@@ -137,6 +138,7 @@ int main(void)
 	fd = net_connect(addr);
 	ok1(fd >= 0);
 
+	slen = sizeof(saddr);
 	ok1(getsockname(fd, &saddr, &slen) == 0);
 	ok1(saddr.sa_family == AF_INET6);
 	status = read(fd, buf, sizeof(buf));
