@@ -51,10 +51,11 @@ static const char *expected_link(const struct manifest *m,
 	    || streq(d->lines[0], "LGPLv2 (or later)")
 	    || streq(d->lines[0], "LGPL (2 or any later version)"))
 		return "../../licenses/LGPL-2.1";
-	if (streq(d->lines[0], "BSD")
-	    || streq(d->lines[0], "BSD-MIT")
+	if (streq(d->lines[0], "BSD-MIT")
 	    || streq(d->lines[0], "MIT"))
 		return "../../licenses/BSD-MIT";
+	if (streq(d->lines[0], "BSD (3 clause)"))
+		return "../../licenses/BSD-3CLAUSE";
 	return NULL;
 }
 
