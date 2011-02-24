@@ -145,18 +145,16 @@ static void check_idem(struct ccan_file *f, struct score *score)
 	if (!get_token(&line, "#"))
 		abort();
 	if (!get_token(&line, "define")) {
-		char *str = talloc_asprintf(score,
-					    "expected '#define %s'",
-					    line_info[i].cond->symbol);
-		score_file_error(score, f, i+1, str);
+		score_file_error(score, f, i+1,
+				 "expected '#define %s'",
+				 line_info[i].cond->symbol);
 		return;
 	}
 	sym = get_symbol_token(f, &line);
 	if (!sym || !streq(sym, line_info[i].cond->symbol)) {
-		char *str = talloc_asprintf(score,
-					    "expected '#define %s'",
-					    line_info[i].cond->symbol);
-		score_file_error(score, f, i+1, str);
+		score_file_error(score, f, i+1,
+				 "expected '#define %s'",
+				 line_info[i].cond->symbol);
 		return;
 	}
 

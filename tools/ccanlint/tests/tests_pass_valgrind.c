@@ -127,7 +127,7 @@ static void do_run_tests_vg(struct manifest *m,
 				i->leak_info = get_leaks(output, &err);
 			}
 			if (err)
-				score_file_error(score, i, 0, err);
+				score_file_error(score, i, 0, "%s", err);
 			else
 				score->score++;
 		}
@@ -149,7 +149,8 @@ static void do_leakcheck_vg(struct manifest *m,
 	foreach_ptr(list, &m->run_tests, &m->api_tests) {
 		list_for_each(list, i, list) {
 			if (i->leak_info) {
-				score_file_error(score, i, 0, i->leak_info);
+				score_file_error(score, i, 0, "%s",
+						 i->leak_info);
 				leaks = true;
 			}
 		}

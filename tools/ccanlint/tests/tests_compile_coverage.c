@@ -40,7 +40,7 @@ static bool build_module_objs_with_coverage(struct manifest *m, bool keep,
 		i->cov_compiled = maybe_temp_file(m, "", keep, fullfile);
 		if (!compile_object(m, fullfile, ccan_dir, "",
 				    i->cov_compiled, &err)) {
-			score_file_error(score, i, 0, err);
+			score_file_error(score, i, 0, "%s", err);
 			talloc_free(i->cov_compiled);
 			i->cov_compiled = NULL;
 			return false;

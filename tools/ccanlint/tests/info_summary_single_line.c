@@ -27,8 +27,8 @@ static void check_info_summary_single_line(struct manifest *m,
 			score->pass = false;
 			score->score = 0;
 			score_file_error(score, m->info_file, d->srcline+1,
-					 m->info_file->lines[d->srcline]);
-			score_file_error(score, m->info_file, d->srcline+2,
+					 "%s\n%s",
+					 m->info_file->lines[d->srcline],
 					 m->info_file->lines[d->srcline+1]);
 		}
 	}

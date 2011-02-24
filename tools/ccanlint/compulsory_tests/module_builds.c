@@ -65,7 +65,7 @@ static void do_build(struct manifest *m,
 
 	m->compiled = build_module(m, keep, &errstr);
 	if (!m->compiled) {
-		score_file_error(score, NULL, 0, errstr);
+		score_file_error(score, NULL, 0, "%s", errstr);
 		return;
 	}
 

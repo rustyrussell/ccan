@@ -247,7 +247,6 @@ static void run_examples(struct manifest *m, bool keep,
 			     linenum++,
 				     expect = find_expect(i, lines, &input,
 							  &exact, &linenum)) {
-				char *err;
 				if (i->compiled == NULL)
 					continue;
 
@@ -257,14 +256,11 @@ static void run_examples(struct manifest *m, bool keep,
 					score->score++;
 					continue;
 				}
-				err = talloc_asprintf(score,
-						      "output '%s' didn't"
-						      " %s '%s'\n",
-						      output,
-						      exact
-						      ? "match" : "contain",
-						      expect);
-				score_file_error(score, i, linenum+1, err);
+				score_file_error(score, i, linenum+1,
+						 "output '%s' didn't %s '%s'\n",
+						 output,
+						 exact ? "match" : "contain",
+						 expect);
 				score->pass = false;
 			}
 		}

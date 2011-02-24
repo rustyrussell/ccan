@@ -36,7 +36,8 @@ static void check_trailing_whitespace(struct manifest *m,
 			for (i = 0; i < f->num_lines; i++) {
 				char *err = get_trailing_whitespace(lines[i]);
 				if (err)
-					score_file_error(score, f, i+1, err);
+					score_file_error(score, f, i+1,
+							 "%s", err);
 			}
 		}
 	}
