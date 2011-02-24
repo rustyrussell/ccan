@@ -64,7 +64,7 @@ uint64_t hash_record(struct tdb_context *tdb, tdb_off_t off)
 }
 
 /* Get bits from a value. */
-static uint32_t bits(uint64_t val, unsigned start, unsigned num)
+static uint32_t bits_from(uint64_t val, unsigned start, unsigned num)
 {
 	assert(num <= 32);
 	return (val >> start) & ((1U << num) - 1);
@@ -75,7 +75,7 @@ static uint32_t bits(uint64_t val, unsigned start, unsigned num)
 static uint32_t use_bits(struct hash_info *h, unsigned num)
 {
 	h->hash_used += num;
-	return bits(h->h, 64 - h->hash_used, num);
+	return bits_from(h->h, 64 - h->hash_used, num);
 }
 
 static bool key_matches(struct tdb_context *tdb,
@@ -119,8 +119,8 @@ static bool match(struct tdb_context *tdb,
 	}
 
 	/* Top bits of offset == next bits of hash. */
-	if (bits(val, TDB_OFF_HASH_EXTRA_BIT, TDB_OFF_UPPER_STEAL_EXTRA)
-	    != bits(h->h, 64 - h->hash_used - TDB_OFF_UPPER_STEAL_EXTRA,
+	if (bits_from(val, TDB_OFF_HASH_EXTRA_BIT, TDB_OFF_UPPER_STEAL_EXTRA)
+	    != bits_from(h->h, 64 - h->hash_used - TDB_OFF_UPPER_STEAL_EXTRA,
 		    TDB_OFF_UPPER_STEAL_EXTRA)) {
 		add_stat(tdb, compare_wrong_offsetbits, 1);
 		return false;
@@ -378,7 +378,7 @@ static tdb_off_t encode_offset(tdb_off_t new_off, struct hash_info *h)
 {
 	return h->home_bucket
 		| new_off
-		| ((uint64_t)bits(h->h,
+		| ((uint64_t)bits_from(h->h,
 				  64 - h->hash_used - TDB_OFF_UPPER_STEAL_EXTRA,
 				  TDB_OFF_UPPER_STEAL_EXTRA)
 		   << TDB_OFF_HASH_EXTRA_BIT);
@@ -683,13 +683,13 @@ int next_in_hash(struct tdb_context *tdb, int ltype,
 		 TDB_DATA *kbuf, size_t *dlen)
 {
 	const unsigned group_bits = TDB_TOPLEVEL_HASH_BITS-TDB_HASH_GROUP_BITS;
-	tdb_off_t hlock_start, hlock_range, off;
+	tdb_off_t hl_start, hl_range, off;
 
 	while (tinfo->toplevel_group < (1 << group_bits)) {
-		hlock_start = (tdb_off_t)tinfo->toplevel_group
+		hl_start = (tdb_off_t)tinfo->toplevel_group
 			<< (64 - group_bits);
-		hlock_range = 1ULL << group_bits;
-		if (tdb_lock_hashes(tdb, hlock_start, hlock_range, ltype,
+		hl_range = 1ULL << group_bits;
+		if (tdb_lock_hashes(tdb, hl_start, hl_range, ltype,
 				    TDB_LOCK_WAIT) != 0)
 			return -1;
 
@@ -699,8 +699,7 @@ int next_in_hash(struct tdb_context *tdb, int ltype,
 
 			if (tdb_read_convert(tdb, off, &rec, sizeof(rec))) {
 				tdb_unlock_hashes(tdb,
-						  hlock_start, hlock_range,
-						  ltype);
+						  hl_start, hl_range, ltype);
 				return -1;
 			}
 			if (rec_magic(&rec) != TDB_USED_MAGIC) {
@@ -726,11 +725,11 @@ int next_in_hash(struct tdb_context *tdb, int ltype,
 							    off + sizeof(rec),
 							    kbuf->dsize);
 			}
-			tdb_unlock_hashes(tdb, hlock_start, hlock_range, ltype);
+			tdb_unlock_hashes(tdb, hl_start, hl_range, ltype);
 			return kbuf->dptr ? 1 : -1;
 		}
 
-		tdb_unlock_hashes(tdb, hlock_start, hlock_range, ltype);
+		tdb_unlock_hashes(tdb, hl_start, hl_range, ltype);
 
 		tinfo->toplevel_group++;
 		tinfo->levels[0].hashtable
@@ -767,7 +766,7 @@ static int chainlock(struct tdb_context *tdb, const TDB_DATA *key,
 	unsigned int group, gbits;
 
 	gbits = TDB_TOPLEVEL_HASH_BITS - TDB_HASH_GROUP_BITS;
-	group = bits(h, 64 - gbits, gbits);
+	group = bits_from(h, 64 - gbits, gbits);
 
 	lockstart = hlock_range(group, &locksize);
 
@@ -790,7 +789,7 @@ int tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key)
 	unsigned int group, gbits;
 
 	gbits = TDB_TOPLEVEL_HASH_BITS - TDB_HASH_GROUP_BITS;
-	group = bits(h, 64 - gbits, gbits);
+	group = bits_from(h, 64 - gbits, gbits);
 
 	lockstart = hlock_range(group, &locksize);
 

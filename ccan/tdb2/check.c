@@ -453,7 +453,7 @@ static bool check_free(struct tdb_context *tdb,
 static bool check_free_table(struct tdb_context *tdb,
 			     tdb_off_t ftable_off,
 			     unsigned ftable_num,
-			     tdb_off_t free[],
+			     tdb_off_t fr[],
 			     size_t num_free,
 			     size_t *num_found)
 {
@@ -487,7 +487,7 @@ static bool check_free_table(struct tdb_context *tdb,
 				return false;
 
 			/* FIXME: Check hash bits */
-			p = asearch(&off, free, num_free, off_cmp);
+			p = asearch(&off, fr, num_free, off_cmp);
 			if (!p) {
 				tdb_logerr(tdb, TDB_ERR_CORRUPT,
 					   TDB_DEBUG_ERROR,
@@ -522,7 +522,7 @@ size_t dead_space(struct tdb_context *tdb, tdb_off_t off)
 
 static bool check_linear(struct tdb_context *tdb,
 			 tdb_off_t **used, size_t *num_used,
-			 tdb_off_t **free, size_t *num_free,
+			 tdb_off_t **fr, size_t *num_free,
 			 tdb_off_t recovery)
 {
 	tdb_off_t off;
@@ -603,7 +603,7 @@ static bool check_linear(struct tdb_context *tdb,
 			}
 			/* This record should be in free lists. */
 			if (frec_ftable(&rec.f) != TDB_FTABLE_NONE
-			    && !append(free, num_free, off))
+			    && !append(fr, num_free, off))
 				return false;
 		} else if (rec_magic(&rec.u) == TDB_USED_MAGIC
 			   || rec_magic(&rec.u) == TDB_CHAIN_MAGIC
@@ -661,7 +661,7 @@ int tdb_check(struct tdb_context *tdb,
 	      int (*check)(TDB_DATA key, TDB_DATA data, void *private_data),
 	      void *private_data)
 {
-	tdb_off_t *free = NULL, *used = NULL, ft, recovery;
+	tdb_off_t *fr = NULL, *used = NULL, ft, recovery;
 	size_t num_free = 0, num_used = 0, num_found = 0, num_ftables = 0;
 
 	if (tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false) != 0)
@@ -676,13 +676,13 @@ int tdb_check(struct tdb_context *tdb,
 		goto fail;
 
 	/* First we do a linear scan, checking all records. */
-	if (!check_linear(tdb, &used, &num_used, &free, &num_free, recovery))
+	if (!check_linear(tdb, &used, &num_used, &fr, &num_free, recovery))
 		goto fail;
 
 	for (ft = first_ftable(tdb); ft; ft = next_ftable(tdb, ft)) {
 		if (ft == TDB_OFF_ERR)
 			goto fail;
-		if (!check_free_table(tdb, ft, num_ftables, free, num_free,
+		if (!check_free_table(tdb, ft, num_ftables, fr, num_free,
 				      &num_found))
 			goto fail;
 		num_ftables++;

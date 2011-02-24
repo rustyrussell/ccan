@@ -38,7 +38,7 @@ static int count_hash(struct tdb_context *tdb,
 static bool summarize(struct tdb_context *tdb,
 		      struct tally *hashes,
 		      struct tally *ftables,
-		      struct tally *free,
+		      struct tally *fr,
 		      struct tally *keys,
 		      struct tally *data,
 		      struct tally *extra,
@@ -69,7 +69,7 @@ static bool summarize(struct tdb_context *tdb,
 			len = sizeof(p->r) + p->r.max_len;
 		} else if (frec_magic(&p->f) == TDB_FREE_MAGIC) {
 			len = frec_len(&p->f);
-			tally_add(free, len);
+			tally_add(fr, len);
 			tally_add(buckets, size_to_bucket(len));
 			len += sizeof(p->u);
 			unc++;

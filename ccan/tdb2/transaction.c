@@ -363,7 +363,7 @@ static int transaction_expand_file(struct tdb_context *tdb, tdb_off_t addition)
 }
 
 static void *transaction_direct(struct tdb_context *tdb, tdb_off_t off,
-				size_t len, bool write)
+				size_t len, bool write_mode)
 {
 	size_t blk = off / getpagesize(), end_blk;
 
@@ -371,7 +371,7 @@ static void *transaction_direct(struct tdb_context *tdb, tdb_off_t off,
 	end_blk = (off + len - 1) / getpagesize();
 
 	/* Can only do direct if in single block and we've already copied. */
-	if (write) {
+	if (write_mode) {
 		if (blk != end_blk)
 			return NULL;
 		if (blk >= tdb->transaction->num_blocks)
@@ -395,7 +395,7 @@ static void *transaction_direct(struct tdb_context *tdb, tdb_off_t off,
 			return NULL;
 		blk++;
 	}
-	return tdb->transaction->io_methods->direct(tdb, off, len, write);
+	return tdb->transaction->io_methods->direct(tdb, off, len, false);
 }
 
 static const struct tdb_methods transaction_methods = {

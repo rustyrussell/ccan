@@ -11,15 +11,15 @@
 
 static bool empty_freetable(struct tdb_context *tdb)
 {
-	struct tdb_freetable free;
+	struct tdb_freetable ftab;
 	unsigned int i;
 
 	/* Now, free table should be completely exhausted in zone 0 */
-	if (tdb_read_convert(tdb, tdb->ftable_off, &free, sizeof(free)) != 0)
+	if (tdb_read_convert(tdb, tdb->ftable_off, &ftab, sizeof(ftab)) != 0)
 		abort();
 
-	for (i = 0; i < sizeof(free.buckets)/sizeof(free.buckets[0]); i++) {
-		if (free.buckets[i])
+	for (i = 0; i < sizeof(ftab.buckets)/sizeof(ftab.buckets[0]); i++) {
+		if (ftab.buckets[i])
 			return false;
 	}
 	return true;

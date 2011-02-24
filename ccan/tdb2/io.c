@@ -552,7 +552,7 @@ int tdb_access_commit(struct tdb_context *tdb, void *p)
 }
 
 static void *tdb_direct(struct tdb_context *tdb, tdb_off_t off, size_t len,
-			bool write)
+			bool write_mode)
 {
 	if (unlikely(!tdb->map_ptr))
 		return NULL;
@@ -562,10 +562,10 @@ static void *tdb_direct(struct tdb_context *tdb, tdb_off_t off, size_t len,
 	return (char *)tdb->map_ptr + off;
 }
 
-void add_stat_(struct tdb_context *tdb, uint64_t *stat, size_t val)
+void add_stat_(struct tdb_context *tdb, uint64_t *s, size_t val)
 {
-	if ((uintptr_t)stat < (uintptr_t)tdb->stats + tdb->stats->size)
-		*stat += val;
+	if ((uintptr_t)s < (uintptr_t)tdb->stats + tdb->stats->size)
+		*s += val;
 }
 
 static const struct tdb_methods io_methods = {
