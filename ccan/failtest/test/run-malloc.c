@@ -48,8 +48,13 @@ static char *output = NULL;
 
 static int saved_vprintf(const char *fmt, va_list ap)
 {
-	int ret = vsnprintf(NULL, 0, fmt, ap);
+	int ret;
 	int len = 0;
+	va_list ap2;
+
+	va_copy(ap2, ap);
+	ret = vsnprintf(NULL, 0, fmt, ap2);
+	va_end(ap2);
 
 	if (output)
 		len = strlen(output);
