@@ -1,5 +1,5 @@
 #include <ccan/tap/tap.h>
-#define DEBUG
+#define CCAN_JMAP_DEBUG
 #include <ccan/jmap/jmap.c>
 
 int main(int argc, char *argv[])

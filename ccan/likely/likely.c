@@ -1,4 +1,4 @@
-#ifdef DEBUG
+#ifdef CCAN_LIKELY_DEBUG
 #include <ccan/likely/likely.h>
 #include <ccan/hash/hash.h>
 #include <ccan/htable/htable.h>
@@ -138,4 +138,4 @@ const char *likely_stats(unsigned int min_hits, unsigned int percent)
 
 	return ret;
 }
-#endif /*DEBUG*/
+#endif /*CCAN_LIKELY_DEBUG*/

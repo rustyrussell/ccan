@@ -6,7 +6,7 @@
 #include <string.h>
 #include <ccan/compiler/compiler.h>
 #include <assert.h>
-#ifdef DEBUG
+#ifdef CCAN_JMAP_DEBUG
 #include <stdio.h>
 #endif
 
@@ -39,7 +39,7 @@ struct jmap {
 	const char *errstr;
 	/* Used if !NDEBUG */
 	int num_accesses;
-	/* Used if DEBUG */
+	/* Used if CCAN_JMAP_DEBUG */
 	unsigned long *acc_value;
 	unsigned long acc_index;
 	const char *funcname;
@@ -52,7 +52,7 @@ static inline void jmap_debug_add_access(const struct jmap *map,
 					 unsigned long *val,
 					 const char *funcname)
 {
-#ifdef DEBUG
+#ifdef CCAN_JMAP_DEBUG
 	if (!map->acc_value) {
 		((struct jmap *)map)->acc_value = val;
 		((struct jmap *)map)->acc_index = index;
@@ -66,7 +66,7 @@ static inline void jmap_debug_add_access(const struct jmap *map,
 static inline void jmap_debug_del_access(struct jmap *map, unsigned long **val)
 {
 	assert(--map->num_accesses >= 0);
-#ifdef DEBUG
+#ifdef CCAN_JMAP_DEBUG
 	if (map->acc_value == *val)
 		map->acc_value = NULL;
 #endif
@@ -76,7 +76,7 @@ static inline void jmap_debug_del_access(struct jmap *map, unsigned long **val)
 
 static inline void jmap_debug_access(struct jmap *map)
 {
-#ifdef DEBUG
+#ifdef CCAN_JMAP_DEBUG
 	if (map->num_accesses && map->acc_value)
 		fprintf(stderr,
 			"jmap: still got index %lu, val %lu (%p) from %s\n",

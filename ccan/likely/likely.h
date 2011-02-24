@@ -4,7 +4,7 @@
 #include <ccan/str/str.h>
 #include <stdbool.h>
 
-#ifndef DEBUG
+#ifndef CCAN_LIKELY_DEBUG
 #if HAVE_BUILTIN_EXPECT
 /**
  * likely - indicate that a condition is likely to be true.
@@ -55,7 +55,7 @@
 #define likely(cond) (!!(cond))
 #define unlikely(cond) (!!(cond))
 #endif
-#else /* DEBUG versions */
+#else /* CCAN_LIKELY_DEBUG versions */
 #define likely(cond) \
 	(_likely_trace(!!(cond), 1, stringify(cond), __FILE__, __LINE__))
 #define unlikely(cond) \
@@ -66,15 +66,15 @@ long _likely_trace(bool cond, bool expect,
 		   const char *file, unsigned int line);
 #endif
 
-#ifdef DEBUG
+#ifdef CCAN_LIKELY_DEBUG
 /**
  * likely_stats - return description of abused likely()/unlikely()
  * @min_hits: minimum number of hits
  * @percent: maximum percentage correct
  *
- * When DEBUG is defined, likely() and unlikely() trace their results: this
- * causes a significant slowdown, but allows analysis of whether the stats
- * are correct.
+ * When CCAN_LIKELY_DEBUG is defined, likely() and unlikely() trace their
+ * results: this causes a significant slowdown, but allows analysis of 
+ * whether the branches are labelled correctly.
  *
  * This function returns a malloc'ed description of the least-correct
  * usage of likely() or unlikely().  It ignores places which have been
@@ -90,7 +90,7 @@ long _likely_trace(bool cond, bool expect,
  *	// Print every place hit more than twice which was wrong > 5%.
  *	static void report_stats(void)
  *	{
- *	#ifdef DEBUG
+ *	#ifdef CCAN_LIKELY_DEBUG
  *		const char *bad;
  *
  *		while ((bad = likely_stats(2, 95)) != NULL) {
@@ -101,5 +101,5 @@ long _likely_trace(bool cond, bool expect,
  *	}
  */
 const char *likely_stats(unsigned int min_hits, unsigned int percent);
-#endif /* DEBUG */
+#endif /* CCAN_LIKELY_DEBUG */
 #endif /* CCAN_LIKELY_H */

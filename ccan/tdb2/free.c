@@ -116,7 +116,7 @@ static int remove_from_list(struct tdb_context *tdb,
 		off = frec_prev(r) + offsetof(struct tdb_free_record, next);
 	}
 
-#ifdef DEBUG
+#ifdef CCAN_TDB2_DEBUG
 	if (tdb_read_off(tdb, off) != r_off) {
 		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_FATAL,
 			 "remove_from_list: %llu bad prev in list %llu",
@@ -134,7 +134,7 @@ static int remove_from_list(struct tdb_context *tdb,
 		off = r->next + offsetof(struct tdb_free_record,magic_and_prev);
 		/* r->next->prev = r->prev */
 
-#ifdef DEBUG
+#ifdef CCAN_TDB2_DEBUG
 		if (tdb_read_off(tdb, off) & TDB_OFF_MASK != r_off) {
 			tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_DEBUG_FATAL,
 				   "remove_from_list: %llu bad list %llu",
@@ -171,7 +171,7 @@ static int enqueue_in_free(struct tdb_context *tdb,
 		return -1;
 
 	if (new.next) {
-#ifdef DEBUG
+#ifdef CCAN_TDB2_DEBUG
 		if (tdb_read_off(tdb,
 				 new.next + offsetof(struct tdb_free_record,
 						     magic_and_prev))
