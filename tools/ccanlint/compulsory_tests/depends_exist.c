@@ -41,7 +41,8 @@ static void check_depends_exist(struct manifest *m,
 	char **deps;
 	char *updir = talloc_strdup(m, m->dir);
 
-	*strrchr(updir, '/') = '\0';
+	if (strrchr(updir, '/'))
+		*strrchr(updir, '/') = '\0';
 
 	if (safe_mode)
 		deps = get_safe_ccan_deps(m, m->dir, true,

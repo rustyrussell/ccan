@@ -59,7 +59,8 @@ static char *compile_info(const void *ctx, const char *dir)
 		return NULL;
 
 	ccandir = talloc_dirname(ctx, dir);
-	*strrchr(ccandir, '/') = '\0';
+	if (strrchr(ccandir, '/'))
+		*strrchr(ccandir, '/') = '\0';
 
 	compiled = maybe_temp_file(ctx, "", false, "info");
 	if (compile_and_link(ctx, info_c_file, ccandir, "",
