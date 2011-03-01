@@ -49,7 +49,7 @@ static int test_pid;
 
 /* Encapsulate the pthread code in a conditional.  In the absence of
    libpthread the code does nothing */
-#ifdef HAVE_LIBPTHREAD
+#if HAVE_LIBPTHREAD
 #include <pthread.h>
 static pthread_mutex_t M = PTHREAD_MUTEX_INITIALIZER;
 # define LOCK pthread_mutex_lock(&M)

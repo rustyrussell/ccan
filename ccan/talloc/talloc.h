@@ -276,7 +276,7 @@ int talloc_free(const void *ptr);
  */
 #define talloc_size(ctx, size) talloc_named_const(ctx, size, __location__)
 
-#ifdef HAVE_TYPEOF
+#if HAVE_TYPEOF
 /**
  * talloc_steal - change/set the parent context of a talloc pointer
  * @ctx: the new parent

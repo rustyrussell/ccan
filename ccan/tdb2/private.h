@@ -37,7 +37,7 @@
 #include <ccan/tdb2/tdb2.h>
 #include <ccan/likely/likely.h>
 #include <ccan/compiler/compiler.h>
-#ifdef HAVE_BYTESWAP_H
+#if HAVE_BYTESWAP_H
 #include <byteswap.h>
 #endif
 
