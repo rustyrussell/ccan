@@ -245,8 +245,6 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 
 	if ((open_flags & O_ACCMODE) == O_RDONLY) {
 		tdb->read_only = true;
-		/* read only databases don't do locking */
-		tdb->flags |= TDB_NOLOCK;
 		tdb->mmap_flags = PROT_READ;
 	} else {
 		tdb->read_only = false;

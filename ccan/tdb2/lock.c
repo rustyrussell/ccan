@@ -452,12 +452,6 @@ enum TDB_ERROR tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
 	enum TDB_ERROR ecode;
 	tdb_bool_err berr;
 
-	/* FIXME: There are no locks on read-only dbs */
-	if (tdb->read_only) {
-		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_USE_ERROR,
-				  "tdb_allrecord_lock: read-only");
-	}
-
 	if (tdb->allrecord_lock.count
 	    && (ltype == F_RDLCK || tdb->allrecord_lock.ltype == F_WRLCK)) {
 		tdb->allrecord_lock.count++;
