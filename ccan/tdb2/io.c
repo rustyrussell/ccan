@@ -67,7 +67,8 @@ void tdb_mmap(struct tdb_context *tdb)
    if necessary
    note that "len" is the minimum length needed for the db
 */
-static int tdb_oob(struct tdb_context *tdb, tdb_off_t len, bool probe)
+static enum TDB_ERROR tdb_oob(struct tdb_context *tdb, tdb_off_t len,
+			      bool probe)
 {
 	struct stat st;
 	enum TDB_ERROR ecode;
@@ -87,20 +88,19 @@ static int tdb_oob(struct tdb_context *tdb, tdb_off_t len, bool probe)
 				 (long long)len,
 				 (long long)tdb->map_size);
 		}
-		return -1;
+		return TDB_ERR_IO;
 	}
 
 	ecode = tdb_lock_expand(tdb, F_RDLCK);
 	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return -1;
+		return ecode;
 	}
 
 	if (fstat(tdb->fd, &st) != 0) {
 		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 			   "Failed to fstat file: %s", strerror(errno));
 		tdb_unlock_expand(tdb, F_RDLCK);
-		return -1;
+		return TDB_ERR_IO;
 	}
 
 	tdb_unlock_expand(tdb, F_RDLCK);
@@ -111,7 +111,7 @@ static int tdb_oob(struct tdb_context *tdb, tdb_off_t len, bool probe)
 				   "tdb_oob len %zu beyond eof at %zu",
 				   (size_t)len, st.st_size);
 		}
-		return -1;
+		return TDB_ERR_IO;
 	}
 
 	/* Unmap, update size, remap */
@@ -119,7 +119,7 @@ static int tdb_oob(struct tdb_context *tdb, tdb_off_t len, bool probe)
 
 	tdb->map_size = st.st_size;
 	tdb_mmap(tdb);
-	return 0;
+	return TDB_SUCCESS;
 }
 
 /* Endian conversion: we only ever deal with 8 byte quantities */
@@ -178,6 +178,7 @@ int zero_out(struct tdb_context *tdb, tdb_off_t off, tdb_len_t len)
 {
 	char buf[8192] = { 0 };
 	void *p = tdb->methods->direct(tdb, off, len, true);
+	enum TDB_ERROR ecode;
 
 	assert(!tdb->read_only);
 	if (p) {
@@ -186,8 +187,11 @@ int zero_out(struct tdb_context *tdb, tdb_off_t off, tdb_len_t len)
 	}
 	while (len) {
 		unsigned todo = len < sizeof(buf) ? len : sizeof(buf);
-		if (tdb->methods->twrite(tdb, off, buf, todo) == -1)
+		ecode = tdb->methods->twrite(tdb, off, buf, todo);
+		if (ecode != TDB_SUCCESS) {
+			tdb->ecode = ecode;
 			return -1;
+		}
 		len -= todo;
 		off += todo;
 	}
@@ -211,22 +215,25 @@ tdb_off_t tdb_read_off(struct tdb_context *tdb, tdb_off_t off)
 }
 
 /* write a lump of data at a specified offset */
-static int tdb_write(struct tdb_context *tdb, tdb_off_t off,
-		     const void *buf, tdb_len_t len)
+static enum TDB_ERROR tdb_write(struct tdb_context *tdb, tdb_off_t off,
+				const void *buf, tdb_len_t len)
 {
+	enum TDB_ERROR ecode;
+
 	if (tdb->read_only) {
-		tdb_logerr(tdb, TDB_ERR_RDONLY, TDB_LOG_USE_ERROR,
-			   "Write to read-only database");
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_RDONLY, TDB_LOG_USE_ERROR,
+				  "Write to read-only database");
 	}
 
 	/* FIXME: Bogus optimization? */
 	if (len == 0) {
-		return 0;
+		return TDB_SUCCESS;
 	}
 
-	if (tdb->methods->oob(tdb, off + len, 0) != 0)
-		return -1;
+	ecode = tdb->methods->oob(tdb, off + len, 0);
+	if (ecode != TDB_SUCCESS) {
+		return ecode;
+	}
 
 	if (tdb->map_ptr) {
 		memcpy(off + (char *)tdb->map_ptr, buf, len);
@@ -238,22 +245,24 @@ static int tdb_write(struct tdb_context *tdb, tdb_off_t off,
 			if (ret >= 0)
 				errno = ENOSPC;
 
-			tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
-				   "tdb_write: %zi at %zu len=%zu (%s)",
-				   ret, (size_t)off, (size_t)len,
-				   strerror(errno));
-			return -1;
+			return tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+					  "tdb_write: %zi at %zu len=%zu (%s)",
+					  ret, (size_t)off, (size_t)len,
+					  strerror(errno));
 		}
 	}
-	return 0;
+	return TDB_SUCCESS;
 }
 
 /* read a lump of data at a specified offset */
-static int tdb_read(struct tdb_context *tdb, tdb_off_t off, void *buf,
-		    tdb_len_t len)
+static enum TDB_ERROR tdb_read(struct tdb_context *tdb, tdb_off_t off,
+			       void *buf, tdb_len_t len)
 {
-	if (tdb->methods->oob(tdb, off + len, 0) != 0) {
-		return -1;
+	enum TDB_ERROR ecode;
+
+	ecode = tdb->methods->oob(tdb, off + len, 0);
+	if (ecode != TDB_SUCCESS) {
+		return ecode;
 	}
 
 	if (tdb->map_ptr) {
@@ -261,22 +270,22 @@ static int tdb_read(struct tdb_context *tdb, tdb_off_t off, void *buf,
 	} else {
 		ssize_t r = pread(tdb->fd, buf, len, off);
 		if (r != len) {
-			tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
-				   "tdb_read failed with %zi at %zu "
-				   "len=%zu (%s) map_size=%zu",
-				   r, (size_t)off, (size_t)len,
-				   strerror(errno),
-				   (size_t)tdb->map_size);
-			return -1;
+			return tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+					  "tdb_read failed with %zi at %zu "
+					  "len=%zu (%s) map_size=%zu",
+					  r, (size_t)off, (size_t)len,
+					  strerror(errno),
+					  (size_t)tdb->map_size);
 		}
 	}
-	return 0;
+	return TDB_SUCCESS;
 }
 
 int tdb_write_convert(struct tdb_context *tdb, tdb_off_t off,
 		      const void *rec, size_t len)
 {
-	int ret;
+	enum TDB_ERROR ecode;
+
 	if (unlikely((tdb->flags & TDB_CONVERT))) {
 		void *conv = malloc(len);
 		if (!conv) {
@@ -286,21 +295,30 @@ int tdb_write_convert(struct tdb_context *tdb, tdb_off_t off,
 			return -1;
 		}
 		memcpy(conv, rec, len);
-		ret = tdb->methods->twrite(tdb, off,
+		ecode = tdb->methods->twrite(tdb, off,
 					   tdb_convert(tdb, conv, len), len);
 		free(conv);
-	} else
-		ret = tdb->methods->twrite(tdb, off, rec, len);
+	} else {
+		ecode = tdb->methods->twrite(tdb, off, rec, len);
+	}
 
-	return ret;
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
+		return -1;
+	}
+	return 0;
 }
 
 int tdb_read_convert(struct tdb_context *tdb, tdb_off_t off,
 		      void *rec, size_t len)
 {
-	int ret = tdb->methods->tread(tdb, off, rec, len);
+	enum TDB_ERROR ecode = tdb->methods->tread(tdb, off, rec, len);
 	tdb_convert(tdb, rec, len);
-	return ret;
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
+		return -1;
+	}
+	return 0;
 }
 
 int tdb_write_off(struct tdb_context *tdb, tdb_off_t off, tdb_off_t val)
@@ -326,6 +344,7 @@ static void *_tdb_alloc_read(struct tdb_context *tdb, tdb_off_t offset,
 			     tdb_len_t len, unsigned int prefix)
 {
 	void *buf;
+	enum TDB_ERROR ecode;
 
 	/* some systems don't like zero length malloc */
 	buf = malloc(prefix + len ? prefix + len : 1);
@@ -333,10 +352,13 @@ static void *_tdb_alloc_read(struct tdb_context *tdb, tdb_off_t offset,
 		tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_USE_ERROR,
 			   "tdb_alloc_read malloc failed len=%zu",
 			   (size_t)(prefix + len));
-	} else if (unlikely(tdb->methods->tread(tdb, offset, buf+prefix, len)
-			    == -1)) {
-		free(buf);
-		buf = NULL;
+	} else {
+		ecode = tdb->methods->tread(tdb, offset, buf+prefix, len);
+		if (unlikely(ecode != TDB_SUCCESS)) {
+			tdb->ecode = ecode;
+			free(buf);
+			buf = NULL;
+		}
 	}
 	return buf;
 }
@@ -372,22 +394,21 @@ static int fill(struct tdb_context *tdb,
 
 /* expand a file.  we prefer to use ftruncate, as that is what posix
   says to use for mmap expansion */
-static int tdb_expand_file(struct tdb_context *tdb, tdb_len_t addition)
+static enum TDB_ERROR tdb_expand_file(struct tdb_context *tdb,
+				      tdb_len_t addition)
 {
 	char buf[8192];
 
 	if (tdb->read_only) {
-		tdb_logerr(tdb, TDB_ERR_RDONLY, TDB_LOG_USE_ERROR,
-			   "Expand on read-only database");
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_RDONLY, TDB_LOG_USE_ERROR,
+				  "Expand on read-only database");
 	}
 
 	if (tdb->flags & TDB_INTERNAL) {
 		char *new = realloc(tdb->map_ptr, tdb->map_size + addition);
 		if (!new) {
-			tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
-				   "No memory to expand database");
-			return -1;
+			return tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
+					  "No memory to expand database");
 		}
 		tdb->map_ptr = new;
 		tdb->map_size += addition;
@@ -405,11 +426,11 @@ static int tdb_expand_file(struct tdb_context *tdb, tdb_len_t addition)
 		   disk. This must be done with write, not via mmap */
 		memset(buf, 0x43, sizeof(buf));
 		if (fill(tdb, buf, sizeof(buf), tdb->map_size, addition) == -1)
-			return -1;
+			return tdb->ecode;
 		tdb->map_size += addition;
 		tdb_mmap(tdb);
 	}
-	return 0;
+	return TDB_SUCCESS;
 }
 
 const void *tdb_access_read(struct tdb_context *tdb,
@@ -517,7 +538,7 @@ static void *tdb_direct(struct tdb_context *tdb, tdb_off_t off, size_t len,
 	if (unlikely(!tdb->map_ptr))
 		return NULL;
 
-	if (unlikely(tdb_oob(tdb, off + len, true) == -1))
+	if (unlikely(tdb_oob(tdb, off + len, true) != TDB_SUCCESS))
 		return NULL;
 	return (char *)tdb->map_ptr + off;
 }

@@ -416,6 +416,8 @@ static bool check_free(struct tdb_context *tdb,
 		       tdb_off_t prev, unsigned int ftable,
 		       unsigned int bucket)
 {
+	enum TDB_ERROR ecode;
+
 	if (frec_magic(frec) != TDB_FREE_MAGIC) {
 		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
 			   "tdb_check: offset %llu bad magic 0x%llx",
@@ -429,10 +431,14 @@ static bool check_free(struct tdb_context *tdb,
 		return false;
 	}
 
-	if (tdb->methods->oob(tdb, off
-			      + frec_len(frec) + sizeof(struct tdb_used_record),
-			      false))
+	ecode = tdb->methods->oob(tdb, off
+				  + frec_len(frec)
+				  + sizeof(struct tdb_used_record),
+				  false);
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		return false;
+	}
 	if (size_to_bucket(frec_len(frec)) != bucket) {
 		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
 			   "tdb_check: offset %llu in wrong bucket %u vs %u",
@@ -509,11 +515,15 @@ static bool check_free_table(struct tdb_context *tdb,
 size_t dead_space(struct tdb_context *tdb, tdb_off_t off)
 {
 	size_t len;
+	enum TDB_ERROR ecode;
 
 	for (len = 0; off + len < tdb->map_size; len++) {
 		char c;
-		if (tdb->methods->tread(tdb, off, &c, 1))
+		ecode = tdb->methods->tread(tdb, off, &c, 1);
+		if (ecode != TDB_SUCCESS) {
+			tdb->ecode = ecode;
 			return 0;
+		}
 		if (c != 0 && c != 0x43)
 			break;
 	}

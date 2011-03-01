@@ -429,6 +429,7 @@ static int replace_data(struct tdb_context *tdb,
 			bool growing)
 {
 	tdb_off_t new_off;
+	enum TDB_ERROR ecode;
 
 	/* Allocate a new record. */
 	new_off = alloc(tdb, key.dsize, dbuf.dsize, h->h, TDB_USED_MAGIC,
@@ -450,12 +451,18 @@ static int replace_data(struct tdb_context *tdb,
 	}
 
 	new_off += sizeof(struct tdb_used_record);
-	if (tdb->methods->twrite(tdb, new_off, key.dptr, key.dsize) == -1)
+	ecode = tdb->methods->twrite(tdb, new_off, key.dptr, key.dsize);
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		return -1;
+	}
 
 	new_off += key.dsize;
-	if (tdb->methods->twrite(tdb, new_off, dbuf.dptr, dbuf.dsize) == -1)
+	ecode = tdb->methods->twrite(tdb, new_off, dbuf.dptr, dbuf.dsize);
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		return -1;
+	}
 
 	/* FIXME: tdb_increment_seqnum(tdb); */
 	return 0;
@@ -469,6 +476,7 @@ int tdb_store(struct tdb_context *tdb,
 	tdb_len_t old_room = 0;
 	struct tdb_used_record rec;
 	int ret;
+	enum TDB_ERROR ecode;
 
 	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL);
 	if (unlikely(off == TDB_OFF_ERR))
@@ -490,10 +498,15 @@ int tdb_store(struct tdb_context *tdb,
 						   key.dsize, dbuf.dsize,
 						   &rec, h.h))
 					goto fail;
-				if (tdb->methods->twrite(tdb, off + sizeof(rec)
-							 + key.dsize,
-							 dbuf.dptr, dbuf.dsize))
+				ecode = tdb->methods->twrite(tdb,
+							     off + sizeof(rec)
+							     + key.dsize,
+							     dbuf.dptr,
+							     dbuf.dsize);
+				if (ecode != TDB_SUCCESS) {
+					tdb->ecode = ecode;
 					goto fail;
+				}
 				tdb_unlock_hashes(tdb, h.hlock_start,
 						  h.hlock_range, F_WRLCK);
 				return 0;
@@ -528,6 +541,7 @@ int tdb_append(struct tdb_context *tdb,
 	tdb_len_t old_room = 0, old_dlen;
 	unsigned char *newdata;
 	struct tdb_data new_dbuf;
+	enum TDB_ERROR ecode;
 	int ret;
 
 	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL);
@@ -545,9 +559,12 @@ int tdb_append(struct tdb_context *tdb,
 				goto fail;
 
 			off += sizeof(rec) + key.dsize + old_dlen;
-			if (tdb->methods->twrite(tdb, off, dbuf.dptr,
-						 dbuf.dsize) == -1)
+			ecode = tdb->methods->twrite(tdb, off, dbuf.dptr,
+						     dbuf.dsize);
+			if (ecode != TDB_SUCCESS) {
+				tdb->ecode = ecode;
 				goto fail;
+			}
 
 			/* FIXME: tdb_increment_seqnum(tdb); */
 			tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range,
@@ -563,8 +580,10 @@ int tdb_append(struct tdb_context *tdb,
 				   (size_t)(key.dsize+old_dlen+dbuf.dsize));
 			goto fail;
 		}
-		if (tdb->methods->tread(tdb, off + sizeof(rec) + key.dsize,
-					newdata, old_dlen) != 0) {
+		ecode = tdb->methods->tread(tdb, off + sizeof(rec) + key.dsize,
+					    newdata, old_dlen);
+		if (ecode != TDB_SUCCESS) {
+			tdb->ecode = ecode;
 			free(newdata);
 			goto fail;
 		}

@@ -625,7 +625,9 @@ static int tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 		return 0;
 	}
 
-	if (tdb->methods->expand_file(tdb, wanted) == -1) {
+	ecode = tdb->methods->expand_file(tdb, wanted);
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		tdb_unlock_expand(tdb, F_WRLCK);
 		return -1;
 	}

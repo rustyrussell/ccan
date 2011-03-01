@@ -379,10 +379,12 @@ struct tdb_context {
 };
 
 struct tdb_methods {
-	int (*tread)(struct tdb_context *, tdb_off_t, void *, tdb_len_t);
-	int (*twrite)(struct tdb_context *, tdb_off_t, const void *, tdb_len_t);
-	int (*oob)(struct tdb_context *, tdb_off_t, bool);
-	int (*expand_file)(struct tdb_context *, tdb_len_t);
+	enum TDB_ERROR (*tread)(struct tdb_context *, tdb_off_t, void *,
+				tdb_len_t);
+	enum TDB_ERROR (*twrite)(struct tdb_context *, tdb_off_t, const void *,
+				 tdb_len_t);
+	enum TDB_ERROR (*oob)(struct tdb_context *, tdb_off_t, bool);
+	enum TDB_ERROR (*expand_file)(struct tdb_context *, tdb_len_t);
 	void *(*direct)(struct tdb_context *, tdb_off_t, size_t, bool);
 };
 
