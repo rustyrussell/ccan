@@ -3,33 +3,51 @@
 #include <stdint.h>
 #include "config.h"
 
+#if HAVE_BYTESWAP_H
+#include <byteswap.h>
+#else
 /**
- * swab_u16 - reverse bytes in a uint16_t value.
+ * bswap_16 - reverse bytes in a uint16_t value.
  * @val: value whose bytes to swap.
+ *
+ * Example:
+ *	// Output contains "1024 is 4 as two bytes reversed"
+ *	printf("1024 is %u as two bytes reversed\n", bswap_16(1024));
  */
-static inline uint16_t swab_u16(uint16_t val)
+static inline uint16_t bswap_16(uint16_t val)
 {
 	return ((val & (uint16_t)0x00ffU) << 8)
 		| ((val & (uint16_t)0xff00U) >> 8);
 }
 
 /**
- * swab_u32 - reverse bytes in a uint32_t value.
+ * bswap_32 - reverse bytes in a uint32_t value.
  * @val: value whose bytes to swap.
+ *
+ * Example:
+ *	// Output contains "1024 is 262144 as four bytes reversed"
+ *	printf("1024 is %u as four bytes reversed\n", bswap_32(1024));
  */
-static inline uint32_t swab_u32(uint32_t val)
+static inline uint32_t bswap_32(uint32_t val)
 {
 	return ((val & (uint32_t)0x000000ffUL) << 24)
 		| ((val & (uint32_t)0x0000ff00UL) <<  8)
 		| ((val & (uint32_t)0x00ff0000UL) >>  8)
 		| ((val & (uint32_t)0xff000000UL) >> 24);
 }
+#endif /* !HAVE_BYTESWAP_H */
 
+#if !HAVE_BSWAP_64
 /**
- * swab_u64 - reverse bytes in a uint64_t value.
+ * bswap_64 - reverse bytes in a uint64_t value.
  * @val: value whose bytes to swap.
+ *
+ * Example:
+ *	// Output contains "1024 is 1125899906842624 as eight bytes reversed"
+ *	printf("1024 is %llu as eight bytes reversed\n",
+ *		(unsigned long long)bswap_64(1024));
  */
-static inline uint64_t swab_u64(uint64_t val)
+static inline uint64_t bswap_64(uint64_t val)
 {
 	return ((val & (uint64_t)0x00000000000000ffULL) << 56)
 		| ((val & (uint64_t)0x000000000000ff00ULL) << 40)
@@ -40,6 +58,7 @@ static inline uint64_t swab_u64(uint64_t val)
 		| ((val & (uint64_t)0x00ff000000000000ULL) >> 40)
 		| ((val & (uint64_t)0xff00000000000000ULL) >> 56);
 }
+#endif
 
 /* Sanity check the defines.  We don't handle weird endianness. */
 #if !HAVE_LITTLE_ENDIAN && !HAVE_BIG_ENDIAN
@@ -57,7 +76,7 @@ static inline uint64_t cpu_to_le64(uint64_t native)
 #if HAVE_LITTLE_ENDIAN
 	return native;
 #else
-	return swab_u64(native);
+	return bswap_64(native);
 #endif
 }
 
@@ -70,7 +89,7 @@ static inline uint32_t cpu_to_le32(uint32_t native)
 #if HAVE_LITTLE_ENDIAN
 	return native;
 #else
-	return swab_u32(native);
+	return bswap_32(native);
 #endif
 }
 
@@ -83,7 +102,7 @@ static inline uint16_t cpu_to_le16(uint16_t native)
 #if HAVE_LITTLE_ENDIAN
 	return native;
 #else
-	return swab_u16(native);
+	return bswap_16(native);
 #endif
 }
 
@@ -96,7 +115,7 @@ static inline uint64_t le64_to_cpu(uint64_t le_val)
 #if HAVE_LITTLE_ENDIAN
 	return le_val;
 #else
-	return swab_u64(le_val);
+	return bswap_64(le_val);
 #endif
 }
 
@@ -109,7 +128,7 @@ static inline uint32_t le32_to_cpu(uint32_t le_val)
 #if HAVE_LITTLE_ENDIAN
 	return le_val;
 #else
-	return swab_u32(le_val);
+	return bswap_32(le_val);
 #endif
 }
 
@@ -122,7 +141,7 @@ static inline uint16_t le16_to_cpu(uint16_t le_val)
 #if HAVE_LITTLE_ENDIAN
 	return le_val;
 #else
-	return swab_u16(le_val);
+	return bswap_16(le_val);
 #endif
 }
 
@@ -133,7 +152,7 @@ static inline uint16_t le16_to_cpu(uint16_t le_val)
 static inline uint64_t cpu_to_be64(uint64_t native)
 {
 #if HAVE_LITTLE_ENDIAN
-	return swab_u64(native);
+	return bswap_64(native);
 #else
 	return native;
 #endif
@@ -146,7 +165,7 @@ static inline uint64_t cpu_to_be64(uint64_t native)
 static inline uint32_t cpu_to_be32(uint32_t native)
 {
 #if HAVE_LITTLE_ENDIAN
-	return swab_u32(native);
+	return bswap_32(native);
 #else
 	return native;
 #endif
@@ -159,7 +178,7 @@ static inline uint32_t cpu_to_be32(uint32_t native)
 static inline uint16_t cpu_to_be16(uint16_t native)
 {
 #if HAVE_LITTLE_ENDIAN
-	return swab_u16(native);
+	return bswap_16(native);
 #else
 	return native;
 #endif
@@ -172,7 +191,7 @@ static inline uint16_t cpu_to_be16(uint16_t native)
 static inline uint64_t be64_to_cpu(uint64_t be_val)
 {
 #if HAVE_LITTLE_ENDIAN
-	return swab_u64(be_val);
+	return bswap_64(be_val);
 #else
 	return be_val;
 #endif
@@ -185,7 +204,7 @@ static inline uint64_t be64_to_cpu(uint64_t be_val)
 static inline uint32_t be32_to_cpu(uint32_t be_val)
 {
 #if HAVE_LITTLE_ENDIAN
-	return swab_u32(be_val);
+	return bswap_32(be_val);
 #else
 	return be_val;
 #endif
@@ -198,7 +217,7 @@ static inline uint32_t be32_to_cpu(uint32_t be_val)
 static inline uint16_t be16_to_cpu(uint16_t be_val)
 {
 #if HAVE_LITTLE_ENDIAN
-	return swab_u16(be_val);
+	return bswap_16(be_val);
 #else
 	return be_val;
 #endif

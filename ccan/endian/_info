@@ -33,7 +33,7 @@
  *		printf("native:        %08x\n", value);
  *		printf("little-endian: %08x\n", cpu_to_le32(value));
  *		printf("big-endian:    %08x\n", cpu_to_be32(value));
- *		printf("byte-reversed: %08x\n", swab_u32(value));
+ *		printf("byte-reversed: %08x\n", bswap_32(value));
  *		exit(0);
  *	}
  *
