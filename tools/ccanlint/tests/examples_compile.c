@@ -314,23 +314,24 @@ static char *mangle(struct manifest *m, char **lines)
 	bool in_function = false, fake_function = false, has_main = false;
 	unsigned int i;
 
-	ret = talloc_strdup(m, "/* Prepend a heap of headers. */\n"
-			    "#include <assert.h>\n"
-			    "#include <err.h>\n"
-			    "#include <errno.h>\n"
-			    "#include <fcntl.h>\n"
-			    "#include <limits.h>\n"
-			    "#include <stdbool.h>\n"
-			    "#include <stdint.h>\n"
-			    "#include <stdio.h>\n"
-			    "#include <stdlib.h>\n"
-			    "#include <string.h>\n"
-			    "#include <sys/stat.h>\n"
-			    "#include <sys/types.h>\n"
-			    "#include <unistd.h>\n");
-	ret = talloc_asprintf_append(ret, "/* Include header from module. */\n"
-				     "#include <ccan/%s/%s.h>\n",
-				     m->basename, m->basename);
+	ret = talloc_asprintf(m, 
+			      "/* Include header from module. */\n"
+			      "#include <ccan/%s/%s.h>\n"
+			      "/* Prepend a heap of headers. */\n"
+			      "#include <assert.h>\n"
+			      "#include <err.h>\n"
+			      "#include <errno.h>\n"
+			      "#include <fcntl.h>\n"
+			      "#include <limits.h>\n"
+			      "#include <stdbool.h>\n"
+			      "#include <stdint.h>\n"
+			      "#include <stdio.h>\n"
+			      "#include <stdlib.h>\n"
+			      "#include <string.h>\n"
+			      "#include <sys/stat.h>\n"
+			      "#include <sys/types.h>\n"
+			      "#include <unistd.h>\n",
+			      m->basename, m->basename);
 
 	ret = talloc_asprintf_append(ret, "/* Useful dummy functions. */\n"
 				     "extern int somefunc(void);\n"
