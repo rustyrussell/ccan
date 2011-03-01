@@ -560,8 +560,8 @@ bool tdb_has_expansion_lock(struct tdb_context *tdb);
 enum TDB_ERROR tdb_lock_and_recover(struct tdb_context *tdb);
 
 /* transaction.c: */
-int tdb_transaction_recover(struct tdb_context *tdb);
-bool tdb_needs_recovery(struct tdb_context *tdb);
+enum TDB_ERROR tdb_transaction_recover(struct tdb_context *tdb);
+tdb_bool_err tdb_needs_recovery(struct tdb_context *tdb);
 
 /* tdb.c: */
 enum TDB_ERROR COLD tdb_logerr(struct tdb_context *tdb,

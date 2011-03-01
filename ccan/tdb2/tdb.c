@@ -177,6 +177,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	ssize_t rlen;
 	struct tdb_header hdr;
 	struct tdb_attribute_seed *seed = NULL;
+	tdb_bool_err berr;
 	enum TDB_ERROR ecode;
 
 	tdb = malloc(sizeof(*tdb));
@@ -350,7 +351,12 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb->methods->oob(tdb, tdb->map_size + 1, true);
 
 	/* Now it's fully formed, recover if necessary. */
-	if (tdb_needs_recovery(tdb)) {
+	berr = tdb_needs_recovery(tdb);
+	if (unlikely(berr != false)) {
+		if (berr < 0) {
+			ecode = berr;
+			goto fail;
+		}
 		ecode = tdb_lock_and_recover(tdb);
 		if (ecode != TDB_SUCCESS) {
 			tdb->ecode = ecode;

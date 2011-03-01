@@ -264,10 +264,7 @@ enum TDB_ERROR tdb_lock_and_recover(struct tdb_context *tdb)
 		tdb_allrecord_unlock(tdb, F_WRLCK);
 		return ecode;
 	}
-	if (tdb_transaction_recover(tdb) == -1) {
-		ecode = tdb->ecode;
-	}
-
+	ecode = tdb_transaction_recover(tdb);
 	tdb_unlock_open(tdb);
 	tdb_allrecord_unlock(tdb, F_WRLCK);
 
@@ -333,16 +330,21 @@ static enum TDB_ERROR tdb_nest_lock(struct tdb_context *tdb,
 
 	/* First time we grab a lock, perhaps someone died in commit? */
 	if (!(flags & TDB_LOCK_NOCHECK)
-	    && tdb->num_lockrecs == 0
-	    && unlikely(tdb_needs_recovery(tdb))) {
-		tdb_brunlock(tdb, ltype, offset, 1);
+	    && tdb->num_lockrecs == 0) {
+		tdb_bool_err berr = tdb_needs_recovery(tdb);
+		if (berr != false) {
+			tdb_brunlock(tdb, ltype, offset, 1);
 
-		ecode = tdb_lock_and_recover(tdb);
-		if (ecode == TDB_SUCCESS) {
-			ecode = tdb_brlock(tdb, ltype, offset, 1, flags);
-		}
-		if (ecode != TDB_SUCCESS) {
-			return ecode;
+			if (berr < 0)
+				return berr;
+			ecode = tdb_lock_and_recover(tdb);
+			if (ecode == TDB_SUCCESS) {
+				ecode = tdb_brlock(tdb, ltype, offset, 1,
+						   flags);
+			}
+			if (ecode != TDB_SUCCESS) {
+				return ecode;
+			}
 		}
 	}
 
@@ -448,6 +450,7 @@ enum TDB_ERROR tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
 				  enum tdb_lock_flags flags, bool upgradable)
 {
 	enum TDB_ERROR ecode;
+	tdb_bool_err berr;
 
 	/* FIXME: There are no locks on read-only dbs */
 	if (tdb->read_only) {
@@ -517,16 +520,21 @@ again:
 	tdb->allrecord_lock.off = upgradable;
 
 	/* Now check for needing recovery. */
-	if (!(flags & TDB_LOCK_NOCHECK) && unlikely(tdb_needs_recovery(tdb))) {
-		tdb_allrecord_unlock(tdb, ltype);
-		ecode = tdb_lock_and_recover(tdb);
-		if (ecode != TDB_SUCCESS) {
-			return ecode;
-		}
-		goto again;
-	}
+	if (flags & TDB_LOCK_NOCHECK)
+		return TDB_SUCCESS;
 
-	return TDB_SUCCESS;
+	berr = tdb_needs_recovery(tdb);
+	if (likely(berr == false))
+		return TDB_SUCCESS;
+
+	tdb_allrecord_unlock(tdb, ltype);
+	if (berr < 0)
+		return berr;
+	ecode = tdb_lock_and_recover(tdb);
+	if (ecode != TDB_SUCCESS) {
+		return ecode;
+	}
+	goto again;
 }
 
 enum TDB_ERROR tdb_lock_open(struct tdb_context *tdb, enum tdb_lock_flags flags)
