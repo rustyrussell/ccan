@@ -19,16 +19,16 @@
 #include <assert.h>
 #include <ccan/tally/tally.h>
 
-static int count_hash(struct tdb_context *tdb,
-		      tdb_off_t hash_off, unsigned bits)
+static tdb_off_t count_hash(struct tdb_context *tdb,
+			    tdb_off_t hash_off, unsigned bits)
 {
 	const tdb_off_t *h;
-	unsigned int i, count = 0;
+	tdb_off_t count = 0;
+	unsigned int i;
 
 	h = tdb_access_read(tdb, hash_off, sizeof(*h) << bits, true);
 	if (TDB_PTR_IS_ERR(h)) {
-		tdb->ecode = TDB_PTR_ERR(h);
-		return -1;
+		return TDB_PTR_ERR(h);
 	}
 	for (i = 0; i < (1 << bits); i++)
 		count += (h[i] != 0);
@@ -37,16 +37,16 @@ static int count_hash(struct tdb_context *tdb,
 	return count;
 }
 
-static bool summarize(struct tdb_context *tdb,
-		      struct tally *hashes,
-		      struct tally *ftables,
-		      struct tally *fr,
-		      struct tally *keys,
-		      struct tally *data,
-		      struct tally *extra,
-		      struct tally *uncoal,
-		      struct tally *buckets,
-		      struct tally *chains)
+static enum TDB_ERROR summarize(struct tdb_context *tdb,
+				struct tally *hashes,
+				struct tally *ftables,
+				struct tally *fr,
+				struct tally *keys,
+				struct tally *data,
+				struct tally *extra,
+				struct tally *uncoal,
+				struct tally *buckets,
+				struct tally *chains)
 {
 	tdb_off_t off;
 	tdb_len_t len;
@@ -61,8 +61,7 @@ static bool summarize(struct tdb_context *tdb,
 		/* We might not be able to get the whole thing. */
 		p = tdb_access_read(tdb, off, sizeof(p->f), true);
 		if (TDB_PTR_IS_ERR(p)) {
-			tdb->ecode = TDB_PTR_ERR(p);
-			return false;
+			return TDB_PTR_ERR(p);
 		}
 		if (p->r.magic == TDB_RECOVERY_INVALID_MAGIC
 		    || p->r.magic == TDB_RECOVERY_MAGIC) {
@@ -91,11 +90,12 @@ static bool summarize(struct tdb_context *tdb,
 			tally_add(data, rec_data_length(&p->u));
 			tally_add(extra, rec_extra_padding(&p->u));
 		} else if (rec_magic(&p->u) == TDB_HTABLE_MAGIC) {
-			int count = count_hash(tdb,
-					       off + sizeof(p->u),
-					       TDB_SUBLEVEL_HASH_BITS);
-			if (count == -1)
-				return false;
+			tdb_off_t count = count_hash(tdb,
+						     off + sizeof(p->u),
+						     TDB_SUBLEVEL_HASH_BITS);
+			if (TDB_OFF_IS_ERR(count)) {
+				return count;
+			}
 			tally_add(hashes, count);
 			tally_add(extra, rec_extra_padding(&p->u));
 			len = sizeof(p->u)
@@ -116,14 +116,14 @@ static bool summarize(struct tdb_context *tdb,
 		} else {
 			len = dead_space(tdb, off);
 			if (TDB_OFF_IS_ERR(len)) {
-				return false;
+				return len;
 			}
 		}
 		tdb_access_release(tdb, p);
 	}
 	if (unc)
 		tally_add(uncoal, unc);
-	return true;
+	return TDB_SUCCESS;
 }
 
 #define SUMMARY_FORMAT \
@@ -194,9 +194,12 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 		goto unlock;
 	}
 
-	if (!summarize(tdb, hashes, ftables, freet, keys, data, extra, uncoal,
-		       buckets, chains))
+	ecode = summarize(tdb, hashes, ftables, freet, keys, data, extra,
+			  uncoal, buckets, chains);
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		goto unlock;
+	}
 
 	if (flags & TDB_SUMMARY_HISTOGRAMS) {
 		hashesg = tally_histogram(hashes, HISTO_WIDTH, HISTO_HEIGHT);
@@ -219,8 +222,11 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 		+ (bucketsg ? strlen(bucketsg) : 0);
 
 	ret = malloc(len);
-	if (!ret)
+	if (!ret) {
+		tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
+			   "tdb_summary: failed to allocate string");
 		goto unlock;
+	}
 
 	len = sprintf(ret, SUMMARY_FORMAT,
 		      (size_t)tdb->map_size,
@@ -240,8 +246,9 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 		      uncoalg ? uncoalg : "",
 		      tally_num(buckets),
 		      bucketsg ? bucketsg : "",
-		      count_hash(tdb, offsetof(struct tdb_header, hashtable),
-				 TDB_TOPLEVEL_HASH_BITS),
+		      (unsigned)count_hash(tdb, offsetof(struct tdb_header,
+							 hashtable),
+					   TDB_TOPLEVEL_HASH_BITS),
 		      1 << TDB_TOPLEVEL_HASH_BITS,
 		      tally_num(chains),
 		      tally_num(hashes),
