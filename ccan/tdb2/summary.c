@@ -113,8 +113,12 @@ static bool summarize(struct tdb_context *tdb,
 				+ rec_extra_padding(&p->u);
 			tally_add(chains, 1);
 			tally_add(extra, rec_extra_padding(&p->u));
-		} else
+		} else {
 			len = dead_space(tdb, off);
+			if (TDB_OFF_IS_ERR(len)) {
+				return false;
+			}
+		}
 		tdb_access_release(tdb, p);
 	}
 	if (unc)

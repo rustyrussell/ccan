@@ -453,7 +453,7 @@ unsigned int size_to_bucket(tdb_len_t data_len);
 tdb_off_t bucket_off(tdb_off_t ftable_off, unsigned bucket);
 
 /* Used by tdb_summary */
-size_t dead_space(struct tdb_context *tdb, tdb_off_t off);
+tdb_off_t dead_space(struct tdb_context *tdb, tdb_off_t off);
 
 /* io.c: */
 /* Initialize tdb->methods. */
