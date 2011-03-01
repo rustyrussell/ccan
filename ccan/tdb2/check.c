@@ -603,8 +603,13 @@ static bool check_linear(struct tdb_context *tdb,
 			}
 			/* This record should be in free lists. */
 			if (frec_ftable(&rec.f) != TDB_FTABLE_NONE
-			    && !append(fr, num_free, off))
+			    && !append(fr, num_free, off)) {
+				tdb_logerr(tdb, TDB_ERR_OOM,
+					   TDB_DEBUG_ERROR,
+					   "tdb_check: tracking %zu'th"
+					   " free record.", *num_free);
 				return false;
+			}
 		} else if (rec_magic(&rec.u) == TDB_USED_MAGIC
 			   || rec_magic(&rec.u) == TDB_CHAIN_MAGIC
 			   || rec_magic(&rec.u) == TDB_HTABLE_MAGIC
@@ -612,8 +617,13 @@ static bool check_linear(struct tdb_context *tdb,
 			uint64_t klen, dlen, extra;
 
 			/* This record is used! */
-			if (!append(used, num_used, off))
+			if (!append(used, num_used, off)) {
+				tdb_logerr(tdb, TDB_ERR_OOM,
+					   TDB_DEBUG_ERROR,
+					   "tdb_check: tracking %zu'th"
+					   " used record.", *num_used);
 				return false;
+			}
 
 			klen = rec_key_length(&rec.u);
 			dlen = rec_data_length(&rec.u);
