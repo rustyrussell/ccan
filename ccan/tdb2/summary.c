@@ -152,13 +152,19 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 		*buckets, *chains;
 	char *hashesg, *freeg, *keysg, *datag, *extrag, *uncoalg, *bucketsg;
 	char *ret = NULL;
+	enum TDB_ERROR ecode;
 
 	hashesg = freeg = keysg = datag = extrag = uncoalg = bucketsg = NULL;
 
-	if (tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false) != 0)
+	ecode = tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false);
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		return NULL;
+	}
 
-	if (tdb_lock_expand(tdb, F_RDLCK) != 0) {
+	ecode = tdb_lock_expand(tdb, F_RDLCK);
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		tdb_allrecord_unlock(tdb, F_RDLCK);
 		return NULL;
 	}

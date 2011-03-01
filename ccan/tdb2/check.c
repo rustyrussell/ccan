@@ -673,11 +673,17 @@ int tdb_check(struct tdb_context *tdb,
 {
 	tdb_off_t *fr = NULL, *used = NULL, ft, recovery;
 	size_t num_free = 0, num_used = 0, num_found = 0, num_ftables = 0;
+	enum TDB_ERROR ecode;
 
-	if (tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false) != 0)
+	ecode = tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false);
+	if (ecpde != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		return -1;
+	}
 
-	if (tdb_lock_expand(tdb, F_RDLCK) != 0) {
+	ecode = tdb_lock_expand(tdb, F_RDLCK);
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		tdb_allrecord_unlock(tdb, F_RDLCK);
 		return -1;
 	}

@@ -173,6 +173,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	ssize_t rlen;
 	struct tdb_header hdr;
 	struct tdb_attribute_seed *seed = NULL;
+	enum TDB_ERROR ecode;
 
 	tdb = malloc(sizeof(*tdb));
 	if (!tdb) {
@@ -265,9 +266,8 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
         fcntl(tdb->fd, F_SETFD, v | FD_CLOEXEC);
 
 	/* ensure there is only one process initialising at once */
-	if (tdb_lock_open(tdb, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK) == -1) {
-		/* errno set by tdb_brlock */
-		saved_errno = errno;
+	tdb->ecode = tdb_lock_open(tdb, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK);
+	if (tdb->ecode != TDB_SUCCESS) {
 		goto fail;
 	}
 
@@ -346,8 +346,12 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb->methods->oob(tdb, tdb->map_size + 1, true);
 
 	/* Now it's fully formed, recover if necessary. */
-	if (tdb_needs_recovery(tdb) && tdb_lock_and_recover(tdb) == -1) {
-		goto fail;
+	if (tdb_needs_recovery(tdb)) {
+		ecode = tdb_lock_and_recover(tdb);
+		if (ecode != TDB_SUCCESS) {
+			tdb->ecode = ecode;
+			goto fail;
+		}
 	}
 
 	if (tdb_ftable_init(tdb) == -1)

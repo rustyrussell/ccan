@@ -204,14 +204,18 @@ int add_free_record(struct tdb_context *tdb,
 	tdb_off_t b_off;
 	tdb_len_t len;
 	int ret;
+	enum TDB_ERROR ecode;
 
 	assert(len_with_header >= sizeof(struct tdb_free_record));
 
 	len = len_with_header - sizeof(struct tdb_used_record);
 
 	b_off = bucket_off(tdb->ftable_off, size_to_bucket(len));
-	if (tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) != 0)
+	ecode = tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT);
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		return -1;
+	}
 
 	ret = enqueue_in_free(tdb, b_off, off, len);
 	tdb_unlock_free_bucket(tdb, b_off);
@@ -290,7 +294,8 @@ static int coalesce(struct tdb_context *tdb,
 		tdb_access_release(tdb, r);
 
 		/* We may be violating lock order here, so best effort. */
-		if (tdb_lock_free_bucket(tdb, nb_off, TDB_LOCK_NOWAIT) == -1) {
+		if (tdb_lock_free_bucket(tdb, nb_off, TDB_LOCK_NOWAIT)
+		    != TDB_SUCCESS) {
 			add_stat(tdb, alloc_coalesce_lockfail, 1);
 			break;
 		}
@@ -377,6 +382,7 @@ static tdb_off_t lock_and_alloc(struct tdb_context *tdb,
 	struct tdb_free_record best = { 0 };
 	double multiplier;
 	size_t size = adjust_size(keylen, datalen);
+	enum TDB_ERROR ecode;
 
 	add_stat(tdb, allocs, 1);
 again:
@@ -384,7 +390,9 @@ again:
 
 	/* FIXME: Try non-blocking wait first, to measure contention. */
 	/* Lock this bucket. */
-	if (tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == -1) {
+	ecode = tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT);
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		return TDB_OFF_ERR;
 	}
 
@@ -581,6 +589,7 @@ static int tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 {
 	uint64_t old_size;
 	tdb_len_t wanted;
+	enum TDB_ERROR ecode;
 
 	/* We need room for the record header too. */
 	wanted = sizeof(struct tdb_used_record) + size;
@@ -602,8 +611,11 @@ static int tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 	wanted = adjust_size(0, wanted);
 
 	/* Only one person can expand file at a time. */
-	if (tdb_lock_expand(tdb, F_WRLCK) != 0)
+	ecode = tdb_lock_expand(tdb, F_WRLCK);
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		return -1;
+	}
 
 	/* Someone else may have expanded the file, so retry. */
 	old_size = tdb->map_size;

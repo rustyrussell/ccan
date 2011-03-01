@@ -70,6 +70,7 @@ void tdb_mmap(struct tdb_context *tdb)
 static int tdb_oob(struct tdb_context *tdb, tdb_off_t len, bool probe)
 {
 	struct stat st;
+	enum TDB_ERROR ecode;
 
 	/* We can't hold pointers during this: we could unmap! */
 	assert(!tdb->direct_access
@@ -89,8 +90,11 @@ static int tdb_oob(struct tdb_context *tdb, tdb_off_t len, bool probe)
 		return -1;
 	}
 
-	if (tdb_lock_expand(tdb, F_RDLCK) != 0)
+	ecode = tdb_lock_expand(tdb, F_RDLCK);
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		return -1;
+	}
 
 	if (fstat(tdb->fd, &st) != 0) {
 		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,

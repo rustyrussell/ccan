@@ -229,6 +229,7 @@ tdb_off_t find_and_lock(struct tdb_context *tdb,
 {
 	uint32_t i, group;
 	tdb_off_t hashtable;
+	enum TDB_ERROR ecode;
 
 	h->h = tdb_hash(tdb, key.dptr, key.dsize);
 	h->hash_used = 0;
@@ -236,9 +237,12 @@ tdb_off_t find_and_lock(struct tdb_context *tdb,
 	h->home_bucket = use_bits(h, TDB_HASH_GROUP_BITS);
 
 	h->hlock_start = hlock_range(group, &h->hlock_range);
-	if (tdb_lock_hashes(tdb, h->hlock_start, h->hlock_range, ltype,
-			    TDB_LOCK_WAIT))
+	ecode = tdb_lock_hashes(tdb, h->hlock_start, h->hlock_range, ltype,
+				TDB_LOCK_WAIT);
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		return TDB_OFF_ERR;
+	}
 
 	hashtable = offsetof(struct tdb_header, hashtable);
 	if (tinfo) {
@@ -684,14 +688,18 @@ int next_in_hash(struct tdb_context *tdb,
 {
 	const unsigned group_bits = TDB_TOPLEVEL_HASH_BITS-TDB_HASH_GROUP_BITS;
 	tdb_off_t hl_start, hl_range, off;
+	enum TDB_ERROR ecode;
 
 	while (tinfo->toplevel_group < (1 << group_bits)) {
 		hl_start = (tdb_off_t)tinfo->toplevel_group
 			<< (64 - group_bits);
 		hl_range = 1ULL << group_bits;
-		if (tdb_lock_hashes(tdb, hl_start, hl_range, F_RDLCK,
-				    TDB_LOCK_WAIT) != 0)
+		ecode = tdb_lock_hashes(tdb, hl_start, hl_range, F_RDLCK,
+					TDB_LOCK_WAIT);
+		if (ecode != TDB_SUCCESS) {
+			tdb->ecode = ecode;
 			return -1;
+		}
 
 		off = iterate_hash(tdb, tinfo);
 		if (off) {
@@ -760,7 +768,7 @@ static int chainlock(struct tdb_context *tdb, const TDB_DATA *key,
 		     int ltype, enum tdb_lock_flags waitflag,
 		     const char *func)
 {
-	int ret;
+	enum TDB_ERROR ecode;
 	uint64_t h = tdb_hash(tdb, key->dptr, key->dsize);
 	tdb_off_t lockstart, locksize;
 	unsigned int group, gbits;
@@ -770,9 +778,13 @@ static int chainlock(struct tdb_context *tdb, const TDB_DATA *key,
 
 	lockstart = hlock_range(group, &locksize);
 
-	ret = tdb_lock_hashes(tdb, lockstart, locksize, ltype, waitflag);
+	ecode = tdb_lock_hashes(tdb, lockstart, locksize, ltype, waitflag);
 	tdb_trace_1rec(tdb, func, *key);
-	return ret;
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
+		return -1;
+	}
+	return 0;
 }
 
 /* lock/unlock one hash chain. This is meant to be used to reduce
@@ -787,6 +799,7 @@ int tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key)
 	uint64_t h = tdb_hash(tdb, key.dptr, key.dsize);
 	tdb_off_t lockstart, locksize;
 	unsigned int group, gbits;
+	enum TDB_ERROR ecode;
 
 	gbits = TDB_TOPLEVEL_HASH_BITS - TDB_HASH_GROUP_BITS;
 	group = bits_from(h, 64 - gbits, gbits);
@@ -794,5 +807,10 @@ int tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key)
 	lockstart = hlock_range(group, &locksize);
 
 	tdb_trace_1rec(tdb, "tdb_chainunlock", key);
-	return tdb_unlock_hashes(tdb, lockstart, locksize, F_WRLCK);
+	ecode = tdb_unlock_hashes(tdb, lockstart, locksize, F_WRLCK);
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
+		return -1;
+	}
+	return 0;
 }

@@ -198,21 +198,21 @@ static enum TDB_ERROR tdb_brunlock(struct tdb_context *tdb,
   deadlock detection and claim a deadlock when progress can be
   made. For those OSes we may loop for a while.
 */
-int tdb_allrecord_upgrade(struct tdb_context *tdb)
+enum TDB_ERROR tdb_allrecord_upgrade(struct tdb_context *tdb)
 {
 	int count = 1000;
 
 	if (tdb->allrecord_lock.count != 1) {
-		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
-			   "tdb_allrecord_upgrade failed: count %u too high",
-			   tdb->allrecord_lock.count);
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
+				  "tdb_allrecord_upgrade failed:"
+				  " count %u too high",
+				  tdb->allrecord_lock.count);
 	}
 
 	if (tdb->allrecord_lock.off != 1) {
-		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
-			   "tdb_allrecord_upgrade failed: already upgraded?");
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
+				  "tdb_allrecord_upgrade failed:"
+				  " already upgraded?");
 	}
 
 	while (count--) {
@@ -222,7 +222,7 @@ int tdb_allrecord_upgrade(struct tdb_context *tdb)
 			       TDB_LOCK_WAIT|TDB_LOCK_PROBE) == TDB_SUCCESS) {
 			tdb->allrecord_lock.ltype = F_WRLCK;
 			tdb->allrecord_lock.off = 0;
-			return 0;
+			return TDB_SUCCESS;
 		}
 		if (errno != EDEADLK) {
 			break;
@@ -232,9 +232,8 @@ int tdb_allrecord_upgrade(struct tdb_context *tdb)
 		tv.tv_usec = 1;
 		select(0, NULL, NULL, NULL, &tv);
 	}
-	tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
-		   "tdb_allrecord_upgrade failed");
-	return -1;
+	return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
+			  "tdb_allrecord_upgrade failed");
 }
 
 static struct tdb_lock_type *find_nestlock(struct tdb_context *tdb,
@@ -250,85 +249,86 @@ static struct tdb_lock_type *find_nestlock(struct tdb_context *tdb,
 	return NULL;
 }
 
-int tdb_lock_and_recover(struct tdb_context *tdb)
+enum TDB_ERROR tdb_lock_and_recover(struct tdb_context *tdb)
 {
-	int ret;
+	enum TDB_ERROR ecode;
 
-	if (tdb_allrecord_lock(tdb, F_WRLCK, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK,
-			       false) == -1) {
-		return -1;
+	ecode = tdb_allrecord_lock(tdb, F_WRLCK, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK,
+				   false);
+	if (ecode != TDB_SUCCESS) {
+		return ecode;
 	}
 
-	if (tdb_lock_open(tdb, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK) == -1) {
+	ecode = tdb_lock_open(tdb, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK);
+	if (ecode != TDB_SUCCESS) {
 		tdb_allrecord_unlock(tdb, F_WRLCK);
-		return -1;
+		return ecode;
 	}
-	ret = tdb_transaction_recover(tdb);
+	if (tdb_transaction_recover(tdb) == -1) {
+		ecode = tdb->ecode;
+	}
 
 	tdb_unlock_open(tdb);
 	tdb_allrecord_unlock(tdb, F_WRLCK);
 
-	return ret;
+	return ecode;
 }
 
 /* lock an offset in the database. */
-static int tdb_nest_lock(struct tdb_context *tdb, tdb_off_t offset, int ltype,
-			 enum tdb_lock_flags flags)
+static enum TDB_ERROR tdb_nest_lock(struct tdb_context *tdb,
+				    tdb_off_t offset, int ltype,
+				    enum tdb_lock_flags flags)
 {
 	struct tdb_lock_type *new_lck;
 	enum TDB_ERROR ecode;
 
 	if (offset > TDB_HASH_LOCK_START + TDB_HASH_LOCK_RANGE + tdb->map_size / 8) {
-		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
-			   "tdb_nest_lock: invalid offset %zu ltype=%d",
-			   (size_t)offset, ltype);
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
+				  "tdb_nest_lock: invalid offset %zu ltype=%d",
+				  (size_t)offset, ltype);
 	}
 
 	if (tdb->flags & TDB_NOLOCK)
-		return 0;
+		return TDB_SUCCESS;
 
 	add_stat(tdb, locks, 1);
 
 	new_lck = find_nestlock(tdb, offset);
 	if (new_lck) {
 		if (new_lck->ltype == F_RDLCK && ltype == F_WRLCK) {
-			tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
-				   "tdb_nest_lock: offset %zu has read lock",
-				   (size_t)offset);
-			return -1;
+			return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
+					  "tdb_nest_lock:"
+					  " offset %zu has read lock",
+					  (size_t)offset);
 		}
 		/* Just increment the struct, posix locks don't stack. */
 		new_lck->count++;
-		return 0;
+		return TDB_SUCCESS;
 	}
 
 	if (tdb->num_lockrecs
 	    && offset >= TDB_HASH_LOCK_START
 	    && offset < TDB_HASH_LOCK_START + TDB_HASH_LOCK_RANGE) {
-		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
-			   "tdb_nest_lock: already have a hash lock?");
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
+				  "tdb_nest_lock: already have a hash lock?");
 	}
 
 	new_lck = (struct tdb_lock_type *)realloc(
 		tdb->lockrecs,
 		sizeof(*tdb->lockrecs) * (tdb->num_lockrecs+1));
 	if (new_lck == NULL) {
-		tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
-			 "tdb_nest_lock: unable to allocate %zu lock struct",
-			 tdb->num_lockrecs + 1);
-		errno = ENOMEM;
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
+				  "tdb_nest_lock:"
+				  " unable to allocate %zu lock struct",
+				  tdb->num_lockrecs + 1);
 	}
 	tdb->lockrecs = new_lck;
 
 	/* Since fcntl locks don't nest, we do a lock for the first one,
 	   and simply bump the count for future ones */
 	ecode = tdb_brlock(tdb, ltype, offset, 1, flags);
-	if (ecode) {
-		tdb->ecode = ecode;
-		return -1;
+	if (ecode != TDB_SUCCESS) {
+		return ecode;
 	}
 
 	/* First time we grab a lock, perhaps someone died in commit? */
@@ -337,14 +337,12 @@ static int tdb_nest_lock(struct tdb_context *tdb, tdb_off_t offset, int ltype,
 	    && unlikely(tdb_needs_recovery(tdb))) {
 		tdb_brunlock(tdb, ltype, offset, 1);
 
-		if (tdb_lock_and_recover(tdb) == -1) {
-			return -1;
+		ecode = tdb_lock_and_recover(tdb);
+		if (ecode == TDB_SUCCESS) {
+			ecode = tdb_brlock(tdb, ltype, offset, 1, flags);
 		}
-
-		ecode = tdb_brlock(tdb, ltype, offset, 1, flags);
 		if (ecode != TDB_SUCCESS) {
-			tdb->ecode = ecode;
-			return -1;
+			return ecode;
 		}
 	}
 
@@ -353,27 +351,28 @@ static int tdb_nest_lock(struct tdb_context *tdb, tdb_off_t offset, int ltype,
 	tdb->lockrecs[tdb->num_lockrecs].ltype = ltype;
 	tdb->num_lockrecs++;
 
-	return 0;
+	return TDB_SUCCESS;
 }
 
-static int tdb_nest_unlock(struct tdb_context *tdb, tdb_off_t off, int ltype)
+static enum TDB_ERROR tdb_nest_unlock(struct tdb_context *tdb,
+				      tdb_off_t off, int ltype)
 {
 	struct tdb_lock_type *lck;
 	enum TDB_ERROR ecode;
 
 	if (tdb->flags & TDB_NOLOCK)
-		return 0;
+		return TDB_SUCCESS;
 
 	lck = find_nestlock(tdb, off);
 	if ((lck == NULL) || (lck->count == 0)) {
-		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
-			   "tdb_nest_unlock: no lock for %zu", (size_t)off);
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
+				  "tdb_nest_unlock: no lock for %zu",
+				  (size_t)off);
 	}
 
 	if (lck->count > 1) {
 		lck->count--;
-		return 0;
+		return TDB_SUCCESS;
 	}
 
 	/*
@@ -390,17 +389,13 @@ static int tdb_nest_unlock(struct tdb_context *tdb, tdb_off_t off, int ltype)
 	 */
 	*lck = tdb->lockrecs[--tdb->num_lockrecs];
 
-	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return -1;
-	}
-	return 0;
+	return ecode;
 }
 
 /*
   get the transaction lock
  */
-int tdb_transaction_lock(struct tdb_context *tdb, int ltype)
+enum TDB_ERROR tdb_transaction_lock(struct tdb_context *tdb, int ltype)
 {
 	return tdb_nest_lock(tdb, TDB_TRANSACTION_LOCK, ltype, TDB_LOCK_WAIT);
 }
@@ -408,9 +403,9 @@ int tdb_transaction_lock(struct tdb_context *tdb, int ltype)
 /*
   release the transaction lock
  */
-int tdb_transaction_unlock(struct tdb_context *tdb, int ltype)
+void tdb_transaction_unlock(struct tdb_context *tdb, int ltype)
 {
-	return tdb_nest_unlock(tdb, TDB_TRANSACTION_LOCK, ltype);
+	tdb_nest_unlock(tdb, TDB_TRANSACTION_LOCK, ltype);
 }
 
 /* We only need to lock individual bytes, but Linux merges consecutive locks
@@ -449,45 +444,43 @@ static enum TDB_ERROR tdb_lock_gradual(struct tdb_context *tdb,
 
 /* lock/unlock entire database.  It can only be upgradable if you have some
  * other way of guaranteeing exclusivity (ie. transaction write lock). */
-int tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
-		       enum tdb_lock_flags flags, bool upgradable)
+enum TDB_ERROR tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
+				  enum tdb_lock_flags flags, bool upgradable)
 {
 	enum TDB_ERROR ecode;
 
 	/* FIXME: There are no locks on read-only dbs */
 	if (tdb->read_only) {
-		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_USE_ERROR,
-			   "tdb_allrecord_lock: read-only");
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_USE_ERROR,
+				  "tdb_allrecord_lock: read-only");
 	}
 
 	if (tdb->allrecord_lock.count
 	    && (ltype == F_RDLCK || tdb->allrecord_lock.ltype == F_WRLCK)) {
 		tdb->allrecord_lock.count++;
-		return 0;
+		return TDB_SUCCESS;
 	}
 
 	if (tdb->allrecord_lock.count) {
 		/* a global lock of a different type exists */
-		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_USE_ERROR,
-			   "tdb_allrecord_lock: already have %s lock",
-			   tdb->allrecord_lock.ltype == F_RDLCK
-			   ? "read" : "write");
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_USE_ERROR,
+				  "tdb_allrecord_lock: already have %s lock",
+				  tdb->allrecord_lock.ltype == F_RDLCK
+				  ? "read" : "write");
 	}
 
 	if (tdb_has_hash_locks(tdb)) {
 		/* can't combine global and chain locks */
-		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_USE_ERROR,
-			 "tdb_allrecord_lock: already have chain lock");
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_USE_ERROR,
+				  "tdb_allrecord_lock:"
+				  " already have chain lock");
 	}
 
 	if (upgradable && ltype != F_RDLCK) {
 		/* tdb error: you can't upgrade a write lock! */
-		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
-			   "tdb_allrecord_lock: can't upgrade a write lock");
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
+				  "tdb_allrecord_lock:"
+				  " can't upgrade a write lock");
 	}
 
 	add_stat(tdb, locks, 1);
@@ -496,12 +489,11 @@ again:
 	ecode = tdb_lock_gradual(tdb, ltype, flags, TDB_HASH_LOCK_START,
 				 TDB_HASH_LOCK_RANGE);
 	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
 		if (!(flags & TDB_LOCK_PROBE)) {
-			tdb_logerr(tdb, tdb->ecode, TDB_LOG_ERROR,
+			tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
 				   "tdb_allrecord_lock hashes failed");
 		}
-		return -1;
+		return ecode;
 	}
 
 	/* Lock free tables: there to end of file. */
@@ -509,14 +501,13 @@ again:
 			   TDB_HASH_LOCK_START + TDB_HASH_LOCK_RANGE,
 			   0, flags);
 	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
 		if (!(flags & TDB_LOCK_PROBE)) {
-			tdb_logerr(tdb, tdb->ecode, TDB_LOG_ERROR,
+			tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
 				 "tdb_allrecord_lock freetables failed");
 		}
 		tdb_brunlock(tdb, ltype, TDB_HASH_LOCK_START,
 			     TDB_HASH_LOCK_RANGE);
-		return -1;
+		return ecode;
 	}
 
 	tdb->allrecord_lock.count = 1;
@@ -528,16 +519,17 @@ again:
 	/* Now check for needing recovery. */
 	if (!(flags & TDB_LOCK_NOCHECK) && unlikely(tdb_needs_recovery(tdb))) {
 		tdb_allrecord_unlock(tdb, ltype);
-		if (tdb_lock_and_recover(tdb) == -1) {
-			return -1;
+		ecode = tdb_lock_and_recover(tdb);
+		if (ecode != TDB_SUCCESS) {
+			return ecode;
 		}
 		goto again;
 	}
 
-	return 0;
+	return TDB_SUCCESS;
 }
 
-int tdb_lock_open(struct tdb_context *tdb, enum tdb_lock_flags flags)
+enum TDB_ERROR tdb_lock_open(struct tdb_context *tdb, enum tdb_lock_flags flags)
 {
 	return tdb_nest_lock(tdb, TDB_OPEN_LOCK, F_WRLCK, flags);
 }
@@ -552,7 +544,7 @@ bool tdb_has_open_lock(struct tdb_context *tdb)
 	return find_nestlock(tdb, TDB_OPEN_LOCK) != NULL;
 }
 
-int tdb_lock_expand(struct tdb_context *tdb, int ltype)
+enum TDB_ERROR tdb_lock_expand(struct tdb_context *tdb, int ltype)
 {
 	/* Lock doesn't protect data, so don't check (we recurse if we do!) */
 	return tdb_nest_lock(tdb, TDB_EXPANSION_LOCK, ltype,
@@ -565,33 +557,33 @@ void tdb_unlock_expand(struct tdb_context *tdb, int ltype)
 }
 
 /* unlock entire db */
-int tdb_allrecord_unlock(struct tdb_context *tdb, int ltype)
+void tdb_allrecord_unlock(struct tdb_context *tdb, int ltype)
 {
 	if (tdb->allrecord_lock.count == 0) {
 		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_USE_ERROR,
 			   "tdb_allrecord_unlock: not locked!");
-		return -1;
+		return;
 	}
 
 	/* Upgradable locks are marked as write locks. */
 	if (tdb->allrecord_lock.ltype != ltype
 	    && (!tdb->allrecord_lock.off || ltype != F_RDLCK)) {
 		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
-			 "tdb_allrecord_unlock: have %s lock",
+			   "tdb_allrecord_unlock: have %s lock",
 			   tdb->allrecord_lock.ltype == F_RDLCK
 			   ? "read" : "write");
-		return -1;
+		return;
 	}
 
 	if (tdb->allrecord_lock.count > 1) {
 		tdb->allrecord_lock.count--;
-		return 0;
+		return;
 	}
 
 	tdb->allrecord_lock.count = 0;
 	tdb->allrecord_lock.ltype = 0;
 
-	return tdb_brunlock(tdb, ltype, TDB_HASH_LOCK_START, 0);
+	tdb_brunlock(tdb, ltype, TDB_HASH_LOCK_START, 0);
 }
 
 bool tdb_has_expansion_lock(struct tdb_context *tdb)
@@ -624,10 +616,10 @@ static bool tdb_has_free_lock(struct tdb_context *tdb)
 	return false;
 }
 
-int tdb_lock_hashes(struct tdb_context *tdb,
-		    tdb_off_t hash_lock,
-		    tdb_len_t hash_range,
-		    int ltype, enum tdb_lock_flags waitflag)
+enum TDB_ERROR tdb_lock_hashes(struct tdb_context *tdb,
+			       tdb_off_t hash_lock,
+			       tdb_len_t hash_range,
+			       int ltype, enum tdb_lock_flags waitflag)
 {
 	/* FIXME: Do this properly, using hlock_range */
 	unsigned lock = TDB_HASH_LOCK_START
@@ -636,35 +628,34 @@ int tdb_lock_hashes(struct tdb_context *tdb,
 	/* a allrecord lock allows us to avoid per chain locks */
 	if (tdb->allrecord_lock.count &&
 	    (ltype == tdb->allrecord_lock.ltype || ltype == F_RDLCK)) {
-		return 0;
+		return TDB_SUCCESS;
 	}
 
 	if (tdb->allrecord_lock.count) {
-		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_USE_ERROR,
-			   "tdb_lock_hashes: already have %s allrecordlock",
-			   tdb->allrecord_lock.ltype == F_RDLCK
-			   ? "read" : "write");
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_USE_ERROR,
+				  "tdb_lock_hashes:"
+				  " already have %s allrecordlock",
+				  tdb->allrecord_lock.ltype == F_RDLCK
+				  ? "read" : "write");
 	}
 
 	if (tdb_has_free_lock(tdb)) {
-		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
-			   "tdb_lock_hashes: already have free lock");
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
+				  "tdb_lock_hashes: already have free lock");
 	}
 
 	if (tdb_has_expansion_lock(tdb)) {
-		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
-			   "tdb_lock_hashes: already have expansion lock");
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
+				  "tdb_lock_hashes:"
+				  " already have expansion lock");
 	}
 
 	return tdb_nest_lock(tdb, lock, ltype, waitflag);
 }
 
-int tdb_unlock_hashes(struct tdb_context *tdb,
-		      tdb_off_t hash_lock,
-		      tdb_len_t hash_range, int ltype)
+enum TDB_ERROR tdb_unlock_hashes(struct tdb_context *tdb,
+				 tdb_off_t hash_lock,
+				 tdb_len_t hash_range, int ltype)
 {
 	unsigned lock = TDB_HASH_LOCK_START
 		+ (hash_lock >> (64 - TDB_HASH_LOCK_RANGE_BITS));
@@ -673,11 +664,10 @@ int tdb_unlock_hashes(struct tdb_context *tdb,
 	if (tdb->allrecord_lock.count) {
 		if (tdb->allrecord_lock.ltype == F_RDLCK
 		    && ltype == F_WRLCK) {
-			tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
-				   "tdb_unlock_hashes RO allrecord!");
-			return -1;
+			return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
+					  "tdb_unlock_hashes RO allrecord!");
 		}
-		return 0;
+		return TDB_SUCCESS;
 	}
 
 	return tdb_nest_unlock(tdb, lock, ltype);
@@ -694,8 +684,8 @@ static tdb_off_t free_lock_off(tdb_off_t b_off)
 		+ b_off / sizeof(tdb_off_t);
 }
 
-int tdb_lock_free_bucket(struct tdb_context *tdb, tdb_off_t b_off,
-			 enum tdb_lock_flags waitflag)
+enum TDB_ERROR tdb_lock_free_bucket(struct tdb_context *tdb, tdb_off_t b_off,
+				    enum tdb_lock_flags waitflag)
 {
 	assert(b_off >= sizeof(struct tdb_header));
 
@@ -703,16 +693,16 @@ int tdb_lock_free_bucket(struct tdb_context *tdb, tdb_off_t b_off,
 	if (tdb->allrecord_lock.count) {
 		if (tdb->allrecord_lock.ltype == F_WRLCK)
 			return 0;
-		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
-			 "tdb_lock_free_bucket with RO allrecordlock!");
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
+				  "tdb_lock_free_bucket with"
+				  " read-only allrecordlock!");
 	}
 
 #if 0 /* FIXME */
 	if (tdb_has_expansion_lock(tdb)) {
-		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
-			   "tdb_lock_free_bucket: already have expansion lock");
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
+				  "tdb_lock_free_bucket:"
+				  " already have expansion lock");
 	}
 #endif
 

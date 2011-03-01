@@ -518,43 +518,44 @@ void add_stat_(struct tdb_context *tdb, uint64_t *stat, size_t val);
 void tdb_lock_init(struct tdb_context *tdb);
 
 /* Lock/unlock a range of hashes. */
-int tdb_lock_hashes(struct tdb_context *tdb,
-		    tdb_off_t hash_lock, tdb_len_t hash_range,
-		    int ltype, enum tdb_lock_flags waitflag);
-int tdb_unlock_hashes(struct tdb_context *tdb,
-		      tdb_off_t hash_lock,
-		      tdb_len_t hash_range, int ltype);
+enum TDB_ERROR tdb_lock_hashes(struct tdb_context *tdb,
+			       tdb_off_t hash_lock, tdb_len_t hash_range,
+			       int ltype, enum tdb_lock_flags waitflag);
+enum TDB_ERROR tdb_unlock_hashes(struct tdb_context *tdb,
+				 tdb_off_t hash_lock,
+				 tdb_len_t hash_range, int ltype);
 
 /* Lock/unlock a particular free bucket. */
-int tdb_lock_free_bucket(struct tdb_context *tdb, tdb_off_t b_off,
-			 enum tdb_lock_flags waitflag);
+enum TDB_ERROR tdb_lock_free_bucket(struct tdb_context *tdb, tdb_off_t b_off,
+				    enum tdb_lock_flags waitflag);
 void tdb_unlock_free_bucket(struct tdb_context *tdb, tdb_off_t b_off);
 
 /* Serialize transaction start. */
-int tdb_transaction_lock(struct tdb_context *tdb, int ltype);
-int tdb_transaction_unlock(struct tdb_context *tdb, int ltype);
+enum TDB_ERROR tdb_transaction_lock(struct tdb_context *tdb, int ltype);
+void tdb_transaction_unlock(struct tdb_context *tdb, int ltype);
 
 /* Do we have any hash locks (ie. via tdb_chainlock) ? */
 bool tdb_has_hash_locks(struct tdb_context *tdb);
 
 /* Lock entire database. */
-int tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
-		       enum tdb_lock_flags flags, bool upgradable);
-int tdb_allrecord_unlock(struct tdb_context *tdb, int ltype);
-int tdb_allrecord_upgrade(struct tdb_context *tdb);
+enum TDB_ERROR tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
+				  enum tdb_lock_flags flags, bool upgradable);
+void tdb_allrecord_unlock(struct tdb_context *tdb, int ltype);
+enum TDB_ERROR tdb_allrecord_upgrade(struct tdb_context *tdb);
 
 /* Serialize db open. */
-int tdb_lock_open(struct tdb_context *tdb, enum tdb_lock_flags flags);
+enum TDB_ERROR tdb_lock_open(struct tdb_context *tdb,
+			     enum tdb_lock_flags flags);
 void tdb_unlock_open(struct tdb_context *tdb);
 bool tdb_has_open_lock(struct tdb_context *tdb);
 
 /* Serialize db expand. */
-int tdb_lock_expand(struct tdb_context *tdb, int ltype);
+enum TDB_ERROR tdb_lock_expand(struct tdb_context *tdb, int ltype);
 void tdb_unlock_expand(struct tdb_context *tdb, int ltype);
 bool tdb_has_expansion_lock(struct tdb_context *tdb);
 
 /* If it needs recovery, grab all the locks and do it. */
-int tdb_lock_and_recover(struct tdb_context *tdb);
+enum TDB_ERROR tdb_lock_and_recover(struct tdb_context *tdb);
 
 /* transaction.c: */
 int tdb_transaction_recover(struct tdb_context *tdb);

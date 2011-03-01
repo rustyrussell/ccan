@@ -499,6 +499,8 @@ static void _tdb_transaction_cancel(struct tdb_context *tdb)
 */
 int tdb_transaction_start(struct tdb_context *tdb)
 {
+	enum TDB_ERROR ecode;
+
 	/* some sanity checks */
 	if (tdb->read_only || (tdb->flags & TDB_INTERNAL)) {
 		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
@@ -536,7 +538,9 @@ int tdb_transaction_start(struct tdb_context *tdb)
 	/* get the transaction write lock. This is a blocking lock. As
 	   discussed with Volker, there are a number of ways we could
 	   make this async, which we will probably do in the future */
-	if (tdb_transaction_lock(tdb, F_WRLCK) == -1) {
+	ecode = tdb_transaction_lock(tdb, F_WRLCK);
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		SAFE_FREE(tdb->transaction->blocks);
 		SAFE_FREE(tdb->transaction);
 		return -1;
@@ -544,7 +548,9 @@ int tdb_transaction_start(struct tdb_context *tdb)
 
 	/* get a read lock over entire file. This is upgraded to a write
 	   lock during the commit */
-	if (tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, true) == -1) {
+	ecode = tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, true);
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		goto fail_allrecord_lock;
 	}
 
@@ -853,6 +859,7 @@ static int transaction_setup_recovery(struct tdb_context *tdb,
 static int _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 {
 	const struct tdb_methods *methods;
+	enum TDB_ERROR ecode;
 
 	if (tdb->transaction == NULL) {
 		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
@@ -890,8 +897,9 @@ static int _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 	methods = tdb->transaction->io_methods;
 
 	/* upgrade the main transaction lock region to a write lock */
-	if (tdb_allrecord_upgrade(tdb) == -1) {
-		tdb_logerr(tdb, tdb->ecode, TDB_LOG_ERROR,
+	ecode = tdb_allrecord_upgrade(tdb);
+	if (ecode != TDB_SUCCESS) {
+		tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
 			 "tdb_transaction_prepare_commit:"
 			 " failed to upgrade hash locks");
 		_tdb_transaction_cancel(tdb);
@@ -900,10 +908,11 @@ static int _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 
 	/* get the open lock - this prevents new users attaching to the database
 	   during the commit */
-	if (tdb_lock_open(tdb, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK) == -1) {
-		tdb_logerr(tdb, tdb->ecode, TDB_LOG_ERROR,
-			 "tdb_transaction_prepare_commit:"
-			 " failed to get open lock");
+	ecode = tdb_lock_open(tdb, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK);
+	if (ecode != TDB_SUCCESS) {
+		tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
+			   "tdb_transaction_prepare_commit:"
+			   " failed to get open lock");
 		_tdb_transaction_cancel(tdb);
 		return -1;
 	}
