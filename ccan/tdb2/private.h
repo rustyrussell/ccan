@@ -476,16 +476,17 @@ void *tdb_access_write(struct tdb_context *tdb,
 /* Release result of tdb_access_read/write. */
 void tdb_access_release(struct tdb_context *tdb, const void *p);
 /* Commit result of tdb_acces_write. */
-int tdb_access_commit(struct tdb_context *tdb, void *p);
+enum TDB_ERROR tdb_access_commit(struct tdb_context *tdb, void *p);
 
 /* Convenience routine to get an offset. */
 tdb_off_t tdb_read_off(struct tdb_context *tdb, tdb_off_t off);
 
 /* Write an offset at an offset. */
-int tdb_write_off(struct tdb_context *tdb, tdb_off_t off, tdb_off_t val);
+enum TDB_ERROR tdb_write_off(struct tdb_context *tdb, tdb_off_t off,
+			     tdb_off_t val);
 
 /* Clear an ondisk area. */
-int zero_out(struct tdb_context *tdb, tdb_off_t off, tdb_len_t len);
+enum TDB_ERROR zero_out(struct tdb_context *tdb, tdb_off_t off, tdb_len_t len);
 
 /* Return a non-zero offset between >= start < end in this array (or end). */
 tdb_off_t tdb_find_nonzero_off(struct tdb_context *tdb,
@@ -501,12 +502,12 @@ tdb_off_t tdb_find_zero_off(struct tdb_context *tdb, tdb_off_t off,
 void *tdb_alloc_read(struct tdb_context *tdb, tdb_off_t offset, tdb_len_t len);
 
 /* Writes a converted copy of a record. */
-int tdb_write_convert(struct tdb_context *tdb, tdb_off_t off,
-		      const void *rec, size_t len);
+enum TDB_ERROR tdb_write_convert(struct tdb_context *tdb, tdb_off_t off,
+				 const void *rec, size_t len);
 
 /* Reads record and converts it */
-int tdb_read_convert(struct tdb_context *tdb, tdb_off_t off,
-		     void *rec, size_t len);
+enum TDB_ERROR tdb_read_convert(struct tdb_context *tdb, tdb_off_t off,
+				void *rec, size_t len);
 
 /* Adds a stat, if it's in range. */
 void add_stat_(struct tdb_context *tdb, uint64_t *stat, size_t val);

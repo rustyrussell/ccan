@@ -108,6 +108,7 @@ static int remove_from_list(struct tdb_context *tdb,
 			    const struct tdb_free_record *r)
 {
 	tdb_off_t off;
+	enum TDB_ERROR ecode;
 
 	/* Front of list? */
 	if (frec_prev(r) == 0) {
@@ -126,7 +127,9 @@ static int remove_from_list(struct tdb_context *tdb,
 #endif
 
 	/* r->prev->next = r->next */
-	if (tdb_write_off(tdb, off, r->next)) {
+	ecode = tdb_write_off(tdb, off, r->next);
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		return -1;
 	}
 
@@ -143,7 +146,9 @@ static int remove_from_list(struct tdb_context *tdb,
 		}
 #endif
 
-		if (tdb_write_off(tdb, off, r->magic_and_prev)) {
+		ecode = tdb_write_off(tdb, off, r->magic_and_prev);
+		if (ecode != TDB_SUCCESS) {
+			tdb->ecode = ecode;
 			return -1;
 		}
 	}
@@ -157,6 +162,7 @@ static int enqueue_in_free(struct tdb_context *tdb,
 			   tdb_len_t len)
 {
 	struct tdb_free_record new;
+	enum TDB_ERROR ecode;
 	uint64_t magic = (TDB_FREE_MAGIC << (64 - TDB_OFF_UPPER_STEAL));
 
 	/* We only need to set ftable_and_len; rest is set in enqueue_in_free */
@@ -184,17 +190,28 @@ static int enqueue_in_free(struct tdb_context *tdb,
 		}
 #endif
 		/* next->prev = new. */
-		if (tdb_write_off(tdb, new.next
-				  + offsetof(struct tdb_free_record,
-					     magic_and_prev),
-				  off | magic) != 0)
+		ecode = tdb_write_off(tdb, new.next
+				      + offsetof(struct tdb_free_record,
+						 magic_and_prev),
+				      off | magic);
+		if (ecode != TDB_SUCCESS) {
+			tdb->ecode = ecode;
 			return -1;
+		}
 	}
 	/* head = new */
-	if (tdb_write_off(tdb, b_off, off) != 0)
+	ecode = tdb_write_off(tdb, b_off, off);
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		return -1;
+	}
 
-	return tdb_write_convert(tdb, off, &new, sizeof(new));
+	ecode = tdb_write_convert(tdb, off, &new, sizeof(new));
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
+		return -1;
+	}
+	return 0;
 }
 
 /* List need not be locked. */
@@ -269,6 +286,7 @@ static int coalesce(struct tdb_context *tdb,
 {
 	tdb_off_t end;
 	struct tdb_free_record rec;
+	enum TDB_ERROR ecode;
 
 	add_stat(tdb, alloc_coalesce_tried, 1);
 	end = off + sizeof(struct tdb_used_record) + data_len;
@@ -301,7 +319,9 @@ static int coalesce(struct tdb_context *tdb,
 		}
 
 		/* Now we have lock, re-check. */
-		if (tdb_read_convert(tdb, end, &rec, sizeof(rec))) {
+		ecode = tdb_read_convert(tdb, end, &rec, sizeof(rec));
+		if (ecode != TDB_SUCCESS) {
+			tdb->ecode = ecode;
 			tdb_unlock_free_bucket(tdb, nb_off);
 			goto err;
 		}
@@ -334,8 +354,11 @@ static int coalesce(struct tdb_context *tdb,
 		return 0;
 
 	/* OK, expand initial record */
-	if (tdb_read_convert(tdb, off, &rec, sizeof(rec)))
+	ecode = tdb_read_convert(tdb, off, &rec, sizeof(rec));
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		goto err;
+	}
 
 	if (frec_len(&rec) != data_len) {
 		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
@@ -351,10 +374,13 @@ static int coalesce(struct tdb_context *tdb,
 	 * doesn't get coalesced by someone else! */
 	rec.ftable_and_len = (TDB_FTABLE_NONE << (64 - TDB_OFF_UPPER_STEAL))
 		| (end - off - sizeof(struct tdb_used_record));
-	if (tdb_write_off(tdb, off + offsetof(struct tdb_free_record,
-					      ftable_and_len),
-			  rec.ftable_and_len) != 0)
+	ecode = tdb_write_off(tdb, off + offsetof(struct tdb_free_record,
+						  ftable_and_len),
+			      rec.ftable_and_len);
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		goto err;
+	}
 
 	add_stat(tdb, alloc_coalesce_succeeded, 1);
 	tdb_unlock_free_bucket(tdb, b_off);
@@ -475,8 +501,11 @@ again:
 			       frec_len(&best) - leftover, hashlow) != 0)
 			goto unlock_err;
 
-		if (tdb_write_convert(tdb, best_off, &rec, sizeof(rec)) != 0)
+		ecode = tdb_write_convert(tdb, best_off, &rec, sizeof(rec));
+		if (ecode != TDB_SUCCESS) {
+			tdb->ecode = ecode;
 			goto unlock_err;
+		}
 
 		/* Bucket of leftover will be <= current bucket, so nested
 		 * locking is allowed. */

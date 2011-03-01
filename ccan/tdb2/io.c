@@ -174,33 +174,33 @@ uint64_t tdb_find_zero_off(struct tdb_context *tdb, tdb_off_t off,
 	return i;
 }
 
-int zero_out(struct tdb_context *tdb, tdb_off_t off, tdb_len_t len)
+enum TDB_ERROR zero_out(struct tdb_context *tdb, tdb_off_t off, tdb_len_t len)
 {
 	char buf[8192] = { 0 };
 	void *p = tdb->methods->direct(tdb, off, len, true);
-	enum TDB_ERROR ecode;
+	enum TDB_ERROR ecode = TDB_SUCCESS;
 
 	assert(!tdb->read_only);
 	if (p) {
 		memset(p, 0, len);
-		return 0;
+		return ecode;
 	}
 	while (len) {
 		unsigned todo = len < sizeof(buf) ? len : sizeof(buf);
 		ecode = tdb->methods->twrite(tdb, off, buf, todo);
 		if (ecode != TDB_SUCCESS) {
-			tdb->ecode = ecode;
-			return -1;
+			break;
 		}
 		len -= todo;
 		off += todo;
 	}
-	return 0;
+	return ecode;
 }
 
 tdb_off_t tdb_read_off(struct tdb_context *tdb, tdb_off_t off)
 {
 	tdb_off_t ret;
+	enum TDB_ERROR ecode;
 
 	if (likely(!(tdb->flags & TDB_CONVERT))) {
 		tdb_off_t *p = tdb->methods->direct(tdb, off, sizeof(*p),
@@ -209,8 +209,11 @@ tdb_off_t tdb_read_off(struct tdb_context *tdb, tdb_off_t off)
 			return *p;
 	}
 
-	if (tdb_read_convert(tdb, off, &ret, sizeof(ret)) == -1)
+	ecode = tdb_read_convert(tdb, off, &ret, sizeof(ret));
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		return TDB_OFF_ERR;
+	}
 	return ret;
 }
 
@@ -281,18 +284,17 @@ static enum TDB_ERROR tdb_read(struct tdb_context *tdb, tdb_off_t off,
 	return TDB_SUCCESS;
 }
 
-int tdb_write_convert(struct tdb_context *tdb, tdb_off_t off,
-		      const void *rec, size_t len)
+enum TDB_ERROR tdb_write_convert(struct tdb_context *tdb, tdb_off_t off,
+				 const void *rec, size_t len)
 {
 	enum TDB_ERROR ecode;
 
 	if (unlikely((tdb->flags & TDB_CONVERT))) {
 		void *conv = malloc(len);
 		if (!conv) {
-			tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
-				   "tdb_write: no memory converting"
-				   " %zu bytes", len);
-			return -1;
+			return tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
+					  "tdb_write: no memory converting"
+					  " %zu bytes", len);
 		}
 		memcpy(conv, rec, len);
 		ecode = tdb->methods->twrite(tdb, off,
@@ -301,32 +303,23 @@ int tdb_write_convert(struct tdb_context *tdb, tdb_off_t off,
 	} else {
 		ecode = tdb->methods->twrite(tdb, off, rec, len);
 	}
-
-	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return -1;
-	}
-	return 0;
+	return ecode;
 }
 
-int tdb_read_convert(struct tdb_context *tdb, tdb_off_t off,
-		      void *rec, size_t len)
+enum TDB_ERROR tdb_read_convert(struct tdb_context *tdb, tdb_off_t off,
+				void *rec, size_t len)
 {
 	enum TDB_ERROR ecode = tdb->methods->tread(tdb, off, rec, len);
 	tdb_convert(tdb, rec, len);
-	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return -1;
-	}
-	return 0;
+	return ecode;
 }
 
-int tdb_write_off(struct tdb_context *tdb, tdb_off_t off, tdb_off_t val)
+enum TDB_ERROR tdb_write_off(struct tdb_context *tdb,
+			     tdb_off_t off, tdb_off_t val)
 {
 	if (tdb->read_only) {
-		tdb_logerr(tdb, TDB_ERR_RDONLY, TDB_LOG_USE_ERROR,
-			   "Write to read-only database");
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_RDONLY, TDB_LOG_USE_ERROR,
+				  "Write to read-only database");
 	}
 
 	if (likely(!(tdb->flags & TDB_CONVERT))) {
@@ -334,7 +327,7 @@ int tdb_write_off(struct tdb_context *tdb, tdb_off_t off, tdb_off_t val)
 						    true);
 		if (p) {
 			*p = val;
-			return 0;
+			return TDB_SUCCESS;
 		}
 	}
 	return tdb_write_convert(tdb, off, &val, sizeof(val));
@@ -369,9 +362,9 @@ void *tdb_alloc_read(struct tdb_context *tdb, tdb_off_t offset, tdb_len_t len)
 	return _tdb_alloc_read(tdb, offset, len, 0);
 }
 
-static int fill(struct tdb_context *tdb,
-		const void *buf, size_t size,
-		tdb_off_t off, tdb_len_t len)
+static enum TDB_ERROR fill(struct tdb_context *tdb,
+			   const void *buf, size_t size,
+			   tdb_off_t off, tdb_len_t len)
 {
 	while (len) {
 		size_t n = len > size ? size : len;
@@ -380,16 +373,16 @@ static int fill(struct tdb_context *tdb,
 			if (ret >= 0)
 				errno = ENOSPC;
 
-			tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
-				   "fill failed: %zi at %zu len=%zu (%s)",
-				   ret, (size_t)off, (size_t)len,
-				   strerror(errno));
-			return -1;
+			return tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+					  "fill failed:"
+					  " %zi at %zu len=%zu (%s)",
+					  ret, (size_t)off, (size_t)len,
+					  strerror(errno));
 		}
 		len -= n;
 		off += n;
 	}
-	return 0;
+	return TDB_SUCCESS;
 }
 
 /* expand a file.  we prefer to use ftruncate, as that is what posix
@@ -398,6 +391,7 @@ static enum TDB_ERROR tdb_expand_file(struct tdb_context *tdb,
 				      tdb_len_t addition)
 {
 	char buf[8192];
+	enum TDB_ERROR ecode;
 
 	if (tdb->read_only) {
 		return tdb_logerr(tdb, TDB_ERR_RDONLY, TDB_LOG_USE_ERROR,
@@ -425,8 +419,9 @@ static enum TDB_ERROR tdb_expand_file(struct tdb_context *tdb,
 		   file isn't sparse, which would be very bad if we ran out of
 		   disk. This must be done with write, not via mmap */
 		memset(buf, 0x43, sizeof(buf));
-		if (fill(tdb, buf, sizeof(buf), tdb->map_size, addition) == -1)
-			return tdb->ecode;
+		ecode = fill(tdb, buf, sizeof(buf), tdb->map_size, addition);
+		if (ecode != TDB_SUCCESS)
+			return ecode;
 		tdb->map_size += addition;
 		tdb_mmap(tdb);
 	}
@@ -513,23 +508,25 @@ void tdb_access_release(struct tdb_context *tdb, const void *p)
 		tdb->direct_access--;
 }
 
-int tdb_access_commit(struct tdb_context *tdb, void *p)
+enum TDB_ERROR tdb_access_commit(struct tdb_context *tdb, void *p)
 {
 	struct tdb_access_hdr *hdr, **hp = find_hdr(tdb, p);
-	int ret = 0;
+	enum TDB_ERROR ecode;
 
 	if (hp) {
 		hdr = *hp;
 		if (hdr->convert)
-			ret = tdb_write_convert(tdb, hdr->off, p, hdr->len);
+			ecode = tdb_write_convert(tdb, hdr->off, p, hdr->len);
 		else
-			ret = tdb_write(tdb, hdr->off, p, hdr->len);
+			ecode = tdb_write(tdb, hdr->off, p, hdr->len);
 		*hp = hdr->next;
 		free(hdr);
-	} else
+	} else {
 		tdb->direct_access--;
+		ecode = TDB_SUCCESS;
+	}
 
-	return ret;
+	return ecode;
 }
 
 static void *tdb_direct(struct tdb_context *tdb, tdb_off_t off, size_t len,

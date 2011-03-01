@@ -34,9 +34,13 @@ static bool check_header(struct tdb_context *tdb, tdb_off_t *recovery)
 {
 	uint64_t hash_test;
 	struct tdb_header hdr;
+	enum TDB_ERROR ecode;
 
-	if (tdb_read_convert(tdb, 0, &hdr, sizeof(hdr)) == -1)
+	ecode = tdb_read_convert(tdb, 0, &hdr, sizeof(hdr));
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		return false;
+	}
 	/* magic food should not be converted, so convert back. */
 	tdb_convert(tdb, hdr.magic_food, sizeof(hdr.magic_food));
 
@@ -91,9 +95,13 @@ static bool check_hash_chain(struct tdb_context *tdb,
 			     void *private_data)
 {
 	struct tdb_used_record rec;
+	enum TDB_ERROR ecode;
 
-	if (tdb_read_convert(tdb, off, &rec, sizeof(rec)) == -1)
+	ecode = tdb_read_convert(tdb, off, &rec, sizeof(rec));
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		return false;
+	}
 
 	if (rec_magic(&rec) != TDB_CHAIN_MAGIC) {
 		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
@@ -148,13 +156,17 @@ static bool check_hash_record(struct tdb_context *tdb,
 			      void *private_data)
 {
 	struct tdb_used_record rec;
+	enum TDB_ERROR ecode;
 
 	if (hprefix_bits >= 64)
 		return check_hash_chain(tdb, off, hprefix, used, num_used,
 					num_found, check, private_data);
 
-	if (tdb_read_convert(tdb, off, &rec, sizeof(rec)) == -1)
+	ecode = tdb_read_convert(tdb, off, &rec, sizeof(rec));
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		return false;
+	}
 
 	if (rec_magic(&rec) != TDB_HTABLE_MAGIC) {
 		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
@@ -219,6 +231,7 @@ static bool check_hash_tree(struct tdb_context *tdb,
 	unsigned int g, b;
 	const tdb_off_t *hash;
 	struct tdb_used_record rec;
+	enum TDB_ERROR ecode;
 
 	hash = tdb_access_read(tdb, off,
 			       sizeof(tdb_off_t)
@@ -269,9 +282,12 @@ static bool check_hash_tree(struct tdb_context *tdb,
 						   (long long)hprefix);
 					goto fail;
 				}
-				if (tdb_read_convert(tdb, off, &rec,
-						     sizeof(rec)))
+				ecode = tdb_read_convert(tdb, off, &rec,
+							 sizeof(rec));
+				if (ecode != TDB_SUCCESS) {
+					tdb->ecode = ecode;
 					goto fail;
+				}
 				goto check;
 			}
 
@@ -346,8 +362,11 @@ static bool check_hash_tree(struct tdb_context *tdb,
 				}
 			}
 
-			if (tdb_read_convert(tdb, off, &rec, sizeof(rec)))
+			ecode = tdb_read_convert(tdb, off, &rec, sizeof(rec));
+			if (ecode != TDB_SUCCESS) {
+				tdb->ecode = ecode;
 				goto fail;
+			}
 
 			/* Bottom bits must match header. */
 			if ((h & ((1 << 11)-1)) != rec_hash(&rec)) {
@@ -466,9 +485,13 @@ static bool check_free_table(struct tdb_context *tdb,
 	struct tdb_freetable ft;
 	tdb_off_t h;
 	unsigned int i;
+	enum TDB_ERROR ecode;
 
-	if (tdb_read_convert(tdb, ftable_off, &ft, sizeof(ft)) == -1)
+	ecode = tdb_read_convert(tdb, ftable_off, &ft, sizeof(ft));
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		return false;
+	}
 
 	if (rec_magic(&ft.hdr) != TDB_FTABLE_MAGIC
 	    || rec_key_length(&ft.hdr) != 0
@@ -487,8 +510,11 @@ static bool check_free_table(struct tdb_context *tdb,
 		for (off = tdb_read_off(tdb, h); off; off = f.next) {
 			if (off == TDB_OFF_ERR)
 				return false;
-			if (tdb_read_convert(tdb, off, &f, sizeof(f)))
+			ecode = tdb_read_convert(tdb, off, &f, sizeof(f));
+			if (ecode != TDB_SUCCESS) {
+				tdb->ecode = ecode;
 				return false;
+			}
 			if (!check_free(tdb, off, &f, prev, ftable_num, i))
 				return false;
 
@@ -537,6 +563,7 @@ static bool check_linear(struct tdb_context *tdb,
 {
 	tdb_off_t off;
 	tdb_len_t len;
+	enum TDB_ERROR ecode;
 	bool found_recovery = false;
 
 	for (off = sizeof(struct tdb_header); off < tdb->map_size; off += len) {
@@ -546,15 +573,20 @@ static bool check_linear(struct tdb_context *tdb,
 			struct tdb_recovery_record r;
 		} rec;
 		/* r is larger: only get that if we need to. */
-		if (tdb_read_convert(tdb, off, &rec, sizeof(rec.f)) == -1)
+		ecode = tdb_read_convert(tdb, off, &rec, sizeof(rec.f));
+		if (ecode != TDB_SUCCESS) {
+			tdb->ecode = ecode;
 			return false;
+		}
 
 		/* If we crash after ftruncate, we can get zeroes or fill. */
 		if (rec.r.magic == TDB_RECOVERY_INVALID_MAGIC
 		    || rec.r.magic ==  0x4343434343434343ULL) {
-			if (tdb_read_convert(tdb, off, &rec, sizeof(rec.r)))
+			ecode = tdb_read_convert(tdb, off, &rec, sizeof(rec.r));
+			if (ecode != TDB_SUCCESS) {
+				tdb->ecode = ecode;
 				return false;
-
+			}
 			if (recovery == off) {
 				found_recovery = true;
 				len = sizeof(rec.r) + rec.r.max_len;
@@ -575,8 +607,11 @@ static bool check_linear(struct tdb_context *tdb,
 					   (size_t)tdb->map_size);
 			}
 		} else if (rec.r.magic == TDB_RECOVERY_MAGIC) {
-			if (tdb_read_convert(tdb, off, &rec, sizeof(rec.r)))
+			ecode = tdb_read_convert(tdb, off, &rec, sizeof(rec.r));
+			if (ecode != TDB_SUCCESS) {
+				tdb->ecode = ecode;
 				return false;
+			}
 			if (recovery != off) {
 				tdb_logerr(tdb, TDB_ERR_CORRUPT,
 					   TDB_LOG_ERROR,

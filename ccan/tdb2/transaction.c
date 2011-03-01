@@ -1121,8 +1121,9 @@ int tdb_transaction_recover(struct tdb_context *tdb)
 	}
 
 	/* read the recovery record */
-	if (tdb_read_convert(tdb, recovery_head, &rec, sizeof(rec)) == -1) {
-		tdb_logerr(tdb, tdb->ecode, TDB_LOG_ERROR,
+	ecode = tdb_read_convert(tdb, recovery_head, &rec, sizeof(rec));
+	if (ecode != TDB_SUCCESS) {
+		tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
 			   "tdb_transaction_recover:"
 			   " failed to read recovery record");
 		return -1;
@@ -1193,9 +1194,11 @@ int tdb_transaction_recover(struct tdb_context *tdb)
 
 	/* if the recovery area is after the recovered eof then remove it */
 	if (recovery_eof <= recovery_head) {
-		if (tdb_write_off(tdb, offsetof(struct tdb_header,recovery), 0)
-		    == -1) {
-			tdb_logerr(tdb, tdb->ecode, TDB_LOG_ERROR,
+		ecode = tdb_write_off(tdb, offsetof(struct tdb_header,
+						    recovery),
+				      0);
+		if (ecode != TDB_SUCCESS) {
+			tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
 				 "tdb_transaction_recover:"
 				 " failed to remove recovery head");
 			return -1;
@@ -1203,11 +1206,12 @@ int tdb_transaction_recover(struct tdb_context *tdb)
 	}
 
 	/* remove the recovery magic */
-	if (tdb_write_off(tdb,
-			  recovery_head
-			  + offsetof(struct tdb_recovery_record, magic),
-			  TDB_RECOVERY_INVALID_MAGIC) == -1) {
-		tdb_logerr(tdb, tdb->ecode, TDB_LOG_ERROR,
+	ecode = tdb_write_off(tdb,
+			      recovery_head
+			      + offsetof(struct tdb_recovery_record, magic),
+			      TDB_RECOVERY_INVALID_MAGIC);
+	if (ecode != TDB_SUCCESS) {
+		tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
 			 "tdb_transaction_recover:"
 			 " failed to remove recovery magic");
 		return -1;
@@ -1233,6 +1237,7 @@ bool tdb_needs_recovery(struct tdb_context *tdb)
 {
 	tdb_off_t recovery_head;
 	struct tdb_recovery_record rec;
+	enum TDB_ERROR ecode;
 
 	/* find the recovery area */
 	recovery_head = tdb_read_off(tdb, offsetof(struct tdb_header,recovery));
@@ -1246,7 +1251,9 @@ bool tdb_needs_recovery(struct tdb_context *tdb)
 	}
 
 	/* read the recovery record */
-	if (tdb_read_convert(tdb, recovery_head, &rec, sizeof(rec)) == -1) {
+	ecode = tdb_read_convert(tdb, recovery_head, &rec, sizeof(rec));
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		return true;
 	}
 

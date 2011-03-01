@@ -413,12 +413,18 @@ static int update_rec_hdr(struct tdb_context *tdb,
 			  uint64_t h)
 {
 	uint64_t dataroom = rec_data_length(rec) + rec_extra_padding(rec);
+	enum TDB_ERROR ecode;
 
 	if (set_header(tdb, rec, TDB_USED_MAGIC, keylen, datalen,
 		       keylen + dataroom, h))
 		return -1;
 
-	return tdb_write_convert(tdb, off, rec, sizeof(*rec));
+	ecode = tdb_write_convert(tdb, off, rec, sizeof(*rec));
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
+		return -1;
+	}
+	return 0;
 }
 
 /* Returns -1 on error, 0 on OK */

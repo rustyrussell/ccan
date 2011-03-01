@@ -12,11 +12,13 @@
 static tdb_len_t free_record_length(struct tdb_context *tdb, tdb_off_t off)
 {
 	struct tdb_free_record f;
+	enum TDB_ERROR ecode;
 
-	if (tdb_read_convert(tdb, off, &f, sizeof(f)) != 0)
-		return TDB_OFF_ERR;
+	ecode = tdb_read_convert(tdb, off, &f, sizeof(f));
+	if (ecode != TDB_SUCCESS)
+		return ecode;
 	if (frec_magic(&f) != TDB_FREE_MAGIC)
-		return TDB_OFF_ERR;
+		return TDB_ERR_CORRUPT;
 	return frec_len(&f);
 }
 
