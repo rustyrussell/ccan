@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 		/* Allocate a new record. */
 		new_off = alloc(tdb, key.dsize, dbuf.dsize, h.h,
 				TDB_USED_MAGIC, false);
-		ok1(new_off != TDB_OFF_ERR);
+		ok1(!TDB_OFF_IS_ERR(new_off));
 
 		/* We should be able to add it now. */
 		ok1(add_to_hash(tdb, &h, new_off) == 0);
@@ -228,7 +228,7 @@ int main(int argc, char *argv[])
 		/* Allocate a new record. */
 		new_off = alloc(tdb, key.dsize, dbuf.dsize, h.h,
 				TDB_USED_MAGIC, false);
-		ok1(new_off != TDB_OFF_ERR);
+		ok1(!TDB_OFF_IS_ERR(new_off));
 		ok1(add_to_hash(tdb, &h, new_off) == 0);
 
 		/* Make sure we fill it in for later finding. */

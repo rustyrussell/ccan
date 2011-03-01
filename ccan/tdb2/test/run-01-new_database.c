@@ -11,8 +11,8 @@
 #include "logging.h"
 
 /* FIXME: Check these! */
-#define INITIAL_TDB_MALLOC	"tdb.c", 178, FAILTEST_MALLOC
-#define LOGGING_MALLOC		"tdb.c", 734, FAILTEST_MALLOC
+#define INITIAL_TDB_MALLOC	"tdb.c", 182, FAILTEST_MALLOC
+#define LOGGING_MALLOC		"tdb.c", 792, FAILTEST_MALLOC
 #define URANDOM_OPEN		"tdb.c", 49, FAILTEST_OPEN
 #define URANDOM_READ		"tdb.c", 29, FAILTEST_READ
 

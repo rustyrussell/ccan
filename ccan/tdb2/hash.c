@@ -448,8 +448,8 @@ static enum TDB_ERROR COLD add_to_chain(struct tdb_context *tdb,
 		if (!next) {
 			next = alloc(tdb, 0, sizeof(struct tdb_chain), 0,
 				     TDB_CHAIN_MAGIC, false);
-			if (next == TDB_OFF_ERR)
-				return tdb->ecode;
+			if (TDB_OFF_IS_ERR(next))
+				return next;
 			ecode = zero_out(tdb,
 					 next+sizeof(struct tdb_used_record),
 					 sizeof(struct tdb_chain));
@@ -521,8 +521,8 @@ static enum TDB_ERROR expand_group(struct tdb_context *tdb, struct hash_info *h)
 	}
 
 	subhash = alloc(tdb, 0, subsize, 0, magic, false);
-	if (subhash == TDB_OFF_ERR) {
-		return tdb->ecode;
+	if (TDB_OFF_IS_ERR(subhash)) {
+		return subhash;
 	}
 
 	ecode = zero_out(tdb, subhash + sizeof(struct tdb_used_record),

@@ -73,7 +73,6 @@ typedef uint64_t tdb_off_t;
 #define TDB_RECOVERY_MAGIC (0xf53bc0e7ad124589ULL)
 #define TDB_RECOVERY_INVALID_MAGIC (0x0ULL)
 
-#define TDB_OFF_ERR ((tdb_off_t)-1)
 #define TDB_OFF_IS_ERR(off) unlikely(off >= (tdb_off_t)TDB_ERR_LAST)
 
 /* Packing errors into pointers and v.v. */
@@ -429,25 +428,25 @@ enum TDB_ERROR delete_from_hash(struct tdb_context *tdb, struct hash_info *h);
 bool is_subhash(tdb_off_t val);
 
 /* free.c: */
-int tdb_ftable_init(struct tdb_context *tdb);
+enum TDB_ERROR tdb_ftable_init(struct tdb_context *tdb);
 
 /* check.c needs these to iterate through free lists. */
 tdb_off_t first_ftable(struct tdb_context *tdb);
 tdb_off_t next_ftable(struct tdb_context *tdb, tdb_off_t ftable);
 
-/* This returns space or TDB_OFF_ERR. */
+/* This returns space or -ve error number. */
 tdb_off_t alloc(struct tdb_context *tdb, size_t keylen, size_t datalen,
 		uint64_t hash, unsigned magic, bool growing);
 
 /* Put this record in a free list. */
-int add_free_record(struct tdb_context *tdb,
-		    tdb_off_t off, tdb_len_t len_with_header);
+enum TDB_ERROR add_free_record(struct tdb_context *tdb,
+			       tdb_off_t off, tdb_len_t len_with_header);
 
 /* Set up header for a used/ftable/htable/chain record. */
-int set_header(struct tdb_context *tdb,
-	       struct tdb_used_record *rec,
-	       unsigned magic, uint64_t keylen, uint64_t datalen,
-	       uint64_t actuallen, unsigned hashlow);
+enum TDB_ERROR set_header(struct tdb_context *tdb,
+			  struct tdb_used_record *rec,
+			  unsigned magic, uint64_t keylen, uint64_t datalen,
+			  uint64_t actuallen, unsigned hashlow);
 
 /* Used by tdb_check to verify. */
 unsigned int size_to_bucket(tdb_len_t data_len);

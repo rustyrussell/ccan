@@ -681,9 +681,10 @@ static int tdb_recovery_allocate(struct tdb_context *tdb,
 	   the transaction) */
 	if (recovery_head != 0) {
 		add_stat(tdb, frees, 1);
-		if (add_free_record(tdb, recovery_head,
-				    sizeof(rec) + rec.max_len) != 0) {
-			tdb_logerr(tdb, tdb->ecode, TDB_LOG_ERROR,
+		ecode = add_free_record(tdb, recovery_head,
+					sizeof(rec) + rec.max_len);
+		if (ecode != TDB_SUCCESS) {
+			tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
 				   "tdb_recovery_allocate:"
 				   " failed to free previous recovery area");
 			return -1;

@@ -117,9 +117,13 @@ static int tdb_new_database(struct tdb_context *tdb,
 	/* Free is empty. */
 	newdb.hdr.free_table = offsetof(struct new_database, ftable);
 	memset(&newdb.ftable, 0, sizeof(newdb.ftable));
-	set_header(NULL, &newdb.ftable.hdr, TDB_FTABLE_MAGIC, 0,
-		   sizeof(newdb.ftable) - sizeof(newdb.ftable.hdr),
-		   sizeof(newdb.ftable) - sizeof(newdb.ftable.hdr), 0);
+	tdb->ecode = set_header(NULL, &newdb.ftable.hdr, TDB_FTABLE_MAGIC, 0,
+				sizeof(newdb.ftable) - sizeof(newdb.ftable.hdr),
+				sizeof(newdb.ftable) - sizeof(newdb.ftable.hdr),
+				0);
+	if (tdb->ecode != TDB_SUCCESS) {
+		return -1;
+	}
 
 	/* Magic food */
 	memset(newdb.hdr.magic_food, 0, sizeof(newdb.hdr.magic_food));
@@ -354,8 +358,10 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		}
 	}
 
-	if (tdb_ftable_init(tdb) == -1)
+	tdb->ecode = tdb_ftable_init(tdb);
+	if (tdb->ecode != TDB_SUCCESS) {
 		goto fail;
+	}
 
 	tdb->next = tdbs;
 	tdbs = tdb;
@@ -415,9 +421,12 @@ static int update_rec_hdr(struct tdb_context *tdb,
 	uint64_t dataroom = rec_data_length(rec) + rec_extra_padding(rec);
 	enum TDB_ERROR ecode;
 
-	if (set_header(tdb, rec, TDB_USED_MAGIC, keylen, datalen,
-		       keylen + dataroom, h))
+	ecode = set_header(tdb, rec, TDB_USED_MAGIC, keylen, datalen,
+			   keylen + dataroom, h);
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		return -1;
+	}
 
 	ecode = tdb_write_convert(tdb, off, rec, sizeof(*rec));
 	if (ecode != TDB_SUCCESS) {
@@ -440,16 +449,19 @@ static int replace_data(struct tdb_context *tdb,
 	/* Allocate a new record. */
 	new_off = alloc(tdb, key.dsize, dbuf.dsize, h->h, TDB_USED_MAGIC,
 			growing);
-	if (unlikely(new_off == TDB_OFF_ERR))
+	if (TDB_OFF_IS_ERR(new_off)) {
+		tdb->ecode = new_off;
 		return -1;
+	}
 
 	/* We didn't like the existing one: remove it. */
 	if (old_off) {
 		add_stat(tdb, frees, 1);
-		add_free_record(tdb, old_off,
-				sizeof(struct tdb_used_record)
-				+ key.dsize + old_room);
-		ecode = replace_in_hash(tdb, h, new_off);
+		ecode = add_free_record(tdb, old_off,
+					sizeof(struct tdb_used_record)
+					+ key.dsize + old_room);
+		if (ecode == TDB_SUCCESS)
+			ecode = replace_in_hash(tdb, h, new_off);
 	} else {
 		ecode = add_to_hash(tdb, h, new_off);
 	}
@@ -676,12 +688,15 @@ int tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 
 	/* Free the deleted entry. */
 	add_stat(tdb, frees, 1);
-	if (add_free_record(tdb, off,
-			    sizeof(struct tdb_used_record)
-			    + rec_key_length(&rec)
-			    + rec_data_length(&rec)
-			    + rec_extra_padding(&rec)) != 0)
+	ecode = add_free_record(tdb, off,
+				sizeof(struct tdb_used_record)
+				+ rec_key_length(&rec)
+				+ rec_data_length(&rec)
+				+ rec_extra_padding(&rec));
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		goto unlock_err;
+	}
 
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
 	return 0;
