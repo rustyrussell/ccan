@@ -38,6 +38,14 @@ struct test {
 static struct test tests[] = {
 	{ "HAVE_ALIGNOF", INSIDE_MAIN, NULL,
 	  "return __alignof__(double) > 0 ? 0 : 1;" },
+	{ "HAVE_ASPRINTF", DEFINES_FUNC, NULL,
+	  "#define _GNU_SOURCE\n"
+	  "#include <stdio.h>\n"
+	  "static char *func(int x) {"
+	  "	char *p;\n"
+	  "	if (asprintf(&p, \"%u\", x) == -1) p = NULL;"
+	  "	return p;\n"
+	  "}" },
 	{ "HAVE_ATTRIBUTE_COLD", DEFINES_FUNC, NULL,
 	  "static int __attribute__((cold)) func(int x) { return x; }" },
 	{ "HAVE_ATTRIBUTE_CONST", DEFINES_FUNC, NULL,

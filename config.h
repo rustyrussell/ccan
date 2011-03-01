@@ -6,6 +6,7 @@
 #define CCAN_CFLAGS "-g -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations"
 
 #define HAVE_ALIGNOF 1
+#define HAVE_ASPRINTF 1
 #define HAVE_ATTRIBUTE_COLD 1
 #define HAVE_ATTRIBUTE_CONST 1
 #define HAVE_ATTRIBUTE_MAY_ALIAS 1
