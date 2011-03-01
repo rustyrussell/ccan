@@ -124,29 +124,27 @@ static int fcntl_unlock(struct tdb_context *tdb, int rw, off_t off, off_t len)
 
    note that a len of zero means lock to end of file
 */
-static int tdb_brlock(struct tdb_context *tdb,
-		      int rw_type, tdb_off_t offset, tdb_off_t len,
-		      enum tdb_lock_flags flags)
+static enum TDB_ERROR tdb_brlock(struct tdb_context *tdb,
+				 int rw_type, tdb_off_t offset, tdb_off_t len,
+				 enum tdb_lock_flags flags)
 {
 	int ret;
 
 	if (tdb->flags & TDB_NOLOCK) {
-		return 0;
+		return TDB_SUCCESS;
 	}
 
 	if (rw_type == F_WRLCK && tdb->read_only) {
-		tdb_logerr(tdb, TDB_ERR_RDONLY, TDB_LOG_USE_ERROR,
-			   "Write lock attempted on read-only database");
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_RDONLY, TDB_LOG_USE_ERROR,
+				  "Write lock attempted on read-only database");
 	}
 
 	/* A 32 bit system cannot open a 64-bit file, but it could have
 	 * expanded since then: check here. */
 	if ((size_t)(offset + len) != offset + len) {
-		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
-			 "tdb_brlock: lock on giant offset %llu",
-			 (long long)(offset + len));
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+				  "tdb_brlock: lock on giant offset %llu",
+				  (long long)(offset + len));
 	}
 
 	do {
@@ -155,7 +153,6 @@ static int tdb_brlock(struct tdb_context *tdb,
 	} while (ret == -1 && errno == EINTR);
 
 	if (ret == -1) {
-		tdb->ecode = TDB_ERR_LOCK;
 		/* Generic lock error. errno set by fcntl.
 		 * EAGAIN is an expected return from non-blocking
 		 * locks. */
@@ -167,18 +164,18 @@ static int tdb_brlock(struct tdb_context *tdb,
 				   tdb->fd, (size_t)offset, rw_type,
 				   flags, (size_t)len, strerror(errno));
 		}
-		return -1;
+		return TDB_ERR_LOCK;
 	}
-	return 0;
+	return TDB_SUCCESS;
 }
 
-static int tdb_brunlock(struct tdb_context *tdb,
-			int rw_type, tdb_off_t offset, size_t len)
+static enum TDB_ERROR tdb_brunlock(struct tdb_context *tdb,
+				   int rw_type, tdb_off_t offset, size_t len)
 {
 	int ret;
 
 	if (tdb->flags & TDB_NOLOCK) {
-		return 0;
+		return TDB_SUCCESS;
 	}
 
 	do {
@@ -186,12 +183,13 @@ static int tdb_brunlock(struct tdb_context *tdb,
 	} while (ret == -1 && errno == EINTR);
 
 	if (ret == -1) {
-		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
-			   "tdb_brunlock failed (fd=%d) at offset %zu"
-			   " rw_type=%d len=%zu",
-			   tdb->fd, (size_t)offset, rw_type, (size_t)len);
+		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
+				  "tdb_brunlock failed (fd=%d) at offset %zu"
+				  " rw_type=%d len=%zu",
+				  tdb->fd, (size_t)offset, rw_type,
+				  (size_t)len);
 	}
-	return ret;
+	return TDB_SUCCESS;
 }
 
 /*
@@ -221,7 +219,7 @@ int tdb_allrecord_upgrade(struct tdb_context *tdb)
 		struct timeval tv;
 		if (tdb_brlock(tdb, F_WRLCK,
 			       TDB_HASH_LOCK_START, 0,
-			       TDB_LOCK_WAIT|TDB_LOCK_PROBE) == 0) {
+			       TDB_LOCK_WAIT|TDB_LOCK_PROBE) == TDB_SUCCESS) {
 			tdb->allrecord_lock.ltype = F_WRLCK;
 			tdb->allrecord_lock.off = 0;
 			return 0;
@@ -278,6 +276,7 @@ static int tdb_nest_lock(struct tdb_context *tdb, tdb_off_t offset, int ltype,
 			 enum tdb_lock_flags flags)
 {
 	struct tdb_lock_type *new_lck;
+	enum TDB_ERROR ecode;
 
 	if (offset > TDB_HASH_LOCK_START + TDB_HASH_LOCK_RANGE + tdb->map_size / 8) {
 		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
@@ -326,7 +325,9 @@ static int tdb_nest_lock(struct tdb_context *tdb, tdb_off_t offset, int ltype,
 
 	/* Since fcntl locks don't nest, we do a lock for the first one,
 	   and simply bump the count for future ones */
-	if (tdb_brlock(tdb, ltype, offset, 1, flags)) {
+	ecode = tdb_brlock(tdb, ltype, offset, 1, flags);
+	if (ecode) {
+		tdb->ecode = ecode;
 		return -1;
 	}
 
@@ -340,7 +341,9 @@ static int tdb_nest_lock(struct tdb_context *tdb, tdb_off_t offset, int ltype,
 			return -1;
 		}
 
-		if (tdb_brlock(tdb, ltype, offset, 1, flags)) {
+		ecode = tdb_brlock(tdb, ltype, offset, 1, flags);
+		if (ecode != TDB_SUCCESS) {
+			tdb->ecode = ecode;
 			return -1;
 		}
 	}
@@ -355,8 +358,8 @@ static int tdb_nest_lock(struct tdb_context *tdb, tdb_off_t offset, int ltype,
 
 static int tdb_nest_unlock(struct tdb_context *tdb, tdb_off_t off, int ltype)
 {
-	int ret = -1;
 	struct tdb_lock_type *lck;
+	enum TDB_ERROR ecode;
 
 	if (tdb->flags & TDB_NOLOCK)
 		return 0;
@@ -379,7 +382,7 @@ static int tdb_nest_unlock(struct tdb_context *tdb, tdb_off_t off, int ltype)
 	 * element, we're about to overwrite it with the last array element
 	 * anyway.
 	 */
-	ret = tdb_brunlock(tdb, ltype, off, 1);
+	ecode = tdb_brunlock(tdb, ltype, off, 1);
 
 	/*
 	 * Shrink the array by overwriting the element just unlocked with the
@@ -387,7 +390,11 @@ static int tdb_nest_unlock(struct tdb_context *tdb, tdb_off_t off, int ltype)
 	 */
 	*lck = tdb->lockrecs[--tdb->num_lockrecs];
 
-	return ret;
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
+		return -1;
+	}
+	return 0;
 }
 
 /*
@@ -408,11 +415,11 @@ int tdb_transaction_unlock(struct tdb_context *tdb, int ltype)
 
 /* We only need to lock individual bytes, but Linux merges consecutive locks
  * so we lock in contiguous ranges. */
-static int tdb_lock_gradual(struct tdb_context *tdb,
-			    int ltype, enum tdb_lock_flags flags,
-			    tdb_off_t off, tdb_off_t len)
+static enum TDB_ERROR tdb_lock_gradual(struct tdb_context *tdb,
+				       int ltype, enum tdb_lock_flags flags,
+				       tdb_off_t off, tdb_off_t len)
 {
-	int ret;
+	enum TDB_ERROR ecode;
 	enum tdb_lock_flags nb_flags = (flags & ~TDB_LOCK_WAIT);
 
 	if (len <= 1) {
@@ -423,23 +430,21 @@ static int tdb_lock_gradual(struct tdb_context *tdb,
 	}
 
 	/* First we try non-blocking. */
-	ret = tdb_brlock(tdb, ltype, off, len, nb_flags);
-	if (ret == 0) {
-		return 0;
+	if (tdb_brlock(tdb, ltype, off, len, nb_flags) == TDB_SUCCESS) {
+		return TDB_SUCCESS;
 	}
 
 	/* Try locking first half, then second. */
-	ret = tdb_lock_gradual(tdb, ltype, flags, off, len / 2);
-	if (ret == -1)
-		return -1;
+	ecode = tdb_lock_gradual(tdb, ltype, flags, off, len / 2);
+	if (ecode != TDB_SUCCESS)
+		return ecode;
 
-	ret = tdb_lock_gradual(tdb, ltype, flags,
-				    off + len / 2, len - len / 2);
-	if (ret == -1) {
+	ecode = tdb_lock_gradual(tdb, ltype, flags,
+				 off + len / 2, len - len / 2);
+	if (ecode != TDB_SUCCESS) {
 		tdb_brunlock(tdb, ltype, off, len / 2);
-		return -1;
 	}
-	return 0;
+	return ecode;
 }
 
 /* lock/unlock entire database.  It can only be upgradable if you have some
@@ -447,6 +452,8 @@ static int tdb_lock_gradual(struct tdb_context *tdb,
 int tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
 		       enum tdb_lock_flags flags, bool upgradable)
 {
+	enum TDB_ERROR ecode;
+
 	/* FIXME: There are no locks on read-only dbs */
 	if (tdb->read_only) {
 		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_USE_ERROR,
@@ -486,8 +493,10 @@ int tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
 	add_stat(tdb, locks, 1);
 again:
 	/* Lock hashes, gradually. */
-	if (tdb_lock_gradual(tdb, ltype, flags, TDB_HASH_LOCK_START,
-			     TDB_HASH_LOCK_RANGE)) {
+	ecode = tdb_lock_gradual(tdb, ltype, flags, TDB_HASH_LOCK_START,
+				 TDB_HASH_LOCK_RANGE);
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		if (!(flags & TDB_LOCK_PROBE)) {
 			tdb_logerr(tdb, tdb->ecode, TDB_LOG_ERROR,
 				   "tdb_allrecord_lock hashes failed");
@@ -496,8 +505,11 @@ again:
 	}
 
 	/* Lock free tables: there to end of file. */
-	if (tdb_brlock(tdb, ltype, TDB_HASH_LOCK_START + TDB_HASH_LOCK_RANGE,
-		       0, flags)) {
+	ecode = tdb_brlock(tdb, ltype,
+			   TDB_HASH_LOCK_START + TDB_HASH_LOCK_RANGE,
+			   0, flags);
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		if (!(flags & TDB_LOCK_PROBE)) {
 			tdb_logerr(tdb, tdb->ecode, TDB_LOG_ERROR,
 				 "tdb_allrecord_lock freetables failed");
