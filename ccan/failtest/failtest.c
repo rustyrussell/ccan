@@ -1,3 +1,4 @@
+#include "config.h"
 #include <stdarg.h>
 #include <string.h>
 #include <stdio.h>
@@ -142,11 +143,23 @@ static void child_fail(const char *out, size_t outlen, const char *fmt, ...)
 	exit(1);
 }
 
+static void trace(const char *fmt, ...)
+{
+	va_list ap;
+
+	if (tracefd == -1)
+		return;
+
+	va_start(ap, fmt);
+	vdprintf(tracefd, fmt, ap);
+	va_end(ap);
+}
+
 static pid_t child;
 
-static void hand_down(int signal)
+static void hand_down(int signum)
 {
-	kill(child, signal);
+	kill(child, signum);
 }
 
 static void release_locks(void)
@@ -213,18 +226,6 @@ static void get_locks(void)
 			abort();
 	}
 	lock_owner = getpid();
-}
-
-static void trace_str(const char *str)
-{
-	ssize_t ret;
-
-	while ((ret = write(tracefd, str, strlen(str))) > 0) {
-		str += ret;
-		if (!*str)
-			return;
-	}
-	err(1, "Writing trace.");
 }
 
 struct saved_file {
@@ -429,7 +430,7 @@ static bool should_fail(struct failtest_call *call)
 	if (child == 0) {
 		if (tracefd != -1) {
 			struct timeval now;
-			char str[50], *p;
+			char *p;
 			gettimeofday(&now, NULL);
 			if (now.tv_usec < start.tv_usec) {
 				now.tv_sec--;
@@ -437,20 +438,16 @@ static bool should_fail(struct failtest_call *call)
 			}
 			now.tv_usec -= start.tv_usec;
 			now.tv_sec -= start.tv_sec;
-			sprintf(str, "%u (%u.%02u): ", getpid(),
-				(int)now.tv_sec, (int)now.tv_usec / 10000);
-			trace_str(str);
 			p = failpath_string();
-			trace_str(p);
+			trace("%u->%u (%u.%02u): %s (", getppid(), getpid(),
+			      (int)now.tv_sec, (int)now.tv_usec / 10000, p);
 			free(p);
-			trace_str("(");
-			p = strchr(history[history_num-1].file, '/');
+			p = strrchr(history[history_num-1].file, '/');
 			if (p)
-				trace_str(p+1);
+				trace("%s", p+1);
 			else
-				trace_str(history[history_num-1].file);
-			sprintf(str, ":%u)\n", history[history_num-1].line);
-			trace_str(str);
+				trace("%s", history[history_num-1].file);
+			trace(":%u)\n", history[history_num-1].line);
 		}
 		close(control[0]);
 		close(output[0]);
