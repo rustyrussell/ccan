@@ -97,6 +97,24 @@ typedef struct tdb_data {
 } TDB_DATA;
 
 /**
+ * enum TDB_ERROR - error returns for TDB
+ *
+ * See Also:
+ *	tdb_errorstr()
+ */
+enum TDB_ERROR {
+	TDB_SUCCESS	= 0,	/* No error. */
+	TDB_ERR_CORRUPT = -1,	/* We read the db, and it was bogus. */
+	TDB_ERR_IO	= -2,	/* We couldn't read/write the db. */
+	TDB_ERR_LOCK	= -3,	/* Locking failed. */
+	TDB_ERR_OOM	= -4,	/* Out of Memory. */
+	TDB_ERR_EXISTS	= -5,	/* The key already exists. */
+	TDB_ERR_NOEXIST	= -6,	/* The key does not exist. */
+	TDB_ERR_EINVAL	= -7,	/* You're using it wrong. */
+	TDB_ERR_RDONLY	= -8	/* The database is read-only. */
+};
+
+/**
  * tdb_store - store a key/value pair in a tdb.
  * @tdb: the tdb context returned from tdb_open()
  * @key: the key
@@ -142,17 +160,6 @@ struct tdb_data tdb_fetch(struct tdb_context *tdb, struct tdb_data key);
  * See Also:
  *	tdb_error(), tdb_errorstr()
  */
-enum TDB_ERROR {
-	TDB_SUCCESS=0,		/* No error. */
-	TDB_ERR_CORRUPT,	/* We read the db, and it was bogus. */
-	TDB_ERR_IO,		/* We couldn't read/write the db. */
-	TDB_ERR_LOCK,		/* Locking failed. */
-	TDB_ERR_OOM,		/* Out of Memory. */
-	TDB_ERR_EXISTS,		/* The key already exists. */
-	TDB_ERR_NOEXIST,	/* The key does not exist. */
-	TDB_ERR_EINVAL,		/* You're using it wrong. */
-	TDB_ERR_RDONLY		/* The database is read-only. */
-};
 
 /**
  * tdb_error - fetch the last error value from the tdb.

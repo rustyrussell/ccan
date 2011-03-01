@@ -11,13 +11,13 @@ int main(int argc, char *argv[])
 {
 	struct tdb_context *tdb;
 
-	plan_tests(1 + TDB_ERR_RDONLY + 2);
+	plan_tests(1 + TDB_ERR_RDONLY*-1 + 2);
 	tdb = tdb_open("run-tdb_errorstr.tdb", TDB_DEFAULT,
 		       O_RDWR|O_CREAT|O_TRUNC, 0600, NULL);
 	ok1(tdb);
 	if (tdb) {
 		enum TDB_ERROR err;
-		for (err = TDB_SUCCESS; err <= TDB_ERR_RDONLY; err++) {
+		for (err = TDB_SUCCESS; err >= TDB_ERR_RDONLY; err--) {
 			tdb->ecode = err;
 			switch (err) {
 			case TDB_SUCCESS:
