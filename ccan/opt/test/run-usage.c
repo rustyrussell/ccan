@@ -1,4 +1,3 @@
-#define _GNU_SOURCE
 #include <ccan/tap/tap.h>
 #include <stdarg.h>
 #include <setjmp.h>

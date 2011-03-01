@@ -1,4 +1,4 @@
-#define _GNU_SOURCE
+#include "config.h"
 #include <ccan/tap/tap.h>
 #include <stdarg.h>
 #include <stdlib.h>
