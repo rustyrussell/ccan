@@ -338,7 +338,7 @@ struct tdb_context {
 	void *log_private;
 
 	/* Hash function. */
-	tdb_hashfn_t khash;
+	uint64_t (*khash)(const void *key, size_t len, uint64_t seed, void *);
 	void *hash_priv;
 	uint64_t hash_seed;
 

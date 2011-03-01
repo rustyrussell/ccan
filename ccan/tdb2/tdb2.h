@@ -78,8 +78,6 @@ struct tdb_context;
 
 /* FIXME: Make typesafe */
 typedef int (*tdb_traverse_func)(struct tdb_context *, TDB_DATA, TDB_DATA, void *);
-typedef uint64_t (*tdb_hashfn_t)(const void *key, size_t len, uint64_t seed,
-				 void *priv);
 
 enum tdb_attribute_type {
 	TDB_ATTRIBUTE_LOG = 0,
@@ -104,7 +102,8 @@ struct tdb_attribute_log {
 
 struct tdb_attribute_hash {
 	struct tdb_attribute_base base; /* .attr = TDB_ATTRIBUTE_HASH */
-	tdb_hashfn_t hash_fn;
+	uint64_t (*hash_fn)(const void *key, size_t len, uint64_t seed,
+			    void *priv);
 	void *hash_private;
 };
 
