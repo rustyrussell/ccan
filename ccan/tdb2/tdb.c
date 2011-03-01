@@ -737,8 +737,9 @@ void COLD tdb_logerr(struct tdb_context *tdb,
 
 	message = malloc(len + 1);
 	if (!message) {
-		tdb->logfn(tdb, level, tdb->log_private,
-			   "out of memory formatting message");
+		tdb->logfn(tdb, TDB_DEBUG_ERROR, tdb->log_private,
+			   "out of memory formatting message:");
+		tdb->logfn(tdb, level, tdb->log_private, fmt);
 		return;
 	}
 	va_start(ap, fmt);
