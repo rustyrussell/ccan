@@ -698,7 +698,13 @@ Status
 \end_layout
 
 \begin_layout Standard
+
+\change_deleted 0 1298979572
 Incomplete; nesting flag is still defined as per tdb1.
+\change_inserted 0 1298979584
+Complete; the nesting flag has been removed.
+\change_unchanged
+
 \end_layout
 
 \begin_layout Subsection
@@ -870,14 +876,32 @@ Proposed Solution
 
 \begin_layout Standard
 Reachitecting the API to include a tdb_errcode pointer would be a great
- deal of churn; we are better to guarantee that the tdb_errcode is per-thread
- so the current programming model can be maintained.
+ deal of churn
+\change_inserted 0 1298979557
+, but fortunately most functions return 0 on success and -1 on error: we
+ can change these to return 0 on success and a negative error code on error,
+ and the API remains similar to previous.
+ The tdb_fetch, tdb_firstkey and tdb_nextkey functions need to take a TDB_DATA
+ pointer and return an error code.
+ It is also simpler to have tdb_nextkey replace its key argument in place,
+ freeing up any old .dptr.
 \end_layout
 
 \begin_layout Standard
+
+\change_deleted 0 1298979438
+; we are better to guarantee that the tdb_errcode is per-thread so the current
+ programming model can be maintained.
+\end_layout
+
+\begin_layout Standard
+
+\change_deleted 0 1298979438
 This requires dynamic per-thread allocations, which is awkward with POSIX
  threads (pthread_key_create space is limited and we cannot simply allocate
  a key for every TDB).
+\change_unchanged
+
 \end_layout
 
 \begin_layout Standard
@@ -903,7 +927,13 @@ Status
 \end_layout
 
 \begin_layout Standard
-Incomplete.
+Incomplete
+\change_inserted 0 1298979681
+; API has been changed but thread safety has not been implemented.
+\change_deleted 0 1298979669
+.
+\change_unchanged
+
 \end_layout
 
 \begin_layout Subsection
@@ -1291,7 +1321,13 @@ Status
 \end_layout
 
 \begin_layout Standard
+
+\change_deleted 0 1298979699
 Incomplete, TDB_CLEAR_IF_FIRST still defined, but not implemented.
+\change_inserted 0 1298979700
+Complete.
+\change_unchanged
+
 \end_layout
 
 \begin_layout Subsection
@@ -1497,7 +1533,13 @@ Status
 \end_layout
 
 \begin_layout Standard
+
+\change_deleted 0 1298979837
 Incomplete; TDB_CLEAR_IF_FIRST still defined, but does nothing.
+\change_inserted 0 1298979837
+Complete.
+\change_unchanged
+
 \end_layout
 
 \begin_layout Subsection

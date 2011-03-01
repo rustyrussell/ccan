@@ -6,7 +6,7 @@ comment	@# @;
 
 
 1.13
-date	2010.12.01.12.22.08;	author rusty;	state Exp;
+date	2011.03.01.11.46.54;	author rusty;	state Exp;
 branches;
 next	1.12;
 
@@ -78,7 +78,7 @@ desc
 
 1.13
 log
-@Merged changes.
+@Thread-safe API
 @
 text
 @#LyX 1.6.7 created this file. For more info see http://www.lyx.org/
@@ -781,7 +781,13 @@ Status
 \end_layout
 
 \begin_layout Standard
+
+\change_deleted 0 1298979572
 Incomplete; nesting flag is still defined as per tdb1.
+\change_inserted 0 1298979584
+Complete; the nesting flag has been removed.
+\change_unchanged
+
 \end_layout
 
 \begin_layout Subsection
@@ -953,14 +959,32 @@ Proposed Solution
 
 \begin_layout Standard
 Reachitecting the API to include a tdb_errcode pointer would be a great
- deal of churn; we are better to guarantee that the tdb_errcode is per-thread
- so the current programming model can be maintained.
+ deal of churn
+\change_inserted 0 1298979557
+, but fortunately most functions return 0 on success and -1 on error: we
+ can change these to return 0 on success and a negative error code on error,
+ and the API remains similar to previous.
+ The tdb_fetch, tdb_firstkey and tdb_nextkey functions need to take a TDB_DATA
+ pointer and return an error code.
+ It is also simpler to have tdb_nextkey replace its key argument in place,
+ freeing up any old .dptr.
 \end_layout
 
 \begin_layout Standard
+
+\change_deleted 0 1298979438
+; we are better to guarantee that the tdb_errcode is per-thread so the current
+ programming model can be maintained.
+\end_layout
+
+\begin_layout Standard
+
+\change_deleted 0 1298979438
 This requires dynamic per-thread allocations, which is awkward with POSIX
  threads (pthread_key_create space is limited and we cannot simply allocate
  a key for every TDB).
+\change_unchanged
+
 \end_layout
 
 \begin_layout Standard
@@ -986,7 +1010,13 @@ Status
 \end_layout
 
 \begin_layout Standard
-Incomplete.
+Incomplete
+\change_inserted 0 1298979681
+; API has been changed but thread safety has not been implemented.
+\change_deleted 0 1298979669
+.
+\change_unchanged
+
 \end_layout
 
 \begin_layout Subsection
@@ -1374,7 +1404,13 @@ Status
 \end_layout
 
 \begin_layout Standard
+
+\change_deleted 0 1298979699
 Incomplete, TDB_CLEAR_IF_FIRST still defined, but not implemented.
+\change_inserted 0 1298979700
+Complete.
+\change_unchanged
+
 \end_layout
 
 \begin_layout Subsection
@@ -1580,7 +1616,13 @@ Status
 \end_layout
 
 \begin_layout Standard
+
+\change_deleted 0 1298979837
 Incomplete; TDB_CLEAR_IF_FIRST still defined, but does nothing.
+\change_inserted 0 1298979837
+Complete.
+\change_unchanged
+
 \end_layout
 
 \begin_layout Subsection
@@ -2822,211 +2864,210 @@ a693 2
 a696 2
 
 \change_inserted 0 1291204640
-a700 2
-
+d702 1
+a702 1
 \change_inserted 0 1291204665
-a701 2
-\change_unchanged
-
-a722 2
+d704 2
+a728 2
 \change_inserted 0 1291204671
 
-a725 2
+a731 2
 
 \change_inserted 0 1291204671
-a729 2
+a735 2
 
 \change_inserted 0 1291204673
-a730 2
+a736 2
 \change_unchanged
 
-a774 2
+a780 2
 \change_inserted 0 1291204731
 
-a777 2
+a783 2
 
 \change_inserted 0 1291204732
-a781 2
+a787 2
 
 \change_inserted 0 1291204779
-a784 2
+a790 2
 \change_unchanged
 
-a836 2
+a842 2
 \change_inserted 0 1291204830
 
-a839 2
+a845 2
 
 \change_inserted 0 1291204831
-a843 2
+a849 2
 
 \change_inserted 0 1291204834
-a844 2
+a850 2
 \change_unchanged
 
-a898 2
+d879 9
+a887 2
+ deal of churn; we are better to guarantee that the tdb_errcode is per-thread
+ so the current programming model can be maintained.
+d891 9
+d903 2
+a922 2
 \change_inserted 0 1291204847
 
-a901 2
+a925 2
 
 \change_inserted 0 1291204847
-a905 2
+d930 5
+a934 3
 
 \change_inserted 0 1291204852
-a906 2
-\change_unchanged
-
-a1021 2
+Incomplete.
+a1051 2
 \change_inserted 0 1291204881
 
-a1024 2
+a1054 2
 
 \change_inserted 0 1291204881
-a1028 2
+a1058 2
 
 \change_inserted 0 1291204885
-a1029 2
+a1059 2
 \change_unchanged
 
-a1110 2
+a1140 2
 \change_inserted 0 1291204898
 
-a1113 2
+a1143 2
 
 \change_inserted 0 1291204898
-a1117 2
+a1147 2
 
 \change_inserted 0 1291204901
-a1118 2
+a1148 2
 \change_unchanged
 
-a1194 2
+a1224 2
 \change_inserted 0 1291204908
 
-a1197 2
+a1227 2
 
 \change_inserted 0 1291204908
-a1201 2
+a1231 2
 
 \change_inserted 0 1291204908
-a1202 2
+a1232 2
 \change_unchanged
 
-a1241 2
+a1271 2
 \change_inserted 0 1291204917
 
-a1244 2
+a1274 2
 
 \change_inserted 0 1291204917
-a1248 2
+a1278 2
 
 \change_inserted 0 1291204920
-a1249 2
+a1279 2
 \change_unchanged
 
-a1286 2
+a1316 2
 \change_inserted 0 1291204927
 
-a1289 2
+a1319 2
 
 \change_inserted 0 1291204928
-a1293 2
-
+d1325 1
+a1325 1
 \change_inserted 0 1291204942
-a1294 2
-\change_unchanged
-
-a1345 2
+d1327 2
+a1381 2
 \change_inserted 0 1291205003
 
-a1348 2
+a1384 2
 
 \change_inserted 0 1291205004
-a1352 2
+a1388 2
 
 \change_inserted 0 1291205007
-a1375 2
+a1411 2
 \change_inserted 0 1291205019
 
-a1378 2
+a1414 2
 
 \change_inserted 0 1291205019
-a1382 2
+a1418 2
 
 \change_inserted 0 1291205023
-a1383 2
+a1419 2
 \change_unchanged
 
-a1429 2
+a1465 2
 \change_inserted 0 1291205029
 
-a1432 2
+a1468 2
 
 \change_inserted 0 1291205029
-a1436 2
+a1472 2
 
 \change_inserted 0 1291206020
-a1437 2
+a1473 2
 \change_unchanged
 
-a1492 2
+a1528 2
 \change_inserted 0 1291205043
 
-a1495 2
+a1531 2
 
 \change_inserted 0 1291205043
-a1499 2
-
+d1537 1
+a1537 1
 \change_inserted 0 1291205057
-a1500 2
+d1539 2
+a1589 2
+\change_inserted 0 1291205062
+
+a1592 2
+
+\change_inserted 0 1291205062
+a1596 2
+
+\change_inserted 0 1291205062
+a1597 2
 \change_unchanged
 
-a1547 2
-\change_inserted 0 1291205062
-
-a1550 2
-
-\change_inserted 0 1291205062
-a1554 2
-
-\change_inserted 0 1291205062
-a1555 2
-\change_unchanged
-
-a1584 2
+a1626 2
 \change_inserted 0 1291205072
 
-a1587 2
+a1629 2
 
 \change_inserted 0 1291205073
-a1591 2
+a1633 2
 
 \change_inserted 0 1291205073
-a1592 2
+a1634 2
 \change_unchanged
 
-a1632 4
+a1674 4
 
 \change_deleted 0 1291204504
  
 \change_unchanged
-a1657 2
+a1699 2
 \change_inserted 0 1291205079
 
-a1660 2
+a1702 2
 
 \change_inserted 0 1291205080
-a1664 2
+a1706 2
 
 \change_inserted 0 1291205080
-a1665 2
+a1707 2
 \change_unchanged
 
-a1791 2
+a1833 2
 \change_inserted 0 1291205090
 
-d1827 2
-a1828 7
+d1869 2
+a1870 7
  is to divide the file into zones, and using a free list (or 
 \change_inserted 0 1291205498
 table
@@ -3034,13 +3075,13 @@ table
 set
 \change_unchanged
  of free lists) for each.
-a1829 2
+a1871 2
 \change_inserted 0 1291205203
 
-a1832 2
+a1874 2
 
 \change_inserted 0 1291205358
-a1848 21
+a1890 21
 \change_unchanged
 
 \end_layout
@@ -3062,8 +3103,8 @@ reshuffling the free lists is trivial: we simply merge every consecutive
  pair of free lists.
 \change_unchanged
 
-d1857 1
-a1857 7
+d1899 1
+a1899 7
 Identify the correct 
 \change_inserted 0 1291205366
 free list
@@ -3071,8 +3112,8 @@ free list
 zone
 \change_unchanged
 .
-d1865 2
-a1866 7
+d1907 2
+a1908 7
 Re-check the 
 \change_inserted 0 1291205372
 list
@@ -3080,15 +3121,15 @@ list
 zone
 \change_unchanged
  (we didn't have a lock, sizes could have changed): relock if necessary.
-d1870 1
-a1870 5
+d1912 1
+a1912 5
 Place the freed entry in the list
 \change_deleted 0 1291205382
  for that zone
 \change_unchanged
 .
-d1879 1
-a1879 15
+d1921 1
+a1921 15
 Pick a 
 \change_deleted 0 1291205403
 zone either the zone we last freed into, or based on a 
@@ -3104,7 +3145,7 @@ random
 free table; usually the previous one.
 \change_unchanged
 
-a1883 10
+a1925 10
 \change_deleted 0 1291205432
 
 \end_layout
@@ -3115,8 +3156,8 @@ a1883 10
 Re-check the zone: relock if necessary.
 \change_unchanged
 
-d1892 1
-a1892 7
+d1934 1
+a1934 7
  unlock the list and try the next 
 \change_inserted 0 1291205455
 largest list
@@ -3124,19 +3165,19 @@ largest list
 zone.
 \change_inserted 0 1291205457
 
-a1895 2
+a1937 2
 
 \change_inserted 0 1291205476
-a1896 2
+a1938 2
 \change_unchanged
 
-a1924 2
+a1966 2
 \change_inserted 0 1291205542
 
-a1927 2
+a1969 2
 
 \change_inserted 0 1291205591
-a1929 70
+a1971 70
 \change_unchanged
 
 \end_layout
@@ -3207,20 +3248,20 @@ means 0 gives a minimal 65536-byte zone, 15 gives the maximal
 
 \change_inserted 0 1291205139
 
-d2176 1
-a2176 5
+d2218 1
+a2218 5
         uint32_t 
 \change_inserted 0 1291205758
 used_
 \change_unchanged
 magic : 16,
-a2180 4
+a2222 4
 \change_deleted 0 1291205693
                  prev_is_free: 1,
 \change_unchanged
 
-d2188 1
-a2188 7
+d2230 1
+a2230 7
                  top_hash: 1
 \change_inserted 0 1291205704
 1
@@ -3228,8 +3269,8 @@ a2188 7
 0
 \change_unchanged
 ;
-d2212 1
-a2212 9
+d2254 1
+a2254 9
         uint
 \change_inserted 0 1291205725
 64
@@ -3239,10 +3280,10 @@ a2212 9
 _t 
 \change_inserted 0 1291205753
 free_magic: 8,
-a2215 2
+a2257 2
 
 \change_inserted 0 1291205746
-a2220 24
+a2262 24
 \change_deleted 0 1291205749
 free_magic;
 \change_unchanged
@@ -3267,8 +3308,8 @@ total_length
 ;
 \change_unchanged
 
-d2224 1
-a2224 7
+d2266 1
+a2266 7
         uint64_t 
 \change_deleted 0 1291205801
 prev, 
@@ -3276,20 +3317,20 @@ prev,
 next;
 \change_deleted 0 1291205811
 
-d2228 1
-a2228 3
+d2270 1
+a2270 3
 
 \change_deleted 0 1291205811
         ...
-d2232 1
-a2232 5
+d2274 1
+a2274 5
 
 \change_deleted 0 1291205808
         uint64_t tailer
 \change_unchanged
 ;
-d2241 5
-a2245 16
+d2283 5
+a2287 16
 \change_deleted 0 1291205827
 We might want to take some bits from the used record's top_hash (and the
  free record which has 32 bits of padding to spare anyway) if we use variable
@@ -3306,90 +3347,90 @@ reference "freelist-in-zone"
 \change_inserted 0 1291205885
  Note that by limiting valid offsets to 56 bits, we can pack everything
  we need into 3 64-byte words, meaning our minimum record size is 8 bytes.
-a2248 2
+a2290 2
 
 \change_inserted 0 1291205886
-a2252 2
+a2294 2
 
 \change_inserted 0 1291205886
-a2253 2
+a2295 2
 \change_unchanged
 
-a2343 2
+a2385 2
 \change_inserted 0 1291205894
 
-a2346 2
+a2388 2
 
 \change_inserted 0 1291205894
-a2350 2
+a2392 2
 
 \change_inserted 0 1291205902
-a2351 2
+a2393 2
 \change_unchanged
 
-a2373 4
+a2415 4
 
 \change_deleted 0 1291204504
  
 \change_unchanged
-a2403 2
+a2445 2
 \change_inserted 0 1291205910
 
-a2406 2
+a2448 2
 
 \change_inserted 0 1291205910
-a2410 2
+a2452 2
 
 \change_inserted 0 1291205914
-a2411 2
+a2453 2
 \change_unchanged
 
-a2443 2
+a2485 2
 \change_inserted 0 1291205919
 
-a2446 2
+a2488 2
 
 \change_inserted 0 1291205919
-a2450 2
+a2492 2
 
 \change_inserted 0 1291205922
-a2451 2
+a2493 2
 \change_unchanged
 
-a2491 2
+a2533 2
 \change_inserted 0 1291205929
-
-a2494 2
-
-\change_inserted 0 1291205929
-a2498 2
-
-\change_inserted 0 1291205929
-a2499 2
-\change_unchanged
 
 a2536 2
-\change_inserted 0 1291205932
 
-a2539 2
+\change_inserted 0 1291205929
+a2540 2
 
-\change_inserted 0 1291205933
-a2543 2
-
-\change_inserted 0 1291205933
-a2544 2
+\change_inserted 0 1291205929
+a2541 2
 \change_unchanged
 
-a2682 2
+a2578 2
+\change_inserted 0 1291205932
+
+a2581 2
+
+\change_inserted 0 1291205933
+a2585 2
+
+\change_inserted 0 1291205933
+a2586 2
+\change_unchanged
+
+a2724 2
 \change_inserted 0 1291205944
 
-a2685 2
+a2727 2
 
 \change_inserted 0 1291205945
-a2689 2
+a2731 2
 
 \change_inserted 0 1291205948
-a2690 2
+a2732 2
 \change_unchanged
 
 @
