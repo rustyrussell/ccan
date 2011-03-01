@@ -476,8 +476,6 @@ tdb_off_t tdb_find_zero_off(struct tdb_context *tdb, tdb_off_t off,
 
 /* Even on files, we can get partial writes due to signals. */
 bool tdb_pwrite_all(int fd, const void *buf, size_t len, tdb_off_t off);
-bool tdb_pread_all(int fd, void *buf, size_t len, tdb_off_t off);
-bool tdb_read_all(int fd, void *buf, size_t len);
 
 /* Allocate and make a copy of some offset. */
 void *tdb_alloc_read(struct tdb_context *tdb, tdb_off_t offset, tdb_len_t len);

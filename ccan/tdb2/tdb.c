@@ -22,6 +22,24 @@ static bool tdb_already_open(dev_t device, ino_t ino)
 	return false;
 }
 
+static bool read_all(int fd, void *buf, size_t len)
+{
+	while (len) {
+		ssize_t ret;
+		ret = read(fd, buf, len);
+		if (ret < 0)
+			return false;
+		if (ret == 0) {
+			/* ETOOSHORT? */
+			errno = EWOULDBLOCK;
+			return false;
+		}
+		buf = (char *)buf + ret;
+		len -= ret;
+	}
+	return true;
+}
+
 static uint64_t random_number(struct tdb_context *tdb)
 {
 	int fd;
@@ -30,7 +48,7 @@ static uint64_t random_number(struct tdb_context *tdb)
 
 	fd = open("/dev/urandom", O_RDONLY);
 	if (fd >= 0) {
-		if (tdb_read_all(fd, &ret, sizeof(ret))) {
+		if (read_all(fd, &ret, sizeof(ret))) {
 			tdb_logerr(tdb, TDB_SUCCESS, TDB_DEBUG_TRACE,
 				 "tdb_open: random from /dev/urandom");
 			close(fd);
@@ -153,6 +171,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	int saved_errno = 0;
 	uint64_t hash_test;
 	unsigned v;
+	ssize_t rlen;
 	struct tdb_header hdr;
 	struct tdb_attribute_seed *seed = NULL;
 
@@ -253,17 +272,25 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		goto fail;
 	}
 
-	if (!tdb_pread_all(tdb->fd, &hdr, sizeof(hdr), 0)
-	    || strcmp(hdr.magic_food, TDB_MAGIC_FOOD) != 0) {
-		if (!(open_flags & O_CREAT)) {
-			tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_ERROR,
-				   "tdb_open: %s is not a tdb file", name);
-			goto fail;
-		}
+	/* If they used O_TRUNC, read will return 0. */
+	rlen = read(tdb->fd, &hdr, sizeof(hdr));
+	if (rlen == 0 && (open_flags & O_CREAT)) {
 		if (tdb_new_database(tdb, seed, &hdr) == -1) {
 			goto fail;
 		}
-	} else if (hdr.version != TDB_VERSION) {
+	} else if (rlen < 0) {
+		tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_ERROR,
+			   "tdb_open: error %s reading %s",
+			   strerror(errno), name);
+		goto fail;
+	} else if (rlen < sizeof(hdr)
+		   || strcmp(hdr.magic_food, TDB_MAGIC_FOOD) != 0) {
+		tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_ERROR,
+			   "tdb_open: %s is not a tdb file", name);
+		goto fail;
+	}
+
+	if (hdr.version != TDB_VERSION) {
 		if (hdr.version == bswap_64(TDB_VERSION))
 			tdb->flags |= TDB_CONVERT;
 		else {

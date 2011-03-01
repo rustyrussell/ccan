@@ -225,44 +225,6 @@ bool tdb_pwrite_all(int fd, const void *buf, size_t len, tdb_off_t off)
 	return true;
 }
 
-/* Even on files, we can get partial reads due to signals. */
-bool tdb_pread_all(int fd, void *buf, size_t len, tdb_off_t off)
-{
-	while (len) {
-		ssize_t ret;
-		ret = pread(fd, buf, len, off);
-		if (ret < 0)
-			return false;
-		if (ret == 0) {
-			/* ETOOSHORT? */
-			errno = EWOULDBLOCK;
-			return false;
-		}
-		buf = (char *)buf + ret;
-		off += ret;
-		len -= ret;
-	}
-	return true;
-}
-
-bool tdb_read_all(int fd, void *buf, size_t len)
-{
-	while (len) {
-		ssize_t ret;
-		ret = read(fd, buf, len);
-		if (ret < 0)
-			return false;
-		if (ret == 0) {
-			/* ETOOSHORT? */
-			errno = EWOULDBLOCK;
-			return false;
-		}
-		buf = (char *)buf + ret;
-		len -= ret;
-	}
-	return true;
-}
-
 /* write a lump of data at a specified offset */
 static int tdb_write(struct tdb_context *tdb, tdb_off_t off, 
 		     const void *buf, tdb_len_t len)
@@ -305,13 +267,14 @@ static int tdb_read(struct tdb_context *tdb, tdb_off_t off, void *buf,
 	if (tdb->map_ptr) {
 		memcpy(buf, off + (char *)tdb->map_ptr, len);
 	} else {
-		if (!tdb_pread_all(tdb->fd, buf, len, off)) {
+		ssize_t r = pread(tdb->fd, buf, len, off);
+		if (r != len) {
 			tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_FATAL,
-				   "tdb_read failed at %zu "
+				   "tdb_read failed with %zi at %zu "
 				   "len=%zu (%s) map_size=%zu",
-				 (size_t)off, (size_t)len,
-				 strerror(errno),
-				 (size_t)tdb->map_size);
+				   r, (size_t)off, (size_t)len,
+				   strerror(errno),
+				   (size_t)tdb->map_size);
 			return -1;
 		}
 	}
