@@ -324,7 +324,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	/* Is it already in the open list?  If so, fail. */
 	if (tdb_already_open(st.st_dev, st.st_ino)) {
 		/* FIXME */
-		tdb_logerr(tdb, TDB_ERR_NESTING, TDB_LOG_USE_ERROR,
+		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_USE_ERROR,
 			   "tdb_open: %s (%d,%d) is already open in this"
 			   " process",
 			   name, (int)st.st_dev, (int)st.st_ino);
@@ -373,9 +373,6 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 			break;
 		case TDB_ERR_EINVAL:
 			saved_errno = EINVAL;
-			break;
-		case TDB_ERR_NESTING:
-			saved_errno = EBUSY;
 			break;
 		default:
 			saved_errno = EINVAL;
@@ -702,7 +699,6 @@ const char *tdb_errorstr(const struct tdb_context *tdb)
 	case TDB_ERR_LOCK: return "Locking error";
 	case TDB_ERR_OOM: return "Out of memory";
 	case TDB_ERR_EXISTS: return "Record exists";
-	case TDB_ERR_NESTING: return "Transaction already started";
 	case TDB_ERR_EINVAL: return "Invalid parameter";
 	case TDB_ERR_NOEXIST: return "Record does not exist";
 	case TDB_ERR_RDONLY: return "write not permitted";

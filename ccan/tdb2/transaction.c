@@ -509,7 +509,7 @@ int tdb_transaction_start(struct tdb_context *tdb)
 
 	/* cope with nested tdb_transaction_start() calls */
 	if (tdb->transaction != NULL) {
-		tdb_logerr(tdb, TDB_ERR_NESTING, TDB_LOG_USE_ERROR,
+		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_USE_ERROR,
 			   "tdb_transaction_start:"
 			   " already inside transaction");
 		return -1;

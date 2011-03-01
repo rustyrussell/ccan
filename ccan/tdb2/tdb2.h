@@ -57,12 +57,11 @@ extern "C" {
 #define TDB_NOSYNC   64 /* don't use synchronous transactions */
 #define TDB_SEQNUM   128 /* maintain a sequence number */
 #define TDB_VOLATILE   256 /* Activate the per-hashchain freelist, default 5 */
-#define TDB_ALLOW_NESTING 512 /* Allow transactions to nest */
 
 /* error codes */
 enum TDB_ERROR {TDB_SUCCESS=0, TDB_ERR_CORRUPT, TDB_ERR_IO, TDB_ERR_LOCK,
 		TDB_ERR_OOM, TDB_ERR_EXISTS, TDB_ERR_NOEXIST,
-		TDB_ERR_EINVAL, TDB_ERR_RDONLY, TDB_ERR_NESTING };
+		TDB_ERR_EINVAL, TDB_ERR_RDONLY };
 
 /* flags for tdb_summary. Logical or to combine. */
 enum tdb_summary_flags { TDB_SUMMARY_HISTOGRAMS = 1 };
