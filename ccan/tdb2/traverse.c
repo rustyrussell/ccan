@@ -1,7 +1,7 @@
- /* 
+ /*
    Trivial Database 2: traverse function.
    Copyright (C) Rusty Russell 2010
-   
+
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public
    License as published by the Free Software Foundation; either
@@ -74,7 +74,7 @@ TDB_DATA tdb_firstkey(struct tdb_context *tdb)
 	default:
 		return tdb_null;
 	}
-}		
+}
 
 /* We lock twice, not very efficient.  We could keep last key & tinfo cached. */
 TDB_DATA tdb_nextkey(struct tdb_context *tdb, TDB_DATA key)
@@ -97,4 +97,4 @@ TDB_DATA tdb_nextkey(struct tdb_context *tdb, TDB_DATA key)
 	default:
 		return tdb_null;
 	}
-}		
+}

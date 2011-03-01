@@ -1,6 +1,6 @@
 #ifndef TDB_PRIVATE_H
 #define TDB_PRIVATE_H
- /* 
+ /*
    Trivial Database 2: private types and prototypes
    Copyright (C) Rusty Russell 2010
 
@@ -325,7 +325,7 @@ struct tdb_context {
 	int mmap_flags;
 
 	/* Error code for last tdb error. */
-	enum TDB_ERROR ecode; 
+	enum TDB_ERROR ecode;
 
 	/* the flags passed to tdb_open, for tdb_reopen. */
 	uint32_t flags;
@@ -361,7 +361,7 @@ struct tdb_context {
 
 	/* Single list of all TDBs, to avoid multiple opens. */
 	struct tdb_context *next;
-	dev_t device;	
+	dev_t device;
 	ino_t inode;
 };
 

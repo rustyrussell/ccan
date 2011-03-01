@@ -1,7 +1,7 @@
- /* 
+ /*
    Trivial Database 2: free list/block handling
    Copyright (C) Rusty Russell 2010
-   
+
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public
    License as published by the Free Software Foundation; either
@@ -277,7 +277,7 @@ static bool check_hash_tree(struct tdb_context *tdb,
 
 			if (is_subhash(group[b])) {
 				uint64_t subprefix;
-				subprefix = (hprefix 
+				subprefix = (hprefix
 				     << (group_bits + TDB_HASH_GROUP_BITS))
 					+ g * (1 << TDB_HASH_GROUP_BITS) + b;
 
@@ -449,7 +449,7 @@ static bool check_free(struct tdb_context *tdb,
 	}
 	return true;
 }
-		       
+
 static bool check_free_table(struct tdb_context *tdb,
 			     tdb_off_t ftable_off,
 			     unsigned ftable_num,

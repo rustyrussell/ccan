@@ -1,4 +1,4 @@
- /* 
+ /*
    Unix SMB/CIFS implementation.
 
    trivial database library
@@ -64,7 +64,7 @@ void tdb_mmap(struct tdb_context *tdb)
 
 /* check for an out of bounds access - if it is out of bounds then
    see if the database has been expanded by someone else and expand
-   if necessary 
+   if necessary
    note that "len" is the minimum length needed for the db
 */
 static int tdb_oob(struct tdb_context *tdb, tdb_off_t len, bool probe)
@@ -207,7 +207,7 @@ tdb_off_t tdb_read_off(struct tdb_context *tdb, tdb_off_t off)
 }
 
 /* write a lump of data at a specified offset */
-static int tdb_write(struct tdb_context *tdb, tdb_off_t off, 
+static int tdb_write(struct tdb_context *tdb, tdb_off_t off,
 		     const void *buf, tdb_len_t len)
 {
 	if (tdb->read_only) {
@@ -411,7 +411,7 @@ static int tdb_expand_file(struct tdb_context *tdb, tdb_len_t addition)
 const void *tdb_access_read(struct tdb_context *tdb,
 			    tdb_off_t off, tdb_len_t len, bool convert)
 {
-	const void *ret = NULL;	
+	const void *ret = NULL;
 
 	if (likely(!(tdb->flags & TDB_CONVERT)))
 		ret = tdb->methods->direct(tdb, off, len, false);

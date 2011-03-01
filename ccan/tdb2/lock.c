@@ -1,4 +1,4 @@
- /* 
+ /*
    Unix SMB/CIFS implementation.
 
    trivial database library
@@ -198,7 +198,7 @@ static int tdb_brunlock(struct tdb_context *tdb,
   upgrade a read lock to a write lock. This needs to be handled in a
   special way as some OSes (such as solaris) have too conservative
   deadlock detection and claim a deadlock when progress can be
-  made. For those OSes we may loop for a while.  
+  made. For those OSes we may loop for a while.
 */
 int tdb_allrecord_upgrade(struct tdb_context *tdb)
 {
@@ -502,7 +502,7 @@ again:
 			tdb_logerr(tdb, tdb->ecode, TDB_DEBUG_ERROR,
 				 "tdb_allrecord_lock freetables failed");
 		}
-		tdb_brunlock(tdb, ltype, TDB_HASH_LOCK_START, 
+		tdb_brunlock(tdb, ltype, TDB_HASH_LOCK_START,
 			     TDB_HASH_LOCK_RANGE);
 		return -1;
 	}
@@ -518,7 +518,7 @@ again:
 		tdb_allrecord_unlock(tdb, ltype);
 		if (tdb_lock_and_recover(tdb) == -1) {
 			return -1;
-		}		
+		}
 		goto again;
 	}
 

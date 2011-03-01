@@ -1,7 +1,7 @@
- /* 
+ /*
    Trivial Database 2: hash handling
    Copyright (C) Rusty Russell 2010
-   
+
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public
    License as published by the Free Software Foundation; either
@@ -245,7 +245,7 @@ tdb_off_t find_and_lock(struct tdb_context *tdb,
 		tinfo->toplevel_group = group;
 		tinfo->num_levels = 1;
 		tinfo->levels[0].entry = 0;
-		tinfo->levels[0].hashtable = hashtable 
+		tinfo->levels[0].hashtable = hashtable
 			+ (group << TDB_HASH_GROUP_BITS) * sizeof(tdb_off_t);
 		tinfo->levels[0].total_buckets = 1 << TDB_HASH_GROUP_BITS;
 	}
@@ -384,7 +384,7 @@ static tdb_off_t encode_offset(tdb_off_t new_off, struct hash_info *h)
 		   << TDB_OFF_HASH_EXTRA_BIT);
 }
 
-/* Simply overwrite the hash entry we found before. */ 
+/* Simply overwrite the hash entry we found before. */
 int replace_in_hash(struct tdb_context *tdb,
 		    struct hash_info *h,
 		    tdb_off_t new_off)
@@ -716,12 +716,12 @@ int next_in_hash(struct tdb_context *tdb, int ltype,
 			/* They want data as well? */
 			if (dlen) {
 				*dlen = rec_data_length(&rec);
-				kbuf->dptr = tdb_alloc_read(tdb, 
+				kbuf->dptr = tdb_alloc_read(tdb,
 							    off + sizeof(rec),
 							    kbuf->dsize
 							    + *dlen);
 			} else {
-				kbuf->dptr = tdb_alloc_read(tdb, 
+				kbuf->dptr = tdb_alloc_read(tdb,
 							    off + sizeof(rec),
 							    kbuf->dsize);
 			}

@@ -1,17 +1,17 @@
 #ifndef CCAN_TDB2_H
 #define CCAN_TDB2_H
 
-/* 
+/*
    Unix SMB/CIFS implementation.
 
    trivial database library
 
    Copyright (C) Andrew Tridgell 1999-2004
-   
+
      ** NOTE! The following LGPL license applies to the tdb
      ** library. This does NOT imply that all of Samba is released
      ** under the LGPL
-   
+
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public
    License as published by the Free Software Foundation; either
@@ -60,7 +60,7 @@ extern "C" {
 #define TDB_ALLOW_NESTING 512 /* Allow transactions to nest */
 
 /* error codes */
-enum TDB_ERROR {TDB_SUCCESS=0, TDB_ERR_CORRUPT, TDB_ERR_IO, TDB_ERR_LOCK, 
+enum TDB_ERROR {TDB_SUCCESS=0, TDB_ERR_CORRUPT, TDB_ERR_IO, TDB_ERR_LOCK,
 		TDB_ERR_OOM, TDB_ERR_EXISTS, TDB_ERR_NOEXIST,
 		TDB_ERR_EINVAL, TDB_ERR_RDONLY, TDB_ERR_NESTING };
 
@@ -68,7 +68,7 @@ enum TDB_ERROR {TDB_SUCCESS=0, TDB_ERR_CORRUPT, TDB_ERR_IO, TDB_ERR_LOCK,
 enum tdb_summary_flags { TDB_SUMMARY_HISTOGRAMS = 1 };
 
 /* logging uses one of the following levels */
-enum tdb_debug_level {TDB_DEBUG_FATAL = 0, TDB_DEBUG_ERROR, 
+enum tdb_debug_level {TDB_DEBUG_FATAL = 0, TDB_DEBUG_ERROR,
 		      TDB_DEBUG_WARNING, TDB_DEBUG_TRACE};
 
 typedef struct tdb_data {
