@@ -9,8 +9,7 @@
 
 int main(int argc, char *argv[])
 {
-	/* tempnam(3) is generally a bad idea, but OK here. */
-	char *name = tempnam(NULL, "noerr");
+	char *name = "noerr.file";
 	int fd;
 	FILE *fp;
 
