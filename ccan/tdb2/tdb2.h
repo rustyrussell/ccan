@@ -377,10 +377,6 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags);
 
 
 
-int64_t tdb_traverse_read(struct tdb_context *tdb,
-			  tdb_traverse_func fn, void *p);
-
-
 /**
  * enum tdb_attribute_type - descriminator for union tdb_attribute.
  */

@@ -52,8 +52,8 @@ int main(int argc, char *argv[])
 	ok1(external_agent_operation(agent, OPEN, filename) == SUCCESS);
 	i = add_records_to_grow(agent, tdb->fd, tdb->map_size);
 
-	/* Do a read traverse. */
-	ok1(tdb_traverse_read(tdb, NULL, NULL) == i);
+	/* Do a traverse. */
+	ok1(tdb_traverse(tdb, NULL, NULL) == i);
 
 	/* Now store something! */
 	ok1(tdb_store(tdb, d, d, TDB_INSERT) == 0);

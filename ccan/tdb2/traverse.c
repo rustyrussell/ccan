@@ -18,8 +18,7 @@
 #include "private.h"
 #include <ccan/likely/likely.h>
 
-static int64_t traverse(struct tdb_context *tdb, int ltype,
-			tdb_traverse_func fn, void *p)
+int64_t tdb_traverse(struct tdb_context *tdb, tdb_traverse_func fn, void *p)
 {
 	int ret;
 	struct traverse_info tinfo;
@@ -27,9 +26,9 @@ static int64_t traverse(struct tdb_context *tdb, int ltype,
 	int64_t count = 0;
 
 	k.dptr = NULL;
-	for (ret = first_in_hash(tdb, ltype, &tinfo, &k, &d.dsize);
+	for (ret = first_in_hash(tdb, &tinfo, &k, &d.dsize);
 	     ret == 1;
-	     ret = next_in_hash(tdb, ltype, &tinfo, &k, &d.dsize)) {
+	     ret = next_in_hash(tdb, &tinfo, &k, &d.dsize)) {
 		d.dptr = k.dptr + k.dsize;
 		
 		count++;
@@ -44,28 +43,12 @@ static int64_t traverse(struct tdb_context *tdb, int ltype,
 		return -1;
 	return count;
 }
-
-int64_t tdb_traverse(struct tdb_context *tdb, tdb_traverse_func fn, void *p)
-{
-	return traverse(tdb, F_WRLCK, fn, p);
-}
 	
-int64_t tdb_traverse_read(struct tdb_context *tdb,
-			  tdb_traverse_func fn, void *p)
-{
-	int64_t ret;
-	bool was_ro = tdb->read_only;
-	tdb->read_only = true;
-	ret = traverse(tdb, F_RDLCK, fn, p);
-	tdb->read_only = was_ro;
-	return ret;
-}
-
 TDB_DATA tdb_firstkey(struct tdb_context *tdb)
 {
 	struct traverse_info tinfo;
 	struct tdb_data k;
-	switch (first_in_hash(tdb, F_RDLCK, &tinfo, &k, NULL)) {
+	switch (first_in_hash(tdb, &tinfo, &k, NULL)) {
 	case 1:
 		return k;
 	case 0:
@@ -88,7 +71,7 @@ TDB_DATA tdb_nextkey(struct tdb_context *tdb, TDB_DATA key)
 		return tdb_null;
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_RDLCK);
 
-	switch (next_in_hash(tdb, F_RDLCK, &tinfo, &key, NULL)) {
+	switch (next_in_hash(tdb, &tinfo, &key, NULL)) {
 	case 1:
 		return key;
 	case 0:

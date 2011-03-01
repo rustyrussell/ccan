@@ -382,6 +382,14 @@ struct tdb_methods {
 /* hash.c: */
 void tdb_hash_init(struct tdb_context *tdb);
 
+int first_in_hash(struct tdb_context *tdb,
+		  struct traverse_info *tinfo,
+		  TDB_DATA *kbuf, size_t *dlen);
+
+int next_in_hash(struct tdb_context *tdb,
+		 struct traverse_info *tinfo,
+		 TDB_DATA *kbuf, size_t *dlen);
+
 /* Hash random memory. */
 uint64_t tdb_hash(struct tdb_context *tdb, const void *ptr, size_t len);
 
@@ -537,14 +545,6 @@ bool tdb_has_expansion_lock(struct tdb_context *tdb);
 
 /* If it needs recovery, grab all the locks and do it. */
 int tdb_lock_and_recover(struct tdb_context *tdb);
-
-/* traverse.c: */
-int first_in_hash(struct tdb_context *tdb, int ltype,
-		  struct traverse_info *tinfo,
-		  TDB_DATA *kbuf, size_t *dlen);
-int next_in_hash(struct tdb_context *tdb, int ltype,
-		 struct traverse_info *tinfo,
-		 TDB_DATA *kbuf, size_t *dlen);
 
 /* transaction.c: */
 int tdb_transaction_recover(struct tdb_context *tdb);

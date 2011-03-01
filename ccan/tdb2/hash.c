@@ -678,7 +678,7 @@ again:
 }
 
 /* Return 1 if we find something, 0 if not, -1 on error. */
-int next_in_hash(struct tdb_context *tdb, int ltype,
+int next_in_hash(struct tdb_context *tdb,
 		 struct traverse_info *tinfo,
 		 TDB_DATA *kbuf, size_t *dlen)
 {
@@ -689,7 +689,7 @@ int next_in_hash(struct tdb_context *tdb, int ltype,
 		hl_start = (tdb_off_t)tinfo->toplevel_group
 			<< (64 - group_bits);
 		hl_range = 1ULL << group_bits;
-		if (tdb_lock_hashes(tdb, hl_start, hl_range, ltype,
+		if (tdb_lock_hashes(tdb, hl_start, hl_range, F_RDLCK,
 				    TDB_LOCK_WAIT) != 0)
 			return -1;
 
@@ -699,7 +699,7 @@ int next_in_hash(struct tdb_context *tdb, int ltype,
 
 			if (tdb_read_convert(tdb, off, &rec, sizeof(rec))) {
 				tdb_unlock_hashes(tdb,
-						  hl_start, hl_range, ltype);
+						  hl_start, hl_range, F_RDLCK);
 				return -1;
 			}
 			if (rec_magic(&rec) != TDB_USED_MAGIC) {
@@ -725,11 +725,11 @@ int next_in_hash(struct tdb_context *tdb, int ltype,
 							    off + sizeof(rec),
 							    kbuf->dsize);
 			}
-			tdb_unlock_hashes(tdb, hl_start, hl_range, ltype);
+			tdb_unlock_hashes(tdb, hl_start, hl_range, F_RDLCK);
 			return kbuf->dptr ? 1 : -1;
 		}
 
-		tdb_unlock_hashes(tdb, hl_start, hl_range, ltype);
+		tdb_unlock_hashes(tdb, hl_start, hl_range, F_RDLCK);
 
 		tinfo->toplevel_group++;
 		tinfo->levels[0].hashtable
@@ -740,7 +740,7 @@ int next_in_hash(struct tdb_context *tdb, int ltype,
 }
 
 /* Return 1 if we find something, 0 if not, -1 on error. */
-int first_in_hash(struct tdb_context *tdb, int ltype,
+int first_in_hash(struct tdb_context *tdb,
 		  struct traverse_info *tinfo,
 		  TDB_DATA *kbuf, size_t *dlen)
 {
@@ -751,7 +751,7 @@ int first_in_hash(struct tdb_context *tdb, int ltype,
 	tinfo->levels[0].entry = 0;
 	tinfo->levels[0].total_buckets = (1 << TDB_HASH_GROUP_BITS);
 
-	return next_in_hash(tdb, ltype, tinfo, kbuf, dlen);
+	return next_in_hash(tdb, tinfo, kbuf, dlen);
 }
 
 /* Even if the entry isn't in this hash bucket, you'd have to lock this

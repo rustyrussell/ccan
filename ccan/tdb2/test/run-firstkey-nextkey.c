@@ -110,11 +110,11 @@ int main(int argc, char *argv[])
 		ok1(store_records(tdb));
 		td.calls = 0;
 
-		num = tdb_traverse_read(tdb, trav, &td);
+		num = tdb_traverse(tdb, trav, &td);
 		ok1(num == NUM_RECORDS);
 		ok1(td.calls == NUM_RECORDS);
 
-		/* Simple loop should match tdb_traverse_read */
+		/* Simple loop should match tdb_traverse */
 		for (j = 0, k = tdb_firstkey(tdb); j < td.calls; j++) {
 			int val;
 

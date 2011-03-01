@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
 
 	hattr.base.next = &tap_log_attr;
 
-	plan_tests(sizeof(flags) / sizeof(flags[0]) * 53 + 1);
+	plan_tests(sizeof(flags) / sizeof(flags[0]) * 32 + 1);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		tdb = tdb_open("run-traverse.tdb", flags[i],
 			       O_RDWR|O_CREAT|O_TRUNC, 0600, &hattr);
@@ -127,29 +127,11 @@ int main(int argc, char *argv[])
 		if (!tdb)
 			continue;
 
-		ok1(tdb_traverse_read(tdb, NULL, NULL) == 0);
 		ok1(tdb_traverse(tdb, NULL, NULL) == 0);
 
 		ok1(store_records(tdb));
-		num = tdb_traverse_read(tdb, NULL, NULL);
-		ok1(num == NUM_RECORDS);
 		num = tdb_traverse(tdb, NULL, NULL);
 		ok1(num == NUM_RECORDS);
-
-		/* Full traverse (read-only). */
-		td.calls = 0;
-		td.call_limit = UINT_MAX;
-		td.low = INT_MAX;
-		td.high = INT_MIN;
-		td.mismatch = false;
-		td.delete = false;
-
-		num = tdb_traverse_read(tdb, trav, &td);
-		ok1(num == NUM_RECORDS);
-		ok1(!td.mismatch);
-		ok1(td.calls == NUM_RECORDS);
-		ok1(td.low == 0);
-		ok1(td.high == NUM_RECORDS-1);
 
 		/* Full traverse. */
 		td.calls = 0;
@@ -183,38 +165,6 @@ int main(int argc, char *argv[])
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 		ok1(tap_log_messages == 0);
 
-		/* Growing traverse.  Expect failure on r/o traverse. */
-		tgd.calls = 0;
-		tgd.num_large = 0;
-		tgd.mismatch = false;
-		tgd.error = TDB_SUCCESS;
-		num = tdb_traverse_read(tdb, trav_grow, &tgd);
-		ok1(num == 1);
-		ok1(tgd.error == TDB_ERR_RDONLY);
-		ok1(tgd.calls == 1);
-		ok1(!tgd.mismatch);
-		ok1(tap_log_messages == 1);
-		tap_log_messages = 0;
-		ok1(tdb_check(tdb, NULL, NULL) == 0);
-
-		/* Deleting traverse.  Expect failure on r/o traverse. */
-		td.calls = 0;
-		td.call_limit = UINT_MAX;
-		td.low = INT_MAX;
-		td.high = INT_MIN;
-		td.mismatch = false;
-		td.delete = true;
-		td.delete_error = TDB_SUCCESS;
-		num = tdb_traverse_read(tdb, trav, &td);
-		ok1(num == 1);
-		ok1(td.delete_error == TDB_ERR_RDONLY);
-		ok1(!td.mismatch);
-		ok1(td.calls == 1);
-		ok1(td.low == td.high);
-		ok1(tap_log_messages == 1);
-		tap_log_messages = 0;
-		ok1(tdb_check(tdb, NULL, NULL) == 0);
-
 		/* Deleting traverse (delete everything). */
 		td.calls = 0;
 		td.call_limit = UINT_MAX;
@@ -233,12 +183,11 @@ int main(int argc, char *argv[])
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 		/* Now it's empty! */
-		ok1(tdb_traverse_read(tdb, NULL, NULL) == 0);
 		ok1(tdb_traverse(tdb, NULL, NULL) == 0);
 
 		/* Re-add. */
 		ok1(store_records(tdb));
-		ok1(tdb_traverse_read(tdb, NULL, NULL) == NUM_RECORDS);
+		ok1(tdb_traverse(tdb, NULL, NULL) == NUM_RECORDS);
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 		/* Grow.  This will cause us to be reshuffled. */
