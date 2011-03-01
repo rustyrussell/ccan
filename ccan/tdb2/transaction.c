@@ -965,15 +965,6 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 
 	tdb_trace(tdb, "tdb_transaction_commit");
 
-	if (tdb->transaction->transaction_error) {
-		tdb_transaction_cancel(tdb);
-		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
-			   "tdb_transaction_commit:"
-			   " transaction error pending");
-		return -1;
-	}
-
-
 	if (tdb->transaction->nesting != 0) {
 		tdb->transaction->nesting--;
 		return 0;
