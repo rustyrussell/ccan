@@ -983,7 +983,6 @@ int failtest_fcntl(int fd, const char *file, unsigned line, int cmd, ...)
 	}
 
 	p = add_history(FAILTEST_FCNTL, file, line, &call);
-	get_locks();
 
 	if (should_fail(p)) {
 		p->u.fcntl.ret = -1;
@@ -992,6 +991,7 @@ int failtest_fcntl(int fd, const char *file, unsigned line, int cmd, ...)
 		else
 			p->error = EDEADLK;
 	} else {
+		get_locks();
 		p->u.fcntl.ret = fcntl(p->u.fcntl.fd, p->u.fcntl.cmd,
 				       &p->u.fcntl.arg.fl);
 		if (p->u.fcntl.ret == -1)
