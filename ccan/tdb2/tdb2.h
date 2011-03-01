@@ -111,7 +111,8 @@ enum TDB_ERROR {
 	TDB_ERR_EXISTS	= -5,	/* The key already exists. */
 	TDB_ERR_NOEXIST	= -6,	/* The key does not exist. */
 	TDB_ERR_EINVAL	= -7,	/* You're using it wrong. */
-	TDB_ERR_RDONLY	= -8	/* The database is read-only. */
+	TDB_ERR_RDONLY	= -8,	/* The database is read-only. */
+	TDB_ERR_LAST = TDB_ERR_RDONLY
 };
 
 /**

@@ -706,10 +706,10 @@ const char *tdb_errorstr(const struct tdb_context *tdb)
 	return "Invalid error code";
 }
 
-void COLD tdb_logerr(struct tdb_context *tdb,
-		     enum TDB_ERROR ecode,
-		     enum tdb_log_level level,
-		     const char *fmt, ...)
+enum TDB_ERROR COLD tdb_logerr(struct tdb_context *tdb,
+			       enum TDB_ERROR ecode,
+			       enum tdb_log_level level,
+			       const char *fmt, ...)
 {
 	char *message;
 	va_list ap;
@@ -720,7 +720,7 @@ void COLD tdb_logerr(struct tdb_context *tdb,
 	tdb->ecode = ecode;
 
 	if (!tdb->logfn)
-		return;
+		return ecode;
 
 	/* FIXME: Doesn't assume asprintf. */
 	va_start(ap, fmt);
@@ -732,7 +732,7 @@ void COLD tdb_logerr(struct tdb_context *tdb,
 		tdb->logfn(tdb, TDB_LOG_ERROR, tdb->log_private,
 			   "out of memory formatting message:");
 		tdb->logfn(tdb, level, tdb->log_private, fmt);
-		return;
+		return ecode;
 	}
 	va_start(ap, fmt);
 	len = vsprintf(message, fmt, ap);
@@ -740,4 +740,5 @@ void COLD tdb_logerr(struct tdb_context *tdb,
 	tdb->logfn(tdb, level, tdb->log_private, message);
 	free(message);
 	errno = saved_errno;
+	return ecode;
 }

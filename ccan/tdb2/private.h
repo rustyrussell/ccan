@@ -74,6 +74,16 @@ typedef uint64_t tdb_off_t;
 #define TDB_RECOVERY_INVALID_MAGIC (0x0ULL)
 
 #define TDB_OFF_ERR ((tdb_off_t)-1)
+#define TDB_OFF_IS_ERR(off) unlikely(off >= (tdb_off_t)TDB_ERR_LAST)
+
+/* Packing errors into pointers and v.v. */
+#define TDB_PTR_IS_ERR(ptr) \
+	unlikely((void *)(ptr) >= (void *)(long)TDB_ERR_LAST)
+#define TDB_PTR_ERR(p) ((enum TDB_ERROR)(long)(p))
+#define TDB_ERR_PTR(err) ((void *)(long)(err))
+
+/* Common case of returning true, false or -ve error. */
+typedef int tdb_bool_err;
 
 /* Prevent others from opening the file. */
 #define TDB_OPEN_LOCK 0
@@ -551,10 +561,10 @@ int tdb_transaction_recover(struct tdb_context *tdb);
 bool tdb_needs_recovery(struct tdb_context *tdb);
 
 /* tdb.c: */
-void COLD tdb_logerr(struct tdb_context *tdb,
-		     enum TDB_ERROR ecode,
-		     enum tdb_log_level level,
-		     const char *fmt, ...);
+enum TDB_ERROR COLD tdb_logerr(struct tdb_context *tdb,
+			       enum TDB_ERROR ecode,
+			       enum tdb_log_level level,
+			       const char *fmt, ...);
 
 #ifdef TDB_TRACE
 void tdb_trace(struct tdb_context *tdb, const char *op);
