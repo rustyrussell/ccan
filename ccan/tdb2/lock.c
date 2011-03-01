@@ -186,7 +186,7 @@ static int tdb_brunlock(struct tdb_context *tdb,
 	} while (ret == -1 && errno == EINTR);
 
 	if (ret == -1) {
-		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_DEBUG_TRACE,
+		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_DEBUG_ERROR,
 			   "tdb_brunlock failed (fd=%d) at offset %zu"
 			   " rw_type=%d len=%zu",
 			   tdb->fd, (size_t)offset, rw_type, (size_t)len);
@@ -234,7 +234,7 @@ int tdb_allrecord_upgrade(struct tdb_context *tdb)
 		tv.tv_usec = 1;
 		select(0, NULL, NULL, NULL, &tv);
 	}
-	tdb_logerr(tdb, TDB_ERR_LOCK, TDB_DEBUG_WARNING,
+	tdb_logerr(tdb, TDB_ERR_LOCK, TDB_DEBUG_ERROR,
 		   "tdb_allrecord_upgrade failed");
 	return -1;
 }
