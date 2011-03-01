@@ -206,25 +206,6 @@ tdb_off_t tdb_read_off(struct tdb_context *tdb, tdb_off_t off)
 	return ret;
 }
 
-/* Even on files, we can get partial writes due to signals. */
-bool tdb_pwrite_all(int fd, const void *buf, size_t len, tdb_off_t off)
-{
-	while (len) {
-		ssize_t ret;
-		ret = pwrite(fd, buf, len, off);
-		if (ret < 0)
-			return false;
-		if (ret == 0) {
-			errno = ENOSPC;
-			return false;
-		}
-		buf = (char *)buf + ret;
-		off += ret;
-		len -= ret;
-	}
-	return true;
-}
-
 /* write a lump of data at a specified offset */
 static int tdb_write(struct tdb_context *tdb, tdb_off_t off, 
 		     const void *buf, tdb_len_t len)
@@ -246,10 +227,17 @@ static int tdb_write(struct tdb_context *tdb, tdb_off_t off,
 	if (tdb->map_ptr) {
 		memcpy(off + (char *)tdb->map_ptr, buf, len);
 	} else {
-		if (!tdb_pwrite_all(tdb->fd, buf, len, off)) {
+		ssize_t ret;
+		ret = pwrite(tdb->fd, buf, len, off);
+		if (ret < len) {
+			/* This shouldn't happen: we avoid sparse files. */
+			if (ret >= 0)
+				errno = ENOSPC;
+
 			tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_FATAL,
-				   "tdb_write failed at %zu len=%zu (%s)",
-				   (size_t)off, (size_t)len, strerror(errno));
+				   "tdb_write: %zi at %zu len=%zu (%s)",
+				   ret, (size_t)off, (size_t)len,
+				   strerror(errno));
 			return -1;
 		}
 	}
@@ -361,10 +349,15 @@ static int fill(struct tdb_context *tdb,
 {
 	while (len) {
 		size_t n = len > size ? size : len;
+		ssize_t ret = pwrite(tdb->fd, buf, n, off);
+		if (ret < n) {
+			if (ret >= 0)
+				errno = ENOSPC;
 
-		if (!tdb_pwrite_all(tdb->fd, buf, n, off)) {
 			tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_FATAL,
-				 "fill write failed: giving up!");
+				   "fill failed: %zi at %zu len=%zu (%s)",
+				   ret, (size_t)off, (size_t)len,
+				   strerror(errno));
 			return -1;
 		}
 		len -= n;

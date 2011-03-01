@@ -101,6 +101,7 @@ static int tdb_new_database(struct tdb_context *tdb,
 	/* We make it up in memory, then write it out if not internal */
 	struct new_database newdb;
 	unsigned int magic_len;
+	ssize_t rlen;
 
 	/* Fill in the header */
 	newdb.hdr.version = TDB_VERSION;
@@ -153,10 +154,13 @@ static int tdb_new_database(struct tdb_context *tdb,
 	if (ftruncate(tdb->fd, 0) == -1)
 		return -1;
 
-	if (!tdb_pwrite_all(tdb->fd, &newdb, sizeof(newdb), 0)) {
+	rlen = write(tdb->fd, &newdb, sizeof(newdb));
+	if (rlen != sizeof(newdb)) {
+		if (rlen >= 0)
+			errno = ENOSPC;
 		tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_FATAL,
-			   "tdb_new_database: failed to write: %s",
-			   strerror(errno));
+			   "tdb_new_database: %zi writing header: %s",
+			   rlen, strerror(errno));
 		return -1;
 	}
 	return 0;
