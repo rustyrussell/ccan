@@ -26,14 +26,18 @@ static int64_t traverse(struct tdb_context *tdb, int ltype,
 	struct tdb_data k, d;
 	int64_t count = 0;
 
+	k.dptr = NULL;
 	for (ret = first_in_hash(tdb, ltype, &tinfo, &k, &d.dsize);
 	     ret == 1;
 	     ret = next_in_hash(tdb, ltype, &tinfo, &k, &d.dsize)) {
 		d.dptr = k.dptr + k.dsize;
 		
 		count++;
-		if (fn && fn(tdb, k, d, p))
+		if (fn && fn(tdb, k, d, p)) {
+			free(k.dptr);
 			break;
+		}
+		free(k.dptr);
 	}
 
 	if (ret < 0)
