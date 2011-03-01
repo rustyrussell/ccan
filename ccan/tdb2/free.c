@@ -69,8 +69,10 @@ int tdb_ftable_init(struct tdb_context *tdb)
 	tdb->ftable = 0;
 
 	while (off) {
-		if (off == TDB_OFF_ERR)
+		if (TDB_OFF_IS_ERR(off)) {
+			tdb->ecode = off;
 			return -1;
+		}
 
 		rnd = random();
 		if (rnd >= max) {
@@ -92,7 +94,7 @@ tdb_off_t bucket_off(tdb_off_t ftable_off, unsigned bucket)
 		+ bucket * sizeof(tdb_off_t);
 }
 
-/* Returns free_buckets + 1, or list number to search. */
+/* Returns free_buckets + 1, or list number to search, or -ve error. */
 static tdb_off_t find_free_head(struct tdb_context *tdb,
 				tdb_off_t ftable_off,
 				tdb_off_t bucket)
@@ -173,8 +175,10 @@ static int enqueue_in_free(struct tdb_context *tdb,
 
 	/* new->next = head. */
 	new.next = tdb_read_off(tdb, b_off);
-	if (new.next == TDB_OFF_ERR)
+	if (TDB_OFF_IS_ERR(new.next)) {
+		tdb->ecode = new.next;
 		return -1;
+	}
 
 	if (new.next) {
 #ifdef CCAN_TDB2_DEBUG
@@ -275,8 +279,13 @@ static tdb_off_t ftable_offset(struct tdb_context *tdb, unsigned int ftable)
 		return tdb->ftable_off;
 
 	off = first_ftable(tdb);
-	for (i = 0; i < ftable; i++)
+	for (i = 0; i < ftable; i++) {
+		if (TDB_OFF_IS_ERR(off)) {
+			tdb->ecode = off;
+			break;
+		}
 		off = next_ftable(tdb, off);
+	}
 	return off;
 }
 
@@ -436,8 +445,10 @@ again:
 	/* Walk the list to see if any are large enough, getting less fussy
 	 * as we go. */
 	off = tdb_read_off(tdb, b_off);
-	if (unlikely(off == TDB_OFF_ERR))
+	if (TDB_OFF_IS_ERR(off)) {
+		tdb->ecode = off;
 		goto unlock_err;
+	}
 
 	while (off) {
 		const struct tdb_free_record *r;
@@ -540,7 +551,7 @@ static tdb_off_t get_free(struct tdb_context *tdb,
 			  unsigned magic, unsigned hashlow)
 {
 	tdb_off_t off, ftable_off;
-	unsigned start_b, b, ftable;
+	tdb_off_t start_b, b, ftable;
 	bool wrapped = false;
 
 	/* If they are growing, add 50% to get to higher bucket. */
@@ -576,13 +587,26 @@ static tdb_off_t get_free(struct tdb_context *tdb,
 			/* Didn't work.  Try next bucket. */
 		}
 
+		if (TDB_OFF_IS_ERR(b)) {
+			tdb->ecode = b;
+			return 0;
+		}
+
 		/* Hmm, try next table. */
 		ftable_off = next_ftable(tdb, ftable_off);
+		if (TDB_OFF_IS_ERR(ftable_off)) {
+			tdb->ecode = ftable_off;
+			return 0;
+		}
 		ftable++;
 
 		if (ftable_off == 0) {
 			wrapped = true;
 			ftable_off = first_ftable(tdb);
+			if (TDB_OFF_IS_ERR(ftable_off)) {
+				tdb->ecode = ftable_off;
+				return 0;
+			}
 			ftable = 0;
 		}
 	}

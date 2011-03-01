@@ -136,8 +136,10 @@ static bool check_hash_chain(struct tdb_context *tdb,
 		return false;
 
 	off = tdb_read_off(tdb, off + offsetof(struct tdb_chain, next));
-	if (off == TDB_OFF_ERR)
+	if (TDB_OFF_IS_ERR(off)) {
+		tdb->ecode = off;
 		return false;
+	}
 	if (off == 0)
 		return true;
 	(*num_found)++;
@@ -512,8 +514,10 @@ static bool check_free_table(struct tdb_context *tdb,
 
 		h = bucket_off(ftable_off, i);
 		for (off = tdb_read_off(tdb, h); off; off = f.next) {
-			if (off == TDB_OFF_ERR)
+			if (TDB_OFF_IS_ERR(off)) {
+				tdb->ecode = off;
 				return false;
+			}
 			ecode = tdb_read_convert(tdb, off, &f, sizeof(f));
 			if (ecode != TDB_SUCCESS) {
 				tdb->ecode = ecode;
@@ -725,7 +729,7 @@ int tdb_check(struct tdb_context *tdb,
 	enum TDB_ERROR ecode;
 
 	ecode = tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false);
-	if (ecpde != TDB_SUCCESS) {
+	if (ecode != TDB_SUCCESS) {
 		tdb->ecode = ecode;
 		return -1;
 	}
@@ -745,8 +749,10 @@ int tdb_check(struct tdb_context *tdb,
 		goto fail;
 
 	for (ft = first_ftable(tdb); ft; ft = next_ftable(tdb, ft)) {
-		if (ft == TDB_OFF_ERR)
+		if (TDB_OFF_IS_ERR(ft)) {
+			tdb->ecode = ft;
 			goto fail;
+		}
 		if (!check_free_table(tdb, ft, num_ftables, fr, num_free,
 				      &num_found))
 			goto fail;

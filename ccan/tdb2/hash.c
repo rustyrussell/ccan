@@ -225,8 +225,10 @@ static tdb_off_t COLD find_in_chain(struct tdb_context *tdb,
 		}
 		next = tdb_read_off(tdb, off
 				    + offsetof(struct tdb_chain, next));
-		if (next == TDB_OFF_ERR)
+		if (TDB_OFF_IS_ERR(next)) {
+			tdb->ecode = next;
 			return TDB_OFF_ERR;
+		}
 		if (next)
 			next += sizeof(struct tdb_used_record);
 	}
@@ -430,16 +432,24 @@ static int COLD add_to_chain(struct tdb_context *tdb,
 			     tdb_off_t subhash,
 			     tdb_off_t new_off)
 {
-	size_t entry = tdb_find_zero_off(tdb, subhash, 1<<TDB_HASH_GROUP_BITS);
+	tdb_off_t entry;
 	enum TDB_ERROR ecode;
+
+	entry = tdb_find_zero_off(tdb, subhash, 1<<TDB_HASH_GROUP_BITS);
+	if (TDB_OFF_IS_ERR(entry)) {
+		tdb->ecode = entry;
+		return -1;
+	}
 
 	if (entry == 1 << TDB_HASH_GROUP_BITS) {
 		tdb_off_t next;
 
 		next = tdb_read_off(tdb, subhash
 				    + offsetof(struct tdb_chain, next));
-		if (next == TDB_OFF_ERR)
+		if (TDB_OFF_IS_ERR(next)) {
+			tdb->ecode = next;
 			return -1;
+		}
 
 		if (!next) {
 			next = alloc(tdb, 0, sizeof(struct tdb_chain), 0,
@@ -692,8 +702,7 @@ int add_to_hash(struct tdb_context *tdb, struct hash_info *h, tdb_off_t new_off)
 static tdb_off_t iterate_hash(struct tdb_context *tdb,
 			      struct traverse_info *tinfo)
 {
-	tdb_off_t off, val;
-	unsigned int i;
+	tdb_off_t off, val, i;
 	struct traverse_level *tlevel;
 
 	tlevel = &tinfo->levels[tinfo->num_levels-1];
@@ -704,9 +713,16 @@ again:
 	     i != tlevel->total_buckets;
 	     i = tdb_find_nonzero_off(tdb, tlevel->hashtable,
 				      i+1, tlevel->total_buckets)) {
-		val = tdb_read_off(tdb, tlevel->hashtable+sizeof(tdb_off_t)*i);
-		if (unlikely(val == TDB_OFF_ERR))
+		if (TDB_OFF_IS_ERR(i)) {
+			tdb->ecode = i;
 			return TDB_OFF_ERR;
+		}
+
+		val = tdb_read_off(tdb, tlevel->hashtable+sizeof(tdb_off_t)*i);
+		if (TDB_OFF_IS_ERR(val)) {
+			tdb->ecode = val;
+			return TDB_OFF_ERR;
+		}
 
 		off = val & TDB_OFF_MASK;
 
@@ -746,8 +762,10 @@ again:
 		tlevel->hashtable = tdb_read_off(tdb, tlevel->hashtable
 						 + offsetof(struct tdb_chain,
 							    next));
-		if (tlevel->hashtable == TDB_OFF_ERR)
+		if (TDB_OFF_IS_ERR(tlevel->hashtable)) {
+			tdb->ecode = tlevel->hashtable;
 			return TDB_OFF_ERR;
+		}
 		if (tlevel->hashtable) {
 			tlevel->hashtable += sizeof(struct tdb_used_record);
 			tlevel->entry = 0;

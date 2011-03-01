@@ -642,8 +642,8 @@ static int tdb_recovery_allocate(struct tdb_context *tdb,
 	enum TDB_ERROR ecode;
 
 	recovery_head = tdb_read_off(tdb, offsetof(struct tdb_header,recovery));
-	if (recovery_head == TDB_OFF_ERR) {
-		tdb_logerr(tdb, tdb->ecode, TDB_LOG_ERROR,
+	if (TDB_OFF_IS_ERR(recovery_head)) {
+		tdb_logerr(tdb, recovery_head, TDB_LOG_ERROR,
 			 "tdb_recovery_allocate:"
 			 " failed to read recovery head");
 		return -1;
@@ -1108,8 +1108,8 @@ int tdb_transaction_recover(struct tdb_context *tdb)
 
 	/* find the recovery area */
 	recovery_head = tdb_read_off(tdb, offsetof(struct tdb_header,recovery));
-	if (recovery_head == TDB_OFF_ERR) {
-		tdb_logerr(tdb, tdb->ecode, TDB_LOG_ERROR,
+	if (TDB_OFF_IS_ERR(recovery_head)) {
+		tdb_logerr(tdb, recovery_head, TDB_LOG_ERROR,
 			 "tdb_transaction_recover:"
 			 " failed to read recovery head");
 		return -1;
@@ -1241,7 +1241,8 @@ bool tdb_needs_recovery(struct tdb_context *tdb)
 
 	/* find the recovery area */
 	recovery_head = tdb_read_off(tdb, offsetof(struct tdb_header,recovery));
-	if (recovery_head == TDB_OFF_ERR) {
+	if (TDB_OFF_IS_ERR(recovery_head)) {
+		tdb->ecode = recovery_head;
 		return true;
 	}
 

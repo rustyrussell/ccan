@@ -133,6 +133,7 @@ void *tdb_convert(const struct tdb_context *tdb, void *buf, tdb_len_t size)
 	return buf;
 }
 
+/* Return first non-zero offset in offset array, or end, or -ve error. */
 /* FIXME: Return the off? */
 uint64_t tdb_find_nonzero_off(struct tdb_context *tdb,
 			      tdb_off_t base, uint64_t start, uint64_t end)
@@ -144,8 +145,7 @@ uint64_t tdb_find_nonzero_off(struct tdb_context *tdb,
 	val = tdb_access_read(tdb, base + start * sizeof(tdb_off_t),
 			      (end - start) * sizeof(tdb_off_t), false);
 	if (TDB_PTR_IS_ERR(val)) {
-		tdb->ecode = TDB_PTR_ERR(val);
-		return end;
+		return TDB_PTR_ERR(val);
 	}
 
 	for (i = 0; i < (end - start); i++) {
@@ -156,7 +156,7 @@ uint64_t tdb_find_nonzero_off(struct tdb_context *tdb,
 	return start + i;
 }
 
-/* Return first zero offset in num offset array, or num. */
+/* Return first zero offset in num offset array, or num, or -ve error. */
 uint64_t tdb_find_zero_off(struct tdb_context *tdb, tdb_off_t off,
 			   uint64_t num)
 {
@@ -166,8 +166,7 @@ uint64_t tdb_find_zero_off(struct tdb_context *tdb, tdb_off_t off,
 	/* Zero vs non-zero is the same unconverted: minor optimization. */
 	val = tdb_access_read(tdb, off, num * sizeof(tdb_off_t), false);
 	if (TDB_PTR_IS_ERR(val)) {
-		tdb->ecode = TDB_PTR_ERR(val);
-		return num;
+		return TDB_PTR_ERR(val);
 	}
 
 	for (i = 0; i < num; i++) {
@@ -213,8 +212,7 @@ tdb_off_t tdb_read_off(struct tdb_context *tdb, tdb_off_t off)
 		tdb_off_t *p = tdb->methods->direct(tdb, off, sizeof(*p),
 						    false);
 		if (TDB_PTR_IS_ERR(p)) {
-			tdb->ecode = TDB_PTR_ERR(p);
-			return TDB_OFF_ERR;
+			return TDB_PTR_ERR(p);
 		}
 		if (p)
 			return *p;
@@ -222,8 +220,7 @@ tdb_off_t tdb_read_off(struct tdb_context *tdb, tdb_off_t off)
 
 	ecode = tdb_read_convert(tdb, off, &ret, sizeof(ret));
 	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return TDB_OFF_ERR;
+		return ecode;
 	}
 	return ret;
 }
