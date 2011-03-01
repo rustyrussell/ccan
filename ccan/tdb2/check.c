@@ -700,9 +700,13 @@ int tdb_check(struct tdb_context *tdb,
 
 	tdb_allrecord_unlock(tdb, F_RDLCK);
 	tdb_unlock_expand(tdb, F_RDLCK);
+	free(fr);
+	free(used);
 	return 0;
 
 fail:
+	free(fr);
+	free(used);
 	tdb_allrecord_unlock(tdb, F_RDLCK);
 	tdb_unlock_expand(tdb, F_RDLCK);
 	return -1;
