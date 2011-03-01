@@ -43,8 +43,8 @@ static struct btree *info_exclude;
 static unsigned int timeout;
 
 /* These are overridden at runtime if we can find config.h */
-const char *compiler = CCAN_COMPILER;
-const char *cflags = CCAN_CFLAGS;
+char *compiler = NULL;
+char *cflags = NULL;
 
 const char *config_header;
 
@@ -552,20 +552,28 @@ static void read_config_header(void)
 		if (!get_token(line, "define"))
 			continue;
 		sym = get_symbol_token(lines, line);
-		if (streq(sym, "CCAN_COMPILER")) {
+		if (streq(sym, "CCAN_COMPILER") && !compiler) {
 			compiler = demangle_string(lines[i]);
+			if (!compiler)
+				errx(1, "%s:%u:could not parse CCAN_COMPILER",
+				     fname, i+1);
 			if (verbose > 1)
 				printf("%s: compiler set to '%s'\n",
 				       fname, compiler);
-		} else if (streq(sym, "CCAN_CFLAGS")) {
+		} else if (streq(sym, "CCAN_CFLAGS") && !cflags) {
 			cflags = demangle_string(lines[i]);
+			if (!cflags)
+				errx(1, "%s:%u:could not parse CCAN_CFLAGS",
+				     fname, i+1);
 			if (verbose > 1)
 				printf("%s: compiler flags set to '%s'\n",
 				       fname, cflags);
 		}
 	}
-	if (!compiler || !cflags)
-		errx(1, "Problem parsing %s", fname);
+	if (!compiler)
+		compiler = CCAN_COMPILER;
+	if (!cflags)
+		compiler = CCAN_CFLAGS;
 }
 
 int main(int argc, char *argv[])
@@ -605,6 +613,10 @@ int main(int argc, char *argv[])
 	opt_register_arg("--target <testname>", opt_set_charp,
 			 NULL, &target,
 			 "only run one test (and its prerequisites)");
+	opt_register_arg("--compiler <compiler>", opt_set_charp,
+			 NULL, &compiler, "set the compiler");
+	opt_register_arg("--cflags <flags>", opt_set_charp,
+			 NULL, &cflags, "set the compiler flags");
 	opt_register_noarg("-?|-h|--help", opt_usage_and_exit,
 			   "\nA program for checking and guiding development"
 			   " of CCAN modules.",
