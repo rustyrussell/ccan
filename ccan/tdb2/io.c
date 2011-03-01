@@ -246,7 +246,7 @@ static enum TDB_ERROR tdb_write(struct tdb_context *tdb, tdb_off_t off,
 	} else {
 		ssize_t ret;
 		ret = pwrite(tdb->fd, buf, len, off);
-		if (ret < len) {
+		if (ret != len) {
 			/* This shouldn't happen: we avoid sparse files. */
 			if (ret >= 0)
 				errno = ENOSPC;
@@ -375,7 +375,7 @@ static enum TDB_ERROR fill(struct tdb_context *tdb,
 	while (len) {
 		size_t n = len > size ? size : len;
 		ssize_t ret = pwrite(tdb->fd, buf, n, off);
-		if (ret < n) {
+		if (ret != n) {
 			if (ret >= 0)
 				errno = ENOSPC;
 
