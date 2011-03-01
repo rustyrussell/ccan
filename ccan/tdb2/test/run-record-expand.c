@@ -46,5 +46,7 @@ int main(int argc, char *argv[])
 		tdb_close(tdb);
 	}
 	ok1(tap_log_messages == 0);
+	free(data.dptr);
+
 	return exit_status();
 }

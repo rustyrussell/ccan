@@ -26,13 +26,17 @@ static bool store_records(struct tdb_context *tdb)
 {
 	int i;
 	struct tdb_data key = { (unsigned char *)&i, sizeof(i) };
-	struct tdb_data data = { (unsigned char *)&i, sizeof(i) };
+	struct tdb_data d, data = { (unsigned char *)&i, sizeof(i) };
 
 	for (i = 0; i < 1000; i++) {
 		if (tdb_store(tdb, key, data, TDB_REPLACE) != 0)
 			return false;
-		if (tdb_fetch(tdb, key).dsize != data.dsize)
+		d = tdb_fetch(tdb, key);
+		if (d.dsize != data.dsize)
 			return false;
+		if (memcmp(d.dptr, data.dptr, d.dsize) != 0)
+			return false;
+		free(d.dptr);
 	}
 	return true;
 }
@@ -41,7 +45,7 @@ static void test_val(struct tdb_context *tdb, uint64_t val)
 {
 	uint64_t v;
 	struct tdb_data key = { (unsigned char *)&v, sizeof(v) };
-	struct tdb_data data = { (unsigned char *)&v, sizeof(v) };
+	struct tdb_data d, data = { (unsigned char *)&v, sizeof(v) };
 
 	/* Insert an entry, then delete it. */
 	v = val;
@@ -65,9 +69,13 @@ static void test_val(struct tdb_context *tdb, uint64_t val)
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 	/* Can find both? */
-	ok1(tdb_fetch(tdb, key).dsize == data.dsize);
+	d = tdb_fetch(tdb, key);
+	ok1(d.dsize == data.dsize);
+	free(d.dptr);
 	v = val;
-	ok1(tdb_fetch(tdb, key).dsize == data.dsize);
+	d = tdb_fetch(tdb, key);
+	ok1(d.dsize == data.dsize);
+	free(d.dptr);
 
 	/* Delete second one. */
 	v = val + 1;
@@ -85,7 +93,9 @@ static void test_val(struct tdb_context *tdb, uint64_t val)
 
 	/* Can still find second? */
 	v = val + 1;
-	ok1(tdb_fetch(tdb, key).dsize == data.dsize);
+	d = tdb_fetch(tdb, key);
+	ok1(d.dsize == data.dsize);
+	free(d.dptr);
 
 	/* Now, this will be ideally placed. */
 	v = val + 2;
@@ -97,11 +107,17 @@ static void test_val(struct tdb_context *tdb, uint64_t val)
 	ok1(tdb_store(tdb, key, data, TDB_INSERT) == 0);
 
 	/* We can still find them all, right? */
-	ok1(tdb_fetch(tdb, key).dsize == data.dsize);
+	d = tdb_fetch(tdb, key);
+	ok1(d.dsize == data.dsize);
+	free(d.dptr);
 	v = val + 1;
-	ok1(tdb_fetch(tdb, key).dsize == data.dsize);
+	d = tdb_fetch(tdb, key);
+	ok1(d.dsize == data.dsize);
+	free(d.dptr);
 	v = val + 2;
-	ok1(tdb_fetch(tdb, key).dsize == data.dsize);
+	d = tdb_fetch(tdb, key);
+	ok1(d.dsize == data.dsize);
+	free(d.dptr);
 
 	/* And if we delete val + 1, that val + 2 should not move! */
 	v = val + 1;
@@ -109,9 +125,13 @@ static void test_val(struct tdb_context *tdb, uint64_t val)
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 	v = val;
-	ok1(tdb_fetch(tdb, key).dsize == data.dsize);
+	d = tdb_fetch(tdb, key);
+	ok1(d.dsize == data.dsize);
+	free(d.dptr);
 	v = val + 2;
-	ok1(tdb_fetch(tdb, key).dsize == data.dsize);
+	d = tdb_fetch(tdb, key);
+	ok1(d.dsize == data.dsize);
+	free(d.dptr);
 
 	/* Delete those two, so we are empty. */
 	ok1(tdb_delete(tdb, key) == 0);

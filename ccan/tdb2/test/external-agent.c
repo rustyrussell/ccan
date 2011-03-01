@@ -187,3 +187,10 @@ const char *operation_name(enum operation op)
 	}
 	return "**INVALID**";
 }
+
+void free_external_agent(struct agent *agent)
+{
+	close(agent->cmdfd);
+	close(agent->responsefd);
+	free(agent);
+}

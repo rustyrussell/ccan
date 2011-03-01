@@ -37,6 +37,7 @@ int main(int argc, char *argv[])
 			/* Fetch should now work. */
 			d = tdb_fetch(tdb, key);
 			ok1(data_equal(d, data));
+			free(d.dptr);
 			ok1(tdb_check(tdb, NULL, NULL) == 0);
 			tdb_close(tdb);
 		}

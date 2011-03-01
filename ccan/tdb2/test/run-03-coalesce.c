@@ -54,6 +54,7 @@ int main(int argc, char *argv[])
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == len);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	tdb_close(tdb);
+	tdb_layout_free(layout);
 
 	/* No coalescing can be done due to used record */
 	layout = new_tdb_layout(NULL);
@@ -73,6 +74,7 @@ int main(int argc, char *argv[])
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == 1024);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	tdb_close(tdb);
+	tdb_layout_free(layout);
 
 	/* Coalescing can be done due to two free records, then EOF */
 	layout = new_tdb_layout(NULL);
@@ -94,6 +96,7 @@ int main(int argc, char *argv[])
 	    == 1024 + sizeof(struct tdb_used_record) + 2048);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	tdb_close(tdb);
+	tdb_layout_free(layout);
 
 	/* Coalescing can be done due to two free records, then data */
 	layout = new_tdb_layout(NULL);
@@ -116,6 +119,7 @@ int main(int argc, char *argv[])
 	    == 1024 + sizeof(struct tdb_used_record) + 512);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	tdb_close(tdb);
+	tdb_layout_free(layout);
 
 	/* Coalescing can be done due to three free records, then EOF */
 	layout = new_tdb_layout(NULL);
@@ -140,6 +144,7 @@ int main(int argc, char *argv[])
 	    + sizeof(struct tdb_used_record) + 256);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	tdb_close(tdb);
+	tdb_layout_free(layout);
 
 	ok1(tap_log_messages == 0);
 	return exit_status();

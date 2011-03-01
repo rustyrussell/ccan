@@ -62,6 +62,7 @@ int main(int argc, char *argv[])
 			ok1(d.dsize == sizeof(j));
 			ok1(d.dptr != NULL);
 			ok1(d.dptr && memcmp(d.dptr, &j, d.dsize) == 0);
+			free(d.dptr);
 		}
 
 		/* Now add a *lot* more. */
@@ -73,6 +74,7 @@ int main(int argc, char *argv[])
 			ok1(d.dsize == sizeof(j));
 			ok1(d.dptr != NULL);
 			ok1(d.dptr && memcmp(d.dptr, &j, d.dsize) == 0);
+			free(d.dptr);
 		}
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 
@@ -92,6 +94,7 @@ int main(int argc, char *argv[])
 			ok1(d.dsize == sizeof(j));
 			ok1(d.dptr != NULL);
 			ok1(d.dptr && memcmp(d.dptr, &j, d.dsize) == 0);
+			free(d.dptr);
 		}
 
 		/* Traverse through them. */

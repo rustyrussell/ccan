@@ -50,8 +50,11 @@ int main(int argc, char *argv[])
 		/* We seemed to lose some keys.
 		 * Insert and check they're in there! */
 		for (j = 0; j < 500; j++) {
+			struct tdb_data d;
 			ok1(tdb_store(tdb, key, data, TDB_REPLACE) == 0);
-			ok1(equal(tdb_fetch(tdb, key), data));
+			d = tdb_fetch(tdb, key);
+			ok1(equal(d, data));
+			free(d.dptr);
 		}
 		tdb_close(tdb);
 	}

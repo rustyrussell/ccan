@@ -320,3 +320,17 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 
 	return tdb;
 }
+
+void tdb_layout_free(struct tdb_layout *layout)
+{
+	unsigned int i;
+
+	for (i = 0; i < layout->num_elems; i++) {
+		if (layout->elem[i].base.type == DATA) {
+			free(layout->elem[i].used.key.dptr);
+			free(layout->elem[i].used.data.dptr);
+		}
+	}
+	free(layout->elem);
+	free(layout);
+}

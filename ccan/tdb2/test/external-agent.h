@@ -37,4 +37,5 @@ enum agent_return external_agent_operation(struct agent *handle,
 const char *agent_return_name(enum agent_return ret);
 const char *operation_name(enum operation op);
 
+void free_external_agent(struct agent *agent);
 #endif /* TDB2_TEST_EXTERNAL_AGENT_H */

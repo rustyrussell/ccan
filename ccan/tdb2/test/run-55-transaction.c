@@ -69,5 +69,6 @@ int main(int argc, char *argv[])
 	}
 
 	ok1(tap_log_messages == 0);
+	free(buffer);
 	return exit_status();
 }

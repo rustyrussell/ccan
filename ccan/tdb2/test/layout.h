@@ -16,6 +16,7 @@ void tdb_layout_add_hashtable(struct tdb_layout *layout,
 			      tdb_len_t extra);
 #endif
 struct tdb_context *tdb_layout_get(struct tdb_layout *layout);
+void tdb_layout_free(struct tdb_layout *layout);
 
 enum layout_type {
 	FREETABLE, FREE, DATA, HASHTABLE,

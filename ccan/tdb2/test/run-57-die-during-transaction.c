@@ -1,6 +1,9 @@
 #define _XOPEN_SOURCE 500
 #include <unistd.h>
 #include "lock-tracking.h"
+#include <ccan/tap/tap.h>
+#include <stdlib.h>
+#include <assert.h>
 static ssize_t pwrite_check(int fd, const void *buf, size_t count, off_t offset);
 static ssize_t write_check(int fd, const void *buf, size_t count);
 static int ftruncate_check(int fd, off_t length);
@@ -10,6 +13,51 @@ static int ftruncate_check(int fd, off_t length);
 #define fcntl fcntl_with_lockcheck
 #define ftruncate ftruncate_check
 
+/* There's a malloc inside transaction_setup_recovery, and valgrind complains
+ * when we longjmp and leak it. */
+#define MAX_ALLOCATIONS 200
+static void *allocated[MAX_ALLOCATIONS];
+
+static void *malloc_noleak(size_t len)
+{
+	unsigned int i;
+
+	for (i = 0; i < MAX_ALLOCATIONS; i++)
+		if (!allocated[i]) {
+			allocated[i] = malloc(len);
+			return allocated[i];
+		}
+	diag("Too many allocations!");
+	abort();
+}
+
+static void free_noleak(void *p)
+{
+	unsigned int i;
+
+	/* We don't catch realloc, so don't care if we miss one. */
+	for (i = 0; i < MAX_ALLOCATIONS; i++) {
+		if (allocated[i] == p) {
+			allocated[i] = NULL;
+			break;
+		}
+	}
+	free(p);
+}
+
+static void free_all(void)
+{
+	unsigned int i;
+
+	for (i = 0; i < MAX_ALLOCATIONS; i++) {
+		free(allocated[i]);
+		allocated[i] = NULL;
+	}
+}
+
+#define malloc malloc_noleak
+#define free free_noleak
+
 #include <ccan/tdb2/tdb.c>
 #include <ccan/tdb2/free.c>
 #include <ccan/tdb2/lock.c>
@@ -17,19 +65,19 @@ static int ftruncate_check(int fd, off_t length);
 #include <ccan/tdb2/hash.c>
 #include <ccan/tdb2/check.c>
 #include <ccan/tdb2/transaction.c>
-#include <ccan/tap/tap.h>
-#include <stdlib.h>
+#undef malloc
+#undef free
+#undef write
+#undef pwrite
+#undef fcntl
+#undef ftruncate
+
 #include <stdbool.h>
 #include <stdarg.h>
 #include <err.h>
 #include <setjmp.h>
 #include "external-agent.h"
 #include "logging.h"
-
-#undef write
-#undef pwrite
-#undef fcntl
-#undef ftruncate
 
 static bool in_transaction;
 static int target, current;
@@ -150,6 +198,7 @@ reset:
 		suppress_lockcheck = false;
 		target++;
 		current = 0;
+		free_all();
 		goto reset;
 	}
 
@@ -217,5 +266,6 @@ int main(int argc, char *argv[])
 		ok1(test_death(ops[i], agent));
 	}
 
+	free_external_agent(agent);
 	return exit_status();
 }

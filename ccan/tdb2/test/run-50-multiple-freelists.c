@@ -65,6 +65,7 @@ int main(int argc, char *argv[])
 	ok1(off == 0);
 
 	tdb_close(tdb);
+	tdb_layout_free(layout);
 
 	ok1(tap_log_messages == 0);
 	return exit_status();
