@@ -92,6 +92,7 @@ static void add_files(struct manifest *m, const char *dir)
 {
 	DIR *d;
 	struct dirent *ent;
+	char **subs = NULL;
 
 	if (dir[0])
 		d = opendir(dir);
@@ -116,8 +117,9 @@ static void add_files(struct manifest *m, const char *dir)
 			err(1, "lstat %s", f->name);
 
 		if (S_ISDIR(st.st_mode)) {
-			f->name = talloc_append_string(f->name, "/");
-			add_files(m, f->name);
+			size_t len = talloc_array_length(subs);
+			subs = talloc_realloc(m, subs, char *, len+1);
+			subs[len] = talloc_append_string(f->name, "/");
 			continue;
 		}
 		if (!S_ISREG(st.st_mode)) {
@@ -161,6 +163,20 @@ static void add_files(struct manifest *m, const char *dir)
 		list_add(dest, &f->list);
 	}
 	closedir(d);
+
+	/* Before we recurse, sanity check this is a ccan module. */ 
+	if (!dir[0]) {
+		size_t i;
+
+		if (!m->info_file
+		    && list_empty(&m->c_files)
+		    && list_empty(&m->h_files))
+			errx(1, "No _info, C or H files found here!");
+
+		for (i = 0; i < talloc_array_length(subs); i++)
+			add_files(m, subs[i]);
+	}
+	talloc_free(subs);
 }
 
 static int cmp_names(struct ccan_file *const *a, struct ccan_file *const *b,
@@ -243,8 +259,12 @@ struct manifest *get_manifest(const void *ctx, const char *dir)
 		char *p;
 		ccan_dir = talloc_strdup(NULL, m->dir);
 		p = strrchr(ccan_dir, '/');
+		if (!p)
+			errx(1, "I expect the ccan root directory in ../..");
 		*p = '\0';
 		p = strrchr(ccan_dir, '/');
+		if (!p)
+			errx(1, "I expect the ccan root directory in ../..");
 		*p = '\0';
 	}
 
