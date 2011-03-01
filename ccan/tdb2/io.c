@@ -404,7 +404,7 @@ static int tdb_expand_file(struct tdb_context *tdb, tdb_len_t addition)
 		   file isn't sparse, which would be very bad if we ran out of
 		   disk. This must be done with write, not via mmap */
 		memset(buf, 0x43, sizeof(buf));
-		if (0 || fill(tdb, buf, sizeof(buf), tdb->map_size, addition) == -1)
+		if (fill(tdb, buf, sizeof(buf), tdb->map_size, addition) == -1)
 			return -1;
 		tdb->map_size += addition;
 		tdb_mmap(tdb);
