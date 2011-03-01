@@ -12,7 +12,7 @@ static int log_count = 0;
 
 /* Normally we get a log when setting random seed. */
 static void my_log_fn(struct tdb_context *tdb,
-		      enum tdb_debug_level level, void *priv,
+		      enum tdb_log_level level, void *priv,
 		      const char *message)
 {
 	log_count++;

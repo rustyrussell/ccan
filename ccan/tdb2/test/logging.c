@@ -13,14 +13,13 @@ union tdb_attribute tap_log_attr = {
 };
 
 void tap_log_fn(struct tdb_context *tdb,
-		enum tdb_debug_level level, void *priv,
+		enum tdb_log_level level, void *priv,
 		const char *message)
 {
 	if (suppress_logging)
 		return;
 
 	diag("tdb log level %u: %s%s", level, log_prefix, message);
-	if (level != TDB_DEBUG_TRACE)
-		tap_log_messages++;
+	tap_log_messages++;
 }
 

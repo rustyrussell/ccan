@@ -68,8 +68,7 @@ enum TDB_ERROR {TDB_SUCCESS=0, TDB_ERR_CORRUPT, TDB_ERR_IO, TDB_ERR_LOCK,
 enum tdb_summary_flags { TDB_SUMMARY_HISTOGRAMS = 1 };
 
 /* logging uses one of the following levels */
-enum tdb_debug_level {TDB_DEBUG_FATAL = 0, TDB_DEBUG_ERROR,
-		      TDB_DEBUG_WARNING, TDB_DEBUG_TRACE};
+enum tdb_log_level {TDB_LOG_ERROR = 0, TDB_LOG_USE_ERROR, TDB_LOG_WARNING};
 
 typedef struct tdb_data {
 	unsigned char *dptr;
@@ -80,7 +79,6 @@ struct tdb_context;
 
 /* FIXME: Make typesafe */
 typedef int (*tdb_traverse_func)(struct tdb_context *, TDB_DATA, TDB_DATA, void *);
-typedef void (*tdb_logfn_t)(struct tdb_context *, enum tdb_debug_level, void *, const char *);
 typedef uint64_t (*tdb_hashfn_t)(const void *key, size_t len, uint64_t seed,
 				 void *priv);
 
@@ -98,7 +96,10 @@ struct tdb_attribute_base {
 
 struct tdb_attribute_log {
 	struct tdb_attribute_base base; /* .attr = TDB_ATTRIBUTE_LOG */
-	tdb_logfn_t log_fn;
+	void (*log_fn)(struct tdb_context *tdb,
+		       enum tdb_log_level level,
+		       void *log_private,
+		       const char *message);
 	void *log_private;
 };
 

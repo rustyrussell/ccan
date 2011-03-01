@@ -49,8 +49,6 @@ static uint64_t random_number(struct tdb_context *tdb)
 	fd = open("/dev/urandom", O_RDONLY);
 	if (fd >= 0) {
 		if (read_all(fd, &ret, sizeof(ret))) {
-			tdb_logerr(tdb, TDB_SUCCESS, TDB_DEBUG_TRACE,
-				 "tdb_open: random from /dev/urandom");
 			close(fd);
 			return ret;
 		}
@@ -65,9 +63,6 @@ static uint64_t random_number(struct tdb_context *tdb)
 			char reply[1 + sizeof(uint64_t)];
 			int r = read(fd, reply, sizeof(reply));
 			if (r > 1) {
-				tdb_logerr(tdb, TDB_SUCCESS, TDB_DEBUG_TRACE,
-					   "tdb_open: %u random bytes from"
-					   " /dev/egd-pool", r-1);
 				/* Copy at least some bytes. */
 				memcpy(&ret, reply+1, r - 1);
 				if (reply[0] == sizeof(uint64_t)
@@ -83,7 +78,7 @@ static uint64_t random_number(struct tdb_context *tdb)
 	/* Fallback: pid and time. */
 	gettimeofday(&now, NULL);
 	ret = getpid() * 100132289ULL + now.tv_sec * 1000000ULL + now.tv_usec;
-	tdb_logerr(tdb, TDB_SUCCESS, TDB_DEBUG_TRACE,
+	tdb_logerr(tdb, TDB_SUCCESS, TDB_LOG_WARNING,
 		   "tdb_open: random from getpid and time");
 	return ret;
 }
@@ -141,7 +136,7 @@ static int tdb_new_database(struct tdb_context *tdb,
 		tdb->map_size = sizeof(newdb);
 		tdb->map_ptr = malloc(tdb->map_size);
 		if (!tdb->map_ptr) {
-			tdb_logerr(tdb, TDB_ERR_OOM, TDB_DEBUG_FATAL,
+			tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
 				   "tdb_new_database: failed to allocate");
 			return -1;
 		}
@@ -158,7 +153,7 @@ static int tdb_new_database(struct tdb_context *tdb,
 	if (rlen != sizeof(newdb)) {
 		if (rlen >= 0)
 			errno = ENOSPC;
-		tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_FATAL,
+		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 			   "tdb_new_database: %zi writing header: %s",
 			   rlen, strerror(errno));
 		return -1;
@@ -220,7 +215,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 				tdb->stats->size = sizeof(attr->stats);
 			break;
 		default:
-			tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_DEBUG_ERROR,
+			tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
 				   "tdb_open: unknown attribute type %u",
 				   attr->base.attr);
 			goto fail;
@@ -229,7 +224,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	}
 
 	if ((open_flags & O_ACCMODE) == O_WRONLY) {
-		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_DEBUG_ERROR,
+		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
 			   "tdb_open: can't open tdb %s write-only", name);
 		goto fail;
 	}
@@ -259,7 +254,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	if ((tdb->fd = open(name, open_flags, mode)) == -1) {
 		/* errno set by open(2) */
 		saved_errno = errno;
-		tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_ERROR,
+		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 			   "tdb_open: could not open file %s: %s",
 			   name, strerror(errno));
 		goto fail;
@@ -283,13 +278,13 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 			goto fail;
 		}
 	} else if (rlen < 0) {
-		tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_ERROR,
+		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 			   "tdb_open: error %s reading %s",
 			   strerror(errno), name);
 		goto fail;
 	} else if (rlen < sizeof(hdr)
 		   || strcmp(hdr.magic_food, TDB_MAGIC_FOOD) != 0) {
-		tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_ERROR,
+		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 			   "tdb_open: %s is not a tdb file", name);
 		goto fail;
 	}
@@ -299,7 +294,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 			tdb->flags |= TDB_CONVERT;
 		else {
 			/* wrong version */
-			tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_ERROR,
+			tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 				   "tdb_open: %s is unknown version 0x%llx",
 				   name, (long long)hdr.version);
 			goto fail;
@@ -312,7 +307,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	hash_test = tdb_hash(tdb, &hash_test, sizeof(hash_test));
 	if (hdr.hash_test != hash_test) {
 		/* wrong hash variant */
-		tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_ERROR,
+		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 			   "tdb_open: %s uses a different hash function",
 			   name);
 		goto fail;
@@ -320,7 +315,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 
 	if (fstat(tdb->fd, &st) == -1) {
 		saved_errno = errno;
-		tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_ERROR,
+		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 			   "tdb_open: could not stat open %s: %s",
 			   name, strerror(errno));
 		goto fail;
@@ -329,7 +324,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	/* Is it already in the open list?  If so, fail. */
 	if (tdb_already_open(st.st_dev, st.st_ino)) {
 		/* FIXME */
-		tdb_logerr(tdb, TDB_ERR_NESTING, TDB_DEBUG_ERROR,
+		tdb_logerr(tdb, TDB_ERR_NESTING, TDB_LOG_USE_ERROR,
 			   "tdb_open: %s (%d,%d) is already open in this"
 			   " process",
 			   name, (int)st.st_dev, (int)st.st_ino);
@@ -338,7 +333,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 
 	tdb->name = strdup(name);
 	if (!tdb->name) {
-		tdb_logerr(tdb, TDB_ERR_OOM, TDB_DEBUG_ERROR,
+		tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
 			   "tdb_open: failed to allocate name");
 		goto fail;
 	}
@@ -401,9 +396,9 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	free((char *)tdb->name);
 	if (tdb->fd != -1)
 		if (close(tdb->fd) != 0)
-			tdb_logerr(tdb, TDB_ERR_IO, TDB_DEBUG_ERROR,
+			tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 				   "tdb_open: failed to close tdb->fd"
-				   " on error!");
+				   " on error: %s", strerror(errno));
 	free(tdb);
 	errno = saved_errno;
 	return NULL;
@@ -562,7 +557,7 @@ int tdb_append(struct tdb_context *tdb,
 		/* Slow path. */
 		newdata = malloc(key.dsize + old_dlen + dbuf.dsize);
 		if (!newdata) {
-			tdb_logerr(tdb, TDB_ERR_OOM, TDB_DEBUG_FATAL,
+			tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
 				   "tdb_append: failed to allocate %zu bytes",
 				   (size_t)(key.dsize+old_dlen+dbuf.dsize));
 			goto fail;
@@ -717,7 +712,7 @@ const char *tdb_errorstr(const struct tdb_context *tdb)
 
 void COLD tdb_logerr(struct tdb_context *tdb,
 		     enum TDB_ERROR ecode,
-		     enum tdb_debug_level level,
+		     enum tdb_log_level level,
 		     const char *fmt, ...)
 {
 	char *message;
@@ -738,7 +733,7 @@ void COLD tdb_logerr(struct tdb_context *tdb,
 
 	message = malloc(len + 1);
 	if (!message) {
-		tdb->logfn(tdb, TDB_DEBUG_ERROR, tdb->log_private,
+		tdb->logfn(tdb, TDB_LOG_ERROR, tdb->log_private,
 			   "out of memory formatting message:");
 		tdb->logfn(tdb, level, tdb->log_private, fmt);
 		return;

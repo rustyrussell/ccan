@@ -10,7 +10,7 @@ extern unsigned tap_log_messages;
 extern union tdb_attribute tap_log_attr;
 
 void tap_log_fn(struct tdb_context *tdb,
-		enum tdb_debug_level level, void *priv,
+		enum tdb_log_level level, void *priv,
 		const char *message);
 
 static inline bool data_equal(struct tdb_data a, struct tdb_data b)

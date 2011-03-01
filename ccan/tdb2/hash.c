@@ -704,7 +704,7 @@ int next_in_hash(struct tdb_context *tdb, int ltype,
 			}
 			if (rec_magic(&rec) != TDB_USED_MAGIC) {
 				tdb_logerr(tdb, TDB_ERR_CORRUPT,
-					   TDB_DEBUG_FATAL,
+					   TDB_LOG_ERROR,
 					   "next_in_hash:"
 					   " corrupt record at %llu",
 					   (long long)off);

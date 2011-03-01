@@ -50,15 +50,12 @@ static void tdb_log(struct tdb_context *tdb, enum tdb_debug_level level, void *p
 {
 	va_list ap;
 
-	if (level != TDB_DEBUG_TRACE)
-		error_count++;
-
 	va_start(ap, format);
 	vfprintf(stdout, format, ap);
 	va_end(ap);
 	fflush(stdout);
 #if 0
-	if (level != TDB_DEBUG_TRACE) {
+	{
 		char *ptr;
 		signal(SIGUSR1, SIG_IGN);
 		asprintf(&ptr,"xterm -e gdb /proc/%d/exe %d", getpid(), getpid());

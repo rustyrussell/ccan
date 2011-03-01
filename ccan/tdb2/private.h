@@ -331,7 +331,10 @@ struct tdb_context {
 	uint32_t flags;
 
 	/* Logging function */
-	tdb_logfn_t logfn;
+	void (*logfn)(struct tdb_context *tdb,
+		      enum tdb_log_level level,
+		      void *log_private,
+		      const char *message);
 	void *log_private;
 
 	/* Hash function. */
@@ -550,7 +553,7 @@ bool tdb_needs_recovery(struct tdb_context *tdb);
 /* tdb.c: */
 void COLD tdb_logerr(struct tdb_context *tdb,
 		     enum TDB_ERROR ecode,
-		     enum tdb_debug_level level,
+		     enum tdb_log_level level,
 		     const char *fmt, ...);
 
 #ifdef TDB_TRACE

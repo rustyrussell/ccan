@@ -175,7 +175,7 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 	chains = tally_new(HISTO_HEIGHT);
 	if (!ftables || !hashes || !freet || !keys || !data || !extra
 	    || !uncoal || !buckets || !chains) {
-		tdb_logerr(tdb, TDB_ERR_OOM, TDB_DEBUG_ERROR,
+		tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
 			   "tdb_summary: failed to allocate tally structures");
 		goto unlock;
 	}
