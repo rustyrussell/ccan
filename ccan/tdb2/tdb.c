@@ -89,14 +89,15 @@ struct new_database {
 };
 
 /* initialise a new database */
-static int tdb_new_database(struct tdb_context *tdb,
-			    struct tdb_attribute_seed *seed,
-			    struct tdb_header *hdr)
+static enum TDB_ERROR tdb_new_database(struct tdb_context *tdb,
+				       struct tdb_attribute_seed *seed,
+				       struct tdb_header *hdr)
 {
 	/* We make it up in memory, then write it out if not internal */
 	struct new_database newdb;
 	unsigned int magic_len;
 	ssize_t rlen;
+	enum TDB_ERROR ecode;
 
 	/* Fill in the header */
 	newdb.hdr.version = TDB_VERSION;
@@ -117,12 +118,12 @@ static int tdb_new_database(struct tdb_context *tdb,
 	/* Free is empty. */
 	newdb.hdr.free_table = offsetof(struct new_database, ftable);
 	memset(&newdb.ftable, 0, sizeof(newdb.ftable));
-	tdb->ecode = set_header(NULL, &newdb.ftable.hdr, TDB_FTABLE_MAGIC, 0,
-				sizeof(newdb.ftable) - sizeof(newdb.ftable.hdr),
-				sizeof(newdb.ftable) - sizeof(newdb.ftable.hdr),
-				0);
-	if (tdb->ecode != TDB_SUCCESS) {
-		return -1;
+	ecode = set_header(NULL, &newdb.ftable.hdr, TDB_FTABLE_MAGIC, 0,
+			   sizeof(newdb.ftable) - sizeof(newdb.ftable.hdr),
+			   sizeof(newdb.ftable) - sizeof(newdb.ftable.hdr),
+			   0);
+	if (ecode != TDB_SUCCESS) {
+		return ecode;
 	}
 
 	/* Magic food */
@@ -140,29 +141,34 @@ static int tdb_new_database(struct tdb_context *tdb,
 		tdb->map_size = sizeof(newdb);
 		tdb->map_ptr = malloc(tdb->map_size);
 		if (!tdb->map_ptr) {
-			tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
-				   "tdb_new_database: failed to allocate");
-			return -1;
+			return tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
+					  "tdb_new_database:"
+					  " failed to allocate");
 		}
 		memcpy(tdb->map_ptr, &newdb, tdb->map_size);
-		return 0;
+		return TDB_SUCCESS;
 	}
-	if (lseek(tdb->fd, 0, SEEK_SET) == -1)
-		return -1;
+	if (lseek(tdb->fd, 0, SEEK_SET) == -1) {
+		return tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+				  "tdb_new_database:"
+				  " failed to seek: %s", strerror(errno));
+	}
 
-	if (ftruncate(tdb->fd, 0) == -1)
-		return -1;
+	if (ftruncate(tdb->fd, 0) == -1) {
+		return tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+				  "tdb_new_database:"
+				  " failed to truncate: %s", strerror(errno));
+	}
 
 	rlen = write(tdb->fd, &newdb, sizeof(newdb));
 	if (rlen != sizeof(newdb)) {
 		if (rlen >= 0)
 			errno = ENOSPC;
-		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
-			   "tdb_new_database: %zi writing header: %s",
-			   rlen, strerror(errno));
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+				  "tdb_new_database: %zi writing header: %s",
+				  rlen, strerror(errno));
 	}
-	return 0;
+	return TDB_SUCCESS;
 }
 
 struct tdb_context *tdb_open(const char *name, int tdb_flags,
@@ -417,37 +423,29 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	return NULL;
 }
 
-static int update_rec_hdr(struct tdb_context *tdb,
-			  tdb_off_t off,
-			  tdb_len_t keylen,
-			  tdb_len_t datalen,
-			  struct tdb_used_record *rec,
-			  uint64_t h)
+static enum TDB_ERROR update_rec_hdr(struct tdb_context *tdb,
+				     tdb_off_t off,
+				     tdb_len_t keylen,
+				     tdb_len_t datalen,
+				     struct tdb_used_record *rec,
+				     uint64_t h)
 {
 	uint64_t dataroom = rec_data_length(rec) + rec_extra_padding(rec);
 	enum TDB_ERROR ecode;
 
 	ecode = set_header(tdb, rec, TDB_USED_MAGIC, keylen, datalen,
 			   keylen + dataroom, h);
-	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return -1;
+	if (ecode == TDB_SUCCESS) {
+		ecode = tdb_write_convert(tdb, off, rec, sizeof(*rec));
 	}
-
-	ecode = tdb_write_convert(tdb, off, rec, sizeof(*rec));
-	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return -1;
-	}
-	return 0;
+	return ecode;
 }
 
-/* Returns -1 on error, 0 on OK */
-static int replace_data(struct tdb_context *tdb,
-			struct hash_info *h,
-			struct tdb_data key, struct tdb_data dbuf,
-			tdb_off_t old_off, tdb_len_t old_room,
-			bool growing)
+static enum TDB_ERROR replace_data(struct tdb_context *tdb,
+				   struct hash_info *h,
+				   struct tdb_data key, struct tdb_data dbuf,
+				   tdb_off_t old_off, tdb_len_t old_room,
+				   bool growing)
 {
 	tdb_off_t new_off;
 	enum TDB_ERROR ecode;
@@ -456,8 +454,7 @@ static int replace_data(struct tdb_context *tdb,
 	new_off = alloc(tdb, key.dsize, dbuf.dsize, h->h, TDB_USED_MAGIC,
 			growing);
 	if (TDB_OFF_IS_ERR(new_off)) {
-		tdb->ecode = new_off;
-		return -1;
+		return new_off;
 	}
 
 	/* We didn't like the existing one: remove it. */
@@ -472,26 +469,23 @@ static int replace_data(struct tdb_context *tdb,
 		ecode = add_to_hash(tdb, h, new_off);
 	}
 	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return -1;
+		return ecode;
 	}
 
 	new_off += sizeof(struct tdb_used_record);
 	ecode = tdb->methods->twrite(tdb, new_off, key.dptr, key.dsize);
 	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return -1;
+		return ecode;
 	}
 
 	new_off += key.dsize;
 	ecode = tdb->methods->twrite(tdb, new_off, dbuf.dptr, dbuf.dsize);
 	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return -1;
+		return ecode;
 	}
 
 	/* FIXME: tdb_increment_seqnum(tdb); */
-	return 0;
+	return TDB_SUCCESS;
 }
 
 int tdb_store(struct tdb_context *tdb,
@@ -501,7 +495,6 @@ int tdb_store(struct tdb_context *tdb,
 	tdb_off_t off;
 	tdb_len_t old_room = 0;
 	struct tdb_used_record rec;
-	int ret;
 	enum TDB_ERROR ecode;
 
 	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL);
@@ -522,10 +515,13 @@ int tdb_store(struct tdb_context *tdb,
 				+ rec_extra_padding(&rec);
 			if (old_room >= dbuf.dsize) {
 				/* Can modify in-place.  Easy! */
-				if (update_rec_hdr(tdb, off,
-						   key.dsize, dbuf.dsize,
-						   &rec, h.h))
+				ecode = update_rec_hdr(tdb, off,
+						       key.dsize, dbuf.dsize,
+						       &rec, h.h);
+				if (ecode != TDB_SUCCESS) {
+					tdb->ecode = ecode;
 					goto fail;
+				}
 				ecode = tdb->methods->twrite(tdb,
 							     off + sizeof(rec)
 							     + key.dsize,
@@ -551,9 +547,13 @@ int tdb_store(struct tdb_context *tdb,
 	}
 
 	/* If we didn't use the old record, this implies we're growing. */
-	ret = replace_data(tdb, &h, key, dbuf, off, old_room, off != 0);
+	ecode = replace_data(tdb, &h, key, dbuf, off, old_room, off);
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
-	return ret;
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
+		return -1;
+	}
+	return 0;
 
 fail:
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
@@ -570,7 +570,6 @@ int tdb_append(struct tdb_context *tdb,
 	unsigned char *newdata;
 	struct tdb_data new_dbuf;
 	enum TDB_ERROR ecode;
-	int ret;
 
 	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL);
 	if (TDB_OFF_IS_ERR(off)) {
@@ -584,9 +583,13 @@ int tdb_append(struct tdb_context *tdb,
 
 		/* Fast path: can append in place. */
 		if (rec_extra_padding(&rec) >= dbuf.dsize) {
-			if (update_rec_hdr(tdb, off, key.dsize,
-					   old_dlen + dbuf.dsize, &rec, h.h))
+			ecode = update_rec_hdr(tdb, off, key.dsize,
+					       old_dlen + dbuf.dsize, &rec,
+					       h.h);
+			if (ecode != TDB_SUCCESS) {
+				tdb->ecode = ecode;
 				goto fail;
+			}
 
 			off += sizeof(rec) + key.dsize + old_dlen;
 			ecode = tdb->methods->twrite(tdb, off, dbuf.dptr,
@@ -626,11 +629,15 @@ int tdb_append(struct tdb_context *tdb,
 	}
 
 	/* If they're using tdb_append(), it implies they're growing record. */
-	ret = replace_data(tdb, &h, key, new_dbuf, off, old_room, true);
+	ecode = replace_data(tdb, &h, key, new_dbuf, off, old_room, true);
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
 	free(newdata);
 
-	return ret;
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
+		return -1;
+	}
+	return 0;
 
 fail:
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
