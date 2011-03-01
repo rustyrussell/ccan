@@ -1,0 +1,44 @@
+#include <string.h>
+#include "config.h"
+
+/**
+ * asprintf - asprintf wrapper (and if necessary, implementation).
+ *
+ * This provides a convenient wrapper for asprintf, and also implements
+ * asprintf if necessary.
+ *
+ * Author: Rusty Russell <rusty@rustcorp.com.au>
+ *
+ * License: MIT
+ *
+ * Example:
+ *	#include <ccan/asprintf/asprintf.h>
+ *	#include <unistd.h>
+ *	#include <err.h>
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		char *p = afmt("This program has %i arguments", argc);
+ *		int ret;
+ *
+ *		while ((ret = write(STDOUT_FILENO, p, strlen(p))) > 0) {
+ *			p += ret;
+ *			if (!*p)
+ *				exit(0);
+ *		}
+ *		err(1, "Writing to stdout");
+ *	}
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/compiler\n");
+		return 0;
+	}
+
+	return 1;
+}
