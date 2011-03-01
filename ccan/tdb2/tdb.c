@@ -197,7 +197,6 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb->direct_access = 0;
 	tdb->fd = -1;
 	tdb->map_size = sizeof(struct tdb_header);
-	tdb->ecode = TDB_SUCCESS;
 	tdb->flags = tdb_flags;
 	tdb->logfn = NULL;
 	tdb->transaction = NULL;
@@ -227,17 +226,20 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 				tdb->stats->size = sizeof(attr->stats);
 			break;
 		default:
-			tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
-				   "tdb_open: unknown attribute type %u",
-				   attr->base.attr);
+			ecode = tdb_logerr(tdb, TDB_ERR_EINVAL,
+					   TDB_LOG_USE_ERROR,
+					   "tdb_open:"
+					   " unknown attribute type %u",
+					   attr->base.attr);
 			goto fail;
 		}
 		attr = attr->base.next;
 	}
 
 	if ((open_flags & O_ACCMODE) == O_WRONLY) {
-		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
-			   "tdb_open: can't open tdb %s write-only", name);
+		ecode = tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
+				   "tdb_open: can't open tdb %s write-only",
+				   name);
 		goto fail;
 	}
 
@@ -254,7 +256,8 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	/* internal databases don't need any of the rest. */
 	if (tdb->flags & TDB_INTERNAL) {
 		tdb->flags |= (TDB_NOLOCK | TDB_NOMMAP);
-		if (tdb_new_database(tdb, seed, &hdr) != 0) {
+		ecode = tdb_new_database(tdb, seed, &hdr);
+		if (ecode != TDB_SUCCESS) {
 			goto fail;
 		}
 		tdb_convert(tdb, &hdr.hash_seed, sizeof(hdr.hash_seed));
@@ -266,9 +269,9 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	if ((tdb->fd = open(name, open_flags, mode)) == -1) {
 		/* errno set by open(2) */
 		saved_errno = errno;
-		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
-			   "tdb_open: could not open file %s: %s",
-			   name, strerror(errno));
+		ecode = tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+				   "tdb_open: could not open file %s: %s",
+				   name, strerror(errno));
 		goto fail;
 	}
 
@@ -277,26 +280,27 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
         fcntl(tdb->fd, F_SETFD, v | FD_CLOEXEC);
 
 	/* ensure there is only one process initialising at once */
-	tdb->ecode = tdb_lock_open(tdb, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK);
-	if (tdb->ecode != TDB_SUCCESS) {
+	ecode = tdb_lock_open(tdb, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK);
+	if (ecode != TDB_SUCCESS) {
 		goto fail;
 	}
 
 	/* If they used O_TRUNC, read will return 0. */
 	rlen = read(tdb->fd, &hdr, sizeof(hdr));
 	if (rlen == 0 && (open_flags & O_CREAT)) {
-		if (tdb_new_database(tdb, seed, &hdr) == -1) {
+		ecode = tdb_new_database(tdb, seed, &hdr);
+		if (ecode != TDB_SUCCESS) {
 			goto fail;
 		}
 	} else if (rlen < 0) {
-		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
-			   "tdb_open: error %s reading %s",
-			   strerror(errno), name);
+		ecode = tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+				   "tdb_open: error %s reading %s",
+				   strerror(errno), name);
 		goto fail;
 	} else if (rlen < sizeof(hdr)
 		   || strcmp(hdr.magic_food, TDB_MAGIC_FOOD) != 0) {
-		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
-			   "tdb_open: %s is not a tdb file", name);
+		ecode = tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+				   "tdb_open: %s is not a tdb file", name);
 		goto fail;
 	}
 
@@ -305,9 +309,10 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 			tdb->flags |= TDB_CONVERT;
 		else {
 			/* wrong version */
-			tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
-				   "tdb_open: %s is unknown version 0x%llx",
-				   name, (long long)hdr.version);
+			ecode = tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+					   "tdb_open:"
+					   " %s is unknown version 0x%llx",
+					   name, (long long)hdr.version);
 			goto fail;
 		}
 	}
@@ -318,34 +323,35 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	hash_test = tdb_hash(tdb, &hash_test, sizeof(hash_test));
 	if (hdr.hash_test != hash_test) {
 		/* wrong hash variant */
-		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
-			   "tdb_open: %s uses a different hash function",
-			   name);
+		ecode = tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+				   "tdb_open:"
+				   " %s uses a different hash function",
+				   name);
 		goto fail;
 	}
 
 	if (fstat(tdb->fd, &st) == -1) {
 		saved_errno = errno;
-		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
-			   "tdb_open: could not stat open %s: %s",
-			   name, strerror(errno));
+		ecode = tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+				   "tdb_open: could not stat open %s: %s",
+				   name, strerror(errno));
 		goto fail;
 	}
 
 	/* Is it already in the open list?  If so, fail. */
 	if (tdb_already_open(st.st_dev, st.st_ino)) {
 		/* FIXME */
-		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_USE_ERROR,
-			   "tdb_open: %s (%d,%d) is already open in this"
-			   " process",
-			   name, (int)st.st_dev, (int)st.st_ino);
+		ecode = tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_USE_ERROR,
+				   "tdb_open: %s (%d,%d) is already open"
+				   " in this process",
+				   name, (int)st.st_dev, (int)st.st_ino);
 		goto fail;
 	}
 
 	tdb->name = strdup(name);
 	if (!tdb->name) {
-		tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
-			   "tdb_open: failed to allocate name");
+		ecode = tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
+				   "tdb_open: failed to allocate name");
 		goto fail;
 	}
 
@@ -365,13 +371,12 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		}
 		ecode = tdb_lock_and_recover(tdb);
 		if (ecode != TDB_SUCCESS) {
-			tdb->ecode = ecode;
 			goto fail;
 		}
 	}
 
-	tdb->ecode = tdb_ftable_init(tdb);
-	if (tdb->ecode != TDB_SUCCESS) {
+	ecode = tdb_ftable_init(tdb);
+	if (ecode != TDB_SUCCESS) {
 		goto fail;
 	}
 
@@ -382,7 +387,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
  fail:
 	/* Map ecode to some logical errno. */
 	if (!saved_errno) {
-		switch (tdb->ecode) {
+		switch (ecode) {
 		case TDB_ERR_CORRUPT:
 		case TDB_ERR_IO:
 			saved_errno = EIO;
@@ -488,8 +493,8 @@ static enum TDB_ERROR replace_data(struct tdb_context *tdb,
 	return TDB_SUCCESS;
 }
 
-int tdb_store(struct tdb_context *tdb,
-	      struct tdb_data key, struct tdb_data dbuf, int flag)
+enum TDB_ERROR tdb_store(struct tdb_context *tdb,
+			 struct tdb_data key, struct tdb_data dbuf, int flag)
 {
 	struct hash_info h;
 	tdb_off_t off;
@@ -499,15 +504,14 @@ int tdb_store(struct tdb_context *tdb,
 
 	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL);
 	if (TDB_OFF_IS_ERR(off)) {
-		tdb->ecode = off;
-		return -1;
+		return off;
 	}
 
 	/* Now we have lock on this hash bucket. */
 	if (flag == TDB_INSERT) {
 		if (off) {
-			tdb->ecode = TDB_ERR_EXISTS;
-			goto fail;
+			ecode = TDB_ERR_EXISTS;
+			goto out;
 		}
 	} else {
 		if (off) {
@@ -519,8 +523,7 @@ int tdb_store(struct tdb_context *tdb,
 						       key.dsize, dbuf.dsize,
 						       &rec, h.h);
 				if (ecode != TDB_SUCCESS) {
-					tdb->ecode = ecode;
-					goto fail;
+					goto out;
 				}
 				ecode = tdb->methods->twrite(tdb,
 							     off + sizeof(rec)
@@ -528,40 +531,32 @@ int tdb_store(struct tdb_context *tdb,
 							     dbuf.dptr,
 							     dbuf.dsize);
 				if (ecode != TDB_SUCCESS) {
-					tdb->ecode = ecode;
-					goto fail;
+					goto out;
 				}
 				tdb_unlock_hashes(tdb, h.hlock_start,
 						  h.hlock_range, F_WRLCK);
-				return 0;
+				return TDB_SUCCESS;
 			}
 		} else {
 			if (flag == TDB_MODIFY) {
 				/* if the record doesn't exist and we
 				   are in TDB_MODIFY mode then we should fail
 				   the store */
-				tdb->ecode = TDB_ERR_NOEXIST;
-				goto fail;
+				ecode = TDB_ERR_NOEXIST;
+				goto out;
 			}
 		}
 	}
 
 	/* If we didn't use the old record, this implies we're growing. */
 	ecode = replace_data(tdb, &h, key, dbuf, off, old_room, off);
+out:
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
-	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return -1;
-	}
-	return 0;
-
-fail:
-	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
-	return -1;
+	return ecode;
 }
 
-int tdb_append(struct tdb_context *tdb,
-	       struct tdb_data key, struct tdb_data dbuf)
+enum TDB_ERROR tdb_append(struct tdb_context *tdb,
+			  struct tdb_data key, struct tdb_data dbuf)
 {
 	struct hash_info h;
 	tdb_off_t off;
@@ -573,8 +568,7 @@ int tdb_append(struct tdb_context *tdb,
 
 	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL);
 	if (TDB_OFF_IS_ERR(off)) {
-		tdb->ecode = off;
-		return -1;
+		return off;
 	}
 
 	if (off) {
@@ -587,38 +581,29 @@ int tdb_append(struct tdb_context *tdb,
 					       old_dlen + dbuf.dsize, &rec,
 					       h.h);
 			if (ecode != TDB_SUCCESS) {
-				tdb->ecode = ecode;
-				goto fail;
+				goto out;
 			}
 
 			off += sizeof(rec) + key.dsize + old_dlen;
 			ecode = tdb->methods->twrite(tdb, off, dbuf.dptr,
 						     dbuf.dsize);
-			if (ecode != TDB_SUCCESS) {
-				tdb->ecode = ecode;
-				goto fail;
-			}
-
-			/* FIXME: tdb_increment_seqnum(tdb); */
-			tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range,
-					  F_WRLCK);
-			return 0;
+			goto out;
 		}
 
 		/* Slow path. */
 		newdata = malloc(key.dsize + old_dlen + dbuf.dsize);
 		if (!newdata) {
-			tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
-				   "tdb_append: failed to allocate %zu bytes",
-				   (size_t)(key.dsize+old_dlen+dbuf.dsize));
-			goto fail;
+			ecode = tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
+					   "tdb_append:"
+					   " failed to allocate %zu bytes",
+					   (size_t)(key.dsize + old_dlen
+						    + dbuf.dsize));
+			goto out;
 		}
 		ecode = tdb->methods->tread(tdb, off + sizeof(rec) + key.dsize,
 					    newdata, old_dlen);
 		if (ecode != TDB_SUCCESS) {
-			tdb->ecode = ecode;
-			free(newdata);
-			goto fail;
+			goto out_free_newdata;
 		}
 		memcpy(newdata + old_dlen, dbuf.dptr, dbuf.dsize);
 		new_dbuf.dptr = newdata;
@@ -630,51 +615,44 @@ int tdb_append(struct tdb_context *tdb,
 
 	/* If they're using tdb_append(), it implies they're growing record. */
 	ecode = replace_data(tdb, &h, key, new_dbuf, off, old_room, true);
-	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
+
+out_free_newdata:
 	free(newdata);
-
-	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return -1;
-	}
-	return 0;
-
-fail:
+out:
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
-	return -1;
+	return ecode;
 }
 
-struct tdb_data tdb_fetch(struct tdb_context *tdb, struct tdb_data key)
+enum TDB_ERROR tdb_fetch(struct tdb_context *tdb, struct tdb_data key,
+			 struct tdb_data *data)
 {
 	tdb_off_t off;
 	struct tdb_used_record rec;
 	struct hash_info h;
-	struct tdb_data ret;
+	enum TDB_ERROR ecode;
 
 	off = find_and_lock(tdb, key, F_RDLCK, &h, &rec, NULL);
 	if (TDB_OFF_IS_ERR(off)) {
-		tdb->ecode = off;
-		return tdb_null;
+		return off;
 	}
 
 	if (!off) {
-		tdb->ecode = TDB_ERR_NOEXIST;
-		ret = tdb_null;
+		ecode = TDB_ERR_NOEXIST;
 	} else {
-		ret.dsize = rec_data_length(&rec);
-		ret.dptr = tdb_alloc_read(tdb, off + sizeof(rec) + key.dsize,
-					  ret.dsize);
-		if (TDB_PTR_IS_ERR(ret.dptr)) {
-			tdb->ecode = TDB_PTR_ERR(ret.dptr);
-			ret = tdb_null;
-		}
+		data->dsize = rec_data_length(&rec);
+		data->dptr = tdb_alloc_read(tdb, off + sizeof(rec) + key.dsize,
+					    data->dsize);
+		if (TDB_PTR_IS_ERR(data->dptr)) {
+			ecode = TDB_PTR_ERR(data->dptr);
+		} else
+			ecode = TDB_SUCCESS;
 	}
 
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_RDLCK);
-	return ret;
+	return ecode;
 }
 
-int tdb_delete(struct tdb_context *tdb, struct tdb_data key)
+enum TDB_ERROR tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 {
 	tdb_off_t off;
 	struct tdb_used_record rec;
@@ -683,20 +661,17 @@ int tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 
 	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL);
 	if (TDB_OFF_IS_ERR(off)) {
-		tdb->ecode = off;
-		return -1;
+		return off;
 	}
 
 	if (!off) {
-		tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
-		tdb->ecode = TDB_ERR_NOEXIST;
-		return -1;
+		ecode = TDB_ERR_NOEXIST;
+		goto unlock;
 	}
 
 	ecode = delete_from_hash(tdb, &h);
 	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		goto unlock_err;
+		goto unlock;
 	}
 
 	/* Free the deleted entry. */
@@ -706,17 +681,10 @@ int tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 				+ rec_key_length(&rec)
 				+ rec_data_length(&rec)
 				+ rec_extra_padding(&rec));
-	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		goto unlock_err;
-	}
 
+unlock:
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
-	return 0;
-
-unlock_err:
-	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
-	return -1;
+	return ecode;
 }
 
 int tdb_close(struct tdb_context *tdb)
@@ -759,15 +727,10 @@ int tdb_close(struct tdb_context *tdb)
 	return ret;
 }
 
-enum TDB_ERROR tdb_error(const struct tdb_context *tdb)
-{
-	return tdb->ecode;
-}
-
-const char *tdb_errorstr(const struct tdb_context *tdb)
+const char *tdb_errorstr(enum TDB_ERROR ecode)
 {
 	/* Gcc warns if you miss a case in the switch, so use that. */
-	switch (tdb->ecode) {
+	switch (ecode) {
 	case TDB_SUCCESS: return "Success";
 	case TDB_ERR_CORRUPT: return "Corrupt database";
 	case TDB_ERR_IO: return "IO Error";
@@ -791,8 +754,6 @@ enum TDB_ERROR COLD tdb_logerr(struct tdb_context *tdb,
 	size_t len;
 	/* tdb_open paths care about errno, so save it. */
 	int saved_errno = errno;
-
-	tdb->ecode = ecode;
 
 	if (!tdb->logfn)
 		return ecode;

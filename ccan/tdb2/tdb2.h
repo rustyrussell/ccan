@@ -124,18 +124,18 @@ enum TDB_ERROR {
  *
  * This inserts (or overwrites) a key/value pair in the TDB.  If flag
  * is TDB_REPLACE, it doesn't matter whether the key exists or not;
- * TDB_INSERT means it must not exist (TDB_ERR_EXISTS otherwise),
- * and TDB_MODIFY means it must exist (TDB_ERR_NOEXIST otherwise).
+ * TDB_INSERT means it must not exist (returns TDB_ERR_EXISTS otherwise),
+ * and TDB_MODIFY means it must exist (returns TDB_ERR_NOEXIST otherwise).
  *
- * On success, this returns 0, on failure -1, and sets tdb_error().
+ * On success, this returns TDB_SUCCESS.
  *
  * See also:
  *	tdb_fetch, tdb_transaction_start, tdb_append, tdb_delete.
  */
-int tdb_store(struct tdb_context *tdb,
-	      struct tdb_data key,
-	      struct tdb_data dbuf,
-	      int flag);
+enum TDB_ERROR tdb_store(struct tdb_context *tdb,
+			 struct tdb_data key,
+			 struct tdb_data dbuf,
+			 int flag);
 
 /* flags to tdb_store() */
 #define TDB_REPLACE 1		/* A readability place holder */
@@ -146,44 +146,26 @@ int tdb_store(struct tdb_context *tdb,
  * tdb_fetch - fetch a value from a tdb.
  * @tdb: the tdb context returned from tdb_open()
  * @key: the key
+ * @data: pointer to data.
  *
- * This looks up a key in the database and returns it, or returns tdb_null
- * and sets tdb_error() if there's a problem (usually, TDB_ERR_NOEXIST).
+ * This looks up a key in the database and sets it in @data.
  *
- * It is your responsibility to call free() on the returned structure's
- * dptr.
+ * If it returns TDB_SUCCESS, the key was found: it is your
+ * responsibility to call free() on @data->dptr.
+ *
+ * Otherwise, it returns an error (usually, TDB_ERR_NOEXIST) and @data is
+ * undefined.
  */
-struct tdb_data tdb_fetch(struct tdb_context *tdb, struct tdb_data key);
-
-/**
- * enum TDB_ERROR - error codes for TDB
- *
- * See Also:
- *	tdb_error(), tdb_errorstr()
- */
-
-/**
- * tdb_error - fetch the last error value from the tdb.
- * @tdb: the tdb context returned from tdb_open()
- *
- * This returns the last error, or TDB_SUCCESS.  It always returns TDB_SUCCESS
- * immediately after tdb_open() returns the (non-NULL) tdb context.
- *
- * See Also:
- *	tdb_errorstr()
- */
-enum TDB_ERROR tdb_error(const struct tdb_context *tdb);
+enum TDB_ERROR tdb_fetch(struct tdb_context *tdb, struct tdb_data key,
+			 struct tdb_data *data);
 
 /**
  * tdb_errorstr - map the tdb error onto a constant readable string
- * @tdb: the tdb context returned from tdb_open()
+ * @ecode: the enum TDB_ERROR to map.
  *
- * This is more useful for displaying errors to users than tdb_error.
- *
- * See Also:
- *	tdb_error()
+ * This is useful for displaying errors to users.
  */
-const char *tdb_errorstr(const struct tdb_context *tdb);
+const char *tdb_errorstr(enum TDB_ERROR ecode);
 
 /**
  * tdb_append - append a value to a key/value pair in a tdb.
@@ -196,27 +178,23 @@ const char *tdb_errorstr(const struct tdb_context *tdb);
  * doesn't exist, it's equivalent to tdb_store (with an additional hint that
  * you expect to expand the record in future).
  *
- * Returns 0 on success, -1 on failure (and sets tdb_error()).
- *
  * See Also:
  *	tdb_fetch(), tdb_store()
  */
-int tdb_append(struct tdb_context *tdb,
-	       struct tdb_data key,
-	       struct tdb_data dbuf);
+enum TDB_ERROR tdb_append(struct tdb_context *tdb,
+			  struct tdb_data key, struct tdb_data dbuf);
 
 /**
  * tdb_delete - delete a key from a tdb.
  * @tdb: the tdb context returned from tdb_open()
  * @key: the key to delete.
  *
- * Returns 0 on success, or -1 on error (usually tdb_error() would be
- * TDB_ERR_NOEXIST in that case).
+ * Returns TDB_SUCCESS on success, or an error (usually TDB_ERR_NOEXIST).
  *
  * See Also:
  *	tdb_fetch(), tdb_store()
  */
-int tdb_delete(struct tdb_context *tdb, struct tdb_data key);
+enum TDB_ERROR tdb_delete(struct tdb_context *tdb, struct tdb_data key);
 
 /**
  * tdb_transaction_start - start a transaction
@@ -226,12 +204,10 @@ int tdb_delete(struct tdb_context *tdb, struct tdb_data key);
  * to read the tdb, but not alter it (they will block), nor will they see
  * any changes until tdb_transaction_commit() is called.
  *
- * On failure, returns -1 and sets tdb_error().
- *
  * See Also:
  *	tdb_transaction_cancel, tdb_transaction_commit.
  */
-int tdb_transaction_start(struct tdb_context *tdb);
+enum TDB_ERROR tdb_transaction_start(struct tdb_context *tdb);
 
 /**
  * tdb_transaction_cancel - abandon a transaction
@@ -252,14 +228,13 @@ void tdb_transaction_cancel(struct tdb_context *tdb);
  * making it robust against machine crashes, but very slow compared to
  * other TDB operations.
  *
- * Returns 0 on success, or -1 on failure: this can only be caused by
- * unexpected errors (eg. I/O or memory); this is no point looping on
- * transaction failure.
+ * A failure can only be caused by unexpected errors (eg. I/O or
+ * memory); this is no point looping on transaction failure.
  *
  * See Also:
  *	tdb_transaction_prepare_commit()
  */
-int tdb_transaction_commit(struct tdb_context *tdb);
+enum TDB_ERROR tdb_transaction_commit(struct tdb_context *tdb);
 
 /**
  * tdb_transaction_prepare_commit - prepare to commit a transaction
@@ -269,12 +244,10 @@ int tdb_transaction_commit(struct tdb_context *tdb);
  * tdb_transaction_commit): if this succeeds then a transaction will only
  * fail if the write() or fsync() calls fail.
  *
- * Returns 0 on success, or -1 on failure.
- *
  * See Also:
  *	tdb_transaction_commit()
  */
-int tdb_transaction_prepare_commit(struct tdb_context *tdb);
+enum TDB_ERROR tdb_transaction_prepare_commit(struct tdb_context *tdb);
 
 /* FIXME: Make typesafe */
 typedef int (*tdb_traverse_func)(struct tdb_context *, TDB_DATA, TDB_DATA, void *);
@@ -294,31 +267,36 @@ typedef int (*tdb_traverse_func)(struct tdb_context *, TDB_DATA, TDB_DATA, void 
  * current key does not undermine the reliability of the traversal.
  *
  * On success, returns the number of keys iterated.  On error returns
- * -1 and sets tdb_error().
+ * a negative enum TDB_ERROR value.
  */
 int64_t tdb_traverse(struct tdb_context *tdb, tdb_traverse_func fn, void *p);
 
 /**
  * tdb_firstkey - get the "first" key in a TDB
  * @tdb: the tdb context returned from tdb_open()
+ * @key: pointer to key.
  *
  * This returns an arbitrary key in the database; with tdb_nextkey() it allows
- * open-coded traversal of the database.
+ * open-coded traversal of the database, though it is slightly less efficient
+ * than tdb_traverse.
  *
- * On failure, returns tdb_null and sets tdb_error().  On success, returns
- * a key, or tdb_null and set tdb_error() to TDB_SUCCESS for an empty database.
+ * It is your responsibility to free @key->dptr on success.
+ *
+ * Returns TDB_ERR_NOEXIST if the database is empty.
  */
-TDB_DATA tdb_firstkey(struct tdb_context *tdb);
+enum TDB_ERROR tdb_firstkey(struct tdb_context *tdb, struct tdb_data *key);
 
 /**
  * tdb_nextkey - get the "next" key in a TDB
  * @tdb: the tdb context returned from tdb_open()
  * @key: a key returned by tdb_firstkey() or tdb_nextkey().
  *
- * This returns another key in the database.  On failure or the last key
- * it returns tdb_null: tdb_error() will be TDB_SUCCESS if it was the last key.
+ * This returns another key in the database; it will free @key.dptr for
+ * your convenience.
+ *
+ * Returns TDB_ERR_NOEXIST if there are no more keys.
  */
-TDB_DATA tdb_nextkey(struct tdb_context *tdb, TDB_DATA key);
+enum TDB_ERROR tdb_nextkey(struct tdb_context *tdb, struct tdb_data *key);
 
 /**
  * tdb_chainlock - lock a record in the TDB
@@ -336,14 +314,14 @@ TDB_DATA tdb_nextkey(struct tdb_context *tdb, TDB_DATA key);
  * See Also:
  *	tdb_chainunlock()
  */
-int tdb_chainlock(struct tdb_context *tdb, TDB_DATA key);
+enum TDB_ERROR tdb_chainlock(struct tdb_context *tdb, TDB_DATA key);
 
 /**
  * tdb_chainunlock - unlock a record in the TDB
  * @tdb: the tdb context returned from tdb_open()
  * @key: the key to unlock.
  */
-int tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key);
+enum TDB_ERROR tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key);
 
 /**
  * tdb_check - check a TDB for consistency
@@ -353,13 +331,14 @@ int tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key);
  *
  * This performs a consistency check of the open database, optionally calling
  * a check() function on each record so you can do your own data consistency
- * checks as well.  If check() returns non-zero, it is considered a failure.
- *
- * Returns 0 on success, or -1 on failure and sets tdb_error().
+ * checks as well.  If check() returns an error, that is returned from
+ * tdb_check().
  */
-int tdb_check(struct tdb_context *tdb,
-	      int (*check)(TDB_DATA key, TDB_DATA data, void *private_data),
-	      void *private_data);
+enum TDB_ERROR tdb_check(struct tdb_context *tdb,
+			 enum TDB_ERROR (*check)(TDB_DATA key,
+						 TDB_DATA data,
+						 void *private_data),
+			 void *private_data);
 
 /**
  * enum tdb_summary_flags - flags for tdb_summary.
@@ -372,18 +351,19 @@ enum tdb_summary_flags {
  * tdb_summary - return a string describing the TDB state
  * @tdb: the tdb context returned from tdb_open()
  * @flags: flags to control the summary output.
+ * @summary: pointer to string to allocate.
  *
  * This returns a developer-readable string describing the overall
  * state of the tdb, such as the percentage used and sizes of records.
  * It is designed to provide information about the tdb at a glance
  * without displaying any keys or data in the database.
  *
- * On success, returns a nul-terminated multi-line string.  On failure,
- * returns NULL and sets tdb_error().
+ * On success, sets @summary to point to a malloc()'ed nul-terminated
+ * multi-line string.  It is your responsibility to free() it.
  */
-char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags);
-
-
+enum TDB_ERROR tdb_summary(struct tdb_context *tdb,
+			   enum tdb_summary_flags flags,
+			   char **summary);
 
 /**
  * enum tdb_attribute_type - descriminator for union tdb_attribute.

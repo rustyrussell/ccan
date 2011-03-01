@@ -513,42 +513,38 @@ static void _tdb_transaction_cancel(struct tdb_context *tdb)
   start a tdb transaction. No token is returned, as only a single
   transaction is allowed to be pending per tdb_context
 */
-int tdb_transaction_start(struct tdb_context *tdb)
+enum TDB_ERROR tdb_transaction_start(struct tdb_context *tdb)
 {
 	enum TDB_ERROR ecode;
 
 	/* some sanity checks */
 	if (tdb->read_only || (tdb->flags & TDB_INTERNAL)) {
-		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
-			   "tdb_transaction_start: cannot start a transaction"
-			   " on a read-only or internal db");
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
+				  "tdb_transaction_start: cannot start a"
+				  " transaction on a read-only or internal db");
 	}
 
 	/* cope with nested tdb_transaction_start() calls */
 	if (tdb->transaction != NULL) {
-		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_USE_ERROR,
-			   "tdb_transaction_start:"
-			   " already inside transaction");
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_USE_ERROR,
+				  "tdb_transaction_start:"
+				  " already inside transaction");
 	}
 
 	if (tdb_has_hash_locks(tdb)) {
 		/* the caller must not have any locks when starting a
 		   transaction as otherwise we'll be screwed by lack
 		   of nested locks in posix */
-		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_USE_ERROR,
-			   "tdb_transaction_start: cannot start a transaction"
-			   " with locks held");
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_USE_ERROR,
+				  "tdb_transaction_start: cannot start a"
+				  " transaction with locks held");
 	}
 
 	tdb->transaction = (struct tdb_transaction *)
 		calloc(sizeof(struct tdb_transaction), 1);
 	if (tdb->transaction == NULL) {
-		tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
-			   "tdb_transaction_start: cannot allocate");
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
+				  "tdb_transaction_start: cannot allocate");
 	}
 
 	/* get the transaction write lock. This is a blocking lock. As
@@ -556,17 +552,15 @@ int tdb_transaction_start(struct tdb_context *tdb)
 	   make this async, which we will probably do in the future */
 	ecode = tdb_transaction_lock(tdb, F_WRLCK);
 	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
 		SAFE_FREE(tdb->transaction->blocks);
 		SAFE_FREE(tdb->transaction);
-		return -1;
+		return ecode;
 	}
 
 	/* get a read lock over entire file. This is upgraded to a write
 	   lock during the commit */
 	ecode = tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, true);
 	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
 		goto fail_allrecord_lock;
 	}
 
@@ -579,13 +573,13 @@ int tdb_transaction_start(struct tdb_context *tdb)
 	   transaction specific methods */
 	tdb->transaction->io_methods = tdb->methods;
 	tdb->methods = &transaction_methods;
-	return 0;
+	return TDB_SUCCESS;
 
 fail_allrecord_lock:
 	tdb_transaction_unlock(tdb, F_WRLCK);
 	SAFE_FREE(tdb->transaction->blocks);
 	SAFE_FREE(tdb->transaction);
-	return -1;
+	return ecode;
 }
 
 
@@ -971,46 +965,42 @@ static enum TDB_ERROR _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 /*
    prepare to commit the current transaction
 */
-int tdb_transaction_prepare_commit(struct tdb_context *tdb)
+enum TDB_ERROR tdb_transaction_prepare_commit(struct tdb_context *tdb)
 {
-	tdb->ecode = _tdb_transaction_prepare_commit(tdb);
-	if (tdb->ecode != TDB_SUCCESS)
-		return -1;
-	return 0;
+	return _tdb_transaction_prepare_commit(tdb);
 }
 
 /*
   commit the current transaction
 */
-int tdb_transaction_commit(struct tdb_context *tdb)
+enum TDB_ERROR tdb_transaction_commit(struct tdb_context *tdb)
 {
 	const struct tdb_methods *methods;
 	int i;
 	enum TDB_ERROR ecode;
 
 	if (tdb->transaction == NULL) {
-		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
-			 "tdb_transaction_commit: no transaction");
-		return -1;
+		return tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
+				  "tdb_transaction_commit: no transaction");
 	}
 
 	tdb_trace(tdb, "tdb_transaction_commit");
 
 	if (tdb->transaction->nesting != 0) {
 		tdb->transaction->nesting--;
-		return 0;
+		return TDB_SUCCESS;
 	}
 
 	/* check for a null transaction */
 	if (tdb->transaction->blocks == NULL) {
 		_tdb_transaction_cancel(tdb);
-		return 0;
+		return TDB_SUCCESS;
 	}
 
 	if (!tdb->transaction->prepared) {
-		tdb->ecode = _tdb_transaction_prepare_commit(tdb);
-		if (tdb->ecode != TDB_SUCCESS)
-			return -1;
+		ecode = _tdb_transaction_prepare_commit(tdb);
+		if (ecode != TDB_SUCCESS)
+			return ecode;
 	}
 
 	methods = tdb->transaction->io_methods;
@@ -1045,7 +1035,7 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 
 			_tdb_transaction_cancel(tdb);
 
-			return -1;
+			return ecode;
 		}
 		SAFE_FREE(tdb->transaction->blocks[i]);
 	}
@@ -1056,8 +1046,7 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 	/* ensure the new data is on disk */
 	ecode = transaction_sync(tdb, 0, tdb->map_size);
 	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return -1;
+		return ecode;
 	}
 
 	/*
@@ -1079,7 +1068,7 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 	   transaction locks */
 	_tdb_transaction_cancel(tdb);
 
-	return 0;
+	return TDB_SUCCESS;
 }
 
 

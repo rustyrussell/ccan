@@ -268,7 +268,6 @@ static tdb_off_t ftable_offset(struct tdb_context *tdb, unsigned int ftable)
 	off = first_ftable(tdb);
 	for (i = 0; i < ftable; i++) {
 		if (TDB_OFF_IS_ERR(off)) {
-			tdb->ecode = off;
 			break;
 		}
 		off = next_ftable(tdb, off);
@@ -392,7 +391,6 @@ static tdb_bool_err coalesce(struct tdb_context *tdb,
 
 	ecode = add_free_record(tdb, off, end - off);
 	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
 		return ecode;
 	}
 	return true;

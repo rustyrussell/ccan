@@ -153,28 +153,27 @@ static enum TDB_ERROR summarize(struct tdb_context *tdb,
 #define HISTO_WIDTH 70
 #define HISTO_HEIGHT 20
 
-char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
+enum TDB_ERROR tdb_summary(struct tdb_context *tdb,
+			   enum tdb_summary_flags flags,
+			   char **summary)
 {
 	tdb_len_t len;
 	struct tally *ftables, *hashes, *freet, *keys, *data, *extra, *uncoal,
 		*buckets, *chains;
 	char *hashesg, *freeg, *keysg, *datag, *extrag, *uncoalg, *bucketsg;
-	char *ret = NULL;
 	enum TDB_ERROR ecode;
 
 	hashesg = freeg = keysg = datag = extrag = uncoalg = bucketsg = NULL;
 
 	ecode = tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false);
 	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return NULL;
+		return ecode;
 	}
 
 	ecode = tdb_lock_expand(tdb, F_RDLCK);
 	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
 		tdb_allrecord_unlock(tdb, F_RDLCK);
-		return NULL;
+		return ecode;
 	}
 
 	/* Start stats off empty. */
@@ -189,15 +188,15 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 	chains = tally_new(HISTO_HEIGHT);
 	if (!ftables || !hashes || !freet || !keys || !data || !extra
 	    || !uncoal || !buckets || !chains) {
-		tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
-			   "tdb_summary: failed to allocate tally structures");
+		ecode = tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
+				   "tdb_summary: failed to allocate"
+				   " tally structures");
 		goto unlock;
 	}
 
 	ecode = summarize(tdb, hashes, ftables, freet, keys, data, extra,
 			  uncoal, buckets, chains);
 	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
 		goto unlock;
 	}
 
@@ -221,52 +220,52 @@ char *tdb_summary(struct tdb_context *tdb, enum tdb_summary_flags flags)
 		+ (uncoalg ? strlen(uncoalg) : 0)
 		+ (bucketsg ? strlen(bucketsg) : 0);
 
-	ret = malloc(len);
-	if (!ret) {
-		tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
-			   "tdb_summary: failed to allocate string");
+	*summary = malloc(len);
+	if (!*summary) {
+		ecode = tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
+				   "tdb_summary: failed to allocate string");
 		goto unlock;
 	}
 
-	len = sprintf(ret, SUMMARY_FORMAT,
-		      (size_t)tdb->map_size,
-		      tally_num(keys) + tally_num(data),
-		      tally_num(keys),
-		      tally_min(keys), tally_mean(keys), tally_max(keys),
-		      keysg ? keysg : "",
-		      tally_min(data), tally_mean(data), tally_max(data),
-		      datag ? datag : "",
-		      tally_min(extra), tally_mean(extra), tally_max(extra),
-		      extrag ? extrag : "",
-		      tally_num(freet),
-		      tally_min(freet), tally_mean(freet), tally_max(freet),
-		      freeg ? freeg : "",
-		      tally_total(uncoal, NULL),
-		      tally_min(uncoal), tally_mean(uncoal), tally_max(uncoal),
-		      uncoalg ? uncoalg : "",
-		      tally_num(buckets),
-		      bucketsg ? bucketsg : "",
-		      (unsigned)count_hash(tdb, offsetof(struct tdb_header,
-							 hashtable),
-					   TDB_TOPLEVEL_HASH_BITS),
-		      1 << TDB_TOPLEVEL_HASH_BITS,
-		      tally_num(chains),
-		      tally_num(hashes),
-		      tally_min(hashes), tally_mean(hashes), tally_max(hashes),
-		      hashesg ? hashesg : "",
-		      tally_total(keys, NULL) * 100.0 / tdb->map_size,
-		      tally_total(data, NULL) * 100.0 / tdb->map_size,
-		      tally_total(extra, NULL) * 100.0 / tdb->map_size,
-		      tally_total(freet, NULL) * 100.0 / tdb->map_size,
-		      (tally_num(keys) + tally_num(freet) + tally_num(hashes))
-		      * sizeof(struct tdb_used_record) * 100.0 / tdb->map_size,
-		      tally_num(ftables) * sizeof(struct tdb_freetable)
-		      * 100.0 / tdb->map_size,
-		      (tally_num(hashes)
-		       * (sizeof(tdb_off_t) << TDB_SUBLEVEL_HASH_BITS)
-		       + (sizeof(tdb_off_t) << TDB_TOPLEVEL_HASH_BITS)
-		       + sizeof(struct tdb_chain) * tally_num(chains))
-		      * 100.0 / tdb->map_size);
+	sprintf(*summary, SUMMARY_FORMAT,
+		(size_t)tdb->map_size,
+		tally_num(keys) + tally_num(data),
+		tally_num(keys),
+		tally_min(keys), tally_mean(keys), tally_max(keys),
+		keysg ? keysg : "",
+		tally_min(data), tally_mean(data), tally_max(data),
+		datag ? datag : "",
+		tally_min(extra), tally_mean(extra), tally_max(extra),
+		extrag ? extrag : "",
+		tally_num(freet),
+		tally_min(freet), tally_mean(freet), tally_max(freet),
+		freeg ? freeg : "",
+		tally_total(uncoal, NULL),
+		tally_min(uncoal), tally_mean(uncoal), tally_max(uncoal),
+		uncoalg ? uncoalg : "",
+		tally_num(buckets),
+		bucketsg ? bucketsg : "",
+		(unsigned)count_hash(tdb, offsetof(struct tdb_header,
+						   hashtable),
+				     TDB_TOPLEVEL_HASH_BITS),
+		1 << TDB_TOPLEVEL_HASH_BITS,
+		tally_num(chains),
+		tally_num(hashes),
+		tally_min(hashes), tally_mean(hashes), tally_max(hashes),
+		hashesg ? hashesg : "",
+		tally_total(keys, NULL) * 100.0 / tdb->map_size,
+		tally_total(data, NULL) * 100.0 / tdb->map_size,
+		tally_total(extra, NULL) * 100.0 / tdb->map_size,
+		tally_total(freet, NULL) * 100.0 / tdb->map_size,
+		(tally_num(keys) + tally_num(freet) + tally_num(hashes))
+		* sizeof(struct tdb_used_record) * 100.0 / tdb->map_size,
+		tally_num(ftables) * sizeof(struct tdb_freetable)
+		* 100.0 / tdb->map_size,
+		(tally_num(hashes)
+		 * (sizeof(tdb_off_t) << TDB_SUBLEVEL_HASH_BITS)
+		 + (sizeof(tdb_off_t) << TDB_TOPLEVEL_HASH_BITS)
+		 + sizeof(struct tdb_chain) * tally_num(chains))
+		* 100.0 / tdb->map_size);
 
 unlock:
 	free(hashesg);
@@ -288,5 +287,5 @@ unlock:
 
 	tdb_allrecord_unlock(tdb, F_RDLCK);
 	tdb_unlock_expand(tdb, F_RDLCK);
-	return ret;
+	return ecode;
 }

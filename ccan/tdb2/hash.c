@@ -48,7 +48,6 @@ uint64_t hash_record(struct tdb_context *tdb, tdb_off_t off)
 
 	r = tdb_access_read(tdb, off, sizeof(*r), true);
 	if (TDB_PTR_IS_ERR(r)) {
-		tdb->ecode = TDB_PTR_ERR(r);
 		/* FIXME */
 		return 0;
 	}
@@ -58,7 +57,6 @@ uint64_t hash_record(struct tdb_context *tdb, tdb_off_t off)
 
 	key = tdb_access_read(tdb, off + sizeof(*r), klen, false);
 	if (TDB_PTR_IS_ERR(key)) {
-		tdb->ecode = TDB_PTR_ERR(key);
 		return 0;
 	}
 
@@ -857,22 +855,16 @@ static enum TDB_ERROR chainlock(struct tdb_context *tdb, const TDB_DATA *key,
 
 /* lock/unlock one hash chain. This is meant to be used to reduce
    contention - it cannot guarantee how many records will be locked */
-int tdb_chainlock(struct tdb_context *tdb, TDB_DATA key)
+enum TDB_ERROR tdb_chainlock(struct tdb_context *tdb, TDB_DATA key)
 {
-	tdb->ecode = chainlock(tdb, &key, F_WRLCK, TDB_LOCK_WAIT,
-			       "tdb_chainlock");
-	if (tdb->ecode == TDB_SUCCESS)
-		return 0;
-	return -1;
-	
+	return chainlock(tdb, &key, F_WRLCK, TDB_LOCK_WAIT, "tdb_chainlock");
 }
 
-int tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key)
+enum TDB_ERROR tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key)
 {
 	uint64_t h = tdb_hash(tdb, key.dptr, key.dsize);
 	tdb_off_t lockstart, locksize;
 	unsigned int group, gbits;
-	enum TDB_ERROR ecode;
 
 	gbits = TDB_TOPLEVEL_HASH_BITS - TDB_HASH_GROUP_BITS;
 	group = bits_from(h, 64 - gbits, gbits);
@@ -880,10 +872,5 @@ int tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key)
 	lockstart = hlock_range(group, &locksize);
 
 	tdb_trace_1rec(tdb, "tdb_chainunlock", key);
-	ecode = tdb_unlock_hashes(tdb, lockstart, locksize, F_WRLCK);
-	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return -1;
-	}
-	return 0;
+	return tdb_unlock_hashes(tdb, lockstart, locksize, F_WRLCK);
 }

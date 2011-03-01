@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
 	struct tdb_data data = { (unsigned char *)&j, sizeof(j) };
 	char *summary;
 
-	plan_tests(sizeof(flags) / sizeof(flags[0]) * (1 + 2 * 4) + 1);
+	plan_tests(sizeof(flags) / sizeof(flags[0]) * (1 + 2 * 5) + 1);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		tdb = tdb_open("run-summary.tdb", flags[i],
 			       O_RDWR|O_CREAT|O_TRUNC, 0600, &tap_log_attr);
@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
 		for (j = 0;
 		     j <= TDB_SUMMARY_HISTOGRAMS;
 		     j += TDB_SUMMARY_HISTOGRAMS) {
-			summary = tdb_summary(tdb, j);
+			ok1(tdb_summary(tdb, j, &summary) == TDB_SUCCESS);
 			ok1(strstr(summary, "Number of records: 500\n"));
 			ok1(strstr(summary, "Smallest/average/largest keys: 4/4/4\n"));
 			ok1(strstr(summary, "Smallest/average/largest data: 0/2/4\n"));

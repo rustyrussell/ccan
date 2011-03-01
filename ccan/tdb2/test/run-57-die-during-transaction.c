@@ -145,6 +145,10 @@ reset:
 	unlink(TEST_DBNAME);
 	tdb = tdb_open(TEST_DBNAME, TDB_NOMMAP,
 		       O_CREAT|O_TRUNC|O_RDWR, 0600, &tap_log_attr);
+	if (!tdb) {
+		diag("Failed opening TDB: %s", strerror(errno));
+		return false;
+	}
 
 	if (setjmp(jmpbuf) != 0) {
 		/* We're partway through.  Simulate our death. */

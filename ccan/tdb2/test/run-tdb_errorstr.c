@@ -9,56 +9,50 @@
 
 int main(int argc, char *argv[])
 {
-	struct tdb_context *tdb;
+	enum TDB_ERROR err;
+	plan_tests(TDB_ERR_RDONLY*-1 + 2);
 
-	plan_tests(1 + TDB_ERR_RDONLY*-1 + 2);
-	tdb = tdb_open("run-tdb_errorstr.tdb", TDB_DEFAULT,
-		       O_RDWR|O_CREAT|O_TRUNC, 0600, NULL);
-	ok1(tdb);
-	if (tdb) {
-		enum TDB_ERROR err;
-		for (err = TDB_SUCCESS; err >= TDB_ERR_RDONLY; err--) {
-			tdb->ecode = err;
-			switch (err) {
-			case TDB_SUCCESS:
-				ok1(!strcmp(tdb_errorstr(tdb),
-					    "Success"));
-				break;
-			case TDB_ERR_IO:
-				ok1(!strcmp(tdb_errorstr(tdb),
-					    "IO Error"));
-				break;
-			case TDB_ERR_LOCK:
-				ok1(!strcmp(tdb_errorstr(tdb),
-					    "Locking error"));
-				break;
-			case TDB_ERR_OOM:
-				ok1(!strcmp(tdb_errorstr(tdb),
-					    "Out of memory"));
-				break;
-			case TDB_ERR_EXISTS:
-				ok1(!strcmp(tdb_errorstr(tdb),
-					    "Record exists"));
-				break;
-			case TDB_ERR_EINVAL:
-				ok1(!strcmp(tdb_errorstr(tdb),
-					    "Invalid parameter"));
-				break;
-			case TDB_ERR_NOEXIST:
-				ok1(!strcmp(tdb_errorstr(tdb),
-					    "Record does not exist"));
-				break;
-			case TDB_ERR_RDONLY:
-				ok1(!strcmp(tdb_errorstr(tdb),
-					    "write not permitted"));
-				break;
-			case TDB_ERR_CORRUPT:
-				ok1(!strcmp(tdb_errorstr(tdb),
-					    "Corrupt database"));
-			}
+	for (err = TDB_SUCCESS; err >= TDB_ERR_RDONLY; err--) {
+		switch (err) {
+		case TDB_SUCCESS:
+			ok1(!strcmp(tdb_errorstr(err),
+				    "Success"));
+			break;
+		case TDB_ERR_IO:
+			ok1(!strcmp(tdb_errorstr(err),
+				    "IO Error"));
+			break;
+		case TDB_ERR_LOCK:
+			ok1(!strcmp(tdb_errorstr(err),
+				    "Locking error"));
+			break;
+		case TDB_ERR_OOM:
+			ok1(!strcmp(tdb_errorstr(err),
+				    "Out of memory"));
+			break;
+		case TDB_ERR_EXISTS:
+			ok1(!strcmp(tdb_errorstr(err),
+				    "Record exists"));
+			break;
+		case TDB_ERR_EINVAL:
+			ok1(!strcmp(tdb_errorstr(err),
+				    "Invalid parameter"));
+			break;
+		case TDB_ERR_NOEXIST:
+			ok1(!strcmp(tdb_errorstr(err),
+				    "Record does not exist"));
+			break;
+		case TDB_ERR_RDONLY:
+			ok1(!strcmp(tdb_errorstr(err),
+				    "write not permitted"));
+			break;
+		case TDB_ERR_CORRUPT:
+			ok1(!strcmp(tdb_errorstr(err),
+				    "Corrupt database"));
+			break;
 		}
-		tdb->ecode = err;
-		ok1(!strcmp(tdb_errorstr(tdb), "Invalid error code"));
 	}
+	ok1(!strcmp(tdb_errorstr(err), "Invalid error code"));
+
 	return exit_status();
 }

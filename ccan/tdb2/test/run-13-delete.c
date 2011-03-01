@@ -31,7 +31,7 @@ static bool store_records(struct tdb_context *tdb)
 	for (i = 0; i < 1000; i++) {
 		if (tdb_store(tdb, key, data, TDB_REPLACE) != 0)
 			return false;
-		d = tdb_fetch(tdb, key);
+		tdb_fetch(tdb, key, &d);
 		if (d.dsize != data.dsize)
 			return false;
 		if (memcmp(d.dptr, data.dptr, d.dsize) != 0)
@@ -50,8 +50,7 @@ static void test_val(struct tdb_context *tdb, uint64_t val)
 	/* Insert an entry, then delete it. */
 	v = val;
 	/* Delete should fail. */
-	ok1(tdb_delete(tdb, key) == -1);
-	ok1(tdb_error(tdb) == TDB_ERR_NOEXIST);
+	ok1(tdb_delete(tdb, key) == TDB_ERR_NOEXIST);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 	/* Insert should succeed. */
@@ -69,11 +68,11 @@ static void test_val(struct tdb_context *tdb, uint64_t val)
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 	/* Can find both? */
-	d = tdb_fetch(tdb, key);
+	ok1(tdb_fetch(tdb, key, &d) == TDB_SUCCESS);
 	ok1(d.dsize == data.dsize);
 	free(d.dptr);
 	v = val;
-	d = tdb_fetch(tdb, key);
+	ok1(tdb_fetch(tdb, key, &d) == TDB_SUCCESS);
 	ok1(d.dsize == data.dsize);
 	free(d.dptr);
 
@@ -93,7 +92,7 @@ static void test_val(struct tdb_context *tdb, uint64_t val)
 
 	/* Can still find second? */
 	v = val + 1;
-	d = tdb_fetch(tdb, key);
+	ok1(tdb_fetch(tdb, key, &d) == TDB_SUCCESS);
 	ok1(d.dsize == data.dsize);
 	free(d.dptr);
 
@@ -107,15 +106,15 @@ static void test_val(struct tdb_context *tdb, uint64_t val)
 	ok1(tdb_store(tdb, key, data, TDB_INSERT) == 0);
 
 	/* We can still find them all, right? */
-	d = tdb_fetch(tdb, key);
+	ok1(tdb_fetch(tdb, key, &d) == TDB_SUCCESS);
 	ok1(d.dsize == data.dsize);
 	free(d.dptr);
 	v = val + 1;
-	d = tdb_fetch(tdb, key);
+	ok1(tdb_fetch(tdb, key, &d) == TDB_SUCCESS);
 	ok1(d.dsize == data.dsize);
 	free(d.dptr);
 	v = val + 2;
-	d = tdb_fetch(tdb, key);
+	ok1(tdb_fetch(tdb, key, &d) == TDB_SUCCESS);
 	ok1(d.dsize == data.dsize);
 	free(d.dptr);
 
@@ -125,11 +124,11 @@ static void test_val(struct tdb_context *tdb, uint64_t val)
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 	v = val;
-	d = tdb_fetch(tdb, key);
+	ok1(tdb_fetch(tdb, key, &d) == TDB_SUCCESS);
 	ok1(d.dsize == data.dsize);
 	free(d.dptr);
 	v = val + 2;
-	d = tdb_fetch(tdb, key);
+	ok1(tdb_fetch(tdb, key, &d) == TDB_SUCCESS);
 	ok1(d.dsize == data.dsize);
 	free(d.dptr);
 
@@ -163,7 +162,7 @@ int main(int argc, char *argv[])
 	fixed_hattr.base.next = &tap_log_attr;
 
 	plan_tests(sizeof(flags) / sizeof(flags[0])
-		   * (32 * 3 + 5 + sizeof(vals)/sizeof(vals[0])*2) + 1);
+		   * (39 * 3 + 5 + sizeof(vals)/sizeof(vals[0])*2) + 1);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		tdb = tdb_open("run-13-delete.tdb", flags[i],
 			       O_RDWR|O_CREAT|O_TRUNC, 0600, &clash_hattr);

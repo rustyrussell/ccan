@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
 	for (i = 0; i < 1000; i++)
 		buffer[i] = i;
 
-	plan_tests(sizeof(flags) / sizeof(flags[0]) * 18 + 1);
+	plan_tests(sizeof(flags) / sizeof(flags[0]) * 20 + 1);
 
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		tdb = tdb_open("run-55-transaction.tdb", flags[i],
@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 		data.dptr = buffer;
 		data.dsize = 1000;
 		ok1(tdb_store(tdb, key, data, TDB_INSERT) == 0);
-		data = tdb_fetch(tdb, key);
+		ok1(tdb_fetch(tdb, key, &data) == TDB_SUCCESS);
 		ok1(data.dsize == 1000);
 		ok1(memcmp(data.dptr, buffer, data.dsize) == 0);
 		free(data.dptr);
@@ -44,23 +44,21 @@ int main(int argc, char *argv[])
 		tdb_transaction_cancel(tdb);
 		ok1(tdb->allrecord_lock.count == 0 && tdb->num_lockrecs == 0);
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
-		data = tdb_fetch(tdb, key);
-		ok1(data.dsize == 0);
-		ok1(data.dptr == NULL);
+		ok1(tdb_fetch(tdb, key, &data) == TDB_ERR_NOEXIST);
 
 		/* Commit the transaction. */
 		ok1(tdb_transaction_start(tdb) == 0);
 		data.dptr = buffer;
 		data.dsize = 1000;
 		ok1(tdb_store(tdb, key, data, TDB_INSERT) == 0);
-		data = tdb_fetch(tdb, key);
+		ok1(tdb_fetch(tdb, key, &data) == TDB_SUCCESS);
 		ok1(data.dsize == 1000);
 		ok1(memcmp(data.dptr, buffer, data.dsize) == 0);
 		free(data.dptr);
 		ok1(tdb_transaction_commit(tdb) == 0);
 		ok1(tdb->allrecord_lock.count == 0 && tdb->num_lockrecs == 0);
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
-		data = tdb_fetch(tdb, key);
+		ok1(tdb_fetch(tdb, key, &data) == TDB_SUCCESS);
 		ok1(data.dsize == 1000);
 		ok1(memcmp(data.dptr, buffer, data.dsize) == 0);
 		free(data.dptr);

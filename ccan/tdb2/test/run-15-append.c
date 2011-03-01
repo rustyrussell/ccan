@@ -42,7 +42,7 @@ int main(int argc, char *argv[])
 		buffer[i] = i;
 
 	plan_tests(sizeof(flags) / sizeof(flags[0])
-		   * ((3 + MAX_SIZE/SIZE_STEP * 4) * 2 + 6)
+		   * ((3 + MAX_SIZE/SIZE_STEP * 5) * 2 + 7)
 		   + 1);
 
 	/* Using tdb_store. */
@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 			data.dsize = j;
 			ok1(tdb_store(tdb, key, data, TDB_REPLACE) == 0);
 			ok1(tdb_check(tdb, NULL, NULL) == 0);
-			data = tdb_fetch(tdb, key);
+			ok1(tdb_fetch(tdb, key, &data) == TDB_SUCCESS);
 			ok1(data.dsize == j);
 			ok1(memcmp(data.dptr, buffer, data.dsize) == 0);
 			free(data.dptr);
@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
 			data.dsize = j - prev_len;
 			ok1(tdb_append(tdb, key, data) == 0);
 			ok1(tdb_check(tdb, NULL, NULL) == 0);
-			data = tdb_fetch(tdb, key);
+			ok1(tdb_fetch(tdb, key, &data) == TDB_SUCCESS);
 			ok1(data.dsize == j);
 			ok1(memcmp(data.dptr, buffer, data.dsize) == 0);
 			free(data.dptr);
@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
 		data.dsize = MAX_SIZE;
 		ok1(tdb_append(tdb, key, data) == 0);
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
-		data = tdb_fetch(tdb, key);
+		ok1(tdb_fetch(tdb, key, &data) == TDB_SUCCESS);
 		ok1(data.dsize == MAX_SIZE);
 		ok1(memcmp(data.dptr, buffer, data.dsize) == 0);
 		free(data.dptr);

@@ -56,8 +56,8 @@ static int trav(struct tdb_context *tdb, TDB_DATA key, TDB_DATA dbuf, void *p)
 		td->high = val;
 
 	if (td->delete) {
-		if (tdb_delete(tdb, key) != 0) {
-			td->delete_error = tdb_error(tdb);
+		td->delete_error = tdb_delete(tdb, key);
+		if (td->delete_error != TDB_SUCCESS) {
 			return -1;
 		}
 	}
@@ -95,8 +95,8 @@ static int trav_grow(struct tdb_context *tdb, TDB_DATA key, TDB_DATA dbuf,
 	/* Make a big difference to the database. */
 	dbuf.dptr = buffer;
 	dbuf.dsize = sizeof(buffer);
-	if (tdb_append(tdb, key, dbuf) != 0) {
-		tgd->error = tdb_error(tdb);
+	tgd->error = tdb_append(tdb, key, dbuf);
+	if (tgd->error != TDB_SUCCESS) {
 		return -1;
 	}
 	return 0;

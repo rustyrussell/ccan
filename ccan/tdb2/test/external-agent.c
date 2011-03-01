@@ -22,6 +22,7 @@ static enum agent_return do_operation(enum operation op, const char *name)
 	TDB_DATA k;
 	enum agent_return ret;
 	TDB_DATA data;
+	enum TDB_ERROR ecode;
 
 	if (op != OPEN && !tdb) {
 		diag("external: No tdb open!");
@@ -50,19 +51,19 @@ static enum agent_return do_operation(enum operation op, const char *name)
 			ret = SUCCESS;
 		break;
 	case FETCH:
-		data = tdb_fetch(tdb, k);
-		if (data.dptr == NULL) {
-			if (tdb_error(tdb) == TDB_ERR_NOEXIST)
-				ret = FAILED;
-			else
-				ret = OTHER_FAILURE;
+		ecode = tdb_fetch(tdb, k, &data);
+		if (ecode == TDB_ERR_NOEXIST) {
+			ret = FAILED;
+		} else if (ecode < 0) {
+			ret = OTHER_FAILURE;
 		} else if (data.dsize != k.dsize
 			   || memcmp(data.dptr, k.dptr, k.dsize) != 0) {
 			ret = OTHER_FAILURE;
+			free(data.dptr);
 		} else {
 			ret = SUCCESS;
+			free(data.dptr);
 		}
-		free(data.dptr);
 		break;
 	case STORE:
 		ret = tdb_store(tdb, k, k, 0) == 0 ? SUCCESS : OTHER_FAILURE;

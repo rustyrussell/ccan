@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
 
 	hattr.base.next = &tap_log_attr;
 
-	plan_tests(5395);
+	plan_tests(6883);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		struct tdb_data d;
 
@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
 
 		/* Check we can find them all. */
 		for (j = 0; j < (1 << TDB_HASH_GROUP_BITS) + 1; j++) {
-			d = tdb_fetch(tdb, key);
+			ok1(tdb_fetch(tdb, key, &d) == TDB_SUCCESS);
 			ok1(d.dsize == sizeof(j));
 			ok1(d.dptr != NULL);
 			ok1(d.dptr && memcmp(d.dptr, &j, d.dsize) == 0);
@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 		     j < (16 << TDB_HASH_GROUP_BITS);
 		     j++) {
 			ok1(tdb_store(tdb, key, dbuf, TDB_INSERT) == 0);
-			d = tdb_fetch(tdb, key);
+			ok1(tdb_fetch(tdb, key, &d) == TDB_SUCCESS);
 			ok1(d.dsize == sizeof(j));
 			ok1(d.dptr != NULL);
 			ok1(d.dptr && memcmp(d.dptr, &j, d.dsize) == 0);
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
 		for (j = (1 << TDB_HASH_GROUP_BITS);
 		     j < (16 << TDB_HASH_GROUP_BITS);
 		     j++) {
-			d = tdb_fetch(tdb, key);
+			ok1(tdb_fetch(tdb, key, &d) == TDB_SUCCESS);
 			ok1(d.dsize == sizeof(j));
 			ok1(d.dptr != NULL);
 			ok1(d.dptr && memcmp(d.dptr, &j, d.dsize) == 0);

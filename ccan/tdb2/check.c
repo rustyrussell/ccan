@@ -80,7 +80,8 @@ static enum TDB_ERROR check_hash_tree(struct tdb_context *tdb,
 				      tdb_off_t used[],
 				      size_t num_used,
 				      size_t *num_found,
-				      int (*check)(TDB_DATA, TDB_DATA, void *),
+				      enum TDB_ERROR (*check)(TDB_DATA,
+							      TDB_DATA, void *),
 				      void *private_data);
 
 static enum TDB_ERROR check_hash_chain(struct tdb_context *tdb,
@@ -89,7 +90,9 @@ static enum TDB_ERROR check_hash_chain(struct tdb_context *tdb,
 				       tdb_off_t used[],
 				       size_t num_used,
 				       size_t *num_found,
-				       int (*check)(TDB_DATA, TDB_DATA, void *),
+				       enum TDB_ERROR (*check)(TDB_DATA,
+							       TDB_DATA,
+							       void *),
 				       void *private_data)
 {
 	struct tdb_used_record rec;
@@ -149,7 +152,9 @@ static enum TDB_ERROR check_hash_record(struct tdb_context *tdb,
 					tdb_off_t used[],
 					size_t num_used,
 					size_t *num_found,
-					int (*check)(TDB_DATA, TDB_DATA, void*),
+					enum TDB_ERROR (*check)(TDB_DATA,
+								TDB_DATA,
+								void *),
 					void *private_data)
 {
 	struct tdb_used_record rec;
@@ -218,7 +223,8 @@ static enum TDB_ERROR check_hash_tree(struct tdb_context *tdb,
 				      tdb_off_t used[],
 				      size_t num_used,
 				      size_t *num_found,
-				      int (*check)(TDB_DATA, TDB_DATA, void *),
+				      enum TDB_ERROR (*check)(TDB_DATA,
+							      TDB_DATA, void *),
 				      void *private_data)
 {
 	unsigned int g, b;
@@ -395,8 +401,8 @@ static enum TDB_ERROR check_hash_tree(struct tdb_context *tdb,
 					goto fail;
 				}
 				data.dptr = key.dptr + key.dsize;
-				if (check(key, data, private_data) != 0) {
-					ecode = TDB_ERR_CORRUPT;
+				ecode = check(key, data, private_data);
+				if (ecode != TDB_SUCCESS) {
 					goto fail;
 				}
 				tdb_access_release(tdb, key.dptr);
@@ -711,9 +717,10 @@ static enum TDB_ERROR check_linear(struct tdb_context *tdb,
 	return TDB_SUCCESS;
 }
 
-int tdb_check(struct tdb_context *tdb,
-	      int (*check)(TDB_DATA key, TDB_DATA data, void *private_data),
-	      void *private_data)
+enum TDB_ERROR tdb_check(struct tdb_context *tdb,
+			 enum TDB_ERROR (*check)(TDB_DATA key, TDB_DATA data,
+						 void *private_data),
+			 void *private_data)
 {
 	tdb_off_t *fr = NULL, *used = NULL, ft, recovery;
 	size_t num_free = 0, num_used = 0, num_found = 0, num_ftables = 0;
@@ -721,15 +728,13 @@ int tdb_check(struct tdb_context *tdb,
 
 	ecode = tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false);
 	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return -1;
+		return ecode;
 	}
 
 	ecode = tdb_lock_expand(tdb, F_RDLCK);
 	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
 		tdb_allrecord_unlock(tdb, F_RDLCK);
-		return -1;
+		return ecode;
 	}
 
 	ecode = check_header(tdb, &recovery);
@@ -743,7 +748,7 @@ int tdb_check(struct tdb_context *tdb,
 
 	for (ft = first_ftable(tdb); ft; ft = next_ftable(tdb, ft)) {
 		if (TDB_OFF_IS_ERR(ft)) {
-			tdb->ecode = ft;
+			ecode = ft;
 			goto out;
 		}
 		ecode = check_free_table(tdb, ft, num_ftables, fr, num_free,
@@ -770,9 +775,5 @@ out:
 	tdb_unlock_expand(tdb, F_RDLCK);
 	free(fr);
 	free(used);
-	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return -1;
-	}
-	return 0;
+	return ecode;
 }

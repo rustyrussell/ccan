@@ -34,55 +34,37 @@ int64_t tdb_traverse(struct tdb_context *tdb, tdb_traverse_func fn, void *p)
 		count++;
 		if (fn && fn(tdb, k, d, p)) {
 			free(k.dptr);
-			break;
+			return count;
 		}
 		free(k.dptr);
 	}
 
 	if (ecode != TDB_ERR_NOEXIST) {
-		tdb->ecode = ecode;
-		return -1;
+		return ecode;
 	}
 	return count;
 }
 	
-TDB_DATA tdb_firstkey(struct tdb_context *tdb)
+enum TDB_ERROR tdb_firstkey(struct tdb_context *tdb, struct tdb_data *key)
 {
 	struct traverse_info tinfo;
-	struct tdb_data k;
-	enum TDB_ERROR ecode;
 
-	ecode = first_in_hash(tdb, &tinfo, &k, NULL);
-	if (ecode == TDB_SUCCESS) {
-		return k;
-	}
-	if (ecode == TDB_ERR_NOEXIST)
-		ecode = TDB_SUCCESS;
-	tdb->ecode = ecode;
-	return tdb_null;
+	return first_in_hash(tdb, &tinfo, key, NULL);
 }
 
 /* We lock twice, not very efficient.  We could keep last key & tinfo cached. */
-TDB_DATA tdb_nextkey(struct tdb_context *tdb, TDB_DATA key)
+enum TDB_ERROR tdb_nextkey(struct tdb_context *tdb, struct tdb_data *key)
 {
 	struct traverse_info tinfo;
 	struct hash_info h;
 	struct tdb_used_record rec;
-	enum TDB_ERROR ecode;
 
-	tinfo.prev = find_and_lock(tdb, key, F_RDLCK, &h, &rec, &tinfo);
+	tinfo.prev = find_and_lock(tdb, *key, F_RDLCK, &h, &rec, &tinfo);
+	free(key->dptr);
 	if (TDB_OFF_IS_ERR(tinfo.prev)) {
-		tdb->ecode = tinfo.prev;
-		return tdb_null;
+		return tinfo.prev;
 	}
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_RDLCK);
 
-	ecode = next_in_hash(tdb, &tinfo, &key, NULL);
-	if (ecode == TDB_SUCCESS) {
-		return key;
-	}
-	if (ecode == TDB_ERR_NOEXIST)
-		ecode = TDB_SUCCESS;
-	tdb->ecode = ecode;
-	return tdb_null;
+	return next_in_hash(tdb, &tinfo, key, NULL);
 }

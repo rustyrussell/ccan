@@ -27,15 +27,13 @@ int main(int argc, char *argv[])
 			struct tdb_data d;
 
 			/* fetch should fail. */
-			d = tdb_fetch(tdb, key);
-			ok1(d.dptr == NULL);
-			ok1(tdb_error(tdb) == TDB_ERR_NOEXIST);
+			ok1(tdb_fetch(tdb, key, &d) == TDB_ERR_NOEXIST);
 			ok1(tdb_check(tdb, NULL, NULL) == 0);
 			/* Insert should succeed. */
 			ok1(tdb_store(tdb, key, data, TDB_INSERT) == 0);
 			ok1(tdb_check(tdb, NULL, NULL) == 0);
 			/* Fetch should now work. */
-			d = tdb_fetch(tdb, key);
+			ok1(tdb_fetch(tdb, key, &d) == TDB_SUCCESS);
 			ok1(data_equal(d, data));
 			free(d.dptr);
 			ok1(tdb_check(tdb, NULL, NULL) == 0);

@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
 
 	fixed_hattr.base.next = &tap_log_attr;
 
-	plan_tests(sizeof(flags) / sizeof(flags[0]) * (1 + 500 * 2) + 1);
+	plan_tests(sizeof(flags) / sizeof(flags[0]) * (1 + 500 * 3) + 1);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		tdb = tdb_open("run-12-store.tdb", flags[i],
 			       O_RDWR|O_CREAT|O_TRUNC, 0600, &fixed_hattr);
@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
 		for (j = 0; j < 500; j++) {
 			struct tdb_data d;
 			ok1(tdb_store(tdb, key, data, TDB_REPLACE) == 0);
-			d = tdb_fetch(tdb, key);
+			ok1(tdb_fetch(tdb, key, &d) == TDB_SUCCESS);
 			ok1(equal(d, data));
 			free(d.dptr);
 		}

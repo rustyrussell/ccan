@@ -24,7 +24,8 @@
  *	{
  *		struct tdb_context *tdb;
  *		TDB_DATA key, value;
- *	
+ *		enum TDB_ERROR error;
+ *
  *		if (argc < 4)
  *			usage(argv[0]);
  *	
@@ -38,10 +39,10 @@
  *		if (streq(argv[1], "fetch")) {
  *			if (argc != 4)
  *				usage(argv[0]);
- *			value = tdb_fetch(tdb, key);
- *			if (!value.dptr)
+ *			error = tdb_fetch(tdb, key, &value);
+ *			if (error)
  *				errx(1, "fetch %s: %s",
- *				     argv[3], tdb_errorstr(tdb));
+ *				     argv[3], tdb_errorstr(error));
  *			printf("%.*s\n", value.dsize, (char *)value.dptr);
  *			free(value.dptr);
  *		} else if (streq(argv[1], "store")) {
@@ -49,9 +50,10 @@
  *				usage(argv[0]);
  *			value.dptr = (void *)argv[4];
  *			value.dsize = strlen(argv[4]);
- *			if (tdb_store(tdb, key, value, 0) != 0)
+ *			error = tdb_store(tdb, key, value, 0);
+ *			if (error)
  *				errx(1, "store %s: %s",
- *				     argv[3], tdb_errorstr(tdb));
+ *				     argv[3], tdb_errorstr(error));
  *		} else
  *			usage(argv[0]);
  *	
