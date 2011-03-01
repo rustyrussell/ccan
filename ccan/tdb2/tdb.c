@@ -397,6 +397,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		} else
 			tdb_munmap(tdb);
 	}
+	free(tdb->lockrecs);
 	free((char *)tdb->name);
 	if (tdb->fd != -1)
 		if (close(tdb->fd) != 0)
