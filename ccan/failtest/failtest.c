@@ -219,7 +219,7 @@ static void trace_str(const char *str)
 {
 	ssize_t ret;
 
-	while ((ret = write(tracefd, str, strlen(str))) <= 0) {
+	while ((ret = write(tracefd, str, strlen(str))) > 0) {
 		str += ret;
 		if (!*str)
 			return;
