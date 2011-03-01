@@ -82,3 +82,4 @@ struct ccanlint module_builds = {
 };
 
 REGISTER_TEST(module_builds);
+
