@@ -237,8 +237,10 @@ static bool check_hash_tree(struct tdb_context *tdb,
 			       sizeof(tdb_off_t)
 			       << (group_bits + TDB_HASH_GROUP_BITS),
 			       true);
-	if (!hash)
+	if (TDB_PTR_IS_ERR(hash)) {
+		tdb->ecode = TDB_PTR_ERR(hash);
 		return false;
+	}
 
 	for (g = 0; g < (1 << group_bits); g++) {
 		const tdb_off_t *group = hash + (g << TDB_HASH_GROUP_BITS);
@@ -389,8 +391,10 @@ static bool check_hash_tree(struct tdb_context *tdb,
 						   off + sizeof(rec),
 						   key.dsize + data.dsize,
 						   false);
-				if (!key.dptr)
+				if (TDB_PTR_IS_ERR(key.dptr)) {
+					tdb->ecode = TDB_PTR_ERR(key.dptr);
 					goto fail;
+				}
 				data.dptr = key.dptr + key.dsize;
 				if (check(key, data, private_data) != 0)
 					goto fail;

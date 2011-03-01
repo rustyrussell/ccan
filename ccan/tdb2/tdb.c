@@ -631,6 +631,10 @@ struct tdb_data tdb_fetch(struct tdb_context *tdb, struct tdb_data key)
 		ret.dsize = rec_data_length(&rec);
 		ret.dptr = tdb_alloc_read(tdb, off + sizeof(rec) + key.dsize,
 					  ret.dsize);
+		if (TDB_PTR_IS_ERR(ret.dptr)) {
+			tdb->ecode = TDB_PTR_ERR(ret.dptr);
+			ret = tdb_null;
+		}
 	}
 
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_RDLCK);

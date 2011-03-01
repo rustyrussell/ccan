@@ -143,8 +143,10 @@ uint64_t tdb_find_nonzero_off(struct tdb_context *tdb,
 	/* Zero vs non-zero is the same unconverted: minor optimization. */
 	val = tdb_access_read(tdb, base + start * sizeof(tdb_off_t),
 			      (end - start) * sizeof(tdb_off_t), false);
-	if (!val)
+	if (TDB_PTR_IS_ERR(val)) {
+		tdb->ecode = TDB_PTR_ERR(val);
 		return end;
+	}
 
 	for (i = 0; i < (end - start); i++) {
 		if (val[i])
@@ -163,8 +165,10 @@ uint64_t tdb_find_zero_off(struct tdb_context *tdb, tdb_off_t off,
 
 	/* Zero vs non-zero is the same unconverted: minor optimization. */
 	val = tdb_access_read(tdb, off, num * sizeof(tdb_off_t), false);
-	if (!val)
+	if (TDB_PTR_IS_ERR(val)) {
+		tdb->ecode = TDB_PTR_ERR(val);
 		return num;
+	}
 
 	for (i = 0; i < num; i++) {
 		if (!val[i])
@@ -181,6 +185,9 @@ enum TDB_ERROR zero_out(struct tdb_context *tdb, tdb_off_t off, tdb_len_t len)
 	enum TDB_ERROR ecode = TDB_SUCCESS;
 
 	assert(!tdb->read_only);
+	if (TDB_PTR_IS_ERR(p)) {
+		return TDB_PTR_ERR(p);
+	}
 	if (p) {
 		memset(p, 0, len);
 		return ecode;
@@ -205,6 +212,10 @@ tdb_off_t tdb_read_off(struct tdb_context *tdb, tdb_off_t off)
 	if (likely(!(tdb->flags & TDB_CONVERT))) {
 		tdb_off_t *p = tdb->methods->direct(tdb, off, sizeof(*p),
 						    false);
+		if (TDB_PTR_IS_ERR(p)) {
+			tdb->ecode = TDB_PTR_ERR(p);
+			return TDB_OFF_ERR;
+		}
 		if (p)
 			return *p;
 	}
@@ -325,6 +336,9 @@ enum TDB_ERROR tdb_write_off(struct tdb_context *tdb,
 	if (likely(!(tdb->flags & TDB_CONVERT))) {
 		tdb_off_t *p = tdb->methods->direct(tdb, off, sizeof(*p),
 						    true);
+		if (TDB_PTR_IS_ERR(p)) {
+			return TDB_PTR_ERR(p);
+		}
 		if (p) {
 			*p = val;
 			return TDB_SUCCESS;
@@ -345,12 +359,12 @@ static void *_tdb_alloc_read(struct tdb_context *tdb, tdb_off_t offset,
 		tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_USE_ERROR,
 			   "tdb_alloc_read malloc failed len=%zu",
 			   (size_t)(prefix + len));
+		return TDB_ERR_PTR(TDB_ERR_OOM);
 	} else {
 		ecode = tdb->methods->tread(tdb, offset, buf+prefix, len);
 		if (unlikely(ecode != TDB_SUCCESS)) {
-			tdb->ecode = ecode;
 			free(buf);
-			buf = NULL;
+			return TDB_ERR_PTR(ecode);
 		}
 	}
 	return buf;
@@ -433,18 +447,24 @@ const void *tdb_access_read(struct tdb_context *tdb,
 {
 	const void *ret = NULL;
 
-	if (likely(!(tdb->flags & TDB_CONVERT)))
+	if (likely(!(tdb->flags & TDB_CONVERT))) {
 		ret = tdb->methods->direct(tdb, off, len, false);
 
+		if (TDB_PTR_IS_ERR(ret)) {
+			return ret;
+		}
+	}
 	if (!ret) {
 		struct tdb_access_hdr *hdr;
 		hdr = _tdb_alloc_read(tdb, off, len, sizeof(*hdr));
-		if (hdr) {
-			hdr->next = tdb->access;
-			tdb->access = hdr;
-			ret = hdr + 1;
-			if (convert)
-				tdb_convert(tdb, (void *)ret, len);
+		if (TDB_PTR_IS_ERR(hdr)) {
+			return hdr;
+		}
+		hdr->next = tdb->access;
+		tdb->access = hdr;
+		ret = hdr + 1;
+		if (convert) {
+			tdb_convert(tdb, (void *)ret, len);
 		}
 	} else
 		tdb->direct_access++;
@@ -460,25 +480,31 @@ void *tdb_access_write(struct tdb_context *tdb,
 	if (tdb->read_only) {
 		tdb_logerr(tdb, TDB_ERR_RDONLY, TDB_LOG_USE_ERROR,
 			   "Write to read-only database");
-		return NULL;
+		return TDB_ERR_PTR(TDB_ERR_RDONLY);
 	}
 
-	if (likely(!(tdb->flags & TDB_CONVERT)))
+	if (likely(!(tdb->flags & TDB_CONVERT))) {
 		ret = tdb->methods->direct(tdb, off, len, true);
+
+		if (TDB_PTR_IS_ERR(ret)) {
+			return ret;
+		}
+	}
 
 	if (!ret) {
 		struct tdb_access_hdr *hdr;
 		hdr = _tdb_alloc_read(tdb, off, len, sizeof(*hdr));
-		if (hdr) {
-			hdr->next = tdb->access;
-			tdb->access = hdr;
-			hdr->off = off;
-			hdr->len = len;
-			hdr->convert = convert;
-			ret = hdr + 1;
-			if (convert)
-				tdb_convert(tdb, (void *)ret, len);
+		if (TDB_PTR_IS_ERR(hdr)) {
+			return hdr;
 		}
+		hdr->next = tdb->access;
+		tdb->access = hdr;
+		hdr->off = off;
+		hdr->len = len;
+		hdr->convert = convert;
+		ret = hdr + 1;
+		if (convert)
+			tdb_convert(tdb, (void *)ret, len);
 	} else
 		tdb->direct_access++;
 
@@ -532,11 +558,14 @@ enum TDB_ERROR tdb_access_commit(struct tdb_context *tdb, void *p)
 static void *tdb_direct(struct tdb_context *tdb, tdb_off_t off, size_t len,
 			bool write_mode)
 {
+	enum TDB_ERROR ecode;
+
 	if (unlikely(!tdb->map_ptr))
 		return NULL;
 
-	if (unlikely(tdb_oob(tdb, off + len, true) != TDB_SUCCESS))
-		return NULL;
+	ecode = tdb_oob(tdb, off + len, true);
+	if (unlikely(ecode != TDB_SUCCESS))
+		return TDB_ERR_PTR(ecode);
 	return (char *)tdb->map_ptr + off;
 }
 

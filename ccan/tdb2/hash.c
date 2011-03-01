@@ -47,16 +47,20 @@ uint64_t hash_record(struct tdb_context *tdb, tdb_off_t off)
 	uint64_t klen, hash;
 
 	r = tdb_access_read(tdb, off, sizeof(*r), true);
-	if (!r)
+	if (TDB_PTR_IS_ERR(r)) {
+		tdb->ecode = TDB_PTR_ERR(r);
 		/* FIXME */
 		return 0;
+	}
 
 	klen = rec_key_length(r);
 	tdb_access_release(tdb, r);
 
 	key = tdb_access_read(tdb, off + sizeof(*r), klen, false);
-	if (!key)
+	if (TDB_PTR_IS_ERR(key)) {
+		tdb->ecode = TDB_PTR_ERR(key);
 		return 0;
+	}
 
 	hash = tdb_hash(tdb, key, klen);
 	tdb_access_release(tdb, key);
@@ -92,8 +96,10 @@ static bool key_matches(struct tdb_context *tdb,
 	}
 
 	rkey = tdb_access_read(tdb, off + sizeof(*rec), key->dsize, false);
-	if (!rkey)
+	if (TDB_PTR_IS_ERR(rkey)) {
+		tdb->ecode = TDB_PTR_ERR(rkey);
 		return ret;
+	}
 	if (memcmp(rkey, key->dptr, key->dsize) == 0)
 		ret = true;
 	else
@@ -490,8 +496,10 @@ static int add_to_subhash(struct tdb_context *tdb, tdb_off_t subhash,
 
 	group = tdb_access_write(tdb, h.group_start,
 				 sizeof(*group) << TDB_HASH_GROUP_BITS, true);
-	if (!group)
+	if (TDB_PTR_IS_ERR(group)) {
+		tdb->ecode = TDB_PTR_ERR(group);
 		return -1;
+	}
 	force_into_group(group, h.home_bucket, encode_offset(off, &h));
 	ecode = tdb_access_commit(tdb, group);
 	if (ecode != TDB_SUCCESS) {
@@ -808,7 +816,11 @@ int next_in_hash(struct tdb_context *tdb,
 							    kbuf->dsize);
 			}
 			tdb_unlock_hashes(tdb, hl_start, hl_range, F_RDLCK);
-			return kbuf->dptr ? 1 : -1;
+			if (TDB_PTR_IS_ERR(kbuf->dptr)) {
+				tdb->ecode = TDB_PTR_ERR(kbuf->dptr);
+				return -1;
+			}
+			return 1;
 		}
 
 		tdb_unlock_hashes(tdb, hl_start, hl_range, F_RDLCK);

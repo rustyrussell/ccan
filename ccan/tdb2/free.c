@@ -297,8 +297,10 @@ static int coalesce(struct tdb_context *tdb,
 		unsigned ftable, bucket;
 
 		r = tdb_access_read(tdb, end, sizeof(*r), true);
-		if (!r)
+		if (TDB_PTR_IS_ERR(r)) {
+			tdb->ecode = TDB_PTR_ERR(r);
 			goto err;
+		}
 
 		if (frec_magic(r) != TDB_FREE_MAGIC
 		    || frec_ftable(r) == TDB_FTABLE_NONE) {
@@ -443,8 +445,10 @@ again:
 		tdb_off_t next;
 
 		r = tdb_access_read(tdb, off, sizeof(*r), true);
-		if (!r)
+		if (TDB_PTR_IS_ERR(r)) {
+			tdb->ecode = TDB_PTR_ERR(r);
 			goto unlock_err;
+		}
 
 		if (frec_magic(r) != TDB_FREE_MAGIC) {
 			tdb_access_release(tdb, r);

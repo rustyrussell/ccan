@@ -26,8 +26,10 @@ static int count_hash(struct tdb_context *tdb,
 	unsigned int i, count = 0;
 
 	h = tdb_access_read(tdb, hash_off, sizeof(*h) << bits, true);
-	if (!h)
+	if (TDB_PTR_IS_ERR(h)) {
+		tdb->ecode = TDB_PTR_ERR(h);
 		return -1;
+	}
 	for (i = 0; i < (1 << bits); i++)
 		count += (h[i] != 0);
 
@@ -58,8 +60,10 @@ static bool summarize(struct tdb_context *tdb,
 		} *p;
 		/* We might not be able to get the whole thing. */
 		p = tdb_access_read(tdb, off, sizeof(p->f), true);
-		if (!p)
+		if (TDB_PTR_IS_ERR(p)) {
+			tdb->ecode = TDB_PTR_ERR(p);
 			return false;
+		}
 		if (p->r.magic == TDB_RECOVERY_INVALID_MAGIC
 		    || p->r.magic == TDB_RECOVERY_MAGIC) {
 			if (unc) {
