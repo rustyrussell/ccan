@@ -665,7 +665,8 @@ int main(int argc, char *argv[])
 	}
 
 	/* --target overrides known FAIL from _info */
-	add_info_options(m->info_file, !target);
+	if (m->info_file)
+		add_info_options(m->info_file, !target);
 
 	while ((i = get_next_test(&normal_tests)) != NULL)
 		run_test(i, summary, &score, &total_score, m);
