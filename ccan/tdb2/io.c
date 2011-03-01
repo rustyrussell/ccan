@@ -236,11 +236,6 @@ static enum TDB_ERROR tdb_write(struct tdb_context *tdb, tdb_off_t off,
 				  "Write to read-only database");
 	}
 
-	/* FIXME: Bogus optimization? */
-	if (len == 0) {
-		return TDB_SUCCESS;
-	}
-
 	ecode = tdb->methods->oob(tdb, off + len, 0);
 	if (ecode != TDB_SUCCESS) {
 		return ecode;
