@@ -14,6 +14,7 @@
 #include <err.h>
 #include <string.h>
 #include <ctype.h>
+#include "reduce_features.h"
 
 static const char *can_build(struct manifest *m)
 {
@@ -62,12 +63,13 @@ static char *lib_list(const struct manifest *m)
 static bool compile(const void *ctx,
 		    struct manifest *m,
 		    struct ccan_file *file,
+		    const char *flags,
 		    bool fail,
 		    bool link_with_module,
 		    bool keep, char **output)
 {
-	char *f = talloc_asprintf(ctx, "%s%s",
-				  fail ? "-DFAIL " : "", cflags);
+	char *f = talloc_asprintf(ctx, "%s%s%s",
+				  flags, fail ? "-DFAIL " : "", cflags);
 
 	file->compiled = maybe_temp_file(ctx, "", keep, file->fullname);
 	if (!compile_and_link(ctx, file->fullname, ccan_dir,
@@ -79,9 +81,8 @@ static bool compile(const void *ctx,
 	return true;
 }
 
-static void do_compile_tests(struct manifest *m,
-			     bool keep,
-			     unsigned int *timeleft, struct score *score)
+static void compile_tests(struct manifest *m, bool keep,
+			  struct score *score, const char *incl)
 {
 	char *cmdout;
 	struct ccan_file *i;
@@ -90,8 +91,8 @@ static void do_compile_tests(struct manifest *m,
 
 	foreach_ptr(list, &m->compile_ok_tests, &m->run_tests, &m->api_tests) {
 		list_for_each(list, i, list) {
-			if (!compile(score, m, i, false, list == &m->api_tests,
-				     keep, &cmdout)) {
+			if (!compile(score, m, i, incl, false,
+				     list == &m->api_tests, keep, &cmdout)) {
 				score_file_error(score, i, 0,
 						 "Compile failed:\n%s",
 						 cmdout);
@@ -111,7 +112,7 @@ static void do_compile_tests(struct manifest *m,
 
 	/* For historical reasons, "fail" often means "gives warnings" */
 	list_for_each(&m->compile_fail_tests, i, list) {
-		if (!compile(score, m, i, false, false, false, &cmdout)) {
+		if (!compile(score, m, i, incl, false, false, false, &cmdout)) {
 			score_file_error(score, i, 0,
 					 "Compile without -DFAIL failed:\n%s",
 					 cmdout);
@@ -124,7 +125,7 @@ static void do_compile_tests(struct manifest *m,
 					 cmdout);
 			return;
 		}
-		if (compile(score, m, i, true, false, false, &cmdout)
+		if (compile(score, m, i, incl, true, false, false, &cmdout)
 		    && streq(cmdout, "")) {
 			score_file_error(score, i, 0,
 					 "Compiled successfully with -DFAIL?");
@@ -137,6 +138,13 @@ static void do_compile_tests(struct manifest *m,
 	score->score = 1 + !warnings;
 }
 
+static void do_compile_tests(struct manifest *m,
+			     bool keep,
+			     unsigned int *timeleft, struct score *score)
+{
+	return compile_tests(m, keep, score, "");
+}
+
 struct ccanlint tests_compile = {
 	.key = "tests_compile",
 	.name = "Module tests compile",
@@ -146,3 +154,27 @@ struct ccanlint tests_compile = {
 };
 
 REGISTER_TEST(tests_compile);
+
+static const char *features_reduced(struct manifest *m)
+{
+	if (features_were_reduced)
+		return NULL;
+	return "No features to turn off";
+}
+
+static void do_compile_tests_without_features(struct manifest *m,
+					      bool keep,
+					      unsigned int *timeleft,
+					      struct score *score)
+{
+	return compile_tests(m, keep, score, "-I. ");
+}
+
+struct ccanlint tests_compile_without_features = {
+	.key = "tests_compile_without_features",
+	.name = "Module tests compile (without features)",
+	.check = do_compile_tests_without_features,
+	.can_run = features_reduced,
+	.needs = "reduce_features"
+};
+REGISTER_TEST(tests_compile_without_features);

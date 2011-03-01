@@ -174,6 +174,8 @@ struct ccanlint reduce_features = {
 	.name = "Produce config.h with reduced features",
 	.can_run = can_run,
 	.check = do_reduce_features,
+	/* We only want to compile up versions with reduced featuress once
+	 * objects for normal tests are built. */
 	.needs = "tests_compile"
 };
 REGISTER_TEST(reduce_features);
