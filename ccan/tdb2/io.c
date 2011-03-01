@@ -182,7 +182,7 @@ int zero_out(struct tdb_context *tdb, tdb_off_t off, tdb_len_t len)
 	}
 	while (len) {
 		unsigned todo = len < sizeof(buf) ? len : sizeof(buf);
-		if (tdb->methods->write(tdb, off, buf, todo) == -1)
+		if (tdb->methods->twrite(tdb, off, buf, todo) == -1)
 			return -1;
 		len -= todo;
 		off += todo;
@@ -282,11 +282,11 @@ int tdb_write_convert(struct tdb_context *tdb, tdb_off_t off,
 			return -1;
 		}
 		memcpy(conv, rec, len);
-		ret = tdb->methods->write(tdb, off,
-					  tdb_convert(tdb, conv, len), len);
+		ret = tdb->methods->twrite(tdb, off,
+					   tdb_convert(tdb, conv, len), len);
 		free(conv);
 	} else
-		ret = tdb->methods->write(tdb, off, rec, len);
+		ret = tdb->methods->twrite(tdb, off, rec, len);
 
 	return ret;
 }
@@ -294,7 +294,7 @@ int tdb_write_convert(struct tdb_context *tdb, tdb_off_t off,
 int tdb_read_convert(struct tdb_context *tdb, tdb_off_t off,
 		      void *rec, size_t len)
 {
-	int ret = tdb->methods->read(tdb, off, rec, len);
+	int ret = tdb->methods->tread(tdb, off, rec, len);
 	tdb_convert(tdb, rec, len);
 	return ret;
 }
@@ -329,8 +329,8 @@ static void *_tdb_alloc_read(struct tdb_context *tdb, tdb_off_t offset,
 		tdb_logerr(tdb, TDB_ERR_OOM, TDB_DEBUG_ERROR,
 			   "tdb_alloc_read malloc failed len=%zu",
 			   (size_t)(prefix + len));
-	} else if (unlikely(tdb->methods->read(tdb, offset, buf+prefix,
-					       len) == -1)) {
+	} else if (unlikely(tdb->methods->tread(tdb, offset, buf+prefix, len)
+			    == -1)) {
 		free(buf);
 		buf = NULL;
 	}

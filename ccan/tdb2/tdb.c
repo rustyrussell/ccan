@@ -453,11 +453,11 @@ static int replace_data(struct tdb_context *tdb,
 	}
 
 	new_off += sizeof(struct tdb_used_record);
-	if (tdb->methods->write(tdb, new_off, key.dptr, key.dsize) == -1)
+	if (tdb->methods->twrite(tdb, new_off, key.dptr, key.dsize) == -1)
 		return -1;
 
 	new_off += key.dsize;
-	if (tdb->methods->write(tdb, new_off, dbuf.dptr, dbuf.dsize) == -1)
+	if (tdb->methods->twrite(tdb, new_off, dbuf.dptr, dbuf.dsize) == -1)
 		return -1;
 
 	/* FIXME: tdb_increment_seqnum(tdb); */
@@ -493,9 +493,9 @@ int tdb_store(struct tdb_context *tdb,
 						   key.dsize, dbuf.dsize,
 						   &rec, h.h))
 					goto fail;
-				if (tdb->methods->write(tdb, off + sizeof(rec)
-							+ key.dsize,
-							dbuf.dptr, dbuf.dsize))
+				if (tdb->methods->twrite(tdb, off + sizeof(rec)
+							 + key.dsize,
+							 dbuf.dptr, dbuf.dsize))
 					goto fail;
 				tdb_unlock_hashes(tdb, h.hlock_start,
 						  h.hlock_range, F_WRLCK);
@@ -548,8 +548,8 @@ int tdb_append(struct tdb_context *tdb,
 				goto fail;
 
 			off += sizeof(rec) + key.dsize + old_dlen;
-			if (tdb->methods->write(tdb, off, dbuf.dptr,
-						dbuf.dsize) == -1)
+			if (tdb->methods->twrite(tdb, off, dbuf.dptr,
+						 dbuf.dsize) == -1)
 				goto fail;
 
 			/* FIXME: tdb_increment_seqnum(tdb); */
@@ -566,8 +566,8 @@ int tdb_append(struct tdb_context *tdb,
 				   (size_t)(key.dsize+old_dlen+dbuf.dsize));
 			goto fail;
 		}
-		if (tdb->methods->read(tdb, off + sizeof(rec) + key.dsize,
-				       newdata, old_dlen) != 0) {
+		if (tdb->methods->tread(tdb, off + sizeof(rec) + key.dsize,
+					newdata, old_dlen) != 0) {
 			free(newdata);
 			goto fail;
 		}

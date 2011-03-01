@@ -512,7 +512,7 @@ size_t dead_space(struct tdb_context *tdb, tdb_off_t off)
 
 	for (len = 0; off + len < tdb->map_size; len++) {
 		char c;
-		if (tdb->methods->read(tdb, off, &c, 1))
+		if (tdb->methods->tread(tdb, off, &c, 1))
 			return 0;
 		if (c != 0 && c != 0x43)
 			break;

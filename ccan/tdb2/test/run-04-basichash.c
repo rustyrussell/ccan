@@ -74,9 +74,9 @@ int main(int argc, char *argv[])
 
 		/* Make sure we fill it in for later finding. */
 		off = new_off + sizeof(struct tdb_used_record);
-		ok1(!tdb->methods->write(tdb, off, key.dptr, key.dsize));
+		ok1(!tdb->methods->twrite(tdb, off, key.dptr, key.dsize));
 		off += key.dsize;
-		ok1(!tdb->methods->write(tdb, off, dbuf.dptr, dbuf.dsize));
+		ok1(!tdb->methods->twrite(tdb, off, dbuf.dptr, dbuf.dsize));
 
 		/* We should be able to unlock that OK. */
 		ok1(tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range,
@@ -233,9 +233,9 @@ int main(int argc, char *argv[])
 
 		/* Make sure we fill it in for later finding. */
 		off = new_off + sizeof(struct tdb_used_record);
-		ok1(!tdb->methods->write(tdb, off, key.dptr, key.dsize));
+		ok1(!tdb->methods->twrite(tdb, off, key.dptr, key.dsize));
 		off += key.dsize;
-		ok1(!tdb->methods->write(tdb, off, dbuf.dptr, dbuf.dsize));
+		ok1(!tdb->methods->twrite(tdb, off, dbuf.dptr, dbuf.dsize));
 
 		/* We should be able to unlock that OK. */
 		ok1(tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range,

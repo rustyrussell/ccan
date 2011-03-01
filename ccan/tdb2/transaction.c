@@ -151,7 +151,8 @@ static int transaction_read(struct tdb_context *tdb, tdb_off_t off, void *buf,
 	if (tdb->transaction->num_blocks <= blk ||
 	    tdb->transaction->blocks[blk] == NULL) {
 		/* nope, do a real read */
-		if (tdb->transaction->io_methods->read(tdb, off, buf, len) != 0) {
+		if (tdb->transaction->io_methods->tread(tdb, off, buf, len)
+		    != 0) {
 			goto fail;
 		}
 		return 0;
@@ -249,9 +250,9 @@ static int transaction_write(struct tdb_context *tdb, tdb_off_t off,
 			if (len2 + (blk * getpagesize()) > tdb->transaction->old_map_size) {
 				len2 = tdb->transaction->old_map_size - (blk * getpagesize());
 			}
-			if (tdb->transaction->io_methods->read(tdb, blk * getpagesize(),
-							       tdb->transaction->blocks[blk],
-							       len2) != 0) {
+			if (tdb->transaction->io_methods->tread(tdb, blk * getpagesize(),
+								tdb->transaction->blocks[blk],
+								len2) != 0) {
 				tdb_logerr(tdb, TDB_ERR_OOM, TDB_DEBUG_FATAL,
 					   "transaction_write: failed to"
 					   " read old block: %s",
@@ -468,8 +469,8 @@ static void _tdb_transaction_cancel(struct tdb_context *tdb)
 		uint64_t invalid = TDB_RECOVERY_INVALID_MAGIC;
 
 		/* remove the recovery marker */
-		if (methods->write(tdb, tdb->transaction->magic_offset,
-				   &invalid, sizeof(invalid)) == -1 ||
+		if (methods->twrite(tdb, tdb->transaction->magic_offset,
+				    &invalid, sizeof(invalid)) == -1 ||
 		    transaction_sync(tdb, tdb->transaction->magic_offset,
 				     sizeof(invalid)) == -1) {
 			tdb_logerr(tdb, tdb->ecode, TDB_DEBUG_FATAL,
@@ -624,7 +625,7 @@ static int tdb_recovery_allocate(struct tdb_context *tdb,
 	}
 
 	if (recovery_head != 0) {
-		if (methods->read(tdb, recovery_head, &rec, sizeof(rec))) {
+		if (methods->tread(tdb, recovery_head, &rec, sizeof(rec))) {
 			tdb_logerr(tdb, tdb->ecode, TDB_DEBUG_FATAL,
 				 "tdb_recovery_allocate:"
 				 " failed to read recovery record");
@@ -696,8 +697,8 @@ static int tdb_recovery_allocate(struct tdb_context *tdb,
 	/* write the recovery header offset and sync - we can sync without a race here
 	   as the magic ptr in the recovery record has not been set */
 	tdb_convert(tdb, &recovery_head, sizeof(recovery_head));
-	if (methods->write(tdb, offsetof(struct tdb_header, recovery),
-			   &recovery_head, sizeof(tdb_off_t)) == -1) {
+	if (methods->twrite(tdb, offsetof(struct tdb_header, recovery),
+			    &recovery_head, sizeof(tdb_off_t)) == -1) {
 		tdb_logerr(tdb, tdb->ecode, TDB_DEBUG_FATAL,
 			 "tdb_recovery_allocate:"
 			 " failed to write recovery head");
@@ -790,9 +791,9 @@ static int transaction_setup_recovery(struct tdb_context *tdb,
 		/* the recovery area contains the old data, not the
 		   new data, so we have to call the original tdb_read
 		   method to get it */
-		if (methods->read(tdb, offset,
-				  p + sizeof(offset) + sizeof(length),
-				  length) != 0) {
+		if (methods->tread(tdb, offset,
+				   p + sizeof(offset) + sizeof(length),
+				   length) != 0) {
 			free(data);
 			return -1;
 		}
@@ -805,8 +806,8 @@ static int transaction_setup_recovery(struct tdb_context *tdb,
 	tdb_convert(tdb, p, sizeof(tailer));
 
 	/* write the recovery data to the recovery area */
-	if (methods->write(tdb, recovery_offset, data,
-			   sizeof(*rec) + recovery_size) == -1) {
+	if (methods->twrite(tdb, recovery_offset, data,
+			    sizeof(*rec) + recovery_size) == -1) {
 		tdb_logerr(tdb, tdb->ecode, TDB_DEBUG_FATAL,
 			 "tdb_transaction_setup_recovery:"
 			 " failed to write recovery data");
@@ -833,7 +834,7 @@ static int transaction_setup_recovery(struct tdb_context *tdb,
 	*magic_offset = recovery_offset + offsetof(struct tdb_recovery_record,
 						   magic);
 
-	if (methods->write(tdb, *magic_offset, &magic, sizeof(magic)) == -1) {
+	if (methods->twrite(tdb, *magic_offset, &magic, sizeof(magic)) == -1) {
 		tdb_logerr(tdb, tdb->ecode, TDB_DEBUG_FATAL,
 			 "tdb_transaction_setup_recovery:"
 			 " failed to write recovery magic");
@@ -1007,8 +1008,8 @@ int tdb_transaction_commit(struct tdb_context *tdb)
 			length = tdb->transaction->last_block_size;
 		}
 
-		if (methods->write(tdb, offset, tdb->transaction->blocks[i],
-				   length) == -1) {
+		if (methods->twrite(tdb, offset, tdb->transaction->blocks[i],
+				    length) == -1) {
 			tdb_logerr(tdb, tdb->ecode, TDB_DEBUG_FATAL,
 				   "tdb_transaction_commit:"
 				   " write failed during commit");
@@ -1113,8 +1114,8 @@ int tdb_transaction_recover(struct tdb_context *tdb)
 	}
 
 	/* read the full recovery data */
-	if (tdb->methods->read(tdb, recovery_head + sizeof(rec), data,
-			       rec.len) == -1) {
+	if (tdb->methods->tread(tdb, recovery_head + sizeof(rec), data,
+				rec.len) == -1) {
 		tdb_logerr(tdb, tdb->ecode, TDB_DEBUG_FATAL,
 			   "tdb_transaction_recover:"
 			   " failed to read recovery data");
@@ -1131,7 +1132,7 @@ int tdb_transaction_recover(struct tdb_context *tdb)
 		memcpy(&len, p + sizeof(ofs), sizeof(len));
 		p += sizeof(ofs) + sizeof(len);
 
-		if (tdb->methods->write(tdb, ofs, p, len) == -1) {
+		if (tdb->methods->twrite(tdb, ofs, p, len) == -1) {
 			free(data);
 			tdb_logerr(tdb, tdb->ecode, TDB_DEBUG_FATAL,
 				 "tdb_transaction_recover:"
