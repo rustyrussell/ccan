@@ -19,7 +19,7 @@ static tdb_off_t tdb_offset(struct tdb_context *tdb, struct tdb_data key)
 	struct hash_info h;
 
 	off = find_and_lock(tdb, key, F_RDLCK, &h, &rec, NULL);
-	if (unlikely(off == TDB_OFF_ERR))
+	if (TDB_OFF_IS_ERR(off))
 		return 0;
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_RDLCK);
 	return off;

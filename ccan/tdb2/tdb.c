@@ -449,11 +449,13 @@ static int replace_data(struct tdb_context *tdb,
 		add_free_record(tdb, old_off,
 				sizeof(struct tdb_used_record)
 				+ key.dsize + old_room);
-		if (replace_in_hash(tdb, h, new_off) == -1)
-			return -1;
+		ecode = replace_in_hash(tdb, h, new_off);
 	} else {
-		if (add_to_hash(tdb, h, new_off) == -1)
-			return -1;
+		ecode = add_to_hash(tdb, h, new_off);
+	}
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
+		return -1;
 	}
 
 	new_off += sizeof(struct tdb_used_record);
@@ -485,8 +487,10 @@ int tdb_store(struct tdb_context *tdb,
 	enum TDB_ERROR ecode;
 
 	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL);
-	if (unlikely(off == TDB_OFF_ERR))
+	if (TDB_OFF_IS_ERR(off)) {
+		tdb->ecode = off;
 		return -1;
+	}
 
 	/* Now we have lock on this hash bucket. */
 	if (flag == TDB_INSERT) {
@@ -551,8 +555,10 @@ int tdb_append(struct tdb_context *tdb,
 	int ret;
 
 	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL);
-	if (unlikely(off == TDB_OFF_ERR))
+	if (TDB_OFF_IS_ERR(off)) {
+		tdb->ecode = off;
 		return -1;
+	}
 
 	if (off) {
 		old_dlen = rec_data_length(&rec);
@@ -621,8 +627,10 @@ struct tdb_data tdb_fetch(struct tdb_context *tdb, struct tdb_data key)
 	struct tdb_data ret;
 
 	off = find_and_lock(tdb, key, F_RDLCK, &h, &rec, NULL);
-	if (unlikely(off == TDB_OFF_ERR))
+	if (TDB_OFF_IS_ERR(off)) {
+		tdb->ecode = off;
 		return tdb_null;
+	}
 
 	if (!off) {
 		tdb->ecode = TDB_ERR_NOEXIST;
@@ -646,10 +654,13 @@ int tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 	tdb_off_t off;
 	struct tdb_used_record rec;
 	struct hash_info h;
+	enum TDB_ERROR ecode;
 
 	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL);
-	if (unlikely(off == TDB_OFF_ERR))
+	if (TDB_OFF_IS_ERR(off)) {
+		tdb->ecode = off;
 		return -1;
+	}
 
 	if (!off) {
 		tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
@@ -657,8 +668,11 @@ int tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 		return -1;
 	}
 
-	if (delete_from_hash(tdb, &h) == -1)
+	ecode = delete_from_hash(tdb, &h);
+	if (ecode != TDB_SUCCESS) {
+		tdb->ecode = ecode;
 		goto unlock_err;
+	}
 
 	/* Free the deleted entry. */
 	add_stat(tdb, frees, 1);

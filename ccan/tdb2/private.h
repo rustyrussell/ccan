@@ -394,13 +394,13 @@ struct tdb_methods {
 /* hash.c: */
 void tdb_hash_init(struct tdb_context *tdb);
 
-int first_in_hash(struct tdb_context *tdb,
-		  struct traverse_info *tinfo,
-		  TDB_DATA *kbuf, size_t *dlen);
+tdb_bool_err first_in_hash(struct tdb_context *tdb,
+			   struct traverse_info *tinfo,
+			   TDB_DATA *kbuf, size_t *dlen);
 
-int next_in_hash(struct tdb_context *tdb,
-		 struct traverse_info *tinfo,
-		 TDB_DATA *kbuf, size_t *dlen);
+tdb_bool_err next_in_hash(struct tdb_context *tdb,
+			  struct traverse_info *tinfo,
+			  TDB_DATA *kbuf, size_t *dlen);
 
 /* Hash random memory. */
 uint64_t tdb_hash(struct tdb_context *tdb, const void *ptr, size_t len);
@@ -416,14 +416,14 @@ tdb_off_t find_and_lock(struct tdb_context *tdb,
 			struct tdb_used_record *rec,
 			struct traverse_info *tinfo);
 
-int replace_in_hash(struct tdb_context *tdb,
-		    struct hash_info *h,
-		    tdb_off_t new_off);
+enum TDB_ERROR replace_in_hash(struct tdb_context *tdb,
+			       struct hash_info *h,
+			       tdb_off_t new_off);
 
-int add_to_hash(struct tdb_context *tdb, struct hash_info *h,
-		tdb_off_t new_off);
+enum TDB_ERROR add_to_hash(struct tdb_context *tdb, struct hash_info *h,
+			   tdb_off_t new_off);
 
-int delete_from_hash(struct tdb_context *tdb, struct hash_info *h);
+enum TDB_ERROR delete_from_hash(struct tdb_context *tdb, struct hash_info *h);
 
 /* For tdb_check */
 bool is_subhash(tdb_off_t val);

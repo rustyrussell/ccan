@@ -82,12 +82,12 @@ static uint32_t use_bits(struct hash_info *h, unsigned num)
 	return bits_from(h->h, 64 - h->hash_used, num);
 }
 
-static bool key_matches(struct tdb_context *tdb,
-			const struct tdb_used_record *rec,
-			tdb_off_t off,
-			const struct tdb_data *key)
+static tdb_bool_err key_matches(struct tdb_context *tdb,
+				const struct tdb_used_record *rec,
+				tdb_off_t off,
+				const struct tdb_data *key)
 {
-	bool ret = false;
+	tdb_bool_err ret = false;
 	const char *rkey;
 
 	if (rec_key_length(rec) != key->dsize) {
@@ -97,8 +97,7 @@ static bool key_matches(struct tdb_context *tdb,
 
 	rkey = tdb_access_read(tdb, off + sizeof(*rec), key->dsize, false);
 	if (TDB_PTR_IS_ERR(rkey)) {
-		tdb->ecode = TDB_PTR_ERR(rkey);
-		return ret;
+		return TDB_PTR_ERR(rkey);
 	}
 	if (memcmp(rkey, key->dptr, key->dsize) == 0)
 		ret = true;
@@ -109,11 +108,11 @@ static bool key_matches(struct tdb_context *tdb,
 }
 
 /* Does entry match? */
-static bool match(struct tdb_context *tdb,
-		  struct hash_info *h,
-		  const struct tdb_data *key,
-		  tdb_off_t val,
-		  struct tdb_used_record *rec)
+static tdb_bool_err match(struct tdb_context *tdb,
+			  struct hash_info *h,
+			  const struct tdb_data *key,
+			  tdb_off_t val,
+			  struct tdb_used_record *rec)
 {
 	tdb_off_t off;
 	enum TDB_ERROR ecode;
@@ -136,8 +135,7 @@ static bool match(struct tdb_context *tdb,
 	off = val & TDB_OFF_MASK;
 	ecode = tdb_read_convert(tdb, off, rec, sizeof(*rec));
 	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return false;
+		return ecode;
 	}
 
 	if ((h->h & ((1 << 11)-1)) != rec_hash(rec)) {
@@ -185,8 +183,7 @@ static tdb_off_t COLD find_in_chain(struct tdb_context *tdb,
 		h->group_start = off;
 		ecode = tdb_read_convert(tdb, off, h->group, sizeof(h->group));
 		if (ecode != TDB_SUCCESS) {
-			tdb->ecode = ecode;
-			return TDB_OFF_ERR;
+			return ecode;
 		}
 
 		for (i = 0; i < (1 << TDB_HASH_GROUP_BITS); i++) {
@@ -203,11 +200,14 @@ static tdb_off_t COLD find_in_chain(struct tdb_context *tdb,
 			ecode = tdb_read_convert(tdb, recoff, rec,
 						 sizeof(*rec));
 			if (ecode != TDB_SUCCESS) {
-				tdb->ecode = ecode;
-				return TDB_OFF_ERR;
+				return ecode;
 			}
 
-			if (key_matches(tdb, rec, recoff, &key)) {
+			ecode = key_matches(tdb, rec, recoff, &key);
+			if (ecode < 0) {
+				return ecode;
+			}
+			if (ecode == 1) {
 				h->home_bucket = h->found_bucket = i;
 
 				if (tinfo) {
@@ -226,8 +226,7 @@ static tdb_off_t COLD find_in_chain(struct tdb_context *tdb,
 		next = tdb_read_off(tdb, off
 				    + offsetof(struct tdb_chain, next));
 		if (TDB_OFF_IS_ERR(next)) {
-			tdb->ecode = next;
-			return TDB_OFF_ERR;
+			return next;
 		}
 		if (next)
 			next += sizeof(struct tdb_used_record);
@@ -236,7 +235,7 @@ static tdb_off_t COLD find_in_chain(struct tdb_context *tdb,
 }
 
 /* This is the core routine which searches the hashtable for an entry.
- * On error, no locks are held and TDB_OFF_ERR is returned.
+ * On error, no locks are held and -ve is returned.
  * Otherwise, hinfo is filled in (and the optional tinfo).
  * If not found, the return value is 0.
  * If found, the return value is the offset, and *rec is the record. */
@@ -260,8 +259,7 @@ tdb_off_t find_and_lock(struct tdb_context *tdb,
 	ecode = tdb_lock_hashes(tdb, h->hlock_start, h->hlock_range, ltype,
 				TDB_LOCK_WAIT);
 	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return TDB_OFF_ERR;
+		return ecode;
 	}
 
 	hashtable = offsetof(struct tdb_header, hashtable);
@@ -282,7 +280,6 @@ tdb_off_t find_and_lock(struct tdb_context *tdb,
 		ecode = tdb_read_convert(tdb, h->group_start, &h->group,
 					 sizeof(h->group));
 		if (ecode != TDB_SUCCESS) {
-			tdb->ecode = ecode;
 			goto fail;
 		}
 
@@ -315,14 +312,20 @@ tdb_off_t find_and_lock(struct tdb_context *tdb,
 		     i < (1 << TDB_HASH_GROUP_BITS);
 		     i++, h->found_bucket = ((h->found_bucket+1)
 					     % (1 << TDB_HASH_GROUP_BITS))) {
+			tdb_bool_err berr;
 			if (is_subhash(h->group[h->found_bucket]))
 				continue;
 
 			if (!h->group[h->found_bucket])
 				break;
 
-			if (match(tdb, h, &key, h->group[h->found_bucket],
-				  rec)) {
+			berr = match(tdb, h, &key, h->group[h->found_bucket],
+				     rec);
+			if (berr < 0) {
+				ecode = berr;
+				goto fail;
+			}
+			if (berr) {
 				if (tinfo) {
 					tinfo->levels[tinfo->num_levels-1].entry
 						+= h->found_bucket;
@@ -338,7 +341,7 @@ tdb_off_t find_and_lock(struct tdb_context *tdb,
 
 fail:
 	tdb_unlock_hashes(tdb, h->hlock_start, h->hlock_range, ltype);
-	return TDB_OFF_ERR;
+	return ecode;
 }
 
 /* I wrote a simple test, expanding a hash to 2GB, for the following
@@ -412,33 +415,25 @@ static tdb_off_t encode_offset(tdb_off_t new_off, struct hash_info *h)
 }
 
 /* Simply overwrite the hash entry we found before. */
-int replace_in_hash(struct tdb_context *tdb,
-		    struct hash_info *h,
-		    tdb_off_t new_off)
+enum TDB_ERROR replace_in_hash(struct tdb_context *tdb,
+			       struct hash_info *h,
+			       tdb_off_t new_off)
 {
-	enum TDB_ERROR ecode;
-
-	ecode = tdb_write_off(tdb, hbucket_off(h->group_start, h->found_bucket),
-			      encode_offset(new_off, h));
-	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return -1;
-	}
-	return 0;
+	return tdb_write_off(tdb, hbucket_off(h->group_start, h->found_bucket),
+			     encode_offset(new_off, h));
 }
 
 /* We slot in anywhere that's empty in the chain. */
-static int COLD add_to_chain(struct tdb_context *tdb,
-			     tdb_off_t subhash,
-			     tdb_off_t new_off)
+static enum TDB_ERROR COLD add_to_chain(struct tdb_context *tdb,
+					tdb_off_t subhash,
+					tdb_off_t new_off)
 {
 	tdb_off_t entry;
 	enum TDB_ERROR ecode;
 
 	entry = tdb_find_zero_off(tdb, subhash, 1<<TDB_HASH_GROUP_BITS);
 	if (TDB_OFF_IS_ERR(entry)) {
-		tdb->ecode = entry;
-		return -1;
+		return entry;
 	}
 
 	if (entry == 1 << TDB_HASH_GROUP_BITS) {
@@ -447,51 +442,42 @@ static int COLD add_to_chain(struct tdb_context *tdb,
 		next = tdb_read_off(tdb, subhash
 				    + offsetof(struct tdb_chain, next));
 		if (TDB_OFF_IS_ERR(next)) {
-			tdb->ecode = next;
-			return -1;
+			return next;
 		}
 
 		if (!next) {
 			next = alloc(tdb, 0, sizeof(struct tdb_chain), 0,
 				     TDB_CHAIN_MAGIC, false);
 			if (next == TDB_OFF_ERR)
-				return -1;
+				return tdb->ecode;
 			ecode = zero_out(tdb,
 					 next+sizeof(struct tdb_used_record),
 					 sizeof(struct tdb_chain));
 			if (ecode != TDB_SUCCESS) {
-				tdb->ecode = ecode;
-				return -1;
+				return ecode;
 			}
 			ecode = tdb_write_off(tdb, subhash
 					      + offsetof(struct tdb_chain,
 							 next),
 					      next);
 			if (ecode != TDB_SUCCESS) {
-				tdb->ecode = ecode;
-				return -1;
+				return ecode;
 			}
 		}
 		return add_to_chain(tdb, next, new_off);
 	}
 
-	ecode = tdb_write_off(tdb, subhash + entry * sizeof(tdb_off_t),
-			      new_off);
-	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return -1;
-	}
-	return 0;
+	return tdb_write_off(tdb, subhash + entry * sizeof(tdb_off_t),
+			     new_off);
 }
 
 /* Add into a newly created subhash. */
-static int add_to_subhash(struct tdb_context *tdb, tdb_off_t subhash,
-			  unsigned hash_used, tdb_off_t val)
+static enum TDB_ERROR add_to_subhash(struct tdb_context *tdb, tdb_off_t subhash,
+				     unsigned hash_used, tdb_off_t val)
 {
 	tdb_off_t off = (val & TDB_OFF_MASK), *group;
 	struct hash_info h;
 	unsigned int gnum;
-	enum TDB_ERROR ecode;
 
 	h.hash_used = hash_used;
 
@@ -507,19 +493,13 @@ static int add_to_subhash(struct tdb_context *tdb, tdb_off_t subhash,
 	group = tdb_access_write(tdb, h.group_start,
 				 sizeof(*group) << TDB_HASH_GROUP_BITS, true);
 	if (TDB_PTR_IS_ERR(group)) {
-		tdb->ecode = TDB_PTR_ERR(group);
-		return -1;
+		return TDB_PTR_ERR(group);
 	}
 	force_into_group(group, h.home_bucket, encode_offset(off, &h));
-	ecode = tdb_access_commit(tdb, group);
-	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return -1;
-	}
-	return 0;
+	return tdb_access_commit(tdb, group);
 }
 
-static int expand_group(struct tdb_context *tdb, struct hash_info *h)
+static enum TDB_ERROR expand_group(struct tdb_context *tdb, struct hash_info *h)
 {
 	unsigned bucket, num_vals, i, magic;
 	size_t subsize;
@@ -541,14 +521,14 @@ static int expand_group(struct tdb_context *tdb, struct hash_info *h)
 	}
 
 	subhash = alloc(tdb, 0, subsize, 0, magic, false);
-	if (subhash == TDB_OFF_ERR)
-		return -1;
+	if (subhash == TDB_OFF_ERR) {
+		return tdb->ecode;
+	}
 
 	ecode = zero_out(tdb, subhash + sizeof(struct tdb_used_record),
 			 subsize);
 	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return -1;
+		return ecode;
 	}
 
 	/* Remove any which are destined for bucket or are in wrong place. */
@@ -576,21 +556,22 @@ static int expand_group(struct tdb_context *tdb, struct hash_info *h)
 		unsigned this_bucket = vals[i] & TDB_OFF_HASH_GROUP_MASK;
 
 		if (this_bucket == bucket) {
-			if (add_to_subhash(tdb, subhash, h->hash_used, vals[i]))
-				return -1;
+			ecode = add_to_subhash(tdb, subhash, h->hash_used,
+					       vals[i]);
+			if (ecode != TDB_SUCCESS)
+				return ecode;
 		} else {
 			/* There should be room to put this back. */
 			force_into_group(h->group, this_bucket, vals[i]);
 		}
 	}
-	return 0;
+	return TDB_SUCCESS;
 }
 
-int delete_from_hash(struct tdb_context *tdb, struct hash_info *h)
+enum TDB_ERROR delete_from_hash(struct tdb_context *tdb, struct hash_info *h)
 {
 	unsigned int i, num_movers = 0;
 	tdb_off_t movers[1 << TDB_HASH_GROUP_BITS];
-	enum TDB_ERROR ecode;
 
 	h->group[h->found_bucket] = 0;
 	for (i = 1; i < (1 << TDB_HASH_GROUP_BITS); i++) {
@@ -620,16 +601,12 @@ int delete_from_hash(struct tdb_context *tdb, struct hash_info *h)
 	}
 
 	/* Now we write back the hash group */
-	ecode = tdb_write_convert(tdb, h->group_start,
-				  h->group, sizeof(h->group));
-	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return -1;
-	}
-	return 0;
+	return tdb_write_convert(tdb, h->group_start,
+				 h->group, sizeof(h->group));
 }
 
-int add_to_hash(struct tdb_context *tdb, struct hash_info *h, tdb_off_t new_off)
+enum TDB_ERROR add_to_hash(struct tdb_context *tdb, struct hash_info *h,
+			   tdb_off_t new_off)
 {
 	enum TDB_ERROR ecode;
 
@@ -637,21 +614,18 @@ int add_to_hash(struct tdb_context *tdb, struct hash_info *h, tdb_off_t new_off)
 	if (!h->group[h->found_bucket]) {
 		h->group[h->found_bucket] = encode_offset(new_off, h);
 		/* Write back the modified group. */
-		ecode = tdb_write_convert(tdb, h->group_start,
-					  h->group, sizeof(h->group));
-		if (ecode != TDB_SUCCESS) {
-			tdb->ecode = ecode;
-			return -1;
-		}
-		return 0;
+		return tdb_write_convert(tdb, h->group_start,
+					 h->group, sizeof(h->group));
 	}
 
 	if (h->hash_used > 64)
 		return add_to_chain(tdb, h->group_start, new_off);
 
 	/* We're full.  Expand. */
-	if (expand_group(tdb, h) == -1)
-		return -1;
+	ecode = expand_group(tdb, h);
+	if (ecode != TDB_SUCCESS) {
+		return ecode;
+	}
 
 	if (is_subhash(h->group[h->home_bucket])) {
 		/* We were expanded! */
@@ -662,8 +636,7 @@ int add_to_hash(struct tdb_context *tdb, struct hash_info *h, tdb_off_t new_off)
 		ecode = tdb_write_convert(tdb, h->group_start, h->group,
 					  sizeof(h->group));
 		if (ecode != TDB_SUCCESS) {
-			tdb->ecode = ecode;
-			return -1;
+			return ecode;
 		}
 
 		/* Move hashinfo down a level. */
@@ -676,21 +649,15 @@ int add_to_hash(struct tdb_context *tdb, struct hash_info *h, tdb_off_t new_off)
 		ecode = tdb_read_convert(tdb, h->group_start, &h->group,
 					 sizeof(h->group));
 		if (ecode != TDB_SUCCESS) {
-			tdb->ecode = ecode;
-			return -1;
+			return ecode;
 		}
 	}
 
 	/* Expanding the group must have made room if it didn't choose this
 	 * bucket. */
 	if (put_into_group(h->group, h->home_bucket, encode_offset(new_off,h))){
-		ecode = tdb_write_convert(tdb, h->group_start,
-					  h->group, sizeof(h->group));
-		if (ecode != TDB_SUCCESS) {
-			tdb->ecode = ecode;
-			return -1;
-		}
-		return 0;
+		return tdb_write_convert(tdb, h->group_start,
+					 h->group, sizeof(h->group));
 	}
 
 	/* This can happen if all hashes in group (and us) dropped into same
@@ -698,7 +665,7 @@ int add_to_hash(struct tdb_context *tdb, struct hash_info *h, tdb_off_t new_off)
 	return add_to_hash(tdb, h, new_off);
 }
 
-/* Traverse support: returns offset of record, or 0 or TDB_OFF_ERR. */
+/* Traverse support: returns offset of record, or 0 or -ve error. */
 static tdb_off_t iterate_hash(struct tdb_context *tdb,
 			      struct traverse_info *tinfo)
 {
@@ -714,14 +681,12 @@ again:
 	     i = tdb_find_nonzero_off(tdb, tlevel->hashtable,
 				      i+1, tlevel->total_buckets)) {
 		if (TDB_OFF_IS_ERR(i)) {
-			tdb->ecode = i;
-			return TDB_OFF_ERR;
+			return i;
 		}
 
 		val = tdb_read_off(tdb, tlevel->hashtable+sizeof(tdb_off_t)*i);
 		if (TDB_OFF_IS_ERR(val)) {
-			tdb->ecode = val;
-			return TDB_OFF_ERR;
+			return val;
 		}
 
 		off = val & TDB_OFF_MASK;
@@ -763,8 +728,7 @@ again:
 						 + offsetof(struct tdb_chain,
 							    next));
 		if (TDB_OFF_IS_ERR(tlevel->hashtable)) {
-			tdb->ecode = tlevel->hashtable;
-			return TDB_OFF_ERR;
+			return tlevel->hashtable;
 		}
 		if (tlevel->hashtable) {
 			tlevel->hashtable += sizeof(struct tdb_used_record);
@@ -779,10 +743,10 @@ again:
 	goto again;
 }
 
-/* Return 1 if we find something, 0 if not, -1 on error. */
-int next_in_hash(struct tdb_context *tdb,
-		 struct traverse_info *tinfo,
-		 TDB_DATA *kbuf, size_t *dlen)
+/* Return success if we find something, TDB_ERR_NOEXIST if none. */
+enum TDB_ERROR next_in_hash(struct tdb_context *tdb,
+			    struct traverse_info *tinfo,
+			    TDB_DATA *kbuf, size_t *dlen)
 {
 	const unsigned group_bits = TDB_TOPLEVEL_HASH_BITS-TDB_HASH_GROUP_BITS;
 	tdb_off_t hl_start, hl_range, off;
@@ -795,28 +759,29 @@ int next_in_hash(struct tdb_context *tdb,
 		ecode = tdb_lock_hashes(tdb, hl_start, hl_range, F_RDLCK,
 					TDB_LOCK_WAIT);
 		if (ecode != TDB_SUCCESS) {
-			tdb->ecode = ecode;
-			return -1;
+			return ecode;
 		}
 
 		off = iterate_hash(tdb, tinfo);
 		if (off) {
 			struct tdb_used_record rec;
 
+			if (TDB_OFF_IS_ERR(off)) {
+				ecode = off;
+				goto fail;
+			}
+
 			ecode = tdb_read_convert(tdb, off, &rec, sizeof(rec));
 			if (ecode != TDB_SUCCESS) {
-				tdb->ecode = ecode;
-				tdb_unlock_hashes(tdb,
-						  hl_start, hl_range, F_RDLCK);
-				return -1;
+				goto fail;
 			}
 			if (rec_magic(&rec) != TDB_USED_MAGIC) {
-				tdb_logerr(tdb, TDB_ERR_CORRUPT,
-					   TDB_LOG_ERROR,
-					   "next_in_hash:"
-					   " corrupt record at %llu",
-					   (long long)off);
-				return -1;
+				ecode = tdb_logerr(tdb, TDB_ERR_CORRUPT,
+						   TDB_LOG_ERROR,
+						   "next_in_hash:"
+						   " corrupt record at %llu",
+						   (long long)off);
+				goto fail;
 			}
 
 			kbuf->dsize = rec_key_length(&rec);
@@ -835,10 +800,9 @@ int next_in_hash(struct tdb_context *tdb,
 			}
 			tdb_unlock_hashes(tdb, hl_start, hl_range, F_RDLCK);
 			if (TDB_PTR_IS_ERR(kbuf->dptr)) {
-				tdb->ecode = TDB_PTR_ERR(kbuf->dptr);
-				return -1;
+				return TDB_PTR_ERR(kbuf->dptr);
 			}
-			return 1;
+			return TDB_SUCCESS;
 		}
 
 		tdb_unlock_hashes(tdb, hl_start, hl_range, F_RDLCK);
@@ -848,13 +812,17 @@ int next_in_hash(struct tdb_context *tdb,
 			+= (sizeof(tdb_off_t) << TDB_HASH_GROUP_BITS);
 		tinfo->levels[0].entry = 0;
 	}
-	return 0;
+	return TDB_ERR_NOEXIST;
+
+fail:
+	tdb_unlock_hashes(tdb, hl_start, hl_range, F_RDLCK);
+	return ecode;
+
 }
 
-/* Return 1 if we find something, 0 if not, -1 on error. */
-int first_in_hash(struct tdb_context *tdb,
-		  struct traverse_info *tinfo,
-		  TDB_DATA *kbuf, size_t *dlen)
+enum TDB_ERROR first_in_hash(struct tdb_context *tdb,
+			     struct traverse_info *tinfo,
+			     TDB_DATA *kbuf, size_t *dlen)
 {
 	tinfo->prev = 0;
 	tinfo->toplevel_group = 0;
@@ -868,9 +836,9 @@ int first_in_hash(struct tdb_context *tdb,
 
 /* Even if the entry isn't in this hash bucket, you'd have to lock this
  * bucket to find it. */
-static int chainlock(struct tdb_context *tdb, const TDB_DATA *key,
-		     int ltype, enum tdb_lock_flags waitflag,
-		     const char *func)
+static enum TDB_ERROR chainlock(struct tdb_context *tdb, const TDB_DATA *key,
+				int ltype, enum tdb_lock_flags waitflag,
+				const char *func)
 {
 	enum TDB_ERROR ecode;
 	uint64_t h = tdb_hash(tdb, key->dptr, key->dsize);
@@ -884,18 +852,19 @@ static int chainlock(struct tdb_context *tdb, const TDB_DATA *key,
 
 	ecode = tdb_lock_hashes(tdb, lockstart, locksize, ltype, waitflag);
 	tdb_trace_1rec(tdb, func, *key);
-	if (ecode != TDB_SUCCESS) {
-		tdb->ecode = ecode;
-		return -1;
-	}
-	return 0;
+	return ecode;
 }
 
 /* lock/unlock one hash chain. This is meant to be used to reduce
    contention - it cannot guarantee how many records will be locked */
 int tdb_chainlock(struct tdb_context *tdb, TDB_DATA key)
 {
-	return chainlock(tdb, &key, F_WRLCK, TDB_LOCK_WAIT, "tdb_chainlock");
+	tdb->ecode = chainlock(tdb, &key, F_WRLCK, TDB_LOCK_WAIT,
+			       "tdb_chainlock");
+	if (tdb->ecode == TDB_SUCCESS)
+		return 0;
+	return -1;
+	
 }
 
 int tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key)
