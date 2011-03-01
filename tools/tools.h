@@ -58,11 +58,13 @@ char *link_objects(const void *ctx, const char *basename, bool in_pwd,
 		   const char *objs, char **errmsg);
 /* Compile a single C file to an object file.  Returns false if fails. */
 bool compile_object(const void *ctx, const char *cfile, const char *ccandir,
-		    const char *extra_cflags,
+		    const char *compiler,
+		    const char *cflags,
 		    const char *outfile, char **output);
 /* Compile and link single C file, with object files, libs, etc. */
 bool compile_and_link(const void *ctx, const char *cfile, const char *ccandir,
-		      const char *objs, const char *extra_cflags,
+		      const char *objs,
+		      const char *compiler, const char *cflags,
 		      const char *libs, const char *outfile, char **output);
 
 /* If in_pwd is false, return a file int temp_dir, otherwise a local file. */

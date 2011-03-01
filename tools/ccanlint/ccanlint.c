@@ -31,6 +31,7 @@
 #include <ccan/talloc/talloc.h>
 #include <ccan/opt/opt.h>
 #include <ccan/foreach/foreach.h>
+#include <ccan/grab_file/grab_file.h>
 
 int verbose = 0;
 static LIST_HEAD(compulsory_tests);
@@ -40,6 +41,12 @@ bool safe_mode = false;
 static struct btree *cmdline_exclude;
 static struct btree *info_exclude;
 static unsigned int timeout;
+
+/* These are overridden at runtime if we can find config.h */
+const char *compiler = CCAN_COMPILER;
+const char *cflags = CCAN_CFLAGS;
+
+const char *config_header;
 
 #if 0
 static void indent_print(const char *string)
@@ -475,6 +482,92 @@ static void skip_unrelated_tests(struct ccanlint *target)
 				i->skip = "not relevant to target";
 }
 
+static char *demangle_string(char *string)
+{
+	unsigned int i;
+	const char mapfrom[] = "abfnrtv";
+	const char mapto[] = "\a\b\f\n\r\t\v";
+
+	if (!strchr(string, '"'))
+		return NULL;
+	string = strchr(string, '"') + 1;
+	if (!strrchr(string, '"'))
+		return NULL;
+	*strrchr(string, '"') = '\0';
+
+	for (i = 0; i < strlen(string); i++) {
+		if (string[i] == '\\') {
+			char repl;
+			unsigned len = 0;
+			char *p = strchr(mapfrom, string[i+1]);
+			if (p) {
+				repl = mapto[p - mapfrom];
+				len = 1;
+			} else if (strlen(string+i+1) >= 3) {
+				if (string[i+1] == 'x') {
+					repl = (string[i+2]-'0')*16
+						+ string[i+3]-'0';
+					len = 3;
+				} else if (isdigit(string[i+1])) {
+					repl = (string[i+2]-'0')*8*8
+						+ (string[i+3]-'0')*8
+						+ (string[i+4]-'0');
+					len = 3;
+				}
+			}
+			if (len == 0) {
+				repl = string[i+1];
+				len = 1;
+			}
+
+			string[i] = repl;
+			memmove(string + i + 1, string + i + len + 1,
+				strlen(string + i + len + 1) + 1);
+		}
+	}
+
+	return string;
+}
+
+
+static void read_config_header(void)
+{
+	char *fname = talloc_asprintf(NULL, "%s/config.h", ccan_dir);
+	char **lines;
+	unsigned int i;
+
+	config_header = grab_file(NULL, fname, NULL);
+	if (!config_header) {
+		talloc_free(fname);
+		return;
+	}
+
+	lines = strsplit(config_header, config_header, "\n");
+	for (i = 0; i < talloc_array_length(lines) - 1; i++) {
+		char *sym;
+		const char **line = (const char **)&lines[i];
+
+		if (!get_token(line, "#"))
+			continue;
+		if (!get_token(line, "define"))
+			continue;
+		sym = get_symbol_token(lines, line);
+		if (streq(sym, "CCAN_COMPILER")) {
+			compiler = demangle_string(lines[i]);
+			if (verbose > 1)
+				printf("%s: compiler set to '%s'\n",
+				       fname, compiler);
+		} else if (streq(sym, "CCAN_CFLAGS")) {
+			cflags = demangle_string(lines[i]);
+			if (verbose > 1)
+				printf("%s: compiler flags set to '%s'\n",
+				       fname, cflags);
+		}
+	}
+	if (!compiler || !cflags)
+		errx(1, "Problem parsing %s", fname);
+}
+
 int main(int argc, char *argv[])
 {
 	bool summary = false;
@@ -535,6 +628,7 @@ int main(int argc, char *argv[])
 		tools_verbose = true;
 
 	m = get_manifest(talloc_autofree_context(), dir);
+	read_config_header();
 
 	/* Create a symlink from temp dir back to src dir's test directory. */
 	if (symlink(talloc_asprintf(m, "%s/test", dir),

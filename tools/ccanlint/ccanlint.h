@@ -221,4 +221,10 @@ extern bool safe_mode;
 /* Where is the ccan dir?  Available after first manifest. */
 extern const char *ccan_dir;
 
+/* Compiler and CFLAGS, from config.h if available. */
+extern const char *compiler, *cflags;
+
+/* Contents of config.h (or NULL if not found) */
+extern const char *config_header;
+
 #endif /* CCAN_LINT_H */

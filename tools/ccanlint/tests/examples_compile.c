@@ -121,7 +121,8 @@ static bool compile(const void *ctx,
 	file->compiled = maybe_temp_file(ctx, "", keep, file->fullname);
 	if (!compile_and_link(ctx, file->fullname, ccan_dir,
 			      obj_list(m, file),
-			      "", lib_list(m), file->compiled, output)) {
+			      compiler, cflags,
+			      lib_list(m), file->compiled, output)) {
 		/* Don't keep failures. */
 		if (keep)
 			unlink(file->compiled);

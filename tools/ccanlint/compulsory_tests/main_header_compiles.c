@@ -57,7 +57,8 @@ static void check_includes_build(struct manifest *m,
 		err(1, "writing to temporary file %s", tmpsrc);
 	close(fd);
 
-	if (compile_object(score, tmpsrc, ccan_dir, "", tmpobj, &cmdout)) {
+	if (compile_object(score, tmpsrc, ccan_dir, compiler, cflags,
+			   tmpobj, &cmdout)) {
 		score->pass = true;
 		score->score = score->total;
 	} else {

@@ -27,7 +27,7 @@ static bool compile(struct manifest *m,
 		    char **output)
 {
 	cfile->compiled = maybe_temp_file(m, ".o", keep, cfile->fullname);
-	return compile_object(m, cfile->fullname, ccan_dir, "",
+	return compile_object(m, cfile->fullname, ccan_dir, compiler, cflags,
 			      cfile->compiled, output);
 }
 

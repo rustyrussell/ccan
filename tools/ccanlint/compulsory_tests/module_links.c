@@ -72,8 +72,8 @@ static void check_use_build(struct manifest *m,
 		err(1, "Failure writing to temporary file %s", tmpfile);
 	close(fd);
 
-	if (compile_and_link(score, tmpfile, ccan_dir, obj_list(m), "",
-			     lib_list(m),
+	if (compile_and_link(score, tmpfile, ccan_dir, obj_list(m),
+			     compiler, cflags, lib_list(m),
 			     maybe_temp_file(m, "", keep, tmpfile),
 			     &cmdout)) {
 		score->pass = true;

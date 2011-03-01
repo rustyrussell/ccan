@@ -62,7 +62,8 @@ static char *compile_info(const void *ctx, const char *dir)
 	*strrchr(ccandir, '/') = '\0';
 
 	compiled = maybe_temp_file(ctx, "", false, "info");
-	if (compile_and_link(ctx, info_c_file, ccandir, "", "", "",
+	if (compile_and_link(ctx, info_c_file, ccandir, "",
+			     CCAN_COMPILER, CCAN_CFLAGS, "",
 			     compiled, &output))
 		return compiled;
 	return NULL;

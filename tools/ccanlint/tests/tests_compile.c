@@ -66,10 +66,12 @@ static bool compile(const void *ctx,
 		    bool link_with_module,
 		    bool keep, char **output)
 {
+	char *f = talloc_asprintf(ctx, "%s%s",
+				  fail ? "-DFAIL " : "", cflags);
+
 	file->compiled = maybe_temp_file(ctx, "", keep, file->fullname);
 	if (!compile_and_link(ctx, file->fullname, ccan_dir,
-			      obj_list(m, link_with_module),
-			      fail ? "-DFAIL" : "",
+			      obj_list(m, link_with_module), compiler, f,
 			      lib_list(m), file->compiled, output)) {
 		talloc_free(file->compiled);
 		return false;

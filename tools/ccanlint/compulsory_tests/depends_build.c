@@ -37,8 +37,8 @@ static char *build_subdir_objs(struct manifest *m)
 		char *output;
 
 		i->compiled = maybe_temp_file(m, "", false, fullfile);
-		if (!compile_object(m, fullfile, ccan_dir, "", i->compiled,
-				    &output)) {
+		if (!compile_object(m, fullfile, ccan_dir, compiler, cflags,
+				    i->compiled, &output)) {
 			talloc_free(i->compiled);
 			i->compiled = NULL;
 			return talloc_asprintf(m,

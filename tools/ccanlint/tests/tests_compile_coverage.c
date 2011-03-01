@@ -38,7 +38,7 @@ static bool build_module_objs_with_coverage(struct manifest *m, bool keep,
 		char *fullfile = talloc_asprintf(m, "%s/%s", m->dir, i->name);
 
 		i->cov_compiled = maybe_temp_file(m, "", keep, fullfile);
-		if (!compile_object(m, fullfile, ccan_dir, "",
+		if (!compile_object(m, fullfile, ccan_dir, compiler, cflags,
 				    i->cov_compiled, &err)) {
 			score_file_error(score, i, 0, "%s", err);
 			talloc_free(i->cov_compiled);
@@ -93,11 +93,12 @@ static char *cov_compile(const void *ctx,
 			 bool keep)
 {
 	char *output;
+	char *f = talloc_asprintf(ctx, "%s %s", cflags, COVERAGE_CFLAGS);
 
 	file->cov_compiled = maybe_temp_file(ctx, "", keep, file->fullname);
 	if (!compile_and_link(ctx, file->fullname, ccan_dir,
 			      obj_list(m, modobjs),
-			      COVERAGE_CFLAGS,
+			      compiler, f,
 			      lib_list(m), file->cov_compiled, &output)) {
 		talloc_free(file->cov_compiled);
 		file->cov_compiled = NULL;

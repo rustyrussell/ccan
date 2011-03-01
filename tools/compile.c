@@ -22,25 +22,28 @@ char *link_objects(const void *ctx, const char *basename, bool in_pwd,
 
 /* Compile a single C file to an object file. */
 bool compile_object(const void *ctx, const char *cfile, const char *ccandir,
-		    const char *extra_cflags,
+		    const char *compiler,
+		    const char *cflags,
 		    const char *outfile, char **output)
 {
 	if (compile_verbose)
 		printf("Compiling %s\n", outfile);
-	return run_command(ctx, NULL, output, CCAN_COMPILER " " CCAN_CFLAGS
-			   " -I%s %s -c -o %s %s",
-			   ccandir, extra_cflags, outfile, cfile);
+	return run_command(ctx, NULL, output,
+			   "%s %s -I%s -c -o %s %s",
+			   compiler, cflags, ccandir, outfile, cfile);
 }
 
 /* Compile and link single C file, with object files.
  * Returns false on failure. */
 bool compile_and_link(const void *ctx, const char *cfile, const char *ccandir,
-		      const char *objs, const char *extra_cflags,
+		      const char *objs, const char *compiler,
+		      const char *cflags,
 		      const char *libs, const char *outfile, char **output)
 {
 	if (compile_verbose)
 		printf("Compiling and linking %s\n", outfile);
-	return run_command(ctx, NULL, output, CCAN_COMPILER " " CCAN_CFLAGS
-			   " -I%s %s -o %s %s %s %s",
-			   ccandir, extra_cflags, outfile, cfile, objs, libs);
+	return run_command(ctx, NULL, output,
+			   "%s %s -I%s -o %s %s %s %s",
+			   compiler, cflags,
+			   ccandir, outfile, cfile, objs, libs);
 }

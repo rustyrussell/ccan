@@ -38,8 +38,8 @@ static void check_objs_build(struct manifest *m,
 		char *fullfile = talloc_asprintf(m, "%s/%s", m->dir, i->name);
 
 		i->compiled = maybe_temp_file(m, "", keep, fullfile);
-		if (!compile_object(score, fullfile, ccan_dir, "", i->compiled,
-				    &output)) {
+		if (!compile_object(score, fullfile, ccan_dir, compiler, cflags,
+				    i->compiled, &output)) {
 			talloc_free(i->compiled);
 			score_file_error(score, i, 0,
 					 "Compiling object files:\n%s",
