@@ -135,6 +135,7 @@ static void do_run_coverage_tests(struct manifest *m,
 	char *covcmd;
 	bool full_gcov = (verbose > 1);
 	struct list_head *list;
+	bool ran_some = false;
 
 	/* This tells gcov where we put those .gcno files. */
 	outdir = talloc_dirname(score, m->info_file->compiled);
@@ -165,7 +166,15 @@ static void do_run_coverage_tests(struct manifest *m,
 						 " failed: %s", cmdout);
 				return;
 			}
+			ran_some = true;
 		}
+	}
+
+	/* No tests at all?  0 out of 0 for you... */
+	if (!ran_some) {
+		score->total = score->score = 0;
+		score->pass = true;
+		return;
 	}
 
 	/* Now run gcov: we want output even if it succeeds. */

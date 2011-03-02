@@ -114,14 +114,11 @@ static void check_tests_exist(struct manifest *m,
 
 	if (list_empty(&m->api_tests)
 	    && list_empty(&m->run_tests)
-	    && list_empty(&m->compile_ok_tests)) {
-		if (list_empty(&m->compile_fail_tests)) {
-			score->error = talloc_strdup(score,
+	    && list_empty(&m->compile_ok_tests)
+	    && list_empty(&m->compile_fail_tests)) {
+		score->error = talloc_strdup(score,
 					     "No tests in test directory");
-			tests_exist.handle = handle_no_tests;
-		} else
-			score->error = talloc_strdup(score,
-				     "No positive tests in test directory");
+		tests_exist.handle = handle_no_tests;
 		return;
 	}
 	score->pass = true;
