@@ -111,12 +111,12 @@ static struct test tests[] = {
 	  "	return mmap(0, 65536, PROT_READ, MAP_SHARED, fd, 0);\n"
 	  "}" },
 	{ "HAVE_NESTED_FUNCTIONS", DEFINES_FUNC, NULL,
-	  "static int func(int val) {\n"
+	  "void (*func(int val))(int);\n"
+	  "void (*func(int val))(int) {\n"
 	  "	auto void add(int val2);\n"
 	  "	void add(int val2) { val += val2; }\n"
-	  "	add(7);\n"
-	  "	return val;\n"
-	  "}" },
+	  "	return add;\n"
+	  "}\n" },
 	{ "HAVE_STATEMENT_EXPR", INSIDE_MAIN, NULL,
 	  "return ({ int x = argc; x == argc ? 0 : 1; });" },
 	{ "HAVE_TYPEOF", INSIDE_MAIN, NULL,
