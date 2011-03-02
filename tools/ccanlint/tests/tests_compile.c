@@ -131,11 +131,11 @@ static void compile_tests(struct manifest *m, bool keep,
 					 "Compiled successfully with -DFAIL?");
 			return;
 		}
+		score->total++;
 	}
 
 	score->pass = true;
-	score->total = 2;
-	score->score = 1 + !warnings;
+	score->score = score->total - warnings;
 }
 
 static void do_compile_tests(struct manifest *m,
@@ -167,7 +167,7 @@ static void do_compile_tests_without_features(struct manifest *m,
 					      unsigned int *timeleft,
 					      struct score *score)
 {
-	return compile_tests(m, keep, score, "-I. ");
+	compile_tests(m, keep, score, "-I. ");
 }
 
 struct ccanlint tests_compile_without_features = {
