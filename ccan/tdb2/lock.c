@@ -120,7 +120,7 @@ static int fcntl_unlock(struct tdb_context *tdb, int rw, off_t off, off_t len)
 }
 
 /* a byte range locking function - return 0 on success
-   this functions locks/unlocks 1 byte at the specified offset.
+   this functions locks len bytes at the specified offset.
 
    note that a len of zero means lock to end of file
 */
