@@ -18,14 +18,14 @@
  */
 #define asort(base, num, cmp, ctx)					\
 _asort((base), (num), sizeof(*(base)),					\
-       cast_if_type(int (*)(const void *, const void *, const void *),	\
+       cast_if_type(int (*)(const void *, const void *, void *),	\
 		    (cmp), &*(cmp),					\
 		    int (*)(const __typeof__(*(base)) *,		\
 			    const __typeof__(*(base)) *,		\
 			    __typeof__(ctx))), (ctx))
 
 void _asort(void *base, size_t nmemb, size_t size,
-	    int(*compar)(const void *, const void *, const void *),
-	    const void *ctx);
+	    int(*compar)(const void *, const void *, void *),
+	    void *ctx);
 
 #endif /* CCAN_ASORT_H */

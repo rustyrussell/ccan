@@ -3,8 +3,8 @@
 
 #if HAVE_NESTED_FUNCTIONS
 void _asort(void *base, size_t nmemb, size_t size,
-	    int(*compar)(const void *, const void *, const void *ctx),
-	    const void *ctx)
+	    int(*compar)(const void *, const void *, void *ctx),
+	    void *ctx)
 {
 	/* This gives bogus "warning: no previous prototype for ‘cmp’"
 	 * with gcc 4 with -Wmissing-prototypes.  Hence the auto crap. */
@@ -107,8 +107,8 @@ typedef struct
 
 void
 _asort (void *const pbase, size_t total_elems, size_t size,
-	int(*cmp)(const void *, const void *, const void *arg),
-	const void *arg)
+	int(*cmp)(const void *, const void *, void *arg),
+	void *arg)
 {
   register char *base_ptr = (char *) pbase;
 
