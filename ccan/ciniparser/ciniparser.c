@@ -428,8 +428,6 @@ dictionary *ciniparser_load(const char *ininame)
 			/* Multi-line value */
 			last = len;
 			continue;
-		} else {
-			last = 0;
 		}
 
 		switch (ciniparser_line(line, section, key, val)) {
