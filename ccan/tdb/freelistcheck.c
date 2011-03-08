@@ -47,7 +47,7 @@ int tdb_validate_freelist(struct tdb_context *tdb, int *pnum_entries)
 {
 	struct tdb_context *mem_tdb = NULL;
 	struct tdb_record rec;
-	tdb_off_t rec_ptr, last_ptr;
+	tdb_off_t rec_ptr;
 	int ret = -1;
 
 	*pnum_entries = 0;
@@ -63,10 +63,8 @@ int tdb_validate_freelist(struct tdb_context *tdb, int *pnum_entries)
 		return 0;
 	}
 
-	last_ptr = FREELIST_TOP;
-
 	/* Store the FREELIST_TOP record. */
-	if (seen_insert(mem_tdb, last_ptr) == -1) {
+	if (seen_insert(mem_tdb, FREELIST_TOP) == -1) {
 		tdb->ecode = TDB_ERR_CORRUPT;
 		ret = -1;
 		goto fail;
@@ -94,7 +92,6 @@ int tdb_validate_freelist(struct tdb_context *tdb, int *pnum_entries)
 		}
 
 		/* move to the next record */
-		last_ptr = rec_ptr;
 		rec_ptr = rec.next;
 		*pnum_entries += 1;
 	}
