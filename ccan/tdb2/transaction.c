@@ -53,13 +53,13 @@
 
   - don't allow any locks to be held when a transaction starts,
     otherwise we can end up with deadlock (plus lack of lock nesting
-    in posix locks would mean the lock is lost)
+    in POSIX locks would mean the lock is lost)
 
   - if the caller gains a lock during the transaction but doesn't
     release it then fail the commit
 
   - allow for nested calls to tdb_transaction_start(), re-using the
-    existing transaction record. If the inner transaction is cancelled
+    existing transaction record. If the inner transaction is canceled
     then a subsequent commit will fail
 
   - keep a mirrored copy of the tdb hash chain heads to allow for the
@@ -68,7 +68,7 @@
 
   - allow callers to mix transaction and non-transaction use of tdb,
     although once a transaction is started then an exclusive lock is
-    gained until the transaction is committed or cancelled
+    gained until the transaction is committed or canceled
 
   - the commit stategy involves first saving away all modified data
     into a linearised buffer in the transaction recovery area, then
@@ -297,7 +297,7 @@ fail:
 
 
 /*
-  write while in a transaction - this varient never expands the transaction blocks, it only
+  write while in a transaction - this variant never expands the transaction blocks, it only
   updates existing blocks. This means it cannot change the recovery size
 */
 static void transaction_write_existing(struct tdb_context *tdb, tdb_off_t off,
@@ -534,7 +534,7 @@ enum TDB_ERROR tdb_transaction_start(struct tdb_context *tdb)
 	if (tdb_has_hash_locks(tdb)) {
 		/* the caller must not have any locks when starting a
 		   transaction as otherwise we'll be screwed by lack
-		   of nested locks in posix */
+		   of nested locks in POSIX */
 		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_USE_ERROR,
 				  "tdb_transaction_start: cannot start a"
 				  " transaction with locks held");
