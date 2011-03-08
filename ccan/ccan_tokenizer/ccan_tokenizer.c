@@ -707,7 +707,7 @@ static int txt_orig_matches(const char *txt, size_t txt_size, const char *orig, 
 	
 	do {
 		const char *ob = os; //start of next backslash break
-		const char *obe = os; //end of next backslash break
+		const char *obe; //end of next backslash break
 		size_t size; //amount of text to compare for this round
 		
 		while (ob<oe && *ob!='\\') ob++;
