@@ -128,7 +128,6 @@ line_status ciniparser_line(char *input_line, char *section,
 	strcpy(line, strstrip(input_line));
 	len = (int) strlen(line);
 
-	sta = LINE_UNPROCESSED;
 	if (len < 1) {
 		/* Empty line */
 		sta = LINE_EMPTY;
