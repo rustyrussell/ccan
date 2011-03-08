@@ -467,9 +467,7 @@ static void recombine_small_pages(struct header *head, unsigned long poolsize,
 static u16 get_large_page(struct header *head, unsigned long poolsize,
 			  unsigned int sp_bits)
 {
-	unsigned int lp_bits, page;
-
-	lp_bits = sp_bits + BITS_FROM_SMALL_TO_LARGE_PAGE;
+	unsigned int page;
 
 	page = pop_from_list(head, &head->large_free_list, sp_bits);
 	if (likely(page))
