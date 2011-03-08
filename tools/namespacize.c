@@ -53,7 +53,8 @@ static char **get_dir(const char *dir)
 		names[size++]
 			= talloc_asprintf(names, "%s/%s", dir, ent->d_name);
 	}
-	names[size++] = NULL;
+	/* FIXME: if the loop doesn't run at least once, we'll segfault here */
+	names[size] = NULL;
 	closedir(d);
 	return names;
 }
