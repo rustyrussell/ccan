@@ -137,12 +137,12 @@ void tiny_alloc_init(void *pool, unsigned long poolsize)
 /* Walk through and try to coalesce */
 static bool try_coalesce(unsigned char *pool, unsigned long poolsize)
 {
-	unsigned long len, hdrlen, prev_off = 0, prev_len = 0, off;
+	unsigned long len, prev_off = 0, prev_len = 0, off;
 	bool free, prev_free = false, coalesced = false;
 
 	off = free_array_size(poolsize);
 	do {
-		hdrlen = decode(&len, &free, pool + off);
+		decode(&len, &free, pool + off);
 		if (free && prev_free) {
 			prev_len += len;
 			encode(prev_len, true, pool + prev_off);
@@ -198,7 +198,7 @@ void *tiny_alloc_get(void *pool, unsigned long poolsize,
 		     unsigned long size, unsigned long align)
 {
 	unsigned long arrsize = free_array_size(poolsize);
-	unsigned long len, off, actual, hdr, hdrlen, free_bucket;
+	unsigned long len, off, actual, hdr, free_bucket;
 	long fa_off;
 	unsigned char *arr = pool;
 	bool free, coalesced = false;
@@ -224,7 +224,7 @@ void *tiny_alloc_get(void *pool, unsigned long poolsize,
 			if (!off)
 				continue;
 
-			hdrlen = decode(&len, &free, arr + off);
+			decode(&len, &free, arr + off);
 			if (long_enough(off, len, size, align)) {
 				/* Remove it. */
 				memset(&arr[fa_off], 0, 3);
@@ -236,7 +236,7 @@ void *tiny_alloc_get(void *pool, unsigned long poolsize,
 again:
 	off = arrsize;
 
-	hdrlen = decode(&len, &free, arr + off);
+	decode(&len, &free, arr + off);
 	while (!free || !long_enough(off, len, size, align)) {
 		/* Refill free array as we go. */
 		if (free && coalesced)
@@ -251,7 +251,7 @@ again:
 			}
 			return NULL;
 		}
-		hdrlen = decode(&len, &free, arr + off);
+		decode(&len, &free, arr + off);
 	}
 
 found:
