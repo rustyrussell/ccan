@@ -135,10 +135,7 @@ static void add_files(struct manifest *m, const char *dir)
 		is_c_src = strends(f->name, ".c");
 		if (!is_c_src && !strends(f->name, ".h")) {
 			dest = &m->other_files;
-			continue;
-		}
-
-		if (!strchr(f->name, '/')) {
+		} else if (!strchr(f->name, '/')) {
 			if (is_c_src)
 				dest = &m->c_files;
 			else
