@@ -300,7 +300,7 @@ enum tdb_lock_flags {
 	TDB_LOCK_NOCHECK = 4,
 };
 
-struct tdb_lock_type {
+struct tdb_lock {
 	uint32_t off;
 	uint32_t count;
 	uint32_t ltype;
@@ -329,9 +329,9 @@ struct tdb_file {
 	int fd;
 
 	/* Lock information */
-	struct tdb_lock_type allrecord_lock;
+	struct tdb_lock allrecord_lock;
 	size_t num_lockrecs;
-	struct tdb_lock_type *lockrecs;
+	struct tdb_lock *lockrecs;
 
 	/* Identity of this file. */
 	dev_t device;

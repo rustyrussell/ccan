@@ -236,8 +236,7 @@ enum TDB_ERROR tdb_allrecord_upgrade(struct tdb_context *tdb)
 			  "tdb_allrecord_upgrade failed");
 }
 
-static struct tdb_lock_type *find_nestlock(struct tdb_context *tdb,
-					   tdb_off_t offset)
+static struct tdb_lock *find_nestlock(struct tdb_context *tdb, tdb_off_t offset)
 {
 	unsigned int i;
 
@@ -276,7 +275,7 @@ static enum TDB_ERROR tdb_nest_lock(struct tdb_context *tdb,
 				    tdb_off_t offset, int ltype,
 				    enum tdb_lock_flags flags)
 {
-	struct tdb_lock_type *new_lck;
+	struct tdb_lock *new_lck;
 	enum TDB_ERROR ecode;
 
 	if (offset > (TDB_HASH_LOCK_START + TDB_HASH_LOCK_RANGE
@@ -311,7 +310,7 @@ static enum TDB_ERROR tdb_nest_lock(struct tdb_context *tdb,
 				  "tdb_nest_lock: already have a hash lock?");
 	}
 
-	new_lck = (struct tdb_lock_type *)realloc(
+	new_lck = (struct tdb_lock *)realloc(
 		tdb->file->lockrecs,
 		sizeof(*tdb->file->lockrecs) * (tdb->file->num_lockrecs+1));
 	if (new_lck == NULL) {
@@ -360,7 +359,7 @@ static enum TDB_ERROR tdb_nest_lock(struct tdb_context *tdb,
 static enum TDB_ERROR tdb_nest_unlock(struct tdb_context *tdb,
 				      tdb_off_t off, int ltype)
 {
-	struct tdb_lock_type *lck;
+	struct tdb_lock *lck;
 	enum TDB_ERROR ecode;
 
 	if (tdb->flags & TDB_NOLOCK)
