@@ -717,10 +717,10 @@ static enum TDB_ERROR check_linear(struct tdb_context *tdb,
 	return TDB_SUCCESS;
 }
 
-enum TDB_ERROR tdb_check(struct tdb_context *tdb,
-			 enum TDB_ERROR (*check)(TDB_DATA key, TDB_DATA data,
-						 void *private_data),
-			 void *private_data)
+enum TDB_ERROR tdb_check_(struct tdb_context *tdb,
+			  enum TDB_ERROR (*check)(TDB_DATA key, TDB_DATA data,
+						  void *private),
+			  void *private)
 {
 	tdb_off_t *fr = NULL, *used = NULL, ft, recovery;
 	size_t num_free = 0, num_used = 0, num_found = 0, num_ftables = 0;
@@ -759,8 +759,7 @@ enum TDB_ERROR tdb_check(struct tdb_context *tdb,
 	}
 
 	/* FIXME: Check key uniqueness? */
-	ecode = check_hash(tdb, used, num_used, num_ftables, check,
-			   private_data);
+	ecode = check_hash(tdb, used, num_used, num_ftables, check, private);
 	if (ecode != TDB_SUCCESS)
 		goto out;
 

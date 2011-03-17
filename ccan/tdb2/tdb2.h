@@ -332,18 +332,27 @@ enum TDB_ERROR tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key);
  * tdb_check - check a TDB for consistency
  * @tdb: the tdb context returned from tdb_open()
  * @check: function to check each key/data pair (or NULL)
- * @private_data: pointer for @check
+ * @private: argument for @check, must match type.
  *
  * This performs a consistency check of the open database, optionally calling
  * a check() function on each record so you can do your own data consistency
  * checks as well.  If check() returns an error, that is returned from
  * tdb_check().
+ *
+ * Returns TDB_SUCCESS or an error.
  */
-enum TDB_ERROR tdb_check(struct tdb_context *tdb,
-			 enum TDB_ERROR (*check)(TDB_DATA key,
-						 TDB_DATA data,
-						 void *private_data),
-			 void *private_data);
+#define tdb_check(tdb, check, private)					\
+	tdb_check_((tdb), typesafe_cb_preargs(enum TDB_ERROR,		\
+					      (check), (private),	\
+					      struct tdb_data,		\
+					      struct tdb_data),		\
+		   (private))
+
+enum TDB_ERROR tdb_check_(struct tdb_context *tdb,
+			  enum TDB_ERROR (*check)(struct tdb_data key,
+						  struct tdb_data data,
+						  void *private),
+			  void *private);
 
 /**
  * enum tdb_summary_flags - flags for tdb_summary.
