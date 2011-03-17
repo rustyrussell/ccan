@@ -40,6 +40,7 @@ extern "C" {
 #include <stdint.h>
 #endif
 #include <ccan/compiler/compiler.h>
+#include <ccan/typesafe_cb/typesafe_cb.h>
 
 union tdb_attribute;
 struct tdb_context;
@@ -249,9 +250,6 @@ enum TDB_ERROR tdb_transaction_commit(struct tdb_context *tdb);
  */
 enum TDB_ERROR tdb_transaction_prepare_commit(struct tdb_context *tdb);
 
-/* FIXME: Make typesafe */
-typedef int (*tdb_traverse_func)(struct tdb_context *, TDB_DATA, TDB_DATA, void *);
-
 /**
  * tdb_traverse - traverse a TDB
  * @tdb: the tdb context returned from tdb_open()
@@ -269,7 +267,14 @@ typedef int (*tdb_traverse_func)(struct tdb_context *, TDB_DATA, TDB_DATA, void 
  * On success, returns the number of keys iterated.  On error returns
  * a negative enum TDB_ERROR value.
  */
-int64_t tdb_traverse(struct tdb_context *tdb, tdb_traverse_func fn, void *p);
+#define tdb_traverse(tdb, fn, p)					\
+	tdb_traverse_(tdb, typesafe_cb_preargs(int, (fn), (p),		\
+					       struct tdb_context *,	\
+					       TDB_DATA, TDB_DATA), (p))
+
+int64_t tdb_traverse_(struct tdb_context *tdb,
+		      int (*fn)(struct tdb_context *,
+				TDB_DATA, TDB_DATA, void *), void *p);
 
 /**
  * tdb_firstkey - get the "first" key in a TDB

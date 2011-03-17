@@ -85,6 +85,7 @@ int main(int argc, char *argv[])
 		printf("ccan/ilog\n");
 		printf("ccan/failtest\n");
 		printf("ccan/tally\n");
+		printf("ccan/typesafe_cb\n");
 		return 0;
 	}
 

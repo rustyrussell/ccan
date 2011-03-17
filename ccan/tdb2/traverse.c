@@ -18,7 +18,10 @@
 #include "private.h"
 #include <ccan/likely/likely.h>
 
-int64_t tdb_traverse(struct tdb_context *tdb, tdb_traverse_func fn, void *p)
+int64_t tdb_traverse_(struct tdb_context *tdb,
+		      int (*fn)(struct tdb_context *,
+				TDB_DATA, TDB_DATA, void *),
+		      void *p)
 {
 	enum TDB_ERROR ecode;
 	struct traverse_info tinfo;

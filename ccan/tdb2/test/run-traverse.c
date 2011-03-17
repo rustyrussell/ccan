@@ -38,9 +38,9 @@ struct trav_data {
 	enum TDB_ERROR delete_error;
 };
 
-static int trav(struct tdb_context *tdb, TDB_DATA key, TDB_DATA dbuf, void *p)
+static int trav(struct tdb_context *tdb, TDB_DATA key, TDB_DATA dbuf,
+		struct trav_data *td)
 {
-	struct trav_data *td = p;
 	int val;
 
 	td->calls++;
@@ -75,9 +75,8 @@ struct trav_grow_data {
 };
 
 static int trav_grow(struct tdb_context *tdb, TDB_DATA key, TDB_DATA dbuf,
-		     void *p)
+		     struct trav_grow_data *tgd)	     
 {
-	struct trav_grow_data *tgd = p;
 	int val;
 	unsigned char buffer[128] = { 0 };
 
