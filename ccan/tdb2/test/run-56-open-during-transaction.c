@@ -1,4 +1,4 @@
-#define _XOPEN_SOURCE 500
+#include "config.h"
 #include <unistd.h>
 #include "lock-tracking.h"
 

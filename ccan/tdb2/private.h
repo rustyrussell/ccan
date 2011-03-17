@@ -18,8 +18,7 @@
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
 
-#define _XOPEN_SOURCE 500
-#define _FILE_OFFSET_BITS 64
+#include "config.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -33,7 +32,6 @@
 #include <stdio.h>
 #include <utime.h>
 #include <unistd.h>
-#include "config.h"
 #include <ccan/tdb2/tdb2.h>
 #include <ccan/likely/likely.h>
 #include <ccan/compiler/compiler.h>
