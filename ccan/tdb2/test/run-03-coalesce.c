@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
 	key.dsize = 5;
 
 	/* No coalescing can be done due to EOF */
-	layout = new_tdb_layout(NULL);
+	layout = new_tdb_layout("run-03-coalesce.tdb");
 	tdb_layout_add_freetable(layout);
 	len = 1024;
 	tdb_layout_add_free(layout, len, 0);
@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 	tdb_layout_free(layout);
 
 	/* No coalescing can be done due to used record */
-	layout = new_tdb_layout(NULL);
+	layout = new_tdb_layout("run-03-coalesce.tdb");
 	tdb_layout_add_freetable(layout);
 	tdb_layout_add_free(layout, 1024, 0);
 	tdb_layout_add_used(layout, key, data, 6);
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
 	tdb_layout_free(layout);
 
 	/* Coalescing can be done due to two free records, then EOF */
-	layout = new_tdb_layout(NULL);
+	layout = new_tdb_layout("run-03-coalesce.tdb");
 	tdb_layout_add_freetable(layout);
 	tdb_layout_add_free(layout, 1024, 0);
 	tdb_layout_add_free(layout, 2048, 0);
@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
 	tdb_layout_free(layout);
 
 	/* Coalescing can be done due to two free records, then data */
-	layout = new_tdb_layout(NULL);
+	layout = new_tdb_layout("run-03-coalesce.tdb");
 	tdb_layout_add_freetable(layout);
 	tdb_layout_add_free(layout, 1024, 0);
 	tdb_layout_add_free(layout, 512, 0);
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
 	tdb_layout_free(layout);
 
 	/* Coalescing can be done due to three free records, then EOF */
-	layout = new_tdb_layout(NULL);
+	layout = new_tdb_layout("run-03-coalesce.tdb");
 	tdb_layout_add_freetable(layout);
 	tdb_layout_add_free(layout, 1024, 0);
 	tdb_layout_add_free(layout, 512, 0);

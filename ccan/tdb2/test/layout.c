@@ -252,6 +252,8 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 	}
 
 	mem = malloc(off);
+	/* Fill with some weird pattern. */
+	memset(mem, 0x99, off);
 	/* Now populate our header, cribbing from a real TDB header. */
 	tdb = tdb_open(NULL, TDB_INTERNAL, O_RDWR, 0, &tap_log_attr);
 	memcpy(mem, tdb->map_ptr, sizeof(struct tdb_header));
