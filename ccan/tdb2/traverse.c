@@ -71,3 +71,27 @@ enum TDB_ERROR tdb_nextkey(struct tdb_context *tdb, struct tdb_data *key)
 
 	return next_in_hash(tdb, &tinfo, key, NULL);
 }
+
+static int wipe_one(struct tdb_context *tdb,
+		    TDB_DATA key, TDB_DATA data, enum TDB_ERROR *ecode)
+{
+	*ecode = tdb_delete(tdb, key);
+	return (*ecode != TDB_SUCCESS);
+}
+
+enum TDB_ERROR tdb_wipe_all(struct tdb_context *tdb)
+{
+	enum TDB_ERROR ecode;
+	int64_t count;
+
+	ecode = tdb_allrecord_lock(tdb, F_WRLCK, TDB_LOCK_WAIT, false);
+	if (ecode != TDB_SUCCESS)
+		return ecode;
+
+	/* FIXME: Be smarter. */
+	count = tdb_traverse(tdb, wipe_one, &ecode);
+	if (count < 0)
+		ecode = count;
+	tdb_allrecord_unlock(tdb, F_WRLCK);
+	return ecode;
+}

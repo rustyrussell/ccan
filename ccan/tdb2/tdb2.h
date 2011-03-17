@@ -38,6 +38,8 @@ extern "C" {
 #include <signal.h>
 /* For uint64_t */
 #include <stdint.h>
+/* For bool */
+#include <stdbool.h>
 #endif
 #include <ccan/compiler/compiler.h>
 #include <ccan/typesafe_cb/typesafe_cb.h>
@@ -198,6 +200,15 @@ enum TDB_ERROR tdb_append(struct tdb_context *tdb,
 enum TDB_ERROR tdb_delete(struct tdb_context *tdb, struct tdb_data key);
 
 /**
+ * tdb_exists - does a key exist in the database?
+ * @tdb: the tdb context returned from tdb_open()
+ * @key: the key to search for.
+ *
+ * Returns true if it exists, or false if it doesn't or any other error.
+ */
+bool tdb_exists(struct tdb_context *tdb, TDB_DATA key);
+
+/**
  * tdb_transaction_start - start a transaction
  * @tdb: the tdb context returned from tdb_open()
  *
@@ -277,6 +288,30 @@ int64_t tdb_traverse_(struct tdb_context *tdb,
 				TDB_DATA, TDB_DATA, void *), void *p);
 
 /**
+ * tdb_parse_record - operate directly on data in the database.
+ * @tdb: the tdb context returned from tdb_open()
+ * @key: the key whose record we should hand to @parse
+ * @parse: the function to call for the data
+ * @p: the private pointer to hand to @parse (types must match).
+ *
+ * This avoids a copy for many cases, by handing you a pointer into
+ * the memory-mapped database.  It also locks the record to prevent
+ * other accesses at the same time.
+ *
+ * Do not alter the data handed to parse()!
+ */
+#define tdb_parse_record(tdb, key, parse, p)				\
+	tdb_parse_record_((tdb), (key),					\
+			  typesafe_cb_preargs(enum TDB_ERROR, (parse), (p), \
+					      TDB_DATA, TDB_DATA), (p))
+
+enum TDB_ERROR tdb_parse_record_(struct tdb_context *tdb,
+				 TDB_DATA key,
+				 enum TDB_ERROR (*parse)(TDB_DATA key,
+							 TDB_DATA data,
+							 void *p),
+				 void *p);
+/**
  * tdb_firstkey - get the "first" key in a TDB
  * @tdb: the tdb context returned from tdb_open()
  * @key: pointer to key.
@@ -327,6 +362,15 @@ enum TDB_ERROR tdb_chainlock(struct tdb_context *tdb, TDB_DATA key);
  * @key: the key to unlock.
  */
 enum TDB_ERROR tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key);
+
+/**
+ * tdb_wipe_all - wipe the database clean
+ * @tdb: the tdb context returned from tdb_open()
+ *
+ * Completely erase the database.  This is faster than iterating through
+ * each key and doing tdb_delete.
+ */
+enum TDB_ERROR tdb_wipe_all(struct tdb_context *tdb);
 
 /**
  * tdb_check - check a TDB for consistency

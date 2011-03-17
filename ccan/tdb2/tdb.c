@@ -243,6 +243,21 @@ enum TDB_ERROR tdb_fetch(struct tdb_context *tdb, struct tdb_data key,
 	return ecode;
 }
 
+bool tdb_exists(struct tdb_context *tdb, TDB_DATA key)
+{
+	tdb_off_t off;
+	struct tdb_used_record rec;
+	struct hash_info h;
+
+	off = find_and_lock(tdb, key, F_RDLCK, &h, &rec, NULL);
+	if (TDB_OFF_IS_ERR(off)) {
+		return false;
+	}
+	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_RDLCK);
+
+	return off ? true : false;
+}
+
 enum TDB_ERROR tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 {
 	tdb_off_t off;
@@ -377,3 +392,42 @@ enum TDB_ERROR COLD tdb_logerr(struct tdb_context *tdb,
 	errno = saved_errno;
 	return ecode;
 }
+
+enum TDB_ERROR tdb_parse_record_(struct tdb_context *tdb,
+				 TDB_DATA key,
+				 enum TDB_ERROR (*parse)(TDB_DATA key,
+							 TDB_DATA data,
+							 void *p),
+				 void *p)
+{
+	tdb_off_t off;
+	struct tdb_used_record rec;
+	struct hash_info h;
+	TDB_DATA data;
+	enum TDB_ERROR ecode;
+
+	off = find_and_lock(tdb, key, F_RDLCK, &h, &rec, NULL);
+	if (TDB_OFF_IS_ERR(off)) {
+		return off;
+	}
+
+	if (!off) {
+		ecode = TDB_ERR_NOEXIST;
+	} else {
+		data.dsize = rec_data_length(&rec);
+		data.dptr = (void *)tdb_access_read(tdb,
+						    off + sizeof(rec)
+						    + key.dsize,
+						    data.dsize, false);
+		if (TDB_PTR_IS_ERR(data.dptr)) {
+			ecode = TDB_PTR_ERR(data.dptr);
+		} else {
+			ecode = parse(key, data, p);
+			tdb_access_release(tdb, data.dptr);
+		}
+	}
+
+	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_RDLCK);
+	return ecode;
+}
+
