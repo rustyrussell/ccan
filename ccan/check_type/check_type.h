@@ -54,10 +54,10 @@
 #include <ccan/build_assert/build_assert.h>
 /* Without typeof, we can only test the sizes. */
 #define check_type(expr, type)					\
-	EXPR_BUILD_ASSERT(sizeof(expr) == sizeof(type))
+	BUILD_ASSERT_OR_ZERO(sizeof(expr) == sizeof(type))
 
 #define check_types_match(expr1, expr2)				\
-	EXPR_BUILD_ASSERT(sizeof(expr1) == sizeof(expr2))
+	BUILD_ASSERT_OR_ZERO(sizeof(expr1) == sizeof(expr2))
 #endif /* HAVE_TYPEOF */
 
 #endif /* CCAN_CHECK_TYPE_H */

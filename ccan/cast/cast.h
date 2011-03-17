@@ -14,7 +14,7 @@
  */
 #define cast_signed(type, expr)						\
 	((type)(expr)							\
-	 + EXPR_BUILD_ASSERT(cast_sign_compatible(type, (expr))))
+	 + BUILD_ASSERT_OR_ZERO(cast_sign_compatible(type, (expr))))
 
 /**
  * cast_const - remove a const qualifier from a pointer.
@@ -39,7 +39,7 @@
  */
 #define cast_const(type, expr)					\
 	((type)(expr)						\
-	 + EXPR_BUILD_ASSERT(cast_const_compat1((expr), type)))
+	 + BUILD_ASSERT_OR_ZERO(cast_const_compat1((expr), type)))
 
 /**
  * cast_const2 - remove a const qualifier from a pointer to a pointer.
@@ -51,7 +51,7 @@
  */
 #define cast_const2(type, expr)					\
 	((type)(expr)						\
-	 + EXPR_BUILD_ASSERT(cast_const_compat2((expr), type)))
+	 + BUILD_ASSERT_OR_ZERO(cast_const_compat2((expr), type)))
 
 /**
  * cast_const3 - remove a const from a pointer to a pointer to a pointer..
@@ -63,7 +63,7 @@
  */
 #define cast_const3(type, expr)					\
 	((type)(expr)						\
-	 + EXPR_BUILD_ASSERT(cast_const_compat3((expr), type)))
+	 + BUILD_ASSERT_OR_ZERO(cast_const_compat3((expr), type)))
 
 
 /**

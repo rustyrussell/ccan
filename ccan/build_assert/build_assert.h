@@ -22,7 +22,7 @@
 	do { (void) sizeof(char [1 - 2*!(cond)]); } while(0)
 
 /**
- * EXPR_BUILD_ASSERT - assert a build-time dependency, as an expression.
+ * BUILD_ASSERT_OR_ZERO - assert a build-time dependency, as an expression.
  * @cond: the compile-time condition which must be true.
  *
  * Your compile will fail if the condition isn't true, or can't be evaluated
@@ -31,9 +31,9 @@
  * Example:
  *	#define foo_to_char(foo)					\
  *		 ((char *)(foo)						\
- *		  + EXPR_BUILD_ASSERT(offsetof(struct foo, string) == 0))
+ *		  + BUILD_ASSERT_OR_ZERO(offsetof(struct foo, string) == 0))
  */
-#define EXPR_BUILD_ASSERT(cond) \
+#define BUILD_ASSERT_OR_ZERO(cond) \
 	(sizeof(char [1 - 2*!(cond)]) - 1)
 
 #endif /* CCAN_BUILD_ASSERT_H */

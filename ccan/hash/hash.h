@@ -91,8 +91,8 @@
  *	}
  */
 #define hash_stable(p, num, base)					\
-	(EXPR_BUILD_ASSERT(sizeof(*(p)) == 8 || sizeof(*(p)) == 4	\
-			   || sizeof(*(p)) == 2 || sizeof(*(p)) == 1) +	\
+	(BUILD_ASSERT_OR_ZERO(sizeof(*(p)) == 8 || sizeof(*(p)) == 4	\
+			      || sizeof(*(p)) == 2 || sizeof(*(p)) == 1) + \
 	 sizeof(*(p)) == 8 ? hash_stable_64((p), (num), (base))		\
 	 : sizeof(*(p)) == 4 ? hash_stable_32((p), (num), (base))	\
 	 : sizeof(*(p)) == 2 ? hash_stable_16((p), (num), (base))	\
@@ -220,8 +220,8 @@ static inline uint32_t hash_string(const char *string)
  *	}
  */
 #define hash64_stable(p, num, base)					\
-	(EXPR_BUILD_ASSERT(sizeof(*(p)) == 8 || sizeof(*(p)) == 4	\
-			   || sizeof(*(p)) == 2 || sizeof(*(p)) == 1) +	\
+	(BUILD_ASSERT_OR_ZERO(sizeof(*(p)) == 8 || sizeof(*(p)) == 4	\
+			      || sizeof(*(p)) == 2 || sizeof(*(p)) == 1) + \
 	 sizeof(*(p)) == 8 ? hash64_stable_64((p), (num), (base))	\
 	 : sizeof(*(p)) == 4 ? hash64_stable_32((p), (num), (base))	\
 	 : sizeof(*(p)) == 2 ? hash64_stable_16((p), (num), (base))	\
@@ -237,8 +237,8 @@ static inline uint32_t hash_string(const char *string)
  * This is either hash() or hash64(), on 32/64 bit long machines.
  */
 #define hashl(p, num, base)						\
-	(EXPR_BUILD_ASSERT(sizeof(long) == sizeof(uint32_t)		\
-			   || sizeof(long) == sizeof(uint64_t)) +	\
+	(BUILD_ASSERT_OR_ZERO(sizeof(long) == sizeof(uint32_t)		\
+			      || sizeof(long) == sizeof(uint64_t)) +	\
 	(sizeof(long) == sizeof(uint64_t)				\
 	 ? hash64((p), (num), (base)) : hash((p), (num), (base))))
 
