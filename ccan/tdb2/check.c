@@ -30,7 +30,8 @@ static bool append(tdb_off_t **arr, size_t *num, tdb_off_t off)
 	return true;
 }
 
-static enum TDB_ERROR check_header(struct tdb_context *tdb, tdb_off_t *recovery)
+static enum TDB_ERROR check_header(struct tdb_context *tdb, tdb_off_t *recovery,
+				   uint64_t *features)
 {
 	uint64_t hash_test;
 	struct tdb_header hdr;
@@ -59,6 +60,16 @@ static enum TDB_ERROR check_header(struct tdb_context *tdb, tdb_off_t *recovery)
 				  hdr.magic_food);
 	}
 
+	/* Features which are used must be a subset of features offered. */
+	if (hdr.features_used & ~hdr.features_offered) {
+		return tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
+				  "check: features used (0x%llx) which"
+				  " are not offered (0x%llx)",
+				  (long long)hdr.features_used,
+				  (long long)hdr.features_offered);
+	}
+
+	*features = hdr.features_offered;
 	*recovery = hdr.recovery;
 	if (*recovery) {
 		if (*recovery < sizeof(hdr) || *recovery > tdb->map_size) {
@@ -568,7 +579,7 @@ tdb_off_t dead_space(struct tdb_context *tdb, tdb_off_t off)
 static enum TDB_ERROR check_linear(struct tdb_context *tdb,
 				   tdb_off_t **used, size_t *num_used,
 				   tdb_off_t **fr, size_t *num_free,
-				   tdb_off_t recovery)
+				   uint64_t features, tdb_off_t recovery)
 {
 	tdb_off_t off;
 	tdb_len_t len;
@@ -697,6 +708,28 @@ static enum TDB_ERROR check_linear(struct tdb_context *tdb,
 						  (long long)len,
 						  (long long)off);
 			}
+
+			/* Check that records have correct 0 at end (but may
+			 * not in future). */
+			if (extra && !features) {
+				const char *p;
+				char c;
+				p = tdb_access_read(tdb, off + sizeof(rec.u)
+						    + klen + dlen, 1, false);
+				if (TDB_PTR_IS_ERR(p))
+					return TDB_PTR_ERR(p);
+				c = *p;
+				tdb_access_release(tdb, p);
+
+				if (c != '\0') {
+					return tdb_logerr(tdb, TDB_ERR_CORRUPT,
+							  TDB_LOG_ERROR,
+							  "tdb_check:"
+							  " non-zero extra"
+							  " at %llu",
+							  (long long)off);
+				}
+			}
 		} else {
 			return tdb_logerr(tdb, TDB_ERR_CORRUPT,
 					  TDB_LOG_ERROR,
@@ -724,6 +757,7 @@ enum TDB_ERROR tdb_check_(struct tdb_context *tdb,
 {
 	tdb_off_t *fr = NULL, *used = NULL, ft, recovery;
 	size_t num_free = 0, num_used = 0, num_found = 0, num_ftables = 0;
+	uint64_t features;
 	enum TDB_ERROR ecode;
 
 	ecode = tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false);
@@ -737,12 +771,13 @@ enum TDB_ERROR tdb_check_(struct tdb_context *tdb,
 		return ecode;
 	}
 
-	ecode = check_header(tdb, &recovery);
+	ecode = check_header(tdb, &recovery, &features);
 	if (ecode != TDB_SUCCESS)
 		goto out;
 
 	/* First we do a linear scan, checking all records. */
-	ecode = check_linear(tdb, &used, &num_used, &fr, &num_free, recovery);
+	ecode = check_linear(tdb, &used, &num_used, &fr, &num_free, features,
+			     recovery);
 	if (ecode != TDB_SUCCESS)
 		goto out;
 

@@ -92,6 +92,12 @@ static void set_free_record(void *mem, tdb_len_t len)
 	/* We do all the work in add_to_freetable */
 }
 
+static void add_zero_pad(struct tdb_used_record *u, size_t len, size_t extra)
+{
+	if (extra)
+		((char *)(u + 1))[len] = '\0';
+}
+
 static void set_data_record(void *mem, struct tdb_context *tdb,
 			    struct tle_used *used)
 {
@@ -103,6 +109,7 @@ static void set_data_record(void *mem, struct tdb_context *tdb,
 	memcpy(u + 1, used->key.dptr, used->key.dsize);
 	memcpy((char *)(u + 1) + used->key.dsize,
 	       used->data.dptr, used->data.dsize);
+	add_zero_pad(u, used->key.dsize + used->data.dsize, used->extra);
 }
 
 static void set_hashtable(void *mem, struct tdb_context *tdb,
@@ -113,6 +120,7 @@ static void set_hashtable(void *mem, struct tdb_context *tdb,
 
 	set_header(tdb, u, TDB_HTABLE_MAGIC, 0, len, len + htable->extra, 0);
 	memset(u + 1, 0, len);
+	add_zero_pad(u, len, htable->extra);
 }
 
 static void set_freetable(void *mem, struct tdb_context *tdb,

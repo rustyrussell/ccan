@@ -510,6 +510,21 @@ static enum TDB_ERROR replace_data(struct tdb_context *tdb,
 	return TDB_SUCCESS;
 }
 
+static enum TDB_ERROR update_data(struct tdb_context *tdb,
+				  tdb_off_t off,
+				  struct tdb_data dbuf,
+				  tdb_len_t extra)
+{
+	enum TDB_ERROR ecode;
+
+	ecode = tdb->methods->twrite(tdb, off, dbuf.dptr, dbuf.dsize);
+	if (ecode == TDB_SUCCESS && extra) {
+		/* Put a zero in; future versions may append other data. */
+		ecode = tdb->methods->twrite(tdb, off + dbuf.dsize, "", 1);
+	}
+	return ecode;
+}
+
 enum TDB_ERROR tdb_store(struct tdb_context *tdb,
 			 struct tdb_data key, struct tdb_data dbuf, int flag)
 {
@@ -542,11 +557,10 @@ enum TDB_ERROR tdb_store(struct tdb_context *tdb,
 				if (ecode != TDB_SUCCESS) {
 					goto out;
 				}
-				ecode = tdb->methods->twrite(tdb,
-							     off + sizeof(rec)
-							     + key.dsize,
-							     dbuf.dptr,
-							     dbuf.dsize);
+				ecode = update_data(tdb,
+						    off + sizeof(rec)
+						    + key.dsize, dbuf,
+						    old_room - dbuf.dsize);
 				if (ecode != TDB_SUCCESS) {
 					goto out;
 				}
@@ -602,8 +616,8 @@ enum TDB_ERROR tdb_append(struct tdb_context *tdb,
 			}
 
 			off += sizeof(rec) + key.dsize + old_dlen;
-			ecode = tdb->methods->twrite(tdb, off, dbuf.dptr,
-						     dbuf.dsize);
+			ecode = update_data(tdb, off, dbuf,
+					    rec_extra_padding(&rec));
 			goto out;
 		}
 

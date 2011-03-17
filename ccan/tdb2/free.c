@@ -523,6 +523,15 @@ again:
 			goto unlock_err;
 		}
 
+		/* For futureproofing, we put a 0 in any unused space. */
+		if (rec_extra_padding(&rec)) {
+			ecode = tdb->methods->twrite(tdb, best_off + sizeof(rec)
+						     + keylen + datalen, "", 1);
+			if (ecode != TDB_SUCCESS) {
+				goto unlock_err;
+			}
+		}
+
 		/* Bucket of leftover will be <= current bucket, so nested
 		 * locking is allowed. */
 		if (leftover) {
