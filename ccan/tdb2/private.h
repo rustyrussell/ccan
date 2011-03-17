@@ -116,6 +116,9 @@ typedef int tdb_bool_err;
 #define TDB_OFF_HASH_EXTRA_BIT 57
 #define TDB_OFF_UPPER_STEAL_SUBHASH_BIT 56
 
+/* Additional features we understand.  Currently: none. */
+#define TDB_FEATURE_MASK ((uint64_t)0)
+
 /* The bit number where we store the extra hash bits. */
 /* Convenience mask to get actual offset. */
 #define TDB_OFF_MASK \
@@ -240,7 +243,10 @@ struct tdb_header {
 	tdb_off_t free_table; /* (First) free table. */
 	tdb_off_t recovery; /* Transaction recovery area. */
 
-	tdb_off_t reserved[26];
+	uint64_t features_used; /* Features all writers understand */
+	uint64_t features_offered; /* Features offered */
+
+	tdb_off_t reserved[24];
 
 	/* Top level hash table. */
 	tdb_off_t hashtable[1ULL << TDB_TOPLEVEL_HASH_BITS];

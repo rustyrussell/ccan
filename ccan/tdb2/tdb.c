@@ -112,6 +112,7 @@ static enum TDB_ERROR tdb_new_database(struct tdb_context *tdb,
 					 newdb.hdr.hash_seed,
 					 tdb->hash_priv);
 	newdb.hdr.recovery = 0;
+	newdb.hdr.features_used = newdb.hdr.features_offered = TDB_FEATURE_MASK;
 	memset(newdb.hdr.reserved, 0, sizeof(newdb.hdr.reserved));
 	/* Initial hashes are empty. */
 	memset(newdb.hdr.hashtable, 0, sizeof(newdb.hdr.hashtable));
@@ -359,6 +360,16 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		ecode = tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
 				   "tdb_open: failed to allocate name");
 		goto fail;
+	}
+
+	/* Clear any features we don't understand. */
+ 	if ((open_flags & O_ACCMODE) != O_RDONLY) {
+		hdr.features_used &= TDB_FEATURE_MASK;
+		if (tdb_write_convert(tdb, offsetof(struct tdb_header,
+						    features_used),
+				      &hdr.features_used,
+				      sizeof(hdr.features_used)) == -1)
+			goto fail;
 	}
 
 	tdb->device = st.st_dev;
