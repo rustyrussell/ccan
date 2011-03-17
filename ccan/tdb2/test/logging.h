@@ -12,11 +12,4 @@ extern union tdb_attribute tap_log_attr;
 void tap_log_fn(struct tdb_context *tdb,
 		enum tdb_log_level level, void *priv,
 		const char *message);
-
-static inline bool data_equal(struct tdb_data a, struct tdb_data b)
-{
-	if (a.dsize != b.dsize)
-		return false;
-	return memcmp(a.dptr, b.dptr, a.dsize) == 0;
-}
 #endif /* TDB2_TEST_LOGGING_H */

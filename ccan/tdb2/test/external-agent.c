@@ -56,8 +56,7 @@ static enum agent_return do_operation(enum operation op, const char *name)
 			ret = FAILED;
 		} else if (ecode < 0) {
 			ret = OTHER_FAILURE;
-		} else if (data.dsize != k.dsize
-			   || memcmp(data.dptr, k.dptr, k.dsize) != 0) {
+		} else if (!tdb_deq(data, k)) {
 			ret = OTHER_FAILURE;
 			free(data.dptr);
 		} else {

@@ -40,6 +40,8 @@ extern "C" {
 #include <stdint.h>
 /* For bool */
 #include <stdbool.h>
+/* For memcmp */
+#include <string.h>
 #endif
 #include <ccan/compiler/compiler.h>
 #include <ccan/typesafe_cb/typesafe_cb.h>
@@ -207,6 +209,16 @@ enum TDB_ERROR tdb_delete(struct tdb_context *tdb, struct tdb_data key);
  * Returns true if it exists, or false if it doesn't or any other error.
  */
 bool tdb_exists(struct tdb_context *tdb, TDB_DATA key);
+
+/**
+ * tdb_deq - are struct tdb_data equal?
+ * @a: one struct tdb_data
+ * @b: another struct tdb_data
+ */
+static inline bool tdb_deq(struct tdb_data a, struct tdb_data b)
+{
+	return a.dsize == b.dsize && memcmp(a.dptr, b.dptr, a.dsize) == 0;
+}
 
 /**
  * tdb_transaction_start - start a transaction

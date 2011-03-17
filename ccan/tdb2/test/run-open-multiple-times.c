@@ -34,8 +34,7 @@ int main(int argc, char *argv[])
 		/* Store in one, fetch in the other. */
 		ok1(tdb_store(tdb, key, data, TDB_REPLACE) == 0);
 		ok1(tdb_fetch(tdb2, key, &d) == TDB_SUCCESS);
-		ok1(d.dptr && d.dsize == data.dsize
-		    && memcmp(d.dptr, data.dptr, d.dsize) == 0);
+		ok1(tdb_deq(d, data));
 		free(d.dptr);
 
 		/* Vice versa, with delete. */
@@ -47,8 +46,7 @@ int main(int argc, char *argv[])
 
 		ok1(tdb_store(tdb2, key, data, TDB_REPLACE) == 0);
 		ok1(tdb_fetch(tdb2, key, &d) == TDB_SUCCESS);
-		ok1(d.dptr && d.dsize == data.dsize
-		    && memcmp(d.dptr, data.dptr, d.dsize) == 0);
+		ok1(tdb_deq(d, data));
 		free(d.dptr);
 
 		/* Reopen */
@@ -75,8 +73,7 @@ int main(int argc, char *argv[])
 		ok1(tdb_close(tdb2) == 0);
 
 		ok1(tdb_fetch(tdb, key, &d) == TDB_SUCCESS);
-		ok1(d.dptr && d.dsize == data.dsize
-		    && memcmp(d.dptr, data.dptr, d.dsize) == 0);
+		ok1(tdb_deq(d, data));
 		free(d.dptr);
 		ok1(tdb_close(tdb) == 0);
 		ok1(tap_log_messages == 4);

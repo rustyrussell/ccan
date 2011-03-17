@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
 			if (!ok1(tdb_fetch(tdb, key, &d) == TDB_SUCCESS))
 				goto fail;
 			failtest_suppress = true;
-			ok1(data_equal(d, data));
+			ok1(tdb_deq(d, data));
 			free(d.dptr);
 			ok1(tdb_check(tdb, NULL, NULL) == 0);
 			tdb_close(tdb);

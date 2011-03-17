@@ -11,9 +11,7 @@
 
 static enum TDB_ERROR parse(TDB_DATA key, TDB_DATA data, TDB_DATA *expected)
 {
-	if (data.dsize != expected->dsize)
-		return TDB_ERR_EINVAL;
-	if (memcmp(data.dptr, expected->dptr, data.dsize) != 0)
+	if (!tdb_deq(data, *expected))
 		return TDB_ERR_EINVAL;
 	return TDB_SUCCESS;
 }

@@ -33,9 +33,7 @@ static bool store_records(struct tdb_context *tdb)
 		if (tdb_store(tdb, key, data, TDB_REPLACE) != 0)
 			return false;
 		tdb_fetch(tdb, key, &d);
-		if (d.dsize != data.dsize)
-			return false;
-		if (memcmp(d.dptr, data.dptr, d.dsize) != 0)
+		if (!tdb_deq(d, data))
 			return false;
 		free(d.dptr);
 	}

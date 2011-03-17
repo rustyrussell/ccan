@@ -23,3 +23,5 @@ Interface differences between TDB1 and TDB2.
   already formatted, and it takes an enum tdb_log_level not a tdb_debug_level,
   and which has only three values: TDB_LOG_ERROR, TDB_LOG_USE_ERROR and
   TDB_LOG_WARNING.
+
+- tdb2 provides tdb_deq() for comparing two struct tdb_data.

@@ -16,13 +16,6 @@ static uint64_t fixedhash(const void *key, size_t len, uint64_t seed, void *p)
 			     *(uint64_t *)p);
 }
 
-static bool equal(struct tdb_data a, struct tdb_data b)
-{
-	if (a.dsize != b.dsize)
-		return false;
-	return memcmp(a.dptr, b.dptr, a.dsize) == 0;
-}
-
 int main(int argc, char *argv[])
 {
 	unsigned int i, j;
@@ -54,7 +47,7 @@ int main(int argc, char *argv[])
 			struct tdb_data d = { NULL, 0 }; /* Bogus GCC warning */
 			ok1(tdb_store(tdb, key, data, TDB_REPLACE) == 0);
 			ok1(tdb_fetch(tdb, key, &d) == TDB_SUCCESS);
-			ok1(equal(d, data));
+			ok1(tdb_deq(d, data));
 			free(d.dptr);
 		}
 		tdb_close(tdb);
