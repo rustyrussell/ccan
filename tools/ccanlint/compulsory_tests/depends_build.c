@@ -53,16 +53,11 @@ static char *build_subdir_objs(struct manifest *m)
 char *build_submodule(struct manifest *m)
 {
 	char *errstr;
-	struct stat st;
 
 	if (m->compiled)
 		return NULL;
 
 	if (!expect_obj_file(m))
-		return NULL;
-
-	m->compiled = talloc_asprintf(m, "%s.o", m->dir);
-	if (stat(m->compiled, &st) == 0)
 		return NULL;
 
 	if (verbose >= 2)
