@@ -59,7 +59,7 @@ static void run_under_debugger(struct manifest *m, struct score *score)
 		return;
 
 	first = list_top(&score->per_file_errors, struct file_error, list);
-	command = talloc_asprintf(m, "gdb -ex 'break tap.c:136' -ex 'run' %s",
+	command = talloc_asprintf(m, "gdb -ex 'break tap.c:132' -ex 'run' %s",
 				  first->file->compiled);
 	if (system(command))
 		doesnt_matter();
