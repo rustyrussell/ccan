@@ -379,6 +379,37 @@ enum TDB_ERROR tdb_summary(struct tdb_context *tdb,
 			   enum tdb_summary_flags flags,
 			   char **summary);
 
+ 
+/**
+ * tdb_get_flags - return the flags for a tdb
+ * @tdb: the tdb context returned from tdb_open()
+ *
+ * This returns the flags on the current tdb.  Some of these are caused by
+ * the flags argument to tdb_open(), others (such as TDB_CONVERT) are
+ * intuited.
+ */
+unsigned int tdb_get_flags(struct tdb_context *tdb);
+
+/**
+ * tdb_add_flag - set a flag for a tdb
+ * @tdb: the tdb context returned from tdb_open()
+ * @flag: one of TDB_NOLOCK, TDB_NOMMAP or TDB_NOSYNC.
+ *
+ * You can use this to set a flag on the TDB.  You cannot set these flags
+ * on a TDB_INTERNAL tdb.
+ */
+void tdb_add_flag(struct tdb_context *tdb, unsigned flag);
+
+/**
+ * tdb_remove_flag - unset a flag for a tdb
+ * @tdb: the tdb context returned from tdb_open()
+ * @flag: one of TDB_NOLOCK, TDB_NOMMAP or TDB_NOSYNC.
+ *
+ * You can use this to clear a flag on the TDB.  You cannot clear flags
+ * on a TDB_INTERNAL tdb.
+ */
+void tdb_remove_flag(struct tdb_context *tdb, unsigned flag);
+
 /**
  * enum tdb_attribute_type - descriminator for union tdb_attribute.
  */

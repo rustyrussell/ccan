@@ -758,6 +758,59 @@ int tdb_close(struct tdb_context *tdb)
 	return ret;
 }
 
+unsigned int tdb_get_flags(struct tdb_context *tdb)
+{
+	return tdb->flags;
+}
+
+void tdb_add_flag(struct tdb_context *tdb, unsigned flag)
+{
+	if (tdb->flags & TDB_INTERNAL) {
+		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
+			   "tdb_add_flag: internal db");
+		return;
+	}
+	switch (flag) {
+	case TDB_NOLOCK:
+		tdb->flags |= TDB_NOLOCK;
+		break;
+	case TDB_NOMMAP:
+		tdb->flags |= TDB_NOMMAP;
+		tdb_munmap(tdb);
+		break;
+	case TDB_NOSYNC:
+		tdb->flags |= TDB_NOSYNC;
+		break;
+	default:
+		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
+			   "tdb_add_flag: Unknown flag %u", flag);
+	}
+}
+
+void tdb_remove_flag(struct tdb_context *tdb, unsigned flag)
+{
+	if (tdb->flags & TDB_INTERNAL) {
+		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
+			   "tdb_remove_flag: internal db");
+		return;
+	}
+	switch (flag) {
+	case TDB_NOLOCK:
+		tdb->flags &= ~TDB_NOLOCK;
+		break;
+	case TDB_NOMMAP:
+		tdb->flags &= ~TDB_NOMMAP;
+		tdb_mmap(tdb);
+		break;
+	case TDB_NOSYNC:
+		tdb->flags &= ~TDB_NOSYNC;
+		break;
+	default:
+		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
+			   "tdb_remove_flag: Unknown flag %u", flag);
+	}
+}
+
 const char *tdb_errorstr(enum TDB_ERROR ecode)
 {
 	/* Gcc warns if you miss a case in the switch, so use that. */
