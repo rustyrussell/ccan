@@ -1,0 +1,25 @@
+Interface differences between TDB1 and TDB2.
+
+- tdb2 functions return 0 on success, and a negative error on failure,
+  whereas tdb1 functions returned 0 on success, and -1 on failure.  tdb1
+  then used tdb_error() to determine the error.
+
+- tdb2's tdb_fetch() returns an error, tdb1's returned the data directly
+  (or tdb_null, and you were supposed to check tdb_error() to find out why).
+
+- tdb2's tdb_nextkey() frees the old key's dptr, in tdb2 you needed to do
+  this manually.
+
+- tdb1's tdb_open/tdb_open_ex took an explicit hash size.  tdb2's hash table
+  resizes as required.
+
+- tdb2 uses a linked list of attribute structures to implement logging and
+  alternate hashes.  tdb1 used tdb_open_ex, which was not extensible.
+
+- tdb2 does locking on read-only databases (ie. O_RDONLY passed to tdb_open).
+  tdb1 did not: use the TDB_NOLOCK flag if you want to suppress locking.
+
+- tdb2's log function is simpler than tdb1's log function.  The string is
+  already formatted, and it takes an enum tdb_log_level not a tdb_debug_level,
+  and which has only three values: TDB_LOG_ERROR, TDB_LOG_USE_ERROR and
+  TDB_LOG_WARNING.
