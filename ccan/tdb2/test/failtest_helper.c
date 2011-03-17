@@ -85,7 +85,6 @@ block_repeat_failures(struct failtest_call *history, unsigned num)
 	const struct failtest_call *i, *last = &history[num-1];
 
 	if (failmatch(last, INITIAL_TDB_MALLOC)
-	    || failmatch(last, LOGGING_MALLOC)
 	    || failmatch(last, URANDOM_OPEN)
 	    || failmatch(last, URANDOM_READ)) {
 		if (find_repeat(history, last, last))

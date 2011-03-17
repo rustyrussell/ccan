@@ -1,4 +1,5 @@
 #include "private.h"
+#include <ccan/asprintf/asprintf.h>
 #include <ccan/tdb2/tdb2.h>
 #include <assert.h>
 #include <stdarg.h>
@@ -756,23 +757,18 @@ enum TDB_ERROR COLD tdb_logerr(struct tdb_context *tdb,
 	if (!tdb->logfn)
 		return ecode;
 
-	/* FIXME: Doesn't assume asprintf. */
 	va_start(ap, fmt);
-	len = vsnprintf(NULL, 0, fmt, ap);
+	len = vasprintf(&message, fmt, ap);
 	va_end(ap);
 
-	message = malloc(len + 1);
-	if (!message) {
+	if (len < 0) {
 		tdb->logfn(tdb, TDB_LOG_ERROR, tdb->log_private,
 			   "out of memory formatting message:");
 		tdb->logfn(tdb, level, tdb->log_private, fmt);
-		return ecode;
+	} else {
+		tdb->logfn(tdb, level, tdb->log_private, message);
+		free(message);
 	}
-	va_start(ap, fmt);
-	len = vsprintf(message, fmt, ap);
-	va_end(ap);
-	tdb->logfn(tdb, level, tdb->log_private, message);
-	free(message);
 	errno = saved_errno;
 	return ecode;
 }
