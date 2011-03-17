@@ -35,7 +35,7 @@
 \paperpagestyle default
 \tracking_changes true
 \output_changes true
-\author "Rusty Russell,,," 
+\author "" 
 \author "" 
 \end_header
 
@@ -50,7 +50,7 @@ Rusty Russell, IBM Corporation
 \end_layout
 
 \begin_layout Date
-1-December-2010
+17-March-2011
 \end_layout
 
 \begin_layout Abstract
@@ -698,13 +698,7 @@ Status
 \end_layout
 
 \begin_layout Standard
-
-\change_deleted 0 1298979572
-Incomplete; nesting flag is still defined as per tdb1.
-\change_inserted 0 1298979584
 Complete; the nesting flag has been removed.
-\change_unchanged
-
 \end_layout
 
 \begin_layout Subsection
@@ -785,12 +779,6 @@ Status
 \end_layout
 
 \begin_layout Standard
-
-\change_deleted 0 1300360559
-Incomplete.
- TDB_VOLATILE still defined, but implementation should fail on unknown flags
- to be future-proof.
-\change_inserted 0 1300360588
 Complete.
  Unknown flags cause tdb_open() to fail as well, so they can be detected
  at runtime.
@@ -853,13 +841,7 @@ Status
 \end_layout
 
 \begin_layout Standard
-
-\change_deleted 0 1300360823
-Incomplete.
-\change_inserted 0 1300360824
 Complete.
-\change_unchanged
-
 \end_layout
 
 \begin_layout Subsection
@@ -888,32 +870,13 @@ Proposed Solution
 
 \begin_layout Standard
 Reachitecting the API to include a tdb_errcode pointer would be a great
- deal of churn
-\change_inserted 0 1298979557
-, but fortunately most functions return 0 on success and -1 on error: we
- can change these to return 0 on success and a negative error code on error,
- and the API remains similar to previous.
+ deal of churn, but fortunately most functions return 0 on success and -1
+ on error: we can change these to return 0 on success and a negative error
+ code on error, and the API remains similar to previous.
  The tdb_fetch, tdb_firstkey and tdb_nextkey functions need to take a TDB_DATA
  pointer and return an error code.
  It is also simpler to have tdb_nextkey replace its key argument in place,
  freeing up any old .dptr.
-\end_layout
-
-\begin_layout Standard
-
-\change_deleted 0 1298979438
-; we are better to guarantee that the tdb_errcode is per-thread so the current
- programming model can be maintained.
-\end_layout
-
-\begin_layout Standard
-
-\change_deleted 0 1298979438
-This requires dynamic per-thread allocations, which is awkward with POSIX
- threads (pthread_key_create space is limited and we cannot simply allocate
- a key for every TDB).
-\change_unchanged
-
 \end_layout
 
 \begin_layout Standard
@@ -939,13 +902,7 @@ Status
 \end_layout
 
 \begin_layout Standard
-Incomplete
-\change_inserted 0 1298979681
-; API has been changed but thread safety has not been implemented.
-\change_deleted 0 1298979669
-.
-\change_unchanged
-
+Incomplete; API has been changed but thread safety has not been implemented.
 \end_layout
 
 \begin_layout Subsection
@@ -1288,13 +1245,7 @@ Status
 \end_layout
 
 \begin_layout Standard
-
-\change_deleted 0 1300360712
-Incomplete.
-\change_inserted 0 1300360716
 Complete.
-\change_unchanged
-
 \end_layout
 
 \begin_layout Subsection
@@ -1339,13 +1290,7 @@ Status
 \end_layout
 
 \begin_layout Standard
-
-\change_deleted 0 1298979699
-Incomplete, TDB_CLEAR_IF_FIRST still defined, but not implemented.
-\change_inserted 0 1298979700
 Complete.
-\change_unchanged
-
 \end_layout
 
 \begin_layout Subsection
@@ -1404,13 +1349,7 @@ Status
 \end_layout
 
 \begin_layout Standard
-
-\change_deleted 0 1300360753
-Incomplete.
-\change_inserted 0 1300360754
 Complete.
-\change_unchanged
-
 \end_layout
 
 \begin_layout Subsection
@@ -1440,13 +1379,7 @@ Status
 \end_layout
 
 \begin_layout Standard
-
-\change_deleted 0 1300360766
-Incomplete.
-\change_inserted 0 1300360767
 Complete.
-\change_unchanged
-
 \end_layout
 
 \begin_layout Subsection
@@ -1563,13 +1496,7 @@ Status
 \end_layout
 
 \begin_layout Standard
-
-\change_deleted 0 1298979837
-Incomplete; TDB_CLEAR_IF_FIRST still defined, but does nothing.
-\change_inserted 0 1298979837
 Complete.
-\change_unchanged
-
 \end_layout
 
 \begin_layout Subsection
@@ -2309,10 +2236,6 @@ struct tdb_free_record {
 \end_layout
 
 \begin_layout Standard
-
-\change_deleted 0 1291206079
- 
-\change_unchanged
 Note that by limiting valid offsets to 56 bits, we can pack everything we
  need into 3 64-byte words, meaning our minimum record size is 8 bytes.
 \end_layout
