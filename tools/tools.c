@@ -81,6 +81,8 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 	if (tools_verbose)
 		printf("Running: %s\n", cmd);
 
+	/* Always flush buffers before fork! */
+	fflush(stdout);
 	gettimeofday(&start, NULL);
 	pid = fork();
 	if (pid == -1) {
