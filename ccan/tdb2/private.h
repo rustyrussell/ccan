@@ -246,7 +246,9 @@ struct tdb_header {
 	uint64_t features_used; /* Features all writers understand */
 	uint64_t features_offered; /* Features offered */
 
-	tdb_off_t reserved[24];
+	uint64_t seqnum; /* Sequence number for TDB_SEQNUM */
+
+	tdb_off_t reserved[23];
 
 	/* Top level hash table. */
 	tdb_off_t hashtable[1ULL << TDB_TOPLEVEL_HASH_BITS];
@@ -522,6 +524,9 @@ enum TDB_ERROR tdb_write_convert(struct tdb_context *tdb, tdb_off_t off,
 /* Reads record and converts it */
 enum TDB_ERROR tdb_read_convert(struct tdb_context *tdb, tdb_off_t off,
 				void *rec, size_t len);
+
+/* Bump the seqnum (caller checks for tdb->flags & TDB_SEQNUM) */
+void tdb_inc_seqnum(struct tdb_context *tdb);
 
 /* Adds a stat, if it's in range. */
 void add_stat_(struct tdb_context *tdb, uint64_t *stat, size_t val);

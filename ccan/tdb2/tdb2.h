@@ -78,6 +78,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 #define TDB_NOMMAP   8 /* don't use mmap */
 #define TDB_CONVERT 16 /* convert endian */
 #define TDB_NOSYNC   64 /* don't use synchronous transactions */
+#define TDB_SEQNUM   128 /* maintain a sequence number */
 
 /**
  * tdb_close - close and free a tdb.
@@ -323,6 +324,25 @@ enum TDB_ERROR tdb_parse_record_(struct tdb_context *tdb,
 							 TDB_DATA data,
 							 void *p),
 				 void *p);
+
+/**
+ * tdb_get_seqnum - get a database sequence number
+ * @tdb: the tdb context returned from tdb_open()
+ *
+ * This returns a sequence number: any change to the database from a
+ * tdb context opened with the TDB_SEQNUM flag will cause that number
+ * to increment.  Note that the incrementing is unreliable (it is done
+ * without locking), so this is only useful as an optimization.
+ *
+ * For example, you may have a regular database backup routine which
+ * does not operate if the sequence number is unchanged.  In the
+ * unlikely event of a failed increment, it will be backed up next
+ * time any way.
+ *
+ * Returns an enum TDB_ERROR (ie. negative) on error.
+ */
+int64_t tdb_get_seqnum(struct tdb_context *tdb);
+
 /**
  * tdb_firstkey - get the "first" key in a TDB
  * @tdb: the tdb context returned from tdb_open()

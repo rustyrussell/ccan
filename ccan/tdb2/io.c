@@ -563,6 +563,35 @@ static void *tdb_direct(struct tdb_context *tdb, tdb_off_t off, size_t len,
 	return (char *)tdb->file->map_ptr + off;
 }
 
+void tdb_inc_seqnum(struct tdb_context *tdb)
+{
+	tdb_off_t seq;
+
+	if (likely(!(tdb->flags & TDB_CONVERT))) {
+		int64_t *direct;
+
+		direct = tdb->methods->direct(tdb,
+					      offsetof(struct tdb_header,
+						       seqnum),
+					      sizeof(*direct), true);
+		if (likely(direct)) {
+			/* Don't let it go negative, even briefly */
+			if (unlikely((*direct) + 1) < 0)
+				*direct = 0;
+			(*direct)++;
+			return;
+		}
+	}
+
+	seq = tdb_read_off(tdb, offsetof(struct tdb_header, seqnum));
+	if (!TDB_OFF_IS_ERR(seq)) {
+		seq++;
+		if (unlikely((int64_t)seq < 0))
+			seq = 0;
+		tdb_write_off(tdb, offsetof(struct tdb_header, seqnum), seq);
+	}
+}
+
 void add_stat_(struct tdb_context *tdb, uint64_t *s, size_t val)
 {
 	if ((uintptr_t)s < (uintptr_t)tdb->stats + tdb->stats->size)

@@ -107,6 +107,7 @@ static enum TDB_ERROR tdb_new_database(struct tdb_context *tdb,
 					 tdb->hash_priv);
 	newdb.hdr.recovery = 0;
 	newdb.hdr.features_used = newdb.hdr.features_offered = TDB_FEATURE_MASK;
+	newdb.hdr.seqnum = 0;
 	memset(newdb.hdr.reserved, 0, sizeof(newdb.hdr.reserved));
 	/* Initial hashes are empty. */
 	memset(newdb.hdr.hashtable, 0, sizeof(newdb.hdr.hashtable));
@@ -243,7 +244,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	}
 
 	if (tdb_flags & ~(TDB_INTERNAL | TDB_NOLOCK | TDB_NOMMAP | TDB_CONVERT
-			  | TDB_NOSYNC)) {
+			  | TDB_NOSYNC | TDB_SEQNUM)) {
 		ecode = tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
 				   "tdb_open: unknown flags %u", tdb_flags);
 		goto fail;

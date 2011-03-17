@@ -63,7 +63,9 @@ static enum TDB_ERROR replace_data(struct tdb_context *tdb,
 		return ecode;
 	}
 
-	/* FIXME: tdb_increment_seqnum(tdb); */
+	if (tdb->flags & TDB_SEQNUM)
+		tdb_inc_seqnum(tdb);
+
 	return TDB_SUCCESS;
 }
 
@@ -79,6 +81,9 @@ static enum TDB_ERROR update_data(struct tdb_context *tdb,
 		/* Put a zero in; future versions may append other data. */
 		ecode = tdb->methods->twrite(tdb, off + dbuf.dsize, "", 1);
 	}
+	if (tdb->flags & TDB_SEQNUM)
+		tdb_inc_seqnum(tdb);
+
 	return ecode;
 }
 
@@ -285,6 +290,9 @@ enum TDB_ERROR tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 				+ rec_data_length(&rec)
 				+ rec_extra_padding(&rec));
 
+	if (tdb->flags & TDB_SEQNUM)
+		tdb_inc_seqnum(tdb);
+
 unlock:
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
 	return ecode;
@@ -313,6 +321,9 @@ void tdb_add_flag(struct tdb_context *tdb, unsigned flag)
 	case TDB_NOSYNC:
 		tdb->flags |= TDB_NOSYNC;
 		break;
+	case TDB_SEQNUM:
+		tdb->flags |= TDB_SEQNUM;
+		break;
 	default:
 		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
 			   "tdb_add_flag: Unknown flag %u", flag);
@@ -336,6 +347,9 @@ void tdb_remove_flag(struct tdb_context *tdb, unsigned flag)
 		break;
 	case TDB_NOSYNC:
 		tdb->flags &= ~TDB_NOSYNC;
+		break;
+	case TDB_SEQNUM:
+		tdb->flags &= ~TDB_SEQNUM;
 		break;
 	default:
 		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
@@ -432,6 +446,12 @@ const char *tdb_name(const struct tdb_context *tdb)
 {
 	return tdb->name;
 }
+
+int64_t tdb_get_seqnum(struct tdb_context *tdb)
+{
+	return tdb_read_off(tdb, offsetof(struct tdb_header, seqnum));
+}
+	
 
 int tdb_fd(const struct tdb_context *tdb)
 {
