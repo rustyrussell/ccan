@@ -237,6 +237,13 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		attr = attr->base.next;
 	}
 
+	if (tdb_flags & ~(TDB_INTERNAL | TDB_NOLOCK | TDB_NOMMAP | TDB_CONVERT
+			  | TDB_NOSYNC)) {
+		ecode = tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
+				   "tdb_open: unknown flags %u", tdb_flags);
+		goto fail;
+	}
+
 	if ((open_flags & O_ACCMODE) == O_WRONLY) {
 		ecode = tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
 				   "tdb_open: can't open tdb %s write-only",

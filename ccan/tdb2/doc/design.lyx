@@ -785,9 +785,15 @@ Status
 \end_layout
 
 \begin_layout Standard
+
+\change_deleted 0 1300360559
 Incomplete.
  TDB_VOLATILE still defined, but implementation should fail on unknown flags
  to be future-proof.
+\change_inserted 0 1300360588
+Complete.
+ Unknown flags cause tdb_open() to fail as well, so they can be detected
+ at runtime.
 \end_layout
 
 \begin_layout Subsection
