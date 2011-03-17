@@ -69,7 +69,8 @@ int main(int argc, char *argv[])
 				moves++;
 			oldoff = newoff;
 		}
-		ok1(tdb->allrecord_lock.count == 0 && tdb->num_lockrecs == 0);
+		ok1(!tdb->file || (tdb->file->allrecord_lock.count == 0
+				   && tdb->file->num_lockrecs == 0));
 		/* We should increase by 50% each time... */
 		ok(moves <= ilog64(j / SIZE_STEP)*2, "Moved %u times", moves);
 		tdb_close(tdb);
@@ -100,7 +101,8 @@ int main(int argc, char *argv[])
 				moves++;
 			oldoff = newoff;
 		}
-		ok1(tdb->allrecord_lock.count == 0 && tdb->num_lockrecs == 0);
+		ok1(!tdb->file || (tdb->file->allrecord_lock.count == 0
+				   && tdb->file->num_lockrecs == 0));
 		/* We should increase by 50% each time... */
 		ok(moves <= ilog64(j / SIZE_STEP)*2, "Moved %u times", moves);
 		tdb_close(tdb);
@@ -122,7 +124,8 @@ int main(int argc, char *argv[])
 		ok1(data.dsize == MAX_SIZE);
 		ok1(memcmp(data.dptr, buffer, data.dsize) == 0);
 		free(data.dptr);
-		ok1(tdb->allrecord_lock.count == 0 && tdb->num_lockrecs == 0);
+		ok1(!tdb->file || (tdb->file->allrecord_lock.count == 0
+				   && tdb->file->num_lockrecs == 0));
 		tdb_close(tdb);
 	}
 

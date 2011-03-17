@@ -430,7 +430,7 @@ static enum TDB_ERROR transaction_sync(struct tdb_context *tdb,
 		return TDB_SUCCESS;
 	}
 
-	if (fsync(tdb->fd) != 0) {
+	if (fsync(tdb->file->fd) != 0) {
 		return tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 				  "tdb_transaction: fsync failed: %s",
 				  strerror(errno));
@@ -495,8 +495,8 @@ static void _tdb_transaction_cancel(struct tdb_context *tdb)
 		}
 	}
 
-	if (tdb->allrecord_lock.count)
-		tdb_allrecord_unlock(tdb, tdb->allrecord_lock.ltype);
+	if (tdb->file->allrecord_lock.count)
+		tdb_allrecord_unlock(tdb, tdb->file->allrecord_lock.ltype);
 
 	/* restore the normal io methods */
 	tdb->methods = tdb->transaction->io_methods;

@@ -60,9 +60,9 @@ int main(int argc, char *argv[])
 		ok1(h.hlock_start == 0);
 		ok1(h.hlock_range == 
 		    1ULL << (64-(TDB_TOPLEVEL_HASH_BITS-TDB_HASH_GROUP_BITS)));
-		ok1((tdb->flags & TDB_NOLOCK) || tdb->num_lockrecs == 1);
+		ok1((tdb->flags & TDB_NOLOCK) || tdb->file->num_lockrecs == 1);
 		ok1((tdb->flags & TDB_NOLOCK)
-		    || tdb->lockrecs[0].off == TDB_HASH_LOCK_START);
+		    || tdb->file->lockrecs[0].off == TDB_HASH_LOCK_START);
 		/* FIXME: Check lock length */
 
 		/* Allocate a new record. */
@@ -101,9 +101,9 @@ int main(int argc, char *argv[])
 		ok1(h.hlock_start == 0);
 		ok1(h.hlock_range == 
 		    1ULL << (64-(TDB_TOPLEVEL_HASH_BITS-TDB_HASH_GROUP_BITS)));
-		ok1((tdb->flags & TDB_NOLOCK) || tdb->num_lockrecs == 1);
+		ok1((tdb->flags & TDB_NOLOCK) || tdb->file->num_lockrecs == 1);
 		ok1((tdb->flags & TDB_NOLOCK)
-		    || tdb->lockrecs[0].off == TDB_HASH_LOCK_START);
+		    || tdb->file->lockrecs[0].off == TDB_HASH_LOCK_START);
 		/* FIXME: Check lock length */
 
 		ok1(tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range,
@@ -127,9 +127,9 @@ int main(int argc, char *argv[])
 		ok1(h.hlock_start == 0);
 		ok1(h.hlock_range == 
 		    1ULL << (64-(TDB_TOPLEVEL_HASH_BITS-TDB_HASH_GROUP_BITS)));
-		ok1((tdb->flags & TDB_NOLOCK) || tdb->num_lockrecs == 1);
+		ok1((tdb->flags & TDB_NOLOCK) || tdb->file->num_lockrecs == 1);
 		ok1((tdb->flags & TDB_NOLOCK)
-		    || tdb->lockrecs[0].off == TDB_HASH_LOCK_START);
+		    || tdb->file->lockrecs[0].off == TDB_HASH_LOCK_START);
 		/* FIXME: Check lock length */
 
 		/* Make it expand 0'th bucket. */
@@ -165,9 +165,9 @@ int main(int argc, char *argv[])
 		ok1(h.hlock_start == 0);
 		ok1(h.hlock_range == 
 		    1ULL << (64-(TDB_TOPLEVEL_HASH_BITS-TDB_HASH_GROUP_BITS)));
-		ok1((tdb->flags & TDB_NOLOCK) || tdb->num_lockrecs == 1);
+		ok1((tdb->flags & TDB_NOLOCK) || tdb->file->num_lockrecs == 1);
 		ok1((tdb->flags & TDB_NOLOCK)
-		    || tdb->lockrecs[0].off == TDB_HASH_LOCK_START);
+		    || tdb->file->lockrecs[0].off == TDB_HASH_LOCK_START);
 		/* FIXME: Check lock length */
 
 		/* Simple delete should work. */
@@ -196,9 +196,9 @@ int main(int argc, char *argv[])
 		ok1(h.hlock_start == 0);
 		ok1(h.hlock_range == 
 		    1ULL << (64-(TDB_TOPLEVEL_HASH_BITS-TDB_HASH_GROUP_BITS)));
-		ok1((tdb->flags & TDB_NOLOCK) || tdb->num_lockrecs == 1);
+		ok1((tdb->flags & TDB_NOLOCK) || tdb->file->num_lockrecs == 1);
 		ok1((tdb->flags & TDB_NOLOCK)
-		    || tdb->lockrecs[0].off == TDB_HASH_LOCK_START);
+		    || tdb->file->lockrecs[0].off == TDB_HASH_LOCK_START);
 		/* FIXME: Check lock length */
 
 		ok1(expand_group(tdb, &h) == 0);

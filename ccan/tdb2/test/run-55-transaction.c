@@ -43,7 +43,8 @@ int main(int argc, char *argv[])
 
 		/* Cancelling a transaction means no store */
 		tdb_transaction_cancel(tdb);
-		ok1(tdb->allrecord_lock.count == 0 && tdb->num_lockrecs == 0);
+		ok1(tdb->file->allrecord_lock.count == 0
+		    && tdb->file->num_lockrecs == 0);
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 		ok1(tdb_fetch(tdb, key, &data) == TDB_ERR_NOEXIST);
 
@@ -57,7 +58,8 @@ int main(int argc, char *argv[])
 		ok1(memcmp(data.dptr, buffer, data.dsize) == 0);
 		free(data.dptr);
 		ok1(tdb_transaction_commit(tdb) == 0);
-		ok1(tdb->allrecord_lock.count == 0 && tdb->num_lockrecs == 0);
+		ok1(tdb->file->allrecord_lock.count == 0
+		    && tdb->file->num_lockrecs == 0);
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 		ok1(tdb_fetch(tdb, key, &data) == TDB_SUCCESS);
 		ok1(data.dsize == 1000);

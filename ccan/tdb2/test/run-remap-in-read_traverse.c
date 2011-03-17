@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
 		       O_RDWR|O_CREAT|O_TRUNC, 0600, &tap_log_attr);
 
 	ok1(external_agent_operation(agent, OPEN, filename) == SUCCESS);
-	i = add_records_to_grow(agent, tdb->fd, tdb->map_size);
+	i = add_records_to_grow(agent, tdb->file->fd, tdb->map_size);
 
 	/* Do a traverse. */
 	ok1(tdb_traverse(tdb, NULL, NULL) == i);

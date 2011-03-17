@@ -180,7 +180,8 @@ int main(int argc, char *argv[])
 		/* Check mixed bitpattern. */
 		test_val(tdb, 0x123456789ABCDEF0ULL);
 
-		ok1(tdb->allrecord_lock.count == 0 && tdb->num_lockrecs == 0);
+		ok1(!tdb->file || (tdb->file->allrecord_lock.count == 0
+				   && tdb->file->num_lockrecs == 0));
 		tdb_close(tdb);
 
 		/* Deleting these entries in the db gave problems. */

@@ -49,7 +49,7 @@ void tdb_mmap(struct tdb_context *tdb)
 		return;
 
 	tdb->map_ptr = mmap(NULL, tdb->map_size, tdb->mmap_flags,
-			    MAP_SHARED, tdb->fd, 0);
+			    MAP_SHARED, tdb->file->fd, 0);
 
 	/*
 	 * NB. When mmap fails it returns MAP_FAILED *NOT* NULL !!!!
@@ -96,7 +96,7 @@ static enum TDB_ERROR tdb_oob(struct tdb_context *tdb, tdb_off_t len,
 		return ecode;
 	}
 
-	if (fstat(tdb->fd, &st) != 0) {
+	if (fstat(tdb->file->fd, &st) != 0) {
 		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 			   "Failed to fstat file: %s", strerror(errno));
 		tdb_unlock_expand(tdb, F_RDLCK);
@@ -245,7 +245,7 @@ static enum TDB_ERROR tdb_write(struct tdb_context *tdb, tdb_off_t off,
 		memcpy(off + (char *)tdb->map_ptr, buf, len);
 	} else {
 		ssize_t ret;
-		ret = pwrite(tdb->fd, buf, len, off);
+		ret = pwrite(tdb->file->fd, buf, len, off);
 		if (ret != len) {
 			/* This shouldn't happen: we avoid sparse files. */
 			if (ret >= 0)
@@ -274,7 +274,7 @@ static enum TDB_ERROR tdb_read(struct tdb_context *tdb, tdb_off_t off,
 	if (tdb->map_ptr) {
 		memcpy(buf, off + (char *)tdb->map_ptr, len);
 	} else {
-		ssize_t r = pread(tdb->fd, buf, len, off);
+		ssize_t r = pread(tdb->file->fd, buf, len, off);
 		if (r != len) {
 			return tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 					  "tdb_read failed with %zi at %zu "
@@ -374,7 +374,7 @@ static enum TDB_ERROR fill(struct tdb_context *tdb,
 {
 	while (len) {
 		size_t n = len > size ? size : len;
-		ssize_t ret = pwrite(tdb->fd, buf, n, off);
+		ssize_t ret = pwrite(tdb->file->fd, buf, n, off);
 		if (ret != n) {
 			if (ret >= 0)
 				errno = ENOSPC;
@@ -418,7 +418,7 @@ static enum TDB_ERROR tdb_expand_file(struct tdb_context *tdb,
 		tdb_munmap(tdb);
 
 		/* If this fails, we try to fill anyway. */
-		if (ftruncate(tdb->fd, tdb->map_size + addition))
+		if (ftruncate(tdb->file->fd, tdb->map_size + addition))
 			;
 
 		/* now fill the file with something. This ensures that the

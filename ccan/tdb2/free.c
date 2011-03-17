@@ -661,7 +661,7 @@ static enum TDB_ERROR tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 
 	/* Need to hold a hash lock to expand DB: transactions rely on it. */
 	if (!(tdb->flags & TDB_NOLOCK)
-	    && !tdb->allrecord_lock.count && !tdb_has_hash_locks(tdb)) {
+	    && !tdb->file->allrecord_lock.count && !tdb_has_hash_locks(tdb)) {
 		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
 				  "tdb_expand: must hold lock during expand");
 	}

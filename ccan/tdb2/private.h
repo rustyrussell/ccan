@@ -315,6 +315,23 @@ struct tdb_access_hdr {
 	bool convert;
 };
 
+struct tdb_file {
+	/* Single list of all TDBs, to detect multiple opens. */
+	struct tdb_file *next;
+
+	/* The file descriptor. */
+	int fd;
+
+	/* Lock information */
+	struct tdb_lock_type allrecord_lock;
+	size_t num_lockrecs;
+	struct tdb_lock_type *lockrecs;
+
+	/* Identity of this file. */
+	dev_t device;
+	ino_t inode;
+};
+
 struct tdb_context {
 	/* Filename of the database. */
 	const char *name;
@@ -324,9 +341,6 @@ struct tdb_context {
 
 	/* Are we accessing directly? (debugging check). */
 	int direct_access;
-
-	 /* Open file descriptor (undefined for TDB_INTERNAL). */
-	int fd;
 
 	/* How much space has been mapped (<= current file size) */
 	tdb_len_t map_size;
@@ -365,20 +379,13 @@ struct tdb_context {
 	/* IO methods: changes for transactions. */
 	const struct tdb_methods *methods;
 
-	/* Lock information */
-	struct tdb_lock_type allrecord_lock;
-	size_t num_lockrecs;
-	struct tdb_lock_type *lockrecs;
-
 	struct tdb_attribute_stats *stats;
 
 	/* Direct access information */
 	struct tdb_access_hdr *access;
 
-	/* Single list of all TDBs, to avoid multiple opens. */
-	struct tdb_context *next;
-	dev_t device;
-	ino_t inode;
+	/* The actual file information */
+	struct tdb_file *file;
 };
 
 struct tdb_methods {
@@ -521,8 +528,6 @@ void add_stat_(struct tdb_context *tdb, uint64_t *stat, size_t val);
 	} while (0)
 
 /* lock.c: */
-void tdb_lock_init(struct tdb_context *tdb);
-
 /* Lock/unlock a range of hashes. */
 enum TDB_ERROR tdb_lock_hashes(struct tdb_context *tdb,
 			       tdb_off_t hash_lock, tdb_len_t hash_range,
