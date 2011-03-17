@@ -25,3 +25,5 @@ Interface differences between TDB1 and TDB2.
   TDB_LOG_WARNING.
 
 - tdb2 provides tdb_deq() for comparing two struct tdb_data.
+
+- tdb2's tdb_name() returns a copy of the name even for TDB_INTERNAL dbs.

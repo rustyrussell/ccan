@@ -467,6 +467,26 @@ void tdb_add_flag(struct tdb_context *tdb, unsigned flag);
 void tdb_remove_flag(struct tdb_context *tdb, unsigned flag);
 
 /**
+ * tdb_name - get the name of a tdb
+ * @tdb: the tdb context returned from tdb_open()
+ *
+ * This returns a copy of the name string, made at tdb_open() time.  If that
+ * argument was NULL (possible for a TDB_INTERNAL db) this will return NULL.
+ *
+ * This is mostly useful for logging.
+ */
+const char *tdb_name(const struct tdb_context *tdb);
+
+/**
+ * tdb_fd - get the file descriptor of a tdb
+ * @tdb: the tdb context returned from tdb_open()
+ *
+ * This returns the file descriptor for the underlying database file, or -1
+ * for TDB_INTERNAL.
+ */
+int tdb_fd(const struct tdb_context *tdb);
+
+/**
  * enum tdb_attribute_type - descriminator for union tdb_attribute.
  */
 enum tdb_attribute_type {

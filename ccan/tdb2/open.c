@@ -276,6 +276,16 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		if (ecode != TDB_SUCCESS) {
 			goto fail;
 		}
+		if (name) {
+			tdb->name = strdup(name);
+			if (!tdb->name) {
+				ecode = tdb_logerr(tdb, TDB_ERR_OOM,
+						   TDB_LOG_ERROR,
+						   "tdb_open: failed to"
+						   " allocate name");
+				goto fail;
+			}
+		}
 		tdb_convert(tdb, &hdr.hash_seed, sizeof(hdr.hash_seed));
 		tdb->hash_seed = hdr.hash_seed;
 		tdb_ftable_init(tdb);

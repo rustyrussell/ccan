@@ -428,3 +428,12 @@ enum TDB_ERROR tdb_parse_record_(struct tdb_context *tdb,
 	return ecode;
 }
 
+const char *tdb_name(const struct tdb_context *tdb)
+{
+	return tdb->name;
+}
+
+int tdb_fd(const struct tdb_context *tdb)
+{
+	return tdb->file->fd;
+}
