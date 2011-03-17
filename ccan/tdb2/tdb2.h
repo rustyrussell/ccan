@@ -600,11 +600,6 @@ union tdb_attribute {
 	struct tdb_attribute_stats stats;
 };
 
-/**
- * tdb_null - a convenient value for errors.
- */
-extern struct tdb_data tdb_null;
-
 #ifdef  __cplusplus
 }
 #endif

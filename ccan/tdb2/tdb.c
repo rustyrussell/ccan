@@ -2,9 +2,6 @@
 #include <ccan/asprintf/asprintf.h>
 #include <stdarg.h>
 
-/* The null return. */
-struct tdb_data tdb_null = { .dptr = NULL, .dsize = 0 };
-
 static enum TDB_ERROR update_rec_hdr(struct tdb_context *tdb,
 				     tdb_off_t off,
 				     tdb_len_t keylen,
