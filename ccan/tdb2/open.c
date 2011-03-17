@@ -209,6 +209,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb->transaction = NULL;
 	tdb->stats = NULL;
 	tdb->access = NULL;
+	tdb->last_error = TDB_SUCCESS;
 	tdb->file = NULL;
 	tdb_hash_init(tdb);
 	tdb_io_init(tdb);

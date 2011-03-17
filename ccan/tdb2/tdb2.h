@@ -431,6 +431,17 @@ enum TDB_ERROR tdb_check_(struct tdb_context *tdb,
 			  void *private);
 
 /**
+ * tdb_error - get the last error (not threadsafe)
+ * @tdb: the tdb context returned from tdb_open()
+ *
+ * Returns the last error returned by a TDB function.
+ *
+ * This makes porting from TDB1 easier, but note that the last error is not
+ * reliable in threaded programs.
+ */
+enum TDB_ERROR tdb_error(struct tdb_context *tdb);
+
+/**
  * enum tdb_summary_flags - flags for tdb_summary.
  */
 enum tdb_summary_flags {

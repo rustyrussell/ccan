@@ -765,13 +765,13 @@ enum TDB_ERROR tdb_check_(struct tdb_context *tdb,
 
 	ecode = tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false);
 	if (ecode != TDB_SUCCESS) {
-		return ecode;
+		return tdb->last_error = ecode;
 	}
 
 	ecode = tdb_lock_expand(tdb, F_RDLCK);
 	if (ecode != TDB_SUCCESS) {
 		tdb_allrecord_unlock(tdb, F_RDLCK);
-		return ecode;
+		return tdb->last_error = ecode;
 	}
 
 	ecode = check_header(tdb, &recovery, &features);
@@ -812,5 +812,5 @@ out:
 	tdb_unlock_expand(tdb, F_RDLCK);
 	free(fr);
 	free(used);
-	return ecode;
+	return tdb->last_error = ecode;
 }

@@ -857,7 +857,8 @@ static enum TDB_ERROR chainlock(struct tdb_context *tdb, const TDB_DATA *key,
    contention - it cannot guarantee how many records will be locked */
 enum TDB_ERROR tdb_chainlock(struct tdb_context *tdb, TDB_DATA key)
 {
-	return chainlock(tdb, &key, F_WRLCK, TDB_LOCK_WAIT, "tdb_chainlock");
+	return tdb->last_error = chainlock(tdb, &key, F_WRLCK, TDB_LOCK_WAIT,
+					   "tdb_chainlock");
 }
 
 enum TDB_ERROR tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key)
@@ -872,5 +873,6 @@ enum TDB_ERROR tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key)
 	lockstart = hlock_range(group, &locksize);
 
 	tdb_trace_1rec(tdb, "tdb_chainunlock", key);
-	return tdb_unlock_hashes(tdb, lockstart, locksize, F_WRLCK);
+	return tdb->last_error = tdb_unlock_hashes(tdb, lockstart, locksize,
+						   F_WRLCK);
 }

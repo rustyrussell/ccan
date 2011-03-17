@@ -390,6 +390,9 @@ struct tdb_context {
 	/* Direct access information */
 	struct tdb_access_hdr *access;
 
+	/* Last error we returned. */
+	enum TDB_ERROR last_error;
+
 	/* The actual file information */
 	struct tdb_file *file;
 };

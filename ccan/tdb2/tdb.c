@@ -98,7 +98,7 @@ enum TDB_ERROR tdb_store(struct tdb_context *tdb,
 
 	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL);
 	if (TDB_OFF_IS_ERR(off)) {
-		return off;
+		return tdb->last_error = off;
 	}
 
 	/* Now we have lock on this hash bucket. */
@@ -128,7 +128,7 @@ enum TDB_ERROR tdb_store(struct tdb_context *tdb,
 				}
 				tdb_unlock_hashes(tdb, h.hlock_start,
 						  h.hlock_range, F_WRLCK);
-				return TDB_SUCCESS;
+				return tdb->last_error = TDB_SUCCESS;
 			}
 		} else {
 			if (flag == TDB_MODIFY) {
@@ -145,7 +145,7 @@ enum TDB_ERROR tdb_store(struct tdb_context *tdb,
 	ecode = replace_data(tdb, &h, key, dbuf, off, old_room, off);
 out:
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
-	return ecode;
+	return tdb->last_error = ecode;
 }
 
 enum TDB_ERROR tdb_append(struct tdb_context *tdb,
@@ -161,7 +161,7 @@ enum TDB_ERROR tdb_append(struct tdb_context *tdb,
 
 	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL);
 	if (TDB_OFF_IS_ERR(off)) {
-		return off;
+		return tdb->last_error = off;
 	}
 
 	if (off) {
@@ -213,7 +213,7 @@ out_free_newdata:
 	free(newdata);
 out:
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
-	return ecode;
+	return tdb->last_error = ecode;
 }
 
 enum TDB_ERROR tdb_fetch(struct tdb_context *tdb, struct tdb_data key,
@@ -226,7 +226,7 @@ enum TDB_ERROR tdb_fetch(struct tdb_context *tdb, struct tdb_data key,
 
 	off = find_and_lock(tdb, key, F_RDLCK, &h, &rec, NULL);
 	if (TDB_OFF_IS_ERR(off)) {
-		return off;
+		return tdb->last_error = off;
 	}
 
 	if (!off) {
@@ -242,7 +242,7 @@ enum TDB_ERROR tdb_fetch(struct tdb_context *tdb, struct tdb_data key,
 	}
 
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_RDLCK);
-	return ecode;
+	return tdb->last_error = ecode;
 }
 
 bool tdb_exists(struct tdb_context *tdb, TDB_DATA key)
@@ -253,10 +253,12 @@ bool tdb_exists(struct tdb_context *tdb, TDB_DATA key)
 
 	off = find_and_lock(tdb, key, F_RDLCK, &h, &rec, NULL);
 	if (TDB_OFF_IS_ERR(off)) {
+		tdb->last_error = off;
 		return false;
 	}
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_RDLCK);
 
+	tdb->last_error = TDB_SUCCESS;
 	return off ? true : false;
 }
 
@@ -269,7 +271,7 @@ enum TDB_ERROR tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 
 	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL);
 	if (TDB_OFF_IS_ERR(off)) {
-		return off;
+		return tdb->last_error = off;
 	}
 
 	if (!off) {
@@ -295,7 +297,7 @@ enum TDB_ERROR tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 
 unlock:
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_WRLCK);
-	return ecode;
+	return tdb->last_error = ecode;
 }
 
 unsigned int tdb_get_flags(struct tdb_context *tdb)
@@ -306,8 +308,9 @@ unsigned int tdb_get_flags(struct tdb_context *tdb)
 void tdb_add_flag(struct tdb_context *tdb, unsigned flag)
 {
 	if (tdb->flags & TDB_INTERNAL) {
-		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
-			   "tdb_add_flag: internal db");
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_EINVAL,
+					     TDB_LOG_USE_ERROR,
+					     "tdb_add_flag: internal db");
 		return;
 	}
 	switch (flag) {
@@ -325,16 +328,19 @@ void tdb_add_flag(struct tdb_context *tdb, unsigned flag)
 		tdb->flags |= TDB_SEQNUM;
 		break;
 	default:
-		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
-			   "tdb_add_flag: Unknown flag %u", flag);
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_EINVAL,
+					     TDB_LOG_USE_ERROR,
+					     "tdb_add_flag: Unknown flag %u",
+					     flag);
 	}
 }
 
 void tdb_remove_flag(struct tdb_context *tdb, unsigned flag)
 {
 	if (tdb->flags & TDB_INTERNAL) {
-		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
-			   "tdb_remove_flag: internal db");
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_EINVAL,
+					     TDB_LOG_USE_ERROR,
+					     "tdb_remove_flag: internal db");
 		return;
 	}
 	switch (flag) {
@@ -352,8 +358,10 @@ void tdb_remove_flag(struct tdb_context *tdb, unsigned flag)
 		tdb->flags &= ~TDB_SEQNUM;
 		break;
 	default:
-		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
-			   "tdb_remove_flag: Unknown flag %u", flag);
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_EINVAL,
+					     TDB_LOG_USE_ERROR,
+					     "tdb_remove_flag: Unknown flag %u",
+					     flag);
 	}
 }
 
@@ -419,7 +427,7 @@ enum TDB_ERROR tdb_parse_record_(struct tdb_context *tdb,
 
 	off = find_and_lock(tdb, key, F_RDLCK, &h, &rec, NULL);
 	if (TDB_OFF_IS_ERR(off)) {
-		return off;
+		return tdb->last_error = off;
 	}
 
 	if (!off) {
@@ -439,7 +447,7 @@ enum TDB_ERROR tdb_parse_record_(struct tdb_context *tdb,
 	}
 
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_RDLCK);
-	return ecode;
+	return tdb->last_error = ecode;
 }
 
 const char *tdb_name(const struct tdb_context *tdb)
@@ -449,7 +457,12 @@ const char *tdb_name(const struct tdb_context *tdb)
 
 int64_t tdb_get_seqnum(struct tdb_context *tdb)
 {
-	return tdb_read_off(tdb, offsetof(struct tdb_header, seqnum));
+	tdb_off_t off = tdb_read_off(tdb, offsetof(struct tdb_header, seqnum));
+	if (TDB_OFF_IS_ERR(off))
+		tdb->last_error = off;
+	else
+		tdb->last_error = TDB_SUCCESS;
+	return off;
 }
 	
 

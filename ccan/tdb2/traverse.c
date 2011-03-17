@@ -37,14 +37,16 @@ int64_t tdb_traverse_(struct tdb_context *tdb,
 		count++;
 		if (fn && fn(tdb, k, d, p)) {
 			free(k.dptr);
+			tdb->last_error = TDB_SUCCESS;
 			return count;
 		}
 		free(k.dptr);
 	}
 
 	if (ecode != TDB_ERR_NOEXIST) {
-		return ecode;
+		return tdb->last_error = ecode;
 	}
+	tdb->last_error = TDB_SUCCESS;
 	return count;
 }
 	
@@ -52,7 +54,7 @@ enum TDB_ERROR tdb_firstkey(struct tdb_context *tdb, struct tdb_data *key)
 {
 	struct traverse_info tinfo;
 
-	return first_in_hash(tdb, &tinfo, key, NULL);
+	return tdb->last_error = first_in_hash(tdb, &tinfo, key, NULL);
 }
 
 /* We lock twice, not very efficient.  We could keep last key & tinfo cached. */
@@ -65,11 +67,11 @@ enum TDB_ERROR tdb_nextkey(struct tdb_context *tdb, struct tdb_data *key)
 	tinfo.prev = find_and_lock(tdb, *key, F_RDLCK, &h, &rec, &tinfo);
 	free(key->dptr);
 	if (TDB_OFF_IS_ERR(tinfo.prev)) {
-		return tinfo.prev;
+		return tdb->last_error = tinfo.prev;
 	}
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_RDLCK);
 
-	return next_in_hash(tdb, &tinfo, key, NULL);
+	return tdb->last_error = next_in_hash(tdb, &tinfo, key, NULL);
 }
 
 static int wipe_one(struct tdb_context *tdb,
@@ -86,12 +88,12 @@ enum TDB_ERROR tdb_wipe_all(struct tdb_context *tdb)
 
 	ecode = tdb_allrecord_lock(tdb, F_WRLCK, TDB_LOCK_WAIT, false);
 	if (ecode != TDB_SUCCESS)
-		return ecode;
+		return tdb->last_error = ecode;
 
 	/* FIXME: Be smarter. */
 	count = tdb_traverse(tdb, wipe_one, &ecode);
 	if (count < 0)
 		ecode = count;
 	tdb_allrecord_unlock(tdb, F_WRLCK);
-	return ecode;
+	return tdb->last_error = ecode;
 }
