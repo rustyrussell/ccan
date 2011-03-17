@@ -320,6 +320,9 @@ struct tdb_file {
 	/* Single list of all TDBs, to detect multiple opens. */
 	struct tdb_file *next;
 
+	/* How many are sharing us? */
+	unsigned int refcnt;
+
 	/* Mmap (if any), or malloc (for TDB_INTERNAL). */
 	void *map_ptr;
 

@@ -30,14 +30,11 @@
 #include <ccan/build_assert/build_assert.h>
 
 /* If we were threaded, we could wait for unlock, but we're not, so fail. */
-static bool owner_conflict(struct tdb_context *tdb, struct tdb_lock *lock)
+static enum TDB_ERROR owner_conflict(struct tdb_context *tdb, const char *call)
 {
-	if (lock->owner != tdb) {
-		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_USE_ERROR,
-			   "Lock already owned by another opener");
-		return true;
-	}
-	return false;
+	return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_USE_ERROR,
+			  "%s: lock owned by another tdb in this process.",
+			  call);
 }
 
 static int fcntl_lock(struct tdb_context *tdb,
@@ -226,6 +223,10 @@ enum TDB_ERROR tdb_allrecord_upgrade(struct tdb_context *tdb)
 				  " already upgraded?");
 	}
 
+	if (tdb->file->allrecord_lock.owner != tdb) {
+		return owner_conflict(tdb, "tdb_allrecord_upgrade");
+	}
+
 	while (count--) {
 		struct timeval tv;
 		if (tdb_brlock(tdb, F_WRLCK,
@@ -306,8 +307,9 @@ static enum TDB_ERROR tdb_nest_lock(struct tdb_context *tdb,
 
 	new_lck = find_nestlock(tdb, offset, NULL);
 	if (new_lck) {
-		if (owner_conflict(tdb, new_lck))
-			return -1;
+		if (new_lck->owner != tdb) {
+			return owner_conflict(tdb, "tdb_nest_lock");
+		}
 
 		if (new_lck->ltype == F_RDLCK && ltype == F_WRLCK) {
 			return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
@@ -470,14 +472,17 @@ enum TDB_ERROR tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
 	enum TDB_ERROR ecode;
 	tdb_bool_err berr;
 
-	if (tdb->file->allrecord_lock.count
-	    && (ltype == F_RDLCK
-		|| tdb->file->allrecord_lock.ltype == F_WRLCK)) {
-		tdb->file->allrecord_lock.count++;
-		return TDB_SUCCESS;
-	}
-
 	if (tdb->file->allrecord_lock.count) {
+		if (tdb->file->allrecord_lock.owner != tdb) {
+			return owner_conflict(tdb, "tdb_allrecord_lock");
+		}
+
+		if (ltype == F_RDLCK
+		    || tdb->file->allrecord_lock.ltype == F_WRLCK) {
+			tdb->file->allrecord_lock.count++;
+			return TDB_SUCCESS;
+		}
+
 		/* a global lock of a different type exists */
 		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_USE_ERROR,
 				  "tdb_allrecord_lock: already have %s lock",
@@ -658,12 +663,14 @@ enum TDB_ERROR tdb_lock_hashes(struct tdb_context *tdb,
 		+ (hash_lock >> (64 - TDB_HASH_LOCK_RANGE_BITS));
 
 	/* a allrecord lock allows us to avoid per chain locks */
-	if (tdb->file->allrecord_lock.count &&
-	    (ltype == tdb->file->allrecord_lock.ltype || ltype == F_RDLCK)) {
-		return TDB_SUCCESS;
-	}
-
 	if (tdb->file->allrecord_lock.count) {
+		if (tdb->file->allrecord_lock.owner != tdb)
+			return owner_conflict(tdb, "tdb_lock_hashes");
+		if (ltype == tdb->file->allrecord_lock.ltype
+		    || ltype == F_RDLCK) {
+			return TDB_SUCCESS;
+		}
+
 		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_USE_ERROR,
 				  "tdb_lock_hashes:"
 				  " already have %s allrecordlock",

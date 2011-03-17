@@ -1,4 +1,5 @@
 #include "private.h"
+#include <assert.h>
 
 /* all lock info, to detect double-opens (fcntl file don't nest!) */
 static struct tdb_file *files = NULL;
@@ -9,6 +10,7 @@ static struct tdb_file *find_file(dev_t device, ino_t ino)
 
 	for (i = files; i; i = i->next) {
 		if (i->device == device && i->inode == ino) {
+			i->refcnt++;
 			break;
 		}
 	}
@@ -174,6 +176,7 @@ static enum TDB_ERROR tdb_new_file(struct tdb_context *tdb)
 	tdb->file->num_lockrecs = 0;
 	tdb->file->lockrecs = NULL;
 	tdb->file->allrecord_lock.count = 0;
+	tdb->file->refcnt = 1;
 	return TDB_SUCCESS;
 }
 
@@ -291,7 +294,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 			tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 				   "tdb_open: could not open file %s: %s",
 				   name, strerror(errno));
-			goto fail;
+			goto fail_errno;
 		}
 
 		/* on exec, don't inherit the fd */
@@ -303,7 +306,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 			tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 				   "tdb_open: could not stat open %s: %s",
 				   name, strerror(errno));
-			goto fail;
+			goto fail_errno;
 		}
 
 		ecode = tdb_new_file(tdb);
@@ -316,13 +319,6 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		tdb->file->inode = st.st_ino;
 		tdb->file->map_ptr = NULL;
 		tdb->file->map_size = sizeof(struct tdb_header);
-	} else {
-		/* FIXME */
-		ecode = tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
-				   "tdb_open: %s (%d,%d) is already open in"
-				   " this process",
-				   name, (int)st.st_dev, (int)st.st_ino);
- 		goto fail;
  	}
 
 	/* ensure there is only one process initialising at once */
@@ -332,7 +328,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	}
 
 	/* If they used O_TRUNC, read will return 0. */
-	rlen = read(tdb->file->fd, &hdr, sizeof(hdr));
+	rlen = pread(tdb->file->fd, &hdr, sizeof(hdr), 0);
 	if (rlen == 0 && (open_flags & O_CREAT)) {
 		ecode = tdb_new_database(tdb, seed, &hdr);
 		if (ecode != TDB_SUCCESS) {
@@ -416,51 +412,54 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		goto fail;
 	}
 
-	/* Add to linked list. */
-	files = tdb->file;
+	/* Add to linked list if we're new. */
+	if (tdb->file->refcnt == 1)
+		files = tdb->file;
 	return tdb;
 
  fail:
 	/* Map ecode to some logical errno. */
-	if (!saved_errno) {
-		switch (ecode) {
-		case TDB_ERR_CORRUPT:
-		case TDB_ERR_IO:
-			saved_errno = EIO;
-			break;
-		case TDB_ERR_LOCK:
-			saved_errno = EWOULDBLOCK;
-			break;
-		case TDB_ERR_OOM:
-			saved_errno = ENOMEM;
-			break;
-		case TDB_ERR_EINVAL:
-			saved_errno = EINVAL;
-			break;
-		default:
-			saved_errno = EINVAL;
-			break;
-		}
+	switch (ecode) {
+	case TDB_ERR_CORRUPT:
+	case TDB_ERR_IO:
+		saved_errno = EIO;
+		break;
+	case TDB_ERR_LOCK:
+		saved_errno = EWOULDBLOCK;
+		break;
+	case TDB_ERR_OOM:
+		saved_errno = ENOMEM;
+		break;
+	case TDB_ERR_EINVAL:
+		saved_errno = EINVAL;
+		break;
+	default:
+		saved_errno = EINVAL;
+		break;
 	}
 
+fail_errno:
 #ifdef TDB_TRACE
 	close(tdb->tracefd);
 #endif
 	free((char *)tdb->name);
 	if (tdb->file) {
 		tdb_unlock_all(tdb);
-		if (tdb->file->map_ptr) {
-			if (tdb->flags & TDB_INTERNAL) {
-				free(tdb->file->map_ptr);
-			} else
-				tdb_munmap(tdb->file);
+		if (--tdb->file->refcnt == 0) {
+			assert(tdb->file->num_lockrecs == 0);
+			if (tdb->file->map_ptr) {
+				if (tdb->flags & TDB_INTERNAL) {
+					free(tdb->file->map_ptr);
+				} else
+					tdb_munmap(tdb->file);
+			}
+			if (close(tdb->file->fd) != 0)
+				tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+					   "tdb_open: failed to close tdb fd"
+					   " on error: %s", strerror(errno));
+			free(tdb->file->lockrecs);
+			free(tdb->file);
 		}
-		if (close(tdb->file->fd) != 0)
-			tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
-				   "tdb_open: failed to close tdb fd"
-				   " on error: %s", strerror(errno));
-		free(tdb->file->lockrecs);
-		free(tdb->file);
 	}
 
 	free(tdb);
@@ -487,17 +486,21 @@ int tdb_close(struct tdb_context *tdb)
 	free((char *)tdb->name);
 	if (tdb->file) {
 		struct tdb_file **i;
-		ret = close(tdb->file->fd);
 
-		/* Remove from files list */
-		for (i = &files; *i; i = &(*i)->next) {
-			if (*i == tdb->file) {
-				*i = tdb->file->next;
-				break;
+		tdb_unlock_all(tdb);
+		if (--tdb->file->refcnt == 0) {
+			ret = close(tdb->file->fd);
+
+			/* Remove from files list */
+			for (i = &files; *i; i = &(*i)->next) {
+				if (*i == tdb->file) {
+					*i = tdb->file->next;
+					break;
+				}
 			}
+			free(tdb->file->lockrecs);
+			free(tdb->file);
 		}
-		free(tdb->file->lockrecs);
-		free(tdb->file);
 	}
 
 #ifdef TDB_TRACE
