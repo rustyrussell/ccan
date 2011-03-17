@@ -46,12 +46,9 @@ static int disable_mmap;
 enum commands {
 	CMD_CREATE_TDB,
 	CMD_OPEN_TDB,
-	CMD_OPENJH_TDB,
-#if 0
 	CMD_TRANSACTION_START,
 	CMD_TRANSACTION_COMMIT,
 	CMD_TRANSACTION_CANCEL,
-#endif
 	CMD_ERASE,
 	CMD_DUMP,
 	CMD_INSERT,
@@ -84,7 +81,6 @@ typedef struct {
 COMMAND_TABLE cmd_table[] = {
 	{"create",	CMD_CREATE_TDB},
 	{"open",	CMD_OPEN_TDB},
-	{"openjh",	CMD_OPENJH_TDB},
 #if 0
 	{"transaction_start",	CMD_TRANSACTION_START},
 	{"transaction_commit",	CMD_TRANSACTION_COMMIT},
@@ -131,13 +127,10 @@ static double _end_timer(void)
 	       (tp2.tv_usec - tp1.tv_usec)*1.0e-6);
 }
 
-static void tdb_log(struct tdb_context *tdb, enum tdb_debug_level level, void *priv, const char *format, ...)
+static void tdb_log(struct tdb_context *tdb, enum tdb_log_level level,
+		    void *priv, const char *message)
 {
-	va_list ap;
-    
-	va_start(ap, format);
-	vfprintf(stderr, format, ap);
-	va_end(ap);
+	fputs(message, stderr);
 }
 
 /* a tdb tool for manipulating a tdb database */
@@ -226,9 +219,12 @@ static void help(void)
 "\n");
 }
 
-static void terror(const char *why)
+static void terror(enum TDB_ERROR err, const char *why)
 {
-	printf("%s\n", why);
+	if (err != TDB_SUCCESS)
+		printf("%s:%s\n", tdb_errorstr(err), why);
+	else
+		printf("%s\n", why);
 }
 
 static void create_tdb(const char *tdbname)
@@ -252,20 +248,16 @@ static uint64_t jenkins_hash(const void *key, size_t len, uint64_t seed,
 	return hash_any(key, len, seed);
 }
 
-static void open_tdb(const char *tdbname, tdb_hashfn_t hashfn)
+static void open_tdb(const char *tdbname)
 {
-	union tdb_attribute log_attr, hash_attr;
+	union tdb_attribute log_attr;
 	log_attr.base.attr = TDB_ATTRIBUTE_LOG;
 	log_attr.base.next = NULL;
 	log_attr.log.log_fn = tdb_log;
 
-	hash_attr.base.attr = TDB_ATTRIBUTE_HASH;
-	hash_attr.base.next = &log_attr;
-	hash_attr.hash.hash_fn = hashfn;
-
 	if (tdb) tdb_close(tdb);
 	tdb = tdb_open(tdbname, disable_mmap?TDB_NOMMAP:0, O_RDWR, 0600,
-		       hashfn ? &hash_attr : &log_attr);
+		       &log_attr);
 	if (!tdb) {
 		printf("Could not open %s: %s\n", tdbname, strerror(errno));
 	}
@@ -274,9 +266,10 @@ static void open_tdb(const char *tdbname, tdb_hashfn_t hashfn)
 static void insert_tdb(char *keyname, size_t keylen, char* data, size_t datalen)
 {
 	TDB_DATA key, dbuf;
+	enum TDB_ERROR ecode;
 
 	if ((keyname == NULL) || (keylen == 0)) {
-		terror("need key");
+		terror(TDB_SUCCESS, "need key");
 		return;
 	}
 
@@ -285,22 +278,24 @@ static void insert_tdb(char *keyname, size_t keylen, char* data, size_t datalen)
 	dbuf.dptr = (unsigned char *)data;
 	dbuf.dsize = datalen;
 
-	if (tdb_store(tdb, key, dbuf, TDB_INSERT) == -1) {
-		terror("insert failed");
+	ecode = tdb_store(tdb, key, dbuf, TDB_INSERT);
+	if (ecode) {
+		terror(ecode, "insert failed");
 	}
 }
 
 static void store_tdb(char *keyname, size_t keylen, char* data, size_t datalen)
 {
 	TDB_DATA key, dbuf;
+	enum TDB_ERROR ecode;
 
 	if ((keyname == NULL) || (keylen == 0)) {
-		terror("need key");
+		terror(TDB_SUCCESS, "need key");
 		return;
 	}
 
 	if ((data == NULL) || (datalen == 0)) {
-		terror("need data");
+		terror(TDB_SUCCESS, "need data");
 		return;
 	}
 
@@ -312,50 +307,52 @@ static void store_tdb(char *keyname, size_t keylen, char* data, size_t datalen)
 	printf("Storing key:\n");
 	print_rec(tdb, key, dbuf, NULL);
 
-	if (tdb_store(tdb, key, dbuf, TDB_REPLACE) == -1) {
-		terror("store failed");
+	ecode = tdb_store(tdb, key, dbuf, TDB_REPLACE);
+	if (ecode) {
+		terror(ecode, "store failed");
 	}
 }
 
 static void show_tdb(char *keyname, size_t keylen)
 {
 	TDB_DATA key, dbuf;
+	enum TDB_ERROR ecode;
 
 	if ((keyname == NULL) || (keylen == 0)) {
-		terror("need key");
+		terror(TDB_SUCCESS, "need key");
 		return;
 	}
 
 	key.dptr = (unsigned char *)keyname;
 	key.dsize = keylen;
 
-	dbuf = tdb_fetch(tdb, key);
-	if (!dbuf.dptr) {
-	    terror("fetch failed");
-	    return;
+	ecode = tdb_fetch(tdb, key, &dbuf);
+	if (ecode) {
+		terror(ecode, "fetch failed");
+		return;
 	}
 	
 	print_rec(tdb, key, dbuf, NULL);
 	
 	free( dbuf.dptr );
-	
-	return;
 }
 
 static void delete_tdb(char *keyname, size_t keylen)
 {
 	TDB_DATA key;
+	enum TDB_ERROR ecode;
 
 	if ((keyname == NULL) || (keylen == 0)) {
-		terror("need key");
+		terror(TDB_SUCCESS, "need key");
 		return;
 	}
 
 	key.dptr = (unsigned char *)keyname;
 	key.dsize = keylen;
 
-	if (tdb_delete(tdb, key) != 0) {
-		terror("delete failed");
+	ecode = tdb_delete(tdb, key);
+	if (ecode) {
+		terror(ecode, "delete failed");
 	}
 }
 
@@ -363,23 +360,24 @@ static void move_rec(char *keyname, size_t keylen, char* tdbname)
 {
 	TDB_DATA key, dbuf;
 	struct tdb_context *dst_tdb;
+	enum TDB_ERROR ecode;
 
 	if ((keyname == NULL) || (keylen == 0)) {
-		terror("need key");
+		terror(TDB_SUCCESS, "need key");
 		return;
 	}
 
 	if ( !tdbname ) {
-		terror("need destination tdb name");
+		terror(TDB_SUCCESS, "need destination tdb name");
 		return;
 	}
 
 	key.dptr = (unsigned char *)keyname;
 	key.dsize = keylen;
 
-	dbuf = tdb_fetch(tdb, key);
-	if (!dbuf.dptr) {
-		terror("fetch failed");
+	ecode = tdb_fetch(tdb, key, &dbuf);
+	if (ecode) {
+		terror(ecode, "fetch failed");
 		return;
 	}
 	
@@ -387,19 +385,17 @@ static void move_rec(char *keyname, size_t keylen, char* tdbname)
 	
 	dst_tdb = tdb_open(tdbname, 0, O_RDWR, 0600, NULL);
 	if ( !dst_tdb ) {
-		terror("unable to open destination tdb");
+		terror(TDB_SUCCESS, "unable to open destination tdb");
 		return;
 	}
 	
-	if ( tdb_store( dst_tdb, key, dbuf, TDB_REPLACE ) == -1 ) {
-		terror("failed to move record");
-	}
+	ecode = tdb_store( dst_tdb, key, dbuf, TDB_REPLACE);
+	if (ecode)
+		terror(ecode, "failed to move record");
 	else
 		printf("record moved\n");
 	
 	tdb_close( dst_tdb );
-	
-	return;
 }
 
 static int print_rec(struct tdb_context *the_tdb, TDB_DATA key, TDB_DATA dbuf, void *state)
@@ -437,10 +433,13 @@ static int traverse_fn(struct tdb_context *the_tdb, TDB_DATA key, TDB_DATA dbuf,
 
 static void info_tdb(void)
 {
-	char *summary = tdb_summary(tdb, TDB_SUMMARY_HISTOGRAMS);
+	enum TDB_ERROR ecode;
+	char *summary;
 
-	if (!summary) {
-		printf("Error = %s\n", tdb_errorstr(tdb));
+	ecode = tdb_summary(tdb, TDB_SUMMARY_HISTOGRAMS, &summary);
+
+	if (ecode) {
+		terror(ecode, "Getting summary");
 	} else {
 		printf("%s", summary);
 		free(summary);
@@ -480,13 +479,12 @@ static void speed_tdb(const char *tlimit)
 		key.dsize = strlen((char *)key.dptr);
 		dbuf.dptr = (unsigned char *)&r;
 		dbuf.dsize = sizeof(r);
-		tdb_fetch(tdb, key);
+		tdb_fetch(tdb, key, &dbuf);
 		t = _end_timer();
 		ops++;
 	} while (t < timelimit);
 	printf("%10.3f ops/sec\n", ops/t);
 
-#if 0 /* FIXME */
 	ops = 0;
 	printf("Testing transaction speed for %u seconds\n", timelimit);
 	_start_timer();
@@ -504,7 +502,6 @@ static void speed_tdb(const char *tlimit)
 		ops++;
 	} while (t < timelimit);
 	printf("%10.3f ops/sec\n", ops/t);
-#endif
 
 	ops = 0;
 	printf("Testing traverse speed for %u seconds\n", timelimit);
@@ -548,10 +545,11 @@ static int do_delete_fn(struct tdb_context *the_tdb, TDB_DATA key, TDB_DATA dbuf
 static void first_record(struct tdb_context *the_tdb, TDB_DATA *pkey)
 {
 	TDB_DATA dbuf;
-	*pkey = tdb_firstkey(the_tdb);
-	
-	dbuf = tdb_fetch(the_tdb, *pkey);
-	if (!dbuf.dptr) terror("fetch failed");
+	enum TDB_ERROR ecode;
+	ecode = tdb_firstkey(the_tdb, pkey);
+	if (!ecode)
+		ecode = tdb_fetch(the_tdb, *pkey, &dbuf);
+	if (ecode) terror(ecode, "fetch failed");
 	else {
 		print_rec(the_tdb, *pkey, dbuf, NULL);
 	}
@@ -560,11 +558,13 @@ static void first_record(struct tdb_context *the_tdb, TDB_DATA *pkey)
 static void next_record(struct tdb_context *the_tdb, TDB_DATA *pkey)
 {
 	TDB_DATA dbuf;
-	*pkey = tdb_nextkey(the_tdb, *pkey);
-	
-	dbuf = tdb_fetch(the_tdb, *pkey);
-	if (!dbuf.dptr) 
-		terror("fetch failed");
+	enum TDB_ERROR ecode;
+	ecode = tdb_nextkey(the_tdb, pkey);
+
+	if (!ecode)
+		ecode = tdb_fetch(the_tdb, *pkey, &dbuf);
+	if (ecode) 
+		terror(ecode, "fetch failed");
 	else
 		print_rec(the_tdb, *pkey, dbuf, NULL);
 }
@@ -574,7 +574,7 @@ static void check_db(struct tdb_context *the_tdb)
 	if (!the_tdb) {
 		printf("Error: No database opened!\n");
 	} else {
-		if (tdb_check(the_tdb, NULL, NULL) == -1)
+		if (tdb_check(the_tdb, NULL, NULL) != 0)
 			printf("Integrity check for the opened database failed.\n");
 		else
 			printf("Database integrity is OK.\n");
@@ -607,16 +607,12 @@ static int do_command(void)
 		return 0;
 	case CMD_OPEN_TDB:
 		bIterate = 0;
-		open_tdb(arg1, NULL);
-		return 0;
-	case CMD_OPENJH_TDB:
-		bIterate = 0;
-		open_tdb(arg1, jenkins_hash);
+		open_tdb(arg1);
 		return 0;
 	case CMD_SYSTEM:
 		/* Shell command */
 		if (system(arg1) == -1) {
-			terror("system() call failed\n");
+			terror(TDB_SUCCESS, "system() call failed\n");
 		}
 		return 0;
 	case CMD_QUIT:
@@ -625,12 +621,11 @@ static int do_command(void)
 		/* all the rest require a open database */
 		if (!tdb) {
 			bIterate = 0;
-			terror("database not open");
+			terror(TDB_SUCCESS, "database not open");
 			help();
 			return 0;
 		}
 		switch (mycmd) {
-#if 0
 		case CMD_TRANSACTION_START:
 			bIterate = 0;
 			tdb_transaction_start(tdb);
@@ -643,7 +638,6 @@ static int do_command(void)
 			bIterate = 0;
 			tdb_transaction_cancel(tdb);
 			return 0;
-#endif
 		case CMD_ERASE:
 			bIterate = 0;
 			tdb_traverse(tdb, do_delete_fn, NULL);
@@ -711,7 +705,6 @@ static int do_command(void)
 			return 0;
 		case CMD_CREATE_TDB:
 		case CMD_OPEN_TDB:
-		case CMD_OPENJH_TDB:
 		case CMD_SYSTEM:
 		case CMD_QUIT:
 			/*

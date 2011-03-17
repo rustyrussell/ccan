@@ -103,6 +103,7 @@ int main(int argc, char *argv[])
 	struct tdb_context *tdb;
 	struct timeval start, stop;
 	union tdb_attribute seed, stats;
+	enum TDB_ERROR ecode;
 
 	/* Try to keep benchmarks even. */
 	seed.base.attr = TDB_ATTRIBUTE_SEED;
@@ -151,19 +152,19 @@ int main(int argc, char *argv[])
 		argc--;
 	}
 
-	if (transaction && tdb_transaction_start(tdb))
-		errx(1, "starting transaction: %s", tdb_errorstr(tdb));
+	if (transaction && (ecode = tdb_transaction_start(tdb)))
+		errx(1, "starting transaction: %s", tdb_errorstr(ecode));
 
 	/* Add 1000 records. */
 	printf("Adding %u records: ", num); fflush(stdout);
 	gettimeofday(&start, NULL);
 	for (i = 0; i < num; i++)
-		if (tdb_store(tdb, key, data, TDB_INSERT) != 0)
+		if ((ecode = tdb_store(tdb, key, data, TDB_INSERT)) != 0)
 			errx(1, "Inserting key %u in tdb: %s",
-			     i, tdb_errorstr(tdb));
+			     i, tdb_errorstr(ecode));
 	gettimeofday(&stop, NULL);
-	if (transaction && tdb_transaction_commit(tdb))
-		errx(1, "committing transaction: %s", tdb_errorstr(tdb));
+	if (transaction && (ecode = tdb_transaction_commit(tdb)))
+		errx(1, "committing transaction: %s", tdb_errorstr(ecode));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
 
@@ -172,22 +173,23 @@ int main(int argc, char *argv[])
 	if (++stage == stopat)
 		exit(0);
 
-	if (transaction && tdb_transaction_start(tdb))
-		errx(1, "starting transaction: %s", tdb_errorstr(tdb));
+	if (transaction && (ecode = tdb_transaction_start(tdb)))
+		errx(1, "starting transaction: %s", tdb_errorstr(ecode));
 
 	/* Finding 1000 records. */
 	printf("Finding %u records: ", num); fflush(stdout);
 	gettimeofday(&start, NULL);
 	for (i = 0; i < num; i++) {
-		int *dptr;
-		dptr = (int *)tdb_fetch(tdb, key).dptr;
-		if (!dptr || *dptr != i)
+		struct tdb_data dbuf;
+		if ((ecode = tdb_fetch(tdb, key, &dbuf)) != TDB_SUCCESS
+		    || *(int *)dbuf.dptr != i) {
 			errx(1, "Fetching key %u in tdb gave %u",
-			     i, dptr ? *dptr : -1);
+			     i, ecode ? ecode : *(int *)dbuf.dptr);
+		}
 	}
 	gettimeofday(&stop, NULL);
-	if (transaction && tdb_transaction_commit(tdb))
-		errx(1, "committing transaction: %s", tdb_errorstr(tdb));
+	if (transaction && (ecode = tdb_transaction_commit(tdb)))
+		errx(1, "committing transaction: %s", tdb_errorstr(ecode));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
 	if (seed.base.next)
@@ -195,21 +197,22 @@ int main(int argc, char *argv[])
 	if (++stage == stopat)
 		exit(0);
 
-	if (transaction && tdb_transaction_start(tdb))
-		errx(1, "starting transaction: %s", tdb_errorstr(tdb));
+	if (transaction && (ecode = tdb_transaction_start(tdb)))
+		errx(1, "starting transaction: %s", tdb_errorstr(ecode));
 
 	/* Missing 1000 records. */
 	printf("Missing %u records: ", num); fflush(stdout);
 	gettimeofday(&start, NULL);
 	for (i = num; i < num*2; i++) {
-		int *dptr;
-		dptr = (int *)tdb_fetch(tdb, key).dptr;
-		if (dptr)
-			errx(1, "Fetching key %u in tdb gave %u", i, *dptr);
+		struct tdb_data dbuf;
+		ecode = tdb_fetch(tdb, key, &dbuf);
+		if (ecode != TDB_ERR_NOEXIST)
+			errx(1, "Fetching key %u in tdb gave %s",
+			     i, tdb_errorstr(ecode));
 	}
 	gettimeofday(&stop, NULL);
-	if (transaction && tdb_transaction_commit(tdb))
-		errx(1, "committing transaction: %s", tdb_errorstr(tdb));
+	if (transaction && (ecode = tdb_transaction_commit(tdb)))
+		errx(1, "committing transaction: %s", tdb_errorstr(ecode));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
 	if (seed.base.next)
@@ -217,8 +220,8 @@ int main(int argc, char *argv[])
 	if (++stage == stopat)
 		exit(0);
 
-	if (transaction && tdb_transaction_start(tdb))
-		errx(1, "starting transaction: %s", tdb_errorstr(tdb));
+	if (transaction && (ecode = tdb_transaction_start(tdb)))
+		errx(1, "starting transaction: %s", tdb_errorstr(ecode));
 
 	/* Traverse 1000 records. */
 	printf("Traversing %u records: ", num); fflush(stdout);
@@ -229,8 +232,8 @@ int main(int argc, char *argv[])
 	if (i != (num - 1) * (num / 2))
 		errx(1, "Traverse tallied to %u", i);
 	gettimeofday(&stop, NULL);
-	if (transaction && tdb_transaction_commit(tdb))
-		errx(1, "committing transaction: %s", tdb_errorstr(tdb));
+	if (transaction && (ecode = tdb_transaction_commit(tdb)))
+		errx(1, "committing transaction: %s", tdb_errorstr(ecode));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
 	if (seed.base.next)
@@ -238,21 +241,21 @@ int main(int argc, char *argv[])
 	if (++stage == stopat)
 		exit(0);
 
-	if (transaction && tdb_transaction_start(tdb))
-		errx(1, "starting transaction: %s", tdb_errorstr(tdb));
+	if (transaction && (ecode = tdb_transaction_start(tdb)))
+		errx(1, "starting transaction: %s", tdb_errorstr(ecode));
 
 	/* Delete 1000 records (not in order). */
 	printf("Deleting %u records: ", num); fflush(stdout);
 	gettimeofday(&start, NULL);
 	for (j = 0; j < num; j++) {
 		i = (j + 100003) % num;
-		if (tdb_delete(tdb, key) != 0)
+		if ((ecode = tdb_delete(tdb, key)) != TDB_SUCCESS)
 			errx(1, "Deleting key %u in tdb: %s",
-			     i, tdb_errorstr(tdb));
+			     i, tdb_errorstr(ecode));
 	}
 	gettimeofday(&stop, NULL);
-	if (transaction && tdb_transaction_commit(tdb))
-		errx(1, "committing transaction: %s", tdb_errorstr(tdb));
+	if (transaction && (ecode = tdb_transaction_commit(tdb)))
+		errx(1, "committing transaction: %s", tdb_errorstr(ecode));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
 	if (seed.base.next)
@@ -260,21 +263,21 @@ int main(int argc, char *argv[])
 	if (++stage == stopat)
 		exit(0);
 
-	if (transaction && tdb_transaction_start(tdb))
-		errx(1, "starting transaction: %s", tdb_errorstr(tdb));
+	if (transaction && (ecode = tdb_transaction_start(tdb)))
+		errx(1, "starting transaction: %s", tdb_errorstr(ecode));
 
 	/* Re-add 1000 records (not in order). */
 	printf("Re-adding %u records: ", num); fflush(stdout);
 	gettimeofday(&start, NULL);
 	for (j = 0; j < num; j++) {
 		i = (j + 100003) % num;
-		if (tdb_store(tdb, key, data, TDB_INSERT) != 0)
+		if ((ecode = tdb_store(tdb, key, data, TDB_INSERT)) != 0)
 			errx(1, "Inserting key %u in tdb: %s",
-			     i, tdb_errorstr(tdb));
+			     i, tdb_errorstr(ecode));
 	}
 	gettimeofday(&stop, NULL);
-	if (transaction && tdb_transaction_commit(tdb))
-		errx(1, "committing transaction: %s", tdb_errorstr(tdb));
+	if (transaction && (ecode = tdb_transaction_commit(tdb)))
+		errx(1, "committing transaction: %s", tdb_errorstr(ecode));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
 	if (seed.base.next)
@@ -282,43 +285,43 @@ int main(int argc, char *argv[])
 	if (++stage == stopat)
 		exit(0);
 
-	if (transaction && tdb_transaction_start(tdb))
-		errx(1, "starting transaction: %s", tdb_errorstr(tdb));
+	if (transaction && (ecode = tdb_transaction_start(tdb)))
+		errx(1, "starting transaction: %s", tdb_errorstr(ecode));
 
 	/* Append 1000 records. */
 	printf("Appending %u records: ", num); fflush(stdout);
 	gettimeofday(&start, NULL);
 	for (i = 0; i < num; i++)
-		if (tdb_append(tdb, key, data) != 0)
+		if ((ecode = tdb_append(tdb, key, data)) != TDB_SUCCESS)
 			errx(1, "Appending key %u in tdb: %s",
-			     i, tdb_errorstr(tdb));
+			     i, tdb_errorstr(ecode));
 	gettimeofday(&stop, NULL);
-	if (transaction && tdb_transaction_commit(tdb))
-		errx(1, "committing transaction: %s", tdb_errorstr(tdb));
+	if (transaction && (ecode = tdb_transaction_commit(tdb)))
+		errx(1, "committing transaction: %s", tdb_errorstr(ecode));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
 	if (++stage == stopat)
 		exit(0);
 
-	if (transaction && tdb_transaction_start(tdb))
-		errx(1, "starting transaction: %s", tdb_errorstr(tdb));
+	if (transaction && (ecode = tdb_transaction_start(tdb)))
+		errx(1, "starting transaction: %s", tdb_errorstr(ecode));
 
 	/* Churn 1000 records: not in order! */
 	printf("Churning %u records: ", num); fflush(stdout);
 	gettimeofday(&start, NULL);
 	for (j = 0; j < num; j++) {
 		i = (j + 1000019) % num;
-		if (tdb_delete(tdb, key) != 0)
+		if ((ecode = tdb_delete(tdb, key)) != TDB_SUCCESS)
 			errx(1, "Deleting key %u in tdb: %s",
-			     i, tdb_errorstr(tdb));
+			     i, tdb_errorstr(ecode));
 		i += num;
-		if (tdb_store(tdb, key, data, TDB_INSERT) != 0)
+		if ((ecode = tdb_store(tdb, key, data, TDB_INSERT)) != 0)
 			errx(1, "Inserting key %u in tdb: %s",
-			     i, tdb_errorstr(tdb));
+			     i, tdb_errorstr(ecode));
 	}
 	gettimeofday(&stop, NULL);
-	if (transaction && tdb_transaction_commit(tdb))
-		errx(1, "committing transaction: %s", tdb_errorstr(tdb));
+	if (transaction && (ecode = tdb_transaction_commit(tdb)))
+		errx(1, "committing transaction: %s", tdb_errorstr(ecode));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
 

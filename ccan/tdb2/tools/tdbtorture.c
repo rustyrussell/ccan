@@ -24,7 +24,6 @@
 #define TRANSACTION_PREPARE_PROB 2
 #define LOCKSTORE_PROB 5
 #define TRAVERSE_PROB 20
-#define TRAVERSE_READ_PROB 20
 #define TRAVERSE_MOD_PROB 100
 #define TRAVERSE_ABORT_PROB 500
 #define CULL_PROB 100
@@ -43,16 +42,10 @@ static int count_pipe;
 static union tdb_attribute log_attr;
 static union tdb_attribute seed_attr;
 
-#ifdef PRINTF_FMT
-static void tdb_log(struct tdb_context *tdb, enum tdb_debug_level level, void *private, const char *format, ...) PRINTF_FMT(4,5);
-#endif
-static void tdb_log(struct tdb_context *tdb, enum tdb_debug_level level, void *private, const char *format, ...)
+static void tdb_log(struct tdb_context *tdb, enum tdb_log_level level,
+		    void *private, const char *message)
 {
-	va_list ap;
-
-	va_start(ap, format);
-	vfprintf(stdout, format, ap);
-	va_end(ap);
+	fputs(message, stdout);
 	fflush(stdout);
 #if 0
 	{
@@ -202,7 +195,7 @@ static void addrec_db(void)
 #if LOCKSTORE_PROB
 	if (random() % LOCKSTORE_PROB == 0) {
 		tdb_chainlock(db, key);
-		data = tdb_fetch(db, key);
+		tdb_fetch(db, key, &data);
 		if (tdb_store(db, key, data, TDB_REPLACE) != 0) {
 			fatal("tdb_store failed");
 		}
@@ -222,17 +215,8 @@ static void addrec_db(void)
 	}
 #endif
 
-#if TRAVERSE_READ_PROB
-	if (in_traverse == 0 && random() % TRAVERSE_READ_PROB == 0) {
-		in_traverse++;
-		tdb_traverse_read(db, NULL, NULL);
-		in_traverse--;
-		goto next;
-	}
-#endif
-
-	data = tdb_fetch(db, key);
-	if (data.dptr) free(data.dptr);
+	if (tdb_fetch(db, key, &data) == TDB_SUCCESS)
+		free(data.dptr);
 
 next:
 	free(k);
@@ -296,7 +280,7 @@ static int run_child(int i, int seed, unsigned num_loops, unsigned start)
 	}
 
 	if (error_count == 0) {
-		tdb_traverse_read(db, NULL, NULL);
+		tdb_traverse(db, NULL, NULL);
 #if TRANSACTION_PROB
 		if (always_transaction) {
 			while (in_transaction) {
