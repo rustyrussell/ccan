@@ -12,6 +12,7 @@ static int ftruncate_check(int fd, off_t length);
 #define ftruncate ftruncate_check
 
 #include <ccan/tdb2/tdb.c>
+#include <ccan/tdb2/open.c>
 #include <ccan/tdb2/free.c>
 #include <ccan/tdb2/lock.c>
 #include <ccan/tdb2/io.c>

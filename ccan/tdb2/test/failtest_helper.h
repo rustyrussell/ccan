@@ -4,9 +4,9 @@
 #include <stdbool.h>
 
 /* FIXME: Check these! */
-#define INITIAL_TDB_MALLOC	"tdb.c", 191, FAILTEST_MALLOC
-#define URANDOM_OPEN		"tdb.c", 49, FAILTEST_OPEN
-#define URANDOM_READ		"tdb.c", 29, FAILTEST_READ
+#define INITIAL_TDB_MALLOC	"open.c", 184, FAILTEST_MALLOC
+#define URANDOM_OPEN		"open.c", 43, FAILTEST_OPEN
+#define URANDOM_READ		"open.c", 23, FAILTEST_READ
 
 bool exit_check_log(struct failtest_call *history, unsigned num);
 bool failmatch(const struct failtest_call *call,

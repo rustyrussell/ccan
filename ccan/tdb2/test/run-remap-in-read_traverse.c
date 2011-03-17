@@ -1,6 +1,7 @@
 /* We had a bug where we marked the tdb read-only for a tdb_traverse_read.
  * If we then expanded the tdb, we would remap read-only, and later SEGV. */
 #include <ccan/tdb2/tdb.c>
+#include <ccan/tdb2/open.c>
 #include <ccan/tdb2/free.c>
 #include <ccan/tdb2/lock.c>
 #include <ccan/tdb2/io.c>

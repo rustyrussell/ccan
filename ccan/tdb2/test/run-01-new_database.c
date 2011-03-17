@@ -1,5 +1,6 @@
 #include <ccan/failtest/failtest_override.h>
 #include <ccan/tdb2/tdb.c>
+#include <ccan/tdb2/open.c>
 #include <ccan/tdb2/free.c>
 #include <ccan/tdb2/lock.c>
 #include <ccan/tdb2/io.c>
