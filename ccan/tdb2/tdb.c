@@ -296,7 +296,7 @@ void tdb_add_flag(struct tdb_context *tdb, unsigned flag)
 		break;
 	case TDB_NOMMAP:
 		tdb->flags |= TDB_NOMMAP;
-		tdb_munmap(tdb);
+		tdb_munmap(tdb->file);
 		break;
 	case TDB_NOSYNC:
 		tdb->flags |= TDB_NOSYNC;

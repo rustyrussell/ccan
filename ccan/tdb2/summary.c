@@ -52,7 +52,9 @@ static enum TDB_ERROR summarize(struct tdb_context *tdb,
 	tdb_len_t len;
 	tdb_len_t unc = 0;
 
-	for (off = sizeof(struct tdb_header); off < tdb->map_size; off += len) {
+	for (off = sizeof(struct tdb_header);
+	     off < tdb->file->map_size;
+	     off += len) {
 		const union {
 			struct tdb_used_record u;
 			struct tdb_free_record f;
@@ -228,7 +230,7 @@ enum TDB_ERROR tdb_summary(struct tdb_context *tdb,
 	}
 
 	sprintf(*summary, SUMMARY_FORMAT,
-		(size_t)tdb->map_size,
+		(size_t)tdb->file->map_size,
 		tally_num(keys) + tally_num(data),
 		tally_num(keys),
 		tally_min(keys), tally_mean(keys), tally_max(keys),
@@ -253,19 +255,19 @@ enum TDB_ERROR tdb_summary(struct tdb_context *tdb,
 		tally_num(hashes),
 		tally_min(hashes), tally_mean(hashes), tally_max(hashes),
 		hashesg ? hashesg : "",
-		tally_total(keys, NULL) * 100.0 / tdb->map_size,
-		tally_total(data, NULL) * 100.0 / tdb->map_size,
-		tally_total(extra, NULL) * 100.0 / tdb->map_size,
-		tally_total(freet, NULL) * 100.0 / tdb->map_size,
+		tally_total(keys, NULL) * 100.0 / tdb->file->map_size,
+		tally_total(data, NULL) * 100.0 / tdb->file->map_size,
+		tally_total(extra, NULL) * 100.0 / tdb->file->map_size,
+		tally_total(freet, NULL) * 100.0 / tdb->file->map_size,
 		(tally_num(keys) + tally_num(freet) + tally_num(hashes))
-		* sizeof(struct tdb_used_record) * 100.0 / tdb->map_size,
+		* sizeof(struct tdb_used_record) * 100.0 / tdb->file->map_size,
 		tally_num(ftables) * sizeof(struct tdb_freetable)
-		* 100.0 / tdb->map_size,
+		* 100.0 / tdb->file->map_size,
 		(tally_num(hashes)
 		 * (sizeof(tdb_off_t) << TDB_SUBLEVEL_HASH_BITS)
 		 + (sizeof(tdb_off_t) << TDB_TOPLEVEL_HASH_BITS)
 		 + sizeof(struct tdb_chain) * tally_num(chains))
-		* 100.0 / tdb->map_size);
+		* 100.0 / tdb->file->map_size);
 
 unlock:
 	free(hashesg);

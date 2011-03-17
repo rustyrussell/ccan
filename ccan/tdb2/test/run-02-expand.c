@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 		if (!ok1(tdb))
 			break;
 
-		val = tdb->map_size;
+		val = tdb->file->map_size;
 		/* Need some hash lock for expand. */
 		ok1(tdb_lock_hashes(tdb, 0, 1, F_WRLCK, TDB_LOCK_WAIT) == 0);
 		failtest_suppress = false;
@@ -56,11 +56,11 @@ int main(int argc, char *argv[])
 		}
 		failtest_suppress = true;
 			
-		ok1(tdb->map_size >= val + 1 * TDB_EXTENSION_FACTOR);
+		ok1(tdb->file->map_size >= val + 1 * TDB_EXTENSION_FACTOR);
 		ok1(tdb_unlock_hashes(tdb, 0, 1, F_WRLCK) == 0);
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 
-		val = tdb->map_size;
+		val = tdb->file->map_size;
 		ok1(tdb_lock_hashes(tdb, 0, 1, F_WRLCK, TDB_LOCK_WAIT) == 0);
 		failtest_suppress = false;
 		if (!ok1(tdb_expand(tdb, 1024) == 0)) {
@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 		}
 		failtest_suppress = true;
 		ok1(tdb_unlock_hashes(tdb, 0, 1, F_WRLCK) == 0);
-		ok1(tdb->map_size >= val + 1024 * TDB_EXTENSION_FACTOR);
+		ok1(tdb->file->map_size >= val + 1024 * TDB_EXTENSION_FACTOR);
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 		tdb_close(tdb);
 	}

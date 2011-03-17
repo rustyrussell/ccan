@@ -319,7 +319,13 @@ struct tdb_file {
 	/* Single list of all TDBs, to detect multiple opens. */
 	struct tdb_file *next;
 
-	/* The file descriptor. */
+	/* Mmap (if any), or malloc (for TDB_INTERNAL). */
+	void *map_ptr;
+
+	/* How much space has been mapped (<= current file size) */
+	tdb_len_t map_size;
+
+	/* The file descriptor (-1 for TDB_INTERNAL). */
 	int fd;
 
 	/* Lock information */
@@ -336,14 +342,8 @@ struct tdb_context {
 	/* Filename of the database. */
 	const char *name;
 
-	/* Mmap (if any), or malloc (for TDB_INTERNAL). */
-	void *map_ptr;
-
 	/* Are we accessing directly? (debugging check). */
 	int direct_access;
-
-	/* How much space has been mapped (<= current file size) */
-	tdb_len_t map_size;
 
 	/* Operating read-only? (Opened O_RDONLY, or in traverse_read) */
 	bool read_only;
@@ -474,7 +474,7 @@ void tdb_io_init(struct tdb_context *tdb);
 void *tdb_convert(const struct tdb_context *tdb, void *buf, tdb_len_t size);
 
 /* Unmap and try to map the tdb. */
-void tdb_munmap(struct tdb_context *tdb);
+void tdb_munmap(struct tdb_file *file);
 void tdb_mmap(struct tdb_context *tdb);
 
 /* Either alloc a copy, or give direct access.  Release frees or noop. */

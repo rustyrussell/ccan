@@ -60,9 +60,9 @@ int main(int argc, char *argv[])
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 		ok1(!empty_freetable(tdb));
 
-		size = tdb->map_size;
+		size = tdb->file->map_size;
 		/* Insert minimal-length records until we expand. */
-		for (j = 0; tdb->map_size == size; j++) {
+		for (j = 0; tdb->file->map_size == size; j++) {
 			was_empty = empty_freetable(tdb);
 			if (tdb_store(tdb, k, k, TDB_INSERT) != 0)
 				err(1, "Failed to store record %i", j);

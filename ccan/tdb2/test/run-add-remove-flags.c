@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 		else {
 			ok1(tap_log_messages == 0);
 			ok1(tdb_get_flags(tdb) & TDB_NOMMAP);
-			ok1(tdb->map_ptr == NULL);
+			ok1(tdb->file->map_ptr == NULL);
 		}
 
 		tap_log_messages = 0;
@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 		else {
 			ok1(tap_log_messages == 0);
 			ok1(!(tdb_get_flags(tdb) & TDB_NOMMAP));
-			ok1(tdb->map_ptr != NULL);
+			ok1(tdb->file->map_ptr != NULL);
 		}
 
 		tap_log_messages = 0;

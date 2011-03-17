@@ -29,14 +29,14 @@
 #include <assert.h>
 #include <ccan/likely/likely.h>
 
-void tdb_munmap(struct tdb_context *tdb)
+void tdb_munmap(struct tdb_file *file)
 {
-	if (tdb->flags & TDB_INTERNAL)
+	if (file->fd == -1)
 		return;
 
-	if (tdb->map_ptr) {
-		munmap(tdb->map_ptr, tdb->map_size);
-		tdb->map_ptr = NULL;
+	if (file->map_ptr) {
+		munmap(file->map_ptr, file->map_size);
+		file->map_ptr = NULL;
 	}
 }
 
@@ -48,17 +48,17 @@ void tdb_mmap(struct tdb_context *tdb)
 	if (tdb->flags & TDB_NOMMAP)
 		return;
 
-	tdb->map_ptr = mmap(NULL, tdb->map_size, tdb->mmap_flags,
-			    MAP_SHARED, tdb->file->fd, 0);
+	tdb->file->map_ptr = mmap(NULL, tdb->file->map_size, tdb->mmap_flags,
+				  MAP_SHARED, tdb->file->fd, 0);
 
 	/*
 	 * NB. When mmap fails it returns MAP_FAILED *NOT* NULL !!!!
 	 */
-	if (tdb->map_ptr == MAP_FAILED) {
-		tdb->map_ptr = NULL;
+	if (tdb->file->map_ptr == MAP_FAILED) {
+		tdb->file->map_ptr = NULL;
 		tdb_logerr(tdb, TDB_SUCCESS, TDB_LOG_WARNING,
 			   "tdb_mmap failed for size %lld (%s)",
-			   (long long)tdb->map_size, strerror(errno));
+			   (long long)tdb->file->map_size, strerror(errno));
 	}
 }
 
@@ -78,7 +78,7 @@ static enum TDB_ERROR tdb_oob(struct tdb_context *tdb, tdb_off_t len,
 	       || (tdb->flags & TDB_NOLOCK)
 	       || tdb_has_expansion_lock(tdb));
 
-	if (len <= tdb->map_size)
+	if (len <= tdb->file->map_size)
 		return 0;
 	if (tdb->flags & TDB_INTERNAL) {
 		if (!probe) {
@@ -86,7 +86,7 @@ static enum TDB_ERROR tdb_oob(struct tdb_context *tdb, tdb_off_t len,
 				 "tdb_oob len %lld beyond internal"
 				 " malloc size %lld",
 				 (long long)len,
-				 (long long)tdb->map_size);
+				 (long long)tdb->file->map_size);
 		}
 		return TDB_ERR_IO;
 	}
@@ -115,9 +115,9 @@ static enum TDB_ERROR tdb_oob(struct tdb_context *tdb, tdb_off_t len,
 	}
 
 	/* Unmap, update size, remap */
-	tdb_munmap(tdb);
+	tdb_munmap(tdb->file);
 
-	tdb->map_size = st.st_size;
+	tdb->file->map_size = st.st_size;
 	tdb_mmap(tdb);
 	return TDB_SUCCESS;
 }
@@ -241,8 +241,8 @@ static enum TDB_ERROR tdb_write(struct tdb_context *tdb, tdb_off_t off,
 		return ecode;
 	}
 
-	if (tdb->map_ptr) {
-		memcpy(off + (char *)tdb->map_ptr, buf, len);
+	if (tdb->file->map_ptr) {
+		memcpy(off + (char *)tdb->file->map_ptr, buf, len);
 	} else {
 		ssize_t ret;
 		ret = pwrite(tdb->file->fd, buf, len, off);
@@ -271,8 +271,8 @@ static enum TDB_ERROR tdb_read(struct tdb_context *tdb, tdb_off_t off,
 		return ecode;
 	}
 
-	if (tdb->map_ptr) {
-		memcpy(buf, off + (char *)tdb->map_ptr, len);
+	if (tdb->file->map_ptr) {
+		memcpy(buf, off + (char *)tdb->file->map_ptr, len);
 	} else {
 		ssize_t r = pread(tdb->file->fd, buf, len, off);
 		if (r != len) {
@@ -281,7 +281,7 @@ static enum TDB_ERROR tdb_read(struct tdb_context *tdb, tdb_off_t off,
 					  "len=%zu (%s) map_size=%zu",
 					  r, (size_t)off, (size_t)len,
 					  strerror(errno),
-					  (size_t)tdb->map_size);
+					  (size_t)tdb->file->map_size);
 		}
 	}
 	return TDB_SUCCESS;
@@ -405,30 +405,32 @@ static enum TDB_ERROR tdb_expand_file(struct tdb_context *tdb,
 	}
 
 	if (tdb->flags & TDB_INTERNAL) {
-		char *new = realloc(tdb->map_ptr, tdb->map_size + addition);
+		char *new = realloc(tdb->file->map_ptr,
+				    tdb->file->map_size + addition);
 		if (!new) {
 			return tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
 					  "No memory to expand database");
 		}
-		tdb->map_ptr = new;
-		tdb->map_size += addition;
+		tdb->file->map_ptr = new;
+		tdb->file->map_size += addition;
 	} else {
 		/* Unmap before trying to write; old TDB claimed OpenBSD had
 		 * problem with this otherwise. */
-		tdb_munmap(tdb);
+		tdb_munmap(tdb->file);
 
 		/* If this fails, we try to fill anyway. */
-		if (ftruncate(tdb->file->fd, tdb->map_size + addition))
+		if (ftruncate(tdb->file->fd, tdb->file->map_size + addition))
 			;
 
 		/* now fill the file with something. This ensures that the
 		   file isn't sparse, which would be very bad if we ran out of
 		   disk. This must be done with write, not via mmap */
 		memset(buf, 0x43, sizeof(buf));
-		ecode = fill(tdb, buf, sizeof(buf), tdb->map_size, addition);
+		ecode = fill(tdb, buf, sizeof(buf), tdb->file->map_size,
+			     addition);
 		if (ecode != TDB_SUCCESS)
 			return ecode;
-		tdb->map_size += addition;
+		tdb->file->map_size += addition;
 		tdb_mmap(tdb);
 	}
 	return TDB_SUCCESS;
@@ -552,13 +554,13 @@ static void *tdb_direct(struct tdb_context *tdb, tdb_off_t off, size_t len,
 {
 	enum TDB_ERROR ecode;
 
-	if (unlikely(!tdb->map_ptr))
+	if (unlikely(!tdb->file->map_ptr))
 		return NULL;
 
 	ecode = tdb_oob(tdb, off + len, true);
 	if (unlikely(ecode != TDB_SUCCESS))
 		return TDB_ERR_PTR(ecode);
-	return (char *)tdb->map_ptr + off;
+	return (char *)tdb->file->map_ptr + off;
 }
 
 void add_stat_(struct tdb_context *tdb, uint64_t *s, size_t val)

@@ -72,7 +72,8 @@ static enum TDB_ERROR check_header(struct tdb_context *tdb, tdb_off_t *recovery,
 	*features = hdr.features_offered;
 	*recovery = hdr.recovery;
 	if (*recovery) {
-		if (*recovery < sizeof(hdr) || *recovery > tdb->map_size) {
+		if (*recovery < sizeof(hdr)
+		    || *recovery > tdb->file->map_size) {
 			return tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
 					  "tdb_check:"
 					  " invalid recovery offset %zu",
@@ -564,7 +565,7 @@ tdb_off_t dead_space(struct tdb_context *tdb, tdb_off_t off)
 	size_t len;
 	enum TDB_ERROR ecode;
 
-	for (len = 0; off + len < tdb->map_size; len++) {
+	for (len = 0; off + len < tdb->file->map_size; len++) {
 		char c;
 		ecode = tdb->methods->tread(tdb, off, &c, 1);
 		if (ecode != TDB_SUCCESS) {
@@ -586,7 +587,9 @@ static enum TDB_ERROR check_linear(struct tdb_context *tdb,
 	enum TDB_ERROR ecode;
 	bool found_recovery = false;
 
-	for (off = sizeof(struct tdb_header); off < tdb->map_size; off += len) {
+	for (off = sizeof(struct tdb_header);
+	     off < tdb->file->map_size;
+	     off += len) {
 		union {
 			struct tdb_used_record u;
 			struct tdb_free_record f;
@@ -624,7 +627,7 @@ static enum TDB_ERROR check_linear(struct tdb_context *tdb,
 				tdb_logerr(tdb, TDB_SUCCESS, TDB_LOG_WARNING,
 					   "Dead space at %zu-%zu (of %zu)",
 					   (size_t)off, (size_t)(off + len),
-					   (size_t)tdb->map_size);
+					   (size_t)tdb->file->map_size);
 			}
 		} else if (rec.r.magic == TDB_RECOVERY_MAGIC) {
 			ecode = tdb_read_convert(tdb, off, &rec, sizeof(rec.r));
@@ -646,7 +649,7 @@ static enum TDB_ERROR check_linear(struct tdb_context *tdb,
 						  " length %zu",
 						  (size_t)rec.r.len);
 			}
-			if (rec.r.eof > tdb->map_size) {
+			if (rec.r.eof > tdb->file->map_size) {
 				return tdb_logerr(tdb, TDB_ERR_CORRUPT,
 						  TDB_LOG_ERROR,
 						  "tdb_check: invalid old EOF"
@@ -656,7 +659,7 @@ static enum TDB_ERROR check_linear(struct tdb_context *tdb,
 			len = sizeof(rec.r) + rec.r.max_len;
 		} else if (frec_magic(&rec.f) == TDB_FREE_MAGIC) {
 			len = sizeof(rec.u) + frec_len(&rec.f);
-			if (off + len > tdb->map_size) {
+			if (off + len > tdb->file->map_size) {
 				return tdb_logerr(tdb, TDB_ERR_CORRUPT,
 						  TDB_LOG_ERROR,
 						  "tdb_check: free overlength"
@@ -691,7 +694,7 @@ static enum TDB_ERROR check_linear(struct tdb_context *tdb,
 			extra = rec_extra_padding(&rec.u);
 
 			len = sizeof(rec.u) + klen + dlen + extra;
-			if (off + len > tdb->map_size) {
+			if (off + len > tdb->file->map_size) {
 				return tdb_logerr(tdb, TDB_ERR_CORRUPT,
 						  TDB_LOG_ERROR,
 						  "tdb_check: used overlength"

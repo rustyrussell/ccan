@@ -287,7 +287,7 @@ static tdb_bool_err coalesce(struct tdb_context *tdb,
 	add_stat(tdb, alloc_coalesce_tried, 1);
 	end = off + sizeof(struct tdb_used_record) + data_len;
 
-	while (end < tdb->map_size) {
+	while (end < tdb->file->map_size) {
 		const struct tdb_free_record *r;
 		tdb_off_t nb_off;
 		unsigned ftable, bucket;
@@ -668,10 +668,10 @@ static enum TDB_ERROR tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 
 	/* always make room for at least 100 more records, and at
            least 25% more space. */
-	if (size * TDB_EXTENSION_FACTOR > tdb->map_size / 4)
+	if (size * TDB_EXTENSION_FACTOR > tdb->file->map_size / 4)
 		wanted = size * TDB_EXTENSION_FACTOR;
 	else
-		wanted = tdb->map_size / 4;
+		wanted = tdb->file->map_size / 4;
 	wanted = adjust_size(0, wanted);
 
 	/* Only one person can expand file at a time. */
@@ -681,9 +681,9 @@ static enum TDB_ERROR tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 	}
 
 	/* Someone else may have expanded the file, so retry. */
-	old_size = tdb->map_size;
-	tdb->methods->oob(tdb, tdb->map_size + 1, true);
-	if (tdb->map_size != old_size) {
+	old_size = tdb->file->map_size;
+	tdb->methods->oob(tdb, tdb->file->map_size + 1, true);
+	if (tdb->file->map_size != old_size) {
 		tdb_unlock_expand(tdb, F_WRLCK);
 		return TDB_SUCCESS;
 	}

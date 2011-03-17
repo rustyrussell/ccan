@@ -132,14 +132,14 @@ static enum TDB_ERROR tdb_new_database(struct tdb_context *tdb,
 	*hdr = newdb.hdr;
 
 	if (tdb->flags & TDB_INTERNAL) {
-		tdb->map_size = sizeof(newdb);
-		tdb->map_ptr = malloc(tdb->map_size);
-		if (!tdb->map_ptr) {
+		tdb->file->map_size = sizeof(newdb);
+		tdb->file->map_ptr = malloc(tdb->file->map_size);
+		if (!tdb->file->map_ptr) {
 			return tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
 					  "tdb_new_database:"
 					  " failed to allocate");
 		}
-		memcpy(tdb->map_ptr, &newdb, tdb->map_size);
+		memcpy(tdb->file->map_ptr, &newdb, tdb->file->map_size);
 		return TDB_SUCCESS;
 	}
 	if (lseek(tdb->file->fd, 0, SEEK_SET) == -1) {
@@ -165,6 +165,18 @@ static enum TDB_ERROR tdb_new_database(struct tdb_context *tdb,
 	return TDB_SUCCESS;
 }
 
+static enum TDB_ERROR tdb_new_file(struct tdb_context *tdb)
+{
+	tdb->file = malloc(sizeof(*tdb->file));
+	if (!tdb->file)
+		return tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
+				  "tdb_open: could alloc tdb_file structure");
+	tdb->file->num_lockrecs = 0;
+	tdb->file->lockrecs = NULL;
+	tdb->file->allrecord_lock.count = 0;
+	return TDB_SUCCESS;
+}
+
 struct tdb_context *tdb_open(const char *name, int tdb_flags,
 			     int open_flags, mode_t mode,
 			     union tdb_attribute *attr)
@@ -187,9 +199,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		return NULL;
 	}
 	tdb->name = NULL;
-	tdb->map_ptr = NULL;
 	tdb->direct_access = 0;
-	tdb->map_size = sizeof(struct tdb_header);
 	tdb->flags = tdb_flags;
 	tdb->logfn = NULL;
 	tdb->transaction = NULL;
@@ -254,6 +264,11 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	/* internal databases don't need any of the rest. */
 	if (tdb->flags & TDB_INTERNAL) {
 		tdb->flags |= (TDB_NOLOCK | TDB_NOMMAP);
+		ecode = tdb_new_file(tdb);
+		if (ecode != TDB_SUCCESS) {
+			goto fail;
+		}
+		tdb->file->fd = -1;
 		ecode = tdb_new_database(tdb, seed, &hdr);
 		if (ecode != TDB_SUCCESS) {
 			goto fail;
@@ -291,21 +306,16 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 			goto fail;
 		}
 
-		tdb->file = malloc(sizeof(*tdb->file));
-		if (!tdb->file) {
-			saved_errno = ENOMEM;
-			tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
-				   "tdb_open: could alloc file");
+		ecode = tdb_new_file(tdb);
+		if (ecode != TDB_SUCCESS)
 			goto fail;
-		}
 
 		tdb->file->next = files;
-		tdb->file->num_lockrecs = 0;
-		tdb->file->lockrecs = NULL;
-		tdb->file->allrecord_lock.count = 0;
 		tdb->file->fd = fd;
 		tdb->file->device = st.st_dev;
 		tdb->file->inode = st.st_ino;
+		tdb->file->map_ptr = NULL;
+		tdb->file->map_size = sizeof(struct tdb_header);
 	} else {
 		/* FIXME */
 		ecode = tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
@@ -386,7 +396,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb_unlock_open(tdb);
 
 	/* This make sure we have current map_size and mmap. */
-	tdb->methods->oob(tdb, tdb->map_size + 1, true);
+	tdb->methods->oob(tdb, tdb->file->map_size + 1, true);
 
 	/* Now it's fully formed, recover if necessary. */
 	berr = tdb_needs_recovery(tdb);
@@ -436,14 +446,14 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 #ifdef TDB_TRACE
 	close(tdb->tracefd);
 #endif
-	if (tdb->map_ptr) {
-		if (tdb->flags & TDB_INTERNAL) {
-			free(tdb->map_ptr);
-		} else
-			tdb_munmap(tdb);
-	}
 	free((char *)tdb->name);
 	if (tdb->file) {
+		if (tdb->file->map_ptr) {
+			if (tdb->flags & TDB_INTERNAL) {
+				free(tdb->file->map_ptr);
+			} else
+				tdb_munmap(tdb->file);
+		}
 		if (close(tdb->file->fd) != 0)
 			tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 				   "tdb_open: failed to close tdb fd"
@@ -467,11 +477,11 @@ int tdb_close(struct tdb_context *tdb)
 		tdb_transaction_cancel(tdb);
 	}
 
-	if (tdb->map_ptr) {
+	if (tdb->file->map_ptr) {
 		if (tdb->flags & TDB_INTERNAL)
-			free(tdb->map_ptr);
+			free(tdb->file->map_ptr);
 		else
-			tdb_munmap(tdb);
+			tdb_munmap(tdb->file);
 	}
 	free((char *)tdb->name);
 	if (tdb->file) {

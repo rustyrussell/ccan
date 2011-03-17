@@ -347,14 +347,14 @@ static void transaction_write_existing(struct tdb_context *tdb, tdb_off_t off,
 static enum TDB_ERROR transaction_oob(struct tdb_context *tdb, tdb_off_t len,
 				      bool probe)
 {
-	if (len <= tdb->map_size) {
+	if (len <= tdb->file->map_size) {
 		return TDB_SUCCESS;
 	}
 	if (!probe) {
 		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 			   "tdb_oob len %lld beyond transaction size %lld",
 			   (long long)len,
-			   (long long)tdb->map_size);
+			   (long long)tdb->file->map_size);
 	}
 	return TDB_ERR_IO;
 }
@@ -369,9 +369,9 @@ static enum TDB_ERROR transaction_expand_file(struct tdb_context *tdb,
 
 	/* add a write to the transaction elements, so subsequent
 	   reads see the zero data */
-	ecode = transaction_write(tdb, tdb->map_size, NULL, addition);
+	ecode = transaction_write(tdb, tdb->file->map_size, NULL, addition);
 	if (ecode == TDB_SUCCESS) {
-		tdb->map_size += addition;
+		tdb->file->map_size += addition;
 	}
 	return ecode;
 }
@@ -436,9 +436,9 @@ static enum TDB_ERROR transaction_sync(struct tdb_context *tdb,
 				  strerror(errno));
 	}
 #ifdef MS_SYNC
-	if (tdb->map_ptr) {
+	if (tdb->file->map_ptr) {
 		tdb_off_t moffset = offset & ~(getpagesize()-1);
-		if (msync(moffset + (char *)tdb->map_ptr,
+		if (msync(moffset + (char *)tdb->file->map_ptr,
 			  length + (offset - moffset), MS_SYNC) != 0) {
 			return tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 					  "tdb_transaction: msync failed: %s",
@@ -467,7 +467,7 @@ static void _tdb_transaction_cancel(struct tdb_context *tdb)
 		return;
 	}
 
-	tdb->map_size = tdb->transaction->old_map_size;
+	tdb->file->map_size = tdb->transaction->old_map_size;
 
 	/* free all the transaction blocks */
 	for (i=0;i<tdb->transaction->num_blocks;i++) {
@@ -566,8 +566,8 @@ enum TDB_ERROR tdb_transaction_start(struct tdb_context *tdb)
 
 	/* make sure we know about any file expansions already done by
 	   anyone else */
-	tdb->methods->oob(tdb, tdb->map_size + 1, true);
-	tdb->transaction->old_map_size = tdb->map_size;
+	tdb->methods->oob(tdb, tdb->file->map_size + 1, true);
+	tdb->transaction->old_map_size = tdb->file->map_size;
 
 	/* finally hook the io methods, replacing them with
 	   transaction specific methods */
@@ -689,16 +689,16 @@ static enum TDB_ERROR tdb_recovery_allocate(struct tdb_context *tdb,
 		= (((sizeof(rec) + *recovery_size) + getpagesize()-1)
 		   & ~(getpagesize()-1))
 		- sizeof(rec);
-	*recovery_offset = tdb->map_size;
+	*recovery_offset = tdb->file->map_size;
 	recovery_head = *recovery_offset;
 
 	/* Restore ->map_size before calling underlying expand_file.
 	   Also so that we don't try to expand the file again in the
 	   transaction commit, which would destroy the recovery
 	   area */
-	addition = (tdb->map_size - tdb->transaction->old_map_size) +
+	addition = (tdb->file->map_size - tdb->transaction->old_map_size) +
 		sizeof(rec) + *recovery_max_size;
-	tdb->map_size = tdb->transaction->old_map_size;
+	tdb->file->map_size = tdb->transaction->old_map_size;
 	ecode = methods->expand_file(tdb, addition);
 	if (ecode != TDB_SUCCESS) {
 		return tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
@@ -709,7 +709,7 @@ static enum TDB_ERROR tdb_recovery_allocate(struct tdb_context *tdb,
 	/* we have to reset the old map size so that we don't try to
 	   expand the file again in the transaction commit, which
 	   would destroy the recovery area */
-	tdb->transaction->old_map_size = tdb->map_size;
+	tdb->transaction->old_map_size = tdb->file->map_size;
 
 	/* write the recovery header offset and sync - we can sync without a race here
 	   as the magic ptr in the recovery record has not been set */
@@ -797,7 +797,7 @@ static enum TDB_ERROR transaction_setup_recovery(struct tdb_context *tdb,
 		if (offset >= old_map_size) {
 			continue;
 		}
-		if (offset + length > tdb->map_size) {
+		if (offset + length > tdb->file->map_size) {
 			free(data);
 			return tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
 					  "tdb_transaction_setup_recovery:"
@@ -945,10 +945,12 @@ static enum TDB_ERROR _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 	tdb->transaction->prepared = true;
 
 	/* expand the file to the new size if needed */
-	if (tdb->map_size != tdb->transaction->old_map_size) {
-		tdb_len_t add = tdb->map_size - tdb->transaction->old_map_size;
+	if (tdb->file->map_size != tdb->transaction->old_map_size) {
+		tdb_len_t add;
+
+		add = tdb->file->map_size - tdb->transaction->old_map_size;
 		/* Restore original map size for tdb_expand_file */
-		tdb->map_size = tdb->transaction->old_map_size;
+		tdb->file->map_size = tdb->transaction->old_map_size;
 		ecode = methods->expand_file(tdb, add);
 		if (ecode != TDB_SUCCESS) {
 			tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
@@ -1045,7 +1047,7 @@ enum TDB_ERROR tdb_transaction_commit(struct tdb_context *tdb)
 	tdb->transaction->num_blocks = 0;
 
 	/* ensure the new data is on disk */
-	ecode = transaction_sync(tdb, 0, tdb->map_size);
+	ecode = transaction_sync(tdb, 0, tdb->file->map_size);
 	if (ecode != TDB_SUCCESS) {
 		return ecode;
 	}
@@ -1159,7 +1161,7 @@ enum TDB_ERROR tdb_transaction_recover(struct tdb_context *tdb)
 
 	free(data);
 
-	ecode = transaction_sync(tdb, 0, tdb->map_size);
+	ecode = transaction_sync(tdb, 0, tdb->file->map_size);
 	if (ecode != TDB_SUCCESS) {
 		return tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
 				  "tdb_transaction_recover:"

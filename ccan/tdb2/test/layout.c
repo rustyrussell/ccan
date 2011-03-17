@@ -264,12 +264,12 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 	memset(mem, 0x99, off);
 	/* Now populate our header, cribbing from a real TDB header. */
 	tdb = tdb_open(NULL, TDB_INTERNAL, O_RDWR, 0, &tap_log_attr);
-	memcpy(mem, tdb->map_ptr, sizeof(struct tdb_header));
+	memcpy(mem, tdb->file->map_ptr, sizeof(struct tdb_header));
 
 	/* Mug the tdb we have to make it use this. */
-	free(tdb->map_ptr);
-	tdb->map_ptr = mem;
-	tdb->map_size = off;
+	free(tdb->file->map_ptr);
+	tdb->file->map_ptr = mem;
+	tdb->file->map_size = off;
 
 	last_ftable = 0;
 	for (i = 0; i < layout->num_elems; i++) {
@@ -319,7 +319,8 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 			      0600);
 		if (fd < 0)
 			err(1, "opening %s for writing", layout->filename);
-		if (write(fd, tdb->map_ptr, tdb->map_size) != tdb->map_size)
+		if (write(fd, tdb->file->map_ptr, tdb->file->map_size)
+		    != tdb->file->map_size)
 			err(1, "writing %s", layout->filename);
 		close(fd);
 		tdb_close(tdb);
