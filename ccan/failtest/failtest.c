@@ -363,10 +363,11 @@ static bool should_fail(struct failtest_call *call)
 		if (*failpath == '+')
 			failpath = NULL;
 		else {
-			if (tolower(*failpath) != info_to_arg[call->type])
+			if (tolower((unsigned char)*failpath)
+			    != info_to_arg[call->type])
 				errx(1, "Failpath expected '%c' got '%c'\n",
 				     info_to_arg[call->type], *failpath);
-			call->fail = isupper(*(failpath++));
+			call->fail = isupper((unsigned char)*(failpath++));
 			return call->fail;
 		}
 	}
@@ -376,7 +377,7 @@ static bool should_fail(struct failtest_call *call)
 		unsigned int i;
 
 		for (i = 0; i < history_num; i++) {
-			char c = info_to_arg[history[i].type];
+			unsigned char c = info_to_arg[history[i].type];
 			if (history[i].fail)
 				c = toupper(c);
 			if (c != debugpath[i])
@@ -430,7 +431,7 @@ static bool should_fail(struct failtest_call *call)
 	if (child == 0) {
 		if (tracefd != -1) {
 			struct timeval now;
-			char *p;
+			const char *p;
 			gettimeofday(&now, NULL);
 			if (now.tv_usec < start.tv_usec) {
 				now.tv_sec--;
@@ -441,7 +442,7 @@ static bool should_fail(struct failtest_call *call)
 			p = failpath_string();
 			trace("%u->%u (%u.%02u): %s (", getppid(), getpid(),
 			      (int)now.tv_sec, (int)now.tv_usec / 10000, p);
-			free(p);
+			free((char *)p);
 			p = strrchr(history[history_num-1].file, '/');
 			if (p)
 				trace("%s", p+1);
