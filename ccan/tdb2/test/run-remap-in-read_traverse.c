@@ -59,6 +59,7 @@ int main(int argc, char *argv[])
 	/* Now store something! */
 	ok1(tdb_store(tdb, d, d, TDB_INSERT) == 0);
 	ok1(tap_log_messages == 0);
+	tdb_close(tdb);
 	free_external_agent(agent);
 	return exit_status();
 }
