@@ -71,6 +71,67 @@ static inline bool strends(const char *str, const char *postfix)
  */
 size_t strcount(const char *haystack, const char *needle);
 
+/**
+ * cisalnum - isalnum() which takes a char (and doesn't accept EOF)
+ * @c: a character
+ *
+ * Surprisingly, the standard ctype.h isalnum() takes an int, which
+ * must have the value of EOF (-1) or an unsigned char.  This variant
+ * takes a real char, and doesn't accept EOF.
+ */
+static inline bool cisalnum(char c)
+{
+	return isalnum((unsigned char)c);
+}
+static inline bool cisalpha(char c)
+{
+	return isalpha((unsigned char)c);
+}
+static inline bool cisascii(char c)
+{
+	return isascii((unsigned char)c);
+}
+static inline bool cisblank(char c)
+{
+	return isblank((unsigned char)c);
+}
+static inline bool ciscntrl(char c)
+{
+	return iscntrl((unsigned char)c);
+}
+static inline bool cisdigit(char c)
+{
+	return isdigit((unsigned char)c);
+}
+static inline bool cisgraph(char c)
+{
+	return isgraph((unsigned char)c);
+}
+static inline bool cislower(char c)
+{
+	return islower((unsigned char)c);
+}
+static inline bool cisprint(char c)
+{
+	return isprint((unsigned char)c);
+}
+static inline bool cispunct(char c)
+{
+	return ispunct((unsigned char)c);
+}
+static inline bool cisspace(char c)
+{
+	return isspace((unsigned char)c);
+}
+static inline bool cisupper(char c)
+{
+	return isupper((unsigned char)c);
+}
+static inline bool cisxdigit(char c)
+{
+	return isxdigit((unsigned char)c);
+}
+
 #include <ccan/str/str_debug.h>
 
 /* These checks force things out of line, hence they are under DEBUG. */
