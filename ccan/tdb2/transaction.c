@@ -745,11 +745,12 @@ static void set_recovery_header(struct tdb_recovery_record *rec,
 static enum TDB_ERROR transaction_setup_recovery(struct tdb_context *tdb,
 						 tdb_off_t *magic_offset)
 {
-	tdb_len_t recovery_size;
+	/* Initialized for GCC's 4.4.5 overzealous uninitialized warnings. */
+	tdb_len_t recovery_size = 0;
+	tdb_off_t recovery_offset = 0, recovery_max_size = 0;
 	unsigned char *data, *p;
 	const struct tdb_methods *methods = tdb->transaction->io_methods;
 	struct tdb_recovery_record *rec;
-	tdb_off_t recovery_offset, recovery_max_size;
 	tdb_off_t old_map_size = tdb->transaction->old_map_size;
 	uint64_t magic, tailer;
 	int i;

@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 			       O_RDWR|O_CREAT|O_TRUNC, 0600, &tap_log_attr);
 		ok1(tdb);
 		if (tdb) {
-			struct tdb_data d;
+			struct tdb_data d = { NULL, 0 }; /* Bogus GCC warning */
 
 			/* fetch should fail. */
 			failtest_suppress = false;

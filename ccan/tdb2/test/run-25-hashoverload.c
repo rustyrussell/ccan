@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
 
 	plan_tests(6883);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
-		struct tdb_data d;
+		struct tdb_data d = { NULL, 0 }; /* Bogus GCC warning */
 
 		tdb = tdb_open("run-25-hashoverload.tdb", flags[i],
 			       O_RDWR|O_CREAT|O_TRUNC, 0600, &hattr);

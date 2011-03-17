@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 		/* We seemed to lose some keys.
 		 * Insert and check they're in there! */
 		for (j = 0; j < 500; j++) {
-			struct tdb_data d;
+			struct tdb_data d = { NULL, 0 }; /* Bogus GCC warning */
 			ok1(tdb_store(tdb, key, data, TDB_REPLACE) == 0);
 			ok1(tdb_fetch(tdb, key, &d) == TDB_SUCCESS);
 			ok1(equal(d, data));
