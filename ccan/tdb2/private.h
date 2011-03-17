@@ -301,6 +301,7 @@ enum tdb_lock_flags {
 };
 
 struct tdb_lock {
+	struct tdb_context *owner;
 	uint32_t off;
 	uint32_t count;
 	uint32_t ltype;
@@ -535,6 +536,9 @@ enum TDB_ERROR tdb_lock_hashes(struct tdb_context *tdb,
 enum TDB_ERROR tdb_unlock_hashes(struct tdb_context *tdb,
 				 tdb_off_t hash_lock,
 				 tdb_len_t hash_range, int ltype);
+
+/* For closing the file. */
+void tdb_unlock_all(struct tdb_context *tdb);
 
 /* Lock/unlock a particular free bucket. */
 enum TDB_ERROR tdb_lock_free_bucket(struct tdb_context *tdb, tdb_off_t b_off,

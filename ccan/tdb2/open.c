@@ -448,6 +448,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 #endif
 	free((char *)tdb->name);
 	if (tdb->file) {
+		tdb_unlock_all(tdb);
 		if (tdb->file->map_ptr) {
 			if (tdb->flags & TDB_INTERNAL) {
 				free(tdb->file->map_ptr);
