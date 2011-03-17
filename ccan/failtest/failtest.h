@@ -1,5 +1,6 @@
 #ifndef CCAN_FAILTEST_H
 #define CCAN_FAILTEST_H
+#include "config.h"
 #include <sys/types.h>
 #include <stdbool.h>
 #include <fcntl.h>

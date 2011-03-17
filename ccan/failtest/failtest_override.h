@@ -1,6 +1,7 @@
 #ifndef CCAN_FAILTEST_OVERRIDE_H
 #define CCAN_FAILTEST_OVERRIDE_H
 /* This file is included before the source file to test. */
+#include "config.h"
 
 /* Replacement of allocators. */
 #include <stdlib.h>
