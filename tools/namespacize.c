@@ -112,7 +112,7 @@ static void look_for_macros(char *contents, struct replace **repl)
 	for (p = contents; *p; p++) {
 		if (*p == '\n')
 			state = LINESTART;
-		else if (!isspace(*p)) {
+		else if (!cisspace(*p)) {
 			if (state == LINESTART && *p == '#')
 				state = HASH;
 			else if (state==HASH && !strncmp(p, "define", 6)) {
@@ -178,9 +178,9 @@ static char *get_statement(const void *ctx, char **p)
 				return answer;
 			}
 			/* Compress whitespace into a single ' ' */
-			if (isspace(c)) {
+			if (cisspace(c)) {
 				c = ' ';
-				while (isspace((*p)[1]))
+				while (cisspace((*p)[1]))
 					(*p)++;
 			} else if (c == '{' || c == '(' || c == '[') {
 				if (c == '(')
@@ -317,11 +317,11 @@ static char *find_word(char *f, const char *str)
 
 	while ((p = strstr(p, str)) != NULL) {
 		/* Check it's not in the middle of a word. */
-		if (p > f && (isalnum(p[-1]) || p[-1] == '_')) {
+		if (p > f && (cisalnum(p[-1]) || p[-1] == '_')) {
 			p++;
 			continue;
 		}
-		if (isalnum(p[strlen(str)]) || p[strlen(str)] == '_') {
+		if (cisalnum(p[strlen(str)]) || p[strlen(str)] == '_') {
 			p++;
 			continue;
 		}
@@ -351,7 +351,7 @@ static const char *rewrite_file(const char *filename,
 
 			off = p - file;
 			memcpy(new, file, off);
-			if (isupper(repl->string[0]))
+			if (cisupper(repl->string[0]))
 				memcpy(new + off, "CCAN_", 5);
 			else
 				memcpy(new + off, "ccan_", 5);

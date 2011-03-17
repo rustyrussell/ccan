@@ -499,7 +499,7 @@ static char *demangle_string(char *string)
 		if (string[i] == '\\') {
 			char repl;
 			unsigned len = 0;
-			char *p = strchr(mapfrom, string[i+1]);
+			const char *p = strchr(mapfrom, string[i+1]);
 			if (p) {
 				repl = mapto[p - mapfrom];
 				len = 1;
@@ -508,7 +508,7 @@ static char *demangle_string(char *string)
 					repl = (string[i+2]-'0')*16
 						+ string[i+3]-'0';
 					len = 3;
-				} else if (isdigit(string[i+1])) {
+				} else if (cisdigit(string[i+1])) {
 					repl = (string[i+2]-'0')*8*8
 						+ (string[i+3]-'0')*8
 						+ (string[i+4]-'0');

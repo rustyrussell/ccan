@@ -27,7 +27,7 @@ static void fix_name(char *name)
 	unsigned int i;
 
 	for (i = 0; name[i]; i++) {
-		if (isalnum(name[i]))
+		if (cisalnum(name[i]))
 			name[i] = toupper(name[i]);
 		else
 			name[i] = '_';

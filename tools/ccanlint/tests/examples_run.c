@@ -36,10 +36,10 @@ static bool scan_forv(const void *ctx,
 
 	va_copy(ap, *args);
 
-	if (isspace(fmt[0])) {
+	if (cisspace(fmt[0])) {
 		/* One format space can swallow many input spaces */
 		ret = false;
-		while (isspace(input[0])) {
+		while (cisspace(input[0])) {
 			if (scan_forv(ctx, ++input, fmt+1, &ap)) {
 				ret = true;
 				break;

@@ -145,13 +145,13 @@ static char *start_main(char *ret, const char *why)
 static char *add_func(char *others, const char *line)
 {
 	const char *p, *end = strchr(line, '(') - 1;
-	while (isspace(*end)) {
+	while (cisspace(*end)) {
 		end--;
 		if (end == line)
 			return others;
 	}
 
-	for (p = end; isalnum(*p) || *p == '_'; p--) {
+	for (p = end; cisalnum(*p) || *p == '_'; p--) {
 		if (p == line)
 			return others;
 	}
@@ -188,7 +188,7 @@ static bool looks_internal(char **lines, char **why)
 		const char *line = lines[i] + strspn(lines[i], " \t");
 		unsigned len = strspn(line, IDENT_CHARS);
 
-		if (!line[0] || isspace(line[0]) || strstarts(line, "//"))
+		if (!line[0] || cisspace(line[0]) || strstarts(line, "//"))
 			continue;
 
 		/* The winners. */
@@ -228,7 +228,7 @@ static bool looks_internal(char **lines, char **why)
 
 		/* Single identifier then operator == inside function. */
 		if (last_ended && len
-		    && ispunct(line[len+strspn(line+len, " ")])) {
+		    && cispunct(line[len+strspn(line+len, " ")])) {
 			*why = "starts with identifier then punctuation";
 			return true;
 		}
@@ -361,7 +361,7 @@ static char *mangle(struct manifest *m, char **lines)
 		} else {
 			/* Character at start of line, with ( and no ;
 			 * == function start.  Ignore comments. */
-			if (!isspace(line[0])
+			if (!cisspace(line[0])
 			    && strchr(line, '(')
 			    && !strchr(line, ';')
 			    && !strstr(line, "//")) {

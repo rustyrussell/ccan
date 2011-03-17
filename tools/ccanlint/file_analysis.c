@@ -253,16 +253,17 @@ struct manifest *get_manifest(const void *ctx, const char *dir)
 
 	/* We expect the ccan dir to be two levels above module dir. */
 	if (!ccan_dir) {
-		char *p;
-		ccan_dir = talloc_strdup(NULL, m->dir);
-		p = strrchr(ccan_dir, '/');
+		char *p, *dir;
+		dir = talloc_strdup(NULL, m->dir);
+		p = strrchr(dir, '/');
 		if (!p)
 			errx(1, "I expect the ccan root directory in ../..");
 		*p = '\0';
-		p = strrchr(ccan_dir, '/');
+		p = strrchr(dir, '/');
 		if (!p)
 			errx(1, "I expect the ccan root directory in ../..");
 		*p = '\0';
+		ccan_dir = dir;
 	}
 
 	add_files(m, "");
@@ -361,7 +362,7 @@ bool get_token(const char **line, const char *token)
 	unsigned int toklen;
 
 	*line += strspn(*line, " \t");
-	if (isalnum(token[0]) || token[0] == '_')
+	if (cisalnum(token[0]) || token[0] == '_')
 		toklen = strspn(*line, IDENT_CHARS);
 	else {
 		/* FIXME: real tokenizer handles ++ and other multi-chars.  */
