@@ -131,7 +131,7 @@ static enum TDB_ERROR check_hash_chain(struct tdb_context *tdb,
 	ecode = check_hash_tree(tdb, off, 0, hash, 64,
 				used, num_used, num_found, check, private_data);
 	if (ecode != TDB_SUCCESS) {
-		return false;
+		return ecode;
 	}
 
 	off = tdb_read_off(tdb, off + offsetof(struct tdb_chain, next));
@@ -526,7 +526,7 @@ static enum TDB_ERROR check_free_table(struct tdb_context *tdb,
 			}
 			ecode = check_free(tdb, off, &f, prev, ftable_num, i);
 			if (ecode != TDB_SUCCESS) {
-				return false;
+				return ecode;
 			}
 
 			/* FIXME: Check hash bits */
