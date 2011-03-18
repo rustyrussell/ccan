@@ -106,6 +106,12 @@ static struct test tests[] = {
 	  "union { int i; char c[sizeof(int)]; } u;\n"
 	  "u.i = 0x01020304;\n"
 	  "return u.c[0] == 0x04 && u.c[1] == 0x03 && u.c[2] == 0x02 && u.c[3] == 0x01 ? 0 : 1;" },
+	{ "HAVE_MEMMEM", DEFINES_FUNC, NULL,
+	  "#define _GNU_SOURCE\n"
+	  "#include <string.h>\n"
+	  "static void *func(void *h, size_t hl, void *n, size_t nl) {\n"
+	  "return memmem(h, hl, n, nl);"
+	  "}\n", },
 	{ "HAVE_MMAP", DEFINES_FUNC, NULL,
 	  "#include <sys/mman.h>\n"
 	  "static void *func(int fd) {\n"
