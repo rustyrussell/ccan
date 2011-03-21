@@ -20,10 +20,11 @@
 static int verbose;
 
 enum test_style {
-	EXECUTE,
-	OUTSIDE_MAIN,
-	DEFINES_FUNC,
-	INSIDE_MAIN
+	OUTSIDE_MAIN		= 0x1,
+	DEFINES_FUNC		= 0x2,
+	INSIDE_MAIN		= 0x4,
+	DEFINES_EVERYTHING	= 0x8,
+	EXECUTE			= 0x8000
 };
 
 struct test {
@@ -61,7 +62,7 @@ static struct test tests[] = {
 	  "static int __attribute__((unused)) func(int x) { return x; }" },
 	{ "HAVE_ATTRIBUTE_USED", OUTSIDE_MAIN, NULL,
 	  "static int __attribute__((used)) func(int x) { return x; }" },
-	{ "HAVE_BIG_ENDIAN", EXECUTE, NULL,
+	{ "HAVE_BIG_ENDIAN", INSIDE_MAIN|EXECUTE, NULL,
 	  "union { int i; char c[sizeof(int)]; } u;\n"
 	  "u.i = 0x01020304;\n"
 	  "return u.c[0] == 0x01 && u.c[1] == 0x02 && u.c[2] == 0x03 && u.c[3] == 0x04 ? 0 : 1;" },
@@ -101,7 +102,7 @@ static struct test tests[] = {
 	{ "HAVE_GETPAGESIZE", DEFINES_FUNC, NULL,
 	  "#include <unistd.h>\n"
 	  "static int func(void) { return getpagesize(); }" },
-	{ "HAVE_LITTLE_ENDIAN", EXECUTE, NULL,
+	{ "HAVE_LITTLE_ENDIAN", INSIDE_MAIN|EXECUTE, NULL,
 	  "union { int i; char c[sizeof(int)]; } u;\n"
 	  "u.i = 0x01020304;\n"
 	  "return u.c[0] == 0x04 && u.c[1] == 0x03 && u.c[2] == 0x02 && u.c[3] == 0x01 ? 0 : 1;" },
@@ -116,6 +117,16 @@ static struct test tests[] = {
 	  "	auto void add(int val2);\n"
 	  "	void add(int val2) { val += val2; }\n"
 	  "	return add;\n"
+	  "}\n" },
+	{ "HAVE_STACK_GROWS_UPWARDS", DEFINES_EVERYTHING|EXECUTE, NULL,
+	  "static long nest(const void *base, unsigned int i)\n"
+	  "{\n"
+	  "	if (i == 0)\n"
+	  "		return (const char *)&i - (const char *)base;\n"
+	  "	return nest(base, i-1);\n"
+	  "}\n"
+	  "int main(int argc, char *argv[]) {\n"
+	  "	return (nest(&argc, argc) > 0) ? 0 : 1\n;"
 	  "}\n" },
 	{ "HAVE_STATEMENT_EXPR", INSIDE_MAIN, NULL,
 	  "return ({ int x = argc; x == argc ? 0 : 1; });" },
@@ -253,8 +264,7 @@ static bool run_test(const char *cmd, struct test *test)
 		err(1, "creating %s", INPUT_FILE);
 
 	fprintf(outf, "%s", PRE_BOILERPLATE);
-	switch (test->style) {
-	case EXECUTE:
+	switch (test->style & ~EXECUTE) {
 	case INSIDE_MAIN:
 		fprintf(outf, "%s", MAIN_START_BOILERPLATE);
 		fprintf(outf, "%s", test->fragment);
@@ -273,6 +283,12 @@ static bool run_test(const char *cmd, struct test *test)
 		fprintf(outf, "%s", MAIN_BODY_BOILERPLATE);
 		fprintf(outf, "%s", MAIN_END_BOILERPLATE);
 		break;
+	case DEFINES_EVERYTHING:
+		fprintf(outf, "%s", test->fragment);
+		break;
+	default:
+		abort();
+
 	}
 	fclose(outf);
 
@@ -285,7 +301,7 @@ static bool run_test(const char *cmd, struct test *test)
 			printf("Compile %s for %s, status %i: %s\n",
 			       status ? "fail" : "warning",
 			       test->name, status, output);
-		if (test->style == EXECUTE)
+		if (test->style & EXECUTE)
 			errx(1, "Test for %s did not compile:\n%s",
 			     test->name, output);
 		test->answer = false;
@@ -294,9 +310,9 @@ static bool run_test(const char *cmd, struct test *test)
 		/* Compile succeeded. */
 		free(output);
 		/* We run INSIDE_MAIN tests for sanity checking. */
-		if (test->style == EXECUTE || test->style == INSIDE_MAIN) {
+		if ((test->style & EXECUTE) || (test->style & INSIDE_MAIN)) {
 			output = run("./" OUTPUT_FILE, &status);
-			if (test->style == INSIDE_MAIN && status != 0)
+			if (!(test->style & EXECUTE) && status != 0)
 				errx(1, "Test for %s failed with %i:\n%s",
 				     test->name, status, output);
 			if (verbose && status)
