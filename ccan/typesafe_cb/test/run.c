@@ -1,5 +1,6 @@
 #include <ccan/typesafe_cb/typesafe_cb.h>
 #include <string.h>
+#include <stdint.h>
 #include <ccan/tap/tap.h>
 
 static char dummy = 0;
@@ -49,7 +50,8 @@ static void my_callback_onearg_const(const char *p)
 
 static void my_callback_onearg_volatile(volatile char *p)
 {
-	ok1(strcmp((char *)p, "hello world") == 0);
+	/* Double cast avoids warning on gcc's -Wcast-qual */
+	ok1(strcmp((char *)(intptr_t)p, "hello world") == 0);
 }
 
 static void my_callback_preargs(int a, int b, char *p)
@@ -103,53 +105,57 @@ static void my_callback_postargs_volatile(volatile char *p, int a, int b)
 struct callback_onearg
 {
 	void (*fn)(void *arg);
-	void *arg;
+	const void *arg;
 };
 
 struct callback_onearg cb_onearg
-= { typesafe_cb(void, my_callback_onearg, "hello world"), "hello world" };
+= { typesafe_cb(void, my_callback_onearg, (char *)(intptr_t)"hello world"),
+    "hello world" };
 
 struct callback_preargs
 {
 	void (*fn)(int a, int b, void *arg);
-	void *arg;
+	const void *arg;
 };
 
 struct callback_preargs cb_preargs
-= { typesafe_cb_preargs(void, my_callback_preargs, "hi", int, int), "hi" };
+= { typesafe_cb_preargs(void, my_callback_preargs,
+			(char *)(intptr_t)"hi", int, int), "hi" };
 
 struct callback_postargs
 {
 	void (*fn)(void *arg, int a, int b);
-	void *arg;
+	const void *arg;
 };
 
 struct callback_postargs cb_postargs
-= { typesafe_cb_postargs(void, my_callback_postargs, "hi", int, int), "hi" };
+= { typesafe_cb_postargs(void, my_callback_postargs, 
+			 (char *)(intptr_t)"hi", int, int), "hi" };
 
 int main(int argc, char *argv[])
 {
 	void *p = &dummy;
 	unsigned long l = (unsigned long)p;
+	char str[] = "hello world";
 
 	plan_tests(2 + 3 + 3 + 3);
 	set_some_value(p);
 	set_some_value(l);
 
-	callback_onearg(my_callback_onearg, "hello world");
-	callback_onearg(my_callback_onearg_const, "hello world");
-	callback_onearg(my_callback_onearg_volatile, "hello world");
+	callback_onearg(my_callback_onearg, str);
+	callback_onearg(my_callback_onearg_const, str);
+	callback_onearg(my_callback_onearg_volatile, str);
 
-	callback_preargs(my_callback_preargs, "hello world");
+	callback_preargs(my_callback_preargs, str);
 #if 0 /* FIXME */
-	callback_preargs(my_callback_preargs_const, "hello world");
-	callback_preargs(my_callback_preargs_volatile, "hello world");
+	callback_preargs(my_callback_preargs_const, str);
+	callback_preargs(my_callback_preargs_volatile, str);
 #endif
 
-	callback_postargs(my_callback_postargs, "hello world");
+	callback_postargs(my_callback_postargs, str);
 #if 0 /* FIXME */
-	callback_postargs(my_callback_postargs_const, "hello world");
-	callback_postargs(my_callback_postargs_volatile, "hello world");
+	callback_postargs(my_callback_postargs_const, str);
+	callback_postargs(my_callback_postargs_volatile, str);
 #endif
 
 	return exit_status();

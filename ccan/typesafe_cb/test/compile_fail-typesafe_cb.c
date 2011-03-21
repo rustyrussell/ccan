@@ -14,6 +14,7 @@ static void my_callback(char *p)
 
 int main(int argc, char *argv[])
 {
+	char str[] = "hello world";
 #ifdef FAIL
 	int *p;
 #if !HAVE_TYPEOF||!HAVE_BUILTIN_CHOOSE_EXPR||!HAVE_BUILTIN_TYPES_COMPATIBLE_P
@@ -25,7 +26,7 @@ int main(int argc, char *argv[])
 	p = NULL;
 
 	/* This should work always. */
-	register_callback(my_callback, "hello world");
+	register_callback(my_callback, str);
 
 	/* This will fail with FAIL defined */
 	register_callback(my_callback, p);

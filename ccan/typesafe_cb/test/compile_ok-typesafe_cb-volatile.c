@@ -39,8 +39,9 @@ static void my_callback_post(/* volatile */ char *p, int x)
 
 int main(int argc, char *argv[])
 {
-	register_callback(my_callback, "hello world");
-	register_callback_pre(my_callback_pre, "hello world");
-	register_callback_post(my_callback_post, "hello world");
+	char p[] = "hello world";
+	register_callback(my_callback, p);
+	register_callback_pre(my_callback_pre, p);
+	register_callback_post(my_callback_post, p);
 	return 0;
 }

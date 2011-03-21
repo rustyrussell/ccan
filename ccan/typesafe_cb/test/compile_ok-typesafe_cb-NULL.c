@@ -3,7 +3,7 @@
 
 /* NULL args for callback function should be OK for _exact and _def. */
 
-static void _register_callback(void (*cb)(void *arg), void *arg)
+static void _register_callback(void (*cb)(const void *arg), const void *arg)
 {
 }
 
