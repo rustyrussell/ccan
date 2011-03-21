@@ -30,8 +30,8 @@ int main(int argc, char *argv[])
 	int flags[] = { TDB_INTERNAL, TDB_DEFAULT, TDB_NOMMAP,
 			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT, 
 			TDB_NOMMAP|TDB_CONVERT };
-	struct tdb_data key = { (unsigned char *)"key", 3 };
-	struct tdb_data data = { (unsigned char *)"data", 4 };
+	struct tdb_data key = tdb_mkdata("key", 3);
+	struct tdb_data data = tdb_mkdata("data", 4);
 
 	failtest_init(argc, argv);
 	failtest_hook = suppress_failure;

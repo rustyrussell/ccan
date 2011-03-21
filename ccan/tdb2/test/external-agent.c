@@ -31,8 +31,7 @@ static enum agent_return do_operation(enum operation op, const char *name)
 
 	diag("external: %s", operation_name(op));
 
-	k.dptr = (void *)name;
-	k.dsize = strlen(name);
+	k = tdb_mkdata(name, strlen(name));
 
 	locking_would_block = 0;
 	switch (op) {

@@ -16,8 +16,8 @@ int main(int argc, char *argv[])
 	int flags[] = { TDB_INTERNAL, TDB_DEFAULT, TDB_NOMMAP,
 			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT, 
 			TDB_NOMMAP|TDB_CONVERT };
-	struct tdb_data key = { (unsigned char *)"key", 3 };
-	struct tdb_data data = { (unsigned char *)"data", 4 };
+	struct tdb_data key = tdb_mkdata("key", 3);
+	struct tdb_data data = tdb_mkdata("data", 4);
 
 	plan_tests(sizeof(flags) / sizeof(flags[0]) * 7 + 1);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {

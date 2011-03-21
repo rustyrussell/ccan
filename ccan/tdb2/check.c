@@ -402,22 +402,26 @@ static enum TDB_ERROR check_hash_tree(struct tdb_context *tdb,
 		check:
 			if (check) {
 				TDB_DATA key, data;
-				key.dsize = rec_key_length(&rec);
-				data.dsize = rec_data_length(&rec);
-				key.dptr = (void *)tdb_access_read(tdb,
-						   off + sizeof(rec),
-						   key.dsize + data.dsize,
-						   false);
-				if (TDB_PTR_IS_ERR(key.dptr)) {
-					ecode = TDB_PTR_ERR(key.dptr);
+				const unsigned char *kptr;
+
+				kptr = tdb_access_read(tdb,
+						       off + sizeof(rec),
+						       rec_key_length(&rec)
+						       + rec_data_length(&rec),
+						       false);
+				if (TDB_PTR_IS_ERR(kptr)) {
+					ecode = TDB_PTR_ERR(kptr);
 					goto fail;
 				}
-				data.dptr = key.dptr + key.dsize;
+
+				key = tdb_mkdata(kptr, rec_key_length(&rec));
+				data = tdb_mkdata(kptr + key.dsize,
+						  rec_data_length(&rec));
 				ecode = check(key, data, private_data);
+				tdb_access_release(tdb, kptr);
 				if (ecode != TDB_SUCCESS) {
 					goto fail;
 				}
-				tdb_access_release(tdb, key.dptr);
 			}
 		}
 	}

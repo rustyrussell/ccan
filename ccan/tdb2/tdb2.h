@@ -45,6 +45,7 @@ extern "C" {
 #endif
 #include <ccan/compiler/compiler.h>
 #include <ccan/typesafe_cb/typesafe_cb.h>
+#include <ccan/cast/cast.h>
 
 union tdb_attribute;
 struct tdb_context;
@@ -219,6 +220,24 @@ bool tdb_exists(struct tdb_context *tdb, TDB_DATA key);
 static inline bool tdb_deq(struct tdb_data a, struct tdb_data b)
 {
 	return a.dsize == b.dsize && memcmp(a.dptr, b.dptr, a.dsize) == 0;
+}
+
+/**
+ * tdb_mkdata - make a struct tdb_data from const data
+ * @p: the constant pointer
+ * @len: the length
+ *
+ * As the dptr member of struct tdb_data is not constant, you need to
+ * cast it.  This function keeps thost casts in one place, as well as
+ * suppressing the warning some compilers give when casting away a
+ * qualifier (eg. gcc with -Wcast-qual)
+ */
+static inline struct tdb_data tdb_mkdata(const void *p, size_t len)
+{
+	struct tdb_data d;
+	d.dptr = cast_const(void *, p);
+	d.dsize = len;
+	return d;
 }
 
 /**

@@ -18,10 +18,8 @@ int main(int argc, char *argv[])
 	TDB_DATA key, data;
 
 	plan_tests(11);
-	key.dptr = (unsigned char *)"Hello";
-	data.dptr = (unsigned char *)"world";
-	data.dsize = 5;
-	key.dsize = 5;
+	key = tdb_mkdata("Hello", 5);
+	data = tdb_mkdata("world", 5);
 
 	/* Create a TDB with three free tables. */
 	layout = new_tdb_layout(NULL);

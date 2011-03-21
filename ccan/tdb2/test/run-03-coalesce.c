@@ -34,10 +34,8 @@ int main(int argc, char *argv[])
 	/* FIXME: Test TDB_CONVERT */
 
 	plan_tests(38);
-	data.dptr = (void *)"world";
-	data.dsize = 5;
-	key.dptr = (void *)"hello";
-	key.dsize = 5;
+	data = tdb_mkdata("world", 5);
+	key = tdb_mkdata("hello", 5);
 
 	/* No coalescing can be done due to EOF */
 	layout = new_tdb_layout("run-03-coalesce.tdb");

@@ -422,7 +422,6 @@ enum TDB_ERROR tdb_parse_record_(struct tdb_context *tdb,
 	tdb_off_t off;
 	struct tdb_used_record rec;
 	struct hash_info h;
-	TDB_DATA data;
 	enum TDB_ERROR ecode;
 
 	off = find_and_lock(tdb, key, F_RDLCK, &h, &rec, NULL);
@@ -433,16 +432,16 @@ enum TDB_ERROR tdb_parse_record_(struct tdb_context *tdb,
 	if (!off) {
 		ecode = TDB_ERR_NOEXIST;
 	} else {
-		data.dsize = rec_data_length(&rec);
-		data.dptr = (void *)tdb_access_read(tdb,
-						    off + sizeof(rec)
-						    + key.dsize,
-						    data.dsize, false);
-		if (TDB_PTR_IS_ERR(data.dptr)) {
-			ecode = TDB_PTR_ERR(data.dptr);
+		const void *dptr;
+		dptr = tdb_access_read(tdb, off + sizeof(rec) + key.dsize,
+				       rec_data_length(&rec), false);
+		if (TDB_PTR_IS_ERR(dptr)) {
+			ecode = TDB_PTR_ERR(dptr);
 		} else {
+			TDB_DATA data = tdb_mkdata(dptr, rec_data_length(&rec));
+
 			ecode = parse(key, data, p);
-			tdb_access_release(tdb, data.dptr);
+			tdb_access_release(tdb, dptr);
 		}
 	}
 

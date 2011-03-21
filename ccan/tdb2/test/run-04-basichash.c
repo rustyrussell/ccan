@@ -12,7 +12,7 @@
 /* We rig the hash so adjacent-numbered records always clash. */
 static uint64_t clash(const void *key, size_t len, uint64_t seed, void *priv)
 {
-	return ((uint64_t)*(unsigned int *)key)
+	return ((uint64_t)*(const unsigned int *)key)
 		<< (64 - TDB_TOPLEVEL_HASH_BITS - 1);
 }
 

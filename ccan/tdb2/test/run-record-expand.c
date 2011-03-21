@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 	int flags[] = { TDB_INTERNAL, TDB_DEFAULT, TDB_NOMMAP,
 			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT, 
 			TDB_NOMMAP|TDB_CONVERT };
-	struct tdb_data key = { (unsigned char *)"key", 3 };
+	struct tdb_data key = tdb_mkdata("key", 3);
 	struct tdb_data data;
 
 	data.dptr = malloc(MAX_SIZE);

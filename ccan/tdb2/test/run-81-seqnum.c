@@ -15,8 +15,8 @@ int main(int argc, char *argv[])
 	unsigned int i;
 	struct tdb_context *tdb;
 	struct tdb_data d = { NULL, 0 }; /* Bogus GCC warning */
-	struct tdb_data key = { (unsigned char *)"key", 3 };
-	struct tdb_data data = { (unsigned char *)"data", 4 };
+	struct tdb_data key = tdb_mkdata("key", 3);
+	struct tdb_data data = tdb_mkdata("data", 4);
 	int flags[] = { TDB_INTERNAL, TDB_DEFAULT, TDB_NOMMAP,
 			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT,
 			TDB_NOMMAP|TDB_CONVERT };

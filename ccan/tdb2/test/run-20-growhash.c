@@ -11,7 +11,7 @@
 
 static uint64_t myhash(const void *key, size_t len, uint64_t seed, void *priv)
 {
-	return *(uint64_t *)key;
+	return *(const uint64_t *)key;
 }
 
 static void add_bits(uint64_t *val, unsigned new, unsigned new_bits,

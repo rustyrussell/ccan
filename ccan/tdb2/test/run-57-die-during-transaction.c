@@ -208,8 +208,7 @@ reset:
 	}
 
 	/* Put key for agent to fetch. */
-	key.dsize = strlen(KEY_STRING);
-	key.dptr = (void *)KEY_STRING;
+	key = tdb_mkdata(KEY_STRING, strlen(KEY_STRING));
 	if (tdb_store(tdb, key, key, TDB_INSERT) != 0)
 		return false;
 

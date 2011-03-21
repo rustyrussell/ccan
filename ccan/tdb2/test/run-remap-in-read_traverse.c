@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 	unsigned int i;
 	struct agent *agent;
 	struct tdb_context *tdb;
-	struct tdb_data d = { (unsigned char *)"hello", 5 };
+	struct tdb_data d = tdb_mkdata("hello", 5);
 	const char filename[] = "run-remap-in-read_traverse.tdb";
 
 	plan_tests(4);

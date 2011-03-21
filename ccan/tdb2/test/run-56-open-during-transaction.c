@@ -160,10 +160,8 @@ int main(int argc, char *argv[])
 
 		opened = true;
 		ok1(tdb_transaction_start(tdb) == 0);
-		key.dsize = strlen("hi");
-		key.dptr = (void *)"hi";
-		data.dptr = (void *)"world";
-		data.dsize = strlen("world");
+		key = tdb_mkdata("hi", strlen("hi"));
+		data = tdb_mkdata("world", strlen("world"));
 
 		ok1(tdb_store(tdb, key, data, TDB_INSERT) == 0);
 		ok1(tdb_transaction_commit(tdb) == 0);
