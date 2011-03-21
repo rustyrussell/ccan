@@ -35,6 +35,7 @@
 #include <ccan/tdb2/tdb2.h>
 #include <ccan/likely/likely.h>
 #include <ccan/compiler/compiler.h>
+#include <ccan/cast/cast.h>
 #if HAVE_BYTESWAP_H
 #include <byteswap.h>
 #endif
@@ -75,7 +76,7 @@ typedef uint64_t tdb_off_t;
 
 /* Packing errors into pointers and v.v. */
 #define TDB_PTR_IS_ERR(ptr) \
-	unlikely((void *)(ptr) >= (void *)(long)TDB_ERR_LAST)
+	unlikely((unsigned long)(ptr) >= (unsigned long)TDB_ERR_LAST)
 #define TDB_PTR_ERR(p) ((enum TDB_ERROR)(long)(p))
 #define TDB_ERR_PTR(err) ((void *)(long)(err))
 

@@ -454,7 +454,7 @@ fail_errno:
 #ifdef TDB_TRACE
 	close(tdb->tracefd);
 #endif
-	free((char *)tdb->name);
+	free(cast_const(char *, tdb->name));
 	if (tdb->file) {
 		tdb_unlock_all(tdb);
 		if (--tdb->file->refcnt == 0) {
@@ -495,7 +495,7 @@ int tdb_close(struct tdb_context *tdb)
 		else
 			tdb_munmap(tdb->file);
 	}
-	free((char *)tdb->name);
+	free(cast_const(char *, tdb->name));
 	if (tdb->file) {
 		struct tdb_file **i;
 

@@ -439,7 +439,7 @@ static enum TDB_ERROR tdb_expand_file(struct tdb_context *tdb,
 const void *tdb_access_read(struct tdb_context *tdb,
 			    tdb_off_t off, tdb_len_t len, bool convert)
 {
-	const void *ret = NULL;
+	void *ret = NULL;
 
 	if (likely(!(tdb->flags & TDB_CONVERT))) {
 		ret = tdb->methods->direct(tdb, off, len, false);
