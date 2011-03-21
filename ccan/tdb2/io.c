@@ -342,7 +342,7 @@ enum TDB_ERROR tdb_write_off(struct tdb_context *tdb,
 static void *_tdb_alloc_read(struct tdb_context *tdb, tdb_off_t offset,
 			     tdb_len_t len, unsigned int prefix)
 {
-	void *buf;
+	unsigned char *buf;
 	enum TDB_ERROR ecode;
 
 	/* some systems don't like zero length malloc */
