@@ -106,10 +106,10 @@
  *	#define register_callback(fn, arg) \
  *		_register_callback(typesafe_cb_def(void, (fn), (arg)), (arg))
  */
-#define typesafe_cb_def(rtype, fn, arg)			\
-	cast_if_any(rtype (*)(void *), (fn), (fn)+0,	\
-		    rtype (*)(typeof(*arg)*),		\
-		    rtype (*)(const typeof(*arg)*),	\
+#define typesafe_cb_def(rtype, fn, arg)				\
+	cast_if_any(rtype (*)(void *), (fn), 0?(fn):(fn),	\
+		    rtype (*)(typeof(*arg)*),			\
+		    rtype (*)(const typeof(*arg)*),		\
 		    rtype (*)(volatile typeof(*arg)*))
 
 /**
@@ -127,7 +127,8 @@
  *		_register_callback(typesafe_cb_exact(void, (fn), (arg)), (arg))
  */
 #define typesafe_cb_exact(rtype, fn, arg)				\
-	cast_if_type(rtype (*)(void *), (fn), (fn)+0, rtype (*)(typeof(arg)))
+	cast_if_type(rtype (*)(void *), (fn), 0?(fn):(fn),		\
+		     rtype (*)(typeof(arg)))
 
 /**
  * typesafe_cb_const - cast a const callback function if it matches the arg
@@ -166,7 +167,7 @@
  *				   (arg))
  */
 #define typesafe_cb_preargs(rtype, fn, arg, ...)			\
-	cast_if_type(rtype (*)(__VA_ARGS__, void *), (fn), (fn)+0,	\
+	cast_if_type(rtype (*)(__VA_ARGS__, void *), (fn), 0?(fn):(fn),	\
 		     rtype (*)(__VA_ARGS__, typeof(arg)))
 
 /**
@@ -185,7 +186,7 @@
  *				   (arg))
  */
 #define typesafe_cb_postargs(rtype, fn, arg, ...)			\
-	cast_if_type(rtype (*)(void *, __VA_ARGS__), (fn), (fn)+0,	\
+	cast_if_type(rtype (*)(void *, __VA_ARGS__), (fn), 0?(fn):(fn),	\
 		     rtype (*)(typeof(arg), __VA_ARGS__))
 
 /**
@@ -210,7 +211,8 @@
  *			  typesafe_cb_cmp(int, (cmpfn), (base)), (arg))
  */
 #define typesafe_cb_cmp(rtype, cmpfn, arg)				\
-	cast_if_type(rtype (*)(const void *, const void *), (cmpfn), (cmpfn)+0, \
+	cast_if_type(rtype (*)(const void *, const void *),		\
+		     (cmpfn), 0?(cmpfn):(cmpfn),			\
 		     rtype (*)(const typeof(*arg)*, const typeof(*arg)*))
 		     
 #endif /* CCAN_CAST_IF_TYPE_H */
