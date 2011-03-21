@@ -12,7 +12,18 @@ struct iter_info {
 	struct list_node list;
 	const void *index;
 	unsigned int i, num;
+	bool onstack;
 };
+
+/* Is pointer still downstack from some other onstack var? */
+static bool on_stack(const void *ptr, const void *onstack)
+{
+#if HAVE_STACK_GROWS_UPWARDS
+	return ptr < onstack;
+#else
+	return ptr > onstack;
+#endif
+}
 
 static void free_old_iters(const void *index)
 {
@@ -20,11 +31,9 @@ static void free_old_iters(const void *index)
 
 	list_for_each_safe(&iters, i, next, list) {
 		/* If we're re-using an index, free the old one.
-		 * Otherwise, if it's past i on the stack, it's old.  Don't
-		 * assume stack direction, but we know index is downstack. */
+		 * Otherwise, discard if it's passed off stack. */
 		if (i->index == index
-		    || (((uintptr_t)index < (uintptr_t)&i)
-			== ((uintptr_t)&i < (uintptr_t)i->index))) {
+		    || (i->onstack && !on_stack(i->index, &i))) {
 			list_del(&i->list);
 			free(i);
 		}
@@ -47,6 +56,7 @@ static struct iter_info *new_iter(const void *index)
 	struct iter_info *info = malloc(sizeof *info);
 	info->index = index;
 	info->i = info->num = 0;
+	info->onstack = on_stack(index, &info);
 	list_add(&iters, &info->list);
 	return info;
 };
