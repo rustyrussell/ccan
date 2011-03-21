@@ -46,7 +46,7 @@
 	for (unsigned _foreach_i = (unsigned long)((i) = (val), 0);	\
 	     (i);							\
 	     (i) = ((FOREACH_TYPEOF(val)[]){(val), __VA_ARGS__, NULL})	\
-		     [++_foreach_i])					\
+		     [++_foreach_i],					\
 		_foreach_no_nullval(_foreach_i, i,			\
 				    ((void *[]){ val, __VA_ARGS__})))
 #else /* !HAVE_FOR_LOOP_DECLARATION */

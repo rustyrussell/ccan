@@ -1,5 +1,5 @@
-#if !HAVE_COMPOUND_LITERALS || !HAVE_FOR_LOOP_DECLARATION
 #include <ccan/foreach/foreach.h>
+#if !HAVE_COMPOUND_LITERALS || !HAVE_FOR_LOOP_DECLARATION
 #include <ccan/list/list.h>
 #include <stdint.h>
 #include <stdlib.h>
