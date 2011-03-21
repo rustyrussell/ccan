@@ -1,6 +1,7 @@
 #ifndef CCAN_CAST_H
 #define CCAN_CAST_H
 #include "config.h"
+#include <stdint.h>
 #include <ccan/build_assert/build_assert.h>
 
 /**
@@ -37,9 +38,9 @@
  *		return NULL;
  *	}
  */
-#define cast_const(type, expr)					\
-	((type)(expr)						\
-	 + BUILD_ASSERT_OR_ZERO(cast_const_compat1((expr), type)))
+#define cast_const(type, expr)						\
+	((type)((intptr_t)(expr)					\
+		+ BUILD_ASSERT_OR_ZERO(cast_const_compat1((expr), type))))
 
 /**
  * cast_const2 - remove a const qualifier from a pointer to a pointer.
@@ -49,9 +50,9 @@
  * This ensures that you are only removing the const qualifier from an
  * expression.  The expression must otherwise match @type.
  */
-#define cast_const2(type, expr)					\
-	((type)(expr)						\
-	 + BUILD_ASSERT_OR_ZERO(cast_const_compat2((expr), type)))
+#define cast_const2(type, expr)						\
+	((type)((intptr_t)(expr)					\
+		+ BUILD_ASSERT_OR_ZERO(cast_const_compat2((expr), type))))
 
 /**
  * cast_const3 - remove a const from a pointer to a pointer to a pointer..
@@ -61,9 +62,9 @@
  * This ensures that you are only removing the const qualifier from an
  * expression.  The expression must otherwise match @type.
  */
-#define cast_const3(type, expr)					\
-	((type)(expr)						\
-	 + BUILD_ASSERT_OR_ZERO(cast_const_compat3((expr), type)))
+#define cast_const3(type, expr)						\
+	((type)((intptr_t)(expr)					\
+		+ BUILD_ASSERT_OR_ZERO(cast_const_compat3((expr), type))))
 
 
 /**
