@@ -64,10 +64,11 @@ static void segv_handler(int signal, siginfo_t *info, void *p)
 {
 	char string[100];
 
-	sprintf(string, "%u: death at %p (map_ptr %p, map_size %llu)\n",
-		getpid(), info->si_addr, db->map_ptr, db->map_size);
-	write(2, string, strlen(string));
-	sleep(60);
+	sprintf(string, "%u: death at %p (map_ptr %p, map_size %zu)\n",
+		getpid(), info->si_addr, db->file->map_ptr,
+		(size_t)db->file->map_size);
+	if (write(2, string, strlen(string)) > 0)
+		sleep(60);
 	_exit(11);
 }	
 
@@ -243,7 +244,8 @@ static void usage(void)
 static void send_count_and_suicide(int sig)
 {
 	/* This ensures our successor can continue where we left off. */
-	write(count_pipe, &loopnum, sizeof(loopnum));
+	if (write(count_pipe, &loopnum, sizeof(loopnum)) != sizeof(loopnum))
+		exit(2);
 	/* This gives a unique signature. */
 	kill(getpid(), SIGUSR2);
 }
@@ -433,8 +435,11 @@ int main(int argc, char * const *argv)
 			    || WTERMSIG(status) == SIGUSR1) {
 				/* SIGUSR2 means they wrote to pipe. */
 				if (WTERMSIG(status) == SIGUSR2) {
-					read(pfds[0], &done[j],
-					     sizeof(done[j]));
+					if (read(pfds[0], &done[j],
+						 sizeof(done[j]))
+					    != sizeof(done[j]))
+						err(1,
+						    "Short read from child?");
 				}
 				pids[j] = fork();
 				if (pids[j] == 0)

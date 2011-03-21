@@ -21,7 +21,6 @@
 */
 
 #include <ccan/tdb2/tdb2.h>
-#include <ccan/hash/hash.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -207,8 +206,10 @@ static void help(void)
 "  store     key  data  : store a record (replace)\n"
 "  show      key        : show a record by key\n"
 "  delete    key        : delete a record by key\n"
+#if 0
 "  list                 : print the database hash table and freelist\n"
 "  free                 : print the database freelist\n"
+#endif
 "  check                : check the integrity of an opened database\n"
 "  speed                : perform speed tests on the database\n"
 "  ! command            : execute system command\n"
@@ -240,12 +241,6 @@ static void create_tdb(const char *tdbname)
 	if (!tdb) {
 		printf("Could not create %s: %s\n", tdbname, strerror(errno));
 	}
-}
-
-static uint64_t jenkins_hash(const void *key, size_t len, uint64_t seed,
-			     void *priv)
-{
-	return hash_any(key, len, seed);
 }
 
 static void open_tdb(const char *tdbname)
