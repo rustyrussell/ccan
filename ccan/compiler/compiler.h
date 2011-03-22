@@ -148,7 +148,7 @@
  *	const char *greek_name(enum greek greek);
  *
  *	// Inline version.
- *	static inline char *_greek_name(enum greek greek)
+ *	static inline const char *_greek_name(enum greek greek)
  *	{
  *		switch (greek) {
  *		case ALPHA: return "alpha";
