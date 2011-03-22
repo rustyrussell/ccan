@@ -861,7 +861,7 @@ enum TDB_ERROR tdb_chainlock(struct tdb_context *tdb, TDB_DATA key)
 					   "tdb_chainlock");
 }
 
-enum TDB_ERROR tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key)
+void tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key)
 {
 	uint64_t h = tdb_hash(tdb, key.dptr, key.dsize);
 	tdb_off_t lockstart, locksize;
@@ -873,6 +873,5 @@ enum TDB_ERROR tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key)
 	lockstart = hlock_range(group, &locksize);
 
 	tdb_trace_1rec(tdb, "tdb_chainunlock", key);
-	return tdb->last_error = tdb_unlock_hashes(tdb, lockstart, locksize,
-						   F_WRLCK);
+	tdb_unlock_hashes(tdb, lockstart, locksize, F_WRLCK);
 }

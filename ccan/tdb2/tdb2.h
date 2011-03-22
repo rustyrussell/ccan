@@ -411,8 +411,43 @@ enum TDB_ERROR tdb_chainlock(struct tdb_context *tdb, TDB_DATA key);
  * tdb_chainunlock - unlock a record in the TDB
  * @tdb: the tdb context returned from tdb_open()
  * @key: the key to unlock.
+ *
+ * The key must have previously been locked by tdb_chainlock().
  */
-enum TDB_ERROR tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key);
+void tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key);
+
+/**
+ * tdb_lockall - lock the entire TDB
+ * @tdb: the tdb context returned from tdb_open()
+ *
+ * You cannot hold a tdb_chainlock while calling this.  It nests, so you
+ * must call tdb_unlockall as many times as you call tdb_lockall.
+ */
+enum TDB_ERROR tdb_lockall(struct tdb_context *tdb);
+
+/**
+ * tdb_unlockall - unlock the entire TDB
+ * @tdb: the tdb context returned from tdb_open()
+ */
+void tdb_unlockall(struct tdb_context *tdb);
+
+/**
+ * tdb_lockall_read - lock the entire TDB for reading
+ * @tdb: the tdb context returned from tdb_open()
+ *
+ * This prevents others writing to the database, eg. tdb_delete, tdb_store,
+ * tdb_append, but not tdb_fetch.
+ *
+ * You cannot hold a tdb_chainlock while calling this.  It nests, so you
+ * must call tdb_unlockall_read as many times as you call tdb_lockall_read.
+ */
+enum TDB_ERROR tdb_lockall_read(struct tdb_context *tdb);
+
+/**
+ * tdb_unlockall_read - unlock the entire TDB for reading
+ * @tdb: the tdb context returned from tdb_open()
+ */
+void tdb_unlockall_read(struct tdb_context *tdb);
 
 /**
  * tdb_wipe_all - wipe the database clean

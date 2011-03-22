@@ -456,7 +456,7 @@ fail_errno:
 #endif
 	free(cast_const(char *, tdb->name));
 	if (tdb->file) {
-		tdb_unlock_all(tdb);
+		tdb_lock_cleanup(tdb);
 		if (--tdb->file->refcnt == 0) {
 			assert(tdb->file->num_lockrecs == 0);
 			if (tdb->file->map_ptr) {
@@ -499,7 +499,7 @@ int tdb_close(struct tdb_context *tdb)
 	if (tdb->file) {
 		struct tdb_file **i;
 
-		tdb_unlock_all(tdb);
+		tdb_lock_cleanup(tdb);
 		if (--tdb->file->refcnt == 0) {
 			ret = close(tdb->file->fd);
 

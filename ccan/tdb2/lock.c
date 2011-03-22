@@ -762,7 +762,27 @@ void tdb_unlock_free_bucket(struct tdb_context *tdb, tdb_off_t b_off)
 	tdb_nest_unlock(tdb, free_lock_off(b_off), F_WRLCK);
 }
 
-void tdb_unlock_all(struct tdb_context *tdb)
+enum TDB_ERROR tdb_lockall(struct tdb_context *tdb)
+{
+	return tdb_allrecord_lock(tdb, F_WRLCK, TDB_LOCK_WAIT, false);
+}
+
+void tdb_unlockall(struct tdb_context *tdb)
+{
+	tdb_allrecord_unlock(tdb, F_WRLCK);
+}
+
+enum TDB_ERROR tdb_lockall_read(struct tdb_context *tdb)
+{
+	return tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false);
+}
+
+void tdb_unlockall_read(struct tdb_context *tdb)
+{
+	tdb_allrecord_unlock(tdb, F_RDLCK);
+}
+
+void tdb_lock_cleanup(struct tdb_context *tdb)
 {
 	unsigned int i;
 
