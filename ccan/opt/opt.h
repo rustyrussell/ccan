@@ -315,7 +315,7 @@ struct opt_table {
 /* Resolves to the four parameters for non-arg callbacks. */
 #define OPT_CB_NOARG(cb, arg)				\
 	OPT_NOARG,					\
-	cast_if_any(char *(*)(void *), (cb), (cb)+0,	\
+	cast_if_any(char *(*)(void *), (cb), 0?(cb):(cb),\
 		    char *(*)(typeof(*(arg))*),		\
 		    char *(*)(const typeof(*(arg))*),	\
 		    char *(*)(const void *)),		\
@@ -324,11 +324,12 @@ struct opt_table {
 /* Resolves to the four parameters for arg callbacks. */
 #define OPT_CB_ARG(cb, show, arg)					\
 	OPT_HASARG, NULL,						\
-	cast_if_any(char *(*)(const char *,void *), (cb), (cb)+0,	\
+	cast_if_any(char *(*)(const char *,void *), (cb), 0?(cb):(cb),	\
 		    char *(*)(const char *, typeof(*(arg))*),		\
 		    char *(*)(const char *, const typeof(*(arg))*),	\
 		    char *(*)(const char *, const void *)),		\
-	cast_if_type(void (*)(char buf[], const void *), (show), (show)+0, \
+	cast_if_type(void (*)(char buf[], const void *), (show),	\
+		     0?(show):(show),					\
 		     void (*)(char buf[], const typeof(*(arg))*))
 
 /* Non-typesafe register function. */
