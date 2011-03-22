@@ -404,6 +404,17 @@ static bool parse_hash_if(struct pp_conditions *cond, const char **line)
 		return false;
 	if (!defined)
 		cond->type = PP_COND_IF;
+
+	/* FIXME: We just chain them, ignoring operators. */
+	if (get_token(line, "||") || get_token(line, "&&")) {
+		struct pp_conditions *sub = talloc(cond, struct pp_conditions);
+
+		sub->parent = cond->parent;
+		sub->type = PP_COND_IFDEF;
+		if (parse_hash_if(sub, line))
+			cond->parent = sub;
+	}
+
 	return true;
 }
 
