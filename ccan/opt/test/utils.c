@@ -29,7 +29,7 @@ void show_arg(char buf[OPT_SHOW_LEN], const char *arg)
 
 char *err_output = NULL;
 
-static void save_err_output(const char *fmt, ...)
+void save_err_output(const char *fmt, ...)
 {
 	va_list ap;
 	char *p;
@@ -49,7 +49,8 @@ static void save_err_output(const char *fmt, ...)
 		err_output = p;
 }	
 
-/* FIXME: This leaks, BTW. */
+static bool allocated = false;
+
 bool parse_args(int *argc, char ***argv, ...)
 {
 	char **a;
@@ -63,7 +64,12 @@ bool parse_args(int *argc, char ***argv, ...)
 		(*argc)++;
 		a = realloc(a, sizeof(*a) * (*argc + 1));
 	}
+
+	if (allocated)
+		free(*argv);
+
 	*argv = a;
+	allocated = true;
 	/* Re-set before parsing. */
 	optind = 0;
 

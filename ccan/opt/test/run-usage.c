@@ -106,5 +106,7 @@ int main(int argc, char *argv[])
 	ok1(strstr(output, "AAAAll"));
 	free(output);
 
+	free(shortname);
+	free(longname);
 	return exit_status();
 }

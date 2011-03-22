@@ -25,6 +25,9 @@ int main(int argc, char *argv[])
 	ok1(strcmp(argv[1], "extra") == 0);
 	ok1(strcmp(argv[2], "args") == 0);
 
+	/* parse_args allocates argv */
+	free(argv);
+
 	return exit_status();
 }
 

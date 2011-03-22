@@ -291,5 +291,7 @@ int main(int argc, char *argv[])
 	ok1(strcmp(argv[4], "-a") == 0);
 	ok1(!argv[5]);
 
+	/* parse_args allocates argv */
+	free(argv);
 	return exit_status();
 }

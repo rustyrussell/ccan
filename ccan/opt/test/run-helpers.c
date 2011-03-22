@@ -19,6 +19,9 @@ static int saved_fprintf(FILE *ignored, const char *fmt, ...);
 #define vfprintf(f, fmt, ap) saved_vprintf(fmt, ap)
 static int saved_vprintf(const char *fmt, va_list ap);
 
+#define malloc(size) saved_malloc(size)
+static void *saved_malloc(size_t size);
+
 #include <ccan/opt/helpers.c>
 #include <ccan/opt/opt.c>
 #include <ccan/opt/usage.c>
@@ -68,6 +71,13 @@ static int saved_fprintf(FILE *ignored, const char *fmt, ...)
 	va_end(ap);
 	return ret;
 }	
+
+#undef malloc
+static void *last_allocation;
+static void *saved_malloc(size_t size)
+{
+	return last_allocation = malloc(size);
+}
 
 /* Test helpers. */
 int main(int argc, char *argv[])
@@ -220,15 +230,25 @@ int main(int argc, char *argv[])
 		reset_options();
 		opt_register_noarg("-a",
 				   opt_version_and_exit, "1.2.3", "");
+		/* parse_args allocates argv */
+		free(argv);
+
+		argc = 2;
+		argv = malloc(sizeof(argv[0]) * 3);
+		argv[0] = "thisprog";
+		argv[1] = "-a";
+		argv[2] = NULL;
+
 		exitval = setjmp(exited);
 		if (exitval == 0) {
-			parse_args(&argc, &argv, "-a", NULL);
+			opt_parse(&argc, argv, save_err_output);
 			fail("opt_show_version_and_exit returned?");
 		} else {
 			ok1(exitval - 1 == 0);
 		}
 		ok1(strcmp(output, "1.2.3\n") == 0);
 		free(output);
+		free(argv);
 		output = NULL;
 	}
 
@@ -238,9 +258,16 @@ int main(int argc, char *argv[])
 		reset_options();
 		opt_register_noarg("-a",
 				   opt_usage_and_exit, "[args]", "");
+
+		argc = 2;
+		argv = malloc(sizeof(argv[0]) * 3);
+		argv[0] = "thisprog";
+		argv[1] = "-a";
+		argv[2] = NULL;
+
 		exitval = setjmp(exited);
 		if (exitval == 0) {
-			parse_args(&argc, &argv, "-a", NULL);
+			opt_parse(&argc, argv, save_err_output);
 			fail("opt_usage_and_exit returned?");
 		} else {
 			ok1(exitval - 1 == 0);
@@ -249,6 +276,9 @@ int main(int argc, char *argv[])
 		ok1(strstr(output, argv[0]));
 		ok1(strstr(output, "[-a]"));
 		free(output);
+		free(argv);
+		/* It exits without freeing usage string. */
+		free(last_allocation);
 		output = NULL;
 	}
 
@@ -377,6 +407,7 @@ int main(int argc, char *argv[])
 		ok1(!strcmp(output,
 			    "thisprog: --garbage: unrecognized option\n"));
 		free(output);
+		free(argv);
 		output = NULL;
 	}
 
@@ -386,18 +417,19 @@ int main(int argc, char *argv[])
 		reset_options();
 		opt_register_noarg("-a",
 				   opt_usage_and_exit, "[args]", "");
+		argc = 2;
+		argv = malloc(sizeof(argv[0]) * 3);
+		argv[0] = "thisprog";
+		argv[1] = "--garbage";
+		argv[2] = NULL;
 		exitval = setjmp(exited);
 		if (exitval == 0) {
-			argc = 2;
-			argv = malloc(sizeof(argv[0]) * 3);
-			argv[0] = "thisprog";
-			argv[1] = "--garbage";
-			argv[2] = NULL;
 			opt_parse(&argc, argv, opt_log_stderr_exit);
 			fail("opt_log_stderr_exit returned?");
 		} else {
 			ok1(exitval - 1 == 1);
 		}
+		free(argv);
 		ok1(!strcmp(output,
 			    "thisprog: --garbage: unrecognized option\n"));
 		free(output);

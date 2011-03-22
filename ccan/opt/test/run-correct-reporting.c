@@ -42,6 +42,8 @@ int main(int argc, char *argv[])
 	free(err_output);
 	err_output = NULL;
 
+	/* parse_args allocates argv */
+	free(argv);
 	return exit_status();
 }
 
