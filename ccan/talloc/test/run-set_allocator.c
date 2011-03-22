@@ -34,16 +34,27 @@ int main(int argc, char *argv[])
 	failtest_init(argc, argv);
 	talloc_set_allocator(my_malloc, my_free, my_realloc);
 	p1 = talloc_array(NULL, int, 10);
+	if (!p1)
+		failtest_exit(exit_status());
 	ok1(my_malloc_count == 1);
 	ok1(my_free_count == 0);
 	ok1(my_realloc_count == 0);
 
-	p1 = talloc_realloc(NULL, p1, int, 10000);
+	p2 = talloc_realloc(NULL, p1, int, 10000);
+	if (!p2) {
+		talloc_free(p1);
+		failtest_exit(exit_status());
+	}
+	p1 = p2;
 	ok1(my_malloc_count == 1);
 	ok1(my_free_count == 0);
 	ok1(my_realloc_count == 1);
 
 	p2 = talloc(p1, int);
+	if (!p2) {
+		talloc_free(p1);
+		failtest_exit(exit_status());
+	}
 	ok1(my_malloc_count == 2);
 	ok1(my_free_count == 0);
 	ok1(my_realloc_count == 1);
