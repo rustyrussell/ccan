@@ -67,6 +67,9 @@ static void check_info_documentation_exists(struct manifest *m,
 	struct doc_section *d;
 	bool summary = false, description = false;
 
+	/* We don't fail ccanlint for this. */
+	score->pass = true;
+
 	list_for_each(infodocs, d, list) {
 		if (!streq(d->function, m->basename))
 			continue;
@@ -78,7 +81,6 @@ static void check_info_documentation_exists(struct manifest *m,
 
 	if (summary && description) {
 		score->score = score->total;
-		score->pass = true;
 	} else if (!summary) {
 		score->error = talloc_strdup(score,
 		"_info file has no module documentation.\n\n"

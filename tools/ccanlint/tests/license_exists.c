@@ -11,8 +11,6 @@
 #include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
 
-REGISTER_TEST(license_exists);
-
 static struct doc_section *find_license(const struct manifest *m)
 {
 	struct doc_section *d;
@@ -79,6 +77,8 @@ static void handle_license_link(struct manifest *m, struct score *score)
 	}
 }
 
+extern struct ccanlint license_exists;
+
 static void check_has_license(struct manifest *m,
 			      bool keep,
 			      unsigned int *timeleft, struct score *score)
@@ -94,6 +94,9 @@ static void check_has_license(struct manifest *m,
 		score->error = talloc_strdup(score, "No License: tag in _info");
 		return;
 	}
+	/* If they have a license tag at all, we pass. */
+	score->pass = true;
+
 	expected = expected_link(m, d);
 
 	len = readlink(license, buf, sizeof(buf));
@@ -157,3 +160,4 @@ struct ccanlint license_exists = {
 	.check = check_has_license,
 	.needs = "info_exists"
 };
+REGISTER_TEST(license_exists);

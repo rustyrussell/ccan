@@ -179,11 +179,13 @@ static void check_idempotent(struct manifest *m,
 {
 	struct ccan_file *f;
 
+	/* We don't fail ccanlint for this. */
+	score->pass = true;
+
 	list_for_each(&m->h_files, f, list) {
 		check_idem(f, score);
 	}
 	if (!score->error) {
-		score->pass = true;
 		score->score = score->total;
 	}
 }

@@ -161,9 +161,9 @@ static bool run_test(struct ccanlint *i,
 			printf("%s%s", score->error,
 			       strends(score->error, "\n") ? "" : "\n");
 		}
-		if (!quiet && !score->pass && i->handle)
-			i->handle(m, score);
 	}
+	if (!quiet && score->score < score->total && i->handle)
+		i->handle(m, score);
 
 	*running_score += score->score;
 	*running_total += score->total;
@@ -584,7 +584,7 @@ static char *opt_set_const_charp(const char *arg, const char **p)
 
 int main(int argc, char *argv[])
 {
-	bool summary = false;
+	bool summary = false, pass = true;
 	unsigned int score = 0, total_score = 0;
 	struct manifest *m;
 	struct ccanlint *i;
@@ -675,8 +675,8 @@ int main(int argc, char *argv[])
 		add_info_options(m->info_file, !target);
 
 	while ((i = get_next_test(&normal_tests)) != NULL)
-		run_test(i, summary, &score, &total_score, m);
+		pass &= run_test(i, summary, &score, &total_score, m);
 
 	printf("%sTotal score: %u/%u\n", prefix, score, total_score);
-	return 0;
+	return pass ? 0 : 1;
 }

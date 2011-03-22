@@ -37,6 +37,9 @@ static void check_depends_accurate(struct manifest *m,
 {
 	struct list_head *list;
 
+	/* FIXME: This isn't reliable enough with #ifdefs, so we don't fail. */
+	score->pass = true;
+
 	foreach_ptr(list, &m->c_files, &m->h_files,
 		    &m->run_tests, &m->api_tests,
 		    &m->compile_ok_tests, &m->compile_fail_tests,
@@ -63,7 +66,6 @@ static void check_depends_accurate(struct manifest *m,
 	}
 
 	if (!score->error) {
-		score->pass = true;
 		score->score = score->total;
 	}
 }

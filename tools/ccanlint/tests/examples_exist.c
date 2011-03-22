@@ -94,9 +94,10 @@ static void extract_examples(struct manifest *m,
 		}
 	}
 
+	/* We don't fail ccanlint for this. */
+	score->pass = true;
 	if (have_info_example && have_header_example) {
 		score->score = score->total;
-		score->pass = true;
 		return;
 	}
 
@@ -106,8 +107,6 @@ static void extract_examples(struct manifest *m,
 		score_file_error(score, mainh, 0, "No Example: section");
 
 	score->score = have_info_example + have_header_example;
-	/* We pass if we find any example. */
-	score->pass = score->score != 0;
 }
 
 struct ccanlint examples_exist = {

@@ -30,6 +30,9 @@ static void check_trailing_whitespace(struct manifest *m,
 	struct ccan_file *f;
 	unsigned int i;
 
+	/* We don't fail ccanlint for this. */
+	score->pass = true;
+
 	foreach_ptr(list, &m->c_files, &m->h_files) {
 		list_for_each(list, f, list) {
 			char **lines = get_ccan_file_lines(f);
@@ -42,7 +45,6 @@ static void check_trailing_whitespace(struct manifest *m,
 		}
 	}
 	if (!score->error) {
-		score->pass = true;
 		score->score = score->total;
 	}
 }

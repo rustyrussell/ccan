@@ -128,9 +128,11 @@ static void build_objects_with_stringchecks(struct manifest *m,
 		}
 	}
 
+	/* We don't fail ccanlint for this. */
+	score->pass = true;
+
 	score->total = 1;
 	if (!errors) {
-		score->pass = true;
 		score->score = !warnings;
 	}
 }

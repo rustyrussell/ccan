@@ -44,18 +44,26 @@ struct manifest {
 	struct list_head deps;
 };
 
+/* Get the manifest for a given directory. */
 struct manifest *get_manifest(const void *ctx, const char *dir);
 
+/* Error in a particular file: stored off score->per_file_errors. */
 struct file_error {
 	struct list_node list;
 	struct ccan_file *file;
 	unsigned int line;
 };
 
+/* The score for an individual test. */
 struct score {
+	/* Starts as false: if not set to true, ccanlint exits non-zero.
+	 * Thus it is usually set for compilation or other serious failures. */
 	bool pass;
+	/* Starts at 0 and 1 respectively. */
 	unsigned int score, total;
+	/* The error message to print. */
 	char *error;
+	/* Per file errors, set by score_file_error() */
 	struct list_head per_file_errors;
 };
 
@@ -86,7 +94,7 @@ struct ccanlint {
 	/* If not set, we'll give an error if they try to set options. */
 	bool takes_options;
 
-	/* comma-separated list of dependency keys. */
+	/* Space-separated list of dependency keys. */
 	const char *needs;
 
 	/* Internal use fields: */

@@ -104,6 +104,8 @@ static void check_tests_exist(struct manifest *m,
 		if (errno != ENOENT)
 			err(1, "statting %s", test_dir);
 		tests_exist.handle = handle_no_tests;
+		/* We "pass" this. */
+		score->pass = true;
 		return;
 	}
 
