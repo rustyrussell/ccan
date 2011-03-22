@@ -127,7 +127,10 @@ static void do_compile_coverage_tests(struct manifest *m,
 
 	foreach_ptr(h, &m->run_tests, &m->api_tests) {
 		list_for_each(h, i, list) {
-			cmdout = cov_compile(m, m, i, NULL, keep);
+			cmdout = cov_compile(m, m, i,
+					     h == &m->api_tests
+					     ? modobjs : NULL,
+					     keep);
 			if (cmdout) {
 				score_file_error(score, i, 0,
 				  "Failed to compile test with coverage: %s",
