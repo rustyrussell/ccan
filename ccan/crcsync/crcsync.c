@@ -166,7 +166,7 @@ size_t crc_read_block(struct crc_context *ctx, long *result,
 
 	/* old is the trailing edge of the checksum window. */
 	if (buffer_size(ctx) >= ctx->block_size)
-		old = ctx->buffer + ctx->buffer_start;
+		old = (uint8_t *)ctx->buffer + ctx->buffer_start;
 	else
 		old = NULL;
 
@@ -187,7 +187,7 @@ size_t crc_read_block(struct crc_context *ctx, long *result,
 						    ctx->uncrc_tab);
 			old++;
 			/* End of stored buffer?  Start on data they gave us. */
-			if (old == ctx->buffer + ctx->buffer_end)
+			if (old == (uint8_t *)ctx->buffer + ctx->buffer_end)
 				old = buf;
 		} else {
 			ctx->running_crc = crc_add_byte(ctx->running_crc, *p);
@@ -242,14 +242,16 @@ size_t crc_read_block(struct crc_context *ctx, long *result,
 
 		/* Move down old data if we don't have room.  */
 		if (ctx->buffer_end + len > ctx->block_size) {
-			memmove(ctx->buffer, ctx->buffer + ctx->buffer_start,
+			memmove(ctx->buffer,
+				(uint8_t *)ctx->buffer + ctx->buffer_start,
 				buffer_size(ctx));
 			ctx->buffer_end -= ctx->buffer_start;
 			ctx->buffer_start = 0;
 		}
 
 		/* Copy len bytes from tail of buffer. */
-		memcpy(ctx->buffer + ctx->buffer_end, buf + buflen - len, len);
+		memcpy((uint8_t *)ctx->buffer + ctx->buffer_end,
+		       (const uint8_t *)buf + buflen - len, len);
 		ctx->buffer_end += len;
 		assert(buffer_size(ctx) <= ctx->block_size);
 	}
