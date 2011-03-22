@@ -422,7 +422,8 @@ static void del_large_from_small_free_list(struct header *head,
 
 	for (i = 0; i < SMALL_PAGES_PER_LARGE_PAGE; i++) {
 		del_from_list(head, &head->small_free_list,
-			      (void *)ph + (i << sp_bits),
+			      (struct page_header *)((char *)ph 
+						     + (i << sp_bits)),
 			      sp_bits);
 	}
 }
