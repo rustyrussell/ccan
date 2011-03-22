@@ -44,7 +44,7 @@
  */
 #define foreach_ptr(i, ...)					\
 	for (unsigned _foreach_i				\
-		     = (((i) = ((const void *[]){ __VA_ARGS__ })[0]), 0); \
+	     = (((i) = (void *)((FOREACH_TYPEOF(i)[]){ __VA_ARGS__ })[0]), 0); \
 	     (i);							\
 	     (i) = (void *)((FOREACH_TYPEOF(i)[])			\
 		     { __VA_ARGS__, NULL})[++_foreach_i],		\
@@ -59,13 +59,13 @@
 	     (i) = (int[]) { __VA_ARGS__, 0 }[_foreach_iter_inc(&(i))])
 
 #define foreach_ptr(i, ...)						\
-	for ((i) = ((FOREACH_TYPEOF(i)[]){ __VA_ARGS__ })[0],		\
+	for ((i) = (void *)((FOREACH_TYPEOF(i)[]){ __VA_ARGS__ })[0],	\
 		     _foreach_iter_init(&(i));				\
 	     (i);							\
 	     (i) = (void *)((FOREACH_TYPEOF(i)[]){ __VA_ARGS__, NULL }) \
 		     [_foreach_iter_inc(&(i))],				\
 		 _foreach_no_nullval(_foreach_iter(&(i)), i,		\
-				     ((void *[]){ __VA_ARGS__})))
+				     ((const void *[]){ __VA_ARGS__})))
 
 void _foreach_iter_init(const void *i);
 unsigned int _foreach_iter(const void *i);
