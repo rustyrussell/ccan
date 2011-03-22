@@ -84,8 +84,9 @@ static struct failtest_call *add_history_(enum failtest_call_type type,
 #define add_history(type, file, line, elem) \
 	add_history_((type), (file), (line), (elem), sizeof(*(elem)))
 
+/* We do a fake call inside a sizeof(), to check types. */
 #define set_cleanup(call, clean, type)			\
-	(call)->cleanup = (void *)((void)sizeof(clean((type *)NULL)), (clean))
+	(call)->cleanup = (void *)((void)sizeof(clean((type *)NULL),1), (clean))
 
 static bool read_write_info(int fd)
 {

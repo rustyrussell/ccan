@@ -193,7 +193,7 @@ struct at_pool *at_pool(unsigned long size)
 
 	/* Then we remap into the middle of it. */
 	munmap(p->pool, size+PADDING);
-	p->pool = mmap(p->pool + PADDING/2, size, PROT_READ|PROT_WRITE,
+	p->pool = mmap((char *)p->pool + PADDING/2, size, PROT_READ|PROT_WRITE,
 		       MAP_SHARED, fd, 0);
 	if (p->pool == MAP_FAILED)
 		goto fail_free;
