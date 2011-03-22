@@ -1,3 +1,5 @@
+#ifndef CCAN_TAP_H
+#define CCAN_TAP_H
 /*-
  * Copyright (c) 2004 Nik Clayton
  * All rights reserved.
@@ -89,7 +91,7 @@ void plan_tests(unsigned int tests);
  *	int x = somefunc();
  *	if (x > 0)
  *		pass("somefunc() returned a valid value");
- *	else		
+ *	else
  *		fail("somefunc() returned an invalid value");
  */
 # define pass(...) ok(1, __VA_ARGS__)
@@ -167,7 +169,7 @@ void skip(unsigned int n, const char *fmt, ...) PRINTF_FMT(2, 3);
  * This way, should a test start to succeed unexpectedly, tools like prove(1)
  * will indicate this and you can move the test out of the todo block.  This
  * is much more useful than simply commenting out (or '#if 0') the tests.
- * 
+ *
  * From the Test::More documentation:
  *   If it's something the programmer hasn't done yet, use TODO.  This is for
  *   any code you haven't written yet, or bugs you have yet to fix, but want to
@@ -251,3 +253,4 @@ void plan_skip_all(const char *reason);
 void (*tap_fail_callback)(void);
 
 #endif /* C99 or gcc */
+#endif /* CCAN_TAP_H */

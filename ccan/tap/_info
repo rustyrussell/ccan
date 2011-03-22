@@ -18,6 +18,8 @@
  *
  * Based on the original libtap, Copyright (c) 2004 Nik Clayton.
  *
+ * License: BSD (2 clause)
+ *
  * Example:
  *	#include <string.h>
  *	#include <ccan/tap/tap.h>

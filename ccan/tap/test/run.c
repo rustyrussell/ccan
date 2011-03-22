@@ -25,7 +25,7 @@ static void write_all(int fd, const void *data, size_t size)
 		done = write(fd, data, size);
 		if (done <= 0)
 			_exit(1);
-		data += done;
+		data = (const char *)data + done;
 		size -= done;
 	}
 }
