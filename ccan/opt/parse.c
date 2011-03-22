@@ -94,7 +94,7 @@ int parse_one(int *argc, char *argv[], unsigned *offset,
 		if (optarg)
 			return parse_err(errlog, argv[0], o, len,
 					 "doesn't allow an argument");
-		problem = opt_table[i].cb(opt_table[i].arg);
+		problem = opt_table[i].cb(opt_table[i].u.arg);
 	} else {
 		if (!optarg) {
 			/* Swallow any short options as optarg, eg -afile */
@@ -107,7 +107,7 @@ int parse_one(int *argc, char *argv[], unsigned *offset,
 		if (!optarg)
 			return parse_err(errlog, argv[0], o, len,
 					 "requires an argument");
-		problem = opt_table[i].cb_arg(optarg, opt_table[i].arg);
+		problem = opt_table[i].cb_arg(optarg, opt_table[i].u.arg);
 	}
 
 	if (problem) {

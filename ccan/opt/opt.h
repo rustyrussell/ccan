@@ -30,7 +30,7 @@ struct opt_table;
  *	OPT_WITH_ARG()
  */
 #define OPT_WITHOUT_ARG(names, cb, arg, desc)	\
-	{ (names), OPT_CB_NOARG((cb), (arg)), (desc) }
+	{ (names), OPT_CB_NOARG((cb), (arg)), { (arg) }, (desc) }
 
 /**
  * OPT_WITH_ARG() - macro for initializing long and short option (with arg)
@@ -65,7 +65,7 @@ struct opt_table;
  *	OPT_WITHOUT_ARG()
  */
 #define OPT_WITH_ARG(name, cb, show, arg, desc)	\
-	{ (name), OPT_CB_ARG((cb), (show), (arg)), (desc) }
+	{ (name), OPT_CB_ARG((cb), (show), (arg)), { (arg) }, (desc) }
 
 /**
  * OPT_SUBTABLE() - macro for including another table inside a table.
@@ -74,14 +74,15 @@ struct opt_table;
  */
 #define OPT_SUBTABLE(table, desc)					\
 	{ (const char *)(table), OPT_SUBTABLE,				\
-	sizeof(_check_is_entry(table)) ? NULL : NULL, NULL, NULL, NULL, (desc) }
+	  sizeof(_check_is_entry(table)) ? NULL : NULL, NULL, NULL,	\
+	  { NULL }, (desc) }
 
 /**
  * OPT_ENDTABLE - macro to create final entry in table.
  *
  * This must be the final element in the opt_table array.
  */
-#define OPT_ENDTABLE { NULL, OPT_END, NULL, NULL, NULL, NULL, NULL }
+#define OPT_ENDTABLE { NULL, OPT_END, NULL, NULL, NULL, { NULL }, NULL }
 
 /**
  * opt_register_table - register a table of options
@@ -127,7 +128,7 @@ void opt_register_table(const struct opt_table *table, const char *desc);
  * string and return false.
  */
 #define opt_register_noarg(names, cb, arg, desc)			\
-	_opt_register((names), OPT_CB_NOARG((cb), (arg)), (desc))
+	_opt_register((names), OPT_CB_NOARG((cb), (arg)), (arg), (desc))
 
 /**
  * opt_register_arg - register an option with an arguments
@@ -157,7 +158,7 @@ void opt_register_table(const struct opt_table *table, const char *desc);
  *	opt_register_arg("--explode|--boom", explode, NULL, NULL, opt_hidden);
  */
 #define opt_register_arg(names, cb, show, arg, desc)			\
-	_opt_register((names), OPT_CB_ARG((cb), (show), (arg)), (desc))
+	_opt_register((names), OPT_CB_ARG((cb), (show), (arg)), (arg), (desc))
 
 /**
  * opt_parse - parse arguments.
@@ -303,7 +304,11 @@ struct opt_table {
 	char *(*cb)(void *arg); /* OPT_NOARG */
 	char *(*cb_arg)(const char *optarg, void *arg); /* OPT_HASARG */
 	void (*show)(char buf[OPT_SHOW_LEN], const void *arg);
-	void *arg;
+	union {
+		const void *carg;
+		void *arg;
+		size_t tlen;
+	} u;
 	const char *desc;
 };
 
@@ -314,7 +319,7 @@ struct opt_table {
 		    char *(*)(typeof(*(arg))*),		\
 		    char *(*)(const typeof(*(arg))*),	\
 		    char *(*)(const void *)),		\
-	NULL, NULL, (arg)
+	NULL, NULL
 
 /* Resolves to the four parameters for arg callbacks. */
 #define OPT_CB_ARG(cb, show, arg)					\
@@ -324,15 +329,14 @@ struct opt_table {
 		    char *(*)(const char *, const typeof(*(arg))*),	\
 		    char *(*)(const char *, const void *)),		\
 	cast_if_type(void (*)(char buf[], const void *), (show), (show)+0, \
-		     void (*)(char buf[], const typeof(*(arg))*)),	\
-	(arg)
+		     void (*)(char buf[], const typeof(*(arg))*))
 
 /* Non-typesafe register function. */
 void _opt_register(const char *names, enum opt_type type,
 		   char *(*cb)(void *arg),
 		   char *(*cb_arg)(const char *optarg, void *arg),
 		   void (*show)(char buf[OPT_SHOW_LEN], const void *arg),
-		   void *arg, const char *desc);
+		   const void *arg, const char *desc);
 
 /* We use this to get typechecking for OPT_SUBTABLE */
 static inline int _check_is_entry(struct opt_table *e UNUSED) { return 0; }

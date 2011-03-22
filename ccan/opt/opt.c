@@ -150,7 +150,7 @@ void _opt_register(const char *names, enum opt_type type,
 		   char *(*cb)(void *arg),
 		   char *(*cb_arg)(const char *optarg, void *arg),
 		   void (*show)(char buf[OPT_SHOW_LEN], const void *arg),
-		   void *arg, const char *desc)
+		   const void *arg, const char *desc)
 {
 	struct opt_table opt;
 	opt.names = names;
@@ -158,7 +158,7 @@ void _opt_register(const char *names, enum opt_type type,
 	opt.cb = cb;
 	opt.cb_arg = cb_arg;
 	opt.show = show;
-	opt.arg = arg;
+	opt.u.carg = arg;
 	opt.desc = desc;
 	check_opt(&opt);
 	add_opt(&opt);
@@ -183,7 +183,7 @@ void opt_register_table(const struct opt_table entry[], const char *desc)
 	}
 	/* We store the table length in arg ptr. */
 	if (desc)
-		opt_table[start].arg = (void *)(intptr_t)(opt_count - start);
+		opt_table[start].u.tlen = (opt_count - start);
 }
 
 /* Parse your arguments. */

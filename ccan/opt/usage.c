@@ -32,8 +32,8 @@ char *opt_usage(const char *argv0, const char *extra)
 		extra = "";
 		for (i = 0; i < opt_count; i++) {
 			if (opt_table[i].cb == (void *)opt_usage_and_exit
-			    && opt_table[i].arg) {
-				extra = opt_table[i].arg;
+			    && opt_table[i].u.carg) {
+				extra = opt_table[i].u.carg;
 				break;
 			}
 		}
@@ -100,7 +100,7 @@ char *opt_usage(const char *argv0, const char *extra)
 		if (opt_table[i].show) {
 			char buf[OPT_SHOW_LEN + sizeof("...")];
 			strcpy(buf + OPT_SHOW_LEN, "...");
-			opt_table[i].show(buf, opt_table[i].arg);
+			opt_table[i].show(buf, opt_table[i].u.arg);
 			len += sprintf(p + len, " (default: %s)", buf);
 		}
 		p += len;
