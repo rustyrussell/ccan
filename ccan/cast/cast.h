@@ -122,11 +122,8 @@
 #else
 #define cast_sign_compatible(type, expr)		\
 	(sizeof(*(type)0) == 1 && sizeof(*(expr)) == 1)
-#define cast_const_compat1(expr, type)		\
-	(sizeof(*(expr)) == sizeof(*(type)0))
-#define cast_const_compat2(expr, type)		\
-	(sizeof(**(expr)) == sizeof(**(type)0))
-#define cast_const_compat3(expr, type)			\
-	(sizeof(***(expr)) == sizeof(***(type)0))
+#define cast_const_compat1(expr, type)		(1)
+#define cast_const_compat2(expr, type)		(1)
+#define cast_const_compat3(expr, type)		(1)
 #endif
 #endif /* CCAN_CAST_H */
