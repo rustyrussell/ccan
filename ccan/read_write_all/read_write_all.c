@@ -12,7 +12,7 @@ bool write_all(int fd, const void *data, size_t size)
 			continue;
 		if (done <= 0)
 			return false;
-		data += done;
+		data = (const char *)data + done;
 		size -= done;
 	}
 
@@ -29,7 +29,7 @@ bool read_all(int fd, void *data, size_t size)
 			continue;
 		if (done <= 0)
 			return false;
-		data += done;
+		data = (char *)data + done;
 		size -= done;
 	}
 
