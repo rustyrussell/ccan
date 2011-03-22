@@ -11,7 +11,7 @@
 
 static int addr_cmp(void **a, void **b)
 {
-	return (*a) - (*b);
+	return (char *)(*a) - (char *)(*b);
 }
 
 static bool unique(void *p[], unsigned int num)

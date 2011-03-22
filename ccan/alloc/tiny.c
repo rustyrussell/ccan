@@ -19,7 +19,7 @@
 /* Val is usually offset by MIN_BLOCK_SIZE here. */
 static unsigned encode_length(unsigned long val)
 {
-	unsigned int bits = fls(val);
+	unsigned int bits = afls(val);
 	/* 5 bits in first byte. */
 	if (bits <= 5)
 		return 1;

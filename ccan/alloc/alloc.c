@@ -124,7 +124,7 @@ static unsigned long bucket_to_size(unsigned int bucket)
  */
 static unsigned int size_to_bucket(unsigned long size)
 {
-	unsigned int base = fls(size/2);
+	unsigned int base = afls(size/2);
 	unsigned long overshoot;
 
 	overshoot = size - (1UL << base);
@@ -134,7 +134,7 @@ static unsigned int size_to_bucket(unsigned long size)
 
 static unsigned int small_page_bits(unsigned long poolsize)
 {
-	return fls(poolsize / MAX_SMALL_PAGES - 1);
+	return afls(poolsize / MAX_SMALL_PAGES - 1);
 }
 
 static struct page_header *from_pgnum(struct header *head,
@@ -313,7 +313,7 @@ static unsigned int find_free_bit(const unsigned long bitmap[])
 	unsigned int i;
 
 	for (i = 0; bitmap[i] == -1UL; i++);
-	return (i*BITS_PER_LONG) + ffsl(~bitmap[i]) - 1;
+	return (i*BITS_PER_LONG) + affsl(~bitmap[i]) - 1;
 }
 
 /* How many elements can we fit in a page? */
@@ -422,7 +422,7 @@ static void del_large_from_small_free_list(struct header *head,
 
 	for (i = 0; i < SMALL_PAGES_PER_LARGE_PAGE; i++) {
 		del_from_list(head, &head->small_free_list,
-			      (struct page_header *)((char *)ph 
+			      (struct page_header *)((char *)ph
 						     + (i << sp_bits)),
 			      sp_bits);
 	}

@@ -5,7 +5,7 @@
 #include <ccan/ilog/ilog.h>
 #include <limits.h>
 
-unsigned int fls(unsigned long val)
+unsigned int afls(unsigned long val)
 {
 	BUILD_ASSERT(sizeof(val) == sizeof(u32) || sizeof(val) == sizeof(u64));
 	if (sizeof(val) == sizeof(u32))
@@ -15,7 +15,7 @@ unsigned int fls(unsigned long val)
 }
 
 /* FIXME: Move to bitops. */
-unsigned int ffsl(unsigned long val)
+unsigned int affsl(unsigned long val)
 {
 #if HAVE_BUILTIN_FFSL
 	/* This is significantly faster! */
