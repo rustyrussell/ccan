@@ -238,11 +238,20 @@ int main(void) {
 	{
 		darray(const char*) arr = darray_new();
 		const char *n[9] = {"zero", "one", "two", "three", "four", "five", "six", "seven", "eight"};
-		
+
+#if HAVE_TYPEOF		
 		darray_appends(arr, n[5], n[6], n[7], n[8]);
+#else
+		darray_appends_t(arr, const char *, n[5], n[6], n[7], n[8]);
+#endif
 		ok1(darray_size(arr)==4 && darray_alloc(arr)>=4);
-		
+
+#if HAVE_TYPEOF		
 		darray_prepends(arr, n[0], n[1], n[2], n[3], n[4]);
+#else
+		darray_prepends_t(arr, const char *, n[0], n[1], n[2], n[3], n[4]);
+#endif
+
 		ok1(darray_size(arr)==9 && darray_alloc(arr)>=9);
 		
 		ok1(arr.item[0]==n[0] &&
