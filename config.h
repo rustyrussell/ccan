@@ -3,7 +3,7 @@
 #define CCAN_CONFIG_H
 #define _GNU_SOURCE /* Always use GNU extensions. */
 #define CCAN_COMPILER "cc"
-#define CCAN_CFLAGS "-g -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -DCCAN_STR_DEBUG=1"
+#define CCAN_CFLAGS "-g -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Wpointer-arith -Wwrite-strings -DCCAN_STR_DEBUG=1"
 
 #define HAVE_ALIGNOF 1
 #define HAVE_ASPRINTF 1
