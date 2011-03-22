@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
 	struct athread *at;
 	int err, *pid;
 	void *arg;
-	char *bad_args[] = { "/", NULL };
+	char *bad_args[] = { (char *)"/", NULL };
 
 	atp = at_get_pool(&argc, argv, &arg);
 	if (atp) {

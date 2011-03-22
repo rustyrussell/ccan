@@ -420,7 +420,7 @@ struct at_pool *at_get_pool(int *argc, char *argv[], void **arg)
 
 	p = atp->p = talloc(atp, struct at_pool_contents);
 
-	if (sscanf(argv[1], "AT:%p/%lu/%i/%i/%i/%p", 
+	if (sscanf(argv[1], "AT:%p/%lu/%i/%i/%i/%p",
 		   &p->pool, &p->poolsize, &p->fd,
 		   &p->parent_rfd, &p->parent_wfd, arg) != 6) {
 		errno = EINVAL;
