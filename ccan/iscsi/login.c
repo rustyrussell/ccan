@@ -27,7 +27,8 @@
 int iscsi_login_async(struct iscsi_context *iscsi, iscsi_command_cb cb, void *private_data)
 {
 	struct iscsi_pdu *pdu;
-	char *str;
+	const char *str;
+	char *astr;
 	int ret;
 
 	if (iscsi == NULL) {
@@ -63,13 +64,13 @@ int iscsi_login_async(struct iscsi_context *iscsi, iscsi_command_cb cb, void *pr
 
 
 	/* initiator name */
-	if (asprintf(&str, "InitiatorName=%s", iscsi->initiator_name) == -1) {
+	if (asprintf(&astr, "InitiatorName=%s", iscsi->initiator_name) == -1) {
 		printf("asprintf failed\n");
 		iscsi_free_pdu(iscsi, pdu);
 		return -5;
 	}
-	ret = iscsi_pdu_add_data(iscsi, pdu, (unsigned char *)str, strlen(str)+1);
-	free(str);
+	ret = iscsi_pdu_add_data(iscsi, pdu, (unsigned char *)astr, strlen(astr)+1);
+	free(astr);
 	if (ret != 0) {
 		printf("pdu add data failed\n");
 		iscsi_free_pdu(iscsi, pdu);
@@ -78,13 +79,13 @@ int iscsi_login_async(struct iscsi_context *iscsi, iscsi_command_cb cb, void *pr
 
 	/* optional alias */
 	if (iscsi->alias) {
-		if (asprintf(&str, "InitiatorAlias=%s", iscsi->alias) == -1) {
+		if (asprintf(&astr, "InitiatorAlias=%s", iscsi->alias) == -1) {
 			printf("asprintf failed\n");
 			iscsi_free_pdu(iscsi, pdu);
 			return -7;
 		}
-		ret = iscsi_pdu_add_data(iscsi, pdu, (unsigned char *)str, strlen(str)+1);
-		free(str);
+		ret = iscsi_pdu_add_data(iscsi, pdu, (unsigned char *)astr, strlen(astr)+1);
+		free(astr);
 		if (ret != 0) {
 			printf("pdu add data failed\n");
 			iscsi_free_pdu(iscsi, pdu);
@@ -100,13 +101,13 @@ int iscsi_login_async(struct iscsi_context *iscsi, iscsi_command_cb cb, void *pr
 			return -9;
 		}
 
-		if (asprintf(&str, "TargetName=%s", iscsi->target_name) == -1) {
+		if (asprintf(&astr, "TargetName=%s", iscsi->target_name) == -1) {
 			printf("asprintf failed\n");
 			iscsi_free_pdu(iscsi, pdu);
 			return -10;
 		}
-		ret = iscsi_pdu_add_data(iscsi, pdu, (unsigned char *)str, strlen(str)+1);
-		free(str);
+		ret = iscsi_pdu_add_data(iscsi, pdu, (unsigned char *)astr, strlen(astr)+1);
+		free(astr);
 		if (ret != 0) {
 			printf("pdu add data failed\n");
 			iscsi_free_pdu(iscsi, pdu);

@@ -26,7 +26,7 @@
 int iscsi_discovery_async(struct iscsi_context *iscsi, iscsi_command_cb cb, void *private_data)
 {
 	struct iscsi_pdu *pdu;
-	char *str;
+	const char *str;
 
 	if (iscsi == NULL) {
 		printf("trying to send text on NULL context\n");

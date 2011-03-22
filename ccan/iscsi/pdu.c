@@ -88,7 +88,7 @@ void iscsi_free_pdu(struct iscsi_context *iscsi, struct iscsi_pdu *pdu)
 }
 
 
-int iscsi_add_data(struct iscsi_data *data, unsigned char *dptr, int dsize, int pdualignment)
+int iscsi_add_data(struct iscsi_data *data, const unsigned char *dptr, int dsize, int pdualignment)
 {
 	int len, aligned;
 	unsigned char *buf;
@@ -123,7 +123,7 @@ int iscsi_add_data(struct iscsi_data *data, unsigned char *dptr, int dsize, int 
 	return 0;
 }
 
-int iscsi_pdu_add_data(struct iscsi_context *iscsi, struct iscsi_pdu *pdu, unsigned char *dptr, int dsize)
+int iscsi_pdu_add_data(struct iscsi_context *iscsi, struct iscsi_pdu *pdu, const unsigned char *dptr, int dsize)
 {
 	if (pdu == NULL) {
 		printf("trying to add data to NULL pdu\n");
