@@ -330,8 +330,9 @@ static NORETURN void failtest_cleanup(bool forced_cleanup, int status)
 		if (!history[i].cleanup)
 			continue;
 		if (!forced_cleanup) {
-			printf("Leak at %s:%u\n",
-			       history[i].file, history[i].line);
+			printf("Leak at %s:%u: --failpath=%s\n",
+			       history[i].file, history[i].line,
+			       failpath_string());
 			status = 1;
 		}
 		history[i].cleanup(&history[i].u);
