@@ -13,7 +13,7 @@
 #include <errno.h>
 
 static char ** __attribute__((format(printf, 2, 3)))
-lines_from_cmd(const void *ctx, char *format, ...)
+lines_from_cmd(const void *ctx, const char *format, ...)
 {
 	va_list ap;
 	char *cmd, *buffer;

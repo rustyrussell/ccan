@@ -17,7 +17,7 @@
 #include <assert.h>
 #include "tools.h"
 
-static char *tmpdir = NULL;
+static const char *tmpdir = NULL;
 bool tools_verbose = false;
 
 /* Ten minutes. */
@@ -176,7 +176,7 @@ bool run_command(const void *ctx, unsigned int *time_ms, char **output,
 	return false;
 }
 
-static int unlink_all(char *dir)
+static int unlink_all(const char *dir)
 {
 	char cmd[strlen(dir) + sizeof("rm -rf ")];
 	sprintf(cmd, "rm -rf %s", dir);
@@ -187,7 +187,7 @@ static int unlink_all(char *dir)
 	return 0;
 }
 
-char *temp_dir(const void *ctx)
+const char *temp_dir(const void *ctx)
 {
 	/* For first call, create dir. */
 	while (!tmpdir) {

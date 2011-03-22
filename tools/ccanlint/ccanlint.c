@@ -32,6 +32,7 @@
 #include <ccan/opt/opt.h>
 #include <ccan/foreach/foreach.h>
 #include <ccan/grab_file/grab_file.h>
+#include <ccan/cast/cast.h>
 
 int verbose = 0;
 static LIST_HEAD(compulsory_tests);
@@ -43,8 +44,8 @@ static struct btree *info_exclude;
 static unsigned int timeout;
 
 /* These are overridden at runtime if we can find config.h */
-char *compiler = NULL;
-char *cflags = NULL;
+const char *compiler = NULL;
+const char *cflags = NULL;
 
 const char *config_header;
 
@@ -301,7 +302,7 @@ static void init_tests(void)
 	}
 }
 
-static int show_tmpdir(char *dir)
+static int show_tmpdir(const char *dir)
 {
 	printf("You can find ccanlint working files in '%s'\n", dir);
 	return 0;
@@ -576,6 +577,11 @@ static void read_config_header(void)
 		compiler = CCAN_CFLAGS;
 }
 
+static char *opt_set_const_charp(const char *arg, const char **p)
+{
+	return opt_set_charp(arg, cast_const2(char **, p));
+}
+
 int main(int argc, char *argv[])
 {
 	bool summary = false;
@@ -613,9 +619,9 @@ int main(int argc, char *argv[])
 	opt_register_arg("--target <testname>", opt_set_charp,
 			 NULL, &target,
 			 "only run one test (and its prerequisites)");
-	opt_register_arg("--compiler <compiler>", opt_set_charp,
+	opt_register_arg("--compiler <compiler>", opt_set_const_charp,
 			 NULL, &compiler, "set the compiler");
-	opt_register_arg("--cflags <flags>", opt_set_charp,
+	opt_register_arg("--cflags <flags>", opt_set_const_charp,
 			 NULL, &cflags, "set the compiler flags");
 	opt_register_noarg("-?|-h|--help", opt_usage_and_exit,
 			   "\nA program for checking and guiding development"

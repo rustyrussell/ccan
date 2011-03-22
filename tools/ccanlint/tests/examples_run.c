@@ -3,6 +3,7 @@
 #include <ccan/talloc/talloc.h>
 #include <ccan/foreach/foreach.h>
 #include <ccan/str/str.h>
+#include <ccan/cast/cast.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -116,7 +117,7 @@ static char *find_expect(struct ccan_file *file,
 
 		foreach_ptr(fmt, "outputs '%s'", "outputs \"%s\"") {
 			if (scan_for(file, p, fmt, &expect)) {
-				*input = "";
+				*input = cast_const(char *, "");
 				*exact = true;
 				return expect;
 			}
@@ -173,7 +174,7 @@ static char *find_expect(struct ccan_file *file,
 			    "outputs \"%s\"",
 			    "outputs %s") {
 			if (scan_for(file, p, fmt, &expect)) {
-				*input = "";
+				*input = cast_const(char *, "");
 				*exact = true;
 				return expect;
 			}
@@ -184,7 +185,7 @@ static char *find_expect(struct ccan_file *file,
 			    "output contains \"%s\"",
 			    "output contains %s") {
 			if (scan_for(file, p, fmt, &expect)) {
-				*input = "";
+				*input = cast_const(char *, "");
 				*exact = false;
 				return expect;
 			}

@@ -1,6 +1,7 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
 #include <ccan/talloc/talloc.h>
+#include <ccan/cast/cast.h>
 #include <ccan/str/str.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -193,35 +194,38 @@ static bool looks_internal(char **lines, char **why)
 
 		/* The winners. */
 		if (strstarts(line, "if") && len == 2) {
-			*why = "starts with if";
+			*why = cast_const(char *, "starts with if");
 			return true;
 		}
 		if (strstarts(line, "for") && len == 3) {
-			*why = "starts with for";
+			*why = cast_const(char *, "starts with for");
 			return true;
 		}
 		if (strstarts(line, "while") && len == 5) {
-			*why = "starts with while";
+			*why = cast_const(char *, "starts with while");
 			return true;
 		}
 		if (strstarts(line, "do") && len == 2) {
-			*why = "starts with do";
+			*why = cast_const(char *, "starts with do");
 			return true;
 		}
 
 		/* The losers. */
 		if (strstarts(line, "#include")) {
-			*why = "starts with #include";
+			*why = cast_const(char *, "starts with #include");
 			return false;
 		}
 
 		if (last_ended && strchr(line, '(')) {
 			if (strstarts(line, "static")) {
-				*why = "starts with static and contains (";
+				*why = cast_const(char *,
+						  "starts with static"
+						  " and contains (");
 				return false;
 			}
 			if (strends(line, ")")) {
-				*why = "contains ( and ends with )";
+				*why = cast_const(char *,
+						  "contains ( and ends with )");
 				return false;
 			}
 		}
@@ -229,7 +233,8 @@ static bool looks_internal(char **lines, char **why)
 		/* Single identifier then operator == inside function. */
 		if (last_ended && len
 		    && cispunct(line[len+strspn(line+len, " ")])) {
-			*why = "starts with identifier then punctuation";
+			*why = cast_const(char *, "starts with identifier"
+					  " then punctuation");
 			return true;
 		}
 
@@ -239,7 +244,7 @@ static bool looks_internal(char **lines, char **why)
 	}
 
 	/* No idea... Say yes? */
-	*why = "gave no clues";
+	*why = cast_const(char *, "gave no clues");
 	return true;
 }
 
@@ -521,7 +526,7 @@ static void build_examples(struct manifest *m, bool keep,
 		bool res[3];
 		unsigned num, j;
 		char **lines[3];
-		char *error;
+		const char *error;
 
 		score->total++;
 

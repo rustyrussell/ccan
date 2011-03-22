@@ -222,7 +222,7 @@ extern bool safe_mode;
 extern const char *ccan_dir;
 
 /* Compiler and CFLAGS, from config.h if available. */
-extern char *compiler, *cflags;
+extern const char *compiler, *cflags;
 
 /* Contents of config.h (or NULL if not found) */
 extern const char *config_header;

@@ -92,7 +92,7 @@ static struct test tests[] = {
 	{ "HAVE_BYTESWAP_H", OUTSIDE_MAIN, NULL,
 	  "#include <byteswap.h>\n" },
 	{ "HAVE_COMPOUND_LITERALS", INSIDE_MAIN, NULL,
-	  "char **foo = (char *[]) { \"x\", \"y\", \"z\" };\n"
+	  "int *foo = (int[]) { 1, 2, 3, 4 };\n"
 	  "return foo[0] ? 0 : 1;" },
 	{ "HAVE_FOR_LOOP_DECLARATION", INSIDE_MAIN, NULL,
 	  "for (int i = 0; i < argc; i++) { return 0; };\n"
@@ -208,7 +208,7 @@ static char *run(const char *cmd, int *exitstatus)
 	return ret;
 }
 
-static char *connect_args(char *argv[], const char *extra)
+static char *connect_args(const char *argv[], const char *extra)
 {
 	unsigned int i, len = strlen(extra) + 1;
 	char *ret;
@@ -325,11 +325,12 @@ static bool run_test(const char *cmd, struct test *test)
 	return test->answer;
 }
 
-int main(int argc, char *argv[])
+int main(int argc, const char *argv[])
 {
 	char *cmd;
-	char *default_args[] = { "", DEFAULT_COMPILER, DEFAULT_FLAGS, NULL };
 	unsigned int i;
+	const char *default_args[]
+		= { "", DEFAULT_COMPILER, DEFAULT_FLAGS, NULL };
 
 	if (argc > 1) {
 		if (strcmp(argv[1], "--help") == 0) {

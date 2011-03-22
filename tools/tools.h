@@ -43,7 +43,7 @@ bool PRINTF_FMT(4,5) run_command(const void *ctx,
 				 const char *fmt, ...);
 char *run_with_timeout(const void *ctx, const char *cmd,
 		       bool *ok, unsigned *timeout_ms);
-char *temp_dir(const void *ctx);
+const char *temp_dir(const void *ctx);
 bool move_file(const char *oldname, const char *newname);
 
 /* From compile.c.

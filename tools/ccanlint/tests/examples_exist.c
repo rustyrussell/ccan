@@ -2,6 +2,7 @@
 #include <tools/tools.h>
 #include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
+#include <ccan/cast/cast.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -48,7 +49,8 @@ static char *add_example(struct manifest *m, struct ccan_file *source,
 		    != strlen(example->lines[i])
 		    || write(fd, "\n", 1) != 1) {
 			close(fd);
-			return "Failure writing to temporary file";
+			return cast_const(char *,
+					  "Failure writing to temporary file");
 		}
 	}
 	close(fd);
