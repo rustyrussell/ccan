@@ -3,6 +3,7 @@
 #include <ccan/compiler/compiler.h>
 #include <ccan/typesafe_cb/typesafe_cb.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 struct opt_table;
 
