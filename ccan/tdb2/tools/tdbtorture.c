@@ -60,7 +60,7 @@ static void tdb_log(struct tdb_context *tdb, enum tdb_log_level level,
 
 #include "../private.h"
 
-static void segv_handler(int signal, siginfo_t *info, void *p)
+static void segv_handler(int sig, siginfo_t *info, void *p)
 {
 	char string[100];
 
