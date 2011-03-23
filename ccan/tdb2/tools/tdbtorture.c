@@ -49,11 +49,10 @@ static void tdb_log(struct tdb_context *tdb, enum tdb_log_level level,
 	fflush(stdout);
 #if 0
 	{
-		char *ptr;
+		char str[200];
 		signal(SIGUSR1, SIG_IGN);
-		asprintf(&ptr,"xterm -e gdb /proc/%d/exe %d", getpid(), getpid());
-		system(ptr);
-		free(ptr);
+		sprintf(str,"xterm -e gdb /proc/%d/exe %d", getpid(), getpid());
+		system(str);
 	}
 #endif	
 }
@@ -72,9 +71,10 @@ static void segv_handler(int sig, siginfo_t *info, void *p)
 	_exit(11);
 }	
 
-static void fatal(const char *why)
+static void fatal(struct tdb_context *tdb, const char *why)
 {
-	perror(why);
+	fprintf(stderr, "%u:%s:%s\n", getpid(), why,
+		tdb ? tdb_errorstr(tdb_error(tdb)) : "(no tdb)");
 	error_count++;
 }
 
@@ -143,7 +143,7 @@ static void addrec_db(void)
 #if TRANSACTION_PROB
 	if (in_traverse == 0 && in_transaction == 0 && (always_transaction || random() % TRANSACTION_PROB == 0)) {
 		if (tdb_transaction_start(db) != 0) {
-			fatal("tdb_transaction_start failed");
+			fatal(db, "tdb_transaction_start failed");
 		}
 		in_transaction++;
 		goto next;
@@ -151,11 +151,11 @@ static void addrec_db(void)
 	if (in_traverse == 0 && in_transaction && random() % TRANSACTION_PROB == 0) {
 		if (random() % TRANSACTION_PREPARE_PROB == 0) {
 			if (tdb_transaction_prepare_commit(db) != 0) {
-				fatal("tdb_transaction_prepare_commit failed");
+				fatal(db, "tdb_transaction_prepare_commit failed");
 			}
 		}
 		if (tdb_transaction_commit(db) != 0) {
-			fatal("tdb_transaction_commit failed");
+			fatal(db, "tdb_transaction_commit failed");
 		}
 		in_transaction--;
 		goto next;
@@ -178,7 +178,7 @@ static void addrec_db(void)
 #if STORE_PROB
 	if (random() % STORE_PROB == 0) {
 		if (tdb_store(db, key, data, TDB_REPLACE) != 0) {
-			fatal("tdb_store failed");
+			fatal(db, "tdb_store failed");
 		}
 		goto next;
 	}
@@ -187,7 +187,7 @@ static void addrec_db(void)
 #if APPEND_PROB
 	if (random() % APPEND_PROB == 0) {
 		if (tdb_append(db, key, data) != 0) {
-			fatal("tdb_append failed");
+			fatal(db, "tdb_append failed");
 		}
 		goto next;
 	}
@@ -196,9 +196,12 @@ static void addrec_db(void)
 #if LOCKSTORE_PROB
 	if (random() % LOCKSTORE_PROB == 0) {
 		tdb_chainlock(db, key);
-		tdb_fetch(db, key, &data);
+		if (tdb_fetch(db, key, &data) != TDB_SUCCESS) {
+			data.dsize = 0;
+			data.dptr = NULL;
+		}
 		if (tdb_store(db, key, data, TDB_REPLACE) != 0) {
-			fatal("tdb_store failed");
+			fatal(db, "tdb_store failed");
 		}
 		if (data.dptr) free(data.dptr);
 		tdb_chainunlock(db, key);
@@ -237,7 +240,7 @@ static void usage(void)
 #if TRANSACTION_PROB
 	       " [-t]"
 #endif
-	       " [-k] [-n NUM_PROCS] [-l NUM_LOOPS] [-s SEED]\n");
+	       " [-k] [-n NUM_PROCS] [-l NUM_LOOPS] [-s SEED] [-S]\n");
 	exit(0);
 }
 
@@ -250,16 +253,17 @@ static void send_count_and_suicide(int sig)
 	kill(getpid(), SIGUSR2);
 }
 
-static int run_child(int i, int seed, unsigned num_loops, unsigned start)
+static int run_child(int i, int seed, unsigned num_loops, unsigned start,
+		     int tdb_flags)
 {
 	struct sigaction act = { .sa_sigaction = segv_handler,
 				 .sa_flags = SA_SIGINFO };
 	sigaction(11, &act, NULL);	
 
-	db = tdb_open("torture.tdb", TDB_DEFAULT, O_RDWR | O_CREAT, 0600,
+	db = tdb_open("torture.tdb", tdb_flags, O_RDWR | O_CREAT, 0600,
 		      &log_attr);
 	if (!db) {
-		fatal("db open failed");
+		fatal(NULL, "db open failed");
 	}
 
 #if 0
@@ -290,7 +294,7 @@ static int run_child(int i, int seed, unsigned num_loops, unsigned start)
 				in_transaction--;
 			}
 			if (tdb_transaction_start(db) != 0)
-				fatal("tdb_transaction_start failed");
+				fatal(db, "tdb_transaction_start failed");
 		}
 #endif
 		tdb_traverse(db, traverse_fn, NULL);
@@ -299,7 +303,7 @@ static int run_child(int i, int seed, unsigned num_loops, unsigned start)
 #if TRANSACTION_PROB
 		if (always_transaction) {
 			if (tdb_transaction_commit(db) != 0)
-				fatal("tdb_transaction_commit failed");
+				fatal(db, "tdb_transaction_commit failed");
 		}
 #endif
 	}
@@ -319,13 +323,14 @@ int main(int argc, char * const *argv)
 	pid_t *pids;
 	int kill_random = 0;
 	int *done;
+	int tdb_flags = TDB_DEFAULT;
 
 	log_attr.base.attr = TDB_ATTRIBUTE_LOG;
 	log_attr.base.next = &seed_attr;
 	log_attr.log.log_fn = tdb_log;
 	seed_attr.base.attr = TDB_ATTRIBUTE_SEED;
 
-	while ((c = getopt(argc, argv, "n:l:s:thk")) != -1) {
+	while ((c = getopt(argc, argv, "n:l:s:thkS")) != -1) {
 		switch (c) {
 		case 'n':
 			num_procs = strtol(optarg, NULL, 0);
@@ -335,6 +340,9 @@ int main(int argc, char * const *argv)
 			break;
 		case 's':
 			seed = strtol(optarg, NULL, 0);
+			break;
+		case 'S':
+			tdb_flags = TDB_NOSYNC;
 			break;
 		case 't':
 #if TRANSACTION_PROB
@@ -361,7 +369,7 @@ int main(int argc, char * const *argv)
 
 	if (num_procs == 1 && !kill_random) {
 		/* Don't fork for this case, makes debugging easier. */
-		error_count = run_child(0, seed, num_loops, 0);
+		error_count = run_child(0, seed, num_loops, 0, tdb_flags);
 		goto done;
 	}
 
@@ -387,7 +395,7 @@ int main(int argc, char * const *argv)
 #endif
 					);
 			}
-			exit(run_child(i, seed, num_loops, 0));
+			exit(run_child(i, seed, num_loops, 0, tdb_flags));
 		}
 	}
 
@@ -444,7 +452,7 @@ int main(int argc, char * const *argv)
 				pids[j] = fork();
 				if (pids[j] == 0)
 					exit(run_child(j, seed, num_loops,
-						       done[j]));
+						       done[j], tdb_flags));
 				printf("Restarting child %i for %u-%u\n",
 				       j, done[j], num_loops);
 				continue;
@@ -471,10 +479,11 @@ done:
 		db = tdb_open("torture.tdb", TDB_DEFAULT, O_RDWR | O_CREAT,
 			      0600, &log_attr);
 		if (!db) {
-			fatal("db open failed");
+			fatal(db, "db open failed");
+			exit(1);
 		}
-		if (tdb_check(db, NULL, NULL) == -1) {
-			printf("db check failed");
+		if (tdb_check(db, NULL, NULL) != 0) {
+			fatal(db, "db check failed");
 			exit(1);
 		}
 		tdb_close(db);
