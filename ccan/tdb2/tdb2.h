@@ -462,7 +462,7 @@ enum TDB_ERROR tdb_wipe_all(struct tdb_context *tdb);
  * tdb_check - check a TDB for consistency
  * @tdb: the tdb context returned from tdb_open()
  * @check: function to check each key/data pair (or NULL)
- * @private: argument for @check, must match type.
+ * @private_data: argument for @check, must match type.
  *
  * This performs a consistency check of the open database, optionally calling
  * a check() function on each record so you can do your own data consistency
@@ -471,18 +471,18 @@ enum TDB_ERROR tdb_wipe_all(struct tdb_context *tdb);
  *
  * Returns TDB_SUCCESS or an error.
  */
-#define tdb_check(tdb, check, private)					\
+#define tdb_check(tdb, check, private_data)				\
 	tdb_check_((tdb), typesafe_cb_preargs(enum TDB_ERROR,		\
-					      (check), (private),	\
+					      (check), (private_data),	\
 					      struct tdb_data,		\
 					      struct tdb_data),		\
-		   (private))
+		   (private_data))
 
 enum TDB_ERROR tdb_check_(struct tdb_context *tdb,
 			  enum TDB_ERROR (*check)(struct tdb_data key,
 						  struct tdb_data data,
-						  void *private),
-			  void *private);
+						  void *private_data),
+			  void *private_data);
 
 /**
  * tdb_error - get the last error (not threadsafe)
