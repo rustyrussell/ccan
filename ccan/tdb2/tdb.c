@@ -382,6 +382,11 @@ const char *tdb_errorstr(enum TDB_ERROR ecode)
 	return "Invalid error code";
 }
 
+enum TDB_ERROR tdb_error(struct tdb_context *tdb)
+{
+	return tdb->last_error;
+}
+
 enum TDB_ERROR COLD tdb_logerr(struct tdb_context *tdb,
 			       enum TDB_ERROR ecode,
 			       enum tdb_log_level level,

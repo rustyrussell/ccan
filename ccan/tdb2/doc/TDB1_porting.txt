@@ -4,8 +4,10 @@ Interface differences between TDB1 and TDB2.
   TDB_DATA typedef if you want portability between the two.
 
 - tdb2 functions return 0 on success, and a negative error on failure,
-  whereas tdb1 functions returned 0 on success, and -1 on failure.  tdb1
-  then used tdb_error() to determine the error.
+  whereas tdb1 functions returned 0 on success, and -1 on failure.
+  tdb1 then used tdb_error() to determine the error; this is also
+  supported in tdb2 to ease backwards compatibility, though the other
+  form is preferred.
 
 - tdb2's tdb_fetch() returns an error, tdb1's returned the data directly
   (or tdb_null, and you were supposed to check tdb_error() to find out why).
