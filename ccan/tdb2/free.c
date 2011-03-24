@@ -457,12 +457,12 @@ again:
 		}
 
 		if (frec_magic(r) != TDB_FREE_MAGIC) {
-			tdb_access_release(tdb, r);
 			ecode = tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
 					   "lock_and_alloc:"
 					   " %llu non-free 0x%llx",
 					   (long long)off,
 					   (long long)r->magic_and_prev);
+			tdb_access_release(tdb, r);
 			goto unlock_err;
 		}
 
