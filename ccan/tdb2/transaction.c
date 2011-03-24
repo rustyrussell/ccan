@@ -402,7 +402,7 @@ static void *transaction_direct(struct tdb_context *tdb, tdb_off_t off,
 		return tdb->transaction->blocks[blk] + off % getpagesize();
 
 	/* Otherwise must be all not copied. */
-	while (blk < end_blk) {
+	while (blk <= end_blk) {
 		if (blk >= tdb->transaction->num_blocks)
 			break;
 		if (tdb->transaction->blocks[blk])
@@ -1080,7 +1080,8 @@ enum TDB_ERROR tdb_transaction_commit(struct tdb_context *tdb)
 #endif
 
 	/* use a transaction cancel to free memory and remove the
-	   transaction locks */
+	   transaction locks: it "restores" map_size, too. */
+	tdb->transaction->old_map_size = tdb->file->map_size;
 	_tdb_transaction_cancel(tdb);
 
 	return tdb->last_error = TDB_SUCCESS;
