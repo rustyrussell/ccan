@@ -335,6 +335,7 @@ struct tdb_file {
 	int fd;
 
 	/* Lock information */
+	pid_t locker;
 	struct tdb_lock allrecord_lock;
 	size_t num_lockrecs;
 	struct tdb_lock *lockrecs;

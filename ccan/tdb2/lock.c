@@ -37,6 +37,29 @@ static enum TDB_ERROR owner_conflict(struct tdb_context *tdb, const char *call)
 			  call);
 }
 
+/* If we fork, we no longer really own locks. */
+static bool check_lock_pid(struct tdb_context *tdb,
+			   const char *call, bool log)
+{
+	/* No locks?  No problem! */
+	if (tdb->file->allrecord_lock.count == 0
+	    && tdb->file->num_lockrecs == 0) {
+		return true;
+	}
+
+	/* No fork?  No problem! */
+	if (tdb->file->locker == getpid()) {
+		return true;
+	}
+
+	if (log) {
+		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_USE_ERROR,
+			   "%s: fork() detected after lock acquisition!"
+			   " (%u vs %u)", call, tdb->file->locker, getpid());
+	}
+	return false;
+}
+
 static int fcntl_lock(struct tdb_context *tdb,
 		      int rw, off_t off, off_t len, bool waitflag)
 {
@@ -47,6 +70,11 @@ static int fcntl_lock(struct tdb_context *tdb,
 	fl.l_start = off;
 	fl.l_len = len;
 	fl.l_pid = 0;
+
+	if (tdb->file->allrecord_lock.count == 0
+	    && tdb->file->num_lockrecs == 0) {
+		tdb->file->locker = getpid();
+	}
 
 	add_stat(tdb, lock_lowlevel, 1);
 	if (waitflag)
@@ -190,7 +218,8 @@ static enum TDB_ERROR tdb_brunlock(struct tdb_context *tdb,
 		ret = fcntl_unlock(tdb, rw_type, offset, len);
 	} while (ret == -1 && errno == EINTR);
 
-	if (ret == -1) {
+	/* If we fail, *then* we verify that we owned the lock.  If not, ok. */
+	if (ret == -1 && check_lock_pid(tdb, "tdb_brunlock", false)) {
 		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
 				  "tdb_brunlock failed (fd=%d) at offset %zu"
 				  " rw_type=%d len=%zu",
@@ -209,6 +238,9 @@ static enum TDB_ERROR tdb_brunlock(struct tdb_context *tdb,
 enum TDB_ERROR tdb_allrecord_upgrade(struct tdb_context *tdb)
 {
 	int count = 1000;
+
+	if (!check_lock_pid(tdb, "tdb_transaction_prepare_commit", true))
+		return TDB_ERR_LOCK;
 
 	if (tdb->file->allrecord_lock.count != 1) {
 		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
@@ -267,6 +299,9 @@ enum TDB_ERROR tdb_lock_and_recover(struct tdb_context *tdb)
 {
 	enum TDB_ERROR ecode;
 
+	if (!check_lock_pid(tdb, "tdb_transaction_prepare_commit", true))
+		return TDB_ERR_LOCK;
+
 	ecode = tdb_allrecord_lock(tdb, F_WRLCK, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK,
 				   false);
 	if (ecode != TDB_SUCCESS) {
@@ -302,6 +337,10 @@ static enum TDB_ERROR tdb_nest_lock(struct tdb_context *tdb,
 
 	if (tdb->flags & TDB_NOLOCK)
 		return TDB_SUCCESS;
+
+	if (!check_lock_pid(tdb, "tdb_nest_lock", true)) {
+		return TDB_ERR_LOCK;
+	}
 
 	add_stat(tdb, locks, 1);
 
@@ -472,6 +511,13 @@ enum TDB_ERROR tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
 	enum TDB_ERROR ecode;
 	tdb_bool_err berr;
 
+	if (tdb->flags & TDB_NOLOCK)
+		return TDB_SUCCESS;
+
+	if (!check_lock_pid(tdb, "tdb_allrecord_lock", true)) {
+		return TDB_ERR_LOCK;
+	}
+
 	if (tdb->file->allrecord_lock.count) {
 		if (tdb->file->allrecord_lock.owner != tdb) {
 			return owner_conflict(tdb, "tdb_allrecord_lock");
@@ -587,6 +633,9 @@ void tdb_unlock_expand(struct tdb_context *tdb, int ltype)
 /* unlock entire db */
 void tdb_allrecord_unlock(struct tdb_context *tdb, int ltype)
 {
+	if (tdb->flags & TDB_NOLOCK)
+		return;
+
 	if (tdb->file->allrecord_lock.count == 0) {
 		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_USE_ERROR,
 			   "tdb_allrecord_unlock: not locked!");
@@ -664,6 +713,9 @@ enum TDB_ERROR tdb_lock_hashes(struct tdb_context *tdb,
 
 	/* a allrecord lock allows us to avoid per chain locks */
 	if (tdb->file->allrecord_lock.count) {
+		if (!check_lock_pid(tdb, "tdb_lock_hashes", true))
+			return TDB_ERR_LOCK;
+
 		if (tdb->file->allrecord_lock.owner != tdb)
 			return owner_conflict(tdb, "tdb_lock_hashes");
 		if (ltype == tdb->file->allrecord_lock.ltype
@@ -736,6 +788,9 @@ enum TDB_ERROR tdb_lock_free_bucket(struct tdb_context *tdb, tdb_off_t b_off,
 
 	/* a allrecord lock allows us to avoid per chain locks */
 	if (tdb->file->allrecord_lock.count) {
+		if (!check_lock_pid(tdb, "tdb_lock_free_bucket", true))
+			return TDB_ERR_LOCK;
+
 		if (tdb->file->allrecord_lock.ltype == F_WRLCK)
 			return 0;
 		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,

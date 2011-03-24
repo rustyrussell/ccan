@@ -1,5 +1,8 @@
 Interface differences between TDB1 and TDB2.
 
+- tdb2 uses 'struct tdb_data', tdb1 uses 'struct TDB_DATA'.  Use the
+  TDB_DATA typedef if you want portability between the two.
+
 - tdb2 functions return 0 on success, and a negative error on failure,
   whereas tdb1 functions returned 0 on success, and -1 on failure.  tdb1
   then used tdb_error() to determine the error.
@@ -27,3 +30,13 @@ Interface differences between TDB1 and TDB2.
 - tdb2 provides tdb_deq() for comparing two struct tdb_data.
 
 - tdb2's tdb_name() returns a copy of the name even for TDB_INTERNAL dbs.
+
+- tdb2 does not need tdb_reopen() or tdb_reopen_all().  If you call
+  fork() after during certain operations the child should close the
+  tdb, or complete the operations before continuing to use the tdb:
+
+	tdb_transaction_start(): child must tdb_transaction_cancel()
+	tdb_lockall(): child must call tdb_unlockall()
+	tdb_lockall_read(): child must call tdb_unlockall_read()
+	tdb_chainlock(): child must call tdb_chainunlock()
+	tdb_parse() callback: child must return from tdb_parse()
