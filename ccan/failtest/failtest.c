@@ -483,8 +483,13 @@ static bool should_fail(struct failtest_call *call)
 		else
 			ret = poll(pfd, 2, failtest_timeout_ms);
 
-		if (ret <= 0)
+		if (ret == 0)
 			hand_down(SIGUSR1);
+		if (ret < 0) {
+			if (errno == EINTR)
+				continue;
+			err(1, "Poll returned %i", ret);
+		}
 
 		if (pfd[0].revents & POLLIN) {
 			ssize_t len;
