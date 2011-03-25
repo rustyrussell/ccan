@@ -91,7 +91,8 @@ int main(int argc, char *argv[])
 	b_off = bucket_off(tdb->ftable_off, size_to_bucket(1024));
 	/* Lock and coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
-	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024) == 1);
+	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024)
+	    == 1024 + sizeof(struct tdb_used_record) + 2048);
 	ok1(tdb->file->allrecord_lock.count == 0 && tdb->file->num_lockrecs == 0);
 	ok1(free_record_length(tdb, layout->elem[1].base.off)
 	    == 1024 + sizeof(struct tdb_used_record) + 2048);
@@ -114,7 +115,8 @@ int main(int argc, char *argv[])
 	b_off = bucket_off(tdb->ftable_off, size_to_bucket(1024));
 	/* Lock and coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
-	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024) == 1);
+	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024)
+	    == 1024 + sizeof(struct tdb_used_record) + 512);
 	ok1(tdb->file->allrecord_lock.count == 0 && tdb->file->num_lockrecs == 0);
 	ok1(free_record_length(tdb, layout->elem[1].base.off)
 	    == 1024 + sizeof(struct tdb_used_record) + 512);
@@ -138,7 +140,9 @@ int main(int argc, char *argv[])
 	b_off = bucket_off(tdb->ftable_off, size_to_bucket(1024));
 	/* Lock and coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
-	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024) == 1);
+	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024) ==
+	    1024 + sizeof(struct tdb_used_record) + 512
+	    + sizeof(struct tdb_used_record) + 256);
 	ok1(tdb->file->allrecord_lock.count == 0
 	    && tdb->file->num_lockrecs == 0);
 	ok1(free_record_length(tdb, layout->elem[1].base.off)

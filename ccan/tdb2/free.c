@@ -333,10 +333,10 @@ static tdb_off_t ftable_offset(struct tdb_context *tdb, unsigned int ftable)
 	return off;
 }
 
-/* Note: we unlock the current bucket if we coalesce or fail. */
-static tdb_bool_err coalesce(struct tdb_context *tdb,
-			     tdb_off_t off, tdb_off_t b_off,
-			     tdb_len_t data_len)
+/* Note: we unlock the current bucket if we coalesce (> 0) or fail (-ve). */
+static tdb_len_t coalesce(struct tdb_context *tdb,
+			  tdb_off_t off, tdb_off_t b_off,
+			  tdb_len_t data_len)
 {
 	tdb_off_t end;
 	struct tdb_free_record rec;
@@ -414,7 +414,7 @@ static tdb_bool_err coalesce(struct tdb_context *tdb,
 
 	/* Didn't find any adjacent free? */
 	if (end == off + sizeof(struct tdb_used_record) + data_len)
-		return false;
+		return 0;
 
 	/* OK, expand initial record */
 	ecode = tdb_read_convert(tdb, off, &rec, sizeof(rec));
@@ -453,7 +453,8 @@ static tdb_bool_err coalesce(struct tdb_context *tdb,
 	if (ecode != TDB_SUCCESS) {
 		return ecode;
 	}
-	return true;
+	/* Return usable length. */
+	return end - off - sizeof(struct tdb_used_record);
 
 err:
 	/* To unify error paths, we *always* unlock bucket on error. */
@@ -506,9 +507,8 @@ again:
 
 	while (off) {
 		const struct tdb_free_record *r;
-		tdb_len_t len;
+		tdb_len_t len, coal;
 		tdb_off_t next;
-		int coal;
 
 		r = tdb_access_read(tdb, off, sizeof(*r), true);
 		if (TDB_PTR_IS_ERR(r)) {
@@ -544,13 +544,13 @@ again:
 
 		/* Since we're going slow anyway, try coalescing here. */
 		coal = coalesce(tdb, off, b_off, len);
-		if (coal == 1) {
-			/* This has unlocked list, restart. */
-			goto again;
-		}
-		if (coal < 0) {
+		if (TDB_OFF_IS_ERR(coal)) {
 			/* This has already unlocked on error. */
 			return coal;
+		}
+		if (coal > 0) {
+			/* This has unlocked list, restart. */
+			goto again;
 		}
 		off = next;
 	}
