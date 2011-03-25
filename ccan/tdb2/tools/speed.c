@@ -94,21 +94,31 @@ static void dump_and_clear_stats(struct tdb_attribute_stats *stats)
 	memset(&stats->allocs, 0, (char *)(stats+1) - (char *)&stats->allocs);
 }
 
+static void tdb_log(struct tdb_context *tdb, enum tdb_log_level level,
+		    void *private, const char *message)
+{
+	fputs(message, stderr);
+}
+
 int main(int argc, char *argv[])
 {
 	unsigned int i, j, num = 1000, stage = 0, stopat = -1;
 	int flags = TDB_DEFAULT;
-	bool transaction = false;
+	bool transaction = false, summary = false;
 	TDB_DATA key, data;
 	struct tdb_context *tdb;
 	struct timeval start, stop;
-	union tdb_attribute seed, stats;
+	union tdb_attribute seed, stats, log;
 	enum TDB_ERROR ecode;
 
 	/* Try to keep benchmarks even. */
 	seed.base.attr = TDB_ATTRIBUTE_SEED;
 	seed.base.next = NULL;
 	seed.seed.seed = 0;
+
+	log.base.attr = TDB_ATTRIBUTE_LOG;
+	log.base.next = &seed;
+	log.log.log_fn = tdb_log;
 
 	memset(&stats, 0, sizeof(stats));
 	stats.base.attr = TDB_ATTRIBUTE_STATS;
@@ -130,6 +140,11 @@ int main(int argc, char *argv[])
 		argc--;
 		argv++;
 	}
+	if (argv[1] && strcmp(argv[1], "--summary") == 0) {
+		summary = true;
+		argc--;
+		argv++;
+	}
 	if (argv[1] && strcmp(argv[1], "--stats") == 0) {
 		seed.base.next = &stats;
 		argc--;
@@ -137,7 +152,7 @@ int main(int argc, char *argv[])
 	}
 
 	tdb = tdb_open("/tmp/speed.tdb", flags, O_RDWR|O_CREAT|O_TRUNC,
-		       0600, &seed);
+		       0600, &log);
 	if (!tdb)
 		err(1, "Opening /tmp/speed.tdb");
 
@@ -173,6 +188,12 @@ int main(int argc, char *argv[])
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
 
+	if (summary) {
+		char *sumstr = NULL;
+		tdb_summary(tdb, TDB_SUMMARY_HISTOGRAMS, &sumstr);
+		printf("%s\n", sumstr);
+		free(sumstr);
+	}
 	if (seed.base.next)
 		dump_and_clear_stats(&stats.stats);
 	if (++stage == stopat)
@@ -197,6 +218,12 @@ int main(int argc, char *argv[])
 		errx(1, "committing transaction: %s", tdb_errorstr(ecode));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
+	if (summary) {
+		char *sumstr = NULL;
+		tdb_summary(tdb, TDB_SUMMARY_HISTOGRAMS, &sumstr);
+		printf("%s\n", sumstr);
+		free(sumstr);
+	}
 	if (seed.base.next)
 		dump_and_clear_stats(&stats.stats);
 	if (++stage == stopat)
@@ -220,6 +247,12 @@ int main(int argc, char *argv[])
 		errx(1, "committing transaction: %s", tdb_errorstr(ecode));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
+	if (summary) {
+		char *sumstr = NULL;
+		tdb_summary(tdb, TDB_SUMMARY_HISTOGRAMS, &sumstr);
+		printf("%s\n", sumstr);
+		free(sumstr);
+	}
 	if (seed.base.next)
 		dump_and_clear_stats(&stats.stats);
 	if (++stage == stopat)
@@ -241,6 +274,12 @@ int main(int argc, char *argv[])
 		errx(1, "committing transaction: %s", tdb_errorstr(ecode));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
+	if (summary) {
+		char *sumstr = NULL;
+		tdb_summary(tdb, TDB_SUMMARY_HISTOGRAMS, &sumstr);
+		printf("%s\n", sumstr);
+		free(sumstr);
+	}
 	if (seed.base.next)
 		dump_and_clear_stats(&stats.stats);
 	if (++stage == stopat)
@@ -263,6 +302,12 @@ int main(int argc, char *argv[])
 		errx(1, "committing transaction: %s", tdb_errorstr(ecode));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
+	if (summary) {
+		char *sumstr = NULL;
+		tdb_summary(tdb, TDB_SUMMARY_HISTOGRAMS, &sumstr);
+		printf("%s\n", sumstr);
+		free(sumstr);
+	}
 	if (seed.base.next)
 		dump_and_clear_stats(&stats.stats);
 	if (++stage == stopat)
@@ -285,6 +330,12 @@ int main(int argc, char *argv[])
 		errx(1, "committing transaction: %s", tdb_errorstr(ecode));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
+	if (summary) {
+		char *sumstr = NULL;
+		tdb_summary(tdb, TDB_SUMMARY_HISTOGRAMS, &sumstr);
+		printf("%s\n", sumstr);
+		free(sumstr);
+	}
 	if (seed.base.next)
 		dump_and_clear_stats(&stats.stats);
 	if (++stage == stopat)
@@ -292,7 +343,6 @@ int main(int argc, char *argv[])
 
 	if (transaction && (ecode = tdb_transaction_start(tdb)))
 		errx(1, "starting transaction: %s", tdb_errorstr(ecode));
-
 	/* Append 1000 records. */
 	printf("Appending %u records: ", num); fflush(stdout);
 	gettimeofday(&start, NULL);
@@ -305,6 +355,12 @@ int main(int argc, char *argv[])
 		errx(1, "committing transaction: %s", tdb_errorstr(ecode));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
+	if (summary) {
+		char *sumstr = NULL;
+		tdb_summary(tdb, TDB_SUMMARY_HISTOGRAMS, &sumstr);
+		printf("%s\n", sumstr);
+		free(sumstr);
+	}
 	if (++stage == stopat)
 		exit(0);
 
@@ -330,6 +386,12 @@ int main(int argc, char *argv[])
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
 
+	if (summary) {
+		char *sumstr = NULL;
+		tdb_summary(tdb, TDB_SUMMARY_HISTOGRAMS, &sumstr);
+		printf("%s\n", sumstr);
+		free(sumstr);
+	}
 	if (seed.base.next)
 		dump_and_clear_stats(&stats.stats);
 	if (++stage == stopat)
