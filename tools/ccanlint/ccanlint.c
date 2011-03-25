@@ -285,19 +285,24 @@ static void init_tests(void)
 	}
 	btree_delete(keys);
 	btree_delete(names);
+}
 
-	if (!verbose)
-		return;
+static void print_test_depends(void)
+{
+	struct list_head *list;
 
 	foreach_ptr(list, &compulsory_tests, &normal_tests) {
+		struct ccanlint *c;
 		printf("\%s Tests\n",
 		       list == &compulsory_tests ? "Compulsory" : "Normal");
 
-		if (!list_empty(&c->dependencies)) {
-			const struct dependent *d;
-			printf("These depend on us:\n");
-			list_for_each(&c->dependencies, d, node)
-				printf("\t%s\n", d->dependent->name);
+		list_for_each(list, c, list) {
+			if (!list_empty(&c->dependencies)) {
+				const struct dependent *d;
+				printf("These depend on %s:\n", c->key);
+				list_for_each(&c->dependencies, d, node)
+					printf("\t%s\n", d->dependent->key);
+			}
 		}
 	}
 }
@@ -640,8 +645,10 @@ int main(int argc, char *argv[])
 		dir[strlen(dir)-1] = '\0';
 	if (dir != base_dir)
 		prefix = talloc_append_string(talloc_basename(NULL, dir), ": ");
-	if (verbose >= 3)
+	if (verbose >= 3) {
 		compile_verbose = true;
+		print_test_depends();
+	}
 	if (verbose >= 4)
 		tools_verbose = true;
 
