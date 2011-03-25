@@ -120,6 +120,8 @@ struct tdb_transaction {
 	tdb_len_t old_map_size;
 };
 
+/* This doesn't really need to be pagesize, but we use it for similar reasons. */
+#define PAGESIZE 4096
 
 /*
   read while in a transaction. We need to check first if the data is in our list
@@ -132,8 +134,8 @@ static enum TDB_ERROR transaction_read(struct tdb_context *tdb, tdb_off_t off,
 	enum TDB_ERROR ecode;
 
 	/* break it down into block sized ops */
-	while (len + (off % getpagesize()) > getpagesize()) {
-		tdb_len_t len2 = getpagesize() - (off % getpagesize());
+	while (len + (off % PAGESIZE) > PAGESIZE) {
+		tdb_len_t len2 = PAGESIZE - (off % PAGESIZE);
 		ecode = transaction_read(tdb, off, buf, len2);
 		if (ecode != TDB_SUCCESS) {
 			return ecode;
@@ -147,7 +149,7 @@ static enum TDB_ERROR transaction_read(struct tdb_context *tdb, tdb_off_t off,
 		return TDB_SUCCESS;
 	}
 
-	blk = off / getpagesize();
+	blk = off / PAGESIZE;
 
 	/* see if we have it in the block list */
 	if (tdb->transaction->num_blocks <= blk ||
@@ -169,7 +171,7 @@ static enum TDB_ERROR transaction_read(struct tdb_context *tdb, tdb_off_t off,
 	}
 
 	/* now copy it out of this block */
-	memcpy(buf, tdb->transaction->blocks[blk] + (off % getpagesize()), len);
+	memcpy(buf, tdb->transaction->blocks[blk] + (off % PAGESIZE), len);
 	return TDB_SUCCESS;
 
 fail:
@@ -198,8 +200,8 @@ static enum TDB_ERROR transaction_write(struct tdb_context *tdb, tdb_off_t off,
 	}
 
 	/* break it up into block sized chunks */
-	while (len + (off % getpagesize()) > getpagesize()) {
-		tdb_len_t len2 = getpagesize() - (off % getpagesize());
+	while (len + (off % PAGESIZE) > PAGESIZE) {
+		tdb_len_t len2 = PAGESIZE - (off % PAGESIZE);
 		ecode = transaction_write(tdb, off, buf, len2);
 		if (ecode != TDB_SUCCESS) {
 			return -1;
@@ -215,8 +217,8 @@ static enum TDB_ERROR transaction_write(struct tdb_context *tdb, tdb_off_t off,
 		return TDB_SUCCESS;
 	}
 
-	blk = off / getpagesize();
-	off = off % getpagesize();
+	blk = off / PAGESIZE;
+	off = off % PAGESIZE;
 
 	if (tdb->transaction->num_blocks <= blk) {
 		uint8_t **new_blocks;
@@ -244,20 +246,20 @@ static enum TDB_ERROR transaction_write(struct tdb_context *tdb, tdb_off_t off,
 
 	/* allocate and fill a block? */
 	if (tdb->transaction->blocks[blk] == NULL) {
-		tdb->transaction->blocks[blk] = (uint8_t *)calloc(getpagesize(), 1);
+		tdb->transaction->blocks[blk] = (uint8_t *)calloc(PAGESIZE, 1);
 		if (tdb->transaction->blocks[blk] == NULL) {
 			ecode = tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
 					   "transaction_write:"
 					   " failed to allocate");
 			goto fail;
 		}
-		if (tdb->transaction->old_map_size > blk * getpagesize()) {
-			tdb_len_t len2 = getpagesize();
-			if (len2 + (blk * getpagesize()) > tdb->transaction->old_map_size) {
-				len2 = tdb->transaction->old_map_size - (blk * getpagesize());
+		if (tdb->transaction->old_map_size > blk * PAGESIZE) {
+			tdb_len_t len2 = PAGESIZE;
+			if (len2 + (blk * PAGESIZE) > tdb->transaction->old_map_size) {
+				len2 = tdb->transaction->old_map_size - (blk * PAGESIZE);
 			}
 			ecode = tdb->transaction->io_methods->tread(tdb,
-					blk * getpagesize(),
+					blk * PAGESIZE,
 					tdb->transaction->blocks[blk],
 					len2);
 			if (ecode != TDB_SUCCESS) {
@@ -306,8 +308,8 @@ static void transaction_write_existing(struct tdb_context *tdb, tdb_off_t off,
 	size_t blk;
 
 	/* break it up into block sized chunks */
-	while (len + (off % getpagesize()) > getpagesize()) {
-		tdb_len_t len2 = getpagesize() - (off % getpagesize());
+	while (len + (off % PAGESIZE) > PAGESIZE) {
+		tdb_len_t len2 = PAGESIZE - (off % PAGESIZE);
 		transaction_write_existing(tdb, off, buf, len2);
 		len -= len2;
 		off += len2;
@@ -320,8 +322,8 @@ static void transaction_write_existing(struct tdb_context *tdb, tdb_off_t off,
 		return;
 	}
 
-	blk = off / getpagesize();
-	off = off % getpagesize();
+	blk = off / PAGESIZE;
+	off = off % PAGESIZE;
 
 	if (tdb->transaction->num_blocks <= blk ||
 	    tdb->transaction->blocks[blk] == NULL) {
@@ -379,10 +381,10 @@ static enum TDB_ERROR transaction_expand_file(struct tdb_context *tdb,
 static void *transaction_direct(struct tdb_context *tdb, tdb_off_t off,
 				size_t len, bool write_mode)
 {
-	size_t blk = off / getpagesize(), end_blk;
+	size_t blk = off / PAGESIZE, end_blk;
 
 	/* This is wrong for zero-length blocks, but will fail gracefully */
-	end_blk = (off + len - 1) / getpagesize();
+	end_blk = (off + len - 1) / PAGESIZE;
 
 	/* Can only do direct if in single block and we've already copied. */
 	if (write_mode) {
@@ -392,14 +394,14 @@ static void *transaction_direct(struct tdb_context *tdb, tdb_off_t off,
 			return NULL;
 		if (tdb->transaction->blocks[blk] == NULL)
 			return NULL;
-		return tdb->transaction->blocks[blk] + off % getpagesize();
+		return tdb->transaction->blocks[blk] + off % PAGESIZE;
 	}
 
 	/* Single which we have copied? */
 	if (blk == end_blk
 	    && blk < tdb->transaction->num_blocks
 	    && tdb->transaction->blocks[blk])
-		return tdb->transaction->blocks[blk] + off % getpagesize();
+		return tdb->transaction->blocks[blk] + off % PAGESIZE;
 
 	/* Otherwise must be all not copied. */
 	while (blk <= end_blk) {
@@ -437,7 +439,7 @@ static enum TDB_ERROR transaction_sync(struct tdb_context *tdb,
 	}
 #ifdef MS_SYNC
 	if (tdb->file->map_ptr) {
-		tdb_off_t moffset = offset & ~(getpagesize()-1);
+		tdb_off_t moffset = offset & ~(PAGESIZE-1);
 		if (msync(moffset + (char *)tdb->file->map_ptr,
 			  length + (offset - moffset), MS_SYNC) != 0) {
 			return tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
@@ -611,7 +613,7 @@ static tdb_len_t tdb_recovery_size(struct tdb_context *tdb)
 
 	recovery_size = sizeof(tdb_len_t);
 	for (i=0;i<tdb->transaction->num_blocks;i++) {
-		if (i * getpagesize() >= tdb->transaction->old_map_size) {
+		if (i * PAGESIZE >= tdb->transaction->old_map_size) {
 			break;
 		}
 		if (tdb->transaction->blocks[i] == NULL) {
@@ -621,7 +623,7 @@ static tdb_len_t tdb_recovery_size(struct tdb_context *tdb)
 		if (i == tdb->transaction->num_blocks-1) {
 			recovery_size += tdb->transaction->last_block_size;
 		} else {
-			recovery_size += getpagesize();
+			recovery_size += PAGESIZE;
 		}
 	}
 
@@ -696,8 +698,8 @@ static enum TDB_ERROR tdb_recovery_allocate(struct tdb_context *tdb,
 
 	/* round up to a multiple of page size */
 	*recovery_max_size
-		= (((sizeof(rec) + *recovery_size) + getpagesize()-1)
-		   & ~(getpagesize()-1))
+		= (((sizeof(rec) + *recovery_size) + PAGESIZE-1)
+		   & ~(PAGESIZE-1))
 		- sizeof(rec);
 	*recovery_offset = tdb->file->map_size;
 	recovery_head = *recovery_offset;
@@ -798,8 +800,8 @@ static enum TDB_ERROR transaction_setup_recovery(struct tdb_context *tdb,
 			continue;
 		}
 
-		offset = i * getpagesize();
-		length = getpagesize();
+		offset = i * PAGESIZE;
+		length = PAGESIZE;
 		if (i == tdb->transaction->num_blocks-1) {
 			length = tdb->transaction->last_block_size;
 		}
@@ -1029,8 +1031,8 @@ enum TDB_ERROR tdb_transaction_commit(struct tdb_context *tdb)
 			continue;
 		}
 
-		offset = i * getpagesize();
-		length = getpagesize();
+		offset = i * PAGESIZE;
+		length = PAGESIZE;
 		if (i == tdb->transaction->num_blocks-1) {
 			length = tdb->transaction->last_block_size;
 		}
