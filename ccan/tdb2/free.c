@@ -471,7 +471,7 @@ again:
 			best = *r;
 		}
 
-		if (frec_len(&best) < size * multiplier && best_off) {
+		if (frec_len(&best) <= size * multiplier && best_off) {
 			tdb_access_release(tdb, r);
 			break;
 		}
