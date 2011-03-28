@@ -492,7 +492,7 @@ static enum TDB_ERROR check_free(struct tdb_context *tdb,
 				  (long long)off,
 				  bucket, size_to_bucket(frec_len(frec)));
 	}
-	if (prev != frec_prev(frec)) {
+	if (prev && prev != frec_prev(frec)) {
 		return tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
 				  "tdb_check: offset %llu bad prev"
 				  " (%llu vs %llu)",
@@ -528,11 +528,13 @@ static enum TDB_ERROR check_free_table(struct tdb_context *tdb,
 	}
 
 	for (i = 0; i < TDB_FREE_BUCKETS; i++) {
-		tdb_off_t off, prev = 0, *p;
+		tdb_off_t off, prev = 0, *p, first = 0;
 		struct tdb_free_record f;
 
 		h = bucket_off(ftable_off, i);
 		for (off = tdb_read_off(tdb, h); off; off = f.next) {
+			if (!first)
+				first = off;
 			if (TDB_OFF_IS_ERR(off)) {
 				return off;
 			}
@@ -558,6 +560,18 @@ static enum TDB_ERROR check_free_table(struct tdb_context *tdb,
 			*p ^= 1;
 			(*num_found)++;
 			prev = off;
+		}
+
+		if (first) {
+			/* Now we can check first back pointer. */
+			ecode = tdb_read_convert(tdb, first, &f, sizeof(f));
+			if (ecode != TDB_SUCCESS) {
+				return ecode;
+			}
+			ecode = check_free(tdb, first, &f, prev, ftable_num, i);
+			if (ecode != TDB_SUCCESS) {
+				return ecode;
+			}
 		}
 	}
 	return TDB_SUCCESS;

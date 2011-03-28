@@ -103,55 +103,96 @@ static tdb_off_t find_free_head(struct tdb_context *tdb,
 				    bucket, TDB_FREE_BUCKETS);
 }
 
+static void check_list(struct tdb_context *tdb, tdb_off_t b_off)
+{
+#ifdef CCAN_TDB2_DEBUG
+	tdb_off_t off, prev = 0, first;
+	struct tdb_free_record r;
+
+	first = off = tdb_read_off(tdb, b_off);
+	while (off != 0) {
+		tdb_read_convert(tdb, off, &r, sizeof(r));
+		if (frec_magic(&r) != TDB_FREE_MAGIC)
+			abort();
+		if (prev && frec_prev(&r) != prev)
+			abort();
+		prev = off;
+		off = r.next;
+	}
+
+	if (first) {
+		tdb_read_convert(tdb, first, &r, sizeof(r));
+		if (frec_prev(&r) != prev)
+			abort();
+	}
+#endif
+}
+
 /* Remove from free bucket. */
 static enum TDB_ERROR remove_from_list(struct tdb_context *tdb,
 				       tdb_off_t b_off, tdb_off_t r_off,
 				       const struct tdb_free_record *r)
 {
-	tdb_off_t off;
+	tdb_off_t off, prev_next, head;
 	enum TDB_ERROR ecode;
 
-	/* Front of list? */
-	if (frec_prev(r) == 0) {
-		off = b_off;
+	/* Is this only element in list?  Zero out bucket, and we're done. */
+	if (frec_prev(r) == r_off)
+		return tdb_write_off(tdb, b_off, 0);
+
+	/* off = &r->prev->next */
+	off = frec_prev(r) + offsetof(struct tdb_free_record, next);
+
+	/* Get prev->next */
+	prev_next = tdb_read_off(tdb, off);
+	if (TDB_OFF_IS_ERR(prev_next))
+		return prev_next;
+
+	/* If prev->next == 0, we were head: update bucket to point to next. */
+	if (prev_next == 0) {
+#ifdef CCAN_TDB2_DEBUG
+		if (tdb_read_off(tdb, b_off) != r_off) {
+			return tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
+					  "remove_from_list:"
+					  " %llu head %llu on list %llu",
+					  (long long)r_off,
+					  (long long)tdb_read_off(tdb, b_off),
+					  (long long)b_off);
+		}
+#endif
+		ecode = tdb_write_off(tdb, b_off, r->next);
+		if (ecode != TDB_SUCCESS)
+			return ecode;
 	} else {
-		off = frec_prev(r) + offsetof(struct tdb_free_record, next);
+		/* r->prev->next = r->next */
+		ecode = tdb_write_off(tdb, off, r->next);
+		if (ecode != TDB_SUCCESS)
+			return ecode;
+	}
+
+	/* If we were the tail, off = &head->prev. */
+	if (r->next == 0) {
+		head = tdb_read_off(tdb, b_off);
+		if (TDB_OFF_IS_ERR(head))
+			return head;
+		off = head + offsetof(struct tdb_free_record, magic_and_prev);
+	} else {
+		/* off = &r->next->prev */
+		off = r->next + offsetof(struct tdb_free_record,
+					 magic_and_prev);
 	}
 
 #ifdef CCAN_TDB2_DEBUG
-	if (tdb_read_off(tdb, off) != r_off) {
+	/* *off == r */
+	if ((tdb_read_off(tdb, off) & TDB_OFF_MASK) != r_off) {
 		return tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
 				  "remove_from_list:"
 				  " %llu bad prev in list %llu",
 				  (long long)r_off, (long long)b_off);
 	}
 #endif
-
-	/* r->prev->next = r->next */
-	ecode = tdb_write_off(tdb, off, r->next);
-	if (ecode != TDB_SUCCESS) {
-		return ecode;
-	}
-
-	if (r->next != 0) {
-		off = r->next + offsetof(struct tdb_free_record,magic_and_prev);
-		/* r->next->prev = r->prev */
-
-#ifdef CCAN_TDB2_DEBUG
-		if (tdb_read_off(tdb, off) & TDB_OFF_MASK != r_off) {
-			return tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
-					  "remove_from_list:"
-					  " %llu bad list %llu",
-					  (long long)r_off, (long long)b_off);
-		}
-#endif
-
-		ecode = tdb_write_off(tdb, off, r->magic_and_prev);
-		if (ecode != TDB_SUCCESS) {
-			return ecode;
-		}
-	}
-	return TDB_SUCCESS;
+	/* r->next->prev = r->prev */
+	return tdb_write_off(tdb, off, r->magic_and_prev);
 }
 
 /* Enqueue in this free bucket. */
@@ -162,13 +203,12 @@ static enum TDB_ERROR enqueue_in_free(struct tdb_context *tdb,
 {
 	struct tdb_free_record new;
 	enum TDB_ERROR ecode;
+	tdb_off_t prev;
 	uint64_t magic = (TDB_FREE_MAGIC << (64 - TDB_OFF_UPPER_STEAL));
 
 	/* We only need to set ftable_and_len; rest is set in enqueue_in_free */
 	new.ftable_and_len = ((uint64_t)tdb->ftable << (64 - TDB_OFF_UPPER_STEAL))
 		| len;
-	/* prev = 0. */
-	new.magic_and_prev = magic;
 
 	/* new->next = head. */
 	new.next = tdb_read_off(tdb, b_off);
@@ -176,19 +216,22 @@ static enum TDB_ERROR enqueue_in_free(struct tdb_context *tdb,
 		return new.next;
 	}
 
-	if (new.next) {
-#ifdef CCAN_TDB2_DEBUG
-		if (tdb_read_off(tdb,
-				 new.next + offsetof(struct tdb_free_record,
-						     magic_and_prev))
-		    != magic) {
+	/* First element?  Prev points to ourselves. */
+	if (!new.next) {
+		new.magic_and_prev = (magic | off);
+	} else {
+		/* new->prev = next->prev */
+		prev = tdb_read_off(tdb,
+				    new.next + offsetof(struct tdb_free_record,
+							magic_and_prev));
+		new.magic_and_prev = prev;
+		if (frec_magic(&new) != TDB_FREE_MAGIC) {
 			return tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
 					  "enqueue_in_free: %llu bad head"
 					  " prev %llu",
 					  (long long)new.next,
-					  (long long)b_off);
+					  (long long)prev);
 		}
-#endif
 		/* next->prev = new. */
 		ecode = tdb_write_off(tdb, new.next
 				      + offsetof(struct tdb_free_record,
@@ -197,6 +240,20 @@ static enum TDB_ERROR enqueue_in_free(struct tdb_context *tdb,
 		if (ecode != TDB_SUCCESS) {
 			return ecode;
 		}
+
+#ifdef CCAN_TDB2_DEBUG
+		prev = tdb_read_off(tdb, frec_prev(&new)
+				    + offsetof(struct tdb_free_record, next));
+		if (prev != 0) {
+			return tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
+					  "enqueue_in_free:"
+					  " %llu bad tail next ptr %llu",
+					  (long long)frec_prev(&new)
+					  + offsetof(struct tdb_free_record,
+						     next),
+					  (long long)prev);
+		}
+#endif
 	}
 	/* head = new */
 	ecode = tdb_write_off(tdb, b_off, off);
@@ -226,6 +283,7 @@ enum TDB_ERROR add_free_record(struct tdb_context *tdb,
 	}
 
 	ecode = enqueue_in_free(tdb, b_off, off, len);
+	check_list(tdb, b_off);
 	tdb_unlock_free_bucket(tdb, b_off);
 	return ecode;
 }
@@ -343,6 +401,7 @@ static tdb_bool_err coalesce(struct tdb_context *tdb,
 		}
 
 		ecode = remove_from_list(tdb, nb_off, end, &rec);
+		check_list(tdb, nb_off);
 		if (ecode != TDB_SUCCESS) {
 			tdb_unlock_free_bucket(tdb, nb_off);
 			goto err;
@@ -371,6 +430,7 @@ static tdb_bool_err coalesce(struct tdb_context *tdb,
 	}
 
 	ecode = remove_from_list(tdb, b_off, off, &rec);
+	check_list(tdb, b_off);
 	if (ecode != TDB_SUCCESS) {
 		goto err;
 	}
@@ -502,6 +562,7 @@ again:
 
 		/* We're happy with this size: take it. */
 		ecode = remove_from_list(tdb, b_off, best_off, &best);
+		check_list(tdb, b_off);
 		if (ecode != TDB_SUCCESS) {
 			goto unlock_err;
 		}
