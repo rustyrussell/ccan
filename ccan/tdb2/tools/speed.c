@@ -125,6 +125,11 @@ int main(int argc, char *argv[])
 		argc--;
 		argv++;
 	}
+	if (argv[1] && strcmp(argv[1], "--no-sync") == 0) {
+		flags |= TDB_NOSYNC;
+		argc--;
+		argv++;
+	}
 	if (argv[1] && strcmp(argv[1], "--stats") == 0) {
 		seed.base.next = &stats;
 		argc--;
