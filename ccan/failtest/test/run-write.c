@@ -21,7 +21,8 @@ int main(int argc, char *argv[])
 	/* Child will fail, ignore. */
 	if (fd < 0)
 		failtest_exit(0);
-	write(fd, buf, strlen(buf));
+	if (write(fd, buf, strlen(buf)) != strlen(buf))
+		abort();
 	ok1(lseek(fd, 0, SEEK_CUR) == strlen(buf));
 
 	p = failtest_malloc(100, __FILE__, __LINE__);

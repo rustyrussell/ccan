@@ -15,13 +15,15 @@ int main(void)
 
 	plan_tests(12);
 
-	pipe(pfd);
+	if (pipe(pfd))
+		abort();
 	fd = failtest_open("run-open-scratchpad", "run-open.c", 1,
 			   O_RDWR|O_CREAT, 0600);
 	if (fd == -1) {
 		/* We are the child: write error code for parent to check. */
 		err = errno;
-		write(pfd[1], &err, sizeof(err));
+		if (write(pfd[1], &err, sizeof(err)) != sizeof(err))
+			abort();
 		failtest_exit(0);
 	}
 	/* Check it is read-write. */
@@ -46,12 +48,14 @@ int main(void)
 	close(pfd[1]);
 
 	/* Two-arg open. */
-	pipe(pfd);
+	if (pipe(pfd) != 0)
+		abort();
 	fd = failtest_open("run-open-scratchpad", "run-open.c", 1, O_RDONLY);
 	if (fd == -1) {
 		/* We are the child: write error code for parent to check. */
 		err = errno;
-		write(pfd[1], &err, sizeof(err));
+		if (write(pfd[1], &err, sizeof(err)) != sizeof(err))
+			abort();
 		failtest_exit(0);
 	}
 	/* Check it is read-only. */

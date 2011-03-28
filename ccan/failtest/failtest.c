@@ -248,7 +248,8 @@ static struct saved_file *save_file(struct saved_file *next, int fd)
 	s->len = lseek(fd, 0, SEEK_END);
 	lseek(fd, 0, SEEK_SET);
 	s->contents = malloc(s->len);
-	read(fd, s->contents, s->len);
+	if (read(fd, s->contents, s->len) != s->len)
+		err(1, "Failed to save %zu bytes", (size_t)s->len);
 	lseek(fd, s->off, SEEK_SET);
 	return s;
 }
@@ -293,8 +294,11 @@ static void restore_files(struct saved_file *s)
 		struct saved_file *next = s->next;
 
 		lseek(s->fd, 0, SEEK_SET);
-		write(s->fd, s->contents, s->len);
-		ftruncate(s->fd, s->len);
+		if (write(s->fd, s->contents, s->len) != s->len)
+			err(1, "Failed to restore %zu bytes", (size_t)s->len);
+		if (ftruncate(s->fd, s->len) != 0)
+			err(1, "Failed to trim file to length %zu",
+			    (size_t)s->len);
 		free(s->contents);
 		lseek(s->fd, s->off, SEEK_SET);
 		free(s);
@@ -395,8 +399,8 @@ static bool should_fail(struct failtest_call *call)
 			signal(SIGUSR1, SIG_IGN);
 			sprintf(str, "xterm -e gdb /proc/%d/exe %d &",
 				getpid(), getpid());
-			system(str);
-			sleep(5);
+			if (system(str) == 0)
+				sleep(5);
 		}
 	}
 
