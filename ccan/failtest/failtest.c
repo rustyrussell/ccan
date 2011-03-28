@@ -364,7 +364,10 @@ static bool should_fail(struct failtest_call *call)
 		/* + means continue after end, like normal. */
 		if (*failpath == '+')
 			failpath = NULL;
-		else {
+		else if (*failpath == '\0') {
+			/* Continue, but don't inject errors. */
+			return call->fail = false;
+		} else {
 			if (tolower((unsigned char)*failpath)
 			    != info_to_arg[call->type])
 				errx(1, "Failpath expected '%c' got '%c'\n",
