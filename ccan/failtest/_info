@@ -27,7 +27,7 @@
  *
  *	int main(int argc, char *argv[])
  *	{
- *		void *a, *b;
+ *		char *a, *b;
  *
  *		failtest_init(argc, argv);
  *		plan_tests(3);
