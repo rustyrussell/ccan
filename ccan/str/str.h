@@ -91,10 +91,12 @@ static inline bool cisascii(char c)
 {
 	return isascii((unsigned char)c);
 }
+#if HAVE_ISBLANK
 static inline bool cisblank(char c)
 {
 	return isblank((unsigned char)c);
 }
+#endif
 static inline bool ciscntrl(char c)
 {
 	return iscntrl((unsigned char)c);
@@ -166,7 +168,9 @@ static inline bool cisxdigit(char c)
 #define isalnum(i) str_isalnum(str_check_arg_(i))
 #define isalpha(i) str_isalpha(str_check_arg_(i))
 #define isascii(i) str_isascii(str_check_arg_(i))
+#if HAVE_ISBLANK
 #define isblank(i) str_isblank(str_check_arg_(i))
+#endif
 #define iscntrl(i) str_iscntrl(str_check_arg_(i))
 #define isdigit(i) str_isdigit(str_check_arg_(i))
 #define isgraph(i) str_isgraph(str_check_arg_(i))

@@ -102,6 +102,9 @@ static struct test tests[] = {
 	{ "HAVE_GETPAGESIZE", DEFINES_FUNC, NULL,
 	  "#include <unistd.h>\n"
 	  "static int func(void) { return getpagesize(); }" },
+	{ "HAVE_ISBLANK", DEFINES_FUNC, NULL,
+	  "#include <ctype.h>\n"
+	  "static int func(void) { return isblank(' '); }" },
 	{ "HAVE_LITTLE_ENDIAN", INSIDE_MAIN|EXECUTE, NULL,
 	  "union { int i; char c[sizeof(int)]; } u;\n"
 	  "u.i = 0x01020304;\n"

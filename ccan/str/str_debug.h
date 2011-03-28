@@ -8,7 +8,9 @@
 int str_isalnum(int i);
 int str_isalpha(int i);
 int str_isascii(int i);
+#if HAVE_ISBLANK
 int str_isblank(int i);
+#endif
 int str_iscntrl(int i);
 int str_isdigit(int i);
 int str_isgraph(int i);

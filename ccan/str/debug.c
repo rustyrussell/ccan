@@ -24,11 +24,13 @@ int str_isascii(int i)
 	return isascii(i);
 }
 
+#if HAVE_ISBLANK
 int str_isblank(int i)
 {
 	assert(i >= -1 && i < 256);
 	return isblank(i);
 }
+#endif
 
 int str_iscntrl(int i)
 {
