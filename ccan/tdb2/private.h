@@ -89,7 +89,7 @@ typedef int tdb_bool_err;
 /* Expanding file. */
 #define TDB_EXPANSION_LOCK 2
 /* Hash chain locks. */
-#define TDB_HASH_LOCK_START 3
+#define TDB_HASH_LOCK_START 64
 
 /* Range for hash locks. */
 #define TDB_HASH_LOCK_RANGE_BITS 30
