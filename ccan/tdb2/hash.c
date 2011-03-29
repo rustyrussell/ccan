@@ -875,3 +875,24 @@ void tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key)
 	tdb_trace_1rec(tdb, "tdb_chainunlock", key);
 	tdb_unlock_hashes(tdb, lockstart, locksize, F_WRLCK);
 }
+
+enum TDB_ERROR tdb_chainlock_read(struct tdb_context *tdb, TDB_DATA key)
+{
+	return tdb->last_error = chainlock(tdb, &key, F_RDLCK, TDB_LOCK_WAIT,
+					   "tdb_chainlock_read");
+}
+
+void tdb_chainunlock_read(struct tdb_context *tdb, TDB_DATA key)
+{
+	uint64_t h = tdb_hash(tdb, key.dptr, key.dsize);
+	tdb_off_t lockstart, locksize;
+	unsigned int group, gbits;
+
+	gbits = TDB_TOPLEVEL_HASH_BITS - TDB_HASH_GROUP_BITS;
+	group = bits_from(h, 64 - gbits, gbits);
+
+	lockstart = hlock_range(group, &locksize);
+
+	tdb_trace_1rec(tdb, "tdb_chainunlock_read", key);
+	tdb_unlock_hashes(tdb, lockstart, locksize, F_RDLCK);
+}

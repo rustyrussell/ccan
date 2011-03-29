@@ -395,7 +395,7 @@ enum TDB_ERROR tdb_nextkey(struct tdb_context *tdb, struct tdb_data *key);
  * @tdb: the tdb context returned from tdb_open()
  * @key: the key to lock.
  *
- * This prevents any changes from occurring to a group of keys including @key,
+ * This prevents any access occurring to a group of keys including @key,
  * even if @key does not exist.  This allows primitive atomic updates of
  * records without using transactions.
  *
@@ -416,6 +416,33 @@ enum TDB_ERROR tdb_chainlock(struct tdb_context *tdb, TDB_DATA key);
  * The key must have previously been locked by tdb_chainlock().
  */
 void tdb_chainunlock(struct tdb_context *tdb, TDB_DATA key);
+
+/**
+ * tdb_chainlock_read - lock a record in the TDB, for reading
+ * @tdb: the tdb context returned from tdb_open()
+ * @key: the key to lock.
+ *
+ * This prevents any changes from occurring to a group of keys including @key,
+ * even if @key does not exist.  This allows primitive atomic updates of
+ * records without using transactions.
+ *
+ * You cannot begin a transaction while holding a tdb_chainlock_read(), nor can
+ * you do any operations on any other keys in the database.  This also means
+ * that you cannot hold more than one tdb_chainlock()/read() at a time.
+ *
+ * See Also:
+ *	tdb_chainlock()
+ */
+enum TDB_ERROR tdb_chainlock_read(struct tdb_context *tdb, TDB_DATA key);
+
+/**
+ * tdb_chainunlock_read - unlock a record in the TDB for reading
+ * @tdb: the tdb context returned from tdb_open()
+ * @key: the key to unlock.
+ *
+ * The key must have previously been locked by tdb_chainlock_read().
+ */
+void tdb_chainunlock_read(struct tdb_context *tdb, TDB_DATA key);
 
 /**
  * tdb_lockall - lock the entire TDB
