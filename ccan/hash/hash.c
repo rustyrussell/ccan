@@ -40,9 +40,7 @@ on 1 byte), but shoehorning those bytes into integers efficiently is messy.
 #include <time.h>       /* defines time_t for timings in the test */
 #include <stdint.h>     /* defines uint32_t etc */
 #include <sys/param.h>  /* attempt to define endianness */
-#endif
 
-#include "hash.h"
 #ifdef linux
 # include <endian.h>    /* attempt to define endianness */
 #endif
@@ -65,6 +63,19 @@ on 1 byte), but shoehorning those bytes into integers efficiently is messy.
 # define HASH_BIG_ENDIAN 1
 #else
 # error Unknown endian
+#endif
+#endif /* old hash.c headers. */
+
+#include "hash.h"
+
+#if HAVE_LITTLE_ENDIAN
+#define HASH_LITTLE_ENDIAN 1
+#define HASH_BIG_ENDIAN 0
+#elif HAVE_BIG_ENDIAN
+#define HASH_LITTLE_ENDIAN 0
+#define HASH_BIG_ENDIAN 1
+#else
+#error Unknown endian
 #endif
 
 #define hashsize(n) ((uint32_t)1<<(n))

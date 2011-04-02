@@ -1,8 +1,8 @@
 #ifndef CCAN_HASH_H
 #define CCAN_HASH_H
+#include "config.h"
 #include <stdint.h>
 #include <stdlib.h>
-#include "config.h"
 #include <ccan/build_assert/build_assert.h>
 
 /* Stolen mostly from: lookup3.c, by Bob Jenkins, May 2006, Public Domain.
