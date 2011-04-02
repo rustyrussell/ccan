@@ -677,7 +677,7 @@ int failtest_open(const char *pathname,
 	va_start(ap, line);
 	call.flags = va_arg(ap, int);
 	if (call.flags & O_CREAT) {
-		call.mode = va_arg(ap, mode_t);
+		call.mode = va_arg(ap, int);
 		va_end(ap);
 	}
 	p = add_history(FAILTEST_OPEN, file, line, &call);
