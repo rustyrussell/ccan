@@ -134,13 +134,6 @@ static struct test tests[] = {
 	  " qsort_r(array, 3, sizeof(int), cmp, &called);\n"
 	  " return called && array[0] == 2 && array[1] == 5 && array[2] == 9 ? 0 : 1;\n"
 	  "}\n" },
-	{ "HAVE_NESTED_FUNCTIONS", DEFINES_FUNC, NULL,
-	  "void (*func(int val))(int);\n"
-	  "void (*func(int val))(int) {\n"
-	  "	auto void add(int val2);\n"
-	  "	void add(int val2) { val += val2; }\n"
-	  "	return add;\n"
-	  "}\n" },
 	{ "HAVE_STACK_GROWS_UPWARDS", DEFINES_EVERYTHING|EXECUTE, NULL,
 	  "static long nest(const void *base, unsigned int i)\n"
 	  "{\n"
