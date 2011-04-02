@@ -1,6 +1,8 @@
 #include <ccan/asort/asort.h>
 #include <stdlib.h>
 
+#if !HAVE_QSORT_R_PRIVATE_LAST
+
 #if HAVE_NESTED_FUNCTIONS
 void _asort(void *base, size_t nmemb, size_t size,
 	    int(*compar)(const void *, const void *, void *ctx),
@@ -269,3 +271,5 @@ _asort (void *const pbase, size_t total_elems, size_t size,
   }
 }
 #endif /* !HAVE_NESTED_FUNCTIONS */
+
+#endif /* !HAVE_QSORT_R_PRIVATE_LAST */

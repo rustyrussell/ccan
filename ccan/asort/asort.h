@@ -1,5 +1,6 @@
 #ifndef CCAN_ASORT_H
 #define CCAN_ASORT_H
+#include "config.h"
 #include <ccan/typesafe_cb/typesafe_cb.h>
 #include <stdlib.h>
 
@@ -24,8 +25,12 @@ _asort((base), (num), sizeof(*(base)),					\
 			    const __typeof__(*(base)) *,		\
 			    __typeof__(ctx))), (ctx))
 
+#if HAVE_QSORT_R_PRIVATE_LAST
+#define _asort(b, n, s, cmp, ctx) qsort_r(b, n, s, cmp, ctx)
+#else
 void _asort(void *base, size_t nmemb, size_t size,
 	    int(*compar)(const void *, const void *, void *),
 	    void *ctx);
+#endif
 
 #endif /* CCAN_ASORT_H */

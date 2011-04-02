@@ -1,3 +1,4 @@
+#include "config.h"
 #include "ccanlint.h"
 #include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
