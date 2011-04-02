@@ -15,6 +15,7 @@
 #include <err.h>
 #include <unistd.h>
 #include <assert.h>
+#include <signal.h>
 #include "tools.h"
 
 static const char *tmpdir = NULL;

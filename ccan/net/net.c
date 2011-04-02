@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <netinet/in.h>
 
 struct addrinfo *net_client_lookup(const char *hostname,
 				   const char *service,
