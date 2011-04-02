@@ -3,21 +3,6 @@
 
 #if !HAVE_QSORT_R_PRIVATE_LAST
 
-#if HAVE_NESTED_FUNCTIONS
-void _asort(void *base, size_t nmemb, size_t size,
-	    int(*compar)(const void *, const void *, void *ctx),
-	    void *ctx)
-{
-	/* This gives bogus "warning: no previous prototype for ‘cmp’"
-	 * with gcc 4 with -Wmissing-prototypes.  Hence the auto crap. */
-	auto int cmp(const void *a, const void *b);
-	int cmp(const void *a, const void *b)
-	{
-		return compar(a, b, ctx);
-	}
-	qsort(base, nmemb, size, cmp);
-}
-#else
 /* Steal glibc's code. */
 
 /* Copyright (C) 1991,1992,1996,1997,1999,2004 Free Software Foundation, Inc.
@@ -270,6 +255,5 @@ _asort (void *const pbase, size_t total_elems, size_t size,
       }
   }
 }
-#endif /* !HAVE_NESTED_FUNCTIONS */
 
 #endif /* !HAVE_QSORT_R_PRIVATE_LAST */
