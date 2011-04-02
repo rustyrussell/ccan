@@ -24,6 +24,7 @@ enum test_style {
 	DEFINES_FUNC		= 0x2,
 	INSIDE_MAIN		= 0x4,
 	DEFINES_EVERYTHING	= 0x8,
+	MAY_NOT_COMPILE		= 0x10,
 	EXECUTE			= 0x8000
 };
 
@@ -120,6 +121,19 @@ static struct test tests[] = {
 	  "static void *func(int fd) {\n"
 	  "	return mmap(0, 65536, PROT_READ, MAP_SHARED, fd, 0);\n"
 	  "}" },
+	{ "HAVE_QSORT_R_PRIVATE_LAST",
+	  DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE, NULL,
+	  "#define _GNU_SOURCE 1\n"
+	  "#include <stdlib.h>\n"
+	  "static int cmp(const void *lp, const void *rp, void *priv) {\n"
+	  " *(unsigned int *)priv = 1;\n"
+	  " return *(const int *)lp - *(const int *)rp; }\n"
+	  "int main(void) {\n"
+	  " int array[] = { 9, 2, 5 };\n"
+	  " unsigned int called = 0;\n"
+	  " qsort_r(array, 3, sizeof(int), cmp, &called);\n"
+	  " return called && array[0] == 2 && array[1] == 5 && array[2] == 9 ? 0 : 1;\n"
+	  "}\n" },
 	{ "HAVE_NESTED_FUNCTIONS", DEFINES_FUNC, NULL,
 	  "void (*func(int val))(int);\n"
 	  "void (*func(int val))(int) {\n"
@@ -273,7 +287,7 @@ static bool run_test(const char *cmd, struct test *test)
 		err(1, "creating %s", INPUT_FILE);
 
 	fprintf(outf, "%s", PRE_BOILERPLATE);
-	switch (test->style & ~EXECUTE) {
+	switch (test->style & ~(EXECUTE|MAY_NOT_COMPILE)) {
 	case INSIDE_MAIN:
 		fprintf(outf, "%s", MAIN_START_BOILERPLATE);
 		fprintf(outf, "%s", test->fragment);
@@ -310,7 +324,7 @@ static bool run_test(const char *cmd, struct test *test)
 			printf("Compile %s for %s, status %i: %s\n",
 			       status ? "fail" : "warning",
 			       test->name, status, output);
-		if (test->style & EXECUTE)
+		if ((test->style & EXECUTE) && !(test->style & MAY_NOT_COMPILE))
 			errx(1, "Test for %s did not compile:\n%s",
 			     test->name, output);
 		test->answer = false;
