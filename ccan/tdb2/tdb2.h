@@ -311,7 +311,7 @@ enum TDB_ERROR tdb_transaction_prepare_commit(struct tdb_context *tdb);
  * a negative enum TDB_ERROR value.
  */
 #define tdb_traverse(tdb, fn, p)					\
-	tdb_traverse_(tdb, typesafe_cb_preargs(int, (fn), (p),		\
+	tdb_traverse_(tdb, typesafe_cb_preargs(int, void *, (fn), (p),	\
 					       struct tdb_context *,	\
 					       TDB_DATA, TDB_DATA), (p))
 
@@ -334,7 +334,8 @@ int64_t tdb_traverse_(struct tdb_context *tdb,
  */
 #define tdb_parse_record(tdb, key, parse, p)				\
 	tdb_parse_record_((tdb), (key),					\
-			  typesafe_cb_preargs(enum TDB_ERROR, (parse), (p), \
+			  typesafe_cb_preargs(enum TDB_ERROR, void *,	\
+					      (parse), (p),		\
 					      TDB_DATA, TDB_DATA), (p))
 
 enum TDB_ERROR tdb_parse_record_(struct tdb_context *tdb,
@@ -472,7 +473,7 @@ enum TDB_ERROR tdb_wipe_all(struct tdb_context *tdb);
  * Returns TDB_SUCCESS or an error.
  */
 #define tdb_check(tdb, check, private_data)				\
-	tdb_check_((tdb), typesafe_cb_preargs(enum TDB_ERROR,		\
+	tdb_check_((tdb), typesafe_cb_preargs(enum TDB_ERROR, void *,	\
 					      (check), (private_data),	\
 					      struct tdb_data,		\
 					      struct tdb_data),		\

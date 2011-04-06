@@ -315,22 +315,22 @@ struct opt_table {
 /* Resolves to the four parameters for non-arg callbacks. */
 #define OPT_CB_NOARG(cb, arg)				\
 	OPT_NOARG,					\
-	cast_if_any(char *(*)(void *), (cb), 0?(cb):(cb),\
-		    char *(*)(typeof(*(arg))*),		\
-		    char *(*)(const typeof(*(arg))*),	\
-		    char *(*)(const void *)),		\
+	typesafe_cb_cast3(char *(*)(void *),	\
+			  char *(*)(typeof(*(arg))*),	\
+			  char *(*)(const typeof(*(arg))*),	\
+			  char *(*)(const void *), (cb)),	\
 	NULL, NULL
 
 /* Resolves to the four parameters for arg callbacks. */
 #define OPT_CB_ARG(cb, show, arg)					\
 	OPT_HASARG, NULL,						\
-	cast_if_any(char *(*)(const char *,void *), (cb), 0?(cb):(cb),	\
-		    char *(*)(const char *, typeof(*(arg))*),		\
-		    char *(*)(const char *, const typeof(*(arg))*),	\
-		    char *(*)(const char *, const void *)),		\
-	cast_if_type(void (*)(char buf[], const void *), (show),	\
-		     0?(show):(show),					\
-		     void (*)(char buf[], const typeof(*(arg))*))
+	typesafe_cb_cast3(char *(*)(const char *,void *),	\
+			  char *(*)(const char *, typeof(*(arg))*),	\
+			  char *(*)(const char *, const typeof(*(arg))*), \
+			  char *(*)(const char *, const void *),	\
+			  (cb)),					\
+	typesafe_cb_cast(void (*)(char buf[], const void *),		\
+			 void (*)(char buf[], const typeof(*(arg))*), (show))
 
 /* Non-typesafe register function. */
 void _opt_register(const char *names, enum opt_type type,

@@ -5,7 +5,7 @@
 /**
  * typesafe_cb - macros for safe callbacks.
  *
- * The basis of the typesafe_cb header is cast_if_type(): a
+ * The basis of the typesafe_cb header is typesafe_cb_cast(): a
  * conditional cast macro.   If an expression exactly matches a given
  * type, it is cast to the target type, otherwise it is left alone.
  *
@@ -35,15 +35,16 @@
  * the exactly correct function type to match the argument, or a
  * function which takes a void *.
  *
- * This is where typesafe_cb() comes in: it uses cast_if_type() to
+ * This is where typesafe_cb() comes in: it uses typesafe_cb_cast() to
  * cast the callback function if it matches the argument type:
  *
  *	void _register_callback(void (*cb)(void *arg), void *arg);
  *	#define register_callback(cb, arg)				\
- *		_register_callback(typesafe_cb(void, (cb), (arg)), (arg))
+ *		_register_callback(typesafe_cb(void, void *, (cb), (arg)), \
+ *				   (arg))
  *
  * On compilers which don't support the extensions required
- * cast_if_type() and friend become an unconditional cast, so your
+ * typesafe_cb_cast() and friend become an unconditional cast, so your
  * code will compile but you won't get type checking.
  *
  * Example:
@@ -72,7 +73,8 @@
  *	}
  *	#define register_callback(value, cb, arg)			\
  *		_register_callback(value,				\
- *				   typesafe_cb_preargs(int, (cb), (arg), int),\
+ *				   typesafe_cb_preargs(int, void *,	\
+ *						       (cb), (arg), int),\
  *				   (arg))
  *	
  *	static struct callback *find_callback(int value)

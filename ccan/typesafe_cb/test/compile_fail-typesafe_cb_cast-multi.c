@@ -29,14 +29,15 @@ int main(int argc, char *argv[])
 {
 #ifdef FAIL
 	struct other
-#if !HAVE_TYPEOF||!HAVE_BUILTIN_CHOOSE_EXPR||!HAVE_BUILTIN_TYPES_COMPATIBLE_P
-#error "Unfortunately we don't fail if cast_if_type is a noop."
+#if !HAVE_TYPEOF || !HAVE_CAST_TO_UNION
+#error "Unfortunately we don't fail if typesafe_cb_cast is a noop."
 #endif
 #else
 	struct foo
 #endif
 		*arg = NULL;
-	take_any(cast_if_any(struct any *, arg, arg,
-			     struct foo *, struct bar *, struct baz *));
+	take_any(typesafe_cb_cast3(struct any *,
+				   struct foo *, struct bar *, struct baz *,
+				   arg));
 	return 0;
 }

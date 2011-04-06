@@ -8,25 +8,25 @@ static void _register_callback(void (*cb)(void *arg), void *arg)
 }
 
 #define register_callback(cb, arg)				\
-	_register_callback(typesafe_cb(void, (cb), (arg)), (arg))
+	_register_callback(typesafe_cb(void, void *, (cb), (arg)), (arg))
 
 static void _register_callback_pre(void (*cb)(int x, void *arg), void *arg)
 {
 }
 
 #define register_callback_pre(cb, arg)					\
-	_register_callback_pre(typesafe_cb_preargs(void, (cb), (arg), int), (arg))
+	_register_callback_pre(typesafe_cb_preargs(void, void *, (cb), (arg), int), (arg))
 
 static void _register_callback_post(void (*cb)(void *arg, int x), void *arg)
 {
 }
 
 #define register_callback_post(cb, arg)					\
-	_register_callback_post(typesafe_cb_postargs(void, (cb), (arg), int), (arg))
+	_register_callback_post(typesafe_cb_postargs(void, void *, (cb), (arg), int), (arg))
 
 struct undefined;
 
-static void my_callback(const struct undefined *undef)
+static void my_callback(struct undefined *undef)
 {
 }
 
@@ -41,7 +41,7 @@ static void my_callback_post(struct undefined *undef, int x)
 int main(int argc, char *argv[])
 {
 	struct undefined *handle = NULL;
-	void (*cb)(const struct undefined *undef) = my_callback;
+	void (*cb)(struct undefined *undef) = my_callback;
 	void (*pre)(int x, struct undefined *undef) = my_callback_pre;
 	void (*post)(struct undefined *undef, int x) = my_callback_post;
 

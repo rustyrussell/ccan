@@ -19,11 +19,12 @@
  */
 #define asort(base, num, cmp, ctx)					\
 _asort((base), (num), sizeof(*(base)),					\
-       cast_if_type(int (*)(const void *, const void *, void *),	\
-		    (cmp), &*(cmp),					\
-		    int (*)(const __typeof__(*(base)) *,		\
-			    const __typeof__(*(base)) *,		\
-			    __typeof__(ctx))), (ctx))
+       typesafe_cb_cast(int (*)(const void *, const void *, void *),	\
+			int (*)(const __typeof__(*(base)) *,		\
+				const __typeof__(*(base)) *,		\
+				__typeof__(ctx)),			\
+			(cmp)),						\
+       (ctx))
 
 #if HAVE_QSORT_R_PRIVATE_LAST
 #define _asort(b, n, s, cmp, ctx) qsort_r(b, n, s, cmp, ctx)

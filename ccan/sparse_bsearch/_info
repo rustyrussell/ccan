@@ -15,7 +15,7 @@
  * Example:
  *	#include <ccan/sparse_bsearch/sparse_bsearch.h>
  *
- *	static bool val_valid(unsigned int *val)
+ *	static bool val_valid(const unsigned int *val)
  *	{
  *		return *val != 0;
  *	}

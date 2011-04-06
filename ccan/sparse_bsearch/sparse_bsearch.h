@@ -14,9 +14,10 @@
  * @validfn: whether this element is valid.
  *
  * Binary search of a sorted array, which may have some invalid entries.
+ * Note that cmpfn and validfn take const pointers.
  *
  * Example:
- *	static bool val_valid(unsigned int *val)
+ *	static bool val_valid(const unsigned int *val)
  *	{
  *		return *val != 0;
  *	}
@@ -40,8 +41,13 @@
 #define sparse_bsearch(key, base, nmemb, cmpfn, validfn)		\
 	_sparse_bsearch((key)+check_types_match((key), &(base)[0]),	\
 			(base), (nmemb), sizeof((base)[0]),		\
-			typesafe_cb_cmp(int, (cmpfn), (base)),		\
-			typesafe_cb_const(bool, (validfn), (base)))
+			typesafe_cb_cast(int (*)(const void *, const void *), \
+					 int (*)(const __typeof__(*(base)) *, \
+						 const __typeof__(*(base)) *), \
+					 (cmpfn)),			\
+			typesafe_cb_cast(bool (*)(const void *),	\
+					 bool (*)(const __typeof__(*(base)) *), \
+					 (validfn)))
 
 void *_sparse_bsearch(const void *key, const void *base,
 		      size_t nmemb, size_t size,

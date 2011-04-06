@@ -6,7 +6,7 @@ static void _register_callback(void (*cb)(int x, void *arg), void *arg)
 }
 
 #define register_callback(cb, arg)				\
-	_register_callback(typesafe_cb_preargs(void, (cb), (arg), int), (arg))
+	_register_callback(typesafe_cb_preargs(void, void *, (cb), (arg), int), (arg))
 
 static void my_callback(int x, char *p)
 {
@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
 #ifdef FAIL
 	int *p;
 #if !HAVE_TYPEOF||!HAVE_BUILTIN_CHOOSE_EXPR||!HAVE_BUILTIN_TYPES_COMPATIBLE_P
-#error "Unfortunately we don't fail if cast_if_type is a noop."
+#error "Unfortunately we don't fail if typesafe_cb_cast is a noop."
 #endif
 #else
 	char *p;

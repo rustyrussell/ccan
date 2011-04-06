@@ -16,7 +16,7 @@ const void *at_pool_ctx(struct at_pool *atp);
 /* Creating an antithread via fork().  Returned athread is child of pool. */
 #define at_run(pool, fn, arg)						\
 	_at_run(pool,							\
-		typesafe_cb_preargs(void *, (fn), (arg), struct at_pool *), \
+		typesafe_cb_preargs(void *, void *, (fn), (arg), struct at_pool *), \
 		(arg))
 
 /* Fork and execvp, with added arguments for child to grab.
