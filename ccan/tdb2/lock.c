@@ -555,23 +555,14 @@ again:
 	/* Lock hashes, gradually. */
 	ecode = tdb_lock_gradual(tdb, ltype, flags, TDB_HASH_LOCK_START,
 				 TDB_HASH_LOCK_RANGE);
-	if (ecode != TDB_SUCCESS) {
-		if (!(flags & TDB_LOCK_PROBE)) {
-			tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
-				   "tdb_allrecord_lock hashes failed");
-		}
+	if (ecode != TDB_SUCCESS)
 		return ecode;
-	}
 
 	/* Lock free tables: there to end of file. */
 	ecode = tdb_brlock(tdb, ltype,
 			   TDB_HASH_LOCK_START + TDB_HASH_LOCK_RANGE,
 			   0, flags);
 	if (ecode != TDB_SUCCESS) {
-		if (!(flags & TDB_LOCK_PROBE)) {
-			tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
-				 "tdb_allrecord_lock freetables failed");
-		}
 		tdb_brunlock(tdb, ltype, TDB_HASH_LOCK_START,
 			     TDB_HASH_LOCK_RANGE);
 		return ecode;

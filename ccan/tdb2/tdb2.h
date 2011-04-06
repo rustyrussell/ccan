@@ -288,6 +288,9 @@ enum TDB_ERROR tdb_transaction_commit(struct tdb_context *tdb);
  * tdb_transaction_commit): if this succeeds then a transaction will only
  * fail if the write() or fsync() calls fail.
  *
+ * If this fails you must still call tdb_transaction_cancel() to cancel
+ * the transaction.
+ *
  * See Also:
  *	tdb_transaction_commit()
  */

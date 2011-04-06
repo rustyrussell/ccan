@@ -921,10 +921,6 @@ static enum TDB_ERROR _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 	/* upgrade the main transaction lock region to a write lock */
 	ecode = tdb_allrecord_upgrade(tdb);
 	if (ecode != TDB_SUCCESS) {
-		tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
-			 "tdb_transaction_prepare_commit:"
-			 " failed to upgrade hash locks");
-		_tdb_transaction_cancel(tdb);
 		return ecode;
 	}
 
@@ -932,10 +928,6 @@ static enum TDB_ERROR _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 	   during the commit */
 	ecode = tdb_lock_open(tdb, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK);
 	if (ecode != TDB_SUCCESS) {
-		tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
-			   "tdb_transaction_prepare_commit:"
-			   " failed to get open lock");
-		_tdb_transaction_cancel(tdb);
 		return ecode;
 	}
 
@@ -946,10 +938,6 @@ static enum TDB_ERROR _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 						   &tdb->transaction
 						   ->magic_offset);
 		if (ecode != TDB_SUCCESS) {
-			tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
-				 "tdb_transaction_prepare_commit:"
-				 " failed to setup recovery data");
-			_tdb_transaction_cancel(tdb);
 			return ecode;
 		}
 	}
@@ -965,10 +953,6 @@ static enum TDB_ERROR _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 		tdb->file->map_size = tdb->transaction->old_map_size;
 		ecode = methods->expand_file(tdb, add);
 		if (ecode != TDB_SUCCESS) {
-			tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
-				 "tdb_transaction_prepare_commit:"
-				 " expansion failed");
-			_tdb_transaction_cancel(tdb);
 			return ecode;
 		}
 	}
@@ -1016,8 +1000,10 @@ enum TDB_ERROR tdb_transaction_commit(struct tdb_context *tdb)
 
 	if (!tdb->transaction->prepared) {
 		ecode = _tdb_transaction_prepare_commit(tdb);
-		if (ecode != TDB_SUCCESS)
+		if (ecode != TDB_SUCCESS) {
+			_tdb_transaction_cancel(tdb);
 			return tdb->last_error = ecode;
+		}
 	}
 
 	methods = tdb->transaction->io_methods;
@@ -1040,10 +1026,6 @@ enum TDB_ERROR tdb_transaction_commit(struct tdb_context *tdb)
 		ecode = methods->twrite(tdb, offset,
 					tdb->transaction->blocks[i], length);
 		if (ecode != TDB_SUCCESS) {
-			tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
-				   "tdb_transaction_commit:"
-				   " write failed during commit");
-
 			/* we've overwritten part of the data and
 			   possibly expanded the file, so we need to
 			   run the crash recovery code */
