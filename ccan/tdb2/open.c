@@ -321,13 +321,18 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb_bool_err berr;
 	enum TDB_ERROR ecode;
 
-	tdb = malloc(sizeof(*tdb));
+	tdb = malloc(sizeof(*tdb) + (name ? strlen(name) + 1 : 0));
 	if (!tdb) {
 		/* Can't log this */
 		errno = ENOMEM;
 		return NULL;
 	}
-	tdb->name = NULL;
+	/* Set name immediately for logging functions. */
+	if (name) {
+		tdb->name = strcpy((char *)(tdb + 1), name);
+	} else {
+		tdb->name = NULL;
+	}
 	tdb->direct_access = 0;
 	tdb->flags = tdb_flags;
 	tdb->log_fn = NULL;
@@ -590,7 +595,6 @@ fail_errno:
 #ifdef TDB_TRACE
 	close(tdb->tracefd);
 #endif
-	free(cast_const(char *, tdb->name));
 	if (tdb->file) {
 		tdb_lock_cleanup(tdb);
 		if (--tdb->file->refcnt == 0) {
@@ -631,7 +635,6 @@ int tdb_close(struct tdb_context *tdb)
 		else
 			tdb_munmap(tdb->file);
 	}
-	free(cast_const(char *, tdb->name));
 	if (tdb->file) {
 		struct tdb_file **i;
 
