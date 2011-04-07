@@ -417,8 +417,6 @@ struct tdb_methods {
   internal prototypes
 */
 /* hash.c: */
-void tdb_hash_init(struct tdb_context *tdb);
-
 tdb_bool_err first_in_hash(struct tdb_context *tdb,
 			   struct traverse_info *tinfo,
 			   TDB_DATA *kbuf, size_t *dlen);

@@ -1,4 +1,5 @@
 #include "private.h"
+#include <ccan/hash/hash.h>
 #include <assert.h>
 
 /* all lock info, to detect double-opens (fcntl file don't nest!) */
@@ -181,6 +182,129 @@ static enum TDB_ERROR tdb_new_file(struct tdb_context *tdb)
 	return TDB_SUCCESS;
 }
 
+enum TDB_ERROR tdb_set_attribute(struct tdb_context *tdb,
+				 const union tdb_attribute *attr)
+{
+	switch (attr->base.attr) {
+	case TDB_ATTRIBUTE_LOG:
+		tdb->log_fn = attr->log.fn;
+		tdb->log_data = attr->log.data;
+		break;
+	case TDB_ATTRIBUTE_HASH:
+	case TDB_ATTRIBUTE_SEED:
+	case TDB_ATTRIBUTE_OPENHOOK:
+		return tdb->last_error
+			= tdb_logerr(tdb, TDB_ERR_EINVAL,
+				     TDB_LOG_USE_ERROR,
+				     "tdb_set_attribute:"
+				     " cannot set %s after opening",
+				     attr->base.attr == TDB_ATTRIBUTE_HASH
+				     ? "TDB_ATTRIBUTE_HASH"
+				     : attr->base.attr == TDB_ATTRIBUTE_SEED
+				     ? "TDB_ATTRIBUTE_SEED"
+				     : "TDB_ATTRIBUTE_OPENHOOK");
+	case TDB_ATTRIBUTE_FLOCK:
+		tdb->lock_fn = attr->flock.lock;
+		tdb->unlock_fn = attr->flock.unlock;
+		tdb->lock_data = attr->flock.data;
+		break;
+	default:
+		return tdb->last_error
+			= tdb_logerr(tdb, TDB_ERR_EINVAL,
+				     TDB_LOG_USE_ERROR,
+				     "tdb_set_attribute:"
+				     " unknown attribute type %u",
+				     attr->base.attr);
+	}
+	return TDB_SUCCESS;
+}
+
+static uint64_t jenkins_hash(const void *key, size_t length, uint64_t seed,
+			     void *unused)
+{
+	uint64_t ret;
+	/* hash64_stable assumes lower bits are more important; they are a
+	 * slightly better hash.  We use the upper bits first, so swap them. */
+	ret = hash64_stable((const unsigned char *)key, length, seed);
+	return (ret >> 32) | (ret << 32);
+}
+
+enum TDB_ERROR tdb_get_attribute(struct tdb_context *tdb,
+				 union tdb_attribute *attr)
+{
+	switch (attr->base.attr) {
+	case TDB_ATTRIBUTE_LOG:
+		if (!tdb->log_fn)
+			return tdb->last_error = TDB_ERR_NOEXIST;
+		attr->log.fn = tdb->log_fn;
+		attr->log.data = tdb->log_data;
+		break;
+	case TDB_ATTRIBUTE_HASH:
+		attr->hash.fn = tdb->hash_fn;
+		attr->hash.data = tdb->hash_data;
+		break;
+	case TDB_ATTRIBUTE_SEED:
+		attr->seed.seed = tdb->hash_seed;
+		break;
+	case TDB_ATTRIBUTE_OPENHOOK:
+		return tdb->last_error
+			= tdb_logerr(tdb, TDB_ERR_EINVAL,
+				     TDB_LOG_USE_ERROR,
+				     "tdb_get_attribute:"
+				     " cannot get TDB_ATTRIBUTE_OPENHOOK");
+	case TDB_ATTRIBUTE_STATS:
+		/* FIXME */
+		return TDB_ERR_EINVAL;
+	case TDB_ATTRIBUTE_FLOCK:
+		attr->flock.lock = tdb->lock_fn;
+		attr->flock.unlock = tdb->unlock_fn;
+		attr->flock.data = tdb->lock_data;
+		break;
+	default:
+		return tdb->last_error
+			= tdb_logerr(tdb, TDB_ERR_EINVAL,
+				     TDB_LOG_USE_ERROR,
+				     "tdb_get_attribute:"
+				     " unknown attribute type %u",
+				     attr->base.attr);
+	}
+	attr->base.next = NULL;
+	return TDB_SUCCESS;
+}
+
+void tdb_unset_attribute(struct tdb_context *tdb,
+			 enum tdb_attribute_type type)
+{
+	switch (type) {
+	case TDB_ATTRIBUTE_LOG:
+		tdb->log_fn = NULL;
+		break;
+	case TDB_ATTRIBUTE_HASH:
+	case TDB_ATTRIBUTE_SEED:
+	case TDB_ATTRIBUTE_OPENHOOK:
+		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
+			   "tdb_unset_attribute: cannot unset %s after opening",
+			   type == TDB_ATTRIBUTE_HASH
+			   ? "TDB_ATTRIBUTE_HASH"
+			   : type == TDB_ATTRIBUTE_SEED
+			   ? "TDB_ATTRIBUTE_SEED"
+			   : "TDB_ATTRIBUTE_OPENHOOK");
+		break;
+	case TDB_ATTRIBUTE_STATS:
+		/* FIXME */
+		break;
+	case TDB_ATTRIBUTE_FLOCK:
+		tdb->lock_fn = tdb_fcntl_lock;
+		tdb->unlock_fn = tdb_fcntl_unlock;
+		break;
+	default:
+		tdb_logerr(tdb, TDB_ERR_EINVAL,
+			   TDB_LOG_USE_ERROR,
+			   "tdb_unset_attribute: unknown attribute type %u",
+			   type);
+	}
+}
+
 struct tdb_context *tdb_open(const char *name, int tdb_flags,
 			     int open_flags, mode_t mode,
 			     union tdb_attribute *attr)
@@ -212,17 +336,13 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb->access = NULL;
 	tdb->last_error = TDB_SUCCESS;
 	tdb->file = NULL;
-	tdb->lock_fn = fcntl_lock;
-	tdb->unlock_fn = fcntl_unlock;
-	tdb_hash_init(tdb);
+	tdb->lock_fn = tdb_fcntl_lock;
+	tdb->unlock_fn = tdb_fcntl_unlock;
+	tdb->hash_fn = jenkins_hash;
 	tdb_io_init(tdb);
 
 	while (attr) {
 		switch (attr->base.attr) {
-		case TDB_ATTRIBUTE_LOG:
-			tdb->log_fn = attr->log.fn;
-			tdb->log_data = attr->log.data;
-			break;
 		case TDB_ATTRIBUTE_HASH:
 			tdb->hash_fn = attr->hash.fn;
 			tdb->hash_data = attr->hash.data;
@@ -239,18 +359,11 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		case TDB_ATTRIBUTE_OPENHOOK:
 			openhook = &attr->openhook;
 			break;
-		case TDB_ATTRIBUTE_FLOCK:
-			tdb->lock_fn = attr->flock.lock;
-			tdb->unlock_fn = attr->flock.unlock;
-			tdb->lock_data = attr->flock.data;
-			break;
 		default:
-			ecode = tdb_logerr(tdb, TDB_ERR_EINVAL,
-					   TDB_LOG_USE_ERROR,
-					   "tdb_open:"
-					   " unknown attribute type %u",
-					   attr->base.attr);
-			goto fail;
+			/* These are set as normal. */
+			ecode = tdb_set_attribute(tdb, attr);
+			if (ecode != TDB_SUCCESS)
+				goto fail;
 		}
 		attr = attr->base.next;
 	}

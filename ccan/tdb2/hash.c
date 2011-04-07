@@ -17,22 +17,6 @@
 */
 #include "private.h"
 #include <assert.h>
-#include <ccan/hash/hash.h>
-
-static uint64_t jenkins_hash(const void *key, size_t length, uint64_t seed,
-			     void *arg)
-{
-	uint64_t ret;
-	/* hash64_stable assumes lower bits are more important; they are a
-	 * slightly better hash.  We use the upper bits first, so swap them. */
-	ret = hash64_stable((const unsigned char *)key, length, seed);
-	return (ret >> 32) | (ret << 32);
-}
-
-void tdb_hash_init(struct tdb_context *tdb)
-{
-	tdb->hash_fn = jenkins_hash;
-}
 
 uint64_t tdb_hash(struct tdb_context *tdb, const void *ptr, size_t len)
 {

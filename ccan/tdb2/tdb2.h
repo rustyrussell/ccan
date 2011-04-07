@@ -583,6 +583,61 @@ void tdb_add_flag(struct tdb_context *tdb, unsigned flag);
 void tdb_remove_flag(struct tdb_context *tdb, unsigned flag);
 
 /**
+ * enum tdb_attribute_type - descriminator for union tdb_attribute.
+ */
+enum tdb_attribute_type {
+	TDB_ATTRIBUTE_LOG = 0,
+	TDB_ATTRIBUTE_HASH = 1,
+	TDB_ATTRIBUTE_SEED = 2,
+	TDB_ATTRIBUTE_STATS = 3,
+	TDB_ATTRIBUTE_OPENHOOK = 4,
+	TDB_ATTRIBUTE_FLOCK = 5
+};
+
+/**
+ * tdb_get_attribute - get an attribute for an existing tdb
+ * @tdb: the tdb context returned from tdb_open()
+ * @attr: the union tdb_attribute to set.
+ *
+ * This gets an attribute from a TDB which has previously been set (or
+ * may return the default values).  Set @attr.base.attr to the
+ * attribute type you want get.
+ *
+ * Currently this does not work for TDB_ATTRIBUTE_OPENHOOK.
+ */
+enum TDB_ERROR tdb_get_attribute(struct tdb_context *tdb,
+				 union tdb_attribute *attr);
+
+/**
+ * tdb_set_attribute - set an attribute for an existing tdb
+ * @tdb: the tdb context returned from tdb_open()
+ * @attr: the union tdb_attribute to set.
+ *
+ * This sets an attribute on a TDB, overriding any previous attribute
+ * of the same type.  It returns TDB_ERR_EINVAL if the attribute is
+ * unknown or invalid.
+ *
+ * Note that TDB_ATTRIBUTE_HASH, TDB_ATTRIBUTE_SEED and
+ * TDB_ATTRIBUTE_OPENHOOK cannot currently be set after tdb_open.
+ */
+enum TDB_ERROR tdb_set_attribute(struct tdb_context *tdb,
+				 const union tdb_attribute *attr);
+
+/**
+ * tdb_unset_attribute - reset an attribute for an existing tdb
+ * @tdb: the tdb context returned from tdb_open()
+ * @type: the attribute type to unset.
+ *
+ * This unsets an attribute on a TDB, returning it to the defaults
+ * (where applicable).
+ *
+ * Note that it only makes sense for TDB_ATTRIBUTE_LOG and TDB_ATTRIBUTE_FLOCK
+ * to be unset.
+ */
+void tdb_unset_attribute(struct tdb_context *tdb,
+			 enum tdb_attribute_type type);
+
+/**
  * tdb_name - get the name of a tdb
  * @tdb: the tdb context returned from tdb_open()
  *
@@ -601,18 +656,6 @@ const char *tdb_name(const struct tdb_context *tdb);
  * for TDB_INTERNAL.
  */
 int tdb_fd(const struct tdb_context *tdb);
-
-/**
- * enum tdb_attribute_type - descriminator for union tdb_attribute.
- */
-enum tdb_attribute_type {
-	TDB_ATTRIBUTE_LOG = 0,
-	TDB_ATTRIBUTE_HASH = 1,
-	TDB_ATTRIBUTE_SEED = 2,
-	TDB_ATTRIBUTE_STATS = 3,
-	TDB_ATTRIBUTE_OPENHOOK = 4,
-	TDB_ATTRIBUTE_FLOCK = 5
-};
 
 /**
  * struct tdb_attribute_base - common fields for all tdb attributes.
