@@ -17,14 +17,39 @@
 
 static struct tdb_context *tdb;
 
+static enum TDB_ERROR clear_if_first(int fd, void *arg)
+{
+/* We hold a lock offset 63 always, so we can tell if anyone is holding it. */
+	struct flock fl;
+
+	fl.l_type = F_WRLCK;
+	fl.l_whence = SEEK_SET;
+	fl.l_start = 63;
+	fl.l_len = 1;
+
+	if (fcntl(fd, F_SETLK, &fl) == 0) {
+		/* We must be first ones to open it! */
+		diag("agent truncating file!");
+		if (ftruncate(fd, 0) != 0) {
+			return TDB_ERR_IO;
+		}
+	}
+	fl.l_type = F_RDLCK;
+	if (fcntl(fd, F_SETLKW, &fl) != 0) {
+		return TDB_ERR_IO;
+	}
+	return TDB_SUCCESS;
+}
+
 static enum agent_return do_operation(enum operation op, const char *name)
 {
 	TDB_DATA k;
 	enum agent_return ret;
 	TDB_DATA data;
 	enum TDB_ERROR ecode;
+	union tdb_attribute cif;
 
-	if (op != OPEN && !tdb) {
+	if (op != OPEN && op != OPEN_WITH_HOOK && !tdb) {
 		diag("external: No tdb open!");
 		return OTHER_FAILURE;
 	}
@@ -41,6 +66,23 @@ static enum agent_return do_operation(enum operation op, const char *name)
 			return OTHER_FAILURE;
 		}
 		tdb = tdb_open(name, TDB_DEFAULT, O_RDWR, 0, &tap_log_attr);
+		if (!tdb) {
+			if (!locking_would_block)
+				diag("Opening tdb gave %s", strerror(errno));
+			forget_locking();
+			ret = OTHER_FAILURE;
+		} else
+			ret = SUCCESS;
+		break;
+	case OPEN_WITH_HOOK:
+		if (tdb) {
+			diag("Already have tdb %s open", tdb->name);
+			return OTHER_FAILURE;
+		}
+		cif.openhook.base.attr = TDB_ATTRIBUTE_OPENHOOK;
+		cif.openhook.base.next = &tap_log_attr;
+		cif.openhook.fn = clear_if_first;
+		tdb = tdb_open(name, TDB_DEFAULT, O_RDWR, 0, &cif);
 		if (!tdb) {
 			if (!locking_would_block)
 				diag("Opening tdb gave %s", strerror(errno));
@@ -176,6 +218,7 @@ const char *operation_name(enum operation op)
 {
 	switch (op) {
 	case OPEN: return "OPEN";
+	case OPEN_WITH_HOOK: return "OPEN_WITH_HOOK";
 	case FETCH: return "FETCH";
 	case STORE: return "STORE";
 	case CHECK: return "CHECK";

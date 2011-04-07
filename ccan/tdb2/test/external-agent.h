@@ -5,6 +5,7 @@
  * various times. */
 enum operation {
 	OPEN,
+	OPEN_WITH_HOOK,
 	FETCH,
 	STORE,
 	TRANSACTION_START,

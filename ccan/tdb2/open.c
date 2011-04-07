@@ -193,6 +193,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	ssize_t rlen;
 	struct tdb_header hdr;
 	struct tdb_attribute_seed *seed = NULL;
+	struct tdb_attribute_openhook *openhook = NULL;
 	tdb_bool_err berr;
 	enum TDB_ERROR ecode;
 
@@ -232,6 +233,9 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 			/* They have stats we don't know about?  Tell them. */
 			if (tdb->stats->size > sizeof(attr->stats))
 				tdb->stats->size = sizeof(attr->stats);
+			break;
+		case TDB_ATTRIBUTE_OPENHOOK:
+			openhook = &attr->openhook;
 			break;
 		default:
 			ecode = tdb_logerr(tdb, TDB_ERR_EINVAL,
@@ -337,6 +341,17 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	ecode = tdb_lock_open(tdb, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK);
 	if (ecode != TDB_SUCCESS) {
 		goto fail;
+	}
+
+	/* call their open hook if they gave us one. */
+	if (openhook) {
+		ecode = openhook->fn(tdb->file->fd, openhook->data);
+		if (ecode != TDB_SUCCESS) {
+			tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
+				   "tdb_open: open hook failed");
+			goto fail;
+		}
+		open_flags |= O_CREAT;
 	}
 
 	/* If they used O_TRUNC, read will return 0. */

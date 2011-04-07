@@ -606,7 +606,8 @@ enum tdb_attribute_type {
 	TDB_ATTRIBUTE_LOG = 0,
 	TDB_ATTRIBUTE_HASH = 1,
 	TDB_ATTRIBUTE_SEED = 2,
-	TDB_ATTRIBUTE_STATS = 3
+	TDB_ATTRIBUTE_STATS = 3,
+	TDB_ATTRIBUTE_OPENHOOK = 4
 };
 
 /**
@@ -717,13 +718,30 @@ struct tdb_attribute_stats {
 };
 
 /**
+ * struct tdb_attribute_openhook - tdb special effects hook for open
+ *
+ * This attribute contains a function to call once we have the OPEN_LOCK
+ * for the tdb, but before we've examined its contents.  If this succeeds,
+ * the tdb will be populated if it's then zero-length.
+ *
+ * This is a hack to allow support for TDB1-style TDB_CLEAR_IF_FIRST
+ * behaviour.
+ */
+struct tdb_attribute_openhook {
+	struct tdb_attribute_base base; /* .attr = TDB_ATTRIBUTE_OPENHOOK */
+	enum TDB_ERROR (*fn)(int fd, void *data);
+	void *data;
+};
+
+/**
  * union tdb_attribute - tdb attributes.
  *
  * This represents all the known attributes.
  *
  * See also:
  *	struct tdb_attribute_log, struct tdb_attribute_hash,
- *	struct tdb_attribute_seed, struct tdb_attribute_stats.
+ *	struct tdb_attribute_seed, struct tdb_attribute_stats,
+ *	struct tdb_attribute_openhook.
  */
 union tdb_attribute {
 	struct tdb_attribute_base base;
@@ -731,6 +749,7 @@ union tdb_attribute {
 	struct tdb_attribute_hash hash;
 	struct tdb_attribute_seed seed;
 	struct tdb_attribute_stats stats;
+	struct tdb_attribute_openhook openhook;
 };
 
 #ifdef  __cplusplus
