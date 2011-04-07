@@ -212,6 +212,8 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb->access = NULL;
 	tdb->last_error = TDB_SUCCESS;
 	tdb->file = NULL;
+	tdb->lock_fn = fcntl_lock;
+	tdb->unlock_fn = fcntl_unlock;
 	tdb_hash_init(tdb);
 	tdb_io_init(tdb);
 
@@ -236,6 +238,11 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 			break;
 		case TDB_ATTRIBUTE_OPENHOOK:
 			openhook = &attr->openhook;
+			break;
+		case TDB_ATTRIBUTE_FLOCK:
+			tdb->lock_fn = attr->flock.lock;
+			tdb->unlock_fn = attr->flock.unlock;
+			tdb->lock_data = attr->flock.data;
 			break;
 		default:
 			ecode = tdb_logerr(tdb, TDB_ERR_EINVAL,
@@ -340,7 +347,8 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	/* ensure there is only one process initialising at once */
 	ecode = tdb_lock_open(tdb, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK);
 	if (ecode != TDB_SUCCESS) {
-		goto fail;
+		saved_errno = errno;
+		goto fail_errno;
 	}
 
 	/* call their open hook if they gave us one. */

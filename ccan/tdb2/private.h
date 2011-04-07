@@ -376,6 +376,11 @@ struct tdb_context {
 	void *hash_data;
 	uint64_t hash_seed;
 
+	/* low level (fnctl) lock functions. */
+	int (*lock_fn)(int fd, int rw, off_t off, off_t len, bool w, void *);
+	int (*unlock_fn)(int fd, int rw, off_t off, off_t len, void *);
+	void *lock_data;
+
 	/* Set if we are in a transaction. */
 	struct tdb_transaction *transaction;
 	
@@ -583,6 +588,10 @@ bool tdb_has_expansion_lock(struct tdb_context *tdb);
 
 /* If it needs recovery, grab all the locks and do it. */
 enum TDB_ERROR tdb_lock_and_recover(struct tdb_context *tdb);
+
+/* Default lock and unlock functions. */
+int tdb_fcntl_lock(int fd, int rw, off_t off, off_t len, bool waitflag, void *);
+int tdb_fcntl_unlock(int fd, int rw, off_t off, off_t len, void *);
 
 /* transaction.c: */
 enum TDB_ERROR tdb_transaction_recover(struct tdb_context *tdb);

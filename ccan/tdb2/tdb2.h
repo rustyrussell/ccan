@@ -610,7 +610,8 @@ enum tdb_attribute_type {
 	TDB_ATTRIBUTE_HASH = 1,
 	TDB_ATTRIBUTE_SEED = 2,
 	TDB_ATTRIBUTE_STATS = 3,
-	TDB_ATTRIBUTE_OPENHOOK = 4
+	TDB_ATTRIBUTE_OPENHOOK = 4,
+	TDB_ATTRIBUTE_FLOCK = 5
 };
 
 /**
@@ -737,6 +738,25 @@ struct tdb_attribute_openhook {
 };
 
 /**
+ * struct tdb_attribute_flock - tdb special effects hook for file locking
+ *
+ * This attribute contains function to call to place locks on a file; it can
+ * be used to support non-blocking operations or lock proxying.
+ *
+ * They should return 0 on success, -1 on failure and set errno.
+ *
+ * An error will be logged on error if errno is neither EAGAIN nor EINTR
+ * (normally it would only return EAGAIN if waitflag is false, and
+ * loop internally on EINTR).
+ */
+struct tdb_attribute_flock {
+	struct tdb_attribute_base base; /* .attr = TDB_ATTRIBUTE_FLOCK */
+	int (*lock)(int fd,int rw, off_t off, off_t len, bool waitflag, void *);
+	int (*unlock)(int fd, int rw, off_t off, off_t len, void *);
+	void *data;
+};
+
+/**
  * union tdb_attribute - tdb attributes.
  *
  * This represents all the known attributes.
@@ -744,7 +764,7 @@ struct tdb_attribute_openhook {
  * See also:
  *	struct tdb_attribute_log, struct tdb_attribute_hash,
  *	struct tdb_attribute_seed, struct tdb_attribute_stats,
- *	struct tdb_attribute_openhook.
+ *	struct tdb_attribute_openhook, struct tdb_attribute_flock.
  */
 union tdb_attribute {
 	struct tdb_attribute_base base;
@@ -753,6 +773,7 @@ union tdb_attribute {
 	struct tdb_attribute_seed seed;
 	struct tdb_attribute_stats stats;
 	struct tdb_attribute_openhook openhook;
+	struct tdb_attribute_flock flock;
 };
 
 #ifdef  __cplusplus

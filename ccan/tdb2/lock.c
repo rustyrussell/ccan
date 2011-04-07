@@ -37,7 +37,7 @@ static enum TDB_ERROR owner_conflict(struct tdb_context *tdb, const char *call)
 			  call);
 }
 
-/* If we fork, we no longer really own locks. */
+/* If we fork, we no longer really own locks: preserves errno */
 static bool check_lock_pid(struct tdb_context *tdb,
 			   const char *call, bool log)
 {
@@ -60,34 +60,59 @@ static bool check_lock_pid(struct tdb_context *tdb,
 	return false;
 }
 
-static int fcntl_lock(struct tdb_context *tdb,
-		      int rw, off_t off, off_t len, bool waitflag)
+int tdb_fcntl_lock(int fd, int rw, off_t off, off_t len, bool waitflag,
+		   void *unused)
 {
 	struct flock fl;
+	int ret;
 
-	fl.l_type = rw;
-	fl.l_whence = SEEK_SET;
-	fl.l_start = off;
-	fl.l_len = len;
-	fl.l_pid = 0;
+	do {
+		fl.l_type = rw;
+		fl.l_whence = SEEK_SET;
+		fl.l_start = off;
+		fl.l_len = len;
 
+		if (waitflag)
+			ret = fcntl(fd, F_SETLKW, &fl);
+		else
+			ret = fcntl(fd, F_SETLK, &fl);
+	} while (ret != 0 && errno == EINTR);
+	return ret;
+}
+
+int tdb_fcntl_unlock(int fd, int rw, off_t off, off_t len, void *unused)
+{
+	struct flock fl;
+	int ret;
+
+	do {
+		fl.l_type = F_UNLCK;
+		fl.l_whence = SEEK_SET;
+		fl.l_start = off;
+		fl.l_len = len;
+
+		ret = fcntl(fd, F_SETLKW, &fl);
+	} while (ret != 0 && errno == EINTR);
+	return ret;
+}
+
+static int lock(struct tdb_context *tdb,
+		      int rw, off_t off, off_t len, bool waitflag)
+{
 	if (tdb->file->allrecord_lock.count == 0
 	    && tdb->file->num_lockrecs == 0) {
 		tdb->file->locker = getpid();
 	}
 
 	add_stat(tdb, lock_lowlevel, 1);
-	if (waitflag)
-		return fcntl(tdb->file->fd, F_SETLKW, &fl);
-	else {
+	if (!waitflag)
 		add_stat(tdb, lock_nonblock, 1);
-		return fcntl(tdb->file->fd, F_SETLK, &fl);
-	}
+	return tdb->lock_fn(tdb->file->fd, rw, off, len, waitflag,
+			    tdb->lock_data);
 }
 
-static int fcntl_unlock(struct tdb_context *tdb, int rw, off_t off, off_t len)
+static int unlock(struct tdb_context *tdb, int rw, off_t off, off_t len)
 {
-	struct flock fl;
 #if 0 /* Check they matched up locks and unlocks correctly. */
 	char line[80];
 	FILE *locks;
@@ -146,13 +171,7 @@ static int fcntl_unlock(struct tdb_context *tdb, int rw, off_t off, off_t len)
 	fclose(locks);
 #endif
 
-	fl.l_type = F_UNLCK;
-	fl.l_whence = SEEK_SET;
-	fl.l_start = off;
-	fl.l_len = len;
-	fl.l_pid = 0;
-
-	return fcntl(tdb->file->fd, F_SETLKW, &fl);
+	return tdb->unlock_fn(tdb->file->fd, rw, off, len, tdb->lock_data);
 }
 
 /* a byte range locking function - return 0 on success
@@ -183,16 +202,13 @@ static enum TDB_ERROR tdb_brlock(struct tdb_context *tdb,
 				  (long long)(offset + len));
 	}
 
-	do {
-		ret = fcntl_lock(tdb, rw_type, offset, len,
-				 flags & TDB_LOCK_WAIT);
-	} while (ret == -1 && errno == EINTR);
-
-	if (ret == -1) {
+	ret = lock(tdb, rw_type, offset, len, flags & TDB_LOCK_WAIT);
+	if (ret != 0) {
 		/* Generic lock error. errno set by fcntl.
 		 * EAGAIN is an expected return from non-blocking
 		 * locks. */
-		if (!(flags & TDB_LOCK_PROBE) && errno != EAGAIN) {
+		if (!(flags & TDB_LOCK_PROBE)
+		    && (errno != EAGAIN && errno != EINTR)) {
 			tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
 				   "tdb_brlock failed (fd=%d) at"
 				   " offset %zu rw_type=%d flags=%d len=%zu:"
@@ -214,17 +230,15 @@ static enum TDB_ERROR tdb_brunlock(struct tdb_context *tdb,
 		return TDB_SUCCESS;
 	}
 
-	do {
-		ret = fcntl_unlock(tdb, rw_type, offset, len);
-	} while (ret == -1 && errno == EINTR);
+	ret = unlock(tdb, rw_type, offset, len);
 
 	/* If we fail, *then* we verify that we owned the lock.  If not, ok. */
 	if (ret == -1 && check_lock_pid(tdb, "tdb_brunlock", false)) {
 		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
 				  "tdb_brunlock failed (fd=%d) at offset %zu"
-				  " rw_type=%d len=%zu",
+				  " rw_type=%d len=%zu: %s",
 				  tdb->file->fd, (size_t)offset, rw_type,
-				  (size_t)len);
+				  (size_t)len, strerror(errno));
 	}
 	return TDB_SUCCESS;
 }
@@ -276,8 +290,11 @@ enum TDB_ERROR tdb_allrecord_upgrade(struct tdb_context *tdb)
 		tv.tv_usec = 1;
 		select(0, NULL, NULL, NULL, &tv);
 	}
-	return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
-			  "tdb_allrecord_upgrade failed");
+
+	if (errno != EAGAIN && errno != EINTR)
+		tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
+			   "tdb_allrecord_upgrade failed");
+	return TDB_ERR_LOCK;
 }
 
 static struct tdb_lock *find_nestlock(struct tdb_context *tdb, tdb_off_t offset,
@@ -699,7 +716,7 @@ enum TDB_ERROR tdb_lock_hashes(struct tdb_context *tdb,
 			       int ltype, enum tdb_lock_flags waitflag)
 {
 	/* FIXME: Do this properly, using hlock_range */
-	unsigned lock = TDB_HASH_LOCK_START
+	unsigned l = TDB_HASH_LOCK_START
 		+ (hash_lock >> (64 - TDB_HASH_LOCK_RANGE_BITS));
 
 	/* a allrecord lock allows us to avoid per chain locks */
@@ -732,14 +749,14 @@ enum TDB_ERROR tdb_lock_hashes(struct tdb_context *tdb,
 				  " already have expansion lock");
 	}
 
-	return tdb_nest_lock(tdb, lock, ltype, waitflag);
+	return tdb_nest_lock(tdb, l, ltype, waitflag);
 }
 
 enum TDB_ERROR tdb_unlock_hashes(struct tdb_context *tdb,
 				 tdb_off_t hash_lock,
 				 tdb_len_t hash_range, int ltype)
 {
-	unsigned lock = TDB_HASH_LOCK_START
+	unsigned l = TDB_HASH_LOCK_START
 		+ (hash_lock >> (64 - TDB_HASH_LOCK_RANGE_BITS));
 
 	if (tdb->flags & TDB_NOLOCK)
@@ -755,7 +772,7 @@ enum TDB_ERROR tdb_unlock_hashes(struct tdb_context *tdb,
 		return TDB_SUCCESS;
 	}
 
-	return tdb_nest_unlock(tdb, lock, ltype);
+	return tdb_nest_unlock(tdb, l, ltype);
 }
 
 /* Hash locks use TDB_HASH_LOCK_START + the next 30 bits.
