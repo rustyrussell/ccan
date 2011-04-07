@@ -406,11 +406,11 @@ enum TDB_ERROR COLD tdb_logerr(struct tdb_context *tdb,
 	va_end(ap);
 
 	if (len < 0) {
-		tdb->logfn(tdb, TDB_LOG_ERROR, tdb->log_private,
+		tdb->logfn(tdb, TDB_LOG_ERROR, tdb->log_data,
 			   "out of memory formatting message:");
-		tdb->logfn(tdb, level, tdb->log_private, fmt);
+		tdb->logfn(tdb, level, tdb->log_data, fmt);
 	} else {
-		tdb->logfn(tdb, level, tdb->log_private, message);
+		tdb->logfn(tdb, level, tdb->log_data, message);
 		free(message);
 	}
 	errno = saved_errno;
@@ -419,10 +419,10 @@ enum TDB_ERROR COLD tdb_logerr(struct tdb_context *tdb,
 
 enum TDB_ERROR tdb_parse_record_(struct tdb_context *tdb,
 				 TDB_DATA key,
-				 enum TDB_ERROR (*parse)(TDB_DATA key,
-							 TDB_DATA data,
-							 void *p),
-				 void *p)
+				 enum TDB_ERROR (*parse)(TDB_DATA k,
+							 TDB_DATA d,
+							 void *data),
+				 void *data)
 {
 	tdb_off_t off;
 	struct tdb_used_record rec;
@@ -443,9 +443,9 @@ enum TDB_ERROR tdb_parse_record_(struct tdb_context *tdb,
 		if (TDB_PTR_IS_ERR(dptr)) {
 			ecode = TDB_PTR_ERR(dptr);
 		} else {
-			TDB_DATA data = tdb_mkdata(dptr, rec_data_length(&rec));
+			TDB_DATA d = tdb_mkdata(dptr, rec_data_length(&rec));
 
-			ecode = parse(key, data, p);
+			ecode = parse(key, d, data);
 			tdb_access_release(tdb, dptr);
 		}
 	}

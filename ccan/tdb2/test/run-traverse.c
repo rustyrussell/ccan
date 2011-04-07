@@ -114,8 +114,8 @@ int main(int argc, char *argv[])
 			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT, 
 			TDB_NOMMAP|TDB_CONVERT };
 	union tdb_attribute hattr = { .hash = { .base = { TDB_ATTRIBUTE_HASH },
-						.hash_fn = fixedhash,
-						.hash_private = &seed } };
+						.fn = fixedhash,
+						.data = &seed } };
 
 	hattr.base.next = &tap_log_attr;
 

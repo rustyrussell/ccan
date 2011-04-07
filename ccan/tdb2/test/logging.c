@@ -9,7 +9,7 @@ bool suppress_logging;
 
 union tdb_attribute tap_log_attr = {
 	.log = { .base = { .attr = TDB_ATTRIBUTE_LOG },
-		 .log_fn = tap_log_fn }
+		 .fn = tap_log_fn }
 };
 
 void tap_log_fn(struct tdb_context *tdb,

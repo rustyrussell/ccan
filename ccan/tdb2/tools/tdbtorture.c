@@ -43,7 +43,7 @@ static union tdb_attribute log_attr;
 static union tdb_attribute seed_attr;
 
 static void tdb_log(struct tdb_context *tdb, enum tdb_log_level level,
-		    void *private, const char *message)
+		    void *data, const char *message)
 {
 	fputs(message, stdout);
 	fflush(stdout);
@@ -327,7 +327,7 @@ int main(int argc, char * const *argv)
 
 	log_attr.base.attr = TDB_ATTRIBUTE_LOG;
 	log_attr.base.next = &seed_attr;
-	log_attr.log.log_fn = tdb_log;
+	log_attr.log.fn = tdb_log;
 	seed_attr.base.attr = TDB_ATTRIBUTE_SEED;
 
 	while ((c = getopt(argc, argv, "n:l:s:thkS")) != -1) {

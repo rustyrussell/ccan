@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
 	struct tdb_data key = { (unsigned char *)&j, sizeof(j) };
 	struct tdb_data dbuf = { (unsigned char *)&j, sizeof(j) };
 	union tdb_attribute hattr = { .hash = { .base = { TDB_ATTRIBUTE_HASH },
-						.hash_fn = badhash } };
+						.fn = badhash } };
 	int flags[] = { TDB_INTERNAL, TDB_DEFAULT, TDB_NOMMAP,
 			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT,
 			TDB_NOMMAP|TDB_CONVERT,

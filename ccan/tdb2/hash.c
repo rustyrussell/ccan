@@ -31,13 +31,12 @@ static uint64_t jenkins_hash(const void *key, size_t length, uint64_t seed,
 
 void tdb_hash_init(struct tdb_context *tdb)
 {
-	tdb->khash = jenkins_hash;
-	tdb->hash_priv = NULL;
+	tdb->hashfn = jenkins_hash;
 }
 
 uint64_t tdb_hash(struct tdb_context *tdb, const void *ptr, size_t len)
 {
-	return tdb->khash(ptr, len, tdb->hash_seed, tdb->hash_priv);
+	return tdb->hashfn(ptr, len, tdb->hash_seed, tdb->hash_data);
 }
 
 uint64_t hash_record(struct tdb_context *tdb, tdb_off_t off)

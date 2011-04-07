@@ -21,7 +21,7 @@ static void my_log_fn(struct tdb_context *tdb,
 
 static union tdb_attribute log_attr = {
 	.log = { .base = { .attr = TDB_ATTRIBUTE_LOG },
-		 .log_fn = my_log_fn }
+		 .fn = my_log_fn }
 };
 
 int main(int argc, char *argv[])

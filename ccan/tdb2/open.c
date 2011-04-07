@@ -101,10 +101,10 @@ static enum TDB_ERROR tdb_new_database(struct tdb_context *tdb,
 	else
 		newdb.hdr.hash_seed = random_number(tdb);
 	newdb.hdr.hash_test = TDB_HASH_MAGIC;
-	newdb.hdr.hash_test = tdb->khash(&newdb.hdr.hash_test,
-					 sizeof(newdb.hdr.hash_test),
-					 newdb.hdr.hash_seed,
-					 tdb->hash_priv);
+	newdb.hdr.hash_test = tdb->hashfn(&newdb.hdr.hash_test,
+					  sizeof(newdb.hdr.hash_test),
+					  newdb.hdr.hash_seed,
+					  tdb->hash_data);
 	newdb.hdr.recovery = 0;
 	newdb.hdr.features_used = newdb.hdr.features_offered = TDB_FEATURE_MASK;
 	newdb.hdr.seqnum = 0;
@@ -217,12 +217,12 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	while (attr) {
 		switch (attr->base.attr) {
 		case TDB_ATTRIBUTE_LOG:
-			tdb->logfn = attr->log.log_fn;
-			tdb->log_private = attr->log.log_private;
+			tdb->logfn = attr->log.fn;
+			tdb->log_data = attr->log.data;
 			break;
 		case TDB_ATTRIBUTE_HASH:
-			tdb->khash = attr->hash.hash_fn;
-			tdb->hash_priv = attr->hash.hash_private;
+			tdb->hashfn = attr->hash.fn;
+			tdb->hash_data = attr->hash.data;
 			break;
 		case TDB_ATTRIBUTE_SEED:
 			seed = &attr->seed;

@@ -367,13 +367,13 @@ struct tdb_context {
 	/* Logging function */
 	void (*logfn)(struct tdb_context *tdb,
 		      enum tdb_log_level level,
-		      void *log_private,
+		      void *data,
 		      const char *message);
-	void *log_private;
+	void *log_data;
 
 	/* Hash function. */
-	uint64_t (*khash)(const void *key, size_t len, uint64_t seed, void *);
-	void *hash_priv;
+	uint64_t (*hashfn)(const void *key, size_t len, uint64_t seed, void *);
+	void *hash_data;
 	uint64_t hash_seed;
 
 	/* Set if we are in a transaction. */

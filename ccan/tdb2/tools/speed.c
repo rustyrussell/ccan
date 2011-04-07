@@ -95,7 +95,7 @@ static void dump_and_clear_stats(struct tdb_attribute_stats *stats)
 }
 
 static void tdb_log(struct tdb_context *tdb, enum tdb_log_level level,
-		    void *private, const char *message)
+		    void *data, const char *message)
 {
 	fputs(message, stderr);
 }
@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
 
 	log.base.attr = TDB_ATTRIBUTE_LOG;
 	log.base.next = &seed;
-	log.log.log_fn = tdb_log;
+	log.log.fn = tdb_log;
 
 	memset(&stats, 0, sizeof(stats));
 	stats.base.attr = TDB_ATTRIBUTE_STATS;

@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
 	struct tdb_data key = { (unsigned char *)&i, sizeof(i) };
 	struct tdb_data data = { (unsigned char *)&i, sizeof(i) };
 	union tdb_attribute hattr = { .hash = { .base = { TDB_ATTRIBUTE_HASH },
-						.hash_fn = failhash } };
+						.fn = failhash } };
 
 	hattr.base.next = &tap_log_attr;
 	plan_tests(1 + 2 * NUM_RECORDS + 1);

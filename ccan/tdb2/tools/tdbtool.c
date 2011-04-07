@@ -233,7 +233,7 @@ static void create_tdb(const char *tdbname)
 	union tdb_attribute log_attr;
 	log_attr.base.attr = TDB_ATTRIBUTE_LOG;
 	log_attr.base.next = NULL;
-	log_attr.log.log_fn = tdb_log;
+	log_attr.log.fn = tdb_log;
 
 	if (tdb) tdb_close(tdb);
 	tdb = tdb_open(tdbname, (disable_mmap?TDB_NOMMAP:0),
@@ -248,7 +248,7 @@ static void open_tdb(const char *tdbname)
 	union tdb_attribute log_attr;
 	log_attr.base.attr = TDB_ATTRIBUTE_LOG;
 	log_attr.base.next = NULL;
-	log_attr.log.log_fn = tdb_log;
+	log_attr.log.fn = tdb_log;
 
 	if (tdb) tdb_close(tdb);
 	tdb = tdb_open(tdbname, disable_mmap?TDB_NOMMAP:0, O_RDWR, 0600,

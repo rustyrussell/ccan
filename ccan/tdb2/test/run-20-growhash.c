@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 	struct tdb_data key = { (unsigned char *)&kdata, sizeof(kdata) };
 	struct tdb_data dbuf = { (unsigned char *)&kdata, sizeof(kdata) };
 	union tdb_attribute hattr = { .hash = { .base = { TDB_ATTRIBUTE_HASH },
-						.hash_fn = myhash } };
+						.fn = myhash } };
 	int flags[] = { TDB_INTERNAL, TDB_DEFAULT, TDB_NOMMAP,
 			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT,
 			TDB_NOMMAP|TDB_CONVERT,

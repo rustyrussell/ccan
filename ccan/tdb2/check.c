@@ -94,7 +94,7 @@ static enum TDB_ERROR check_hash_tree(struct tdb_context *tdb,
 				      size_t *num_found,
 				      enum TDB_ERROR (*check)(TDB_DATA,
 							      TDB_DATA, void *),
-				      void *private_data);
+				      void *data);
 
 static enum TDB_ERROR check_hash_chain(struct tdb_context *tdb,
 				       tdb_off_t off,
@@ -105,7 +105,7 @@ static enum TDB_ERROR check_hash_chain(struct tdb_context *tdb,
 				       enum TDB_ERROR (*check)(TDB_DATA,
 							       TDB_DATA,
 							       void *),
-				       void *private_data)
+				       void *data)
 {
 	struct tdb_used_record rec;
 	enum TDB_ERROR ecode;
@@ -141,7 +141,7 @@ static enum TDB_ERROR check_hash_chain(struct tdb_context *tdb,
 
 	off += sizeof(rec);
 	ecode = check_hash_tree(tdb, off, 0, hash, 64,
-				used, num_used, num_found, check, private_data);
+				used, num_used, num_found, check, data);
 	if (ecode != TDB_SUCCESS) {
 		return ecode;
 	}
@@ -154,7 +154,7 @@ static enum TDB_ERROR check_hash_chain(struct tdb_context *tdb,
 		return TDB_SUCCESS;
 	(*num_found)++;
 	return check_hash_chain(tdb, off, hash, used, num_used, num_found,
-				check, private_data);
+				check, data);
 }
 
 static enum TDB_ERROR check_hash_record(struct tdb_context *tdb,
@@ -167,14 +167,14 @@ static enum TDB_ERROR check_hash_record(struct tdb_context *tdb,
 					enum TDB_ERROR (*check)(TDB_DATA,
 								TDB_DATA,
 								void *),
-					void *private_data)
+					void *data)
 {
 	struct tdb_used_record rec;
 	enum TDB_ERROR ecode;
 
 	if (hprefix_bits >= 64)
 		return check_hash_chain(tdb, off, hprefix, used, num_used,
-					num_found, check, private_data);
+					num_found, check, data);
 
 	ecode = tdb_read_convert(tdb, off, &rec, sizeof(rec));
 	if (ecode != TDB_SUCCESS) {
@@ -210,7 +210,7 @@ static enum TDB_ERROR check_hash_record(struct tdb_context *tdb,
 	return check_hash_tree(tdb, off,
 			       TDB_SUBLEVEL_HASH_BITS-TDB_HASH_GROUP_BITS,
 			       hprefix, hprefix_bits,
-			       used, num_used, num_found, check, private_data);
+			       used, num_used, num_found, check, data);
 }
 
 static int off_cmp(const tdb_off_t *a, const tdb_off_t *b)
@@ -237,7 +237,7 @@ static enum TDB_ERROR check_hash_tree(struct tdb_context *tdb,
 				      size_t *num_found,
 				      enum TDB_ERROR (*check)(TDB_DATA,
 							      TDB_DATA, void *),
-				      void *private_data)
+				      void *data)
 {
 	unsigned int g, b;
 	const tdb_off_t *hash;
@@ -318,7 +318,7 @@ static enum TDB_ERROR check_hash_tree(struct tdb_context *tdb,
 						       + group_bits
 						       + TDB_HASH_GROUP_BITS,
 					       used, num_used, num_found,
-					       check, private_data);
+					       check, data);
 				if (ecode != TDB_SUCCESS) {
 					goto fail;
 				}
@@ -401,7 +401,7 @@ static enum TDB_ERROR check_hash_tree(struct tdb_context *tdb,
 
 		check:
 			if (check) {
-				TDB_DATA key, data;
+				TDB_DATA k, d;
 				const unsigned char *kptr;
 
 				kptr = tdb_access_read(tdb,
@@ -414,10 +414,10 @@ static enum TDB_ERROR check_hash_tree(struct tdb_context *tdb,
 					goto fail;
 				}
 
-				key = tdb_mkdata(kptr, rec_key_length(&rec));
-				data = tdb_mkdata(kptr + key.dsize,
-						  rec_data_length(&rec));
-				ecode = check(key, data, private_data);
+				k = tdb_mkdata(kptr, rec_key_length(&rec));
+				d = tdb_mkdata(kptr + k.dsize,
+					       rec_data_length(&rec));
+				ecode = check(k, d, data);
 				tdb_access_release(tdb, kptr);
 				if (ecode != TDB_SUCCESS) {
 					goto fail;
@@ -437,7 +437,7 @@ static enum TDB_ERROR check_hash(struct tdb_context *tdb,
 				 tdb_off_t used[],
 				 size_t num_used, size_t num_ftables,
 				 int (*check)(TDB_DATA, TDB_DATA, void *),
-				 void *private_data)
+				 void *data)
 {
 	/* Free tables also show up as used. */
 	size_t num_found = num_ftables;
@@ -446,7 +446,7 @@ static enum TDB_ERROR check_hash(struct tdb_context *tdb,
 	ecode = check_hash_tree(tdb, offsetof(struct tdb_header, hashtable),
 				TDB_TOPLEVEL_HASH_BITS-TDB_HASH_GROUP_BITS,
 				0, 0, used, num_used, &num_found,
-				check, private_data);
+				check, data);
 	if (ecode == TDB_SUCCESS) {
 		if (num_found != num_used) {
 			ecode = tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
@@ -772,9 +772,8 @@ static enum TDB_ERROR check_linear(struct tdb_context *tdb,
 }
 
 enum TDB_ERROR tdb_check_(struct tdb_context *tdb,
-			  enum TDB_ERROR (*check)(TDB_DATA key, TDB_DATA data,
-						  void *private_data),
-			  void *private_data)
+			  enum TDB_ERROR (*check)(TDB_DATA, TDB_DATA, void *),
+			  void *data)
 {
 	tdb_off_t *fr = NULL, *used = NULL, ft, recovery;
 	size_t num_free = 0, num_used = 0, num_found = 0, num_ftables = 0;
@@ -815,8 +814,7 @@ enum TDB_ERROR tdb_check_(struct tdb_context *tdb,
 	}
 
 	/* FIXME: Check key uniqueness? */
-	ecode = check_hash(tdb, used, num_used, num_ftables, check,
-			   private_data);
+	ecode = check_hash(tdb, used, num_used, num_ftables, check, data);
 	if (ecode != TDB_SUCCESS)
 		goto out;
 

@@ -324,7 +324,7 @@ int64_t tdb_traverse_(struct tdb_context *tdb,
  * @tdb: the tdb context returned from tdb_open()
  * @key: the key whose record we should hand to @parse
  * @parse: the function to call for the data
- * @p: the private pointer to hand to @parse (types must match).
+ * @data: the private pointer to hand to @parse (types must match).
  *
  * This avoids a copy for many cases, by handing you a pointer into
  * the memory-mapped database.  It also locks the record to prevent
@@ -332,18 +332,18 @@ int64_t tdb_traverse_(struct tdb_context *tdb,
  *
  * Do not alter the data handed to parse()!
  */
-#define tdb_parse_record(tdb, key, parse, p)				\
+#define tdb_parse_record(tdb, key, parse, data)				\
 	tdb_parse_record_((tdb), (key),					\
 			  typesafe_cb_preargs(enum TDB_ERROR, void *,	\
-					      (parse), (p),		\
-					      TDB_DATA, TDB_DATA), (p))
+					      (parse), (data),		\
+					      TDB_DATA, TDB_DATA), (data))
 
 enum TDB_ERROR tdb_parse_record_(struct tdb_context *tdb,
 				 TDB_DATA key,
-				 enum TDB_ERROR (*parse)(TDB_DATA key,
-							 TDB_DATA data,
-							 void *p),
-				 void *p);
+				 enum TDB_ERROR (*parse)(TDB_DATA k,
+							 TDB_DATA d,
+							 void *data),
+				 void *data);
 
 /**
  * tdb_get_seqnum - get a database sequence number
@@ -490,7 +490,7 @@ enum TDB_ERROR tdb_wipe_all(struct tdb_context *tdb);
  * tdb_check - check a TDB for consistency
  * @tdb: the tdb context returned from tdb_open()
  * @check: function to check each key/data pair (or NULL)
- * @private_data: argument for @check, must match type.
+ * @data: argument for @check, must match type.
  *
  * This performs a consistency check of the open database, optionally calling
  * a check() function on each record so you can do your own data consistency
@@ -499,18 +499,18 @@ enum TDB_ERROR tdb_wipe_all(struct tdb_context *tdb);
  *
  * Returns TDB_SUCCESS or an error.
  */
-#define tdb_check(tdb, check, private_data)				\
+#define tdb_check(tdb, check, data)					\
 	tdb_check_((tdb), typesafe_cb_preargs(enum TDB_ERROR, void *,	\
-					      (check), (private_data),	\
+					      (check), (data),		\
 					      struct tdb_data,		\
 					      struct tdb_data),		\
-		   (private_data))
+		   (data))
 
 enum TDB_ERROR tdb_check_(struct tdb_context *tdb,
-			  enum TDB_ERROR (*check)(struct tdb_data key,
-						  struct tdb_data data,
-						  void *private_data),
-			  void *private_data);
+			  enum TDB_ERROR (*check)(struct tdb_data k,
+						  struct tdb_data d,
+						  void *data),
+			  void *data);
 
 /**
  * tdb_error - get the last error (not threadsafe)
@@ -640,11 +640,11 @@ enum tdb_log_level {
  */
 struct tdb_attribute_log {
 	struct tdb_attribute_base base; /* .attr = TDB_ATTRIBUTE_LOG */
-	void (*log_fn)(struct tdb_context *tdb,
-		       enum tdb_log_level level,
-		       void *log_private,
-		       const char *message);
-	void *log_private;
+	void (*fn)(struct tdb_context *tdb,
+		   enum tdb_log_level level,
+		   void *data,
+		   const char *message);
+	void *data;
 };
 
 /**
@@ -661,9 +661,9 @@ struct tdb_attribute_log {
  */
 struct tdb_attribute_hash {
 	struct tdb_attribute_base base; /* .attr = TDB_ATTRIBUTE_HASH */
-	uint64_t (*hash_fn)(const void *key, size_t len, uint64_t seed,
-			    void *priv);
-	void *hash_private;
+	uint64_t (*fn)(const void *key, size_t len, uint64_t seed,
+		       void *data);
+	void *data;
 };
 
 /**

@@ -23,8 +23,8 @@ int main(int argc, char *argv[])
 	uint64_t seed = 16014841315512641303ULL;
 	union tdb_attribute fixed_hattr
 		= { .hash = { .base = { TDB_ATTRIBUTE_HASH },
-			      .hash_fn = fixedhash,
-			      .hash_private = &seed } };
+			      .fn = fixedhash,
+			      .data = &seed } };
 	int flags[] = { TDB_INTERNAL, TDB_DEFAULT, TDB_NOMMAP,
 			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT,
 			TDB_NOMMAP|TDB_CONVERT };
