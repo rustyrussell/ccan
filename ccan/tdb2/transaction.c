@@ -110,7 +110,7 @@ struct tdb_transaction {
 	/* when inside a transaction we need to keep track of any
 	   nested tdb_transaction_start() calls, as these are allowed,
 	   but don't create a new transaction */
-	int nesting;
+	unsigned int nesting;
 
 	/* set when a prepare has already occurred */
 	bool prepared;
@@ -531,11 +531,15 @@ enum TDB_ERROR tdb_transaction_start(struct tdb_context *tdb)
 
 	/* cope with nested tdb_transaction_start() calls */
 	if (tdb->transaction != NULL) {
-		return tdb->last_error = tdb_logerr(tdb, TDB_ERR_IO,
-						    TDB_LOG_USE_ERROR,
-						    "tdb_transaction_start:"
-						    " already inside"
-						    " transaction");
+		if (!(tdb->flags & TDB_ALLOW_NESTING)) {
+			return tdb->last_error
+				= tdb_logerr(tdb, TDB_ERR_IO,
+					     TDB_LOG_USE_ERROR,
+					     "tdb_transaction_start:"
+					     " already inside transaction");
+		}
+		tdb->transaction->nesting++;
+		return 0;
 	}
 
 	if (tdb_has_hash_locks(tdb)) {
@@ -907,7 +911,6 @@ static enum TDB_ERROR _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 
 
 	if (tdb->transaction->nesting != 0) {
-		tdb->transaction->nesting--;
 		return TDB_SUCCESS;
 	}
 

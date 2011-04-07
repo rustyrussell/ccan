@@ -80,6 +80,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 #define TDB_CONVERT 16 /* convert endian */
 #define TDB_NOSYNC   64 /* don't use synchronous transactions */
 #define TDB_SEQNUM   128 /* maintain a sequence number */
+#define TDB_ALLOW_NESTING   256 /* fake nested transactions */
 
 /**
  * tdb_close - close and free a tdb.
@@ -247,6 +248,15 @@ static inline struct tdb_data tdb_mkdata(const void *p, size_t len)
  * This begins a series of atomic operations.  Other processes will be able
  * to read the tdb, but not alter it (they will block), nor will they see
  * any changes until tdb_transaction_commit() is called.
+ *
+ * Note that if the TDB_ALLOW_NESTING flag is set, a tdb_transaction_start()
+ * within a transaction will succeed, but it's not a real transaction:
+ * (1) An inner transaction which is committed is not actually committed until
+ *     the outer transaction is; if the outer transaction is cancelled, the
+ *     inner ones are discarded.
+ * (2) tdb_transaction_cancel() marks the outer transaction as having an error,
+ *     so the final tdb_transaction_commit() will fail.
+ * (3) the outer transaction will see the results of the inner transaction.
  *
  * See Also:
  *	tdb_transaction_cancel, tdb_transaction_commit.
@@ -565,7 +575,7 @@ unsigned int tdb_get_flags(struct tdb_context *tdb);
 /**
  * tdb_add_flag - set a flag for a tdb
  * @tdb: the tdb context returned from tdb_open()
- * @flag: one of TDB_NOLOCK, TDB_NOMMAP or TDB_NOSYNC.
+ * @flag: one of TDB_NOLOCK, TDB_NOMMAP, TDB_NOSYNC or TDB_ALLOW_NESTING.
  *
  * You can use this to set a flag on the TDB.  You cannot set these flags
  * on a TDB_INTERNAL tdb.
@@ -575,7 +585,7 @@ void tdb_add_flag(struct tdb_context *tdb, unsigned flag);
 /**
  * tdb_remove_flag - unset a flag for a tdb
  * @tdb: the tdb context returned from tdb_open()
- * @flag: one of TDB_NOLOCK, TDB_NOMMAP or TDB_NOSYNC.
+ * @flag: one of TDB_NOLOCK, TDB_NOMMAP, TDB_NOSYNC or TDB_ALLOW_NESTING.
  *
  * You can use this to clear a flag on the TDB.  You cannot clear flags
  * on a TDB_INTERNAL tdb.

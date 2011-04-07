@@ -327,6 +327,9 @@ void tdb_add_flag(struct tdb_context *tdb, unsigned flag)
 	case TDB_SEQNUM:
 		tdb->flags |= TDB_SEQNUM;
 		break;
+	case TDB_ALLOW_NESTING:
+		tdb->flags |= TDB_ALLOW_NESTING;
+		break;
 	default:
 		tdb->last_error = tdb_logerr(tdb, TDB_ERR_EINVAL,
 					     TDB_LOG_USE_ERROR,
@@ -356,6 +359,9 @@ void tdb_remove_flag(struct tdb_context *tdb, unsigned flag)
 		break;
 	case TDB_SEQNUM:
 		tdb->flags &= ~TDB_SEQNUM;
+		break;
+	case TDB_ALLOW_NESTING:
+		tdb->flags &= ~TDB_ALLOW_NESTING;
 		break;
 	default:
 		tdb->last_error = tdb_logerr(tdb, TDB_ERR_EINVAL,

@@ -383,7 +383,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	}
 
 	if (tdb_flags & ~(TDB_INTERNAL | TDB_NOLOCK | TDB_NOMMAP | TDB_CONVERT
-			  | TDB_NOSYNC | TDB_SEQNUM)) {
+			  | TDB_NOSYNC | TDB_SEQNUM | TDB_ALLOW_NESTING)) {
 		ecode = tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
 				   "tdb_open: unknown flags %u", tdb_flags);
 		goto fail;
