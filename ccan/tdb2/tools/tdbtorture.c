@@ -43,7 +43,7 @@ static union tdb_attribute log_attr;
 static union tdb_attribute seed_attr;
 
 static void tdb_log(struct tdb_context *tdb, enum tdb_log_level level,
-		    void *data, const char *message)
+		    const char *message, void *data)
 {
 	fputs(message, stdout);
 	fflush(stdout);

@@ -127,7 +127,7 @@ static double _end_timer(void)
 }
 
 static void tdb_log(struct tdb_context *tdb, enum tdb_log_level level,
-		    void *priv, const char *message)
+		    const char *message, void *priv)
 {
 	fputs(message, stderr);
 }

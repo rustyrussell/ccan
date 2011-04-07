@@ -642,8 +642,8 @@ struct tdb_attribute_log {
 	struct tdb_attribute_base base; /* .attr = TDB_ATTRIBUTE_LOG */
 	void (*fn)(struct tdb_context *tdb,
 		   enum tdb_log_level level,
-		   void *data,
-		   const char *message);
+		   const char *message,
+		   void *data);
 	void *data;
 };
 

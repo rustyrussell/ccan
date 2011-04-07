@@ -95,7 +95,7 @@ static void dump_and_clear_stats(struct tdb_attribute_stats *stats)
 }
 
 static void tdb_log(struct tdb_context *tdb, enum tdb_log_level level,
-		    void *data, const char *message)
+		    const char *message, void *data)
 {
 	fputs(message, stderr);
 }

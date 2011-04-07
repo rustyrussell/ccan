@@ -13,8 +13,8 @@ union tdb_attribute tap_log_attr = {
 };
 
 void tap_log_fn(struct tdb_context *tdb,
-		enum tdb_log_level level, void *priv,
-		const char *message)
+		enum tdb_log_level level,
+		const char *message, void *priv)
 {
 	if (suppress_logging)
 		return;
