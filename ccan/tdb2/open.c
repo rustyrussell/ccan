@@ -174,7 +174,7 @@ static enum TDB_ERROR tdb_new_file(struct tdb_context *tdb)
 	tdb->file = malloc(sizeof(*tdb->file));
 	if (!tdb->file)
 		return tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
-				  "tdb_open: could alloc tdb_file structure");
+				  "tdb_open: cannot alloc tdb_file structure");
 	tdb->file->num_lockrecs = 0;
 	tdb->file->lockrecs = NULL;
 	tdb->file->allrecord_lock.count = 0;
