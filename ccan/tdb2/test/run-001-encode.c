@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
 {
 	unsigned int i;
 	struct tdb_used_record rec;
-	struct tdb_context tdb = { .logfn = tap_log_fn };
+	struct tdb_context tdb = { .log_fn = tap_log_fn };
 
 	plan_tests(64 + 32 + 48*6 + 1);
 

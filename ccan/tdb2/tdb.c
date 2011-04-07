@@ -398,7 +398,7 @@ enum TDB_ERROR COLD tdb_logerr(struct tdb_context *tdb,
 	/* tdb_open paths care about errno, so save it. */
 	int saved_errno = errno;
 
-	if (!tdb->logfn)
+	if (!tdb->log_fn)
 		return ecode;
 
 	va_start(ap, fmt);
@@ -406,11 +406,11 @@ enum TDB_ERROR COLD tdb_logerr(struct tdb_context *tdb,
 	va_end(ap);
 
 	if (len < 0) {
-		tdb->logfn(tdb, TDB_LOG_ERROR, tdb->log_data,
-			   "out of memory formatting message:");
-		tdb->logfn(tdb, level, tdb->log_data, fmt);
+		tdb->log_fn(tdb, TDB_LOG_ERROR, tdb->log_data,
+			    "out of memory formatting message:");
+		tdb->log_fn(tdb, level, tdb->log_data, fmt);
 	} else {
-		tdb->logfn(tdb, level, tdb->log_data, message);
+		tdb->log_fn(tdb, level, tdb->log_data, message);
 		free(message);
 	}
 	errno = saved_errno;

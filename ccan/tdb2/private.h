@@ -365,14 +365,14 @@ struct tdb_context {
 	uint32_t flags;
 
 	/* Logging function */
-	void (*logfn)(struct tdb_context *tdb,
-		      enum tdb_log_level level,
-		      void *data,
-		      const char *message);
+	void (*log_fn)(struct tdb_context *tdb,
+		       enum tdb_log_level level,
+		       void *data,
+		       const char *message);
 	void *log_data;
 
 	/* Hash function. */
-	uint64_t (*hashfn)(const void *key, size_t len, uint64_t seed, void *);
+	uint64_t (*hash_fn)(const void *key, size_t len, uint64_t seed, void *);
 	void *hash_data;
 	uint64_t hash_seed;
 

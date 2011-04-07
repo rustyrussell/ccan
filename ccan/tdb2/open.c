@@ -101,10 +101,10 @@ static enum TDB_ERROR tdb_new_database(struct tdb_context *tdb,
 	else
 		newdb.hdr.hash_seed = random_number(tdb);
 	newdb.hdr.hash_test = TDB_HASH_MAGIC;
-	newdb.hdr.hash_test = tdb->hashfn(&newdb.hdr.hash_test,
-					  sizeof(newdb.hdr.hash_test),
-					  newdb.hdr.hash_seed,
-					  tdb->hash_data);
+	newdb.hdr.hash_test = tdb->hash_fn(&newdb.hdr.hash_test,
+					   sizeof(newdb.hdr.hash_test),
+					   newdb.hdr.hash_seed,
+					   tdb->hash_data);
 	newdb.hdr.recovery = 0;
 	newdb.hdr.features_used = newdb.hdr.features_offered = TDB_FEATURE_MASK;
 	newdb.hdr.seqnum = 0;
@@ -205,7 +205,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb->name = NULL;
 	tdb->direct_access = 0;
 	tdb->flags = tdb_flags;
-	tdb->logfn = NULL;
+	tdb->log_fn = NULL;
 	tdb->transaction = NULL;
 	tdb->stats = NULL;
 	tdb->access = NULL;
@@ -217,11 +217,11 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	while (attr) {
 		switch (attr->base.attr) {
 		case TDB_ATTRIBUTE_LOG:
-			tdb->logfn = attr->log.fn;
+			tdb->log_fn = attr->log.fn;
 			tdb->log_data = attr->log.data;
 			break;
 		case TDB_ATTRIBUTE_HASH:
-			tdb->hashfn = attr->hash.fn;
+			tdb->hash_fn = attr->hash.fn;
 			tdb->hash_data = attr->hash.data;
 			break;
 		case TDB_ATTRIBUTE_SEED:
