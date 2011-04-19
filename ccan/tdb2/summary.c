@@ -45,7 +45,6 @@ static enum TDB_ERROR summarize(struct tdb_context *tdb,
 				struct tally *data,
 				struct tally *extra,
 				struct tally *uncoal,
-				struct tally *buckets,
 				struct tally *chains)
 {
 	tdb_off_t off;
@@ -65,24 +64,22 @@ static enum TDB_ERROR summarize(struct tdb_context *tdb,
 		if (TDB_PTR_IS_ERR(p)) {
 			return TDB_PTR_ERR(p);
 		}
-		if (p->r.magic == TDB_RECOVERY_INVALID_MAGIC
-		    || p->r.magic == TDB_RECOVERY_MAGIC) {
-			if (unc) {
+		if (frec_magic(&p->f) != TDB_FREE_MAGIC) {
+			if (unc > 1) {
 				tally_add(uncoal, unc);
 				unc = 0;
 			}
+		}
+
+		if (p->r.magic == TDB_RECOVERY_INVALID_MAGIC
+		    || p->r.magic == TDB_RECOVERY_MAGIC) {
 			len = sizeof(p->r) + p->r.max_len;
 		} else if (frec_magic(&p->f) == TDB_FREE_MAGIC) {
 			len = frec_len(&p->f);
 			tally_add(fr, len);
-			tally_add(buckets, size_to_bucket(len));
 			len += sizeof(p->u);
 			unc++;
 		} else if (rec_magic(&p->u) == TDB_USED_MAGIC) {
-			if (unc) {
-				tally_add(uncoal, unc);
-				unc = 0;
-			}
 			len = sizeof(p->u)
 				+ rec_key_length(&p->u)
 				+ rec_data_length(&p->u)
@@ -138,7 +135,6 @@ static enum TDB_ERROR summarize(struct tdb_context *tdb,
 	"Smallest/average/largest free records: %zu/%zu/%zu\n%s" \
 	"Number of uncoalesced records: %zu\n" \
 	"Smallest/average/largest uncoalesced runs: %zu/%zu/%zu\n%s" \
-	"Number of free lists: %zu\n%s" \
 	"Toplevel hash used: %u of %u\n" \
 	"Number of chains: %zu\n" \
 	"Number of subhashes: %zu\n" \
@@ -161,11 +157,11 @@ enum TDB_ERROR tdb_summary(struct tdb_context *tdb,
 {
 	tdb_len_t len;
 	struct tally *ftables, *hashes, *freet, *keys, *data, *extra, *uncoal,
-		*buckets, *chains;
-	char *hashesg, *freeg, *keysg, *datag, *extrag, *uncoalg, *bucketsg;
+		*chains;
+	char *hashesg, *freeg, *keysg, *datag, *extrag, *uncoalg;
 	enum TDB_ERROR ecode;
 
-	hashesg = freeg = keysg = datag = extrag = uncoalg = bucketsg = NULL;
+	hashesg = freeg = keysg = datag = extrag = uncoalg = NULL;
 
 	ecode = tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false);
 	if (ecode != TDB_SUCCESS) {
@@ -186,10 +182,9 @@ enum TDB_ERROR tdb_summary(struct tdb_context *tdb,
 	data = tally_new(HISTO_HEIGHT);
 	extra = tally_new(HISTO_HEIGHT);
 	uncoal = tally_new(HISTO_HEIGHT);
-	buckets = tally_new(HISTO_HEIGHT);
 	chains = tally_new(HISTO_HEIGHT);
 	if (!ftables || !hashes || !freet || !keys || !data || !extra
-	    || !uncoal || !buckets || !chains) {
+	    || !uncoal || !chains) {
 		ecode = tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
 				   "tdb_summary: failed to allocate"
 				   " tally structures");
@@ -197,7 +192,7 @@ enum TDB_ERROR tdb_summary(struct tdb_context *tdb,
 	}
 
 	ecode = summarize(tdb, hashes, ftables, freet, keys, data, extra,
-			  uncoal, buckets, chains);
+			  uncoal, chains);
 	if (ecode != TDB_SUCCESS) {
 		goto unlock;
 	}
@@ -209,7 +204,6 @@ enum TDB_ERROR tdb_summary(struct tdb_context *tdb,
 		datag = tally_histogram(data, HISTO_WIDTH, HISTO_HEIGHT);
 		extrag = tally_histogram(extra, HISTO_WIDTH, HISTO_HEIGHT);
 		uncoalg = tally_histogram(uncoal, HISTO_WIDTH, HISTO_HEIGHT);
-		bucketsg = tally_histogram(buckets, HISTO_WIDTH, HISTO_HEIGHT);
 	}
 
 	/* 20 is max length of a %llu. */
@@ -219,8 +213,7 @@ enum TDB_ERROR tdb_summary(struct tdb_context *tdb,
 		+ (keysg ? strlen(keysg) : 0)
 		+ (datag ? strlen(datag) : 0)
 		+ (extrag ? strlen(extrag) : 0)
-		+ (uncoalg ? strlen(uncoalg) : 0)
-		+ (bucketsg ? strlen(bucketsg) : 0);
+		+ (uncoalg ? strlen(uncoalg) : 0);
 
 	*summary = malloc(len);
 	if (!*summary) {
@@ -231,7 +224,7 @@ enum TDB_ERROR tdb_summary(struct tdb_context *tdb,
 
 	sprintf(*summary, SUMMARY_FORMAT,
 		(size_t)tdb->file->map_size,
-		tally_num(keys) + tally_num(data),
+		tally_total(keys, NULL) + tally_total(data, NULL),
 		tally_num(keys),
 		tally_min(keys), tally_mean(keys), tally_max(keys),
 		keysg ? keysg : "",
@@ -245,8 +238,6 @@ enum TDB_ERROR tdb_summary(struct tdb_context *tdb,
 		tally_total(uncoal, NULL),
 		tally_min(uncoal), tally_mean(uncoal), tally_max(uncoal),
 		uncoalg ? uncoalg : "",
-		tally_num(buckets),
-		bucketsg ? bucketsg : "",
 		(unsigned)count_hash(tdb, offsetof(struct tdb_header,
 						   hashtable),
 				     TDB_TOPLEVEL_HASH_BITS),
@@ -276,9 +267,7 @@ unlock:
 	free(datag);
 	free(extrag);
 	free(uncoalg);
-	free(bucketsg);
 	free(hashes);
-	free(buckets);
 	free(freet);
 	free(keys);
 	free(data);
