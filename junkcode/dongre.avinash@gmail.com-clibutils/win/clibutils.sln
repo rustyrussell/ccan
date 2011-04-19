@@ -1,0 +1,29 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 9.00
+# Visual Studio 2005
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "clibutils", "clibutils.vcproj", "{B0D5C92E-C0FD-48EB-A472-FF5DC031ECB9}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tclibutils", "tclibutils.vcproj", "{7DB3F94C-1BA0-4BFF-B8FF-5BD95CF0A9F9}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B0D5C92E-C0FD-48EB-A472-FF5DC031ECB9} = {B0D5C92E-C0FD-48EB-A472-FF5DC031ECB9}
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B0D5C92E-C0FD-48EB-A472-FF5DC031ECB9}.Debug|Win32.ActiveCfg = Debug|Win32
+		{B0D5C92E-C0FD-48EB-A472-FF5DC031ECB9}.Debug|Win32.Build.0 = Debug|Win32
+		{B0D5C92E-C0FD-48EB-A472-FF5DC031ECB9}.Release|Win32.ActiveCfg = Release|Win32
+		{B0D5C92E-C0FD-48EB-A472-FF5DC031ECB9}.Release|Win32.Build.0 = Release|Win32
+		{7DB3F94C-1BA0-4BFF-B8FF-5BD95CF0A9F9}.Debug|Win32.ActiveCfg = Debug|Win32
+		{7DB3F94C-1BA0-4BFF-B8FF-5BD95CF0A9F9}.Debug|Win32.Build.0 = Debug|Win32
+		{7DB3F94C-1BA0-4BFF-B8FF-5BD95CF0A9F9}.Release|Win32.ActiveCfg = Release|Win32
+		{7DB3F94C-1BA0-4BFF-B8FF-5BD95CF0A9F9}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
