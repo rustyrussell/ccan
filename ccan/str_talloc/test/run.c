@@ -6,7 +6,8 @@
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
-static char *substrings[] = { "far", "bar", "baz", "b", "ba", "z", "ar", NULL };
+static const char *substrings[]
+= { "far", "bar", "baz", "b", "ba", "z", "ar", NULL };
 
 int main(int argc, char *argv[])
 {
@@ -36,10 +37,10 @@ int main(int argc, char *argv[])
 	ok1(talloc_parent(split) == ctx);
 	talloc_free(ctx);
 
-	str = strjoin(NULL, substrings, ", ");
+	str = strjoin(NULL, (char **)substrings, ", ");
 	ok1(!strcmp(str, "far, bar, baz, b, ba, z, ar, "));
 	ctx = str;
-	str = strjoin(ctx, substrings, "");
+	str = strjoin(ctx, (char **)substrings, "");
 	ok1(!strcmp(str, "farbarbazbbazar"));
 	ok1(talloc_parent(str) == ctx);
 	talloc_free(ctx);
