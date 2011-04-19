@@ -48,8 +48,13 @@ void tdb_mmap(struct tdb_context *tdb)
 	if (tdb->flags & TDB_NOMMAP)
 		return;
 
-	tdb->file->map_ptr = mmap(NULL, tdb->file->map_size, tdb->mmap_flags,
-				  MAP_SHARED, tdb->file->fd, 0);
+	/* size_t can be smaller than off_t. */
+	if ((size_t)tdb->file->map_size == tdb->file->map_size) {
+		tdb->file->map_ptr = mmap(NULL, tdb->file->map_size,
+					  tdb->mmap_flags,
+					  MAP_SHARED, tdb->file->fd, 0);
+	} else
+		tdb->file->map_ptr = MAP_FAILED;
 
 	/*
 	 * NB. When mmap fails it returns MAP_FAILED *NOT* NULL !!!!
