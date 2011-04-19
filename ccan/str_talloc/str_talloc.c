@@ -38,11 +38,17 @@ char *strjoin(const void *ctx, char *strings[], const char *delim)
 {
 	unsigned int i;
 	char *ret = talloc_strdup(ctx, "");
+	size_t totlen = 0, dlen = strlen(delim);
 
 	for (i = 0; strings[i]; i++) {
-		ret = talloc_append_string(ret, strings[i]);
-		ret = talloc_append_string(ret, delim);
+		size_t len = strlen(strings[i]);
+		ret = talloc_realloc(ctx, ret, char, totlen + len + dlen + 1);
+		memcpy(ret + totlen, strings[i], len);
+		totlen += len;
+		memcpy(ret + totlen, delim, dlen);
+		totlen += dlen;
 	}
+	ret[totlen] = '\0';
 	return ret;
 }
 
