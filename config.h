@@ -5,6 +5,7 @@
 #define CCAN_COMPILER "cc"
 #define CCAN_CFLAGS "-g -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Wpointer-arith -Wwrite-strings -DCCAN_STR_DEBUG=1"
 
+#define HAVE_32BIT_OFF_T 1
 #define HAVE_ALIGNOF 1
 #define HAVE_ASPRINTF 1
 #define HAVE_ATTRIBUTE_COLD 1
@@ -28,6 +29,7 @@
 #define HAVE_BUILTIN_TYPES_COMPATIBLE_P 1
 #define HAVE_BYTESWAP_H 1
 #define HAVE_COMPOUND_LITERALS 1
+#define HAVE_FILE_OFFSET_BITS 1
 #define HAVE_FOR_LOOP_DECLARATION 0
 #define HAVE_FLEXIBLE_ARRAY_MEMBER 1
 #define HAVE_GETPAGESIZE 1

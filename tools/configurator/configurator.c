@@ -38,6 +38,11 @@ struct test {
 };
 
 static struct test tests[] = {
+	{ "HAVE_32BIT_OFF_T", DEFINES_EVERYTHING|EXECUTE, NULL,
+	  "#include <sys/types.h>\n"
+	  "int main(int argc, char *argv[]) {\n"
+	  "	return sizeof(off_t) == 4 ? 0 : 1;\n"
+	  "}\n" },
 	{ "HAVE_ALIGNOF", INSIDE_MAIN, NULL,
 	  "return __alignof__(double) > 0 ? 0 : 1;" },
 	{ "HAVE_ASPRINTF", DEFINES_FUNC, NULL,
@@ -95,6 +100,13 @@ static struct test tests[] = {
 	{ "HAVE_COMPOUND_LITERALS", INSIDE_MAIN, NULL,
 	  "int *foo = (int[]) { 1, 2, 3, 4 };\n"
 	  "return foo[0] ? 0 : 1;" },
+	{ "HAVE_FILE_OFFSET_BITS", DEFINES_EVERYTHING|EXECUTE,
+	  "HAVE_32BIT_OFF_T",
+	  "#define _FILE_OFFSET_BITS 64\n"
+	  "#include <sys/types.h>\n"
+	  "int main(int argc, char *argv[]) {\n"
+	  "	return sizeof(off_t) == 8 ? 0 : 1;\n"
+	  "}\n" },
 	{ "HAVE_FOR_LOOP_DECLARATION", INSIDE_MAIN, NULL,
 	  "for (int i = 0; i < argc; i++) { return 0; };\n"
 	  "return 1;" },
