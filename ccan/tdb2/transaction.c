@@ -815,6 +815,7 @@ static enum TDB_ERROR transaction_setup_recovery(struct tdb_context *tdb,
 		if (offset >= old_map_size) {
 			continue;
 		}
+
 		if (offset + length > tdb->file->map_size) {
 			free(data);
 			return tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
@@ -829,9 +830,19 @@ static enum TDB_ERROR transaction_setup_recovery(struct tdb_context *tdb,
 		/* the recovery area contains the old data, not the
 		   new data, so we have to call the original tdb_read
 		   method to get it */
-		ecode = methods->tread(tdb, offset,
-				       p + sizeof(offset) + sizeof(length),
-				       length);
+		if (offset + length > old_map_size) {
+			/* Short read at EOF, and zero fill. */
+			unsigned int len = old_map_size - offset;
+			ecode = methods->tread(tdb, offset,
+					       p + sizeof(offset) + sizeof(length),
+					       len);
+			memset(p + sizeof(offset) + sizeof(length) + len, 0,
+			       length - len);
+		} else {
+			ecode = methods->tread(tdb, offset,
+					       p + sizeof(offset) + sizeof(length),
+					       length);
+		}
 		if (ecode != TDB_SUCCESS) {
 			free(data);
 			return ecode;
