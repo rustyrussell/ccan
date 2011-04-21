@@ -615,7 +615,7 @@ static tdb_len_t tdb_recovery_size(struct tdb_context *tdb)
 	tdb_len_t recovery_size = 0;
 	int i;
 
-	recovery_size = sizeof(tdb_len_t);
+	recovery_size = 0;
 	for (i=0;i<tdb->transaction->num_blocks;i++) {
 		if (i * PAGESIZE >= tdb->transaction->old_map_size) {
 			break;
@@ -770,7 +770,7 @@ static enum TDB_ERROR transaction_setup_recovery(struct tdb_context *tdb,
 	const struct tdb_methods *methods = tdb->transaction->io_methods;
 	struct tdb_recovery_record *rec;
 	tdb_off_t old_map_size = tdb->transaction->old_map_size;
-	uint64_t magic, tailer;
+	uint64_t magic;
 	int i;
 	enum TDB_ERROR ecode;
 
@@ -838,11 +838,6 @@ static enum TDB_ERROR transaction_setup_recovery(struct tdb_context *tdb,
 		}
 		p += sizeof(offset) + sizeof(length) + length;
 	}
-
-	/* and the tailer */
-	tailer = sizeof(*rec) + recovery_max_size;
-	memcpy(p, &tailer, sizeof(tailer));
-	tdb_convert(tdb, p, sizeof(tailer));
 
 	/* write the recovery data to the recovery area */
 	ecode = methods->twrite(tdb, recovery_offset, data,
