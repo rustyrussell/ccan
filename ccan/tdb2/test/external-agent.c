@@ -124,6 +124,10 @@ static enum agent_return do_operation(enum operation op, const char *name)
 		ret = tdb_close(tdb) == 0 ? SUCCESS : OTHER_FAILURE;
 		tdb = NULL;
 		break;
+	case SEND_SIGNAL:
+		/* We do this async */
+		ret = SUCCESS;
+		break;
 	default:
 		ret = OTHER_FAILURE;
 	}
@@ -175,6 +179,13 @@ struct agent *prepare_external_agent(void)
 		if (write(response[1], &result, sizeof(result))
 		    != sizeof(result))
 			err(1, "Writing response");
+		if (name[0] == SEND_SIGNAL) {
+			struct timeval ten_ms;
+			ten_ms.tv_sec = 0;
+			ten_ms.tv_usec = 10000;
+			select(0, NULL, NULL, NULL, &ten_ms);
+			kill(getppid(), SIGUSR1);
+		}
 	}
 	exit(0);
 }
@@ -225,6 +236,7 @@ const char *operation_name(enum operation op)
 	case TRANSACTION_START: return "TRANSACTION_START";
 	case TRANSACTION_COMMIT: return "TRANSACTION_COMMIT";
 	case NEEDS_RECOVERY: return "NEEDS_RECOVERY";
+	case SEND_SIGNAL: return "SEND_SIGNAL";
 	case CLOSE: return "CLOSE";
 	}
 	return "**INVALID**";

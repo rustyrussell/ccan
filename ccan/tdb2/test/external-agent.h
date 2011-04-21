@@ -12,6 +12,7 @@ enum operation {
 	TRANSACTION_COMMIT,
 	NEEDS_RECOVERY,
 	CHECK,
+	SEND_SIGNAL,
 	CLOSE,
 };
 
