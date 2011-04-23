@@ -30,6 +30,7 @@
  *  }
  *
  * License: LGPL (v2 or later)
+ * Author: Timothy B. Terriberry <tterribe@xiph.org>
  */
 #include <string.h>
 #include <stdio.h>
