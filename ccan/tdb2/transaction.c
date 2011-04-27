@@ -711,7 +711,7 @@ static struct tdb_recovery_record *alloc_recovery(struct tdb_context *tdb,
 	size_t i;
 	enum TDB_ERROR ecode;
 	unsigned char *p;
-	const struct tdb_methods *methods = tdb->transaction->io_methods;
+	const struct tdb_methods *old_methods = tdb->methods;
 
 	rec = malloc(sizeof(*rec) + tdb_recovery_size(tdb));
 	if (!rec) {
@@ -721,6 +721,10 @@ static struct tdb_recovery_record *alloc_recovery(struct tdb_context *tdb,
 		return TDB_ERR_PTR(TDB_ERR_OOM);
 	}
 
+	/* We temporarily revert to the old I/O methods, so we can use
+	 * tdb_access_read */
+	tdb->methods = tdb->transaction->io_methods;
+
 	/* build the recovery data into a single blob to allow us to do a single
 	   large write, which should be more efficient */
 	p = (unsigned char *)(rec + 1);
@@ -728,7 +732,7 @@ static struct tdb_recovery_record *alloc_recovery(struct tdb_context *tdb,
 		tdb_off_t offset;
 		tdb_len_t length;
 		unsigned int off;
-		unsigned char buffer[PAGESIZE];
+		const unsigned char *buffer;
 
 		if (tdb->transaction->blocks[i] == NULL) {
 			continue;
@@ -745,21 +749,20 @@ static struct tdb_recovery_record *alloc_recovery(struct tdb_context *tdb,
 		}
 
 		if (offset + length > tdb->file->map_size) {
-			free(rec);
-			tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
-				   "tdb_transaction_setup_recovery:"
-				   " transaction data over new region"
-				   " boundary");
-			return TDB_ERR_PTR(TDB_ERR_CORRUPT);
+			ecode = tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
+					   "tdb_transaction_setup_recovery:"
+					   " transaction data over new region"
+					   " boundary");
+			goto fail;
 		}
 		if (offset + length > tdb->transaction->old_map_size) {
 			/* Short read at EOF. */
 			length = tdb->transaction->old_map_size - offset;
 		}
-		ecode = methods->tread(tdb, offset, buffer, length);
-		if (ecode != TDB_SUCCESS) {
-			free(rec);
-			return TDB_ERR_PTR(ecode);
+		buffer = tdb_access_read(tdb, offset, length, false);
+		if (TDB_PTR_IS_ERR(buffer)) {
+			ecode = TDB_PTR_ERR(buffer);
+			goto fail;
 		}
 
 		/* Skip over anything the same at the start. */
@@ -784,10 +787,17 @@ static struct tdb_recovery_record *alloc_recovery(struct tdb_context *tdb,
 			off += len + samelen;
 			offset += len + samelen;
 		}
+		tdb_access_release(tdb, buffer);
 	}
 
 	*len = p - (unsigned char *)(rec + 1);
+	tdb->methods = old_methods;
 	return rec;
+
+fail:
+	free(rec);
+	tdb->methods = old_methods;
+	return TDB_ERR_PTR(ecode);
 }
 
 static tdb_off_t create_recovery_area(struct tdb_context *tdb,
