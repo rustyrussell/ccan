@@ -120,7 +120,7 @@ struct tdb_transaction {
 };
 
 /* This doesn't really need to be pagesize, but we use it for similar reasons. */
-#define PAGESIZE 4096
+#define PAGESIZE 65536
 
 /*
   read while in a transaction. We need to check first if the data is in our list
