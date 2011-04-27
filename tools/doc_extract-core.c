@@ -1,4 +1,7 @@
 /* This merely extracts, doesn't do XML or anything. */
+#include <ccan/talloc/talloc.h>
+#include <ccan/str/str.h>
+#include <ccan/str_talloc/str_talloc.h>
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,9 +12,6 @@
 #include <fcntl.h>
 #include <stdbool.h>
 #include <ctype.h>
-#include <ccan/talloc/talloc.h>
-#include <ccan/str/str.h>
-#include <ccan/str_talloc/str_talloc.h>
 #include "doc_extract.h"
 #include "tools.h"
 

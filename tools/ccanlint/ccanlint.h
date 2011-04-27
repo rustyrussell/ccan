@@ -1,5 +1,6 @@
 #ifndef CCAN_LINT_H
 #define CCAN_LINT_H
+#include "config.h"
 #include <ccan/list/list.h>
 #include <stdbool.h>
 #include "../doc_extract.h"

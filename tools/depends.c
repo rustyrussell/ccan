@@ -1,5 +1,5 @@
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
+#include <ccan/talloc/talloc.h>
 #include <ccan/grab_file/grab_file.h>
 #include <ccan/str_talloc/str_talloc.h>
 #include <ccan/read_write_all/read_write_all.h>
