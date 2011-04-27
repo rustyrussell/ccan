@@ -38,7 +38,7 @@ static enum TDB_ERROR replace_data(struct tdb_context *tdb,
 
 	/* We didn't like the existing one: remove it. */
 	if (old_off) {
-		add_stat(tdb, frees, 1);
+		tdb->stats.frees++;
 		ecode = add_free_record(tdb, old_off,
 					sizeof(struct tdb_used_record)
 					+ key.dsize + old_room);
@@ -285,7 +285,7 @@ enum TDB_ERROR tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 	}
 
 	/* Free the deleted entry. */
-	add_stat(tdb, frees, 1);
+	tdb->stats.frees++;
 	ecode = add_free_record(tdb, off,
 				sizeof(struct tdb_used_record)
 				+ rec_key_length(&rec)

@@ -203,6 +203,12 @@ enum TDB_ERROR tdb_set_attribute(struct tdb_context *tdb,
 				     : attr->base.attr == TDB_ATTRIBUTE_SEED
 				     ? "TDB_ATTRIBUTE_SEED"
 				     : "TDB_ATTRIBUTE_OPENHOOK");
+	case TDB_ATTRIBUTE_STATS:
+		return tdb->last_error
+			= tdb_logerr(tdb, TDB_ERR_EINVAL,
+				     TDB_LOG_USE_ERROR,
+				     "tdb_set_attribute:"
+				     " cannot set TDB_ATTRIBUTE_STATS");
 	case TDB_ATTRIBUTE_FLOCK:
 		tdb->lock_fn = attr->flock.lock;
 		tdb->unlock_fn = attr->flock.unlock;
@@ -252,9 +258,13 @@ enum TDB_ERROR tdb_get_attribute(struct tdb_context *tdb,
 				     TDB_LOG_USE_ERROR,
 				     "tdb_get_attribute:"
 				     " cannot get TDB_ATTRIBUTE_OPENHOOK");
-	case TDB_ATTRIBUTE_STATS:
-		/* FIXME */
-		return TDB_ERR_EINVAL;
+	case TDB_ATTRIBUTE_STATS: {
+		size_t size = attr->stats.size;
+		if (size > tdb->stats.size)
+			size = tdb->stats.size;
+		memcpy(&attr->stats, &tdb->stats, size);
+		break;
+	}
 	case TDB_ATTRIBUTE_FLOCK:
 		attr->flock.lock = tdb->lock_fn;
 		attr->flock.unlock = tdb->unlock_fn;
@@ -291,7 +301,10 @@ void tdb_unset_attribute(struct tdb_context *tdb,
 			   : "TDB_ATTRIBUTE_OPENHOOK");
 		break;
 	case TDB_ATTRIBUTE_STATS:
-		/* FIXME */
+		tdb_logerr(tdb, TDB_ERR_EINVAL,
+			   TDB_LOG_USE_ERROR,
+			   "tdb_unset_attribute:"
+			   "cannot unset TDB_ATTRIBUTE_STATS");
 		break;
 	case TDB_ATTRIBUTE_FLOCK:
 		tdb->lock_fn = tdb_fcntl_lock;
@@ -337,13 +350,15 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb->flags = tdb_flags;
 	tdb->log_fn = NULL;
 	tdb->transaction = NULL;
-	tdb->stats = NULL;
 	tdb->access = NULL;
 	tdb->last_error = TDB_SUCCESS;
 	tdb->file = NULL;
 	tdb->lock_fn = tdb_fcntl_lock;
 	tdb->unlock_fn = tdb_fcntl_unlock;
 	tdb->hash_fn = jenkins_hash;
+	memset(&tdb->stats, 0, sizeof(tdb->stats));
+	tdb->stats.base.attr = TDB_ATTRIBUTE_STATS;
+	tdb->stats.size = sizeof(tdb->stats);
 	tdb_io_init(tdb);
 
 	while (attr) {
@@ -354,12 +369,6 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 			break;
 		case TDB_ATTRIBUTE_SEED:
 			seed = &attr->seed;
-			break;
-		case TDB_ATTRIBUTE_STATS:
-			tdb->stats = &attr->stats;
-			/* They have stats we don't know about?  Tell them. */
-			if (tdb->stats->size > sizeof(attr->stats))
-				tdb->stats->size = sizeof(attr->stats);
 			break;
 		case TDB_ATTRIBUTE_OPENHOOK:
 			openhook = &attr->openhook;
@@ -406,16 +415,6 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		ecode = tdb_new_database(tdb, seed, &hdr);
 		if (ecode != TDB_SUCCESS) {
 			goto fail;
-		}
-		if (name) {
-			tdb->name = strdup(name);
-			if (!tdb->name) {
-				ecode = tdb_logerr(tdb, TDB_ERR_OOM,
-						   TDB_LOG_ERROR,
-						   "tdb_open: failed to"
-						   " allocate name");
-				goto fail;
-			}
 		}
 		tdb_convert(tdb, &hdr.hash_seed, sizeof(hdr.hash_seed));
 		tdb->hash_seed = hdr.hash_seed;
@@ -522,13 +521,6 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 				   "tdb_open:"
 				   " %s uses a different hash function",
 				   name);
-		goto fail;
-	}
-
-	tdb->name = strdup(name);
-	if (!tdb->name) {
-		ecode = tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
-				   "tdb_open: failed to allocate name");
 		goto fail;
 	}
 

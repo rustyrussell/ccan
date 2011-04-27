@@ -729,13 +729,13 @@ struct tdb_attribute_seed {
  * struct tdb_attribute_stats - tdb operational statistics
  *
  * This attribute records statistics of various low-level TDB operations.
- * This can be used to assist performance evaluation.
+ * This can be used to assist performance evaluation.  This is only
+ * useful for tdb_get_attribute().
  *
  * New fields will be added at the end, hence the "size" argument which
- * indicates how large your structure is.  If your size is larger than
- * that known about by this version of tdb, the size will be reduced to
- * the known structure size.  Thus you can detect older versions, and
- * thus know that newer stats will not be updated.
+ * indicates how large your structure is: it must be filled in before
+ * calling tdb_get_attribute(), which will overwrite it with the size
+ * tdb knows about.
  */
 struct tdb_attribute_stats {
 	struct tdb_attribute_base base; /* .attr = TDB_ATTRIBUTE_STATS */

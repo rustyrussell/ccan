@@ -682,7 +682,7 @@ static enum TDB_ERROR tdb_recovery_allocate(struct tdb_context *tdb,
 	   us an area that is being currently used (as of the start of
 	   the transaction) */
 	if (recovery_head != 0) {
-		add_stat(tdb, frees, 1);
+		tdb->stats.frees++;
 		ecode = add_free_record(tdb, recovery_head,
 					sizeof(rec) + rec.max_len);
 		if (ecode != TDB_SUCCESS) {

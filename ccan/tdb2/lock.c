@@ -104,9 +104,9 @@ static int lock(struct tdb_context *tdb,
 		tdb->file->locker = getpid();
 	}
 
-	add_stat(tdb, lock_lowlevel, 1);
+	tdb->stats.lock_lowlevel++;
 	if (!waitflag)
-		add_stat(tdb, lock_nonblock, 1);
+		tdb->stats.lock_nonblock++;
 	return tdb->lock_fn(tdb->file->fd, rw, off, len, waitflag,
 			    tdb->lock_data);
 }
@@ -359,7 +359,7 @@ static enum TDB_ERROR tdb_nest_lock(struct tdb_context *tdb,
 		return TDB_ERR_LOCK;
 	}
 
-	add_stat(tdb, locks, 1);
+	tdb->stats.locks++;
 
 	new_lck = find_nestlock(tdb, offset, NULL);
 	if (new_lck) {
@@ -567,7 +567,7 @@ enum TDB_ERROR tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
 				  " can't upgrade a write lock");
 	}
 
-	add_stat(tdb, locks, 1);
+	tdb->stats.locks++;
 again:
 	/* Lock hashes, gradually. */
 	ecode = tdb_lock_gradual(tdb, ltype, flags, TDB_HASH_LOCK_START,

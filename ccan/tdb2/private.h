@@ -358,9 +358,6 @@ struct tdb_context {
 	/* mmap read only? */
 	int mmap_flags;
 
-	/* Error code for last tdb error. */
-	enum TDB_ERROR ecode;
-
 	/* the flags passed to tdb_open, for tdb_reopen. */
 	uint32_t flags;
 
@@ -391,7 +388,8 @@ struct tdb_context {
 	/* IO methods: changes for transactions. */
 	const struct tdb_methods *methods;
 
-	struct tdb_attribute_stats *stats;
+	/* Our statistics. */
+	struct tdb_attribute_stats stats;
 
 	/* Direct access information */
 	struct tdb_access_hdr *access;
@@ -534,14 +532,6 @@ enum TDB_ERROR tdb_read_convert(struct tdb_context *tdb, tdb_off_t off,
 
 /* Bump the seqnum (caller checks for tdb->flags & TDB_SEQNUM) */
 void tdb_inc_seqnum(struct tdb_context *tdb);
-
-/* Adds a stat, if it's in range. */
-void add_stat_(struct tdb_context *tdb, uint64_t *stat, size_t val);
-#define add_stat(tdb, statname, val)					\
-	do {								\
-		if (unlikely((tdb)->stats))				\
-			add_stat_((tdb), &(tdb)->stats->statname, (val)); \
-	} while (0)
 
 /* lock.c: */
 /* Lock/unlock a range of hashes. */

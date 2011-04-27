@@ -72,7 +72,7 @@ static tdb_bool_err key_matches(struct tdb_context *tdb,
 	const char *rkey;
 
 	if (rec_key_length(rec) != key->dsize) {
-		add_stat(tdb, compare_wrong_keylen, 1);
+		tdb->stats.compare_wrong_keylen++;
 		return ret;
 	}
 
@@ -83,7 +83,7 @@ static tdb_bool_err key_matches(struct tdb_context *tdb,
 	if (memcmp(rkey, key->dptr, key->dsize) == 0)
 		ret = true;
 	else
-		add_stat(tdb, compare_wrong_keycmp, 1);
+		tdb->stats.compare_wrong_keycmp++;
 	tdb_access_release(tdb, rkey);
 	return ret;
 }
@@ -98,10 +98,10 @@ static tdb_bool_err match(struct tdb_context *tdb,
 	tdb_off_t off;
 	enum TDB_ERROR ecode;
 
-	add_stat(tdb, compares, 1);
+	tdb->stats.compares++;
 	/* Desired bucket must match. */
 	if (h->home_bucket != (val & TDB_OFF_HASH_GROUP_MASK)) {
-		add_stat(tdb, compare_wrong_bucket, 1);
+		tdb->stats.compare_wrong_bucket++;
 		return false;
 	}
 
@@ -109,7 +109,7 @@ static tdb_bool_err match(struct tdb_context *tdb,
 	if (bits_from(val, TDB_OFF_HASH_EXTRA_BIT, TDB_OFF_UPPER_STEAL_EXTRA)
 	    != bits_from(h->h, 64 - h->hash_used - TDB_OFF_UPPER_STEAL_EXTRA,
 		    TDB_OFF_UPPER_STEAL_EXTRA)) {
-		add_stat(tdb, compare_wrong_offsetbits, 1);
+		tdb->stats.compare_wrong_offsetbits++;
 		return false;
 	}
 
@@ -120,7 +120,7 @@ static tdb_bool_err match(struct tdb_context *tdb,
 	}
 
 	if ((h->h & ((1 << 11)-1)) != rec_hash(rec)) {
-		add_stat(tdb, compare_wrong_rechash, 1);
+		tdb->stats.compare_wrong_rechash++;
 		return false;
 	}
 
@@ -492,11 +492,11 @@ static enum TDB_ERROR expand_group(struct tdb_context *tdb, struct hash_info *h)
 	bucket = fullest_bucket(tdb, h->group, h->home_bucket);
 
 	if (h->hash_used == 64) {
-		add_stat(tdb, alloc_chain, 1);
+		tdb->stats.alloc_chain++;
 		subsize = sizeof(struct tdb_chain);
 		magic = TDB_CHAIN_MAGIC;
 	} else {
-		add_stat(tdb, alloc_subhash, 1);
+		tdb->stats.alloc_subhash++;
 		subsize = (sizeof(tdb_off_t) << TDB_SUBLEVEL_HASH_BITS);
 		magic = TDB_HTABLE_MAGIC;
 	}

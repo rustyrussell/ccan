@@ -43,55 +43,67 @@ static int count_record(struct tdb_context *tdb,
 	return 0;
 }
 
-static void dump_and_clear_stats(struct tdb_attribute_stats *stats)
+static void dump_and_clear_stats(struct tdb_context **tdb,
+				 int flags,
+				 union tdb_attribute *attr)
 {
+	union tdb_attribute stats;
+	enum TDB_ERROR ecode;
+
+	stats.base.attr = TDB_ATTRIBUTE_STATS;
+	stats.stats.size = sizeof(stats.stats);
+	ecode = tdb_get_attribute(*tdb, &stats);
+	if (ecode != TDB_SUCCESS)
+		errx(1, "Getting stats: %s", tdb_errorstr(ecode));
+
 	printf("allocs = %llu\n",
-	       (unsigned long long)stats->allocs);
+	       (unsigned long long)stats.stats.allocs);
 	printf("  alloc_subhash = %llu\n",
-	       (unsigned long long)stats->alloc_subhash);
+	       (unsigned long long)stats.stats.alloc_subhash);
 	printf("  alloc_chain = %llu\n",
-	       (unsigned long long)stats->alloc_chain);
+	       (unsigned long long)stats.stats.alloc_chain);
 	printf("  alloc_bucket_exact = %llu\n",
-	       (unsigned long long)stats->alloc_bucket_exact);
+	       (unsigned long long)stats.stats.alloc_bucket_exact);
 	printf("  alloc_bucket_max = %llu\n",
-	       (unsigned long long)stats->alloc_bucket_max);
+	       (unsigned long long)stats.stats.alloc_bucket_max);
 	printf("  alloc_leftover = %llu\n",
-	       (unsigned long long)stats->alloc_leftover);
+	       (unsigned long long)stats.stats.alloc_leftover);
 	printf("  alloc_coalesce_tried = %llu\n",
-	       (unsigned long long)stats->alloc_coalesce_tried);
+	       (unsigned long long)stats.stats.alloc_coalesce_tried);
 	printf("    alloc_coalesce_lockfail = %llu\n",
-	       (unsigned long long)stats->alloc_coalesce_lockfail);
+	       (unsigned long long)stats.stats.alloc_coalesce_lockfail);
 	printf("    alloc_coalesce_race = %llu\n",
-	       (unsigned long long)stats->alloc_coalesce_race);
+	       (unsigned long long)stats.stats.alloc_coalesce_race);
 	printf("    alloc_coalesce_succeeded = %llu\n",
-	       (unsigned long long)stats->alloc_coalesce_succeeded);
+	       (unsigned long long)stats.stats.alloc_coalesce_succeeded);
 	printf("       alloc_coalesce_num_merged = %llu\n",
-	       (unsigned long long)stats->alloc_coalesce_num_merged);
+	       (unsigned long long)stats.stats.alloc_coalesce_num_merged);
 	printf("compares = %llu\n",
-	       (unsigned long long)stats->compares);
+	       (unsigned long long)stats.stats.compares);
 	printf("  compare_wrong_bucket = %llu\n",
-	       (unsigned long long)stats->compare_wrong_bucket);
+	       (unsigned long long)stats.stats.compare_wrong_bucket);
 	printf("  compare_wrong_offsetbits = %llu\n",
-	       (unsigned long long)stats->compare_wrong_offsetbits);
+	       (unsigned long long)stats.stats.compare_wrong_offsetbits);
 	printf("  compare_wrong_keylen = %llu\n",
-	       (unsigned long long)stats->compare_wrong_keylen);
+	       (unsigned long long)stats.stats.compare_wrong_keylen);
 	printf("  compare_wrong_rechash = %llu\n",
-	       (unsigned long long)stats->compare_wrong_rechash);
+	       (unsigned long long)stats.stats.compare_wrong_rechash);
 	printf("  compare_wrong_keycmp = %llu\n",
-	       (unsigned long long)stats->compare_wrong_keycmp);
+	       (unsigned long long)stats.stats.compare_wrong_keycmp);
 	printf("expands = %llu\n",
-	       (unsigned long long)stats->expands);
+	       (unsigned long long)stats.stats.expands);
 	printf("frees = %llu\n",
-	       (unsigned long long)stats->frees);
+	       (unsigned long long)stats.stats.frees);
 	printf("locks = %llu\n",
-	       (unsigned long long)stats->locks);
+	       (unsigned long long)stats.stats.locks);
 	printf("   lock_lowlevel = %llu\n",
-	       (unsigned long long)stats->lock_lowlevel);
+	       (unsigned long long)stats.stats.lock_lowlevel);
 	printf("   lock_nonblock = %llu\n",
-	       (unsigned long long)stats->lock_nonblock);
+	       (unsigned long long)stats.stats.lock_nonblock);
 
 	/* Now clear. */
-	memset(&stats->allocs, 0, (char *)(stats+1) - (char *)&stats->allocs);
+	tdb_close(*tdb);
+	*tdb = tdb_open("/tmp/speed.tdb", flags, O_RDWR, 0, attr);
 }
 
 static void tdb_log(struct tdb_context *tdb, enum tdb_log_level level,
@@ -109,7 +121,8 @@ int main(int argc, char *argv[])
 	TDB_DATA key, data;
 	struct tdb_context *tdb;
 	struct timeval start, stop;
-	union tdb_attribute seed, stats, log;
+	union tdb_attribute seed, log;
+	bool do_stats = false;
 	enum TDB_ERROR ecode;
 
 	/* Try to keep benchmarks even. */
@@ -120,11 +133,6 @@ int main(int argc, char *argv[])
 	log.base.attr = TDB_ATTRIBUTE_LOG;
 	log.base.next = &seed;
 	log.log.fn = tdb_log;
-
-	memset(&stats, 0, sizeof(stats));
-	stats.base.attr = TDB_ATTRIBUTE_STATS;
-	stats.base.next = NULL;
-	stats.stats.size = sizeof(stats);
 
 	if (argv[1] && strcmp(argv[1], "--internal") == 0) {
 		flags = TDB_INTERNAL;
@@ -147,7 +155,7 @@ int main(int argc, char *argv[])
 		argv++;
 	}
 	if (argv[1] && strcmp(argv[1], "--stats") == 0) {
-		seed.base.next = &stats;
+		do_stats = true;
 		argc--;
 		argv++;
 	}
@@ -196,8 +204,8 @@ int main(int argc, char *argv[])
 		printf("%s\n", sumstr);
 		free(sumstr);
 	}
-	if (seed.base.next)
-		dump_and_clear_stats(&stats.stats);
+	if (do_stats)
+		dump_and_clear_stats(&tdb, flags, &log);
 
 	if (++stage == stopat)
 		exit(0);
@@ -228,8 +236,8 @@ int main(int argc, char *argv[])
 		printf("%s\n", sumstr);
 		free(sumstr);
 	}
-	if (seed.base.next)
-		dump_and_clear_stats(&stats.stats);
+	if (do_stats)
+		dump_and_clear_stats(&tdb, flags, &log);
 	if (++stage == stopat)
 		exit(0);
 
@@ -258,8 +266,8 @@ int main(int argc, char *argv[])
 		printf("%s\n", sumstr);
 		free(sumstr);
 	}
-	if (seed.base.next)
-		dump_and_clear_stats(&stats.stats);
+	if (do_stats)
+		dump_and_clear_stats(&tdb, flags, &log);
 	if (++stage == stopat)
 		exit(0);
 
@@ -286,8 +294,8 @@ int main(int argc, char *argv[])
 		printf("%s\n", sumstr);
 		free(sumstr);
 	}
-	if (seed.base.next)
-		dump_and_clear_stats(&stats.stats);
+	if (do_stats)
+		dump_and_clear_stats(&tdb, flags, &log);
 	if (++stage == stopat)
 		exit(0);
 
@@ -315,8 +323,8 @@ int main(int argc, char *argv[])
 		printf("%s\n", sumstr);
 		free(sumstr);
 	}
-	if (seed.base.next)
-		dump_and_clear_stats(&stats.stats);
+	if (do_stats)
+		dump_and_clear_stats(&tdb, flags, &log);
 	if (++stage == stopat)
 		exit(0);
 
@@ -344,8 +352,8 @@ int main(int argc, char *argv[])
 		printf("%s\n", sumstr);
 		free(sumstr);
 	}
-	if (seed.base.next)
-		dump_and_clear_stats(&stats.stats);
+	if (do_stats)
+		dump_and_clear_stats(&tdb, flags, &log);
 	if (++stage == stopat)
 		exit(0);
 
@@ -403,8 +411,8 @@ int main(int argc, char *argv[])
 		printf("%s\n", sumstr);
 		free(sumstr);
 	}
-	if (seed.base.next)
-		dump_and_clear_stats(&stats.stats);
+	if (do_stats)
+		dump_and_clear_stats(&tdb, flags, &log);
 	if (++stage == stopat)
 		exit(0);
 

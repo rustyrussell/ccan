@@ -592,12 +592,6 @@ void tdb_inc_seqnum(struct tdb_context *tdb)
 	}
 }
 
-void add_stat_(struct tdb_context *tdb, uint64_t *s, size_t val)
-{
-	if ((uintptr_t)s < (uintptr_t)tdb->stats + tdb->stats->size)
-		*s += val;
-}
-
 static const struct tdb_methods io_methods = {
 	tdb_read,
 	tdb_write,
