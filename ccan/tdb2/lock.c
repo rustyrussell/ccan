@@ -378,12 +378,14 @@ static enum TDB_ERROR tdb_nest_lock(struct tdb_context *tdb,
 		return TDB_SUCCESS;
 	}
 
+#if 0
 	if (tdb->file->num_lockrecs
 	    && offset >= TDB_HASH_LOCK_START
 	    && offset < TDB_HASH_LOCK_START + TDB_HASH_LOCK_RANGE) {
 		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
 				  "tdb_nest_lock: already have a hash lock?");
 	}
+#endif
 
 	new_lck = (struct tdb_lock *)realloc(
 		tdb->file->lockrecs,
