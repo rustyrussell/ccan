@@ -43,11 +43,11 @@ int main(int argc, char *argv[])
 		/* This makes a sparse file */
 		ok1(ftruncate(tdb->file->fd, 0xFFFFFFF0) == 0);
 		ok1(add_free_record(tdb, old_size, 0xFFFFFFF0 - old_size,
-				    TDB_LOCK_WAIT) == TDB_SUCCESS);
+				    TDB_LOCK_WAIT, false) == TDB_SUCCESS);
 
 		/* Now add a little record past the 4G barrier. */
 		ok1(tdb_expand_file(tdb, 100) == TDB_SUCCESS);
-		ok1(add_free_record(tdb, 0xFFFFFFF0, 100, TDB_LOCK_WAIT)
+		ok1(add_free_record(tdb, 0xFFFFFFF0, 100, TDB_LOCK_WAIT, false)
 		    == TDB_SUCCESS);
 
 		ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);

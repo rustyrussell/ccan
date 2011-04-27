@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
 	/* Lock and fail to coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
 	test = layout->elem[1].base.off;
-	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, len, &test, &test)
+	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, len, &test)
 	    == 0);
 	tdb_unlock_free_bucket(tdb, b_off);
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == len);
@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
 	/* Lock and fail to coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
 	test = layout->elem[1].base.off;
-	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024, &test, &test)
+	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024, &test)
 	    == 0);
 	tdb_unlock_free_bucket(tdb, b_off);
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == 1024);
@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
 	/* Lock and coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
 	test = layout->elem[2].base.off;
-	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024, &test, &test)
+	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024, &test)
 	    == 1024 + sizeof(struct tdb_used_record) + 2048);
 	/* Should tell us it's erased this one... */
 	ok1(test == TDB_ERR_NOEXIST);
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
 	/* Lock and coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
 	test = layout->elem[2].base.off;
-	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024, &test, &test)
+	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024, &test)
 	    == 1024 + sizeof(struct tdb_used_record) + 512);
 	ok1(tdb->file->allrecord_lock.count == 0 && tdb->file->num_lockrecs == 0);
 	ok1(free_record_length(tdb, layout->elem[1].base.off)
@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
 	/* Lock and coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
 	test = layout->elem[2].base.off;
-	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024, &test, &test)
+	ok1(coalesce(tdb, layout->elem[1].base.off, b_off, 1024, &test)
 	    == 1024 + sizeof(struct tdb_used_record) + 512
 	    + sizeof(struct tdb_used_record) + 256);
 	ok1(tdb->file->allrecord_lock.count == 0

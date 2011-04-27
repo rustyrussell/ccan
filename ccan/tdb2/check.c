@@ -533,10 +533,12 @@ static enum TDB_ERROR check_free_table(struct tdb_context *tdb,
 
 		h = bucket_off(ftable_off, i);
 		for (off = tdb_read_off(tdb, h); off; off = f.next) {
-			if (!first)
-				first = off;
 			if (TDB_OFF_IS_ERR(off)) {
 				return off;
+			}
+			if (!first) {
+				off &= TDB_OFF_MASK;
+				first = off;
 			}
 			ecode = tdb_read_convert(tdb, off, &f, sizeof(f));
 			if (ecode != TDB_SUCCESS) {

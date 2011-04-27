@@ -150,7 +150,7 @@ static void add_to_freetable(struct tdb_context *tdb,
 	tdb->ftable_off = freetable->base.off;
 	tdb->ftable = ftable;
 	add_free_record(tdb, eoff, sizeof(struct tdb_used_record) + elen,
-			TDB_LOCK_WAIT);
+			TDB_LOCK_WAIT, false);
 }
 
 static tdb_off_t hbucket_off(tdb_off_t group_start, unsigned ingroup)
