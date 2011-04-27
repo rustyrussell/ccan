@@ -4,7 +4,7 @@
 
 #CCAN_CFLAGS=-g -O3 -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations
 CCAN_CFLAGS=-g -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Wpointer-arith -Wwrite-strings -DCCAN_STR_DEBUG=1
-CFLAGS = $(CCAN_CFLAGS) -I. $(DEPGEN) -Werror
+CFLAGS = $(CCAN_CFLAGS) -I. $(DEPGEN)
 
 
 default: libccan.a
