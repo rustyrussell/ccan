@@ -222,7 +222,7 @@ static inline unsigned frec_ftable(const struct tdb_free_record *f)
 
 struct tdb_recovery_record {
 	uint64_t magic;
-	/* Length of record. */
+	/* Length of record (add this header to get total length). */
 	uint64_t max_len;
 	/* Length used. */
 	uint64_t len;
