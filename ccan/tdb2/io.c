@@ -130,6 +130,7 @@ static enum TDB_ERROR tdb_oob(struct tdb_context *tdb, tdb_off_t len,
 /* Endian conversion: we only ever deal with 8 byte quantities */
 void *tdb_convert(const struct tdb_context *tdb, void *buf, tdb_len_t size)
 {
+	assert(size % 8 == 0);
 	if (unlikely((tdb->flags & TDB_CONVERT)) && buf) {
 		uint64_t i, *p = (uint64_t *)buf;
 		for (i = 0; i < size / 8; i++)

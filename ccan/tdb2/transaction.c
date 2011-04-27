@@ -757,6 +757,44 @@ static void set_recovery_header(struct tdb_recovery_record *rec,
 	rec->eof = oldsize;
 }
 
+static unsigned int same(const unsigned char *new,
+			 const unsigned char *old,
+			 unsigned int length)
+{
+	unsigned int i;
+
+	for (i = 0; i < length; i++) {
+		if (new[i] != old[i])
+			break;
+	}
+	return i;
+}
+
+static unsigned int different(const unsigned char *new,
+			      const unsigned char *old,
+			      unsigned int length,
+			      unsigned int min_same,
+			      unsigned int *samelen)
+{
+	unsigned int i;
+
+	*samelen = 0;
+	for (i = 0; i < length; i++) {
+		if (new[i] == old[i]) {
+			(*samelen)++;
+		} else {
+			if (*samelen >= min_same) {
+				return i - *samelen;
+			}
+			*samelen = 0;
+		}
+	}
+
+	if (*samelen < min_same)
+		*samelen = 0;
+	return length - *samelen;
+}
+
 /*
   setup the recovery data that will be used on a crash during commit
 */
@@ -791,9 +829,6 @@ static enum TDB_ERROR transaction_setup_recovery(struct tdb_context *tdb,
 	}
 
 	rec = (struct tdb_recovery_record *)data;
-	set_recovery_header(rec, TDB_RECOVERY_INVALID_MAGIC,
-			    recovery_size, recovery_max_size, old_map_size);
-	tdb_convert(tdb, rec, sizeof(*rec));
 
 	/* build the recovery data into a single blob to allow us to do a single
 	   large write, which should be more efficient */
@@ -801,6 +836,8 @@ static enum TDB_ERROR transaction_setup_recovery(struct tdb_context *tdb,
 	for (i=0;i<tdb->transaction->num_blocks;i++) {
 		tdb_off_t offset;
 		tdb_len_t length;
+		unsigned int off;
+		unsigned char buffer[PAGESIZE];
 
 		if (tdb->transaction->blocks[i] == NULL) {
 			continue;
@@ -823,50 +860,60 @@ static enum TDB_ERROR transaction_setup_recovery(struct tdb_context *tdb,
 					  " transaction data over new region"
 					  " boundary");
 		}
-		memcpy(p, &offset, sizeof(offset));
-		memcpy(p + sizeof(offset), &length, sizeof(length));
-		tdb_convert(tdb, p, sizeof(offset) + sizeof(length));
-
-		/* the recovery area contains the old data, not the
-		   new data, so we have to call the original tdb_read
-		   method to get it */
 		if (offset + length > old_map_size) {
-			/* Short read at EOF, and zero fill. */
-			unsigned int len = old_map_size - offset;
-			ecode = methods->tread(tdb, offset,
-					       p + sizeof(offset) + sizeof(length),
-					       len);
-			memset(p + sizeof(offset) + sizeof(length) + len, 0,
-			       length - len);
-		} else {
-			ecode = methods->tread(tdb, offset,
-					       p + sizeof(offset) + sizeof(length),
-					       length);
+			/* Short read at EOF. */
+			length = old_map_size - offset;
 		}
+		ecode = methods->tread(tdb, offset, buffer, length);
 		if (ecode != TDB_SUCCESS) {
 			free(data);
 			return ecode;
 		}
-		p += sizeof(offset) + sizeof(length) + length;
+
+		/* Skip over anything the same at the start. */
+		off = same(tdb->transaction->blocks[i], buffer, length);
+		offset += off;
+
+		while (off < length) {
+			tdb_len_t len;
+			unsigned int samelen;
+
+			len = different(tdb->transaction->blocks[i] + off,
+					buffer + off, length - off,
+					sizeof(offset) + sizeof(len) + 1,
+					&samelen);
+
+			memcpy(p, &offset, sizeof(offset));
+			memcpy(p + sizeof(offset), &len, sizeof(len));
+			tdb_convert(tdb, p, sizeof(offset) + sizeof(len));
+			p += sizeof(offset) + sizeof(len);
+			memcpy(p, buffer + off, len);
+			p += len;
+			off += len + samelen;
+			offset += len + samelen;
+		}
 	}
 
+	/* Now we know size, set up rec header. */
+	set_recovery_header(rec, TDB_RECOVERY_INVALID_MAGIC,
+			    p - data - sizeof(*rec),
+			    recovery_max_size, old_map_size);
+	tdb_convert(tdb, rec, sizeof(*rec));
+
 	/* write the recovery data to the recovery area */
-	ecode = methods->twrite(tdb, recovery_offset, data,
-				sizeof(*rec) + recovery_size);
+	ecode = methods->twrite(tdb, recovery_offset, data, p - data);
 	if (ecode != TDB_SUCCESS) {
 		free(data);
 		return tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
 				  "tdb_transaction_setup_recovery:"
 				  " failed to write recovery data");
 	}
-	transaction_write_existing(tdb, recovery_offset, data,
-				   sizeof(*rec) + recovery_size);
+	transaction_write_existing(tdb, recovery_offset, data, p - data);
 
 	/* as we don't have ordered writes, we have to sync the recovery
 	   data before we update the magic to indicate that the recovery
 	   data is present */
-	ecode = transaction_sync(tdb, recovery_offset,
-				 sizeof(*rec) + recovery_size);
+	ecode = transaction_sync(tdb, recovery_offset, p - data);
 	if (ecode != TDB_SUCCESS) {
 		free(data);
 		return ecode;
