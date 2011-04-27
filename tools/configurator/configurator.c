@@ -116,6 +116,7 @@ static struct test tests[] = {
 	  "#include <unistd.h>\n"
 	  "static int func(void) { return getpagesize(); }" },
 	{ "HAVE_ISBLANK", DEFINES_FUNC, NULL,
+	  "#define _GNU_SOURCE\n"
 	  "#include <ctype.h>\n"
 	  "static int func(void) { return isblank(' '); }" },
 	{ "HAVE_LITTLE_ENDIAN", INSIDE_MAIN|EXECUTE, NULL,

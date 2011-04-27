@@ -15,8 +15,7 @@ int main(int argc, char *argv[])
 
 #ifdef FAIL
 	/* Fake fail on unsigned char platforms. */
-	c = 255;
-	BUILD_ASSERT(c < 0);
+	BUILD_ASSERT((char)255 < 0);
 #endif
 
 	return isalnum(c);

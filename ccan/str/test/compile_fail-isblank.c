@@ -4,7 +4,7 @@
 int main(int argc, char *argv[])
 {
 #ifdef FAIL
-#if !HAVE_BUILTIN_TYPES_COMPATIBLE_P || !HAVE_TYPEOF
+#if !HAVE_BUILTIN_TYPES_COMPATIBLE_P || !HAVE_TYPEOF || !HAVE_ISBLANK
 #error We need typeof to check isblank.
 #endif
 	char
@@ -15,9 +15,12 @@ int main(int argc, char *argv[])
 
 #ifdef FAIL
 	/* Fake fail on unsigned char platforms. */
-	c = 255;
-	BUILD_ASSERT(c < 0);
+	BUILD_ASSERT((char)255 < 0);
 #endif
 
+#if HAVE_ISBLANK
 	return isblank(c);
+#else
+	return c;
+#endif
 }
