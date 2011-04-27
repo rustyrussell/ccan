@@ -465,7 +465,8 @@ tdb_off_t alloc(struct tdb_context *tdb, size_t keylen, size_t datalen,
 
 /* Put this record in a free list. */
 enum TDB_ERROR add_free_record(struct tdb_context *tdb,
-			       tdb_off_t off, tdb_len_t len_with_header);
+			       tdb_off_t off, tdb_len_t len_with_header,
+			       enum tdb_lock_flags waitflag);
 
 /* Set up header for a used/ftable/htable/chain record. */
 enum TDB_ERROR set_header(struct tdb_context *tdb,

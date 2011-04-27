@@ -266,7 +266,8 @@ static enum TDB_ERROR enqueue_in_free(struct tdb_context *tdb,
 
 /* List need not be locked. */
 enum TDB_ERROR add_free_record(struct tdb_context *tdb,
-			       tdb_off_t off, tdb_len_t len_with_header)
+			       tdb_off_t off, tdb_len_t len_with_header,
+			       enum tdb_lock_flags waitflag)
 {
 	tdb_off_t b_off;
 	tdb_len_t len;
@@ -277,7 +278,7 @@ enum TDB_ERROR add_free_record(struct tdb_context *tdb,
 	len = len_with_header - sizeof(struct tdb_used_record);
 
 	b_off = bucket_off(tdb->ftable_off, size_to_bucket(len));
-	ecode = tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT);
+	ecode = tdb_lock_free_bucket(tdb, b_off, waitflag);
 	if (ecode != TDB_SUCCESS) {
 		return ecode;
 	}
@@ -333,10 +334,13 @@ static tdb_off_t ftable_offset(struct tdb_context *tdb, unsigned int ftable)
 	return off;
 }
 
-/* Note: we unlock the current bucket if we coalesce (> 0) or fail (-ve). */
+/* Note: we unlock the current bucket if fail (-ve), or coalesce (-ve) and
+ * need to blatt either of the *protect records (which is set to an error). */
 static tdb_len_t coalesce(struct tdb_context *tdb,
 			  tdb_off_t off, tdb_off_t b_off,
-			  tdb_len_t data_len)
+			  tdb_len_t data_len,
+			  tdb_off_t *protect1,
+			  tdb_off_t *protect2)
 {
 	tdb_off_t end;
 	struct tdb_free_record rec;
@@ -400,6 +404,10 @@ static tdb_len_t coalesce(struct tdb_context *tdb,
 			break;
 		}
 
+		/* Did we just mess up a record you were hoping to use? */
+		if (end == *protect1 || end == *protect2)
+			*protect1 = TDB_ERR_NOEXIST;
+
 		ecode = remove_from_list(tdb, nb_off, end, &rec);
 		check_list(tdb, nb_off);
 		if (ecode != TDB_SUCCESS) {
@@ -415,6 +423,10 @@ static tdb_len_t coalesce(struct tdb_context *tdb,
 	/* Didn't find any adjacent free? */
 	if (end == off + sizeof(struct tdb_used_record) + data_len)
 		return 0;
+
+	/* Before we expand, check this isn't one you wanted protected? */
+	if (off == *protect1 || off == *protect2)
+		*protect1 = TDB_ERR_EXISTS;
 
 	/* OK, expand initial record */
 	ecode = tdb_read_convert(tdb, off, &rec, sizeof(rec));
@@ -435,24 +447,37 @@ static tdb_len_t coalesce(struct tdb_context *tdb,
 		goto err;
 	}
 
-	/* We have to drop this to avoid deadlocks, so make sure record
-	 * doesn't get coalesced by someone else! */
-	rec.ftable_and_len = (TDB_FTABLE_NONE << (64 - TDB_OFF_UPPER_STEAL))
-		| (end - off - sizeof(struct tdb_used_record));
-	ecode = tdb_write_off(tdb, off + offsetof(struct tdb_free_record,
-						  ftable_and_len),
-			      rec.ftable_and_len);
+	/* Try locking violation first... */
+	ecode = add_free_record(tdb, off, end - off, TDB_LOCK_NOWAIT);
 	if (ecode != TDB_SUCCESS) {
-		goto err;
+		/* Need to drop lock.  Can't rely on anything stable. */
+		*protect1 = TDB_ERR_CORRUPT;
+
+		/* We have to drop this to avoid deadlocks, so make sure record
+		 * doesn't get coalesced by someone else! */
+		rec.ftable_and_len = (TDB_FTABLE_NONE
+				      << (64 - TDB_OFF_UPPER_STEAL))
+			| (end - off - sizeof(struct tdb_used_record));
+		ecode = tdb_write_off(tdb,
+				      off + offsetof(struct tdb_free_record,
+						     ftable_and_len),
+				      rec.ftable_and_len);
+		if (ecode != TDB_SUCCESS) {
+			goto err;
+		}
+
+		tdb->stats.alloc_coalesce_succeeded++;
+		tdb_unlock_free_bucket(tdb, b_off);
+
+		ecode = add_free_record(tdb, off, end - off, TDB_LOCK_WAIT);
+		if (ecode != TDB_SUCCESS) {
+			return ecode;
+		}
+	} else if (TDB_OFF_IS_ERR(*protect1)) {
+		/* For simplicity, we always drop lock if they can't continue */
+		tdb_unlock_free_bucket(tdb, b_off);
 	}
 
-	tdb->stats.alloc_coalesce_succeeded++;
-	tdb_unlock_free_bucket(tdb, b_off);
-
-	ecode = add_free_record(tdb, off, end - off);
-	if (ecode != TDB_SUCCESS) {
-		return ecode;
-	}
 	/* Return usable length. */
 	return end - off - sizeof(struct tdb_used_record);
 
@@ -474,6 +499,7 @@ static tdb_off_t lock_and_alloc(struct tdb_context *tdb,
 	tdb_off_t off, b_off,best_off;
 	struct tdb_free_record best = { 0 };
 	double multiplier;
+	bool coalesce_after_best = false; /* Damn GCC warning! */
 	size_t size = adjust_size(keylen, datalen);
 	enum TDB_ERROR ecode;
 
@@ -529,6 +555,7 @@ again:
 		if (frec_len(r) >= size && frec_len(r) < frec_len(&best)) {
 			best_off = off;
 			best = *r;
+			coalesce_after_best = false;
 		}
 
 		if (frec_len(&best) <= size * multiplier && best_off) {
@@ -543,15 +570,17 @@ again:
 		tdb_access_release(tdb, r);
 
 		/* Since we're going slow anyway, try coalescing here. */
-		coal = coalesce(tdb, off, b_off, len);
+		coal = coalesce(tdb, off, b_off, len, &best_off, &next);
 		if (TDB_OFF_IS_ERR(coal)) {
 			/* This has already unlocked on error. */
 			return coal;
 		}
-		if (coal > 0) {
+		if (TDB_OFF_IS_ERR(best_off)) {
 			/* This has unlocked list, restart. */
 			goto again;
 		}
+		if (coal > 0)
+			coalesce_after_best = true;
 		off = next;
 	}
 
@@ -559,6 +588,14 @@ again:
 	if (best_off) {
 		struct tdb_used_record rec;
 		size_t leftover;
+
+		/* If we coalesced, we might have change prev/next ptrs. */
+		if (coalesce_after_best) {
+			ecode = tdb_read_convert(tdb, best_off, &best,
+						 sizeof(best));
+			if (ecode != TDB_SUCCESS)
+				goto unlock_err;
+		}
 
 		/* We're happy with this size: take it. */
 		ecode = remove_from_list(tdb, b_off, best_off, &best);
@@ -600,7 +637,7 @@ again:
 			ecode = add_free_record(tdb,
 						best_off + sizeof(rec)
 						+ frec_len(&best) - leftover,
-						leftover);
+						leftover, TDB_LOCK_WAIT);
 			if (ecode != TDB_SUCCESS) {
 				best_off = ecode;
 			}
@@ -774,7 +811,7 @@ static enum TDB_ERROR tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 	tdb_unlock_expand(tdb, F_WRLCK);
 
 	tdb->stats.expands++;
-	return add_free_record(tdb, old_size, wanted);
+	return add_free_record(tdb, old_size, wanted, TDB_LOCK_WAIT);
 }
 
 /* This won't fail: it will expand the database if it has to. */

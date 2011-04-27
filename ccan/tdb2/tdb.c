@@ -41,7 +41,8 @@ static enum TDB_ERROR replace_data(struct tdb_context *tdb,
 		tdb->stats.frees++;
 		ecode = add_free_record(tdb, old_off,
 					sizeof(struct tdb_used_record)
-					+ key.dsize + old_room);
+					+ key.dsize + old_room,
+					TDB_LOCK_WAIT);
 		if (ecode == TDB_SUCCESS)
 			ecode = replace_in_hash(tdb, h, new_off);
 	} else {
@@ -290,7 +291,8 @@ enum TDB_ERROR tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 				sizeof(struct tdb_used_record)
 				+ rec_key_length(&rec)
 				+ rec_data_length(&rec)
-				+ rec_extra_padding(&rec));
+				+ rec_extra_padding(&rec),
+				TDB_LOCK_WAIT);
 
 	if (tdb->flags & TDB_SEQNUM)
 		tdb_inc_seqnum(tdb);

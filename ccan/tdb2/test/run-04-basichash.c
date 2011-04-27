@@ -176,7 +176,8 @@ int main(int argc, char *argv[])
 				    sizeof(struct tdb_used_record)
 				    + rec_key_length(&rec)
 				    + rec_data_length(&rec)
-				    + rec_extra_padding(&rec)) == 0);
+				    + rec_extra_padding(&rec),
+				    TDB_LOCK_NOWAIT) == 0);
 		ok1(tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range,
 				      F_WRLCK) == 0);
 		ok1(tdb_check(tdb, NULL, NULL) == 0);

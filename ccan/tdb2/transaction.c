@@ -688,7 +688,8 @@ static enum TDB_ERROR tdb_recovery_allocate(struct tdb_context *tdb,
 	if (recovery_head != 0) {
 		tdb->stats.frees++;
 		ecode = add_free_record(tdb, recovery_head,
-					sizeof(rec) + rec.max_len);
+					sizeof(rec) + rec.max_len,
+					TDB_LOCK_WAIT);
 		if (ecode != TDB_SUCCESS) {
 			return tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
 					  "tdb_recovery_allocate:"
