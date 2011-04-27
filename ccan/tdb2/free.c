@@ -713,12 +713,9 @@ enum TDB_ERROR set_header(struct tdb_context *tdb,
 /* Expand the database. */
 static enum TDB_ERROR tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 {
-	uint64_t old_size;
+	uint64_t old_size, rec_size, map_size;
 	tdb_len_t wanted;
 	enum TDB_ERROR ecode;
-
-	/* We need room for the record header too. */
-	wanted = sizeof(struct tdb_used_record) + size;
 
 	/* Need to hold a hash lock to expand DB: transactions rely on it. */
 	if (!(tdb->flags & TDB_NOLOCK)
@@ -726,14 +723,6 @@ static enum TDB_ERROR tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
 				  "tdb_expand: must hold lock during expand");
 	}
-
-	/* always make room for at least 100 more records, and at
-           least 25% more space. */
-	if (size * TDB_EXTENSION_FACTOR > tdb->file->map_size / 4)
-		wanted = size * TDB_EXTENSION_FACTOR;
-	else
-		wanted = tdb->file->map_size / 4;
-	wanted = adjust_size(0, wanted);
 
 	/* Only one person can expand file at a time. */
 	ecode = tdb_lock_expand(tdb, F_WRLCK);
@@ -748,6 +737,32 @@ static enum TDB_ERROR tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 		tdb_unlock_expand(tdb, F_WRLCK);
 		return TDB_SUCCESS;
 	}
+
+	/* limit size in order to avoid using up huge amounts of memory for
+	 * in memory tdbs if an oddball huge record creeps in */
+	if (size > 100 * 1024) {
+		rec_size = size * 2;
+	} else {
+		rec_size = size * 100;
+	}
+
+	/* always make room for at least rec_size more records, and at
+	   least 25% more space. if the DB is smaller than 100MiB,
+	   otherwise grow it by 10% only. */
+	if (old_size > 100 * 1024 * 1024) {
+		map_size = old_size / 10;
+	} else {
+		map_size = old_size / 4;
+	}
+
+	if (map_size > rec_size) {
+		wanted = map_size;
+	} else {
+		wanted = rec_size;
+	}
+
+	/* We need room for the record header too. */
+	wanted = adjust_size(0, sizeof(struct tdb_used_record) + wanted);
 
 	ecode = tdb->methods->expand_file(tdb, wanted);
 	if (ecode != TDB_SUCCESS) {
