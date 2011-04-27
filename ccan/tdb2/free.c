@@ -431,7 +431,6 @@ static tdb_len_t coalesce(struct tdb_context *tdb,
 			goto err;
 		}
 
-		tdb->stats.alloc_coalesce_succeeded++;
 		tdb_unlock_free_bucket(tdb, b_off);
 
 		ecode = add_free_record(tdb, off, end - off, TDB_LOCK_WAIT,
@@ -443,6 +442,7 @@ static tdb_len_t coalesce(struct tdb_context *tdb,
 		/* For simplicity, we always drop lock if they can't continue */
 		tdb_unlock_free_bucket(tdb, b_off);
 	}
+	tdb->stats.alloc_coalesce_succeeded++;
 
 	/* Return usable length. */
 	return end - off - sizeof(struct tdb_used_record);
@@ -455,7 +455,9 @@ err:
 
 /* List is locked: we unlock it. */
 static enum TDB_ERROR coalesce_list(struct tdb_context *tdb,
-				    tdb_off_t ftable_off, tdb_off_t b_off)
+				    tdb_off_t ftable_off,
+				    tdb_off_t b_off,
+				    unsigned int limit)
 {
 	enum TDB_ERROR ecode;
 	tdb_off_t off;
@@ -465,10 +467,10 @@ static enum TDB_ERROR coalesce_list(struct tdb_context *tdb,
 		ecode = off;
 		goto unlock_err;
 	}
-	/* A little bit of paranoia */
+	/* A little bit of paranoia: counter should be 0. */
 	off &= TDB_OFF_MASK;
 
-	while (off) {
+	while (off && limit--) {
 		struct tdb_free_record rec;
 		tdb_len_t coal;
 		tdb_off_t next;
@@ -487,9 +489,85 @@ static enum TDB_ERROR coalesce_list(struct tdb_context *tdb,
 			/* Coalescing had to unlock, so stop. */
 			return TDB_SUCCESS;
 		}
+		/* Keep going if we're doing well... */
+		limit += size_to_bucket(coal / 16 + TDB_MIN_DATA_LEN);
 		off = next;
 	}
 
+	/* Now, move those elements to the tail of the list so we get something
+	 * else next time. */
+	if (off) {
+		struct tdb_free_record oldhrec, newhrec, oldtrec, newtrec;
+		tdb_off_t oldhoff, oldtoff, newtoff;
+
+		/* The record we were up to is the new head. */
+		ecode = tdb_read_convert(tdb, off, &newhrec, sizeof(newhrec));
+		if (ecode != TDB_SUCCESS)
+			goto unlock_err;
+
+		/* Get the new tail. */
+		newtoff = frec_prev(&newhrec);
+		ecode = tdb_read_convert(tdb, newtoff, &newtrec,
+					 sizeof(newtrec));
+		if (ecode != TDB_SUCCESS)
+			goto unlock_err;
+
+		/* Get the old head. */
+		oldhoff = tdb_read_off(tdb, b_off);
+		if (TDB_OFF_IS_ERR(oldhoff)) {
+			ecode = oldhoff;
+			goto unlock_err;
+		}
+
+		/* This could happen if they all coalesced away. */
+		if (oldhoff == off)
+			goto out;
+
+		ecode = tdb_read_convert(tdb, oldhoff, &oldhrec,
+					 sizeof(oldhrec));
+		if (ecode != TDB_SUCCESS)
+			goto unlock_err;
+
+		/* Get the old tail. */
+		oldtoff = frec_prev(&oldhrec);
+		ecode = tdb_read_convert(tdb, oldtoff, &oldtrec,
+					 sizeof(oldtrec));
+		if (ecode != TDB_SUCCESS)
+			goto unlock_err;
+
+		/* Old tail's next points to old head. */
+		oldtrec.next = oldhoff;
+
+		/* Old head's prev points to old tail. */
+		oldhrec.magic_and_prev
+			= (TDB_FREE_MAGIC << (64 - TDB_OFF_UPPER_STEAL))
+			| oldtoff;
+
+		/* New tail's next is 0. */
+		newtrec.next = 0;
+
+		/* Write out the modified versions. */
+		ecode = tdb_write_convert(tdb, oldtoff, &oldtrec,
+					  sizeof(oldtrec));
+		if (ecode != TDB_SUCCESS)
+			goto unlock_err;
+
+		ecode = tdb_write_convert(tdb, oldhoff, &oldhrec,
+					  sizeof(oldhrec));
+		if (ecode != TDB_SUCCESS)
+			goto unlock_err;
+
+		ecode = tdb_write_convert(tdb, newtoff, &newtrec,
+					  sizeof(newtrec));
+		if (ecode != TDB_SUCCESS)
+			goto unlock_err;
+		
+		/* And finally link in new head. */
+		ecode = tdb_write_off(tdb, b_off, off);
+		if (ecode != TDB_SUCCESS)
+			goto unlock_err;
+	}
+out:
 	tdb_unlock_free_bucket(tdb, b_off);
 	return TDB_SUCCESS;
 
@@ -523,7 +601,7 @@ enum TDB_ERROR add_free_record(struct tdb_context *tdb,
 
 	/* Coalescing unlocks free list. */
 	if (!ecode && coalesce)
-		ecode = coalesce_list(tdb, tdb->ftable_off, b_off);
+		ecode = coalesce_list(tdb, tdb->ftable_off, b_off, 2);
 	else
 		tdb_unlock_free_bucket(tdb, b_off);
 	return ecode;
