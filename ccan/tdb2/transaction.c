@@ -701,10 +701,11 @@ static enum TDB_ERROR tdb_recovery_allocate(struct tdb_context *tdb,
 	/* the tdb_free() call might have increased the recovery size */
 	*recovery_size = tdb_recovery_size(tdb);
 
-	/* round up to a multiple of page size */
+	/* round up to a multiple of page size. Overallocate, since each
+	 * such allocation forces us to expand the file. */
 	*recovery_max_size
-		= (((sizeof(rec) + *recovery_size) + PAGESIZE-1)
-		   & ~(PAGESIZE-1))
+		= (((sizeof(rec) + *recovery_size + *recovery_size / 2)
+		    + PAGESIZE-1) & ~(PAGESIZE-1))
 		- sizeof(rec);
 	*recovery_offset = tdb->file->map_size;
 	recovery_head = *recovery_offset;
