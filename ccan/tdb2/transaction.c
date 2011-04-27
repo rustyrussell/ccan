@@ -438,7 +438,7 @@ static enum TDB_ERROR transaction_sync(struct tdb_context *tdb,
 	}
 #ifdef MS_SYNC
 	if (tdb->file->map_ptr) {
-		tdb_off_t moffset = offset & ~(PAGESIZE-1);
+		tdb_off_t moffset = offset & ~(getpagesize()-1);
 		if (msync(moffset + (char *)tdb->file->map_ptr,
 			  length + (offset - moffset), MS_SYNC) != 0) {
 			return tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
