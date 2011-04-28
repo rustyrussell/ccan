@@ -2,6 +2,7 @@
 #define CCAN_COMPILER_H
 #include "config.h"
 
+#ifndef COLD
 #if HAVE_ATTRIBUTE_COLD
 /**
  * COLD - a function is unlikely to be called.
@@ -19,7 +20,9 @@
 #else
 #define COLD
 #endif
+#endif
 
+#ifndef NORETURN
 #if HAVE_ATTRIBUTE_NORETURN
 /**
  * NORETURN - a function does not return
@@ -37,7 +40,9 @@
 #else
 #define NORETURN
 #endif
+#endif
 
+#ifndef PRINTF_FMT
 #if HAVE_ATTRIBUTE_PRINTF
 /**
  * PRINTF_FMT - a function takes printf-style arguments
@@ -54,7 +59,9 @@
 #else
 #define PRINTF_FMT(nfmt, narg)
 #endif
+#endif
 
+#ifndef IDEMPOTENT
 #if HAVE_ATTRIBUTE_CONST
 /**
  * IDEMPOTENT - a function's return depends only on its argument
@@ -67,8 +74,10 @@
 #else
 #define IDEMPOTENT
 #endif
+#endif
 
 #if HAVE_ATTRIBUTE_UNUSED
+#ifndef UNNEEDED
 /**
  * UNNEEDED - a variable/function may not be needed
  *
@@ -86,7 +95,9 @@
  * }
  */
 #define UNNEEDED __attribute__((unused))
+#endif
 
+#ifndef NEEDED
 #if HAVE_ATTRIBUTE_USED
 /**
  * NEEDED - a variable/function is needed
@@ -107,7 +118,9 @@
 /* Before used, unused functions and vars were always emitted. */
 #define NEEDED __attribute__((unused))
 #endif
+#endif
 
+#ifndef UNUSED
 /**
  * UNUSED - a parameter is unused
  *
@@ -123,12 +136,20 @@
  *	}
  */
 #define UNUSED __attribute__((unused))
+#endif
 #else
+#ifndef UNNEEDED
 #define UNNEEDED
+#endif
+#ifndef NEEDED
 #define NEEDED
+#endif
+#ifndef UNUSED
 #define UNUSED
 #endif
+#endif
 
+#ifndef IS_COMPILE_CONSTANT
 #if HAVE_BUILTIN_CONSTANT_P
 /**
  * IS_COMPILE_CONSTANT - does the compiler know the value of this expression?
@@ -170,7 +191,9 @@
 /* If we don't know, assume it's not. */
 #define IS_COMPILE_CONSTANT(expr) 0
 #endif
+#endif
 
+#ifndef WARN_UNUSED_RESULT
 #if HAVE_WARN_UNUSED_RESULT
 /**
  * WARN_UNUSED_RESULT - warn if a function return value is unused.
@@ -188,5 +211,6 @@
 #define WARN_UNUSED_RESULT __attribute__((warn_unused_result))
 #else
 #define WARN_UNUSED_RESULT
+#endif
 #endif
 #endif /* CCAN_COMPILER_H */
