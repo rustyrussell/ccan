@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
 {
 #ifdef FAIL
 	struct other
-#if !HAVE_TYPEOF || !HAVE_CAST_TO_UNION
+#if !HAVE_TYPEOF||!HAVE_BUILTIN_CHOOSE_EXPR||!HAVE_BUILTIN_TYPES_COMPATIBLE_P
 #error "Unfortunately we don't fail if typesafe_cb_cast is a noop."
 #endif
 #else
