@@ -37,7 +37,7 @@ static enum TDB_ERROR owner_conflict(struct tdb_context *tdb, const char *call)
 			  call);
 }
 
-/* If we fork, we no longer really own locks: preserves errno */
+/* If we fork, we no longer really own locks. */
 static bool check_lock_pid(struct tdb_context *tdb,
 			   const char *call, bool log)
 {
@@ -224,16 +224,14 @@ static enum TDB_ERROR tdb_brlock(struct tdb_context *tdb,
 static enum TDB_ERROR tdb_brunlock(struct tdb_context *tdb,
 				   int rw_type, tdb_off_t offset, size_t len)
 {
-	int ret;
-
 	if (tdb->flags & TDB_NOLOCK) {
 		return TDB_SUCCESS;
 	}
 
-	ret = unlock(tdb, rw_type, offset, len);
+	if (!check_lock_pid(tdb, "tdb_brunlock", true))
+		return TDB_ERR_LOCK;
 
-	/* If we fail, *then* we verify that we owned the lock.  If not, ok. */
-	if (ret == -1 && check_lock_pid(tdb, "tdb_brunlock", false)) {
+	if (unlock(tdb, rw_type, offset, len) == -1) {
 		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
 				  "tdb_brunlock failed (fd=%d) at offset %zu"
 				  " rw_type=%d len=%zu: %s",
@@ -850,6 +848,10 @@ void tdb_unlockall_read(struct tdb_context *tdb)
 void tdb_lock_cleanup(struct tdb_context *tdb)
 {
 	unsigned int i;
+
+	/* We don't want to warn: they're allowed to close tdb after fork. */
+	if (!check_lock_pid(tdb, "tdb_close", false))
+		return;
 
 	while (tdb->file->allrecord_lock.count
 	       && tdb->file->allrecord_lock.owner == tdb) {

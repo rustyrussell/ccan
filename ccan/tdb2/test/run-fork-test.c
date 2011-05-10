@@ -85,10 +85,10 @@ int main(int argc, char *argv[])
 				return 2;
 
 			tdb_chainunlock(tdb, key);
-			if (tap_log_messages != 2)
+			if (tap_log_messages != 3)
 				return 3;
 			tdb_close(tdb);
-			if (tap_log_messages != 2)
+			if (tap_log_messages != 3)
 				return 4;
 			return 0;
 		}
