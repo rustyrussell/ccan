@@ -370,8 +370,10 @@ static tdb_len_t coalesce(struct tdb_context *tdb,
 		}
 
 		/* Did we just mess up a record you were hoping to use? */
-		if (end == *protect)
+		if (end == *protect) {
+			tdb->stats.alloc_coalesce_iterate_clash++;
 			*protect = TDB_ERR_NOEXIST;
+		}
 
 		ecode = remove_from_list(tdb, nb_off, end, &rec);
 		check_list(tdb, nb_off);
@@ -390,8 +392,10 @@ static tdb_len_t coalesce(struct tdb_context *tdb,
 		return 0;
 
 	/* Before we expand, check this isn't one you wanted protected? */
-	if (off == *protect)
+	if (off == *protect) {
 		*protect = TDB_ERR_EXISTS;
+		tdb->stats.alloc_coalesce_iterate_clash++;
+	}
 
 	/* OK, expand initial record */
 	ecode = tdb_read_convert(tdb, off, &rec, sizeof(rec));
@@ -416,6 +420,7 @@ static tdb_len_t coalesce(struct tdb_context *tdb,
 	ecode = add_free_record(tdb, off, end - off, TDB_LOCK_NOWAIT, false);
 	if (ecode != TDB_SUCCESS) {
 		/* Need to drop lock.  Can't rely on anything stable. */
+		tdb->stats.alloc_coalesce_lockfail++;
 		*protect = TDB_ERR_CORRUPT;
 
 		/* We have to drop this to avoid deadlocks, so make sure record

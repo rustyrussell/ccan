@@ -387,15 +387,17 @@ static void *transaction_direct(struct tdb_context *tdb, tdb_off_t off,
 
 	/* Can only do direct if in single block and we've already copied. */
 	if (write_mode) {
-		if (blk != end_blk)
+		tdb->stats.transaction_write_direct++;
+		if (blk != end_blk
+		    || blk >= tdb->transaction->num_blocks
+		    || tdb->transaction->blocks[blk] == NULL) {
+			tdb->stats.transaction_write_direct_fail++;
 			return NULL;
-		if (blk >= tdb->transaction->num_blocks)
-			return NULL;
-		if (tdb->transaction->blocks[blk] == NULL)
-			return NULL;
+		}
 		return tdb->transaction->blocks[blk] + off % PAGESIZE;
 	}
 
+	tdb->stats.transaction_read_direct++;
 	/* Single which we have copied? */
 	if (blk == end_blk
 	    && blk < tdb->transaction->num_blocks
@@ -406,8 +408,10 @@ static void *transaction_direct(struct tdb_context *tdb, tdb_off_t off,
 	while (blk <= end_blk) {
 		if (blk >= tdb->transaction->num_blocks)
 			break;
-		if (tdb->transaction->blocks[blk])
+		if (tdb->transaction->blocks[blk]) {
+			tdb->stats.transaction_read_direct_fail++;
 			return NULL;
+		}
 		blk++;
 	}
 	return tdb->transaction->io_methods->direct(tdb, off, len, false);
@@ -518,6 +522,7 @@ enum TDB_ERROR tdb_transaction_start(struct tdb_context *tdb)
 {
 	enum TDB_ERROR ecode;
 
+	tdb->stats.transactions++;
 	/* some sanity checks */
 	if (tdb->read_only || (tdb->flags & TDB_INTERNAL)) {
 		return tdb->last_error = tdb_logerr(tdb, TDB_ERR_EINVAL,
@@ -538,6 +543,7 @@ enum TDB_ERROR tdb_transaction_start(struct tdb_context *tdb)
 					     " already inside transaction");
 		}
 		tdb->transaction->nesting++;
+		tdb->stats.transaction_nest++;
 		return 0;
 	}
 
@@ -603,6 +609,7 @@ fail_allrecord_lock:
 */
 void tdb_transaction_cancel(struct tdb_context *tdb)
 {
+	tdb->stats.transaction_cancel++;
 	_tdb_transaction_cancel(tdb);
 }
 
@@ -824,6 +831,7 @@ static tdb_off_t create_recovery_area(struct tdb_context *tdb,
 	addition = (tdb->file->map_size - tdb->transaction->old_map_size) +
 		sizeof(*rec) + rec->max_len;
 	tdb->file->map_size = tdb->transaction->old_map_size;
+	tdb->stats.transaction_expand_file++;
 	ecode = methods->expand_file(tdb, addition);
 	if (ecode != TDB_SUCCESS) {
 		return tdb_logerr(tdb, ecode, TDB_LOG_ERROR,

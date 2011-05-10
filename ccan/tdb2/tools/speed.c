@@ -70,13 +70,15 @@ static void dump_and_clear_stats(struct tdb_context **tdb,
 	       (unsigned long long)stats.stats.alloc_leftover);
 	printf("  alloc_coalesce_tried = %llu\n",
 	       (unsigned long long)stats.stats.alloc_coalesce_tried);
+	printf("    alloc_coalesce_iterate_clash = %llu\n",
+	       (unsigned long long)stats.stats.alloc_coalesce_iterate_clash);
 	printf("    alloc_coalesce_lockfail = %llu\n",
 	       (unsigned long long)stats.stats.alloc_coalesce_lockfail);
 	printf("    alloc_coalesce_race = %llu\n",
 	       (unsigned long long)stats.stats.alloc_coalesce_race);
 	printf("    alloc_coalesce_succeeded = %llu\n",
 	       (unsigned long long)stats.stats.alloc_coalesce_succeeded);
-	printf("       alloc_coalesce_num_merged = %llu\n",
+	printf("      alloc_coalesce_num_merged = %llu\n",
 	       (unsigned long long)stats.stats.alloc_coalesce_num_merged);
 	printf("compares = %llu\n",
 	       (unsigned long long)stats.stats.compares);
@@ -90,16 +92,34 @@ static void dump_and_clear_stats(struct tdb_context **tdb,
 	       (unsigned long long)stats.stats.compare_wrong_rechash);
 	printf("  compare_wrong_keycmp = %llu\n",
 	       (unsigned long long)stats.stats.compare_wrong_keycmp);
+	printf("transactions = %llu\n",
+	       (unsigned long long)stats.stats.transactions);
+	printf("  transaction_cancel = %llu\n",
+	       (unsigned long long)stats.stats.transaction_cancel);
+	printf("  transaction_nest = %llu\n",
+	       (unsigned long long)stats.stats.transaction_nest);
+	printf("  transaction_expand_file = %llu\n",
+	       (unsigned long long)stats.stats.transaction_expand_file);
+	printf("  transaction_read_direct = %llu\n",
+	       (unsigned long long)stats.stats.transaction_read_direct);
+	printf("    transaction_read_direct_fail = %llu\n",
+	       (unsigned long long)stats.stats.transaction_read_direct_fail);
+	printf("  transaction_write_direct = %llu\n",
+	       (unsigned long long)stats.stats.transaction_write_direct);
+	printf("    transaction_write_direct_fail = %llu\n",
+	       (unsigned long long)stats.stats.transaction_write_direct_fail);
 	printf("expands = %llu\n",
 	       (unsigned long long)stats.stats.expands);
 	printf("frees = %llu\n",
 	       (unsigned long long)stats.stats.frees);
 	printf("locks = %llu\n",
 	       (unsigned long long)stats.stats.locks);
-	printf("   lock_lowlevel = %llu\n",
+	printf("  lock_lowlevel = %llu\n",
 	       (unsigned long long)stats.stats.lock_lowlevel);
-	printf("   lock_nonblock = %llu\n",
+	printf("  lock_nonblock = %llu\n",
 	       (unsigned long long)stats.stats.lock_nonblock);
+	printf("    lock_nonblock_fail = %llu\n",
+	       (unsigned long long)stats.stats.lock_nonblock_fail);
 
 	/* Now clear. */
 	tdb_close(*tdb);

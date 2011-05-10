@@ -99,16 +99,21 @@ int tdb_fcntl_unlock(int fd, int rw, off_t off, off_t len, void *unused)
 static int lock(struct tdb_context *tdb,
 		      int rw, off_t off, off_t len, bool waitflag)
 {
+	int ret;
 	if (tdb->file->allrecord_lock.count == 0
 	    && tdb->file->num_lockrecs == 0) {
 		tdb->file->locker = getpid();
 	}
 
 	tdb->stats.lock_lowlevel++;
-	if (!waitflag)
+	ret = tdb->lock_fn(tdb->file->fd, rw, off, len, waitflag,
+			   tdb->lock_data);
+	if (!waitflag) {
 		tdb->stats.lock_nonblock++;
-	return tdb->lock_fn(tdb->file->fd, rw, off, len, waitflag,
-			    tdb->lock_data);
+		if (ret != 0)
+			tdb->stats.lock_nonblock_fail++;
+	}
+	return ret;
 }
 
 static int unlock(struct tdb_context *tdb, int rw, off_t off, off_t len)

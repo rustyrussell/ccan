@@ -757,21 +757,31 @@ struct tdb_attribute_stats {
 	uint64_t   alloc_bucket_max;
 	uint64_t   alloc_leftover;
 	uint64_t   alloc_coalesce_tried;
+	uint64_t     alloc_coalesce_iterate_clash;
 	uint64_t     alloc_coalesce_lockfail;
 	uint64_t     alloc_coalesce_race;
 	uint64_t     alloc_coalesce_succeeded;
-	uint64_t        alloc_coalesce_num_merged;
+	uint64_t       alloc_coalesce_num_merged;
 	uint64_t compares;
 	uint64_t   compare_wrong_bucket;
 	uint64_t   compare_wrong_offsetbits;
 	uint64_t   compare_wrong_keylen;
 	uint64_t   compare_wrong_rechash;
 	uint64_t   compare_wrong_keycmp;
+	uint64_t transactions;
+	uint64_t   transaction_cancel;
+	uint64_t   transaction_nest;
+	uint64_t   transaction_expand_file;
+	uint64_t   transaction_read_direct;
+	uint64_t      transaction_read_direct_fail;
+	uint64_t   transaction_write_direct;
+	uint64_t      transaction_write_direct_fail;
 	uint64_t expands;
 	uint64_t frees;
 	uint64_t locks;
-	uint64_t    lock_lowlevel;
-	uint64_t    lock_nonblock;
+	uint64_t   lock_lowlevel;
+	uint64_t   lock_nonblock;
+	uint64_t     lock_nonblock_fail;
 };
 
 /**
