@@ -98,6 +98,7 @@ static void tdb_log(struct tdb_context *tdb, enum tdb_log_level level,
 		    const char *message, void *data)
 {
 	fputs(message, stderr);
+	putc('\n', stderr);
 }
 
 int main(int argc, char *argv[])
@@ -172,11 +173,10 @@ int main(int argc, char *argv[])
 		argc--;
 	}
 
-	if (transaction && (ecode = tdb_transaction_start(tdb)))
-		errx(1, "starting transaction: %s", tdb_errorstr(ecode));
-
 	/* Add 1000 records. */
 	printf("Adding %u records: ", num); fflush(stdout);
+	if (transaction && (ecode = tdb_transaction_start(tdb)))
+		errx(1, "starting transaction: %s", tdb_errorstr(ecode));
 	gettimeofday(&start, NULL);
 	for (i = 0; i < num; i++)
 		if ((ecode = tdb_store(tdb, key, data, TDB_INSERT)) != 0)
@@ -188,6 +188,8 @@ int main(int argc, char *argv[])
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
 
+	if (tdb_check(tdb, NULL, NULL))
+		errx(1, "tdb_check failed!");
 	if (summary) {
 		char *sumstr = NULL;
 		tdb_summary(tdb, TDB_SUMMARY_HISTOGRAMS, &sumstr);
@@ -196,14 +198,14 @@ int main(int argc, char *argv[])
 	}
 	if (seed.base.next)
 		dump_and_clear_stats(&stats.stats);
+
 	if (++stage == stopat)
 		exit(0);
 
-	if (transaction && (ecode = tdb_transaction_start(tdb)))
-		errx(1, "starting transaction: %s", tdb_errorstr(ecode));
-
 	/* Finding 1000 records. */
 	printf("Finding %u records: ", num); fflush(stdout);
+	if (transaction && (ecode = tdb_transaction_start(tdb)))
+		errx(1, "starting transaction: %s", tdb_errorstr(ecode));
 	gettimeofday(&start, NULL);
 	for (i = 0; i < num; i++) {
 		struct tdb_data dbuf;
@@ -218,6 +220,8 @@ int main(int argc, char *argv[])
 		errx(1, "committing transaction: %s", tdb_errorstr(ecode));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
+	if (tdb_check(tdb, NULL, NULL))
+		errx(1, "tdb_check failed!");
 	if (summary) {
 		char *sumstr = NULL;
 		tdb_summary(tdb, TDB_SUMMARY_HISTOGRAMS, &sumstr);
@@ -229,11 +233,10 @@ int main(int argc, char *argv[])
 	if (++stage == stopat)
 		exit(0);
 
-	if (transaction && (ecode = tdb_transaction_start(tdb)))
-		errx(1, "starting transaction: %s", tdb_errorstr(ecode));
-
 	/* Missing 1000 records. */
 	printf("Missing %u records: ", num); fflush(stdout);
+	if (transaction && (ecode = tdb_transaction_start(tdb)))
+		errx(1, "starting transaction: %s", tdb_errorstr(ecode));
 	gettimeofday(&start, NULL);
 	for (i = num; i < num*2; i++) {
 		struct tdb_data dbuf;
@@ -247,6 +250,8 @@ int main(int argc, char *argv[])
 		errx(1, "committing transaction: %s", tdb_errorstr(ecode));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
+	if (tdb_check(tdb, NULL, NULL))
+		errx(1, "tdb_check failed!");
 	if (summary) {
 		char *sumstr = NULL;
 		tdb_summary(tdb, TDB_SUMMARY_HISTOGRAMS, &sumstr);
@@ -258,11 +263,10 @@ int main(int argc, char *argv[])
 	if (++stage == stopat)
 		exit(0);
 
-	if (transaction && (ecode = tdb_transaction_start(tdb)))
-		errx(1, "starting transaction: %s", tdb_errorstr(ecode));
-
 	/* Traverse 1000 records. */
 	printf("Traversing %u records: ", num); fflush(stdout);
+	if (transaction && (ecode = tdb_transaction_start(tdb)))
+		errx(1, "starting transaction: %s", tdb_errorstr(ecode));
 	i = 0;
 	gettimeofday(&start, NULL);
 	if (tdb_traverse(tdb, count_record, &i) != num)
@@ -274,6 +278,8 @@ int main(int argc, char *argv[])
 		errx(1, "committing transaction: %s", tdb_errorstr(ecode));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
+	if (tdb_check(tdb, NULL, NULL))
+		errx(1, "tdb_check failed!");
 	if (summary) {
 		char *sumstr = NULL;
 		tdb_summary(tdb, TDB_SUMMARY_HISTOGRAMS, &sumstr);
@@ -285,11 +291,10 @@ int main(int argc, char *argv[])
 	if (++stage == stopat)
 		exit(0);
 
-	if (transaction && (ecode = tdb_transaction_start(tdb)))
-		errx(1, "starting transaction: %s", tdb_errorstr(ecode));
-
 	/* Delete 1000 records (not in order). */
 	printf("Deleting %u records: ", num); fflush(stdout);
+	if (transaction && (ecode = tdb_transaction_start(tdb)))
+		errx(1, "starting transaction: %s", tdb_errorstr(ecode));
 	gettimeofday(&start, NULL);
 	for (j = 0; j < num; j++) {
 		i = (j + 100003) % num;
@@ -302,6 +307,8 @@ int main(int argc, char *argv[])
 		errx(1, "committing transaction: %s", tdb_errorstr(ecode));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
+	if (tdb_check(tdb, NULL, NULL))
+		errx(1, "tdb_check failed!");
 	if (summary) {
 		char *sumstr = NULL;
 		tdb_summary(tdb, TDB_SUMMARY_HISTOGRAMS, &sumstr);
@@ -313,11 +320,10 @@ int main(int argc, char *argv[])
 	if (++stage == stopat)
 		exit(0);
 
-	if (transaction && (ecode = tdb_transaction_start(tdb)))
-		errx(1, "starting transaction: %s", tdb_errorstr(ecode));
-
 	/* Re-add 1000 records (not in order). */
 	printf("Re-adding %u records: ", num); fflush(stdout);
+	if (transaction && (ecode = tdb_transaction_start(tdb)))
+		errx(1, "starting transaction: %s", tdb_errorstr(ecode));
 	gettimeofday(&start, NULL);
 	for (j = 0; j < num; j++) {
 		i = (j + 100003) % num;
@@ -330,6 +336,8 @@ int main(int argc, char *argv[])
 		errx(1, "committing transaction: %s", tdb_errorstr(ecode));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
+	if (tdb_check(tdb, NULL, NULL))
+		errx(1, "tdb_check failed!");
 	if (summary) {
 		char *sumstr = NULL;
 		tdb_summary(tdb, TDB_SUMMARY_HISTOGRAMS, &sumstr);
@@ -341,9 +349,9 @@ int main(int argc, char *argv[])
 	if (++stage == stopat)
 		exit(0);
 
+	/* Append 1000 records. */
 	if (transaction && (ecode = tdb_transaction_start(tdb)))
 		errx(1, "starting transaction: %s", tdb_errorstr(ecode));
-	/* Append 1000 records. */
 	printf("Appending %u records: ", num); fflush(stdout);
 	gettimeofday(&start, NULL);
 	for (i = 0; i < num; i++)
@@ -355,6 +363,8 @@ int main(int argc, char *argv[])
 		errx(1, "committing transaction: %s", tdb_errorstr(ecode));
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
+	if (tdb_check(tdb, NULL, NULL))
+		errx(1, "tdb_check failed!");
 	if (summary) {
 		char *sumstr = NULL;
 		tdb_summary(tdb, TDB_SUMMARY_HISTOGRAMS, &sumstr);
@@ -364,10 +374,9 @@ int main(int argc, char *argv[])
 	if (++stage == stopat)
 		exit(0);
 
+	/* Churn 1000 records: not in order! */
 	if (transaction && (ecode = tdb_transaction_start(tdb)))
 		errx(1, "starting transaction: %s", tdb_errorstr(ecode));
-
-	/* Churn 1000 records: not in order! */
 	printf("Churning %u records: ", num); fflush(stdout);
 	gettimeofday(&start, NULL);
 	for (j = 0; j < num; j++) {
@@ -386,6 +395,8 @@ int main(int argc, char *argv[])
 	printf(" %zu ns (%zu bytes)\n",
 	       normalize(&start, &stop, num), file_size());
 
+	if (tdb_check(tdb, NULL, NULL))
+		errx(1, "tdb_check failed!");
 	if (summary) {
 		char *sumstr = NULL;
 		tdb_summary(tdb, TDB_SUMMARY_HISTOGRAMS, &sumstr);
