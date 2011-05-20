@@ -1053,6 +1053,11 @@ void failtest_init(int argc, char *argv[])
 	gettimeofday(&start, NULL);
 }
 
+bool failtest_has_failed(void)
+{
+	return control_fd != -1;
+}
+
 void failtest_exit(int status)
 {
 	if (failtest_exit_check) {

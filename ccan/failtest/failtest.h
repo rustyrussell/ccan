@@ -197,6 +197,16 @@ extern bool (*failtest_exit_check)(struct failtest_call *history,
 				   unsigned num);
 
 /**
+ * failtest_has_failed - determine if a failure has occurred.
+ *
+ * Sometimes you want to exit immediately if you've experienced a failure.
+ * This is useful when you have four separate tests in your test suite,
+ * and you don't want to do the next one if you've had a failure in a
+ * previous one.
+ */
+extern bool failtest_has_failed(void);
+
+/**
  * failtest_timeout_ms - how long to wait before killing child.
  *
  * Default is 20,000 (20 seconds).
