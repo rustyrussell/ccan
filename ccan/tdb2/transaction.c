@@ -509,7 +509,7 @@ static void _tdb_transaction_cancel(struct tdb_context *tdb)
 	tdb_transaction_unlock(tdb, F_WRLCK);
 
 	if (tdb_has_open_lock(tdb))
-		tdb_unlock_open(tdb);
+		tdb_unlock_open(tdb, F_WRLCK);
 
 	SAFE_FREE(tdb->transaction);
 }
@@ -1005,7 +1005,7 @@ static enum TDB_ERROR _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 
 	/* get the open lock - this prevents new users attaching to the database
 	   during the commit */
-	ecode = tdb_lock_open(tdb, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK);
+	ecode = tdb_lock_open(tdb, F_WRLCK, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK);
 	if (ecode != TDB_SUCCESS) {
 		return ecode;
 	}

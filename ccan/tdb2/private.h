@@ -570,8 +570,8 @@ enum TDB_ERROR tdb_allrecord_upgrade(struct tdb_context *tdb);
 
 /* Serialize db open. */
 enum TDB_ERROR tdb_lock_open(struct tdb_context *tdb,
-			     enum tdb_lock_flags flags);
-void tdb_unlock_open(struct tdb_context *tdb);
+			     int ltype, enum tdb_lock_flags flags);
+void tdb_unlock_open(struct tdb_context *tdb, int ltype);
 bool tdb_has_open_lock(struct tdb_context *tdb);
 
 /* Serialize db expand. */

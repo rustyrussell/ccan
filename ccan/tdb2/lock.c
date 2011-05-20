@@ -328,13 +328,13 @@ enum TDB_ERROR tdb_lock_and_recover(struct tdb_context *tdb)
 		return ecode;
 	}
 
-	ecode = tdb_lock_open(tdb, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK);
+	ecode = tdb_lock_open(tdb, F_WRLCK, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK);
 	if (ecode != TDB_SUCCESS) {
 		tdb_allrecord_unlock(tdb, F_WRLCK);
 		return ecode;
 	}
 	ecode = tdb_transaction_recover(tdb);
-	tdb_unlock_open(tdb);
+	tdb_unlock_open(tdb, F_WRLCK);
 	tdb_allrecord_unlock(tdb, F_WRLCK);
 
 	return ecode;
@@ -615,14 +615,15 @@ again:
 	goto again;
 }
 
-enum TDB_ERROR tdb_lock_open(struct tdb_context *tdb, enum tdb_lock_flags flags)
+enum TDB_ERROR tdb_lock_open(struct tdb_context *tdb,
+			     int ltype, enum tdb_lock_flags flags)
 {
-	return tdb_nest_lock(tdb, TDB_OPEN_LOCK, F_WRLCK, flags);
+	return tdb_nest_lock(tdb, TDB_OPEN_LOCK, ltype, flags);
 }
 
-void tdb_unlock_open(struct tdb_context *tdb)
+void tdb_unlock_open(struct tdb_context *tdb, int ltype)
 {
-	tdb_nest_unlock(tdb, TDB_OPEN_LOCK, F_WRLCK);
+	tdb_nest_unlock(tdb, TDB_OPEN_LOCK, ltype);
 }
 
 bool tdb_has_open_lock(struct tdb_context *tdb)

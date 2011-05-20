@@ -333,6 +333,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	struct tdb_attribute_openhook *openhook = NULL;
 	tdb_bool_err berr;
 	enum TDB_ERROR ecode;
+	int openlock;
 
 	tdb = malloc(sizeof(*tdb) + (name ? strlen(name) + 1 : 0));
 	if (!tdb) {
@@ -399,9 +400,11 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	if ((open_flags & O_ACCMODE) == O_RDONLY) {
 		tdb->read_only = true;
 		tdb->mmap_flags = PROT_READ;
+		openlock = F_RDLCK;
 	} else {
 		tdb->read_only = false;
 		tdb->mmap_flags = PROT_READ | PROT_WRITE;
+		openlock = F_WRLCK;
 	}
 
 	/* internal databases don't need any of the rest. */
@@ -446,12 +449,15 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 			tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 				   "tdb_open: could not stat open %s: %s",
 				   name, strerror(errno));
+			close(fd);
 			goto fail_errno;
 		}
 
 		ecode = tdb_new_file(tdb);
-		if (ecode != TDB_SUCCESS)
+		if (ecode != TDB_SUCCESS) {
+			close(fd);
 			goto fail;
+		}
 
 		tdb->file->next = files;
 		tdb->file->fd = fd;
@@ -462,7 +468,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
  	}
 
 	/* ensure there is only one process initialising at once */
-	ecode = tdb_lock_open(tdb, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK);
+	ecode = tdb_lock_open(tdb, openlock, TDB_LOCK_WAIT|TDB_LOCK_NOCHECK);
 	if (ecode != TDB_SUCCESS) {
 		saved_errno = errno;
 		goto fail_errno;
@@ -534,7 +540,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 			goto fail;
 	}
 
-	tdb_unlock_open(tdb);
+	tdb_unlock_open(tdb, openlock);
 
 	/* This make sure we have current map_size and mmap. */
 	tdb->methods->oob(tdb, tdb->file->map_size + 1, true);
