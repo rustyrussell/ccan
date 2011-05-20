@@ -22,4 +22,5 @@ ssize_t failtest_pwrite(int fd, const void *buf, size_t count, off_t offset,
 			const char *file, unsigned line);
 int failtest_close(int fd, const char *file, unsigned line);
 int failtest_fcntl(int fd, const char *file, unsigned line, int cmd, ...);
+pid_t failtest_getpid(const char *file, unsigned line);
 #endif /* CCAN_FAILTEST_PROTO_H */

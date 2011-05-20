@@ -58,6 +58,10 @@
 #undef fcntl
 #define fcntl(fd, ...) failtest_fcntl((fd), __FILE__, __LINE__, __VA_ARGS__)
 
+/* Replacement of getpid (since failtest will fork). */
+#undef getpid
+#define getpid() failtest_getpid(__FILE__, __LINE__)
+
 #include <ccan/failtest/failtest_proto.h>
 
 #endif /* CCAN_FAILTEST_OVERRIDE_H */

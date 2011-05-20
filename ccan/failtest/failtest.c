@@ -58,6 +58,8 @@ static pid_t lock_owner;
 static struct lock_info *locks = NULL;
 static unsigned int lock_num = 0;
 
+static pid_t orig_pid;
+
 static const char info_to_arg[] = "mceoxprwf";
 
 /* Dummy call used for failtest_undo wrappers. */
@@ -1024,10 +1026,19 @@ int failtest_fcntl(int fd, const char *file, unsigned line, int cmd, ...)
 	return p->u.fcntl.ret;
 }
 
+pid_t failtest_getpid(const char *file, unsigned line)
+{
+	/* You must call failtest_init first! */
+	assert(orig_pid);
+	return orig_pid;
+}
+	
 void failtest_init(int argc, char *argv[])
 {
 	unsigned int i;
 
+	orig_pid = getpid();
+		
 	for (i = 1; i < argc; i++) {
 		if (!strncmp(argv[i], "--failpath=", strlen("--failpath="))) {
 			failpath = argv[i] + strlen("--failpath=");
