@@ -1,0 +1,23 @@
+#include <string.h>
+#include "config.h"
+
+/**
+ * ttxml - tiny XML library for parsing (trusted!) XML documents.
+ *
+ * This parses an XML file into a convenient data structure.
+ *
+ * License: GPL
+ * Author: Daniel Burke <dan.p.burke@gmail.com>
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		return 0;
+	}
+
+	return 1;
+}
