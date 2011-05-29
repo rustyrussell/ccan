@@ -18,6 +18,7 @@ int main(int argc, char *argv[])
 		*p = NULL;
 
 	uc = cast_const(char *, p);
+	(void) uc; /* Suppress unused-but-set-variable warning. */
 	return 0;
 }
 

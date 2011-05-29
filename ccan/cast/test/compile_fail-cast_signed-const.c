@@ -11,6 +11,7 @@ int main(int argc, char *argv[])
 		*p = NULL;
 
 	uc = cast_signed(unsigned char *, p);
+	(void) uc; /* Suppress unused-but-set-variable warning. */
 	return 0;
 }
 

@@ -20,5 +20,6 @@ int main(int argc, char *argv[])
 #else
 	foop = NULL;
 #endif
+	(void) foop; /* Suppress unused-but-set-variable warning. */
 	return intp == NULL;
 }

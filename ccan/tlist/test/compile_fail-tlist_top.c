@@ -31,5 +31,6 @@ int main(int argc, char *argv[])
 		      struct child,
 #endif
 		      list);
+	(void) c; /* Suppress unused-but-set-variable warning. */
 	return 0;
 }

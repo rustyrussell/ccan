@@ -28,6 +28,7 @@ int main(int argc, char *argv[])
 	tlist_init(&children);
 	tlist_add(&children, &child, list);
 
-	tlist_for_each(&children, c, list);
+	tlist_for_each(&children, c, list)
+		(void) c; /* Suppress unused-but-set-variable warning. */
 	return 0;
 }

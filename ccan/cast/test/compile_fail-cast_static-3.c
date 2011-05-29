@@ -10,6 +10,7 @@ int main(int argc, char *argv[])
 		char *p = 0;
 
 	c = cast_static(char *, p);
+	(void) c; /* Suppress unused-but-set-variable warning. */
 	return 0;
 }
 
