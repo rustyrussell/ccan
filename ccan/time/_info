@@ -1,0 +1,47 @@
+#include <string.h>
+#include "config.h"
+
+/**
+ * time - routines for dealing with time
+ *
+ * This code provides convenient functions for working with time.
+ *
+ * Author: Rusty Russell <rusty@rustcorp.com.au>
+ * License: BSD-MIT
+ *
+ * Example:
+ *	#include <ccan/time/time.h>
+ *	#include <stdlib.h>
+ *	#include <stdio.h>
+ *	#include <err.h>
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		struct timeval t;
+ *
+ *		if (argc != 2)
+ *			errx(1, "Usage: %s <diff in millisec>", argv[0]);
+ *
+ *		t = time_now();
+ *		if (argv[1][0] == '-')
+ *			t = time_sub(t, time_from_msec(atol(argv[1]+1)));
+ *		else
+ *			t = time_add(t, time_from_msec(atol(argv[1])));
+ *
+ *		printf("%lu.%06u\n",
+ *		       (unsigned long)t.tv_sec, (unsigned)t.tv_usec);
+ *		return 0;
+ *	}
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		return 0;
+	}
+
+	return 1;
+}
