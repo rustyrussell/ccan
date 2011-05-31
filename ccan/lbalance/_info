@@ -1,0 +1,25 @@
+#include "config.h"
+#include <string.h>
+
+/**
+ * lbalance - helpers for loadbalancing parallel tasks
+ *
+ * This code helps when you have a large number of one-shot tasks; it tries
+ * to determine the maximum amount of useful parallelism.
+ *
+ * License: GPL
+ * Author: Rusty Russell <rusty@rustcorp.com.au>
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/tlist\n");
+		return 0;
+	}
+
+	return 1;
+}
