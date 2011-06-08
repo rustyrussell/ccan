@@ -65,10 +65,6 @@
  * Author: Rusty Russell
  *
  * License: LGPLv3 (or later)
- *
- * Ccanlint:
- *	// hash fails because it accesses data in 4 byte quantities for speed.
- *	tests_pass_valgrind --partial-loads-ok=yes
  */
 int main(int argc, char *argv[])
 {
