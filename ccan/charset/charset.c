@@ -23,8 +23,20 @@
 
 #include "charset.h"
 
-bool utf8_allow_surrogates = false;
-
+/*
+ * This function implements the syntax given in RFC3629, which is
+ * the same as that given in The Unicode Standard, Version 6.0.
+ *
+ * It has the following properties:
+ *
+ *  * All codepoints U+0000..U+10FFFF may be encoded,
+ *    except for U+D800..U+DFFF, which are reserved
+ *    for UTF-16 surrogate pair encoding.
+ *  * UTF-8 byte sequences longer than 4 bytes are not permitted,
+ *    as they exceed the range of Unicode.
+ *  * The sixty-six Unicode "non-characters" are permitted
+ *    (namely, U+FDD0..U+FDEF, U+xxFFFE, and U+xxFFFF).
+ */
 bool utf8_validate(const char *str, size_t length)
 {
 	const unsigned char *s = (const unsigned char*)str;
@@ -32,69 +44,145 @@ bool utf8_validate(const char *str, size_t length)
 	
 	while (s < e) {
 		unsigned char c = *s++;
-		unsigned int len; /* number of bytes in sequence - 2 */
+		unsigned char c2;
+		int len_minus_two;
 		
-		/* If character is ASCII, move on. */
-		if (c < 0x80)
+		/* Validate the first byte and determine the sequence length. */
+		if (c <= 0x7F)          /* 00..7F */
 			continue;
+		else if (c <= 0xC1)     /* 80..C1 */
+			return false;
+		else if (c <= 0xDF)     /* C2..DF */
+			len_minus_two = 0;
+		else if (c <= 0xEF)     /* E0..EF */
+			len_minus_two = 1;
+		else if (c <= 0xF4)     /* F0..F4 */
+			len_minus_two = 2;
+		else
+			return false;
 		
-		if (s >= e)
-			return false; /* Missing bytes in sequence. */
+		/* Make sure the character isn't clipped. */
+		if (s + len_minus_two >= e)
+			return false;
 		
-		if (c < 0xE0) {
-			/* 2-byte sequence, U+0080 to U+07FF
-			   c must be 11000010 or higher
-			   s[0] must be 10xxxxxx */
-			len = 0;
-			if (c < 0xC2)
-				return false;
-		} else if (c < 0xF0) {
-			/* 3-byte sequence, U+0800 to U+FFFF
-			   Note that the surrogate range is U+D800 to U+DFFF,
-				  and that U+FFFE and U+FFFF are illegal characters.
-			   c must be >= 11100000 (which it is)
-			   If c is 11100000, then s[0] must be >= 10100000
-			   If the global parameter utf8_allow_surrogates is false:
-			      If c is 11101101 and s[0] is >= 10100000,
-			         then this is a surrogate and we should fail.
-			   If c is 11101111, s[0] is 10111111, and s[1] >= 10111110,
-				  then this is an illegal character and we should fail.
-			   s[0] and s[1] must be 10xxxxxx */
-			len = 1;
-			if (c == 0xE0 && *s < 0xA0)
-				return false;
-			if (!utf8_allow_surrogates && c == 0xED && *s >= 0xA0)
-				return false;
-			if (c == 0xEF && s[0] == 0xBF && (s+1 >= e || s[1] >= 0xBE))
-				return false;
-		} else {
-			/* 4-byte sequence, U+010000 to U+10FFFF
-			   c must be >= 11110000 (which it is) and <= 11110100
-			   If c is 11110000, then s[0] must be >= 10010000
-			   If c is 11110100, then s[0] must be < 10010000
-			   s[0], s[1], and s[2] must be 10xxxxxx */
-			len = 2;
-			if (c > 0xF4)
-				return false;
-			if (c == 0xF0 && *s < 0x90)
-				return false;
-			if (c == 0xF4 && *s >= 0x90)
-				return false;
-		}
+		c2 = *s;
 		
-		if (s + len >= e)
-			return false; /* Missing bytes in sequence. */
-		
+		/* Make sure subsequent bytes are in the range 0x80..0xBF. */
 		do {
 			if ((*s++ & 0xC0) != 0x80)
 				return false;
-		} while (len--);
+		} while (len_minus_two--);
+		
+		/* Handle special cases. */
+		switch (c) {
+			case 0xE0:
+				/* Disallow overlong 3-byte sequence. */
+				if (c2 < 0xA0)
+					return false;
+				break;
+			case 0xED:
+				/* Disallow U+D800..U+DFFF. */
+				if (c2 > 0x9F)
+					return false;
+				break;
+			case 0xF0:
+				/* Disallow overlong 4-byte sequence. */
+				if (c2 < 0x90)
+					return false;
+				break;
+			case 0xF4:
+				/* Disallow codepoints beyond U+10FFFF. */
+				if (c2 > 0x8F)
+					return false;
+				break;
+		}
 	}
 	
 	return true;
 }
 
-/*
-  Note to future contributors: These routines are currently all under the
-    MIT license.  It would be nice to keep it that way :)
-*/
+int utf8_read_char(const char *s, uchar_t *out)
+{
+	const unsigned char *c = (const unsigned char*) s;
+
+	if (c[0] <= 0x7F) {
+		/* 00..7F */
+		*out = c[0];
+		return 1;
+	} else if (c[0] <= 0xDF) {
+		/* C2..DF (unless input is invalid) */
+		*out = ((uchar_t)c[0] & 0x1F) << 6 |
+		       ((uchar_t)c[1] & 0x3F);
+		return 2;
+	} else if (c[0] <= 0xEF) {
+		/* E0..EF */
+		*out = ((uchar_t)c[0] &  0xF) << 12 |
+		       ((uchar_t)c[1] & 0x3F) << 6  |
+		       ((uchar_t)c[2] & 0x3F);
+		return 3;
+	} else {
+		/* F0..F4 (unless input is invalid) */
+		*out = ((uchar_t)c[0] &  0x7) << 18 |
+		       ((uchar_t)c[1] & 0x3F) << 12 |
+		       ((uchar_t)c[2] & 0x3F) << 6  |
+		       ((uchar_t)c[3] & 0x3F);
+		return 4;
+	}
+}
+
+int utf8_write_char(uchar_t unicode, char *out)
+{
+	unsigned char *o = (unsigned char*) out;
+
+	if (unicode <= 0x7F) {
+		/* U+0000..U+007F */
+		*o++ = unicode;
+		return 1;
+	} else if (unicode <= 0x7FF) {
+		/* U+0080..U+07FF */
+		*o++ = 0xC0 | unicode >> 6;
+		*o++ = 0x80 | (unicode & 0x3F);
+		return 2;
+	} else if (unicode <= 0xFFFF) {
+		/* U+0800..U+FFFF */
+		if (unicode >= 0xD800 && unicode <= 0xDFFF)
+			unicode = REPLACEMENT_CHARACTER;
+	three_byte_character:
+		*o++ = 0xE0 | unicode >> 12;
+		*o++ = 0x80 | (unicode >> 6 & 0x3F);
+		*o++ = 0x80 | (unicode & 0x3F);
+		return 3;
+	} else if (unicode <= 0x10FFFF) {
+		/* U+10000..U+10FFFF */
+		*o++ = 0xF0 | unicode >> 18;
+		*o++ = 0x80 | (unicode >> 12 & 0x3F);
+		*o++ = 0x80 | (unicode >> 6 & 0x3F);
+		*o++ = 0x80 | (unicode & 0x3F);
+		return 4;
+	} else {
+		/* U+110000... */
+		unicode = REPLACEMENT_CHARACTER;
+		goto three_byte_character;
+	}
+}
+
+uchar_t from_surrogate_pair(unsigned int uc, unsigned int lc)
+{
+	if (uc >= 0xD800 && uc <= 0xDBFF && lc >= 0xDC00 && lc <= 0xDFFF)
+		return 0x10000 + ((((uchar_t)uc & 0x3FF) << 10) | (lc & 0x3FF));
+	else
+		return REPLACEMENT_CHARACTER;
+}
+
+bool to_surrogate_pair(uchar_t unicode, unsigned int *uc, unsigned int *lc)
+{
+	if (unicode >= 0x10000 && unicode <= 0x10FFFF) {
+		uchar_t n = unicode - 0x10000;
+		*uc = ((n >> 10) & 0x3FF) | 0xD800;
+		*lc = (n & 0x3FF) | 0xDC00;
+		return true;
+	} else {
+		*uc = *lc = REPLACEMENT_CHARACTER;
+		return false;
+	}
+}

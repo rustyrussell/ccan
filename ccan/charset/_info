@@ -5,39 +5,150 @@
 /**
  * charset - character set conversion and validation routines
  *
- * This module provides a collection (well, only one, at the moment) of
- * well-tested routines for dealing with character set nonsense.
- *
- * Validation functions:
- *  - bool utf8_validate(const char *str, size_t length);
+ * This module provides a collection of well-tested routines
+ * for dealing with character set nonsense.
  *
  * Example:
  *	#include <err.h>
  *	#include <stdio.h>
+ *	#include <stdlib.h>
  *	#include <string.h>
  *	#include <ccan/charset/charset.h>
  *	#include <ccan/grab_file/grab_file.h>
- *	#include <ccan/talloc/talloc.h>	// For talloc_free()
- *
- *	int main(int argc, char *argv[])
+ *	#include <ccan/talloc/talloc.h>
+ *	
+ *	static void print_json_string(const char *s);
+ *	static bool parse_hex16(const char **sp, unsigned int *out);
+ *	
+ *	// Take a JSON-encoded string on input and print its literal value.
+ *	int main(void)
  *	{
- *		size_t len;
- *		char *file;
- *		bool valid;
- *
- *		if (argc != 2)
- *			err(1, "Expected exactly one argument");
- *
- *		file = grab_file(NULL, argv[1], &len);
- *		if (!file)
- *			err(1, "Could not read file %s", argv[1]);
- *
- *		valid = utf8_validate(file, len);
- *		printf("File contents are %s UTF-8\n", valid ? "valid" : "invalid");
- *
- *		talloc_free(file);
- *
+ *		char *input;
+ *		size_t length;
+ *	
+ *		input = grab_file(NULL, NULL, &length);
+ *		if (!input)
+ *			err(1, "Error reading input");
+ *		if (!utf8_validate(input, length)) {
+ *			fprintf(stderr, "Input contains invalid UTF-8\n");
+ *			return 1;
+ *		}
+ *		if (strlen(input) != length) {
+ *			fprintf(stderr, "Input contains null characters\n");
+ *			return 1;
+ *		}
+ *		
+ *		print_json_string(input);
+ *		
+ *		talloc_free(input);
  *		return 0;
+ *	}
+ *	
+ *	static void print_json_string(const char *s)
+ *	{
+ *		char output_buffer[4];
+ *		
+ *		// Skip leading whitespace
+ *		while (*s == ' ' || *s == '\t' || *s == '\n' || *s == '\r')
+ *			s++;
+ *		
+ *		if (*s++ != '"') {
+ *			fprintf(stderr, "Expected JSON string literal surrounded by double quotes.\n");
+ *			exit(EXIT_FAILURE);
+ *		}
+ *		
+ *		while (*s != '"') {
+ *			unsigned char c = *s++;
+ *			char *b = output_buffer;
+ *			
+ *			if (c == '\\') {
+ *				c = *s++;
+ *				switch (c) {
+ *					case '"':
+ *					case '\\':
+ *					case '/':
+ *						*b++ = c;
+ *						break;
+ *					case 'b': *b++ = '\b'; break;
+ *					case 'f': *b++ = '\f'; break;
+ *					case 'n': *b++ = '\n'; break;
+ *					case 'r': *b++ = '\r'; break;
+ *					case 't': *b++ = '\t'; break;
+ *					case 'u': {
+ *						unsigned int uc, lc;
+ *						
+ *						if (!parse_hex16(&s, &uc))
+ *							goto syntax_error;
+ *						
+ *						if (uc >= 0xD800 && uc <= 0xDFFF) {
+ *							// Handle UTF-16 surrogate pair (e.g. "\uD834\uDD1E").
+ *							uchar_t unicode;
+ *							
+ *							if (*s++ != '\\' || *s++ != 'u' || !parse_hex16(&s, &lc))
+ *								goto syntax_error;
+ *							
+ *							unicode = from_surrogate_pair(uc, lc);
+ *							if (unicode == REPLACEMENT_CHARACTER) {
+ *								fprintf(stderr, "Invalid surrogate pair.\n");
+ *								exit(EXIT_FAILURE);
+ *							}
+ *							
+ *							b += utf8_write_char(unicode, b);
+ *						} else {
+ *							// Handle ordinary Unicode escape (e.g. "\u266B").
+ *							b += utf8_write_char(uc, b);
+ *						}
+ *						
+ *						break;
+ *					}
+ *					default:
+ *						goto syntax_error;
+ *				}
+ *			} else if (c <= 0x1F) {
+ *				// Control characters are not allowed in string literals.
+ *				goto syntax_error;
+ *			} else {
+ *				*b++ = c;
+ *			}
+ *			
+ *			fwrite(output_buffer, 1, b - output_buffer, stdout);
+ *		}
+ *		
+ *		putchar('\n');
+ *		return;
+ *		
+ *	syntax_error:
+ *		fprintf(stderr, "Syntax error in JSON string literal.\n");
+ *		exit(EXIT_FAILURE);
+ *	}
+ *	
+ *	static bool parse_hex16(const char **sp, unsigned int *out)
+ *	{
+ *		const char *s = *sp;
+ *		unsigned int ret = 0;
+ *		unsigned int i;
+ *		unsigned int tmp;
+ *		char		c;
+ *	
+ *		for (i = 0; i < 4; i++)
+ *		{
+ *			c = *s++;
+ *			if (c >= '0' && c <= '9')
+ *				tmp = c - '0';
+ *			else if (c >= 'A' && c <= 'F')
+ *				tmp = c - 'A' + 10;
+ *			else if (c >= 'a' && c <= 'f')
+ *				tmp = c - 'a' + 10;
+ *			else
+ *				return false;
+ *	
+ *			ret <<= 4;
+ *			ret += tmp;
+ *		}
+ *		
+ *		*out = ret;
+ *		*sp = s;
+ *		return true;
  *	}
  *
  * Author: Joey Adams

@@ -26,19 +26,57 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
+
+#define REPLACEMENT_CHARACTER 0xFFFD
 
 /*
- * Validate the given UTF-8 string.  If it contains '\0' characters,
- * it is still valid.
- *
- * By default, Unicode characters U+D800 thru U+DFFF will be considered
- * invalid UTF-8.  However, if you set utf8_allow_surrogates to true,
- * they will be allowed.  Allowing the surrogate range makes it possible
- * to losslessly encode malformed UTF-16.
+ * Type for Unicode codepoints.
+ * We need our own because wchar_t might be 16 bits.
+ */
+typedef uint32_t uchar_t;
+
+/*
+ * Validate the given UTF-8 string.
+ * If it contains '\0' characters, it is still valid.
  */
 bool utf8_validate(const char *str, size_t length);
 
-/* Default: false */
-extern bool utf8_allow_surrogates;
+/*
+ * Read a single UTF-8 character starting at @s,
+ * returning the length, in bytes, of the character read.
+ *
+ * This function assumes input is valid UTF-8,
+ * and that there are enough characters in front of @s.
+ */
+int utf8_read_char(const char *s, uchar_t *out);
+
+/*
+ * Write a single UTF-8 character to @s,
+ * returning the length, in bytes, of the character written.
+ *
+ * @unicode should be U+0000..U+10FFFF, but not U+D800..U+DFFF.
+ * If @unicode is invalid, REPLACEMENT_CHARACTER will be emitted instead.
+ *
+ * This function will write up to 4 bytes to @out.
+ */
+int utf8_write_char(uchar_t unicode, char *out);
+
+/*
+ * Compute the Unicode codepoint of a UTF-16 surrogate pair.
+ *
+ * @uc should be 0xD800..0xDBFF, and @lc should be 0xDC00..0xDFFF.
+ * If they aren't, this function returns REPLACEMENT_CHARACTER.
+ */
+uchar_t from_surrogate_pair(unsigned int uc, unsigned int lc);
+
+/*
+ * Construct a UTF-16 surrogate pair given a Unicode codepoint.
+ *
+ * @unicode should be U+10000..U+10FFFF.
+ * If it's not, this function returns false,
+ * and sets *uc and *lc to REPLACEMENT_CHARACTER.
+ */
+bool to_surrogate_pair(uchar_t unicode, unsigned int *uc, unsigned int *lc);
 
 #endif
