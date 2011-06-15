@@ -43,6 +43,16 @@ typedef uint32_t uchar_t;
 bool utf8_validate(const char *str, size_t length);
 
 /*
+ * Validate a single UTF-8 character.
+ * @s: Beginning of UTF-8 character.
+ * @e: End of string.
+ *
+ * If it's valid, return its length (1 thru 4).
+ * If it's invalid or clipped, return 0.
+ */
+int utf8_validate_char(const char *s, const char *e);
+
+/*
  * Read a single UTF-8 character starting at @s,
  * returning the length, in bytes, of the character read.
  *
