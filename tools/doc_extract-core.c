@@ -129,6 +129,63 @@ static void add_line(struct doc_section *curr, const char *line)
 	curr->lines[curr->num_lines++] = talloc_strdup(curr->lines, line);
 }
 
+/* We convert tabs to spaces here. */
+static void add_detabbed_line(struct doc_section *curr, const char *rawline)
+{
+	unsigned int i, eff_i, len, off = 0;
+	char *line;
+
+	/* Worst-case alloc: 8 spaces per tab. */
+	line = talloc_array(curr, char, strlen(rawline) +
+			    strcount(rawline, "\t") * 7 + 1);
+	len = 0;
+
+	/* We keep track of the *effective* offset of i. */
+	for (i = eff_i = 0; i < strlen(rawline); i++) {
+		if (rawline[i] == '\t') {
+			do {
+				line[len++] = ' ';
+				eff_i++;
+			} while (eff_i % 8 != 0);
+		} else {
+			line[len++] = rawline[i];
+			if (off == 0 && rawline[i] == '*')
+				off = i + 1;
+			eff_i++;
+		}
+	}
+	line[len] = '\0';
+
+	add_line(curr, line + off);
+	talloc_free(line);
+}
+
+/* Not very efficient: we could track prefix length while doing
+ * add_detabbed_line */
+static void trim_lines(struct doc_section *curr)
+{
+	unsigned int i, trim = -1;
+
+	/* Get minimum whitespace prefix. */
+	for (i = 0; i < curr->num_lines; i++) {
+		unsigned int prefix = strspn(curr->lines[i], " ");
+		/* Ignore blank lines */
+		if (curr->lines[i][prefix] == '\0')
+			continue;
+		if (prefix < trim)
+			trim = prefix;
+	}
+
+	/* Now trim it. */
+	for (i = 0; i < curr->num_lines; i++) {
+		unsigned int prefix = strspn(curr->lines[i], " ");
+		if (prefix < trim)
+			curr->lines[i] += prefix;
+		else
+			curr->lines[i] += trim;
+	}
+}
+
 struct list_head *extract_doc_sections(char **rawlines)
 {
 	unsigned int *linemap;
@@ -161,9 +218,13 @@ struct list_head *extract_doc_sections(char **rawlines)
 			}
 		} else {
 			if (curr)
-				add_line(curr, lines[i]);
+				add_detabbed_line(curr, rawlines[linemap[i]]);
 		}
 	}
+
+	list_for_each(list, curr, list)
+		trim_lines(curr);
+
 	talloc_free(lines);
 	return list;
 }
