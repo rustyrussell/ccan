@@ -497,12 +497,13 @@ static struct drawing *random_drawing(const void *ctx,
 
 /* Read in a drawing from the saved state file. */
 static struct drawing *read_drawing(const void *ctx, FILE *in,
-				    const struct image *master)
+				    const struct image *master,
+				    unsigned int *generation)
 {
 	struct drawing *drawing;
 	unsigned int i;
 
-	if (fscanf(in, "%u triangles:\n", &i) != 1)
+	if (fscanf(in, "%u triangles, generation %u:\n", &i, generation) != 2)
 		errx(1, "Reading saved state");
 	drawing = new_drawing(ctx, i);
 	for (i = 0; i < drawing->num_tris; i++) {
@@ -535,7 +536,8 @@ static int compare_drawing_scores(const void *_a, const void *_b)
 }
 
 /* Save one drawing to state file */
-static void dump_drawings(struct drawing **drawing, const char *outname)
+static void dump_drawings(struct drawing **drawing, const char *outname,
+			  unsigned int generation)
 {
 	FILE *out;
 	unsigned int i, j;
@@ -546,7 +548,8 @@ static void dump_drawings(struct drawing **drawing, const char *outname)
 		err(1, "Opening %s", tmpout);
 	fprintf(out, "POPULATION_SIZE=%u\n", POPULATION_SIZE);
 	for (i = 0; i < POPULATION_SIZE; i++) {
-		fprintf(out, "%u triangles:\n", drawing[i]->num_tris);
+		fprintf(out, "%u triangles, generation %u:\n",
+			drawing[i]->num_tris, generation);
 		for (j = 0; j < drawing[i]->num_tris; j++) {
 			fprintf(out, "%u,%u,%u,%u,%u,%u,%u,%u,%u,%u\n",
 				drawing[i]->tri[j].coord[0].x,
@@ -579,7 +582,7 @@ static void dump_state(struct drawing *drawing[POPULATION_SIZE],
 	char *out = talloc_asprintf(NULL, "%s.%08u.jpg", outpic, gen);
 	struct image *image;
 	printf("Dumping gen %u to %s & %s\n", gen, out, outstate);
-	dump_drawings(drawing, outstate);
+	dump_drawings(drawing, outstate, gen);
 	image = image_of_drawing(out, drawing[0], master);
 	write_jpeg_file(image, out, 80);
 	talloc_free(out);
@@ -640,6 +643,7 @@ int main(int argc, char *argv[])
 			fflush(stdout);
 		}
 		printf("\n");
+		gen = 0;
 	} else {
 		FILE *state;
 		char header[100];
@@ -652,7 +656,8 @@ int main(int argc, char *argv[])
 			header);
 		for (i = 0; i < POPULATION_SIZE; i++) {
 			drawing[i] = read_drawing(at_pool_ctx(atp),
-						  state, master);
+						  state, master, &gen);
+			gen++;	/* We start working on the _next_ gen */
 			printf(".");
 			fflush(stdout);
 		}
@@ -675,7 +680,7 @@ int main(int argc, char *argv[])
 	/* Worse than theoretically worst case. */
 	prev_best = master->height * master->stride * 256;
 
-	for (gen = 0; since_prev_best < PLATEAU_GENS; gen++) {
+	while (since_prev_best < PLATEAU_GENS) {
 		unsigned int j, done = 0;
 		struct drawing *new[POPULATION_SIZE/4];
 
@@ -724,6 +729,7 @@ int main(int argc, char *argv[])
 		if (gen == 100)
 			exit(0);
 #endif
+		gen++;
 	}
 
 	/* Dump final state */
