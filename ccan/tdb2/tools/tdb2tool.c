@@ -20,7 +20,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <ccan/tdb2/tdb2.h>
+#include "tdb2.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>

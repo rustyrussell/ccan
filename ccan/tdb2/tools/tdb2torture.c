@@ -2,7 +2,7 @@
    writers - that stresses the locking code. 
 */
 
-#include <ccan/tdb2/tdb2.h>
+#include "tdb2.h"
 #include <stdlib.h>
 #include <err.h>
 #include <getopt.h>

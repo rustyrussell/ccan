@@ -1,4 +1,4 @@
-#include <ccan/tdb2/tdb2.h>
+#include "tdb2.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <fcntl.h>

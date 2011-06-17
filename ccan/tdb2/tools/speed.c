@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <ccan/tdb2/tdb2.h>
+#include "tdb2.h"
 
 /* Nanoseconds per operation */
 static size_t normalize(const struct timeval *start,
