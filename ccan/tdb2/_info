@@ -83,6 +83,7 @@ int main(int argc, char *argv[])
 		printf("ccan/tally\n");
 		printf("ccan/typesafe_cb\n");
 		printf("ccan/cast\n");
+		printf("ccan/endian\n");
 		return 0;
 	}
 

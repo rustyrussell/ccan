@@ -38,9 +38,7 @@
 #include <ccan/tdb2/tdb2.h>
 #include <ccan/likely/likely.h>
 #include <ccan/compiler/compiler.h>
-#if HAVE_BYTESWAP_H
-#include <byteswap.h>
-#endif
+#include <ccan/endian/endian.h>
 
 #ifndef TEST_IT
 #define TEST_IT(cond)
@@ -136,20 +134,6 @@ typedef int tdb_bool_err;
 
 /* Indicates this entry is not on an flist (can happen during coalescing) */
 #define TDB_FTABLE_NONE ((1ULL << TDB_OFF_UPPER_STEAL) - 1)
-
-#if !HAVE_BSWAP_64
-static inline uint64_t bswap_64(uint64_t x)
-{
-	return (((x&0x000000FFULL)<<56)
-		| ((x&0x0000FF00ULL)<<48)
-		| ((x&0x00FF0000ULL)<<40)
-		| ((x&0xFF000000ULL)<<32)
-		| ((x>>8)&0xFF000000ULL)
-		| ((x>>16)&0x00FF0000ULL)
-		| ((x>>24)&0x0000FF00ULL)
-		| ((x>>32)&0x000000FFULL));
-}
-#endif
 
 struct tdb_used_record {
 	/* For on-disk compatibility, we avoid bitfields:
