@@ -1,4 +1,3 @@
-#include "config.h"
 #include <ccan/tally/tally.h>
 #include <ccan/build_assert/build_assert.h>
 #include <ccan/likely/likely.h>
@@ -7,6 +6,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <assert.h>
+#include <stdlib.h>
 
 #define SIZET_BITS (sizeof(size_t)*CHAR_BIT)
 

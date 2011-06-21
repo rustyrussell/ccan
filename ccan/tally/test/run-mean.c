@@ -25,5 +25,6 @@ int main(void)
 		ok1(tally_mean(tally) == 0);
 	}
 
+	free(tally);
 	return exit_status();
 }

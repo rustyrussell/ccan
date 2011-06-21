@@ -1,6 +1,7 @@
 #ifndef CCAN_TALLY_H
 #define CCAN_TALLY_H
-#include <stdlib.h>
+#include "config.h"
+#include <sys/types.h>
 
 struct tally;
 

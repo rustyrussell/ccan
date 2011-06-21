@@ -41,5 +41,6 @@ int main(void)
 		ok1(mode - (ssize_t)err <= 0 && mode + (ssize_t)err >= 0);
 	}
 
+	free(tally);
 	return exit_status();
 }

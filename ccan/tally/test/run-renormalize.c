@@ -21,5 +21,6 @@ int main(void)
 	ok1(tally->counts[0] == 2);
 	ok1(tally->counts[1] == 0);
 
+	free(tally);
 	return exit_status();
 }

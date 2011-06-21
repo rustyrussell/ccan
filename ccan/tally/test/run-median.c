@@ -40,6 +40,7 @@ int main(void)
 		ok1(median - (ssize_t)err <= i/2
 		    && median + (ssize_t)err >= i/2);
 	}
+	free(tally);
 
 	return exit_status();
 }

@@ -16,5 +16,6 @@ int main(void)
 		ok1(tally_max(tally) == i);
 		ok1(tally_min(tally) == -i);
 	}
+	free(tally);
 	return exit_status();
 }
