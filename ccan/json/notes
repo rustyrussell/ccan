@@ -1,0 +1,171 @@
+A JSON fragment (rather than a "text", which may only be an object or array) has the following properties:
+
+ * The length is >= 1 (don't forget about single-digit numbers).
+ * The first character is ASCII.
+ * The last character is ASCII.
+
+[RFC4627] assumes a "JSON text", where the first two characters will always be ASCII.  Encoding detection for a JSON fragment requires doing the proof all over again, due to the fact that the second character might not be ASCII (e.g. "Česká republika").
+
+Let's start:
+
+If the first byte is null, then it's UTF-32BE or UTF-16BE.  Otherwise, it's UTF-32LE, UTF-16LE, or UTF-8.
+
+But what if the text starts with a BOM?  Then the first byte will be non-NULL for UTF-16BE.  If a BOM is detected, we can go by that, making our lives "easier".
+
+
+int json_detect_encoding(const unsigned char *s, const unsigned char *e)
+{
+	if (s >= e)
+		return JSONENC_INVALID;
+	
+}
+
+<strike>Assumption: the first character in the Unicode string is an non-null ASCII character, and the string is at least one character long.</strike>
+
+If s[0..2] == 0, then 0 < s[3] <= 0x7F, or the string is invalid.
+
+For any valid UTF16LE without BOM:
+	s[0] is ASCII, and s[1] is 0.
+For any valid UTF16BE without BOM:
+	s[0] is 0, and s[1] is ASCII.
+For any valid UTF32LE without BOM:
+	s[0] is ASCII, and s[1..3] is 0.
+
+I think with the assumption above, there's an ambiguity between UTF16LE and UTF32LE:
+
+	7x 00 00 00
+
+This can be any of the following:
+
+ * UTF-8, with an ASCII character and 3 null characters.
+ * UTF-16LE, with an ASCII character and a null character.
+ * UTF-32LE, with an ASCII character and nothing else.
+
+Therefore, I will extend it.
+
+Assumption: The string is not empty, contains no null characters, and the first character is in the ASCII range.
+
+For any valid UTF8 without BOM:
+	s[0] is non-null ASCII, and, if e - s > 1, s[1] is not 0.
+For any valid UTF16BE without BOM:
+	s[0] is 0, s[1] is non-null ASCII, and, if e - s >= 4, one or both of s[2,3] are non-zero.
+For any valid UTF16LE without BOM:
+	s[0] is non-null ASCII, s[1] is 0, and, if e - s >= 4, one or both of s[2,3] are non-zero.
+For any valid UTF32BE without BOM:
+	s[0..2] is 0, and s[3] is ASCII.
+For any valid UTF32LE without BOM:
+	s[0] is ASCII, and s[1..3] is 0.
+
+For any valid UTF8 with BOM:
+	s[0..2] is {0xEF, 0xBB, 0xBF}.
+For any valid UTF16BE with BOM:
+	s[0] is 0xFE, and s[1] is 0xFF.
+For any valid UTF16LE with BOM:
+	s[0] is 0xFF, s[1] is 0xFE, and s[2] is non-null ASCII.
+For any valid UTF32BE with BOM:
+	s[0] is 0, s[1] is 0, s[2] is 0xFE, and s[3] is 0xFF.
+For any valid UTF32LE with BOM:
+	s[0] is 0xFF, s[1] is 0xFE, s[2] is 0, and s[3] is 0.
+
+Condensed version (for any valid string in the given encoding and with the assumption above, the beginning of the bytes will always match the pattern):
+
+Without BOM:
+	UTF8		7x (xx | $)
+	UTF16BE		00 7x
+	UTF16LE		7x 00 (00 xx | xx 00 | xx xx | $)
+	UTF32BE		00 00 00 7x
+	UTF32LE		7x 00 00 00
+
+With BOM:
+	UTF8		EF BB BF
+	UTF16BE		FE FF
+	UTF16LE		FF FE 7x
+	UTF32BE		00 00 FE FF
+	UTF32LE		FF FE 00 00
+
+Key:
+
+	00			Null byte
+	xx			Non-null byte
+	7x			Non-null ASCII byte
+	$			End of byte string
+
+As fun as this is, I've decided not to worry about encoding conversion for now, and assume input is valid UTF-8.
+
+An issue more likely to affect users is expecting to be able to load binary into a JSON string, given the current API.  Thus, I plan to introduce a restriction to JSON not present in the RFC, but present in the de-facto standard (i.e. IE): JSON strings (keys and values) may not contain null characters.  "\u0000" will be treated as invalid.
+
+Maybe I should just make a JSON serialization library.  On the other hand, the hard, JSON-specific bits (encoding/decoding strings, validating numbers, etc.) should be available, and having a "json" library that does it is helpful.
+
+My plan, then, is for the JSON module to house two things:
+ * A set of parsing and emitting primitives that take care of the hard parts of JSON.
+ * A simple parser and printer, geared toward usefulness over precision.
+
+Change of plans: my goal is to have a JSON library that's SIMPLE.  I looked at some of the implementations in C and C++, and they're obsessed with iterators, streams, hashes, manipulation, etc. (Even I'm going down that road with my iobuffer stuff).  They're often hard to integrate into projects, since they consist of several translation units and expect to be built like the huge libraries that they shouldn't be.
+
+Unicode functions are going to be incorporated directly into the module whether you like it or not.  
+"parse" and "emit" functions will be private.  Steal them from the source code if you want them.
+
+I plan to take a lenient approach to Unicode: invalid characters are converted to replacement characters rather than producing flat-out failures.  I don't want everything to grind to a halt because Jöšé Hérnàñdعz signed up, but some client (examples: Internet Explorer, and the machines) decided not to produce valid UTF-8.
+
+The purpose of JSON is to facilitate communication among programming languages.  If a programming language cannot handle part of the spec idiomatically, it shouldn't.  This justifies using C strings instead of pointer/length pairs.  It also justifies only supporting ASCII instead of Unicode (e.g. via UTF-8, surrogate pairs, etc.), but there is a clear, practical reasons to support Unicode: people speak different languages, and most people speak languages containing non-ASCII characters.
+
+It's a lot easier to just validate UTF-8 rather than tolerate it by replacement.  However, I might as well replace invalid surrogate pairs.
+
+Now it's time to come up with a description for my JSON API.  The most important thing about it is that it's SIMPLE.  I should also mention the "purpose of JSON" paragraph to introduce JSON as "a simple text-based format that facilitates transferring information between programming languages" or similar.
+
+Another thing to document is that this library supports JSON values: it does not enforce the draconian restriction that the toplevel be an object or an array.
+
+For the sake of the simplicity I love, I'll require valid UTF-8 and require valid surrogate pairs.  Also, I'll remove the dependency on charset.
+
+Favors ease of use over losslessness:
+ * C strings: Although JSON allows \u0000 escapes (if I'm not mistaken), they don't always work right in some browsers.
+ * double: This may seem clumsy, but double can store 32-bit integers losslessly, and the numbers are printed with enough decimal places that 32-bit integers won't be truncated.
+
+Does not include comprehensive facilities for manipulating JSON structures.  Instead, it tries to get out of your way so you can serialize and unserialize as you see fit.
+ * Uses a linked list instead of a mapping.
+
+The code is currently a little ugly as far as toplevel organization goes.
+
+Things to test:
+ * List link pointers are consistent.
+ * 32-bit signed and unsigned integers are preserved verbatim.
+ * Appending, prepending, and and looking up members works.
+ * Appending and prepending items works.
+ * Valid and invalid UTF-8 in JSON input is handled properly.
+ * json_decode returns NULL for invalid strings.
+ * json_encode_string works
+ * json_stringify works with a non-NULL space argument
+ * Lookup functions return NULL when given NULL or invalid inputs.
+ * Removing the first, last, or only child of a node works properly.
+ * Bogus literals starting with 'n', 'f', 't' parse as invalid (e.g. 'nil', 'fals', 'falsify', 'falsetto', and 'truism').
+ * Key without colon or value.
+ * All escapes are parsed and unparsed.
+ * \u0000 is disallowed.
+ * 0.0 / 0.0 converts to null in JSON.
+
+Ways to test these:
+ * json_decode every test string.
+ * Add test strings for:
+   - Bogus literals
+   - Keys without colon or value
+   - \u0000
+ * Manually test escape parsing/unparsing, with some salt around the edges, too.
+ * Expose escaping unicode, and test that with the test strings.
+ * Build a list of numbers with various appends and prepends, verify them by testing against their encoded value, do pointer consistency checks each time, do element lookups, and remove items as well.
+ * Write tests for stringify.
+ * Test various ranges of 32-bit signed and unsigned integers, converting them to and from JSON and ensuring that the value was preserved.
+
+Hmm, I wonder if Unicode escaping should be a separate function.
+
+I implemented some of the above.  Things still not covered by tests:
+
+ * Out-of-memory situations
+ * Invalid UTF-8
+ * Non-ASCII characters in input
+ * Unicode characters from U+0080..U+07FF
+ * Escaping Unicode characters (not even exposed by the API)
+ * json_encode_string
+ * Parsing \f
+ * Emitting string values in json_stringify with non-NULL space.
+ * Passing invalid nodes to json_check
+
