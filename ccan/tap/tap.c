@@ -45,8 +45,13 @@ static int test_died = 0;
 static int test_pid;
 
 /* Encapsulate the pthread code in a conditional.  In the absence of
-   libpthread the code does nothing */
-#if HAVE_LIBPTHREAD
+   libpthread the code does nothing.
+
+   If you have multiple threads calling ok() etc. at the same time you would
+   need this, but in that case your test numbers will be random and I'm not
+   sure it makes sense. --RR
+*/
+#ifdef WANT_PTHREAD
 #include <pthread.h>
 static pthread_mutex_t M = PTHREAD_MUTEX_INITIALIZER;
 # define LOCK pthread_mutex_lock(&M)
