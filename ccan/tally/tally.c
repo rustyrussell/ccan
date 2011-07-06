@@ -27,8 +27,8 @@ struct tally *tally_new(unsigned buckets)
 	if (buckets == 0)
 		buckets = 1;
 
-	/* Check for overflow. */
-	if (buckets && SIZE_MAX / buckets < sizeof(tally->counts[0]))
+	/* Overly cautious check for overflow. */
+	if (sizeof(*tally) * buckets / sizeof(*tally) != buckets)
 		return NULL;
 	tally = malloc(sizeof(*tally) + sizeof(tally->counts[0])*(buckets-1));
 	if (tally) {
