@@ -27,7 +27,7 @@
  * This code originates from ctdb, where talloc based trees keyed are
  *  used in several places.
  *
- * License: GPL (3 or any later version)
+ * License: GPL (v3 or any later version)
  * Author: Ronnie Sahlberg <ronniesahlberg@gmail.com>
  *
  * Example:

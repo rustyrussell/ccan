@@ -10,7 +10,7 @@
  * (ie. gcc), and not too bad (ie. a few compares and mallocs) for
  * other compilers.
  *
- * License: LGPL (3 or any later version)
+ * License: LGPL (v3 or any later version)
  * Author: Rusty Russell <rusty@rustcorp.com.au>
  *
  * Example:

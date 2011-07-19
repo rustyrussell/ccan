@@ -37,7 +37,7 @@
  *      wwviaudio_cancel_all_sounds();
  *      wwviaduio_stop_portaudio();
  *
- * License: LGPL (2 or any later version)
+ * License: LGPL (v2.1 or any later version)
  *
  */
 int main(int argc, char *argv[])

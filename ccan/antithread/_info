@@ -81,7 +81,7 @@
  *		return 0;
  *	}
  *
- * License: GPL (3 or any later version)
+ * License: GPL (v3 or any later version)
  * Author: Rusty Russell <rusty@rustcorp.com.au>
  */
 int main(int argc, char *argv[])

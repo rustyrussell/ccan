@@ -11,7 +11,7 @@
  * session, as well as a low level scsi library to create scsi cdb's
  * and parse/unmarshall data-in structures.
  *
- * License: GPL (3 or any later version)
+ * License: GPL (v3 or any later version)
  * Author: Ronnie Sahlberg <ronniesahlberg@gmail.com>
  */
 int main(int argc, char *argv[])

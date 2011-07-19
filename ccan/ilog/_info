@@ -29,7 +29,7 @@
  *    return 0;
  *  }
  *
- * License: LGPL (v2 or later)
+ * License: LGPL (v2.1 or any later version)
  * Author: Timothy B. Terriberry <tterribe@xiph.org>
  */
 #include <string.h>

@@ -63,7 +63,7 @@
  *
  * Author: Andrew Tridgell, Jeremy Allison, Rusty Russell
  *
- * License: LGPLv3 (or later)
+ * License: LGPL (v3 or any later version)
  *
  * Ccanlint:
  *	// valgrind breaks fcntl locks.

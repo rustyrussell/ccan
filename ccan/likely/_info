@@ -9,7 +9,7 @@
  * help you annotate rare paths in your code for the convenience of the
  * compiler and the reader.
  *
- * License: LGPL (2 or any later version)
+ * License: LGPL (v2.1 or any later version)
  * Author: Rusty Russell <rusty@rustcorp.com.au>
  *
  * Example:

@@ -64,7 +64,7 @@
  *
  * Author: Rusty Russell
  *
- * License: LGPLv3 (or later)
+ * License: LGPL (v3 or any later version)
  */
 int main(int argc, char *argv[])
 {
