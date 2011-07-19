@@ -10,8 +10,9 @@
 #include <err.h>
 #include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
+#include <ccan/str_talloc/str_talloc.h>
 
-static struct doc_section *find_license(const struct manifest *m)
+static struct doc_section *find_license_tag(const struct manifest *m)
 {
 	struct doc_section *d;
 
@@ -24,44 +25,76 @@ static struct doc_section *find_license(const struct manifest *m)
 	return NULL;
 }
 
-static const char *expected_link(const struct manifest *m,
-				 struct doc_section *d)
+static enum license which_license(struct doc_section *d)
 {
-	if (streq(d->lines[0], "GPL")
-	    || streq(d->lines[0], "GPLv3")
-	    || streq(d->lines[0], "GPLv3 or later")
-	    || streq(d->lines[0], "GPLv3 (or later)")
-	    || streq(d->lines[0], "GPL (3 or any later version)"))
-		return "../../licenses/GPL-3";
-	if (streq(d->lines[0], "GPLv2")
-	    || streq(d->lines[0], "GPLv2 or later")
-	    || streq(d->lines[0], "GPLv2 (or later)")
-	    || streq(d->lines[0], "GPL (2 or any later version)"))
-		return "../../licenses/GPL-3";
-	if (streq(d->lines[0], "LGPL")
-	    || streq(d->lines[0], "LGPLv3")
-	    || streq(d->lines[0], "LGPLv3 or later")
-	    || streq(d->lines[0], "LGPLv3 (or later)")
-	    || streq(d->lines[0], "LGPL (3 or any later version)"))
-		return "../../licenses/LGPL-3";
-	if (streq(d->lines[0], "LGPLv2")
-	    || streq(d->lines[0], "LGPLv2 or later")
-	    || streq(d->lines[0], "LGPLv2 (or later)")
-	    || streq(d->lines[0], "LGPL (2 or any later version)"))
-		return "../../licenses/LGPL-2.1";
+	if (strstarts(d->lines[0], "GPL")) {
+		if (strchr(d->lines[0], '3'))
+			return LICENSE_GPLv3;
+		else if (strchr(d->lines[0], '2')) {
+			if (strreg(NULL, d->lines[0], "or (any )?later", NULL))
+				return LICENSE_GPLv2_PLUS;
+			else
+				return LICENSE_GPLv2;
+		}
+		return LICENSE_GPL;
+	}
+
+	if (strstarts(d->lines[0], "LGPL")) {
+		if (strchr(d->lines[0], '3'))
+			return LICENSE_LGPLv3;
+		else if (strchr(d->lines[0], '2')) {
+			if (strreg(NULL, d->lines[0], "or (any )?later", NULL))
+				return LICENSE_LGPLv2_PLUS;
+			else
+				return LICENSE_LGPLv2;
+		}
+		return LICENSE_LGPL;
+	}
 	if (streq(d->lines[0], "BSD-MIT")
 	    || streq(d->lines[0], "MIT"))
-		return "../../licenses/BSD-MIT";
+		return LICENSE_MIT;
 	if (streq(d->lines[0], "BSD (3 clause)"))
+		return LICENSE_BSD;
+	if (strreg(NULL, d->lines[0], "[Pp]ublic [Dd]omain"))
+		return LICENSE_PUBLIC_DOMAIN;
+
+	return LICENSE_UNKNOWN;
+}
+
+static const char *expected_link(enum license license)
+{
+	switch (license) {
+	case LICENSE_LGPLv2_PLUS:
+	case LICENSE_LGPLv2:
+		return "../../licenses/LGPL-2.1";
+	case LICENSE_LGPLv3:
+	case LICENSE_LGPL:
+		return "../../licenses/LGPL-3";
+
+	case LICENSE_GPLv2_PLUS:
+	case LICENSE_GPLv2:
+		return "../../licenses/GPL-2";
+
+	case LICENSE_GPLv3:
+	case LICENSE_GPL:
+		return "../../licenses/GPL-3";
+
+	case LICENSE_BSD:
 		return "../../licenses/BSD-3CLAUSE";
-	return NULL;
+
+	case LICENSE_MIT:
+		return "../../licenses/BSD-MIT";
+
+	default:
+		return NULL;
+	}
 }
 
 static void handle_license_link(struct manifest *m, struct score *score)
 {
+	struct doc_section *d = find_license_tag(m);
 	const char *link = talloc_asprintf(m, "%s/LICENSE", m->dir);
-	struct doc_section *d = find_license(m);
-	const char *ldest = expected_link(m, d);
+	const char *ldest = expected_link(m->license);
 	char *q;
 
 	printf(
@@ -89,22 +122,25 @@ static void check_has_license(struct manifest *m,
 	const char *expected;
 	struct doc_section *d;
 
-	d = find_license(m);
+	d = find_license_tag(m);
 	if (!d) {
 		score->error = talloc_strdup(score, "No License: tag in _info");
 		return;
 	}
+
+	m->license = which_license(d);
+
 	/* If they have a license tag at all, we pass. */
 	score->pass = true;
 
-	expected = expected_link(m, d);
+	expected = expected_link(m->license);
 
 	len = readlink(license, buf, sizeof(buf));
 	if (len < 0) {
 		/* Could be a real file... OK if not a standard license. */
 		if (errno == EINVAL) {
 			if (!expected) {
-				score->pass = true;
+				score->score = score->total;
 				return;
 			}
 			score->error
@@ -115,6 +151,11 @@ static void check_has_license(struct manifest *m,
 			return;
 		}
 		if (errno == ENOENT) {
+			/* Public domain doesn't really need a file. */
+			if (m->license == LICENSE_PUBLIC_DOMAIN) {
+				score->score = score->total;
+				return;
+			}
 			score->error = talloc_strdup(score,
 						     "LICENSE does not exist");
 			if (expected)

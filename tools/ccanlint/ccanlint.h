@@ -16,6 +16,21 @@
    4 == Describe every action. */
 extern int verbose;
 
+enum license {
+	LICENSE_LGPLv2_PLUS,
+	LICENSE_LGPLv2,
+	LICENSE_LGPLv3,
+	LICENSE_LGPL,
+	LICENSE_GPLv2_PLUS,
+	LICENSE_GPLv2,
+	LICENSE_GPLv3,
+	LICENSE_GPL,
+	LICENSE_BSD,
+	LICENSE_MIT,
+	LICENSE_PUBLIC_DOMAIN,
+	LICENSE_UNKNOWN
+};
+
 struct manifest {
 	char *dir;
 	/* The module name, ie. final element of dir name */
@@ -43,6 +58,9 @@ struct manifest {
 
 	/* From tests/check_depends_exist.c */
 	struct list_head deps;
+
+	/* From tests/license_exists.c */
+	enum license license;
 };
 
 /* Get the manifest for a given directory. */
