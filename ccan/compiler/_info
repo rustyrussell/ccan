@@ -21,7 +21,7 @@
  * - IS_COMPILE_CONSTANT
  *	For using different tradeoffs for compiletime vs runtime evaluation.
  *
- * License: LGPL (v3 or any later version)
+ * License: Public Domain
  * Author: Rusty Russell <rusty@rustcorp.com.au>
  *
  * Example:
