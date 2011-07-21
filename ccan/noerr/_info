@@ -45,7 +45,7 @@
  *		return true;
  *	}
  *
- * License: LGPL (v2.1 or any later version)
+ * License: Public domain
  * Author: Rusty Russell <rusty@rustcorp.com.au>
  */
 int main(int argc, char *argv[])
