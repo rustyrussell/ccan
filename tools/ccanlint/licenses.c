@@ -72,6 +72,36 @@ const struct license_info licenses[] = {
 	},
 };
 
+/* License compatibilty chart (simplified: we don't test that licenses between
+ * files are compatible). */
+bool license_compatible[LICENSE_UNKNOWN+1][LICENSE_UNKNOWN] = {
+/*       LGPL2+ LGPL2 LGPL3 LGPL  GPL2+ GPL2  GPL3  GPL   BSD   MIT   PD   */
+/* _info says: LGPL2+ */
+	{ true, false,false,true, false,false,false,false,true, true, true },
+/* _info says: LGPL2 only */
+	{ true, true, false,true, false,false,false,false,true, true, true },
+/* _info says: LGPL3 (or any later version) */
+	{ true, false,true, true, false,false,false,false,true, true, true },
+/* _info says: LGPL (no version specified) */
+	{ true, true, true, true, false,false,false,false,true, true, true },
+/* _info says: GPL2+ */
+	{ true, true, true, true, true, false,false,true, true, true, true },
+/* _info says: GPL2 only */
+	{ true, true, true, true, true, true, false,true, true, true, true },
+/* _info says: GPL3 (or any later version) */
+	{ true, true, true, true, true, false,true, true, true, true, true },
+/* _info says: GPL (unknown version) */
+	{ true, true, true, true, true, true, true, true, true, true, true },
+/* _info says: BSD (3-clause) */
+	{ false,false,false,false,false,false,false,false,true, true, true },
+/* _info says: MIT */
+	{ false,false,false,false,false,false,false,false,false,true, true },
+/* _info says: Public domain */
+	{ false,false,false,false,false,false,false,false,false,false,true },
+/* _info says something we don't understand */
+	{ false,false,false,false,false,false,false,false,false,false,true }
+};
+
 const char *get_ccan_simplified(struct ccan_file *f)
 {
 	if (!f->simplified) {

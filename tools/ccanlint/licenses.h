@@ -26,6 +26,9 @@ struct license_info {
 	const char *clause[NUM_CLAUSES];
 };
 
+/* Is [project license][file license] compatible? */
+bool license_compatible[LICENSE_UNKNOWN+1][LICENSE_UNKNOWN];
+
 extern const struct license_info licenses[];
 
 struct ccan_file;
