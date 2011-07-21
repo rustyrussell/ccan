@@ -1,3 +1,4 @@
+/* Licensed under GPLv2+ - see LICENSE file for details */
 #ifndef CCAN_IDTREE_H
 #define CCAN_IDTREE_H
 #include <stdbool.h>

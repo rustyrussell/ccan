@@ -1,3 +1,4 @@
+/* Licensed under LGPL - see LICENSE file for details */
 #ifndef CCAN_FAILTEST_RESTORE_H
 #define CCAN_FAILTEST_RESTORE_H
 /* This file undoes the effect of failtest_override.h. */

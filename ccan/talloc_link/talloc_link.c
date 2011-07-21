@@ -1,3 +1,4 @@
+/* Licensed under GPLv2+ - see LICENSE file for details */
 #include <ccan/list/list.h>
 #include <ccan/talloc/talloc.h>
 #include <ccan/talloc_link/talloc_link.h>

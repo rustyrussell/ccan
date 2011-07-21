@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2+ - see LICENSE file for details */
 #include "grab_file.h"
 #include <ccan/talloc/talloc.h>
 #include <ccan/noerr/noerr.h>

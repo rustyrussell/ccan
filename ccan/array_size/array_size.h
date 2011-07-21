@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2.1+ - see LICENSE file for details */
 #ifndef CCAN_ARRAY_SIZE_H
 #define CCAN_ARRAY_SIZE_H
 #include "config.h"

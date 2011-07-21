@@ -1,3 +1,4 @@
+/* Licensed under BSD-MIT - see LICENSE file for details */
 #include <ccan/time/time.h>
 #include <stdlib.h>
 #include <assert.h>

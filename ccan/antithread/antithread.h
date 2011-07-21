@@ -1,3 +1,4 @@
+/* Licensed under GPLv3+ - see LICENSE file for details */
 #ifndef ANTITHREAD_H
 #define ANTITHREAD_H
 #include <ccan/typesafe_cb/typesafe_cb.h>

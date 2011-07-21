@@ -1,3 +1,4 @@
+/* Licensed under BSD-MIT - see LICENSE file for details */
 #ifndef CCAN_TIME_H
 #define CCAN_TIME_H
 #include "config.h"

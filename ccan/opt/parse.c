@@ -1,3 +1,4 @@
+/* Licensed under GPLv3+ - see LICENSE file for details */
 /* Actual code to parse commandline. */
 #include <ccan/opt/opt.h>
 #include <string.h>

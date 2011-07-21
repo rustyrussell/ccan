@@ -1,3 +1,4 @@
+/* Licensed under BSD-MIT - see LICENSE file for details */
 #ifndef CCAN_ASPRINTF_H
 #define CCAN_ASPRINTF_H
 #include "config.h"

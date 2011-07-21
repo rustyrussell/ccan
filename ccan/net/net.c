@@ -1,3 +1,4 @@
+/* Licensed under BSD-MIT - see LICENSE file for details */
 #include <ccan/net/net.h>
 #include <sys/types.h>
 #include <sys/socket.h>

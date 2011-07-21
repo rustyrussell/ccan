@@ -1,3 +1,4 @@
+/* Licensed under GPLv2+ - see LICENSE file for details */
 #ifndef CCAN_MD4_H
 #define CCAN_MD4_H
 #include <stdint.h>

@@ -1,3 +1,4 @@
+/* Licensed under GPLv2+ - see LICENSE file for details */
 #ifndef TALLOC_LINK_H
 #define TALLOC_LINK_H
 #include <ccan/talloc/talloc.h>

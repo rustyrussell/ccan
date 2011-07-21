@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2+ - see LICENSE file for details */
 #include "sparse_bsearch.h"
 
 void *_sparse_bsearch(const void *key, const void *base,

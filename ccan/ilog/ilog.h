@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2.1+ - see LICENSE file for details */
 #if !defined(_ilog_H)
 # define _ilog_H (1)
 # include "config.h"

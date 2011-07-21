@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2.1+ - see LICENSE file for details */
 #ifdef CCAN_LIKELY_DEBUG
 #include <ccan/likely/likely.h>
 #include <ccan/hash/hash.h>

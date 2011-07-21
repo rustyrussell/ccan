@@ -1,3 +1,4 @@
+/* Licensed under GPLv3+ - see LICENSE file for details */
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>

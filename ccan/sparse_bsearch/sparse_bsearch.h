@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2+ - see LICENSE file for details */
 #ifndef SPARSE_BSEARCH_H
 #define SPARSE_BSEARCH_H
 #include <stdbool.h>

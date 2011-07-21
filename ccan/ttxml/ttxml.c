@@ -1,4 +1,4 @@
-
+/* Licensed under GPL - see LICENSE file for details */
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

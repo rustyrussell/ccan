@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2+ - see LICENSE file for details */
 #include "read_write_all.h"
 #include <unistd.h>
 #include <errno.h>

@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2.1+ - see LICENSE file for details */
 #include "crcsync.h"
 #include <ccan/crc/crc.h>
 #include <string.h>

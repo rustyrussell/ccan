@@ -1,3 +1,4 @@
+/* Licensed under LGPL - see LICENSE file for details */
 #include "config.h"
 #include <stdarg.h>
 #include <string.h>

@@ -1,3 +1,4 @@
+/* Licensed under GPLv2+ - see LICENSE file for details */
 #ifndef CCAN_CRC_H
 #define CCAN_CRC_H
 #include <stdint.h>

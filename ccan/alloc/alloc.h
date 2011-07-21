@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2.1+ - see LICENSE file for details */
 #ifndef ALLOC_H
 #define ALLOC_H
 #include <stdio.h>

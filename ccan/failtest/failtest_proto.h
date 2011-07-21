@@ -1,3 +1,4 @@
+/* Licensed under LGPL - see LICENSE file for details */
 #ifndef CCAN_FAILTEST_PROTO_H
 #define CCAN_FAILTEST_PROTO_H
 #include <stdlib.h>

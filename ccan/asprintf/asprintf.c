@@ -1,3 +1,4 @@
+/* Licensed under BSD-MIT - see LICENSE file for details */
 #include <ccan/asprintf/asprintf.h>
 #include <stdarg.h>
 #include <stdio.h>

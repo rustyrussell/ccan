@@ -1,3 +1,4 @@
+/* Licensed under LGPLv3+ - see LICENSE file for details */
 #ifndef CCAN_CAST_H
 #define CCAN_CAST_H
 #include "config.h"

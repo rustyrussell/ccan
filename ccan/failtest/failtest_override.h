@@ -1,3 +1,4 @@
+/* Licensed under LGPL - see LICENSE file for details */
 #ifndef CCAN_FAILTEST_OVERRIDE_H
 #define CCAN_FAILTEST_OVERRIDE_H
 /* This file is included before the source file to test. */

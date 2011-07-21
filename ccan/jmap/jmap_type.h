@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2.1+ - see LICENSE file for details */
 #ifndef CCAN_JMAP_TYPE_H
 #define CCAN_JMAP_TYPE_H
 #include <ccan/jmap/jmap.h>

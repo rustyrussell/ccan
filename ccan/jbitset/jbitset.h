@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2.1+ - see LICENSE file for details */
 #ifndef CCAN_JBITSET_H
 #define CCAN_JBITSET_H
 #include <Judy.h>

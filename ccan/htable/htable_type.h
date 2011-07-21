@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2+ - see LICENSE file for details */
 #ifndef CCAN_HTABLE_TYPE_H
 #define CCAN_HTABLE_TYPE_H
 #include <ccan/htable/htable.h>

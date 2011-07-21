@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2.1+ - see LICENSE file for details */
 #include "config.h"
 #include <ccan/str/str_debug.h>
 #include <assert.h>

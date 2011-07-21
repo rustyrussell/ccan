@@ -1,3 +1,4 @@
+/* Licensed under GPLv3+ - see LICENSE file for details */
 #include <ccan/lbalance/lbalance.h>
 #include <ccan/tlist/tlist.h>
 #include <sys/time.h>

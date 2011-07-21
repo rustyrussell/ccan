@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2.1+ - see LICENSE file for details */
 #ifndef CCAN_LIST_H
 #define CCAN_LIST_H
 #include <stdbool.h>

@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2.1+ - see LICENSE file for details */
 #ifndef CCAN_STR_TALLOC_H
 #define CCAN_STR_TALLOC_H
 #include <string.h>

@@ -1,3 +1,4 @@
+/* Licensed under BSD 3-clause: see LICENSE */
 #ifndef CCAN_DAEMON_WITH_NOTIFY_H
 #define CCAN_DAEMON_WITH_NOTIFY_H
 

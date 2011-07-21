@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2.1+ - see LICENSE file for details */
 #include <ccan/str/str.h>
 
 size_t strcount(const char *haystack, const char *needle)

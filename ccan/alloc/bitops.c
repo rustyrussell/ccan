@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2.1+ - see LICENSE file for details */
 #include "bitops.h"
 #include "config.h"
 #include <ccan/build_assert/build_assert.h>

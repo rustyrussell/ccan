@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2.1+ - see LICENSE file for details */
 #include "tiny.h"
 #include "bitops.h"
 #include <assert.h>

@@ -1,3 +1,4 @@
+/* Licensed under LGPL - see LICENSE file for details */
 #ifndef CCAN_TLIST_H
 #define CCAN_TLIST_H
 #include <ccan/list/list.h>

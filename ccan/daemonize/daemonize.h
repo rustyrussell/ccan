@@ -1,3 +1,4 @@
+/* Licensed under BSD-MIT - see LICENSE file for details */
 #ifndef CCAN_DAEMONIZE_H
 #define CCAN_DAEMONIZE_H
 #include <stdbool.h>

@@ -1,3 +1,4 @@
+/* Licensed under BSD-MIT - see LICENSE file for details */
 #include <ccan/daemonize/daemonize.h>
 #include <unistd.h>
 #include <stdlib.h>

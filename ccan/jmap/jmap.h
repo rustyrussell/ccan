@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2.1+ - see LICENSE file for details */
 #ifndef CCAN_JMAP_H
 #define CCAN_JMAP_H
 #include <stddef.h>

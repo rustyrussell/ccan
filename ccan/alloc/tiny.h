@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2.1+ - see LICENSE file for details */
 #ifndef CCAN_TINY_H
 #define CCAN_TINY_H
 #include <stdbool.h>

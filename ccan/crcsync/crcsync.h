@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2.1+ - see LICENSE file for details */
 #ifndef CCAN_CRCSYNC_H
 #define CCAN_CRCSYNC_H
 #include <stdint.h>

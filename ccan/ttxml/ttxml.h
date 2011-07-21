@@ -1,4 +1,4 @@
-
+/* Licensed under GPL - see LICENSE file for details */
 typedef struct XmlNode {
 	char * name;
 	char ** attrib;

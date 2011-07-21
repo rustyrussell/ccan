@@ -1,3 +1,4 @@
+/* Licensed under GPLv3+ - see LICENSE file for details */
 #ifndef CCAN_LBALANCE_H
 #define CCAN_LBALANCE_H
 #include "config.h"

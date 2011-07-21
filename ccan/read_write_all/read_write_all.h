@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2+ - see LICENSE file for details */
 #ifndef _CCAN_READ_WRITE_H
 #define _CCAN_READ_WRITE_H
 #include <stddef.h>

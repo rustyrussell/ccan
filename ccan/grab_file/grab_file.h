@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2+ - see LICENSE file for details */
 #ifndef CCAN_GRAB_FILE_H
 #define CCAN_GRAB_FILE_H
 #include <stdio.h> // For size_t

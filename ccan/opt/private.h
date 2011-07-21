@@ -1,3 +1,4 @@
+/* Licensed under GPLv3+ - see LICENSE file for details */
 #ifndef CCAN_OPT_PRIVATE_H
 #define CCAN_OPT_PRIVATE_H
 

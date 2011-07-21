@@ -1,3 +1,4 @@
+/* Licensed under LGPLv3+ - see LICENSE file for details */
 #include <ccan/tally/tally.h>
 #include <ccan/build_assert/build_assert.h>
 #include <ccan/likely/likely.h>

@@ -1,3 +1,4 @@
+/* Licensed under LGPLv2+ - see LICENSE file for details */
 #include <ccan/htable/htable.h>
 #include <ccan/compiler/compiler.h>
 #include <stdint.h>

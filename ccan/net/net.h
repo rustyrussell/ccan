@@ -1,3 +1,4 @@
+/* Licensed under BSD-MIT - see LICENSE file for details */
 #ifndef CCAN_NET_H
 #define CCAN_NET_H
 /**
