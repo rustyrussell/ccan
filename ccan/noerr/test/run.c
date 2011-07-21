@@ -9,7 +9,7 @@
 
 int main(int argc, char *argv[])
 {
-	char *name = "noerr.file";
+	const char *name = "noerr.file";
 	int fd;
 	FILE *fp;
 
