@@ -34,4 +34,10 @@ extern const struct license_info licenses[];
 struct ccan_file;
 bool find_boilerplate(struct ccan_file *f, enum license license);
 
+struct doc_section;
+enum license which_license(struct doc_section *d);
+
+struct manifest;
+struct doc_section *find_license_tag(const struct manifest *m);
+
 #endif /* CCANLINT_LICENSES_H */

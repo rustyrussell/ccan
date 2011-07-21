@@ -10,60 +10,6 @@
 #include <err.h>
 #include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
-#include <ccan/str_talloc/str_talloc.h>
-
-static struct doc_section *find_license_tag(const struct manifest *m)
-{
-	struct doc_section *d;
-
-	list_for_each(m->info_file->doc_sections, d, list) {
-		if (!streq(d->function, m->basename))
-			continue;
-		if (streq(d->type, "license"))
-			return d;
-	}
-	return NULL;
-}
-
-/* See GPLv2 and v2 (basically same wording) for interpreting versions:
- * the "any later version" means the recepient can choose. */
-static enum license which_license(struct doc_section *d)
-{
-	/* This means "user chooses what version", including GPLv1! */
-	if (streq(d->lines[0], "GPL"))
-		return LICENSE_GPL;
-	/* This means "v2 only". */
-	if (streq(d->lines[0], "GPLv2"))
-		return LICENSE_GPLv2;
-	/* This means "v2 or above" at user's choice. */
-	if (streq(d->lines[0], "GPL (v2 or any later version)"))
-		return LICENSE_GPLv2_PLUS;
-	/* This means "v3 or above" at user's choice. */
-	if (streq(d->lines[0], "GPL (v3 or any later version)"))
-		return LICENSE_GPLv3;
-
-	/* This means "user chooses what version" */
-	if (streq(d->lines[0], "LGPL"))
-		return LICENSE_LGPL;
-	/* This means "v2.1 only". */
-	if (streq(d->lines[0], "LGPLv2.1"))
-		return LICENSE_LGPLv2;
-	/* This means "v2.1 or above" at user's choice. */
-	if (streq(d->lines[0], "LGPL (v2.1 or any later version)"))
-		return LICENSE_LGPLv2_PLUS;
-	/* This means "v3 or above" at user's choice. */
-	if (streq(d->lines[0], "LGPL (v3 or any later version)"))
-		return LICENSE_LGPLv3;
-
-	if (streq(d->lines[0], "BSD-MIT") || streq(d->lines[0], "MIT"))
-		return LICENSE_MIT;
-	if (streq(d->lines[0], "BSD (3 clause)"))
-		return LICENSE_BSD;
-	if (strreg(NULL, d->lines[0], "[Pp]ublic [Dd]omain"))
-		return LICENSE_PUBLIC_DOMAIN;
-
-	return LICENSE_UNKNOWN;
-}
 
 static const char *expected_link(enum license license)
 {
