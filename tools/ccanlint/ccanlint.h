@@ -4,6 +4,7 @@
 #include <ccan/list/list.h>
 #include <stdbool.h>
 #include "../doc_extract.h"
+#include "licenses.h"
 
 #define REGISTER_TEST(name, ...) extern struct ccanlint name
 
@@ -15,21 +16,6 @@
    3 == Describe every object built.
    4 == Describe every action. */
 extern int verbose;
-
-enum license {
-	LICENSE_LGPLv2_PLUS,
-	LICENSE_LGPLv2,
-	LICENSE_LGPLv3,
-	LICENSE_LGPL,
-	LICENSE_GPLv2_PLUS,
-	LICENSE_GPLv2,
-	LICENSE_GPLv3,
-	LICENSE_GPL,
-	LICENSE_BSD,
-	LICENSE_MIT,
-	LICENSE_PUBLIC_DOMAIN,
-	LICENSE_UNKNOWN
-};
 
 struct manifest {
 	char *dir;
@@ -195,6 +181,9 @@ struct ccan_file {
 
 	/* Leak output from valgrind. */
 	char *leak_info;
+
+	/* Simplified stream (lowercase letters and single spaces) */
+	char *simplified;
 };
 
 /* A new ccan_file, with the given name (talloc_steal onto returned value). */
@@ -208,6 +197,9 @@ char **get_ccan_file_lines(struct ccan_file *f);
 
 /* Use this rather than accessing f->lines directly: loads on demand. */
 struct line_info *get_ccan_line_info(struct ccan_file *f);
+
+/* Use this rather than accessing f->simplified directly: loads on demand. */
+const char *get_ccan_simplified(struct ccan_file *f);
 
 enum line_compiled {
 	NOT_COMPILED,

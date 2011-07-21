@@ -4,6 +4,7 @@ TEST_OBJS := $(NORMAL_TEST_CFILES:.c=.o) $(COMPULSORY_TEST_CFILES:.c=.o)
 
 CORE_OBJS := tools/ccanlint/ccanlint.o \
 	tools/ccanlint/file_analysis.o \
+	tools/ccanlint/licenses.o \
 	tools/doc_extract-core.o \
 	tools/depends.o \
 	tools/tools.o \

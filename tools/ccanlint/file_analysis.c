@@ -86,6 +86,7 @@ struct ccan_file *new_ccan_file(const void *ctx, const char *dir, char *name)
 	f->fullname = talloc_asprintf(f, "%s/%s", dir, f->name);
 	f->contents = NULL;
 	f->cov_compiled = NULL;
+	f->simplified = NULL;
 	return f;
 }
 
