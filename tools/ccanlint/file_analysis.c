@@ -349,7 +349,7 @@ static char *remove_comments(const char *line, bool in_comment,
 
 static bool is_empty(const char *line)
 {
-	return strspn(line, " \t") == strlen(line);
+	return strspn(line, " \r\t") == strlen(line);
 }
 
 static bool continues(const char *line)
