@@ -69,6 +69,9 @@
  *
  * License: LGPL (v2.1 or any later version)
  * Author: Rusty Russell <rusty@rustcorp.com.au>
+ * Ccanlint:
+ *	// We actually depend on the GPL crc routines, so not really LGPL :(
+ *	license_depends_compat FAIL
  */
 int main(int argc, char *argv[])
 {
