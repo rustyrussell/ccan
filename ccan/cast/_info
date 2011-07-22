@@ -16,7 +16,7 @@
  *
  * Author: Jan Engelhardt
  * Maintainer: Rusty Russell <rusty@rustcorp.com.au>
- * License: LGPL
+ * License: LGPL (v2.1 or any later version)
  *
  * Example:
  *	// Given "test" contains "3 t's in 'test string'
