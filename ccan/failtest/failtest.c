@@ -362,7 +362,7 @@ static bool should_fail(struct failtest_call *call)
 	struct saved_file *files;
 
 	/* Are we probing? */
-	if (probe_count && --probe_count == 0)
+	if (probe_count && --probe_count == 0 && control_fd != -1)
 		failtest_cleanup(true, 0);
 
 	if (call == &unrecorded_call)
@@ -412,17 +412,22 @@ static bool should_fail(struct failtest_call *call)
 		switch (failtest_hook(history, history_num)) {
 		case FAIL_OK:
 			break;
+		case FAIL_PROBE:
+			/* Already down probe path?  Stop now. */
+			if (!probe_count) {
+				/* FIXME: We should run *parent* and
+				 * run probe until calls match up again. */
+				probe_count = 3;
+				break;
+			} else {
+				/* Child should give up now. */
+				if (control_fd != -1)
+					failtest_cleanup(true, 0);
+				/* Parent, don't fail again. */
+			}
 		case FAIL_DONT_FAIL:
 			call->fail = false;
 			return false;
-		case FAIL_PROBE:
-			/* Already down probe path?  Stop now. */
-			if (probe_count)
-				failtest_cleanup(true, 0);
-			/* FIXME: We should run *parent* and run probe until
-			 * calls match up again. */
-			probe_count = 3;
-			break;
 		default:
 			abort();
 		}
