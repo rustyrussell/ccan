@@ -73,8 +73,9 @@ static ssize_t bucket_min(ssize_t min, unsigned step_bits, unsigned b)
 /* Does shifting by this many bits truncate the number? */
 static bool shift_overflows(size_t num, unsigned bits)
 {
-	if (bits == 0)
+	if (bits == 0) {
 		return false;
+	}
 
 	return ((num << bits) >> 1) != (num << (bits - 1));
 }
