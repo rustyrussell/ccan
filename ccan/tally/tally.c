@@ -422,9 +422,11 @@ static unsigned get_max_bucket(const struct tally *tally)
 {
 	unsigned int i;
 
-	for (i = tally->buckets; i > 0; i--)
-		if (tally->counts[i-1])
+	for (i = tally->buckets; i > 0; i--) {
+		if (tally->counts[i-1]) {
 			break;
+		}
+	}
 	return i;
 }
 
