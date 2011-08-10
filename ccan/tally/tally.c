@@ -450,7 +450,7 @@ char *tally_histogram(const struct tally *tally,
 			largest_bucket = tally->counts[i];
 	}
 
-	p = graph = malloc(height * (width + 1) + 1);
+	p = graph = (char *)malloc(height * (width + 1) + 1);
 	if (!graph) {
 		free(tmp);
 		return NULL;
