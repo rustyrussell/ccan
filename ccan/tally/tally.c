@@ -292,26 +292,27 @@ static int64_t divls64(int64_t u1, uint64_t u0, int64_t v)
 {
 	int64_t q, uneg, vneg, diff, borrow;
 
-	uneg = u1 >> 63;	  // -1 if u < 0.
-	if (uneg) {		  // Compute the absolute
-		u0 = -u0;	  // value of the dividend u.
+	uneg = u1 >> 63;	  /* -1 if u < 0. */
+	if (uneg) {		  /* Compute the absolute */
+		u0 = -u0;	  /* value of the dividend u. */
 		borrow = (u0 != 0);
 		u1 = -u1 - borrow;
 	}
 
-	vneg = v >> 63;		  // -1 if v < 0.
-	v = (v ^ vneg) - vneg;	  // Absolute value of v.
+	vneg = v >> 63;		  /* -1 if v < 0. */
+	v = (v ^ vneg) - vneg;	  /* Absolute value of v. */
 
 	if ((uint64_t)u1 >= (uint64_t)v)
 		goto overflow;
 
 	q = divlu64(u1, u0, v);
 
-	diff = uneg ^ vneg;	  // Negate q if signs of
-	q = (q ^ diff) - diff;	  // u and v differed.
+	diff = uneg ^ vneg;	  /* Negate q if signs of */
+	q = (q ^ diff) - diff;	  /* u and v differed. */
 
-	if ((diff ^ q) < 0 && q != 0) {	   // If overflow, return the largest
-	overflow:			   // possible neg. quotient.
+	if ((diff ^ q) < 0 && q != 0) {	   /* If overflow, return the
+					      largest */
+	overflow:			   /* possible neg. quotient. */
 		q = 0x8000000000000000ULL;
 	}
 	return q;
