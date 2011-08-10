@@ -88,8 +88,9 @@ static void renormalize(struct tally *tally,
 	unsigned int i, old_min;
 
 	/* Uninitialized?  Don't do anything... */
-	if (tally->max < tally->min)
+	if (tally->max < tally->min) {
 		goto update;
+	}
 
 	/* If we don't have sufficient range, increase step bits until
 	 * buckets cover entire range of ssize_t anyway. */
