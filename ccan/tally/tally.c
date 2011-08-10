@@ -31,7 +31,8 @@ struct tally *tally_new(unsigned buckets)
 	/* Overly cautious check for overflow. */
 	if (sizeof(*tally) * buckets / sizeof(*tally) != buckets)
 		return NULL;
-	tally = malloc(sizeof(*tally) + sizeof(tally->counts[0])*(buckets-1));
+	tally = (struct tally *)malloc(
+		sizeof(*tally) + sizeof(tally->counts[0])*(buckets-1));
 	if (tally) {
 		tally->max = ((size_t)1 << (SIZET_BITS - 1));
 		tally->min = ~tally->max;
