@@ -156,8 +156,9 @@ void tally_add(struct tally *tally, ssize_t val)
 size_t tally_num(const struct tally *tally)
 {
 	size_t i, num = 0;
-	for (i = 0; i < tally->buckets; i++)
+	for (i = 0; i < tally->buckets; i++) {
 		num += tally->counts[i];
+	}
 	return num;
 }
 
