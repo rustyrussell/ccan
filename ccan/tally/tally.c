@@ -25,12 +25,15 @@ struct tally *tally_new(unsigned buckets)
 	struct tally *tally;
 
 	/* There is always 1 bucket. */
-	if (buckets == 0)
+	if (buckets == 0) {
 		buckets = 1;
+	}
 
 	/* Overly cautious check for overflow. */
-	if (sizeof(*tally) * buckets / sizeof(*tally) != buckets)
+	if (sizeof(*tally) * buckets / sizeof(*tally) != buckets) {
 		return NULL;
+	}
+
 	tally = (struct tally *)malloc(
 		sizeof(*tally) + sizeof(tally->counts[0])*(buckets-1));
 	if (tally == NULL) {
