@@ -138,15 +138,17 @@ void tally_add(struct tally *tally, ssize_t val)
 		new_max = val;
 		need_renormalize = true;
 	}
-	if (need_renormalize)
+	if (need_renormalize) {
 		renormalize(tally, new_min, new_max);
+	}
 
 	/* 128-bit arithmetic!  If we didn't want exact mean, we could just
 	 * pull it out of counts. */
-	if (val > 0 && tally->total[0] + val < tally->total[0])
+	if (val > 0 && tally->total[0] + val < tally->total[0]) {
 		tally->total[1]++;
-	else if (val < 0 && tally->total[0] + val > tally->total[0])
+	} else if (val < 0 && tally->total[0] + val > tally->total[0]) {
 		tally->total[1]--;
+	}
 	tally->total[0] += val;
 	tally->counts[bucket_of(tally->min, tally->step_bits, val)]++;
 }
