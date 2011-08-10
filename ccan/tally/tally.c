@@ -219,36 +219,36 @@ static unsigned fls64(uint64_t val)
 /* This is stolen straight from Hacker's Delight. */
 static uint64_t divlu64(uint64_t u1, uint64_t u0, uint64_t v)
 {
-	const uint64_t b = 4294967296ULL; // Number base (32 bits).
-	uint32_t un[4],		  // Dividend and divisor
-		vn[2];		  // normalized and broken
-				  // up into halfwords.
-	uint32_t q[2];		  // Quotient as halfwords.
-	uint64_t un1, un0,	  // Dividend and divisor
-		vn0;		  // as fullwords.
-	uint64_t qhat;		  // Estimated quotient digit.
-	uint64_t rhat;		  // A remainder.
-	uint64_t p;		  // Product of two digits.
+	const uint64_t b = 4294967296ULL; /* Number base (32 bits). */
+	uint32_t un[4],		  /* Dividend and divisor */
+		vn[2];		  /* normalized and broken */
+				  /* up into halfwords. */
+	uint32_t q[2];		  /* Quotient as halfwords. */
+	uint64_t un1, un0,	  /* Dividend and divisor */
+		vn0;		  /* as fullwords. */
+	uint64_t qhat;		  /* Estimated quotient digit. */
+	uint64_t rhat;		  /* A remainder. */
+	uint64_t p;		  /* Product of two digits. */
 	int64_t s, i, j, t, k;
 
-	if (u1 >= v)		  // If overflow, return the largest
-		return (uint64_t)-1; // possible quotient.
+	if (u1 >= v)		  /* If overflow, return the largest */
+		return (uint64_t)-1; /* possible quotient. */
 
-	s = 64 - fls64(v);		  // 0 <= s <= 63.
-	vn0 = v << s;		  // Normalize divisor.
-	vn[1] = vn0 >> 32;	  // Break divisor up into
-	vn[0] = vn0 & 0xFFFFFFFF; // two 32-bit halves.
+	s = 64 - fls64(v);		  /* 0 <= s <= 63. */
+	vn0 = v << s;		  /* Normalize divisor. */
+	vn[1] = vn0 >> 32;	  /* Break divisor up into */
+	vn[0] = vn0 & 0xFFFFFFFF; /* two 32-bit halves. */
 
 	// Shift dividend left.
 	un1 = ((u1 << s) | (u0 >> (64 - s))) & (-s >> 63);
 	un0 = u0 << s;
-	un[3] = un1 >> 32;	  // Break dividend up into
-	un[2] = un1;		  // four 32-bit halfwords
-	un[1] = un0 >> 32;	  // Note: storing into
-	un[0] = un0;		  // halfwords truncates.
+	un[3] = un1 >> 32;	  /* Break dividend up into */
+	un[2] = un1;		  /* four 32-bit halfwords */
+	un[1] = un0 >> 32;	  /* Note: storing into */
+	un[0] = un0;		  /* halfwords truncates. */
 
 	for (j = 1; j >= 0; j--) {
-		// Compute estimate qhat of q[j].
+		/* Compute estimate qhat of q[j]. */
 		qhat = (un[j+2]*b + un[j+1])/vn[1];
 		rhat = (un[j+2]*b + un[j+1]) - qhat*vn[1];
 	again:
@@ -258,7 +258,7 @@ static uint64_t divlu64(uint64_t u1, uint64_t u0, uint64_t v)
 			if (rhat < b) goto again;
 		}
 
-		// Multiply and subtract.
+		/* Multiply and subtract. */
 		k = 0;
 		for (i = 0; i < 2; i++) {
 			p = qhat*vn[i];
@@ -269,9 +269,9 @@ static uint64_t divlu64(uint64_t u1, uint64_t u0, uint64_t v)
 		t = un[j+2] - k;
 		un[j+2] = t;
 
-		q[j] = qhat;		  // Store quotient digit.
-		if (t < 0) {		  // If we subtracted too
-			q[j] = q[j] - 1;  // much, add back.
+		q[j] = qhat;		  /* Store quotient digit. */
+		if (t < 0) {		  /* If we subtracted too */
+			q[j] = q[j] - 1;  /* much, add back. */
 			k = 0;
 			for (i = 0; i < 2; i++) {
 				t = un[i+j] + vn[i] + k;
@@ -280,7 +280,7 @@ static uint64_t divlu64(uint64_t u1, uint64_t u0, uint64_t v)
 			}
 			un[j+2] = un[j+2] + k;
 		}
-	} // End j.
+	} /* End j. */
 
 	return q[1]*b + q[0];
 }
