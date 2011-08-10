@@ -322,8 +322,9 @@ static int64_t divls64(int64_t u1, uint64_t u0, int64_t v)
 ssize_t tally_mean(const struct tally *tally)
 {
 	size_t count = tally_num(tally);
-	if (!count)
+	if (!count) {
 		return 0;
+	}
 
 	if (sizeof(tally->total[0]) == sizeof(uint32_t)) {
 		/* Use standard 64-bit arithmetic. */
