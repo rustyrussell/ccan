@@ -52,8 +52,9 @@ struct tally *tally_new(unsigned buckets)
 static unsigned bucket_of(ssize_t min, unsigned step_bits, ssize_t val)
 {
 	/* Don't over-shift. */
-	if (step_bits == SIZET_BITS)
+	if (step_bits == SIZET_BITS) {
 		return 0;
+	}
 	assert(step_bits < SIZET_BITS);
 	return (size_t)(val - min) >> step_bits;
 }
