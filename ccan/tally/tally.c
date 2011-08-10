@@ -63,8 +63,9 @@ static unsigned bucket_of(ssize_t min, unsigned step_bits, ssize_t val)
 static ssize_t bucket_min(ssize_t min, unsigned step_bits, unsigned b)
 {
 	/* Don't over-shift. */
-	if (step_bits == SIZET_BITS)
+	if (step_bits == SIZET_BITS) {
 		return min;
+	}
 	assert(step_bits < SIZET_BITS);
 	return min + ((ssize_t)b << step_bits);
 }
