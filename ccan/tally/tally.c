@@ -302,8 +302,9 @@ static int64_t divls64(int64_t u1, uint64_t u0, int64_t v)
 	vneg = v >> 63;		  /* -1 if v < 0. */
 	v = (v ^ vneg) - vneg;	  /* Absolute value of v. */
 
-	if ((uint64_t)u1 >= (uint64_t)v)
+	if ((uint64_t)u1 >= (uint64_t)v) {
 		goto overflow;
+	}
 
 	q = divlu64(u1, u0, v);
 
