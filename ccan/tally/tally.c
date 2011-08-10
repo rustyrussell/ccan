@@ -231,8 +231,9 @@ static uint64_t divlu64(uint64_t u1, uint64_t u0, uint64_t v)
 	uint64_t p;		  /* Product of two digits. */
 	int64_t s, i, j, t, k;
 
-	if (u1 >= v)		  /* If overflow, return the largest */
+	if (u1 >= v) {		  /* If overflow, return the largest */
 		return (uint64_t)-1; /* possible quotient. */
+	}
 
 	s = 64 - fls64(v);		  /* 0 <= s <= 63. */
 	vn0 = v << s;		  /* Normalize divisor. */
@@ -255,7 +256,9 @@ static uint64_t divlu64(uint64_t u1, uint64_t u0, uint64_t v)
 		if (qhat >= b || qhat*vn[0] > b*rhat + un[j]) {
 			qhat = qhat - 1;
 			rhat = rhat + vn[1];
-			if (rhat < b) goto again;
+			if (rhat < b) {
+				goto again;
+			}
 		}
 
 		/* Multiply and subtract. */
