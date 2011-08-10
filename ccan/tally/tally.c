@@ -183,8 +183,9 @@ static unsigned fls64(uint64_t val)
 #endif
 	uint64_t r = 64;
 
-	if (!val)
+	if (!val) {
 		return 0;
+	}
 	if (!(val & 0xffffffff00000000ull)) {
 		val <<= 32;
 		r -= 32;
