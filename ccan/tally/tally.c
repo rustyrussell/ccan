@@ -451,15 +451,17 @@ char *tally_histogram(const struct tally *tally,
 		/* We create a temporary then renormalize so < height. */
 		/* FIXME: Antialias properly! */
 		tmp = tally_new(tally->buckets);
-		if (!tmp)
+		if (!tmp) {
 			return NULL;
+		}
 		tmp->min = tally->min;
 		tmp->max = tally->max;
 		tmp->step_bits = tally->step_bits;
 		memcpy(tmp->counts, tally->counts,
 		       sizeof(tally->counts[0]) * tmp->buckets);
-		while ((max_bucket = get_max_bucket(tmp)) >= height)
+		while ((max_bucket = get_max_bucket(tmp)) >= height) {
 			renormalize(tmp, tmp->min, tmp->max * 2);
+		}
 		/* Restore max */
 		tmp->max = tally->max;
 		tally = tmp;
@@ -469,8 +471,9 @@ char *tally_histogram(const struct tally *tally,
 	/* Figure out longest line, for scale. */
 	largest_bucket = 0;
 	for (i = 0; i < tally->buckets; i++) {
-		if (tally->counts[i] > largest_bucket)
+		if (tally->counts[i] > largest_bucket) {
 			largest_bucket = tally->counts[i];
+		}
 	}
 
 	p = graph = (char *)malloc(height * (width + 1) + 1);
@@ -486,23 +489,26 @@ char *tally_histogram(const struct tally *tally,
 		row = height - i - 1;
 		count = (double)tally->counts[row] / largest_bucket * (width-1)+1;
 
-		if (row == 0)
+		if (row == 0) {
 			covered = snprintf(p, width, "%zi", tally->min);
-		else if (row == height - 1)
+		} else if (row == height - 1) {
 			covered = snprintf(p, width, "%zi", tally->max);
-		else if (row == bucket_of(tally->min, tally->step_bits, 0))
+		} else if (row == bucket_of(tally->min, tally->step_bits, 0)) {
 			*p = '+';
-		else
+		} else {
 			*p = '|';
+		}
 
-		if (covered > width)
+		if (covered > width) {
 			covered = width;
+		}
 		p += covered;
 
-		if (count > covered)
+		if (count > covered) {
 			count -= covered;
-		else
+		} else {
 			count = 0;
+		}
 
 		memset(p, '*', count);
 		p += count;
