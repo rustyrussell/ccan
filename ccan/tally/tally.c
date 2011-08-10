@@ -386,8 +386,9 @@ ssize_t tally_approx_median(const struct tally *tally, size_t *err)
 
 	for (i = 0; i < tally->buckets; i++) {
 		total += tally->counts[i];
-		if (total * 2 >= count)
+		if (total * 2 >= count) {
 			break;
+		}
 	}
 	return bucket_range(tally, i, err);
 }
