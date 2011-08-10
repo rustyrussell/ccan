@@ -367,10 +367,11 @@ static ssize_t bucket_range(const struct tally *tally, unsigned b, size_t *err)
 	ssize_t min, max;
 
 	min = bucket_min(tally->min, tally->step_bits, b);
-	if (b == tally->buckets - 1)
+	if (b == tally->buckets - 1) {
 		max = tally->max;
-	else
+	} else {
 		max = bucket_min(tally->min, tally->step_bits, b+1) - 1;
+	}
 
 	/* FIXME: Think harder about cumulative error; is this enough?. */
 	*err = (max - min + 1) / 2;
