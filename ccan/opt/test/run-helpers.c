@@ -82,7 +82,7 @@ static void *saved_malloc(size_t size)
 /* Test helpers. */
 int main(int argc, char *argv[])
 {
-	plan_tests(100);
+	plan_tests(334);
 
 	/* opt_set_bool */
 	{
@@ -211,6 +211,443 @@ int main(int argc, char *argv[])
 		else
 			fail("FIXME: Handle other long sizes");
 	}
+
+	{
+		const long long k = 1024;
+		const long long M = k * k;
+		const long long G = k * k * k;
+		const long long T = k * k * k * k;
+		const long long P = k * k * k * k * k;
+		const long long E = k * k * k * k * k * k;
+
+		/* opt_set_uintval_bi */
+		{
+			unsigned int arg = 1000;
+			reset_options();
+			opt_register_arg("-a", opt_set_uintval_bi, NULL,
+					 &arg, "All");
+			ok1(parse_args(&argc, &argv, "-a", "9999", NULL));
+			ok1(arg == 9999);
+			ok1(!parse_args(&argc, &argv, "-a", "-9999", NULL));
+			ok1(parse_args(&argc, &argv, "-a", "0", NULL));
+			ok1(arg == 0);
+			arg = 1;
+			ok1(parse_args(&argc, &argv, "-a", "0k", NULL));
+			ok1(arg == 0);
+			arg = 1;
+			ok1(parse_args(&argc, &argv, "-a", "0P", NULL));
+			ok1(arg == 0);
+			ok1(!parse_args(&argc, &argv, "-a", "3Q", NULL));
+			ok1(parse_args(&argc, &argv, "-a", "30k", NULL));
+			ok1(arg == 30 * k);
+			ok1(!parse_args(&argc, &argv, "-a", "-1K", NULL));
+	}
+
+		/* opt_set_intval_bi */
+		{
+			int arg = 1000;
+			reset_options();
+			opt_register_arg("-a", opt_set_intval_bi, NULL,
+					 &arg, "All");
+			ok1(parse_args(&argc, &argv, "-a", "9999", NULL));
+			ok1(arg == 9999);
+			ok1(parse_args(&argc, &argv, "-a", "-9999", NULL));
+			ok1(arg == -9999);
+			ok1(parse_args(&argc, &argv, "-a", "0", NULL));
+			ok1(arg == 0);
+			arg = 1;
+			ok1(parse_args(&argc, &argv, "-a", "0k", NULL));
+			ok1(arg == 0);
+			arg = 1;
+			ok1(parse_args(&argc, &argv, "-a", "0P", NULL));
+			ok1(arg == 0);
+			ok1(!parse_args(&argc, &argv, "-a", "3Q", NULL));
+			ok1(parse_args(&argc, &argv, "-a", "30k", NULL));
+			ok1(arg == 30 * k);
+			ok1(parse_args(&argc, &argv, "-a", "-1K", NULL));
+			ok1(arg == -1 * k);
+		}
+
+
+		/* opt_set_ulongval_bi */
+		{
+			unsigned long int arg = 1000;
+
+			reset_options();
+			opt_register_arg("-a", opt_set_ulongval_bi, NULL,
+					 &arg, "All");
+			ok1(parse_args(&argc, &argv, "-a", "9999", NULL));
+			ok1(arg == 9999);
+			ok1(!parse_args(&argc, &argv, "-a", "-9999", NULL));
+			ok1(parse_args(&argc, &argv, "-a", "0", NULL));
+			ok1(arg == 0);
+			arg = 1;
+			ok1(parse_args(&argc, &argv, "-a", "0P", NULL));
+			ok1(arg == 0);
+			ok1(!parse_args(&argc, &argv, "-a", "1Q", NULL));
+			ok1(parse_args(&argc, &argv, "-a", "100k", NULL));
+			ok1(arg == 100 * k);
+			ok1(parse_args(&argc, &argv, "-a", "1K", NULL));
+			ok1(arg == 1 * k);
+			ok1(parse_args(&argc, &argv, "-a", "99M", NULL));
+			ok1(arg == 99 * M);
+			/*note, 2999M > max signed 32 bit long, 1 << 31*/
+			ok1(parse_args(&argc, &argv, "-a", "2999m", NULL));
+			ok1(arg == 2999 * M);
+			ok1(parse_args(&argc, &argv, "-a", "1G", NULL));
+			ok1(arg == 1 * G);
+			ok1(!parse_args(&argc, &argv, "-a", "-1G", NULL));
+			if (sizeof(long) == 4){
+				ok1(!parse_args(&argc, &argv, "-a", "4294967296", NULL));
+				ok1(!parse_args(&argc, &argv, "-a", "1T", NULL));
+				ok1(!parse_args(&argc, &argv, "-a", "1E", NULL));
+			}
+			else if (sizeof(long) == 8){
+				ok1(!parse_args(&argc, &argv, "-a",
+						"18446744073709551616", NULL));
+				ok1(!parse_args(&argc, &argv, "-a", "8E", NULL));
+				ok1(parse_args(&argc, &argv, "-a", "3E", NULL));
+			}
+			else
+				fail("FIXME: Handle other long sizes");
+		}
+
+		/* opt_set_longval_bi */
+		{
+			long int arg = 1000;
+
+			reset_options();
+			opt_register_arg("-a", opt_set_longval_bi, NULL,
+					 &arg, "All");
+			ok1(parse_args(&argc, &argv, "-a", "9999", NULL));
+			ok1(arg == 9999);
+			ok1(parse_args(&argc, &argv, "-a", "-9999", NULL));
+			ok1(arg == -9999);
+			ok1(parse_args(&argc, &argv, "-a", "0P", NULL));
+			ok1(arg == 0);
+			ok1(!parse_args(&argc, &argv, "-a", "100crap", NULL));
+			ok1(!parse_args(&argc, &argv, "-a", "1Q", NULL));
+			ok1(parse_args(&argc, &argv, "-a", "100k", NULL));
+			ok1(arg == 100 * k);
+			ok1(parse_args(&argc, &argv, "-a", "-100k", NULL));
+			ok1(arg == -100 * k);
+			ok1(parse_args(&argc, &argv, "-a", "1K", NULL));
+			ok1(arg == 1 * k);
+			ok1(parse_args(&argc, &argv, "-a", "99M", NULL));
+			ok1(arg == 99 * M);
+			ok1(parse_args(&argc, &argv, "-a", "1G", NULL));
+			ok1(arg == 1 * G);
+			ok1(parse_args(&argc, &argv, "-a", "-1G", NULL));
+			ok1(arg == -1 * G);
+			if (sizeof(long) == 4){
+				ok1(!parse_args(&argc, &argv, "-a", "2147483648", NULL));
+				ok1(!parse_args(&argc, &argv, "-a", "2G", NULL));
+				ok1(!parse_args(&argc, &argv, "-a", "2048m", NULL));
+				ok1(!parse_args(&argc, &argv, "-a", "1T", NULL));
+				ok1(!parse_args(&argc, &argv, "-a", "1E", NULL));
+			}
+			else if (sizeof(long) == 8){
+				ok1(!parse_args(&argc, &argv, "-a",
+						"9223372036854775808", NULL));
+				ok1(parse_args(&argc, &argv, "-a", "3E", NULL));
+				ok1(arg == 3 * E);
+				ok1(parse_args(&argc, &argv, "-a", "123T", NULL));
+				ok1(arg == 123 * T);
+			}
+			else
+				fail("FIXME: Handle other long sizes");
+		}
+
+
+		/* opt_set_longlongval_bi */
+		{
+			long long int arg = 1000;
+			reset_options();
+			opt_register_arg("-a", opt_set_longlongval_bi, NULL,
+					 &arg, "All");
+			ok1(parse_args(&argc, &argv, "-a", "9999", NULL));
+			ok1(arg == 9999);
+			ok1(parse_args(&argc, &argv, "-a", "-9999", NULL));
+			ok1(arg == -9999);
+			ok1(parse_args(&argc, &argv, "-a", "0P", NULL));
+			ok1(arg == 0);
+			ok1(!parse_args(&argc, &argv, "-a", "100crap", NULL));
+			ok1(!parse_args(&argc, &argv, "-a", "1Q", NULL));
+			ok1(!parse_args(&argc, &argv, "-a", "1kk", NULL));
+			ok1(parse_args(&argc, &argv, "-a", "100k", NULL));
+			ok1(arg == 100 * k);
+			ok1(parse_args(&argc, &argv, "-a", "-100k", NULL));
+			ok1(arg == -100 * k);
+			ok1(parse_args(&argc, &argv, "-a", "1K", NULL));
+			ok1(arg == 1 * k);
+			ok1(parse_args(&argc, &argv, "-a", "-333333M", NULL));
+			ok1(arg == -333333 * M);
+			ok1(parse_args(&argc, &argv, "-a", "1G", NULL));
+			ok1(arg == 1 * G);
+			ok1(parse_args(&argc, &argv, "-a", "1024t", NULL));
+			ok1(arg == 1024 * T);
+			ok1(parse_args(&argc, &argv, "-a", "123P", NULL));
+			ok1(arg == 123 * P);
+			ok1(parse_args(&argc, &argv, "-a", "-3E", NULL));
+			ok1(arg == -3 * E);
+
+			if (sizeof(long long) == 8){
+				ok1(!parse_args(&argc, &argv, "-a",
+						"9223372036854775808", NULL));
+				/*8E and 922337.. are both 1 << 63*/
+				ok1(!parse_args(&argc, &argv, "-a", "8E", NULL));
+			}
+			else
+				fail("FIXME: Handle other long long int"
+				     " sizes (specifically %lu bytes)",
+				     sizeof(long long));
+		}
+		/* opt_set_ulonglongval_bi */
+		{
+			unsigned long long int arg = 1000;
+			reset_options();
+			opt_register_arg("-a", opt_set_ulonglongval_bi, NULL,
+					 &arg, "All");
+			ok1(parse_args(&argc, &argv, "-a", "9999", NULL));
+			ok1(arg == 9999);
+			ok1(!parse_args(&argc, &argv, "-a", "-9999", NULL));
+			ok1(parse_args(&argc, &argv, "-a", "0", NULL));
+			ok1(arg == 0);
+			ok1(!parse_args(&argc, &argv, "-a", "1Q", NULL));
+			ok1(!parse_args(&argc, &argv, "-a", "1kk", NULL));
+			ok1(parse_args(&argc, &argv, "-a", "100G", NULL));
+			ok1(arg == 100 * G);
+			ok1(!parse_args(&argc, &argv, "-a", "-100G", NULL));
+			ok1(parse_args(&argc, &argv, "-a", "8191P", NULL));
+			ok1(arg == 8191 * P);
+		}
+	}
+
+	{
+		const long long k = 1000;
+		const long long M = k * k;
+		const long long G = k * k * k;
+		const long long T = k * k * k * k;
+		const long long P = k * k * k * k * k;
+		const long long E = k * k * k * k * k * k;
+
+		/* opt_set_uintval_si */
+		{
+			unsigned int arg = 1000;
+			reset_options();
+			opt_register_arg("-a", opt_set_uintval_si, NULL,
+					 &arg, "All");
+			ok1(parse_args(&argc, &argv, "-a", "9999", NULL));
+			ok1(arg == 9999);
+			ok1(!parse_args(&argc, &argv, "-a", "-9999", NULL));
+			ok1(parse_args(&argc, &argv, "-a", "0", NULL));
+			ok1(arg == 0);
+			arg = 1;
+			ok1(parse_args(&argc, &argv, "-a", "0k", NULL));
+			ok1(arg == 0);
+			arg = 1;
+			ok1(parse_args(&argc, &argv, "-a", "0P", NULL));
+			ok1(arg == 0);
+			ok1(!parse_args(&argc, &argv, "-a", "3Q", NULL));
+			ok1(parse_args(&argc, &argv, "-a", "30k", NULL));
+			ok1(arg == 30 * k);
+			ok1(!parse_args(&argc, &argv, "-a", "-1K", NULL));
+			if (sizeof(unsigned int) < 8)
+				ok1(!parse_args(&argc, &argv, "-a", "1E", NULL));
+			else
+				pass("can't test int truncation when int is so huge");
+	}
+
+		/* opt_set_intval_si */
+		{
+			int arg = 1000;
+			reset_options();
+			opt_register_arg("-a", opt_set_intval_si, NULL,
+					 &arg, "All");
+			ok1(parse_args(&argc, &argv, "-a", "9999", NULL));
+			ok1(arg == 9999);
+			ok1(parse_args(&argc, &argv, "-a", "-9999", NULL));
+			ok1(arg == -9999);
+			ok1(parse_args(&argc, &argv, "-a", "0", NULL));
+			ok1(arg == 0);
+			arg = 1;
+			ok1(parse_args(&argc, &argv, "-a", "0k", NULL));
+			ok1(arg == 0);
+			arg = 1;
+			ok1(parse_args(&argc, &argv, "-a", "0P", NULL));
+			ok1(arg == 0);
+			ok1(!parse_args(&argc, &argv, "-a", "", NULL));
+			ok1(!parse_args(&argc, &argv, "-a", "3Q", NULL));
+			ok1(parse_args(&argc, &argv, "-a", "30k", NULL));
+			ok1(arg == 30 * k);
+			ok1(parse_args(&argc, &argv, "-a", "-1K", NULL));
+			ok1(arg == -1 * k);
+			if (sizeof(int) < 8)
+				ok1(!parse_args(&argc, &argv, "-a", "1E", NULL));
+			else
+				pass("can't test int truncation when int is so huge");
+		}
+
+
+		/* opt_set_ulongval_si */
+		{
+			unsigned long long int arg = 1000;
+
+			reset_options();
+			opt_register_arg("-a", opt_set_ulongval_si, NULL,
+					 &arg, "All");
+			ok1(parse_args(&argc, &argv, "-a", "9999", NULL));
+			ok1(arg == 9999);
+			ok1(!parse_args(&argc, &argv, "-a", "-9999", NULL));
+			ok1(parse_args(&argc, &argv, "-a", "0P", NULL));
+			ok1(arg == 0);
+			ok1(!parse_args(&argc, &argv, "-a", "100crap", NULL));
+			ok1(!parse_args(&argc, &argv, "-a", "1Q", NULL));
+			ok1(parse_args(&argc, &argv, "-a", "100k", NULL));
+			ok1(arg == 100 * k);
+			ok1(parse_args(&argc, &argv, "-a", "1K", NULL));
+			ok1(arg == 1 * k);
+			ok1(parse_args(&argc, &argv, "-a", "99M", NULL));
+			ok1(arg == 99 * M);
+			/*note, 2999M > max signed 32 bit long, 1 << 31*/
+			ok1(parse_args(&argc, &argv, "-a", "2999m", NULL));
+			ok1(arg == 2999 * M);
+			ok1(parse_args(&argc, &argv, "-a", "1G", NULL));
+			ok1(arg == 1 * G);
+			ok1(!parse_args(&argc, &argv, "-a", "-1G", NULL));
+			ok1(parse_args(&argc, &argv, "-a", "4G", NULL));
+			ok1(arg == 4000000000);
+			if (sizeof(long) == 4){
+				ok1(!parse_args(&argc, &argv, "-a", "4294967296", NULL));
+				ok1(!parse_args(&argc, &argv, "-a", "4295M", NULL));
+				ok1(!parse_args(&argc, &argv, "-a", "1T", NULL));
+				ok1(!parse_args(&argc, &argv, "-a", "1E", NULL));
+			}
+			else if (sizeof(long)== 8){
+				ok1(!parse_args(&argc, &argv, "-a",
+						"18446744073709551616", NULL));
+				ok1(parse_args(&argc, &argv, "-a", "9E", NULL));
+				ok1(arg == 9000000000000000000ULL);
+				ok1(!parse_args(&argc, &argv, "-a", "19E", NULL));
+			}
+			else
+				fail("FIXME: Handle other long sizes");
+		}
+
+		/* opt_set_longval_si */
+		{
+			long int arg = 1000;
+
+			reset_options();
+			opt_register_arg("-a", opt_set_longval_si, NULL,
+					 &arg, "All");
+			ok1(parse_args(&argc, &argv, "-a", "9999", NULL));
+			ok1(arg == 9999);
+			ok1(parse_args(&argc, &argv, "-a", "-9999", NULL));
+			ok1(arg == -9999);
+			ok1(parse_args(&argc, &argv, "-a", "0P", NULL));
+			ok1(arg == 0);
+			ok1(!parse_args(&argc, &argv, "-a", "100crap", NULL));
+			ok1(!parse_args(&argc, &argv, "-a", "1Q", NULL));
+			ok1(parse_args(&argc, &argv, "-a", "100k", NULL));
+			ok1(arg == 100 * k);
+			ok1(parse_args(&argc, &argv, "-a", "-100k", NULL));
+			ok1(arg == -100 * k);
+			ok1(parse_args(&argc, &argv, "-a", "1K", NULL));
+			ok1(arg == 1 * k);
+			ok1(parse_args(&argc, &argv, "-a", "99M", NULL));
+			ok1(arg == 99 * M);
+			ok1(parse_args(&argc, &argv, "-a", "1G", NULL));
+			ok1(arg == 1 * G);
+			ok1(parse_args(&argc, &argv, "-a", "-1G", NULL));
+			ok1(arg == -1 * G);
+			if (sizeof(long) == 4){
+				ok1(!parse_args(&argc, &argv, "-a", "2147483648", NULL));
+				ok1(!parse_args(&argc, &argv, "-a", "4G", NULL));
+				ok1(!parse_args(&argc, &argv, "-a", "1T", NULL));
+				ok1(!parse_args(&argc, &argv, "-a", "1E", NULL));
+				ok1(parse_args(&argc, &argv, "-a", "1999m", NULL));
+				ok1(arg == 1999 * M);
+			}
+			else if (sizeof(long)== 8){
+				ok1(!parse_args(&argc, &argv, "-a",
+						"9223372036854775808", NULL));
+				ok1(!parse_args(&argc, &argv, "-a", "9224P", NULL));
+				ok1(parse_args(&argc, &argv, "-a", "9E", NULL));
+				ok1(arg == 9 * E);
+				ok1(parse_args(&argc, &argv, "-a", "123T", NULL));
+				ok1(arg == 123 * T);
+			}
+			else
+				fail("FIXME: Handle other long sizes");
+		}
+
+
+		/* opt_set_longlongval_si */
+		{
+			long long int arg = 1000;
+			reset_options();
+			opt_register_arg("-a", opt_set_longlongval_si, NULL,
+					 &arg, "All");
+			ok1(parse_args(&argc, &argv, "-a", "9999", NULL));
+			ok1(arg == 9999);
+			ok1(parse_args(&argc, &argv, "-a", "-9999", NULL));
+			ok1(arg == -9999);
+			ok1(parse_args(&argc, &argv, "-a", "0T", NULL));
+			ok1(arg == 0);
+			ok1(!parse_args(&argc, &argv, "-a", "100crap", NULL));
+			ok1(!parse_args(&argc, &argv, "-a", "1Q", NULL));
+			ok1(!parse_args(&argc, &argv, "-a", "1kk", NULL));
+			ok1(parse_args(&argc, &argv, "-a", "100k", NULL));
+			ok1(arg == 100 * k);
+			ok1(parse_args(&argc, &argv, "-a", "-100k", NULL));
+			ok1(arg == -100 * k);
+			ok1(parse_args(&argc, &argv, "-a", "1K", NULL));
+			ok1(arg == 1 * k);
+			ok1(parse_args(&argc, &argv, "-a", "-333333M", NULL));
+			ok1(arg == -333333 * M);
+			ok1(parse_args(&argc, &argv, "-a", "1G", NULL));
+			ok1(arg == 1 * G);
+			ok1(parse_args(&argc, &argv, "-a", "1024t", NULL));
+			ok1(arg == 1024 * T);
+			ok1(parse_args(&argc, &argv, "-a", "123P", NULL));
+			ok1(arg == 123 * P);
+			ok1(parse_args(&argc, &argv, "-a", "-3E", NULL));
+			ok1(arg == -3 * E);
+			ok1(parse_args(&argc, &argv, "-a", "8E", NULL));
+			if (sizeof(long long) == 8){
+				ok1(!parse_args(&argc, &argv, "-a",
+						"9223372036854775808", NULL));
+				ok1(!parse_args(&argc, &argv, "-a",
+						"10E", NULL));
+			}
+			else
+				fail("FIXME: Handle other long long int"
+				     " sizes (specifically %lu bytes)",
+				     sizeof(long long));
+
+		}
+		/* opt_set_ulonglongval_si */
+		{
+			unsigned long long int arg = 1000;
+			reset_options();
+			opt_register_arg("-a", opt_set_ulonglongval_si, NULL,
+					 &arg, "All");
+			ok1(parse_args(&argc, &argv, "-a", "9999", NULL));
+			ok1(arg == 9999);
+			ok1(!parse_args(&argc, &argv, "-a", "-9999", NULL));
+			ok1(parse_args(&argc, &argv, "-a", "0", NULL));
+			ok1(arg == 0);
+			ok1(!parse_args(&argc, &argv, "-a", "1Q", NULL));
+			ok1(!parse_args(&argc, &argv, "-a", "1kk", NULL));
+			ok1(parse_args(&argc, &argv, "-a", "100G", NULL));
+			ok1(arg == 100 * G);
+			ok1(!parse_args(&argc, &argv, "-a", "-100G", NULL));
+			ok1(parse_args(&argc, &argv, "-a", "8E", NULL));
+		}
+	}
+
+
 	/* opt_inc_intval */
 	{
 		int arg = 1000;
@@ -436,5 +873,6 @@ int main(int argc, char *argv[])
 		output = NULL;
 	}
 
+	//diag("%s\n", err_output);
 	return exit_status();
 }

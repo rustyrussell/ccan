@@ -280,6 +280,23 @@ void opt_show_longval(char buf[OPT_SHOW_LEN], const long *l);
 char *opt_set_ulongval(const char *arg, unsigned long *ul);
 void opt_show_ulongval(char buf[OPT_SHOW_LEN], const unsigned long *ul);
 
+/* the following setting functions accept k, M, G, T, P, or E suffixes, which
+   multiplies the numeric value by the corresponding power of 1000 or 1024
+   (for the _si and _bi versions, respectively).
+ */
+char *opt_set_intval_bi(const char *arg, int *i);
+char *opt_set_intval_si(const char *arg, int *i);
+char *opt_set_uintval_bi(const char *arg, unsigned int *u);
+char *opt_set_uintval_si(const char *arg, unsigned int *u);
+char *opt_set_longval_bi(const char *arg, long *l);
+char *opt_set_longval_si(const char *arg, long *l);
+char *opt_set_ulongval_bi(const char *arg, unsigned long *ul);
+char *opt_set_ulongval_si(const char *arg, unsigned long *ul);
+char *opt_set_longlongval_bi(const char *arg, long long *ll);
+char *opt_set_longlongval_si(const char *arg, long long *ll);
+char *opt_set_ulonglongval_bi(const char *arg, unsigned long long *ll);
+char *opt_set_ulonglongval_si(const char *arg, unsigned long long *ll);
+
 /* Increment. */
 char *opt_inc_intval(int *i);
 
