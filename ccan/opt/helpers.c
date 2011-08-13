@@ -56,7 +56,8 @@ char *opt_set_charp(const char *arg, char **p)
 	return NULL;
 }
 
-/* Set an integer value, various forms.  Sets to 1 on arg == NULL. */
+/* Set an integer value, various forms.
+   FIXME: set to 1 on arg == NULL ? */
 char *opt_set_intval(const char *arg, int *i)
 {
 	long l;
@@ -102,7 +103,7 @@ char *opt_set_ulongval(const char *arg, unsigned long *ul)
 {
 	long int l;
 	char *err;
-	
+
 	err = opt_set_longval(arg, &l);
 	if (err)
 		return err;
@@ -153,7 +154,7 @@ void opt_show_charp(char buf[OPT_SHOW_LEN], char *const *p)
 		buf[2+len] = '\0';
 }
 
-/* Set an integer value, various forms.  Sets to 1 on arg == NULL. */
+/* Show an integer value, various forms. */
 void opt_show_intval(char buf[OPT_SHOW_LEN], const int *i)
 {
 	snprintf(buf, OPT_SHOW_LEN, "%i", *i);
