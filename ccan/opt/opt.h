@@ -297,6 +297,24 @@ char *opt_set_longlongval_si(const char *arg, long long *ll);
 char *opt_set_ulonglongval_bi(const char *arg, unsigned long long *ll);
 char *opt_set_ulonglongval_si(const char *arg, unsigned long long *ll);
 
+
+void opt_show_intval_bi(char buf[OPT_SHOW_LEN], const int *x);
+void opt_show_longval_bi(char buf[OPT_SHOW_LEN], const long *x);
+void opt_show_longlongval_bi(char buf[OPT_SHOW_LEN], const long long *x);
+void opt_show_uintval_bi(char buf[OPT_SHOW_LEN], const unsigned int *x);
+void opt_show_ulongval_bi(char buf[OPT_SHOW_LEN], const unsigned long *x);
+void opt_show_ulonglongval_bi(char buf[OPT_SHOW_LEN], const unsigned long long *x);
+
+void opt_show_intval_si(char buf[OPT_SHOW_LEN], const int *x);
+void opt_show_longval_si(char buf[OPT_SHOW_LEN], const long *x);
+void opt_show_longlongval_si(char buf[OPT_SHOW_LEN], const long long *x);
+void opt_show_uintval_si(char buf[OPT_SHOW_LEN], const unsigned int *x);
+void opt_show_ulongval_si(char buf[OPT_SHOW_LEN], const unsigned long *x);
+void opt_show_ulonglongval_si(char buf[OPT_SHOW_LEN], const unsigned long long *x);
+
+
+
+
 /* Increment. */
 char *opt_inc_intval(int *i);
 

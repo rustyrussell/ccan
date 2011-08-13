@@ -59,7 +59,7 @@ static int saved_printf(const char *fmt, ...)
 	ret = saved_vprintf(fmt, ap);
 	va_end(ap);
 	return ret;
-}	
+}
 
 static int saved_fprintf(FILE *ignored, const char *fmt, ...)
 {
@@ -70,7 +70,7 @@ static int saved_fprintf(FILE *ignored, const char *fmt, ...)
 	ret = saved_vprintf(fmt, ap);
 	va_end(ap);
 	return ret;
-}	
+}
 
 #undef malloc
 static void *last_allocation;
@@ -82,7 +82,7 @@ static void *saved_malloc(size_t size)
 /* Test helpers. */
 int main(int argc, char *argv[])
 {
-	plan_tests(334);
+	plan_tests(452);
 
 	/* opt_set_bool */
 	{
@@ -421,6 +421,167 @@ int main(int argc, char *argv[])
 			ok1(parse_args(&argc, &argv, "-a", "8191P", NULL));
 			ok1(arg == 8191 * P);
 		}
+
+		/* opt_show_intval_bi */
+		{
+			int i;
+			char buf[OPT_SHOW_LEN+2] = { 0 };
+			buf[OPT_SHOW_LEN] = '!';
+			i = -77;
+			opt_show_intval_bi(buf, &i);
+			ok1(strcmp(buf, "-77") == 0);
+			i = 0;
+			opt_show_intval_bi(buf, &i);
+			ok1(strcmp(buf, "0") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 77;
+			opt_show_intval_bi(buf, &i);
+			ok1(strcmp(buf, "77") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = -1234 * k;
+			opt_show_intval_bi(buf, &i);
+			ok1(strcmp(buf, "-1234k") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 500 * M;
+			opt_show_intval_bi(buf, &i);
+			ok1(strcmp(buf, "500M") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 1024 * M;
+			opt_show_intval_bi(buf, &i);
+			ok1(strcmp(buf, "1G") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+		}
+
+		/* opt_show_longval_bi */
+		{
+			long i;
+			char buf[OPT_SHOW_LEN+2] = { 0 };
+			buf[OPT_SHOW_LEN] = '!';
+			i = -77;
+			opt_show_longval_bi(buf, &i);
+			ok1(strcmp(buf, "-77") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 77;
+			opt_show_longval_bi(buf, &i);
+			ok1(strcmp(buf, "77") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = -1 * k;
+			opt_show_longval_bi(buf, &i);
+			ok1(strcmp(buf, "-1k") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 500 * M;
+			opt_show_longval_bi(buf, &i);
+			ok1(strcmp(buf, "500M") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 1024 * M;
+			opt_show_longval_bi(buf, &i);
+			ok1(strcmp(buf, "1G") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 0;
+			opt_show_longval_bi(buf, &i);
+			ok1(strcmp(buf, "0") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+		}
+
+		/* opt_show_llongval_bi */
+		{
+			long long i;
+			char buf[OPT_SHOW_LEN+2] = { 0 };
+			buf[OPT_SHOW_LEN] = '!';
+			i = -7777;
+			opt_show_longlongval_bi(buf, &i);
+			ok1(strcmp(buf, "-7777") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 7777;
+			opt_show_longlongval_bi(buf, &i);
+			ok1(strcmp(buf, "7777") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = -10240000 * k;
+			opt_show_longlongval_bi(buf, &i);
+			ok1(strcmp(buf, "-10000M") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 5 * P;
+			opt_show_longlongval_bi(buf, &i);
+			ok1(strcmp(buf, "5P") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 1024 * P;
+			opt_show_longlongval_bi(buf, &i);
+			ok1(strcmp(buf, "1E") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+		}
+
+		/* opt_show_uintval_bi */
+		{
+			unsigned int i;
+			char buf[OPT_SHOW_LEN+2] = { 0 };
+			buf[OPT_SHOW_LEN] = '!';
+			i = 77;
+			opt_show_uintval_bi(buf, &i);
+			ok1(strcmp(buf, "77") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 1234 * k;
+			opt_show_uintval_bi(buf, &i);
+			ok1(strcmp(buf, "1234k") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 500 * M;
+			opt_show_uintval_bi(buf, &i);
+			ok1(strcmp(buf, "500M") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 1024 * M;
+			opt_show_uintval_bi(buf, &i);
+			ok1(strcmp(buf, "1G") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+		}
+
+		/* opt_show_ulongval_bi */
+		{
+			unsigned long i;
+			char buf[OPT_SHOW_LEN+2] = { 0 };
+			buf[OPT_SHOW_LEN] = '!';
+			i = 77;
+			opt_show_ulongval_bi(buf, &i);
+			ok1(strcmp(buf, "77") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = k;
+			opt_show_ulongval_bi(buf, &i);
+			ok1(strcmp(buf, "1k") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 500 * M;
+			opt_show_ulongval_bi(buf, &i);
+			ok1(strcmp(buf, "500M") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 1024 * M;
+			opt_show_ulongval_bi(buf, &i);
+			ok1(strcmp(buf, "1G") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 0;
+			opt_show_ulongval_bi(buf, &i);
+			ok1(strcmp(buf, "0") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+		}
+
+		/* opt_show_ullongval_bi */
+		{
+			long long i;
+			char buf[OPT_SHOW_LEN+2] = { 0 };
+			buf[OPT_SHOW_LEN] = '!';
+			i = 7777;
+			opt_show_ulonglongval_bi(buf, &i);
+			ok1(strcmp(buf, "7777") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 10240000 * k;
+			opt_show_ulonglongval_bi(buf, &i);
+			ok1(strcmp(buf, "10000M") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 5 * P;
+			opt_show_ulonglongval_bi(buf, &i);
+			ok1(strcmp(buf, "5P") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 1024 * P;
+			opt_show_ulonglongval_bi(buf, &i);
+			ok1(strcmp(buf, "1E") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+		}
 	}
 
 	{
@@ -645,6 +806,167 @@ int main(int argc, char *argv[])
 			ok1(!parse_args(&argc, &argv, "-a", "-100G", NULL));
 			ok1(parse_args(&argc, &argv, "-a", "8E", NULL));
 		}
+		/* opt_show_intval_si */
+		{
+			int i;
+			char buf[OPT_SHOW_LEN+2] = { 0 };
+			buf[OPT_SHOW_LEN] = '!';
+			i = -77;
+			opt_show_intval_si(buf, &i);
+			ok1(strcmp(buf, "-77") == 0);
+			i = 0;
+			opt_show_intval_si(buf, &i);
+			ok1(strcmp(buf, "0") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 77;
+			opt_show_intval_si(buf, &i);
+			ok1(strcmp(buf, "77") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = -1234 * k;
+			opt_show_intval_si(buf, &i);
+			ok1(strcmp(buf, "-1234k") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 500 * M;
+			opt_show_intval_si(buf, &i);
+			ok1(strcmp(buf, "500M") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 1000 * M;
+			opt_show_intval_si(buf, &i);
+			ok1(strcmp(buf, "1G") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+		}
+
+		/* opt_show_longval_si */
+		{
+			long i;
+			char buf[OPT_SHOW_LEN+2] = { 0 };
+			buf[OPT_SHOW_LEN] = '!';
+			i = -77;
+			opt_show_longval_si(buf, &i);
+			ok1(strcmp(buf, "-77") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 77;
+			opt_show_longval_si(buf, &i);
+			ok1(strcmp(buf, "77") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = -1 * k;
+			opt_show_longval_si(buf, &i);
+			ok1(strcmp(buf, "-1k") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 500 * M;
+			opt_show_longval_si(buf, &i);
+			ok1(strcmp(buf, "500M") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 1000 * M;
+			opt_show_longval_si(buf, &i);
+			ok1(strcmp(buf, "1G") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 0;
+			opt_show_longval_si(buf, &i);
+			ok1(strcmp(buf, "0") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+		}
+
+		/* opt_show_llongval_si */
+		{
+			long long i;
+			char buf[OPT_SHOW_LEN+2] = { 0 };
+			buf[OPT_SHOW_LEN] = '!';
+			i = -7777;
+			opt_show_longlongval_si(buf, &i);
+			ok1(strcmp(buf, "-7777") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 7777;
+			opt_show_longlongval_si(buf, &i);
+			ok1(strcmp(buf, "7777") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = -10240000 * k;
+			opt_show_longlongval_si(buf, &i);
+			ok1(strcmp(buf, "-10240M") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 5 * P;
+			opt_show_longlongval_si(buf, &i);
+			ok1(strcmp(buf, "5P") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 2000 * P;
+			opt_show_longlongval_si(buf, &i);
+			ok1(strcmp(buf, "2E") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+		}
+
+		/* opt_show_uintval_si */
+		{
+			unsigned int i;
+			char buf[OPT_SHOW_LEN+2] = { 0 };
+			buf[OPT_SHOW_LEN] = '!';
+			i = 77;
+			opt_show_uintval_si(buf, &i);
+			ok1(strcmp(buf, "77") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 1234 * k;
+			opt_show_uintval_si(buf, &i);
+			ok1(strcmp(buf, "1234k") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 500 * M;
+			opt_show_uintval_si(buf, &i);
+			ok1(strcmp(buf, "500M") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 1000 * M;
+			opt_show_uintval_si(buf, &i);
+			ok1(strcmp(buf, "1G") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+		}
+
+		/* opt_show_ulongval_si */
+		{
+			unsigned long i;
+			char buf[OPT_SHOW_LEN+2] = { 0 };
+			buf[OPT_SHOW_LEN] = '!';
+			i = 77;
+			opt_show_ulongval_si(buf, &i);
+			ok1(strcmp(buf, "77") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = k;
+			opt_show_ulongval_si(buf, &i);
+			ok1(strcmp(buf, "1k") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 500 * M;
+			opt_show_ulongval_si(buf, &i);
+			ok1(strcmp(buf, "500M") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 1024 * M;
+			opt_show_ulongval_si(buf, &i);
+			ok1(strcmp(buf, "1024M") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 0;
+			opt_show_ulongval_si(buf, &i);
+			ok1(strcmp(buf, "0") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+		}
+
+		/* opt_show_ullongval_si */
+		{
+			long long i;
+			char buf[OPT_SHOW_LEN+2] = { 0 };
+			buf[OPT_SHOW_LEN] = '!';
+			i = 7777;
+			opt_show_ulonglongval_si(buf, &i);
+			ok1(strcmp(buf, "7777") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 10240000 * k;
+			opt_show_ulonglongval_si(buf, &i);
+			ok1(strcmp(buf, "10240M") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 5 * P;
+			opt_show_ulonglongval_si(buf, &i);
+			ok1(strcmp(buf, "5P") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+			i = 1000 * P;
+			opt_show_ulonglongval_si(buf, &i);
+			ok1(strcmp(buf, "1E") == 0);
+			ok1(buf[OPT_SHOW_LEN] == '!');
+		}
+
 	}
 
 
