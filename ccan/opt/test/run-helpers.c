@@ -399,7 +399,7 @@ int main(int argc, char *argv[])
 			}
 			else
 				fail("FIXME: Handle other long long int"
-				     " sizes (specifically %lu bytes)",
+				     " sizes (specifically %zu bytes)",
 				     sizeof(long long));
 		}
 		/* opt_set_ulonglongval_bi */
@@ -566,19 +566,19 @@ int main(int argc, char *argv[])
 			char buf[OPT_SHOW_LEN+2] = { 0 };
 			buf[OPT_SHOW_LEN] = '!';
 			i = 7777;
-			opt_show_ulonglongval_bi(buf, &i);
+			opt_show_ulonglongval_bi(buf, (unsigned long long *)&i);
 			ok1(strcmp(buf, "7777") == 0);
 			ok1(buf[OPT_SHOW_LEN] == '!');
 			i = 10240000 * k;
-			opt_show_ulonglongval_bi(buf, &i);
+			opt_show_ulonglongval_bi(buf, (unsigned long long *)&i);
 			ok1(strcmp(buf, "10000M") == 0);
 			ok1(buf[OPT_SHOW_LEN] == '!');
 			i = 5 * P;
-			opt_show_ulonglongval_bi(buf, &i);
+			opt_show_ulonglongval_bi(buf, (unsigned long long *)&i);
 			ok1(strcmp(buf, "5P") == 0);
 			ok1(buf[OPT_SHOW_LEN] == '!');
 			i = 1024 * P;
-			opt_show_ulonglongval_bi(buf, &i);
+			opt_show_ulonglongval_bi(buf, (unsigned long long *)&i);
 			ok1(strcmp(buf, "1E") == 0);
 			ok1(buf[OPT_SHOW_LEN] == '!');
 		}
@@ -652,7 +652,7 @@ int main(int argc, char *argv[])
 
 		/* opt_set_ulongval_si */
 		{
-			unsigned long long int arg = 1000;
+			unsigned long int arg = 1000;
 
 			reset_options();
 			opt_register_arg("-a", opt_set_ulongval_si, NULL,
@@ -677,7 +677,7 @@ int main(int argc, char *argv[])
 			ok1(arg == 1 * G);
 			ok1(!parse_args(&argc, &argv, "-a", "-1G", NULL));
 			ok1(parse_args(&argc, &argv, "-a", "4G", NULL));
-			ok1(arg == 4000000000);
+			ok1(arg == 4000000000U);
 			if (sizeof(long) == 4){
 				ok1(!parse_args(&argc, &argv, "-a", "4294967296", NULL));
 				ok1(!parse_args(&argc, &argv, "-a", "4295M", NULL));
@@ -784,7 +784,7 @@ int main(int argc, char *argv[])
 			}
 			else
 				fail("FIXME: Handle other long long int"
-				     " sizes (specifically %lu bytes)",
+				     " sizes (specifically %zu bytes)",
 				     sizeof(long long));
 
 		}
@@ -950,19 +950,19 @@ int main(int argc, char *argv[])
 			char buf[OPT_SHOW_LEN+2] = { 0 };
 			buf[OPT_SHOW_LEN] = '!';
 			i = 7777;
-			opt_show_ulonglongval_si(buf, &i);
+			opt_show_ulonglongval_si(buf, (unsigned long long *)&i);
 			ok1(strcmp(buf, "7777") == 0);
 			ok1(buf[OPT_SHOW_LEN] == '!');
 			i = 10240000 * k;
-			opt_show_ulonglongval_si(buf, &i);
+			opt_show_ulonglongval_si(buf, (unsigned long long *)&i);
 			ok1(strcmp(buf, "10240M") == 0);
 			ok1(buf[OPT_SHOW_LEN] == '!');
 			i = 5 * P;
-			opt_show_ulonglongval_si(buf, &i);
+			opt_show_ulonglongval_si(buf, (unsigned long long *)&i);
 			ok1(strcmp(buf, "5P") == 0);
 			ok1(buf[OPT_SHOW_LEN] == '!');
 			i = 1000 * P;
-			opt_show_ulonglongval_si(buf, &i);
+			opt_show_ulonglongval_si(buf, (unsigned long long *)&i);
 			ok1(strcmp(buf, "1E") == 0);
 			ok1(buf[OPT_SHOW_LEN] == '!');
 		}
@@ -994,8 +994,8 @@ int main(int argc, char *argv[])
 
 		argc = 2;
 		argv = malloc(sizeof(argv[0]) * 3);
-		argv[0] = "thisprog";
-		argv[1] = "-a";
+		argv[0] = (char *)"thisprog";
+		argv[1] = (char *)"-a";
 		argv[2] = NULL;
 
 		exitval = setjmp(exited);
@@ -1020,8 +1020,8 @@ int main(int argc, char *argv[])
 
 		argc = 2;
 		argv = malloc(sizeof(argv[0]) * 3);
-		argv[0] = "thisprog";
-		argv[1] = "-a";
+		argv[0] = (char *)"thisprog";
+		argv[1] = (char *)"-a";
 		argv[2] = NULL;
 
 		exitval = setjmp(exited);
@@ -1159,8 +1159,8 @@ int main(int argc, char *argv[])
 
 		argc = 2;
 		argv = malloc(sizeof(argv[0]) * 3);
-		argv[0] = "thisprog";
-		argv[1] = "--garbage";
+		argv[0] = (char *)"thisprog";
+		argv[1] = (char *)"--garbage";
 		argv[2] = NULL;
 		ok1(!opt_parse(&argc, argv, opt_log_stderr));
 		ok1(!strcmp(output,
@@ -1178,8 +1178,8 @@ int main(int argc, char *argv[])
 				   opt_usage_and_exit, "[args]", "");
 		argc = 2;
 		argv = malloc(sizeof(argv[0]) * 3);
-		argv[0] = "thisprog";
-		argv[1] = "--garbage";
+		argv[0] = (char *)"thisprog";
+		argv[1] = (char *)"--garbage";
 		argv[2] = NULL;
 		exitval = setjmp(exited);
 		if (exitval == 0) {
