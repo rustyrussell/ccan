@@ -63,9 +63,6 @@ char *opt_usage(const char *argv0, const char *extra)
 	}
 
 	p = ret = malloc(len);
-	if (!ret)
-		return NULL;
-
 	p += sprintf(p, "Usage: %s", argv0);
 	p += sprintf(p, " [-");
 	num = write_short_options(p);

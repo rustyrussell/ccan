@@ -6,15 +6,6 @@
 #include <ccan/opt/parse.c>
 #include "utils.h"
 
-static void reset_options(void)
-{
-	free(opt_table);
-	opt_table = NULL;
-	opt_count = opt_num_short = opt_num_short_arg = opt_num_long = 0;
-	free(err_output);
-	err_output = NULL;
-}
-
 int main(int argc, char *argv[])
 {
 	const char *myname = argv[0];

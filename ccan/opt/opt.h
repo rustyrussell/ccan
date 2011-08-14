@@ -187,10 +187,12 @@ void opt_register_table(const struct opt_table *table, const char *desc);
 bool opt_parse(int *argc, char *argv[], void (*errlog)(const char *fmt, ...));
 
 /**
- * opt_free_table - free the table.
+ * opt_free_table - reset the opt library.
  *
- * This frees the internal memory. Call this as the last
- * opt function.
+ * This frees the internal memory and returns counters to zero.  Call
+ * this as the last opt function to avoid memory leaks.  You can also
+ * use this function to reset option handling to its initial state (no
+ * options registered).
  */
 void opt_free_table(void);
 

@@ -49,6 +49,13 @@ void save_err_output(const char *fmt, ...)
 		err_output = p;
 }	
 
+void reset_options(void)
+{
+	opt_free_table();
+	free(err_output);
+	err_output = NULL;
+}
+
 static bool allocated = false;
 
 bool parse_args(int *argc, char ***argv, ...)

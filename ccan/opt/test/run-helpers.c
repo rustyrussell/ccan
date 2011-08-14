@@ -27,13 +27,6 @@ static void *saved_malloc(size_t size);
 #include <ccan/opt/usage.c>
 #include <ccan/opt/parse.c>
 
-static void reset_options(void)
-{
-	free(opt_table);
-	opt_table = NULL;
-	opt_count = opt_num_short = opt_num_short_arg = opt_num_long = 0;
-}
-
 static char *output = NULL;
 
 static int saved_vprintf(const char *fmt, va_list ap)

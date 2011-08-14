@@ -205,7 +205,8 @@ bool opt_parse(int *argc, char *argv[], void (*errlog)(const char *fmt, ...))
 void opt_free_table(void)
 {
 	free(opt_table);
-	opt_table=0;
+	opt_table = NULL;
+	opt_count = opt_num_short = opt_num_short_arg = opt_num_long = 0;
 }
 
 void opt_log_stderr(const char *fmt, ...)

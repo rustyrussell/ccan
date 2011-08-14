@@ -14,13 +14,6 @@ static char *my_cb(void *p)
 	return NULL;
 }
 
-static void reset_options(void)
-{
-	free(opt_table);
-	opt_table = NULL;
-	opt_count = opt_num_short = opt_num_short_arg = opt_num_long = 0;
-}
-
 /* Test helpers. */
 int main(int argc, char *argv[])
 {

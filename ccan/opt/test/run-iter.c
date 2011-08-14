@@ -9,13 +9,6 @@
 #include <ccan/opt/helpers.c>
 #include <ccan/opt/parse.c>
 
-static void reset_options(void)
-{
-	free(opt_table);
-	opt_table = NULL;
-	opt_count = opt_num_short = opt_num_short_arg = opt_num_long = 0;
-}
-
 /* Test iterators. */
 int main(int argc, char *argv[])
 {

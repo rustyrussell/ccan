@@ -6,6 +6,7 @@
 bool parse_args(int *argc, char ***argv, ...);
 extern char *err_output;
 void save_err_output(const char *fmt, ...);
+void reset_options(void);
 
 extern unsigned int test_cb_called;
 char *test_noarg(void *arg);

@@ -66,8 +66,8 @@ char *opt_set_intval(const char *arg, int *i)
 	if (err)
 		return err;
 	*i = l;
-	/* Beware truncation... */
-	if (*i != l)
+	/* Beware truncation, but don't generate untestable code. */
+	if (sizeof(*i) != sizeof(l) && *i != l)
 		return arg_bad("value '%s' does not fit into an integer", arg);
 	return err;
 }
