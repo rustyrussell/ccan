@@ -63,8 +63,9 @@
  * 	return 0;
  * }
  *
- * License: MIT
  * Author: Joey Adams <joeyadams3.14159@gmail.com>
+ * License: MIT
+ * Version: 0.1
  */
 int main(int argc, char *argv[])
 {
