@@ -223,9 +223,9 @@
  * 	return str;
  * }
  *
- * Author: Joey Adams
- * Version: 0.1.0
- * License: BSD
+ * Author: Joey Adams <joeyadams3.14159@gmail.com>
+ * License: MIT
+ * Version: 0.2
  */
 int main(int argc, char *argv[])
 {
