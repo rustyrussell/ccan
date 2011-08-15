@@ -82,7 +82,7 @@
  * 	return 0;
  * }
  *
- * License: BSD
+ * License: BSD (3 clause)
  */
 int main(int argc, char *argv[])
 {
