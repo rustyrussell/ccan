@@ -50,7 +50,8 @@
  * }
  *
  * Authors: Joey Adams, Anders Magnusson
- * License: BSD
+ * License: BSD (3 clause)
+ * Version: 0.2
  */
 int main(int argc, char *argv[])
 {
