@@ -52,6 +52,9 @@
  * Authors: Joey Adams, Anders Magnusson
  * License: BSD (3 clause)
  * Version: 0.2
+ * Ccanlint:
+ *	// We actually depend (indirectly) on the LGPL talloc
+ *	license_depends_compat FAIL
  */
 int main(int argc, char *argv[])
 {

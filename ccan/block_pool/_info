@@ -38,6 +38,9 @@
  * Author: Joey Adams <joeyadams3.14159@gmail.com>
  * License: MIT
  * Version: 0.1
+ * Ccanlint:
+ *	// We actually depend on the LGPL talloc
+ *	license_depends_compat FAIL
  */
 int main(int argc, char *argv[])
 {

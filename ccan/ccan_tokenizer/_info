@@ -83,6 +83,12 @@
  * }
  *
  * License: BSD (3 clause)
+ *
+ * Ccanlint:
+ *	// We actually depend on the LGPL dependencies
+ *	license_depends_compat FAIL
+ *	// We don't put the license line in all files.
+ *	license_comment FAIL
  */
 int main(int argc, char *argv[])
 {
