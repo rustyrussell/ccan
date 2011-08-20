@@ -1,0 +1,143 @@
+#include <string.h>
+#include "config.h"
+
+/**
+ * bdelta - Generate and apply binary deltas
+ *
+ * This library takes two strings containing binary data, and produces a
+ * "patch" that can be applied to the first one to produce the second one.
+ * It can be used to save bandwidth and disk space when many texts differing
+ * by a small number of bytes need to be transmitted or stored.
+ *
+ * Patches produced by this version of the library can be applied using future
+ * versions, but not past versions.
+ *
+ * bdelta implements the algorithm described in
+ * An O(ND) Difference Algorithm and Its Variations by Eugene W. Myers.
+ * Because its memory usage and expected running time are O(N + D^2),
+ * it works well only when the strings differ by a small number of bytes.
+ * This implementation stops trying when the strings differ by more than
+ * 1000 bytes, and falls back to producing a patch that simply emits the new
+ * string.
+ *
+ * Thus, bdelta does not save any space when given two strings that differ by
+ * more than 1000 bytes.  This may be improved in a future version of the
+ * library.
+ *
+ * Example:
+ *	#include <ccan/bdelta/bdelta.h>
+ *	#include <stdio.h>
+ *	#include <stdlib.h>
+ *	#include <string.h>
+ *
+ *	static void gulp(const char *filename, void **data_out, size_t *size_out);
+ *
+ *	static int usage(const char *prog)
+ *	{
+ *		fprintf(
+ *			stderr,
+ *			"Usage: %s diff  <old> <new>    >  <patch>\n"
+ *			"       %s patch <old> <patch>  >  <new>\n",
+ *			prog, prog
+ *		);
+ *		return 1;
+ *	}
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		void *old, *new_, *patch;
+ *		size_t old_size, new_size, patch_size;
+ *		BDELTAcode rc;
+ *
+ *		if (argc != 4)
+ *			return usage(argv[0]);
+ *
+ *		if (strcmp(argv[1], "diff") == 0) {
+ *			gulp(argv[2], &old, &old_size);
+ *			gulp(argv[3], &new_, &new_size);
+ *
+ *			rc = bdelta_diff(old, old_size, new_, new_size, &patch, &patch_size);
+ *			if (rc != BDELTA_OK) {
+ *				bdelta_perror("bdelta_diff", rc);
+ *				return 1;
+ *			}
+ *
+ *			if (fwrite(patch, 1, patch_size, stdout) != patch_size) {
+ *				perror("stdout");
+ *				return 1;
+ *			}
+ *		} else if (strcmp(argv[1], "patch") == 0) {
+ *			gulp(argv[2], &old, &old_size);
+ *			gulp(argv[3], &patch, &patch_size);
+ *
+ *			rc = bdelta_patch(old, old_size, patch, patch_size, &new_, &new_size);
+ *			if (rc != BDELTA_OK) {
+ *				bdelta_perror("bdelta_patch", rc);
+ *				return 1;
+ *			}
+ *
+ *			if (fwrite(new_, 1, new_size, stdout) != new_size) {
+ *				perror("stdout");
+ *				return 1;
+ *			}
+ *		} else {
+ *			return usage(argv[0]);
+ *		}
+ *
+ *		free(old);
+ *		free(new_);
+ *		free(patch);
+ *		return 0;
+ *	}
+ *
+ *	static void gulp(const char *filename, void **data_out, size_t *size_out)
+ *	{
+ *		FILE *f = fopen(filename, "rb");
+ *		size_t size = 0;
+ *		size_t alloc = 16;
+ *		char *data = malloc(alloc);
+ *
+ *		if (f == NULL || data == NULL)
+ *			goto error;
+ *
+ *		for (;;) {
+ *			size += fread(data + size, 1, alloc - size, f);
+ *			if (size < alloc) {
+ *				if (!feof(f))
+ *					goto error;
+ *				break;
+ *			}
+ *			data = realloc(data, alloc *= 2);
+ *			if (data == NULL)
+ *				goto error;
+ *		}
+ *
+ *		if (fclose(f) != 0)
+ *			goto error;
+ *
+ *		*data_out = data;
+ *		*size_out = size;
+ *		return;
+ *
+ *	error:
+ *		perror(filename);
+ *		exit(EXIT_FAILURE);
+ *	}
+ *
+ * Author: Joey Adams <joeyadams3.14159@gmail.com>
+ * License: MIT
+ * Version: 0.1.1
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		/* Nothing */
+		return 0;
+	}
+
+	return 1;
+}
