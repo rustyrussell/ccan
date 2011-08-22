@@ -206,7 +206,7 @@ static void add_to_hashtable(struct tdb_context *tdb,
 		b_off = hbucket_off(group_start, bucket);		
 		if (tdb_read_off(tdb, b_off) == 0) {
 			tdb_write_off(tdb, b_off,
-				      encode_offset(eoff, bucket, h));
+				      encode_offset(eoff, in_group, h));
 			return;
 		}
 	}
@@ -228,7 +228,8 @@ static struct tle_freetable *find_ftable(struct tdb_layout *layout, unsigned num
 }
 
 /* FIXME: Support TDB_CONVERT */
-struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
+struct tdb_context *tdb_layout_get(struct tdb_layout *layout,
+				   union tdb_attribute *attr)
 {
 	unsigned int i;
 	tdb_off_t off, len, last_ftable;
@@ -264,7 +265,7 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout)
 	/* Fill with some weird pattern. */
 	memset(mem, 0x99, off);
 	/* Now populate our header, cribbing from a real TDB header. */
-	tdb = tdb_open(NULL, TDB_INTERNAL, O_RDWR, 0, &tap_log_attr);
+	tdb = tdb_open(NULL, TDB_INTERNAL, O_RDWR, 0, attr);
 	memcpy(mem, tdb->file->map_ptr, sizeof(struct tdb_header));
 
 	/* Mug the tdb we have to make it use this. */

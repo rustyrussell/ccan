@@ -15,7 +15,8 @@ void tdb_layout_add_hashtable(struct tdb_layout *layout,
 			      unsigned int bucket,
 			      tdb_len_t extra);
 #endif
-struct tdb_context *tdb_layout_get(struct tdb_layout *layout);
+struct tdb_context *tdb_layout_get(struct tdb_layout *layout,
+				   union tdb_attribute *attr);
 void tdb_layout_free(struct tdb_layout *layout);
 
 enum layout_type {
