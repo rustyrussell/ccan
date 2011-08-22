@@ -175,6 +175,6 @@ struct ccanlint tests_compile_without_features = {
 	.name = "Module tests compile (without features)",
 	.check = do_compile_tests_without_features,
 	.can_run = features_reduced,
-	.needs = "reduce_features"
+	.needs = "tests_compile reduce_features"
 };
 REGISTER_TEST(tests_compile_without_features);

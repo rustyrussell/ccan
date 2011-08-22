@@ -81,7 +81,7 @@ struct ccanlint tests_pass_without_features = {
 	.name = "Module's run and api tests pass (without features)",
 	.check = do_run_tests,
 	.handle = run_under_debugger,
-	.needs = "tests_pass reduce_features"
+	.needs = "tests_compile_without_features"
 };
 
 REGISTER_TEST(tests_pass_without_features);
