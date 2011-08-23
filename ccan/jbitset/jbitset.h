@@ -156,7 +156,7 @@ static inline unsigned long jbit_popcount(const struct jbitset *set,
  *	assert(!jbit_test(set, 0));
  *	for (i = 0; (val = jbit_nth(set, i, 0)) != 0; i++) {
  *		assert(jbit_popcount(set, 0, val) == i);
- *		printf("Value %zu = %zu\n", i, val);
+ *		printf("Value %lu = %lu\n", i, val);
  *	}
  */
 static inline unsigned long jbit_nth(const struct jbitset *set,
@@ -179,7 +179,7 @@ static inline unsigned long jbit_nth(const struct jbitset *set,
  *	assert(!jbit_test(set, 0));
  *	printf("Set contents (increasing order):");
  *	for (i = jbit_first(set, 0); i; i = jbit_next(set, i, 0))
- *		printf(" %zu", i);
+ *		printf(" %lu", i);
  *	printf("\n");
  */
 static inline unsigned long jbit_first(const struct jbitset *set,
@@ -222,7 +222,7 @@ static inline unsigned long jbit_next(const struct jbitset *set,
  *	assert(!jbit_test(set, 0));
  *	printf("Set contents (decreasing order):");
  *	for (i = jbit_last(set, 0); i; i = jbit_prev(set, i, 0))
- *		printf(" %zu", i);
+ *		printf(" %lu", i);
  *	printf("\n");
  */
 static inline unsigned long jbit_last(const struct jbitset *set,

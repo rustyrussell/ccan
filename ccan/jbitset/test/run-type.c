@@ -53,5 +53,8 @@ int main(int argc, char *argv[])
 	ok1(jbit_foo_error(set) == NULL);
 	jbit_foo_free(set);
 
+	for (i = 0; i < NUM; i++)
+		free(foo[i]);
+
 	return exit_status();
 }
