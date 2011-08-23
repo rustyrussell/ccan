@@ -43,6 +43,6 @@ const char *jmap_error_(struct jmap *map)
 void jmap_free(const struct jmap *map)
 {
 	free((char *)map->errstr);
-	Judy1FreeArray((PPvoid_t)&map->judy, PJE0);
+	JudyLFreeArray((PPvoid_t)&map->judy, PJE0);
 	free((void *)map);
 }

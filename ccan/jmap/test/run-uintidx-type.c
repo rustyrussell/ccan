@@ -126,5 +126,8 @@ int main(int argc, char *argv[])
 	ok1(jmap_foo_error(map) == NULL);
 	jmap_foo_free(map);
 
+	for (i = 0; i < NUM; i++)
+		free(foo[i]);
+
 	return exit_status();
 }

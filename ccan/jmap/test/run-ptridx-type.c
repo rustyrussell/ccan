@@ -17,7 +17,7 @@ static int cmp_ptr(const void *a, const void *b)
 int main(int argc, char *argv[])
 {
 	struct jmap_foo *map;
-	struct foo *foo[NUM], **foop;
+	struct foo *foo[NUM+1], **foop;
 	struct idx *idx[NUM+1], *index;
 
 	unsigned int i;
@@ -96,6 +96,9 @@ int main(int argc, char *argv[])
 
 	ok1(jmap_foo_error(map) == NULL);
 	jmap_foo_free(map);
+
+	for (i = 0; i < NUM+1; i++)
+		free(foo[i]);
 
 	return exit_status();
 }
