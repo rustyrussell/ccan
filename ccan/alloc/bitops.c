@@ -70,22 +70,22 @@ unsigned int popcount(unsigned long val)
 		v = (v & 0x5555555555555555ULL)
 			+ ((v >> 1) & 0x5555555555555555ULL);
 		v = (v & 0x3333333333333333ULL)
-			+ ((v >> 1) & 0x3333333333333333ULL);
+			+ ((v >> 2) & 0x3333333333333333ULL);
 		v = (v & 0x0F0F0F0F0F0F0F0FULL)
-			+ ((v >> 1) & 0x0F0F0F0F0F0F0F0FULL);
+			+ ((v >> 4) & 0x0F0F0F0F0F0F0F0FULL);
 		v = (v & 0x00FF00FF00FF00FFULL)
-			+ ((v >> 1) & 0x00FF00FF00FF00FFULL);
+			+ ((v >> 8) & 0x00FF00FF00FF00FFULL);
 		v = (v & 0x0000FFFF0000FFFFULL)
-			+ ((v >> 1) & 0x0000FFFF0000FFFFULL);
+			+ ((v >> 16) & 0x0000FFFF0000FFFFULL);
 		v = (v & 0x00000000FFFFFFFFULL)
-			+ ((v >> 1) & 0x00000000FFFFFFFFULL);
+			+ ((v >> 32) & 0x00000000FFFFFFFFULL);
 		return v;
 	}
 	val = (val & 0x55555555ULL) + ((val >> 1) & 0x55555555ULL);
-	val = (val & 0x33333333ULL) + ((val >> 1) & 0x33333333ULL);
-	val = (val & 0x0F0F0F0FULL) + ((val >> 1) & 0x0F0F0F0FULL);
-	val = (val & 0x00FF00FFULL) + ((val >> 1) & 0x00FF00FFULL);
-	val = (val & 0x0000FFFFULL) + ((val >> 1) & 0x0000FFFFULL);
+	val = (val & 0x33333333ULL) + ((val >> 2) & 0x33333333ULL);
+	val = (val & 0x0F0F0F0FULL) + ((val >> 4) & 0x0F0F0F0FULL);
+	val = (val & 0x00FF00FFULL) + ((val >> 8) & 0x00FF00FFULL);
+	val = (val & 0x0000FFFFULL) + ((val >> 16) & 0x0000FFFFULL);
 	return val;
 #endif
 }
