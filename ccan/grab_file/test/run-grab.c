@@ -18,7 +18,7 @@ main(int argc, char *argv[])
 	struct 		stat st;
 
 	str = grab_file(NULL, "test/run-grab.c", NULL);
-	split = strsplit(NULL, str, "\n");
+	split = strsplit(str, str, "\n");
 	length = strlen(split[0]);
 	ok1(!strcmp(split[0], "/* This is test for grab_file() function"));
 	for (i = 1; split[i]; i++)	
@@ -29,6 +29,7 @@ main(int argc, char *argv[])
 		if (stat("ccan/grab_file/test/run-grab.c", &st) != 0) 
 			err(1, "Could not stat self");
 	ok1(st.st_size == length + i);
+	talloc_free(str);
 	
 	return 0;
 }
