@@ -62,6 +62,7 @@ int main(int argc, char *argv[])
 	write_return = BUFSZ;
 	ok1(write_all(100, buffer, BUFSZ));
 	ok1(errno == 0);
+	free(buffer);
 
 	return exit_status();
 }

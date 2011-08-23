@@ -71,5 +71,6 @@ int main(int argc, char *argv[])
 	ok(WIFEXITED(status) && WEXITSTATUS(status) == 0,
 	   "WIFEXITED(status) = %u, WEXITSTATUS(status) = %u",
 	   WIFEXITED(status), WEXITSTATUS(status));
+	free(buffer);
 	return exit_status();
 }
