@@ -112,5 +112,7 @@ int main(int argc, char *argv[])
 	/* No leaks? */
 	ok1(talloc_total_size(NULL) == 0);
 
+	talloc_disable_null_tracking();
+
 	return exit_status();
 }
