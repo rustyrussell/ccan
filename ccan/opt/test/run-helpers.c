@@ -72,6 +72,18 @@ static void *saved_malloc(size_t size)
 	return last_allocation = malloc(size);
 }
 
+static void set_args(int *argc, char ***argv, ...)
+{
+	va_list ap;
+	*argv = malloc(sizeof(**argv) * 20);
+
+	va_start(ap, argv);
+	for (*argc = 0;
+	     ((*argv)[*argc] = va_arg(ap, char*)) != NULL;
+	     (*argc)++);
+	va_end(ap);
+}
+
 /* Test helpers. */
 int main(int argc, char *argv[])
 {
@@ -985,11 +997,7 @@ int main(int argc, char *argv[])
 		/* parse_args allocates argv */
 		free(argv);
 
-		argc = 2;
-		argv = malloc(sizeof(argv[0]) * 3);
-		argv[0] = (char *)"thisprog";
-		argv[1] = (char *)"-a";
-		argv[2] = NULL;
+		set_args(&argc, &argv, "thisprog", "-a", NULL);
 
 		exitval = setjmp(exited);
 		if (exitval == 0) {
@@ -1011,11 +1019,7 @@ int main(int argc, char *argv[])
 		opt_register_noarg("-a",
 				   opt_usage_and_exit, "[args]", "");
 
-		argc = 2;
-		argv = malloc(sizeof(argv[0]) * 3);
-		argv[0] = (char *)"thisprog";
-		argv[1] = (char *)"-a";
-		argv[2] = NULL;
+		set_args(&argc, &argv, "thisprog", "-a", NULL);
 
 		exitval = setjmp(exited);
 		if (exitval == 0) {
@@ -1150,11 +1154,7 @@ int main(int argc, char *argv[])
 		opt_register_noarg("-a",
 				   opt_usage_and_exit, "[args]", "");
 
-		argc = 2;
-		argv = malloc(sizeof(argv[0]) * 3);
-		argv[0] = (char *)"thisprog";
-		argv[1] = (char *)"--garbage";
-		argv[2] = NULL;
+		set_args(&argc, &argv, "thisprog", "--garbage", NULL);
 		ok1(!opt_parse(&argc, argv, opt_log_stderr));
 		ok1(!strcmp(output,
 			    "thisprog: --garbage: unrecognized option\n"));
@@ -1169,11 +1169,7 @@ int main(int argc, char *argv[])
 		reset_options();
 		opt_register_noarg("-a",
 				   opt_usage_and_exit, "[args]", "");
-		argc = 2;
-		argv = malloc(sizeof(argv[0]) * 3);
-		argv[0] = (char *)"thisprog";
-		argv[1] = (char *)"--garbage";
-		argv[2] = NULL;
+		set_args(&argc, &argv, "thisprog", "--garbage", NULL);
 		exitval = setjmp(exited);
 		if (exitval == 0) {
 			opt_parse(&argc, argv, opt_log_stderr_exit);
