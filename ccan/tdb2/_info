@@ -65,6 +65,10 @@
  * Author: Rusty Russell
  *
  * License: LGPL (v3 or any later version)
+ *
+ * Ccanlint:
+ *	// valgrind breaks fcntl locks.
+ *	tests_pass_valgrind test/run-83-openhook.c:FAIL
  */
 int main(int argc, char *argv[])
 {
