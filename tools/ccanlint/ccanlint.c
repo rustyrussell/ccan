@@ -186,6 +186,8 @@ static bool run_test(struct ccanlint *i,
 static void register_test(struct list_head *h, struct ccanlint *test)
 {
 	list_add(h, &test->list);
+	test->options = talloc_array(NULL, char *, 1);
+	test->options[0] = NULL;
 }
 
 /**
@@ -409,9 +411,28 @@ static char **collapse(char **lines, unsigned int *nump)
 		if (lines[i][0])
 			lines[j++] = lines[i];
 	}
+	lines[j] = NULL;
 	if (nump)
 		*nump = j;
 	return lines;
+}
+
+
+static void add_options(struct ccanlint *test, char **options,
+			unsigned int num_options)
+{
+	unsigned int num;
+
+	if (!test->options)
+		num = 0;
+	else
+		/* -1, because last one is NULL. */
+		num = talloc_array_length(test->options) - 1;
+
+	test->options = talloc_realloc(NULL, test->options,
+				       char *,
+				       num + num_options + 1);
+	memcpy(&test->options[num], options, (num_options + 1)*sizeof(char *));
 }
 
 static void add_info_options(struct ccan_file *info, bool mark_fails)
@@ -425,9 +446,10 @@ static void add_info_options(struct ccan_file *info, bool mark_fails)
 			continue;
 
 		for (i = 0; i < d->num_lines; i++) {
+			unsigned int num_words;
 			char **words = collapse(strsplit(d, d->lines[i], " \t"),
-						NULL);
-			if (!words[0])
+						&num_words);
+			if (num_words == 0)
 				continue;
 
 			if (strncmp(words[0], "//", 2) == 0)
@@ -454,12 +476,47 @@ static void add_info_options(struct ccan_file *info, bool mark_fails)
 				if (!test->takes_options)
 					warnx("%s: %s doesn't take options",
 					      info->fullname, words[0]);
-				/* Copy line exactly into options. */
-				test->options = strstr(d->lines[i], words[0])
-					+ strlen(words[0]);
+				add_options(test, words+1, num_words-1);
 			}
 		}
 	}
+}
+
+/* If options are of form "filename:<option>" they only apply to that file */
+char **per_file_options(const struct ccanlint *test, struct ccan_file *f)
+{
+	char **ret;
+	unsigned int i, j = 0;
+
+	/* Fast path. */
+	if (!test->options[0])
+		return test->options;
+
+	ret = talloc_array(f, char *, talloc_array_length(test->options));
+	for (i = 0; test->options[i]; i++) {
+		char *optname;
+
+		if (!test->options[i] || !strchr(test->options[i], ':')) {
+			optname = test->options[i];
+		} else if (strstarts(test->options[i], f->name)
+			   && test->options[i][strlen(f->name)] == ':') {
+			optname = test->options[i] + strlen(f->name) + 1;
+		} else
+			continue;
+
+		/* FAIL overrides anything else. */
+		if (streq(optname, "FAIL")) {
+			ret = talloc_array(f, char *, 2);
+			ret[0] = (char *)"FAIL";
+			ret[1] = NULL;
+			return ret;
+		}
+		ret[j++] = optname;
+	}
+	ret[j] = NULL;
+
+	/* Shrink it to size so talloc_array_length() works as expected. */
+	return talloc_realloc(NULL, ret, char *, j + 1);
 }
 
 static bool depends_on(struct ccanlint *i, struct ccanlint *target)

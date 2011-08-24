@@ -133,6 +133,19 @@ static char *analyze_output(const char *output, char **errs)
 	return leaks;
 }
 
+static const char *concat(struct score *score, char *bits[])
+{
+	unsigned int i;
+	char *ret = talloc_strdup(score, "");
+
+	for (i = 0; bits[i]; i++) {
+		if (i)
+			ret = talloc_append_string(ret, " ");
+		ret = talloc_append_string(ret, bits[i]);
+	}
+	return ret;
+}
+
 /* FIXME: Run examples, too! */
 static void do_run_tests_vg(struct manifest *m,
 			     bool keep,
@@ -145,11 +158,19 @@ static void do_run_tests_vg(struct manifest *m,
 
 	/* This is slow, so we run once but grab leak info. */
 	score->total = 0;
+	score->pass = true;
 	foreach_ptr(list, &m->run_tests, &m->api_tests) {
 		list_for_each(list, i, list) {
 			char *output, *err, *log;
 			bool pass;
+			const char *options;
+
 			score->total++;
+			options = concat(score,
+					 per_file_options(&tests_pass_valgrind,
+							  i));
+			if (streq(options, "FAIL"))
+				continue;
 
 			/* FIXME: Valgrind's output sucks.  XML is unreadable by
 			 * humans *and* doesn't support children reporting. */
@@ -164,8 +185,7 @@ static void do_run_tests_vg(struct manifest *m,
 					   " --leak-check=full"
 					   " --log-fd=3 %s %s"
 					   " 3> %s",
-					   tests_pass_valgrind.options ?
-					   tests_pass_valgrind.options : "",
+					   options,
 					   i->compiled, log);
 			output = grab_file(i, log, NULL);
 			/* No valgrind errors?  Expect it to pass... */
@@ -181,15 +201,13 @@ static void do_run_tests_vg(struct manifest *m,
 			} else {
 				i->leak_info = analyze_output(output, &err);
 			}
-			if (err)
+			if (err) {
 				score_file_error(score, i, 0, "%s", err);
-			else
+				score->pass = false;
+			} else
 				score->score++;
 		}
 	}
-
-	if (score->score == score->total)
-		score->pass = true;
 }
 
 static void do_leakcheck_vg(struct manifest *m,
@@ -226,13 +244,18 @@ static void run_under_debugger_vg(struct manifest *m, struct score *score)
 	struct file_error *first;
 	char *command;
 
+	/* Don't ask anything if they suppressed tests. */
+	if (score->pass)
+		return;
+
 	if (!ask("Should I run the first failing test under the debugger?"))
 		return;
 
 	first = list_top(&score->per_file_errors, struct file_error, list);
 	command = talloc_asprintf(m, "valgrind --leak-check=full --db-attach=yes%s %s",
-				  tests_pass_valgrind.options ?
-				  tests_pass_valgrind.options : "",
+				  concat(score,
+					 per_file_options(&tests_pass_valgrind,
+							  first->file)),
 				  first->file->compiled);
 	if (system(command))
 		doesnt_matter();

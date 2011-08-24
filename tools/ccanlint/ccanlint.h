@@ -95,7 +95,7 @@ struct ccanlint {
 	void (*handle)(struct manifest *m, struct score *score);
 
 	/* Options from _info. */
-	char *options;
+	char **options;
 	/* If not set, we'll give an error if they try to set options. */
 	bool takes_options;
 
@@ -220,6 +220,9 @@ char *get_symbol_token(void *ctx, const char **line);
 
 /* Similarly for ->doc_sections */
 struct list_head *get_ccan_file_docs(struct ccan_file *f);
+
+/* Get NULL-terminated array options for this file for this test */
+char **per_file_options(const struct ccanlint *test, struct ccan_file *f);
 
 /* Append message about this file (and line, if non-zero) to the score->error */
 void score_file_error(struct score *, struct ccan_file *f, unsigned line,
