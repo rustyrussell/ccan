@@ -67,7 +67,8 @@
  *
  * Ccanlint:
  *	// valgrind breaks fcntl locks.
- *	tests_pass_valgrind FAIL
+ *	tests_pass_valgrind test/run-open-during-transaction.c:FAIL
+ *	tests_pass_valgrind_noleaks test/run-die-during-transaction.c:FAIL
  */
 int main(int argc, char *argv[])
 {
