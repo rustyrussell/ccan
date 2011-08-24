@@ -18,6 +18,7 @@
 #include <ctype.h>
 
 REGISTER_TEST(tests_pass_valgrind);
+REGISTER_TEST(tests_pass_valgrind_noleaks);
 
 /* Note: we already test safe_mode in run_tests.c */
 static const char *can_run_vg(struct manifest *m)
@@ -217,10 +218,22 @@ static void do_leakcheck_vg(struct manifest *m,
 {
 	struct ccan_file *i;
 	struct list_head *list;
+	char **options;
 	bool leaks = false;
 
 	foreach_ptr(list, &m->run_tests, &m->api_tests) {
 		list_for_each(list, i, list) {
+			options = per_file_options(&tests_pass_valgrind_noleaks,
+						   i);
+			if (options[0]) {
+				if (streq(options[0], "FAIL")) {
+					leaks = true;
+					continue;
+				}
+				errx(1, "Unknown leakcheck options '%s'",
+				     options[0]);
+			}
+
 			if (i->leak_info) {
 				score_file_error(score, i, 0, "%s",
 						 i->leak_info);
@@ -275,7 +288,7 @@ struct ccanlint tests_pass_valgrind_noleaks = {
 	.key = "tests_pass_valgrind_noleaks",
 	.name = "Module's run and api tests have no memory leaks",
 	.check = do_leakcheck_vg,
+	.takes_options = true,
 	.needs = "tests_pass_valgrind"
 };
 
-REGISTER_TEST(tests_pass_valgrind_noleaks);
