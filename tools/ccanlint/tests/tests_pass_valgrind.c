@@ -49,13 +49,29 @@ static bool blank_line(const char *line)
 	return line[strspn(line, "=0123456789 ")] == '\0';
 }
 
-static char *get_leaks(const char *output, char **errs)
+/* Removes matching lines from lines array, returns them.  FIXME: Hacky. */
+static char **extract_matching(const char *prefix, char *lines[])
 {
-	char *leaks = talloc_strdup(output, "");
-	unsigned int i;
-	char **lines = strsplit(output, output, "\n");
+	unsigned int i, num_ret = 0;
+	char **ret = talloc_array(lines, char *, talloc_array_length(lines));
 
-	*errs = talloc_strdup(output, "");
+	for (i = 0; i < talloc_array_length(lines) - 1; i++) {
+		if (strstarts(lines[i], prefix)) {
+			ret[num_ret++] = talloc_steal(ret, lines[i]);
+			lines[i] = (char *)"";
+		}
+	}
+	ret[num_ret++] = NULL;
+
+	/* Make sure length is correct! */
+	return talloc_realloc(NULL, ret, char *, num_ret);
+}
+
+static char *get_leaks(char *lines[], char **errs)
+{
+	char *leaks = talloc_strdup(lines, "");
+	unsigned int i;
+
 	for (i = 0; i < talloc_array_length(lines) - 1; i++) {
 		if (strstr(lines[i], " lost ")) {
 			/* A leak... */
@@ -81,6 +97,31 @@ static char *get_leaks(const char *output, char **errs)
 			}
 		}
 	}
+	return leaks;
+}
+
+/* Returns leaks, and sets errs[] */
+static char *analyze_output(const char *output, char **errs)
+{
+	char *leaks = talloc_strdup(output, "");
+	unsigned int i;
+	char **lines = strsplit(output, output, "\n");
+
+	*errs = talloc_strdup(output, "");
+	for (i = 0; i < talloc_array_length(lines) - 1; i++) {
+		unsigned int preflen = strspn(lines[i], "=0123456789");
+		char *prefix, **sublines;
+
+		/* Ignore erased lines, or weird stuff. */
+		if (preflen == 0)
+			continue;
+
+		prefix = talloc_strndup(output, lines[i], preflen);
+		sublines = extract_matching(prefix, lines);
+
+		leaks = talloc_append_string(leaks, get_leaks(sublines, errs));
+	}
+
 	if (!leaks[0]) {
 		talloc_free(leaks);
 		leaks = NULL;
@@ -106,25 +147,39 @@ static void do_run_tests_vg(struct manifest *m,
 	score->total = 0;
 	foreach_ptr(list, &m->run_tests, &m->api_tests) {
 		list_for_each(list, i, list) {
-			char *output, *err;
+			char *output, *err, *log;
+			bool pass;
 			score->total++;
+
 			/* FIXME: Valgrind's output sucks.  XML is unreadable by
-			 * humans, and you can't have both. */
-			run_command(score, timeleft, &cmdout,
-				    "valgrind -q --error-exitcode=101"
-				    " --child-silent-after-fork=yes"
-				    " --leak-check=full"
-				    " --log-fd=3 %s %s"
-				    " 3> valgrind.log",
-				    tests_pass_valgrind.options ?
-				    tests_pass_valgrind.options : "",
-				    i->compiled);
-			output = grab_file(i, "valgrind.log", NULL);
+			 * humans *and* doesn't support children reporting. */
+			log = talloc_asprintf(score,
+					      "%s.valgrind-log", i->compiled);
+			if (!keep)
+				talloc_set_destructor(log,
+						      unlink_file_destructor);
+
+			pass = run_command(score, timeleft, &cmdout,
+					 "valgrind -q --error-exitcode=101"
+					   " --leak-check=full"
+					   " --log-fd=3 %s %s"
+					   " 3> %s",
+					   tests_pass_valgrind.options ?
+					   tests_pass_valgrind.options : "",
+					   i->compiled, log);
+			output = grab_file(i, log, NULL);
+			/* No valgrind errors?  Expect it to pass... */
 			if (!output || output[0] == '\0') {
-				err = NULL;
+				if (!pass) {
+					err = talloc_asprintf(score,
+							      "Test failed:\n"
+							      "%s",
+							      cmdout);
+				} else
+					err = NULL;
 				i->leak_info = NULL;
 			} else {
-				i->leak_info = get_leaks(output, &err);
+				i->leak_info = analyze_output(output, &err);
 			}
 			if (err)
 				score_file_error(score, i, 0, "%s", err);
@@ -175,7 +230,7 @@ static void run_under_debugger_vg(struct manifest *m, struct score *score)
 		return;
 
 	first = list_top(&score->per_file_errors, struct file_error, list);
-	command = talloc_asprintf(m, "valgrind --db-attach=yes%s %s",
+	command = talloc_asprintf(m, "valgrind --leak-check=full --db-attach=yes%s %s",
 				  tests_pass_valgrind.options ?
 				  tests_pass_valgrind.options : "",
 				  first->file->compiled);
