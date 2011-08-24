@@ -310,6 +310,16 @@ static void restore_files(struct saved_file *s)
 	}
 }
 
+static void free_files(struct saved_file *s)
+{
+	while (s) {
+		struct saved_file *next = s->next;
+		free(s->contents);
+		free(s);
+		s = next;
+	}
+}
+
 /* Free up memory, so valgrind doesn't report leaks. */
 static void free_everything(void)
 {
@@ -475,6 +485,8 @@ static bool should_fail(struct failtest_call *call)
 		if (output[1] != STDOUT_FILENO && output[1] != STDERR_FILENO)
 			close(output[1]);
 		control_fd = control[1];
+		/* Valgrind spots the leak if we don't free these. */
+		free_files(files);
 		return true;
 	}
 
