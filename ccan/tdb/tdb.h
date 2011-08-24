@@ -141,8 +141,8 @@ void tdb_enable_seqnum(struct tdb_context *tdb);
 void tdb_increment_seqnum_nonblock(struct tdb_context *tdb);
 unsigned int tdb_jenkins_hash(TDB_DATA *key);
 int tdb_check(struct tdb_context *tdb,
-	      int (*check)(TDB_DATA key, TDB_DATA data, void *private),
-	      void *private);
+	      int (*check)(TDB_DATA key, TDB_DATA data, void *private_data),
+	      void *private_data);
 
 /* Low level locking functions: use with care */
 int tdb_chainlock(struct tdb_context *tdb, TDB_DATA key);
