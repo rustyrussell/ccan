@@ -1,6 +1,15 @@
 ALL_TOOLS = tools/configurator/configurator tools/ccan_depends tools/doc_extract tools/namespacize tools/ccanlint/ccanlint
 
-DEP_OBJS = tools/depends.o tools/compile.o tools/tools.o ccan/str_talloc/str_talloc.o ccan/str/str.o ccan/str/debug.o ccan/grab_file/grab_file.o ccan/talloc/talloc.o ccan/noerr/noerr.o ccan/read_write_all/read_write_all.o
+DEP_OBJS = ccan/grab_file/grab_file.o \
+	ccan/noerr/noerr.o \
+	ccan/read_write_all/read_write_all.o \
+	ccan/str/debug.o \
+	ccan/str/str.o \
+	ccan/str_talloc/str_talloc.o \
+	ccan/talloc/talloc.o \
+	tools/compile.o \
+	tools/depends.o \
+	tools/tools.o
 
 .PHONY: tools
 tools: $(ALL_TOOLS)

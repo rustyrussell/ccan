@@ -2,23 +2,30 @@ COMPULSORY_TEST_CFILES := $(wildcard tools/ccanlint/compulsory_tests/*.c)
 NORMAL_TEST_CFILES := $(wildcard tools/ccanlint/tests/*.c)
 TEST_OBJS := $(NORMAL_TEST_CFILES:.c=.o) $(COMPULSORY_TEST_CFILES:.c=.o)
 
-CORE_OBJS := tools/ccanlint/ccanlint.o \
-	tools/ccanlint/file_analysis.o \
-	tools/ccanlint/licenses.o \
-	tools/doc_extract-core.o \
-	tools/depends.o \
-	tools/tools.o \
-	tools/compile.o \
-	ccan/str_talloc/str_talloc.o ccan/grab_file/grab_file.o \
-	ccan/str/str.o ccan/str/debug.o \
+CORE_OBJS := \
 	ccan/asort/asort.o \
 	ccan/btree/btree.o \
-	ccan/talloc/talloc.o ccan/noerr/noerr.o \
-	ccan/talloc_link/talloc_link.o ccan/noerr/noerr.o \
 	ccan/foreach/foreach.o \
-	ccan/hash/hash.o ccan/htable/htable.o \
+	ccan/grab_file/grab_file.o \
+	ccan/hash/hash.o \
+	ccan/htable/htable.o \
+	ccan/noerr/noerr.o \
+	ccan/opt/helpers.o \
+	ccan/opt/opt.o \
+	ccan/opt/parse.o \
+	ccan/opt/usage.o \
 	ccan/read_write_all/read_write_all.o \
-	ccan/opt/opt.o ccan/opt/usage.o ccan/opt/helpers.o ccan/opt/parse.o
+	ccan/str/str.o ccan/str/debug.o \
+	ccan/str_talloc/str_talloc.o \
+	ccan/talloc/talloc.o \
+	ccan/talloc_link/talloc_link.o \
+	tools/ccanlint/ccanlint.o \
+	tools/ccanlint/file_analysis.o \
+	tools/ccanlint/licenses.o \
+	tools/compile.o \
+	tools/depends.o \
+	tools/doc_extract-core.o \
+	tools/tools.o
 
 OBJS := $(CORE_OBJS) $(TEST_OBJS)
 
