@@ -36,6 +36,7 @@ int main(int argc, char *argv[])
 	data = tdb_fetch(tdb, key);
 	ok1(data.dsize == 0);
 	tdb_close(tdb);
+	free(data.dptr);
 
 	return exit_status();
 }

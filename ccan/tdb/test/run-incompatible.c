@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
 {
 	struct tdb_context *tdb;
 	unsigned int log_count, flags;
-	TDB_DATA d;
+	TDB_DATA d, r;
 	struct tdb_logging_context log_ctx = { log_fn, &log_count };
 
 	plan_tests(38 * 2);
@@ -78,7 +78,9 @@ int main(int argc, char *argv[])
 				  O_RDWR, 0600, &log_ctx, NULL);
 		ok1(tdb);
 		ok1(log_count == 0);
-		ok1(tdb_fetch(tdb, d).dsize == 5);
+		r = tdb_fetch(tdb, d);
+		ok1(r.dsize == 5);
+		free(r.dptr);
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 		tdb_close(tdb);
 
@@ -127,7 +129,9 @@ int main(int argc, char *argv[])
 				  O_RDWR, 0600, &log_ctx, tdb_jenkins_hash);
 		ok1(tdb);
 		ok1(log_count == 0);
-		ok1(tdb_fetch(tdb, d).dsize == 5);
+		r = tdb_fetch(tdb, d);
+		ok1(r.dsize == 5);
+		free(r.dptr);
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 		tdb_close(tdb);
 
@@ -137,7 +141,9 @@ int main(int argc, char *argv[])
 				  O_RDWR, 0600, &log_ctx, NULL);
 		ok1(tdb);
 		ok1(log_count == 0);
-		ok1(tdb_fetch(tdb, d).dsize == 5);
+		r = tdb_fetch(tdb, d);
+		ok1(r.dsize == 5);
+		free(r.dptr);
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 		tdb_close(tdb);
 
@@ -170,7 +176,9 @@ int main(int argc, char *argv[])
 				  &log_ctx, tdb_dumb_hash);
 		ok1(tdb);
 		ok1(log_count == 0);
-		ok1(tdb_fetch(tdb, d).dsize == 5);
+		r = tdb_fetch(tdb, d);
+		ok1(r.dsize == 5);
+		free(r.dptr);
 		ok1(tdb_check(tdb, NULL, NULL) == 0);
 		tdb_close(tdb);
 	}
