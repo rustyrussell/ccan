@@ -33,7 +33,7 @@
 #include "system/select.h"
 #include "system/wait.h"
 #else
-#define _XOPEN_SOURCE 500
+#include "config.h"
 #define _FILE_OFFSET_BITS 64
 #include <stdint.h>
 #include <stdbool.h>
@@ -46,7 +46,6 @@
 #include <errno.h>
 #include <stdio.h>
 #include <utime.h>
-#include "config.h"
 #endif
 #include "tdb.h"
 
