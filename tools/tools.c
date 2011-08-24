@@ -3,6 +3,7 @@
 #include <ccan/noerr/noerr.h>
 #include <ccan/read_write_all/read_write_all.h>
 #include <ccan/noerr/noerr.h>
+#include <ccan/time/time.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/time.h>
@@ -72,7 +73,7 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 	int p[2];
 	char *ret;
 	int status, ms;
-	struct timeval start, end;
+	struct timeval start;
 
 	*ok = false;
 	if (pipe(p) != 0)
@@ -84,7 +85,7 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 
 	/* Always flush buffers before fork! */
 	fflush(stdout);
-	gettimeofday(&start, NULL);
+	start = time_now();
 	pid = fork();
 	if (pid == -1) {
 		close_noerr(p[0]);
@@ -106,8 +107,7 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 
 		signal(SIGALRM, killme);
 		itim.it_interval.tv_sec = itim.it_interval.tv_usec = 0;
-		itim.it_value.tv_sec = *timeout_ms / 1000;
-		itim.it_value.tv_usec = (*timeout_ms % 1000) * 1000;
+		itim.it_value = time_from_msec(*timeout_ms);
 		setitimer(ITIMER_REAL, &itim, NULL);
 
 		status = system(cmd);
@@ -123,13 +123,7 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 	if (waitpid(pid, &status, 0) != pid)
 		err(1, "Failed to wait for child");
 
-	gettimeofday(&end, NULL);
-	if (end.tv_usec < start.tv_usec) {
-		end.tv_usec += 1000000;
-		end.tv_sec--;
-	}
-	ms = (end.tv_sec - start.tv_sec) * 1000
-		+ (end.tv_usec - start.tv_usec) / 1000;
+	ms = time_to_msec(time_sub(time_now(), start));
 	if (ms > *timeout_ms)
 		*timeout_ms = 0;
 	else

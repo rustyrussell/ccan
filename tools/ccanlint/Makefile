@@ -19,6 +19,7 @@ CORE_OBJS := \
 	ccan/str_talloc/str_talloc.o \
 	ccan/talloc/talloc.o \
 	ccan/talloc_link/talloc_link.o \
+	ccan/time/time.o \
 	tools/ccanlint/ccanlint.o \
 	tools/ccanlint/file_analysis.o \
 	tools/ccanlint/licenses.o \
