@@ -701,7 +701,7 @@ int failtest_open(const char *pathname,
 		free((char *)call.pathname);
 	p->u.open.ret = open(pathname, call.flags, call.mode);
 
-	if (!failpath && p->u.open.ret == -1) {
+	if (p->u.open.ret == -1) {
 		p->fail = false;
 		p->error = errno;
 	} else if (should_fail(p)) {
