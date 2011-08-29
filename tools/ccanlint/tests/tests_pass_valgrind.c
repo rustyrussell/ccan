@@ -5,6 +5,7 @@
 #include <ccan/foreach/foreach.h>
 #include <ccan/grab_file/grab_file.h>
 #include <ccan/str_talloc/str_talloc.h>
+#include "tests_pass.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -23,12 +24,8 @@ REGISTER_TEST(tests_pass_valgrind_noleaks);
 /* Note: we already test safe_mode in run_tests.c */
 static const char *can_run_vg(struct manifest *m)
 {
-	unsigned int timeleft = default_timeout_ms;
-	char *output;
-
-	if (!run_command(m, &timeleft, &output,
-			 "valgrind -q --error-exitcode=0 true"))
-		return talloc_asprintf(m, "No valgrind support: %s", output);
+	if (!do_valgrind)
+		return talloc_asprintf(m, "No valgrind support");
 	return NULL;
 }
 
@@ -149,21 +146,19 @@ static const char *concat(struct score *score, char *bits[])
 
 /* FIXME: Run examples, too! */
 static void do_run_tests_vg(struct manifest *m,
-			     bool keep,
+			    bool keep,
 			    unsigned int *timeleft,
 			    struct score *score)
 {
 	struct ccan_file *i;
 	struct list_head *list;
-	char *cmdout;
 
 	/* This is slow, so we run once but grab leak info. */
 	score->total = 0;
 	score->pass = true;
 	foreach_ptr(list, &m->run_tests, &m->api_tests) {
 		list_for_each(list, i, list) {
-			char *output, *err, *log;
-			bool pass;
+			char *err, *output;
 			const char *options;
 
 			score->total++;
@@ -173,31 +168,13 @@ static void do_run_tests_vg(struct manifest *m,
 			if (streq(options, "FAIL"))
 				continue;
 
-			/* FIXME: Valgrind's output sucks.  XML is unreadable by
-			 * humans *and* doesn't support children reporting. */
-			log = talloc_asprintf(score,
-					      "%s.valgrind-log", i->compiled);
-			if (!keep)
-				talloc_set_destructor(log,
-						      unlink_file_destructor);
+			if (keep)
+				talloc_set_destructor(i->valgrind_log, NULL);
 
-			pass = run_command(score, timeleft, &cmdout,
-					 "valgrind -q --error-exitcode=101"
-					   " --leak-check=full"
-					   " --log-fd=3 %s %s"
-					   " 3> %s",
-					   options,
-					   i->compiled, log);
-			output = grab_file(i, log, NULL);
-			/* No valgrind errors?  Expect it to pass... */
+			output = grab_file(i, i->valgrind_log, NULL);
+			/* No valgrind errors? */
 			if (!output || output[0] == '\0') {
-				if (!pass) {
-					err = talloc_asprintf(score,
-							      "Test failed:\n"
-							      "%s",
-							      cmdout);
-				} else
-					err = NULL;
+				err = NULL;
 				i->leak_info = NULL;
 			} else {
 				i->leak_info = analyze_output(output, &err);

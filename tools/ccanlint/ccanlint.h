@@ -179,6 +179,9 @@ struct ccan_file {
 	/* Compiled with coverage information. */
 	char *cov_compiled;
 
+	/* Filename containing output from valgrind. */
+	char *valgrind_log;
+
 	/* Leak output from valgrind. */
 	char *leak_info;
 
