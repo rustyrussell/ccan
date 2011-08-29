@@ -71,7 +71,7 @@ static void add_dep(struct manifest ***deps, const char *basename)
 	}
 }
 
-static char *obj_list(struct manifest *m, struct ccan_file *f)
+static char *example_obj_list(struct manifest *m, struct ccan_file *f)
 {
 	struct manifest **deps = talloc_array(f, struct manifest *, 0);
 	char **lines, *list;
@@ -121,7 +121,7 @@ static bool compile(const void *ctx,
 {
 	file->compiled = maybe_temp_file(ctx, "", keep, file->fullname);
 	if (!compile_and_link(ctx, file->fullname, ccan_dir,
-			      obj_list(m, file),
+			      example_obj_list(m, file),
 			      compiler, cflags,
 			      lib_list(m), file->compiled, output)) {
 		/* Don't keep failures. */
