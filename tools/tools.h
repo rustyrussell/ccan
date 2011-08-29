@@ -24,8 +24,7 @@ char **get_deps(const void *ctx, const char *dir, bool recurse,
 		char **infofile);
 
 /* This is safer: just looks for ccan/ strings in info */
-char **get_safe_ccan_deps(const void *ctx, const char *dir,
-			  bool recurse, char **infofile);
+char **get_safe_ccan_deps(const void *ctx, const char *dir, bool recurse);
 
 /* This also needs to compile the info file. */
 char **get_libs(const void *ctx, const char *dir,

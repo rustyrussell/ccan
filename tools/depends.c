@@ -255,11 +255,11 @@ char **get_deps(const void *ctx, const char *dir,
 }
 
 char **get_safe_ccan_deps(const void *ctx, const char *dir,
-			  bool recurse, char **infofile)
+			  bool recurse)
 {
 	if (!recurse) {
 		unsigned int num;
-		return get_one_safe_deps(ctx, dir, &num, infofile);
+		return get_one_safe_deps(ctx, dir, &num, NULL);
 	}
-	return get_all_deps(ctx, dir, infofile, get_one_safe_deps);
+	return get_all_deps(ctx, dir, NULL, get_one_safe_deps);
 }
