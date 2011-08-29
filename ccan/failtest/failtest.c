@@ -15,6 +15,7 @@
 #include <sys/time.h>
 #include <signal.h>
 #include <assert.h>
+#include <ccan/time/time.h>
 #include <ccan/read_write_all/read_write_all.h>
 #include <ccan/failtest/failtest_proto.h>
 #include <ccan/build_assert/build_assert.h>
@@ -457,18 +458,13 @@ static bool should_fail(struct failtest_call *call)
 
 	if (child == 0) {
 		if (tracefd != -1) {
-			struct timeval now;
+			struct timeval diff;
 			const char *p;
-			gettimeofday(&now, NULL);
-			if (now.tv_usec < start.tv_usec) {
-				now.tv_sec--;
-				now.tv_usec += 1000000;
-			}
-			now.tv_usec -= start.tv_usec;
-			now.tv_sec -= start.tv_sec;
+
+			diff = time_sub(time_now(), start);
 			p = failpath_string();
 			trace("%u->%u (%u.%02u): %s (", getppid(), getpid(),
-			      (int)now.tv_sec, (int)now.tv_usec / 10000, p);
+			      (int)diff.tv_sec, (int)diff.tv_usec / 10000, p);
 			free((char *)p);
 			p = strrchr(history[history_num-1].file, '/');
 			if (p)
@@ -1067,7 +1063,7 @@ void failtest_init(int argc, char *argv[])
 			debugpath = argv[i] + strlen("--debugpath=");
 		}
 	}
-	gettimeofday(&start, NULL);
+	start = time_now();
 }
 
 bool failtest_has_failed(void)

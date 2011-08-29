@@ -64,6 +64,7 @@ int main(int argc, char *argv[])
 		printf("ccan/compiler\n");
 		printf("ccan/read_write_all\n");
 		printf("ccan/build_assert\n");
+		printf("ccan/time\n");
 		return 0;
 	}
 
