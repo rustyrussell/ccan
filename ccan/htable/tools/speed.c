@@ -4,6 +4,7 @@
 #include <ccan/hash/hash.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <unistd.h>
 #include <sys/time.h>
@@ -28,9 +29,9 @@ static size_t hash_obj(const unsigned int *key)
 	return hashl(key, 1, 0);
 }
 
-static bool cmp(const unsigned int *key1, const unsigned int *key2)
+static bool cmp(const struct object *object, const unsigned int *key)
 {
-	return *key1 == *key2;
+	return object->key == *key;
 }
 
 HTABLE_DEFINE_TYPE(struct object, objkey, hash_obj, cmp, obj);
