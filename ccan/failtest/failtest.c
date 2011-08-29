@@ -1,5 +1,5 @@
 /* Licensed under LGPL - see LICENSE file for details */
-#include "config.h"
+#include <ccan/failtest/failtest.h>
 #include <stdarg.h>
 #include <string.h>
 #include <stdio.h>
@@ -17,7 +17,6 @@
 #include <assert.h>
 #include <ccan/read_write_all/read_write_all.h>
 #include <ccan/failtest/failtest_proto.h>
-#include <ccan/failtest/failtest.h>
 #include <ccan/build_assert/build_assert.h>
 
 enum failtest_result (*failtest_hook)(struct failtest_call *, unsigned);

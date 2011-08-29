@@ -3,6 +3,9 @@
 #define CCAN_FAILTEST_OVERRIDE_H
 /* This file is included before the source file to test. */
 #include "config.h"
+#if HAVE_FILE_OFFSET_BITS
+#define _FILE_OFFSET_BITS 64
+#endif
 
 /* Replacement of allocators. */
 #include <stdlib.h>

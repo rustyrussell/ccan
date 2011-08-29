@@ -2,6 +2,9 @@
 #ifndef CCAN_FAILTEST_H
 #define CCAN_FAILTEST_H
 #include "config.h"
+#if HAVE_FILE_OFFSET_BITS
+#define _FILE_OFFSET_BITS 64
+#endif
 #include <sys/types.h>
 #include <stdbool.h>
 #include <fcntl.h>
