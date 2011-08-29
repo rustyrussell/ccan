@@ -222,6 +222,13 @@ static struct ccanlint *find_test(const char *key)
 	return NULL;
 }
 
+bool is_excluded(const char *name)
+{
+	return btree_lookup(cmdline_exclude, name) != NULL
+		|| btree_lookup(info_exclude, name) != NULL
+		|| find_test(name)->skip != NULL;
+}
+
 #undef REGISTER_TEST
 #define REGISTER_TEST(name, ...) extern struct ccanlint name
 #include "generated-normal-tests"

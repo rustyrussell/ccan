@@ -237,6 +237,9 @@ struct dependent {
 	struct ccanlint *dependent;
 };
 
+/* Is this test excluded (cmdline or _info). */
+bool is_excluded(const char *name);
+
 /* Are we happy to compile stuff, or just non-intrusive tests? */
 extern bool safe_mode;
 
