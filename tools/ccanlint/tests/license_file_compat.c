@@ -24,7 +24,7 @@ static void check_license_file_compat(struct manifest *m,
 	if (m->license == LICENSE_UNKNOWN) {
 		score->pass = true;
 		score->score = score->total = 0;
-		return 0;
+		return;
 	}
 
 	foreach_ptr(list, &m->c_files, &m->h_files) {
