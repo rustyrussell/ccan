@@ -101,7 +101,7 @@ summary-check-%: tools/ccanlint/ccanlint $(OBJFILES)
 	tools/ccanlint/ccanlint -s -d ccan/$*
 
 summary-fastcheck-%: tools/ccanlint/ccanlint $(OBJFILES)
-	tools/ccanlint/ccanlint -t $(FASTTIMEOUT) -s -d ccan/$*
+	tools/ccanlint/ccanlint -x tests_pass_valgrind -x tests_compile_coverage -s -d ccan/$*
 
 ccan/%/info: ccan/%/_info
 	$(CC) $(CCAN_CFLAGS) -o $@ -x c $<
