@@ -13,6 +13,7 @@
 #include <err.h>
 #include <string.h>
 #include <ctype.h>
+#include "reduce_features.h"
 #include "../compulsory_tests/build.h"
 
 static const char *can_build(struct manifest *m)
@@ -30,7 +31,8 @@ static void check_depends_built_without_features(struct manifest *m,
 	struct manifest *i;
 	char *flags;
 
-	flags = talloc_asprintf(score, "%s -I.", cflags);
+	flags = talloc_asprintf(score, "%s %s", cflags,
+				REDUCE_FEATURES_FLAGS);
 
 	list_for_each(&m->deps, i, list) {
 		char *errstr = build_submodule(i, flags, COMPILE_NOFEAT);

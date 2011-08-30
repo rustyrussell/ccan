@@ -102,7 +102,8 @@ static void do_compile_test_helpers_without_features(struct manifest *m,
 {
 	char *flags;
 
-	flags = talloc_asprintf(score, "%s -I.", cflags);
+	flags = talloc_asprintf(score, "%s %s", cflags,
+				REDUCE_FEATURES_FLAGS);
 
 	compile_test_helpers(m, keep, timeleft, score, flags,
 			     COMPILE_NOFEAT);

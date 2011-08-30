@@ -160,11 +160,14 @@ static void do_reduce_features(struct manifest *m,
 		hdr = talloc_asprintf_append
 			(hdr, "#undef %s\n#define %s 0\n", sym, sym);
 	}
-	fd = open("config.h", O_EXCL|O_CREAT|O_RDWR, 0600);
+	if (mkdir("reduced-features", 0700) != 0)
+		err(1, "Creating reduced-features directory");
+
+	fd = open("reduced-features/config.h", O_EXCL|O_CREAT|O_RDWR, 0600);
 	if (fd < 0)
-		err(1, "Creating config.h");
+		err(1, "Creating reduced-features/config.h");
 	if (!write_all(fd, hdr, strlen(hdr)))
-		err(1, "Writing config.h");
+		err(1, "Writing reduced-features/config.h");
 	close(fd);
 	features_were_reduced = true;
 }

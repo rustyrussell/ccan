@@ -1,5 +1,6 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <ccan/talloc/talloc.h>
+#include "reduce_features.h"
 #include "../compulsory_tests/build.h"
 
 static void check_objs_build_without_features(struct manifest *m,
@@ -7,7 +8,8 @@ static void check_objs_build_without_features(struct manifest *m,
 					      unsigned int *timeleft,
 					      struct score *score)
 {
-	const char *flags = talloc_asprintf(score, "-I. %s", cflags);
+	const char *flags = talloc_asprintf(score, "%s %s",
+					    REDUCE_FEATURES_FLAGS, cflags);
 	build_objects(m, keep, score, flags, COMPILE_NOFEAT);
 }
 

@@ -78,7 +78,8 @@ static bool compile(const void *ctx,
 	flags = talloc_asprintf(ctx, "%s%s%s",
 				fail ? "-DFAIL " : "",
 				cflags,
-				ctype == COMPILE_NOFEAT ? " -I." : "");
+				ctype == COMPILE_NOFEAT
+				? " "REDUCE_FEATURES_FLAGS : "");
 
 	fname = maybe_temp_file(ctx, "", keep, file->fullname);
 	if (!compile_and_link(ctx, file->fullname, ccan_dir,
@@ -192,6 +193,6 @@ struct ccanlint tests_compile_without_features = {
 	.name = "Module tests compile (without features)",
 	.check = do_compile_tests_without_features,
 	.can_run = features_reduced,
-	.needs = "tests_helpers_compile_without_features reduce_features"
+	.needs = "tests_helpers_compile_without_features objects_build_without_features"
 };
 REGISTER_TEST(tests_compile_without_features);
