@@ -41,9 +41,19 @@ static void check_depends_exist(struct manifest *m,
 	unsigned int i;
 	char **deps;
 	char *updir = talloc_strdup(m, m->dir);
+	bool needs_tap;
 
 	if (strrchr(updir, '/'))
 		*strrchr(updir, '/') = '\0';
+
+	/* We may need libtap for testing, unless we're "tap" */
+	if (streq(m->basename, "tap")) {
+		needs_tap = false;
+	} else if (list_empty(&m->run_tests) && list_empty(&m->api_tests)) {
+		needs_tap = false;
+	} else {
+		needs_tap = true;
+	}
 
 	if (safe_mode)
 		deps = get_safe_ccan_deps(m, m->dir, true);
@@ -57,13 +67,14 @@ static void check_depends_exist(struct manifest *m,
 
 		if (!add_dep(m, deps[i], score))
 			return;
+
+		if (streq(deps[i], "ccan/tap")) {
+			needs_tap = false;
+		}
 	}
 
-	/* We may need libtap for testing, unless we're "tap" */
-	if (!streq(m->basename, "tap")
-	    && (!list_empty(&m->run_tests) || !list_empty(&m->api_tests))) {
-		if (!add_dep(m, "ccan/tap", score))
-			return;
+	if (needs_tap && !add_dep(m, "ccan/tap", score)) {
+		return;
 	}
 
 	score->pass = true;

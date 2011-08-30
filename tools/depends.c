@@ -70,8 +70,7 @@ static char *compile_info(const void *ctx, const char *dir)
 	return NULL;
 }
 
-static char **get_one_deps(const void *ctx, const char *dir,
-			   unsigned int *num, char **infofile)
+static char **get_one_deps(const void *ctx, const char *dir, char **infofile)
 {
 	char **deps, *cmd;
 
@@ -85,8 +84,6 @@ static char **get_one_deps(const void *ctx, const char *dir,
 	deps = lines_from_cmd(cmd, "%s", cmd);
 	if (!deps)
 		err(1, "Could not run '%s'", cmd);
-	/* FIXME: Do we need num arg? */
-	*num = talloc_array_length(deps) - 1;
 	return deps;
 }
 
@@ -120,7 +117,6 @@ static char *replace(const void *ctx, const char *src,
 /* This is a terrible hack.  We scan for ccan/ strings. */
 static char **get_one_safe_deps(const void *ctx,
 				const char *dir,
-				unsigned int *num,
 				char **infofile)
 {
 	char **deps, **lines, *raw, *fname;
@@ -161,35 +157,36 @@ static char **get_one_safe_deps(const void *ctx,
 	}
 	deps[n] = NULL;
 	talloc_free(fname);
-	if (num)
-		*num = n;
-	return deps;
+
+	/* Make sure talloc_array_length() works */
+	return talloc_realloc(NULL, deps, char *, n + 1);
 }
 
-static bool have_dep(char **deps, unsigned int num, const char *dep)
+static bool have_dep(char **deps, const char *dep)
 {
 	unsigned int i;
 
-	for (i = 0; i < num; i++)
+	for (i = 0; deps[i]; i++)
 		if (streq(deps[i], dep))
 			return true;
 	return false;
 }
 
+
+
 /* Gets all the dependencies, recursively. */
 static char **
 get_all_deps(const void *ctx, const char *dir,
 	     char **infofile,
-	     char **(*get_one)(const void *, const char *,
-			       unsigned int *, char **))
+	     char **(*get_one)(const void *, const char *, char **))
 {
 	char **deps;
-	unsigned int i, num;
+	unsigned int i;
 
-	deps = get_one(ctx, dir, &num, infofile);
-	for (i = 0; i < num; i++) {
+	deps = get_one(ctx, dir, infofile);
+	for (i = 0; i < talloc_array_length(deps)-1; i++) {
 		char **newdeps;
-		unsigned int j, newnum;
+		unsigned int j;
 		char *subinfo = NULL;
 		char *subdir;
 
@@ -199,16 +196,19 @@ get_all_deps(const void *ctx, const char *dir,
 		subdir = talloc_asprintf(ctx, "%s/%s",
 					 talloc_dirname(ctx, dir),
 					 deps[i] + strlen("ccan/"));
-		newdeps = get_one(ctx, subdir, &newnum, &subinfo);
+		newdeps = get_one(ctx, subdir, &subinfo);
 
 		/* Should be short, so brute-force out dups. */
-		for (j = 0; j < newnum; j++) {
-			if (have_dep(deps, num, newdeps[j]))
+		for (j = 0; j < talloc_array_length(newdeps)-1; j++) {
+			unsigned int num;
+
+			if (have_dep(deps, newdeps[j]))
 				continue;
 
+			num = talloc_array_length(deps)-1;
 			deps = talloc_realloc(NULL, deps, char *, num + 2);
-			deps[num++] = newdeps[j];
-			deps[num] = NULL;
+			deps[num] = newdeps[j];
+			deps[num+1] = NULL;
 		}
 	}
 	return deps;
@@ -234,6 +234,26 @@ char **get_libs(const void *ctx, const char *dir,
 	return libs;
 }
 
+/* FIXME: This is O(n^2), which is dumb. */
+static void uniquify_deps(char **deps)
+{
+	unsigned int i, j, num;
+
+	num = talloc_array_length(deps) - 1;
+	for (i = 0; i < num; i++) {
+		for (j = i + 1; j < num; j++) {
+			if (streq(deps[i], deps[j])) {
+				memmove(&deps[j], &deps[j+1],
+					(num - j - 1) * sizeof(char *));
+				num--;
+			}
+		}
+	}
+	deps[num] = NULL;
+	/* Make sure talloc_array_length() works */
+	deps = talloc_realloc(NULL, deps, char *, num + 1);
+}
+
 char **get_deps(const void *ctx, const char *dir,
 		bool recurse, char **infofile)
 {
@@ -242,8 +262,7 @@ char **get_deps(const void *ctx, const char *dir,
 		infofile = &temp;
 
 	if (!recurse) {
-		unsigned int num;
-		ret = get_one_deps(ctx, dir, &num, infofile);
+		ret = get_one_deps(ctx, dir, infofile);
 	} else
 		ret = get_all_deps(ctx, dir, infofile, get_one_deps);
 
@@ -251,15 +270,19 @@ char **get_deps(const void *ctx, const char *dir,
 		unlink(temp);
 		talloc_free(temp);
 	}
+	uniquify_deps(ret);
 	return ret;
 }
 
 char **get_safe_ccan_deps(const void *ctx, const char *dir,
 			  bool recurse)
 {
+	char **ret;
 	if (!recurse) {
-		unsigned int num;
-		return get_one_safe_deps(ctx, dir, &num, NULL);
+		ret = get_one_safe_deps(ctx, dir, NULL);
+	} else {
+		ret = get_all_deps(ctx, dir, NULL, get_one_safe_deps);
 	}
-	return get_all_deps(ctx, dir, NULL, get_one_safe_deps);
+	uniquify_deps(ret);
+	return ret;
 }
