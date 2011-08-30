@@ -22,24 +22,28 @@ static const char *can_build(struct manifest *m)
 	return NULL;
 }
 
-static char *obj_list(const struct manifest *m)
+static char *obj_list(const struct manifest *m, enum compile_type ctype)
 {
 	char *list = talloc_strdup(m, "");
 	struct ccan_file *i;
 
 	/* Objects from all the C files. */
 	list_for_each(&m->c_files, i, list)
-		list = talloc_asprintf_append(list, "%s ", i->compiled);
+		list = talloc_asprintf_append(list, "%s ",
+					      i->compiled[ctype]);
 
 	return list;
 }
 
-char *build_module(struct manifest *m, bool keep, char **errstr)
+char *build_module(struct manifest *m, bool keep,
+		   enum compile_type ctype, char **errstr)
 {
-	char *name = link_objects(m, m->basename, false, obj_list(m), errstr);
+	char *name = link_objects(m, m->basename, false, obj_list(m, ctype),
+				  errstr);
 	if (name) {
 		if (keep) {
 			char *realname = talloc_asprintf(m, "%s.o", m->dir);
+			assert(ctype == COMPILE_NORMAL);
 			/* We leave this object file around, all built. */
 			if (!move_file(name, realname))
 				err(1, "Renaming %s to %s", name, realname);
@@ -63,8 +67,9 @@ static void do_build(struct manifest *m,
 		return;
 	}
 
-	m->compiled = build_module(m, keep, &errstr);
-	if (!m->compiled) {
+	m->compiled[COMPILE_NORMAL]
+		= build_module(m, keep, COMPILE_NORMAL, &errstr);
+	if (!m->compiled[COMPILE_NORMAL]) {
 		score_file_error(score, NULL, 0, "%s", errstr);
 		return;
 	}

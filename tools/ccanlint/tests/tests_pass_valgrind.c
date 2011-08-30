@@ -246,7 +246,7 @@ static void run_under_debugger_vg(struct manifest *m, struct score *score)
 				  concat(score,
 					 per_file_options(&tests_pass_valgrind,
 							  first->file)),
-				  first->file->compiled);
+				  first->file->compiled[COMPILE_NORMAL]);
 	if (system(command))
 		doesnt_matter();
 }

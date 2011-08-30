@@ -60,16 +60,18 @@ static char *obj_list(const struct manifest *m, const char *modobjs)
 
 	/* Objects from any other C files. */
 	list_for_each(&m->other_test_c_files, i, list)
-		list = talloc_asprintf_append(list, " %s", i->compiled);
+		list = talloc_asprintf_append(list, " %s",
+					      i->compiled[COMPILE_NORMAL]);
 
 	if (modobjs)
 		list = talloc_append_string(list, modobjs);
 
 	/* Other ccan modules (don't need coverage versions of those). */
 	list_for_each(&m->deps, subm, list) {
-		if (subm->compiled)
+		if (subm->compiled[COMPILE_NORMAL])
 			list = talloc_asprintf_append(list, " %s",
-						      subm->compiled);
+						      subm->compiled
+						      [COMPILE_NORMAL]);
 	}
 
 	return list;
@@ -78,7 +80,8 @@ static char *obj_list(const struct manifest *m, const char *modobjs)
 static char *lib_list(const struct manifest *m)
 {
 	unsigned int i, num;
-	char **libs = get_libs(m, m->dir, &num, &m->info_file->compiled);
+	char **libs = get_libs(m, m->dir, &num,
+			       &m->info_file->compiled[COMPILE_NORMAL]);
 	char *ret = talloc_strdup(m, "");
 
 	for (i = 0; i < num; i++)

@@ -49,10 +49,9 @@ static const char *concat(struct score *score, char *bits[])
 static bool run_test(void *ctx,
 		     struct manifest *m,
 		     unsigned int *timeleft, char **cmdout,
-		     struct ccan_file *i,
-		     bool use_valgrind)
+		     struct ccan_file *i)
 {
-	if (use_valgrind) {
+	if (do_valgrind) {
 		const char *options;
 		options = concat(ctx,
 				 per_file_options(&tests_pass_valgrind, i));
@@ -62,8 +61,8 @@ static bool run_test(void *ctx,
 			 * unreadable by humans *and* doesn't support
 			 * children reporting. */
 			i->valgrind_log = talloc_asprintf(m,
-							  "%s.valgrind-log",
-							  i->compiled);
+					  "%s.valgrind-log",
+					  i->compiled[COMPILE_NORMAL]);
 			talloc_set_destructor(i->valgrind_log,
 					      unlink_file_destructor);
 
@@ -73,18 +72,19 @@ static bool run_test(void *ctx,
 					   " --log-fd=3 %s %s"
 					   " 3> %s",
 					   options,
-					   i->compiled, i->valgrind_log);
+					   i->compiled[COMPILE_NORMAL],
+					   i->valgrind_log);
 		}
 	}
 
-	return run_command(m, timeleft, cmdout, "%s", i->compiled);
+	return run_command(m, timeleft, cmdout, "%s",
+			   i->compiled[COMPILE_NORMAL]);
 }
 
-static void run_tests(struct manifest *m,
-		      bool keep,
-		      unsigned int *timeleft,
-		      struct score *score,
-		      bool use_valgrind)
+static void do_run_tests(struct manifest *m,
+			 bool keep,
+			 unsigned int *timeleft,
+			 struct score *score)
 {
 	struct list_head *list;
 	struct ccan_file *i;
@@ -94,8 +94,7 @@ static void run_tests(struct manifest *m,
 	foreach_ptr(list, &m->run_tests, &m->api_tests) {
 		list_for_each(list, i, list) {
 			score->total++;
-			if (run_test(score, m, timeleft, &cmdout, i,
-				     use_valgrind))
+			if (run_test(score, m, timeleft, &cmdout, i))
 				score->score++;
 			else
 				score_file_error(score, i, 0, "%s", cmdout);
@@ -106,21 +105,6 @@ static void run_tests(struct manifest *m,
 		score->pass = true;
 }
 
-static void do_run_tests(struct manifest *m,
-			 bool keep,
-			 unsigned int *timeleft,
-			 struct score *score)
-{
-	run_tests(m, keep, timeleft, score, do_valgrind);
-}
-
-static void do_run_tests_without_features(struct manifest *m,
-					  bool keep,
-					  unsigned int *timeleft,
-					  struct score *score)
-{
-	run_tests(m, keep, timeleft, score, false);
-}
 
 /* Gcc's warn_unused_result is fascist bullshit. */
 #define doesnt_matter()
@@ -136,7 +120,7 @@ static void run_under_debugger(struct manifest *m, struct score *score)
 		return;
 
 	command = talloc_asprintf(m, "gdb -ex 'break tap.c:139' -ex 'run' %s",
-				  first->file->compiled);
+				  first->file->compiled[COMPILE_NORMAL]);
 	if (system(command))
 		doesnt_matter();
 }
@@ -151,13 +135,3 @@ struct ccanlint tests_pass = {
 };
 
 REGISTER_TEST(tests_pass);
-
-struct ccanlint tests_pass_without_features = {
-	.key = "tests_pass_without_features",
-	.name = "Module's run and api tests pass (without features)",
-	.check = do_run_tests_without_features,
-	.handle = run_under_debugger,
-	.needs = "tests_compile_without_features"
-};
-
-REGISTER_TEST(tests_pass_without_features);

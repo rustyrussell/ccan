@@ -51,7 +51,7 @@ static void add_dep(struct manifest ***deps, const char *basename)
 
 	m = get_manifest(*deps, talloc_asprintf(*deps, "%s/ccan/%s",
 						ccan_dir, basename));
-	errstr = build_submodule(m);
+	errstr = build_submodule(m, cflags, COMPILE_NORMAL);
 	if (errstr)
 		errx(1, "%s", errstr);
 
@@ -62,7 +62,8 @@ static void add_dep(struct manifest ***deps, const char *basename)
 	if (m->info_file) {
 		char **infodeps;
 
-		infodeps = get_deps(m, m->dir, false, &m->info_file->compiled);
+		infodeps = get_deps(m, m->dir, false,
+				    &m->info_file->compiled[COMPILE_NORMAL]);
 
 		for (i = 0; infodeps[i]; i++) {
 			if (strstarts(infodeps[i], "ccan/"))
@@ -96,19 +97,23 @@ static char *example_obj_list(struct manifest *m, struct ccan_file *f)
 
 	list = talloc_strdup(f, "");
 	for (i = 0; i < talloc_get_size(deps) / sizeof(*deps); i++) {
-		if (deps[i]->compiled)
+		if (deps[i]->compiled[COMPILE_NORMAL])
 			list = talloc_asprintf_append(list, " %s",
-						      deps[i]->compiled);
+						      deps[i]->compiled
+						      [COMPILE_NORMAL]);
 	}
 	return list;
 }
 
+/* FIXME: Test with reduced features! */
 static char *lib_list(const struct manifest *m)
 {
 	unsigned int i, num;
-	char **libs = get_libs(m, m->dir, &num, &m->info_file->compiled);
+	char **libs;
 	char *ret = talloc_strdup(m, "");
 
+	libs = get_libs(m, m->dir, &num,
+			&m->info_file->compiled[COMPILE_NORMAL]);
 	for (i = 0; i < num; i++)
 		ret = talloc_asprintf_append(ret, "-l%s ", libs[i]);
 	return ret;
@@ -119,16 +124,18 @@ static bool compile(const void *ctx,
 		    struct ccan_file *file,
 		    bool keep, char **output)
 {
-	file->compiled = maybe_temp_file(ctx, "", keep, file->fullname);
+	file->compiled[COMPILE_NORMAL]
+		= maybe_temp_file(ctx, "", keep, file->fullname);
 	if (!compile_and_link(ctx, file->fullname, ccan_dir,
 			      example_obj_list(m, file),
 			      compiler, cflags,
-			      lib_list(m), file->compiled, output)) {
+			      lib_list(m), file->compiled[COMPILE_NORMAL],
+			      output)) {
 		/* Don't keep failures. */
 		if (keep)
-			unlink(file->compiled);
-		talloc_free(file->compiled);
-		file->compiled = NULL;
+			unlink(file->compiled[COMPILE_NORMAL]);
+		talloc_free(file->compiled[COMPILE_NORMAL]);
+		file->compiled[COMPILE_NORMAL] = NULL;
 		return false;
 	}
 	return true;

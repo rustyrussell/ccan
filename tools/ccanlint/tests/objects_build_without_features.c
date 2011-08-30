@@ -8,7 +8,7 @@ static void check_objs_build_without_features(struct manifest *m,
 					      struct score *score)
 {
 	const char *flags = talloc_asprintf(score, "-I. %s", cflags);
-	build_objects(m, keep, score, flags);
+	build_objects(m, keep, score, flags, COMPILE_NOFEAT);
 }
 
 struct ccanlint objects_build_without_features = {

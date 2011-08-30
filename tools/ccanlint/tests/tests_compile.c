@@ -23,8 +23,8 @@ static const char *can_build(struct manifest *m)
 	return NULL;
 }
 
-/* FIXME: Merge this into one place. */
-static char *obj_list(const struct manifest *m, bool link_with_module)
+static char *obj_list(const struct manifest *m, bool link_with_module,
+		      enum compile_type ctype)
 {
 	char *list = talloc_strdup(m, "");
 	struct ccan_file *i;
@@ -32,27 +32,30 @@ static char *obj_list(const struct manifest *m, bool link_with_module)
 
 	/* Objects from any other C files. */
 	list_for_each(&m->other_test_c_files, i, list)
-		list = talloc_asprintf_append(list, " %s", i->compiled);
+		list = talloc_asprintf_append(list, " %s",
+					      i->compiled[ctype]);
 
 	/* Our own object files. */
 	if (link_with_module)
 		list_for_each(&m->c_files, i, list)
-			list = talloc_asprintf_append(list, " %s", i->compiled);
+			list = talloc_asprintf_append(list, " %s",
+						      i->compiled[ctype]);
 
 	/* Other ccan modules. */
 	list_for_each(&m->deps, subm, list) {
-		if (subm->compiled)
+		if (subm->compiled[ctype])
 			list = talloc_asprintf_append(list, " %s",
-						      subm->compiled);
+						      subm->compiled[ctype]);
 	}
 
 	return list;
 }
 
-static char *lib_list(const struct manifest *m)
+static char *lib_list(const struct manifest *m, enum compile_type ctype)
 {
 	unsigned int i, num;
-	char **libs = get_libs(m, m->dir, &num, &m->info_file->compiled);
+	char **libs = get_libs(m, m->dir, &num,
+			       &m->info_file->compiled[ctype]);
 	char *ret = talloc_strdup(m, "");
 
 	for (i = 0; i < num; i++)
@@ -63,26 +66,34 @@ static char *lib_list(const struct manifest *m)
 static bool compile(const void *ctx,
 		    struct manifest *m,
 		    struct ccan_file *file,
-		    const char *flags,
 		    bool fail,
 		    bool link_with_module,
-		    bool keep, char **output)
+		    bool keep,
+		    enum compile_type ctype,
+		    char **output)
 {
-	char *f = talloc_asprintf(ctx, "%s%s%s",
-				  flags, fail ? "-DFAIL " : "", cflags);
+	char *fname, *flags;
 
-	file->compiled = maybe_temp_file(ctx, "", keep, file->fullname);
+	flags = talloc_asprintf(ctx, "%s%s%s",
+				fail ? "-DFAIL " : "",
+				cflags,
+				ctype == COMPILE_NOFEAT ? " -I." : "");
+
+	fname = maybe_temp_file(ctx, "", keep, file->fullname);
 	if (!compile_and_link(ctx, file->fullname, ccan_dir,
-			      obj_list(m, link_with_module), compiler, f,
-			      lib_list(m), file->compiled, output)) {
-		talloc_free(file->compiled);
+			      obj_list(m, link_with_module, ctype), compiler,
+			      flags, lib_list(m, ctype), fname, output)) {
+		talloc_free(fname);
 		return false;
 	}
+
+	file->compiled[ctype] = fname;
 	return true;
 }
 
 static void compile_tests(struct manifest *m, bool keep,
-			  struct score *score, const char *incl)
+			  struct score *score,
+			  enum compile_type ctype)
 {
 	char *cmdout;
 	struct ccan_file *i;
@@ -91,8 +102,9 @@ static void compile_tests(struct manifest *m, bool keep,
 
 	foreach_ptr(list, &m->compile_ok_tests, &m->run_tests, &m->api_tests) {
 		list_for_each(list, i, list) {
-			if (!compile(score, m, i, incl, false,
-				     list == &m->api_tests, keep, &cmdout)) {
+			if (!compile(score, m, i, false,
+				     list == &m->api_tests, keep,
+				     ctype, &cmdout)) {
 				score_file_error(score, i, 0,
 						 "Compile failed:\n%s",
 						 cmdout);
@@ -112,7 +124,8 @@ static void compile_tests(struct manifest *m, bool keep,
 
 	/* For historical reasons, "fail" often means "gives warnings" */
 	list_for_each(&m->compile_fail_tests, i, list) {
-		if (!compile(score, m, i, incl, false, false, false, &cmdout)) {
+		if (!compile(score, m, i, false, false, false,
+			     ctype, &cmdout)) {
 			score_file_error(score, i, 0,
 					 "Compile without -DFAIL failed:\n%s",
 					 cmdout);
@@ -125,7 +138,8 @@ static void compile_tests(struct manifest *m, bool keep,
 					 cmdout);
 			return;
 		}
-		if (compile(score, m, i, incl, true, false, false, &cmdout)
+		if (compile(score, m, i, true, false, false,
+			    ctype, &cmdout)
 		    && streq(cmdout, "")) {
 			score_file_error(score, i, 0,
 					 "Compiled successfully with -DFAIL?");
@@ -142,7 +156,7 @@ static void do_compile_tests(struct manifest *m,
 			     bool keep,
 			     unsigned int *timeleft, struct score *score)
 {
-	return compile_tests(m, keep, score, "");
+	compile_tests(m, keep, score, COMPILE_NORMAL);
 }
 
 struct ccanlint tests_compile = {
@@ -167,7 +181,7 @@ static void do_compile_tests_without_features(struct manifest *m,
 					      unsigned int *timeleft,
 					      struct score *score)
 {
-	compile_tests(m, keep, score, "-I. ");
+	compile_tests(m, keep, score, COMPILE_NOFEAT);
 }
 
 struct ccanlint tests_compile_without_features = {
@@ -175,6 +189,6 @@ struct ccanlint tests_compile_without_features = {
 	.name = "Module tests compile (without features)",
 	.check = do_compile_tests_without_features,
 	.can_run = features_reduced,
-	.needs = "tests_compile reduce_features"
+	.needs = "tests_helpers_compile_without_features reduce_features"
 };
 REGISTER_TEST(tests_compile_without_features);

@@ -138,7 +138,8 @@ static void do_run_coverage_tests(struct manifest *m,
 	bool ran_some = false;
 
 	/* This tells gcov where we put those .gcno files. */
-	outdir = talloc_dirname(score, m->info_file->compiled);
+	outdir = talloc_dirname(score,
+				m->info_file->compiled[COMPILE_NORMAL]);
 	covcmd = talloc_asprintf(m, "gcov %s -o %s",
 				 full_gcov ? "" : "-n",
 				 outdir);

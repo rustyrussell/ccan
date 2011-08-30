@@ -28,9 +28,10 @@ static char *obj_list(const struct manifest *m)
 
 	/* Other CCAN deps. */
 	list_for_each(&m->deps, i, list) {
-		if (i->compiled)
+		if (i->compiled[COMPILE_NORMAL])
 			list = talloc_asprintf_append(list, "%s ",
-						      i->compiled);
+						      i->compiled
+						      [COMPILE_NORMAL]);
 	}
 	return list;
 }
@@ -38,7 +39,8 @@ static char *obj_list(const struct manifest *m)
 static char *lib_list(const struct manifest *m)
 {
 	unsigned int i, num;
-	char **libs = get_libs(m, ".", &num, &m->info_file->compiled);
+	char **libs = get_libs(m, ".",
+			       &num, &m->info_file->compiled[COMPILE_NORMAL]);
 	char *ret = talloc_strdup(m, "");
 
 	for (i = 0; i < num; i++)

@@ -28,7 +28,9 @@ static bool expect_obj_file(struct manifest *m)
 	return !list_empty(&m->c_files);
 }
 
-static char *build_subdir_objs(struct manifest *m)
+static char *build_subdir_objs(struct manifest *m,
+			       const char *flags,
+			       enum compile_type ctype)
 {
 	struct ccan_file *i;
 
@@ -36,11 +38,11 @@ static char *build_subdir_objs(struct manifest *m)
 		char *fullfile = talloc_asprintf(m, "%s/%s", m->dir, i->name);
 		char *output;
 
-		i->compiled = maybe_temp_file(m, "", false, fullfile);
-		if (!compile_object(m, fullfile, ccan_dir, compiler, cflags,
-				    i->compiled, &output)) {
-			talloc_free(i->compiled);
-			i->compiled = NULL;
+		i->compiled[ctype] = maybe_temp_file(m, "", false, fullfile);
+		if (!compile_object(m, fullfile, ccan_dir, compiler, flags,
+				    i->compiled[ctype], &output)) {
+			talloc_free(i->compiled[ctype]);
+			i->compiled[ctype] = NULL;
 			return talloc_asprintf(m,
 					       "Dependency %s"
 					       " did not build:\n%s",
@@ -50,11 +52,12 @@ static char *build_subdir_objs(struct manifest *m)
 	return NULL;
 }
 
-char *build_submodule(struct manifest *m)
+char *build_submodule(struct manifest *m, const char *flags,
+		      enum compile_type ctype)
 {
 	char *errstr;
 
-	if (m->compiled)
+	if (m->compiled[ctype])
 		return NULL;
 
 	if (!expect_obj_file(m))
@@ -63,12 +66,12 @@ char *build_submodule(struct manifest *m)
 	if (verbose >= 2)
 		printf("  Building dependency %s\n", m->dir);
 
-	errstr = build_subdir_objs(m);
+	errstr = build_subdir_objs(m, flags, ctype);
 	if (errstr)
 		return errstr;
 
-	m->compiled = build_module(m, false, &errstr);
-	if (!m->compiled)
+	m->compiled[ctype] = build_module(m, false, ctype, &errstr);
+	if (!m->compiled[ctype])
 		return errstr;
 	return NULL;
 }
@@ -80,7 +83,7 @@ static void check_depends_built(struct manifest *m,
 	struct manifest *i;
 
 	list_for_each(&m->deps, i, list) {
-		char *errstr = build_submodule(i);
+		char *errstr = build_submodule(i, cflags, COMPILE_NORMAL);
 
 		if (errstr) {
 			score->error = talloc_asprintf(score,

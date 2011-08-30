@@ -17,6 +17,12 @@
    4 == Describe every action. */
 extern int verbose;
 
+enum compile_type {
+	COMPILE_NORMAL,
+	COMPILE_NOFEAT,
+	COMPILE_TYPES
+};
+
 struct manifest {
 	char *dir;
 	/* The module name, ie. final element of dir name */
@@ -26,7 +32,7 @@ struct manifest {
 	/* Linked off deps. */
 	struct list_node list;
 	/* Where our final compiled output is */
-	char *compiled;
+	char *compiled[COMPILE_TYPES];
 
 	struct list_head c_files;
 	struct list_head h_files;
@@ -174,7 +180,7 @@ struct ccan_file {
 	struct list_head *doc_sections;
 
 	/* If this file gets compiled (eg. .C file to .o file), result here. */
-	char *compiled;
+	char *compiled[COMPILE_TYPES];
 
 	/* Compiled with coverage information. */
 	char *cov_compiled;

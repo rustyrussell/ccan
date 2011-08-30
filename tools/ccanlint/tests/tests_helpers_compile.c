@@ -13,6 +13,7 @@
 #include <err.h>
 #include <string.h>
 #include <ctype.h>
+#include "reduce_features.h"
 
 static const char *can_run(struct manifest *m)
 {
@@ -24,17 +25,21 @@ static const char *can_run(struct manifest *m)
 static bool compile(struct manifest *m,
 		    bool keep,
 		    struct ccan_file *cfile,
+		    const char *flags,
+		    enum compile_type ctype,
 		    char **output)
 {
-	cfile->compiled = maybe_temp_file(m, ".o", keep, cfile->fullname);
-	return compile_object(m, cfile->fullname, ccan_dir, compiler, cflags,
-			      cfile->compiled, output);
+	cfile->compiled[ctype] = maybe_temp_file(m, ".o", keep, cfile->fullname);
+	return compile_object(m, cfile->fullname, ccan_dir, compiler, flags,
+			      cfile->compiled[ctype], output);
 }
 
-static void do_compile_test_helpers(struct manifest *m,
-				    bool keep,
-				    unsigned int *timeleft,
-				    struct score *score)
+static void compile_test_helpers(struct manifest *m,
+				 bool keep,
+				 unsigned int *timeleft,
+				 struct score *score,
+				 const char *flags,
+				 enum compile_type ctype)
 {
 	struct ccan_file *i;
 	bool errors = false, warnings = false;
@@ -47,7 +52,7 @@ static void do_compile_test_helpers(struct manifest *m,
 	list_for_each(&m->other_test_c_files, i, list) {
 		char *cmdout;
 
-		if (!compile(m, keep, i, &cmdout)) {
+		if (!compile(m, keep, i, flags, ctype, &cmdout)) {
 			errors = true;
 			score_file_error(score, i, 0, "Compile failed:\n%s",
 					 cmdout);
@@ -64,6 +69,15 @@ static void do_compile_test_helpers(struct manifest *m,
 	}
 }
 
+static void do_compile_test_helpers(struct manifest *m,
+				    bool keep,
+				    unsigned int *timeleft,
+				    struct score *score)
+{
+	compile_test_helpers(m, keep, timeleft, score, cflags,
+			     COMPILE_NORMAL);
+}
+
 struct ccanlint tests_helpers_compile = {
 	.key = "tests_helpers_compile",
 	.name = "Module test helper objects compile",
@@ -73,3 +87,32 @@ struct ccanlint tests_helpers_compile = {
 };
 
 REGISTER_TEST(tests_helpers_compile);
+
+static const char *features_reduced(struct manifest *m)
+{
+	if (features_were_reduced)
+		return NULL;
+	return "No features to turn off";
+}
+
+static void do_compile_test_helpers_without_features(struct manifest *m,
+						     bool keep,
+						     unsigned int *timeleft,
+						     struct score *score)
+{
+	char *flags;
+
+	flags = talloc_asprintf(score, "%s -I.", cflags);
+
+	compile_test_helpers(m, keep, timeleft, score, flags,
+			     COMPILE_NOFEAT);
+}
+
+struct ccanlint tests_helpers_compile_without_features = {
+	.key = "tests_helpers_compile_without_features",
+	.name = "Module tests helpers compile (without features)",
+	.check = do_compile_test_helpers_without_features,
+	.can_run = features_reduced,
+	.needs = "depends_build_without_features tests_exist"
+};
+REGISTER_TEST(tests_helpers_compile_without_features);

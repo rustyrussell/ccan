@@ -209,7 +209,7 @@ static char *unexpected(struct ccan_file *i, const char *input,
 	unsigned int default_time = default_timeout_ms;
 
 	cmd = talloc_asprintf(i, "echo '%s' | %s %s",
-			      input, i->compiled, input);
+			      input, i->compiled[COMPILE_NORMAL], input);
 
 	output = run_with_timeout(i, cmd, &ok, &default_time);
 	if (!ok)
@@ -248,7 +248,7 @@ static void run_examples(struct manifest *m, bool keep,
 			     linenum++,
 				     expect = find_expect(i, lines, &input,
 							  &exact, &linenum)) {
-				if (i->compiled == NULL)
+				if (i->compiled[COMPILE_NORMAL] == NULL)
 					continue;
 
 				score->total++;
@@ -268,6 +268,7 @@ static void run_examples(struct manifest *m, bool keep,
 	}
 }
 
+/* FIXME: Test with reduced features, valgrind! */
 struct ccanlint examples_run = {
 	.key = "examples_run",
 	.name = "Module examples with expected output give that output",

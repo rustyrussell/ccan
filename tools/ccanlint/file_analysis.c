@@ -81,7 +81,7 @@ struct ccan_file *new_ccan_file(const void *ctx, const char *dir, char *name)
 	f->lines = NULL;
 	f->line_info = NULL;
 	f->doc_sections = NULL;
-	f->compiled = NULL;
+	f->compiled[COMPILE_NORMAL] = f->compiled[COMPILE_NOFEAT] = NULL;
 	f->name = talloc_steal(f, name);
 	f->fullname = talloc_asprintf(f, "%s/%s", dir, f->name);
 	f->contents = NULL;
@@ -229,7 +229,7 @@ struct manifest *get_manifest(const void *ctx, const char *dir)
 
 	m = talloc_linked(ctx, talloc(NULL, struct manifest));
 	m->info_file = NULL;
-	m->compiled = NULL;
+	m->compiled[COMPILE_NORMAL] = m->compiled[COMPILE_NOFEAT] = NULL;
 	m->dir = talloc_steal(m, canon_dir);
 	list_head_init(&m->c_files);
 	list_head_init(&m->h_files);
