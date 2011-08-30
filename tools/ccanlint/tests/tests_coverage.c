@@ -158,7 +158,7 @@ static void do_run_coverage_tests(struct manifest *m,
 	foreach_ptr(list, &m->run_tests, &m->api_tests) {
 		list_for_each(list, i, list) {
 			if (run_command(score, timeleft, &cmdout,
-					"%s", i->cov_compiled)) {
+					"%s", i->compiled[COMPILE_COVERAGE])) {
 				covcmd = talloc_asprintf_append(covcmd, " %s",
 								i->fullname);
 			} else {

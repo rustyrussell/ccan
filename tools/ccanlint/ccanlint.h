@@ -20,6 +20,7 @@ extern int verbose;
 enum compile_type {
 	COMPILE_NORMAL,
 	COMPILE_NOFEAT,
+	COMPILE_COVERAGE,
 	COMPILE_TYPES
 };
 
@@ -181,9 +182,6 @@ struct ccan_file {
 
 	/* If this file gets compiled (eg. .C file to .o file), result here. */
 	char *compiled[COMPILE_TYPES];
-
-	/* Compiled with coverage information. */
-	char *cov_compiled;
 
 	/* Filename containing output from valgrind. */
 	char *valgrind_log;

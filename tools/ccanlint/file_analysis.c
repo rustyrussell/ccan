@@ -10,6 +10,7 @@
 #include <ccan/noerr/noerr.h>
 #include <ccan/foreach/foreach.h>
 #include <ccan/asort/asort.h>
+#include <ccan/array_size/array_size.h>
 #include "../tools.h"
 #include <unistd.h>
 #include <sys/types.h>
@@ -74,6 +75,7 @@ struct list_head *get_ccan_file_docs(struct ccan_file *f)
 struct ccan_file *new_ccan_file(const void *ctx, const char *dir, char *name)
 {
 	struct ccan_file *f;
+	unsigned int i;
 
 	assert(dir[0] == '/');
 
@@ -81,11 +83,11 @@ struct ccan_file *new_ccan_file(const void *ctx, const char *dir, char *name)
 	f->lines = NULL;
 	f->line_info = NULL;
 	f->doc_sections = NULL;
-	f->compiled[COMPILE_NORMAL] = f->compiled[COMPILE_NOFEAT] = NULL;
+	for (i = 0; i < ARRAY_SIZE(f->compiled); i++)
+		f->compiled[i] = NULL;
 	f->name = talloc_steal(f, name);
 	f->fullname = talloc_asprintf(f, "%s/%s", dir, f->name);
 	f->contents = NULL;
-	f->cov_compiled = NULL;
 	f->simplified = NULL;
 	return f;
 }

@@ -15,6 +15,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "reduce_features.h"
+#include "tests_compile.h"
 
 static const char *can_build(struct manifest *m)
 {
@@ -23,8 +24,8 @@ static const char *can_build(struct manifest *m)
 	return NULL;
 }
 
-static char *obj_list(const struct manifest *m, bool link_with_module,
-		      enum compile_type ctype)
+char *test_obj_list(const struct manifest *m, bool link_with_module,
+		    enum compile_type ctype, enum compile_type own_ctype)
 {
 	char *list = talloc_strdup(m, "");
 	struct ccan_file *i;
@@ -39,7 +40,7 @@ static char *obj_list(const struct manifest *m, bool link_with_module,
 	if (link_with_module)
 		list_for_each(&m->c_files, i, list)
 			list = talloc_asprintf_append(list, " %s",
-						      i->compiled[ctype]);
+						      i->compiled[own_ctype]);
 
 	/* Other ccan modules. */
 	list_for_each(&m->deps, subm, list) {
@@ -51,7 +52,7 @@ static char *obj_list(const struct manifest *m, bool link_with_module,
 	return list;
 }
 
-static char *lib_list(const struct manifest *m, enum compile_type ctype)
+char *lib_list(const struct manifest *m, enum compile_type ctype)
 {
 	unsigned int i, num;
 	char **libs = get_libs(m, m->dir, &num,
@@ -81,8 +82,10 @@ static bool compile(const void *ctx,
 
 	fname = maybe_temp_file(ctx, "", keep, file->fullname);
 	if (!compile_and_link(ctx, file->fullname, ccan_dir,
-			      obj_list(m, link_with_module, ctype), compiler,
-			      flags, lib_list(m, ctype), fname, output)) {
+			      test_obj_list(m, link_with_module,
+					    ctype, ctype),
+			      compiler, flags, lib_list(m, ctype), fname,
+			      output)) {
 		talloc_free(fname);
 		return false;
 	}
