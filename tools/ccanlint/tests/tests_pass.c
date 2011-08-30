@@ -94,6 +94,8 @@ static void do_run_tests(struct manifest *m,
 	foreach_ptr(list, &m->run_tests, &m->api_tests) {
 		list_for_each(list, i, list) {
 			score->total++;
+			if (verbose >= 2)
+				printf("   %s\n", i->name);
 			if (run_test(score, m, timeleft, &cmdout, i))
 				score->score++;
 			else

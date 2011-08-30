@@ -29,6 +29,8 @@ static void do_run_tests_no_features(struct manifest *m,
 	foreach_ptr(list, &m->run_tests, &m->api_tests) {
 		list_for_each(list, i, list) {
 			score->total++;
+			if (verbose >= 2)
+				printf("   %s\n", i->name);
 			if (run_command(m, timeleft, &cmdout, "%s",
 					i->compiled[COMPILE_NOFEAT]))
 				score->score++;
