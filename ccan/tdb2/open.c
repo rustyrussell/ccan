@@ -561,7 +561,9 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb_unlock_open(tdb, openlock);
 
 	/* This make sure we have current map_size and mmap. */
-	tdb->methods->oob(tdb, tdb->file->map_size + 1, true);
+	ecode = tdb->methods->oob(tdb, tdb->file->map_size + 1, true);
+	if (unlikely(ecode != TDB_SUCCESS))
+		goto fail;
 
 	/* Now it's fully formed, recover if necessary. */
 	berr = tdb_needs_recovery(tdb);

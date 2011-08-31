@@ -348,15 +348,14 @@ static void transaction_write_existing(struct tdb_context *tdb, tdb_off_t off,
 static enum TDB_ERROR transaction_oob(struct tdb_context *tdb, tdb_off_t len,
 				      bool probe)
 {
-	if (len <= tdb->file->map_size) {
+	if (len <= tdb->file->map_size || probe) {
 		return TDB_SUCCESS;
 	}
-	if (!probe) {
-		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
-			   "tdb_oob len %lld beyond transaction size %lld",
-			   (long long)len,
-			   (long long)tdb->file->map_size);
-	}
+
+	tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+		   "tdb_oob len %lld beyond transaction size %lld",
+		   (long long)len,
+		   (long long)tdb->file->map_size);
 	return TDB_ERR_IO;
 }
 
