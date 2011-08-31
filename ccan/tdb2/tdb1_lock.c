@@ -384,14 +384,14 @@ int tdb1_allrecord_unlock(struct tdb_context *tdb, int ltype)
 		return 0;
 	}
 
+	tdb->file->allrecord_lock.count = 0;
+	tdb->file->allrecord_lock.ltype = 0;
+
 	if (tdb1_brunlock(tdb, ltype, TDB1_FREELIST_TOP, 0)) {
 		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
 			   "tdb1_unlockall failed (%s)", strerror(errno));
 		return -1;
 	}
-
-	tdb->file->allrecord_lock.count = 0;
-	tdb->file->allrecord_lock.ltype = 0;
 
 	return 0;
 }
