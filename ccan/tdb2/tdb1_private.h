@@ -180,8 +180,6 @@ enum tdb1_lock_flags {
 	TDB1_LOCK_WAIT = 1,
 	/* If set, don't log an error on failure. */
 	TDB1_LOCK_PROBE = 2,
-	/* If set, don't actually lock at all. */
-	TDB1_LOCK_MARK_ONLY = 4,
 };
 
 struct tdb1_context;
@@ -229,8 +227,7 @@ void tdb1_mmap(struct tdb1_context *tdb);
 int tdb1_lock(struct tdb1_context *tdb, int list, int ltype);
 int tdb1_nest_lock(struct tdb1_context *tdb, uint32_t offset, int ltype,
 		  enum tdb1_lock_flags flags);
-int tdb1_nest_unlock(struct tdb1_context *tdb, uint32_t offset, int ltype,
-		    bool mark_lock);
+int tdb1_nest_unlock(struct tdb1_context *tdb, uint32_t offset, int ltype);
 int tdb1_unlock(struct tdb1_context *tdb, int list, int ltype);
 int tdb1_brlock(struct tdb1_context *tdb,
 	       int rw_type, tdb1_off_t offset, size_t len,
@@ -248,7 +245,7 @@ int tdb1_recovery_area(struct tdb1_context *tdb,
 		      struct tdb1_record *rec);
 int tdb1_allrecord_lock(struct tdb1_context *tdb, int ltype,
 		       enum tdb1_lock_flags flags, bool upgradable);
-int tdb1_allrecord_unlock(struct tdb1_context *tdb, int ltype, bool mark_lock);
+int tdb1_allrecord_unlock(struct tdb1_context *tdb, int ltype);
 int tdb1_allrecord_upgrade(struct tdb1_context *tdb);
 int tdb1_write_lock_record(struct tdb1_context *tdb, tdb1_off_t off);
 int tdb1_write_unlock_record(struct tdb1_context *tdb, tdb1_off_t off);

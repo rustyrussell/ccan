@@ -138,10 +138,6 @@ int tdb1_brlock(struct tdb1_context *tdb,
 		return 0;
 	}
 
-	if (flags & TDB1_LOCK_MARK_ONLY) {
-		return 0;
-	}
-
 	if ((rw_type == F_WRLCK) && (tdb->read_only || tdb->traverse_read)) {
 		tdb->ecode = TDB1_ERR_RDONLY;
 		return -1;
@@ -344,7 +340,7 @@ static int tdb1_lock_list(struct tdb1_context *tdb, int list, int ltype,
 		ret = tdb1_nest_lock(tdb, lock_offset(list), ltype, waitflag);
 
 		if (ret == 0 && check && tdb1_needs_recovery(tdb)) {
-			tdb1_nest_unlock(tdb, lock_offset(list), ltype, false);
+			tdb1_nest_unlock(tdb, lock_offset(list), ltype);
 
 			if (tdb1_lock_and_recover(tdb) == -1) {
 				return -1;
@@ -368,8 +364,7 @@ int tdb1_lock(struct tdb1_context *tdb, int list, int ltype)
 	return ret;
 }
 
-int tdb1_nest_unlock(struct tdb1_context *tdb, uint32_t offset, int ltype,
-		    bool mark_lock)
+int tdb1_nest_unlock(struct tdb1_context *tdb, uint32_t offset, int ltype)
 {
 	int ret = -1;
 	struct tdb1_lock_type *lck;
@@ -401,11 +396,7 @@ int tdb1_nest_unlock(struct tdb1_context *tdb, uint32_t offset, int ltype,
 	 * anyway.
 	 */
 
-	if (mark_lock) {
-		ret = 0;
-	} else {
-		ret = tdb1_brunlock(tdb, ltype, offset, 1);
-	}
+	ret = tdb1_brunlock(tdb, ltype, offset, 1);
 
 	/*
 	 * Shrink the array by overwriting the element just unlocked with the
@@ -440,7 +431,7 @@ int tdb1_unlock(struct tdb1_context *tdb, int list, int ltype)
 		return -1;
 	}
 
-	return tdb1_nest_unlock(tdb, lock_offset(list), ltype, false);
+	return tdb1_nest_unlock(tdb, lock_offset(list), ltype);
 }
 
 /*
@@ -457,7 +448,7 @@ int tdb1_transaction_lock(struct tdb1_context *tdb, int ltype,
  */
 int tdb1_transaction_unlock(struct tdb1_context *tdb, int ltype)
 {
-	return tdb1_nest_unlock(tdb, TDB1_TRANSACTION_LOCK, ltype, false);
+	return tdb1_nest_unlock(tdb, TDB1_TRANSACTION_LOCK, ltype);
 }
 
 /* Returns 0 if all done, -1 if error, 1 if ok. */
@@ -569,14 +560,7 @@ int tdb1_allrecord_lock(struct tdb1_context *tdb, int ltype,
 	tdb->allrecord_lock.off = upgradable;
 
 	if (tdb1_needs_recovery(tdb)) {
-		bool mark = flags & TDB1_LOCK_MARK_ONLY;
-		tdb1_allrecord_unlock(tdb, ltype, mark);
-		if (mark) {
-			tdb->ecode = TDB1_ERR_LOCK;
-			TDB1_LOG((tdb, TDB1_DEBUG_ERROR,
-				 "tdb1_lockall_mark cannot do recovery\n"));
-			return -1;
-		}
+		tdb1_allrecord_unlock(tdb, ltype);
 		if (tdb1_lock_and_recover(tdb) == -1) {
 			return -1;
 		}
@@ -589,7 +573,7 @@ int tdb1_allrecord_lock(struct tdb1_context *tdb, int ltype,
 
 
 /* unlock entire db */
-int tdb1_allrecord_unlock(struct tdb1_context *tdb, int ltype, bool mark_lock)
+int tdb1_allrecord_unlock(struct tdb1_context *tdb, int ltype)
 {
 	/* There are no locks on read-only dbs */
 	if (tdb->read_only || tdb->traverse_read) {
@@ -614,7 +598,7 @@ int tdb1_allrecord_unlock(struct tdb1_context *tdb, int ltype, bool mark_lock)
 		return 0;
 	}
 
-	if (!mark_lock && tdb1_brunlock(tdb, ltype, TDB1_FREELIST_TOP, 0)) {
+	if (tdb1_brunlock(tdb, ltype, TDB1_FREELIST_TOP, 0)) {
 		TDB1_LOG((tdb, TDB1_DEBUG_ERROR, "tdb1_unlockall failed (%s)\n", strerror(errno)));
 		return -1;
 	}
@@ -634,7 +618,7 @@ int tdb1_lockall(struct tdb1_context *tdb)
 /* unlock entire database with write lock */
 int tdb1_unlockall(struct tdb1_context *tdb)
 {
-	return tdb1_allrecord_unlock(tdb, F_WRLCK, false);
+	return tdb1_allrecord_unlock(tdb, F_WRLCK);
 }
 
 /* lock entire database with read lock */
@@ -646,7 +630,7 @@ int tdb1_lockall_read(struct tdb1_context *tdb)
 /* unlock entire database with read lock */
 int tdb1_unlockall_read(struct tdb1_context *tdb)
 {
-	return tdb1_allrecord_unlock(tdb, F_RDLCK, false);
+	return tdb1_allrecord_unlock(tdb, F_RDLCK);
 }
 
 /* lock/unlock one hash chain. This is meant to be used to reduce

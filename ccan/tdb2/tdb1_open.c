@@ -387,7 +387,7 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 	tdb->inode = st.st_ino;
 	tdb1_mmap(tdb);
 	if (locked) {
-		if (tdb1_nest_unlock(tdb, TDB1_ACTIVE_LOCK, F_WRLCK, false) == -1) {
+		if (tdb1_nest_unlock(tdb, TDB1_ACTIVE_LOCK, F_WRLCK) == -1) {
 			TDB1_LOG((tdb, TDB1_DEBUG_ERROR, "tdb1_open_ex: "
 				 "failed to release ACTIVE_LOCK on %s: %s\n",
 				 name, strerror(errno)));
@@ -416,7 +416,7 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 	/* Internal (memory-only) databases skip all the code above to
 	 * do with disk files, and resume here by releasing their
 	 * open lock and hooking into the active list. */
-	if (tdb1_nest_unlock(tdb, TDB1_OPEN_LOCK, F_WRLCK, false) == -1) {
+	if (tdb1_nest_unlock(tdb, TDB1_OPEN_LOCK, F_WRLCK) == -1) {
 		goto fail;
 	}
 	tdb->next = tdb1s;

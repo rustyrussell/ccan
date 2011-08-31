@@ -66,7 +66,7 @@ static void tdb1_increment_seqnum(struct tdb1_context *tdb)
 
 	tdb1_increment_seqnum_nonblock(tdb);
 
-	tdb1_nest_unlock(tdb, TDB1_SEQNUM_OFS, F_WRLCK, false);
+	tdb1_nest_unlock(tdb, TDB1_SEQNUM_OFS, F_WRLCK);
 }
 
 static int tdb1_key_compare(TDB1_DATA key, TDB1_DATA data, void *private_data)
