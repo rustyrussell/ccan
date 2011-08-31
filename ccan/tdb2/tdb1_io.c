@@ -307,6 +307,7 @@ static int tdb1_expand_file(struct tdb_context *tdb, tdb1_off_t size, tdb1_off_t
 		addition -= written;
 		size += written;
 	}
+	tdb->stats.expands++;
 	return 0;
 }
 

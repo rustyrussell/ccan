@@ -83,6 +83,7 @@ int tdb1_free(struct tdb_context *tdb, tdb1_off_t offset, struct tdb1_record *re
 		goto fail;
 	}
 
+	tdb->stats.alloc_coalesce_tried++;
 	/* Look left */
 	if (offset - sizeof(tdb1_off_t) > TDB1_DATA_START(tdb->tdb1.header.hash_size)) {
 		tdb1_off_t left = offset - sizeof(tdb1_off_t);
@@ -131,6 +132,9 @@ int tdb1_free(struct tdb_context *tdb, tdb1_off_t offset, struct tdb1_record *re
 					   "tdb1_free: update_tailer failed at %u", offset);
 				goto fail;
 			}
+			tdb->stats.alloc_coalesce_succeeded++;
+			tdb->stats.alloc_coalesce_num_merged++;
+			tdb->stats.frees++;
 			tdb1_unlock(tdb, -1, F_WRLCK);
 			return 0;
 		}
@@ -151,6 +155,7 @@ update:
 	}
 
 	/* And we're done. */
+	tdb->stats.frees++;
 	tdb1_unlock(tdb, -1, F_WRLCK);
 	return 0;
 
@@ -188,6 +193,7 @@ static tdb1_off_t tdb1_allocate_ofs(struct tdb_context *tdb,
 		if (tdb1_rec_write(tdb, rec_ptr, rec) == -1) {
 			return 0;
 		}
+		tdb->stats.allocs++;
 		return rec_ptr;
 	}
 
@@ -215,6 +221,8 @@ static tdb1_off_t tdb1_allocate_ofs(struct tdb_context *tdb,
 		return 0;
 	}
 
+	tdb->stats.allocs++;
+	tdb->stats.alloc_leftover++;
 	return rec_ptr;
 }
 

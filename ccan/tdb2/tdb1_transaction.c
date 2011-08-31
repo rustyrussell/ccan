@@ -432,6 +432,7 @@ static int _tdb1_transaction_start(struct tdb_context *tdb)
 			tdb->last_error = TDB_ERR_EINVAL;
 			return -1;
 		}
+		tdb->stats.transaction_nest++;
 		tdb->tdb1.transaction->nesting++;
 		return 0;
 	}
@@ -511,6 +512,7 @@ static int _tdb1_transaction_start(struct tdb_context *tdb)
 	tdb->tdb1.transaction->io_methods = tdb->tdb1.io;
 	tdb->tdb1.io = &transaction1_methods;
 
+	tdb->stats.transactions++;
 	return 0;
 
 fail:
@@ -621,6 +623,7 @@ static int _tdb1_transaction_cancel(struct tdb_context *tdb)
 */
 int tdb1_transaction_cancel(struct tdb_context *tdb)
 {
+	tdb->stats.transaction_cancel++;
 	return _tdb1_transaction_cancel(tdb);
 }
 
@@ -739,6 +742,7 @@ static int tdb1_recovery_allocate(struct tdb_context *tdb,
 			   " failed to create recovery area");
 		return -1;
 	}
+	tdb->stats.transaction_expand_file++;
 
 	/* remap the file (if using mmap) */
 	methods->tdb1_oob(tdb, tdb->file->map_size + 1, 1);
@@ -1000,6 +1004,7 @@ static int _tdb1_transaction_prepare_commit(struct tdb_context *tdb)
 				   " expansion failed");
 			return -1;
 		}
+		tdb->stats.transaction_expand_file++;
 		tdb->file->map_size = tdb->tdb1.transaction->old_map_size;
 		methods->tdb1_oob(tdb, tdb->file->map_size + 1, 1);
 	}

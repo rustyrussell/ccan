@@ -89,11 +89,18 @@ static tdb1_off_t tdb1_find(struct tdb_context *tdb, TDB_DATA key, uint32_t hash
 		if (tdb1_rec_read(tdb, rec_ptr, r) == -1)
 			return 0;
 
-		if (!TDB1_DEAD(r) && hash==r->full_hash
-		    && key.dsize==r->key_len
-		    && tdb1_parse_data(tdb, key, rec_ptr + sizeof(*r),
-				      r->key_len, tdb1_key_compare,
-				      NULL) == 0) {
+		tdb->stats.compares++;
+		if (TDB1_DEAD(r)) {
+			tdb->stats.compare_wrong_bucket++;
+		} else if (key.dsize != r->key_len) {
+			tdb->stats.compare_wrong_keylen++;
+		} else if (hash != r->full_hash) {
+			tdb->stats.compare_wrong_rechash++;
+		} else if (tdb1_parse_data(tdb, key, rec_ptr + sizeof(*r),
+					   r->key_len, tdb1_key_compare,
+					   NULL) != 0) {
+			tdb->stats.compare_wrong_keycmp++;
+		} else {
 			return rec_ptr;
 		}
 		/* detect tight infinite loop */
