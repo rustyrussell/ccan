@@ -10,7 +10,6 @@
 #include <limits.h>
 #include <string.h>
 #include <errno.h>
-#include <ccan/tdb2/tdb1.h>
 #include <ccan/tdb2/tdb1_private.h>
 #include <ccan/tap/tap.h>
 #include <stdio.h>

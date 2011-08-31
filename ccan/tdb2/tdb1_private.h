@@ -26,7 +26,6 @@
 */
 
 #include "private.h"
-#include "tdb1.h"
 
 #include <limits.h>
 

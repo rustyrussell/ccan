@@ -631,6 +631,7 @@ enum tdb_attribute_type {
 	TDB_ATTRIBUTE_OPENHOOK = 4,
 	TDB_ATTRIBUTE_FLOCK = 5,
 	TDB_ATTRIBUTE_TDB1_HASHSIZE = 128,
+	TDB_ATTRIBUTE_TDB1_MAX_DEAD = 129,
 };
 
 /**
@@ -876,6 +877,19 @@ struct tdb_attribute_tdb1_hashsize {
 };
 
 /**
+ * struct tdb_attribute_tdb1_max_dead - tdb1 number of maximum dead records.
+ *
+ * TDB1 has a method to speed up its slow free list: it lets a certain
+ * number of "dead" records build up before freeing them.  This is
+ * particularly useful for volatile TDBs; setting it to 5 is
+ * equivalent to tdb1's TDB_VOLATILE flag.
+ */
+struct tdb_attribute_tdb1_max_dead {
+	struct tdb_attribute_base base; /* .attr = TDB_ATTRIBUTE_TDB1_MAX_DEAD */
+	unsigned int max_dead;
+};
+
+/**
  * union tdb_attribute - tdb attributes.
  *
  * This represents all the known attributes.
@@ -894,6 +908,7 @@ union tdb_attribute {
 	struct tdb_attribute_openhook openhook;
 	struct tdb_attribute_flock flock;
 	struct tdb_attribute_tdb1_hashsize tdb1_hashsize;
+	struct tdb_attribute_tdb1_max_dead tdb1_max_dead;
 };
 
 #ifdef  __cplusplus

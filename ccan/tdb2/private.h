@@ -639,8 +639,10 @@ int tdb1_check(struct tdb_context *tdb,
 
 /* tdb1_open.c: */
 int tdb1_new_database(struct tdb_context *tdb,
-		      struct tdb_attribute_tdb1_hashsize *hashsize);
-enum TDB_ERROR tdb1_open(struct tdb_context *tdb);
+		      struct tdb_attribute_tdb1_hashsize *hashsize,
+		      struct tdb_attribute_tdb1_max_dead *max_dead);
+enum TDB_ERROR tdb1_open(struct tdb_context *tdb,
+			 struct tdb_attribute_tdb1_max_dead *max_dead);
 
 /* tdb1_io.c: */
 enum TDB_ERROR tdb1_probe_length(struct tdb_context *tdb);

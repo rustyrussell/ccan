@@ -388,6 +388,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	struct tdb_header hdr;
 	struct tdb_attribute_seed *seed = NULL;
 	struct tdb_attribute_tdb1_hashsize *hsize_attr = NULL;
+	struct tdb_attribute_tdb1_max_dead *maxsize_attr = NULL;
 	tdb_bool_err berr;
 	enum TDB_ERROR ecode;
 	int openlock;
@@ -432,6 +433,9 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 			break;
 		case TDB_ATTRIBUTE_TDB1_HASHSIZE:
 			hsize_attr = &attr->tdb1_hashsize;
+			break;
+		case TDB_ATTRIBUTE_TDB1_MAX_DEAD:
+			maxsize_attr = &attr->tdb1_max_dead;
 			break;
 		default:
 			/* These are set as normal. */
@@ -511,7 +515,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		}
 		tdb->file->fd = -1;
 		if (tdb->flags & TDB_VERSION1)
-			ecode = tdb1_new_database(tdb, hsize_attr);
+			ecode = tdb1_new_database(tdb, hsize_attr, maxsize_attr);
 		else {
 			ecode = tdb_new_database(tdb, seed, &hdr);
 			if (ecode == TDB_SUCCESS) {
@@ -591,7 +595,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	rlen = pread(tdb->file->fd, &hdr, sizeof(hdr), 0);
 	if (rlen == 0 && (open_flags & O_CREAT)) {
 		if (tdb->flags & TDB_VERSION1) {
-			ecode = tdb1_new_database(tdb, hsize_attr);
+			ecode = tdb1_new_database(tdb, hsize_attr, maxsize_attr);
 			if (ecode != TDB_SUCCESS)
 				goto fail;
 			goto finished;
@@ -608,7 +612,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	} else if (rlen < sizeof(hdr)
 		   || strcmp(hdr.magic_food, TDB_MAGIC_FOOD) != 0) {
 		if (is_tdb1(&tdb->tdb1.header, &hdr, rlen)) {
-			ecode = tdb1_open(tdb);
+			ecode = tdb1_open(tdb, maxsize_attr);
 			if (!ecode)
 				goto finished;
 			goto fail;
@@ -623,7 +627,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 			tdb->flags |= TDB_CONVERT;
 		else {
 			if (is_tdb1(&tdb->tdb1.header, &hdr, rlen)) {
-				ecode = tdb1_open(tdb);
+				ecode = tdb1_open(tdb, maxsize_attr);
 				if (!ecode)
 					goto finished;
 				goto fail;

@@ -42,7 +42,8 @@ void tdb1_header_hash(struct tdb_context *tdb,
 		*magic1_hash = 1;
 }
 
-static void tdb_context_init(struct tdb_context *tdb)
+static void tdb_context_init(struct tdb_context *tdb,
+			     struct tdb_attribute_tdb1_max_dead *max_dead)
 {
 	assert(tdb->flags & TDB_VERSION1);
 
@@ -58,20 +59,24 @@ static void tdb_context_init(struct tdb_context *tdb)
 		tdb->tdb1.page_size = 0x2000;
 	}
 
-	/* FIXME: Used to be 5 for TDB_VOLATILE. */
-	tdb->tdb1.max_dead_records = 0;
+	if (max_dead) {
+		tdb->tdb1.max_dead_records = max_dead->max_dead;
+	} else {
+		tdb->tdb1.max_dead_records = 0;
+	}
 }
 
 /* initialise a new database */
 enum TDB_ERROR tdb1_new_database(struct tdb_context *tdb,
-				 struct tdb_attribute_tdb1_hashsize *hashsize)
+				 struct tdb_attribute_tdb1_hashsize *hashsize,
+				 struct tdb_attribute_tdb1_max_dead *max_dead)
 {
 	struct tdb1_header *newdb;
 	size_t size;
 	int hash_size = TDB1_DEFAULT_HASH_SIZE;
 	enum TDB_ERROR ret = TDB_ERR_IO;
 
-	tdb_context_init(tdb);
+	tdb_context_init(tdb, max_dead);
 
 	/* Default TDB2 hash becomes default TDB1 hash. */
 	if (tdb->hash_fn == tdb_jenkins_hash)
@@ -164,14 +169,15 @@ static bool check_header_hash(struct tdb_context *tdb,
 }
 
 /* We are hold the TDB open lock on tdb->fd. */
-enum TDB_ERROR tdb1_open(struct tdb_context *tdb)
+enum TDB_ERROR tdb1_open(struct tdb_context *tdb,
+			 struct tdb_attribute_tdb1_max_dead *max_dead)
 {
 	const char *hash_alg;
 	uint32_t magic1, magic2;
 
 	tdb->flags |= TDB_VERSION1;
 
-	tdb_context_init(tdb);
+	tdb_context_init(tdb, max_dead);
 
 	/* Default TDB2 hash becomes default TDB1 hash. */
 	if (tdb->hash_fn == tdb_jenkins_hash) {
@@ -215,13 +221,4 @@ enum TDB_ERROR tdb1_open(struct tdb_context *tdb)
 			   magic2);
 	}
 	return TDB_SUCCESS;
-}
-
-/*
- * Set the maximum number of dead records per hash chain
- */
-
-void tdb1_set_max_dead(struct tdb_context *tdb, int max_dead)
-{
-	tdb->tdb1.max_dead_records = max_dead;
 }
