@@ -963,7 +963,6 @@ static int _tdb1_transaction_prepare_commit(struct tdb1_context *tdb)
 				   "tdb1_transaction_prepare_commit:"
 				   " failed to upgrade hash locks");
 		}
-		_tdb1_transaction_cancel(tdb);
 		return -1;
 	}
 
@@ -975,7 +974,6 @@ static int _tdb1_transaction_prepare_commit(struct tdb1_context *tdb)
 				   "tdb1_transaction_prepare_commit:"
 				   " failed to get open lock");
 		}
-		_tdb1_transaction_cancel(tdb);
 		return -1;
 	}
 
@@ -985,7 +983,6 @@ static int _tdb1_transaction_prepare_commit(struct tdb1_context *tdb)
 			tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
 				   "tdb1_transaction_prepare_commit:"
 				   " failed to setup recovery data");
-			_tdb1_transaction_cancel(tdb);
 			return -1;
 		}
 	}
@@ -1000,7 +997,6 @@ static int _tdb1_transaction_prepare_commit(struct tdb1_context *tdb)
 			tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
 				   "tdb1_transaction_prepare_commit:"
 				   " expansion failed");
-			_tdb1_transaction_cancel(tdb);
 			return -1;
 		}
 		tdb->file->map_size = tdb->transaction->old_map_size;
@@ -1080,8 +1076,10 @@ int tdb1_transaction_commit(struct tdb1_context *tdb)
 
 	if (!tdb->transaction->prepared) {
 		int ret = _tdb1_transaction_prepare_commit(tdb);
-		if (ret)
+		if (ret) {
+			_tdb1_transaction_cancel(tdb);
 			return ret;
+		}
 	}
 
 	methods = tdb->transaction->io_methods;
