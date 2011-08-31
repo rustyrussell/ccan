@@ -306,7 +306,7 @@ int tdb1_allrecord_lock(struct tdb_context *tdb, int ltype,
 	}
 
 	/* FIXME: Temporary cast. */
-	tdb->file->allrecord_lock.owner = (void *)(struct tdb1_context *)tdb;
+	tdb->file->allrecord_lock.owner = (void *)(struct tdb_context *)tdb;
 	tdb->file->allrecord_lock.count = 1;
 	/* If it's upgradable, it's actually exclusive so we can treat
 	 * it as a write lock. */
@@ -362,30 +362,6 @@ int tdb1_allrecord_unlock(struct tdb_context *tdb, int ltype)
 	tdb->file->allrecord_lock.ltype = 0;
 
 	return 0;
-}
-
-/* lock entire database with write lock */
-int tdb1_lockall(struct tdb_context *tdb)
-{
-	return tdb1_allrecord_lock(tdb, F_WRLCK, TDB_LOCK_WAIT, false);
-}
-
-/* unlock entire database with write lock */
-int tdb1_unlockall(struct tdb_context *tdb)
-{
-	return tdb1_allrecord_unlock(tdb, F_WRLCK);
-}
-
-/* lock entire database with read lock */
-int tdb1_lockall_read(struct tdb_context *tdb)
-{
-	return tdb1_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false);
-}
-
-/* unlock entire database with read lock */
-int tdb1_unlockall_read(struct tdb_context *tdb)
-{
-	return tdb1_allrecord_unlock(tdb, F_RDLCK);
 }
 
 /* lock/unlock one hash chain. This is meant to be used to reduce

@@ -42,7 +42,7 @@ void tdb1_header_hash(struct tdb_context *tdb,
 		*magic1_hash = 1;
 }
 
-static void tdb1_context_init(struct tdb_context *tdb)
+static void tdb_context_init(struct tdb_context *tdb)
 {
 	assert(tdb->flags & TDB_VERSION1);
 
@@ -71,7 +71,7 @@ enum TDB_ERROR tdb1_new_database(struct tdb_context *tdb,
 	int hash_size = TDB1_DEFAULT_HASH_SIZE;
 	enum TDB_ERROR ret = TDB_ERR_IO;
 
-	tdb1_context_init(tdb);
+	tdb_context_init(tdb);
 
 	/* Default TDB2 hash becomes default TDB1 hash. */
 	if (tdb->hash_fn == tdb_jenkins_hash)
@@ -171,7 +171,7 @@ enum TDB_ERROR tdb1_open(struct tdb_context *tdb)
 
 	tdb->flags |= TDB_VERSION1;
 
-	tdb1_context_init(tdb);
+	tdb_context_init(tdb);
 
 	/* Default TDB2 hash becomes default TDB1 hash. */
 	if (tdb->hash_fn == tdb_jenkins_hash) {

@@ -640,7 +640,14 @@ enum TDB_ERROR tdb1_open(struct tdb_context *tdb);
 enum TDB_ERROR tdb1_probe_length(struct tdb_context *tdb);
 
 /* tdb1_lock.c: */
+int tdb1_allrecord_lock(struct tdb_context *tdb, int ltype,
+			enum tdb_lock_flags flags, bool upgradable);
 int tdb1_allrecord_unlock(struct tdb_context *tdb, int ltype);
+
+int tdb1_chainlock(struct tdb_context *tdb, TDB_DATA key);
+int tdb1_chainunlock(struct tdb_context *tdb, TDB_DATA key);
+int tdb1_chainlock_read(struct tdb_context *tdb, TDB_DATA key);
+int tdb1_chainunlock_read(struct tdb_context *tdb, TDB_DATA key);
 
 /* tdb1_transaction.c: */
 int tdb1_transaction_recover(struct tdb_context *tdb);

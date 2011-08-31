@@ -534,6 +534,12 @@ enum TDB_ERROR tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
 	enum TDB_ERROR ecode;
 	tdb_bool_err berr;
 
+	if (tdb->flags & TDB_VERSION1) {
+		if (tdb1_allrecord_lock(tdb, ltype, flags, upgradable) == -1)
+			return tdb->last_error;
+		return TDB_SUCCESS;
+	}
+
 	if (tdb->flags & TDB_NOLOCK)
 		return TDB_SUCCESS;
 
@@ -648,6 +654,11 @@ void tdb_unlock_expand(struct tdb_context *tdb, int ltype)
 /* unlock entire db */
 void tdb_allrecord_unlock(struct tdb_context *tdb, int ltype)
 {
+	if (tdb->flags & TDB_VERSION1) {
+		tdb1_allrecord_unlock(tdb, ltype);
+		return;
+	}
+
 	if (tdb->flags & TDB_NOLOCK)
 		return;
 
@@ -862,12 +873,7 @@ void tdb_lock_cleanup(struct tdb_context *tdb)
 
 	while (tdb->file->allrecord_lock.count
 	       && tdb->file->allrecord_lock.owner == tdb) {
-		if (tdb->flags & TDB_VERSION1)
-			tdb1_allrecord_unlock(tdb,
-					      tdb->file->allrecord_lock.ltype);
-		else
-			tdb_allrecord_unlock(tdb,
-					     tdb->file->allrecord_lock.ltype);
+		tdb_allrecord_unlock(tdb, tdb->file->allrecord_lock.ltype);
 	}
 
 	for (i=0; i<tdb->file->num_lockrecs; i++) {

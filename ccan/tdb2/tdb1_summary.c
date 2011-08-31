@@ -98,7 +98,7 @@ char *tdb1_summary(struct tdb_context *tdb)
 	if (tdb->file->allrecord_lock.count != 0) {
 		locked = false;
 	} else {
-		if (tdb1_lockall_read(tdb) == -1)
+		if (tdb_lockall_read(tdb) != TDB_SUCCESS)
 			return NULL;
 		locked = true;
 	}
@@ -196,7 +196,7 @@ char *tdb1_summary(struct tdb_context *tdb)
 
 unlock:
 	if (locked) {
-		tdb1_unlockall_read(tdb);
+		tdb_unlockall_read(tdb);
 	}
 	return ret;
 }

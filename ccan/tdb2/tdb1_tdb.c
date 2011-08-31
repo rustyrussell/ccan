@@ -732,7 +732,7 @@ int tdb1_wipe_all(struct tdb_context *tdb)
 	tdb1_off_t recovery_head;
 	tdb1_len_t recovery_size = 0;
 
-	if (tdb1_lockall(tdb) != 0) {
+	if (tdb_lockall(tdb) != TDB_SUCCESS) {
 		return -1;
 	}
 
@@ -801,16 +801,11 @@ int tdb1_wipe_all(struct tdb_context *tdb)
 		}
 	}
 
-	if (tdb1_unlockall(tdb) != 0) {
-		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
-			   "tdb1_wipe_all: failed to unlock");
-		goto failed;
-	}
-
+	tdb_unlockall(tdb);
 	return 0;
 
 failed:
-	tdb1_unlockall(tdb);
+	tdb_unlockall(tdb);
 	return -1;
 }
 

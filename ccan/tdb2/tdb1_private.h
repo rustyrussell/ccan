@@ -142,8 +142,6 @@ int tdb1_recovery_area(struct tdb_context *tdb,
 		      const struct tdb1_methods *methods,
 		      tdb1_off_t *recovery_offset,
 		      struct tdb1_record *rec);
-int tdb1_allrecord_lock(struct tdb_context *tdb, int ltype,
-		       enum tdb_lock_flags flags, bool upgradable);
 int tdb1_allrecord_upgrade(struct tdb_context *tdb);
 int tdb1_write_lock_record(struct tdb_context *tdb, tdb1_off_t off);
 int tdb1_write_unlock_record(struct tdb_context *tdb, tdb1_off_t off);

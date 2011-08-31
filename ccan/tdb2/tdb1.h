@@ -47,14 +47,6 @@ TDB_DATA tdb1_firstkey(struct tdb_context *tdb);
 
 TDB_DATA tdb1_nextkey(struct tdb_context *tdb, TDB_DATA key);
 
-int tdb1_lockall(struct tdb_context *tdb);
-
-int tdb1_unlockall(struct tdb_context *tdb);
-
-int tdb1_lockall_read(struct tdb_context *tdb);
-
-int tdb1_unlockall_read(struct tdb_context *tdb);
-
 int tdb1_transaction_start(struct tdb_context *tdb);
 
 int tdb1_transaction_prepare_commit(struct tdb_context *tdb);
@@ -72,13 +64,6 @@ int tdb1_check(struct tdb_context *tdb,
 	      void *private_data);
 
 /* @} ******************************************************************/
-
-/* Low level locking functions: use with care */
-int tdb1_chainlock(struct tdb_context *tdb, TDB_DATA key);
-int tdb1_chainunlock(struct tdb_context *tdb, TDB_DATA key);
-int tdb1_chainlock_read(struct tdb_context *tdb, TDB_DATA key);
-int tdb1_chainunlock_read(struct tdb_context *tdb, TDB_DATA key);
-
 
 /* wipe and repack */
 int tdb1_wipe_all(struct tdb_context *tdb);

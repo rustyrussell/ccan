@@ -338,7 +338,7 @@ int tdb1_check(struct tdb_context *tdb,
 	if (tdb->file->allrecord_lock.count != 0) {
 		locked = false;
 	} else {
-		if (tdb1_lockall_read(tdb) == -1)
+		if (tdb_lockall_read(tdb) != TDB_SUCCESS)
 			return -1;
 		locked = true;
 	}
@@ -455,7 +455,7 @@ int tdb1_check(struct tdb_context *tdb,
 
 	free(hashes);
 	if (locked) {
-		tdb1_unlockall_read(tdb);
+		tdb_unlockall_read(tdb);
 	}
 	return 0;
 
@@ -463,7 +463,7 @@ free:
 	free(hashes);
 unlock:
 	if (locked) {
-		tdb1_unlockall_read(tdb);
+		tdb_unlockall_read(tdb);
 	}
 	return -1;
 }

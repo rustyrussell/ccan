@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
 	hsize.base.next = &tap_log_attr;
 	hsize.tdb1_hashsize.hsize = 1024;
 
-	plan_tests(43);
+	plan_tests(40);
 	tdb = tdb_open("run-no-lock-during-traverse.tdb1",
 		       TDB_VERSION1, O_CREAT|O_TRUNC|O_RDWR,
 		       0600, &hsize);
@@ -82,28 +82,28 @@ int main(int argc, char *argv[])
 	ok1(tdb);
 	ok1(prepare_entries(tdb));
 	ok1(locking_errors1 == 0);
-	ok1(tdb1_lockall(tdb) == 0);
+	ok1(tdb_lockall(tdb) == 0);
 	ok1(locking_errors1 == 0);
 	ok1(tdb_traverse(tdb, delete_other, &errors) >= 0);
 	ok1(errors == 0);
 	ok1(locking_errors1 == 0);
-	ok1(tdb1_unlockall(tdb) == 0);
+	tdb_unlockall(tdb);
 
 	ok1(prepare_entries(tdb));
 	ok1(locking_errors1 == 0);
-	ok1(tdb1_lockall(tdb) == 0);
+	ok1(tdb_lockall(tdb) == 0);
 	ok1(locking_errors1 == 0);
 	ok1(tdb_traverse(tdb, delete_self, NULL) == NUM_ENTRIES);
 	ok1(locking_errors1 == 0);
-	ok1(tdb1_unlockall(tdb) == 0);
+	tdb_unlockall(tdb);
 
 	ok1(prepare_entries(tdb));
 	ok1(locking_errors1 == 0);
-	ok1(tdb1_lockall(tdb) == 0);
+	ok1(tdb_lockall(tdb) == 0);
 	ok1(locking_errors1 == 0);
 	delete_entries(tdb);
 	ok1(locking_errors1 == 0);
-	ok1(tdb1_unlockall(tdb) == 0);
+	tdb_unlockall(tdb);
 
 	ok1(tdb_close(tdb) == 0);
 
