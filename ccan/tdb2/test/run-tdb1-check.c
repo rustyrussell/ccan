@@ -7,7 +7,7 @@
 int main(int argc, char *argv[])
 {
 	struct tdb1_context *tdb;
-	TDB1_DATA key, data;
+	TDB_DATA key, data;
 
 	plan_tests(13);
 	tdb = tdb1_open_ex("run-check.tdb", 1, TDB1_CLEAR_IF_FIRST,
@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
 	data.dsize = strlen("world");
 	data.dptr = (void *)"world";
 
-	ok1(tdb1_store(tdb, key, data, TDB1_INSERT) == 0);
+	ok1(tdb1_store(tdb, key, data, TDB_INSERT) == 0);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
 	tdb1_close(tdb);
 

@@ -478,7 +478,7 @@ static int _tdb1_transaction_start(struct tdb1_context *tdb)
 	/* get the transaction write lock. This is a blocking lock. As
 	   discussed with Volker, there are a number of ways we could
 	   make this async, which we will probably do in the future */
-	if (tdb1_transaction_lock(tdb, F_WRLCK, TDB1_LOCK_WAIT) == -1) {
+	if (tdb1_transaction_lock(tdb, F_WRLCK, TDB_LOCK_WAIT) == -1) {
 		SAFE_FREE(tdb->transaction->blocks);
 		SAFE_FREE(tdb->transaction);
 		return -1;
@@ -486,7 +486,7 @@ static int _tdb1_transaction_start(struct tdb1_context *tdb)
 
 	/* get a read lock from the freelist to the end of file. This
 	   is upgraded to a write lock during the commit */
-	if (tdb1_allrecord_lock(tdb, F_RDLCK, TDB1_LOCK_WAIT, true) == -1) {
+	if (tdb1_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, true) == -1) {
 		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
 			   "tdb1_transaction_start: failed to get hash locks");
 		goto fail_allrecord_lock;
@@ -973,7 +973,7 @@ static int _tdb1_transaction_prepare_commit(struct tdb1_context *tdb)
 
 	/* get the open lock - this prevents new users attaching to the database
 	   during the commit */
-	if (tdb1_nest_lock(tdb, TDB1_OPEN_LOCK, F_WRLCK, TDB1_LOCK_WAIT) == -1) {
+	if (tdb1_nest_lock(tdb, TDB1_OPEN_LOCK, F_WRLCK, TDB_LOCK_WAIT) == -1) {
 		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
 			   "tdb1_transaction_prepare_commit:"
 			   " failed to get open lock");

@@ -82,7 +82,7 @@ static int ftruncate_check(int fd, off_t length)
 static bool test_death(enum operation op, struct agent *agent)
 {
 	struct tdb1_context *tdb = NULL;
-	TDB1_DATA key;
+	TDB_DATA key;
 	enum agent_return ret;
 	int needed_recovery = 0;
 
@@ -150,7 +150,7 @@ reset:
 	/* Put key for agent to fetch. */
 	key.dsize = strlen(KEY_STRING);
 	key.dptr = (void *)KEY_STRING;
-	if (tdb1_store(tdb, key, key, TDB1_INSERT) != 0)
+	if (tdb1_store(tdb, key, key, TDB_INSERT) != 0)
 		return false;
 
 	/* This is the key we insert in transaction. */
@@ -168,7 +168,7 @@ reset:
 	if (tdb1_transaction_start(tdb) != 0)
 		return false;
 
-	if (tdb1_store(tdb, key, key, TDB1_INSERT) != 0)
+	if (tdb1_store(tdb, key, key, TDB_INSERT) != 0)
 		return false;
 
 	if (tdb1_transaction_commit(tdb) != 0)

@@ -25,7 +25,7 @@
 #include "tdb1_private.h"
 
 /* This is based on the hash algorithm from gdbm */
-unsigned int tdb1_old_hash(TDB1_DATA *key)
+unsigned int tdb1_old_hash(TDB_DATA *key)
 {
 	uint32_t value;	/* Used to compute the hash value.  */
 	uint32_t   i;	/* Used to cycle through random values. */
@@ -339,7 +339,7 @@ static uint32_t hashlittle( const void *key, size_t length )
   return c;
 }
 
-unsigned int tdb1_jenkins_hash(TDB1_DATA *key)
+unsigned int tdb1_jenkins_hash(TDB_DATA *key)
 {
 	return hashlittle(key->dptr, key->dsize);
 }

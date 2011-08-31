@@ -17,7 +17,7 @@
 static bool prepare_entries(struct tdb1_context *tdb)
 {
 	unsigned int i;
-	TDB1_DATA key, data;
+	TDB_DATA key, data;
 
 	for (i = 0; i < NUM_ENTRIES; i++) {
 		key.dsize = sizeof(i);
@@ -34,7 +34,7 @@ static bool prepare_entries(struct tdb1_context *tdb)
 static void delete_entries(struct tdb1_context *tdb)
 {
 	unsigned int i;
-	TDB1_DATA key;
+	TDB_DATA key;
 
 	for (i = 0; i < NUM_ENTRIES; i++) {
 		key.dsize = sizeof(i);
@@ -45,7 +45,7 @@ static void delete_entries(struct tdb1_context *tdb)
 }
 
 /* We don't know how many times this will run. */
-static int delete_other(struct tdb1_context *tdb, TDB1_DATA key, TDB1_DATA data,
+static int delete_other(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA data,
 			void *private_data)
 {
 	unsigned int i;
@@ -57,7 +57,7 @@ static int delete_other(struct tdb1_context *tdb, TDB1_DATA key, TDB1_DATA data,
 	return 0;
 }
 
-static int delete_self(struct tdb1_context *tdb, TDB1_DATA key, TDB1_DATA data,
+static int delete_self(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA data,
 			void *private_data)
 {
 	ok1(tdb1_delete(tdb, key) == 0);

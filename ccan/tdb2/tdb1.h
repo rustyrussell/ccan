@@ -35,10 +35,6 @@
 #include <sys/stat.h>
 #endif
 
-/** Flags to tdb1_store() */
-#define TDB1_REPLACE 1		/** Unused */
-#define TDB1_INSERT 2 		/** Don't overwrite an existing entry */
-#define TDB1_MODIFY 3		/** Don't create an existing entry    */
 
 /** Flags for tdb1_open() */
 #define TDB1_DEFAULT 0 /** just a readability place holder */
@@ -55,19 +51,13 @@
 #define TDB1_DISALLOW_NESTING 1024 /** Disallow transactions to nest */
 #define TDB1_INCOMPATIBLE_HASH 2048 /** Better hashing: can't be opened by tdb < 1.2.6. */
 
-/** The tdb data structure */
-typedef struct TDB1_DATA {
-	unsigned char *dptr;
-	size_t dsize;
-} TDB1_DATA;
-
 /** This is the context structure that is returned from a db open. */
 typedef struct tdb1_context TDB1_CONTEXT;
 
-typedef int (*tdb1_traverse_func)(struct tdb1_context *, TDB1_DATA, TDB1_DATA, void *);
+typedef int (*tdb1_traverse_func)(struct tdb1_context *, TDB_DATA, TDB_DATA, void *);
 typedef void (*tdb1_log_func)(struct tdb1_context *, enum tdb_log_level, enum TDB_ERROR,
 			      const char *, void *);
-typedef unsigned int (*tdb1_hash_func)(TDB1_DATA *key);
+typedef unsigned int (*tdb1_hash_func)(TDB_DATA *key);
 
 struct tdb1_logging_context {
         tdb1_log_func log_fn;
@@ -84,30 +74,30 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 
 void tdb1_set_max_dead(struct tdb1_context *tdb, int max_dead);
 
-TDB1_DATA tdb1_fetch(struct tdb1_context *tdb, TDB1_DATA key);
+TDB_DATA tdb1_fetch(struct tdb1_context *tdb, TDB_DATA key);
 
-int tdb1_parse_record(struct tdb1_context *tdb, TDB1_DATA key,
-			      int (*parser)(TDB1_DATA key, TDB1_DATA data,
+int tdb1_parse_record(struct tdb1_context *tdb, TDB_DATA key,
+			      int (*parser)(TDB_DATA key, TDB_DATA data,
 					    void *private_data),
 			      void *private_data);
 
-int tdb1_delete(struct tdb1_context *tdb, TDB1_DATA key);
+int tdb1_delete(struct tdb1_context *tdb, TDB_DATA key);
 
-int tdb1_store(struct tdb1_context *tdb, TDB1_DATA key, TDB1_DATA dbuf, int flag);
+int tdb1_store(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA dbuf, int flag);
 
-int tdb1_append(struct tdb1_context *tdb, TDB1_DATA key, TDB1_DATA new_dbuf);
+int tdb1_append(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA new_dbuf);
 
 int tdb1_close(struct tdb1_context *tdb);
 
-TDB1_DATA tdb1_firstkey(struct tdb1_context *tdb);
+TDB_DATA tdb1_firstkey(struct tdb1_context *tdb);
 
-TDB1_DATA tdb1_nextkey(struct tdb1_context *tdb, TDB1_DATA key);
+TDB_DATA tdb1_nextkey(struct tdb1_context *tdb, TDB_DATA key);
 
 int tdb1_traverse(struct tdb1_context *tdb, tdb1_traverse_func fn, void *private_data);
 
 int tdb1_traverse_read(struct tdb1_context *tdb, tdb1_traverse_func fn, void *private_data);
 
-int tdb1_exists(struct tdb1_context *tdb, TDB1_DATA key);
+int tdb1_exists(struct tdb1_context *tdb, TDB_DATA key);
 
 int tdb1_lockall(struct tdb1_context *tdb);
 
@@ -131,19 +121,19 @@ int tdb1_hash_size(struct tdb1_context *tdb);
 
 void tdb1_increment_seqnum_nonblock(struct tdb1_context *tdb);
 
-unsigned int tdb1_jenkins_hash(TDB1_DATA *key);
+unsigned int tdb1_jenkins_hash(TDB_DATA *key);
 
 int tdb1_check(struct tdb1_context *tdb,
-	      int (*check) (TDB1_DATA key, TDB1_DATA data, void *private_data),
+	      int (*check) (TDB_DATA key, TDB_DATA data, void *private_data),
 	      void *private_data);
 
 /* @} ******************************************************************/
 
 /* Low level locking functions: use with care */
-int tdb1_chainlock(struct tdb1_context *tdb, TDB1_DATA key);
-int tdb1_chainunlock(struct tdb1_context *tdb, TDB1_DATA key);
-int tdb1_chainlock_read(struct tdb1_context *tdb, TDB1_DATA key);
-int tdb1_chainunlock_read(struct tdb1_context *tdb, TDB1_DATA key);
+int tdb1_chainlock(struct tdb1_context *tdb, TDB_DATA key);
+int tdb1_chainunlock(struct tdb1_context *tdb, TDB_DATA key);
+int tdb1_chainlock_read(struct tdb1_context *tdb, TDB_DATA key);
+int tdb1_chainunlock_read(struct tdb1_context *tdb, TDB_DATA key);
 
 
 /* wipe and repack */
@@ -153,6 +143,6 @@ int tdb1_repack(struct tdb1_context *tdb);
 /* Debug functions. Not used in production. */
 char *tdb1_summary(struct tdb1_context *tdb);
 
-extern TDB1_DATA tdb1_null;
+extern TDB_DATA tdb1_null;
 
 #endif /* tdb1.h */

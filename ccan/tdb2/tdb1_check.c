@@ -32,7 +32,7 @@ static bool tdb1_check_header(struct tdb1_context *tdb, tdb1_off_t *recovery)
 
 	if (tdb->methods->tdb1_read(tdb, 0, &hdr, sizeof(hdr), 0) == -1)
 		return false;
-	if (strcmp(hdr.magic_food, TDB1_MAGIC_FOOD) != 0)
+	if (strcmp(hdr.magic_food, TDB_MAGIC_FOOD) != 0)
 		goto corrupt;
 
 	TDB1_CONV(hdr);
@@ -132,10 +132,10 @@ corrupt:
 
 /* Grab some bytes: may copy if can't use mmap.
    Caller has already done bounds check. */
-static TDB1_DATA get_bytes(struct tdb1_context *tdb,
+static TDB_DATA get_bytes(struct tdb1_context *tdb,
 			  tdb1_off_t off, tdb1_len_t len)
 {
-	TDB1_DATA d;
+	TDB_DATA d;
 
 	d.dsize = len;
 
@@ -147,7 +147,7 @@ static TDB1_DATA get_bytes(struct tdb1_context *tdb,
 }
 
 /* Frees data if we're not able to simply use mmap. */
-static void put_bytes(struct tdb1_context *tdb, TDB1_DATA d)
+static void put_bytes(struct tdb1_context *tdb, TDB_DATA d)
 {
 	if (tdb->transaction == NULL && tdb->map_ptr != NULL)
 		return;
@@ -236,10 +236,10 @@ static bool tdb1_check_used_record(struct tdb1_context *tdb,
 				  tdb1_off_t off,
 				  const struct tdb1_record *rec,
 				  unsigned char **hashes,
-				  int (*check)(TDB1_DATA, TDB1_DATA, void *),
+				  int (*check)(TDB_DATA, TDB_DATA, void *),
 				  void *private_data)
 {
-	TDB1_DATA key, data;
+	TDB_DATA key, data;
 
 	if (!tdb1_check_record(tdb, off, rec))
 		return false;
@@ -323,7 +323,7 @@ size_t tdb1_dead_space(struct tdb1_context *tdb, tdb1_off_t off)
 }
 
 int tdb1_check(struct tdb1_context *tdb,
-	      int (*check)(TDB1_DATA key, TDB1_DATA data, void *private_data),
+	      int (*check)(TDB_DATA key, TDB_DATA data, void *private_data),
 	      void *private_data)
 {
 	unsigned int h;

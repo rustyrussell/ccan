@@ -7,7 +7,7 @@
 int main(int argc, char *argv[])
 {
 	struct tdb1_context *tdb;
-	TDB1_DATA key, data;
+	TDB_DATA key, data;
 
 	plan_tests(4);
 	tdb = tdb1_open_ex(NULL, 1024, TDB1_INTERNAL, O_CREAT|O_TRUNC|O_RDWR,

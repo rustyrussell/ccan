@@ -63,7 +63,6 @@ typedef uint32_t tdb1_off_t;
 #define offsetof(t,f) ((unsigned int)&((t *)0)->f)
 #endif
 
-#define TDB1_MAGIC_FOOD "TDB file\n"
 #define TDB1_VERSION (0x26011967 + 6)
 #define TDB1_MAGIC (0x26011999U)
 #define TDB1_FREE_MAGIC (~TDB1_MAGIC)
@@ -131,7 +130,7 @@ struct tdb1_header {
 	tdb1_off_t rwlocks; /* obsolete - kept to detect old formats */
 	tdb1_off_t recovery_start; /* offset of transaction recovery region */
 	tdb1_off_t sequence_number; /* used when TDB1_SEQNUM is set */
-	uint32_t magic1_hash; /* hash of TDB1_MAGIC_FOOD. */
+	uint32_t magic1_hash; /* hash of TDB_MAGIC_FOOD. */
 	uint32_t magic2_hash; /* hash of TDB1_MAGIC. */
 	tdb1_off_t reserved[27];
 };
@@ -147,14 +146,6 @@ struct tdb1_traverse_lock {
 	uint32_t off;
 	uint32_t hash;
 	int lock_rw;
-};
-
-enum tdb1_lock_flags {
-	/* WAIT == F_SETLKW, NOWAIT == F_SETLK */
-	TDB1_LOCK_NOWAIT = 0,
-	TDB1_LOCK_WAIT = 1,
-	/* If set, don't log an error on failure. */
-	TDB1_LOCK_PROBE = 2,
 };
 
 struct tdb1_context;
@@ -197,7 +188,7 @@ struct tdb1_context {
 	struct tdb1_traverse_lock travlocks; /* current traversal locks */
 	dev_t device;	/* uniquely identifies this tdb */
 	ino_t inode;	/* uniquely identifies this tdb */
-	unsigned int (*hash_fn)(TDB1_DATA *key);
+	unsigned int (*hash_fn)(TDB_DATA *key);
 	int open_flags; /* flags used in the open - needed by reopen */
 	const struct tdb1_methods *methods;
 	struct tdb1_transaction *transaction;
@@ -212,25 +203,25 @@ int tdb1_munmap(struct tdb1_context *tdb);
 void tdb1_mmap(struct tdb1_context *tdb);
 int tdb1_lock(struct tdb1_context *tdb, int list, int ltype);
 int tdb1_nest_lock(struct tdb1_context *tdb, uint32_t offset, int ltype,
-		  enum tdb1_lock_flags flags);
+		  enum tdb_lock_flags flags);
 int tdb1_nest_unlock(struct tdb1_context *tdb, uint32_t offset, int ltype);
 int tdb1_unlock(struct tdb1_context *tdb, int list, int ltype);
 int tdb1_brlock(struct tdb1_context *tdb,
 	       int rw_type, tdb1_off_t offset, size_t len,
-	       enum tdb1_lock_flags flags);
+	       enum tdb_lock_flags flags);
 int tdb1_brunlock(struct tdb1_context *tdb,
 		 int rw_type, tdb1_off_t offset, size_t len);
 bool tdb1_have_extra_locks(struct tdb1_context *tdb);
 void tdb1_release_transaction_locks(struct tdb1_context *tdb);
 int tdb1_transaction_lock(struct tdb1_context *tdb, int ltype,
-			 enum tdb1_lock_flags lockflags);
+			 enum tdb_lock_flags lockflags);
 int tdb1_transaction_unlock(struct tdb1_context *tdb, int ltype);
 int tdb1_recovery_area(struct tdb1_context *tdb,
 		      const struct tdb1_methods *methods,
 		      tdb1_off_t *recovery_offset,
 		      struct tdb1_record *rec);
 int tdb1_allrecord_lock(struct tdb1_context *tdb, int ltype,
-		       enum tdb1_lock_flags flags, bool upgradable);
+		       enum tdb_lock_flags flags, bool upgradable);
 int tdb1_allrecord_unlock(struct tdb1_context *tdb, int ltype);
 int tdb1_allrecord_upgrade(struct tdb1_context *tdb);
 int tdb1_write_lock_record(struct tdb1_context *tdb, tdb1_off_t off);
@@ -249,12 +240,12 @@ int tdb1_rec_read(struct tdb1_context *tdb, tdb1_off_t offset, struct tdb1_recor
 int tdb1_rec_write(struct tdb1_context *tdb, tdb1_off_t offset, struct tdb1_record *rec);
 int tdb1_do_delete(struct tdb1_context *tdb, tdb1_off_t rec_ptr, struct tdb1_record *rec);
 unsigned char *tdb1_alloc_read(struct tdb1_context *tdb, tdb1_off_t offset, tdb1_len_t len);
-int tdb1_parse_data(struct tdb1_context *tdb, TDB1_DATA key,
+int tdb1_parse_data(struct tdb1_context *tdb, TDB_DATA key,
 		   tdb1_off_t offset, tdb1_len_t len,
-		   int (*parser)(TDB1_DATA key, TDB1_DATA data,
+		   int (*parser)(TDB_DATA key, TDB_DATA data,
 				 void *private_data),
 		   void *private_data);
-tdb1_off_t tdb1_find_lock_hash(struct tdb1_context *tdb, TDB1_DATA key, uint32_t hash, int locktype,
+tdb1_off_t tdb1_find_lock_hash(struct tdb1_context *tdb, TDB_DATA key, uint32_t hash, int locktype,
 			   struct tdb1_record *rec);
 void tdb1_io_init(struct tdb1_context *tdb);
 int tdb1_expand(struct tdb1_context *tdb, tdb1_off_t size);
@@ -264,6 +255,6 @@ bool tdb1_write_all(int fd, const void *buf, size_t count);
 int tdb1_transaction_recover(struct tdb1_context *tdb);
 void tdb1_header_hash(struct tdb1_context *tdb,
 		     uint32_t *magic1_hash, uint32_t *magic2_hash);
-unsigned int tdb1_old_hash(TDB1_DATA *key);
+unsigned int tdb1_old_hash(TDB_DATA *key);
 size_t tdb1_dead_space(struct tdb1_context *tdb, tdb1_off_t off);
 #endif /* CCAN_TDB2_TDB1_PRIVATE_H */

@@ -4,7 +4,7 @@
 #include <err.h>
 #include "tdb1-logging.h"
 
-static int check(TDB1_DATA key, TDB1_DATA data, void *private)
+static int check(TDB_DATA key, TDB_DATA data, void *private)
 {
 	unsigned int *sizes = private;
 
@@ -42,7 +42,7 @@ static void tdb1_flip_bit(struct tdb1_context *tdb, unsigned int bit)
 
 static void check_test(struct tdb1_context *tdb)
 {
-	TDB1_DATA key, data;
+	TDB_DATA key, data;
 	unsigned int i, verifiable, corrupt, sizes[2], dsize, ksize;
 
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
@@ -58,13 +58,13 @@ static void check_test(struct tdb1_context *tdb)
 	for (key.dsize = 1; key.dsize <= 5; key.dsize++) {
 		ksize += key.dsize;
 		dsize += data.dsize;
-		if (tdb1_store(tdb, key, data, TDB1_INSERT) != 0)
+		if (tdb1_store(tdb, key, data, TDB_INSERT) != 0)
 			abort();
 	}
 
 	/* This is how many bytes we expect to be verifiable. */
 	/* From the file header. */
-	verifiable = strlen(TDB1_MAGIC_FOOD) + 1
+	verifiable = strlen(TDB_MAGIC_FOOD) + 1
 		+ 2 * sizeof(uint32_t) + 2 * sizeof(tdb1_off_t)
 		+ 2 * sizeof(uint32_t);
 	/* From the free list chain and hash chains. */

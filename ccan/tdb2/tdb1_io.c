@@ -427,13 +427,13 @@ unsigned char *tdb1_alloc_read(struct tdb1_context *tdb, tdb1_off_t offset, tdb1
 
 /* Give a piece of tdb data to a parser */
 
-int tdb1_parse_data(struct tdb1_context *tdb, TDB1_DATA key,
+int tdb1_parse_data(struct tdb1_context *tdb, TDB_DATA key,
 		   tdb1_off_t offset, tdb1_len_t len,
-		   int (*parser)(TDB1_DATA key, TDB1_DATA data,
+		   int (*parser)(TDB_DATA key, TDB_DATA data,
 				 void *private_data),
 		   void *private_data)
 {
-	TDB1_DATA data;
+	TDB_DATA data;
 	int result;
 
 	data.dsize = len;

@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <err.h>
 
-static unsigned int tdb1_dumb_hash(TDB1_DATA *key)
+static unsigned int tdb1_dumb_hash(TDB_DATA *key)
 {
 	return key->dsize;
 }
@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 {
 	struct tdb1_context *tdb;
 	unsigned int log_count, flags;
-	TDB1_DATA d;
+	TDB_DATA d;
 	struct tdb1_logging_context log_ctx = { log_fn, &log_count };
 
 	plan_tests(38 * 2);
@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
 		ok1(log_count == 0);
 		d.dptr = (void *)"Hello";
 		d.dsize = 5;
-		ok1(tdb1_store(tdb, d, d, TDB1_INSERT) == 0);
+		ok1(tdb1_store(tdb, d, d, TDB_INSERT) == 0);
 		tdb1_close(tdb);
 
 		/* Should not have marked rwlocks field. */
@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
 		ok1(log_count == 0);
 		d.dptr = (void *)"Hello";
 		d.dsize = 5;
-		ok1(tdb1_store(tdb, d, d, TDB1_INSERT) == 0);
+		ok1(tdb1_store(tdb, d, d, TDB_INSERT) == 0);
 		tdb1_close(tdb);
 
 		/* Should have marked rwlocks field. */
@@ -149,7 +149,7 @@ int main(int argc, char *argv[])
 		ok1(log_count == 0);
 		d.dptr = (void *)"Hello";
 		d.dsize = 5;
-		ok1(tdb1_store(tdb, d, d, TDB1_INSERT) == 0);
+		ok1(tdb1_store(tdb, d, d, TDB_INSERT) == 0);
 		tdb1_close(tdb);
 
 		/* Should have marked rwlocks field. */

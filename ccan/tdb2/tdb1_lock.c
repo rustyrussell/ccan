@@ -130,7 +130,7 @@ static tdb1_off_t lock_offset(int list)
 */
 int tdb1_brlock(struct tdb1_context *tdb,
 	       int rw_type, tdb1_off_t offset, size_t len,
-	       enum tdb1_lock_flags flags)
+	       enum tdb_lock_flags flags)
 {
 	int ret;
 
@@ -145,7 +145,7 @@ int tdb1_brlock(struct tdb1_context *tdb,
 
 	do {
 		ret = fcntl_lock(tdb, rw_type, offset, len,
-				 flags & TDB1_LOCK_WAIT);
+				 flags & TDB_LOCK_WAIT);
 	} while (ret == -1 && errno == EINTR);
 
 	if (ret == -1) {
@@ -153,7 +153,7 @@ int tdb1_brlock(struct tdb1_context *tdb,
 		/* Generic lock error. errno set by fcntl.
 		 * EAGAIN is an expected return from non-blocking
 		 * locks. */
-		if (!(flags & TDB1_LOCK_PROBE) && errno != EAGAIN) {
+		if (!(flags & TDB_LOCK_PROBE) && errno != EAGAIN) {
 			tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
 				   "tdb1_brlock failed (fd=%d) at offset %d rw_type=%d flags=%d len=%d",
 				   tdb->fd, offset, rw_type, flags, (int)len);
@@ -213,7 +213,7 @@ int tdb1_allrecord_upgrade(struct tdb1_context *tdb)
 	while (count--) {
 		struct timeval tv;
 		if (tdb1_brlock(tdb, F_WRLCK, TDB1_FREELIST_TOP, 0,
-			       TDB1_LOCK_WAIT|TDB1_LOCK_PROBE) == 0) {
+			       TDB_LOCK_WAIT|TDB_LOCK_PROBE) == 0) {
 			tdb->allrecord_lock.ltype = F_WRLCK;
 			tdb->allrecord_lock.off = 0;
 			return 0;
@@ -246,7 +246,7 @@ static struct tdb1_lock_type *tdb1_find_nestlock(struct tdb1_context *tdb,
 
 /* lock an offset in the database. */
 int tdb1_nest_lock(struct tdb1_context *tdb, uint32_t offset, int ltype,
-		  enum tdb1_lock_flags flags)
+		  enum tdb_lock_flags flags)
 {
 	struct tdb1_lock_type *new_lck;
 
@@ -298,11 +298,11 @@ static int tdb1_lock_and_recover(struct tdb1_context *tdb)
 	int ret;
 
 	/* We need to match locking order in transaction commit. */
-	if (tdb1_brlock(tdb, F_WRLCK, TDB1_FREELIST_TOP, 0, TDB1_LOCK_WAIT)) {
+	if (tdb1_brlock(tdb, F_WRLCK, TDB1_FREELIST_TOP, 0, TDB_LOCK_WAIT)) {
 		return -1;
 	}
 
-	if (tdb1_brlock(tdb, F_WRLCK, TDB1_OPEN_LOCK, 1, TDB1_LOCK_WAIT)) {
+	if (tdb1_brlock(tdb, F_WRLCK, TDB1_OPEN_LOCK, 1, TDB_LOCK_WAIT)) {
 		tdb1_brunlock(tdb, F_WRLCK, TDB1_FREELIST_TOP, 0);
 		return -1;
 	}
@@ -327,7 +327,7 @@ static bool have_data_locks(const struct tdb1_context *tdb)
 }
 
 static int tdb1_lock_list(struct tdb1_context *tdb, int list, int ltype,
-			 enum tdb1_lock_flags waitflag)
+			 enum tdb_lock_flags waitflag)
 {
 	int ret;
 	bool check = false;
@@ -363,7 +363,7 @@ int tdb1_lock(struct tdb1_context *tdb, int list, int ltype)
 {
 	int ret;
 
-	ret = tdb1_lock_list(tdb, list, ltype, TDB1_LOCK_WAIT);
+	ret = tdb1_lock_list(tdb, list, ltype, TDB_LOCK_WAIT);
 	if (ret) {
 		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
 			   "tdb1_lock failed on list %d "
@@ -447,7 +447,7 @@ int tdb1_unlock(struct tdb1_context *tdb, int list, int ltype)
   get the transaction lock
  */
 int tdb1_transaction_lock(struct tdb1_context *tdb, int ltype,
-			 enum tdb1_lock_flags lockflags)
+			 enum tdb_lock_flags lockflags)
 {
 	return tdb1_nest_lock(tdb, TDB1_TRANSACTION_LOCK, ltype, lockflags);
 }
@@ -462,7 +462,7 @@ int tdb1_transaction_unlock(struct tdb1_context *tdb, int ltype)
 
 /* Returns 0 if all done, -1 if error, 1 if ok. */
 static int tdb1_allrecord_check(struct tdb1_context *tdb, int ltype,
-			       enum tdb1_lock_flags flags, bool upgradable)
+			       enum tdb_lock_flags flags, bool upgradable)
 {
 	/* There are no locks on read-only dbs */
 	if (tdb->read_only || tdb->traverse_read) {
@@ -498,11 +498,11 @@ static int tdb1_allrecord_check(struct tdb1_context *tdb, int ltype,
 /* We only need to lock individual bytes, but Linux merges consecutive locks
  * so we lock in contiguous ranges. */
 static int tdb1_chainlock_gradual(struct tdb1_context *tdb,
-				 int ltype, enum tdb1_lock_flags flags,
+				 int ltype, enum tdb_lock_flags flags,
 				 size_t off, size_t len)
 {
 	int ret;
-	enum tdb1_lock_flags nb_flags = (flags & ~TDB1_LOCK_WAIT);
+	enum tdb_lock_flags nb_flags = (flags & ~TDB_LOCK_WAIT);
 
 	if (len <= 4) {
 		/* Single record.  Just do blocking lock. */
@@ -533,7 +533,7 @@ static int tdb1_chainlock_gradual(struct tdb1_context *tdb,
  * other way of guaranteeing exclusivity (ie. transaction write lock).
  * We do the locking gradually to avoid being starved by smaller locks. */
 int tdb1_allrecord_lock(struct tdb1_context *tdb, int ltype,
-		       enum tdb1_lock_flags flags, bool upgradable)
+		       enum tdb_lock_flags flags, bool upgradable)
 {
 	switch (tdb1_allrecord_check(tdb, ltype, flags, upgradable)) {
 	case -1:
@@ -622,7 +622,7 @@ int tdb1_allrecord_unlock(struct tdb1_context *tdb, int ltype)
 /* lock entire database with write lock */
 int tdb1_lockall(struct tdb1_context *tdb)
 {
-	return tdb1_allrecord_lock(tdb, F_WRLCK, TDB1_LOCK_WAIT, false);
+	return tdb1_allrecord_lock(tdb, F_WRLCK, TDB_LOCK_WAIT, false);
 }
 
 /* unlock entire database with write lock */
@@ -634,7 +634,7 @@ int tdb1_unlockall(struct tdb1_context *tdb)
 /* lock entire database with read lock */
 int tdb1_lockall_read(struct tdb1_context *tdb)
 {
-	return tdb1_allrecord_lock(tdb, F_RDLCK, TDB1_LOCK_WAIT, false);
+	return tdb1_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false);
 }
 
 /* unlock entire database with read lock */
@@ -645,25 +645,25 @@ int tdb1_unlockall_read(struct tdb1_context *tdb)
 
 /* lock/unlock one hash chain. This is meant to be used to reduce
    contention - it cannot guarantee how many records will be locked */
-int tdb1_chainlock(struct tdb1_context *tdb, TDB1_DATA key)
+int tdb1_chainlock(struct tdb1_context *tdb, TDB_DATA key)
 {
 	int ret = tdb1_lock(tdb, TDB1_BUCKET(tdb->hash_fn(&key)), F_WRLCK);
 	return ret;
 }
 
-int tdb1_chainunlock(struct tdb1_context *tdb, TDB1_DATA key)
+int tdb1_chainunlock(struct tdb1_context *tdb, TDB_DATA key)
 {
 	return tdb1_unlock(tdb, TDB1_BUCKET(tdb->hash_fn(&key)), F_WRLCK);
 }
 
-int tdb1_chainlock_read(struct tdb1_context *tdb, TDB1_DATA key)
+int tdb1_chainlock_read(struct tdb1_context *tdb, TDB_DATA key)
 {
 	int ret;
 	ret = tdb1_lock(tdb, TDB1_BUCKET(tdb->hash_fn(&key)), F_RDLCK);
 	return ret;
 }
 
-int tdb1_chainunlock_read(struct tdb1_context *tdb, TDB1_DATA key)
+int tdb1_chainunlock_read(struct tdb1_context *tdb, TDB_DATA key)
 {
 	return tdb1_unlock(tdb, TDB1_BUCKET(tdb->hash_fn(&key)), F_RDLCK);
 }
@@ -674,7 +674,7 @@ int tdb1_lock_record(struct tdb1_context *tdb, tdb1_off_t off)
 	if (tdb->allrecord_lock.count) {
 		return 0;
 	}
-	return off ? tdb1_brlock(tdb, F_RDLCK, off, 1, TDB1_LOCK_WAIT) : 0;
+	return off ? tdb1_brlock(tdb, F_RDLCK, off, 1, TDB_LOCK_WAIT) : 0;
 }
 
 /*
@@ -694,7 +694,7 @@ int tdb1_write_lock_record(struct tdb1_context *tdb, tdb1_off_t off)
 		}
 		return -1;
 	}
-	return tdb1_brlock(tdb, F_WRLCK, off, 1, TDB1_LOCK_NOWAIT|TDB1_LOCK_PROBE);
+	return tdb1_brlock(tdb, F_WRLCK, off, 1, TDB_LOCK_NOWAIT|TDB_LOCK_PROBE);
 }
 
 int tdb1_write_unlock_record(struct tdb1_context *tdb, tdb1_off_t off)

@@ -10,8 +10,8 @@ int main(int argc, char *argv[])
 	int flags[] = { TDB1_INTERNAL, TDB1_DEFAULT, TDB1_NOMMAP,
 			TDB1_INTERNAL|TDB1_CONVERT, TDB1_CONVERT,
 			TDB1_NOMMAP|TDB1_CONVERT };
-	TDB1_DATA key = { (unsigned char *)&j, sizeof(j) };
-	TDB1_DATA data = { (unsigned char *)&j, sizeof(j) };
+	TDB_DATA key = { (unsigned char *)&j, sizeof(j) };
+	TDB_DATA data = { (unsigned char *)&j, sizeof(j) };
 	char *summary;
 
 	plan_tests(sizeof(flags) / sizeof(flags[0]) * 14);
@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
 		for (j = 0; j < 500; j++) {
 			/* Make sure padding varies to we get some graphs! */
 			data.dsize = j % (sizeof(j) + 1);
-			if (tdb1_store(tdb, key, data, TDB1_REPLACE) != 0)
+			if (tdb1_store(tdb, key, data, TDB_REPLACE) != 0)
 				fail("Storing in tdb");
 		}
 

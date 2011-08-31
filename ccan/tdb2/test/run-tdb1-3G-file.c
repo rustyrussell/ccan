@@ -46,10 +46,10 @@ static const struct tdb1_methods large_io_methods = {
 	tdb1_expand_file_sparse
 };
 
-static int test_traverse(struct tdb1_context *tdb, TDB1_DATA key, TDB1_DATA data,
+static int test_traverse(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA data,
 			 void *_data)
 {
-	TDB1_DATA *expect = _data;
+	TDB_DATA *expect = _data;
 	ok1(key.dsize == strlen("hi"));
 	ok1(memcmp(key.dptr, "hi", strlen("hi")) == 0);
 	ok1(data.dsize == expect->dsize);
@@ -60,7 +60,7 @@ static int test_traverse(struct tdb1_context *tdb, TDB1_DATA key, TDB1_DATA data
 int main(int argc, char *argv[])
 {
 	struct tdb1_context *tdb;
-	TDB1_DATA key, orig_data, data;
+	TDB_DATA key, orig_data, data;
 	uint32_t hash;
 	tdb1_off_t rec_ptr;
 	struct tdb1_record rec;
@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 	orig_data.dsize = strlen("world");
 	orig_data.dptr = (void *)"world";
 
-	ok1(tdb1_store(tdb, key, orig_data, TDB1_INSERT) == 0);
+	ok1(tdb1_store(tdb, key, orig_data, TDB_INSERT) == 0);
 
 	data = tdb1_fetch(tdb, key);
 	ok1(data.dsize == strlen("world"));
@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
 
 	/* Transactions should work. */
 	ok1(tdb1_transaction_start(tdb) == 0);
-	ok1(tdb1_store(tdb, key, orig_data, TDB1_INSERT) == 0);
+	ok1(tdb1_store(tdb, key, orig_data, TDB_INSERT) == 0);
 
 	data = tdb1_fetch(tdb, key);
 	ok1(data.dsize == strlen("world"));

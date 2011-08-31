@@ -27,7 +27,7 @@
 
 #include "tdb1_private.h"
 
-TDB1_DATA tdb1_null;
+TDB_DATA tdb1_null;
 
 /*
   non-blocking increment of the tdb sequence number if the tdb has been opened using
@@ -60,7 +60,7 @@ static void tdb1_increment_seqnum(struct tdb1_context *tdb)
 	}
 
 	if (tdb1_nest_lock(tdb, TDB1_SEQNUM_OFS, F_WRLCK,
-			  TDB1_LOCK_WAIT|TDB1_LOCK_PROBE) != 0) {
+			   TDB_LOCK_WAIT|TDB_LOCK_PROBE) != 0) {
 		return;
 	}
 
@@ -69,14 +69,14 @@ static void tdb1_increment_seqnum(struct tdb1_context *tdb)
 	tdb1_nest_unlock(tdb, TDB1_SEQNUM_OFS, F_WRLCK);
 }
 
-static int tdb1_key_compare(TDB1_DATA key, TDB1_DATA data, void *private_data)
+static int tdb1_key_compare(TDB_DATA key, TDB_DATA data, void *private_data)
 {
 	return memcmp(data.dptr, key.dptr, data.dsize);
 }
 
 /* Returns 0 on fail.  On success, return offset of record, and fills
    in rec */
-static tdb1_off_t tdb1_find(struct tdb1_context *tdb, TDB1_DATA key, uint32_t hash,
+static tdb1_off_t tdb1_find(struct tdb1_context *tdb, TDB_DATA key, uint32_t hash,
 			struct tdb1_record *r)
 {
 	tdb1_off_t rec_ptr;
@@ -111,7 +111,7 @@ static tdb1_off_t tdb1_find(struct tdb1_context *tdb, TDB1_DATA key, uint32_t ha
 }
 
 /* As tdb1_find, but if you succeed, keep the lock */
-tdb1_off_t tdb1_find_lock_hash(struct tdb1_context *tdb, TDB1_DATA key, uint32_t hash, int locktype,
+tdb1_off_t tdb1_find_lock_hash(struct tdb1_context *tdb, TDB_DATA key, uint32_t hash, int locktype,
 			   struct tdb1_record *rec)
 {
 	uint32_t rec_ptr;
@@ -123,13 +123,13 @@ tdb1_off_t tdb1_find_lock_hash(struct tdb1_context *tdb, TDB1_DATA key, uint32_t
 	return rec_ptr;
 }
 
-static TDB1_DATA _tdb1_fetch(struct tdb1_context *tdb, TDB1_DATA key);
+static TDB_DATA _tdb1_fetch(struct tdb1_context *tdb, TDB_DATA key);
 
 /* update an entry in place - this only works if the new data size
    is <= the old data size and the key exists.
    on failure return -1.
 */
-static int tdb1_update_hash(struct tdb1_context *tdb, TDB1_DATA key, uint32_t hash, TDB1_DATA dbuf)
+static int tdb1_update_hash(struct tdb1_context *tdb, TDB_DATA key, uint32_t hash, TDB_DATA dbuf)
 {
 	struct tdb1_record rec;
 	tdb1_off_t rec_ptr;
@@ -143,7 +143,7 @@ static int tdb1_update_hash(struct tdb1_context *tdb, TDB1_DATA key, uint32_t ha
 	if (rec.key_len == key.dsize &&
 	    rec.data_len == dbuf.dsize &&
 	    rec.full_hash == hash) {
-		TDB1_DATA data = _tdb1_fetch(tdb, key);
+		TDB_DATA data = _tdb1_fetch(tdb, key);
 		if (data.dsize == dbuf.dsize &&
 		    memcmp(data.dptr, dbuf.dptr, data.dsize) == 0) {
 			if (data.dptr) {
@@ -178,14 +178,14 @@ static int tdb1_update_hash(struct tdb1_context *tdb, TDB1_DATA key, uint32_t ha
 /* find an entry in the database given a key */
 /* If an entry doesn't exist tdb1_err will be set to
  * TDB_ERR_NOEXIST. If a key has no data attached
- * then the TDB1_DATA will have zero length but
+ * then the TDB_DATA will have zero length but
  * a non-zero pointer
  */
-static TDB1_DATA _tdb1_fetch(struct tdb1_context *tdb, TDB1_DATA key)
+static TDB_DATA _tdb1_fetch(struct tdb1_context *tdb, TDB_DATA key)
 {
 	tdb1_off_t rec_ptr;
 	struct tdb1_record rec;
-	TDB1_DATA ret;
+	TDB_DATA ret;
 	uint32_t hash;
 
 	/* find which hash bucket it is in */
@@ -200,9 +200,9 @@ static TDB1_DATA _tdb1_fetch(struct tdb1_context *tdb, TDB1_DATA key)
 	return ret;
 }
 
-TDB1_DATA tdb1_fetch(struct tdb1_context *tdb, TDB1_DATA key)
+TDB_DATA tdb1_fetch(struct tdb1_context *tdb, TDB_DATA key)
 {
-	TDB1_DATA ret = _tdb1_fetch(tdb, key);
+	TDB_DATA ret = _tdb1_fetch(tdb, key);
 
 	return ret;
 }
@@ -225,8 +225,8 @@ TDB1_DATA tdb1_fetch(struct tdb1_context *tdb, TDB1_DATA key)
  * Return -1 if the record was not found.
  */
 
-int tdb1_parse_record(struct tdb1_context *tdb, TDB1_DATA key,
-		     int (*parser)(TDB1_DATA key, TDB1_DATA data,
+int tdb1_parse_record(struct tdb1_context *tdb, TDB_DATA key,
+		     int (*parser)(TDB_DATA key, TDB_DATA data,
 				   void *private_data),
 		     void *private_data)
 {
@@ -258,7 +258,7 @@ int tdb1_parse_record(struct tdb1_context *tdb, TDB1_DATA key,
    this doesn't match the conventions in the rest of this module, but is
    compatible with gdbm
 */
-static int tdb1_exists_hash(struct tdb1_context *tdb, TDB1_DATA key, uint32_t hash)
+static int tdb1_exists_hash(struct tdb1_context *tdb, TDB_DATA key, uint32_t hash)
 {
 	struct tdb1_record rec;
 
@@ -268,7 +268,7 @@ static int tdb1_exists_hash(struct tdb1_context *tdb, TDB1_DATA key, uint32_t ha
 	return 1;
 }
 
-int tdb1_exists(struct tdb1_context *tdb, TDB1_DATA key)
+int tdb1_exists(struct tdb1_context *tdb, TDB_DATA key)
 {
 	uint32_t hash = tdb->hash_fn(&key);
 	int ret;
@@ -374,7 +374,7 @@ static int tdb1_purge_dead(struct tdb1_context *tdb, uint32_t hash)
 }
 
 /* delete an entry in the database given a key */
-static int tdb1_delete_hash(struct tdb1_context *tdb, TDB1_DATA key, uint32_t hash)
+static int tdb1_delete_hash(struct tdb1_context *tdb, TDB_DATA key, uint32_t hash)
 {
 	tdb1_off_t rec_ptr;
 	struct tdb1_record rec;
@@ -427,7 +427,7 @@ static int tdb1_delete_hash(struct tdb1_context *tdb, TDB1_DATA key, uint32_t ha
 	return ret;
 }
 
-int tdb1_delete(struct tdb1_context *tdb, TDB1_DATA key)
+int tdb1_delete(struct tdb1_context *tdb, TDB_DATA key)
 {
 	uint32_t hash = tdb->hash_fn(&key);
 	int ret;
@@ -465,8 +465,8 @@ static tdb1_off_t tdb1_find_dead(struct tdb1_context *tdb, uint32_t hash,
 	return 0;
 }
 
-static int _tdb1_store(struct tdb1_context *tdb, TDB1_DATA key,
-		       TDB1_DATA dbuf, int flag, uint32_t hash)
+static int _tdb1_store(struct tdb1_context *tdb, TDB_DATA key,
+		       TDB_DATA dbuf, int flag, uint32_t hash)
 {
 	struct tdb1_record rec;
 	tdb1_off_t rec_ptr;
@@ -474,7 +474,7 @@ static int _tdb1_store(struct tdb1_context *tdb, TDB1_DATA key,
 	int ret = -1;
 
 	/* check for it existing, on insert. */
-	if (flag == TDB1_INSERT) {
+	if (flag == TDB_INSERT) {
 		if (tdb1_exists_hash(tdb, key, hash)) {
 			tdb->last_error = TDB_ERR_EXISTS;
 			goto fail;
@@ -485,7 +485,7 @@ static int _tdb1_store(struct tdb1_context *tdb, TDB1_DATA key,
 			goto done;
 		}
 		if (tdb->last_error == TDB_ERR_NOEXIST &&
-		    flag == TDB1_MODIFY) {
+		    flag == TDB_MODIFY) {
 			/* if the record doesn't exist and we are in TDB1_MODIFY mode then
 			 we should fail the store */
 			goto fail;
@@ -497,7 +497,7 @@ static int _tdb1_store(struct tdb1_context *tdb, TDB1_DATA key,
 	/* delete any existing record - if it doesn't exist we don't
            care.  Doing this first reduces fragmentation, and avoids
            coalescing with `allocated' block before it's updated. */
-	if (flag != TDB1_INSERT)
+	if (flag != TDB_INSERT)
 		tdb1_delete_hash(tdb, key, hash);
 
 	/* Copy key+value *before* allocating free space in case malloc
@@ -596,7 +596,7 @@ static int _tdb1_store(struct tdb1_context *tdb, TDB1_DATA key,
 
    return 0 on success, -1 on failure
 */
-int tdb1_store(struct tdb1_context *tdb, TDB1_DATA key, TDB1_DATA dbuf, int flag)
+int tdb1_store(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA dbuf, int flag)
 {
 	uint32_t hash;
 	int ret;
@@ -617,10 +617,10 @@ int tdb1_store(struct tdb1_context *tdb, TDB1_DATA key, TDB1_DATA dbuf, int flag
 }
 
 /* Append to an entry. Create if not exist. */
-int tdb1_append(struct tdb1_context *tdb, TDB1_DATA key, TDB1_DATA new_dbuf)
+int tdb1_append(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA new_dbuf)
 {
 	uint32_t hash;
-	TDB1_DATA dbuf;
+	TDB_DATA dbuf;
 	int ret = -1;
 
 	/* find which hash bucket it is in */
@@ -819,10 +819,10 @@ struct traverse_state {
 /*
   traverse function for repacking
  */
-static int repack_traverse(struct tdb1_context *tdb, TDB1_DATA key, TDB1_DATA data, void *private_data)
+static int repack_traverse(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA data, void *private_data)
 {
 	struct traverse_state *state = (struct traverse_state *)private_data;
-	if (tdb1_store(state->dest_db, key, data, TDB1_INSERT) != 0) {
+	if (tdb1_store(state->dest_db, key, data, TDB_INSERT) != 0) {
 		state->error = state->dest_db->last_error;
 		return -1;
 	}

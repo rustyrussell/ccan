@@ -12,19 +12,19 @@
 
 static struct agent *agent;
 
-static bool correct_key(TDB1_DATA key)
+static bool correct_key(TDB_DATA key)
 {
 	return key.dsize == strlen("hi")
 		&& memcmp(key.dptr, "hi", key.dsize) == 0;
 }
 
-static bool correct_data(TDB1_DATA data)
+static bool correct_data(TDB_DATA data)
 {
 	return data.dsize == strlen("world")
 		&& memcmp(data.dptr, "world", data.dsize) == 0;
 }
 
-static int traverse(struct tdb1_context *tdb, TDB1_DATA key, TDB1_DATA data,
+static int traverse(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA data,
 		     void *p)
 {
 	ok1(correct_key(key));
@@ -35,7 +35,7 @@ static int traverse(struct tdb1_context *tdb, TDB1_DATA key, TDB1_DATA data,
 int main(int argc, char *argv[])
 {
 	struct tdb1_context *tdb;
-	TDB1_DATA key, data;
+	TDB_DATA key, data;
 
 	plan_tests(13);
 	agent = prepare_external_agent1();
@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
 	data.dptr = (void *)"world";
 	data.dsize = strlen("world");
 
-	ok1(tdb1_store(tdb, key, data, TDB1_INSERT) == 0);
+	ok1(tdb1_store(tdb, key, data, TDB_INSERT) == 0);
 
 	ok1(external_agent_operation1(agent, OPEN, tdb->name) == SUCCESS);
 

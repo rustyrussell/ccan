@@ -9,7 +9,7 @@
 int main(int argc, char *argv[])
 {
 	struct tdb1_context *tdb;
-	TDB1_DATA key, data;
+	TDB_DATA key, data;
 
 	plan_tests(11);
 	tdb = tdb1_open_ex("run-readonly-check.tdb", 1024,
@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
 	data.dsize = strlen("world");
 	data.dptr = (void *)"world";
 
-	ok1(tdb1_store(tdb, key, data, TDB1_INSERT) == 0);
+	ok1(tdb1_store(tdb, key, data, TDB_INSERT) == 0);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
 
 	/* We are also allowed to do a check inside a transaction. */
@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 			  TDB1_DEFAULT, O_RDONLY, 0, &taplogctx, NULL);
 
 	ok1(tdb);
-	ok1(tdb1_store(tdb, key, data, TDB1_MODIFY) == -1);
+	ok1(tdb1_store(tdb, key, data, TDB_MODIFY) == -1);
 	ok1(tdb_error(tdb) == TDB_ERR_RDONLY);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
 	ok1(tdb1_close(tdb) == 0);

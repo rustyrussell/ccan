@@ -34,11 +34,11 @@ static struct tdb1_context *tdb1s = NULL;
 void tdb1_header_hash(struct tdb1_context *tdb,
 		     uint32_t *magic1_hash, uint32_t *magic2_hash)
 {
-	TDB1_DATA hash_key;
+	TDB_DATA hash_key;
 	uint32_t tdb1_magic = TDB1_MAGIC;
 
-	hash_key.dptr = (unsigned char *)TDB1_MAGIC_FOOD;
-	hash_key.dsize = sizeof(TDB1_MAGIC_FOOD);
+	hash_key.dptr = (unsigned char *)TDB_MAGIC_FOOD;
+	hash_key.dsize = sizeof(TDB_MAGIC_FOOD);
 	*magic1_hash = tdb->hash_fn(&hash_key);
 
 	hash_key.dptr = (unsigned char *)TDB1_CONV(tdb1_magic);
@@ -93,7 +93,7 @@ static int tdb1_new_database(struct tdb1_context *tdb, int hash_size)
 	TDB1_CONV(*newdb);
 	memcpy(&tdb->header, newdb, sizeof(tdb->header));
 	/* Don't endian-convert the magic food! */
-	memcpy(newdb->magic_food, TDB1_MAGIC_FOOD, strlen(TDB1_MAGIC_FOOD)+1);
+	memcpy(newdb->magic_food, TDB_MAGIC_FOOD, strlen(TDB_MAGIC_FOOD)+1);
 	/* we still have "ret == -1" here */
 	if (tdb1_write_all(tdb->fd, newdb, size))
 		ret = 0;
@@ -293,7 +293,7 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
         fcntl(tdb->fd, F_SETFD, v | FD_CLOEXEC);
 
 	/* ensure there is only one process initialising at once */
-	if (tdb1_nest_lock(tdb, TDB1_OPEN_LOCK, F_WRLCK, TDB1_LOCK_WAIT) == -1) {
+	if (tdb1_nest_lock(tdb, TDB1_OPEN_LOCK, F_WRLCK, TDB_LOCK_WAIT) == -1) {
 		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
 			   "tdb1_open_ex: failed to get open lock on %s: %s",
 			   name, strerror(errno));
@@ -303,7 +303,7 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 	/* we need to zero database if we are the only one with it open */
 	if ((tdb1_flags & TDB1_CLEAR_IF_FIRST) &&
 	    (!tdb->read_only) &&
-	    (locked = (tdb1_nest_lock(tdb, TDB1_ACTIVE_LOCK, F_WRLCK, TDB1_LOCK_NOWAIT|TDB1_LOCK_PROBE) == 0))) {
+	    (locked = (tdb1_nest_lock(tdb, TDB1_ACTIVE_LOCK, F_WRLCK, TDB_LOCK_NOWAIT|TDB_LOCK_PROBE) == 0))) {
 		open_flags |= O_CREAT;
 		if (ftruncate(tdb->fd, 0) == -1) {
 			tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
@@ -316,7 +316,7 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 
 	errno = 0;
 	if (read(tdb->fd, &tdb->header, sizeof(tdb->header)) != sizeof(tdb->header)
-	    || strcmp(tdb->header.magic_food, TDB1_MAGIC_FOOD) != 0) {
+	    || strcmp(tdb->header.magic_food, TDB_MAGIC_FOOD) != 0) {
 		if (!(open_flags & O_CREAT) || tdb1_new_database(tdb, hash_size) == -1) {
 			if (errno == 0) {
 				errno = EIO; /* ie bad format or something */
@@ -401,7 +401,7 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 
 	if (tdb1_flags & TDB1_CLEAR_IF_FIRST) {
 		/* leave this lock in place to indicate it's in use */
-		if (tdb1_nest_lock(tdb, TDB1_ACTIVE_LOCK, F_RDLCK, TDB1_LOCK_WAIT) == -1) {
+		if (tdb1_nest_lock(tdb, TDB1_ACTIVE_LOCK, F_RDLCK, TDB_LOCK_WAIT) == -1) {
 			goto fail;
 		}
 	}

@@ -147,7 +147,7 @@ static int tdb1_traverse_internal(struct tdb1_context *tdb,
 				 tdb1_traverse_func fn, void *private_data,
 				 struct tdb1_traverse_lock *tl)
 {
-	TDB1_DATA key, dbuf;
+	TDB_DATA key, dbuf;
 	struct tdb1_record rec;
 	int ret = 0, count = 0;
 	tdb1_off_t off;
@@ -223,7 +223,7 @@ int tdb1_traverse_read(struct tdb1_context *tdb,
 
 	/* we need to get a read lock on the transaction lock here to
 	   cope with the lock ordering semantics of solaris10 */
-	if (tdb1_transaction_lock(tdb, F_RDLCK, TDB1_LOCK_WAIT)) {
+	if (tdb1_transaction_lock(tdb, F_RDLCK, TDB_LOCK_WAIT)) {
 		return -1;
 	}
 
@@ -253,7 +253,7 @@ int tdb1_traverse(struct tdb1_context *tdb,
 		return tdb1_traverse_read(tdb, fn, private_data);
 	}
 
-	if (tdb1_transaction_lock(tdb, F_WRLCK, TDB1_LOCK_WAIT)) {
+	if (tdb1_transaction_lock(tdb, F_WRLCK, TDB_LOCK_WAIT)) {
 		return -1;
 	}
 
@@ -268,9 +268,9 @@ int tdb1_traverse(struct tdb1_context *tdb,
 
 
 /* find the first entry in the database and return its key */
-TDB1_DATA tdb1_firstkey(struct tdb1_context *tdb)
+TDB_DATA tdb1_firstkey(struct tdb1_context *tdb)
 {
-	TDB1_DATA key;
+	TDB_DATA key;
 	struct tdb1_record rec;
 	tdb1_off_t off;
 
@@ -298,10 +298,10 @@ TDB1_DATA tdb1_firstkey(struct tdb1_context *tdb)
 }
 
 /* find the next entry in the database, returning its key */
-TDB1_DATA tdb1_nextkey(struct tdb1_context *tdb, TDB1_DATA oldkey)
+TDB_DATA tdb1_nextkey(struct tdb1_context *tdb, TDB_DATA oldkey)
 {
 	uint32_t oldhash;
-	TDB1_DATA key = tdb1_null;
+	TDB_DATA key = tdb1_null;
 	struct tdb1_record rec;
 	unsigned char *k = NULL;
 	tdb1_off_t off;

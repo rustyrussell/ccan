@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
 			      TDB1_CLEAR_IF_FIRST | TDB1_NOMMAP };
 	int i;
 	struct tdb1_context *tdb;
-	TDB1_DATA key, data;
+	TDB_DATA key, data;
 
 	plan_tests(20);
 	agent = prepare_external_agent1();
@@ -164,7 +164,7 @@ int main(int argc, char *argv[])
 		data.dptr = (void *)"world";
 		data.dsize = strlen("world");
 
-		ok1(tdb1_store(tdb, key, data, TDB1_INSERT) == 0);
+		ok1(tdb1_store(tdb, key, data, TDB_INSERT) == 0);
 		ok1(tdb1_transaction_commit(tdb) == 0);
 		ok(!errors, "We had %u open errors", errors);
 

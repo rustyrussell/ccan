@@ -7,7 +7,7 @@
 int main(int argc, char *argv[])
 {
 	struct tdb1_context *tdb;
-	TDB1_DATA key, data;
+	TDB_DATA key, data;
 
 	plan_tests(13);
 	tdb = tdb1_open_ex("run-endian.tdb", 1024,
@@ -20,12 +20,12 @@ int main(int argc, char *argv[])
 	data.dsize = strlen("world");
 	data.dptr = (void *)"world";
 
-	ok1(tdb1_store(tdb, key, data, TDB1_MODIFY) < 0);
+	ok1(tdb1_store(tdb, key, data, TDB_MODIFY) < 0);
 	ok1(tdb_error(tdb) == TDB_ERR_NOEXIST);
-	ok1(tdb1_store(tdb, key, data, TDB1_INSERT) == 0);
-	ok1(tdb1_store(tdb, key, data, TDB1_INSERT) < 0);
+	ok1(tdb1_store(tdb, key, data, TDB_INSERT) == 0);
+	ok1(tdb1_store(tdb, key, data, TDB_INSERT) < 0);
 	ok1(tdb_error(tdb) == TDB_ERR_EXISTS);
-	ok1(tdb1_store(tdb, key, data, TDB1_MODIFY) == 0);
+	ok1(tdb1_store(tdb, key, data, TDB_MODIFY) == 0);
 
 	data = tdb1_fetch(tdb, key);
 	ok1(data.dsize == strlen("world"));

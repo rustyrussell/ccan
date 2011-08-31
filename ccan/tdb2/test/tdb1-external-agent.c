@@ -20,9 +20,9 @@ static struct tdb1_context *tdb;
 
 static enum agent_return do_operation(enum operation op, const char *name)
 {
-	TDB1_DATA k;
+	TDB_DATA k;
 	enum agent_return ret;
-	TDB1_DATA data;
+	TDB_DATA data;
 
 	if (op != OPEN && op != OPEN_WITH_CLEAR_IF_FIRST && !tdb) {
 		diag("external: No tdb open!");
