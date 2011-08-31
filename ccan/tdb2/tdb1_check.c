@@ -334,9 +334,8 @@ int tdb1_check(struct tdb1_context *tdb,
 	tdb1_len_t dead;
 	bool locked;
 
-	/* Read-only databases use no locking at all: it's best-effort.
-	 * We may have a write lock already, so skip that case too. */
-	if (tdb->read_only || tdb->file->allrecord_lock.count != 0) {
+	/* We may have a write lock already, so don't re-lock. */
+	if (tdb->file->allrecord_lock.count != 0) {
 		locked = false;
 	} else {
 		if (tdb1_lockall_read(tdb) == -1)

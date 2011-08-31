@@ -418,7 +418,7 @@ static const struct tdb1_methods transaction1_methods = {
 static int _tdb1_transaction_start(struct tdb1_context *tdb)
 {
 	/* some sanity checks */
-	if (tdb->read_only || (tdb->flags & TDB_INTERNAL) || tdb->traverse_read) {
+	if ((tdb->flags & TDB_RDONLY) || (tdb->flags & TDB_INTERNAL) || tdb->traverse_read) {
 		tdb->last_error = tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
 					"tdb1_transaction_start: cannot start a"
 					" transaction on a read-only or"
@@ -1198,7 +1198,7 @@ int tdb1_transaction_recover(struct tdb1_context *tdb)
 		return 0;
 	}
 
-	if (tdb->read_only) {
+	if (tdb->flags & TDB_RDONLY) {
 		tdb->last_error = tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
 					"tdb1_transaction_recover:"
 					" attempt to recover read only"

@@ -82,7 +82,7 @@ static int tdb1_write(struct tdb1_context *tdb, tdb1_off_t off,
 		return 0;
 	}
 
-	if (tdb->read_only || tdb->traverse_read) {
+	if ((tdb->flags & TDB_RDONLY) || tdb->traverse_read) {
 		tdb->last_error = TDB_ERR_RDONLY;
 		return -1;
 	}
@@ -213,8 +213,14 @@ void tdb1_mmap(struct tdb1_context *tdb)
 
 #if HAVE_MMAP
 	if (!(tdb->flags & TDB_NOMMAP)) {
+		int mmap_flags;
+		if ((tdb->open_flags & O_ACCMODE) == O_RDONLY)
+			mmap_flags = PROT_READ;
+		else
+			mmap_flags = PROT_READ | PROT_WRITE;
+
 		tdb->file->map_ptr = mmap(NULL, tdb->file->map_size,
-				    PROT_READ|(tdb->read_only? 0:PROT_WRITE),
+				    mmap_flags,
 				    MAP_SHARED|MAP_FILE, tdb->file->fd, 0);
 
 		/*
@@ -241,7 +247,7 @@ static int tdb1_expand_file(struct tdb1_context *tdb, tdb1_off_t size, tdb1_off_
 {
 	char buf[8192];
 
-	if (tdb->read_only || tdb->traverse_read) {
+	if ((tdb->flags & TDB_RDONLY) || tdb->traverse_read) {
 		tdb->last_error = TDB_ERR_RDONLY;
 		return -1;
 	}

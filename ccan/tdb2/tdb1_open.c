@@ -250,7 +250,7 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 	if (hash_size == 0)
 		hash_size = TDB1_DEFAULT_HASH_SIZE;
 	if ((open_flags & O_ACCMODE) == O_RDONLY) {
-		tdb->read_only = 1;
+		tdb->flags |= TDB_RDONLY;
 		/* read only databases don't do locking */
 		tdb->flags |= TDB_NOLOCK;
 	}

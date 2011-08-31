@@ -329,8 +329,8 @@ int tdb1_allrecord_lock(struct tdb1_context *tdb, int ltype,
 /* unlock entire db */
 int tdb1_allrecord_unlock(struct tdb1_context *tdb, int ltype)
 {
-	/* There are no locks on read-only dbs */
-	if (tdb->read_only || tdb->traverse_read) {
+	/* Don't try this during r/o traversal! */
+	if (tdb->traverse_read) {
 		tdb->last_error = TDB_ERR_LOCK;
 		return -1;
 	}

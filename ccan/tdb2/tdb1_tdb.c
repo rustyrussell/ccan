@@ -283,7 +283,7 @@ int tdb1_do_delete(struct tdb1_context *tdb, tdb1_off_t rec_ptr, struct tdb1_rec
 	tdb1_off_t last_ptr, i;
 	struct tdb1_record lastrec;
 
-	if (tdb->read_only || tdb->traverse_read) return -1;
+	if ((tdb->flags & TDB_RDONLY) || tdb->traverse_read) return -1;
 
 	if (((tdb->traverse_write != 0) && (!TDB1_DEAD(rec))) ||
 	    tdb1_write_lock_record(tdb, rec_ptr) == -1) {
@@ -601,7 +601,7 @@ int tdb1_store(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA dbuf, int flag)
 	uint32_t hash;
 	int ret;
 
-	if (tdb->read_only || tdb->traverse_read) {
+	if ((tdb->flags & TDB_RDONLY) || tdb->traverse_read) {
 		tdb->last_error = TDB_ERR_RDONLY;
 		return -1;
 	}

@@ -10,7 +10,7 @@ static int tdb1_expand_file_sparse(struct tdb1_context *tdb,
 				  tdb1_off_t size,
 				  tdb1_off_t addition)
 {
-	if (tdb->read_only || tdb->traverse_read) {
+	if ((tdb->flags & TDB_RDONLY) || tdb->traverse_read) {
 		tdb->last_error = TDB_ERR_RDONLY;
 		return -1;
 	}

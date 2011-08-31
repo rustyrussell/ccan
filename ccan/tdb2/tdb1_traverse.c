@@ -119,7 +119,7 @@ static tdb1_off_t tdb1_next_lock(struct tdb1_context *tdb, struct tdb1_traverse_
 			/* Try to clean dead ones from old traverses */
 			current = tlock->off;
 			tlock->off = rec->next;
-			if (!(tdb->read_only || tdb->traverse_read) &&
+			if (!((tdb->flags & TDB_RDONLY) || tdb->traverse_read) &&
 			    tdb1_do_delete(tdb, current, rec) != 0)
 				goto fail;
 		}
@@ -249,7 +249,7 @@ int tdb1_traverse(struct tdb1_context *tdb,
 	struct tdb1_traverse_lock tl = { NULL, 0, 0, F_WRLCK };
 	int ret;
 
-	if (tdb->read_only || tdb->traverse_read) {
+	if ((tdb->flags & TDB_RDONLY) || tdb->traverse_read) {
 		return tdb1_traverse_read(tdb, fn, private_data);
 	}
 

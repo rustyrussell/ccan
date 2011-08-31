@@ -94,9 +94,8 @@ char *tdb1_summary(struct tdb1_context *tdb)
 	size_t len, unc = 0;
 	struct tdb1_record recovery;
 
-	/* Read-only databases use no locking at all: it's best-effort.
-	 * We may have a write lock already, so skip that case too. */
-	if (tdb->read_only || tdb->file->allrecord_lock.count != 0) {
+	/* We may have a write lock already, so don't lock. */
+	if (tdb->file->allrecord_lock.count != 0) {
 		locked = false;
 	} else {
 		if (tdb1_lockall_read(tdb) == -1)

@@ -217,7 +217,6 @@ struct tdb1_context {
 	void *hash_data;
 	uint64_t hash_seed;
 
-	bool read_only; /* opened read-only */
 	int traverse_read; /* read-only traversal */
 	int traverse_write; /* read-write traversal */
 	struct tdb1_header header; /* a cached copy of the header */
