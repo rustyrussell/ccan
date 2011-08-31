@@ -28,14 +28,14 @@ static void tdb1_flip_bit(struct tdb1_context *tdb, unsigned int bit)
 	unsigned int off = bit / CHAR_BIT;
 	unsigned char mask = (1 << (bit % CHAR_BIT));
 
-	if (tdb->map_ptr)
-		((unsigned char *)tdb->map_ptr)[off] ^= mask;
+	if (tdb->file->map_ptr)
+		((unsigned char *)tdb->file->map_ptr)[off] ^= mask;
 	else {
 		unsigned char c;
-		if (pread(tdb->fd, &c, 1, off) != 1)
+		if (pread(tdb->file->fd, &c, 1, off) != 1)
 			err(1, "pread");
 		c ^= mask;
-		if (pwrite(tdb->fd, &c, 1, off) != 1)
+		if (pwrite(tdb->file->fd, &c, 1, off) != 1)
 			err(1, "pwrite");
 	}
 }
@@ -78,7 +78,7 @@ static void check_test(struct tdb1_context *tdb)
 	verifiable += ksize + dsize;
 
 	/* Flip one bit at a time, make sure it detects verifiable bytes. */
-	for (i = 0, corrupt = 0; i < tdb->map_size * CHAR_BIT; i++) {
+	for (i = 0, corrupt = 0; i < tdb->file->map_size * CHAR_BIT; i++) {
 		tdb1_flip_bit(tdb, i);
 		memset(sizes, 0, sizeof(sizes));
 		if (tdb1_check(tdb, check, sizes) != 0)

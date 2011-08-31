@@ -698,7 +698,7 @@ static int tdb1_free_region(struct tdb1_context *tdb, tdb1_off_t offset, ssize_t
 		/* the region is not worth adding */
 		return 0;
 	}
-	if (length + offset > tdb->map_size) {
+	if (length + offset > tdb->file->map_size) {
 		tdb->last_error = tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
 					"tdb1_free_region: adding region beyond"
 					" end of file");
@@ -774,7 +774,7 @@ int tdb1_wipe_all(struct tdb1_context *tdb)
 	   for the recovery area */
 	if (recovery_size == 0) {
 		/* the simple case - the whole file can be used as a freelist */
-		data_len = (tdb->map_size - TDB1_DATA_START(tdb->header.hash_size));
+		data_len = (tdb->file->map_size - TDB1_DATA_START(tdb->header.hash_size));
 		if (tdb1_free_region(tdb, TDB1_DATA_START(tdb->header.hash_size), data_len) != 0) {
 			goto failed;
 		}
@@ -792,7 +792,7 @@ int tdb1_wipe_all(struct tdb1_context *tdb)
 			goto failed;
 		}
 		/* and the 2nd free list entry after the recovery area - if any */
-		data_len = tdb->map_size - (recovery_head+recovery_size);
+		data_len = tdb->file->map_size - (recovery_head+recovery_size);
 		if (tdb1_free_region(tdb, recovery_head+recovery_size, data_len) != 0) {
 			goto failed;
 		}

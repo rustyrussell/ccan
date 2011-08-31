@@ -94,7 +94,7 @@ reset:
 
 	if (setjmp(jmpbuf) != 0) {
 		/* We're partway through.  Simulate our death. */
-		close(tdb->fd);
+		close(tdb->file->fd);
 		forget_locking1();
 		in_transaction = false;
 

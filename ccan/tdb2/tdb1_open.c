@@ -76,17 +76,18 @@ static int tdb1_new_database(struct tdb1_context *tdb, int hash_size)
 		newdb->rwlocks = TDB1_HASH_RWLOCK_MAGIC;
 
 	if (tdb->flags & TDB_INTERNAL) {
-		tdb->map_size = size;
-		tdb->map_ptr = (char *)newdb;
+		tdb->file->fd = -1;
+		tdb->file->map_size = size;
+		tdb->file->map_ptr = (char *)newdb;
 		memcpy(&tdb->header, newdb, sizeof(tdb->header));
 		/* Convert the `ondisk' version if asked. */
 		TDB1_CONV(*newdb);
 		return 0;
 	}
-	if (lseek(tdb->fd, 0, SEEK_SET) == -1)
+	if (lseek(tdb->file->fd, 0, SEEK_SET) == -1)
 		goto fail;
 
-	if (ftruncate(tdb->fd, 0) == -1)
+	if (ftruncate(tdb->file->fd, 0) == -1)
 		goto fail;
 
 	/* This creates an endian-converted header, as if read from disk */
@@ -95,7 +96,7 @@ static int tdb1_new_database(struct tdb1_context *tdb, int hash_size)
 	/* Don't endian-convert the magic food! */
 	memcpy(newdb->magic_food, TDB_MAGIC_FOOD, strlen(TDB_MAGIC_FOOD)+1);
 	/* we still have "ret == -1" here */
-	if (tdb1_write_all(tdb->fd, newdb, size))
+	if (tdb1_write_all(tdb->file->fd, newdb, size))
 		ret = 0;
 
   fail:
@@ -111,7 +112,7 @@ static int tdb1_already_open(dev_t device,
 	struct tdb1_context *i;
 
 	for (i = tdb1s; i; i = i->next) {
-		if (i->device == device && i->inode == ino) {
+		if (i->file->device == device && i->file->inode == ino) {
 			return 1;
 		}
 	}
@@ -176,10 +177,16 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 		errno = ENOMEM;
 		goto fail;
 	}
+	tdb->file = calloc(1, sizeof *tdb->file);
+	if (!tdb->file) {
+		free(tdb);
+		errno = ENOMEM;
+		goto fail;
+	}
 	tdb1_io_init(tdb);
-	tdb->fd = -1;
+	tdb->file->fd = -1;
 	tdb->name = NULL;
-	tdb->map_ptr = NULL;
+	tdb->file->map_ptr = NULL;
 	tdb->flags = tdb1_flags|TDB_VERSION1;
 	tdb->open_flags = open_flags;
 	if (log_ctx) {
@@ -262,7 +269,7 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 		goto internal;
 	}
 
-	if ((tdb->fd = open(name, open_flags, mode)) == -1) {
+	if ((tdb->file->fd = open(name, open_flags, mode)) == -1) {
 		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 			   "tdb1_open_ex: could not open file %s: %s",
 			   name, strerror(errno));
@@ -270,8 +277,8 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 	}
 
 	/* on exec, don't inherit the fd */
-	v = fcntl(tdb->fd, F_GETFD, 0);
-        fcntl(tdb->fd, F_SETFD, v | FD_CLOEXEC);
+	v = fcntl(tdb->file->fd, F_GETFD, 0);
+        fcntl(tdb->file->fd, F_SETFD, v | FD_CLOEXEC);
 
 	/* ensure there is only one process initialising at once */
 	if (tdb1_nest_lock(tdb, TDB1_OPEN_LOCK, F_WRLCK, TDB_LOCK_WAIT) == -1) {
@@ -282,7 +289,7 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 	}
 
 	errno = 0;
-	if (read(tdb->fd, &tdb->header, sizeof(tdb->header)) != sizeof(tdb->header)
+	if (read(tdb->file->fd, &tdb->header, sizeof(tdb->header)) != sizeof(tdb->header)
 	    || strcmp(tdb->header.magic_food, TDB_MAGIC_FOOD) != 0) {
 		if (!(open_flags & O_CREAT) || tdb1_new_database(tdb, hash_size) == -1) {
 			if (errno == 0) {
@@ -303,7 +310,7 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 		tdb->flags |= TDB_CONVERT;
 		tdb1_convert(&tdb->header, sizeof(tdb->header));
 	}
-	if (fstat(tdb->fd, &st) == -1)
+	if (fstat(tdb->file->fd, &st) == -1)
 		goto fail;
 
 	if (tdb->header.rwlocks != 0 &&
@@ -343,9 +350,9 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 		goto fail;
 	}
 
-	tdb->map_size = st.st_size;
-	tdb->device = st.st_dev;
-	tdb->inode = st.st_ino;
+	tdb->file->map_size = st.st_size;
+	tdb->file->device = st.st_dev;
+	tdb->file->inode = st.st_ino;
 	tdb1_mmap(tdb);
 
 	/* if needed, run recovery */
@@ -370,17 +377,20 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 	if (!tdb)
 		return NULL;
 
-	if (tdb->map_ptr) {
+	if (tdb->file->map_ptr) {
 		if (tdb->flags & TDB_INTERNAL)
-			SAFE_FREE(tdb->map_ptr);
+			SAFE_FREE(tdb->file->map_ptr);
 		else
 			tdb1_munmap(tdb);
 	}
-	if (tdb->fd != -1)
-		if (close(tdb->fd) != 0)
+	if (tdb->file->fd != -1)
+		if (close(tdb->file->fd) != 0)
 			tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 				   "tdb1_open_ex: failed to close tdb->fd on error!");
-	SAFE_FREE(tdb->lockrecs);
+	if (tdb->file) {
+		SAFE_FREE(tdb->file->lockrecs);
+		SAFE_FREE(tdb->file);
+	}
 	SAFE_FREE(tdb->name);
 	SAFE_FREE(tdb);
 	errno = save_errno;
@@ -411,18 +421,19 @@ int tdb1_close(struct tdb1_context *tdb)
 		tdb1_transaction_cancel(tdb);
 	}
 
-	if (tdb->map_ptr) {
+	if (tdb->file->map_ptr) {
 		if (tdb->flags & TDB_INTERNAL)
-			SAFE_FREE(tdb->map_ptr);
+			SAFE_FREE(tdb->file->map_ptr);
 		else
 			tdb1_munmap(tdb);
 	}
 	SAFE_FREE(tdb->name);
-	if (tdb->fd != -1) {
-		ret = close(tdb->fd);
-		tdb->fd = -1;
+	if (tdb->file->fd != -1) {
+		ret = close(tdb->file->fd);
+		tdb->file->fd = -1;
 	}
-	SAFE_FREE(tdb->lockrecs);
+	SAFE_FREE(tdb->file->lockrecs);
+	SAFE_FREE(tdb->file);
 
 	/* Remove from contexts list */
 	for (i = &tdb1s; *i; i = &(*i)->next) {

@@ -96,7 +96,7 @@ char *tdb1_summary(struct tdb1_context *tdb)
 
 	/* Read-only databases use no locking at all: it's best-effort.
 	 * We may have a write lock already, so skip that case too. */
-	if (tdb->read_only || tdb->allrecord_lock.count != 0) {
+	if (tdb->read_only || tdb->file->allrecord_lock.count != 0) {
 		locked = false;
 	} else {
 		if (tdb1_lockall_read(tdb) == -1)
@@ -117,7 +117,7 @@ char *tdb1_summary(struct tdb1_context *tdb)
 	tally1_init(&uncoal);
 
 	for (off = TDB1_DATA_START(tdb->header.hash_size);
-	     off < tdb->map_size - 1;
+	     off < tdb->file->map_size - 1;
 	     off += sizeof(rec) + rec.rec_len) {
 		if (tdb->methods->tdb1_read(tdb, off, &rec, sizeof(rec),
 					   TDB1_DOCONV()) == -1)
@@ -171,7 +171,7 @@ char *tdb1_summary(struct tdb1_context *tdb)
 		goto unlock;
 
 	snprintf(ret, len, SUMMARY_FORMAT1,
-		 tdb->map_size, keys.total+data.total,
+		 (tdb1_len_t)tdb->file->map_size, keys.total+data.total,
 		 keys.num,
 		 keys.min, tally1_mean(&keys), keys.max,
 		 data.min, tally1_mean(&data), data.max,
@@ -184,16 +184,16 @@ char *tdb1_summary(struct tdb1_context *tdb)
 		 hash.min, tally1_mean(&hash), hash.max,
 		 uncoal.total,
 		 uncoal.min, tally1_mean(&uncoal), uncoal.max,
-		 keys.total * 100.0 / tdb->map_size,
-		 data.total * 100.0 / tdb->map_size,
-		 extra.total * 100.0 / tdb->map_size,
-		 freet.total * 100.0 / tdb->map_size,
-		 dead.total * 100.0 / tdb->map_size,
+		 keys.total * 100.0 / tdb->file->map_size,
+		 data.total * 100.0 / tdb->file->map_size,
+		 extra.total * 100.0 / tdb->file->map_size,
+		 freet.total * 100.0 / tdb->file->map_size,
+		 dead.total * 100.0 / tdb->file->map_size,
 		 (keys.num + freet.num + dead.num)
 		 * (sizeof(struct tdb1_record) + sizeof(uint32_t))
-		 * 100.0 / tdb->map_size,
+		 * 100.0 / tdb->file->map_size,
 		 tdb->header.hash_size * sizeof(tdb1_off_t)
-		 * 100.0 / tdb->map_size);
+		 * 100.0 / (tdb1_len_t)tdb->file->map_size);
 
 unlock:
 	if (locked) {

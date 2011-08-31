@@ -39,18 +39,18 @@
 static int tdb1_oob(struct tdb1_context *tdb, tdb1_off_t len, int probe)
 {
 	struct stat st;
-	if (len <= tdb->map_size)
+	if (len <= tdb->file->map_size)
 		return 0;
 	if (tdb->flags & TDB_INTERNAL) {
 		if (!probe) {
 			tdb->last_error = tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 						"tdb1_oob len %d beyond internal malloc size %d",
-						(int)len, (int)tdb->map_size);
+						(int)len, (int)tdb->file->map_size);
 		}
 		return -1;
 	}
 
-	if (fstat(tdb->fd, &st) == -1) {
+	if (fstat(tdb->file->fd, &st) == -1) {
 		tdb->last_error = TDB_ERR_IO;
 		return -1;
 	}
@@ -69,7 +69,7 @@ static int tdb1_oob(struct tdb1_context *tdb, tdb1_off_t len, int probe)
 		tdb->last_error = TDB_ERR_IO;
 		return -1;
 	}
-	tdb->map_size = st.st_size;
+	tdb->file->map_size = st.st_size;
 	tdb1_mmap(tdb);
 	return 0;
 }
@@ -90,16 +90,17 @@ static int tdb1_write(struct tdb1_context *tdb, tdb1_off_t off,
 	if (tdb->methods->tdb1_oob(tdb, off + len, 0) != 0)
 		return -1;
 
-	if (tdb->map_ptr) {
-		memcpy(off + (char *)tdb->map_ptr, buf, len);
+	if (tdb->file->map_ptr) {
+		memcpy(off + (char *)tdb->file->map_ptr, buf, len);
 	} else {
-		ssize_t written = pwrite(tdb->fd, buf, len, off);
+		ssize_t written = pwrite(tdb->file->fd, buf, len, off);
 		if ((written != (ssize_t)len) && (written != -1)) {
 			tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_WARNING,
 				   "tdb1_write: wrote only "
 				   "%d of %d bytes at %d, trying once more",
 				   (int)written, len, off);
-			written = pwrite(tdb->fd, (const char *)buf+written,
+			written = pwrite(tdb->file->fd,
+					 (const char *)buf+written,
 					 len-written,
 					 off+written);
 		}
@@ -139,10 +140,10 @@ static int tdb1_read(struct tdb1_context *tdb, tdb1_off_t off, void *buf,
 		return -1;
 	}
 
-	if (tdb->map_ptr) {
-		memcpy(buf, off + (char *)tdb->map_ptr, len);
+	if (tdb->file->map_ptr) {
+		memcpy(buf, off + (char *)tdb->file->map_ptr, len);
 	} else {
-		ssize_t ret = pread(tdb->fd, buf, len, off);
+		ssize_t ret = pread(tdb->file->fd, buf, len, off);
 		if (ret != (ssize_t)len) {
 			/* Ensure ecode is set for log fn. */
 			tdb->last_error = tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
@@ -150,7 +151,7 @@ static int tdb1_read(struct tdb1_context *tdb, tdb1_off_t off, void *buf,
 						"len=%d ret=%d (%s) map_size=%d",
 						(int)off, (int)len, (int)ret,
 						strerror(errno),
-						(int)tdb->map_size);
+						(int)tdb->file->map_size);
 			return -1;
 		}
 	}
@@ -169,9 +170,9 @@ static int tdb1_read(struct tdb1_context *tdb, tdb1_off_t off, void *buf,
 static void tdb1_next_hash_chain(struct tdb1_context *tdb, uint32_t *chain)
 {
 	uint32_t h = *chain;
-	if (tdb->map_ptr) {
+	if (tdb->file->map_ptr) {
 		for (;h < tdb->header.hash_size;h++) {
-			if (0 != *(uint32_t *)(TDB1_HASH_TOP(h) + (unsigned char *)tdb->map_ptr)) {
+			if (0 != *(uint32_t *)(TDB1_HASH_TOP(h) + (unsigned char *)tdb->file->map_ptr)) {
 				break;
 			}
 		}
@@ -193,15 +194,15 @@ int tdb1_munmap(struct tdb1_context *tdb)
 		return 0;
 
 #if HAVE_MMAP
-	if (tdb->map_ptr) {
+	if (tdb->file->map_ptr) {
 		int ret;
 
-		ret = munmap(tdb->map_ptr, tdb->map_size);
+		ret = munmap(tdb->file->map_ptr, tdb->file->map_size);
 		if (ret != 0)
 			return ret;
 	}
 #endif
-	tdb->map_ptr = NULL;
+	tdb->file->map_ptr = NULL;
 	return 0;
 }
 
@@ -212,25 +213,25 @@ void tdb1_mmap(struct tdb1_context *tdb)
 
 #if HAVE_MMAP
 	if (!(tdb->flags & TDB_NOMMAP)) {
-		tdb->map_ptr = mmap(NULL, tdb->map_size,
+		tdb->file->map_ptr = mmap(NULL, tdb->file->map_size,
 				    PROT_READ|(tdb->read_only? 0:PROT_WRITE),
-				    MAP_SHARED|MAP_FILE, tdb->fd, 0);
+				    MAP_SHARED|MAP_FILE, tdb->file->fd, 0);
 
 		/*
 		 * NB. When mmap fails it returns MAP_FAILED *NOT* NULL !!!!
 		 */
 
-		if (tdb->map_ptr == MAP_FAILED) {
-			tdb->map_ptr = NULL;
+		if (tdb->file->map_ptr == MAP_FAILED) {
+			tdb->file->map_ptr = NULL;
 			tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_WARNING,
 				   "tdb1_mmap failed for size %d (%s)",
-				   tdb->map_size, strerror(errno));
+				   tdb->file->map_size, strerror(errno));
 		}
 	} else {
-		tdb->map_ptr = NULL;
+		tdb->file->map_ptr = NULL;
 	}
 #else
-	tdb->map_ptr = NULL;
+	tdb->file->map_ptr = NULL;
 #endif
 }
 
@@ -245,12 +246,14 @@ static int tdb1_expand_file(struct tdb1_context *tdb, tdb1_off_t size, tdb1_off_
 		return -1;
 	}
 
-	if (ftruncate(tdb->fd, size+addition) == -1) {
+	if (ftruncate(tdb->file->fd, size+addition) == -1) {
 		char b = 0;
-		ssize_t written = pwrite(tdb->fd,  &b, 1, (size+addition) - 1);
+		ssize_t written = pwrite(tdb->file->fd, &b, 1,
+					 (size+addition) - 1);
 		if (written == 0) {
 			/* try once more, potentially revealing errno */
-			written = pwrite(tdb->fd,  &b, 1, (size+addition) - 1);
+			written = pwrite(tdb->file->fd, &b, 1,
+					 (size+addition) - 1);
 		}
 		if (written == 0) {
 			/* again - give up, guessing errno */
@@ -271,10 +274,10 @@ static int tdb1_expand_file(struct tdb1_context *tdb, tdb1_off_t size, tdb1_off_
 	memset(buf, TDB1_PAD_BYTE, sizeof(buf));
 	while (addition) {
 		size_t n = addition>sizeof(buf)?sizeof(buf):addition;
-		ssize_t written = pwrite(tdb->fd, buf, n, size);
+		ssize_t written = pwrite(tdb->file->fd, buf, n, size);
 		if (written == 0) {
 			/* prevent infinite loops: try _once_ more */
-			written = pwrite(tdb->fd, buf, n, size);
+			written = pwrite(tdb->file->fd, buf, n, size);
 		}
 		if (written == 0) {
 			/* give up, trying to provide a useful errno */
@@ -316,28 +319,28 @@ int tdb1_expand(struct tdb1_context *tdb, tdb1_off_t size)
 	}
 
 	/* must know about any previous expansions by another process */
-	tdb->methods->tdb1_oob(tdb, tdb->map_size + 1, 1);
+	tdb->methods->tdb1_oob(tdb, tdb->file->map_size + 1, 1);
 
 	/* limit size in order to avoid using up huge amounts of memory for
 	 * in memory tdbs if an oddball huge record creeps in */
 	if (size > 100 * 1024) {
-		top_size = tdb->map_size + size * 2;
+		top_size = tdb->file->map_size + size * 2;
 	} else {
-		top_size = tdb->map_size + size * 100;
+		top_size = tdb->file->map_size + size * 100;
 	}
 
 	/* always make room for at least top_size more records, and at
 	   least 25% more space. if the DB is smaller than 100MiB,
 	   otherwise grow it by 10% only. */
-	if (tdb->map_size > 100 * 1024 * 1024) {
-		map_size = tdb->map_size * 1.10;
+	if (tdb->file->map_size > 100 * 1024 * 1024) {
+		map_size = tdb->file->map_size * 1.10;
 	} else {
-		map_size = tdb->map_size * 1.25;
+		map_size = tdb->file->map_size * 1.25;
 	}
 
 	/* Round the database up to a multiple of the page size */
 	new_size = MAX(top_size, map_size);
-	size = TDB1_ALIGN(new_size, tdb->page_size) - tdb->map_size;
+	size = TDB1_ALIGN(new_size, tdb->page_size) - tdb->file->map_size;
 
 	if (!(tdb->flags & TDB_INTERNAL))
 		tdb1_munmap(tdb);
@@ -350,20 +353,20 @@ int tdb1_expand(struct tdb1_context *tdb, tdb1_off_t size)
 
 	/* expand the file itself */
 	if (!(tdb->flags & TDB_INTERNAL)) {
-		if (tdb->methods->tdb1_expand_file(tdb, tdb->map_size, size) != 0)
+		if (tdb->methods->tdb1_expand_file(tdb, tdb->file->map_size, size) != 0)
 			goto fail;
 	}
 
-	tdb->map_size += size;
+	tdb->file->map_size += size;
 
 	if (tdb->flags & TDB_INTERNAL) {
-		char *new_map_ptr = (char *)realloc(tdb->map_ptr,
-						    tdb->map_size);
+		char *new_map_ptr = (char *)realloc(tdb->file->map_ptr,
+						    tdb->file->map_size);
 		if (!new_map_ptr) {
-			tdb->map_size -= size;
+			tdb->file->map_size -= size;
 			goto fail;
 		}
-		tdb->map_ptr = new_map_ptr;
+		tdb->file->map_ptr = new_map_ptr;
 	} else {
 		/*
 		 * We must ensure the file is remapped before adding the space
@@ -380,7 +383,7 @@ int tdb1_expand(struct tdb1_context *tdb, tdb1_off_t size)
 	rec.rec_len = size - sizeof(rec);
 
 	/* link it into the free list */
-	offset = tdb->map_size - size;
+	offset = tdb->file->map_size - size;
 	if (tdb1_free(tdb, offset, &rec) == -1)
 		goto fail;
 
@@ -438,7 +441,7 @@ int tdb1_parse_data(struct tdb1_context *tdb, TDB_DATA key,
 
 	data.dsize = len;
 
-	if ((tdb->transaction == NULL) && (tdb->map_ptr != NULL)) {
+	if ((tdb->transaction == NULL) && (tdb->file->map_ptr != NULL)) {
 		/*
 		 * Optimize by avoiding the malloc/memcpy/free, point the
 		 * parser directly at the mmap area.
@@ -446,7 +449,7 @@ int tdb1_parse_data(struct tdb1_context *tdb, TDB_DATA key,
 		if (tdb->methods->tdb1_oob(tdb, offset+len, 0) != 0) {
 			return -1;
 		}
-		data.dptr = offset + (unsigned char *)tdb->map_ptr;
+		data.dptr = offset + (unsigned char *)tdb->file->map_ptr;
 		return parser(key, data, private_data);
 	}
 

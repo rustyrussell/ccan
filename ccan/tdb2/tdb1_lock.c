@@ -39,9 +39,9 @@ static int fcntl_lock(struct tdb1_context *tdb,
 	fl.l_pid = 0;
 
 	if (waitflag)
-		return fcntl(tdb->fd, F_SETLKW, &fl);
+		return fcntl(tdb->file->fd, F_SETLKW, &fl);
 	else
-		return fcntl(tdb->fd, F_SETLK, &fl);
+		return fcntl(tdb->file->fd, F_SETLK, &fl);
 }
 
 static int fcntl_unlock(struct tdb1_context *tdb, int rw, off_t off, off_t len)
@@ -111,7 +111,7 @@ static int fcntl_unlock(struct tdb1_context *tdb, int rw, off_t off, off_t len)
 	fl.l_len = len;
 	fl.l_pid = 0;
 
-	return fcntl(tdb->fd, F_SETLKW, &fl);
+	return fcntl(tdb->file->fd, F_SETLKW, &fl);
 }
 
 /* list -1 is the alloc list, otherwise a hash chain. */
@@ -156,7 +156,7 @@ int tdb1_brlock(struct tdb1_context *tdb,
 		if (!(flags & TDB_LOCK_PROBE) && errno != EAGAIN) {
 			tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
 				   "tdb1_brlock failed (fd=%d) at offset %d rw_type=%d flags=%d len=%d",
-				   tdb->fd, offset, rw_type, flags, (int)len);
+				   tdb->file->fd, offset, rw_type, flags, (int)len);
 		}
 		return -1;
 	}
@@ -180,7 +180,7 @@ int tdb1_brunlock(struct tdb1_context *tdb,
 		tdb->last_error = tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
 					"tdb1_brunlock failed (fd=%d) at offset"
 					" %d rw_type=%d len=%d",
-					tdb->fd, offset, rw_type, (int)len);
+					tdb->file->fd, offset, rw_type, (int)len);
 	}
 	return ret;
 }
@@ -195,15 +195,15 @@ int tdb1_allrecord_upgrade(struct tdb1_context *tdb)
 {
 	int count = 1000;
 
-	if (tdb->allrecord_lock.count != 1) {
+	if (tdb->file->allrecord_lock.count != 1) {
 		tdb->last_error = tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
 					"tdb1_allrecord_upgrade failed: "
 					"count %u too high",
-					tdb->allrecord_lock.count);
+					tdb->file->allrecord_lock.count);
 		return -1;
 	}
 
-	if (tdb->allrecord_lock.off != 1) {
+	if (tdb->file->allrecord_lock.off != 1) {
 		tdb->last_error = tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
 					"tdb1_allrecord_upgrade failed:"
 					" already upgraded?");
@@ -214,8 +214,8 @@ int tdb1_allrecord_upgrade(struct tdb1_context *tdb)
 		struct timeval tv;
 		if (tdb1_brlock(tdb, F_WRLCK, TDB1_FREELIST_TOP, 0,
 			       TDB_LOCK_WAIT|TDB_LOCK_PROBE) == 0) {
-			tdb->allrecord_lock.ltype = F_WRLCK;
-			tdb->allrecord_lock.off = 0;
+			tdb->file->allrecord_lock.ltype = F_WRLCK;
+			tdb->file->allrecord_lock.off = 0;
 			return 0;
 		}
 		if (errno != EDEADLK) {
@@ -231,14 +231,14 @@ int tdb1_allrecord_upgrade(struct tdb1_context *tdb)
 	return -1;
 }
 
-static struct tdb1_lock_type *tdb1_find_nestlock(struct tdb1_context *tdb,
-						 tdb1_off_t offset)
+static struct tdb_lock *tdb1_find_nestlock(struct tdb1_context *tdb,
+					   tdb1_off_t offset)
 {
 	unsigned int i;
 
-	for (i=0; i<tdb->num_lockrecs; i++) {
-		if (tdb->lockrecs[i].off == offset) {
-			return &tdb->lockrecs[i];
+	for (i=0; i<tdb->file->num_lockrecs; i++) {
+		if (tdb->file->lockrecs[i].off == offset) {
+			return &tdb->file->lockrecs[i];
 		}
 	}
 	return NULL;
@@ -248,7 +248,7 @@ static struct tdb1_lock_type *tdb1_find_nestlock(struct tdb1_context *tdb,
 int tdb1_nest_lock(struct tdb1_context *tdb, uint32_t offset, int ltype,
 		  enum tdb_lock_flags flags)
 {
-	struct tdb1_lock_type *new_lck;
+	struct tdb_lock *new_lck;
 
 	if (offset >= lock_offset(tdb->header.hash_size)) {
 		tdb->last_error = tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
@@ -270,14 +270,14 @@ int tdb1_nest_lock(struct tdb1_context *tdb, uint32_t offset, int ltype,
 		return 0;
 	}
 
-	new_lck = (struct tdb1_lock_type *)realloc(
-		tdb->lockrecs,
-		sizeof(*tdb->lockrecs) * (tdb->num_lockrecs+1));
+	new_lck = (struct tdb_lock *)realloc(
+		tdb->file->lockrecs,
+		sizeof(*tdb->file->lockrecs) * (tdb->file->num_lockrecs+1));
 	if (new_lck == NULL) {
 		errno = ENOMEM;
 		return -1;
 	}
-	tdb->lockrecs = new_lck;
+	tdb->file->lockrecs = new_lck;
 
 	/* Since fcntl locks don't nest, we do a lock for the first one,
 	   and simply bump the count for future ones */
@@ -285,10 +285,10 @@ int tdb1_nest_lock(struct tdb1_context *tdb, uint32_t offset, int ltype,
 		return -1;
 	}
 
-	tdb->lockrecs[tdb->num_lockrecs].off = offset;
-	tdb->lockrecs[tdb->num_lockrecs].count = 1;
-	tdb->lockrecs[tdb->num_lockrecs].ltype = ltype;
-	tdb->num_lockrecs++;
+	tdb->file->lockrecs[tdb->file->num_lockrecs].off = offset;
+	tdb->file->lockrecs[tdb->file->num_lockrecs].count = 1;
+	tdb->file->lockrecs[tdb->file->num_lockrecs].ltype = ltype;
+	tdb->file->num_lockrecs++;
 
 	return 0;
 }
@@ -319,8 +319,8 @@ static bool have_data_locks(const struct tdb1_context *tdb)
 {
 	unsigned int i;
 
-	for (i = 0; i < tdb->num_lockrecs; i++) {
-		if (tdb->lockrecs[i].off >= lock_offset(-1))
+	for (i = 0; i < tdb->file->num_lockrecs; i++) {
+		if (tdb->file->lockrecs[i].off >= lock_offset(-1))
 			return true;
 	}
 	return false;
@@ -333,12 +333,12 @@ static int tdb1_lock_list(struct tdb1_context *tdb, int list, int ltype,
 	bool check = false;
 
 	/* a allrecord lock allows us to avoid per chain locks */
-	if (tdb->allrecord_lock.count &&
-	    (ltype == tdb->allrecord_lock.ltype || ltype == F_RDLCK)) {
+	if (tdb->file->allrecord_lock.count &&
+	    (ltype == tdb->file->allrecord_lock.ltype || ltype == F_RDLCK)) {
 		return 0;
 	}
 
-	if (tdb->allrecord_lock.count) {
+	if (tdb->file->allrecord_lock.count) {
 		tdb->last_error = TDB_ERR_LOCK;
 		ret = -1;
 	} else {
@@ -375,7 +375,7 @@ int tdb1_lock(struct tdb1_context *tdb, int list, int ltype)
 int tdb1_nest_unlock(struct tdb1_context *tdb, uint32_t offset, int ltype)
 {
 	int ret = -1;
-	struct tdb1_lock_type *lck;
+	struct tdb_lock *lck;
 
 	if (tdb->flags & TDB_NOLOCK)
 		return 0;
@@ -413,15 +413,15 @@ int tdb1_nest_unlock(struct tdb1_context *tdb, uint32_t offset, int ltype)
 	 * Shrink the array by overwriting the element just unlocked with the
 	 * last array element.
 	 */
-	*lck = tdb->lockrecs[--tdb->num_lockrecs];
+	*lck = tdb->file->lockrecs[--tdb->file->num_lockrecs];
 
 	/*
 	 * We don't bother with realloc when the array shrinks, but if we have
 	 * a completely idle tdb we should get rid of the locked array.
 	 */
 
-	if (tdb->num_lockrecs == 0) {
-		SAFE_FREE(tdb->lockrecs);
+	if (tdb->file->num_lockrecs == 0) {
+		SAFE_FREE(tdb->file->lockrecs);
 	}
 
 	return ret;
@@ -430,12 +430,12 @@ int tdb1_nest_unlock(struct tdb1_context *tdb, uint32_t offset, int ltype)
 int tdb1_unlock(struct tdb1_context *tdb, int list, int ltype)
 {
 	/* a global lock allows us to avoid per chain locks */
-	if (tdb->allrecord_lock.count &&
-	    (ltype == tdb->allrecord_lock.ltype || ltype == F_RDLCK)) {
+	if (tdb->file->allrecord_lock.count &&
+	    (ltype == tdb->file->allrecord_lock.ltype || ltype == F_RDLCK)) {
 		return 0;
 	}
 
-	if (tdb->allrecord_lock.count) {
+	if (tdb->file->allrecord_lock.count) {
 		tdb->last_error = TDB_ERR_LOCK;
 		return -1;
 	}
@@ -470,12 +470,12 @@ static int tdb1_allrecord_check(struct tdb1_context *tdb, int ltype,
 		return -1;
 	}
 
-	if (tdb->allrecord_lock.count && tdb->allrecord_lock.ltype == ltype) {
-		tdb->allrecord_lock.count++;
+	if (tdb->file->allrecord_lock.count && tdb->file->allrecord_lock.ltype == ltype) {
+		tdb->file->allrecord_lock.count++;
 		return 0;
 	}
 
-	if (tdb->allrecord_lock.count) {
+	if (tdb->file->allrecord_lock.count) {
 		/* a global lock of a different type exists */
 		tdb->last_error = TDB_ERR_LOCK;
 		return -1;
@@ -562,11 +562,11 @@ int tdb1_allrecord_lock(struct tdb1_context *tdb, int ltype,
 		return -1;
 	}
 
-	tdb->allrecord_lock.count = 1;
+	tdb->file->allrecord_lock.count = 1;
 	/* If it's upgradable, it's actually exclusive so we can treat
 	 * it as a write lock. */
-	tdb->allrecord_lock.ltype = upgradable ? F_WRLCK : ltype;
-	tdb->allrecord_lock.off = upgradable;
+	tdb->file->allrecord_lock.ltype = upgradable ? F_WRLCK : ltype;
+	tdb->file->allrecord_lock.off = upgradable;
 
 	if (tdb1_needs_recovery(tdb)) {
 		tdb1_allrecord_unlock(tdb, ltype);
@@ -590,20 +590,20 @@ int tdb1_allrecord_unlock(struct tdb1_context *tdb, int ltype)
 		return -1;
 	}
 
-	if (tdb->allrecord_lock.count == 0) {
+	if (tdb->file->allrecord_lock.count == 0) {
 		tdb->last_error = TDB_ERR_LOCK;
 		return -1;
 	}
 
 	/* Upgradable locks are marked as write locks. */
-	if (tdb->allrecord_lock.ltype != ltype
-	    && (!tdb->allrecord_lock.off || ltype != F_RDLCK)) {
+	if (tdb->file->allrecord_lock.ltype != ltype
+	    && (!tdb->file->allrecord_lock.off || ltype != F_RDLCK)) {
 		tdb->last_error = TDB_ERR_LOCK;
 		return -1;
 	}
 
-	if (tdb->allrecord_lock.count > 1) {
-		tdb->allrecord_lock.count--;
+	if (tdb->file->allrecord_lock.count > 1) {
+		tdb->file->allrecord_lock.count--;
 		return 0;
 	}
 
@@ -613,8 +613,8 @@ int tdb1_allrecord_unlock(struct tdb1_context *tdb, int ltype)
 		return -1;
 	}
 
-	tdb->allrecord_lock.count = 0;
-	tdb->allrecord_lock.ltype = 0;
+	tdb->file->allrecord_lock.count = 0;
+	tdb->file->allrecord_lock.ltype = 0;
 
 	return 0;
 }
@@ -671,7 +671,7 @@ int tdb1_chainunlock_read(struct tdb1_context *tdb, TDB_DATA key)
 /* record lock stops delete underneath */
 int tdb1_lock_record(struct tdb1_context *tdb, tdb1_off_t off)
 {
-	if (tdb->allrecord_lock.count) {
+	if (tdb->file->allrecord_lock.count) {
 		return 0;
 	}
 	return off ? tdb1_brlock(tdb, F_RDLCK, off, 1, TDB_LOCK_WAIT) : 0;
@@ -688,8 +688,8 @@ int tdb1_write_lock_record(struct tdb1_context *tdb, tdb1_off_t off)
 	for (i = &tdb->travlocks; i; i = i->next)
 		if (i->off == off)
 			return -1;
-	if (tdb->allrecord_lock.count) {
-		if (tdb->allrecord_lock.ltype == F_WRLCK) {
+	if (tdb->file->allrecord_lock.count) {
+		if (tdb->file->allrecord_lock.ltype == F_WRLCK) {
 			return 0;
 		}
 		return -1;
@@ -699,7 +699,7 @@ int tdb1_write_lock_record(struct tdb1_context *tdb, tdb1_off_t off)
 
 int tdb1_write_unlock_record(struct tdb1_context *tdb, tdb1_off_t off)
 {
-	if (tdb->allrecord_lock.count) {
+	if (tdb->file->allrecord_lock.count) {
 		return 0;
 	}
 	return tdb1_brunlock(tdb, F_WRLCK, off, 1);
@@ -711,7 +711,7 @@ int tdb1_unlock_record(struct tdb1_context *tdb, tdb1_off_t off)
 	struct tdb1_traverse_lock *i;
 	uint32_t count = 0;
 
-	if (tdb->allrecord_lock.count) {
+	if (tdb->file->allrecord_lock.count) {
 		return 0;
 	}
 
@@ -725,10 +725,10 @@ int tdb1_unlock_record(struct tdb1_context *tdb, tdb1_off_t off)
 
 bool tdb1_have_extra_locks(struct tdb1_context *tdb)
 {
-	unsigned int extra = tdb->num_lockrecs;
+	unsigned int extra = tdb->file->num_lockrecs;
 
 	/* A transaction holds the lock for all records. */
-	if (!tdb->transaction && tdb->allrecord_lock.count) {
+	if (!tdb->transaction && tdb->file->allrecord_lock.count) {
 		return true;
 	}
 
@@ -751,23 +751,23 @@ void tdb1_release_transaction_locks(struct tdb1_context *tdb)
 {
 	unsigned int i, active = 0;
 
-	if (tdb->allrecord_lock.count != 0) {
-		tdb1_brunlock(tdb, tdb->allrecord_lock.ltype, TDB1_FREELIST_TOP, 0);
-		tdb->allrecord_lock.count = 0;
+	if (tdb->file->allrecord_lock.count != 0) {
+		tdb1_brunlock(tdb, tdb->file->allrecord_lock.ltype, TDB1_FREELIST_TOP, 0);
+		tdb->file->allrecord_lock.count = 0;
 	}
 
-	for (i=0;i<tdb->num_lockrecs;i++) {
-		struct tdb1_lock_type *lck = &tdb->lockrecs[i];
+	for (i=0;i<tdb->file->num_lockrecs;i++) {
+		struct tdb_lock *lck = &tdb->file->lockrecs[i];
 
 		/* Don't release the active lock!  Copy it to first entry. */
 		if (lck->off == TDB1_ACTIVE_LOCK) {
-			tdb->lockrecs[active++] = *lck;
+			tdb->file->lockrecs[active++] = *lck;
 		} else {
 			tdb1_brunlock(tdb, lck->ltype, lck->off, 1);
 		}
 	}
-	tdb->num_lockrecs = active;
-	if (tdb->num_lockrecs == 0) {
-		SAFE_FREE(tdb->lockrecs);
+	tdb->file->num_lockrecs = active;
+	if (tdb->file->num_lockrecs == 0) {
+		SAFE_FREE(tdb->file->lockrecs);
 	}
 }

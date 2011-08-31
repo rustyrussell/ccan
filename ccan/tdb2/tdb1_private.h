@@ -135,12 +135,6 @@ struct tdb1_header {
 	tdb1_off_t reserved[27];
 };
 
-struct tdb1_lock_type {
-	uint32_t off;
-	uint32_t count;
-	uint32_t ltype;
-};
-
 struct tdb1_traverse_lock {
 	struct tdb1_traverse_lock *next;
 	uint32_t off;
@@ -174,20 +168,15 @@ struct tdb1_context {
 	/* Last error we returned. */
 	enum TDB_ERROR last_error; /* error code for last tdb error */
 
-	void *map_ptr; /* where it is currently mapped */
-	int fd; /* open file descriptor for the database */
-	tdb1_len_t map_size; /* how much space has been mapped */
+	/* The actual file information */
+	struct tdb_file *file;
+
 	int read_only; /* opened read-only */
 	int traverse_read; /* read-only traversal */
 	int traverse_write; /* read-write traversal */
-	struct tdb1_lock_type allrecord_lock; /* .offset == upgradable */
-	int num_lockrecs;
-	struct tdb1_lock_type *lockrecs; /* only real locks, all with count>0 */
 	struct tdb1_header header; /* a cached copy of the header */
 	uint32_t flags; /* the flags passed to tdb1_open */
 	struct tdb1_traverse_lock travlocks; /* current traversal locks */
-	dev_t device;	/* uniquely identifies this tdb */
-	ino_t inode;	/* uniquely identifies this tdb */
 	unsigned int (*hash_fn)(TDB_DATA *key);
 	int open_flags; /* flags used in the open - needed by reopen */
 	const struct tdb1_methods *methods;

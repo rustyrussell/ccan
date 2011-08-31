@@ -139,8 +139,8 @@ static TDB_DATA get_bytes(struct tdb1_context *tdb,
 
 	d.dsize = len;
 
-	if (tdb->transaction == NULL && tdb->map_ptr != NULL)
-		d.dptr = (unsigned char *)tdb->map_ptr + off;
+	if (tdb->transaction == NULL && tdb->file->map_ptr != NULL)
+		d.dptr = (unsigned char *)tdb->file->map_ptr + off;
 	else
 		d.dptr = tdb1_alloc_read(tdb, off, d.dsize);
 	return d;
@@ -149,7 +149,7 @@ static TDB_DATA get_bytes(struct tdb1_context *tdb,
 /* Frees data if we're not able to simply use mmap. */
 static void put_bytes(struct tdb1_context *tdb, TDB_DATA d)
 {
-	if (tdb->transaction == NULL && tdb->map_ptr != NULL)
+	if (tdb->transaction == NULL && tdb->file->map_ptr != NULL)
 		return;
 	free(d.dptr);
 }
@@ -312,7 +312,7 @@ size_t tdb1_dead_space(struct tdb1_context *tdb, tdb1_off_t off)
 {
 	size_t len;
 
-	for (len = 0; off + len < tdb->map_size; len++) {
+	for (len = 0; off + len < tdb->file->map_size; len++) {
 		char c;
 		if (tdb->methods->tdb1_read(tdb, off, &c, 1, 0))
 			return 0;
@@ -336,7 +336,7 @@ int tdb1_check(struct tdb1_context *tdb,
 
 	/* Read-only databases use no locking at all: it's best-effort.
 	 * We may have a write lock already, so skip that case too. */
-	if (tdb->read_only || tdb->allrecord_lock.count != 0) {
+	if (tdb->read_only || tdb->file->allrecord_lock.count != 0) {
 		locked = false;
 	} else {
 		if (tdb1_lockall_read(tdb) == -1)
@@ -345,14 +345,14 @@ int tdb1_check(struct tdb1_context *tdb,
 	}
 
 	/* Make sure we know true size of the underlying file. */
-	tdb->methods->tdb1_oob(tdb, tdb->map_size + 1, 1);
+	tdb->methods->tdb1_oob(tdb, tdb->file->map_size + 1, 1);
 
 	/* Header must be OK: also gets us the recovery ptr, if any. */
 	if (!tdb1_check_header(tdb, &recovery_start))
 		goto unlock;
 
 	/* We should have the whole header, too. */
-	if (tdb->map_size < TDB1_DATA_START(tdb->header.hash_size)) {
+	if (tdb->file->map_size < TDB1_DATA_START(tdb->header.hash_size)) {
 		tdb->last_error = tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
 					"File too short for hashes\n");
 		goto unlock;
@@ -383,7 +383,7 @@ int tdb1_check(struct tdb1_context *tdb,
 
 	/* For each record, read it in and check it's ok. */
 	for (off = TDB1_DATA_START(tdb->header.hash_size);
-	     off < tdb->map_size;
+	     off < tdb->file->map_size;
 	     off += sizeof(rec) + rec.rec_len) {
 		if (tdb->methods->tdb1_read(tdb, off, &rec, sizeof(rec),
 					   TDB1_DOCONV()) == -1)
@@ -412,7 +412,7 @@ int tdb1_check(struct tdb1_context *tdb,
 
 			tdb_logerr(tdb, TDB_SUCCESS, TDB_LOG_WARNING,
 				   "Dead space at %d-%d (of %u)\n",
-				   off, off + dead, tdb->map_size);
+				   off, off + dead, tdb->file->map_size);
 			rec.rec_len = dead - sizeof(rec);
 			break;
 		case TDB1_RECOVERY_MAGIC:

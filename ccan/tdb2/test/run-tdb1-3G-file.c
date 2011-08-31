@@ -15,12 +15,12 @@ static int tdb1_expand_file_sparse(struct tdb1_context *tdb,
 		return -1;
 	}
 
-	if (ftruncate(tdb->fd, size+addition) == -1) {
+	if (ftruncate(tdb->file->fd, size+addition) == -1) {
 		char b = 0;
-		ssize_t written = pwrite(tdb->fd,  &b, 1, (size+addition) - 1);
+		ssize_t written = pwrite(tdb->file->fd,  &b, 1, (size+addition) - 1);
 		if (written == 0) {
 			/* try once more, potentially revealing errno */
-			written = pwrite(tdb->fd,  &b, 1, (size+addition) - 1);
+			written = pwrite(tdb->file->fd,  &b, 1, (size+addition) - 1);
 		}
 		if (written == 0) {
 			/* again - give up, guessing errno */
