@@ -68,13 +68,17 @@ static void tdb1_increment_seqnum(struct tdb_context *tdb)
 	tdb1_nest_unlock(tdb, TDB1_SEQNUM_OFS, F_WRLCK);
 }
 
-static int tdb1_key_compare(TDB_DATA key, TDB_DATA data, void *private_data)
+static enum TDB_ERROR tdb1_key_compare(TDB_DATA key, TDB_DATA data,
+				       void *matches_)
 {
-	return memcmp(data.dptr, key.dptr, data.dsize);
+	bool *matches = matches_;
+	*matches = (memcmp(data.dptr, key.dptr, data.dsize) == 0);
+	return TDB_SUCCESS;
 }
 
-/* Returns 0 on fail.  On success, return offset of record, and fills
-   in rec */
+/* Returns 0 on fail; last_error will be TDB_ERR_NOEXIST if it simply
+ * wasn't there, otherwise a real error.
+ * On success, return offset of record, and fills in rec */
 static tdb1_off_t tdb1_find(struct tdb_context *tdb, TDB_DATA key, uint32_t hash,
 			struct tdb1_record *r)
 {
@@ -96,12 +100,23 @@ static tdb1_off_t tdb1_find(struct tdb_context *tdb, TDB_DATA key, uint32_t hash
 			tdb->stats.compare_wrong_keylen++;
 		} else if (hash != r->full_hash) {
 			tdb->stats.compare_wrong_rechash++;
-		} else if (tdb1_parse_data(tdb, key, rec_ptr + sizeof(*r),
-					   r->key_len, tdb1_key_compare,
-					   NULL) != 0) {
-			tdb->stats.compare_wrong_keycmp++;
 		} else {
-			return rec_ptr;
+			enum TDB_ERROR ecode;
+			bool matches;
+			ecode = tdb1_parse_data(tdb, key, rec_ptr + sizeof(*r),
+						r->key_len, tdb1_key_compare,
+						&matches);
+
+			if (ecode != TDB_SUCCESS) {
+				tdb->last_error = ecode;
+				return 0;
+			}
+
+			if (!matches) {
+				tdb->stats.compare_wrong_keycmp++;
+			} else {
+				return rec_ptr;
+			}
 		}
 		/* detect tight infinite loop */
 		if (rec_ptr == r->next) {
@@ -232,8 +247,7 @@ enum TDB_ERROR tdb1_parse_record(struct tdb_context *tdb, TDB_DATA key,
 	hash = tdb_hash(tdb, key.dptr, key.dsize);
 
 	if (!(rec_ptr = tdb1_find_lock_hash(tdb,key,hash,F_RDLCK,&rec))) {
-		/* record not found */
-		return TDB_ERR_NOEXIST;
+		return tdb->last_error;
 	}
 
 	ret = tdb1_parse_data(tdb, key, rec_ptr + sizeof(rec) + rec.key_len,
@@ -473,16 +487,23 @@ static int _tdb1_store(struct tdb_context *tdb, TDB_DATA key,
 			tdb->last_error = TDB_ERR_EXISTS;
 			goto fail;
 		}
+		if (tdb->last_error != TDB_ERR_NOEXIST) {
+			goto fail;
+		}
 	} else {
 		/* first try in-place update, on modify or replace. */
 		if (tdb1_update_hash(tdb, key, hash, dbuf) == 0) {
 			goto done;
 		}
-		if (tdb->last_error == TDB_ERR_NOEXIST &&
-		    flag == TDB_MODIFY) {
-			/* if the record doesn't exist and we are in TDB1_MODIFY mode then
-			 we should fail the store */
-			goto fail;
+		if (tdb->last_error != TDB_SUCCESS) {
+			if (tdb->last_error != TDB_ERR_NOEXIST) {
+				goto fail;
+			}
+			if (flag == TDB_MODIFY) {
+				/* if the record doesn't exist and we are in TDB1_MODIFY mode then
+				   we should fail the store */
+				goto fail;
+			}
 		}
 	}
 	/* reset the error code potentially set by the tdb1_update() */
