@@ -162,13 +162,21 @@ static int tdb1_lock_list(struct tdb_context *tdb, int list, int ltype,
 		check = !have_data_locks(tdb);
 		ret = tdb1_nest_lock(tdb, lock_offset(list), ltype, waitflag);
 
-		if (ret == 0 && check && tdb1_needs_recovery(tdb)) {
-			tdb1_nest_unlock(tdb, lock_offset(list), ltype);
+		if (ret == 0 && check) {
+			tdb_bool_err berr = tdb1_needs_recovery(tdb);
 
-			if (tdb1_lock_and_recover(tdb) == -1) {
+			if (berr < 0) {
 				return -1;
 			}
-			return tdb1_lock_list(tdb, list, ltype, waitflag);
+			if (berr == true) {
+				tdb1_nest_unlock(tdb, lock_offset(list), ltype);
+
+				if (tdb1_lock_and_recover(tdb) == -1) {
+					return -1;
+				}
+				return tdb1_lock_list(tdb, list, ltype,
+						      waitflag);
+			}
 		}
 	}
 	return ret;
@@ -249,6 +257,7 @@ int tdb1_allrecord_lock(struct tdb_context *tdb, int ltype,
 		       enum tdb_lock_flags flags, bool upgradable)
 {
 	enum TDB_ERROR ecode;
+	tdb_bool_err berr;
 
 	/* tdb_lock_gradual() doesn't know about tdb->tdb1.traverse_read. */
 	if (tdb->tdb1.traverse_read && !(tdb->flags & TDB_NOLOCK)) {
@@ -313,7 +322,12 @@ int tdb1_allrecord_lock(struct tdb_context *tdb, int ltype,
 	tdb->file->allrecord_lock.ltype = upgradable ? F_WRLCK : ltype;
 	tdb->file->allrecord_lock.off = upgradable;
 
-	if (tdb1_needs_recovery(tdb)) {
+	berr = tdb1_needs_recovery(tdb);
+	if (berr < 0) {
+		return -1;
+	}
+
+	if (berr == true) {
 		tdb1_allrecord_unlock(tdb, ltype);
 		if (tdb1_lock_and_recover(tdb) == -1) {
 			return -1;

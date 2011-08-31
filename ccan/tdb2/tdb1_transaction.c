@@ -1289,14 +1289,14 @@ int tdb1_transaction_recover(struct tdb_context *tdb)
 }
 
 /* Any I/O failures we say "needs recovery". */
-bool tdb1_needs_recovery(struct tdb_context *tdb)
+tdb_bool_err tdb1_needs_recovery(struct tdb_context *tdb)
 {
 	tdb1_off_t recovery_head;
 	struct tdb1_record rec;
 
 	/* find the recovery area */
 	if (tdb1_ofs_read(tdb, TDB1_RECOVERY_HEAD, &recovery_head) == -1) {
-		return true;
+		return tdb->last_error;
 	}
 
 	if (recovery_head == 0) {
@@ -1307,7 +1307,7 @@ bool tdb1_needs_recovery(struct tdb_context *tdb)
 	/* read the recovery record */
 	if (tdb->tdb1.io->tdb1_read(tdb, recovery_head, &rec,
 				   sizeof(rec), TDB1_DOCONV()) == -1) {
-		return true;
+		return tdb->last_error;
 	}
 
 	return (rec.magic == TDB1_RECOVERY_MAGIC);
