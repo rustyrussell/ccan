@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
 	hsize.base.next = &tap_log_attr;
 	hsize.tdb1_hashsize.hsize = 1024;
 
-	plan_tests(27);
+	plan_tests(30);
 	key.dsize = strlen("hi");
 	key.dptr = (void *)"hi";
 
@@ -28,19 +28,19 @@ int main(int argc, char *argv[])
 	data.dptr = (void *)"world";
 	data.dsize = strlen("world");
 	ok1(tdb_store(tdb, key, data, TDB_INSERT) == TDB_SUCCESS);
-	data = tdb1_fetch(tdb, key);
+	ok1(tdb_fetch(tdb, key, &data) == TDB_SUCCESS);
 	ok1(data.dsize == strlen("world"));
 	ok1(memcmp(data.dptr, "world", strlen("world")) == 0);
 	free(data.dptr);
 	ok1(tdb1_transaction_start(tdb) != 0);
 	ok1(tdb_error(tdb) == TDB_ERR_EINVAL);
 
-	data = tdb1_fetch(tdb, key);
+	ok1(tdb_fetch(tdb, key, &data) == TDB_SUCCESS);
 	ok1(data.dsize == strlen("world"));
 	ok1(memcmp(data.dptr, "world", strlen("world")) == 0);
 	free(data.dptr);
 	ok1(tdb1_transaction_commit(tdb) == 0);
-	data = tdb1_fetch(tdb, key);
+	ok1(tdb_fetch(tdb, key, &data) == TDB_SUCCESS);
 	ok1(data.dsize == strlen("world"));
 	ok1(memcmp(data.dptr, "world", strlen("world")) == 0);
 	free(data.dptr);

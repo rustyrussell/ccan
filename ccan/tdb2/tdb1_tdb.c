@@ -201,11 +201,12 @@ static TDB_DATA _tdb1_fetch(struct tdb_context *tdb, TDB_DATA key)
 	return ret;
 }
 
-TDB_DATA tdb1_fetch(struct tdb_context *tdb, TDB_DATA key)
+enum TDB_ERROR tdb1_fetch(struct tdb_context *tdb, TDB_DATA key, TDB_DATA *data)
 {
-	TDB_DATA ret = _tdb1_fetch(tdb, key);
-
-	return ret;
+	*data = _tdb1_fetch(tdb, key);
+	if (data->dptr == NULL)
+		return tdb->last_error;
+	return TDB_SUCCESS;
 }
 
 /*

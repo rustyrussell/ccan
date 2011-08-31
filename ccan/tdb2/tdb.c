@@ -248,6 +248,9 @@ enum TDB_ERROR tdb_fetch(struct tdb_context *tdb, struct tdb_data key,
 	struct hash_info h;
 	enum TDB_ERROR ecode;
 
+	if (tdb->flags & TDB_VERSION1)
+		return tdb1_fetch(tdb, key, data);
+
 	off = find_and_lock(tdb, key, F_RDLCK, &h, &rec, NULL);
 	if (TDB_OFF_IS_ERR(off)) {
 		return tdb->last_error = off;

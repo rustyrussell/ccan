@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
 	hsize.base.next = &tap_log_attr;
 	hsize.tdb1_hashsize.hsize = 1024;
 
-	plan_tests(8);
+	plan_tests(9);
 	tdb = tdb_open("run.tdb1", TDB_VERSION1,
 		       O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
 
@@ -29,14 +29,13 @@ int main(int argc, char *argv[])
 	ok1(tdb_store(tdb, key, data, TDB_INSERT) == TDB_ERR_EXISTS);
 	ok1(tdb_store(tdb, key, data, TDB_MODIFY) == TDB_SUCCESS);
 
-	data = tdb1_fetch(tdb, key);
+	ok1(tdb_fetch(tdb, key, &data) == TDB_SUCCESS);
 	ok1(data.dsize == strlen("world"));
 	ok1(memcmp(data.dptr, "world", strlen("world")) == 0);
 	free(data.dptr);
 
 	key.dsize++;
-	data = tdb1_fetch(tdb, key);
-	ok1(data.dptr == NULL);
+	ok1(tdb_fetch(tdb, key, &data) == TDB_ERR_NOEXIST);
 	tdb_close(tdb);
 
 	return exit_status();

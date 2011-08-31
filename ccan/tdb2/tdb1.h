@@ -40,8 +40,6 @@ typedef int (*tdb1_traverse_func)(struct tdb_context *, TDB_DATA, TDB_DATA, void
 
 void tdb1_set_max_dead(struct tdb_context *tdb, int max_dead);
 
-TDB_DATA tdb1_fetch(struct tdb_context *tdb, TDB_DATA key);
-
 int tdb1_parse_record(struct tdb_context *tdb, TDB_DATA key,
 			      int (*parser)(TDB_DATA key, TDB_DATA data,
 					    void *private_data),

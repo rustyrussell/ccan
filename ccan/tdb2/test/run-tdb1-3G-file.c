@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 	hsize.base.next = &tap_log_attr;
 	hsize.tdb1_hashsize.hsize = 1024;
 
-	plan_tests(24);
+	plan_tests(26);
 	tdb = tdb_open("run-36-file.tdb1", TDB_VERSION1,
 		       O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
 
@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
 
 	ok1(tdb_store(tdb, key, orig_data, TDB_INSERT) == TDB_SUCCESS);
 
-	data = tdb1_fetch(tdb, key);
+	ok1(tdb_fetch(tdb, key, &data) == TDB_SUCCESS);
 	ok1(data.dsize == strlen("world"));
 	ok1(memcmp(data.dptr, "world", strlen("world")) == 0);
 	free(data.dptr);
@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 	ok1(tdb1_transaction_start(tdb) == 0);
 	ok1(tdb_store(tdb, key, orig_data, TDB_INSERT) == TDB_SUCCESS);
 
-	data = tdb1_fetch(tdb, key);
+	ok1(tdb_fetch(tdb, key, &data) == TDB_SUCCESS);
 	ok1(data.dsize == strlen("world"));
 	ok1(memcmp(data.dptr, "world", strlen("world")) == 0);
 	free(data.dptr);

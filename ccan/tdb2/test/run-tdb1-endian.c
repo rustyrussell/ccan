@@ -14,7 +14,7 @@ int main(int argc, char *argv[])
 	hsize.base.next = &tap_log_attr;
 	hsize.tdb1_hashsize.hsize = 1024;
 
-	plan_tests(11);
+	plan_tests(14);
 	tdb = tdb_open("run-endian.tdb1",
 		       TDB_VERSION1|TDB_CONVERT,
 		       O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
@@ -30,13 +30,13 @@ int main(int argc, char *argv[])
 	ok1(tdb_store(tdb, key, data, TDB_INSERT) == TDB_ERR_EXISTS);
 	ok1(tdb_store(tdb, key, data, TDB_MODIFY) == TDB_SUCCESS);
 
-	data = tdb1_fetch(tdb, key);
+	ok1(tdb_fetch(tdb, key, &data) == TDB_SUCCESS);
 	ok1(data.dsize == strlen("world"));
 	ok1(memcmp(data.dptr, "world", strlen("world")) == 0);
 	free(data.dptr);
 
 	key.dsize++;
-	data = tdb1_fetch(tdb, key);
+	ok1(tdb_fetch(tdb, key, &data) == TDB_ERR_NOEXIST);
 	ok1(data.dptr == NULL);
 	tdb_close(tdb);
 
@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 
 	key.dsize = strlen("hi");
 	key.dptr = (void *)"hi";
-	data = tdb1_fetch(tdb, key);
+	ok1(tdb_fetch(tdb, key, &data) == TDB_SUCCESS);
 	ok1(data.dsize == strlen("world"));
 	ok1(memcmp(data.dptr, "world", strlen("world")) == 0);
 	free(data.dptr);

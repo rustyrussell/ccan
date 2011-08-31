@@ -51,8 +51,7 @@ static enum agent_return do_operation(enum operation op, const char *name)
 		ret = tdb1_transaction_start(tdb) == 0 ? SUCCESS : OTHER_FAILURE;
 		break;
 	case FETCH:
-		data = tdb1_fetch(tdb, k);
-		if (data.dptr == NULL) {
+		if (tdb_fetch(tdb, k, &data) != TDB_SUCCESS) {
 			if (tdb->last_error == TDB_ERR_NOEXIST)
 				ret = FAILED;
 			else

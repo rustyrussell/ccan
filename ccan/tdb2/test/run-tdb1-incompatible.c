@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 	dumbhash_attr.base.next = &log_attr;
 	dumbhash_attr.hash.fn = tdb1_dumb_hash;
 
-	plan_tests(38 * 2);
+	plan_tests(42 * 2);
 
 	for (flags = 0; flags <= TDB_CONVERT; flags += TDB_CONVERT) {
 		unsigned int rwmagic = TDB1_HASH_RWLOCK_MAGIC;
@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 			       O_RDWR, 0600, &incompat_hash_attr);
 		ok1(tdb);
 		ok1(log_count == 0);
-		d = tdb1_fetch(tdb, d);
+		ok1(tdb_fetch(tdb, d, &d) == TDB_SUCCESS);
 		ok1(d.dsize == 5);
 		free(d.dptr);
 		ok1(tdb1_check(tdb, NULL, NULL) == 0);
@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
 			       O_RDWR, 0600, &jhash_attr);
 		ok1(tdb);
 		ok1(log_count == 0);
-		d = tdb1_fetch(tdb, d);
+		ok1(tdb1_fetch(tdb, d, &d) == TDB_SUCCESS);
 		ok1(d.dsize == 5);
 		free(d.dptr);
 		ok1(tdb1_check(tdb, NULL, NULL) == 0);
@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
 		ok1(log_count == 0);
 		d.dptr = (void *)"Hello";
 		d.dsize = 5;
-		d = tdb1_fetch(tdb, d);
+		ok1(tdb_fetch(tdb, d, &d) == TDB_SUCCESS);
 		ok1(d.dsize == 5);
 		free(d.dptr);
 		ok1(tdb1_check(tdb, NULL, NULL) == 0);
@@ -202,7 +202,7 @@ int main(int argc, char *argv[])
 			       &dumbhash_attr);
 		ok1(tdb);
 		ok1(log_count == 0);
-		d = tdb1_fetch(tdb, d);
+		ok1(tdb1_fetch(tdb, d, &d) == TDB_SUCCESS);
 		ok1(d.dsize == 5);
 		free(d.dptr);
 		ok1(tdb1_check(tdb, NULL, NULL) == 0);

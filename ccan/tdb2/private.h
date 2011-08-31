@@ -648,6 +648,8 @@ int tdb1_transaction_cancel(struct tdb_context *tdb);
 
 /* tdb1_tdb.c: */
 int tdb1_store(struct tdb_context *tdb, TDB_DATA key, TDB_DATA dbuf, int flag);
+enum TDB_ERROR tdb1_fetch(struct tdb_context *tdb, TDB_DATA key,
+			  TDB_DATA *data);
 
 /* tdb.c: */
 enum TDB_ERROR COLD tdb_logerr(struct tdb_context *tdb,
