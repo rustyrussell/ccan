@@ -27,9 +27,6 @@
 
 #include "tdb1_private.h"
 
-/* all contexts, to ensure no double-opens (fcntl locks don't nest!) */
-static struct tdb_context *tdb1s = NULL;
-
 /* We use two hashes to double-check they're using the right hash function. */
 void tdb1_header_hash(struct tdb_context *tdb,
 		     uint32_t *magic1_hash, uint32_t *magic2_hash)
@@ -99,20 +96,6 @@ static int tdb1_new_database(struct tdb_context *tdb, int hash_size)
 }
 
 
-
-static int tdb1_already_open(dev_t device,
-			    ino_t ino)
-{
-	struct tdb_context *i;
-
-	for (i = tdb1s; i; i = i->next) {
-		if (i->file->device == device && i->file->inode == ino) {
-			return 1;
-		}
-	}
-
-	return 0;
-}
 
 /* open the database, creating it if necessary
 
@@ -337,16 +320,6 @@ struct tdb_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flags
 		goto fail;
 	}
 
-	/* Is it already in the open list?  If so, fail. */
-	if (tdb1_already_open(st.st_dev, st.st_ino)) {
-		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_USE_ERROR,
-			   "tdb1_open_ex: "
-			   "%s (%d,%d) is already open in this process",
-			   name, (int)st.st_dev, (int)st.st_ino);
-		errno = EBUSY;
-		goto fail;
-	}
-
 	tdb->file->map_size = st.st_size;
 	tdb->file->device = st.st_dev;
 	tdb->file->inode = st.st_ino;
@@ -364,8 +337,6 @@ struct tdb_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flags
 	if (tdb1_nest_unlock(tdb, TDB1_OPEN_LOCK, F_WRLCK) == -1) {
 		goto fail;
 	}
-	tdb->next = tdb1s;
-	tdb1s = tdb;
 	return tdb;
 
  fail:
@@ -411,7 +382,6 @@ void tdb1_set_max_dead(struct tdb_context *tdb, int max_dead)
  **/
 int tdb1_close(struct tdb_context *tdb)
 {
-	struct tdb_context **i;
 	int ret = 0;
 
 	if (tdb->tdb1.transaction) {
@@ -431,14 +401,6 @@ int tdb1_close(struct tdb_context *tdb)
 	}
 	SAFE_FREE(tdb->file->lockrecs);
 	SAFE_FREE(tdb->file);
-
-	/* Remove from contexts list */
-	for (i = &tdb1s; *i; i = &(*i)->next) {
-		if (*i == tdb) {
-			*i = tdb->next;
-			break;
-		}
-	}
 
 	memset(tdb, 0, sizeof(*tdb));
 	SAFE_FREE(tdb);
