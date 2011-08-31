@@ -650,6 +650,7 @@ int tdb1_transaction_cancel(struct tdb_context *tdb);
 int tdb1_store(struct tdb_context *tdb, TDB_DATA key, TDB_DATA dbuf, int flag);
 enum TDB_ERROR tdb1_fetch(struct tdb_context *tdb, TDB_DATA key,
 			  TDB_DATA *data);
+int tdb1_append(struct tdb_context *tdb, TDB_DATA key, TDB_DATA new_dbuf);
 
 /* tdb.c: */
 enum TDB_ERROR COLD tdb_logerr(struct tdb_context *tdb,

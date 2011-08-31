@@ -627,6 +627,8 @@ int tdb1_append(struct tdb_context *tdb, TDB_DATA key, TDB_DATA new_dbuf)
 	TDB_DATA dbuf;
 	int ret = -1;
 
+	assert(tdb->flags & TDB_VERSION1);
+
 	/* find which hash bucket it is in */
 	hash = tdb_hash(tdb, key.dptr, key.dsize);
 	if (tdb1_lock(tdb, TDB1_BUCKET(hash), F_WRLCK) == -1)

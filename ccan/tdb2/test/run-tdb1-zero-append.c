@@ -25,8 +25,8 @@ int main(int argc, char *argv[])
 	data.dptr = (void *)"world";
 	data.dsize = 0;
 
-	ok1(tdb1_append(tdb, key, data) == 0);
-	ok1(tdb1_append(tdb, key, data) == 0);
+	ok1(tdb_append(tdb, key, data) == TDB_SUCCESS);
+	ok1(tdb_append(tdb, key, data) == TDB_SUCCESS);
 	ok1(tdb_fetch(tdb, key, &data) == TDB_SUCCESS);
 	ok1(data.dsize == 0);
 	free(data.dptr);
