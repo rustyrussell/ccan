@@ -463,6 +463,12 @@ enum TDB_ERROR tdb_read_convert(struct tdb_context *tdb, tdb_off_t off,
 void tdb_inc_seqnum(struct tdb_context *tdb);
 
 /* lock.c: */
+/* Print message because another tdb owns a lock we want. */
+enum TDB_ERROR owner_conflict(struct tdb_context *tdb, const char *call);
+
+/* If we fork, we no longer really own locks. */
+bool check_lock_pid(struct tdb_context *tdb, const char *call, bool log);
+
 /* Lock/unlock a range of hashes. */
 enum TDB_ERROR tdb_lock_hashes(struct tdb_context *tdb,
 			       tdb_off_t hash_lock, tdb_len_t hash_range,

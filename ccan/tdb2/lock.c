@@ -30,7 +30,7 @@
 #include <ccan/build_assert/build_assert.h>
 
 /* If we were threaded, we could wait for unlock, but we're not, so fail. */
-static enum TDB_ERROR owner_conflict(struct tdb_context *tdb, const char *call)
+enum TDB_ERROR owner_conflict(struct tdb_context *tdb, const char *call)
 {
 	return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_USE_ERROR,
 			  "%s: lock owned by another tdb in this process.",
@@ -38,8 +38,7 @@ static enum TDB_ERROR owner_conflict(struct tdb_context *tdb, const char *call)
 }
 
 /* If we fork, we no longer really own locks. */
-static bool check_lock_pid(struct tdb_context *tdb,
-			   const char *call, bool log)
+bool check_lock_pid(struct tdb_context *tdb, const char *call, bool log)
 {
 	/* No locks?  No problem! */
 	if (tdb->file->allrecord_lock.count == 0
@@ -787,6 +786,11 @@ enum TDB_ERROR tdb_unlock_hashes(struct tdb_context *tdb,
 			return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
 					  "tdb_unlock_hashes RO allrecord!");
 		}
+		if (tdb->file->allrecord_lock.owner != tdb) {
+			return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_USE_ERROR,
+					  "tdb_unlock_hashes:"
+					  " not locked by us!");
+		}
 		return TDB_SUCCESS;
 	}
 
@@ -816,6 +820,10 @@ enum TDB_ERROR tdb_lock_free_bucket(struct tdb_context *tdb, tdb_off_t b_off,
 	if (tdb->file->allrecord_lock.count) {
 		if (!check_lock_pid(tdb, "tdb_lock_free_bucket", true))
 			return TDB_ERR_LOCK;
+
+		if (tdb->file->allrecord_lock.owner != tdb) {
+			return owner_conflict(tdb, "tdb_lock_free_bucket");
+		}
 
 		if (tdb->file->allrecord_lock.ltype == F_WRLCK)
 			return 0;

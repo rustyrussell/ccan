@@ -149,34 +149,43 @@ static int tdb1_lock_list(struct tdb_context *tdb, int list, int ltype,
 	bool check = false;
 
 	/* a allrecord lock allows us to avoid per chain locks */
-	if (tdb->file->allrecord_lock.count &&
-	    (ltype == tdb->file->allrecord_lock.ltype || ltype == F_RDLCK)) {
-		return 0;
+	if (tdb->file->allrecord_lock.count) {
+		if (!check_lock_pid(tdb, "tdb1_lock_list", true)) {
+			tdb->last_error = TDB_ERR_LOCK;
+			return -1;
+		}
+		if (tdb->file->allrecord_lock.owner != tdb) {
+			tdb->last_error = owner_conflict(tdb, "tdb1_lock_list");
+			return -1;
+		}
+		if (ltype == tdb->file->allrecord_lock.ltype
+		    || ltype == F_RDLCK) {
+			return 0;
+		}
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_LOCK,
+					     TDB_LOG_USE_ERROR,
+					     "tdb1_lock_list:"
+					     " already have read lock");
+		return -1;
 	}
 
-	if (tdb->file->allrecord_lock.count) {
-		tdb->last_error = TDB_ERR_LOCK;
-		ret = -1;
-	} else {
-		/* Only check when we grab first data lock. */
-		check = !have_data_locks(tdb);
-		ret = tdb1_nest_lock(tdb, lock_offset(list), ltype, waitflag);
+	/* Only check when we grab first data lock. */
+	check = !have_data_locks(tdb);
+	ret = tdb1_nest_lock(tdb, lock_offset(list), ltype, waitflag);
 
-		if (ret == 0 && check) {
-			tdb_bool_err berr = tdb1_needs_recovery(tdb);
+	if (ret == 0 && check) {
+		tdb_bool_err berr = tdb1_needs_recovery(tdb);
 
-			if (berr < 0) {
+		if (berr < 0) {
+			return -1;
+		}
+		if (berr == true) {
+			tdb1_nest_unlock(tdb, lock_offset(list), ltype);
+
+			if (tdb1_lock_and_recover(tdb) == -1) {
 				return -1;
 			}
-			if (berr == true) {
-				tdb1_nest_unlock(tdb, lock_offset(list), ltype);
-
-				if (tdb1_lock_and_recover(tdb) == -1) {
-					return -1;
-				}
-				return tdb1_lock_list(tdb, list, ltype,
-						      waitflag);
-			}
+			return tdb1_lock_list(tdb, list, ltype, waitflag);
 		}
 	}
 	return ret;
@@ -222,6 +231,10 @@ int tdb1_unlock(struct tdb_context *tdb, int list, int ltype)
 	/* a global lock allows us to avoid per chain locks */
 	if (tdb->file->allrecord_lock.count &&
 	    (ltype == tdb->file->allrecord_lock.ltype || ltype == F_RDLCK)) {
+		if (tdb->file->allrecord_lock.owner != tdb) {
+			tdb->last_error = owner_conflict(tdb, "tdb1_unlock");
+			return -1;
+		}
 		return 0;
 	}
 
@@ -314,9 +327,9 @@ int tdb1_allrecord_lock(struct tdb_context *tdb, int ltype,
 		return -1;
 	}
 
-	/* FIXME: Temporary cast. */
-	tdb->file->allrecord_lock.owner = (void *)(struct tdb_context *)tdb;
+	tdb->file->allrecord_lock.owner = tdb;
 	tdb->file->allrecord_lock.count = 1;
+	tdb->file->locker = getpid();
 	/* If it's upgradable, it's actually exclusive so we can treat
 	 * it as a write lock. */
 	tdb->file->allrecord_lock.ltype = upgradable ? F_WRLCK : ltype;
@@ -362,6 +375,11 @@ int tdb1_allrecord_unlock(struct tdb_context *tdb, int ltype)
 	}
 
 	if (tdb->file->allrecord_lock.count > 1) {
+		if (tdb->file->allrecord_lock.owner != tdb) {
+			tdb->last_error
+				= owner_conflict(tdb, "tdb1_allrecord_unlock");
+			return -1;
+		}
 		tdb->file->allrecord_lock.count--;
 		return 0;
 	}
@@ -412,6 +430,15 @@ int tdb1_chainunlock_read(struct tdb_context *tdb, TDB_DATA key)
 int tdb1_lock_record(struct tdb_context *tdb, tdb1_off_t off)
 {
 	if (tdb->file->allrecord_lock.count) {
+		if (!check_lock_pid(tdb, "tdb1_lock_record", true)) {
+			tdb->last_error = TDB_ERR_LOCK;
+			return -1;
+		}
+		if (tdb->file->allrecord_lock.owner != tdb) {
+			tdb->last_error = owner_conflict(tdb,
+							 "tdb1_lock_record");
+			return -1;
+		}
 		return 0;
 	}
 	return off ? tdb1_brlock(tdb, F_RDLCK, off, 1, TDB_LOCK_WAIT) : 0;
@@ -429,6 +456,15 @@ int tdb1_write_lock_record(struct tdb_context *tdb, tdb1_off_t off)
 		if (i->off == off)
 			return -1;
 	if (tdb->file->allrecord_lock.count) {
+		if (!check_lock_pid(tdb, "tdb1_write_lock_record", true)) {
+			tdb->last_error = TDB_ERR_LOCK;
+			return -1;
+		}
+		if (tdb->file->allrecord_lock.owner != tdb) {
+			tdb->last_error
+				= owner_conflict(tdb, "tdb1_write_lock_record");
+			return -1;
+		}
 		if (tdb->file->allrecord_lock.ltype == F_WRLCK) {
 			return 0;
 		}
@@ -440,6 +476,12 @@ int tdb1_write_lock_record(struct tdb_context *tdb, tdb1_off_t off)
 int tdb1_write_unlock_record(struct tdb_context *tdb, tdb1_off_t off)
 {
 	if (tdb->file->allrecord_lock.count) {
+		if (tdb->file->allrecord_lock.owner != tdb) {
+			tdb->last_error
+				= owner_conflict(tdb,
+						 "tdb1_write_unlock_record");
+			return -1;
+		}
 		return 0;
 	}
 	return tdb1_brunlock(tdb, F_WRLCK, off, 1);
@@ -452,6 +494,11 @@ int tdb1_unlock_record(struct tdb_context *tdb, tdb1_off_t off)
 	uint32_t count = 0;
 
 	if (tdb->file->allrecord_lock.count) {
+		if (tdb->file->allrecord_lock.owner != tdb) {
+			tdb->last_error = owner_conflict(tdb,
+							 "tdb1_unlock_record");
+			return -1;
+		}
 		return 0;
 	}
 
