@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
 	hsize.base.next = &tap_log_attr;
 	hsize.tdb1_hashsize.hsize = 1024;
 
-	plan_tests(29);
+	plan_tests(30);
 	key.dsize = strlen("hi");
 	key.dptr = (void *)"hi";
 
@@ -33,6 +33,7 @@ int main(int argc, char *argv[])
 	ok1(memcmp(data.dptr, "world", strlen("world")) == 0);
 	free(data.dptr);
 	ok1(tdb_transaction_start(tdb) == TDB_ERR_EINVAL);
+	ok1(tap_log_messages == 1);
 
 	ok1(tdb_fetch(tdb, key, &data) == TDB_SUCCESS);
 	ok1(data.dsize == strlen("world"));
@@ -55,7 +56,7 @@ int main(int argc, char *argv[])
 	ok1(tdb_transaction_commit(tdb) == TDB_SUCCESS);
 	ok1(!tdb_exists(tdb, key));
 	tdb_transaction_cancel(tdb);
-	ok1(tap_log_messages == 0);
+	ok1(tap_log_messages == 1);
 	/* Surprise! Kills inner "committed" transaction. */
 	ok1(tdb_exists(tdb, key));
 

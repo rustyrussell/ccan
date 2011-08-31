@@ -418,18 +418,34 @@ static const struct tdb1_methods transaction1_methods = {
 static int _tdb1_transaction_start(struct tdb_context *tdb)
 {
 	/* some sanity checks */
-	if ((tdb->flags & TDB_RDONLY) || (tdb->flags & TDB_INTERNAL) || tdb->tdb1.traverse_read) {
-		tdb->last_error = tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
-					"tdb1_transaction_start: cannot start a"
-					" transaction on a read-only or"
-					" internal db");
+	if (tdb->flags & TDB_INTERNAL) {
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_EINVAL,
+					     TDB_LOG_USE_ERROR,
+					     "tdb1_transaction_start:"
+					     " cannot start a"
+					     " transaction on an"
+					     " internal tdb");
+		return -1;
+	}
+
+	if ((tdb->flags & TDB_RDONLY) || tdb->tdb1.traverse_read) {
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_RDONLY,
+					     TDB_LOG_USE_ERROR,
+					     "tdb_transaction_start:"
+					     " cannot start a"
+					     " transaction on a "
+					     " read-only tdb");
 		return -1;
 	}
 
 	/* cope with nested tdb1_transaction_start() calls */
 	if (tdb->tdb1.transaction != NULL) {
 		if (!(tdb->flags & TDB_ALLOW_NESTING)) {
-			tdb->last_error = TDB_ERR_EINVAL;
+			tdb->last_error
+				= tdb_logerr(tdb, TDB_ERR_EINVAL,
+					     TDB_LOG_USE_ERROR,
+					     "tdb_transaction_start:"
+					     " already inside transaction");
 			return -1;
 		}
 		tdb->stats.transaction_nest++;
