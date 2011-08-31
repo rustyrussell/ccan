@@ -20,10 +20,10 @@ int main(int argc, char *argv[])
 	data.dptr = (void *)"world";
 
 	ok1(tdb1_store(tdb, key, data, TDB1_MODIFY) < 0);
-	ok1(tdb1_error(tdb) == TDB1_ERR_NOEXIST);
+	ok1(tdb_error(tdb) == TDB_ERR_NOEXIST);
 	ok1(tdb1_store(tdb, key, data, TDB1_INSERT) == 0);
 	ok1(tdb1_store(tdb, key, data, TDB1_INSERT) < 0);
-	ok1(tdb1_error(tdb) == TDB1_ERR_EXISTS);
+	ok1(tdb_error(tdb) == TDB_ERR_EXISTS);
 	ok1(tdb1_store(tdb, key, data, TDB1_MODIFY) == 0);
 
 	data = tdb1_fetch(tdb, key);

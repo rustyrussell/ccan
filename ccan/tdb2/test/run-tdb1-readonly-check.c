@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 
 	ok1(tdb);
 	ok1(tdb1_store(tdb, key, data, TDB1_MODIFY) == -1);
-	ok1(tdb1_error(tdb) == TDB1_ERR_RDONLY);
+	ok1(tdb_error(tdb) == TDB_ERR_RDONLY);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
 	ok1(tdb1_close(tdb) == 0);
 

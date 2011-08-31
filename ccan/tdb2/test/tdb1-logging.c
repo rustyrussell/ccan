@@ -7,24 +7,19 @@
 
 /* Turn log messages into tap diag messages. */
 static void taplog(struct tdb1_context *tdb,
-		   enum tdb1_debug_level level,
-		   const char *fmt, ...)
+		   enum tdb_log_level level,
+		   enum TDB_ERROR ecode,
+		   const char *message,
+		   void *data)
 {
-	va_list ap;
-	char line[200];
-
 	if (suppress_logging)
 		return;
 
-	va_start(ap, fmt);
-	vsprintf(line, fmt, ap);
-	va_end(ap);
-
 	/* Strip trailing \n: diag adds it. */
-	if (line[0] && line[strlen(line)-1] == '\n')
-		diag("%s%.*s", log_prefix, (unsigned)strlen(line)-1, line);
+	if (message[0] && message[strlen(message)-1] == '\n')
+		diag("%s%.*s", log_prefix, (unsigned)strlen(message)-1, message);
 	else
-		diag("%s%s", log_prefix, line);
+		diag("%s%s", log_prefix, message);
 }
 
 struct tdb1_logging_context taplogctx = { taplog, NULL };

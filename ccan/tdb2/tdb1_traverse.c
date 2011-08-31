@@ -102,8 +102,10 @@ static tdb1_off_t tdb1_next_lock(struct tdb1_context *tdb, struct tdb1_traverse_
 
 			/* Detect infinite loops. From "Shlomi Yaakobovich" <Shlomi@exanet.com>. */
 			if (tlock->off == rec->next) {
-				tdb->ecode = TDB1_ERR_CORRUPT;
-				TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "tdb1_next_lock: loop detected.\n"));
+				tdb->last_error = tdb_logerr(tdb, TDB_ERR_CORRUPT,
+							TDB_LOG_ERROR,
+							"tdb1_next_lock:"
+							" loop detected.");
 				goto fail;
 			}
 
@@ -125,13 +127,14 @@ static tdb1_off_t tdb1_next_lock(struct tdb1_context *tdb, struct tdb1_traverse_
 		want_next = 0;
 	}
 	/* We finished iteration without finding anything */
-	tdb->ecode = TDB1_SUCCESS;
+	tdb->last_error = TDB_SUCCESS;
 	return 0;
 
  fail:
 	tlock->off = 0;
 	if (tdb1_unlock(tdb, tlock->hash, tlock->lock_rw) != 0)
-		TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "tdb1_next_lock: On error unlock failed!\n"));
+		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+			   "tdb1_next_lock: On error unlock failed!");
 	return TDB1_NEXT_LOCK_ERR;
 }
 
@@ -172,7 +175,9 @@ static int tdb1_traverse_internal(struct tdb1_context *tdb,
 			if (tdb1_unlock(tdb, tl->hash, tl->lock_rw) != 0)
 				goto out;
 			if (tdb1_unlock_record(tdb, tl->off) != 0)
-				TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "tdb1_traverse: key.dptr == NULL and unlock_record failed!\n"));
+				tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+					   "tdb1_traverse: key.dptr == NULL and"
+					   " unlock_record failed!");
 			goto out;
 		}
 		key.dsize = rec.key_len;
@@ -188,7 +193,9 @@ static int tdb1_traverse_internal(struct tdb1_context *tdb,
 		if (fn && fn(tdb, key, dbuf, private_data)) {
 			/* They want us to terminate traversal */
 			if (tdb1_unlock_record(tdb, tl->off) != 0) {
-				TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "tdb1_traverse: unlock_record failed!\n"));;
+				tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+					   "tdb1_traverse:"
+					   " unlock_record failed!");
 				ret = -1;
 			}
 			SAFE_FREE(key.dptr);
@@ -284,7 +291,9 @@ TDB1_DATA tdb1_firstkey(struct tdb1_context *tdb)
 
 	/* Unlock the hash chain of the record we just read. */
 	if (tdb1_unlock(tdb, tdb->travlocks.hash, tdb->travlocks.lock_rw) != 0)
-		TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "tdb1_firstkey: error occurred while tdb1_unlocking!\n"));
+		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+			   "tdb1_firstkey:"
+			   " error occurred while tdb1_unlocking!");
 	return key;
 }
 
@@ -328,7 +337,9 @@ TDB1_DATA tdb1_nextkey(struct tdb1_context *tdb, TDB1_DATA oldkey)
 		}
 		tdb->travlocks.hash = TDB1_BUCKET(rec.full_hash);
 		if (tdb1_lock_record(tdb, tdb->travlocks.off) != 0) {
-			TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "tdb1_nextkey: lock_record failed (%s)!\n", strerror(errno)));
+			tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+				   "tdb1_nextkey: lock_record failed (%s)!",
+				   strerror(errno));
 			return tdb1_null;
 		}
 	}
@@ -343,10 +354,12 @@ TDB1_DATA tdb1_nextkey(struct tdb1_context *tdb, TDB1_DATA oldkey)
 					  key.dsize);
 		/* Unlock the chain of this new record */
 		if (tdb1_unlock(tdb, tdb->travlocks.hash, tdb->travlocks.lock_rw) != 0)
-			TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "tdb1_nextkey: WARNING tdb1_unlock failed!\n"));
+			tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+				   "tdb1_nextkey: WARNING tdb1_unlock failed!");
 	}
 	/* Unlock the chain of old record */
 	if (tdb1_unlock(tdb, TDB1_BUCKET(oldhash), tdb->travlocks.lock_rw) != 0)
-		TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "tdb1_nextkey: WARNING tdb1_unlock failed!\n"));
+		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+			   "tdb1_nextkey: WARNING tdb1_unlock failed!");
 	return key;
 }

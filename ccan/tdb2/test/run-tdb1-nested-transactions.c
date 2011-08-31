@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
 	ok1(memcmp(data.dptr, "world", strlen("world")) == 0);
 	free(data.dptr);
 	ok1(tdb1_transaction_start(tdb) != 0);
-	ok1(tdb1_error(tdb) == TDB1_ERR_NESTING);
+	ok1(tdb_error(tdb) == TDB_ERR_EINVAL);
 
 	data = tdb1_fetch(tdb, key);
 	ok1(data.dsize == strlen("world"));

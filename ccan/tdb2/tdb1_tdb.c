@@ -99,13 +99,14 @@ static tdb1_off_t tdb1_find(struct tdb1_context *tdb, TDB1_DATA key, uint32_t ha
 		}
 		/* detect tight infinite loop */
 		if (rec_ptr == r->next) {
-			tdb->ecode = TDB1_ERR_CORRUPT;
-			TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "tdb1_find: loop detected.\n"));
+			tdb->last_error = tdb_logerr(tdb, TDB_ERR_CORRUPT,
+						TDB_LOG_ERROR,
+						"tdb1_find: loop detected.");
 			return 0;
 		}
 		rec_ptr = r->next;
 	}
-	tdb->ecode = TDB1_ERR_NOEXIST;
+	tdb->last_error = TDB_ERR_NOEXIST;
 	return 0;
 }
 
@@ -157,7 +158,7 @@ static int tdb1_update_hash(struct tdb1_context *tdb, TDB1_DATA key, uint32_t ha
 
 	/* must be long enough key, data and tailer */
 	if (rec.rec_len < key.dsize + dbuf.dsize + sizeof(tdb1_off_t)) {
-		tdb->ecode = TDB1_SUCCESS; /* Not really an error */
+		tdb->last_error = TDB_SUCCESS; /* Not really an error */
 		return -1;
 	}
 
@@ -176,7 +177,7 @@ static int tdb1_update_hash(struct tdb1_context *tdb, TDB1_DATA key, uint32_t ha
 
 /* find an entry in the database given a key */
 /* If an entry doesn't exist tdb1_err will be set to
- * TDB1_ERR_NOEXIST. If a key has no data attached
+ * TDB_ERR_NOEXIST. If a key has no data attached
  * then the TDB1_DATA will have zero length but
  * a non-zero pointer
  */
@@ -239,7 +240,7 @@ int tdb1_parse_record(struct tdb1_context *tdb, TDB1_DATA key,
 
 	if (!(rec_ptr = tdb1_find_lock_hash(tdb,key,hash,F_RDLCK,&rec))) {
 		/* record not found */
-		tdb->ecode = TDB1_ERR_NOEXIST;
+		tdb->last_error = TDB_ERR_NOEXIST;
 		return -1;
 	}
 
@@ -421,7 +422,8 @@ static int tdb1_delete_hash(struct tdb1_context *tdb, TDB1_DATA key, uint32_t ha
 	}
 
 	if (tdb1_unlock(tdb, TDB1_BUCKET(rec.full_hash), F_WRLCK) != 0)
-		TDB1_LOG((tdb, TDB1_DEBUG_WARNING, "tdb1_delete: WARNING tdb1_unlock failed!\n"));
+		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+			   "tdb1_delete: WARNING tdb1_unlock failed!");
 	return ret;
 }
 
@@ -474,7 +476,7 @@ static int _tdb1_store(struct tdb1_context *tdb, TDB1_DATA key,
 	/* check for it existing, on insert. */
 	if (flag == TDB1_INSERT) {
 		if (tdb1_exists_hash(tdb, key, hash)) {
-			tdb->ecode = TDB1_ERR_EXISTS;
+			tdb->last_error = TDB_ERR_EXISTS;
 			goto fail;
 		}
 	} else {
@@ -482,7 +484,7 @@ static int _tdb1_store(struct tdb1_context *tdb, TDB1_DATA key,
 		if (tdb1_update_hash(tdb, key, hash, dbuf) == 0) {
 			goto done;
 		}
-		if (tdb->ecode == TDB1_ERR_NOEXIST &&
+		if (tdb->last_error == TDB_ERR_NOEXIST &&
 		    flag == TDB1_MODIFY) {
 			/* if the record doesn't exist and we are in TDB1_MODIFY mode then
 			 we should fail the store */
@@ -490,7 +492,7 @@ static int _tdb1_store(struct tdb1_context *tdb, TDB1_DATA key,
 		}
 	}
 	/* reset the error code potentially set by the tdb1_update() */
-	tdb->ecode = TDB1_SUCCESS;
+	tdb->last_error = TDB_SUCCESS;
 
 	/* delete any existing record - if it doesn't exist we don't
            care.  Doing this first reduces fragmentation, and avoids
@@ -502,7 +504,7 @@ static int _tdb1_store(struct tdb1_context *tdb, TDB1_DATA key,
 	   fails and we are left with a dead spot in the tdb. */
 
 	if (!(p = (char *)malloc(key.dsize + dbuf.dsize))) {
-		tdb->ecode = TDB1_ERR_OOM;
+		tdb->last_error = TDB_ERR_OOM;
 		goto fail;
 	}
 
@@ -600,7 +602,7 @@ int tdb1_store(struct tdb1_context *tdb, TDB1_DATA key, TDB1_DATA dbuf, int flag
 	int ret;
 
 	if (tdb->read_only || tdb->traverse_read) {
-		tdb->ecode = TDB1_ERR_RDONLY;
+		tdb->last_error = TDB_ERR_RDONLY;
 		return -1;
 	}
 
@@ -645,7 +647,7 @@ int tdb1_append(struct tdb1_context *tdb, TDB1_DATA key, TDB1_DATA new_dbuf)
 	}
 
 	if (dbuf.dptr == NULL) {
-		tdb->ecode = TDB1_ERR_OOM;
+		tdb->last_error = TDB_ERR_OOM;
 		goto failed;
 	}
 
@@ -658,16 +660,6 @@ failed:
 	tdb1_unlock(tdb, TDB1_BUCKET(hash), F_WRLCK);
 	SAFE_FREE(dbuf.dptr);
 	return ret;
-}
-
-
-/*
-  return the current logging function
-  useful for external tdb routines that wish to log tdb errors
-*/
-tdb1_log_func tdb1_log_fn(struct tdb1_context *tdb)
-{
-	return tdb->log.log_fn;
 }
 
 
@@ -707,13 +699,16 @@ static int tdb1_free_region(struct tdb1_context *tdb, tdb1_off_t offset, ssize_t
 		return 0;
 	}
 	if (length + offset > tdb->map_size) {
-		TDB1_LOG((tdb, TDB1_DEBUG_FATAL,"tdb1_free_region: adding region beyond end of file\n"));
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
+					"tdb1_free_region: adding region beyond"
+					" end of file");
 		return -1;
 	}
 	memset(&rec,'\0',sizeof(rec));
 	rec.rec_len = length - sizeof(rec);
 	if (tdb1_free(tdb, offset, &rec) == -1) {
-		TDB1_LOG((tdb, TDB1_DEBUG_FATAL,"tdb1_free_region: failed to add free record\n"));
+		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+			   "tdb1_free_region: failed to add free record");
 		return -1;
 	}
 	return 0;
@@ -744,14 +739,16 @@ int tdb1_wipe_all(struct tdb1_context *tdb)
 	   tdb1_wipe_all() in a transaction will increase the size of
 	   the tdb by the size of the recovery area */
 	if (tdb1_ofs_read(tdb, TDB1_RECOVERY_HEAD, &recovery_head) == -1) {
-		TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "tdb1_wipe_all: failed to read recovery head\n"));
+		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+			   "tdb1_wipe_all: failed to read recovery head");
 		goto failed;
 	}
 
 	if (recovery_head != 0) {
 		struct tdb1_record rec;
 		if (tdb->methods->tdb1_read(tdb, recovery_head, &rec, sizeof(rec), TDB1_DOCONV()) == -1) {
-			TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "tdb1_wipe_all: failed to read recovery record\n"));
+			tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+				   "tdb1_wipe_all: failed to read recovery record");
 			return -1;
 		}
 		recovery_size = rec.rec_len + sizeof(rec);
@@ -760,14 +757,16 @@ int tdb1_wipe_all(struct tdb1_context *tdb)
 	/* wipe the hashes */
 	for (i=0;i<tdb->header.hash_size;i++) {
 		if (tdb1_ofs_write(tdb, TDB1_HASH_TOP(i), &offset) == -1) {
-			TDB1_LOG((tdb, TDB1_DEBUG_FATAL,"tdb1_wipe_all: failed to write hash %d\n", i));
+			tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+				   "tdb1_wipe_all: failed to write hash %d", i);
 			goto failed;
 		}
 	}
 
 	/* wipe the freelist */
 	if (tdb1_ofs_write(tdb, TDB1_FREELIST_TOP, &offset) == -1) {
-		TDB1_LOG((tdb, TDB1_DEBUG_FATAL,"tdb1_wipe_all: failed to write freelist\n"));
+		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+			   "tdb1_wipe_all: failed to write freelist");
 		goto failed;
 	}
 
@@ -800,7 +799,8 @@ int tdb1_wipe_all(struct tdb1_context *tdb)
 	}
 
 	if (tdb1_unlockall(tdb) != 0) {
-		TDB1_LOG((tdb, TDB1_DEBUG_FATAL,"tdb1_wipe_all: failed to unlock\n"));
+		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+			   "tdb1_wipe_all: failed to unlock");
 		goto failed;
 	}
 
@@ -812,7 +812,7 @@ failed:
 }
 
 struct traverse_state {
-	bool error;
+	enum TDB_ERROR error;
 	struct tdb1_context *dest_db;
 };
 
@@ -823,7 +823,7 @@ static int repack_traverse(struct tdb1_context *tdb, TDB1_DATA key, TDB1_DATA da
 {
 	struct traverse_state *state = (struct traverse_state *)private_data;
 	if (tdb1_store(state->dest_db, key, data, TDB1_INSERT) != 0) {
-		state->error = true;
+		state->error = state->dest_db->last_error;
 		return -1;
 	}
 	return 0;
@@ -838,53 +838,60 @@ int tdb1_repack(struct tdb1_context *tdb)
 	struct traverse_state state;
 
 	if (tdb1_transaction_start(tdb) != 0) {
-		TDB1_LOG((tdb, TDB1_DEBUG_FATAL, __location__ " Failed to start transaction\n"));
+		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+			   __location__ " Failed to start transaction");
 		return -1;
 	}
 
 	tmp_db = tdb1_open("tmpdb", tdb1_hash_size(tdb), TDB1_INTERNAL, O_RDWR|O_CREAT, 0);
 	if (tmp_db == NULL) {
-		TDB1_LOG((tdb, TDB1_DEBUG_FATAL, __location__ " Failed to create tmp_db\n"));
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
+					__location__ " Failed to create tmp_db");
 		tdb1_transaction_cancel(tdb);
 		return -1;
 	}
 
-	state.error = false;
+	state.error = TDB_SUCCESS;
 	state.dest_db = tmp_db;
 
 	if (tdb1_traverse_read(tdb, repack_traverse, &state) == -1) {
-		TDB1_LOG((tdb, TDB1_DEBUG_FATAL, __location__ " Failed to traverse copying out\n"));
+		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+			   __location__ " Failed to traverse copying out");
 		tdb1_transaction_cancel(tdb);
 		tdb1_close(tmp_db);
 		return -1;
 	}
 
-	if (state.error) {
-		TDB1_LOG((tdb, TDB1_DEBUG_FATAL, __location__ " Error during traversal\n"));
+	if (state.error != TDB_SUCCESS) {
+		tdb->last_error = tdb_logerr(tdb, state.error, TDB_LOG_ERROR,
+					__location__ " Error during traversal");
 		tdb1_transaction_cancel(tdb);
 		tdb1_close(tmp_db);
 		return -1;
 	}
 
 	if (tdb1_wipe_all(tdb) != 0) {
-		TDB1_LOG((tdb, TDB1_DEBUG_FATAL, __location__ " Failed to wipe database\n"));
+		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+			   __location__ " Failed to wipe database\n");
 		tdb1_transaction_cancel(tdb);
 		tdb1_close(tmp_db);
 		return -1;
 	}
 
-	state.error = false;
+	state.error = TDB_SUCCESS;
 	state.dest_db = tdb;
 
 	if (tdb1_traverse_read(tmp_db, repack_traverse, &state) == -1) {
-		TDB1_LOG((tdb, TDB1_DEBUG_FATAL, __location__ " Failed to traverse copying back\n"));
+		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+			   __location__ " Failed to traverse copying back");
 		tdb1_transaction_cancel(tdb);
 		tdb1_close(tmp_db);
 		return -1;
 	}
 
 	if (state.error) {
-		TDB1_LOG((tdb, TDB1_DEBUG_FATAL, __location__ " Error during second traversal\n"));
+		tdb->last_error = tdb_logerr(tdb, state.error, TDB_LOG_ERROR,
+					__location__ " Error during second traversal");
 		tdb1_transaction_cancel(tdb);
 		tdb1_close(tmp_db);
 		return -1;
@@ -893,7 +900,8 @@ int tdb1_repack(struct tdb1_context *tdb)
 	tdb1_close(tmp_db);
 
 	if (tdb1_transaction_commit(tdb) != 0) {
-		TDB1_LOG((tdb, TDB1_DEBUG_FATAL, __location__ " Failed to commit\n"));
+		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+			   __location__ " Failed to commit");
 		return -1;
 	}
 

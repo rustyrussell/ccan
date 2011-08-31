@@ -3,10 +3,11 @@
 #include <stdlib.h>
 #include <err.h>
 
-static void log_fn(struct tdb1_context *tdb, enum tdb1_debug_level level, const char *fmt, ...)
+static void log_fn(struct tdb1_context *tdb, enum tdb_log_level level,
+		   enum TDB_ERROR ecode, const char *message, void *priv)
 {
-	unsigned int *count = tdb->log.log_private;
-	if (strstr(fmt, "spinlocks"))
+	unsigned int *count = priv;
+	if (strstr(message, "spinlocks"))
 		(*count)++;
 }
 

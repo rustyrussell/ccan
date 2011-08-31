@@ -55,39 +55,18 @@
 #define TDB1_DISALLOW_NESTING 1024 /** Disallow transactions to nest */
 #define TDB1_INCOMPATIBLE_HASH 2048 /** Better hashing: can't be opened by tdb < 1.2.6. */
 
-/** The tdb error codes */
-enum TDB1_ERROR {TDB1_SUCCESS=0, TDB1_ERR_CORRUPT, TDB1_ERR_IO, TDB1_ERR_LOCK,
-		TDB1_ERR_OOM, TDB1_ERR_EXISTS, TDB1_ERR_NOLOCK, TDB1_ERR_LOCK_TIMEOUT,
-		TDB1_ERR_NOEXIST, TDB1_ERR_EINVAL, TDB1_ERR_RDONLY,
-		TDB1_ERR_NESTING};
-
-/** Debugging uses one of the following levels */
-enum tdb1_debug_level {TDB1_DEBUG_FATAL = 0, TDB1_DEBUG_ERROR,
-		      TDB1_DEBUG_WARNING, TDB1_DEBUG_TRACE};
-
 /** The tdb data structure */
 typedef struct TDB1_DATA {
 	unsigned char *dptr;
 	size_t dsize;
 } TDB1_DATA;
 
-#ifndef PRINTF_ATTRIBUTE
-#if (__GNUC__ >= 3)
-/** Use gcc attribute to check printf fns.  a1 is the 1-based index of
- * the parameter containing the format, and a2 the index of the first
- * argument. Note that some gcc 2.x versions don't handle this
- * properly **/
-#define PRINTF_ATTRIBUTE(a1, a2) __attribute__ ((format (__printf__, a1, a2)))
-#else
-#define PRINTF_ATTRIBUTE(a1, a2)
-#endif
-#endif
-
 /** This is the context structure that is returned from a db open. */
 typedef struct tdb1_context TDB1_CONTEXT;
 
 typedef int (*tdb1_traverse_func)(struct tdb1_context *, TDB1_DATA, TDB1_DATA, void *);
-typedef void (*tdb1_log_func)(struct tdb1_context *, enum tdb1_debug_level, const char *, ...) PRINTF_ATTRIBUTE(3, 4);
+typedef void (*tdb1_log_func)(struct tdb1_context *, enum tdb_log_level, enum TDB_ERROR,
+			      const char *, void *);
 typedef unsigned int (*tdb1_hash_func)(TDB1_DATA *key);
 
 struct tdb1_logging_context {
@@ -137,8 +116,6 @@ int tdb1_unlockall(struct tdb1_context *tdb);
 int tdb1_lockall_read(struct tdb1_context *tdb);
 
 int tdb1_unlockall_read(struct tdb1_context *tdb);
-
-tdb1_log_func tdb1_log_fn(struct tdb1_context *tdb);
 
 int tdb1_transaction_start(struct tdb1_context *tdb);
 

@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 			  &taplogctx, NULL);
 	ok1(tdb);
 	ok1(tdb1_check(tdb, NULL, NULL) == -1);
-	ok1(tdb1_error(tdb) == TDB1_ERR_CORRUPT);
+	ok1(tdb_error(tdb) == TDB_ERR_CORRUPT);
 	tdb1_close(tdb);
 
 	/* Big and little endian should work! */

@@ -150,9 +150,11 @@ char *tdb1_summary(struct tdb1_context *tdb)
 			tally1_add(&dead, rec.rec_len);
 			break;
 		default:
-			TDB1_LOG((tdb, TDB1_DEBUG_ERROR,
-				 "Unexpected record magic 0x%x at offset %d\n",
-				 rec.magic, off));
+			tdb->last_error = tdb_logerr(tdb, TDB_ERR_CORRUPT,
+						TDB_LOG_ERROR,
+						"Unexpected record magic 0x%x"
+						" at offset %d",
+						rec.magic, off);
 			goto unlock;
 		}
 	}

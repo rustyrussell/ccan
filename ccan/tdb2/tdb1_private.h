@@ -28,10 +28,16 @@
 #include "private.h"
 #include "tdb1.h"
 
-#include <limits.h>
+/**** FIXME: Type overrides for tdb2, for transition! */
+#define tdb_logerr(tdb, ecode, level, ...) \
+	tdb_logerr((struct tdb_context *)(tdb), (ecode), (level), __VA_ARGS__)
 
-/* Temporary wrapper to avoid undue churn in test/ */
-#define tdb1_error(tdb) ((tdb)->ecode)
+#define tdb_error(tdb) \
+	tdb_error((struct tdb_context *)(tdb))
+
+/***** END FIXME ***/
+
+#include <limits.h>
 
 /* #define TDB_TRACE 1 */
 #ifndef HAVE_GETPAGESIZE
@@ -79,11 +85,6 @@ typedef uint32_t tdb1_off_t;
 #define TDB1_SEQNUM_OFS    offsetof(struct tdb1_header, sequence_number)
 #define TDB1_PAD_BYTE 0x42
 #define TDB1_PAD_U32  0x42424242
-
-/* NB assumes there is a local variable called "tdb" that is the
- * current context, also takes doubly-parenthesized print-style
- * argument. */
-#define TDB1_LOG(x) tdb->log.log_fn x
 
 /* lock offsets */
 #define TDB1_OPEN_LOCK        0
@@ -167,7 +168,21 @@ struct tdb1_methods {
 };
 
 struct tdb1_context {
+	struct tdb1_context *next;
+
 	char *name; /* the name of the database */
+
+	/* Logging function */
+	void (*log_fn)(struct tdb1_context *tdb,
+		       enum tdb_log_level level,
+		       enum TDB_ERROR ecode,
+		       const char *message,
+		       void *data);
+	void *log_data;
+
+	/* Last error we returned. */
+	enum TDB_ERROR last_error; /* error code for last tdb error */
+
 	void *map_ptr; /* where it is currently mapped */
 	int fd; /* open file descriptor for the database */
 	tdb1_len_t map_size; /* how much space has been mapped */
@@ -177,14 +192,11 @@ struct tdb1_context {
 	struct tdb1_lock_type allrecord_lock; /* .offset == upgradable */
 	int num_lockrecs;
 	struct tdb1_lock_type *lockrecs; /* only real locks, all with count>0 */
-	enum TDB1_ERROR ecode; /* error code for last tdb error */
 	struct tdb1_header header; /* a cached copy of the header */
 	uint32_t flags; /* the flags passed to tdb1_open */
 	struct tdb1_traverse_lock travlocks; /* current traversal locks */
-	struct tdb1_context *next; /* all tdbs to avoid multiple opens */
 	dev_t device;	/* uniquely identifies this tdb */
 	ino_t inode;	/* uniquely identifies this tdb */
-	struct tdb1_logging_context log;
 	unsigned int (*hash_fn)(TDB1_DATA *key);
 	int open_flags; /* flags used in the open - needed by reopen */
 	const struct tdb1_methods *methods;

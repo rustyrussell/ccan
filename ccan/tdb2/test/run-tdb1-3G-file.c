@@ -11,7 +11,7 @@ static int tdb1_expand_file_sparse(struct tdb1_context *tdb,
 				  tdb1_off_t addition)
 {
 	if (tdb->read_only || tdb->traverse_read) {
-		tdb->ecode = TDB1_ERR_RDONLY;
+		tdb->last_error = TDB_ERR_RDONLY;
 		return -1;
 	}
 
@@ -27,8 +27,10 @@ static int tdb1_expand_file_sparse(struct tdb1_context *tdb,
 			errno = ENOSPC;
 		}
 		if (written != 1) {
-			TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "expand_file to %d failed (%s)\n",
-				 size+addition, strerror(errno)));
+			tdb->last_error = tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+						"expand_file to %d failed (%s)",
+						size+addition,
+						strerror(errno));
 			return -1;
 		}
 	}

@@ -61,8 +61,8 @@ static bool tdb1_check_header(struct tdb1_context *tdb, tdb1_off_t *recovery)
 	return true;
 
 corrupt:
-	tdb->ecode = TDB1_ERR_CORRUPT;
-	TDB1_LOG((tdb, TDB1_DEBUG_ERROR, "Header is corrupt\n"));
+	tdb->last_error = tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
+				"Header is corrupt\n");
 	return false;
 }
 
@@ -75,21 +75,21 @@ static bool tdb1_check_record(struct tdb1_context *tdb,
 
 	/* Check rec->next: 0 or points to record offset, aligned. */
 	if (rec->next > 0 && rec->next < TDB1_DATA_START(tdb->header.hash_size)){
-		TDB1_LOG((tdb, TDB1_DEBUG_ERROR,
-			 "Record offset %d too small next %d\n",
-			 off, rec->next));
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
+			   "Record offset %d too small next %d\n",
+			   off, rec->next);
 		goto corrupt;
 	}
 	if (rec->next + sizeof(*rec) < rec->next) {
-		TDB1_LOG((tdb, TDB1_DEBUG_ERROR,
-			 "Record offset %d too large next %d\n",
-			 off, rec->next));
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
+			   "Record offset %d too large next %d\n",
+			   off, rec->next);
 		goto corrupt;
 	}
 	if ((rec->next % TDB1_ALIGNMENT) != 0) {
-		TDB1_LOG((tdb, TDB1_DEBUG_ERROR,
-			 "Record offset %d misaligned next %d\n",
-			 off, rec->next));
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
+			   "Record offset %d misaligned next %d\n",
+			   off, rec->next);
 		goto corrupt;
 	}
 	if (tdb->methods->tdb1_oob(tdb, rec->next+sizeof(*rec), 0))
@@ -97,16 +97,16 @@ static bool tdb1_check_record(struct tdb1_context *tdb,
 
 	/* Check rec_len: similar to rec->next, implies next record. */
 	if ((rec->rec_len % TDB1_ALIGNMENT) != 0) {
-		TDB1_LOG((tdb, TDB1_DEBUG_ERROR,
-			 "Record offset %d misaligned length %d\n",
-			 off, rec->rec_len));
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
+			   "Record offset %d misaligned length %d\n",
+			   off, rec->rec_len);
 		goto corrupt;
 	}
 	/* Must fit tailer. */
 	if (rec->rec_len < sizeof(tailer)) {
-		TDB1_LOG((tdb, TDB1_DEBUG_ERROR,
-			 "Record offset %d too short length %d\n",
-			 off, rec->rec_len));
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
+			   "Record offset %d too short length %d\n",
+			   off, rec->rec_len);
 		goto corrupt;
 	}
 	/* OOB allows "right at the end" access, so this works for last rec. */
@@ -118,15 +118,15 @@ static bool tdb1_check_record(struct tdb1_context *tdb,
 			 &tailer) == -1)
 		goto corrupt;
 	if (tailer != sizeof(*rec) + rec->rec_len) {
-		TDB1_LOG((tdb, TDB1_DEBUG_ERROR,
-			 "Record offset %d invalid tailer\n", off));
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
+			   "Record offset %d invalid tailer\n", off);
 		goto corrupt;
 	}
 
 	return true;
 
 corrupt:
-	tdb->ecode = TDB1_ERR_CORRUPT;
+	tdb->last_error = TDB_ERR_CORRUPT;
 	return false;
 }
 
@@ -246,8 +246,8 @@ static bool tdb1_check_used_record(struct tdb1_context *tdb,
 
 	/* key + data + tailer must fit in record */
 	if (rec->key_len + rec->data_len + sizeof(tdb1_off_t) > rec->rec_len) {
-		TDB1_LOG((tdb, TDB1_DEBUG_ERROR,
-			 "Record offset %d too short for contents\n", off));
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
+					"Record offset %d too short for contents\n", off);
 		return false;
 	}
 
@@ -256,8 +256,8 @@ static bool tdb1_check_used_record(struct tdb1_context *tdb,
 		return false;
 
 	if (tdb->hash_fn(&key) != rec->full_hash) {
-		TDB1_LOG((tdb, TDB1_DEBUG_ERROR,
-			 "Record offset %d has incorrect hash\n", off));
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
+					"Record offset %d has incorrect hash\n", off);
 		goto fail_put_key;
 	}
 
@@ -353,8 +353,8 @@ int tdb1_check(struct tdb1_context *tdb,
 
 	/* We should have the whole header, too. */
 	if (tdb->map_size < TDB1_DATA_START(tdb->header.hash_size)) {
-		tdb->ecode = TDB1_ERR_CORRUPT;
-		TDB1_LOG((tdb, TDB1_DEBUG_ERROR, "File too short for hashes\n"));
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
+					"File too short for hashes\n");
 		goto unlock;
 	}
 
@@ -363,7 +363,7 @@ int tdb1_check(struct tdb1_context *tdb,
 			1, sizeof(hashes[0]) * (1+tdb->header.hash_size)
 			+ BITMAP_BITS / CHAR_BIT * (1+tdb->header.hash_size));
 	if (!hashes) {
-		tdb->ecode = TDB1_ERR_OOM;
+		tdb->last_error = TDB_ERR_OOM;
 		goto unlock;
 	}
 
@@ -410,26 +410,25 @@ int tdb1_check(struct tdb1_context *tdb,
 			if (dead < sizeof(rec))
 				goto corrupt;
 
-			TDB1_LOG((tdb, TDB1_DEBUG_ERROR,
-				 "Dead space at %d-%d (of %u)\n",
-				 off, off + dead, tdb->map_size));
+			tdb_logerr(tdb, TDB_SUCCESS, TDB_LOG_WARNING,
+				   "Dead space at %d-%d (of %u)\n",
+				   off, off + dead, tdb->map_size);
 			rec.rec_len = dead - sizeof(rec);
 			break;
 		case TDB1_RECOVERY_MAGIC:
 			if (recovery_start != off) {
-				TDB1_LOG((tdb, TDB1_DEBUG_ERROR,
-					 "Unexpected recovery record at offset %d\n",
-					 off));
+				tdb->last_error = tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
+							"Unexpected recovery record at offset %d\n",
+							off);
 				goto free;
 			}
 			found_recovery = true;
 			break;
 		default: ;
 		corrupt:
-			tdb->ecode = TDB1_ERR_CORRUPT;
-			TDB1_LOG((tdb, TDB1_DEBUG_ERROR,
-				 "Bad magic 0x%x at offset %d\n",
-				 rec.magic, off));
+			tdb->last_error = tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
+						"Bad magic 0x%x at offset %d\n",
+						rec.magic, off);
 			goto free;
 		}
 	}
@@ -440,9 +439,8 @@ int tdb1_check(struct tdb1_context *tdb,
 		unsigned int i;
 		for (i = 0; i < BITMAP_BITS / CHAR_BIT; i++) {
 			if (hashes[h][i] != 0) {
-				tdb->ecode = TDB1_ERR_CORRUPT;
-				TDB1_LOG((tdb, TDB1_DEBUG_ERROR,
-					 "Hashes do not match records\n"));
+				tdb->last_error = tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
+							"Hashes do not match records\n");
 				goto free;
 			}
 		}
@@ -450,9 +448,9 @@ int tdb1_check(struct tdb1_context *tdb,
 
 	/* We must have found recovery area if there was one. */
 	if (recovery_start != 0 && !found_recovery) {
-		TDB1_LOG((tdb, TDB1_DEBUG_ERROR,
-			 "Expected a recovery area at %u\n",
-			 recovery_start));
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
+					"Expected a recovery area at %u\n",
+					recovery_start);
 		goto free;
 	}
 

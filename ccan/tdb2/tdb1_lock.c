@@ -139,7 +139,7 @@ int tdb1_brlock(struct tdb1_context *tdb,
 	}
 
 	if ((rw_type == F_WRLCK) && (tdb->read_only || tdb->traverse_read)) {
-		tdb->ecode = TDB1_ERR_RDONLY;
+		tdb->last_error = TDB_ERR_RDONLY;
 		return -1;
 	}
 
@@ -149,13 +149,14 @@ int tdb1_brlock(struct tdb1_context *tdb,
 	} while (ret == -1 && errno == EINTR);
 
 	if (ret == -1) {
-		tdb->ecode = TDB1_ERR_LOCK;
+		tdb->last_error = TDB_ERR_LOCK;
 		/* Generic lock error. errno set by fcntl.
 		 * EAGAIN is an expected return from non-blocking
 		 * locks. */
 		if (!(flags & TDB1_LOCK_PROBE) && errno != EAGAIN) {
-			TDB1_LOG((tdb, TDB1_DEBUG_TRACE,"tdb1_brlock failed (fd=%d) at offset %d rw_type=%d flags=%d len=%d\n",
-				 tdb->fd, offset, rw_type, flags, (int)len));
+			tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
+				   "tdb1_brlock failed (fd=%d) at offset %d rw_type=%d flags=%d len=%d",
+				   tdb->fd, offset, rw_type, flags, (int)len);
 		}
 		return -1;
 	}
@@ -176,8 +177,10 @@ int tdb1_brunlock(struct tdb1_context *tdb,
 	} while (ret == -1 && errno == EINTR);
 
 	if (ret == -1) {
-		TDB1_LOG((tdb, TDB1_DEBUG_TRACE,"tdb1_brunlock failed (fd=%d) at offset %d rw_type=%d len=%d\n",
-			 tdb->fd, offset, rw_type, (int)len));
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
+					"tdb1_brunlock failed (fd=%d) at offset"
+					" %d rw_type=%d len=%d",
+					tdb->fd, offset, rw_type, (int)len);
 	}
 	return ret;
 }
@@ -193,15 +196,17 @@ int tdb1_allrecord_upgrade(struct tdb1_context *tdb)
 	int count = 1000;
 
 	if (tdb->allrecord_lock.count != 1) {
-		TDB1_LOG((tdb, TDB1_DEBUG_ERROR,
-			 "tdb1_allrecord_upgrade failed: count %u too high\n",
-			 tdb->allrecord_lock.count));
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
+					"tdb1_allrecord_upgrade failed: "
+					"count %u too high",
+					tdb->allrecord_lock.count);
 		return -1;
 	}
 
 	if (tdb->allrecord_lock.off != 1) {
-		TDB1_LOG((tdb, TDB1_DEBUG_ERROR,
-			 "tdb1_allrecord_upgrade failed: already upgraded?\n"));
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
+					"tdb1_allrecord_upgrade failed:"
+					" already upgraded?");
 		return -1;
 	}
 
@@ -221,7 +226,8 @@ int tdb1_allrecord_upgrade(struct tdb1_context *tdb)
 		tv.tv_usec = 1;
 		select(0, NULL, NULL, NULL, &tv);
 	}
-	TDB1_LOG((tdb, TDB1_DEBUG_TRACE,"tdb1_allrecord_upgrade failed\n"));
+	tdb->last_error = tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
+				"tdb1_allrecord_upgrade failed");
 	return -1;
 }
 
@@ -245,9 +251,10 @@ int tdb1_nest_lock(struct tdb1_context *tdb, uint32_t offset, int ltype,
 	struct tdb1_lock_type *new_lck;
 
 	if (offset >= lock_offset(tdb->header.hash_size)) {
-		tdb->ecode = TDB1_ERR_LOCK;
-		TDB1_LOG((tdb, TDB1_DEBUG_ERROR,"tdb1_lock: invalid offset %u for ltype=%d\n",
-			 offset, ltype));
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
+					"tdb1_lock: invalid offset %u for"
+					" ltype=%d",
+					offset, ltype);
 		return -1;
 	}
 	if (tdb->flags & TDB1_NOLOCK)
@@ -332,7 +339,7 @@ static int tdb1_lock_list(struct tdb1_context *tdb, int list, int ltype,
 	}
 
 	if (tdb->allrecord_lock.count) {
-		tdb->ecode = TDB1_ERR_LOCK;
+		tdb->last_error = TDB_ERR_LOCK;
 		ret = -1;
 	} else {
 		/* Only check when we grab first data lock. */
@@ -358,8 +365,9 @@ int tdb1_lock(struct tdb1_context *tdb, int list, int ltype)
 
 	ret = tdb1_lock_list(tdb, list, ltype, TDB1_LOCK_WAIT);
 	if (ret) {
-		TDB1_LOG((tdb, TDB1_DEBUG_ERROR, "tdb1_lock failed on list %d "
-			 "ltype=%d (%s)\n",  list, ltype, strerror(errno)));
+		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+			   "tdb1_lock failed on list %d "
+			   "ltype=%d (%s)",  list, ltype, strerror(errno));
 	}
 	return ret;
 }
@@ -374,13 +382,16 @@ int tdb1_nest_unlock(struct tdb1_context *tdb, uint32_t offset, int ltype)
 
 	/* Sanity checks */
 	if (offset >= lock_offset(tdb->header.hash_size)) {
-		TDB1_LOG((tdb, TDB1_DEBUG_ERROR, "tdb1_unlock: offset %u invalid (%d)\n", offset, tdb->header.hash_size));
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
+					"tdb1_unlock: offset %u invalid (%d)",
+					offset, tdb->header.hash_size);
 		return ret;
 	}
 
 	lck = tdb1_find_nestlock(tdb, offset);
 	if ((lck == NULL) || (lck->count == 0)) {
-		TDB1_LOG((tdb, TDB1_DEBUG_ERROR, "tdb1_unlock: count is 0\n"));
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
+					"tdb1_unlock: count is 0");
 		return -1;
 	}
 
@@ -413,8 +424,6 @@ int tdb1_nest_unlock(struct tdb1_context *tdb, uint32_t offset, int ltype)
 		SAFE_FREE(tdb->lockrecs);
 	}
 
-	if (ret)
-		TDB1_LOG((tdb, TDB1_DEBUG_ERROR, "tdb1_unlock: An error occurred unlocking!\n"));
 	return ret;
 }
 
@@ -427,7 +436,7 @@ int tdb1_unlock(struct tdb1_context *tdb, int list, int ltype)
 	}
 
 	if (tdb->allrecord_lock.count) {
-		tdb->ecode = TDB1_ERR_LOCK;
+		tdb->last_error = TDB_ERR_LOCK;
 		return -1;
 	}
 
@@ -457,7 +466,7 @@ static int tdb1_allrecord_check(struct tdb1_context *tdb, int ltype,
 {
 	/* There are no locks on read-only dbs */
 	if (tdb->read_only || tdb->traverse_read) {
-		tdb->ecode = TDB1_ERR_LOCK;
+		tdb->last_error = TDB_ERR_LOCK;
 		return -1;
 	}
 
@@ -468,19 +477,19 @@ static int tdb1_allrecord_check(struct tdb1_context *tdb, int ltype,
 
 	if (tdb->allrecord_lock.count) {
 		/* a global lock of a different type exists */
-		tdb->ecode = TDB1_ERR_LOCK;
+		tdb->last_error = TDB_ERR_LOCK;
 		return -1;
 	}
 
 	if (tdb1_have_extra_locks(tdb)) {
 		/* can't combine global and chain locks */
-		tdb->ecode = TDB1_ERR_LOCK;
+		tdb->last_error = TDB_ERR_LOCK;
 		return -1;
 	}
 
 	if (upgradable && ltype != F_RDLCK) {
 		/* tdb error: you can't upgrade a write lock! */
-		tdb->ecode = TDB1_ERR_LOCK;
+		tdb->last_error = TDB_ERR_LOCK;
 		return -1;
 	}
 	return 1;
@@ -577,19 +586,19 @@ int tdb1_allrecord_unlock(struct tdb1_context *tdb, int ltype)
 {
 	/* There are no locks on read-only dbs */
 	if (tdb->read_only || tdb->traverse_read) {
-		tdb->ecode = TDB1_ERR_LOCK;
+		tdb->last_error = TDB_ERR_LOCK;
 		return -1;
 	}
 
 	if (tdb->allrecord_lock.count == 0) {
-		tdb->ecode = TDB1_ERR_LOCK;
+		tdb->last_error = TDB_ERR_LOCK;
 		return -1;
 	}
 
 	/* Upgradable locks are marked as write locks. */
 	if (tdb->allrecord_lock.ltype != ltype
 	    && (!tdb->allrecord_lock.off || ltype != F_RDLCK)) {
-		tdb->ecode = TDB1_ERR_LOCK;
+		tdb->last_error = TDB_ERR_LOCK;
 		return -1;
 	}
 
@@ -599,7 +608,8 @@ int tdb1_allrecord_unlock(struct tdb1_context *tdb, int ltype)
 	}
 
 	if (tdb1_brunlock(tdb, ltype, TDB1_FREELIST_TOP, 0)) {
-		TDB1_LOG((tdb, TDB1_DEBUG_ERROR, "tdb1_unlockall failed (%s)\n", strerror(errno)));
+		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+			   "tdb1_unlockall failed (%s)", strerror(errno));
 		return -1;
 	}
 

@@ -36,18 +36,18 @@ int tdb1_rec_free_read(struct tdb1_context *tdb, tdb1_off_t off, struct tdb1_rec
 	if (rec->magic == TDB1_MAGIC) {
 		/* this happens when a app is showdown while deleting a record - we should
 		   not completely fail when this happens */
-		TDB1_LOG((tdb, TDB1_DEBUG_WARNING, "tdb1_rec_free_read non-free magic 0x%x at offset=%d - fixing\n",
-			 rec->magic, off));
+		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_WARNING,
+			   "tdb1_rec_free_read non-free magic 0x%x at offset=%d - fixing\n",
+			   rec->magic, off);
 		rec->magic = TDB1_FREE_MAGIC;
 		if (tdb->methods->tdb1_write(tdb, off, rec, sizeof(*rec)) == -1)
 			return -1;
 	}
 
 	if (rec->magic != TDB1_FREE_MAGIC) {
-		/* Ensure ecode is set for log fn. */
-		tdb->ecode = TDB1_ERR_CORRUPT;
-		TDB1_LOG((tdb, TDB1_DEBUG_WARNING, "tdb1_rec_free_read bad magic 0x%x at offset=%d\n",
-			   rec->magic, off));
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
+					"tdb1_rec_free_read bad magic 0x%x at offset=%d\n",
+					rec->magic, off);
 		return -1;
 	}
 	if (tdb->methods->tdb1_oob(tdb, rec->next+sizeof(*rec), 0) != 0)
@@ -78,7 +78,8 @@ int tdb1_free(struct tdb1_context *tdb, tdb1_off_t offset, struct tdb1_record *r
 
 	/* set an initial tailer, so if we fail we don't leave a bogus record */
 	if (update_tailer(tdb, offset, rec) != 0) {
-		TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "tdb1_free: update_tailer failed!\n"));
+		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+			   "tdb_free: update_tailer failed!\n");
 		goto fail;
 	}
 
@@ -90,7 +91,8 @@ int tdb1_free(struct tdb1_context *tdb, tdb1_off_t offset, struct tdb1_record *r
 
 		/* Read in tailer and jump back to header */
 		if (tdb1_ofs_read(tdb, left, &leftsize) == -1) {
-			TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "tdb1_free: left offset read failed at %u\n", left));
+			tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+				   "tdb1_free: left offset read failed at %u", left);
 			goto update;
 		}
 
@@ -108,7 +110,8 @@ int tdb1_free(struct tdb1_context *tdb, tdb1_off_t offset, struct tdb1_record *r
 
 		/* Now read in the left record */
 		if (tdb->methods->tdb1_read(tdb, left, &l, sizeof(l), TDB1_DOCONV()) == -1) {
-			TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "tdb1_free: left read failed at %u (%u)\n", left, leftsize));
+			tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+				   "tdb1_free: left read failed at %u (%u)", left, leftsize);
 			goto update;
 		}
 
@@ -119,11 +122,13 @@ int tdb1_free(struct tdb1_context *tdb, tdb1_off_t offset, struct tdb1_record *r
 			   prevents traverse from being O(n^2) after a lot of deletes */
 			l.rec_len += sizeof(*rec) + rec->rec_len;
 			if (tdb1_rec_write(tdb, left, &l) == -1) {
-				TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "tdb1_free: update_left failed at %u\n", left));
+				tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+					   "tdb1_free: update_left failed at %u", left);
 				goto fail;
 			}
 			if (update_tailer(tdb, left, &l) == -1) {
-				TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "tdb1_free: update_tailer failed at %u\n", offset));
+				tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+					   "tdb1_free: update_tailer failed at %u", offset);
 				goto fail;
 			}
 			tdb1_unlock(tdb, -1, F_WRLCK);
@@ -139,7 +144,9 @@ update:
 	if (tdb1_ofs_read(tdb, TDB1_FREELIST_TOP, &rec->next) == -1 ||
 	    tdb1_rec_write(tdb, offset, rec) == -1 ||
 	    tdb1_ofs_write(tdb, TDB1_FREELIST_TOP, &offset) == -1) {
-		TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "tdb1_free record write failed at offset=%d\n", offset));
+		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+			   "tdb1_free record write failed at offset=%d",
+			   offset);
 		goto fail;
 	}
 

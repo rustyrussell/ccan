@@ -61,7 +61,7 @@ static enum agent_return do_operation(enum operation op, const char *name)
 	case FETCH:
 		data = tdb1_fetch(tdb, k);
 		if (data.dptr == NULL) {
-			if (tdb->ecode == TDB1_ERR_NOEXIST)
+			if (tdb->last_error == TDB_ERR_NOEXIST)
 				ret = FAILED;
 			else
 				ret = OTHER_FAILURE;
