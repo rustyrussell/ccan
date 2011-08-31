@@ -1,3 +1,4 @@
+#include "config.h"
 #include <ccan/tdb2/check.c>
 #include <ccan/tdb2/free.c>
 #include <ccan/tdb2/hash.c>
