@@ -68,11 +68,16 @@ int main(int argc, char *argv[])
 {
 	struct tdb_context *tdb;
 	int errors = 0;
+	union tdb_attribute hsize;
+
+	hsize.base.attr = TDB_ATTRIBUTE_TDB1_HASHSIZE;
+	hsize.base.next = &tap_log_attr;
+	hsize.tdb1_hashsize.hsize = 1024;
 
 	plan_tests(41);
 	tdb = tdb1_open("run-no-lock-during-traverse.tdb",
-			1024, TDB_DEFAULT, O_CREAT|O_TRUNC|O_RDWR,
-			0600, &tap_log_attr);
+			TDB_DEFAULT, O_CREAT|O_TRUNC|O_RDWR,
+			0600, &hsize);
 
 	ok1(tdb);
 	ok1(prepare_entries(tdb));

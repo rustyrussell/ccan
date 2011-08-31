@@ -607,7 +607,8 @@ enum tdb_attribute_type {
 	TDB_ATTRIBUTE_SEED = 2,
 	TDB_ATTRIBUTE_STATS = 3,
 	TDB_ATTRIBUTE_OPENHOOK = 4,
-	TDB_ATTRIBUTE_FLOCK = 5
+	TDB_ATTRIBUTE_FLOCK = 5,
+	TDB_ATTRIBUTE_TDB1_HASHSIZE = 128,
 };
 
 /**
@@ -631,8 +632,9 @@ enum TDB_ERROR tdb_get_attribute(struct tdb_context *tdb,
  * of the same type.  It returns TDB_ERR_EINVAL if the attribute is
  * unknown or invalid.
  *
- * Note that TDB_ATTRIBUTE_HASH, TDB_ATTRIBUTE_SEED and
- * TDB_ATTRIBUTE_OPENHOOK cannot currently be set after tdb_open.
+ * Note that TDB_ATTRIBUTE_HASH, TDB_ATTRIBUTE_SEED,
+ * TDB_ATTRIBUTE_OPENHOOK and TDB_ATTRIBUTE_TDB1_HASHSIZE cannot
+ * currently be set after tdb_open.
  */
 enum TDB_ERROR tdb_set_attribute(struct tdb_context *tdb,
 				 const union tdb_attribute *attr);
@@ -839,6 +841,19 @@ struct tdb_attribute_flock {
 };
 
 /**
+ * struct tdb_attribute_tdb1_hashsize - tdb1 hashsize
+ *
+ * This attribute allows setting the TDB1 hashsize; it only makes sense with
+ * O_CREAT and TDB_VERSION1.
+ *
+ * Hashsize should generally be a prime, such as 10007.
+ */
+struct tdb_attribute_tdb1_hashsize {
+	struct tdb_attribute_base base; /* .attr = TDB_ATTRIBUTE_TDB1_HASHSIZE */
+	unsigned int hsize;
+};
+
+/**
  * union tdb_attribute - tdb attributes.
  *
  * This represents all the known attributes.
@@ -856,6 +871,7 @@ union tdb_attribute {
 	struct tdb_attribute_stats stats;
 	struct tdb_attribute_openhook openhook;
 	struct tdb_attribute_flock flock;
+	struct tdb_attribute_tdb1_hashsize tdb1_hashsize;
 };
 
 #ifdef  __cplusplus

@@ -50,14 +50,19 @@ int main(int argc, char *argv[])
 {
 	struct tdb_context *tdb;
 	TDB_DATA key, data;
+	union tdb_attribute hsize;
+
+	hsize.base.attr = TDB_ATTRIBUTE_TDB1_HASHSIZE;
+	hsize.base.next = &tap_log_attr;
+	hsize.tdb1_hashsize.hsize = 1024;
 
 	plan_tests(17);
 	agent = prepare_external_agent1();
 	if (!agent)
 		err(1, "preparing agent");
 
-	tdb = tdb1_open("run-nested-traverse.tdb", 1024, TDB_DEFAULT,
-			O_CREAT|O_TRUNC|O_RDWR, 0600, &tap_log_attr);
+	tdb = tdb1_open("run-nested-traverse.tdb", TDB_DEFAULT,
+			O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
 	ok1(tdb);
 
 	ok1(external_agent_operation1(agent, OPEN, tdb->name) == SUCCESS);

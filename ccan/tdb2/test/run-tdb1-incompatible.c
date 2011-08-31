@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
 
 		/* Create an old-style hash. */
 		log_count = 0;
-		tdb = tdb1_open("run-incompatible.tdb", 0, flags,
+		tdb = tdb1_open("run-incompatible.tdb", flags,
 				O_CREAT|O_RDWR|O_TRUNC, 0600, &log_attr);
 		ok1(tdb);
 		ok1(log_count == 0);
@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
 
 		/* We can still open any old-style with incompat hash. */
 		log_count = 0;
-		tdb = tdb1_open("run-incompatible.tdb", 0,
+		tdb = tdb1_open("run-incompatible.tdb",
 				TDB_DEFAULT,
 				O_RDWR, 0600, &incompat_hash_attr);
 		ok1(tdb);
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
 		tdb1_close(tdb);
 
 		log_count = 0;
-		tdb = tdb1_open("test/jenkins-le-hash.tdb1", 0, 0, O_RDONLY,
+		tdb = tdb1_open("test/jenkins-le-hash.tdb1", 0, O_RDONLY,
 				0, &jhash_attr);
 		ok1(tdb);
 		ok1(log_count == 0);
@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
 		tdb1_close(tdb);
 
 		log_count = 0;
-		tdb = tdb1_open("test/jenkins-be-hash.tdb1", 0, 0, O_RDONLY,
+		tdb = tdb1_open("test/jenkins-be-hash.tdb1", 0, O_RDONLY,
 				0, &jhash_attr);
 		ok1(tdb);
 		ok1(log_count == 0);
@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
 
 		/* OK, now create with incompatible hash. */
 		log_count = 0;
-		tdb = tdb1_open("run-incompatible.tdb", 0,
+		tdb = tdb1_open("run-incompatible.tdb",
 				flags,
 				O_CREAT|O_RDWR|O_TRUNC, 0600,
 				&incompat_hash_attr);
@@ -142,14 +142,14 @@ int main(int argc, char *argv[])
 
 		/* Cannot open with old hash. */
 		log_count = 0;
-		tdb = tdb1_open("run-incompatible.tdb", 0, 0,
+		tdb = tdb1_open("run-incompatible.tdb", 0,
 				O_RDWR, 0600, &ohash_attr);
 		ok1(!tdb);
 		ok1(log_count == 1);
 
 		/* Can open with jenkins hash. */
 		log_count = 0;
-		tdb = tdb1_open("run-incompatible.tdb", 0, 0,
+		tdb = tdb1_open("run-incompatible.tdb", 0,
 				O_RDWR, 0600, &jhash_attr);
 		ok1(tdb);
 		ok1(log_count == 0);
@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
 
 		/* Can open by letting it figure it out itself. */
 		log_count = 0;
-		tdb = tdb1_open("run-incompatible.tdb", 0, 0,
+		tdb = tdb1_open("run-incompatible.tdb", 0,
 				O_RDWR, 0600, &log_attr);
 		ok1(tdb);
 		ok1(log_count == 0);
@@ -176,7 +176,7 @@ int main(int argc, char *argv[])
 		/* FIXME: Not possible with TDB2 :( */
 		/* We can also use incompatible hash with other hashes. */
 		log_count = 0;
-		tdb = tdb1_open("run-incompatible.tdb", 0,
+		tdb = tdb1_open("run-incompatible.tdb",
 				flags,
 				O_CREAT|O_RDWR|O_TRUNC, 0600, &dumbhash_attr);
 		ok1(tdb);
@@ -191,14 +191,14 @@ int main(int argc, char *argv[])
 
 		/* It should not open if we don't specify. */
 		log_count = 0;
-		tdb = tdb1_open("run-incompatible.tdb", 0, 0, O_RDWR, 0,
+		tdb = tdb1_open("run-incompatible.tdb", 0, O_RDWR, 0,
 				&log_attr);
 		ok1(!tdb);
 		ok1(log_count == 1);
 
 		/* Should reopen with correct hash. */
 		log_count = 0;
-		tdb = tdb1_open("run-incompatible.tdb", 0, 0, O_RDWR, 0,
+		tdb = tdb1_open("run-incompatible.tdb", 0, O_RDWR, 0,
 				&dumbhash_attr);
 		ok1(tdb);
 		ok1(log_count == 0);

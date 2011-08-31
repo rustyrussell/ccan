@@ -39,7 +39,7 @@ static enum agent_return do_operation(enum operation op, const char *name)
 			diag("Already have tdb %s open", tdb->name);
 			return OTHER_FAILURE;
 		}
-		tdb = tdb1_open(name, 0, TDB_DEFAULT, O_RDWR, 0,
+		tdb = tdb1_open(name, TDB_DEFAULT, O_RDWR, 0,
 				&tap_log_attr);
 		if (!tdb) {
 			if (!locking_would_block1)

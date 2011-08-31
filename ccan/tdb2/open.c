@@ -209,6 +209,7 @@ enum TDB_ERROR tdb_set_attribute(struct tdb_context *tdb,
 	case TDB_ATTRIBUTE_HASH:
 	case TDB_ATTRIBUTE_SEED:
 	case TDB_ATTRIBUTE_OPENHOOK:
+	case TDB_ATTRIBUTE_TDB1_HASHSIZE:
 		return tdb->last_error
 			= tdb_logerr(tdb, TDB_ERR_EINVAL,
 				     TDB_LOG_USE_ERROR,
@@ -218,7 +219,9 @@ enum TDB_ERROR tdb_set_attribute(struct tdb_context *tdb,
 				     ? "TDB_ATTRIBUTE_HASH"
 				     : attr->base.attr == TDB_ATTRIBUTE_SEED
 				     ? "TDB_ATTRIBUTE_SEED"
-				     : "TDB_ATTRIBUTE_OPENHOOK");
+				     : attr->base.attr == TDB_ATTRIBUTE_OPENHOOK
+				     ? "TDB_ATTRIBUTE_OPENHOOK"
+				     : "TDB_ATTRIBUTE_TDB1_HASHSIZE");
 	case TDB_ATTRIBUTE_STATS:
 		return tdb->last_error
 			= tdb_logerr(tdb, TDB_ERR_EINVAL,
@@ -276,6 +279,16 @@ enum TDB_ERROR tdb_get_attribute(struct tdb_context *tdb,
 		attr->flock.unlock = tdb->unlock_fn;
 		attr->flock.data = tdb->lock_data;
 		break;
+	case TDB_ATTRIBUTE_TDB1_HASHSIZE:
+		if (!(tdb->flags & TDB_VERSION1))
+			return tdb->last_error
+				= tdb_logerr(tdb, TDB_ERR_EINVAL,
+					     TDB_LOG_USE_ERROR,
+				     "tdb_get_attribute:"
+				     " cannot get TDB_ATTRIBUTE_TDB1_HASHSIZE"
+				     " on TDB2 tdb.");
+		attr->tdb1_hashsize.hsize = tdb->tdb1.header.hash_size;
+		break;
 	default:
 		return tdb->last_error
 			= tdb_logerr(tdb, TDB_ERR_EINVAL,
@@ -300,11 +313,14 @@ void tdb_unset_attribute(struct tdb_context *tdb,
 		break;
 	case TDB_ATTRIBUTE_HASH:
 	case TDB_ATTRIBUTE_SEED:
+	case TDB_ATTRIBUTE_TDB1_HASHSIZE:
 		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
 			   "tdb_unset_attribute: cannot unset %s after opening",
 			   type == TDB_ATTRIBUTE_HASH
 			   ? "TDB_ATTRIBUTE_HASH"
-			   : "TDB_ATTRIBUTE_SEED");
+			   : type == TDB_ATTRIBUTE_SEED
+			   ? "TDB_ATTRIBUTE_SEED"
+			   : "TDB_ATTRIBUTE_TDB1_HASHSIZE");
 		break;
 	case TDB_ATTRIBUTE_STATS:
 		tdb_logerr(tdb, TDB_ERR_EINVAL,
@@ -336,6 +352,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	ssize_t rlen;
 	struct tdb_header hdr;
 	struct tdb_attribute_seed *seed = NULL;
+	struct tdb_attribute_tdb1_hashsize *hsize_attr = NULL;
 	tdb_bool_err berr;
 	enum TDB_ERROR ecode;
 	int openlock;
@@ -382,6 +399,9 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 			tdb->openhook = attr->openhook.fn;
 			tdb->openhook_data = attr->openhook.data;
 			break;
+		case TDB_ATTRIBUTE_TDB1_HASHSIZE:
+			hsize_attr = &attr->tdb1_hashsize;
+			break;
 		default:
 			/* These are set as normal. */
 			ecode = tdb_set_attribute(tdb, attr);
@@ -397,6 +417,18 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		ecode = tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
 				   "tdb_open: unknown flags %u", tdb_flags);
 		goto fail;
+	}
+
+	if (hsize_attr) {
+		if (!(tdb_flags & TDB_VERSION1) ||
+		    (!(tdb_flags & TDB_INTERNAL) && !(open_flags & O_CREAT))) {
+			ecode = tdb_logerr(tdb, TDB_ERR_EINVAL,
+					   TDB_LOG_USE_ERROR,
+					   "tdb_open: can only use"
+					   " TDB_ATTRIBUTE_TDB1_HASHSIZE when"
+					   " creating a TDB_VERSION1 tdb");
+			goto fail;
+		}
 	}
 
 	if ((open_flags & O_ACCMODE) == O_WRONLY) {

@@ -133,6 +133,11 @@ int main(int argc, char *argv[])
 	int i;
 	struct tdb_context *tdb;
 	TDB_DATA key, data;
+	union tdb_attribute hsize;
+
+	hsize.base.attr = TDB_ATTRIBUTE_TDB1_HASHSIZE;
+	hsize.base.next = &tap_log_attr;
+	hsize.tdb1_hashsize.hsize = 1024;
 
 	plan_tests(10);
 	agent = prepare_external_agent1();
@@ -145,9 +150,9 @@ int main(int argc, char *argv[])
 		     "DEFAULT",
 		     (flags[i] & TDB_NOMMAP) ? "no mmap" : "mmap");
 		unlink(TEST_DBNAME);
-		tdb = tdb1_open(TEST_DBNAME, 1024, flags[i],
+		tdb = tdb1_open(TEST_DBNAME, flags[i],
 				O_CREAT|O_TRUNC|O_RDWR, 0600,
-				&tap_log_attr);
+				&hsize);
 		ok1(tdb);
 
 		opened = true;

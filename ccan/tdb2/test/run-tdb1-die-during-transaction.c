@@ -85,12 +85,17 @@ static bool test_death(enum operation op, struct agent *agent)
 	TDB_DATA key;
 	enum agent_return ret;
 	int needed_recovery = 0;
+	union tdb_attribute hsize;
+
+	hsize.base.attr = TDB_ATTRIBUTE_TDB1_HASHSIZE;
+	hsize.base.next = &tap_log_attr;
+	hsize.tdb1_hashsize.hsize = 1024;
 
 	current = target = 0;
 reset:
 	unlink(TEST_DBNAME);
-	tdb = tdb1_open(TEST_DBNAME, 1024, TDB_NOMMAP,
-			O_CREAT|O_TRUNC|O_RDWR, 0600, &tap_log_attr);
+	tdb = tdb1_open(TEST_DBNAME, TDB_NOMMAP,
+			O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
 
 	if (setjmp(jmpbuf) != 0) {
 		/* We're partway through.  Simulate our death. */

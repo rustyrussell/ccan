@@ -94,11 +94,16 @@ static void check_test(struct tdb_context *tdb)
 int main(int argc, char *argv[])
 {
 	struct tdb_context *tdb;
+	union tdb_attribute hsize;
+
+	hsize.base.attr = TDB_ATTRIBUTE_TDB1_HASHSIZE;
+	hsize.base.next = &tap_log_attr;
+	hsize.tdb1_hashsize.hsize = 2;
 
 	plan_tests(4);
 	/* This should use mmap. */
-	tdb = tdb1_open("run-corrupt.tdb", 2, TDB_DEFAULT,
-			O_CREAT|O_TRUNC|O_RDWR, 0600, &tap_log_attr);
+	tdb = tdb1_open("run-corrupt.tdb", TDB_DEFAULT,
+			O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
 
 	if (!tdb)
 		abort();
@@ -106,8 +111,8 @@ int main(int argc, char *argv[])
 	tdb1_close(tdb);
 
 	/* This should not. */
-	tdb = tdb1_open("run-corrupt.tdb", 2, TDB_NOMMAP,
-			O_CREAT|O_TRUNC|O_RDWR, 0600, &tap_log_attr);
+	tdb = tdb1_open("run-corrupt.tdb", TDB_NOMMAP,
+			O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
 
 	if (!tdb)
 		abort();

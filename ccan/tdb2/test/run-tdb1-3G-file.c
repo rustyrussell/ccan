@@ -64,10 +64,15 @@ int main(int argc, char *argv[])
 	uint32_t hash;
 	tdb1_off_t rec_ptr;
 	struct tdb1_record rec;
+	union tdb_attribute hsize;
+
+	hsize.base.attr = TDB_ATTRIBUTE_TDB1_HASHSIZE;
+	hsize.base.next = &tap_log_attr;
+	hsize.tdb1_hashsize.hsize = 1024;
 
 	plan_tests(24);
-	tdb = tdb1_open("run-36-file.tdb", 1024, TDB_DEFAULT,
-			O_CREAT|O_TRUNC|O_RDWR, 0600, &tap_log_attr);
+	tdb = tdb1_open("run-36-file.tdb", TDB_DEFAULT,
+			O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
 
 	ok1(tdb);
 	tdb->tdb1.io = &large_io_methods;

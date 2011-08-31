@@ -681,11 +681,6 @@ int tdb1_get_seqnum(struct tdb_context *tdb)
 	return seqnum;
 }
 
-int tdb1_hash_size(struct tdb_context *tdb)
-{
-	return tdb->tdb1.header.hash_size;
-}
-
 
 /*
   add a region of the file to the freelist. Length is the size of the region in bytes,
@@ -836,6 +831,11 @@ int tdb1_repack(struct tdb_context *tdb)
 {
 	struct tdb_context *tmp_db;
 	struct traverse_state state;
+	union tdb_attribute hsize;
+
+	hsize.base.attr = TDB_ATTRIBUTE_TDB1_HASHSIZE;
+	hsize.base.next = NULL;
+	hsize.tdb1_hashsize.hsize = tdb->tdb1.header.hash_size;
 
 	if (tdb1_transaction_start(tdb) != 0) {
 		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
@@ -843,7 +843,7 @@ int tdb1_repack(struct tdb_context *tdb)
 		return -1;
 	}
 
-	tmp_db = tdb1_open("tmpdb", tdb1_hash_size(tdb), TDB_INTERNAL, O_RDWR|O_CREAT, 0, NULL);
+	tmp_db = tdb1_open("tmpdb", TDB_INTERNAL, O_RDWR|O_CREAT, 0, &hsize);
 	if (tmp_db == NULL) {
 		tdb->last_error = tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
 					__location__ " Failed to create tmp_db");

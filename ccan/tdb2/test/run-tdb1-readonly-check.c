@@ -10,11 +10,16 @@ int main(int argc, char *argv[])
 {
 	struct tdb_context *tdb;
 	TDB_DATA key, data;
+	union tdb_attribute hsize;
+
+	hsize.base.attr = TDB_ATTRIBUTE_TDB1_HASHSIZE;
+	hsize.base.next = &tap_log_attr;
+	hsize.tdb1_hashsize.hsize = 1024;
 
 	plan_tests(11);
-	tdb = tdb1_open("run-readonly-check.tdb", 1024,
+	tdb = tdb1_open("run-readonly-check.tdb",
 			TDB_DEFAULT,
-			O_CREAT|O_TRUNC|O_RDWR, 0600, &tap_log_attr);
+			O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
 
 	ok1(tdb);
 	key.dsize = strlen("hi");
@@ -30,7 +35,7 @@ int main(int argc, char *argv[])
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
 	ok1(tdb1_close(tdb) == 0);
 
-	tdb = tdb1_open("run-readonly-check.tdb", 1024,
+	tdb = tdb1_open("run-readonly-check.tdb",
 			TDB_DEFAULT, O_RDONLY, 0, &tap_log_attr);
 
 	ok1(tdb);

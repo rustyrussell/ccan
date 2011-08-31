@@ -8,10 +8,15 @@ int main(int argc, char *argv[])
 {
 	struct tdb_context *tdb;
 	TDB_DATA key, data;
+	union tdb_attribute hsize;
+
+	hsize.base.attr = TDB_ATTRIBUTE_TDB1_HASHSIZE;
+	hsize.base.next = &tap_log_attr;
+	hsize.tdb1_hashsize.hsize = 1;
 
 	plan_tests(13);
-	tdb = tdb1_open("run-check.tdb", 1, TDB_DEFAULT,
-			O_CREAT|O_TRUNC|O_RDWR, 0600, &tap_log_attr);
+	tdb = tdb1_open("run-check.tdb", TDB_DEFAULT,
+			O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
 
 	ok1(tdb);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
@@ -25,13 +30,13 @@ int main(int argc, char *argv[])
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
 	tdb1_close(tdb);
 
-	tdb = tdb1_open("run-check.tdb", 1024, 0, O_RDWR, 0,
+	tdb = tdb1_open("run-check.tdb", 0, O_RDWR, 0,
 			&tap_log_attr);
 	ok1(tdb);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
 	tdb1_close(tdb);
 
-	tdb = tdb1_open("test/tdb1.corrupt", 1024, 0, O_RDWR, 0,
+	tdb = tdb1_open("test/tdb1.corrupt", 0, O_RDWR, 0,
 			&tap_log_attr);
 	ok1(tdb);
 	ok1(tdb1_check(tdb, NULL, NULL) == -1);
@@ -39,13 +44,13 @@ int main(int argc, char *argv[])
 	tdb1_close(tdb);
 
 	/* Big and little endian should work! */
-	tdb = tdb1_open("test/old-nohash-le.tdb1", 1024, 0, O_RDWR, 0,
+	tdb = tdb1_open("test/old-nohash-le.tdb1", 0, O_RDWR, 0,
 			&tap_log_attr);
 	ok1(tdb);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
 	tdb1_close(tdb);
 
-	tdb = tdb1_open("test/old-nohash-be.tdb1", 1024, 0, O_RDWR, 0,
+	tdb = tdb1_open("test/old-nohash-be.tdb1", 0, O_RDWR, 0,
 			&tap_log_attr);
 	ok1(tdb);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);

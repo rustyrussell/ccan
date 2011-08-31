@@ -24,7 +24,7 @@
    You should have received a copy of the GNU Lesser General Public
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
-
+#include <assert.h>
 #include "tdb1_private.h"
 
 /* We use two hashes to double-check they're using the right hash function. */
@@ -222,8 +222,6 @@ static struct tdb_context *tdb1_open_ex(const char *name, int hash_size, int tdb
 		goto fail;
 	}
 
-	if (hash_size == 0)
-		hash_size = TDB1_DEFAULT_HASH_SIZE;
 	if ((open_flags & O_ACCMODE) == O_RDONLY) {
 		tdb->flags |= TDB_RDONLY;
 		/* read only databases don't do locking */
@@ -359,12 +357,13 @@ static struct tdb_context *tdb1_open_ex(const char *name, int hash_size, int tdb
 }
 
 /* Temporart wrapper for transition. */
-struct tdb_context *tdb1_open(const char *name, int hash_size, int tdb1_flags,
+struct tdb_context *tdb1_open(const char *name, int tdb1_flags,
 			      int open_flags, mode_t mode,
 			      union tdb_attribute *attr)
 {
 	struct tdb1_logging_context *log_ctx = NULL, log;
 	tdb1_hash_func hash_fn = NULL;
+	struct tdb_attribute_tdb1_hashsize *hsize = NULL;
 
 	while (attr) {
 		switch (attr->base.attr) {
@@ -376,13 +375,31 @@ struct tdb_context *tdb1_open(const char *name, int hash_size, int tdb1_flags,
 			log.log_private = attr->log.data;
 			log_ctx = &log;
 			break;
+		case TDB_ATTRIBUTE_TDB1_HASHSIZE:
+			hsize = &attr->tdb1_hashsize;
+			break;
+			break;
 		default:
 			abort();
 		}
 		attr = attr->base.next;
 	}
 
-	return tdb1_open_ex(name, hash_size, tdb1_flags, open_flags, mode,
+	if (hsize && !(open_flags & O_CREAT)) {
+		if (log_ctx) {
+			log_ctx->log_fn(NULL,
+					TDB_ERR_EINVAL,
+					TDB_LOG_USE_ERROR,
+					"tdb_open: can only use"
+					" TDB_ATTRIBUTE_TDB1_HASHSIZE when"
+					" creating a tdb",
+					log_ctx->log_private);
+		}
+		errno = EINVAL;
+		return NULL;
+	}
+	return tdb1_open_ex(name, hsize ? hsize->hsize : TDB1_DEFAULT_HASH_SIZE,
+			    tdb1_flags, open_flags, mode,
 			    log_ctx, hash_fn);
 }
 

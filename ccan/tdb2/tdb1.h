@@ -38,7 +38,7 @@
 
 typedef int (*tdb1_traverse_func)(struct tdb_context *, TDB_DATA, TDB_DATA, void *);
 
-struct tdb_context *tdb1_open(const char *name, int hash_size, int tdb1_flags,
+struct tdb_context *tdb1_open(const char *name, int tdb1_flags,
 			      int open_flags, mode_t mode,
 			      union tdb_attribute *attributes);
 
@@ -86,8 +86,6 @@ int tdb1_transaction_commit(struct tdb_context *tdb);
 int tdb1_transaction_cancel(struct tdb_context *tdb);
 
 int tdb1_get_seqnum(struct tdb_context *tdb);
-
-int tdb1_hash_size(struct tdb_context *tdb);
 
 void tdb1_increment_seqnum_nonblock(struct tdb_context *tdb);
 
