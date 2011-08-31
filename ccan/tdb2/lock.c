@@ -194,7 +194,7 @@ static enum TDB_ERROR tdb_brlock(struct tdb_context *tdb,
 		return TDB_SUCCESS;
 	}
 
-	if (rw_type == F_WRLCK && tdb->read_only) {
+	if (rw_type == F_WRLCK && (tdb->flags & TDB_RDONLY)) {
 		return tdb_logerr(tdb, TDB_ERR_RDONLY, TDB_LOG_USE_ERROR,
 				  "Write lock attempted on read-only database");
 	}
@@ -508,8 +508,9 @@ static enum TDB_ERROR tdb_lock_gradual(struct tdb_context *tdb,
 	}
 
 	/* First we try non-blocking. */
-	if (tdb_brlock(tdb, ltype, off, len, nb_flags) == TDB_SUCCESS) {
-		return TDB_SUCCESS;
+	ecode = tdb_brlock(tdb, ltype, off, len, nb_flags);
+	if (ecode != TDB_ERR_LOCK) {
+		return ecode;
 	}
 
 	/* Try locking first half, then second. */

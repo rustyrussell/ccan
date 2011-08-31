@@ -331,9 +331,6 @@ struct tdb_context {
 	/* Are we accessing directly? (debugging check). */
 	int direct_access;
 
-	/* Operating read-only? (Opened O_RDONLY, or in traverse_read) */
-	bool read_only;
-
 	/* Open flags passed to tdb_open. */
 	int open_flags;
 

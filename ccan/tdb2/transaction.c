@@ -532,7 +532,7 @@ enum TDB_ERROR tdb_transaction_start(struct tdb_context *tdb)
 						    " internal tdb");
 	}
 
-	if (tdb->read_only) {
+	if (tdb->flags & TDB_RDONLY) {
 		return tdb->last_error = tdb_logerr(tdb, TDB_ERR_RDONLY,
 						    TDB_LOG_USE_ERROR,
 						    "tdb_transaction_start:"
@@ -1196,7 +1196,7 @@ enum TDB_ERROR tdb_transaction_recover(struct tdb_context *tdb)
 		return TDB_SUCCESS;
 	}
 
-	if (tdb->read_only) {
+	if (tdb->flags & TDB_RDONLY) {
 		return tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
 				  "tdb_transaction_recover:"
 				  " attempt to recover read only database");

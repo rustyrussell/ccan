@@ -324,6 +324,29 @@ unsigned int tdb_get_flags(struct tdb_context *tdb)
 	return tdb->flags;
 }
 
+static bool readonly_changable(struct tdb_context *tdb, const char *caller)
+{
+	if (tdb->transaction) {
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_EINVAL,
+					     TDB_LOG_USE_ERROR,
+					     "%s: can't change"
+					     " TDB_RDONLY inside transaction",
+					     caller);
+		return false;
+	}
+
+	if (tdb->file->allrecord_lock.count != 0
+	    || tdb->file->num_lockrecs != 0) {
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_EINVAL,
+					     TDB_LOG_USE_ERROR,
+					     "%s: can't change"
+					     " TDB_RDONLY holding locks",
+					     caller);
+		return false;
+	}
+	return true;
+}
+
 void tdb_add_flag(struct tdb_context *tdb, unsigned flag)
 {
 	if (tdb->flags & TDB_INTERNAL) {
@@ -348,6 +371,10 @@ void tdb_add_flag(struct tdb_context *tdb, unsigned flag)
 		break;
 	case TDB_ALLOW_NESTING:
 		tdb->flags |= TDB_ALLOW_NESTING;
+		break;
+	case TDB_RDONLY:
+		if (readonly_changable(tdb, "tdb_add_flag"))
+			tdb->flags |= TDB_RDONLY;
 		break;
 	default:
 		tdb->last_error = tdb_logerr(tdb, TDB_ERR_EINVAL,
@@ -381,6 +408,18 @@ void tdb_remove_flag(struct tdb_context *tdb, unsigned flag)
 		break;
 	case TDB_ALLOW_NESTING:
 		tdb->flags &= ~TDB_ALLOW_NESTING;
+		break;
+	case TDB_RDONLY:
+		if ((tdb->open_flags & O_ACCMODE) == O_RDONLY) {
+			tdb->last_error = tdb_logerr(tdb, TDB_ERR_EINVAL,
+						     TDB_LOG_USE_ERROR,
+						     "tdb_remove_flag: can't"
+						     " remove TDB_RDONLY on tdb"
+						     " opened with O_RDONLY");
+			break;
+		}
+		if (readonly_changable(tdb, "tdb_remove_flag"))
+			tdb->flags &= ~TDB_RDONLY;
 		break;
 	default:
 		tdb->last_error = tdb_logerr(tdb, TDB_ERR_EINVAL,

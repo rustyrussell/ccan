@@ -85,6 +85,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 #define TDB_NOSYNC   64 /* don't use synchronous transactions */
 #define TDB_SEQNUM   128 /* maintain a sequence number */
 #define TDB_ALLOW_NESTING   256 /* fake nested transactions */
+#define TDB_RDONLY   512 /* implied by O_RDONLY */
 
 /**
  * tdb_close - close and free a tdb.

@@ -200,7 +200,7 @@ enum TDB_ERROR zero_out(struct tdb_context *tdb, tdb_off_t off, tdb_len_t len)
 	void *p = tdb->methods->direct(tdb, off, len, true);
 	enum TDB_ERROR ecode = TDB_SUCCESS;
 
-	assert(!tdb->read_only);
+	assert(!(tdb->flags & TDB_RDONLY));
 	if (TDB_PTR_IS_ERR(p)) {
 		return TDB_PTR_ERR(p);
 	}
@@ -248,7 +248,7 @@ static enum TDB_ERROR tdb_write(struct tdb_context *tdb, tdb_off_t off,
 {
 	enum TDB_ERROR ecode;
 
-	if (tdb->read_only) {
+	if (tdb->flags & TDB_RDONLY) {
 		return tdb_logerr(tdb, TDB_ERR_RDONLY, TDB_LOG_USE_ERROR,
 				  "Write to read-only database");
 	}
@@ -337,7 +337,7 @@ enum TDB_ERROR tdb_read_convert(struct tdb_context *tdb, tdb_off_t off,
 enum TDB_ERROR tdb_write_off(struct tdb_context *tdb,
 			     tdb_off_t off, tdb_off_t val)
 {
-	if (tdb->read_only) {
+	if (tdb->flags & TDB_RDONLY) {
 		return tdb_logerr(tdb, TDB_ERR_RDONLY, TDB_LOG_USE_ERROR,
 				  "Write to read-only database");
 	}
@@ -416,7 +416,7 @@ static enum TDB_ERROR tdb_expand_file(struct tdb_context *tdb,
 	char buf[8192];
 	enum TDB_ERROR ecode;
 
-	if (tdb->read_only) {
+	if (tdb->flags & TDB_RDONLY) {
 		return tdb_logerr(tdb, TDB_ERR_RDONLY, TDB_LOG_USE_ERROR,
 				  "Expand on read-only database");
 	}
@@ -488,7 +488,7 @@ void *tdb_access_write(struct tdb_context *tdb,
 {
 	void *ret = NULL;
 
-	if (tdb->read_only) {
+	if (tdb->flags & TDB_RDONLY) {
 		tdb_logerr(tdb, TDB_ERR_RDONLY, TDB_LOG_USE_ERROR,
 			   "Write to read-only database");
 		return TDB_ERR_PTR(TDB_ERR_RDONLY);

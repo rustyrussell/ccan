@@ -402,7 +402,8 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	}
 
 	if (tdb_flags & ~(TDB_INTERNAL | TDB_NOLOCK | TDB_NOMMAP | TDB_CONVERT
-			  | TDB_NOSYNC | TDB_SEQNUM | TDB_ALLOW_NESTING)) {
+			  | TDB_NOSYNC | TDB_SEQNUM | TDB_ALLOW_NESTING
+			  | TDB_RDONLY)) {
 		ecode = tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
 				   "tdb_open: unknown flags %u", tdb_flags);
 		goto fail;
@@ -416,10 +417,16 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	}
 
 	if ((open_flags & O_ACCMODE) == O_RDONLY) {
-		tdb->read_only = true;
 		openlock = F_RDLCK;
+		tdb->flags |= TDB_RDONLY;
 	} else {
-		tdb->read_only = false;
+		if (tdb_flags & TDB_RDONLY) {
+			ecode = tdb_logerr(tdb, TDB_ERR_EINVAL,
+					   TDB_LOG_USE_ERROR,
+					   "tdb_open: can't use TDB_RDONLY"
+					   " without O_RDONLY");
+			goto fail;
+		}
 		openlock = F_WRLCK;
 	}
 
