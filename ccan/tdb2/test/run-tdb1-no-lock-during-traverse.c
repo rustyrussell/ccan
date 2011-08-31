@@ -25,7 +25,7 @@ static bool prepare_entries(struct tdb_context *tdb)
 		data.dsize = strlen("world");
 		data.dptr = (void *)"world";
 
-		if (tdb1_store(tdb, key, data, 0) != 0)
+		if (tdb_store(tdb, key, data, 0) != TDB_SUCCESS)
 			return false;
 	}
 	return true;

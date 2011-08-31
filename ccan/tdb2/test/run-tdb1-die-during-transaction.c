@@ -155,7 +155,7 @@ reset:
 	/* Put key for agent to fetch. */
 	key.dsize = strlen(KEY_STRING);
 	key.dptr = (void *)KEY_STRING;
-	if (tdb1_store(tdb, key, key, TDB_INSERT) != 0)
+	if (tdb_store(tdb, key, key, TDB_INSERT) != TDB_SUCCESS)
 		return false;
 
 	/* This is the key we insert in transaction. */
@@ -173,7 +173,7 @@ reset:
 	if (tdb1_transaction_start(tdb) != 0)
 		return false;
 
-	if (tdb1_store(tdb, key, key, TDB_INSERT) != 0)
+	if (tdb_store(tdb, key, key, TDB_INSERT) != TDB_SUCCESS)
 		return false;
 
 	if (tdb1_transaction_commit(tdb) != 0)

@@ -26,6 +26,7 @@
 */
 
 #include "tdb1_private.h"
+#include <assert.h>
 
 TDB_DATA tdb1_null;
 
@@ -600,6 +601,8 @@ int tdb1_store(struct tdb_context *tdb, TDB_DATA key, TDB_DATA dbuf, int flag)
 {
 	uint32_t hash;
 	int ret;
+
+	assert(tdb->flags & TDB_VERSION1);
 
 	if ((tdb->flags & TDB_RDONLY) || tdb->tdb1.traverse_read) {
 		tdb->last_error = TDB_ERR_RDONLY;

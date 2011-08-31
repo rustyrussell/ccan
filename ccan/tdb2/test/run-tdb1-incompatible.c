@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
 		ok1(log_count == 0);
 		d.dptr = (void *)"Hello";
 		d.dsize = 5;
-		ok1(tdb1_store(tdb, d, d, TDB_INSERT) == 0);
+		ok1(tdb_store(tdb, d, d, TDB_INSERT) == TDB_SUCCESS);
 		tdb_close(tdb);
 
 		/* Should not have marked rwlocks field. */
@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
 		ok1(log_count == 0);
 		d.dptr = (void *)"Hello";
 		d.dsize = 5;
-		ok1(tdb1_store(tdb, d, d, TDB_INSERT) == 0);
+		ok1(tdb_store(tdb, d, d, TDB_INSERT) == TDB_SUCCESS);
 		tdb_close(tdb);
 
 		/* Should have marked rwlocks field. */
@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
 		ok1(log_count == 0);
 		d.dptr = (void *)"Hello";
 		d.dsize = 5;
-		ok1(tdb1_store(tdb, d, d, TDB_INSERT) == 0);
+		ok1(tdb_store(tdb, d, d, TDB_INSERT) == TDB_SUCCESS);
 		tdb_close(tdb);
 
 		/* FIXME: Should have marked rwlocks field. */

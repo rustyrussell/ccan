@@ -49,8 +49,6 @@ int tdb1_parse_record(struct tdb_context *tdb, TDB_DATA key,
 
 int tdb1_delete(struct tdb_context *tdb, TDB_DATA key);
 
-int tdb1_store(struct tdb_context *tdb, TDB_DATA key, TDB_DATA dbuf, int flag);
-
 int tdb1_append(struct tdb_context *tdb, TDB_DATA key, TDB_DATA new_dbuf);
 
 TDB_DATA tdb1_firstkey(struct tdb_context *tdb);

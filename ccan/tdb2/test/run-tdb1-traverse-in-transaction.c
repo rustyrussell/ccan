@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 	data.dptr = (void *)"world";
 	data.dsize = strlen("world");
 
-	ok1(tdb1_store(tdb, key, data, TDB_INSERT) == 0);
+	ok1(tdb_store(tdb, key, data, TDB_INSERT) == TDB_SUCCESS);
 
 	ok1(external_agent_operation1(agent, OPEN, tdb->name) == SUCCESS);
 

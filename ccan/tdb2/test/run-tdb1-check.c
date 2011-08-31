@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
 	data.dsize = strlen("world");
 	data.dptr = (void *)"world";
 
-	ok1(tdb1_store(tdb, key, data, TDB_INSERT) == 0);
+	ok1(tdb_store(tdb, key, data, TDB_INSERT) == TDB_SUCCESS);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
 	tdb_close(tdb);
 

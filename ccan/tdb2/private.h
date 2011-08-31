@@ -646,6 +646,9 @@ int tdb1_allrecord_unlock(struct tdb_context *tdb, int ltype);
 int tdb1_transaction_recover(struct tdb_context *tdb);
 int tdb1_transaction_cancel(struct tdb_context *tdb);
 
+/* tdb1_tdb.c: */
+int tdb1_store(struct tdb_context *tdb, TDB_DATA key, TDB_DATA dbuf, int flag);
+
 /* tdb.c: */
 enum TDB_ERROR COLD tdb_logerr(struct tdb_context *tdb,
 			       enum TDB_ERROR ecode,

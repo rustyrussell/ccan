@@ -66,7 +66,10 @@ static enum agent_return do_operation(enum operation op, const char *name)
 		free(data.dptr);
 		break;
 	case STORE:
-		ret = tdb1_store(tdb, k, k, 0) == 0 ? SUCCESS : OTHER_FAILURE;
+		if (tdb_store(tdb, k, k, 0) == TDB_SUCCESS)
+			ret = SUCCESS;
+		else
+			ret = OTHER_FAILURE;
 		break;
 	case TRANSACTION_COMMIT:
 		ret = tdb1_transaction_commit(tdb)==0 ? SUCCESS : OTHER_FAILURE;

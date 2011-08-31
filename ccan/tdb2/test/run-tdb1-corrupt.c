@@ -58,7 +58,7 @@ static void check_test(struct tdb_context *tdb)
 	for (key.dsize = 1; key.dsize <= 5; key.dsize++) {
 		ksize += key.dsize;
 		dsize += data.dsize;
-		if (tdb1_store(tdb, key, data, TDB_INSERT) != 0)
+		if (tdb_store(tdb, key, data, TDB_INSERT) != TDB_SUCCESS)
 			abort();
 	}
 

@@ -26,8 +26,10 @@ int main(int argc, char *argv[])
 		for (j = 0; j < 500; j++) {
 			/* Make sure padding varies to we get some graphs! */
 			data.dsize = j % (sizeof(j) + 1);
-			if (tdb1_store(tdb, key, data, TDB_REPLACE) != 0)
+			if (tdb_store(tdb, key, data, TDB_REPLACE)
+			    != TDB_SUCCESS) {
 				fail("Storing in tdb");
+			}
 		}
 
 		summary = tdb1_summary(tdb);

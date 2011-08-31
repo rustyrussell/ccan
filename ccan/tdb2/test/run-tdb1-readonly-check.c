@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
 	hsize.base.next = &tap_log_attr;
 	hsize.tdb1_hashsize.hsize = 1024;
 
-	plan_tests(11);
+	plan_tests(10);
 	tdb = tdb_open("run-readonly-check.tdb1",
 		       TDB_VERSION1,
 		       O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
 	data.dsize = strlen("world");
 	data.dptr = (void *)"world";
 
-	ok1(tdb1_store(tdb, key, data, TDB_INSERT) == 0);
+	ok1(tdb_store(tdb, key, data, TDB_INSERT) == TDB_SUCCESS);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
 
 	/* We are also allowed to do a check inside a transaction. */
@@ -39,8 +39,7 @@ int main(int argc, char *argv[])
 		       TDB_DEFAULT, O_RDONLY, 0, &tap_log_attr);
 
 	ok1(tdb);
-	ok1(tdb1_store(tdb, key, data, TDB_MODIFY) == -1);
-	ok1(tdb_error(tdb) == TDB_ERR_RDONLY);
+	ok1(tdb_store(tdb, key, data, TDB_MODIFY) == TDB_ERR_RDONLY);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
 	ok1(tdb_close(tdb) == 0);
 

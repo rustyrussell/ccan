@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
 	data.dptr = (void *)"world";
 	data.dsize = strlen("world");
 
-	ok1(tdb1_store(tdb, key, data, TDB_INSERT) == 0);
+	ok1(tdb_store(tdb, key, data, TDB_INSERT) == TDB_SUCCESS);
 	tdb1_traverse(tdb, traverse1, NULL);
 	tdb1_traverse_read(tdb, traverse1, NULL);
 	tdb_close(tdb);

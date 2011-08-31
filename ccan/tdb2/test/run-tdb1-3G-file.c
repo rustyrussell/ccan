@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
 	orig_data.dsize = strlen("world");
 	orig_data.dptr = (void *)"world";
 
-	ok1(tdb1_store(tdb, key, orig_data, TDB_INSERT) == 0);
+	ok1(tdb_store(tdb, key, orig_data, TDB_INSERT) == TDB_SUCCESS);
 
 	data = tdb1_fetch(tdb, key);
 	ok1(data.dsize == strlen("world"));
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
 
 	/* Transactions should work. */
 	ok1(tdb1_transaction_start(tdb) == 0);
-	ok1(tdb1_store(tdb, key, orig_data, TDB_INSERT) == 0);
+	ok1(tdb_store(tdb, key, orig_data, TDB_INSERT) == TDB_SUCCESS);
 
 	data = tdb1_fetch(tdb, key);
 	ok1(data.dsize == strlen("world"));

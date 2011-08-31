@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
 		data.dptr = (void *)"world";
 		data.dsize = strlen("world");
 
-		ok1(tdb1_store(tdb, key, data, TDB_INSERT) == 0);
+		ok1(tdb_store(tdb, key, data, TDB_INSERT) == TDB_SUCCESS);
 		ok1(tdb1_transaction_commit(tdb) == 0);
 		ok(!errors, "We had %u open errors", errors);
 
