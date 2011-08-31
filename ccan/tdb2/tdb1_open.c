@@ -72,7 +72,7 @@ static int tdb1_new_database(struct tdb1_context *tdb, int hash_size)
 
 	/* Make sure older tdbs (which don't check the magic hash fields)
 	 * will refuse to open this TDB. */
-	if (tdb->flags & TDB1_INCOMPATIBLE_HASH)
+	if (tdb->hash_fn == tdb1_incompatible_hash)
 		newdb->rwlocks = TDB1_HASH_RWLOCK_MAGIC;
 
 	if (tdb->flags & TDB1_INTERNAL) {
@@ -135,25 +135,28 @@ struct tdb1_context *tdb1_open(const char *name, int hash_size, int tdb1_flags,
 	return tdb1_open_ex(name, hash_size, tdb1_flags, open_flags, mode, NULL, NULL);
 }
 
-static bool check_header_hash(struct tdb1_context *tdb,
-			      bool default_hash, uint32_t *m1, uint32_t *m2)
+static bool hash_correct(struct tdb1_context *tdb,
+			 uint32_t *m1, uint32_t *m2)
 {
 	tdb1_header_hash(tdb, m1, m2);
-	if (tdb->header.magic1_hash == *m1 &&
-	    tdb->header.magic2_hash == *m2) {
+	return (tdb->header.magic1_hash == *m1 &&
+		tdb->header.magic2_hash == *m2);
+}
+
+static bool check_header_hash(struct tdb1_context *tdb,
+			      uint32_t *m1, uint32_t *m2)
+{
+	if (hash_correct(tdb, m1, m2))
 		return true;
-	}
 
-	/* If they explicitly set a hash, always respect it. */
-	if (!default_hash)
-		return false;
-
-	/* Otherwise, try the other inbuilt hash. */
+	/* If they use one inbuilt, try the other inbuilt hash. */
 	if (tdb->hash_fn == tdb1_old_hash)
-		tdb->hash_fn = tdb1_jenkins_hash;
-	else
+		tdb->hash_fn = tdb1_incompatible_hash;
+	else if (tdb->hash_fn == tdb1_incompatible_hash)
 		tdb->hash_fn = tdb1_old_hash;
-	return check_header_hash(tdb, false, m1, m2);
+	else
+		return false;
+	return hash_correct(tdb, m1, m2);
 }
 
 struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flags,
@@ -216,15 +219,13 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 
 	if (hash_fn) {
 		tdb->hash_fn = hash_fn;
-		hash_alg = "the user defined";
+		if (hash_fn == tdb1_incompatible_hash)
+			hash_alg = "tdb1_incompatible_hash";
+		else
+			hash_alg = "the user defined";
 	} else {
-		/* This controls what we use when creating a tdb. */
-		if (tdb->flags & TDB1_INCOMPATIBLE_HASH) {
-			tdb->hash_fn = tdb1_jenkins_hash;
-		} else {
-			tdb->hash_fn = tdb1_old_hash;
-		}
-		hash_alg = "either default";
+		tdb->hash_fn = tdb1_old_hash;
+		hash_alg = "default";
 	}
 
 	/* cache the page size */
@@ -353,7 +354,7 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 	if ((tdb->header.magic1_hash == 0) && (tdb->header.magic2_hash == 0)) {
 		/* older TDB without magic hash references */
 		tdb->hash_fn = tdb1_old_hash;
-	} else if (!check_header_hash(tdb, !hash_fn, &magic1, &magic2)) {
+	} else if (!check_header_hash(tdb, &magic1, &magic2)) {
 		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_USE_ERROR,
 			   "tdb1_open_ex: "
 			   "%s was not created with %s hash function we are using\n"

@@ -25,13 +25,13 @@ int main(int argc, char *argv[])
 	tdb1_close(tdb);
 
 	tdb = tdb1_open_ex("test/old-nohash-le.tdb1", 0, 0, O_RDWR, 0,
-			  &taplogctx, tdb1_jenkins_hash);
+			  &taplogctx, tdb1_incompatible_hash);
 	ok1(tdb);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
 	tdb1_close(tdb);
 
 	tdb = tdb1_open_ex("test/old-nohash-be.tdb1", 0, 0, O_RDWR, 0,
-			  &taplogctx, tdb1_jenkins_hash);
+			  &taplogctx, tdb1_incompatible_hash);
 	ok1(tdb);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
 	tdb1_close(tdb);

@@ -49,7 +49,6 @@
 #define TDB1_VOLATILE   256 /** Activate the per-hashchain freelist, default 5 */
 #define TDB1_ALLOW_NESTING 512 /** Allow transactions to nest */
 #define TDB1_DISALLOW_NESTING 1024 /** Disallow transactions to nest */
-#define TDB1_INCOMPATIBLE_HASH 2048 /** Better hashing: can't be opened by tdb < 1.2.6. */
 
 /** This is the context structure that is returned from a db open. */
 typedef struct tdb1_context TDB1_CONTEXT;
@@ -121,7 +120,7 @@ int tdb1_hash_size(struct tdb1_context *tdb);
 
 void tdb1_increment_seqnum_nonblock(struct tdb1_context *tdb);
 
-unsigned int tdb1_jenkins_hash(TDB_DATA *key);
+unsigned int tdb1_incompatible_hash(TDB_DATA *key);
 
 int tdb1_check(struct tdb1_context *tdb,
 	      int (*check) (TDB_DATA key, TDB_DATA data, void *private_data),

@@ -11,6 +11,18 @@ static void log_fn(struct tdb1_context *tdb, enum tdb_log_level level,
 		(*count)++;
 }
 
+static unsigned int jenkins_hashfn(TDB_DATA *key)
+{
+	return hashlittle(key->dptr, key->dsize);
+}
+
+/* the tdb1_old_hash function is "magic" as it automatically makes us test the
+ * tdb1_incompatible_hash as well, so use this wrapper. */
+static unsigned int old_hash(TDB_DATA *key)
+{
+	return tdb1_old_hash(key);
+}
+
 int main(int argc, char *argv[])
 {
 	struct tdb1_context *tdb;
@@ -33,7 +45,7 @@ int main(int argc, char *argv[])
 
 	/* Fail to open with different hash. */
 	tdb = tdb1_open_ex("run-wronghash-fail.tdb", 0, 0, O_RDWR, 0,
-			  &log_ctx, tdb1_jenkins_hash);
+			  &log_ctx, jenkins_hashfn);
 	ok1(!tdb);
 	ok1(log_count == 1);
 
@@ -41,7 +53,7 @@ int main(int argc, char *argv[])
 	log_count = 0;
 	tdb = tdb1_open_ex("run-wronghash-fail.tdb", 0, 0,
 			  O_CREAT|O_RDWR|O_TRUNC,
-			  0600, &log_ctx, tdb1_jenkins_hash);
+			  0600, &log_ctx, jenkins_hashfn);
 	ok1(tdb);
 	ok1(log_count == 0);
 	tdb1_close(tdb);
@@ -49,26 +61,26 @@ int main(int argc, char *argv[])
 	/* Endian should be no problem. */
 	log_count = 0;
 	tdb = tdb1_open_ex("test/jenkins-le-hash.tdb1", 0, 0, O_RDWR, 0,
-			  &log_ctx, tdb1_old_hash);
+			  &log_ctx, old_hash);
 	ok1(!tdb);
 	ok1(log_count == 1);
 
 	log_count = 0;
 	tdb = tdb1_open_ex("test/jenkins-be-hash.tdb1", 0, 0, O_RDWR, 0,
-			  &log_ctx, tdb1_old_hash);
+			  &log_ctx, old_hash);
 	ok1(!tdb);
 	ok1(log_count == 1);
 
 	log_count = 0;
 	/* Fail to open with old default hash. */
 	tdb = tdb1_open_ex("run-wronghash-fail.tdb", 0, 0, O_RDWR, 0,
-			  &log_ctx, tdb1_old_hash);
+			  &log_ctx, old_hash);
 	ok1(!tdb);
 	ok1(log_count == 1);
 
 	log_count = 0;
 	tdb = tdb1_open_ex("test/jenkins-le-hash.tdb1", 0, 0, O_RDONLY,
-			  0, &log_ctx, tdb1_jenkins_hash);
+			  0, &log_ctx, tdb1_incompatible_hash);
 	ok1(tdb);
 	ok1(log_count == 0);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
@@ -76,7 +88,7 @@ int main(int argc, char *argv[])
 
 	log_count = 0;
 	tdb = tdb1_open_ex("test/jenkins-be-hash.tdb1", 0, 0, O_RDONLY,
-			  0, &log_ctx, tdb1_jenkins_hash);
+			  0, &log_ctx, tdb1_incompatible_hash);
 	ok1(tdb);
 	ok1(log_count == 0);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
