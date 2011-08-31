@@ -159,11 +159,12 @@ int tdb1_rec_read(struct tdb_context *tdb, tdb1_off_t offset, struct tdb1_record
 int tdb1_rec_write(struct tdb_context *tdb, tdb1_off_t offset, struct tdb1_record *rec);
 int tdb1_do_delete(struct tdb_context *tdb, tdb1_off_t rec_ptr, struct tdb1_record *rec);
 unsigned char *tdb1_alloc_read(struct tdb_context *tdb, tdb1_off_t offset, tdb1_len_t len);
-int tdb1_parse_data(struct tdb_context *tdb, TDB_DATA key,
-		   tdb1_off_t offset, tdb1_len_t len,
-		   int (*parser)(TDB_DATA key, TDB_DATA data,
-				 void *private_data),
-		   void *private_data);
+enum TDB_ERROR tdb1_parse_data(struct tdb_context *tdb, TDB_DATA key,
+			       tdb1_off_t offset, tdb1_len_t len,
+			       enum TDB_ERROR (*parser)(TDB_DATA key,
+							TDB_DATA data,
+							void *private_data),
+			       void *private_data);
 tdb1_off_t tdb1_find_lock_hash(struct tdb_context *tdb, TDB_DATA key, uint32_t hash, int locktype,
 			   struct tdb1_record *rec);
 void tdb1_io_init(struct tdb_context *tdb);

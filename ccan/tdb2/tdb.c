@@ -526,6 +526,11 @@ enum TDB_ERROR tdb_parse_record_(struct tdb_context *tdb,
 	struct hash_info h;
 	enum TDB_ERROR ecode;
 
+	if (tdb->flags & TDB_VERSION1) {
+		return tdb->last_error = tdb1_parse_record(tdb, key, parse,
+							   data);
+	}
+
 	off = find_and_lock(tdb, key, F_RDLCK, &h, &rec, NULL);
 	if (TDB_OFF_IS_ERR(off)) {
 		return tdb->last_error = off;

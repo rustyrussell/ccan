@@ -435,15 +435,15 @@ unsigned char *tdb1_alloc_read(struct tdb_context *tdb, tdb1_off_t offset, tdb1_
 }
 
 /* Give a piece of tdb data to a parser */
-
-int tdb1_parse_data(struct tdb_context *tdb, TDB_DATA key,
-		   tdb1_off_t offset, tdb1_len_t len,
-		   int (*parser)(TDB_DATA key, TDB_DATA data,
-				 void *private_data),
-		   void *private_data)
+enum TDB_ERROR tdb1_parse_data(struct tdb_context *tdb, TDB_DATA key,
+			       tdb1_off_t offset, tdb1_len_t len,
+			       enum TDB_ERROR (*parser)(TDB_DATA key,
+							TDB_DATA data,
+							void *private_data),
+			       void *private_data)
 {
 	TDB_DATA data;
-	int result;
+	enum TDB_ERROR result;
 
 	data.dsize = len;
 
@@ -453,14 +453,14 @@ int tdb1_parse_data(struct tdb_context *tdb, TDB_DATA key,
 		 * parser directly at the mmap area.
 		 */
 		if (tdb->tdb1.io->tdb1_oob(tdb, offset+len, 0) != 0) {
-			return -1;
+			return tdb->last_error;
 		}
 		data.dptr = offset + (unsigned char *)tdb->file->map_ptr;
 		return parser(key, data, private_data);
 	}
 
 	if (!(data.dptr = tdb1_alloc_read(tdb, offset, len))) {
-		return -1;
+		return tdb->last_error;
 	}
 
 	result = parser(key, data, private_data);

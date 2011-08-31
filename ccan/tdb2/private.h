@@ -665,6 +665,11 @@ enum TDB_ERROR tdb1_fetch(struct tdb_context *tdb, TDB_DATA key,
 int tdb1_append(struct tdb_context *tdb, TDB_DATA key, TDB_DATA new_dbuf);
 int tdb1_delete(struct tdb_context *tdb, TDB_DATA key);
 int tdb1_exists(struct tdb_context *tdb, TDB_DATA key);
+enum TDB_ERROR tdb1_parse_record(struct tdb_context *tdb, TDB_DATA key,
+				 enum TDB_ERROR (*parser)(TDB_DATA key,
+							  TDB_DATA data,
+							  void *private_data),
+				 void *private_data);
 
 /* tdb.c: */
 enum TDB_ERROR COLD tdb_logerr(struct tdb_context *tdb,

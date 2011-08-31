@@ -209,32 +209,15 @@ enum TDB_ERROR tdb1_fetch(struct tdb_context *tdb, TDB_DATA key, TDB_DATA *data)
 	return TDB_SUCCESS;
 }
 
-/*
- * Find an entry in the database and hand the record's data to a parsing
- * function. The parsing function is executed under the chain read lock, so it
- * should be fast and should not block on other syscalls.
- *
- * DON'T CALL OTHER TDB CALLS FROM THE PARSER, THIS MIGHT LEAD TO SEGFAULTS.
- *
- * For mmapped tdb's that do not have a transaction open it points the parsing
- * function directly at the mmap area, it avoids the malloc/memcpy in this
- * case. If a transaction is open or no mmap is available, it has to do
- * malloc/read/parse/free.
- *
- * This is interesting for all readers of potentially large data structures in
- * the tdb records, ldb indexes being one example.
- *
- * Return -1 if the record was not found.
- */
-
-int tdb1_parse_record(struct tdb_context *tdb, TDB_DATA key,
-		     int (*parser)(TDB_DATA key, TDB_DATA data,
-				   void *private_data),
-		     void *private_data)
+enum TDB_ERROR tdb1_parse_record(struct tdb_context *tdb, TDB_DATA key,
+				 enum TDB_ERROR (*parser)(TDB_DATA key,
+							  TDB_DATA data,
+							  void *private_data),
+				 void *private_data)
 {
 	tdb1_off_t rec_ptr;
 	struct tdb1_record rec;
-	int ret;
+	enum TDB_ERROR ret;
 	uint32_t hash;
 
 	/* find which hash bucket it is in */
@@ -242,8 +225,7 @@ int tdb1_parse_record(struct tdb_context *tdb, TDB_DATA key,
 
 	if (!(rec_ptr = tdb1_find_lock_hash(tdb,key,hash,F_RDLCK,&rec))) {
 		/* record not found */
-		tdb->last_error = TDB_ERR_NOEXIST;
-		return -1;
+		return TDB_ERR_NOEXIST;
 	}
 
 	ret = tdb1_parse_data(tdb, key, rec_ptr + sizeof(rec) + rec.key_len,
