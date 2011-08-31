@@ -589,3 +589,64 @@ int tdb_fd(const struct tdb_context *tdb)
 {
 	return tdb->file->fd;
 }
+
+struct traverse_state {
+	enum TDB_ERROR error;
+	struct tdb_context *dest_db;
+};
+
+/*
+  traverse function for repacking
+ */
+static int repack_traverse(struct tdb_context *tdb, TDB_DATA key, TDB_DATA data,
+			   struct traverse_state *state)
+{
+	state->error = tdb_store(state->dest_db, key, data, TDB_INSERT);
+	if (state->error != TDB_SUCCESS) {
+		return -1;
+	}
+	return 0;
+}
+
+enum TDB_ERROR tdb_repack(struct tdb_context *tdb)
+{
+	struct tdb_context *tmp_db;
+	struct traverse_state state;
+
+	state.error = tdb_transaction_start(tdb);
+	if (state.error != TDB_SUCCESS) {
+		return state.error;
+	}
+
+	tmp_db = tdb_open("tmpdb", TDB_INTERNAL, O_RDWR|O_CREAT, 0, NULL);
+	if (tmp_db == NULL) {
+		state.error = tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
+					 __location__
+					 " Failed to create tmp_db");
+		tdb_transaction_cancel(tdb);
+		return tdb->last_error = state.error;
+	}
+
+	state.dest_db = tmp_db;
+	if (tdb_traverse(tdb, repack_traverse, &state) < 0) {
+		goto fail;
+	}
+
+	state.error = tdb_wipe_all(tdb);
+	if (state.error != TDB_SUCCESS) {
+		goto fail;
+	}
+
+	state.dest_db = tdb;
+	if (tdb_traverse(tmp_db, repack_traverse, &state) < 0) {
+		goto fail;
+	}
+
+	tdb_close(tmp_db);
+	return tdb_transaction_commit(tdb);
+
+fail:
+	tdb_transaction_cancel(tdb);
+	tdb_close(tmp_db);
+	return state.error;
+}

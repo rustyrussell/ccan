@@ -506,6 +506,16 @@ void tdb_unlockall_read(struct tdb_context *tdb);
 enum TDB_ERROR tdb_wipe_all(struct tdb_context *tdb);
 
 /**
+ * tdb_repack - repack the database
+ * @tdb: the tdb context returned from tdb_open()
+ *
+ * This repacks the database; if it is suffering from a great deal of
+ * fragmentation this might help.  However, it can take twice the
+ * memory of the existing TDB.
+ */
+enum TDB_ERROR tdb_repack(struct tdb_context *tdb);
+
+/**
  * tdb_check - check a TDB for consistency
  * @tdb: the tdb context returned from tdb_open()
  * @check: function to check each key/data pair (or NULL)
