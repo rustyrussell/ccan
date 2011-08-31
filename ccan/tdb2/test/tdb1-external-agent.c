@@ -16,7 +16,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-static struct tdb1_context *tdb;
+static struct tdb_context *tdb;
 
 static enum agent_return do_operation(enum operation op, const char *name)
 {

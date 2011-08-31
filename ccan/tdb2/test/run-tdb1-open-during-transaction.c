@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 	const int flags[] = { TDB_DEFAULT,
 			      TDB_NOMMAP };
 	int i;
-	struct tdb1_context *tdb;
+	struct tdb_context *tdb;
 	TDB_DATA key, data;
 
 	plan_tests(10);

@@ -28,10 +28,10 @@
 #include "tdb1_private.h"
 
 /* all contexts, to ensure no double-opens (fcntl locks don't nest!) */
-static struct tdb1_context *tdb1s = NULL;
+static struct tdb_context *tdb1s = NULL;
 
 /* We use two hashes to double-check they're using the right hash function. */
-void tdb1_header_hash(struct tdb1_context *tdb,
+void tdb1_header_hash(struct tdb_context *tdb,
 		     uint32_t *magic1_hash, uint32_t *magic2_hash)
 {
 	uint32_t tdb1_magic = TDB1_MAGIC;
@@ -45,7 +45,7 @@ void tdb1_header_hash(struct tdb1_context *tdb,
 }
 
 /* initialise a new database with a specified hash size */
-static int tdb1_new_database(struct tdb1_context *tdb, int hash_size)
+static int tdb1_new_database(struct tdb_context *tdb, int hash_size)
 {
 	struct tdb1_header *newdb;
 	size_t size;
@@ -73,7 +73,7 @@ static int tdb1_new_database(struct tdb1_context *tdb, int hash_size)
 		tdb->file->fd = -1;
 		tdb->file->map_size = size;
 		tdb->file->map_ptr = (char *)newdb;
-		memcpy(&tdb->header, newdb, sizeof(tdb->header));
+		memcpy(&tdb->tdb1.header, newdb, sizeof(tdb->tdb1.header));
 		/* Convert the `ondisk' version if asked. */
 		TDB1_CONV(*newdb);
 		return 0;
@@ -86,7 +86,7 @@ static int tdb1_new_database(struct tdb1_context *tdb, int hash_size)
 
 	/* This creates an endian-converted header, as if read from disk */
 	TDB1_CONV(*newdb);
-	memcpy(&tdb->header, newdb, sizeof(tdb->header));
+	memcpy(&tdb->tdb1.header, newdb, sizeof(tdb->tdb1.header));
 	/* Don't endian-convert the magic food! */
 	memcpy(newdb->magic_food, TDB_MAGIC_FOOD, strlen(TDB_MAGIC_FOOD)+1);
 	/* we still have "ret == -1" here */
@@ -103,7 +103,7 @@ static int tdb1_new_database(struct tdb1_context *tdb, int hash_size)
 static int tdb1_already_open(dev_t device,
 			    ino_t ino)
 {
-	struct tdb1_context *i;
+	struct tdb_context *i;
 
 	for (i = tdb1s; i; i = i->next) {
 		if (i->file->device == device && i->file->inode == ino) {
@@ -124,21 +124,21 @@ static int tdb1_already_open(dev_t device,
    try to call tdb1_error or tdb1_errname, just do strerror(errno).
 
    @param name may be NULL for internal databases. */
-struct tdb1_context *tdb1_open(const char *name, int hash_size, int tdb1_flags,
+struct tdb_context *tdb1_open(const char *name, int hash_size, int tdb1_flags,
 		      int open_flags, mode_t mode)
 {
 	return tdb1_open_ex(name, hash_size, tdb1_flags, open_flags, mode, NULL, NULL);
 }
 
-static bool hash_correct(struct tdb1_context *tdb,
+static bool hash_correct(struct tdb_context *tdb,
 			 uint32_t *m1, uint32_t *m2)
 {
 	tdb1_header_hash(tdb, m1, m2);
-	return (tdb->header.magic1_hash == *m1 &&
-		tdb->header.magic2_hash == *m2);
+	return (tdb->tdb1.header.magic1_hash == *m1 &&
+		tdb->tdb1.header.magic2_hash == *m2);
 }
 
-static bool check_header_hash(struct tdb1_context *tdb,
+static bool check_header_hash(struct tdb_context *tdb,
 			      uint32_t *m1, uint32_t *m2)
 {
 	if (hash_correct(tdb, m1, m2))
@@ -154,19 +154,19 @@ static bool check_header_hash(struct tdb1_context *tdb,
 	return hash_correct(tdb, m1, m2);
 }
 
-struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flags,
+struct tdb_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flags,
 				int open_flags, mode_t mode,
 				const struct tdb1_logging_context *log_ctx,
 				tdb1_hash_func hash_fn)
 {
-	struct tdb1_context *tdb;
+	struct tdb_context *tdb;
 	struct stat st;
 	int rev = 0;
 	unsigned v;
 	const char *hash_alg;
 	uint32_t magic1, magic2;
 
-	if (!(tdb = (struct tdb1_context *)calloc(1, sizeof *tdb))) {
+	if (!(tdb = (struct tdb_context *)calloc(1, sizeof *tdb))) {
 		/* Can't log this */
 		errno = ENOMEM;
 		goto fail;
@@ -231,13 +231,13 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 	}
 
 	/* cache the page size */
-	tdb->page_size = getpagesize();
-	if (tdb->page_size <= 0) {
-		tdb->page_size = 0x2000;
+	tdb->tdb1.page_size = getpagesize();
+	if (tdb->tdb1.page_size <= 0) {
+		tdb->tdb1.page_size = 0x2000;
 	}
 
 	/* FIXME: Used to be 5 for TDB_VOLATILE. */
-	tdb->max_dead_records = 0;
+	tdb->tdb1.max_dead_records = 0;
 
 	if ((open_flags & O_ACCMODE) == O_WRONLY) {
 		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
@@ -286,8 +286,8 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 	}
 
 	errno = 0;
-	if (read(tdb->file->fd, &tdb->header, sizeof(tdb->header)) != sizeof(tdb->header)
-	    || strcmp(tdb->header.magic_food, TDB_MAGIC_FOOD) != 0) {
+	if (read(tdb->file->fd, &tdb->tdb1.header, sizeof(tdb->tdb1.header)) != sizeof(tdb->tdb1.header)
+	    || strcmp(tdb->tdb1.header.magic_food, TDB_MAGIC_FOOD) != 0) {
 		if (!(open_flags & O_CREAT) || tdb1_new_database(tdb, hash_size) == -1) {
 			if (errno == 0) {
 				errno = EIO; /* ie bad format or something */
@@ -295,8 +295,8 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 			goto fail;
 		}
 		rev = (tdb->flags & TDB_CONVERT);
-	} else if (tdb->header.version != TDB1_VERSION
-		   && !(rev = (tdb->header.version==TDB1_BYTEREV(TDB1_VERSION)))) {
+	} else if (tdb->tdb1.header.version != TDB1_VERSION
+		   && !(rev = (tdb->tdb1.header.version==TDB1_BYTEREV(TDB1_VERSION)))) {
 		/* wrong version */
 		errno = EIO;
 		goto fail;
@@ -305,19 +305,19 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 		tdb->flags &= ~TDB_CONVERT;
 	else {
 		tdb->flags |= TDB_CONVERT;
-		tdb1_convert(&tdb->header, sizeof(tdb->header));
+		tdb1_convert(&tdb->tdb1.header, sizeof(tdb->tdb1.header));
 	}
 	if (fstat(tdb->file->fd, &st) == -1)
 		goto fail;
 
-	if (tdb->header.rwlocks != 0 &&
-	    tdb->header.rwlocks != TDB1_HASH_RWLOCK_MAGIC) {
+	if (tdb->tdb1.header.rwlocks != 0 &&
+	    tdb->tdb1.header.rwlocks != TDB1_HASH_RWLOCK_MAGIC) {
 		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
 			   "tdb1_open_ex: spinlocks no longer supported");
 		goto fail;
 	}
 
-	if ((tdb->header.magic1_hash == 0) && (tdb->header.magic2_hash == 0)) {
+	if ((tdb->tdb1.header.magic1_hash == 0) && (tdb->tdb1.header.magic2_hash == 0)) {
 		/* older TDB without magic hash references */
 		tdb->hash_fn = tdb1_old_hash;
 	} else if (!check_header_hash(tdb, &magic1, &magic2)) {
@@ -327,11 +327,11 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 			   "magic1_hash[0x%08X %s 0x%08X] "
 			   "magic2_hash[0x%08X %s 0x%08X]",
 			   name, hash_alg,
-			   tdb->header.magic1_hash,
-			   (tdb->header.magic1_hash == magic1) ? "==" : "!=",
+			   tdb->tdb1.header.magic1_hash,
+			   (tdb->tdb1.header.magic1_hash == magic1) ? "==" : "!=",
 			   magic1,
-			   tdb->header.magic2_hash,
-			   (tdb->header.magic2_hash == magic2) ? "==" : "!=",
+			   tdb->tdb1.header.magic2_hash,
+			   (tdb->tdb1.header.magic2_hash == magic2) ? "==" : "!=",
 			   magic2);
 		errno = EINVAL;
 		goto fail;
@@ -399,9 +399,9 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
  * Set the maximum number of dead records per hash chain
  */
 
-void tdb1_set_max_dead(struct tdb1_context *tdb, int max_dead)
+void tdb1_set_max_dead(struct tdb_context *tdb, int max_dead)
 {
-	tdb->max_dead_records = max_dead;
+	tdb->tdb1.max_dead_records = max_dead;
 }
 
 /**
@@ -409,12 +409,12 @@ void tdb1_set_max_dead(struct tdb1_context *tdb, int max_dead)
  *
  * @returns -1 for error; 0 for success.
  **/
-int tdb1_close(struct tdb1_context *tdb)
+int tdb1_close(struct tdb_context *tdb)
 {
-	struct tdb1_context **i;
+	struct tdb_context **i;
 	int ret = 0;
 
-	if (tdb->transaction) {
+	if (tdb->tdb1.transaction) {
 		tdb1_transaction_cancel(tdb);
 	}
 

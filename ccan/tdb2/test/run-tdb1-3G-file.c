@@ -6,11 +6,11 @@
 #include <err.h>
 #include "tdb1-logging.h"
 
-static int tdb1_expand_file_sparse(struct tdb1_context *tdb,
+static int tdb1_expand_file_sparse(struct tdb_context *tdb,
 				  tdb1_off_t size,
 				  tdb1_off_t addition)
 {
-	if ((tdb->flags & TDB_RDONLY) || tdb->traverse_read) {
+	if ((tdb->flags & TDB_RDONLY) || tdb->tdb1.traverse_read) {
 		tdb->last_error = TDB_ERR_RDONLY;
 		return -1;
 	}
@@ -46,7 +46,7 @@ static const struct tdb1_methods large_io_methods = {
 	tdb1_expand_file_sparse
 };
 
-static int test_traverse(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA data,
+static int test_traverse(struct tdb_context *tdb, TDB_DATA key, TDB_DATA data,
 			 void *_data)
 {
 	TDB_DATA *expect = _data;
@@ -59,7 +59,7 @@ static int test_traverse(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA data,
 
 int main(int argc, char *argv[])
 {
-	struct tdb1_context *tdb;
+	struct tdb_context *tdb;
 	TDB_DATA key, orig_data, data;
 	uint32_t hash;
 	tdb1_off_t rec_ptr;
@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
 			  O_CREAT|O_TRUNC|O_RDWR, 0600, &taplogctx, NULL);
 
 	ok1(tdb);
-	tdb->methods = &large_io_methods;
+	tdb->tdb1.io = &large_io_methods;
 
 	/* Enlarge the file (internally multiplies by 2). */
 	ok1(tdb1_expand(tdb, 1500000000) == 0);

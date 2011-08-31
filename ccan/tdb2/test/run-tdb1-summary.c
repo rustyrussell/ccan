@@ -6,7 +6,7 @@
 int main(int argc, char *argv[])
 {
 	unsigned int i, j;
-	struct tdb1_context *tdb;
+	struct tdb_context *tdb;
 	int flags[] = { TDB_INTERNAL, TDB_DEFAULT, TDB_NOMMAP,
 			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT,
 			TDB_NOMMAP|TDB_CONVERT };

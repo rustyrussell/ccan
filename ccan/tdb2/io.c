@@ -88,7 +88,7 @@ static enum TDB_ERROR tdb_oob(struct tdb_context *tdb, tdb_off_t len,
 	enum TDB_ERROR ecode;
 
 	/* We can't hold pointers during this: we could unmap! */
-	assert(!tdb->direct_access
+	assert(!tdb->tdb2.direct_access
 	       || (tdb->flags & TDB_NOLOCK)
 	       || tdb_has_expansion_lock(tdb));
 
@@ -197,7 +197,7 @@ uint64_t tdb_find_zero_off(struct tdb_context *tdb, tdb_off_t off,
 enum TDB_ERROR zero_out(struct tdb_context *tdb, tdb_off_t off, tdb_len_t len)
 {
 	char buf[8192] = { 0 };
-	void *p = tdb->methods->direct(tdb, off, len, true);
+	void *p = tdb->tdb2.io->direct(tdb, off, len, true);
 	enum TDB_ERROR ecode = TDB_SUCCESS;
 
 	assert(!(tdb->flags & TDB_RDONLY));
@@ -210,7 +210,7 @@ enum TDB_ERROR zero_out(struct tdb_context *tdb, tdb_off_t off, tdb_len_t len)
 	}
 	while (len) {
 		unsigned todo = len < sizeof(buf) ? len : sizeof(buf);
-		ecode = tdb->methods->twrite(tdb, off, buf, todo);
+		ecode = tdb->tdb2.io->twrite(tdb, off, buf, todo);
 		if (ecode != TDB_SUCCESS) {
 			break;
 		}
@@ -226,7 +226,7 @@ tdb_off_t tdb_read_off(struct tdb_context *tdb, tdb_off_t off)
 	enum TDB_ERROR ecode;
 
 	if (likely(!(tdb->flags & TDB_CONVERT))) {
-		tdb_off_t *p = tdb->methods->direct(tdb, off, sizeof(*p),
+		tdb_off_t *p = tdb->tdb2.io->direct(tdb, off, sizeof(*p),
 						    false);
 		if (TDB_PTR_IS_ERR(p)) {
 			return TDB_PTR_ERR(p);
@@ -253,7 +253,7 @@ static enum TDB_ERROR tdb_write(struct tdb_context *tdb, tdb_off_t off,
 				  "Write to read-only database");
 	}
 
-	ecode = tdb->methods->oob(tdb, off + len, false);
+	ecode = tdb->tdb2.io->oob(tdb, off + len, false);
 	if (ecode != TDB_SUCCESS) {
 		return ecode;
 	}
@@ -283,7 +283,7 @@ static enum TDB_ERROR tdb_read(struct tdb_context *tdb, tdb_off_t off,
 {
 	enum TDB_ERROR ecode;
 
-	ecode = tdb->methods->oob(tdb, off + len, false);
+	ecode = tdb->tdb2.io->oob(tdb, off + len, false);
 	if (ecode != TDB_SUCCESS) {
 		return ecode;
 	}
@@ -317,11 +317,11 @@ enum TDB_ERROR tdb_write_convert(struct tdb_context *tdb, tdb_off_t off,
 					  " %zu bytes", len);
 		}
 		memcpy(conv, rec, len);
-		ecode = tdb->methods->twrite(tdb, off,
+		ecode = tdb->tdb2.io->twrite(tdb, off,
 					   tdb_convert(tdb, conv, len), len);
 		free(conv);
 	} else {
-		ecode = tdb->methods->twrite(tdb, off, rec, len);
+		ecode = tdb->tdb2.io->twrite(tdb, off, rec, len);
 	}
 	return ecode;
 }
@@ -329,7 +329,7 @@ enum TDB_ERROR tdb_write_convert(struct tdb_context *tdb, tdb_off_t off,
 enum TDB_ERROR tdb_read_convert(struct tdb_context *tdb, tdb_off_t off,
 				void *rec, size_t len)
 {
-	enum TDB_ERROR ecode = tdb->methods->tread(tdb, off, rec, len);
+	enum TDB_ERROR ecode = tdb->tdb2.io->tread(tdb, off, rec, len);
 	tdb_convert(tdb, rec, len);
 	return ecode;
 }
@@ -343,7 +343,7 @@ enum TDB_ERROR tdb_write_off(struct tdb_context *tdb,
 	}
 
 	if (likely(!(tdb->flags & TDB_CONVERT))) {
-		tdb_off_t *p = tdb->methods->direct(tdb, off, sizeof(*p),
+		tdb_off_t *p = tdb->tdb2.io->direct(tdb, off, sizeof(*p),
 						    true);
 		if (TDB_PTR_IS_ERR(p)) {
 			return TDB_PTR_ERR(p);
@@ -370,7 +370,7 @@ static void *_tdb_alloc_read(struct tdb_context *tdb, tdb_off_t offset,
 			   (size_t)(prefix + len));
 		return TDB_ERR_PTR(TDB_ERR_OOM);
 	} else {
-		ecode = tdb->methods->tread(tdb, offset, buf+prefix, len);
+		ecode = tdb->tdb2.io->tread(tdb, offset, buf+prefix, len);
 		if (unlikely(ecode != TDB_SUCCESS)) {
 			free(buf);
 			return TDB_ERR_PTR(ecode);
@@ -459,7 +459,7 @@ const void *tdb_access_read(struct tdb_context *tdb,
 	void *ret = NULL;
 
 	if (likely(!(tdb->flags & TDB_CONVERT))) {
-		ret = tdb->methods->direct(tdb, off, len, false);
+		ret = tdb->tdb2.io->direct(tdb, off, len, false);
 
 		if (TDB_PTR_IS_ERR(ret)) {
 			return ret;
@@ -471,14 +471,14 @@ const void *tdb_access_read(struct tdb_context *tdb,
 		if (TDB_PTR_IS_ERR(hdr)) {
 			return hdr;
 		}
-		hdr->next = tdb->access;
-		tdb->access = hdr;
+		hdr->next = tdb->tdb2.access;
+		tdb->tdb2.access = hdr;
 		ret = hdr + 1;
 		if (convert) {
 			tdb_convert(tdb, (void *)ret, len);
 		}
 	} else
-		tdb->direct_access++;
+		tdb->tdb2.direct_access++;
 
 	return ret;
 }
@@ -495,7 +495,7 @@ void *tdb_access_write(struct tdb_context *tdb,
 	}
 
 	if (likely(!(tdb->flags & TDB_CONVERT))) {
-		ret = tdb->methods->direct(tdb, off, len, true);
+		ret = tdb->tdb2.io->direct(tdb, off, len, true);
 
 		if (TDB_PTR_IS_ERR(ret)) {
 			return ret;
@@ -508,8 +508,8 @@ void *tdb_access_write(struct tdb_context *tdb,
 		if (TDB_PTR_IS_ERR(hdr)) {
 			return hdr;
 		}
-		hdr->next = tdb->access;
-		tdb->access = hdr;
+		hdr->next = tdb->tdb2.access;
+		tdb->tdb2.access = hdr;
 		hdr->off = off;
 		hdr->len = len;
 		hdr->convert = convert;
@@ -517,7 +517,7 @@ void *tdb_access_write(struct tdb_context *tdb,
 		if (convert)
 			tdb_convert(tdb, (void *)ret, len);
 	} else
-		tdb->direct_access++;
+		tdb->tdb2.direct_access++;
 
 	return ret;
 }
@@ -526,7 +526,7 @@ static struct tdb_access_hdr **find_hdr(struct tdb_context *tdb, const void *p)
 {
 	struct tdb_access_hdr **hp;
 
-	for (hp = &tdb->access; *hp; hp = &(*hp)->next) {
+	for (hp = &tdb->tdb2.access; *hp; hp = &(*hp)->next) {
 		if (*hp + 1 == p)
 			return hp;
 	}
@@ -542,7 +542,7 @@ void tdb_access_release(struct tdb_context *tdb, const void *p)
 		*hp = hdr->next;
 		free(hdr);
 	} else
-		tdb->direct_access--;
+		tdb->tdb2.direct_access--;
 }
 
 enum TDB_ERROR tdb_access_commit(struct tdb_context *tdb, void *p)
@@ -559,7 +559,7 @@ enum TDB_ERROR tdb_access_commit(struct tdb_context *tdb, void *p)
 		*hp = hdr->next;
 		free(hdr);
 	} else {
-		tdb->direct_access--;
+		tdb->tdb2.direct_access--;
 		ecode = TDB_SUCCESS;
 	}
 
@@ -587,7 +587,7 @@ void tdb_inc_seqnum(struct tdb_context *tdb)
 	if (likely(!(tdb->flags & TDB_CONVERT))) {
 		int64_t *direct;
 
-		direct = tdb->methods->direct(tdb,
+		direct = tdb->tdb2.io->direct(tdb,
 					      offsetof(struct tdb_header,
 						       seqnum),
 					      sizeof(*direct), true);
@@ -622,5 +622,5 @@ static const struct tdb_methods io_methods = {
 */
 void tdb_io_init(struct tdb_context *tdb)
 {
-	tdb->methods = &io_methods;
+	tdb->tdb2.io = &io_methods;
 }

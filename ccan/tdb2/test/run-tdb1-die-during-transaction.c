@@ -81,7 +81,7 @@ static int ftruncate_check(int fd, off_t length)
 
 static bool test_death(enum operation op, struct agent *agent)
 {
-	struct tdb1_context *tdb = NULL;
+	struct tdb_context *tdb = NULL;
 	TDB_DATA key;
 	enum agent_return ret;
 	int needed_recovery = 0;

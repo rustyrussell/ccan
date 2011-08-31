@@ -36,7 +36,7 @@
    if necessary
    note that "len" is the minimum length needed for the db
 */
-static int tdb1_oob(struct tdb1_context *tdb, tdb1_off_t len, int probe)
+static int tdb1_oob(struct tdb_context *tdb, tdb1_off_t len, int probe)
 {
 	struct stat st;
 	if (len <= tdb->file->map_size)
@@ -75,19 +75,19 @@ static int tdb1_oob(struct tdb1_context *tdb, tdb1_off_t len, int probe)
 }
 
 /* write a lump of data at a specified offset */
-static int tdb1_write(struct tdb1_context *tdb, tdb1_off_t off,
+static int tdb1_write(struct tdb_context *tdb, tdb1_off_t off,
 		     const void *buf, tdb1_len_t len)
 {
 	if (len == 0) {
 		return 0;
 	}
 
-	if ((tdb->flags & TDB_RDONLY) || tdb->traverse_read) {
+	if ((tdb->flags & TDB_RDONLY) || tdb->tdb1.traverse_read) {
 		tdb->last_error = TDB_ERR_RDONLY;
 		return -1;
 	}
 
-	if (tdb->methods->tdb1_oob(tdb, off + len, 0) != 0)
+	if (tdb->tdb1.io->tdb1_oob(tdb, off + len, 0) != 0)
 		return -1;
 
 	if (tdb->file->map_ptr) {
@@ -133,10 +133,10 @@ void *tdb1_convert(void *buf, uint32_t size)
 
 
 /* read a lump of data at a specified offset, maybe convert */
-static int tdb1_read(struct tdb1_context *tdb, tdb1_off_t off, void *buf,
+static int tdb1_read(struct tdb_context *tdb, tdb1_off_t off, void *buf,
 		    tdb1_len_t len, int cv)
 {
-	if (tdb->methods->tdb1_oob(tdb, off + len, 0) != 0) {
+	if (tdb->tdb1.io->tdb1_oob(tdb, off + len, 0) != 0) {
 		return -1;
 	}
 
@@ -167,18 +167,18 @@ static int tdb1_read(struct tdb1_context *tdb, tdb1_off_t off, void *buf,
   do an unlocked scan of the hash table heads to find the next non-zero head. The value
   will then be confirmed with the lock held
 */
-static void tdb1_next_hash_chain(struct tdb1_context *tdb, uint32_t *chain)
+static void tdb1_next_hash_chain(struct tdb_context *tdb, uint32_t *chain)
 {
 	uint32_t h = *chain;
 	if (tdb->file->map_ptr) {
-		for (;h < tdb->header.hash_size;h++) {
+		for (;h < tdb->tdb1.header.hash_size;h++) {
 			if (0 != *(uint32_t *)(TDB1_HASH_TOP(h) + (unsigned char *)tdb->file->map_ptr)) {
 				break;
 			}
 		}
 	} else {
 		uint32_t off=0;
-		for (;h < tdb->header.hash_size;h++) {
+		for (;h < tdb->tdb1.header.hash_size;h++) {
 			if (tdb1_ofs_read(tdb, TDB1_HASH_TOP(h), &off) != 0 || off != 0) {
 				break;
 			}
@@ -188,7 +188,7 @@ static void tdb1_next_hash_chain(struct tdb1_context *tdb, uint32_t *chain)
 }
 
 
-int tdb1_munmap(struct tdb1_context *tdb)
+int tdb1_munmap(struct tdb_context *tdb)
 {
 	if (tdb->flags & TDB_INTERNAL)
 		return 0;
@@ -206,7 +206,7 @@ int tdb1_munmap(struct tdb1_context *tdb)
 	return 0;
 }
 
-void tdb1_mmap(struct tdb1_context *tdb)
+void tdb1_mmap(struct tdb_context *tdb)
 {
 	if (tdb->flags & TDB_INTERNAL)
 		return;
@@ -243,11 +243,11 @@ void tdb1_mmap(struct tdb1_context *tdb)
 
 /* expand a file.  we prefer to use ftruncate, as that is what posix
   says to use for mmap expansion */
-static int tdb1_expand_file(struct tdb1_context *tdb, tdb1_off_t size, tdb1_off_t addition)
+static int tdb1_expand_file(struct tdb_context *tdb, tdb1_off_t size, tdb1_off_t addition)
 {
 	char buf[8192];
 
-	if ((tdb->flags & TDB_RDONLY) || tdb->traverse_read) {
+	if ((tdb->flags & TDB_RDONLY) || tdb->tdb1.traverse_read) {
 		tdb->last_error = TDB_ERR_RDONLY;
 		return -1;
 	}
@@ -313,7 +313,7 @@ static int tdb1_expand_file(struct tdb1_context *tdb, tdb1_off_t size, tdb1_off_
 
 /* expand the database at least size bytes by expanding the underlying
    file and doing the mmap again if necessary */
-int tdb1_expand(struct tdb1_context *tdb, tdb1_off_t size)
+int tdb1_expand(struct tdb_context *tdb, tdb1_off_t size)
 {
 	struct tdb1_record rec;
 	tdb1_off_t offset, new_size, top_size, map_size;
@@ -325,7 +325,7 @@ int tdb1_expand(struct tdb1_context *tdb, tdb1_off_t size)
 	}
 
 	/* must know about any previous expansions by another process */
-	tdb->methods->tdb1_oob(tdb, tdb->file->map_size + 1, 1);
+	tdb->tdb1.io->tdb1_oob(tdb, tdb->file->map_size + 1, 1);
 
 	/* limit size in order to avoid using up huge amounts of memory for
 	 * in memory tdbs if an oddball huge record creeps in */
@@ -346,7 +346,7 @@ int tdb1_expand(struct tdb1_context *tdb, tdb1_off_t size)
 
 	/* Round the database up to a multiple of the page size */
 	new_size = MAX(top_size, map_size);
-	size = TDB1_ALIGN(new_size, tdb->page_size) - tdb->file->map_size;
+	size = TDB1_ALIGN(new_size, tdb->tdb1.page_size) - tdb->file->map_size;
 
 	if (!(tdb->flags & TDB_INTERNAL))
 		tdb1_munmap(tdb);
@@ -359,7 +359,7 @@ int tdb1_expand(struct tdb1_context *tdb, tdb1_off_t size)
 
 	/* expand the file itself */
 	if (!(tdb->flags & TDB_INTERNAL)) {
-		if (tdb->methods->tdb1_expand_file(tdb, tdb->file->map_size, size) != 0)
+		if (tdb->tdb1.io->tdb1_expand_file(tdb, tdb->file->map_size, size) != 0)
 			goto fail;
 	}
 
@@ -401,20 +401,20 @@ int tdb1_expand(struct tdb1_context *tdb, tdb1_off_t size)
 }
 
 /* read/write a tdb1_off_t */
-int tdb1_ofs_read(struct tdb1_context *tdb, tdb1_off_t offset, tdb1_off_t *d)
+int tdb1_ofs_read(struct tdb_context *tdb, tdb1_off_t offset, tdb1_off_t *d)
 {
-	return tdb->methods->tdb1_read(tdb, offset, (char*)d, sizeof(*d), TDB1_DOCONV());
+	return tdb->tdb1.io->tdb1_read(tdb, offset, (char*)d, sizeof(*d), TDB1_DOCONV());
 }
 
-int tdb1_ofs_write(struct tdb1_context *tdb, tdb1_off_t offset, tdb1_off_t *d)
+int tdb1_ofs_write(struct tdb_context *tdb, tdb1_off_t offset, tdb1_off_t *d)
 {
 	tdb1_off_t off = *d;
-	return tdb->methods->tdb1_write(tdb, offset, TDB1_CONV(off), sizeof(*d));
+	return tdb->tdb1.io->tdb1_write(tdb, offset, TDB1_CONV(off), sizeof(*d));
 }
 
 
 /* read a lump of data, allocating the space for it */
-unsigned char *tdb1_alloc_read(struct tdb1_context *tdb, tdb1_off_t offset, tdb1_len_t len)
+unsigned char *tdb1_alloc_read(struct tdb_context *tdb, tdb1_off_t offset, tdb1_len_t len)
 {
 	unsigned char *buf;
 
@@ -427,7 +427,7 @@ unsigned char *tdb1_alloc_read(struct tdb1_context *tdb, tdb1_off_t offset, tdb1
 					     len, strerror(errno));
 		return NULL;
 	}
-	if (tdb->methods->tdb1_read(tdb, offset, buf, len, 0) == -1) {
+	if (tdb->tdb1.io->tdb1_read(tdb, offset, buf, len, 0) == -1) {
 		SAFE_FREE(buf);
 		return NULL;
 	}
@@ -436,7 +436,7 @@ unsigned char *tdb1_alloc_read(struct tdb1_context *tdb, tdb1_off_t offset, tdb1
 
 /* Give a piece of tdb data to a parser */
 
-int tdb1_parse_data(struct tdb1_context *tdb, TDB_DATA key,
+int tdb1_parse_data(struct tdb_context *tdb, TDB_DATA key,
 		   tdb1_off_t offset, tdb1_len_t len,
 		   int (*parser)(TDB_DATA key, TDB_DATA data,
 				 void *private_data),
@@ -447,12 +447,12 @@ int tdb1_parse_data(struct tdb1_context *tdb, TDB_DATA key,
 
 	data.dsize = len;
 
-	if ((tdb->transaction == NULL) && (tdb->file->map_ptr != NULL)) {
+	if ((tdb->tdb1.transaction == NULL) && (tdb->file->map_ptr != NULL)) {
 		/*
 		 * Optimize by avoiding the malloc/memcpy/free, point the
 		 * parser directly at the mmap area.
 		 */
-		if (tdb->methods->tdb1_oob(tdb, offset+len, 0) != 0) {
+		if (tdb->tdb1.io->tdb1_oob(tdb, offset+len, 0) != 0) {
 			return -1;
 		}
 		data.dptr = offset + (unsigned char *)tdb->file->map_ptr;
@@ -469,9 +469,9 @@ int tdb1_parse_data(struct tdb1_context *tdb, TDB_DATA key,
 }
 
 /* read/write a record */
-int tdb1_rec_read(struct tdb1_context *tdb, tdb1_off_t offset, struct tdb1_record *rec)
+int tdb1_rec_read(struct tdb_context *tdb, tdb1_off_t offset, struct tdb1_record *rec)
 {
-	if (tdb->methods->tdb1_read(tdb, offset, rec, sizeof(*rec),TDB1_DOCONV()) == -1)
+	if (tdb->tdb1.io->tdb1_read(tdb, offset, rec, sizeof(*rec),TDB1_DOCONV()) == -1)
 		return -1;
 	if (TDB1_BAD_MAGIC(rec)) {
 		tdb->last_error = tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
@@ -479,13 +479,13 @@ int tdb1_rec_read(struct tdb1_context *tdb, tdb1_off_t offset, struct tdb1_recor
 					rec->magic, offset);
 		return -1;
 	}
-	return tdb->methods->tdb1_oob(tdb, rec->next+sizeof(*rec), 0);
+	return tdb->tdb1.io->tdb1_oob(tdb, rec->next+sizeof(*rec), 0);
 }
 
-int tdb1_rec_write(struct tdb1_context *tdb, tdb1_off_t offset, struct tdb1_record *rec)
+int tdb1_rec_write(struct tdb_context *tdb, tdb1_off_t offset, struct tdb1_record *rec)
 {
 	struct tdb1_record r = *rec;
-	return tdb->methods->tdb1_write(tdb, offset, TDB1_CONV(r), sizeof(r));
+	return tdb->tdb1.io->tdb1_write(tdb, offset, TDB1_CONV(r), sizeof(r));
 }
 
 static const struct tdb1_methods io1_methods = {
@@ -499,7 +499,7 @@ static const struct tdb1_methods io1_methods = {
 /*
   initialise the default methods table
 */
-void tdb1_io_init(struct tdb1_context *tdb)
+void tdb1_io_init(struct tdb_context *tdb)
 {
-	tdb->methods = &io1_methods;
+	tdb->tdb1.io = &io1_methods;
 }

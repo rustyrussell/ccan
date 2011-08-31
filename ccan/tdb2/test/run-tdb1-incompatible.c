@@ -9,7 +9,7 @@ static uint64_t tdb1_dumb_hash(const void *key, size_t len, uint64_t seed,
 	return len;
 }
 
-static void log_fn(struct tdb1_context *tdb, enum tdb_log_level level,
+static void log_fn(struct tdb_context *tdb, enum tdb_log_level level,
 		   enum TDB_ERROR ecode, const char *message, void *priv)
 {
 	unsigned int *count = priv;
@@ -46,7 +46,7 @@ static uint64_t old_hash(const void *key, size_t len, uint64_t seed,
 
 int main(int argc, char *argv[])
 {
-	struct tdb1_context *tdb;
+	struct tdb_context *tdb;
 	unsigned int log_count, flags;
 	TDB_DATA d;
 	struct tdb1_logging_context log_ctx = { log_fn, &log_count };

@@ -33,7 +33,7 @@ TDB_DATA tdb1_null;
   non-blocking increment of the tdb sequence number if the tdb has been opened using
   the TDB_SEQNUM flag
 */
-void tdb1_increment_seqnum_nonblock(struct tdb1_context *tdb)
+void tdb1_increment_seqnum_nonblock(struct tdb_context *tdb)
 {
 	tdb1_off_t seqnum=0;
 
@@ -53,7 +53,7 @@ void tdb1_increment_seqnum_nonblock(struct tdb1_context *tdb)
   increment the tdb sequence number if the tdb has been opened using
   the TDB_SEQNUM flag
 */
-static void tdb1_increment_seqnum(struct tdb1_context *tdb)
+static void tdb1_increment_seqnum(struct tdb_context *tdb)
 {
 	if (!(tdb->flags & TDB_SEQNUM)) {
 		return;
@@ -76,7 +76,7 @@ static int tdb1_key_compare(TDB_DATA key, TDB_DATA data, void *private_data)
 
 /* Returns 0 on fail.  On success, return offset of record, and fills
    in rec */
-static tdb1_off_t tdb1_find(struct tdb1_context *tdb, TDB_DATA key, uint32_t hash,
+static tdb1_off_t tdb1_find(struct tdb_context *tdb, TDB_DATA key, uint32_t hash,
 			struct tdb1_record *r)
 {
 	tdb1_off_t rec_ptr;
@@ -111,7 +111,7 @@ static tdb1_off_t tdb1_find(struct tdb1_context *tdb, TDB_DATA key, uint32_t has
 }
 
 /* As tdb1_find, but if you succeed, keep the lock */
-tdb1_off_t tdb1_find_lock_hash(struct tdb1_context *tdb, TDB_DATA key, uint32_t hash, int locktype,
+tdb1_off_t tdb1_find_lock_hash(struct tdb_context *tdb, TDB_DATA key, uint32_t hash, int locktype,
 			   struct tdb1_record *rec)
 {
 	uint32_t rec_ptr;
@@ -123,13 +123,13 @@ tdb1_off_t tdb1_find_lock_hash(struct tdb1_context *tdb, TDB_DATA key, uint32_t 
 	return rec_ptr;
 }
 
-static TDB_DATA _tdb1_fetch(struct tdb1_context *tdb, TDB_DATA key);
+static TDB_DATA _tdb1_fetch(struct tdb_context *tdb, TDB_DATA key);
 
 /* update an entry in place - this only works if the new data size
    is <= the old data size and the key exists.
    on failure return -1.
 */
-static int tdb1_update_hash(struct tdb1_context *tdb, TDB_DATA key, uint32_t hash, TDB_DATA dbuf)
+static int tdb1_update_hash(struct tdb_context *tdb, TDB_DATA key, uint32_t hash, TDB_DATA dbuf)
 {
 	struct tdb1_record rec;
 	tdb1_off_t rec_ptr;
@@ -162,7 +162,7 @@ static int tdb1_update_hash(struct tdb1_context *tdb, TDB_DATA key, uint32_t has
 		return -1;
 	}
 
-	if (tdb->methods->tdb1_write(tdb, rec_ptr + sizeof(rec) + rec.key_len,
+	if (tdb->tdb1.io->tdb1_write(tdb, rec_ptr + sizeof(rec) + rec.key_len,
 		      dbuf.dptr, dbuf.dsize) == -1)
 		return -1;
 
@@ -181,7 +181,7 @@ static int tdb1_update_hash(struct tdb1_context *tdb, TDB_DATA key, uint32_t has
  * then the TDB_DATA will have zero length but
  * a non-zero pointer
  */
-static TDB_DATA _tdb1_fetch(struct tdb1_context *tdb, TDB_DATA key)
+static TDB_DATA _tdb1_fetch(struct tdb_context *tdb, TDB_DATA key)
 {
 	tdb1_off_t rec_ptr;
 	struct tdb1_record rec;
@@ -200,7 +200,7 @@ static TDB_DATA _tdb1_fetch(struct tdb1_context *tdb, TDB_DATA key)
 	return ret;
 }
 
-TDB_DATA tdb1_fetch(struct tdb1_context *tdb, TDB_DATA key)
+TDB_DATA tdb1_fetch(struct tdb_context *tdb, TDB_DATA key)
 {
 	TDB_DATA ret = _tdb1_fetch(tdb, key);
 
@@ -225,7 +225,7 @@ TDB_DATA tdb1_fetch(struct tdb1_context *tdb, TDB_DATA key)
  * Return -1 if the record was not found.
  */
 
-int tdb1_parse_record(struct tdb1_context *tdb, TDB_DATA key,
+int tdb1_parse_record(struct tdb_context *tdb, TDB_DATA key,
 		     int (*parser)(TDB_DATA key, TDB_DATA data,
 				   void *private_data),
 		     void *private_data)
@@ -258,7 +258,7 @@ int tdb1_parse_record(struct tdb1_context *tdb, TDB_DATA key,
    this doesn't match the conventions in the rest of this module, but is
    compatible with gdbm
 */
-static int tdb1_exists_hash(struct tdb1_context *tdb, TDB_DATA key, uint32_t hash)
+static int tdb1_exists_hash(struct tdb_context *tdb, TDB_DATA key, uint32_t hash)
 {
 	struct tdb1_record rec;
 
@@ -268,7 +268,7 @@ static int tdb1_exists_hash(struct tdb1_context *tdb, TDB_DATA key, uint32_t has
 	return 1;
 }
 
-int tdb1_exists(struct tdb1_context *tdb, TDB_DATA key)
+int tdb1_exists(struct tdb_context *tdb, TDB_DATA key)
 {
 	uint32_t hash = tdb_hash(tdb, key.dptr, key.dsize);
 	int ret;
@@ -278,14 +278,14 @@ int tdb1_exists(struct tdb1_context *tdb, TDB_DATA key)
 }
 
 /* actually delete an entry in the database given the offset */
-int tdb1_do_delete(struct tdb1_context *tdb, tdb1_off_t rec_ptr, struct tdb1_record *rec)
+int tdb1_do_delete(struct tdb_context *tdb, tdb1_off_t rec_ptr, struct tdb1_record *rec)
 {
 	tdb1_off_t last_ptr, i;
 	struct tdb1_record lastrec;
 
-	if ((tdb->flags & TDB_RDONLY) || tdb->traverse_read) return -1;
+	if ((tdb->flags & TDB_RDONLY) || tdb->tdb1.traverse_read) return -1;
 
-	if (((tdb->traverse_write != 0) && (!TDB1_DEAD(rec))) ||
+	if (((tdb->tdb1.traverse_write != 0) && (!TDB1_DEAD(rec))) ||
 	    tdb1_write_lock_record(tdb, rec_ptr) == -1) {
 		/* Someone traversing here: mark it as dead */
 		rec->magic = TDB1_DEAD_MAGIC;
@@ -313,7 +313,7 @@ int tdb1_do_delete(struct tdb1_context *tdb, tdb1_off_t rec_ptr, struct tdb1_rec
 	return 0;
 }
 
-static int tdb1_count_dead(struct tdb1_context *tdb, uint32_t hash)
+static int tdb1_count_dead(struct tdb_context *tdb, uint32_t hash)
 {
 	int res = 0;
 	tdb1_off_t rec_ptr;
@@ -338,7 +338,7 @@ static int tdb1_count_dead(struct tdb1_context *tdb, uint32_t hash)
 /*
  * Purge all DEAD records from a hash chain
  */
-static int tdb1_purge_dead(struct tdb1_context *tdb, uint32_t hash)
+static int tdb1_purge_dead(struct tdb_context *tdb, uint32_t hash)
 {
 	int res = -1;
 	struct tdb1_record rec;
@@ -374,13 +374,13 @@ static int tdb1_purge_dead(struct tdb1_context *tdb, uint32_t hash)
 }
 
 /* delete an entry in the database given a key */
-static int tdb1_delete_hash(struct tdb1_context *tdb, TDB_DATA key, uint32_t hash)
+static int tdb1_delete_hash(struct tdb_context *tdb, TDB_DATA key, uint32_t hash)
 {
 	tdb1_off_t rec_ptr;
 	struct tdb1_record rec;
 	int ret;
 
-	if (tdb->max_dead_records != 0) {
+	if (tdb->tdb1.max_dead_records != 0) {
 
 		/*
 		 * Allow for some dead records per hash chain, mainly for
@@ -390,7 +390,7 @@ static int tdb1_delete_hash(struct tdb1_context *tdb, TDB_DATA key, uint32_t has
 		if (tdb1_lock(tdb, TDB1_BUCKET(hash), F_WRLCK) == -1)
 			return -1;
 
-		if (tdb1_count_dead(tdb, hash) >= tdb->max_dead_records) {
+		if (tdb1_count_dead(tdb, hash) >= tdb->tdb1.max_dead_records) {
 			/*
 			 * Don't let the per-chain freelist grow too large,
 			 * delete all existing dead records
@@ -427,7 +427,7 @@ static int tdb1_delete_hash(struct tdb1_context *tdb, TDB_DATA key, uint32_t has
 	return ret;
 }
 
-int tdb1_delete(struct tdb1_context *tdb, TDB_DATA key)
+int tdb1_delete(struct tdb_context *tdb, TDB_DATA key)
 {
 	uint32_t hash = tdb_hash(tdb, key.dptr, key.dsize);
 	int ret;
@@ -439,7 +439,7 @@ int tdb1_delete(struct tdb1_context *tdb, TDB_DATA key)
 /*
  * See if we have a dead record around with enough space
  */
-static tdb1_off_t tdb1_find_dead(struct tdb1_context *tdb, uint32_t hash,
+static tdb1_off_t tdb1_find_dead(struct tdb_context *tdb, uint32_t hash,
 			       struct tdb1_record *r, tdb1_len_t length)
 {
 	tdb1_off_t rec_ptr;
@@ -465,7 +465,7 @@ static tdb1_off_t tdb1_find_dead(struct tdb1_context *tdb, uint32_t hash,
 	return 0;
 }
 
-static int _tdb1_store(struct tdb1_context *tdb, TDB_DATA key,
+static int _tdb1_store(struct tdb_context *tdb, TDB_DATA key,
 		       TDB_DATA dbuf, int flag, uint32_t hash)
 {
 	struct tdb1_record rec;
@@ -512,7 +512,7 @@ static int _tdb1_store(struct tdb1_context *tdb, TDB_DATA key,
 	if (dbuf.dsize)
 		memcpy(p+key.dsize, dbuf.dptr, dbuf.dsize);
 
-	if (tdb->max_dead_records != 0) {
+	if (tdb->tdb1.max_dead_records != 0) {
 		/*
 		 * Allow for some dead records per hash chain, look if we can
 		 * find one that can hold the new record. We need enough space
@@ -529,7 +529,7 @@ static int _tdb1_store(struct tdb1_context *tdb, TDB_DATA key,
 			rec.full_hash = hash;
 			rec.magic = TDB1_MAGIC;
 			if (tdb1_rec_write(tdb, rec_ptr, &rec) == -1
-			    || tdb->methods->tdb1_write(
+			    || tdb->tdb1.io->tdb1_write(
 				    tdb, rec_ptr + sizeof(rec),
 				    p, key.dsize + dbuf.dsize) == -1) {
 				goto fail;
@@ -548,7 +548,7 @@ static int _tdb1_store(struct tdb1_context *tdb, TDB_DATA key,
 		goto fail;
 	}
 
-	if ((tdb->max_dead_records != 0)
+	if ((tdb->tdb1.max_dead_records != 0)
 	    && (tdb1_purge_dead(tdb, hash) == -1)) {
 		tdb1_unlock(tdb, -1, F_WRLCK);
 		goto fail;
@@ -574,7 +574,7 @@ static int _tdb1_store(struct tdb1_context *tdb, TDB_DATA key,
 
 	/* write out and point the top of the hash chain at it */
 	if (tdb1_rec_write(tdb, rec_ptr, &rec) == -1
-	    || tdb->methods->tdb1_write(tdb, rec_ptr+sizeof(rec), p, key.dsize+dbuf.dsize)==-1
+	    || tdb->tdb1.io->tdb1_write(tdb, rec_ptr+sizeof(rec), p, key.dsize+dbuf.dsize)==-1
 	    || tdb1_ofs_write(tdb, TDB1_HASH_TOP(hash), &rec_ptr) == -1) {
 		/* Need to tdb1_unallocate() here */
 		goto fail;
@@ -596,12 +596,12 @@ static int _tdb1_store(struct tdb1_context *tdb, TDB_DATA key,
 
    return 0 on success, -1 on failure
 */
-int tdb1_store(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA dbuf, int flag)
+int tdb1_store(struct tdb_context *tdb, TDB_DATA key, TDB_DATA dbuf, int flag)
 {
 	uint32_t hash;
 	int ret;
 
-	if ((tdb->flags & TDB_RDONLY) || tdb->traverse_read) {
+	if ((tdb->flags & TDB_RDONLY) || tdb->tdb1.traverse_read) {
 		tdb->last_error = TDB_ERR_RDONLY;
 		return -1;
 	}
@@ -617,7 +617,7 @@ int tdb1_store(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA dbuf, int flag)
 }
 
 /* Append to an entry. Create if not exist. */
-int tdb1_append(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA new_dbuf)
+int tdb1_append(struct tdb_context *tdb, TDB_DATA key, TDB_DATA new_dbuf)
 {
 	uint32_t hash;
 	TDB_DATA dbuf;
@@ -673,7 +673,7 @@ failed:
   The aim of this sequence number is to allow for a very lightweight
   test of a possible tdb change.
 */
-int tdb1_get_seqnum(struct tdb1_context *tdb)
+int tdb1_get_seqnum(struct tdb_context *tdb)
 {
 	tdb1_off_t seqnum=0;
 
@@ -681,9 +681,9 @@ int tdb1_get_seqnum(struct tdb1_context *tdb)
 	return seqnum;
 }
 
-int tdb1_hash_size(struct tdb1_context *tdb)
+int tdb1_hash_size(struct tdb_context *tdb)
 {
-	return tdb->header.hash_size;
+	return tdb->tdb1.header.hash_size;
 }
 
 
@@ -691,7 +691,7 @@ int tdb1_hash_size(struct tdb1_context *tdb)
   add a region of the file to the freelist. Length is the size of the region in bytes,
   which includes the free list header that needs to be added
  */
-static int tdb1_free_region(struct tdb1_context *tdb, tdb1_off_t offset, ssize_t length)
+static int tdb1_free_region(struct tdb_context *tdb, tdb1_off_t offset, ssize_t length)
 {
 	struct tdb1_record rec;
 	if (length <= sizeof(rec)) {
@@ -721,7 +721,7 @@ static int tdb1_free_region(struct tdb1_context *tdb, tdb1_off_t offset, ssize_t
 
   This code carefully steps around the recovery area, leaving it alone
  */
-int tdb1_wipe_all(struct tdb1_context *tdb)
+int tdb1_wipe_all(struct tdb_context *tdb)
 {
 	int i;
 	tdb1_off_t offset = 0;
@@ -746,7 +746,7 @@ int tdb1_wipe_all(struct tdb1_context *tdb)
 
 	if (recovery_head != 0) {
 		struct tdb1_record rec;
-		if (tdb->methods->tdb1_read(tdb, recovery_head, &rec, sizeof(rec), TDB1_DOCONV()) == -1) {
+		if (tdb->tdb1.io->tdb1_read(tdb, recovery_head, &rec, sizeof(rec), TDB1_DOCONV()) == -1) {
 			tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
 				   "tdb1_wipe_all: failed to read recovery record");
 			return -1;
@@ -755,7 +755,7 @@ int tdb1_wipe_all(struct tdb1_context *tdb)
 	}
 
 	/* wipe the hashes */
-	for (i=0;i<tdb->header.hash_size;i++) {
+	for (i=0;i<tdb->tdb1.header.hash_size;i++) {
 		if (tdb1_ofs_write(tdb, TDB1_HASH_TOP(i), &offset) == -1) {
 			tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
 				   "tdb1_wipe_all: failed to write hash %d", i);
@@ -774,8 +774,8 @@ int tdb1_wipe_all(struct tdb1_context *tdb)
 	   for the recovery area */
 	if (recovery_size == 0) {
 		/* the simple case - the whole file can be used as a freelist */
-		data_len = (tdb->file->map_size - TDB1_DATA_START(tdb->header.hash_size));
-		if (tdb1_free_region(tdb, TDB1_DATA_START(tdb->header.hash_size), data_len) != 0) {
+		data_len = (tdb->file->map_size - TDB1_DATA_START(tdb->tdb1.header.hash_size));
+		if (tdb1_free_region(tdb, TDB1_DATA_START(tdb->tdb1.header.hash_size), data_len) != 0) {
 			goto failed;
 		}
 	} else {
@@ -787,8 +787,8 @@ int tdb1_wipe_all(struct tdb1_context *tdb)
 		   move the recovery area or we risk subtle data
 		   corruption
 		*/
-		data_len = (recovery_head - TDB1_DATA_START(tdb->header.hash_size));
-		if (tdb1_free_region(tdb, TDB1_DATA_START(tdb->header.hash_size), data_len) != 0) {
+		data_len = (recovery_head - TDB1_DATA_START(tdb->tdb1.header.hash_size));
+		if (tdb1_free_region(tdb, TDB1_DATA_START(tdb->tdb1.header.hash_size), data_len) != 0) {
 			goto failed;
 		}
 		/* and the 2nd free list entry after the recovery area - if any */
@@ -813,13 +813,13 @@ failed:
 
 struct traverse_state {
 	enum TDB_ERROR error;
-	struct tdb1_context *dest_db;
+	struct tdb_context *dest_db;
 };
 
 /*
   traverse function for repacking
  */
-static int repack_traverse(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA data, void *private_data)
+static int repack_traverse(struct tdb_context *tdb, TDB_DATA key, TDB_DATA data, void *private_data)
 {
 	struct traverse_state *state = (struct traverse_state *)private_data;
 	if (tdb1_store(state->dest_db, key, data, TDB_INSERT) != 0) {
@@ -832,9 +832,9 @@ static int repack_traverse(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA data
 /*
   repack a tdb
  */
-int tdb1_repack(struct tdb1_context *tdb)
+int tdb1_repack(struct tdb_context *tdb)
 {
-	struct tdb1_context *tmp_db;
+	struct tdb_context *tmp_db;
 	struct traverse_state state;
 
 	if (tdb1_transaction_start(tdb) != 0) {

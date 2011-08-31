@@ -23,7 +23,7 @@ static bool correct_data(TDB_DATA data)
 		&& memcmp(data.dptr, "world", data.dsize) == 0;
 }
 
-static int traverse2(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA data,
+static int traverse2(struct tdb_context *tdb, TDB_DATA key, TDB_DATA data,
 		     void *p)
 {
 	ok1(correct_key(key));
@@ -31,7 +31,7 @@ static int traverse2(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA data,
 	return 0;
 }
 
-static int traverse1(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA data,
+static int traverse1(struct tdb_context *tdb, TDB_DATA key, TDB_DATA data,
 		     void *p)
 {
 	ok1(correct_key(key));
@@ -48,7 +48,7 @@ static int traverse1(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA data,
 
 int main(int argc, char *argv[])
 {
-	struct tdb1_context *tdb;
+	struct tdb_context *tdb;
 	TDB_DATA key, data;
 
 	plan_tests(17);

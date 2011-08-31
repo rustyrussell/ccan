@@ -25,12 +25,12 @@
 #include "tdb1_private.h"
 
 /* Since we opened it, these shouldn't fail unless it's recent corruption. */
-static bool tdb1_check_header(struct tdb1_context *tdb, tdb1_off_t *recovery)
+static bool tdb1_check_header(struct tdb_context *tdb, tdb1_off_t *recovery)
 {
 	struct tdb1_header hdr;
 	uint32_t h1, h2;
 
-	if (tdb->methods->tdb1_read(tdb, 0, &hdr, sizeof(hdr), 0) == -1)
+	if (tdb->tdb1.io->tdb1_read(tdb, 0, &hdr, sizeof(hdr), 0) == -1)
 		return false;
 	if (strcmp(hdr.magic_food, TDB_MAGIC_FOOD) != 0)
 		goto corrupt;
@@ -50,11 +50,11 @@ static bool tdb1_check_header(struct tdb1_context *tdb, tdb1_off_t *recovery)
 	if (hdr.hash_size == 0)
 		goto corrupt;
 
-	if (hdr.hash_size != tdb->header.hash_size)
+	if (hdr.hash_size != tdb->tdb1.header.hash_size)
 		goto corrupt;
 
 	if (hdr.recovery_start != 0 &&
-	    hdr.recovery_start < TDB1_DATA_START(tdb->header.hash_size))
+	    hdr.recovery_start < TDB1_DATA_START(tdb->tdb1.header.hash_size))
 		goto corrupt;
 
 	*recovery = hdr.recovery_start;
@@ -67,14 +67,14 @@ corrupt:
 }
 
 /* Generic record header check. */
-static bool tdb1_check_record(struct tdb1_context *tdb,
+static bool tdb1_check_record(struct tdb_context *tdb,
 			     tdb1_off_t off,
 			     const struct tdb1_record *rec)
 {
 	tdb1_off_t tailer;
 
 	/* Check rec->next: 0 or points to record offset, aligned. */
-	if (rec->next > 0 && rec->next < TDB1_DATA_START(tdb->header.hash_size)){
+	if (rec->next > 0 && rec->next < TDB1_DATA_START(tdb->tdb1.header.hash_size)){
 		tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
 			   "Record offset %d too small next %d\n",
 			   off, rec->next);
@@ -92,7 +92,7 @@ static bool tdb1_check_record(struct tdb1_context *tdb,
 			   off, rec->next);
 		goto corrupt;
 	}
-	if (tdb->methods->tdb1_oob(tdb, rec->next+sizeof(*rec), 0))
+	if (tdb->tdb1.io->tdb1_oob(tdb, rec->next+sizeof(*rec), 0))
 		goto corrupt;
 
 	/* Check rec_len: similar to rec->next, implies next record. */
@@ -110,7 +110,7 @@ static bool tdb1_check_record(struct tdb1_context *tdb,
 		goto corrupt;
 	}
 	/* OOB allows "right at the end" access, so this works for last rec. */
-	if (tdb->methods->tdb1_oob(tdb, off+sizeof(*rec)+rec->rec_len, 0))
+	if (tdb->tdb1.io->tdb1_oob(tdb, off+sizeof(*rec)+rec->rec_len, 0))
 		goto corrupt;
 
 	/* Check tailer. */
@@ -132,14 +132,14 @@ corrupt:
 
 /* Grab some bytes: may copy if can't use mmap.
    Caller has already done bounds check. */
-static TDB_DATA get_bytes(struct tdb1_context *tdb,
+static TDB_DATA get_bytes(struct tdb_context *tdb,
 			  tdb1_off_t off, tdb1_len_t len)
 {
 	TDB_DATA d;
 
 	d.dsize = len;
 
-	if (tdb->transaction == NULL && tdb->file->map_ptr != NULL)
+	if (tdb->tdb1.transaction == NULL && tdb->file->map_ptr != NULL)
 		d.dptr = (unsigned char *)tdb->file->map_ptr + off;
 	else
 		d.dptr = tdb1_alloc_read(tdb, off, d.dsize);
@@ -147,9 +147,9 @@ static TDB_DATA get_bytes(struct tdb1_context *tdb,
 }
 
 /* Frees data if we're not able to simply use mmap. */
-static void put_bytes(struct tdb1_context *tdb, TDB_DATA d)
+static void put_bytes(struct tdb_context *tdb, TDB_DATA d)
 {
-	if (tdb->transaction == NULL && tdb->file->map_ptr != NULL)
+	if (tdb->tdb1.transaction == NULL && tdb->file->map_ptr != NULL)
 		return;
 	free(d.dptr);
 }
@@ -232,7 +232,7 @@ static void record_offset(unsigned char bits[], tdb1_off_t off)
 }
 
 /* Check that an in-use record is valid. */
-static bool tdb1_check_used_record(struct tdb1_context *tdb,
+static bool tdb1_check_used_record(struct tdb_context *tdb,
 				  tdb1_off_t off,
 				  const struct tdb1_record *rec,
 				  unsigned char **hashes,
@@ -291,7 +291,7 @@ fail_put_key:
 }
 
 /* Check that an unused record is valid. */
-static bool tdb1_check_free_record(struct tdb1_context *tdb,
+static bool tdb1_check_free_record(struct tdb_context *tdb,
 				  tdb1_off_t off,
 				  const struct tdb1_record *rec,
 				  unsigned char **hashes)
@@ -308,13 +308,13 @@ static bool tdb1_check_free_record(struct tdb1_context *tdb,
 }
 
 /* Slow, but should be very rare. */
-size_t tdb1_dead_space(struct tdb1_context *tdb, tdb1_off_t off)
+size_t tdb1_dead_space(struct tdb_context *tdb, tdb1_off_t off)
 {
 	size_t len;
 
 	for (len = 0; off + len < tdb->file->map_size; len++) {
 		char c;
-		if (tdb->methods->tdb1_read(tdb, off, &c, 1, 0))
+		if (tdb->tdb1.io->tdb1_read(tdb, off, &c, 1, 0))
 			return 0;
 		if (c != 0 && c != 0x42)
 			break;
@@ -322,7 +322,7 @@ size_t tdb1_dead_space(struct tdb1_context *tdb, tdb1_off_t off)
 	return len;
 }
 
-int tdb1_check(struct tdb1_context *tdb,
+int tdb1_check(struct tdb_context *tdb,
 	      int (*check)(TDB_DATA key, TDB_DATA data, void *private_data),
 	      void *private_data)
 {
@@ -344,14 +344,14 @@ int tdb1_check(struct tdb1_context *tdb,
 	}
 
 	/* Make sure we know true size of the underlying file. */
-	tdb->methods->tdb1_oob(tdb, tdb->file->map_size + 1, 1);
+	tdb->tdb1.io->tdb1_oob(tdb, tdb->file->map_size + 1, 1);
 
 	/* Header must be OK: also gets us the recovery ptr, if any. */
 	if (!tdb1_check_header(tdb, &recovery_start))
 		goto unlock;
 
 	/* We should have the whole header, too. */
-	if (tdb->file->map_size < TDB1_DATA_START(tdb->header.hash_size)) {
+	if (tdb->file->map_size < TDB1_DATA_START(tdb->tdb1.header.hash_size)) {
 		tdb->last_error = tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
 					"File too short for hashes\n");
 		goto unlock;
@@ -359,20 +359,20 @@ int tdb1_check(struct tdb1_context *tdb,
 
 	/* One big malloc: pointers then bit arrays. */
 	hashes = (unsigned char **)calloc(
-			1, sizeof(hashes[0]) * (1+tdb->header.hash_size)
-			+ BITMAP_BITS / CHAR_BIT * (1+tdb->header.hash_size));
+			1, sizeof(hashes[0]) * (1+tdb->tdb1.header.hash_size)
+			+ BITMAP_BITS / CHAR_BIT * (1+tdb->tdb1.header.hash_size));
 	if (!hashes) {
 		tdb->last_error = TDB_ERR_OOM;
 		goto unlock;
 	}
 
 	/* Initialize pointers */
-	hashes[0] = (unsigned char *)(&hashes[1+tdb->header.hash_size]);
-	for (h = 1; h < 1+tdb->header.hash_size; h++)
+	hashes[0] = (unsigned char *)(&hashes[1+tdb->tdb1.header.hash_size]);
+	for (h = 1; h < 1+tdb->tdb1.header.hash_size; h++)
 		hashes[h] = hashes[h-1] + BITMAP_BITS / CHAR_BIT;
 
 	/* Freelist and hash headers are all in a row: read them. */
-	for (h = 0; h < 1+tdb->header.hash_size; h++) {
+	for (h = 0; h < 1+tdb->tdb1.header.hash_size; h++) {
 		if (tdb1_ofs_read(tdb, TDB1_FREELIST_TOP + h*sizeof(tdb1_off_t),
 				 &off) == -1)
 			goto free;
@@ -381,10 +381,10 @@ int tdb1_check(struct tdb1_context *tdb,
 	}
 
 	/* For each record, read it in and check it's ok. */
-	for (off = TDB1_DATA_START(tdb->header.hash_size);
+	for (off = TDB1_DATA_START(tdb->tdb1.header.hash_size);
 	     off < tdb->file->map_size;
 	     off += sizeof(rec) + rec.rec_len) {
-		if (tdb->methods->tdb1_read(tdb, off, &rec, sizeof(rec),
+		if (tdb->tdb1.io->tdb1_read(tdb, off, &rec, sizeof(rec),
 					   TDB1_DOCONV()) == -1)
 			goto free;
 		switch (rec.magic) {
@@ -434,7 +434,7 @@ int tdb1_check(struct tdb1_context *tdb,
 
 	/* Now, hashes should all be empty: each record exists and is referred
 	 * to by one other. */
-	for (h = 0; h < 1+tdb->header.hash_size; h++) {
+	for (h = 0; h < 1+tdb->tdb1.header.hash_size; h++) {
 		unsigned int i;
 		for (i = 0; i < BITMAP_BITS / CHAR_BIT; i++) {
 			if (hashes[h][i] != 0) {

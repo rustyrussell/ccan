@@ -8,7 +8,7 @@
 
 int main(int argc, char *argv[])
 {
-	struct tdb1_context *tdb;
+	struct tdb_context *tdb;
 	TDB_DATA key, data;
 
 	plan_tests(11);

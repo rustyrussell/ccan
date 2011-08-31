@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <err.h>
 
-static void log_fn(struct tdb1_context *tdb, enum tdb_log_level level,
+static void log_fn(struct tdb_context *tdb, enum tdb_log_level level,
 		   enum TDB_ERROR ecode, const char *message, void *priv)
 {
 	unsigned int *count = priv;
@@ -14,7 +14,7 @@ static void log_fn(struct tdb1_context *tdb, enum tdb_log_level level,
 /* The code should barf on TDBs created with rwlocks. */
 int main(int argc, char *argv[])
 {
-	struct tdb1_context *tdb;
+	struct tdb_context *tdb;
 	unsigned int log_count;
 	struct tdb1_logging_context log_ctx = { log_fn, &log_count };
 

@@ -14,7 +14,7 @@
 
 #define NUM_ENTRIES 10
 
-static bool prepare_entries(struct tdb1_context *tdb)
+static bool prepare_entries(struct tdb_context *tdb)
 {
 	unsigned int i;
 	TDB_DATA key, data;
@@ -31,7 +31,7 @@ static bool prepare_entries(struct tdb1_context *tdb)
 	return true;
 }
 
-static void delete_entries(struct tdb1_context *tdb)
+static void delete_entries(struct tdb_context *tdb)
 {
 	unsigned int i;
 	TDB_DATA key;
@@ -45,7 +45,7 @@ static void delete_entries(struct tdb1_context *tdb)
 }
 
 /* We don't know how many times this will run. */
-static int delete_other(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA data,
+static int delete_other(struct tdb_context *tdb, TDB_DATA key, TDB_DATA data,
 			void *private_data)
 {
 	unsigned int i;
@@ -57,7 +57,7 @@ static int delete_other(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA data,
 	return 0;
 }
 
-static int delete_self(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA data,
+static int delete_self(struct tdb_context *tdb, TDB_DATA key, TDB_DATA data,
 			void *private_data)
 {
 	ok1(tdb1_delete(tdb, key) == 0);
@@ -66,7 +66,7 @@ static int delete_self(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA data,
 
 int main(int argc, char *argv[])
 {
-	struct tdb1_context *tdb;
+	struct tdb_context *tdb;
 	int errors = 0;
 
 	plan_tests(41);

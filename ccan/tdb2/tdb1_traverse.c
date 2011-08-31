@@ -31,13 +31,13 @@
 
 /* Uses traverse lock: 0 = finish, TDB1_NEXT_LOCK_ERR = error,
    other = record offset */
-static tdb1_off_t tdb1_next_lock(struct tdb1_context *tdb, struct tdb1_traverse_lock *tlock,
+static tdb1_off_t tdb1_next_lock(struct tdb_context *tdb, struct tdb1_traverse_lock *tlock,
 			 struct tdb1_record *rec)
 {
 	int want_next = (tlock->off != 0);
 
 	/* Lock each chain from the start one. */
-	for (; tlock->hash < tdb->header.hash_size; tlock->hash++) {
+	for (; tlock->hash < tdb->tdb1.header.hash_size; tlock->hash++) {
 		if (!tlock->off && tlock->hash != 0) {
 			/* this is an optimisation for the common case where
 			   the hash chain is empty, which is particularly
@@ -67,8 +67,8 @@ static tdb1_off_t tdb1_next_lock(struct tdb1_context *tdb, struct tdb1_traverse_
 			   factor of around 80 in speed on a linux 2.6.x
 			   system (testing using ldbtest).
 			*/
-			tdb->methods->next_hash_chain(tdb, &tlock->hash);
-			if (tlock->hash == tdb->header.hash_size) {
+			tdb->tdb1.io->next_hash_chain(tdb, &tlock->hash);
+			if (tlock->hash == tdb->tdb1.header.hash_size) {
 				continue;
 			}
 		}
@@ -119,7 +119,7 @@ static tdb1_off_t tdb1_next_lock(struct tdb1_context *tdb, struct tdb1_traverse_
 			/* Try to clean dead ones from old traverses */
 			current = tlock->off;
 			tlock->off = rec->next;
-			if (!((tdb->flags & TDB_RDONLY) || tdb->traverse_read) &&
+			if (!((tdb->flags & TDB_RDONLY) || tdb->tdb1.traverse_read) &&
 			    tdb1_do_delete(tdb, current, rec) != 0)
 				goto fail;
 		}
@@ -143,7 +143,7 @@ static tdb1_off_t tdb1_next_lock(struct tdb1_context *tdb, struct tdb1_traverse_
    if fn is NULL then it is not called
    a non-zero return value from fn() indicates that the traversal should stop
   */
-static int tdb1_traverse_internal(struct tdb1_context *tdb,
+static int tdb1_traverse_internal(struct tdb_context *tdb,
 				 tdb1_traverse_func fn, void *private_data,
 				 struct tdb1_traverse_lock *tl)
 {
@@ -155,10 +155,10 @@ static int tdb1_traverse_internal(struct tdb1_context *tdb,
 	/* This was in the initializaton, above, but the IRIX compiler
 	 * did not like it.  crh
 	 */
-	tl->next = tdb->travlocks.next;
+	tl->next = tdb->tdb1.travlocks.next;
 
 	/* fcntl locks don't stack: beware traverse inside traverse */
-	tdb->travlocks.next = tl;
+	tdb->tdb1.travlocks.next = tl;
 
 	/* tdb1_next_lock places locks on the record returned, and its chain */
 	while ((off = tdb1_next_lock(tdb, tl, &rec)) != 0) {
@@ -204,7 +204,7 @@ static int tdb1_traverse_internal(struct tdb1_context *tdb,
 		SAFE_FREE(key.dptr);
 	}
 out:
-	tdb->travlocks.next = tl->next;
+	tdb->tdb1.travlocks.next = tl->next;
 	if (ret < 0)
 		return -1;
 	else
@@ -215,7 +215,7 @@ out:
 /*
   a write style traverse - temporarily marks the db read only
 */
-int tdb1_traverse_read(struct tdb1_context *tdb,
+int tdb1_traverse_read(struct tdb_context *tdb,
 		      tdb1_traverse_func fn, void *private_data)
 {
 	struct tdb1_traverse_lock tl = { NULL, 0, 0, F_RDLCK };
@@ -227,9 +227,9 @@ int tdb1_traverse_read(struct tdb1_context *tdb,
 		return -1;
 	}
 
-	tdb->traverse_read++;
+	tdb->tdb1.traverse_read++;
 	ret = tdb1_traverse_internal(tdb, fn, private_data, &tl);
-	tdb->traverse_read--;
+	tdb->tdb1.traverse_read--;
 
 	tdb1_transaction_unlock(tdb, F_RDLCK);
 
@@ -243,13 +243,13 @@ int tdb1_traverse_read(struct tdb1_context *tdb,
   WARNING: The data buffer given to the callback fn does NOT meet the
   alignment restrictions malloc gives you.
 */
-int tdb1_traverse(struct tdb1_context *tdb,
+int tdb1_traverse(struct tdb_context *tdb,
 		 tdb1_traverse_func fn, void *private_data)
 {
 	struct tdb1_traverse_lock tl = { NULL, 0, 0, F_WRLCK };
 	int ret;
 
-	if ((tdb->flags & TDB_RDONLY) || tdb->traverse_read) {
+	if ((tdb->flags & TDB_RDONLY) || tdb->tdb1.traverse_read) {
 		return tdb1_traverse_read(tdb, fn, private_data);
 	}
 
@@ -257,9 +257,9 @@ int tdb1_traverse(struct tdb1_context *tdb,
 		return -1;
 	}
 
-	tdb->traverse_write++;
+	tdb->tdb1.traverse_write++;
 	ret = tdb1_traverse_internal(tdb, fn, private_data, &tl);
-	tdb->traverse_write--;
+	tdb->tdb1.traverse_write--;
 
 	tdb1_transaction_unlock(tdb, F_WRLCK);
 
@@ -268,29 +268,29 @@ int tdb1_traverse(struct tdb1_context *tdb,
 
 
 /* find the first entry in the database and return its key */
-TDB_DATA tdb1_firstkey(struct tdb1_context *tdb)
+TDB_DATA tdb1_firstkey(struct tdb_context *tdb)
 {
 	TDB_DATA key;
 	struct tdb1_record rec;
 	tdb1_off_t off;
 
 	/* release any old lock */
-	if (tdb1_unlock_record(tdb, tdb->travlocks.off) != 0)
+	if (tdb1_unlock_record(tdb, tdb->tdb1.travlocks.off) != 0)
 		return tdb1_null;
-	tdb->travlocks.off = tdb->travlocks.hash = 0;
-	tdb->travlocks.lock_rw = F_RDLCK;
+	tdb->tdb1.travlocks.off = tdb->tdb1.travlocks.hash = 0;
+	tdb->tdb1.travlocks.lock_rw = F_RDLCK;
 
 	/* Grab first record: locks chain and returned record. */
-	off = tdb1_next_lock(tdb, &tdb->travlocks, &rec);
+	off = tdb1_next_lock(tdb, &tdb->tdb1.travlocks, &rec);
 	if (off == 0 || off == TDB1_NEXT_LOCK_ERR) {
 		return tdb1_null;
 	}
 	/* now read the key */
 	key.dsize = rec.key_len;
-	key.dptr =tdb1_alloc_read(tdb,tdb->travlocks.off+sizeof(rec),key.dsize);
+	key.dptr =tdb1_alloc_read(tdb,tdb->tdb1.travlocks.off+sizeof(rec),key.dsize);
 
 	/* Unlock the hash chain of the record we just read. */
-	if (tdb1_unlock(tdb, tdb->travlocks.hash, tdb->travlocks.lock_rw) != 0)
+	if (tdb1_unlock(tdb, tdb->tdb1.travlocks.hash, tdb->tdb1.travlocks.lock_rw) != 0)
 		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
 			   "tdb1_firstkey:"
 			   " error occurred while tdb1_unlocking!");
@@ -298,7 +298,7 @@ TDB_DATA tdb1_firstkey(struct tdb1_context *tdb)
 }
 
 /* find the next entry in the database, returning its key */
-TDB_DATA tdb1_nextkey(struct tdb1_context *tdb, TDB_DATA oldkey)
+TDB_DATA tdb1_nextkey(struct tdb_context *tdb, TDB_DATA oldkey)
 {
 	uint32_t oldhash;
 	TDB_DATA key = tdb1_null;
@@ -307,58 +307,58 @@ TDB_DATA tdb1_nextkey(struct tdb1_context *tdb, TDB_DATA oldkey)
 	tdb1_off_t off;
 
 	/* Is locked key the old key?  If so, traverse will be reliable. */
-	if (tdb->travlocks.off) {
-		if (tdb1_lock(tdb,tdb->travlocks.hash,tdb->travlocks.lock_rw))
+	if (tdb->tdb1.travlocks.off) {
+		if (tdb1_lock(tdb,tdb->tdb1.travlocks.hash,tdb->tdb1.travlocks.lock_rw))
 			return tdb1_null;
-		if (tdb1_rec_read(tdb, tdb->travlocks.off, &rec) == -1
-		    || !(k = tdb1_alloc_read(tdb,tdb->travlocks.off+sizeof(rec),
+		if (tdb1_rec_read(tdb, tdb->tdb1.travlocks.off, &rec) == -1
+		    || !(k = tdb1_alloc_read(tdb,tdb->tdb1.travlocks.off+sizeof(rec),
 					    rec.key_len))
 		    || memcmp(k, oldkey.dptr, oldkey.dsize) != 0) {
 			/* No, it wasn't: unlock it and start from scratch */
-			if (tdb1_unlock_record(tdb, tdb->travlocks.off) != 0) {
+			if (tdb1_unlock_record(tdb, tdb->tdb1.travlocks.off) != 0) {
 				SAFE_FREE(k);
 				return tdb1_null;
 			}
-			if (tdb1_unlock(tdb, tdb->travlocks.hash, tdb->travlocks.lock_rw) != 0) {
+			if (tdb1_unlock(tdb, tdb->tdb1.travlocks.hash, tdb->tdb1.travlocks.lock_rw) != 0) {
 				SAFE_FREE(k);
 				return tdb1_null;
 			}
-			tdb->travlocks.off = 0;
+			tdb->tdb1.travlocks.off = 0;
 		}
 
 		SAFE_FREE(k);
 	}
 
-	if (!tdb->travlocks.off) {
+	if (!tdb->tdb1.travlocks.off) {
 		/* No previous element: do normal find, and lock record */
-		tdb->travlocks.off = tdb1_find_lock_hash(tdb, oldkey, tdb_hash(tdb, oldkey.dptr, oldkey.dsize), tdb->travlocks.lock_rw, &rec);
-		if (!tdb->travlocks.off) {
+		tdb->tdb1.travlocks.off = tdb1_find_lock_hash(tdb, oldkey, tdb_hash(tdb, oldkey.dptr, oldkey.dsize), tdb->tdb1.travlocks.lock_rw, &rec);
+		if (!tdb->tdb1.travlocks.off) {
 			return tdb1_null;
 		}
-		tdb->travlocks.hash = TDB1_BUCKET(rec.full_hash);
-		if (tdb1_lock_record(tdb, tdb->travlocks.off) != 0) {
+		tdb->tdb1.travlocks.hash = TDB1_BUCKET(rec.full_hash);
+		if (tdb1_lock_record(tdb, tdb->tdb1.travlocks.off) != 0) {
 			tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
 				   "tdb1_nextkey: lock_record failed (%s)!",
 				   strerror(errno));
 			return tdb1_null;
 		}
 	}
-	oldhash = tdb->travlocks.hash;
+	oldhash = tdb->tdb1.travlocks.hash;
 
 	/* Grab next record: locks chain and returned record,
 	   unlocks old record */
-	off = tdb1_next_lock(tdb, &tdb->travlocks, &rec);
+	off = tdb1_next_lock(tdb, &tdb->tdb1.travlocks, &rec);
 	if (off != TDB1_NEXT_LOCK_ERR && off != 0) {
 		key.dsize = rec.key_len;
-		key.dptr = tdb1_alloc_read(tdb, tdb->travlocks.off+sizeof(rec),
+		key.dptr = tdb1_alloc_read(tdb, tdb->tdb1.travlocks.off+sizeof(rec),
 					  key.dsize);
 		/* Unlock the chain of this new record */
-		if (tdb1_unlock(tdb, tdb->travlocks.hash, tdb->travlocks.lock_rw) != 0)
+		if (tdb1_unlock(tdb, tdb->tdb1.travlocks.hash, tdb->tdb1.travlocks.lock_rw) != 0)
 			tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
 				   "tdb1_nextkey: WARNING tdb1_unlock failed!");
 	}
 	/* Unlock the chain of old record */
-	if (tdb1_unlock(tdb, TDB1_BUCKET(oldhash), tdb->travlocks.lock_rw) != 0)
+	if (tdb1_unlock(tdb, TDB1_BUCKET(oldhash), tdb->tdb1.travlocks.lock_rw) != 0)
 		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
 			   "tdb1_nextkey: WARNING tdb1_unlock failed!");
 	return key;

@@ -363,11 +363,8 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	} else {
 		tdb->name = NULL;
 	}
-	tdb->direct_access = 0;
 	tdb->flags = tdb_flags;
 	tdb->log_fn = NULL;
-	tdb->transaction = NULL;
-	tdb->access = NULL;
 	tdb->open_flags = open_flags;
 	tdb->last_error = TDB_SUCCESS;
 	tdb->file = NULL;
@@ -379,6 +376,9 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb->stats.base.attr = TDB_ATTRIBUTE_STATS;
 	tdb->stats.size = sizeof(tdb->stats);
 	tdb_io_init(tdb);
+	tdb->tdb2.direct_access = 0;
+	tdb->tdb2.transaction = NULL;
+	tdb->tdb2.access = NULL;
 
 	while (attr) {
 		switch (attr->base.attr) {
@@ -573,7 +573,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb_unlock_open(tdb, openlock);
 
 	/* This make sure we have current map_size and mmap. */
-	ecode = tdb->methods->oob(tdb, tdb->file->map_size + 1, true);
+	ecode = tdb->tdb2.io->oob(tdb, tdb->file->map_size + 1, true);
 	if (unlikely(ecode != TDB_SUCCESS))
 		goto fail;
 
@@ -655,7 +655,7 @@ int tdb_close(struct tdb_context *tdb)
 
 	tdb_trace(tdb, "tdb_close");
 
-	if (tdb->transaction) {
+	if (tdb->tdb2.transaction) {
 		tdb_transaction_cancel(tdb);
 	}
 

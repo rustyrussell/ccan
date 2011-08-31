@@ -6,7 +6,7 @@
 
 int main(int argc, char *argv[])
 {
-	struct tdb1_context *tdb;
+	struct tdb_context *tdb;
 	struct tdb1_header hdr;
 	int fd;
 

@@ -28,9 +28,9 @@
 #include "tdb1_private.h"
 
 /* read a freelist record and check for simple errors */
-int tdb1_rec_free_read(struct tdb1_context *tdb, tdb1_off_t off, struct tdb1_record *rec)
+int tdb1_rec_free_read(struct tdb_context *tdb, tdb1_off_t off, struct tdb1_record *rec)
 {
-	if (tdb->methods->tdb1_read(tdb, off, rec, sizeof(*rec),TDB1_DOCONV()) == -1)
+	if (tdb->tdb1.io->tdb1_read(tdb, off, rec, sizeof(*rec),TDB1_DOCONV()) == -1)
 		return -1;
 
 	if (rec->magic == TDB1_MAGIC) {
@@ -40,7 +40,7 @@ int tdb1_rec_free_read(struct tdb1_context *tdb, tdb1_off_t off, struct tdb1_rec
 			   "tdb1_rec_free_read non-free magic 0x%x at offset=%d - fixing\n",
 			   rec->magic, off);
 		rec->magic = TDB1_FREE_MAGIC;
-		if (tdb->methods->tdb1_write(tdb, off, rec, sizeof(*rec)) == -1)
+		if (tdb->tdb1.io->tdb1_write(tdb, off, rec, sizeof(*rec)) == -1)
 			return -1;
 	}
 
@@ -50,14 +50,14 @@ int tdb1_rec_free_read(struct tdb1_context *tdb, tdb1_off_t off, struct tdb1_rec
 					rec->magic, off);
 		return -1;
 	}
-	if (tdb->methods->tdb1_oob(tdb, rec->next+sizeof(*rec), 0) != 0)
+	if (tdb->tdb1.io->tdb1_oob(tdb, rec->next+sizeof(*rec), 0) != 0)
 		return -1;
 	return 0;
 }
 
 
 /* update a record tailer (must hold allocation lock) */
-static int update_tailer(struct tdb1_context *tdb, tdb1_off_t offset,
+static int update_tailer(struct tdb_context *tdb, tdb1_off_t offset,
 			 const struct tdb1_record *rec)
 {
 	tdb1_off_t totalsize;
@@ -70,7 +70,7 @@ static int update_tailer(struct tdb1_context *tdb, tdb1_off_t offset,
 
 /* Add an element into the freelist. Merge adjacent records if
    necessary. */
-int tdb1_free(struct tdb1_context *tdb, tdb1_off_t offset, struct tdb1_record *rec)
+int tdb1_free(struct tdb_context *tdb, tdb1_off_t offset, struct tdb1_record *rec)
 {
 	/* Allocation and tailer lock */
 	if (tdb1_lock(tdb, -1, F_WRLCK) != 0)
@@ -84,7 +84,7 @@ int tdb1_free(struct tdb1_context *tdb, tdb1_off_t offset, struct tdb1_record *r
 	}
 
 	/* Look left */
-	if (offset - sizeof(tdb1_off_t) > TDB1_DATA_START(tdb->header.hash_size)) {
+	if (offset - sizeof(tdb1_off_t) > TDB1_DATA_START(tdb->tdb1.header.hash_size)) {
 		tdb1_off_t left = offset - sizeof(tdb1_off_t);
 		struct tdb1_record l;
 		tdb1_off_t leftsize;
@@ -104,12 +104,12 @@ int tdb1_free(struct tdb1_context *tdb, tdb1_off_t offset, struct tdb1_record *r
 		left = offset - leftsize;
 
 		if (leftsize > offset ||
-		    left < TDB1_DATA_START(tdb->header.hash_size)) {
+		    left < TDB1_DATA_START(tdb->tdb1.header.hash_size)) {
 			goto update;
 		}
 
 		/* Now read in the left record */
-		if (tdb->methods->tdb1_read(tdb, left, &l, sizeof(l), TDB1_DOCONV()) == -1) {
+		if (tdb->tdb1.io->tdb1_read(tdb, left, &l, sizeof(l), TDB1_DOCONV()) == -1) {
 			tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
 				   "tdb1_free: left read failed at %u (%u)", left, leftsize);
 			goto update;
@@ -169,7 +169,7 @@ update:
    not the beginning. This is so the left merge in a free is more likely to be
    able to free up the record without fragmentation
  */
-static tdb1_off_t tdb1_allocate_ofs(struct tdb1_context *tdb,
+static tdb1_off_t tdb1_allocate_ofs(struct tdb_context *tdb,
 				  tdb1_len_t length, tdb1_off_t rec_ptr,
 				  struct tdb1_record *rec, tdb1_off_t last_ptr)
 {
@@ -224,7 +224,7 @@ static tdb1_off_t tdb1_allocate_ofs(struct tdb1_context *tdb,
 
    0 is returned if the space could not be allocated
  */
-tdb1_off_t tdb1_allocate(struct tdb1_context *tdb, tdb1_len_t length, struct tdb1_record *rec)
+tdb1_off_t tdb1_allocate(struct tdb_context *tdb, tdb1_len_t length, struct tdb1_record *rec)
 {
 	tdb1_off_t rec_ptr, last_ptr, newrec_ptr;
 	struct {

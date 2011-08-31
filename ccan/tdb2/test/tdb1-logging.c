@@ -6,7 +6,7 @@
 #include <stdio.h>
 
 /* Turn log messages into tap diag messages. */
-static void taplog(struct tdb1_context *tdb,
+static void taplog(struct tdb_context *tdb,
 		   enum tdb_log_level level,
 		   enum TDB_ERROR ecode,
 		   const char *message,

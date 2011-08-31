@@ -9,7 +9,7 @@ static bool empty_freetable(struct tdb_context *tdb)
 	unsigned int i;
 
 	/* Now, free table should be completely exhausted in zone 0 */
-	if (tdb_read_convert(tdb, tdb->ftable_off, &ftab, sizeof(ftab)) != 0)
+	if (tdb_read_convert(tdb, tdb->tdb2.ftable_off, &ftab, sizeof(ftab)) != 0)
 		abort();
 
 	for (i = 0; i < sizeof(ftab.buckets)/sizeof(ftab.buckets[0]); i++) {

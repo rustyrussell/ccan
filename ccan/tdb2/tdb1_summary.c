@@ -65,7 +65,7 @@ static size_t tally1_mean(const struct tally *tally)
 	return tally->total / tally->num;
 }
 
-static size_t get_hash_length(struct tdb1_context *tdb, unsigned int i)
+static size_t get_hash_length(struct tdb_context *tdb, unsigned int i)
 {
 	tdb1_off_t rec_ptr;
 	size_t count = 0;
@@ -84,7 +84,7 @@ static size_t get_hash_length(struct tdb1_context *tdb, unsigned int i)
 	return count;
 }
 
-char *tdb1_summary(struct tdb1_context *tdb)
+char *tdb1_summary(struct tdb_context *tdb)
 {
 	tdb1_off_t off, rec_off;
 	struct tally freet, keys, data, dead, extra, hash, uncoal;
@@ -103,7 +103,7 @@ char *tdb1_summary(struct tdb1_context *tdb)
 		locked = true;
 	}
 
-	if (tdb1_recovery_area(tdb, tdb->methods, &rec_off, &recovery) != 0) {
+	if (tdb1_recovery_area(tdb, tdb->tdb1.io, &rec_off, &recovery) != 0) {
 		goto unlock;
 	}
 
@@ -115,10 +115,10 @@ char *tdb1_summary(struct tdb1_context *tdb)
 	tally1_init(&hash);
 	tally1_init(&uncoal);
 
-	for (off = TDB1_DATA_START(tdb->header.hash_size);
+	for (off = TDB1_DATA_START(tdb->tdb1.header.hash_size);
 	     off < tdb->file->map_size - 1;
 	     off += sizeof(rec) + rec.rec_len) {
-		if (tdb->methods->tdb1_read(tdb, off, &rec, sizeof(rec),
+		if (tdb->tdb1.io->tdb1_read(tdb, off, &rec, sizeof(rec),
 					   TDB1_DOCONV()) == -1)
 			goto unlock;
 		switch (rec.magic) {
@@ -160,7 +160,7 @@ char *tdb1_summary(struct tdb1_context *tdb)
 	if (unc > 1)
 		tally1_add(&uncoal, unc - 1);
 
-	for (off = 0; off < tdb->header.hash_size; off++)
+	for (off = 0; off < tdb->tdb1.header.hash_size; off++)
 		tally1_add(&hash, get_hash_length(tdb, off));
 
 	/* 20 is max length of a %zu. */
@@ -191,7 +191,7 @@ char *tdb1_summary(struct tdb1_context *tdb)
 		 (keys.num + freet.num + dead.num)
 		 * (sizeof(struct tdb1_record) + sizeof(uint32_t))
 		 * 100.0 / tdb->file->map_size,
-		 tdb->header.hash_size * sizeof(tdb1_off_t)
+		 tdb->tdb1.header.hash_size * sizeof(tdb1_off_t)
 		 * 100.0 / (tdb1_len_t)tdb->file->map_size);
 
 unlock:

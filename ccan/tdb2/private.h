@@ -271,6 +271,9 @@ struct traverse_info {
 	tdb_off_t prev;
 };
 
+typedef uint32_t tdb1_len_t;
+typedef uint32_t tdb1_off_t;
+
 enum tdb_lock_flags {
 	/* WAIT == F_SETLKW, NOWAIT == F_SETLK */
 	TDB_LOCK_NOWAIT = 0,
@@ -319,68 +322,6 @@ struct tdb_file {
 	/* Identity of this file. */
 	dev_t device;
 	ino_t inode;
-};
-
-struct tdb_context {
-	/* Single list of all TDBs, to detect multiple opens. */
-	struct tdb_context *next;
-
-	/* Filename of the database. */
-	const char *name;
-
-	/* Logging function */
-	void (*log_fn)(struct tdb_context *tdb,
-		       enum tdb_log_level level,
-		       enum TDB_ERROR ecode,
-		       const char *message,
-		       void *data);
-	void *log_data;
-
-	/* Last error we returned. */
-	enum TDB_ERROR last_error;
-
-	/* The actual file information */
-	struct tdb_file *file;
-
-	/* Open flags passed to tdb_open. */
-	int open_flags;
-
-	/* low level (fnctl) lock functions. */
-	int (*lock_fn)(int fd, int rw, off_t off, off_t len, bool w, void *);
-	int (*unlock_fn)(int fd, int rw, off_t off, off_t len, void *);
-	void *lock_data;
-
-	/* the flags passed to tdb_open. */
-	uint32_t flags;
-
-	/* Our statistics. */
-	struct tdb_attribute_stats stats;
-
-	/* Hash function. */
-	uint64_t (*hash_fn)(const void *key, size_t len, uint64_t seed, void *);
-	void *hash_data;
-	uint64_t hash_seed;
-
-	/* Are we accessing directly? (debugging check). */
-	int direct_access;
-
-	/* Set if we are in a transaction. */
-	struct tdb_transaction *transaction;
-	
-	/* What free table are we using? */
-	tdb_off_t ftable_off;
-	unsigned int ftable;
-
-	/* Our open hook, if any. */
-	enum TDB_ERROR (*openhook)(int fd, void *data);
-	void *openhook_data;
-
-	/* IO methods: changes for transactions. */
-	const struct tdb_methods *methods;
-
-	/* Direct access information */
-	struct tdb_access_hdr *access;
-
 };
 
 struct tdb_methods {
@@ -587,6 +528,102 @@ int tdb_fcntl_unlock(int fd, int rw, off_t off, off_t len, void *);
 /* transaction.c: */
 enum TDB_ERROR tdb_transaction_recover(struct tdb_context *tdb);
 tdb_bool_err tdb_needs_recovery(struct tdb_context *tdb);
+
+/* this is stored at the front of every database */
+struct tdb1_header {
+	char magic_food[32]; /* for /etc/magic */
+	uint32_t version; /* version of the code */
+	uint32_t hash_size; /* number of hash entries */
+	tdb1_off_t rwlocks; /* obsolete - kept to detect old formats */
+	tdb1_off_t recovery_start; /* offset of transaction recovery region */
+	tdb1_off_t sequence_number; /* used when TDB1_SEQNUM is set */
+	uint32_t magic1_hash; /* hash of TDB_MAGIC_FOOD. */
+	uint32_t magic2_hash; /* hash of TDB1_MAGIC. */
+	tdb1_off_t reserved[27];
+};
+
+struct tdb1_traverse_lock {
+	struct tdb1_traverse_lock *next;
+	uint32_t off;
+	uint32_t hash;
+	int lock_rw;
+};
+
+struct tdb_context {
+	/* Single list of all TDBs, to detect multiple opens. */
+	struct tdb_context *next;
+
+	/* Filename of the database. */
+	const char *name;
+
+	/* Logging function */
+	void (*log_fn)(struct tdb_context *tdb,
+		       enum tdb_log_level level,
+		       enum TDB_ERROR ecode,
+		       const char *message,
+		       void *data);
+	void *log_data;
+
+	/* Open flags passed to tdb_open. */
+	int open_flags;
+
+	/* low level (fnctl) lock functions. */
+	int (*lock_fn)(int fd, int rw, off_t off, off_t len, bool w, void *);
+	int (*unlock_fn)(int fd, int rw, off_t off, off_t len, void *);
+	void *lock_data;
+
+	/* the tdb flags passed to tdb_open. */
+	uint32_t flags;
+
+	/* Our statistics. */
+	struct tdb_attribute_stats stats;
+
+	/* The actual file information */
+	struct tdb_file *file;
+
+	/* Hash function. */
+	uint64_t (*hash_fn)(const void *key, size_t len, uint64_t seed, void *);
+	void *hash_data;
+	uint64_t hash_seed;
+
+	/* Our open hook, if any. */
+	enum TDB_ERROR (*openhook)(int fd, void *data);
+	void *openhook_data;
+
+	/* Last error we returned. */
+	enum TDB_ERROR last_error;
+
+	struct {
+
+		/* Are we accessing directly? (debugging check). */
+		int direct_access;
+
+		/* Set if we are in a transaction. */
+		struct tdb_transaction *transaction;
+
+		/* What free table are we using? */
+		tdb_off_t ftable_off;
+		unsigned int ftable;
+
+		/* IO methods: changes for transactions. */
+		const struct tdb_methods *io;
+
+		/* Direct access information */
+		struct tdb_access_hdr *access;
+	} tdb2;
+
+	struct {
+		int traverse_read; /* read-only traversal */
+		int traverse_write; /* read-write traversal */
+
+		struct tdb1_header header; /* a cached copy of the header */
+		struct tdb1_traverse_lock travlocks; /* current traversal locks */
+		const struct tdb1_methods *io;
+		struct tdb1_transaction *transaction;
+		int page_size;
+		int max_dead_records;
+	} tdb1;
+};
 
 /* tdb.c: */
 enum TDB_ERROR COLD tdb_logerr(struct tdb_context *tdb,

@@ -23,7 +23,7 @@ static int check(TDB_DATA key, TDB_DATA data, void *private)
 	return 0;
 }
 
-static void tdb1_flip_bit(struct tdb1_context *tdb, unsigned int bit)
+static void tdb1_flip_bit(struct tdb_context *tdb, unsigned int bit)
 {
 	unsigned int off = bit / CHAR_BIT;
 	unsigned char mask = (1 << (bit % CHAR_BIT));
@@ -40,7 +40,7 @@ static void tdb1_flip_bit(struct tdb1_context *tdb, unsigned int bit)
 	}
 }
 
-static void check_test(struct tdb1_context *tdb)
+static void check_test(struct tdb_context *tdb)
 {
 	TDB_DATA key, data;
 	unsigned int i, verifiable, corrupt, sizes[2], dsize, ksize;
@@ -93,7 +93,7 @@ static void check_test(struct tdb1_context *tdb)
 
 int main(int argc, char *argv[])
 {
-	struct tdb1_context *tdb;
+	struct tdb_context *tdb;
 
 	plan_tests(4);
 	/* This should use mmap. */

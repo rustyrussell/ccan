@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == len);
 
 	/* Figure out which bucket free entry is. */
-	b_off = bucket_off(tdb->ftable_off, size_to_bucket(len));
+	b_off = bucket_off(tdb->tdb2.ftable_off, size_to_bucket(len));
 	/* Lock and fail to coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
 	test = layout->elem[1].base.off;
@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 	/* Figure out which bucket free entry is. */
-	b_off = bucket_off(tdb->ftable_off, size_to_bucket(1024));
+	b_off = bucket_off(tdb->tdb2.ftable_off, size_to_bucket(1024));
 	/* Lock and fail to coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
 	test = layout->elem[1].base.off;
@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 	/* Figure out which bucket (first) free entry is. */
-	b_off = bucket_off(tdb->ftable_off, size_to_bucket(1024));
+	b_off = bucket_off(tdb->tdb2.ftable_off, size_to_bucket(1024));
 	/* Lock and coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
 	test = layout->elem[2].base.off;
@@ -115,7 +115,7 @@ int main(int argc, char *argv[])
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 	/* Figure out which bucket free entry is. */
-	b_off = bucket_off(tdb->ftable_off, size_to_bucket(1024));
+	b_off = bucket_off(tdb->tdb2.ftable_off, size_to_bucket(1024));
 	/* Lock and coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
 	test = layout->elem[2].base.off;
@@ -142,7 +142,7 @@ int main(int argc, char *argv[])
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 	/* Figure out which bucket free entry is. */
-	b_off = bucket_off(tdb->ftable_off, size_to_bucket(1024));
+	b_off = bucket_off(tdb->tdb2.ftable_off, size_to_bucket(1024));
 	/* Lock and coalesce. */
 	ok1(tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT) == 0);
 	test = layout->elem[2].base.off;
