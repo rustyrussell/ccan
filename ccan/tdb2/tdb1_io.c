@@ -370,6 +370,9 @@ int tdb1_expand(struct tdb_context *tdb, tdb1_off_t size)
 		char *new_map_ptr = (char *)realloc(tdb->file->map_ptr,
 						    tdb->file->map_size);
 		if (!new_map_ptr) {
+			tdb->last_error = tdb_logerr(tdb, TDB_ERR_OOM,
+						     TDB_LOG_ERROR,
+						     "tdb1_expand: no memory");
 			tdb->file->map_size -= size;
 			goto fail;
 		}

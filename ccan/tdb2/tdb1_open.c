@@ -74,7 +74,7 @@ enum TDB_ERROR tdb1_new_database(struct tdb_context *tdb,
 	struct tdb1_header *newdb;
 	size_t size;
 	int hash_size = TDB1_DEFAULT_HASH_SIZE;
-	enum TDB_ERROR ret = TDB_ERR_IO;
+	enum TDB_ERROR ret;
 
 	tdb_context_init(tdb, max_dead);
 
@@ -88,7 +88,8 @@ enum TDB_ERROR tdb1_new_database(struct tdb_context *tdb,
 	/* We make it up in memory, then write it out if not internal */
 	size = sizeof(struct tdb1_header) + (hash_size+1)*sizeof(tdb1_off_t);
 	if (!(newdb = (struct tdb1_header *)calloc(size, 1))) {
-		return TDB_ERR_OOM;
+		return tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
+				  "Could not allocate new database header");
 	}
 
 	/* Fill in the header */
@@ -113,15 +114,24 @@ enum TDB_ERROR tdb1_new_database(struct tdb_context *tdb,
 		tdb->file->map_ptr = (char *)newdb;
 		return TDB_SUCCESS;
 	}
-	if (lseek(tdb->file->fd, 0, SEEK_SET) == -1)
+	if (lseek(tdb->file->fd, 0, SEEK_SET) == -1) {
+		ret = tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+				 "tdb1_new_database: lseek failed");
 		goto fail;
+	}
 
-	if (ftruncate(tdb->file->fd, 0) == -1)
+	if (ftruncate(tdb->file->fd, 0) == -1) {
+		ret = tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+				 "tdb1_new_database: ftruncate failed");
 		goto fail;
+	}
 
-	/* we still have "ret == TDB_ERR_IO" here */
-	if (tdb1_write_all(tdb->file->fd, newdb, size))
-		ret = TDB_SUCCESS;
+	if (!tdb1_write_all(tdb->file->fd, newdb, size)) {
+		ret = tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+				 "tdb1_new_database: write failed");
+		goto fail;
+	}
+	ret = TDB_SUCCESS;
 
   fail:
 	SAFE_FREE(newdb);

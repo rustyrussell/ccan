@@ -339,6 +339,7 @@ int tdb1_check(struct tdb_context *tdb,
 	bool found_recovery = false;
 	tdb1_len_t dead;
 	bool locked;
+	size_t alloc_len;
 
 	/* We may have a write lock already, so don't re-lock. */
 	if (tdb->file->allrecord_lock.count != 0) {
@@ -364,11 +365,13 @@ int tdb1_check(struct tdb_context *tdb,
 	}
 
 	/* One big malloc: pointers then bit arrays. */
-	hashes = (unsigned char **)calloc(
-			1, sizeof(hashes[0]) * (1+tdb->tdb1.header.hash_size)
-			+ BITMAP_BITS / CHAR_BIT * (1+tdb->tdb1.header.hash_size));
+	alloc_len = sizeof(hashes[0]) * (1+tdb->tdb1.header.hash_size)
+		+ BITMAP_BITS / CHAR_BIT * (1+tdb->tdb1.header.hash_size);
+	hashes = (unsigned char **)calloc(1, alloc_len);
 	if (!hashes) {
-		tdb->last_error = TDB_ERR_OOM;
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
+					     "tdb_check: could not allocate %zu",
+					     alloc_len);
 		goto unlock;
 	}
 

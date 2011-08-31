@@ -498,7 +498,9 @@ static int _tdb1_store(struct tdb_context *tdb, TDB_DATA key,
 	   fails and we are left with a dead spot in the tdb. */
 
 	if (!(p = (char *)malloc(key.dsize + dbuf.dsize))) {
-		tdb->last_error = TDB_ERR_OOM;
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
+					     "tdb1_store: out of memory"
+					     " allocating copy");
 		goto fail;
 	}
 
