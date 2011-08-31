@@ -4,7 +4,7 @@
 #include <ccan/tap/tap.h>
 #include <stdlib.h>
 #include <err.h>
-#include "tdb1-logging.h"
+#include "logging.h"
 
 int main(int argc, char *argv[])
 {
@@ -12,9 +12,9 @@ int main(int argc, char *argv[])
 	TDB_DATA key, data;
 
 	plan_tests(11);
-	tdb = tdb1_open_ex("run-readonly-check.tdb", 1024,
-			  TDB_DEFAULT,
-			  O_CREAT|O_TRUNC|O_RDWR, 0600, &taplogctx, NULL);
+	tdb = tdb1_open("run-readonly-check.tdb", 1024,
+			TDB_DEFAULT,
+			O_CREAT|O_TRUNC|O_RDWR, 0600, &tap_log_attr);
 
 	ok1(tdb);
 	key.dsize = strlen("hi");
@@ -30,8 +30,8 @@ int main(int argc, char *argv[])
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
 	ok1(tdb1_close(tdb) == 0);
 
-	tdb = tdb1_open_ex("run-readonly-check.tdb", 1024,
-			  TDB_DEFAULT, O_RDONLY, 0, &taplogctx, NULL);
+	tdb = tdb1_open("run-readonly-check.tdb", 1024,
+			TDB_DEFAULT, O_RDONLY, 0, &tap_log_attr);
 
 	ok1(tdb);
 	ok1(tdb1_store(tdb, key, data, TDB_MODIFY) == -1);

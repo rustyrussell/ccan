@@ -1,6 +1,6 @@
 #include "tdb1-external-agent.h"
 #include "tdb1-lock-tracking.h"
-#include "tdb1-logging.h"
+#include "logging.h"
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -39,8 +39,8 @@ static enum agent_return do_operation(enum operation op, const char *name)
 			diag("Already have tdb %s open", tdb->name);
 			return OTHER_FAILURE;
 		}
-		tdb = tdb1_open_ex(name, 0, TDB_DEFAULT, O_RDWR, 0,
-				  &taplogctx, NULL);
+		tdb = tdb1_open(name, 0, TDB_DEFAULT, O_RDWR, 0,
+				&tap_log_attr);
 		if (!tdb) {
 			if (!locking_would_block1)
 				diag("Opening tdb gave %s", strerror(errno));

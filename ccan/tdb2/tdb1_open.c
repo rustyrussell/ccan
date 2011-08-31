@@ -95,23 +95,15 @@ static int tdb1_new_database(struct tdb_context *tdb, int hash_size)
 	return ret;
 }
 
+typedef void (*tdb1_log_func)(struct tdb_context *, enum tdb_log_level, enum TDB_ERROR,
+			      const char *, void *);
+typedef uint64_t (*tdb1_hash_func)(const void *key, size_t len, uint64_t seed,
+				   void *data);
 
-
-/* open the database, creating it if necessary
-
-   The open_flags and mode are passed straight to the open call on the
-   database file. A flags value of O_WRONLY is invalid. The hash size
-   is advisory, use zero for a default value.
-
-   Return is NULL on error, in which case errno is also set.  Don't
-   try to call tdb1_error or tdb1_errname, just do strerror(errno).
-
-   @param name may be NULL for internal databases. */
-struct tdb_context *tdb1_open(const char *name, int hash_size, int tdb1_flags,
-		      int open_flags, mode_t mode)
-{
-	return tdb1_open_ex(name, hash_size, tdb1_flags, open_flags, mode, NULL, NULL);
-}
+struct tdb1_logging_context {
+        tdb1_log_func log_fn;
+        void *log_private;
+};
 
 static bool hash_correct(struct tdb_context *tdb,
 			 uint32_t *m1, uint32_t *m2)
@@ -137,7 +129,7 @@ static bool check_header_hash(struct tdb_context *tdb,
 	return hash_correct(tdb, m1, m2);
 }
 
-struct tdb_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flags,
+static struct tdb_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flags,
 				int open_flags, mode_t mode,
 				const struct tdb1_logging_context *log_ctx,
 				tdb1_hash_func hash_fn)
@@ -364,6 +356,34 @@ struct tdb_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flags
 	errno = save_errno;
 	return NULL;
 	}
+}
+
+/* Temporart wrapper for transition. */
+struct tdb_context *tdb1_open(const char *name, int hash_size, int tdb1_flags,
+			      int open_flags, mode_t mode,
+			      union tdb_attribute *attr)
+{
+	struct tdb1_logging_context *log_ctx = NULL, log;
+	tdb1_hash_func hash_fn = NULL;
+
+	while (attr) {
+		switch (attr->base.attr) {
+		case TDB_ATTRIBUTE_HASH:
+			hash_fn = attr->hash.fn;
+			break;
+		case TDB_ATTRIBUTE_LOG:
+			log.log_fn = attr->log.fn;
+			log.log_private = attr->log.data;
+			log_ctx = &log;
+			break;
+		default:
+			abort();
+		}
+		attr = attr->base.next;
+	}
+
+	return tdb1_open_ex(name, hash_size, tdb1_flags, open_flags, mode,
+			    log_ctx, hash_fn);
 }
 
 /*

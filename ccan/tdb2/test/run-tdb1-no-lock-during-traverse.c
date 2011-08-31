@@ -8,7 +8,7 @@
 #include <ccan/tap/tap.h>
 #include <stdlib.h>
 #include <err.h>
-#include "tdb1-logging.h"
+#include "logging.h"
 
 #undef fcntl
 
@@ -70,9 +70,9 @@ int main(int argc, char *argv[])
 	int errors = 0;
 
 	plan_tests(41);
-	tdb = tdb1_open_ex("run-no-lock-during-traverse.tdb",
-			  1024, TDB_DEFAULT, O_CREAT|O_TRUNC|O_RDWR,
-			  0600, &taplogctx, NULL);
+	tdb = tdb1_open("run-no-lock-during-traverse.tdb",
+			1024, TDB_DEFAULT, O_CREAT|O_TRUNC|O_RDWR,
+			0600, &tap_log_attr);
 
 	ok1(tdb);
 	ok1(prepare_entries(tdb));

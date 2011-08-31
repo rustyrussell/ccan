@@ -2,7 +2,7 @@
 #include <ccan/tap/tap.h>
 #include <stdlib.h>
 #include <err.h>
-#include "tdb1-logging.h"
+#include "logging.h"
 
 int main(int argc, char *argv[])
 {
@@ -10,8 +10,8 @@ int main(int argc, char *argv[])
 	TDB_DATA key, data;
 
 	plan_tests(13);
-	tdb = tdb1_open_ex("run-check.tdb", 1, TDB_DEFAULT,
-			  O_CREAT|O_TRUNC|O_RDWR, 0600, &taplogctx, NULL);
+	tdb = tdb1_open("run-check.tdb", 1, TDB_DEFAULT,
+			O_CREAT|O_TRUNC|O_RDWR, 0600, &tap_log_attr);
 
 	ok1(tdb);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
@@ -25,28 +25,28 @@ int main(int argc, char *argv[])
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
 	tdb1_close(tdb);
 
-	tdb = tdb1_open_ex("run-check.tdb", 1024, 0, O_RDWR, 0,
-			  &taplogctx, NULL);
+	tdb = tdb1_open("run-check.tdb", 1024, 0, O_RDWR, 0,
+			&tap_log_attr);
 	ok1(tdb);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
 	tdb1_close(tdb);
 
-	tdb = tdb1_open_ex("test/tdb1.corrupt", 1024, 0, O_RDWR, 0,
-			  &taplogctx, NULL);
+	tdb = tdb1_open("test/tdb1.corrupt", 1024, 0, O_RDWR, 0,
+			&tap_log_attr);
 	ok1(tdb);
 	ok1(tdb1_check(tdb, NULL, NULL) == -1);
 	ok1(tdb_error(tdb) == TDB_ERR_CORRUPT);
 	tdb1_close(tdb);
 
 	/* Big and little endian should work! */
-	tdb = tdb1_open_ex("test/old-nohash-le.tdb1", 1024, 0, O_RDWR, 0,
-			  &taplogctx, NULL);
+	tdb = tdb1_open("test/old-nohash-le.tdb1", 1024, 0, O_RDWR, 0,
+			&tap_log_attr);
 	ok1(tdb);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
 	tdb1_close(tdb);
 
-	tdb = tdb1_open_ex("test/old-nohash-be.tdb1", 1024, 0, O_RDWR, 0,
-			  &taplogctx, NULL);
+	tdb = tdb1_open("test/old-nohash-be.tdb1", 1024, 0, O_RDWR, 0,
+			&tap_log_attr);
 	ok1(tdb);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
 	tdb1_close(tdb);

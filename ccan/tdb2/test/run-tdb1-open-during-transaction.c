@@ -18,7 +18,7 @@ static int ftruncate_check(int fd, off_t length);
 #include <stdarg.h>
 #include <err.h>
 #include "tdb1-external-agent.h"
-#include "tdb1-logging.h"
+#include "logging.h"
 
 static struct agent *agent;
 static bool opened;
@@ -145,9 +145,9 @@ int main(int argc, char *argv[])
 		     "DEFAULT",
 		     (flags[i] & TDB_NOMMAP) ? "no mmap" : "mmap");
 		unlink(TEST_DBNAME);
-		tdb = tdb1_open_ex(TEST_DBNAME, 1024, flags[i],
-				  O_CREAT|O_TRUNC|O_RDWR, 0600,
-				  &taplogctx, NULL);
+		tdb = tdb1_open(TEST_DBNAME, 1024, flags[i],
+				O_CREAT|O_TRUNC|O_RDWR, 0600,
+				&tap_log_attr);
 		ok1(tdb);
 
 		opened = true;

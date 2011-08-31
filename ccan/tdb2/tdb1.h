@@ -37,23 +37,10 @@
 
 
 typedef int (*tdb1_traverse_func)(struct tdb_context *, TDB_DATA, TDB_DATA, void *);
-typedef void (*tdb1_log_func)(struct tdb_context *, enum tdb_log_level, enum TDB_ERROR,
-			      const char *, void *);
-typedef uint64_t (*tdb1_hash_func)(const void *key, size_t len, uint64_t seed,
-				   void *data);
-
-struct tdb1_logging_context {
-        tdb1_log_func log_fn;
-        void *log_private;
-};
 
 struct tdb_context *tdb1_open(const char *name, int hash_size, int tdb1_flags,
-		      int open_flags, mode_t mode);
-
-struct tdb_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flags,
-			 int open_flags, mode_t mode,
-			 const struct tdb1_logging_context *log_ctx,
-			 tdb1_hash_func hash_fn);
+			      int open_flags, mode_t mode,
+			      union tdb_attribute *attributes);
 
 void tdb1_set_max_dead(struct tdb_context *tdb, int max_dead);
 

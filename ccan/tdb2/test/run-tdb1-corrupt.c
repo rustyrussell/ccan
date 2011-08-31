@@ -2,7 +2,7 @@
 #include <ccan/tap/tap.h>
 #include <stdlib.h>
 #include <err.h>
-#include "tdb1-logging.h"
+#include "logging.h"
 
 static int check(TDB_DATA key, TDB_DATA data, void *private)
 {
@@ -97,8 +97,8 @@ int main(int argc, char *argv[])
 
 	plan_tests(4);
 	/* This should use mmap. */
-	tdb = tdb1_open_ex("run-corrupt.tdb", 2, TDB_DEFAULT,
-			  O_CREAT|O_TRUNC|O_RDWR, 0600, &taplogctx, NULL);
+	tdb = tdb1_open("run-corrupt.tdb", 2, TDB_DEFAULT,
+			O_CREAT|O_TRUNC|O_RDWR, 0600, &tap_log_attr);
 
 	if (!tdb)
 		abort();
@@ -106,8 +106,8 @@ int main(int argc, char *argv[])
 	tdb1_close(tdb);
 
 	/* This should not. */
-	tdb = tdb1_open_ex("run-corrupt.tdb", 2, TDB_NOMMAP,
-			  O_CREAT|O_TRUNC|O_RDWR, 0600, &taplogctx, NULL);
+	tdb = tdb1_open("run-corrupt.tdb", 2, TDB_NOMMAP,
+			O_CREAT|O_TRUNC|O_RDWR, 0600, &tap_log_attr);
 
 	if (!tdb)
 		abort();

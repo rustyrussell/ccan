@@ -16,20 +16,25 @@ int main(int argc, char *argv[])
 {
 	struct tdb_context *tdb;
 	unsigned int log_count;
-	struct tdb1_logging_context log_ctx = { log_fn, &log_count };
+	union tdb_attribute log_attr;
+
+	log_attr.base.attr = TDB_ATTRIBUTE_LOG;
+	log_attr.base.next = NULL;
+	log_attr.log.fn = log_fn;
+	log_attr.log.data = &log_count;
 
 	plan_tests(4);
 
 	/* We should fail to open rwlock-using tdbs of either endian. */
 	log_count = 0;
-	tdb = tdb1_open_ex("test/rwlock-le.tdb1", 0, 0, O_RDWR, 0,
-			  &log_ctx, NULL);
+	tdb = tdb1_open("test/rwlock-le.tdb1", 0, 0, O_RDWR, 0,
+			&log_attr);
 	ok1(!tdb);
 	ok1(log_count == 1);
 
 	log_count = 0;
-	tdb = tdb1_open_ex("test/rwlock-be.tdb1", 0, 0, O_RDWR, 0,
-			  &log_ctx, NULL);
+	tdb = tdb1_open("test/rwlock-be.tdb1", 0, 0, O_RDWR, 0,
+			&log_attr);
 	ok1(!tdb);
 	ok1(log_count == 1);
 

@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <err.h>
-#include "tdb1-logging.h"
+#include "logging.h"
 
 int main(int argc, char *argv[])
 {
@@ -14,9 +14,9 @@ int main(int argc, char *argv[])
 	key.dsize = strlen("hi");
 	key.dptr = (void *)"hi";
 
-	tdb = tdb1_open_ex("run-nested-transactions.tdb",
-			  1024, TDB_DEFAULT,
-			  O_CREAT|O_TRUNC|O_RDWR, 0600, &taplogctx, NULL);
+	tdb = tdb1_open("run-nested-transactions.tdb",
+			1024, TDB_DEFAULT,
+			O_CREAT|O_TRUNC|O_RDWR, 0600, &tap_log_attr);
 	ok1(tdb);
 
 	/* No nesting by default. */
@@ -42,8 +42,8 @@ int main(int argc, char *argv[])
 	free(data.dptr);
 	tdb1_close(tdb);
 
-	tdb = tdb1_open_ex("run-nested-transactions.tdb",
-			  1024, TDB_ALLOW_NESTING, O_RDWR, 0, &taplogctx, NULL);
+	tdb = tdb1_open("run-nested-transactions.tdb",
+			1024, TDB_ALLOW_NESTING, O_RDWR, 0, &tap_log_attr);
 	ok1(tdb);
 
 	ok1(tdb1_transaction_start(tdb) == 0);

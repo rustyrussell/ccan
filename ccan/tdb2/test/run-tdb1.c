@@ -2,7 +2,7 @@
 #include <ccan/tap/tap.h>
 #include <stdlib.h>
 #include <err.h>
-#include "tdb1-logging.h"
+#include "logging.h"
 
 int main(int argc, char *argv[])
 {
@@ -10,8 +10,8 @@ int main(int argc, char *argv[])
 	TDB_DATA key, data;
 
 	plan_tests(10);
-	tdb = tdb1_open_ex("run.tdb", 1024, TDB_DEFAULT,
-			  O_CREAT|O_TRUNC|O_RDWR, 0600, &taplogctx, NULL);
+	tdb = tdb1_open("run.tdb", 1024, TDB_DEFAULT,
+			O_CREAT|O_TRUNC|O_RDWR, 0600, &tap_log_attr);
 
 	ok1(tdb);
 	key.dsize = strlen("hi");

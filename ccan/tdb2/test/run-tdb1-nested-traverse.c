@@ -7,7 +7,7 @@
 #include <stdbool.h>
 #include <err.h>
 #include "tdb1-external-agent.h"
-#include "tdb1-logging.h"
+#include "logging.h"
 
 static struct agent *agent;
 
@@ -56,8 +56,8 @@ int main(int argc, char *argv[])
 	if (!agent)
 		err(1, "preparing agent");
 
-	tdb = tdb1_open_ex("run-nested-traverse.tdb", 1024, TDB_DEFAULT,
-			  O_CREAT|O_TRUNC|O_RDWR, 0600, &taplogctx, NULL);
+	tdb = tdb1_open("run-nested-traverse.tdb", 1024, TDB_DEFAULT,
+			O_CREAT|O_TRUNC|O_RDWR, 0600, &tap_log_attr);
 	ok1(tdb);
 
 	ok1(external_agent_operation1(agent, OPEN, tdb->name) == SUCCESS);

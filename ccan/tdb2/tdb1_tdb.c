@@ -843,7 +843,7 @@ int tdb1_repack(struct tdb_context *tdb)
 		return -1;
 	}
 
-	tmp_db = tdb1_open("tmpdb", tdb1_hash_size(tdb), TDB_INTERNAL, O_RDWR|O_CREAT, 0);
+	tmp_db = tdb1_open("tmpdb", tdb1_hash_size(tdb), TDB_INTERNAL, O_RDWR|O_CREAT, 0, NULL);
 	if (tmp_db == NULL) {
 		tdb->last_error = tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
 					__location__ " Failed to create tmp_db");

@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
 	plan_tests(sizeof(flags) / sizeof(flags[0]) * 14);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		tdb = tdb1_open("run-summary.tdb", 131, flags[i],
-			       O_RDWR|O_CREAT|O_TRUNC, 0600);
+				O_RDWR|O_CREAT|O_TRUNC, 0600, NULL);
 		ok1(tdb);
 		if (!tdb)
 			continue;

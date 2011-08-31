@@ -18,7 +18,7 @@ static int ftruncate_check(int fd, off_t length);
 #include <err.h>
 #include <setjmp.h>
 #include "tdb1-external-agent.h"
-#include "tdb1-logging.h"
+#include "logging.h"
 
 #undef write
 #undef pwrite
@@ -89,8 +89,8 @@ static bool test_death(enum operation op, struct agent *agent)
 	current = target = 0;
 reset:
 	unlink(TEST_DBNAME);
-	tdb = tdb1_open_ex(TEST_DBNAME, 1024, TDB_NOMMAP,
-			  O_CREAT|O_TRUNC|O_RDWR, 0600, &taplogctx, NULL);
+	tdb = tdb1_open(TEST_DBNAME, 1024, TDB_NOMMAP,
+			O_CREAT|O_TRUNC|O_RDWR, 0600, &tap_log_attr);
 
 	if (setjmp(jmpbuf) != 0) {
 		/* We're partway through.  Simulate our death. */

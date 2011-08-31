@@ -4,7 +4,7 @@
 #include <ccan/tap/tap.h>
 #include <stdlib.h>
 #include <err.h>
-#include "tdb1-logging.h"
+#include "logging.h"
 
 static int tdb1_expand_file_sparse(struct tdb_context *tdb,
 				  tdb1_off_t size,
@@ -66,8 +66,8 @@ int main(int argc, char *argv[])
 	struct tdb1_record rec;
 
 	plan_tests(24);
-	tdb = tdb1_open_ex("run-36-file.tdb", 1024, TDB_DEFAULT,
-			  O_CREAT|O_TRUNC|O_RDWR, 0600, &taplogctx, NULL);
+	tdb = tdb1_open("run-36-file.tdb", 1024, TDB_DEFAULT,
+			O_CREAT|O_TRUNC|O_RDWR, 0600, &tap_log_attr);
 
 	ok1(tdb);
 	tdb->tdb1.io = &large_io_methods;
