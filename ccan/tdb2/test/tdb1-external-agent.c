@@ -48,7 +48,7 @@ static enum agent_return do_operation(enum operation op, const char *name)
 			ret = SUCCESS;
 		break;
 	case TRANSACTION_START:
-		ret = tdb1_transaction_start(tdb) == 0 ? SUCCESS : OTHER_FAILURE;
+		ret = tdb_transaction_start(tdb) == TDB_SUCCESS ? SUCCESS : OTHER_FAILURE;
 		break;
 	case FETCH:
 		if (tdb_fetch(tdb, k, &data) != TDB_SUCCESS) {
@@ -71,7 +71,7 @@ static enum agent_return do_operation(enum operation op, const char *name)
 			ret = OTHER_FAILURE;
 		break;
 	case TRANSACTION_COMMIT:
-		ret = tdb1_transaction_commit(tdb)==0 ? SUCCESS : OTHER_FAILURE;
+		ret = tdb_transaction_commit(tdb) == TDB_SUCCESS ? SUCCESS : OTHER_FAILURE;
 		break;
 	case CHECK:
 		ret = tdb1_check(tdb, NULL, NULL) == 0 ? SUCCESS : OTHER_FAILURE;

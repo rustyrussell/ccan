@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
 
 	/* We are also allowed to do a check inside a transaction. */
-	ok1(tdb1_transaction_start(tdb) == 0);
+	ok1(tdb_transaction_start(tdb) == TDB_SUCCESS);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
 	ok1(tdb_close(tdb) == 0);
 

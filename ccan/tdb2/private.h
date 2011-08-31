@@ -671,6 +671,11 @@ enum TDB_ERROR tdb1_parse_record(struct tdb_context *tdb, TDB_DATA key,
 							  void *private_data),
 				 void *private_data);
 
+/* tdb1_transaction.c: */
+int tdb1_transaction_start(struct tdb_context *tdb);
+int tdb1_transaction_prepare_commit(struct tdb_context *tdb);
+int tdb1_transaction_commit(struct tdb_context *tdb);
+
 /* tdb.c: */
 enum TDB_ERROR COLD tdb_logerr(struct tdb_context *tdb,
 			       enum TDB_ERROR ecode,

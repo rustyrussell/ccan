@@ -109,14 +109,14 @@ int main(int argc, char *argv[])
 	ok1(tdb_traverse(tdb, test_traverse, NULL) == 0);
 
 	/* Transactions should work. */
-	ok1(tdb1_transaction_start(tdb) == 0);
+	ok1(tdb_transaction_start(tdb) == TDB_SUCCESS);
 	ok1(tdb_store(tdb, key, orig_data, TDB_INSERT) == TDB_SUCCESS);
 
 	ok1(tdb_fetch(tdb, key, &data) == TDB_SUCCESS);
 	ok1(data.dsize == strlen("world"));
 	ok1(memcmp(data.dptr, "world", strlen("world")) == 0);
 	free(data.dptr);
-	ok1(tdb1_transaction_commit(tdb) == 0);
+	ok1(tdb_transaction_commit(tdb) == TDB_SUCCESS);
 
 	ok1(tdb_traverse(tdb, test_traverse, &orig_data) == 1);
 	tdb_close(tdb);

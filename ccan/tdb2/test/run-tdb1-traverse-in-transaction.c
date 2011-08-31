@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
 
 	ok1(external_agent_operation1(agent, OPEN, tdb->name) == SUCCESS);
 
-	ok1(tdb1_transaction_start(tdb) == 0);
+	ok1(tdb_transaction_start(tdb) == TDB_SUCCESS);
 	ok1(external_agent_operation1(agent, TRANSACTION_START, tdb->name)
 	    == WOULD_HAVE_BLOCKED);
 	tdb_traverse(tdb, traverse, NULL);
@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
 	/* That should *not* release the transaction lock! */
 	ok1(external_agent_operation1(agent, TRANSACTION_START, tdb->name)
 	    == WOULD_HAVE_BLOCKED);
-	ok1(tdb1_transaction_commit(tdb) == 0);
+	ok1(tdb_transaction_commit(tdb) == TDB_SUCCESS);
 	/* Now we should be fine. */
 	ok1(external_agent_operation1(agent, TRANSACTION_START, tdb->name)
 	    == SUCCESS);

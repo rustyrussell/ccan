@@ -156,14 +156,14 @@ int main(int argc, char *argv[])
 		ok1(tdb);
 
 		opened = true;
-		ok1(tdb1_transaction_start(tdb) == 0);
+		ok1(tdb_transaction_start(tdb) == TDB_SUCCESS);
 		key.dsize = strlen("hi");
 		key.dptr = (void *)"hi";
 		data.dptr = (void *)"world";
 		data.dsize = strlen("world");
 
 		ok1(tdb_store(tdb, key, data, TDB_INSERT) == TDB_SUCCESS);
-		ok1(tdb1_transaction_commit(tdb) == 0);
+		ok1(tdb_transaction_commit(tdb) == TDB_SUCCESS);
 		ok(!errors, "We had %u open errors", errors);
 
 		opened = false;

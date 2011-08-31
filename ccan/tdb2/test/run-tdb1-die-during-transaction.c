@@ -170,13 +170,13 @@ reset:
 		errx(1, "Agent failed find key: %s", agent_return_name1(ret));
 
 	in_transaction = true;
-	if (tdb1_transaction_start(tdb) != 0)
+	if (tdb_transaction_start(tdb) != TDB_SUCCESS)
 		return false;
 
 	if (tdb_store(tdb, key, key, TDB_INSERT) != TDB_SUCCESS)
 		return false;
 
-	if (tdb1_transaction_commit(tdb) != 0)
+	if (tdb_transaction_commit(tdb) != TDB_SUCCESS)
 		return false;
 
 	in_transaction = false;
