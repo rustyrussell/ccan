@@ -1,4 +1,4 @@
-#include "config.h"
+#include <ccan/tdb2/private.h>
 #include <unistd.h>
 #include "lock-tracking.h"
 #include <ccan/tap/tap.h>

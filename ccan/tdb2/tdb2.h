@@ -30,6 +30,10 @@ extern "C" {
 #endif
 
 #ifndef _SAMBA_BUILD_
+#include "config.h"
+#if HAVE_FILE_OFFSET_BITS
+#define _FILE_OFFSET_BITS 64
+#endif
 /* For mode_t */
 #include <sys/types.h>
 /* For O_* flags. */

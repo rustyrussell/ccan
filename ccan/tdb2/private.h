@@ -18,26 +18,18 @@
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "config.h"
-#if HAVE_FILE_OFFSET_BITS
-#define _FILE_OFFSET_BITS 64
-#endif
-#include <stdint.h>
-#include <stdbool.h>
+#include <ccan/tdb2/tdb2.h>
 #include <stdlib.h>
 #include <stddef.h>
 #include <sys/time.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <string.h>
 #include <errno.h>
 #include <stdio.h>
 #include <utime.h>
 #include <unistd.h>
-#include <ccan/tdb2/tdb2.h>
 #include <ccan/likely/likely.h>
-#include <ccan/compiler/compiler.h>
 #include <ccan/endian/endian.h>
 
 #ifndef TEST_IT
