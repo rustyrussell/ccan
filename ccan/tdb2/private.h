@@ -77,10 +77,10 @@ typedef int tdb_bool_err;
 
 /* Prevent others from opening the file. */
 #define TDB_OPEN_LOCK 0
-/* Doing a transaction. */
-#define TDB_TRANSACTION_LOCK 1
 /* Expanding file. */
 #define TDB_EXPANSION_LOCK 2
+/* Doing a transaction. */
+#define TDB_TRANSACTION_LOCK 8
 /* Hash chain locks. */
 #define TDB_HASH_LOCK_START 64
 
