@@ -328,15 +328,6 @@ struct tdb_context {
 	/* Filename of the database. */
 	const char *name;
 
-	/* Are we accessing directly? (debugging check). */
-	int direct_access;
-
-	/* Open flags passed to tdb_open. */
-	int open_flags;
-
-	/* the flags passed to tdb_open, for tdb_reopen. */
-	uint32_t flags;
-
 	/* Logging function */
 	void (*log_fn)(struct tdb_context *tdb,
 		       enum tdb_log_level level,
@@ -345,15 +336,27 @@ struct tdb_context {
 		       void *data);
 	void *log_data;
 
-	/* Hash function. */
-	uint64_t (*hash_fn)(const void *key, size_t len, uint64_t seed, void *);
-	void *hash_data;
-	uint64_t hash_seed;
+	/* Open flags passed to tdb_open. */
+	int open_flags;
 
 	/* low level (fnctl) lock functions. */
 	int (*lock_fn)(int fd, int rw, off_t off, off_t len, bool w, void *);
 	int (*unlock_fn)(int fd, int rw, off_t off, off_t len, void *);
 	void *lock_data;
+
+	/* the flags passed to tdb_open. */
+	uint32_t flags;
+
+	/* Our statistics. */
+	struct tdb_attribute_stats stats;
+
+	/* Are we accessing directly? (debugging check). */
+	int direct_access;
+
+	/* Hash function. */
+	uint64_t (*hash_fn)(const void *key, size_t len, uint64_t seed, void *);
+	void *hash_data;
+	uint64_t hash_seed;
 
 	/* Set if we are in a transaction. */
 	struct tdb_transaction *transaction;
@@ -368,9 +371,6 @@ struct tdb_context {
 
 	/* IO methods: changes for transactions. */
 	const struct tdb_methods *methods;
-
-	/* Our statistics. */
-	struct tdb_attribute_stats stats;
 
 	/* Direct access information */
 	struct tdb_access_hdr *access;
