@@ -786,6 +786,7 @@ int tdb1_wipe_all(struct tdb_context *tdb)
 		}
 	}
 
+	tdb1_increment_seqnum_nonblock(tdb);
 	tdb_unlockall(tdb);
 	return 0;
 
