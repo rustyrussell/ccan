@@ -61,6 +61,16 @@ enum TDB_ERROR tdb_firstkey(struct tdb_context *tdb, struct tdb_data *key)
 {
 	struct traverse_info tinfo;
 
+	if (tdb->flags & TDB_VERSION1) {
+		tdb->last_error = TDB_SUCCESS;
+		*key = tdb1_firstkey(tdb);
+		/* TDB1 didn't set error for last key. */
+		if (!key->dptr && tdb->last_error == TDB_SUCCESS) {
+			tdb->last_error = TDB_ERR_NOEXIST;
+		}
+		return tdb->last_error;
+	}
+
 	return tdb->last_error = first_in_hash(tdb, &tinfo, key, NULL);
 }
 
@@ -70,6 +80,18 @@ enum TDB_ERROR tdb_nextkey(struct tdb_context *tdb, struct tdb_data *key)
 	struct traverse_info tinfo;
 	struct hash_info h;
 	struct tdb_used_record rec;
+
+	if (tdb->flags & TDB_VERSION1) {
+		struct tdb_data last_key = *key;
+		tdb->last_error = TDB_SUCCESS;
+		*key = tdb1_nextkey(tdb, last_key);
+		free(last_key.dptr);
+		/* TDB1 didn't set error for last key. */
+		if (!key->dptr && tdb->last_error == TDB_SUCCESS) {
+			tdb->last_error = TDB_ERR_NOEXIST;
+		}
+		return tdb->last_error;
+	}
 
 	tinfo.prev = find_and_lock(tdb, *key, F_RDLCK, &h, &rec, &tinfo);
 	free(key->dptr);

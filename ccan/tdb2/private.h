@@ -685,6 +685,10 @@ int tdb1_transaction_start(struct tdb_context *tdb);
 int tdb1_transaction_prepare_commit(struct tdb_context *tdb);
 int tdb1_transaction_commit(struct tdb_context *tdb);
 
+/* tdb1_traverse.c: */
+TDB_DATA tdb1_firstkey(struct tdb_context *tdb);
+TDB_DATA tdb1_nextkey(struct tdb_context *tdb, TDB_DATA key);
+
 /* tdb.c: */
 enum TDB_ERROR COLD tdb_logerr(struct tdb_context *tdb,
 			       enum TDB_ERROR ecode,

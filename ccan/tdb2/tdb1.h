@@ -38,10 +38,6 @@
 
 void tdb1_set_max_dead(struct tdb_context *tdb, int max_dead);
 
-TDB_DATA tdb1_firstkey(struct tdb_context *tdb);
-
-TDB_DATA tdb1_nextkey(struct tdb_context *tdb, TDB_DATA key);
-
 int tdb1_get_seqnum(struct tdb_context *tdb);
 
 void tdb1_increment_seqnum_nonblock(struct tdb_context *tdb);
