@@ -591,7 +591,9 @@ int tdb1_store(struct tdb_context *tdb, TDB_DATA key, TDB_DATA dbuf, int flag)
 	assert(tdb->flags & TDB_VERSION1);
 
 	if ((tdb->flags & TDB_RDONLY) || tdb->tdb1.traverse_read) {
-		tdb->last_error = TDB_ERR_RDONLY;
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_RDONLY,
+					     TDB_LOG_USE_ERROR,
+					     "tdb_store: read-only tdb");
 		return -1;
 	}
 
