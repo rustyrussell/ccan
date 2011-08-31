@@ -5,7 +5,6 @@
  * various times. */
 enum operation {
 	OPEN,
-	OPEN_WITH_CLEAR_IF_FIRST,
 	TRANSACTION_START,
 	FETCH,
 	STORE,

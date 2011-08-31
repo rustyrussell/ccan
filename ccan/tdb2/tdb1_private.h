@@ -97,7 +97,7 @@ typedef uint32_t tdb1_off_t;
 
 #define TDB1_BUCKET(hash) ((hash) % tdb->header.hash_size)
 
-#define TDB1_DOCONV() (tdb->flags & TDB1_CONVERT)
+#define TDB1_DOCONV() (tdb->flags & TDB_CONVERT)
 #define TDB1_CONV(x) (TDB1_DOCONV() ? tdb1_convert(&x, sizeof(x)) : &x)
 
 /* the body of the database is made of one tdb1_record for the free space

@@ -23,7 +23,6 @@ static int ftruncate_check(int fd, off_t length);
 static struct agent *agent;
 static bool opened;
 static int errors = 0;
-static bool clear_if_first;
 #define TEST_DBNAME "run-open-during-transaction.tdb"
 
 #undef write
@@ -70,10 +69,7 @@ static void check_file_intact(int fd)
 	}
 
 	/* Ask agent to open file. */
-	ret = external_agent_operation1(agent, clear_if_first ?
-				       OPEN_WITH_CLEAR_IF_FIRST :
-				       OPEN,
-				       TEST_DBNAME);
+	ret = external_agent_operation1(agent, OPEN, TEST_DBNAME);
 
 	/* It's OK to open it, but it must not have changed! */
 	if (!compare_file(fd, contents, st.st_size)) {
@@ -132,25 +128,22 @@ static int ftruncate_check(int fd, off_t length)
 
 int main(int argc, char *argv[])
 {
-	const int flags[] = { TDB1_DEFAULT,
-			      TDB1_CLEAR_IF_FIRST,
-			      TDB1_NOMMAP,
-			      TDB1_CLEAR_IF_FIRST | TDB1_NOMMAP };
+	const int flags[] = { TDB_DEFAULT,
+			      TDB_NOMMAP };
 	int i;
 	struct tdb1_context *tdb;
 	TDB_DATA key, data;
 
-	plan_tests(20);
+	plan_tests(10);
 	agent = prepare_external_agent1();
 	if (!agent)
 		err(1, "preparing agent");
 
 	unlock_callback1 = after_unlock;
 	for (i = 0; i < sizeof(flags)/sizeof(flags[0]); i++) {
-		clear_if_first = (flags[i] & TDB1_CLEAR_IF_FIRST);
 		diag("Test with %s and %s\n",
-		     clear_if_first ? "CLEAR" : "DEFAULT",
-		     (flags[i] & TDB1_NOMMAP) ? "no mmap" : "mmap");
+		     "DEFAULT",
+		     (flags[i] & TDB_NOMMAP) ? "no mmap" : "mmap");
 		unlink(TEST_DBNAME);
 		tdb = tdb1_open_ex(TEST_DBNAME, 1024, flags[i],
 				  O_CREAT|O_TRUNC|O_RDWR, 0600,

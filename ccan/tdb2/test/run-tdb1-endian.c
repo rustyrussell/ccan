@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
 
 	plan_tests(13);
 	tdb = tdb1_open_ex("run-endian.tdb", 1024,
-			  TDB1_CLEAR_IF_FIRST|TDB1_CONVERT,
+			  TDB_CONVERT,
 			  O_CREAT|O_TRUNC|O_RDWR, 0600, &taplogctx, NULL);
 
 	ok1(tdb);

@@ -36,20 +36,6 @@
 #endif
 
 
-/** Flags for tdb1_open() */
-#define TDB1_DEFAULT 0 /** just a readability place holder */
-#define TDB1_CLEAR_IF_FIRST 1 /** If this is the first open, wipe the db */
-#define TDB1_INTERNAL 2 /** Don't store on disk */
-#define TDB1_NOLOCK   4 /** Don't do any locking */
-#define TDB1_NOMMAP   8 /** Don't use mmap */
-#define TDB1_CONVERT 16 /** Convert endian (internal use) */
-#define TDB1_BIGENDIAN 32 /** Header is big-endian (internal use) */
-#define TDB1_NOSYNC   64 /** Don't use synchronous transactions */
-#define TDB1_SEQNUM   128 /** Maintain a sequence number */
-#define TDB1_VOLATILE   256 /** Activate the per-hashchain freelist, default 5 */
-#define TDB1_ALLOW_NESTING 512 /** Allow transactions to nest */
-#define TDB1_DISALLOW_NESTING 1024 /** Disallow transactions to nest */
-
 /** This is the context structure that is returned from a db open. */
 typedef struct tdb1_context TDB1_CONTEXT;
 

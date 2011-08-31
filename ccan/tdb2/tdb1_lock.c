@@ -134,7 +134,7 @@ int tdb1_brlock(struct tdb1_context *tdb,
 {
 	int ret;
 
-	if (tdb->flags & TDB1_NOLOCK) {
+	if (tdb->flags & TDB_NOLOCK) {
 		return 0;
 	}
 
@@ -168,7 +168,7 @@ int tdb1_brunlock(struct tdb1_context *tdb,
 {
 	int ret;
 
-	if (tdb->flags & TDB1_NOLOCK) {
+	if (tdb->flags & TDB_NOLOCK) {
 		return 0;
 	}
 
@@ -257,7 +257,7 @@ int tdb1_nest_lock(struct tdb1_context *tdb, uint32_t offset, int ltype,
 					offset, ltype);
 		return -1;
 	}
-	if (tdb->flags & TDB1_NOLOCK)
+	if (tdb->flags & TDB_NOLOCK)
 		return 0;
 
 	new_lck = tdb1_find_nestlock(tdb, offset);
@@ -377,7 +377,7 @@ int tdb1_nest_unlock(struct tdb1_context *tdb, uint32_t offset, int ltype)
 	int ret = -1;
 	struct tdb1_lock_type *lck;
 
-	if (tdb->flags & TDB1_NOLOCK)
+	if (tdb->flags & TDB_NOLOCK)
 		return 0;
 
 	/* Sanity checks */

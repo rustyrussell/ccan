@@ -81,25 +81,16 @@
     usual. This allows for smooth crash recovery with no administrator
     intervention.
 
-  - if TDB1_NOSYNC is passed to flags in tdb1_open then transactions are
+  - if TDB_NOSYNC is passed to flags in tdb1_open then transactions are
     still available, but no transaction recovery area is used and no
     fsync/msync calls are made.
 
-  - if TDB1_ALLOW_NESTING is passed to flags in tdb open, or added using
+  - if TDB_ALLOW_NESTING is passed to flags in tdb open, or added using
     tdb1_add_flags() transaction nesting is enabled.
-    It resets the TDB1_DISALLOW_NESTING flag, as both cannot be used together.
-    The default is that transaction nesting is allowed.
-    Note: this default may change in future versions of tdb.
+    The default is that transaction nesting is NOT allowed.
 
     Beware. when transactions are nested a transaction successfully
     completed with tdb1_transaction_commit() can be silently unrolled later.
-
-  - if TDB1_DISALLOW_NESTING is passed to flags in tdb open, or added using
-    tdb1_add_flags() transaction nesting is disabled.
-    It resets the TDB1_ALLOW_NESTING flag, as both cannot be used together.
-    An attempt create a nested transaction will fail with TDB_ERR_EINVAL.
-    The default is that transaction nesting is allowed.
-    Note: this default may change in future versions of tdb.
 */
 
 
@@ -427,7 +418,7 @@ static const struct tdb1_methods transaction1_methods = {
 static int _tdb1_transaction_start(struct tdb1_context *tdb)
 {
 	/* some sanity checks */
-	if (tdb->read_only || (tdb->flags & TDB1_INTERNAL) || tdb->traverse_read) {
+	if (tdb->read_only || (tdb->flags & TDB_INTERNAL) || tdb->traverse_read) {
 		tdb->last_error = tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
 					"tdb1_transaction_start: cannot start a"
 					" transaction on a read-only or"
@@ -437,7 +428,7 @@ static int _tdb1_transaction_start(struct tdb1_context *tdb)
 
 	/* cope with nested tdb1_transaction_start() calls */
 	if (tdb->transaction != NULL) {
-		if (!(tdb->flags & TDB1_ALLOW_NESTING)) {
+		if (!(tdb->flags & TDB_ALLOW_NESTING)) {
 			tdb->last_error = TDB_ERR_EINVAL;
 			return -1;
 		}
@@ -539,7 +530,7 @@ int tdb1_transaction_start(struct tdb1_context *tdb)
 */
 static int transaction1_sync(struct tdb1_context *tdb, tdb1_off_t offset, tdb1_len_t length)
 {
-	if (tdb->flags & TDB1_NOSYNC) {
+	if (tdb->flags & TDB_NOSYNC) {
 		return 0;
 	}
 
@@ -981,7 +972,7 @@ static int _tdb1_transaction_prepare_commit(struct tdb1_context *tdb)
 		return -1;
 	}
 
-	if (!(tdb->flags & TDB1_NOSYNC)) {
+	if (!(tdb->flags & TDB_NOSYNC)) {
 		/* write the recovery data to the end of the file */
 		if (transaction1_setup_recovery(tdb, &tdb->transaction->magic_offset) == -1) {
 			tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,

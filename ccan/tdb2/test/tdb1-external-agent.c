@@ -24,7 +24,7 @@ static enum agent_return do_operation(enum operation op, const char *name)
 	enum agent_return ret;
 	TDB_DATA data;
 
-	if (op != OPEN && op != OPEN_WITH_CLEAR_IF_FIRST && !tdb) {
+	if (op != OPEN && !tdb) {
 		diag("external: No tdb open!");
 		return OTHER_FAILURE;
 	}
@@ -39,7 +39,7 @@ static enum agent_return do_operation(enum operation op, const char *name)
 			diag("Already have tdb %s open", tdb->name);
 			return OTHER_FAILURE;
 		}
-		tdb = tdb1_open_ex(name, 0, TDB1_DEFAULT, O_RDWR, 0,
+		tdb = tdb1_open_ex(name, 0, TDB_DEFAULT, O_RDWR, 0,
 				  &taplogctx, NULL);
 		if (!tdb) {
 			if (!locking_would_block1)
@@ -47,13 +47,6 @@ static enum agent_return do_operation(enum operation op, const char *name)
 			ret = OTHER_FAILURE;
 		} else
 			ret = SUCCESS;
-		break;
-	case OPEN_WITH_CLEAR_IF_FIRST:
-		if (tdb)
-			return OTHER_FAILURE;
-		tdb = tdb1_open_ex(name, 0, TDB1_CLEAR_IF_FIRST, O_RDWR, 0,
-				  &taplogctx, NULL);
-		ret = tdb ? SUCCESS : OTHER_FAILURE;
 		break;
 	case TRANSACTION_START:
 		ret = tdb1_transaction_start(tdb) == 0 ? SUCCESS : OTHER_FAILURE;
@@ -183,7 +176,6 @@ const char *operation_name1(enum operation op)
 {
 	switch (op) {
 	case OPEN: return "OPEN";
-	case OPEN_WITH_CLEAR_IF_FIRST: return "OPEN_WITH_CLEAR_IF_FIRST";
 	case TRANSACTION_START: return "TRANSACTION_START";
 	case FETCH: return "FETCH";
 	case STORE: return "STORE";

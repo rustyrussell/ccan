@@ -15,10 +15,11 @@ int main(int argc, char *argv[])
 	key.dptr = (void *)"hi";
 
 	tdb = tdb1_open_ex("run-nested-transactions.tdb",
-			  1024, TDB1_CLEAR_IF_FIRST|TDB1_DISALLOW_NESTING,
+			  1024, TDB_DEFAULT,
 			  O_CREAT|O_TRUNC|O_RDWR, 0600, &taplogctx, NULL);
 	ok1(tdb);
 
+	/* No nesting by default. */
 	ok1(tdb1_transaction_start(tdb) == 0);
 	data.dptr = (void *)"world";
 	data.dsize = strlen("world");
@@ -41,9 +42,8 @@ int main(int argc, char *argv[])
 	free(data.dptr);
 	tdb1_close(tdb);
 
-	/* Allow nesting by default. */
 	tdb = tdb1_open_ex("run-nested-transactions.tdb",
-			  1024, TDB1_DEFAULT, O_RDWR, 0, &taplogctx, NULL);
+			  1024, TDB_ALLOW_NESTING, O_RDWR, 0, &taplogctx, NULL);
 	ok1(tdb);
 
 	ok1(tdb1_transaction_start(tdb) == 0);

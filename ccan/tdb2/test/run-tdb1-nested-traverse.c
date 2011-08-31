@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
 	if (!agent)
 		err(1, "preparing agent");
 
-	tdb = tdb1_open_ex("run-nested-traverse.tdb", 1024, TDB1_CLEAR_IF_FIRST,
+	tdb = tdb1_open_ex("run-nested-traverse.tdb", 1024, TDB_DEFAULT,
 			  O_CREAT|O_TRUNC|O_RDWR, 0600, &taplogctx, NULL);
 	ok1(tdb);
 

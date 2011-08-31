@@ -10,7 +10,7 @@ int main(int argc, char *argv[])
 	TDB_DATA key, data;
 
 	plan_tests(13);
-	tdb = tdb1_open_ex("run-check.tdb", 1, TDB1_CLEAR_IF_FIRST,
+	tdb = tdb1_open_ex("run-check.tdb", 1, TDB_DEFAULT,
 			  O_CREAT|O_TRUNC|O_RDWR, 0600, &taplogctx, NULL);
 
 	ok1(tdb);

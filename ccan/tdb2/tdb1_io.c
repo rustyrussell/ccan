@@ -41,7 +41,7 @@ static int tdb1_oob(struct tdb1_context *tdb, tdb1_off_t len, int probe)
 	struct stat st;
 	if (len <= tdb->map_size)
 		return 0;
-	if (tdb->flags & TDB1_INTERNAL) {
+	if (tdb->flags & TDB_INTERNAL) {
 		if (!probe) {
 			tdb->last_error = tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 						"tdb1_oob len %d beyond internal malloc size %d",
@@ -189,7 +189,7 @@ static void tdb1_next_hash_chain(struct tdb1_context *tdb, uint32_t *chain)
 
 int tdb1_munmap(struct tdb1_context *tdb)
 {
-	if (tdb->flags & TDB1_INTERNAL)
+	if (tdb->flags & TDB_INTERNAL)
 		return 0;
 
 #if HAVE_MMAP
@@ -207,11 +207,11 @@ int tdb1_munmap(struct tdb1_context *tdb)
 
 void tdb1_mmap(struct tdb1_context *tdb)
 {
-	if (tdb->flags & TDB1_INTERNAL)
+	if (tdb->flags & TDB_INTERNAL)
 		return;
 
 #if HAVE_MMAP
-	if (!(tdb->flags & TDB1_NOMMAP)) {
+	if (!(tdb->flags & TDB_NOMMAP)) {
 		tdb->map_ptr = mmap(NULL, tdb->map_size,
 				    PROT_READ|(tdb->read_only? 0:PROT_WRITE),
 				    MAP_SHARED|MAP_FILE, tdb->fd, 0);
@@ -339,7 +339,7 @@ int tdb1_expand(struct tdb1_context *tdb, tdb1_off_t size)
 	new_size = MAX(top_size, map_size);
 	size = TDB1_ALIGN(new_size, tdb->page_size) - tdb->map_size;
 
-	if (!(tdb->flags & TDB1_INTERNAL))
+	if (!(tdb->flags & TDB_INTERNAL))
 		tdb1_munmap(tdb);
 
 	/*
@@ -349,14 +349,14 @@ int tdb1_expand(struct tdb1_context *tdb, tdb1_off_t size)
 	 */
 
 	/* expand the file itself */
-	if (!(tdb->flags & TDB1_INTERNAL)) {
+	if (!(tdb->flags & TDB_INTERNAL)) {
 		if (tdb->methods->tdb1_expand_file(tdb, tdb->map_size, size) != 0)
 			goto fail;
 	}
 
 	tdb->map_size += size;
 
-	if (tdb->flags & TDB1_INTERNAL) {
+	if (tdb->flags & TDB_INTERNAL) {
 		char *new_map_ptr = (char *)realloc(tdb->map_ptr,
 						    tdb->map_size);
 		if (!new_map_ptr) {

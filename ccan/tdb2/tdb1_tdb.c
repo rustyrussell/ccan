@@ -31,13 +31,13 @@ TDB_DATA tdb1_null;
 
 /*
   non-blocking increment of the tdb sequence number if the tdb has been opened using
-  the TDB1_SEQNUM flag
+  the TDB_SEQNUM flag
 */
 void tdb1_increment_seqnum_nonblock(struct tdb1_context *tdb)
 {
 	tdb1_off_t seqnum=0;
 
-	if (!(tdb->flags & TDB1_SEQNUM)) {
+	if (!(tdb->flags & TDB_SEQNUM)) {
 		return;
 	}
 
@@ -51,11 +51,11 @@ void tdb1_increment_seqnum_nonblock(struct tdb1_context *tdb)
 
 /*
   increment the tdb sequence number if the tdb has been opened using
-  the TDB1_SEQNUM flag
+  the TDB_SEQNUM flag
 */
 static void tdb1_increment_seqnum(struct tdb1_context *tdb)
 {
-	if (!(tdb->flags & TDB1_SEQNUM)) {
+	if (!(tdb->flags & TDB_SEQNUM)) {
 		return;
 	}
 
@@ -843,7 +843,7 @@ int tdb1_repack(struct tdb1_context *tdb)
 		return -1;
 	}
 
-	tmp_db = tdb1_open("tmpdb", tdb1_hash_size(tdb), TDB1_INTERNAL, O_RDWR|O_CREAT, 0);
+	tmp_db = tdb1_open("tmpdb", tdb1_hash_size(tdb), TDB_INTERNAL, O_RDWR|O_CREAT, 0);
 	if (tmp_db == NULL) {
 		tdb->last_error = tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
 					__location__ " Failed to create tmp_db");

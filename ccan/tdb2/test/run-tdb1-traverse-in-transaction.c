@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
 		err(1, "preparing agent");
 
 	tdb = tdb1_open_ex("run-traverse-in-transaction.tdb",
-			  1024, TDB1_CLEAR_IF_FIRST, O_CREAT|O_TRUNC|O_RDWR,
+			  1024, TDB_DEFAULT, O_CREAT|O_TRUNC|O_RDWR,
 			  0600, &taplogctx, NULL);
 	ok1(tdb);
 

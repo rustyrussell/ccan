@@ -50,10 +50,10 @@ int main(int argc, char *argv[])
 
 	plan_tests(38 * 2);
 
-	for (flags = 0; flags <= TDB1_CONVERT; flags += TDB1_CONVERT) {
+	for (flags = 0; flags <= TDB_CONVERT; flags += TDB_CONVERT) {
 		unsigned int rwmagic = TDB1_HASH_RWLOCK_MAGIC;
 
-		if (flags & TDB1_CONVERT)
+		if (flags & TDB_CONVERT)
 			tdb1_convert(&rwmagic, sizeof(rwmagic));
 
 		/* Create an old-style hash. */

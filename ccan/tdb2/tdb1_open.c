@@ -75,7 +75,7 @@ static int tdb1_new_database(struct tdb1_context *tdb, int hash_size)
 	if (tdb->hash_fn == tdb1_incompatible_hash)
 		newdb->rwlocks = TDB1_HASH_RWLOCK_MAGIC;
 
-	if (tdb->flags & TDB1_INTERNAL) {
+	if (tdb->flags & TDB_INTERNAL) {
 		tdb->map_size = size;
 		tdb->map_ptr = (char *)newdb;
 		memcpy(&tdb->header, newdb, sizeof(tdb->header));
@@ -166,9 +166,7 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 {
 	struct tdb1_context *tdb;
 	struct stat st;
-	int rev = 0, locked = 0;
-	unsigned char *vp;
-	uint32_t vertest;
+	int rev = 0;
 	unsigned v;
 	const char *hash_alg;
 	uint32_t magic1, magic2;
@@ -190,7 +188,7 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 	} else
 		tdb->log_fn = NULL;
 
-	if (name == NULL && (tdb1_flags & TDB1_INTERNAL)) {
+	if (name == NULL && (tdb1_flags & TDB_INTERNAL)) {
 		name = "__TDB1_INTERNAL__";
 	}
 
@@ -234,7 +232,8 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 		tdb->page_size = 0x2000;
 	}
 
-	tdb->max_dead_records = (tdb1_flags & TDB1_VOLATILE) ? 5 : 0;
+	/* FIXME: Used to be 5 for TDB_VOLATILE. */
+	tdb->max_dead_records = 0;
 
 	if ((open_flags & O_ACCMODE) == O_WRONLY) {
 		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
@@ -248,32 +247,13 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 		hash_size = TDB1_DEFAULT_HASH_SIZE;
 	if ((open_flags & O_ACCMODE) == O_RDONLY) {
 		tdb->read_only = 1;
-		/* read only databases don't do locking or clear if first */
-		tdb->flags |= TDB1_NOLOCK;
-		tdb->flags &= ~TDB1_CLEAR_IF_FIRST;
-	}
-
-	if ((tdb->flags & TDB1_ALLOW_NESTING) &&
-	    (tdb->flags & TDB1_DISALLOW_NESTING)) {
-		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
-			   "tdb1_open_ex: "
-			   "allow_nesting and disallow_nesting are not allowed together!");
-		errno = EINVAL;
-		goto fail;
-	}
-
-	/*
-	 * TDB1_ALLOW_NESTING is the default behavior.
-	 * Note: this may change in future versions!
-	 */
-	if (!(tdb->flags & TDB1_DISALLOW_NESTING)) {
-		tdb->flags |= TDB1_ALLOW_NESTING;
+		/* read only databases don't do locking */
+		tdb->flags |= TDB_NOLOCK;
 	}
 
 	/* internal databases don't mmap or lock, and start off cleared */
-	if (tdb->flags & TDB1_INTERNAL) {
-		tdb->flags |= (TDB1_NOLOCK | TDB1_NOMMAP);
-		tdb->flags &= ~TDB1_CLEAR_IF_FIRST;
+	if (tdb->flags & TDB_INTERNAL) {
+		tdb->flags |= (TDB_NOLOCK | TDB_NOMMAP);
 		if (tdb1_new_database(tdb, hash_size) != 0) {
 			tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
 				   "tdb1_open_ex: tdb1_new_database failed!");
@@ -301,20 +281,6 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 		goto fail;	/* errno set by tdb1_brlock */
 	}
 
-	/* we need to zero database if we are the only one with it open */
-	if ((tdb1_flags & TDB1_CLEAR_IF_FIRST) &&
-	    (!tdb->read_only) &&
-	    (locked = (tdb1_nest_lock(tdb, TDB1_ACTIVE_LOCK, F_WRLCK, TDB_LOCK_NOWAIT|TDB_LOCK_PROBE) == 0))) {
-		open_flags |= O_CREAT;
-		if (ftruncate(tdb->fd, 0) == -1) {
-			tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
-				   "tdb1_open_ex: "
-				   "failed to truncate %s: %s",
-				   name, strerror(errno));
-			goto fail; /* errno set by ftruncate */
-		}
-	}
-
 	errno = 0;
 	if (read(tdb->fd, &tdb->header, sizeof(tdb->header)) != sizeof(tdb->header)
 	    || strcmp(tdb->header.magic_food, TDB_MAGIC_FOOD) != 0) {
@@ -324,21 +290,17 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 			}
 			goto fail;
 		}
-		rev = (tdb->flags & TDB1_CONVERT);
+		rev = (tdb->flags & TDB_CONVERT);
 	} else if (tdb->header.version != TDB1_VERSION
 		   && !(rev = (tdb->header.version==TDB1_BYTEREV(TDB1_VERSION)))) {
 		/* wrong version */
 		errno = EIO;
 		goto fail;
 	}
-	vp = (unsigned char *)&tdb->header.version;
-	vertest = (((uint32_t)vp[0]) << 24) | (((uint32_t)vp[1]) << 16) |
-		  (((uint32_t)vp[2]) << 8) | (uint32_t)vp[3];
-	tdb->flags |= (vertest==TDB1_VERSION) ? TDB1_BIGENDIAN : 0;
 	if (!rev)
-		tdb->flags &= ~TDB1_CONVERT;
+		tdb->flags &= ~TDB_CONVERT;
 	else {
-		tdb->flags |= TDB1_CONVERT;
+		tdb->flags |= TDB_CONVERT;
 		tdb1_convert(&tdb->header, sizeof(tdb->header));
 	}
 	if (fstat(tdb->fd, &st) == -1)
@@ -385,27 +347,6 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 	tdb->device = st.st_dev;
 	tdb->inode = st.st_ino;
 	tdb1_mmap(tdb);
-	if (locked) {
-		if (tdb1_nest_unlock(tdb, TDB1_ACTIVE_LOCK, F_WRLCK) == -1) {
-			tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
-				   "tdb1_open_ex: "
-				   "failed to release ACTIVE_LOCK on %s: %s",
-				   name, strerror(errno));
-			goto fail;
-		}
-
-	}
-
-	/* We always need to do this if the CLEAR_IF_FIRST flag is set, even if
-	   we didn't get the initial exclusive lock as we need to let all other
-	   users know we're using it. */
-
-	if (tdb1_flags & TDB1_CLEAR_IF_FIRST) {
-		/* leave this lock in place to indicate it's in use */
-		if (tdb1_nest_lock(tdb, TDB1_ACTIVE_LOCK, F_RDLCK, TDB_LOCK_WAIT) == -1) {
-			goto fail;
-		}
-	}
 
 	/* if needed, run recovery */
 	if (tdb1_transaction_recover(tdb) == -1) {
@@ -430,7 +371,7 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 		return NULL;
 
 	if (tdb->map_ptr) {
-		if (tdb->flags & TDB1_INTERNAL)
+		if (tdb->flags & TDB_INTERNAL)
 			SAFE_FREE(tdb->map_ptr);
 		else
 			tdb1_munmap(tdb);
@@ -471,7 +412,7 @@ int tdb1_close(struct tdb1_context *tdb)
 	}
 
 	if (tdb->map_ptr) {
-		if (tdb->flags & TDB1_INTERNAL)
+		if (tdb->flags & TDB_INTERNAL)
 			SAFE_FREE(tdb->map_ptr);
 		else
 			tdb1_munmap(tdb);

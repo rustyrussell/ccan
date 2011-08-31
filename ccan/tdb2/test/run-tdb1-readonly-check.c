@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
 
 	plan_tests(11);
 	tdb = tdb1_open_ex("run-readonly-check.tdb", 1024,
-			  TDB1_DEFAULT,
+			  TDB_DEFAULT,
 			  O_CREAT|O_TRUNC|O_RDWR, 0600, &taplogctx, NULL);
 
 	ok1(tdb);
@@ -31,7 +31,7 @@ int main(int argc, char *argv[])
 	ok1(tdb1_close(tdb) == 0);
 
 	tdb = tdb1_open_ex("run-readonly-check.tdb", 1024,
-			  TDB1_DEFAULT, O_RDONLY, 0, &taplogctx, NULL);
+			  TDB_DEFAULT, O_RDONLY, 0, &taplogctx, NULL);
 
 	ok1(tdb);
 	ok1(tdb1_store(tdb, key, data, TDB_MODIFY) == -1);

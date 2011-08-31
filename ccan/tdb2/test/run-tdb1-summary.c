@@ -7,9 +7,9 @@ int main(int argc, char *argv[])
 {
 	unsigned int i, j;
 	struct tdb1_context *tdb;
-	int flags[] = { TDB1_INTERNAL, TDB1_DEFAULT, TDB1_NOMMAP,
-			TDB1_INTERNAL|TDB1_CONVERT, TDB1_CONVERT,
-			TDB1_NOMMAP|TDB1_CONVERT };
+	int flags[] = { TDB_INTERNAL, TDB_DEFAULT, TDB_NOMMAP,
+			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT,
+			TDB_NOMMAP|TDB_CONVERT };
 	TDB_DATA key = { (unsigned char *)&j, sizeof(j) };
 	TDB_DATA data = { (unsigned char *)&j, sizeof(j) };
 	char *summary;

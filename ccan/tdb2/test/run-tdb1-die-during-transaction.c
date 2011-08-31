@@ -89,7 +89,7 @@ static bool test_death(enum operation op, struct agent *agent)
 	current = target = 0;
 reset:
 	unlink(TEST_DBNAME);
-	tdb = tdb1_open_ex(TEST_DBNAME, 1024, TDB1_NOMMAP,
+	tdb = tdb1_open_ex(TEST_DBNAME, 1024, TDB_NOMMAP,
 			  O_CREAT|O_TRUNC|O_RDWR, 0600, &taplogctx, NULL);
 
 	if (setjmp(jmpbuf) != 0) {
