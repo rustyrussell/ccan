@@ -5,7 +5,7 @@
 #include <fcntl.h>
 #include "logging.h"
 
-#define NUM_TESTS 50000
+#define NUM_TESTS 1000
 
 static bool store_all(struct tdb_context *tdb)
 {
@@ -53,6 +53,9 @@ int main(int argc, char *argv[])
 	struct tdb_context *tdb;
 	int flags[] = { TDB_DEFAULT, TDB_NOMMAP,
 			TDB_CONVERT, TDB_NOMMAP|TDB_CONVERT,
+			TDB_VERSION1, TDB_VERSION1|TDB_NOMMAP,
+			TDB_VERSION1|TDB_CONVERT,
+			TDB_VERSION1|TDB_NOMMAP|TDB_CONVERT
 	};
 
 	plan_tests(sizeof(flags) / sizeof(flags[0]) * 6 + 1);

@@ -26,16 +26,15 @@ int main(int argc, char *argv[])
 						.fn = failhash } };
 
 	hattr.base.next = &tap_log_attr;
-	plan_tests(1 + 2 * NUM_RECORDS + 1);
+	plan_tests(1 + NUM_RECORDS + 2);
 
 	tdb = tdb_open("run-missing-entries.tdb", TDB_INTERNAL,
 		       O_RDWR|O_CREAT|O_TRUNC, 0600, &hattr);
-	ok1(tdb);
-	if (tdb) {
+	if (ok1(tdb)) {
 		for (i = 0; i < NUM_RECORDS; i++) {
 			ok1(tdb_store(tdb, key, data, TDB_REPLACE) == 0);
-			ok1(tdb_check(tdb, NULL, NULL) == 0);
 		}
+		ok1(tdb_check(tdb, NULL, NULL) == 0);
 		tdb_close(tdb);
 	}
 
