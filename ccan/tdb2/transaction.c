@@ -523,13 +523,22 @@ enum TDB_ERROR tdb_transaction_start(struct tdb_context *tdb)
 
 	tdb->stats.transactions++;
 	/* some sanity checks */
-	if (tdb->read_only || (tdb->flags & TDB_INTERNAL)) {
+	if (tdb->flags & TDB_INTERNAL) {
 		return tdb->last_error = tdb_logerr(tdb, TDB_ERR_EINVAL,
 						    TDB_LOG_USE_ERROR,
 						    "tdb_transaction_start:"
 						    " cannot start a"
+						    " transaction on an"
+						    " internal tdb");
+	}
+
+	if (tdb->read_only) {
+		return tdb->last_error = tdb_logerr(tdb, TDB_ERR_RDONLY,
+						    TDB_LOG_USE_ERROR,
+						    "tdb_transaction_start:"
+						    " cannot start a"
 						    " transaction on a "
-						    "read-only or internal db");
+						    " read-only tdb");
 	}
 
 	/* cope with nested tdb_transaction_start() calls */
