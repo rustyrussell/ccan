@@ -17,6 +17,8 @@
 
 static struct tdb_context *tdb;
 
+void (*external_agent_free)(void *) = free;
+
 static enum TDB_ERROR clear_if_first(int fd, void *arg)
 {
 /* We hold a lock offset 4 always, so we can tell if anyone is holding it.
@@ -100,10 +102,10 @@ static enum agent_return do_operation(enum operation op, const char *name)
 			ret = OTHER_FAILURE;
 		} else if (!tdb_deq(data, k)) {
 			ret = OTHER_FAILURE;
-			free(data.dptr);
+			external_agent_free(data.dptr);
 		} else {
 			ret = SUCCESS;
-			free(data.dptr);
+			external_agent_free(data.dptr);
 		}
 		break;
 	case STORE:

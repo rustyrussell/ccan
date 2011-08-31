@@ -15,8 +15,9 @@ static int ftruncate_check(int fd, off_t length);
 
 /* There's a malloc inside transaction_setup_recovery, and valgrind complains
  * when we longjmp and leak it. */
-#define MAX_ALLOCATIONS 200
+#define MAX_ALLOCATIONS 10
 static void *allocated[MAX_ALLOCATIONS];
+static unsigned max_alloc = 0;
 
 static void *malloc_noleak(size_t len)
 {
@@ -25,6 +26,10 @@ static void *malloc_noleak(size_t len)
 	for (i = 0; i < MAX_ALLOCATIONS; i++)
 		if (!allocated[i]) {
 			allocated[i] = malloc(len);
+			if (i > max_alloc) {
+				max_alloc = i;
+				diag("max_alloc: %i", max_alloc);
+			}
 			return allocated[i];
 		}
 	diag("Too many allocations!");
@@ -37,6 +42,10 @@ static void *realloc_noleak(void *p, size_t size)
 
 	for (i = 0; i < MAX_ALLOCATIONS; i++) {
 		if (allocated[i] == p) {
+			if (i > max_alloc) {
+				max_alloc = i;
+				diag("max_alloc: %i", max_alloc);
+			}
 			return allocated[i] = realloc(p, size);
 		}
 	}
@@ -270,6 +279,7 @@ int main(int argc, char *argv[])
 	plan_tests(24);
 	unlock_callback = maybe_die;
 
+	external_agent_free = free_noleak;
 	agent = prepare_external_agent();
 	if (!agent)
 		err(1, "preparing agent");
