@@ -180,7 +180,7 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 	tdb->fd = -1;
 	tdb->name = NULL;
 	tdb->map_ptr = NULL;
-	tdb->flags = tdb1_flags;
+	tdb->flags = tdb1_flags|TDB_VERSION1;
 	tdb->open_flags = open_flags;
 	if (log_ctx) {
 		tdb->log_fn = log_ctx->log_fn;
