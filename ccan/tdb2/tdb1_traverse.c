@@ -29,6 +29,8 @@
 
 #define TDB1_NEXT_LOCK_ERR ((tdb1_off_t)-1)
 
+static TDB_DATA tdb1_null;
+
 /* Uses traverse lock: 0 = finish, TDB1_NEXT_LOCK_ERR = error,
    other = record offset */
 static tdb1_off_t tdb1_next_lock(struct tdb_context *tdb, struct tdb1_traverse_lock *tlock,

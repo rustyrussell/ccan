@@ -28,8 +28,6 @@
 #include "tdb1_private.h"
 #include <assert.h>
 
-TDB_DATA tdb1_null;
-
 /*
   non-blocking increment of the tdb sequence number if the tdb has been opened using
   the TDB_SEQNUM flag
@@ -191,8 +189,11 @@ static TDB_DATA _tdb1_fetch(struct tdb_context *tdb, TDB_DATA key)
 
 	/* find which hash bucket it is in */
 	hash = tdb_hash(tdb, key.dptr, key.dsize);
-	if (!(rec_ptr = tdb1_find_lock_hash(tdb,key,hash,F_RDLCK,&rec)))
-		return tdb1_null;
+	if (!(rec_ptr = tdb1_find_lock_hash(tdb,key,hash,F_RDLCK,&rec))) {
+		ret.dptr = NULL;
+		ret.dsize = 0;
+		return ret;
+	}
 
 	ret.dptr = tdb1_alloc_read(tdb, rec_ptr + sizeof(rec) + rec.key_len,
 				  rec.data_len);

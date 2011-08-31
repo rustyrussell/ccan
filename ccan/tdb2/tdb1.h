@@ -42,6 +42,4 @@ uint64_t tdb1_incompatible_hash(const void *key, size_t len, uint64_t seed, void
 
 /* @} ******************************************************************/
 
-extern TDB_DATA tdb1_null;
-
 #endif /* tdb1.h */
