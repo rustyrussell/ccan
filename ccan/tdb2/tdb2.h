@@ -89,6 +89,18 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 #define TDB_VERSION1  1024 /* create/open an old style TDB */
 
 /**
+ * tdb1_incompatible_hash - better (Jenkins) hash for tdb1
+ *
+ * This is better than the default hash for tdb1; but older versions of the
+ * tdb library (prior to version 1.2.6) won't be able to open them.
+ *
+ * It only makes sense to specify this (using tdb_attribute_hash) when
+ * creating (with O_CREAT) an old tdb version using TDB_VERSION1.  It's
+ * equivalent to the TDB_INCOMPATIBLE_HASH flag for tdb1.
+ */
+uint64_t tdb1_incompatible_hash(const void *, size_t, uint64_t, void *);
+
+/**
  * tdb_close - close and free a tdb.
  * @tdb: the tdb context returned from tdb_open()
  *

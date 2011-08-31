@@ -38,8 +38,6 @@
 
 void tdb1_set_max_dead(struct tdb_context *tdb, int max_dead);
 
-uint64_t tdb1_incompatible_hash(const void *key, size_t len, uint64_t seed, void *);
-
 /* @} ******************************************************************/
 
 #endif /* tdb1.h */
