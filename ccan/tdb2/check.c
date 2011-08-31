@@ -782,6 +782,12 @@ enum TDB_ERROR tdb_check_(struct tdb_context *tdb,
 	uint64_t features;
 	enum TDB_ERROR ecode;
 
+	if (tdb->flags & TDB_VERSION1) {
+		if (tdb1_check(tdb, check, data) == -1)
+			return tdb->last_error;
+		return TDB_SUCCESS;
+	}
+
 	ecode = tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false);
 	if (ecode != TDB_SUCCESS) {
 		return tdb->last_error = ecode;

@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 		       0, &incompat_hash_attr);
 	ok1(tdb);
 	ok1(log_count == 0);
-	ok1(tdb1_check(tdb, NULL, NULL) == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 	tdb_close(tdb);
 
 	log_count = 0;
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
 		       0, &incompat_hash_attr);
 	ok1(tdb);
 	ok1(log_count == 0);
-	ok1(tdb1_check(tdb, NULL, NULL) == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 	tdb_close(tdb);
 
 	/* It should open with jenkins hash if we don't specify. */
@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
 		       &log_attr);
 	ok1(tdb);
 	ok1(log_count == 0);
-	ok1(tdb1_check(tdb, NULL, NULL) == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 	tdb_close(tdb);
 
 	log_count = 0;
@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
 		       &log_attr);
 	ok1(tdb);
 	ok1(log_count == 0);
-	ok1(tdb1_check(tdb, NULL, NULL) == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 	tdb_close(tdb);
 
 	log_count = 0;
@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
 		       0, &log_attr);
 	ok1(tdb);
 	ok1(log_count == 0);
-	ok1(tdb1_check(tdb, NULL, NULL) == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 	tdb_close(tdb);
 
 

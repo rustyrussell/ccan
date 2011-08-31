@@ -161,6 +161,14 @@ enum TDB_ERROR tdb_summary(struct tdb_context *tdb,
 	char *hashesg, *freeg, *keysg, *datag, *extrag, *uncoalg;
 	enum TDB_ERROR ecode;
 
+	if (tdb->flags & TDB_VERSION1) {
+		/* tdb1 doesn't do graphs. */
+		*summary = tdb1_summary(tdb);
+		if (!*summary)
+			return tdb->last_error;
+		return TDB_SUCCESS;
+	}
+
 	hashesg = freeg = keysg = datag = extrag = uncoalg = NULL;
 
 	ecode = tdb_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, false);

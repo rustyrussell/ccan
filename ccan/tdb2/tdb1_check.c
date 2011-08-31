@@ -236,7 +236,8 @@ static bool tdb1_check_used_record(struct tdb_context *tdb,
 				  tdb1_off_t off,
 				  const struct tdb1_record *rec,
 				  unsigned char **hashes,
-				  int (*check)(TDB_DATA, TDB_DATA, void *),
+				  enum TDB_ERROR (*check)(TDB_DATA, TDB_DATA,
+							  void *),
 				  void *private_data)
 {
 	TDB_DATA key, data;
@@ -270,13 +271,18 @@ static bool tdb1_check_used_record(struct tdb_context *tdb,
 	/* If they supply a check function and this record isn't dead,
 	   get data and feed it. */
 	if (check && rec->magic != TDB1_DEAD_MAGIC) {
+		enum TDB_ERROR ecode;
+
 		data = get_bytes(tdb, off + sizeof(*rec) + rec->key_len,
 				 rec->data_len);
 		if (!data.dptr)
 			goto fail_put_key;
 
-		if (check(key, data, private_data) == -1)
+		ecode = check(key, data, private_data);
+		if (ecode != TDB_SUCCESS) {
+			tdb->last_error = ecode;
 			goto fail_put_data;
+		}
 		put_bytes(tdb, data);
 	}
 
@@ -323,8 +329,8 @@ size_t tdb1_dead_space(struct tdb_context *tdb, tdb1_off_t off)
 }
 
 int tdb1_check(struct tdb_context *tdb,
-	      int (*check)(TDB_DATA key, TDB_DATA data, void *private_data),
-	      void *private_data)
+	       enum TDB_ERROR (*check)(TDB_DATA key, TDB_DATA data, void *),
+	       void *private_data)
 {
 	unsigned int h;
 	unsigned char **hashes;

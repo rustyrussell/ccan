@@ -74,7 +74,7 @@ static enum agent_return do_operation(enum operation op, const char *name)
 		ret = tdb_transaction_commit(tdb) == TDB_SUCCESS ? SUCCESS : OTHER_FAILURE;
 		break;
 	case CHECK:
-		ret = tdb1_check(tdb, NULL, NULL) == 0 ? SUCCESS : OTHER_FAILURE;
+		ret = tdb_check(tdb, NULL, NULL) == TDB_SUCCESS ? SUCCESS : OTHER_FAILURE;
 		break;
 	case NEEDS_RECOVERY:
 		ret = tdb1_needs_recovery(tdb) ? SUCCESS : FAILED;

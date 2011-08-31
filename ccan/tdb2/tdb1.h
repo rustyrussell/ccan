@@ -48,18 +48,11 @@ void tdb1_increment_seqnum_nonblock(struct tdb_context *tdb);
 
 uint64_t tdb1_incompatible_hash(const void *key, size_t len, uint64_t seed, void *);
 
-int tdb1_check(struct tdb_context *tdb,
-	      int (*check) (TDB_DATA key, TDB_DATA data, void *private_data),
-	      void *private_data);
-
 /* @} ******************************************************************/
 
 /* wipe and repack */
 int tdb1_wipe_all(struct tdb_context *tdb);
 int tdb1_repack(struct tdb_context *tdb);
-
-/* Debug functions. Not used in production. */
-char *tdb1_summary(struct tdb_context *tdb);
 
 extern TDB_DATA tdb1_null;
 

@@ -20,25 +20,25 @@ int main(int argc, char *argv[])
 	tdb = tdb_open("test/old-nohash-le.tdb1", TDB_VERSION1, O_RDWR, 0,
 		       &tap_log_attr);
 	ok1(tdb);
-	ok1(tdb1_check(tdb, NULL, NULL) == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 	tdb_close(tdb);
 
 	tdb = tdb_open("test/old-nohash-be.tdb1", TDB_VERSION1, O_RDWR, 0,
 		       &tap_log_attr);
 	ok1(tdb);
-	ok1(tdb1_check(tdb, NULL, NULL) == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 	tdb_close(tdb);
 
 	tdb = tdb_open("test/old-nohash-le.tdb1", TDB_VERSION1, O_RDWR, 0,
 		       &incompat_hash_attr);
 	ok1(tdb);
-	ok1(tdb1_check(tdb, NULL, NULL) == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 	tdb_close(tdb);
 
 	tdb = tdb_open("test/old-nohash-be.tdb1", TDB_VERSION1, O_RDWR, 0,
 		       &incompat_hash_attr);
 	ok1(tdb);
-	ok1(tdb1_check(tdb, NULL, NULL) == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 	tdb_close(tdb);
 
 	return exit_status();

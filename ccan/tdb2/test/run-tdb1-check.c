@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 		       O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
 
 	ok1(tdb);
-	ok1(tdb1_check(tdb, NULL, NULL) == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 
 	key.dsize = strlen("hi");
 	key.dptr = (void *)"hi";
@@ -27,18 +27,18 @@ int main(int argc, char *argv[])
 	data.dptr = (void *)"world";
 
 	ok1(tdb_store(tdb, key, data, TDB_INSERT) == TDB_SUCCESS);
-	ok1(tdb1_check(tdb, NULL, NULL) == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 	tdb_close(tdb);
 
 	tdb = tdb_open("run-check.tdb1", TDB_VERSION1, O_RDWR, 0, &tap_log_attr);
 	ok1(tdb);
-	ok1(tdb1_check(tdb, NULL, NULL) == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 	tdb_close(tdb);
 
 	tdb = tdb_open("test/tdb1.corrupt", TDB_VERSION1, O_RDWR, 0,
 			&tap_log_attr);
 	ok1(tdb);
-	ok1(tdb1_check(tdb, NULL, NULL) == -1);
+	ok1(tdb_check(tdb, NULL, NULL) == TDB_ERR_CORRUPT);
 	ok1(tdb_error(tdb) == TDB_ERR_CORRUPT);
 	tdb_close(tdb);
 
@@ -46,13 +46,13 @@ int main(int argc, char *argv[])
 	tdb = tdb_open("test/old-nohash-le.tdb1", TDB_VERSION1, O_RDWR, 0,
 		       &tap_log_attr);
 	ok1(tdb);
-	ok1(tdb1_check(tdb, NULL, NULL) == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 	tdb_close(tdb);
 
 	tdb = tdb_open("test/old-nohash-be.tdb1", TDB_VERSION1, O_RDWR, 0,
 			&tap_log_attr);
 	ok1(tdb);
-	ok1(tdb1_check(tdb, NULL, NULL) == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 	tdb_close(tdb);
 
 	return exit_status();

@@ -45,7 +45,7 @@ static void check_test(struct tdb_context *tdb)
 	TDB_DATA key, data;
 	unsigned int i, verifiable, corrupt, sizes[2], dsize, ksize;
 
-	ok1(tdb1_check(tdb, NULL, NULL) == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 
 	key.dptr = (void *)"hello";
 	data.dsize = strlen("world");
@@ -81,7 +81,7 @@ static void check_test(struct tdb_context *tdb)
 	for (i = 0, corrupt = 0; i < tdb->file->map_size * CHAR_BIT; i++) {
 		tdb1_flip_bit(tdb, i);
 		memset(sizes, 0, sizeof(sizes));
-		if (tdb1_check(tdb, check, sizes) != 0)
+		if (tdb_check(tdb, check, sizes) == TDB_ERR_CORRUPT)
 			corrupt++;
 		else if (sizes[0] != ksize || sizes[1] != dsize)
 			corrupt++;

@@ -631,6 +631,12 @@ struct tdb_context {
 
 #define TDB1_BYTEREV(x) (((((x)&0xff)<<24)|((x)&0xFF00)<<8)|(((x)>>8)&0xFF00)|((x)>>24))
 
+/* tdb1_check.c: */
+int tdb1_check(struct tdb_context *tdb,
+	       enum TDB_ERROR (*check)(TDB_DATA key, TDB_DATA data, void *),
+	       void *private_data);
+
+
 /* tdb1_open.c: */
 int tdb1_new_database(struct tdb_context *tdb,
 		      struct tdb_attribute_tdb1_hashsize *hashsize);
@@ -657,6 +663,9 @@ int tdb1_transaction_cancel(struct tdb_context *tdb);
 int tdb1_traverse(struct tdb_context *tdb,
 		  int (*)(struct tdb_context *, TDB_DATA, TDB_DATA, void *),
 		  void *private_data);
+
+/* tdb1_summary.c: */
+char *tdb1_summary(struct tdb_context *tdb);
 
 /* tdb1_tdb.c: */
 int tdb1_store(struct tdb_context *tdb, TDB_DATA key, TDB_DATA dbuf, int flag);

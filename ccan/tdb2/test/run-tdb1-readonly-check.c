@@ -1,5 +1,5 @@
-/* We should be able to tdb1_check a O_RDONLY tdb, and we were previously allowed
- * to tdb1_check() inside a transaction (though that's paranoia!). */
+/* We should be able to tdb_check a O_RDONLY tdb, and we were previously allowed
+ * to tdb_check() inside a transaction (though that's paranoia!). */
 #include "tdb2-source.h"
 #include <ccan/tap/tap.h>
 #include <stdlib.h>
@@ -28,11 +28,11 @@ int main(int argc, char *argv[])
 	data.dptr = (void *)"world";
 
 	ok1(tdb_store(tdb, key, data, TDB_INSERT) == TDB_SUCCESS);
-	ok1(tdb1_check(tdb, NULL, NULL) == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 
 	/* We are also allowed to do a check inside a transaction. */
 	ok1(tdb_transaction_start(tdb) == TDB_SUCCESS);
-	ok1(tdb1_check(tdb, NULL, NULL) == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 	ok1(tdb_close(tdb) == 0);
 
 	tdb = tdb_open("run-readonly-check.tdb1",
@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
 
 	ok1(tdb);
 	ok1(tdb_store(tdb, key, data, TDB_MODIFY) == TDB_ERR_RDONLY);
-	ok1(tdb1_check(tdb, NULL, NULL) == 0);
+	ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 	ok1(tdb_close(tdb) == 0);
 
 	return exit_status();

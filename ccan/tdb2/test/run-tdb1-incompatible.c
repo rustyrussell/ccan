@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
 		ok1(tdb_fetch(tdb, d, &d) == TDB_SUCCESS);
 		ok1(d.dsize == 5);
 		free(d.dptr);
-		ok1(tdb1_check(tdb, NULL, NULL) == 0);
+		ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 		tdb_close(tdb);
 
 		log_count = 0;
@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
 			       TDB_VERSION1, O_RDONLY, 0, &jhash_attr);
 		ok1(tdb);
 		ok1(log_count == 0);
-		ok1(tdb1_check(tdb, NULL, NULL) == 0);
+		ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 		tdb_close(tdb);
 
 		log_count = 0;
@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
 			       TDB_VERSION1, O_RDONLY, 0, &jhash_attr);
 		ok1(tdb);
 		ok1(log_count == 0);
-		ok1(tdb1_check(tdb, NULL, NULL) == 0);
+		ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 		tdb_close(tdb);
 
 		/* OK, now create with incompatible hash. */
@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
 		ok1(tdb_fetch(tdb, d, &d) == TDB_SUCCESS);
 		ok1(d.dsize == 5);
 		free(d.dptr);
-		ok1(tdb1_check(tdb, NULL, NULL) == 0);
+		ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 		tdb_close(tdb);
 
 		/* Can open by letting it figure it out itself. */
@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
 		ok1(tdb_fetch(tdb, d, &d) == TDB_SUCCESS);
 		ok1(d.dsize == 5);
 		free(d.dptr);
-		ok1(tdb1_check(tdb, NULL, NULL) == 0);
+		ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 		tdb_close(tdb);
 
 		/* FIXME: Not possible with TDB2 :( */
@@ -205,7 +205,7 @@ int main(int argc, char *argv[])
 		ok1(tdb_fetch(tdb, d, &d) == TDB_SUCCESS);
 		ok1(d.dsize == 5);
 		free(d.dptr);
-		ok1(tdb1_check(tdb, NULL, NULL) == 0);
+		ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 		tdb_close(tdb);
 	}
 
