@@ -550,10 +550,11 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	/* Clear any features we don't understand. */
  	if ((open_flags & O_ACCMODE) != O_RDONLY) {
 		hdr.features_used &= TDB_FEATURE_MASK;
-		if (tdb_write_convert(tdb, offsetof(struct tdb_header,
-						    features_used),
-				      &hdr.features_used,
-				      sizeof(hdr.features_used)) == -1)
+		ecode = tdb_write_convert(tdb, offsetof(struct tdb_header,
+							features_used),
+					  &hdr.features_used,
+					  sizeof(hdr.features_used));
+		if (ecode != TDB_SUCCESS)
 			goto fail;
 	}
 
