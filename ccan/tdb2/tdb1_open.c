@@ -34,16 +34,10 @@ static struct tdb1_context *tdb1s = NULL;
 void tdb1_header_hash(struct tdb1_context *tdb,
 		     uint32_t *magic1_hash, uint32_t *magic2_hash)
 {
-	TDB_DATA hash_key;
 	uint32_t tdb1_magic = TDB1_MAGIC;
 
-	hash_key.dptr = (unsigned char *)TDB_MAGIC_FOOD;
-	hash_key.dsize = sizeof(TDB_MAGIC_FOOD);
-	*magic1_hash = tdb->hash_fn(&hash_key);
-
-	hash_key.dptr = (unsigned char *)TDB1_CONV(tdb1_magic);
-	hash_key.dsize = sizeof(tdb1_magic);
-	*magic2_hash = tdb->hash_fn(&hash_key);
+	*magic1_hash = tdb_hash(tdb, TDB_MAGIC_FOOD, sizeof(TDB_MAGIC_FOOD));
+	*magic2_hash = tdb_hash(tdb, TDB1_CONV(tdb1_magic), sizeof(tdb1_magic));
 
 	/* Make sure at least one hash is non-zero! */
 	if (*magic1_hash == 0 && *magic2_hash == 0)
@@ -223,6 +217,7 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 		errno = ENOMEM;
 		goto fail;
 	}
+	tdb->hash_seed = 0;
 
 	if (hash_fn) {
 		tdb->hash_fn = hash_fn;

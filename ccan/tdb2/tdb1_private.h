@@ -58,6 +58,9 @@
 #define tdb_allrecord_upgrade(tdb1, start)				\
 	tdb_allrecord_upgrade((struct tdb_context *)(tdb1), (start))
 
+#define tdb_hash(tdb1, ptr, len) \
+	tdb_hash((struct tdb_context *)(tdb1), (ptr), (len))
+
 #define tdb_lock_gradual(tdb1, ltype, flags, off, len)	\
 	tdb_lock_gradual((struct tdb_context *)(tdb1),	\
 			 (ltype), (flags), (off), (len))
@@ -209,12 +212,16 @@ struct tdb1_context {
 	/* Our statistics. */
 	struct tdb_attribute_stats stats;
 
+	/* Hash function. */
+	uint64_t (*hash_fn)(const void *key, size_t len, uint64_t seed, void *);
+	void *hash_data;
+	uint64_t hash_seed;
+
 	bool read_only; /* opened read-only */
 	int traverse_read; /* read-only traversal */
 	int traverse_write; /* read-write traversal */
 	struct tdb1_header header; /* a cached copy of the header */
 	struct tdb1_traverse_lock travlocks; /* current traversal locks */
-	unsigned int (*hash_fn)(TDB_DATA *key);
 	const struct tdb1_methods *methods;
 	struct tdb1_transaction *transaction;
 	int page_size;
@@ -280,6 +287,6 @@ bool tdb1_write_all(int fd, const void *buf, size_t count);
 int tdb1_transaction_recover(struct tdb1_context *tdb);
 void tdb1_header_hash(struct tdb1_context *tdb,
 		     uint32_t *magic1_hash, uint32_t *magic2_hash);
-unsigned int tdb1_old_hash(TDB_DATA *key);
+uint64_t tdb1_old_hash(const void *key, size_t len, uint64_t seed, void *);
 size_t tdb1_dead_space(struct tdb1_context *tdb, tdb1_off_t off);
 #endif /* CCAN_TDB2_TDB1_PRIVATE_H */

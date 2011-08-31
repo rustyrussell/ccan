@@ -11,16 +11,18 @@ static void log_fn(struct tdb1_context *tdb, enum tdb_log_level level,
 		(*count)++;
 }
 
-static unsigned int jenkins_hashfn(TDB_DATA *key)
+static uint64_t jenkins_hashfn(const void *key, size_t len, uint64_t seed,
+			       void *unused)
 {
-	return hashlittle(key->dptr, key->dsize);
+	return hashlittle(key, len);
 }
 
 /* the tdb1_old_hash function is "magic" as it automatically makes us test the
  * tdb1_incompatible_hash as well, so use this wrapper. */
-static unsigned int old_hash(TDB_DATA *key)
+static uint64_t old_hash(const void *key, size_t len, uint64_t seed,
+			 void *unused)
 {
-	return tdb1_old_hash(key);
+	return tdb1_old_hash(key, len, seed, unused);
 }
 
 int main(int argc, char *argv[])

@@ -331,7 +331,7 @@ TDB_DATA tdb1_nextkey(struct tdb1_context *tdb, TDB_DATA oldkey)
 
 	if (!tdb->travlocks.off) {
 		/* No previous element: do normal find, and lock record */
-		tdb->travlocks.off = tdb1_find_lock_hash(tdb, oldkey, tdb->hash_fn(&oldkey), tdb->travlocks.lock_rw, &rec);
+		tdb->travlocks.off = tdb1_find_lock_hash(tdb, oldkey, tdb_hash(tdb, oldkey.dptr, oldkey.dsize), tdb->travlocks.lock_rw, &rec);
 		if (!tdb->travlocks.off) {
 			return tdb1_null;
 		}

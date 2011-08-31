@@ -356,13 +356,13 @@ struct tdb_context {
 	/* Our statistics. */
 	struct tdb_attribute_stats stats;
 
-	/* Are we accessing directly? (debugging check). */
-	int direct_access;
-
 	/* Hash function. */
 	uint64_t (*hash_fn)(const void *key, size_t len, uint64_t seed, void *);
 	void *hash_data;
 	uint64_t hash_seed;
+
+	/* Are we accessing directly? (debugging check). */
+	int direct_access;
 
 	/* Set if we are in a transaction. */
 	struct tdb_transaction *transaction;

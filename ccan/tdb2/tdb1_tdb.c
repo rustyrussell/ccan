@@ -189,7 +189,7 @@ static TDB_DATA _tdb1_fetch(struct tdb1_context *tdb, TDB_DATA key)
 	uint32_t hash;
 
 	/* find which hash bucket it is in */
-	hash = tdb->hash_fn(&key);
+	hash = tdb_hash(tdb, key.dptr, key.dsize);
 	if (!(rec_ptr = tdb1_find_lock_hash(tdb,key,hash,F_RDLCK,&rec)))
 		return tdb1_null;
 
@@ -236,7 +236,7 @@ int tdb1_parse_record(struct tdb1_context *tdb, TDB_DATA key,
 	uint32_t hash;
 
 	/* find which hash bucket it is in */
-	hash = tdb->hash_fn(&key);
+	hash = tdb_hash(tdb, key.dptr, key.dsize);
 
 	if (!(rec_ptr = tdb1_find_lock_hash(tdb,key,hash,F_RDLCK,&rec))) {
 		/* record not found */
@@ -270,7 +270,7 @@ static int tdb1_exists_hash(struct tdb1_context *tdb, TDB_DATA key, uint32_t has
 
 int tdb1_exists(struct tdb1_context *tdb, TDB_DATA key)
 {
-	uint32_t hash = tdb->hash_fn(&key);
+	uint32_t hash = tdb_hash(tdb, key.dptr, key.dsize);
 	int ret;
 
 	ret = tdb1_exists_hash(tdb, key, hash);
@@ -429,7 +429,7 @@ static int tdb1_delete_hash(struct tdb1_context *tdb, TDB_DATA key, uint32_t has
 
 int tdb1_delete(struct tdb1_context *tdb, TDB_DATA key)
 {
-	uint32_t hash = tdb->hash_fn(&key);
+	uint32_t hash = tdb_hash(tdb, key.dptr, key.dsize);
 	int ret;
 
 	ret = tdb1_delete_hash(tdb, key, hash);
@@ -607,7 +607,7 @@ int tdb1_store(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA dbuf, int flag)
 	}
 
 	/* find which hash bucket it is in */
-	hash = tdb->hash_fn(&key);
+	hash = tdb_hash(tdb, key.dptr, key.dsize);
 	if (tdb1_lock(tdb, TDB1_BUCKET(hash), F_WRLCK) == -1)
 		return -1;
 
@@ -624,7 +624,7 @@ int tdb1_append(struct tdb1_context *tdb, TDB_DATA key, TDB_DATA new_dbuf)
 	int ret = -1;
 
 	/* find which hash bucket it is in */
-	hash = tdb->hash_fn(&key);
+	hash = tdb_hash(tdb, key.dptr, key.dsize);
 	if (tdb1_lock(tdb, TDB1_BUCKET(hash), F_WRLCK) == -1)
 		return -1;
 

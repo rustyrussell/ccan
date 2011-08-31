@@ -392,25 +392,30 @@ int tdb1_unlockall_read(struct tdb1_context *tdb)
    contention - it cannot guarantee how many records will be locked */
 int tdb1_chainlock(struct tdb1_context *tdb, TDB_DATA key)
 {
-	int ret = tdb1_lock(tdb, TDB1_BUCKET(tdb->hash_fn(&key)), F_WRLCK);
+	int ret = tdb1_lock(tdb,
+			    TDB1_BUCKET(tdb_hash(tdb, key.dptr, key.dsize)),
+			    F_WRLCK);
 	return ret;
 }
 
 int tdb1_chainunlock(struct tdb1_context *tdb, TDB_DATA key)
 {
-	return tdb1_unlock(tdb, TDB1_BUCKET(tdb->hash_fn(&key)), F_WRLCK);
+	return tdb1_unlock(tdb, TDB1_BUCKET(tdb_hash(tdb, key.dptr, key.dsize)),
+			   F_WRLCK);
 }
 
 int tdb1_chainlock_read(struct tdb1_context *tdb, TDB_DATA key)
 {
 	int ret;
-	ret = tdb1_lock(tdb, TDB1_BUCKET(tdb->hash_fn(&key)), F_RDLCK);
+	ret = tdb1_lock(tdb, TDB1_BUCKET(tdb_hash(tdb, key.dptr, key.dsize)),
+			F_RDLCK);
 	return ret;
 }
 
 int tdb1_chainunlock_read(struct tdb1_context *tdb, TDB_DATA key)
 {
-	return tdb1_unlock(tdb, TDB1_BUCKET(tdb->hash_fn(&key)), F_RDLCK);
+	return tdb1_unlock(tdb, TDB1_BUCKET(tdb_hash(tdb, key.dptr, key.dsize)),
+			   F_RDLCK);
 }
 
 /* record lock stops delete underneath */

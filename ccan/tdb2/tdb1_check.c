@@ -255,7 +255,7 @@ static bool tdb1_check_used_record(struct tdb1_context *tdb,
 	if (!key.dptr)
 		return false;
 
-	if (tdb->hash_fn(&key) != rec->full_hash) {
+	if ((uint32_t)tdb_hash(tdb, key.dptr, key.dsize) != rec->full_hash) {
 		tdb->last_error = tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
 					"Record offset %d has incorrect hash\n", off);
 		goto fail_put_key;

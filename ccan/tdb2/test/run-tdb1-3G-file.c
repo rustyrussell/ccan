@@ -89,7 +89,7 @@ int main(int argc, char *argv[])
 	free(data.dptr);
 
 	/* That currently fills at the end, make sure that's true. */
-	hash = tdb->hash_fn(&key);
+	hash = tdb_hash(tdb, key.dptr, key.dsize);
 	rec_ptr = tdb1_find_lock_hash(tdb, key, hash, F_RDLCK, &rec);
 	ok1(rec_ptr);
 	ok1(rec_ptr > 2U*1024*1024*1024);

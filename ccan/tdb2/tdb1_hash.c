@@ -25,14 +25,15 @@
 #include "tdb1_private.h"
 
 /* This is based on the hash algorithm from gdbm */
-unsigned int tdb1_old_hash(TDB_DATA *key)
+uint64_t tdb1_old_hash(const void *key, size_t len, uint64_t seed, void *unused)
 {
 	uint32_t value;	/* Used to compute the hash value.  */
 	uint32_t   i;	/* Used to cycle through random values. */
+	const unsigned char *dptr = key;
 
 	/* Set the initial value from the key size. */
-	for (value = 0x238F13AF * key->dsize, i=0; i < key->dsize; i++)
-		value = (value + (key->dptr[i] << (i*5 % 24)));
+	for (value = 0x238F13AF * len, i=0; i < len; i++)
+		value = (value + (dptr[i] << (i*5 % 24)));
 
 	return (1103515243 * value + 12345);
 }
@@ -339,7 +340,8 @@ static uint32_t hashlittle( const void *key, size_t length )
   return c;
 }
 
-unsigned int tdb1_incompatible_hash(TDB_DATA *key)
+uint64_t tdb1_incompatible_hash(const void *key, size_t len, uint64_t seed,
+				 void *unused)
 {
-	return hashlittle(key->dptr, key->dsize);
+	return hashlittle(key, len);
 }

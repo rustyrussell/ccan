@@ -3,9 +3,10 @@
 #include <stdlib.h>
 #include <err.h>
 
-static unsigned int tdb1_dumb_hash(TDB_DATA *key)
+static uint64_t tdb1_dumb_hash(const void *key, size_t len, uint64_t seed,
+			       void *unused)
 {
-	return key->dsize;
+	return len;
 }
 
 static void log_fn(struct tdb1_context *tdb, enum tdb_log_level level,
@@ -31,14 +32,16 @@ static unsigned int hdr_rwlocks(const char *fname)
 	return hdr.rwlocks;
 }
 
-static unsigned int jenkins_hashfn(TDB_DATA *key)
+static uint64_t jenkins_hashfn(const void *key, size_t len, uint64_t seed,
+			       void *unused)
 {
-	return hashlittle(key->dptr, key->dsize);
+	return hashlittle(key, len);
 }
 
-static unsigned int old_hash(TDB_DATA *key)
+static uint64_t old_hash(const void *key, size_t len, uint64_t seed,
+			 void *unused)
 {
-	return tdb1_old_hash(key);
+	return tdb1_old_hash(key, len, seed, unused);
 }
 
 int main(int argc, char *argv[])

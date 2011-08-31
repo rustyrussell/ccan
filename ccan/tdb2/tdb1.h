@@ -42,7 +42,8 @@ typedef struct tdb1_context TDB1_CONTEXT;
 typedef int (*tdb1_traverse_func)(struct tdb1_context *, TDB_DATA, TDB_DATA, void *);
 typedef void (*tdb1_log_func)(struct tdb1_context *, enum tdb_log_level, enum TDB_ERROR,
 			      const char *, void *);
-typedef unsigned int (*tdb1_hash_func)(TDB_DATA *key);
+typedef uint64_t (*tdb1_hash_func)(const void *key, size_t len, uint64_t seed,
+				   void *data);
 
 struct tdb1_logging_context {
         tdb1_log_func log_fn;
@@ -106,7 +107,7 @@ int tdb1_hash_size(struct tdb1_context *tdb);
 
 void tdb1_increment_seqnum_nonblock(struct tdb1_context *tdb);
 
-unsigned int tdb1_incompatible_hash(TDB_DATA *key);
+uint64_t tdb1_incompatible_hash(const void *key, size_t len, uint64_t seed, void *);
 
 int tdb1_check(struct tdb1_context *tdb,
 	      int (*check) (TDB_DATA key, TDB_DATA data, void *private_data),
