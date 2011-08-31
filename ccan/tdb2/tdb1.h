@@ -53,8 +53,6 @@ int tdb1_traverse(struct tdb_context *tdb, tdb1_traverse_func fn, void *private_
 
 int tdb1_traverse_read(struct tdb_context *tdb, tdb1_traverse_func fn, void *private_data);
 
-int tdb1_exists(struct tdb_context *tdb, TDB_DATA key);
-
 int tdb1_lockall(struct tdb_context *tdb);
 
 int tdb1_unlockall(struct tdb_context *tdb);

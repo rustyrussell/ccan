@@ -284,6 +284,10 @@ bool tdb_exists(struct tdb_context *tdb, TDB_DATA key)
 	struct tdb_used_record rec;
 	struct hash_info h;
 
+	if (tdb->flags & TDB_VERSION1) {
+		return tdb1_exists(tdb, key);
+	}
+
 	off = find_and_lock(tdb, key, F_RDLCK, &h, &rec, NULL);
 	if (TDB_OFF_IS_ERR(off)) {
 		tdb->last_error = off;

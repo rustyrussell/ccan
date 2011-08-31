@@ -54,18 +54,18 @@ int main(int argc, char *argv[])
 	ok1(tdb1_transaction_start(tdb) == 0);
 	ok1(tdb_delete(tdb, key) == TDB_SUCCESS);
 	ok1(tdb1_transaction_commit(tdb) == 0);
-	ok1(!tdb1_exists(tdb, key));
+	ok1(!tdb_exists(tdb, key));
 	ok1(tdb1_transaction_cancel(tdb) == 0);
 	/* Surprise! Kills inner "committed" transaction. */
-	ok1(tdb1_exists(tdb, key));
+	ok1(tdb_exists(tdb, key));
 
 	ok1(tdb1_transaction_start(tdb) == 0);
 	ok1(tdb1_transaction_start(tdb) == 0);
 	ok1(tdb_delete(tdb, key) == TDB_SUCCESS);
 	ok1(tdb1_transaction_commit(tdb) == 0);
-	ok1(!tdb1_exists(tdb, key));
+	ok1(!tdb_exists(tdb, key));
 	ok1(tdb1_transaction_commit(tdb) == 0);
-	ok1(!tdb1_exists(tdb, key));
+	ok1(!tdb_exists(tdb, key));
 	tdb_close(tdb);
 
 	return exit_status();

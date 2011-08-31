@@ -275,6 +275,7 @@ int tdb1_exists(struct tdb_context *tdb, TDB_DATA key)
 	uint32_t hash = tdb_hash(tdb, key.dptr, key.dsize);
 	int ret;
 
+	assert(tdb->flags & TDB_VERSION1);
 	ret = tdb1_exists_hash(tdb, key, hash);
 	return ret;
 }
