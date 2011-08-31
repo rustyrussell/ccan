@@ -10,14 +10,7 @@
  * Note that we don't hold a lock across tdb_traverse callbacks, so
  * that doesn't matter.
  */
-#include <ccan/tdb2/tdb.c>
-#include <ccan/tdb2/open.c>
-#include <ccan/tdb2/free.c>
-#include <ccan/tdb2/lock.c>
-#include <ccan/tdb2/io.c>
-#include <ccan/tdb2/hash.c>
-#include <ccan/tdb2/check.c>
-#include <ccan/tdb2/transaction.c>
+#include "tdb2-source.h"
 #include <ccan/tap/tap.h>
 #include <sys/types.h>
 #include <sys/wait.h>

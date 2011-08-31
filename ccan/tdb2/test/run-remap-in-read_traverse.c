@@ -1,14 +1,6 @@
+#include "tdb2-source.h"
 /* We had a bug where we marked the tdb read-only for a tdb_traverse_read.
  * If we then expanded the tdb, we would remap read-only, and later SEGV. */
-#include <ccan/tdb2/tdb.c>
-#include <ccan/tdb2/open.c>
-#include <ccan/tdb2/free.c>
-#include <ccan/tdb2/lock.c>
-#include <ccan/tdb2/io.c>
-#include <ccan/tdb2/hash.c>
-#include <ccan/tdb2/check.c>
-#include <ccan/tdb2/traverse.c>
-#include <ccan/tdb2/transaction.c>
 #include <ccan/tap/tap.h>
 #include "external-agent.h"
 #include "logging.h"
