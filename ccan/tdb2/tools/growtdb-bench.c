@@ -10,10 +10,12 @@
 
 static void logfn(struct tdb_context *tdb,
 		  enum tdb_log_level level,
+		  enum TDB_ERROR ecode,
 		  const char *message,
 		  void *data)
 {
-	fprintf(stderr, "tdb:%s:%s\n", tdb_name(tdb), message);
+	fprintf(stderr, "tdb:%s:%s:%s\n",
+		tdb_name(tdb), tdb_errorstr(ecode), message);
 }
 
 int main(int argc, char *argv[])

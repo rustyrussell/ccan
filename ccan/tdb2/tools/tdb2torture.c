@@ -42,10 +42,14 @@ static int count_pipe;
 static union tdb_attribute log_attr;
 static union tdb_attribute seed_attr;
 
-static void tdb_log(struct tdb_context *tdb, enum tdb_log_level level,
-		    const char *message, void *data)
+static void tdb_log(struct tdb_context *tdb,
+		    enum tdb_log_level level,
+		    enum TDB_ERROR ecode,
+		    const char *message,
+		    void *data)
 {
-	fputs(message, stdout);
+	printf("tdb:%s:%s:%s\n",
+	       tdb_name(tdb), tdb_errorstr(ecode), message);
 	fflush(stdout);
 #if 0
 	{

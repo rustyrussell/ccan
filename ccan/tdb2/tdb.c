@@ -431,11 +431,11 @@ enum TDB_ERROR COLD tdb_logerr(struct tdb_context *tdb,
 	va_end(ap);
 
 	if (len < 0) {
-		tdb->log_fn(tdb, TDB_LOG_ERROR,
+		tdb->log_fn(tdb, TDB_LOG_ERROR, TDB_ERR_OOM,
 			    "out of memory formatting message:", tdb->log_data);
-		tdb->log_fn(tdb, level, fmt, tdb->log_data);
+		tdb->log_fn(tdb, level, ecode, fmt, tdb->log_data);
 	} else {
-		tdb->log_fn(tdb, level, message, tdb->log_data);
+		tdb->log_fn(tdb, level, ecode, message, tdb->log_data);
 		free(message);
 	}
 	errno = saved_errno;

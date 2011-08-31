@@ -15,12 +15,14 @@ union tdb_attribute tap_log_attr = {
 
 void tap_log_fn(struct tdb_context *tdb,
 		enum tdb_log_level level,
+		enum TDB_ERROR ecode,
 		const char *message, void *priv)
 {
 	if (suppress_logging)
 		return;
 
-	diag("tdb log level %u: %s%s", level, log_prefix, message);
+	diag("tdb log level %u: %s: %s%s",
+	     level, tdb_errorstr(ecode), log_prefix, message);
 	if (log_last)
 		free(log_last);
 	log_last = strdup(message);

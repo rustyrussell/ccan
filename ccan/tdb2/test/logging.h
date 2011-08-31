@@ -12,5 +12,6 @@ extern char *log_last;
 
 void tap_log_fn(struct tdb_context *tdb,
 		enum tdb_log_level level,
+		enum TDB_ERROR ecode,
 		const char *message, void *priv);
 #endif /* TDB2_TEST_LOGGING_H */

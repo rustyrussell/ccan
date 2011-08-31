@@ -343,6 +343,7 @@ struct tdb_context {
 	/* Logging function */
 	void (*log_fn)(struct tdb_context *tdb,
 		       enum tdb_log_level level,
+		       enum TDB_ERROR ecode,
 		       const char *message,
 		       void *data);
 	void *log_data;

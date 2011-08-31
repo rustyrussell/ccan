@@ -126,10 +126,14 @@ static double _end_timer(void)
 	       (tp2.tv_usec - tp1.tv_usec)*1.0e-6);
 }
 
-static void tdb_log(struct tdb_context *tdb, enum tdb_log_level level,
-		    const char *message, void *priv)
+static void tdb_log(struct tdb_context *tdb,
+		    enum tdb_log_level level,
+		    enum TDB_ERROR ecode,
+		    const char *message,
+		    void *data)
 {
-	fputs(message, stderr);
+	fprintf(stderr, "tdb:%s:%s:%s\n",
+		tdb_name(tdb), tdb_errorstr(ecode), message);
 }
 
 /* a tdb tool for manipulating a tdb database */

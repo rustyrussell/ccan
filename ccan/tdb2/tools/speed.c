@@ -126,11 +126,14 @@ static void dump_and_clear_stats(struct tdb_context **tdb,
 	*tdb = tdb_open("/tmp/speed.tdb", flags, O_RDWR, 0, attr);
 }
 
-static void tdb_log(struct tdb_context *tdb, enum tdb_log_level level,
-		    const char *message, void *data)
+static void tdb_log(struct tdb_context *tdb,
+		    enum tdb_log_level level,
+		    enum TDB_ERROR ecode,
+		    const char *message,
+		    void *data)
 {
-	fputs(message, stderr);
-	putc('\n', stderr);
+	fprintf(stderr, "tdb:%s:%s:%s\n",
+		tdb_name(tdb), tdb_errorstr(ecode), message);
 }
 
 int main(int argc, char *argv[])
