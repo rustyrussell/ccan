@@ -208,7 +208,7 @@ out:
 /*
   a write style traverse - temporarily marks the db read only
 */
-_PUBLIC_ int tdb1_traverse_read(struct tdb1_context *tdb,
+int tdb1_traverse_read(struct tdb1_context *tdb,
 		      tdb1_traverse_func fn, void *private_data)
 {
 	struct tdb1_traverse_lock tl = { NULL, 0, 0, F_RDLCK };
@@ -236,7 +236,7 @@ _PUBLIC_ int tdb1_traverse_read(struct tdb1_context *tdb,
   WARNING: The data buffer given to the callback fn does NOT meet the
   alignment restrictions malloc gives you.
 */
-_PUBLIC_ int tdb1_traverse(struct tdb1_context *tdb,
+int tdb1_traverse(struct tdb1_context *tdb,
 		 tdb1_traverse_func fn, void *private_data)
 {
 	struct tdb1_traverse_lock tl = { NULL, 0, 0, F_WRLCK };
@@ -261,7 +261,7 @@ _PUBLIC_ int tdb1_traverse(struct tdb1_context *tdb,
 
 
 /* find the first entry in the database and return its key */
-_PUBLIC_ TDB1_DATA tdb1_firstkey(struct tdb1_context *tdb)
+TDB1_DATA tdb1_firstkey(struct tdb1_context *tdb)
 {
 	TDB1_DATA key;
 	struct tdb1_record rec;
@@ -289,7 +289,7 @@ _PUBLIC_ TDB1_DATA tdb1_firstkey(struct tdb1_context *tdb)
 }
 
 /* find the next entry in the database, returning its key */
-_PUBLIC_ TDB1_DATA tdb1_nextkey(struct tdb1_context *tdb, TDB1_DATA oldkey)
+TDB1_DATA tdb1_nextkey(struct tdb1_context *tdb, TDB1_DATA oldkey)
 {
 	uint32_t oldhash;
 	TDB1_DATA key = tdb1_null;

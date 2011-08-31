@@ -129,7 +129,7 @@ static int tdb1_already_open(dev_t device,
    try to call tdb1_error or tdb1_errname, just do strerror(errno).
 
    @param name may be NULL for internal databases. */
-_PUBLIC_ struct tdb1_context *tdb1_open(const char *name, int hash_size, int tdb1_flags,
+struct tdb1_context *tdb1_open(const char *name, int hash_size, int tdb1_flags,
 		      int open_flags, mode_t mode)
 {
 	return tdb1_open_ex(name, hash_size, tdb1_flags, open_flags, mode, NULL, NULL);
@@ -162,7 +162,7 @@ static bool check_header_hash(struct tdb1_context *tdb,
 	return check_header_hash(tdb, false, m1, m2);
 }
 
-_PUBLIC_ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flags,
+struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flags,
 				int open_flags, mode_t mode,
 				const struct tdb1_logging_context *log_ctx,
 				tdb1_hash_func hash_fn)
@@ -450,7 +450,7 @@ _PUBLIC_ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int 
  * Set the maximum number of dead records per hash chain
  */
 
-_PUBLIC_ void tdb1_set_max_dead(struct tdb1_context *tdb, int max_dead)
+void tdb1_set_max_dead(struct tdb1_context *tdb, int max_dead)
 {
 	tdb->max_dead_records = max_dead;
 }
@@ -460,7 +460,7 @@ _PUBLIC_ void tdb1_set_max_dead(struct tdb1_context *tdb, int max_dead)
  *
  * @returns -1 for error; 0 for success.
  **/
-_PUBLIC_ int tdb1_close(struct tdb1_context *tdb)
+int tdb1_close(struct tdb1_context *tdb)
 {
 	struct tdb1_context **i;
 	int ret = 0;

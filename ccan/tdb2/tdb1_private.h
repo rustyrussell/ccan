@@ -45,11 +45,6 @@
 #include <limits.h>
 #include <stdio.h>
 #include <utime.h>
-
-#ifndef _PUBLIC_
-#define _PUBLIC_
-#endif
-
 #else
 #include "replace.h"
 #include "system/filesys.h"

@@ -626,50 +626,50 @@ int tdb1_allrecord_unlock(struct tdb1_context *tdb, int ltype, bool mark_lock)
 }
 
 /* lock entire database with write lock */
-_PUBLIC_ int tdb1_lockall(struct tdb1_context *tdb)
+int tdb1_lockall(struct tdb1_context *tdb)
 {
 	return tdb1_allrecord_lock(tdb, F_WRLCK, TDB1_LOCK_WAIT, false);
 }
 
 /* unlock entire database with write lock */
-_PUBLIC_ int tdb1_unlockall(struct tdb1_context *tdb)
+int tdb1_unlockall(struct tdb1_context *tdb)
 {
 	return tdb1_allrecord_unlock(tdb, F_WRLCK, false);
 }
 
 /* lock entire database with read lock */
-_PUBLIC_ int tdb1_lockall_read(struct tdb1_context *tdb)
+int tdb1_lockall_read(struct tdb1_context *tdb)
 {
 	return tdb1_allrecord_lock(tdb, F_RDLCK, TDB1_LOCK_WAIT, false);
 }
 
 /* unlock entire database with read lock */
-_PUBLIC_ int tdb1_unlockall_read(struct tdb1_context *tdb)
+int tdb1_unlockall_read(struct tdb1_context *tdb)
 {
 	return tdb1_allrecord_unlock(tdb, F_RDLCK, false);
 }
 
 /* lock/unlock one hash chain. This is meant to be used to reduce
    contention - it cannot guarantee how many records will be locked */
-_PUBLIC_ int tdb1_chainlock(struct tdb1_context *tdb, TDB1_DATA key)
+int tdb1_chainlock(struct tdb1_context *tdb, TDB1_DATA key)
 {
 	int ret = tdb1_lock(tdb, TDB1_BUCKET(tdb->hash_fn(&key)), F_WRLCK);
 	return ret;
 }
 
-_PUBLIC_ int tdb1_chainunlock(struct tdb1_context *tdb, TDB1_DATA key)
+int tdb1_chainunlock(struct tdb1_context *tdb, TDB1_DATA key)
 {
 	return tdb1_unlock(tdb, TDB1_BUCKET(tdb->hash_fn(&key)), F_WRLCK);
 }
 
-_PUBLIC_ int tdb1_chainlock_read(struct tdb1_context *tdb, TDB1_DATA key)
+int tdb1_chainlock_read(struct tdb1_context *tdb, TDB1_DATA key)
 {
 	int ret;
 	ret = tdb1_lock(tdb, TDB1_BUCKET(tdb->hash_fn(&key)), F_RDLCK);
 	return ret;
 }
 
-_PUBLIC_ int tdb1_chainunlock_read(struct tdb1_context *tdb, TDB1_DATA key)
+int tdb1_chainunlock_read(struct tdb1_context *tdb, TDB1_DATA key)
 {
 	return tdb1_unlock(tdb, TDB1_BUCKET(tdb->hash_fn(&key)), F_RDLCK);
 }

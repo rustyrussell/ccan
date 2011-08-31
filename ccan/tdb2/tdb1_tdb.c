@@ -27,13 +27,13 @@
 
 #include "tdb1_private.h"
 
-_PUBLIC_ TDB1_DATA tdb1_null;
+TDB1_DATA tdb1_null;
 
 /*
   non-blocking increment of the tdb sequence number if the tdb has been opened using
   the TDB1_SEQNUM flag
 */
-_PUBLIC_ void tdb1_increment_seqnum_nonblock(struct tdb1_context *tdb)
+void tdb1_increment_seqnum_nonblock(struct tdb1_context *tdb)
 {
 	tdb1_off_t seqnum=0;
 
@@ -199,7 +199,7 @@ static TDB1_DATA _tdb1_fetch(struct tdb1_context *tdb, TDB1_DATA key)
 	return ret;
 }
 
-_PUBLIC_ TDB1_DATA tdb1_fetch(struct tdb1_context *tdb, TDB1_DATA key)
+TDB1_DATA tdb1_fetch(struct tdb1_context *tdb, TDB1_DATA key)
 {
 	TDB1_DATA ret = _tdb1_fetch(tdb, key);
 
@@ -224,7 +224,7 @@ _PUBLIC_ TDB1_DATA tdb1_fetch(struct tdb1_context *tdb, TDB1_DATA key)
  * Return -1 if the record was not found.
  */
 
-_PUBLIC_ int tdb1_parse_record(struct tdb1_context *tdb, TDB1_DATA key,
+int tdb1_parse_record(struct tdb1_context *tdb, TDB1_DATA key,
 		     int (*parser)(TDB1_DATA key, TDB1_DATA data,
 				   void *private_data),
 		     void *private_data)
@@ -267,7 +267,7 @@ static int tdb1_exists_hash(struct tdb1_context *tdb, TDB1_DATA key, uint32_t ha
 	return 1;
 }
 
-_PUBLIC_ int tdb1_exists(struct tdb1_context *tdb, TDB1_DATA key)
+int tdb1_exists(struct tdb1_context *tdb, TDB1_DATA key)
 {
 	uint32_t hash = tdb->hash_fn(&key);
 	int ret;
@@ -425,7 +425,7 @@ static int tdb1_delete_hash(struct tdb1_context *tdb, TDB1_DATA key, uint32_t ha
 	return ret;
 }
 
-_PUBLIC_ int tdb1_delete(struct tdb1_context *tdb, TDB1_DATA key)
+int tdb1_delete(struct tdb1_context *tdb, TDB1_DATA key)
 {
 	uint32_t hash = tdb->hash_fn(&key);
 	int ret;
@@ -594,7 +594,7 @@ static int _tdb1_store(struct tdb1_context *tdb, TDB1_DATA key,
 
    return 0 on success, -1 on failure
 */
-_PUBLIC_ int tdb1_store(struct tdb1_context *tdb, TDB1_DATA key, TDB1_DATA dbuf, int flag)
+int tdb1_store(struct tdb1_context *tdb, TDB1_DATA key, TDB1_DATA dbuf, int flag)
 {
 	uint32_t hash;
 	int ret;
@@ -615,7 +615,7 @@ _PUBLIC_ int tdb1_store(struct tdb1_context *tdb, TDB1_DATA key, TDB1_DATA dbuf,
 }
 
 /* Append to an entry. Create if not exist. */
-_PUBLIC_ int tdb1_append(struct tdb1_context *tdb, TDB1_DATA key, TDB1_DATA new_dbuf)
+int tdb1_append(struct tdb1_context *tdb, TDB1_DATA key, TDB1_DATA new_dbuf)
 {
 	uint32_t hash;
 	TDB1_DATA dbuf;
@@ -665,7 +665,7 @@ failed:
   return the current logging function
   useful for external tdb routines that wish to log tdb errors
 */
-_PUBLIC_ tdb1_log_func tdb1_log_fn(struct tdb1_context *tdb)
+tdb1_log_func tdb1_log_fn(struct tdb1_context *tdb)
 {
 	return tdb->log.log_fn;
 }
@@ -681,7 +681,7 @@ _PUBLIC_ tdb1_log_func tdb1_log_fn(struct tdb1_context *tdb)
   The aim of this sequence number is to allow for a very lightweight
   test of a possible tdb change.
 */
-_PUBLIC_ int tdb1_get_seqnum(struct tdb1_context *tdb)
+int tdb1_get_seqnum(struct tdb1_context *tdb)
 {
 	tdb1_off_t seqnum=0;
 
@@ -689,7 +689,7 @@ _PUBLIC_ int tdb1_get_seqnum(struct tdb1_context *tdb)
 	return seqnum;
 }
 
-_PUBLIC_ int tdb1_hash_size(struct tdb1_context *tdb)
+int tdb1_hash_size(struct tdb1_context *tdb)
 {
 	return tdb->header.hash_size;
 }
@@ -726,7 +726,7 @@ static int tdb1_free_region(struct tdb1_context *tdb, tdb1_off_t offset, ssize_t
 
   This code carefully steps around the recovery area, leaving it alone
  */
-_PUBLIC_ int tdb1_wipe_all(struct tdb1_context *tdb)
+int tdb1_wipe_all(struct tdb1_context *tdb)
 {
 	int i;
 	tdb1_off_t offset = 0;
@@ -832,7 +832,7 @@ static int repack_traverse(struct tdb1_context *tdb, TDB1_DATA key, TDB1_DATA da
 /*
   repack a tdb
  */
-_PUBLIC_ int tdb1_repack(struct tdb1_context *tdb)
+int tdb1_repack(struct tdb1_context *tdb)
 {
 	struct tdb1_context *tmp_db;
 	struct traverse_state state;

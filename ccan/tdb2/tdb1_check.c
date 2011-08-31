@@ -322,7 +322,7 @@ size_t tdb1_dead_space(struct tdb1_context *tdb, tdb1_off_t off)
 	return len;
 }
 
-_PUBLIC_ int tdb1_check(struct tdb1_context *tdb,
+int tdb1_check(struct tdb1_context *tdb,
 	      int (*check)(TDB1_DATA key, TDB1_DATA data, void *private_data),
 	      void *private_data)
 {

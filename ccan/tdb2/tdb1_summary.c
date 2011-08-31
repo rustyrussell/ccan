@@ -84,7 +84,7 @@ static size_t get_hash_length(struct tdb1_context *tdb, unsigned int i)
 	return count;
 }
 
-_PUBLIC_ char *tdb1_summary(struct tdb1_context *tdb)
+char *tdb1_summary(struct tdb1_context *tdb)
 {
 	tdb1_off_t off, rec_off;
 	struct tally freet, keys, data, dead, extra, hash, uncoal;

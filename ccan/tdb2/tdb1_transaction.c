@@ -527,7 +527,7 @@ fail_allrecord_lock:
 	return -1;
 }
 
-_PUBLIC_ int tdb1_transaction_start(struct tdb1_context *tdb)
+int tdb1_transaction_start(struct tdb1_context *tdb)
 {
 	return _tdb1_transaction_start(tdb, TDB1_LOCK_WAIT);
 }
@@ -618,7 +618,7 @@ static int _tdb1_transaction_cancel(struct tdb1_context *tdb)
 /*
   cancel the current transaction
 */
-_PUBLIC_ int tdb1_transaction_cancel(struct tdb1_context *tdb)
+int tdb1_transaction_cancel(struct tdb1_context *tdb)
 {
 	return _tdb1_transaction_cancel(tdb);
 }
@@ -983,7 +983,7 @@ static int _tdb1_transaction_prepare_commit(struct tdb1_context *tdb)
 /*
    prepare to commit the current transaction
 */
-_PUBLIC_ int tdb1_transaction_prepare_commit(struct tdb1_context *tdb)
+int tdb1_transaction_prepare_commit(struct tdb1_context *tdb)
 {
 	return _tdb1_transaction_prepare_commit(tdb);
 }
@@ -1013,7 +1013,7 @@ static bool repack_worthwhile(struct tdb1_context *tdb)
 /*
   commit the current transaction
 */
-_PUBLIC_ int tdb1_transaction_commit(struct tdb1_context *tdb)
+int tdb1_transaction_commit(struct tdb1_context *tdb)
 {
 	const struct tdb1_methods *methods;
 	int i;
