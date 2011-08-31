@@ -28,6 +28,13 @@ int64_t tdb_traverse_(struct tdb_context *tdb,
 	struct tdb_data k, d;
 	int64_t count = 0;
 
+	if (tdb->flags & TDB_VERSION1) {
+		count = tdb1_traverse(tdb, fn, p);
+		if (count == -1)
+			return tdb->last_error;
+		return count;
+	}
+
 	k.dptr = NULL;
 	for (ecode = first_in_hash(tdb, &tinfo, &k, &d.dsize);
 	     ecode == TDB_SUCCESS;

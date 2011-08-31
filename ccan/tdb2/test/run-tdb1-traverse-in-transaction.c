@@ -64,12 +64,12 @@ int main(int argc, char *argv[])
 	ok1(tdb1_transaction_start(tdb) == 0);
 	ok1(external_agent_operation1(agent, TRANSACTION_START, tdb->name)
 	    == WOULD_HAVE_BLOCKED);
-	tdb1_traverse(tdb, traverse, NULL);
+	tdb_traverse(tdb, traverse, NULL);
 
 	/* That should *not* release the transaction lock! */
 	ok1(external_agent_operation1(agent, TRANSACTION_START, tdb->name)
 	    == WOULD_HAVE_BLOCKED);
-	tdb1_traverse_read(tdb, traverse, NULL);
+	tdb_traverse(tdb, traverse, NULL);
 
 	/* That should *not* release the transaction lock! */
 	ok1(external_agent_operation1(agent, TRANSACTION_START, tdb->name)

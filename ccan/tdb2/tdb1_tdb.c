@@ -862,7 +862,7 @@ int tdb1_repack(struct tdb_context *tdb)
 	state.error = TDB_SUCCESS;
 	state.dest_db = tmp_db;
 
-	if (tdb1_traverse_read(tdb, repack_traverse, &state) == -1) {
+	if (tdb1_traverse(tdb, repack_traverse, &state) == -1) {
 		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
 			   __location__ " Failed to traverse copying out");
 		tdb1_transaction_cancel(tdb);
@@ -889,7 +889,7 @@ int tdb1_repack(struct tdb_context *tdb)
 	state.error = TDB_SUCCESS;
 	state.dest_db = tdb;
 
-	if (tdb1_traverse_read(tmp_db, repack_traverse, &state) == -1) {
+	if (tdb1_traverse(tmp_db, repack_traverse, &state) == -1) {
 		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
 			   __location__ " Failed to traverse copying back");
 		tdb1_transaction_cancel(tdb);

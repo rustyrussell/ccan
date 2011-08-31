@@ -36,8 +36,6 @@
 #endif
 
 
-typedef int (*tdb1_traverse_func)(struct tdb_context *, TDB_DATA, TDB_DATA, void *);
-
 void tdb1_set_max_dead(struct tdb_context *tdb, int max_dead);
 
 int tdb1_parse_record(struct tdb_context *tdb, TDB_DATA key,
@@ -48,10 +46,6 @@ int tdb1_parse_record(struct tdb_context *tdb, TDB_DATA key,
 TDB_DATA tdb1_firstkey(struct tdb_context *tdb);
 
 TDB_DATA tdb1_nextkey(struct tdb_context *tdb, TDB_DATA key);
-
-int tdb1_traverse(struct tdb_context *tdb, tdb1_traverse_func fn, void *private_data);
-
-int tdb1_traverse_read(struct tdb_context *tdb, tdb1_traverse_func fn, void *private_data);
 
 int tdb1_lockall(struct tdb_context *tdb);
 

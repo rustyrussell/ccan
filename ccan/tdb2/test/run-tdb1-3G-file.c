@@ -101,12 +101,12 @@ int main(int argc, char *argv[])
 	tdb1_unlock(tdb, TDB1_BUCKET(rec.full_hash), F_RDLCK);
 
 	/* Traverse must work. */
-	ok1(tdb1_traverse(tdb, test_traverse, &orig_data) == 1);
+	ok1(tdb_traverse(tdb, test_traverse, &orig_data) == 1);
 
 	/* Delete should work. */
 	ok1(tdb_delete(tdb, key) == TDB_SUCCESS);
 
-	ok1(tdb1_traverse(tdb, test_traverse, NULL) == 0);
+	ok1(tdb_traverse(tdb, test_traverse, NULL) == 0);
 
 	/* Transactions should work. */
 	ok1(tdb1_transaction_start(tdb) == 0);
@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
 	free(data.dptr);
 	ok1(tdb1_transaction_commit(tdb) == 0);
 
-	ok1(tdb1_traverse(tdb, test_traverse, &orig_data) == 1);
+	ok1(tdb_traverse(tdb, test_traverse, &orig_data) == 1);
 	tdb_close(tdb);
 
 	return exit_status();

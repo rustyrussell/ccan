@@ -38,7 +38,7 @@ static int traverse1(struct tdb_context *tdb, TDB_DATA key, TDB_DATA data,
 	ok1(correct_data(data));
 	ok1(external_agent_operation1(agent, TRANSACTION_START, tdb->name)
 	    == WOULD_HAVE_BLOCKED);
-	tdb1_traverse(tdb, traverse2, NULL);
+	tdb_traverse(tdb, traverse2, NULL);
 
 	/* That should *not* release the transaction lock! */
 	ok1(external_agent_operation1(agent, TRANSACTION_START, tdb->name)
@@ -77,8 +77,10 @@ int main(int argc, char *argv[])
 	data.dsize = strlen("world");
 
 	ok1(tdb_store(tdb, key, data, TDB_INSERT) == TDB_SUCCESS);
-	tdb1_traverse(tdb, traverse1, NULL);
-	tdb1_traverse_read(tdb, traverse1, NULL);
+	tdb_traverse(tdb, traverse1, NULL);
+	tdb_add_flag(tdb, TDB_RDONLY);
+	tdb_traverse(tdb, traverse1, NULL);
+	tdb_remove_flag(tdb, TDB_RDONLY);
 	tdb_close(tdb);
 
 	return exit_status();

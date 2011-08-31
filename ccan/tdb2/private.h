@@ -646,6 +646,11 @@ int tdb1_allrecord_unlock(struct tdb_context *tdb, int ltype);
 int tdb1_transaction_recover(struct tdb_context *tdb);
 int tdb1_transaction_cancel(struct tdb_context *tdb);
 
+/* tdb1_traverse.c: */
+int tdb1_traverse(struct tdb_context *tdb,
+		  int (*)(struct tdb_context *, TDB_DATA, TDB_DATA, void *),
+		  void *private_data);
+
 /* tdb1_tdb.c: */
 int tdb1_store(struct tdb_context *tdb, TDB_DATA key, TDB_DATA dbuf, int flag);
 enum TDB_ERROR tdb1_fetch(struct tdb_context *tdb, TDB_DATA key,

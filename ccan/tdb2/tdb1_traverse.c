@@ -144,8 +144,10 @@ static tdb1_off_t tdb1_next_lock(struct tdb_context *tdb, struct tdb1_traverse_l
    a non-zero return value from fn() indicates that the traversal should stop
   */
 static int tdb1_traverse_internal(struct tdb_context *tdb,
-				 tdb1_traverse_func fn, void *private_data,
-				 struct tdb1_traverse_lock *tl)
+				  int (*fn)(struct tdb_context *,
+					    TDB_DATA, TDB_DATA, void *),
+				  void *private_data,
+				  struct tdb1_traverse_lock *tl)
 {
 	TDB_DATA key, dbuf;
 	struct tdb1_record rec;
@@ -213,10 +215,12 @@ out:
 
 
 /*
-  a write style traverse - temporarily marks the db read only
+  a read style traverse - only if db read only
 */
-int tdb1_traverse_read(struct tdb_context *tdb,
-		      tdb1_traverse_func fn, void *private_data)
+static int tdb1_traverse_read(struct tdb_context *tdb,
+			      int (*fn)(struct tdb_context *,
+					TDB_DATA, TDB_DATA, void *),
+			      void *private_data)
 {
 	struct tdb1_traverse_lock tl = { NULL, 0, 0, F_RDLCK };
 	int ret;
@@ -244,12 +248,14 @@ int tdb1_traverse_read(struct tdb_context *tdb,
   alignment restrictions malloc gives you.
 */
 int tdb1_traverse(struct tdb_context *tdb,
-		 tdb1_traverse_func fn, void *private_data)
+		  int (*fn)(struct tdb_context *, TDB_DATA, TDB_DATA, void *),
+		  void *private_data)
 {
 	struct tdb1_traverse_lock tl = { NULL, 0, 0, F_WRLCK };
 	int ret;
 
-	if ((tdb->flags & TDB_RDONLY) || tdb->tdb1.traverse_read) {
+	/* If we're read-only, we don't have to write-lock whole db. */
+	if (tdb->flags & TDB_RDONLY) {
 		return tdb1_traverse_read(tdb, fn, private_data);
 	}
 
