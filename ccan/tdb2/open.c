@@ -689,3 +689,13 @@ int tdb_close(struct tdb_context *tdb)
 
 	return ret;
 }
+
+void tdb_foreach_(int (*fn)(struct tdb_context *, void *), void *p)
+{
+	struct tdb_context *i;
+
+	for (i = tdbs; i; i = i->next) {
+		if (fn(i, p) != 0)
+			break;
+	}
+}

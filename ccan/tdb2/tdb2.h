@@ -671,6 +671,20 @@ const char *tdb_name(const struct tdb_context *tdb);
 int tdb_fd(const struct tdb_context *tdb);
 
 /**
+ * tdb_foreach - iterate through every open TDB.
+ * @fn: the function to call for every TDB
+ * @p: the pointer to hand to @fn
+ *
+ * TDB internally keeps track of all open TDBs; this function allows you to
+ * iterate through them.  If @fn returns non-zero, traversal stops.
+ */
+#define tdb_foreach(fn, p)						\
+	tdb_foreach_(typesafe_cb_preargs(int, void *, (fn), (p),	\
+					 struct tdb_context *), (p))
+
+void tdb_foreach_(int (*fn)(struct tdb_context *, void *), void *p);
+
+/**
  * struct tdb_attribute_base - common fields for all tdb attributes.
  */
 struct tdb_attribute_base {
