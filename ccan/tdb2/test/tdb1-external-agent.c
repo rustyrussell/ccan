@@ -36,7 +36,7 @@ static enum agent_return do_operation(enum operation op, const char *name)
 	switch (op) {
 	case OPEN:
 		if (tdb) {
-			diag("Already have tdb %s open", tdb1_name(tdb));
+			diag("Already have tdb %s open", tdb->name);
 			return OTHER_FAILURE;
 		}
 		tdb = tdb1_open_ex(name, 0, TDB1_DEFAULT, O_RDWR, 0,

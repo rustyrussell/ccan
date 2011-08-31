@@ -27,11 +27,6 @@
 
 #include "tdb1_private.h"
 
-_PUBLIC_ void tdb1_setalarm_sigptr(struct tdb1_context *tdb, volatile sig_atomic_t *ptr)
-{
-	tdb->interrupt_sig_ptr = ptr;
-}
-
 static int fcntl_lock(struct tdb1_context *tdb,
 		      int rw, off_t off, off_t len, bool waitflag)
 {
@@ -155,12 +150,6 @@ int tdb1_brlock(struct tdb1_context *tdb,
 	do {
 		ret = fcntl_lock(tdb, rw_type, offset, len,
 				 flags & TDB1_LOCK_WAIT);
-		/* Check for a sigalarm break. */
-		if (ret == -1 && errno == EINTR &&
-				tdb->interrupt_sig_ptr &&
-				*tdb->interrupt_sig_ptr) {
-			break;
-		}
 	} while (ret == -1 && errno == EINTR);
 
 	if (ret == -1) {
@@ -378,13 +367,6 @@ int tdb1_lock(struct tdb1_context *tdb, int list, int ltype)
 	}
 	return ret;
 }
-
-/* lock a list in the database. list -1 is the alloc list. non-blocking lock */
-int tdb1_lock_nonblock(struct tdb1_context *tdb, int list, int ltype)
-{
-	return tdb1_lock_list(tdb, list, ltype, TDB1_LOCK_NOWAIT);
-}
-
 
 int tdb1_nest_unlock(struct tdb1_context *tdb, uint32_t offset, int ltype,
 		    bool mark_lock)
@@ -649,25 +631,6 @@ _PUBLIC_ int tdb1_lockall(struct tdb1_context *tdb)
 	return tdb1_allrecord_lock(tdb, F_WRLCK, TDB1_LOCK_WAIT, false);
 }
 
-/* lock entire database with write lock - mark only */
-_PUBLIC_ int tdb1_lockall_mark(struct tdb1_context *tdb)
-{
-	return tdb1_allrecord_lock(tdb, F_WRLCK, TDB1_LOCK_MARK_ONLY, false);
-}
-
-/* unlock entire database with write lock - unmark only */
-_PUBLIC_ int tdb1_lockall_unmark(struct tdb1_context *tdb)
-{
-	return tdb1_allrecord_unlock(tdb, F_WRLCK, true);
-}
-
-/* lock entire database with write lock - nonblocking varient */
-_PUBLIC_ int tdb1_lockall_nonblock(struct tdb1_context *tdb)
-{
-	int ret = tdb1_allrecord_lock(tdb, F_WRLCK, TDB1_LOCK_NOWAIT, false);
-	return ret;
-}
-
 /* unlock entire database with write lock */
 _PUBLIC_ int tdb1_unlockall(struct tdb1_context *tdb)
 {
@@ -678,13 +641,6 @@ _PUBLIC_ int tdb1_unlockall(struct tdb1_context *tdb)
 _PUBLIC_ int tdb1_lockall_read(struct tdb1_context *tdb)
 {
 	return tdb1_allrecord_lock(tdb, F_RDLCK, TDB1_LOCK_WAIT, false);
-}
-
-/* lock entire database with read lock - nonblock varient */
-_PUBLIC_ int tdb1_lockall_read_nonblock(struct tdb1_context *tdb)
-{
-	int ret = tdb1_allrecord_lock(tdb, F_RDLCK, TDB1_LOCK_NOWAIT, false);
-	return ret;
 }
 
 /* unlock entire database with read lock */
@@ -699,30 +655,6 @@ _PUBLIC_ int tdb1_chainlock(struct tdb1_context *tdb, TDB1_DATA key)
 {
 	int ret = tdb1_lock(tdb, TDB1_BUCKET(tdb->hash_fn(&key)), F_WRLCK);
 	return ret;
-}
-
-/* lock/unlock one hash chain, non-blocking. This is meant to be used
-   to reduce contention - it cannot guarantee how many records will be
-   locked */
-_PUBLIC_ int tdb1_chainlock_nonblock(struct tdb1_context *tdb, TDB1_DATA key)
-{
-	int ret = tdb1_lock_nonblock(tdb, TDB1_BUCKET(tdb->hash_fn(&key)), F_WRLCK);
-	return ret;
-}
-
-/* mark a chain as locked without actually locking it. Warning! use with great caution! */
-_PUBLIC_ int tdb1_chainlock_mark(struct tdb1_context *tdb, TDB1_DATA key)
-{
-	int ret = tdb1_nest_lock(tdb, lock_offset(TDB1_BUCKET(tdb->hash_fn(&key))),
-				F_WRLCK, TDB1_LOCK_MARK_ONLY);
-	return ret;
-}
-
-/* unmark a chain as locked without actually locking it. Warning! use with great caution! */
-_PUBLIC_ int tdb1_chainlock_unmark(struct tdb1_context *tdb, TDB1_DATA key)
-{
-	return tdb1_nest_unlock(tdb, lock_offset(TDB1_BUCKET(tdb->hash_fn(&key))),
-			       F_WRLCK, true);
 }
 
 _PUBLIC_ int tdb1_chainunlock(struct tdb1_context *tdb, TDB1_DATA key)

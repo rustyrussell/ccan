@@ -27,12 +27,6 @@
 
 #include "tdb1_private.h"
 
-/* 'right' merges can involve O(n^2) cost when combined with a
-   traverse, so they are disabled until we find a way to do them in
-   O(1) time
-*/
-#define USE_RIGHT_MERGES 0
-
 /* read a freelist record and check for simple errors */
 int tdb1_rec_free_read(struct tdb1_context *tdb, tdb1_off_t off, struct tdb1_record *rec)
 {
@@ -62,29 +56,6 @@ int tdb1_rec_free_read(struct tdb1_context *tdb, tdb1_off_t off, struct tdb1_rec
 }
 
 
-#if USE_RIGHT_MERGES
-/* Remove an element from the freelist.  Must have alloc lock. */
-static int remove_from_freelist(struct tdb1_context *tdb, tdb1_off_t off, tdb1_off_t next)
-{
-	tdb1_off_t last_ptr, i;
-
-	/* read in the freelist top */
-	last_ptr = TDB1_FREELIST_TOP;
-	while (tdb1_ofs_read(tdb, last_ptr, &i) != -1 && i != 0) {
-		if (i == off) {
-			/* We've found it! */
-			return tdb1_ofs_write(tdb, last_ptr, &next);
-		}
-		/* Follow chain (next offset is at start of record) */
-		last_ptr = i;
-	}
-	tdb->ecode = TDB1_ERR_CORRUPT;
-	TDB1_LOG((tdb, TDB1_DEBUG_FATAL,"remove_from_freelist: not on list at off=%d\n", off));
-	return -1;
-}
-#endif
-
-
 /* update a record tailer (must hold allocation lock) */
 static int update_tailer(struct tdb1_context *tdb, tdb1_off_t offset,
 			 const struct tdb1_record *rec)
@@ -110,33 +81,6 @@ int tdb1_free(struct tdb1_context *tdb, tdb1_off_t offset, struct tdb1_record *r
 		TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "tdb1_free: update_tailer failed!\n"));
 		goto fail;
 	}
-
-#if USE_RIGHT_MERGES
-	/* Look right first (I'm an Australian, dammit) */
-	if (offset + sizeof(*rec) + rec->rec_len + sizeof(*rec) <= tdb->map_size) {
-		tdb1_off_t right = offset + sizeof(*rec) + rec->rec_len;
-		struct tdb1_record r;
-
-		if (tdb->methods->tdb1_read(tdb, right, &r, sizeof(r), TDB1_DOCONV()) == -1) {
-			TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "tdb1_free: right read failed at %u\n", right));
-			goto left;
-		}
-
-		/* If it's free, expand to include it. */
-		if (r.magic == TDB1_FREE_MAGIC) {
-			if (remove_from_freelist(tdb, right, r.next) == -1) {
-				TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "tdb1_free: right free failed at %u\n", right));
-				goto left;
-			}
-			rec->rec_len += sizeof(r) + r.rec_len;
-			if (update_tailer(tdb, offset, rec) == -1) {
-				TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "tdb1_free: update_tailer failed at %u\n", offset));
-				goto fail;
-			}
-		}
-	}
-left:
-#endif
 
 	/* Look left */
 	if (offset - sizeof(tdb1_off_t) > TDB1_DATA_START(tdb->header.hash_size)) {
@@ -360,27 +304,4 @@ tdb1_off_t tdb1_allocate(struct tdb1_context *tdb, tdb1_len_t length, struct tdb
  fail:
 	tdb1_unlock(tdb, -1, F_WRLCK);
 	return 0;
-}
-
-
-
-/*
-   return the size of the freelist - used to decide if we should repack
-*/
-_PUBLIC_ int tdb1_freelist_size(struct tdb1_context *tdb)
-{
-	tdb1_off_t ptr;
-	int count=0;
-
-	if (tdb1_lock(tdb, -1, F_RDLCK) == -1) {
-		return -1;
-	}
-
-	ptr = TDB1_FREELIST_TOP;
-	while (tdb1_ofs_read(tdb, ptr, &ptr) == 0 && ptr != 0) {
-		count++;
-	}
-
-	tdb1_unlock(tdb, -1, F_RDLCK);
-	return count;
 }

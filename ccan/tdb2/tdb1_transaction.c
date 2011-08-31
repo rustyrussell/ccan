@@ -532,11 +532,6 @@ _PUBLIC_ int tdb1_transaction_start(struct tdb1_context *tdb)
 	return _tdb1_transaction_start(tdb, TDB1_LOCK_WAIT);
 }
 
-_PUBLIC_ int tdb1_transaction_start_nonblock(struct tdb1_context *tdb)
-{
-	return _tdb1_transaction_start(tdb, TDB1_LOCK_NOWAIT|TDB1_LOCK_PROBE);
-}
-
 /*
   sync to disk
 */

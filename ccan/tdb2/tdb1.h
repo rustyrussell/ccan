@@ -32,8 +32,6 @@
 #include <sys/types.h>
 /* For O_* flags. */
 #include <sys/stat.h>
-/* For sig_atomic_t. */
-#include <signal.h>
 #endif
 
 /** Flags to tdb1_store() */
@@ -106,16 +104,6 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 
 void tdb1_set_max_dead(struct tdb1_context *tdb, int max_dead);
 
-int tdb1_reopen(struct tdb1_context *tdb);
-
-int tdb1_reopen_all(int parent_longlived);
-
-void tdb1_set_logging_function(struct tdb1_context *tdb, const struct tdb1_logging_context *log_ctx);
-
-enum TDB1_ERROR tdb1_error(struct tdb1_context *tdb);
-
-const char *tdb1_errorstr(struct tdb1_context *tdb);
-
 TDB1_DATA tdb1_fetch(struct tdb1_context *tdb, TDB1_DATA key);
 
 int tdb1_parse_record(struct tdb1_context *tdb, TDB1_DATA key,
@@ -143,31 +131,15 @@ int tdb1_exists(struct tdb1_context *tdb, TDB1_DATA key);
 
 int tdb1_lockall(struct tdb1_context *tdb);
 
-int tdb1_lockall_nonblock(struct tdb1_context *tdb);
-
 int tdb1_unlockall(struct tdb1_context *tdb);
 
 int tdb1_lockall_read(struct tdb1_context *tdb);
 
-int tdb1_lockall_read_nonblock(struct tdb1_context *tdb);
-
 int tdb1_unlockall_read(struct tdb1_context *tdb);
-
-int tdb1_lockall_mark(struct tdb1_context *tdb);
-
-int tdb1_lockall_unmark(struct tdb1_context *tdb);
-
-const char *tdb1_name(struct tdb1_context *tdb);
-
-int tdb1_fd(struct tdb1_context *tdb);
 
 tdb1_log_func tdb1_log_fn(struct tdb1_context *tdb);
 
-void *tdb1_get_logging_private(struct tdb1_context *tdb);
-
 int tdb1_transaction_start(struct tdb1_context *tdb);
-
-int tdb1_transaction_start_nonblock(struct tdb1_context *tdb);
 
 int tdb1_transaction_prepare_commit(struct tdb1_context *tdb);
 
@@ -178,16 +150,6 @@ int tdb1_transaction_cancel(struct tdb1_context *tdb);
 int tdb1_get_seqnum(struct tdb1_context *tdb);
 
 int tdb1_hash_size(struct tdb1_context *tdb);
-
-size_t tdb1_map_size(struct tdb1_context *tdb);
-
-int tdb1_get_flags(struct tdb1_context *tdb);
-
-void tdb1_add_flags(struct tdb1_context *tdb, unsigned flag);
-
-void tdb1_remove_flags(struct tdb1_context *tdb, unsigned flag);
-
-void tdb1_enable_seqnum(struct tdb1_context *tdb);
 
 void tdb1_increment_seqnum_nonblock(struct tdb1_context *tdb);
 
@@ -201,24 +163,16 @@ int tdb1_check(struct tdb1_context *tdb,
 
 /* Low level locking functions: use with care */
 int tdb1_chainlock(struct tdb1_context *tdb, TDB1_DATA key);
-int tdb1_chainlock_nonblock(struct tdb1_context *tdb, TDB1_DATA key);
 int tdb1_chainunlock(struct tdb1_context *tdb, TDB1_DATA key);
 int tdb1_chainlock_read(struct tdb1_context *tdb, TDB1_DATA key);
 int tdb1_chainunlock_read(struct tdb1_context *tdb, TDB1_DATA key);
-int tdb1_chainlock_mark(struct tdb1_context *tdb, TDB1_DATA key);
-int tdb1_chainlock_unmark(struct tdb1_context *tdb, TDB1_DATA key);
 
-void tdb1_setalarm_sigptr(struct tdb1_context *tdb, volatile sig_atomic_t *sigptr);
 
 /* wipe and repack */
 int tdb1_wipe_all(struct tdb1_context *tdb);
 int tdb1_repack(struct tdb1_context *tdb);
 
 /* Debug functions. Not used in production. */
-void tdb1_dump_all(struct tdb1_context *tdb);
-int tdb1_printfreelist(struct tdb1_context *tdb);
-int tdb1_validate_freelist(struct tdb1_context *tdb, int *pnum_entries);
-int tdb1_freelist_size(struct tdb1_context *tdb);
 char *tdb1_summary(struct tdb1_context *tdb);
 
 extern TDB1_DATA tdb1_null;

@@ -61,6 +61,9 @@
 
 #include "tdb1.h"
 
+/* Temporary wrapper to avoid undue churn in test/ */
+#define tdb1_error(tdb) ((tdb)->ecode)
+
 /* #define TDB_TRACE 1 */
 #ifndef HAVE_GETPAGESIZE
 #define getpagesize() 0x2000
@@ -221,12 +224,7 @@ struct tdb1_context {
 	struct tdb1_transaction *transaction;
 	int page_size;
 	int max_dead_records;
-#ifdef TDB1_TRACE
-	int tracefd;
-#endif
-	volatile sig_atomic_t *interrupt_sig_ptr;
 };
-
 
 /*
   internal prototypes
@@ -234,7 +232,6 @@ struct tdb1_context {
 int tdb1_munmap(struct tdb1_context *tdb);
 void tdb1_mmap(struct tdb1_context *tdb);
 int tdb1_lock(struct tdb1_context *tdb, int list, int ltype);
-int tdb1_lock_nonblock(struct tdb1_context *tdb, int list, int ltype);
 int tdb1_nest_lock(struct tdb1_context *tdb, uint32_t offset, int ltype,
 		  enum tdb1_lock_flags flags);
 int tdb1_nest_unlock(struct tdb1_context *tdb, uint32_t offset, int ltype,

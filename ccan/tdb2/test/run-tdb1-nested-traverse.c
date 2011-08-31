@@ -36,12 +36,12 @@ static int traverse1(struct tdb1_context *tdb, TDB1_DATA key, TDB1_DATA data,
 {
 	ok1(correct_key(key));
 	ok1(correct_data(data));
-	ok1(external_agent_operation1(agent, TRANSACTION_START, tdb1_name(tdb))
+	ok1(external_agent_operation1(agent, TRANSACTION_START, tdb->name)
 	    == WOULD_HAVE_BLOCKED);
 	tdb1_traverse(tdb, traverse2, NULL);
 
 	/* That should *not* release the transaction lock! */
-	ok1(external_agent_operation1(agent, TRANSACTION_START, tdb1_name(tdb))
+	ok1(external_agent_operation1(agent, TRANSACTION_START, tdb->name)
 	    == WOULD_HAVE_BLOCKED);
 	return 0;
 }
@@ -60,10 +60,10 @@ int main(int argc, char *argv[])
 			  O_CREAT|O_TRUNC|O_RDWR, 0600, &taplogctx, NULL);
 	ok1(tdb);
 
-	ok1(external_agent_operation1(agent, OPEN, tdb1_name(tdb)) == SUCCESS);
-	ok1(external_agent_operation1(agent, TRANSACTION_START, tdb1_name(tdb))
+	ok1(external_agent_operation1(agent, OPEN, tdb->name) == SUCCESS);
+	ok1(external_agent_operation1(agent, TRANSACTION_START, tdb->name)
 	    == SUCCESS);
-	ok1(external_agent_operation1(agent, TRANSACTION_COMMIT, tdb1_name(tdb))
+	ok1(external_agent_operation1(agent, TRANSACTION_COMMIT, tdb->name)
 	    == SUCCESS);
 
 	key.dsize = strlen("hi");

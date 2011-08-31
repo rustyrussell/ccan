@@ -662,25 +662,6 @@ failed:
 
 
 /*
-  return the name of the current tdb file
-  useful for external logging functions
-*/
-_PUBLIC_ const char *tdb1_name(struct tdb1_context *tdb)
-{
-	return tdb->name;
-}
-
-/*
-  return the underlying file descriptor being used by tdb, or -1
-  useful for external routines that want to check the device/inode
-  of the fd
-*/
-_PUBLIC_ int tdb1_fd(struct tdb1_context *tdb)
-{
-	return tdb->fd;
-}
-
-/*
   return the current logging function
   useful for external tdb routines that wish to log tdb errors
 */
@@ -711,65 +692,6 @@ _PUBLIC_ int tdb1_get_seqnum(struct tdb1_context *tdb)
 _PUBLIC_ int tdb1_hash_size(struct tdb1_context *tdb)
 {
 	return tdb->header.hash_size;
-}
-
-_PUBLIC_ size_t tdb1_map_size(struct tdb1_context *tdb)
-{
-	return tdb->map_size;
-}
-
-_PUBLIC_ int tdb1_get_flags(struct tdb1_context *tdb)
-{
-	return tdb->flags;
-}
-
-_PUBLIC_ void tdb1_add_flags(struct tdb1_context *tdb, unsigned flags)
-{
-	if ((flags & TDB1_ALLOW_NESTING) &&
-	    (flags & TDB1_DISALLOW_NESTING)) {
-		tdb->ecode = TDB1_ERR_NESTING;
-		TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "tdb1_add_flags: "
-			"allow_nesting and disallow_nesting are not allowed together!"));
-		return;
-	}
-
-	if (flags & TDB1_ALLOW_NESTING) {
-		tdb->flags &= ~TDB1_DISALLOW_NESTING;
-	}
-	if (flags & TDB1_DISALLOW_NESTING) {
-		tdb->flags &= ~TDB1_ALLOW_NESTING;
-	}
-
-	tdb->flags |= flags;
-}
-
-_PUBLIC_ void tdb1_remove_flags(struct tdb1_context *tdb, unsigned flags)
-{
-	if ((flags & TDB1_ALLOW_NESTING) &&
-	    (flags & TDB1_DISALLOW_NESTING)) {
-		tdb->ecode = TDB1_ERR_NESTING;
-		TDB1_LOG((tdb, TDB1_DEBUG_FATAL, "tdb1_remove_flags: "
-			"allow_nesting and disallow_nesting are not allowed together!"));
-		return;
-	}
-
-	if (flags & TDB1_ALLOW_NESTING) {
-		tdb->flags |= TDB1_DISALLOW_NESTING;
-	}
-	if (flags & TDB1_DISALLOW_NESTING) {
-		tdb->flags |= TDB1_ALLOW_NESTING;
-	}
-
-	tdb->flags &= ~flags;
-}
-
-
-/*
-  enable sequence number handling on an open tdb
-*/
-_PUBLIC_ void tdb1_enable_seqnum(struct tdb1_context *tdb)
-{
-	tdb->flags |= TDB1_SEQNUM;
 }
 
 

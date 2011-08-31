@@ -5,7 +5,7 @@
 
 static void log_fn(struct tdb1_context *tdb, enum tdb1_debug_level level, const char *fmt, ...)
 {
-	unsigned int *count = tdb1_get_logging_private(tdb);
+	unsigned int *count = tdb->log.log_private;
 	if (strstr(fmt, "spinlocks"))
 		(*count)++;
 }
