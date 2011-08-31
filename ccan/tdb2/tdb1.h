@@ -38,10 +38,6 @@
 
 void tdb1_set_max_dead(struct tdb_context *tdb, int max_dead);
 
-int tdb1_get_seqnum(struct tdb_context *tdb);
-
-void tdb1_increment_seqnum_nonblock(struct tdb_context *tdb);
-
 uint64_t tdb1_incompatible_hash(const void *key, size_t len, uint64_t seed, void *);
 
 /* @} ******************************************************************/

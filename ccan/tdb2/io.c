@@ -584,6 +584,11 @@ void tdb_inc_seqnum(struct tdb_context *tdb)
 {
 	tdb_off_t seq;
 
+	if (tdb->flags & TDB_VERSION1) {
+		tdb1_increment_seqnum_nonblock(tdb);
+		return;
+	}
+
 	if (likely(!(tdb->flags & TDB_CONVERT))) {
 		int64_t *direct;
 
