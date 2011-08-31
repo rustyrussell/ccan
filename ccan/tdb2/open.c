@@ -369,6 +369,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb->log_fn = NULL;
 	tdb->transaction = NULL;
 	tdb->access = NULL;
+	tdb->open_flags = open_flags;
 	tdb->last_error = TDB_SUCCESS;
 	tdb->file = NULL;
 	tdb->lock_fn = tdb_fcntl_lock;
@@ -416,11 +417,9 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 
 	if ((open_flags & O_ACCMODE) == O_RDONLY) {
 		tdb->read_only = true;
-		tdb->mmap_flags = PROT_READ;
 		openlock = F_RDLCK;
 	} else {
 		tdb->read_only = false;
-		tdb->mmap_flags = PROT_READ | PROT_WRITE;
 		openlock = F_WRLCK;
 	}
 

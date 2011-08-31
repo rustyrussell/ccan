@@ -334,8 +334,8 @@ struct tdb_context {
 	/* Operating read-only? (Opened O_RDONLY, or in traverse_read) */
 	bool read_only;
 
-	/* mmap read only? */
-	int mmap_flags;
+	/* Open flags passed to tdb_open. */
+	int open_flags;
 
 	/* the flags passed to tdb_open, for tdb_reopen. */
 	uint32_t flags;
