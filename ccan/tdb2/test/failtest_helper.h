@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 /* FIXME: Check these! */
-#define INITIAL_TDB_MALLOC	"open.c", 355, FAILTEST_MALLOC
+#define INITIAL_TDB_MALLOC	"open.c", 354, FAILTEST_MALLOC
 #define URANDOM_OPEN		"open.c", 62, FAILTEST_OPEN
 #define URANDOM_READ		"open.c", 42, FAILTEST_READ
 

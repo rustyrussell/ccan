@@ -617,8 +617,6 @@ enum tdb_attribute_type {
  * This gets an attribute from a TDB which has previously been set (or
  * may return the default values).  Set @attr.base.attr to the
  * attribute type you want get.
- *
- * Currently this does not work for TDB_ATTRIBUTE_OPENHOOK.
  */
 enum TDB_ERROR tdb_get_attribute(struct tdb_context *tdb,
 				 union tdb_attribute *attr);

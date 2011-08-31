@@ -270,11 +270,11 @@ enum TDB_ERROR tdb_get_attribute(struct tdb_context *tdb,
 		attr->seed.seed = tdb->hash_seed;
 		break;
 	case TDB_ATTRIBUTE_OPENHOOK:
-		return tdb->last_error
-			= tdb_logerr(tdb, TDB_ERR_EINVAL,
-				     TDB_LOG_USE_ERROR,
-				     "tdb_get_attribute:"
-				     " cannot get TDB_ATTRIBUTE_OPENHOOK");
+		if (!tdb->openhook)
+			return tdb->last_error = TDB_ERR_NOEXIST;
+		attr->openhook.fn = tdb->openhook;
+		attr->openhook.data = tdb->openhook_data;
+		break;
 	case TDB_ATTRIBUTE_STATS: {
 		size_t size = attr->stats.size;
 		if (size > tdb->stats.size)
@@ -306,16 +306,16 @@ void tdb_unset_attribute(struct tdb_context *tdb,
 	case TDB_ATTRIBUTE_LOG:
 		tdb->log_fn = NULL;
 		break;
+	case TDB_ATTRIBUTE_OPENHOOK:
+		tdb->openhook = NULL;
+		break;
 	case TDB_ATTRIBUTE_HASH:
 	case TDB_ATTRIBUTE_SEED:
-	case TDB_ATTRIBUTE_OPENHOOK:
 		tdb_logerr(tdb, TDB_ERR_EINVAL, TDB_LOG_USE_ERROR,
 			   "tdb_unset_attribute: cannot unset %s after opening",
 			   type == TDB_ATTRIBUTE_HASH
 			   ? "TDB_ATTRIBUTE_HASH"
-			   : type == TDB_ATTRIBUTE_SEED
-			   ? "TDB_ATTRIBUTE_SEED"
-			   : "TDB_ATTRIBUTE_OPENHOOK");
+			   : "TDB_ATTRIBUTE_SEED");
 		break;
 	case TDB_ATTRIBUTE_STATS:
 		tdb_logerr(tdb, TDB_ERR_EINVAL,
@@ -347,7 +347,6 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	ssize_t rlen;
 	struct tdb_header hdr;
 	struct tdb_attribute_seed *seed = NULL;
-	struct tdb_attribute_openhook *openhook = NULL;
 	tdb_bool_err berr;
 	enum TDB_ERROR ecode;
 	int openlock;
@@ -372,6 +371,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb->open_flags = open_flags;
 	tdb->last_error = TDB_SUCCESS;
 	tdb->file = NULL;
+	tdb->openhook = NULL;
 	tdb->lock_fn = tdb_fcntl_lock;
 	tdb->unlock_fn = tdb_fcntl_unlock;
 	tdb->hash_fn = jenkins_hash;
@@ -390,7 +390,8 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 			seed = &attr->seed;
 			break;
 		case TDB_ATTRIBUTE_OPENHOOK:
-			openhook = &attr->openhook;
+			tdb->openhook = attr->openhook.fn;
+			tdb->openhook_data = attr->openhook.data;
 			break;
 		default:
 			/* These are set as normal. */
@@ -498,8 +499,8 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	}
 
 	/* call their open hook if they gave us one. */
-	if (openhook) {
-		ecode = openhook->fn(tdb->file->fd, openhook->data);
+	if (tdb->openhook) {
+		ecode = tdb->openhook(tdb->file->fd, tdb->openhook_data);
 		if (ecode != TDB_SUCCESS) {
 			tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
 				   "tdb_open: open hook failed");

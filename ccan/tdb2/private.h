@@ -362,6 +362,10 @@ struct tdb_context {
 	tdb_off_t ftable_off;
 	unsigned int ftable;
 
+	/* Our open hook, if any. */
+	enum TDB_ERROR (*openhook)(int fd, void *data);
+	void *openhook_data;
+
 	/* IO methods: changes for transactions. */
 	const struct tdb_methods *methods;
 
