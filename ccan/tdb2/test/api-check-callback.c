@@ -1,5 +1,8 @@
-#include "tdb2-source.h"
+#include <ccan/tdb2/tdb2.h>
 #include <ccan/tap/tap.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "logging.h"
 
 #define NUM_RECORDS 1000
@@ -53,7 +56,7 @@ int main(int argc, char *argv[])
 	unsigned int i, j;
 	struct tdb_context *tdb;
 	int flags[] = { TDB_INTERNAL, TDB_DEFAULT, TDB_NOMMAP,
-			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT, 
+			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT,
 			TDB_NOMMAP|TDB_CONVERT,
 			TDB_INTERNAL|TDB_VERSION1, TDB_VERSION1,
 			TDB_NOMMAP|TDB_VERSION1,

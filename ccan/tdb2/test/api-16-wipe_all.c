@@ -1,20 +1,11 @@
-#include "tdb2-source.h"
+#include <ccan/tdb2/tdb2.h>
 #include <ccan/tap/tap.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "logging.h"
 
-static enum TDB_ERROR parse(TDB_DATA key, TDB_DATA data, TDB_DATA *expected)
-{
-	if (!tdb_deq(data, *expected))
-		return TDB_ERR_EINVAL;
-	return TDB_SUCCESS;
-}
-
-static enum TDB_ERROR parse_err(TDB_DATA key, TDB_DATA data, void *unused)
-{
-	return 100;
-}
-
-static bool test_records(struct tdb_context *tdb)
+static bool add_records(struct tdb_context *tdb)
 {
 	int i;
 	struct tdb_data key = { (unsigned char *)&i, sizeof(i) };
@@ -24,22 +15,9 @@ static bool test_records(struct tdb_context *tdb)
 		if (tdb_store(tdb, key, data, TDB_REPLACE) != 0)
 			return false;
 	}
-
-	for (i = 0; i < 1000; i++) {
-		if (tdb_parse_record(tdb, key, parse, &data) != TDB_SUCCESS)
-			return false;
-	}
-
-	if (tdb_parse_record(tdb, key, parse, &data) != TDB_ERR_NOEXIST)
-		return false;
-
-	/* Test error return from parse function. */
-	i = 0;
-	if (tdb_parse_record(tdb, key, parse_err, NULL) != 100)
-		return false;
-
 	return true;
 }
+
 
 int main(int argc, char *argv[])
 {
@@ -54,13 +32,17 @@ int main(int argc, char *argv[])
 			TDB_CONVERT|TDB_VERSION1,
 			TDB_NOMMAP|TDB_CONVERT|TDB_VERSION1 };
 
-	plan_tests(sizeof(flags) / sizeof(flags[0]) * 2 + 1);
+	plan_tests(sizeof(flags) / sizeof(flags[0]) * 4 + 1);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
-		tdb = tdb_open("run-14-exists.tdb", flags[i],
+		tdb = tdb_open("run-16-wipe_all.tdb", flags[i],
 			       O_RDWR|O_CREAT|O_TRUNC, 0600, &tap_log_attr);
-		if (ok1(tdb))
-			ok1(test_records(tdb));
-		tdb_close(tdb);
+		if (ok1(tdb)) {
+			struct tdb_data key;
+			ok1(add_records(tdb));
+			ok1(tdb_wipe_all(tdb) == TDB_SUCCESS);
+			ok1(tdb_firstkey(tdb, &key) == TDB_ERR_NOEXIST);
+			tdb_close(tdb);
+		}
 	}
 
 	ok1(tap_log_messages == 0);

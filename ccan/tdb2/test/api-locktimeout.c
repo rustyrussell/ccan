@@ -1,5 +1,11 @@
-#include "tdb2-source.h"
+#include <ccan/tdb2/tdb2.h>
 #include <ccan/tap/tap.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <fcntl.h>
+#include <limits.h>
+#include <errno.h>
 #include "logging.h"
 #include "external-agent.h"
 
@@ -142,7 +148,7 @@ int main(int argc, char *argv[])
 		if (!ok1(tdb))
 			break;
 
-		/* Simple cases: should succeed. */ 
+		/* Simple cases: should succeed. */
 		ecode = tdb_chainlock_with_timeout_internal(tdb, key, 20,
 							    F_RDLCK);
 		ok1(ecode == TDB_SUCCESS);
@@ -162,7 +168,7 @@ int main(int argc, char *argv[])
 		/* OK, get agent to start transaction, then we should time out. */
 		ok1(external_agent_operation(agent, OPEN, "run-locktimeout.tdb")
 		    == SUCCESS);
-		ok1(external_agent_operation(agent, TRANSACTION_START, "") 
+		ok1(external_agent_operation(agent, TRANSACTION_START, "")
 		    == SUCCESS);
 		ecode = tdb_chainlock_with_timeout_internal(tdb, key, 20,
 							    F_WRLCK);

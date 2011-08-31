@@ -1,5 +1,9 @@
-#include "tdb2-source.h"
+#include <ccan/tdb2/tdb2.h>
 #include <ccan/tap/tap.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdlib.h>
 #include "logging.h"
 
 int main(int argc, char *argv[])
@@ -24,7 +28,7 @@ int main(int argc, char *argv[])
 			       O_RDWR|O_CREAT|O_TRUNC, 0600, &tap_log_attr);
 		if (!ok1(tdb))
 			continue;
-		
+
 		seq = 0;
 		ok1(tdb_get_seqnum(tdb) == seq);
 		ok1(tdb_store(tdb, key, data, TDB_INSERT) == 0);

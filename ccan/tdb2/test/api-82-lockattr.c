@@ -1,5 +1,10 @@
-#include "tdb2-source.h"
+#include <ccan/tdb2/private.h> // for tdb_fcntl_unlock
+#include <ccan/tdb2/tdb2.h>
 #include <ccan/tap/tap.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
 #include "logging.h"
 
 static int mylock(int fd, int rw, off_t off, off_t len, bool waitflag,

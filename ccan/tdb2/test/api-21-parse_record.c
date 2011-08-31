@@ -1,6 +1,21 @@
-#include "tdb2-source.h"
+#include <ccan/tdb2/tdb2.h>
 #include <ccan/tap/tap.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 #include "logging.h"
+
+static enum TDB_ERROR parse(TDB_DATA key, TDB_DATA data, TDB_DATA *expected)
+{
+	if (!tdb_deq(data, *expected))
+		return TDB_ERR_EINVAL;
+	return TDB_SUCCESS;
+}
+
+static enum TDB_ERROR parse_err(TDB_DATA key, TDB_DATA data, void *unused)
+{
+	return 100;
+}
 
 static bool test_records(struct tdb_context *tdb)
 {
@@ -9,22 +24,23 @@ static bool test_records(struct tdb_context *tdb)
 	struct tdb_data data = { (unsigned char *)&i, sizeof(i) };
 
 	for (i = 0; i < 1000; i++) {
-		if (tdb_exists(tdb, key))
-			return false;
 		if (tdb_store(tdb, key, data, TDB_REPLACE) != 0)
-			return false;
-		if (!tdb_exists(tdb, key))
 			return false;
 	}
 
 	for (i = 0; i < 1000; i++) {
-		if (!tdb_exists(tdb, key))
-			return false;
-		if (tdb_delete(tdb, key) != 0)
-			return false;
-		if (tdb_exists(tdb, key))
+		if (tdb_parse_record(tdb, key, parse, &data) != TDB_SUCCESS)
 			return false;
 	}
+
+	if (tdb_parse_record(tdb, key, parse, &data) != TDB_ERR_NOEXIST)
+		return false;
+
+	/* Test error return from parse function. */
+	i = 0;
+	if (tdb_parse_record(tdb, key, parse_err, NULL) != 100)
+		return false;
+
 	return true;
 }
 

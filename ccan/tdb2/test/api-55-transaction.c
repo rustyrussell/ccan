@@ -1,5 +1,10 @@
-#include "tdb2-source.h"
+#include <ccan/tdb2/private.h> // struct tdb_context
+#include <ccan/tdb2/tdb2.h>
 #include <ccan/tap/tap.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdlib.h>
 #include "logging.h"
 
 int main(int argc, char *argv[])

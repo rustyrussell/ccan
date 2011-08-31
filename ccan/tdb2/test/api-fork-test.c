@@ -10,10 +10,15 @@
  * Note that we don't hold a lock across tdb_traverse callbacks, so
  * that doesn't matter.
  */
-#include "tdb2-source.h"
+#include <ccan/tdb2/tdb2.h>
 #include <ccan/tap/tap.h>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/types.h>
 #include <sys/wait.h>
+#include <unistd.h>
+#include <stdlib.h>
 #include "logging.h"
 
 static enum TDB_ERROR fork_in_parse(TDB_DATA key, TDB_DATA data,
