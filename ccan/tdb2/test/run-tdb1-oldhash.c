@@ -17,29 +17,29 @@ int main(int argc, char *argv[])
 
 	/* Old format (with zeroes in the hash magic fields) should
 	 * open with any hash (since we don't know what hash they used). */
-	tdb = tdb1_open("test/old-nohash-le.tdb1", 0, O_RDWR, 0,
-			&tap_log_attr);
+	tdb = tdb_open("test/old-nohash-le.tdb1", TDB_VERSION1, O_RDWR, 0,
+		       &tap_log_attr);
 	ok1(tdb);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
-	tdb1_close(tdb);
+	tdb_close(tdb);
 
-	tdb = tdb1_open("test/old-nohash-be.tdb1", 0, O_RDWR, 0,
-			&tap_log_attr);
+	tdb = tdb_open("test/old-nohash-be.tdb1", TDB_VERSION1, O_RDWR, 0,
+		       &tap_log_attr);
 	ok1(tdb);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
-	tdb1_close(tdb);
+	tdb_close(tdb);
 
-	tdb = tdb1_open("test/old-nohash-le.tdb1", 0, O_RDWR, 0,
-			&incompat_hash_attr);
+	tdb = tdb_open("test/old-nohash-le.tdb1", TDB_VERSION1, O_RDWR, 0,
+		       &incompat_hash_attr);
 	ok1(tdb);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
-	tdb1_close(tdb);
+	tdb_close(tdb);
 
-	tdb = tdb1_open("test/old-nohash-be.tdb1", 0, O_RDWR, 0,
-			&incompat_hash_attr);
+	tdb = tdb_open("test/old-nohash-be.tdb1", TDB_VERSION1, O_RDWR, 0,
+		       &incompat_hash_attr);
 	ok1(tdb);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
-	tdb1_close(tdb);
+	tdb_close(tdb);
 
 	return exit_status();
 }

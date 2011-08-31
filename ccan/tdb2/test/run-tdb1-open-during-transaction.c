@@ -23,7 +23,7 @@ static int ftruncate_check(int fd, off_t length);
 static struct agent *agent;
 static bool opened;
 static int errors = 0;
-#define TEST_DBNAME "run-open-during-transaction.tdb"
+#define TEST_DBNAME "run-open-during-transaction.tdb1"
 
 #undef write
 #undef pwrite
@@ -150,9 +150,9 @@ int main(int argc, char *argv[])
 		     "DEFAULT",
 		     (flags[i] & TDB_NOMMAP) ? "no mmap" : "mmap");
 		unlink(TEST_DBNAME);
-		tdb = tdb1_open(TEST_DBNAME, flags[i],
-				O_CREAT|O_TRUNC|O_RDWR, 0600,
-				&hsize);
+		tdb = tdb_open(TEST_DBNAME, flags[i]|TDB_VERSION1,
+			       O_CREAT|O_TRUNC|O_RDWR, 0600,
+			       &hsize);
 		ok1(tdb);
 
 		opened = true;
@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
 		ok(!errors, "We had %u open errors", errors);
 
 		opened = false;
-		tdb1_close(tdb);
+		tdb_close(tdb);
 	}
 
 	return exit_status();

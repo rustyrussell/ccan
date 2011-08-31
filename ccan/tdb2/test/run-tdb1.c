@@ -15,8 +15,8 @@ int main(int argc, char *argv[])
 	hsize.tdb1_hashsize.hsize = 1024;
 
 	plan_tests(10);
-	tdb = tdb1_open("run.tdb", TDB_DEFAULT,
-			O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
+	tdb = tdb_open("run.tdb1", TDB_VERSION1,
+		       O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
 
 	ok1(tdb);
 	key.dsize = strlen("hi");
@@ -39,7 +39,7 @@ int main(int argc, char *argv[])
 	key.dsize++;
 	data = tdb1_fetch(tdb, key);
 	ok1(data.dptr == NULL);
-	tdb1_close(tdb);
+	tdb_close(tdb);
 
 	return exit_status();
 }

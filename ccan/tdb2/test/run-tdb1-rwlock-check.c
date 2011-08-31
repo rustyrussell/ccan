@@ -27,14 +27,14 @@ int main(int argc, char *argv[])
 
 	/* We should fail to open rwlock-using tdbs of either endian. */
 	log_count = 0;
-	tdb = tdb1_open("test/rwlock-le.tdb1", 0, O_RDWR, 0,
-			&log_attr);
+	tdb = tdb_open("test/rwlock-le.tdb1", TDB_VERSION1, O_RDWR, 0,
+		       &log_attr);
 	ok1(!tdb);
 	ok1(log_count == 1);
 
 	log_count = 0;
-	tdb = tdb1_open("test/rwlock-be.tdb1", 0, O_RDWR, 0,
-			&log_attr);
+	tdb = tdb_open("test/rwlock-be.tdb1", TDB_VERSION1, O_RDWR, 0,
+		       &log_attr);
 	ok1(!tdb);
 	ok1(log_count == 1);
 

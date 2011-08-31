@@ -61,8 +61,8 @@ int main(int argc, char *argv[])
 	if (!agent)
 		err(1, "preparing agent");
 
-	tdb = tdb1_open("run-nested-traverse.tdb", TDB_DEFAULT,
-			O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
+	tdb = tdb_open("run-nested-traverse.tdb1", TDB_VERSION1,
+		       O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
 	ok1(tdb);
 
 	ok1(external_agent_operation1(agent, OPEN, tdb->name) == SUCCESS);
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
 	ok1(tdb1_store(tdb, key, data, TDB_INSERT) == 0);
 	tdb1_traverse(tdb, traverse1, NULL);
 	tdb1_traverse_read(tdb, traverse1, NULL);
-	tdb1_close(tdb);
+	tdb_close(tdb);
 
 	return exit_status();
 }

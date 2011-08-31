@@ -55,6 +55,7 @@ typedef uint64_t tdb_off_t;
 
 #define TDB_MAGIC_FOOD "TDB file\n"
 #define TDB_VERSION ((uint64_t)(0x26011967 + 7))
+#define TDB1_VERSION (0x26011967 + 6)
 #define TDB_USED_MAGIC ((uint64_t)0x1999)
 #define TDB_HTABLE_MAGIC ((uint64_t)0x1888)
 #define TDB_CHAIN_MAGIC ((uint64_t)0x1777)
@@ -627,6 +628,23 @@ struct tdb_context {
 		int max_dead_records;
 	} tdb1;
 };
+
+#define TDB1_BYTEREV(x) (((((x)&0xff)<<24)|((x)&0xFF00)<<8)|(((x)>>8)&0xFF00)|((x)>>24))
+
+/* tdb1_open.c: */
+int tdb1_new_database(struct tdb_context *tdb,
+		      struct tdb_attribute_tdb1_hashsize *hashsize);
+enum TDB_ERROR tdb1_open(struct tdb_context *tdb);
+
+/* tdb1_io.c: */
+enum TDB_ERROR tdb1_probe_length(struct tdb_context *tdb);
+
+/* tdb1_lock.c: */
+int tdb1_allrecord_unlock(struct tdb_context *tdb, int ltype);
+
+/* tdb1_transaction.c: */
+int tdb1_transaction_recover(struct tdb_context *tdb);
+int tdb1_transaction_cancel(struct tdb_context *tdb);
 
 /* tdb.c: */
 enum TDB_ERROR COLD tdb_logerr(struct tdb_context *tdb,

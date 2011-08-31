@@ -71,8 +71,8 @@ int main(int argc, char *argv[])
 	hsize.tdb1_hashsize.hsize = 1024;
 
 	plan_tests(24);
-	tdb = tdb1_open("run-36-file.tdb", TDB_DEFAULT,
-			O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
+	tdb = tdb_open("run-36-file.tdb1", TDB_VERSION1,
+		       O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
 
 	ok1(tdb);
 	tdb->tdb1.io = &large_io_methods;
@@ -119,7 +119,7 @@ int main(int argc, char *argv[])
 	ok1(tdb1_transaction_commit(tdb) == 0);
 
 	ok1(tdb1_traverse(tdb, test_traverse, &orig_data) == 1);
-	tdb1_close(tdb);
+	tdb_close(tdb);
 
 	return exit_status();
 }

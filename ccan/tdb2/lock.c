@@ -862,7 +862,12 @@ void tdb_lock_cleanup(struct tdb_context *tdb)
 
 	while (tdb->file->allrecord_lock.count
 	       && tdb->file->allrecord_lock.owner == tdb) {
-		tdb_allrecord_unlock(tdb, tdb->file->allrecord_lock.ltype);
+		if (tdb->flags & TDB_VERSION1)
+			tdb1_allrecord_unlock(tdb,
+					      tdb->file->allrecord_lock.ltype);
+		else
+			tdb_allrecord_unlock(tdb,
+					     tdb->file->allrecord_lock.ltype);
 	}
 
 	for (i=0; i<tdb->file->num_lockrecs; i++) {

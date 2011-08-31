@@ -503,3 +503,10 @@ void tdb1_io_init(struct tdb_context *tdb)
 {
 	tdb->tdb1.io = &io1_methods;
 }
+
+enum TDB_ERROR tdb1_probe_length(struct tdb_context *tdb)
+{
+	tdb->last_error = TDB_SUCCESS;
+	tdb->tdb1.io->tdb1_oob(tdb, tdb->file->map_size + 1, true);
+	return tdb->last_error;
+}

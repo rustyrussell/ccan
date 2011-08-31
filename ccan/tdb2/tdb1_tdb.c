@@ -843,7 +843,7 @@ int tdb1_repack(struct tdb_context *tdb)
 		return -1;
 	}
 
-	tmp_db = tdb1_open("tmpdb", TDB_INTERNAL, O_RDWR|O_CREAT, 0, &hsize);
+	tmp_db = tdb_open("tmpdb", TDB_INTERNAL, O_RDWR|O_CREAT, 0, &hsize);
 	if (tmp_db == NULL) {
 		tdb->last_error = tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
 					__location__ " Failed to create tmp_db");
@@ -858,7 +858,7 @@ int tdb1_repack(struct tdb_context *tdb)
 		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
 			   __location__ " Failed to traverse copying out");
 		tdb1_transaction_cancel(tdb);
-		tdb1_close(tmp_db);
+		tdb_close(tmp_db);
 		return -1;
 	}
 
@@ -866,7 +866,7 @@ int tdb1_repack(struct tdb_context *tdb)
 		tdb->last_error = tdb_logerr(tdb, state.error, TDB_LOG_ERROR,
 					__location__ " Error during traversal");
 		tdb1_transaction_cancel(tdb);
-		tdb1_close(tmp_db);
+		tdb_close(tmp_db);
 		return -1;
 	}
 
@@ -874,7 +874,7 @@ int tdb1_repack(struct tdb_context *tdb)
 		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
 			   __location__ " Failed to wipe database\n");
 		tdb1_transaction_cancel(tdb);
-		tdb1_close(tmp_db);
+		tdb_close(tmp_db);
 		return -1;
 	}
 
@@ -885,7 +885,7 @@ int tdb1_repack(struct tdb_context *tdb)
 		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
 			   __location__ " Failed to traverse copying back");
 		tdb1_transaction_cancel(tdb);
-		tdb1_close(tmp_db);
+		tdb_close(tmp_db);
 		return -1;
 	}
 
@@ -893,11 +893,11 @@ int tdb1_repack(struct tdb_context *tdb)
 		tdb->last_error = tdb_logerr(tdb, state.error, TDB_LOG_ERROR,
 					__location__ " Error during second traversal");
 		tdb1_transaction_cancel(tdb);
-		tdb1_close(tmp_db);
+		tdb_close(tmp_db);
 		return -1;
 	}
 
-	tdb1_close(tmp_db);
+	tdb_close(tmp_db);
 
 	if (tdb1_transaction_commit(tdb) != 0) {
 		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,

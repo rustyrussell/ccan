@@ -16,8 +16,8 @@ int main(int argc, char *argv[])
 
 	plan_tests(sizeof(flags) / sizeof(flags[0]) * 14);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
-		tdb = tdb1_open("run-summary.tdb", flags[i],
-				O_RDWR|O_CREAT|O_TRUNC, 0600, NULL);
+		tdb = tdb_open("run-summary.tdb1", flags[i]|TDB_VERSION1,
+			       O_RDWR|O_CREAT|O_TRUNC, 0600, NULL);
 		ok1(tdb);
 		if (!tdb)
 			continue;
@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
 		ok1(strstr(summary, "Percentage keys/data/padding/free/dead/rechdrs&tailers/hashes: "));
 
 		free(summary);
-		tdb1_close(tdb);
+		tdb_close(tdb);
 	}
 
 	return exit_status();

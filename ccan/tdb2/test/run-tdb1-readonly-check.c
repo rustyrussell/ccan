@@ -17,9 +17,9 @@ int main(int argc, char *argv[])
 	hsize.tdb1_hashsize.hsize = 1024;
 
 	plan_tests(11);
-	tdb = tdb1_open("run-readonly-check.tdb",
-			TDB_DEFAULT,
-			O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
+	tdb = tdb_open("run-readonly-check.tdb1",
+		       TDB_VERSION1,
+		       O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
 
 	ok1(tdb);
 	key.dsize = strlen("hi");
@@ -33,16 +33,16 @@ int main(int argc, char *argv[])
 	/* We are also allowed to do a check inside a transaction. */
 	ok1(tdb1_transaction_start(tdb) == 0);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
-	ok1(tdb1_close(tdb) == 0);
+	ok1(tdb_close(tdb) == 0);
 
-	tdb = tdb1_open("run-readonly-check.tdb",
-			TDB_DEFAULT, O_RDONLY, 0, &tap_log_attr);
+	tdb = tdb_open("run-readonly-check.tdb1",
+		       TDB_DEFAULT, O_RDONLY, 0, &tap_log_attr);
 
 	ok1(tdb);
 	ok1(tdb1_store(tdb, key, data, TDB_MODIFY) == -1);
 	ok1(tdb_error(tdb) == TDB_ERR_RDONLY);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
-	ok1(tdb1_close(tdb) == 0);
+	ok1(tdb_close(tdb) == 0);
 
 	return exit_status();
 }

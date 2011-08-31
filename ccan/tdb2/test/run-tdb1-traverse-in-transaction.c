@@ -47,9 +47,9 @@ int main(int argc, char *argv[])
 	if (!agent)
 		err(1, "preparing agent");
 
-	tdb = tdb1_open("run-traverse-in-transaction.tdb",
-			TDB_DEFAULT, O_CREAT|O_TRUNC|O_RDWR,
-			0600, &hsize);
+	tdb = tdb_open("run-traverse-in-transaction.tdb1",
+		       TDB_VERSION1, O_CREAT|O_TRUNC|O_RDWR,
+		       0600, &hsize);
 	ok1(tdb);
 
 	key.dsize = strlen("hi");
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
 	ok1(external_agent_operation1(agent, TRANSACTION_START, tdb->name)
 	    == SUCCESS);
 
-	tdb1_close(tdb);
+	tdb_close(tdb);
 
 	return exit_status();
 }

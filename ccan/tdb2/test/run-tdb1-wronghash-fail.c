@@ -54,90 +54,89 @@ int main(int argc, char *argv[])
 
 	/* Create with default hash. */
 	log_count = 0;
-	tdb = tdb1_open("run-wronghash-fail.tdb", 0,
-			O_CREAT|O_RDWR|O_TRUNC, 0600, &log_attr);
+	tdb = tdb_open("run-wronghash-fail.tdb1", TDB_VERSION1,
+		       O_CREAT|O_RDWR|O_TRUNC, 0600, &log_attr);
 	ok1(tdb);
 	ok1(log_count == 0);
 	d.dptr = (void *)"Hello";
 	d.dsize = 5;
 	ok1(tdb1_store(tdb, d, d, TDB_INSERT) == 0);
-	tdb1_close(tdb);
+	tdb_close(tdb);
 
 	/* Fail to open with different hash. */
-	tdb = tdb1_open("run-wronghash-fail.tdb", 0, O_RDWR, 0,
-			&jhash_attr);
+	tdb = tdb_open("run-wronghash-fail.tdb1", TDB_VERSION1, O_RDWR, 0,
+		       &jhash_attr);
 	ok1(!tdb);
 	ok1(log_count == 1);
 
 	/* Create with different hash. */
 	log_count = 0;
-	tdb = tdb1_open("run-wronghash-fail.tdb", 0,
-			O_CREAT|O_RDWR|O_TRUNC,
-			0600, &jhash_attr);
+	tdb = tdb_open("run-wronghash-fail.tdb1", TDB_VERSION1,
+		       O_CREAT|O_RDWR|O_TRUNC, 0600, &jhash_attr);
 	ok1(tdb);
 	ok1(log_count == 0);
-	tdb1_close(tdb);
+	tdb_close(tdb);
 
 	/* Endian should be no problem. */
 	log_count = 0;
-	tdb = tdb1_open("test/jenkins-le-hash.tdb1", 0, O_RDWR, 0,
-			&ohash_attr);
+	tdb = tdb_open("test/jenkins-le-hash.tdb1", TDB_VERSION1, O_RDWR, 0,
+		       &ohash_attr);
 	ok1(!tdb);
 	ok1(log_count == 1);
 
 	log_count = 0;
-	tdb = tdb1_open("test/jenkins-be-hash.tdb1", 0, O_RDWR, 0,
-			&ohash_attr);
+	tdb = tdb_open("test/jenkins-be-hash.tdb1", TDB_VERSION1, O_RDWR, 0,
+		       &ohash_attr);
 	ok1(!tdb);
 	ok1(log_count == 1);
 
 	log_count = 0;
 	/* Fail to open with old default hash. */
-	tdb = tdb1_open("run-wronghash-fail.tdb", 0, O_RDWR, 0,
-			&ohash_attr);
+	tdb = tdb_open("run-wronghash-fail.tdb1", TDB_VERSION1, O_RDWR, 0,
+		       &ohash_attr);
 	ok1(!tdb);
 	ok1(log_count == 1);
 
 	log_count = 0;
-	tdb = tdb1_open("test/jenkins-le-hash.tdb1", 0, O_RDONLY,
-			0, &incompat_hash_attr);
+	tdb = tdb_open("test/jenkins-le-hash.tdb1", TDB_VERSION1, O_RDONLY,
+		       0, &incompat_hash_attr);
 	ok1(tdb);
 	ok1(log_count == 0);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
-	tdb1_close(tdb);
+	tdb_close(tdb);
 
 	log_count = 0;
-	tdb = tdb1_open("test/jenkins-be-hash.tdb1", 0, O_RDONLY,
-			0, &incompat_hash_attr);
+	tdb = tdb_open("test/jenkins-be-hash.tdb1", TDB_VERSION1, O_RDONLY,
+		       0, &incompat_hash_attr);
 	ok1(tdb);
 	ok1(log_count == 0);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
-	tdb1_close(tdb);
+	tdb_close(tdb);
 
 	/* It should open with jenkins hash if we don't specify. */
 	log_count = 0;
-	tdb = tdb1_open("test/jenkins-le-hash.tdb1", 0, O_RDWR, 0,
-			&log_attr);
+	tdb = tdb_open("test/jenkins-le-hash.tdb1", TDB_VERSION1, O_RDWR, 0,
+		       &log_attr);
 	ok1(tdb);
 	ok1(log_count == 0);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
-	tdb1_close(tdb);
+	tdb_close(tdb);
 
 	log_count = 0;
-	tdb = tdb1_open("test/jenkins-be-hash.tdb1", 0, O_RDWR, 0,
-			&log_attr);
+	tdb = tdb_open("test/jenkins-be-hash.tdb1", TDB_VERSION1, O_RDWR, 0,
+		       &log_attr);
 	ok1(tdb);
 	ok1(log_count == 0);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
-	tdb1_close(tdb);
+	tdb_close(tdb);
 
 	log_count = 0;
-	tdb = tdb1_open("run-wronghash-fail.tdb", 0, O_RDONLY,
-			0, &log_attr);
+	tdb = tdb_open("run-wronghash-fail.tdb1", TDB_VERSION1, O_RDONLY,
+		       0, &log_attr);
 	ok1(tdb);
 	ok1(log_count == 0);
 	ok1(tdb1_check(tdb, NULL, NULL) == 0);
-	tdb1_close(tdb);
+	tdb_close(tdb);
 
 
 	return exit_status();

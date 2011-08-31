@@ -75,9 +75,9 @@ int main(int argc, char *argv[])
 	hsize.tdb1_hashsize.hsize = 1024;
 
 	plan_tests(41);
-	tdb = tdb1_open("run-no-lock-during-traverse.tdb",
-			TDB_DEFAULT, O_CREAT|O_TRUNC|O_RDWR,
-			0600, &hsize);
+	tdb = tdb_open("run-no-lock-during-traverse.tdb1",
+		       TDB_VERSION1, O_CREAT|O_TRUNC|O_RDWR,
+		       0600, &hsize);
 
 	ok1(tdb);
 	ok1(prepare_entries(tdb));
@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
 	ok1(locking_errors1 == 0);
 	ok1(tdb1_unlockall(tdb) == 0);
 
-	ok1(tdb1_close(tdb) == 0);
+	ok1(tdb_close(tdb) == 0);
 
 	return exit_status();
 }

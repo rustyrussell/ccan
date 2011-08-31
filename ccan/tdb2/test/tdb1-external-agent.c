@@ -39,8 +39,7 @@ static enum agent_return do_operation(enum operation op, const char *name)
 			diag("Already have tdb %s open", tdb->name);
 			return OTHER_FAILURE;
 		}
-		tdb = tdb1_open(name, TDB_DEFAULT, O_RDWR, 0,
-				&tap_log_attr);
+		tdb = tdb_open(name, TDB_VERSION1, O_RDWR, 0, &tap_log_attr);
 		if (!tdb) {
 			if (!locking_would_block1)
 				diag("Opening tdb gave %s", strerror(errno));
@@ -79,7 +78,7 @@ static enum agent_return do_operation(enum operation op, const char *name)
 		ret = tdb1_needs_recovery(tdb) ? SUCCESS : FAILED;
 		break;
 	case CLOSE:
-		ret = tdb1_close(tdb) == 0 ? SUCCESS : OTHER_FAILURE;
+		ret = tdb_close(tdb) == 0 ? SUCCESS : OTHER_FAILURE;
 		tdb = NULL;
 		break;
 	default:

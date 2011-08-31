@@ -15,8 +15,8 @@ int main(int argc, char *argv[])
 	hsize.tdb1_hashsize.hsize = 1024;
 
 	plan_tests(4);
-	tdb = tdb1_open(NULL, TDB_INTERNAL, O_CREAT|O_TRUNC|O_RDWR,
-			0600, &hsize);
+	tdb = tdb_open(NULL, TDB_INTERNAL|TDB_VERSION1, O_CREAT|O_TRUNC|O_RDWR,
+		       0600, &hsize);
 	ok1(tdb);
 
 	/* Tickle bug on appending zero length buffer to zero length buffer. */
@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
 	data = tdb1_fetch(tdb, key);
 	ok1(data.dsize == 0);
 	free(data.dptr);
-	tdb1_close(tdb);
+	tdb_close(tdb);
 
 	return exit_status();
 }

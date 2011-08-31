@@ -62,7 +62,6 @@
 #define TDB1_DEFAULT_HASH_SIZE 131
 #define TDB1_FREELIST_TOP (sizeof(struct tdb1_header))
 #define TDB1_ALIGN(x,a) (((x) + (a)-1) & ~((a)-1))
-#define TDB1_BYTEREV(x) (((((x)&0xff)<<24)|((x)&0xFF00)<<8)|(((x)>>8)&0xFF00)|((x)>>24))
 #define TDB1_DEAD(r) ((r)->magic == TDB1_DEAD_MAGIC)
 #define TDB1_BAD_MAGIC(r) ((r)->magic != TDB1_MAGIC && !TDB1_DEAD(r))
 #define TDB1_HASH_TOP(hash) (TDB1_FREELIST_TOP + (TDB1_BUCKET(hash)+1)*sizeof(tdb1_off_t))
@@ -145,7 +144,6 @@ int tdb1_recovery_area(struct tdb_context *tdb,
 		      struct tdb1_record *rec);
 int tdb1_allrecord_lock(struct tdb_context *tdb, int ltype,
 		       enum tdb_lock_flags flags, bool upgradable);
-int tdb1_allrecord_unlock(struct tdb_context *tdb, int ltype);
 int tdb1_allrecord_upgrade(struct tdb_context *tdb);
 int tdb1_write_lock_record(struct tdb_context *tdb, tdb1_off_t off);
 int tdb1_write_unlock_record(struct tdb_context *tdb, tdb1_off_t off);
@@ -175,7 +173,6 @@ int tdb1_expand(struct tdb_context *tdb, tdb1_off_t size);
 int tdb1_rec_free_read(struct tdb_context *tdb, tdb1_off_t off,
 		      struct tdb1_record *rec);
 bool tdb1_write_all(int fd, const void *buf, size_t count);
-int tdb1_transaction_recover(struct tdb_context *tdb);
 void tdb1_header_hash(struct tdb_context *tdb,
 		     uint32_t *magic1_hash, uint32_t *magic2_hash);
 uint64_t tdb1_old_hash(const void *key, size_t len, uint64_t seed, void *);

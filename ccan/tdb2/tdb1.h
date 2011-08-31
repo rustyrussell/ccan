@@ -38,10 +38,6 @@
 
 typedef int (*tdb1_traverse_func)(struct tdb_context *, TDB_DATA, TDB_DATA, void *);
 
-struct tdb_context *tdb1_open(const char *name, int tdb1_flags,
-			      int open_flags, mode_t mode,
-			      union tdb_attribute *attributes);
-
 void tdb1_set_max_dead(struct tdb_context *tdb, int max_dead);
 
 TDB_DATA tdb1_fetch(struct tdb_context *tdb, TDB_DATA key);
@@ -56,8 +52,6 @@ int tdb1_delete(struct tdb_context *tdb, TDB_DATA key);
 int tdb1_store(struct tdb_context *tdb, TDB_DATA key, TDB_DATA dbuf, int flag);
 
 int tdb1_append(struct tdb_context *tdb, TDB_DATA key, TDB_DATA new_dbuf);
-
-int tdb1_close(struct tdb_context *tdb);
 
 TDB_DATA tdb1_firstkey(struct tdb_context *tdb);
 
@@ -82,8 +76,6 @@ int tdb1_transaction_start(struct tdb_context *tdb);
 int tdb1_transaction_prepare_commit(struct tdb_context *tdb);
 
 int tdb1_transaction_commit(struct tdb_context *tdb);
-
-int tdb1_transaction_cancel(struct tdb_context *tdb);
 
 int tdb1_get_seqnum(struct tdb_context *tdb);
 

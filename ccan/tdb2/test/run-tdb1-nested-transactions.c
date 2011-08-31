@@ -19,9 +19,8 @@ int main(int argc, char *argv[])
 	key.dsize = strlen("hi");
 	key.dptr = (void *)"hi";
 
-	tdb = tdb1_open("run-nested-transactions.tdb",
-			TDB_DEFAULT,
-			O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
+	tdb = tdb_open("run-nested-transactions.tdb1",
+		       TDB_VERSION1, O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
 	ok1(tdb);
 
 	/* No nesting by default. */
@@ -45,10 +44,10 @@ int main(int argc, char *argv[])
 	ok1(data.dsize == strlen("world"));
 	ok1(memcmp(data.dptr, "world", strlen("world")) == 0);
 	free(data.dptr);
-	tdb1_close(tdb);
+	tdb_close(tdb);
 
-	tdb = tdb1_open("run-nested-transactions.tdb",
-			TDB_ALLOW_NESTING, O_RDWR, 0, &tap_log_attr);
+	tdb = tdb_open("run-nested-transactions.tdb1",
+		       TDB_ALLOW_NESTING, O_RDWR, 0, &tap_log_attr);
 	ok1(tdb);
 
 	ok1(tdb1_transaction_start(tdb) == 0);
@@ -67,7 +66,7 @@ int main(int argc, char *argv[])
 	ok1(!tdb1_exists(tdb, key));
 	ok1(tdb1_transaction_commit(tdb) == 0);
 	ok1(!tdb1_exists(tdb, key));
-	tdb1_close(tdb);
+	tdb_close(tdb);
 
 	return exit_status();
 }

@@ -15,9 +15,9 @@ int main(int argc, char *argv[])
 	hsize.tdb1_hashsize.hsize = 1024;
 
 	plan_tests(13);
-	tdb = tdb1_open("run-endian.tdb",
-			TDB_CONVERT,
-			O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
+	tdb = tdb_open("run-endian.tdb1",
+		       TDB_VERSION1|TDB_CONVERT,
+		       O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
 
 	ok1(tdb);
 	key.dsize = strlen("hi");
@@ -40,10 +40,10 @@ int main(int argc, char *argv[])
 	key.dsize++;
 	data = tdb1_fetch(tdb, key);
 	ok1(data.dptr == NULL);
-	tdb1_close(tdb);
+	tdb_close(tdb);
 
 	/* Reopen: should read it */
-	tdb = tdb1_open("run-endian.tdb", 0, O_RDWR, 0, NULL);
+	tdb = tdb_open("run-endian.tdb1", 0, O_RDWR, 0, NULL);
 	ok1(tdb);
 
 	key.dsize = strlen("hi");
@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
 	ok1(data.dsize == strlen("world"));
 	ok1(memcmp(data.dptr, "world", strlen("world")) == 0);
 	free(data.dptr);
-	tdb1_close(tdb);
+	tdb_close(tdb);
 
 	return exit_status();
 }

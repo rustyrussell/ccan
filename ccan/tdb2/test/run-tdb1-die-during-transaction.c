@@ -28,7 +28,7 @@ static int ftruncate_check(int fd, off_t length);
 static bool in_transaction;
 static int target, current;
 static jmp_buf jmpbuf;
-#define TEST_DBNAME "run-die-during-transaction.tdb"
+#define TEST_DBNAME "run-die-during-transaction.tdb1"
 #define KEY_STRING "helloworld"
 
 static void maybe_die(int fd)
@@ -94,8 +94,8 @@ static bool test_death(enum operation op, struct agent *agent)
 	current = target = 0;
 reset:
 	unlink(TEST_DBNAME);
-	tdb = tdb1_open(TEST_DBNAME, TDB_NOMMAP,
-			O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
+	tdb = tdb_open(TEST_DBNAME, TDB_VERSION1|TDB_NOMMAP,
+		       O_CREAT|O_TRUNC|O_RDWR, 0600, &hsize);
 
 	if (setjmp(jmpbuf) != 0) {
 		/* We're partway through.  Simulate our death. */
@@ -144,7 +144,7 @@ reset:
 		/* Suppress logging as this tries to use closed fd. */
 		suppress_logging = true;
 		suppress_lockcheck1 = true;
-		tdb1_close(tdb);
+		tdb_close(tdb);
 		suppress_logging = false;
 		suppress_lockcheck1 = false;
 		target++;
@@ -183,7 +183,7 @@ reset:
 
 	/* We made it! */
 	diag("Completed %u runs", current);
-	tdb1_close(tdb);
+	tdb_close(tdb);
 	ret = external_agent_operation1(agent, CLOSE, "");
 	if (ret != SUCCESS) {
 		diag("Step %u close failed = %s", current,
