@@ -115,6 +115,12 @@ enum TDB_ERROR tdb_wipe_all(struct tdb_context *tdb)
 	enum TDB_ERROR ecode;
 	int64_t count;
 
+	if (tdb->flags & TDB_VERSION1) {
+		if (tdb1_wipe_all(tdb) == -1)
+			return tdb->last_error;
+		return TDB_SUCCESS;
+	}
+
 	ecode = tdb_allrecord_lock(tdb, F_WRLCK, TDB_LOCK_WAIT, false);
 	if (ecode != TDB_SUCCESS)
 		return tdb->last_error = ecode;

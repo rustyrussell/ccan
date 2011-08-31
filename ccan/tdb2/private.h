@@ -681,6 +681,7 @@ enum TDB_ERROR tdb1_parse_record(struct tdb_context *tdb, TDB_DATA key,
 				 void *private_data);
 void tdb1_increment_seqnum_nonblock(struct tdb_context *tdb);
 int tdb1_get_seqnum(struct tdb_context *tdb);
+int tdb1_wipe_all(struct tdb_context *tdb);
 
 /* tdb1_transaction.c: */
 int tdb1_transaction_start(struct tdb_context *tdb);

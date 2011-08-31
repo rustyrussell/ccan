@@ -42,8 +42,6 @@ uint64_t tdb1_incompatible_hash(const void *key, size_t len, uint64_t seed, void
 
 /* @} ******************************************************************/
 
-/* wipe and repack */
-int tdb1_wipe_all(struct tdb_context *tdb);
 int tdb1_repack(struct tdb_context *tdb);
 
 extern TDB_DATA tdb1_null;
