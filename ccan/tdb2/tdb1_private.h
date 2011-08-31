@@ -25,36 +25,10 @@
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef _SAMBA_BUILD_
-#include "config.h"
-/* This keeps us consistent with TDB2 code. */
-#if HAVE_FILE_OFFSET_BITS
-#define _FILE_OFFSET_BITS 64
-#endif
-#include <stdint.h>
-#include <stdbool.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <sys/time.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <errno.h>
-#include <stdlib.h>
-#include <limits.h>
-#include <stdio.h>
-#include <utime.h>
-#else
-#include "replace.h"
-#include "system/filesys.h"
-#include "system/time.h"
-#include "system/shmem.h"
-#include "system/select.h"
-#include "system/wait.h"
-#endif
-
+#include "private.h"
 #include "tdb1.h"
+
+#include <limits.h>
 
 /* Temporary wrapper to avoid undue churn in test/ */
 #define tdb1_error(tdb) ((tdb)->ecode)
