@@ -532,6 +532,12 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 					   name, (long long)hdr.version);
 			goto fail;
 		}
+	} else if (tdb->flags & TDB_CONVERT) {
+		ecode = tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+				   "tdb_open:"
+				   " %s does not need TDB_CONVERT",
+				   name);
+		goto fail;
 	}
 
 	tdb_convert(tdb, &hdr, sizeof(hdr));

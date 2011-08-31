@@ -5,6 +5,7 @@
 
 unsigned tap_log_messages;
 const char *log_prefix = "";
+char *log_last = NULL;
 bool suppress_logging;
 
 union tdb_attribute tap_log_attr = {
@@ -20,6 +21,9 @@ void tap_log_fn(struct tdb_context *tdb,
 		return;
 
 	diag("tdb log level %u: %s%s", level, log_prefix, message);
+	if (log_last)
+		free(log_last);
+	log_last = strdup(message);
 	tap_log_messages++;
 }
 
