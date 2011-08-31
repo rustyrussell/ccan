@@ -298,9 +298,6 @@ struct tdb_access_hdr {
 };
 
 struct tdb_file {
-	/* Single list of all TDBs, to detect multiple opens. */
-	struct tdb_file *next;
-
 	/* How many are sharing us? */
 	unsigned int refcnt;
 
@@ -325,6 +322,9 @@ struct tdb_file {
 };
 
 struct tdb_context {
+	/* Single list of all TDBs, to detect multiple opens. */
+	struct tdb_context *next;
+
 	/* Filename of the database. */
 	const char *name;
 

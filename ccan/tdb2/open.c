@@ -19,20 +19,20 @@
 #include <ccan/hash/hash.h>
 #include <assert.h>
 
-/* all lock info, to detect double-opens (fcntl file don't nest!) */
-static struct tdb_file *files = NULL;
+/* all tdbs, to detect double-opens (fcntl file don't nest!) */
+static struct tdb_context *tdbs = NULL;
 
 static struct tdb_file *find_file(dev_t device, ino_t ino)
 {
-	struct tdb_file *i;
+	struct tdb_context *i;
 
-	for (i = files; i; i = i->next) {
-		if (i->device == device && i->inode == ino) {
-			i->refcnt++;
-			break;
+	for (i = tdbs; i; i = i->next) {
+		if (i->file->device == device && i->file->inode == ino) {
+			i->file->refcnt++;
+			return i->file;
 		}
 	}
-	return i;
+	return NULL;
 }
 
 static bool read_all(int fd, void *buf, size_t len)
@@ -483,7 +483,6 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 			goto fail;
 		}
 
-		tdb->file->next = files;
 		tdb->file->fd = fd;
 		tdb->file->device = st.st_dev;
 		tdb->file->inode = st.st_ino;
@@ -596,9 +595,8 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		goto fail;
 	}
 
-	/* Add to linked list if we're new. */
-	if (tdb->file->refcnt == 1)
-		files = tdb->file;
+	tdb->next = tdbs;
+	tdbs = tdb;
 	return tdb;
 
  fail:
@@ -653,6 +651,7 @@ fail_errno:
 int tdb_close(struct tdb_context *tdb)
 {
 	int ret = 0;
+	struct tdb_context **i;
 
 	tdb_trace(tdb, "tdb_close");
 
@@ -667,21 +666,19 @@ int tdb_close(struct tdb_context *tdb)
 			tdb_munmap(tdb->file);
 	}
 	if (tdb->file) {
-		struct tdb_file **i;
-
 		tdb_lock_cleanup(tdb);
 		if (--tdb->file->refcnt == 0) {
 			ret = close(tdb->file->fd);
-
-			/* Remove from files list */
-			for (i = &files; *i; i = &(*i)->next) {
-				if (*i == tdb->file) {
-					*i = tdb->file->next;
-					break;
-				}
-			}
 			free(tdb->file->lockrecs);
 			free(tdb->file);
+		}
+	}
+
+	/* Remove from tdbs list */
+	for (i = &tdbs; *i; i = &(*i)->next) {
+		if (*i == tdb) {
+			*i = tdb->next;
+			break;
 		}
 	}
 
