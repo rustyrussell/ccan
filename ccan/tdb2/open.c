@@ -259,6 +259,13 @@ enum TDB_ERROR tdb_get_attribute(struct tdb_context *tdb,
 		attr->hash.data = tdb->hash_data;
 		break;
 	case TDB_ATTRIBUTE_SEED:
+		if (tdb->flags & TDB_VERSION1)
+			return tdb->last_error
+				= tdb_logerr(tdb, TDB_ERR_EINVAL,
+					     TDB_LOG_USE_ERROR,
+				     "tdb_get_attribute:"
+				     " cannot get TDB_ATTRIBUTE_SEED"
+				     " on TDB1 tdb.");
 		attr->seed.seed = tdb->hash_seed;
 		break;
 	case TDB_ATTRIBUTE_OPENHOOK:
@@ -427,6 +434,25 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 					   "tdb_open: can only use"
 					   " TDB_ATTRIBUTE_TDB1_HASHSIZE when"
 					   " creating a TDB_VERSION1 tdb");
+			goto fail;
+		}
+	}
+
+	if (seed) {
+		if (tdb_flags & TDB_VERSION1) {
+			ecode = tdb_logerr(tdb, TDB_ERR_EINVAL,
+					   TDB_LOG_USE_ERROR,
+					   "tdb_open:"
+					   " cannot set TDB_ATTRIBUTE_SEED"
+					   " on TDB1 tdb.");
+			goto fail;
+		} else if (!(tdb_flags & TDB_INTERNAL)
+			   && !(open_flags & O_CREAT)) {
+			ecode = tdb_logerr(tdb, TDB_ERR_EINVAL,
+					   TDB_LOG_USE_ERROR,
+					   "tdb_open:"
+					   " cannot set TDB_ATTRIBUTE_SEED"
+					   " without O_CREAT.");
 			goto fail;
 		}
 	}
