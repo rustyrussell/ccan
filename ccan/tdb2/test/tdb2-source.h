@@ -8,3 +8,14 @@
 #include <ccan/tdb2/tdb.c>
 #include <ccan/tdb2/transaction.c>
 #include <ccan/tdb2/traverse.c>
+#include <ccan/tdb2/tdb1_check.c>
+#include <ccan/tdb2/tdb1_error.c>
+#include <ccan/tdb2/tdb1_freelist.c>
+#include <ccan/tdb2/tdb1_hash.c>
+#include <ccan/tdb2/tdb1_io.c>
+#include <ccan/tdb2/tdb1_lock.c>
+#include <ccan/tdb2/tdb1_open.c>
+#include <ccan/tdb2/tdb1_summary.c>
+#include <ccan/tdb2/tdb1_tdb.c>
+#include <ccan/tdb2/tdb1_transaction.c>
+#include <ccan/tdb2/tdb1_traverse.c>
