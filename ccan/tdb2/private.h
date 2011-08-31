@@ -283,7 +283,7 @@ enum tdb_lock_flags {
 
 struct tdb_lock {
 	struct tdb_context *owner;
-	uint32_t off;
+	off_t off;
 	uint32_t count;
 	uint32_t ltype;
 };
