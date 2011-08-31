@@ -302,6 +302,12 @@ enum TDB_ERROR tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 	struct hash_info h;
 	enum TDB_ERROR ecode;
 
+	if (tdb->flags & TDB_VERSION1) {
+		if (tdb1_delete(tdb, key) == -1)
+			return tdb->last_error;
+		return TDB_SUCCESS;
+	}
+
 	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL);
 	if (TDB_OFF_IS_ERR(off)) {
 		return tdb->last_error = off;

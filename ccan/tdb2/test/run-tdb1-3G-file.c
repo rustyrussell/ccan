@@ -104,7 +104,7 @@ int main(int argc, char *argv[])
 	ok1(tdb1_traverse(tdb, test_traverse, &orig_data) == 1);
 
 	/* Delete should work. */
-	ok1(tdb1_delete(tdb, key) == 0);
+	ok1(tdb_delete(tdb, key) == TDB_SUCCESS);
 
 	ok1(tdb1_traverse(tdb, test_traverse, NULL) == 0);
 

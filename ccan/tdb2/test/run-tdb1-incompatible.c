@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
 			       O_RDWR, 0600, &jhash_attr);
 		ok1(tdb);
 		ok1(log_count == 0);
-		ok1(tdb1_fetch(tdb, d, &d) == TDB_SUCCESS);
+		ok1(tdb_fetch(tdb, d, &d) == TDB_SUCCESS);
 		ok1(d.dsize == 5);
 		free(d.dptr);
 		ok1(tdb1_check(tdb, NULL, NULL) == 0);
@@ -202,7 +202,7 @@ int main(int argc, char *argv[])
 			       &dumbhash_attr);
 		ok1(tdb);
 		ok1(log_count == 0);
-		ok1(tdb1_fetch(tdb, d, &d) == TDB_SUCCESS);
+		ok1(tdb_fetch(tdb, d, &d) == TDB_SUCCESS);
 		ok1(d.dsize == 5);
 		free(d.dptr);
 		ok1(tdb1_check(tdb, NULL, NULL) == 0);

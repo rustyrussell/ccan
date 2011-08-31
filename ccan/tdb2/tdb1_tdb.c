@@ -434,6 +434,7 @@ int tdb1_delete(struct tdb_context *tdb, TDB_DATA key)
 	uint32_t hash = tdb_hash(tdb, key.dptr, key.dsize);
 	int ret;
 
+	assert(tdb->flags & TDB_VERSION1);
 	ret = tdb1_delete_hash(tdb, key, hash);
 	return ret;
 }

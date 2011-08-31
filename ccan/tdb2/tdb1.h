@@ -45,8 +45,6 @@ int tdb1_parse_record(struct tdb_context *tdb, TDB_DATA key,
 					    void *private_data),
 			      void *private_data);
 
-int tdb1_delete(struct tdb_context *tdb, TDB_DATA key);
-
 TDB_DATA tdb1_firstkey(struct tdb_context *tdb);
 
 TDB_DATA tdb1_nextkey(struct tdb_context *tdb, TDB_DATA key);

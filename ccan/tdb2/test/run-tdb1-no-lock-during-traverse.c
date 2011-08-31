@@ -40,7 +40,7 @@ static void delete_entries(struct tdb_context *tdb)
 		key.dsize = sizeof(i);
 		key.dptr = (void *)&i;
 
-		ok1(tdb1_delete(tdb, key) == 0);
+		ok1(tdb_delete(tdb, key) == TDB_SUCCESS);
 	}
 }
 
@@ -52,7 +52,7 @@ static int delete_other(struct tdb_context *tdb, TDB_DATA key, TDB_DATA data,
 	memcpy(&i, key.dptr, 4);
 	i = (i + 1) % NUM_ENTRIES;
 	key.dptr = (void *)&i;
-	if (tdb1_delete(tdb, key) != 0)
+	if (tdb_delete(tdb, key) != TDB_SUCCESS)
 		(*(int *)private_data)++;
 	return 0;
 }
@@ -60,7 +60,7 @@ static int delete_other(struct tdb_context *tdb, TDB_DATA key, TDB_DATA data,
 static int delete_self(struct tdb_context *tdb, TDB_DATA key, TDB_DATA data,
 			void *private_data)
 {
-	ok1(tdb1_delete(tdb, key) == 0);
+	ok1(tdb_delete(tdb, key) == TDB_SUCCESS);
 	return 0;
 }
 
