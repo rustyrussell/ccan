@@ -42,3 +42,31 @@ Interface differences between TDB1 and TDB2.
 	tdb_lockall_read(): child must call tdb_unlockall_read()
 	tdb_chainlock(): child must call tdb_chainunlock()
 	tdb_parse() callback: child must return from tdb_parse()
+
+- tdb2 will not open a non-tdb file, even if O_CREAT is specified.
+
+- There is no tdb_traverse_read.  For operating on TDB1 files, you can
+  simulate it by tdb_add_flag(tdb, TDB_RDONLY); tdb_traverse();
+  tdb_remove_flag(tdb, TDB_RDONLY).  This may be desirable because
+  traverse on TDB1 files use a write lock on the entire database
+  unless it's read-only.
+
+- Failure inside a transaction (such as a lock function failing) does
+  not implicitly cancel the transaction; you still need to call
+  tdb_transaction_cancel().
+
+TDB1 Compatibility:
+
+- tdb2's offers a tdb1_incompatible_hash function, which is the same
+  as the default hash with the TDB_INCOMPATIBLE_HASH flag.  There is
+  no way of marking an old TDB incompatible with versions < 1.2.6
+  while using any other hash.
+
+- The TDB_ATTRIBUTE_TDB1_HASHSIZE attribute can be used to control the
+  hash size, but only when creating (ie. O_CREAT) a TDB1
+  (ie. TDB_VERSION1).
+
+- There is no TDB_CLEAR_IF_FIRST flag; it has severe scalability and
+  API problems.  If necessary, you can emulate this by using the open
+  hook and placing a 1-byte lock at offset 4.  If your program forks,
+  you will need to place this lock again in the child.
