@@ -35,6 +35,32 @@
 #define tdb_error(tdb) \
 	tdb_error((struct tdb_context *)(tdb))
 
+#define tdb_brlock(tdb1, rw_type, offset, len, flags)	\
+	tdb_brlock((struct tdb_context *)(tdb1),	\
+		   (rw_type), (offset), (len), (flags))
+
+#define tdb_brunlock(tdb1, rw_type, offset, len) \
+	tdb_brunlock((struct tdb_context *)(tdb1), (rw_type), (offset), (len))
+
+#define tdb_nest_lock(tdb1, offset, ltype, flags)	\
+	tdb_nest_lock((struct tdb_context *)(tdb1), (offset), (ltype), (flags))
+
+#define tdb_nest_unlock(tdb1, offset, ltype)	\
+	tdb_nest_unlock((struct tdb_context *)(tdb1), (offset), (ltype))
+
+#define tdb_allrecord_lock(tdb1, offset, flags, upgradable)		\
+	tdb_allrecord_lock((struct tdb_context *)(tdb1),		\
+			   (offset), (flags), (upgradable))
+
+#define tdb_allrecord_unlock(tdb1, ltype)				\
+	tdb_allrecord_unlock((struct tdb_context *)(tdb1), (ltype))
+
+#define tdb_allrecord_upgrade(tdb1, start)				\
+	tdb_allrecord_upgrade((struct tdb_context *)(tdb1), (start))
+
+#define tdb_lock_gradual(tdb1, ltype, flags, off, len)	\
+	tdb_lock_gradual((struct tdb_context *)(tdb1),	\
+			 (ltype), (flags), (off), (len))
 /***** END FIXME ***/
 
 #include <limits.h>
@@ -171,14 +197,24 @@ struct tdb1_context {
 	/* The actual file information */
 	struct tdb_file *file;
 
-	int read_only; /* opened read-only */
+	int open_flags; /* flags used in the open - needed by reopen */
+
+	/* low level (fnctl) lock functions. */
+	int (*lock_fn)(int fd, int rw, off_t off, off_t len, bool w, void *);
+	int (*unlock_fn)(int fd, int rw, off_t off, off_t len, void *);
+	void *lock_data;
+
+	uint32_t flags; /* the flags passed to tdb1_open */
+
+	/* Our statistics. */
+	struct tdb_attribute_stats stats;
+
+	bool read_only; /* opened read-only */
 	int traverse_read; /* read-only traversal */
 	int traverse_write; /* read-write traversal */
 	struct tdb1_header header; /* a cached copy of the header */
-	uint32_t flags; /* the flags passed to tdb1_open */
 	struct tdb1_traverse_lock travlocks; /* current traversal locks */
 	unsigned int (*hash_fn)(TDB_DATA *key);
-	int open_flags; /* flags used in the open - needed by reopen */
 	const struct tdb1_methods *methods;
 	struct tdb1_transaction *transaction;
 	int page_size;

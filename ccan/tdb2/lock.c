@@ -184,9 +184,9 @@ static int unlock(struct tdb_context *tdb, int rw, off_t off, off_t len)
 
    note that a len of zero means lock to end of file
 */
-static enum TDB_ERROR tdb_brlock(struct tdb_context *tdb,
-				 int rw_type, tdb_off_t offset, tdb_off_t len,
-				 enum tdb_lock_flags flags)
+enum TDB_ERROR tdb_brlock(struct tdb_context *tdb,
+			  int rw_type, tdb_off_t offset, tdb_off_t len,
+			  enum tdb_lock_flags flags)
 {
 	int ret;
 
@@ -226,8 +226,8 @@ static enum TDB_ERROR tdb_brlock(struct tdb_context *tdb,
 	return TDB_SUCCESS;
 }
 
-static enum TDB_ERROR tdb_brunlock(struct tdb_context *tdb,
-				   int rw_type, tdb_off_t offset, size_t len)
+enum TDB_ERROR tdb_brunlock(struct tdb_context *tdb,
+			    int rw_type, tdb_off_t offset, size_t len)
 {
 	if (tdb->flags & TDB_NOLOCK) {
 		return TDB_SUCCESS;
@@ -252,7 +252,7 @@ static enum TDB_ERROR tdb_brunlock(struct tdb_context *tdb,
   deadlock detection and claim a deadlock when progress can be
   made. For those OSes we may loop for a while.
 */
-enum TDB_ERROR tdb_allrecord_upgrade(struct tdb_context *tdb)
+enum TDB_ERROR tdb_allrecord_upgrade(struct tdb_context *tdb, off_t start)
 {
 	int count = 1000;
 
@@ -278,8 +278,7 @@ enum TDB_ERROR tdb_allrecord_upgrade(struct tdb_context *tdb)
 
 	while (count--) {
 		struct timeval tv;
-		if (tdb_brlock(tdb, F_WRLCK,
-			       TDB_HASH_LOCK_START, 0,
+		if (tdb_brlock(tdb, F_WRLCK, start, 0,
 			       TDB_LOCK_WAIT|TDB_LOCK_PROBE) == TDB_SUCCESS) {
 			tdb->file->allrecord_lock.ltype = F_WRLCK;
 			tdb->file->allrecord_lock.off = 0;
@@ -341,15 +340,16 @@ enum TDB_ERROR tdb_lock_and_recover(struct tdb_context *tdb)
 }
 
 /* lock an offset in the database. */
-static enum TDB_ERROR tdb_nest_lock(struct tdb_context *tdb,
-				    tdb_off_t offset, int ltype,
-				    enum tdb_lock_flags flags)
+enum TDB_ERROR tdb_nest_lock(struct tdb_context *tdb,
+			     tdb_off_t offset, int ltype,
+			     enum tdb_lock_flags flags)
 {
 	struct tdb_lock *new_lck;
 	enum TDB_ERROR ecode;
 
-	if (offset > (TDB_HASH_LOCK_START + TDB_HASH_LOCK_RANGE
-		      + tdb->file->map_size / 8)) {
+	if (!(tdb->flags & TDB_VERSION1)
+	    && offset > (TDB_HASH_LOCK_START + TDB_HASH_LOCK_RANGE
+			 + tdb->file->map_size / 8)) {
 		return tdb_logerr(tdb, TDB_ERR_LOCK, TDB_LOG_ERROR,
 				  "tdb_nest_lock: invalid offset %zu ltype=%d",
 				  (size_t)offset, ltype);
@@ -437,8 +437,8 @@ static enum TDB_ERROR tdb_nest_lock(struct tdb_context *tdb,
 	return TDB_SUCCESS;
 }
 
-static enum TDB_ERROR tdb_nest_unlock(struct tdb_context *tdb,
-				      tdb_off_t off, int ltype)
+enum TDB_ERROR tdb_nest_unlock(struct tdb_context *tdb,
+			       tdb_off_t off, int ltype)
 {
 	struct tdb_lock *lck;
 	enum TDB_ERROR ecode;
@@ -493,9 +493,9 @@ void tdb_transaction_unlock(struct tdb_context *tdb, int ltype)
 
 /* We only need to lock individual bytes, but Linux merges consecutive locks
  * so we lock in contiguous ranges. */
-static enum TDB_ERROR tdb_lock_gradual(struct tdb_context *tdb,
-				       int ltype, enum tdb_lock_flags flags,
-				       tdb_off_t off, tdb_off_t len)
+enum TDB_ERROR tdb_lock_gradual(struct tdb_context *tdb,
+				int ltype, enum tdb_lock_flags flags,
+				tdb_off_t off, tdb_off_t len)
 {
 	enum TDB_ERROR ecode;
 	enum tdb_lock_flags nb_flags = (flags & ~TDB_LOCK_WAIT);

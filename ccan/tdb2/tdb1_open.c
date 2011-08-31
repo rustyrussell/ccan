@@ -189,6 +189,8 @@ struct tdb1_context *tdb1_open_ex(const char *name, int hash_size, int tdb1_flag
 	tdb->file->map_ptr = NULL;
 	tdb->flags = tdb1_flags|TDB_VERSION1;
 	tdb->open_flags = open_flags;
+	tdb->lock_fn = tdb_fcntl_lock;
+	tdb->unlock_fn = tdb_fcntl_unlock;
 	if (log_ctx) {
 		tdb->log_fn = log_ctx->log_fn;
 		tdb->log_data = log_ctx->log_private;

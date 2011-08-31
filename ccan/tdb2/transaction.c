@@ -1006,7 +1006,7 @@ static enum TDB_ERROR _tdb_transaction_prepare_commit(struct tdb_context *tdb)
 	methods = tdb->transaction->io_methods;
 
 	/* upgrade the main transaction lock region to a write lock */
-	ecode = tdb_allrecord_upgrade(tdb);
+	ecode = tdb_allrecord_upgrade(tdb, TDB_HASH_LOCK_START);
 	if (ecode != TDB_SUCCESS) {
 		return ecode;
 	}

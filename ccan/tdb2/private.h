@@ -545,7 +545,7 @@ bool tdb_has_hash_locks(struct tdb_context *tdb);
 enum TDB_ERROR tdb_allrecord_lock(struct tdb_context *tdb, int ltype,
 				  enum tdb_lock_flags flags, bool upgradable);
 void tdb_allrecord_unlock(struct tdb_context *tdb, int ltype);
-enum TDB_ERROR tdb_allrecord_upgrade(struct tdb_context *tdb);
+enum TDB_ERROR tdb_allrecord_upgrade(struct tdb_context *tdb, off_t start);
 
 /* Serialize db open. */
 enum TDB_ERROR tdb_lock_open(struct tdb_context *tdb,
@@ -560,6 +560,25 @@ bool tdb_has_expansion_lock(struct tdb_context *tdb);
 
 /* If it needs recovery, grab all the locks and do it. */
 enum TDB_ERROR tdb_lock_and_recover(struct tdb_context *tdb);
+
+/* Byte-range lock wrappers for TDB1 to access. */
+enum TDB_ERROR tdb_brlock(struct tdb_context *tdb,
+			  int rw_type, tdb_off_t offset, tdb_off_t len,
+			  enum tdb_lock_flags flags);
+
+enum TDB_ERROR tdb_brunlock(struct tdb_context *tdb,
+			    int rw_type, tdb_off_t offset, size_t len);
+
+enum TDB_ERROR tdb_nest_lock(struct tdb_context *tdb,
+			     tdb_off_t offset, int ltype,
+			     enum tdb_lock_flags flags);
+
+enum TDB_ERROR tdb_nest_unlock(struct tdb_context *tdb,
+			       tdb_off_t off, int ltype);
+
+enum TDB_ERROR tdb_lock_gradual(struct tdb_context *tdb,
+				int ltype, enum tdb_lock_flags flags,
+				tdb_off_t off, tdb_off_t len);
 
 /* Default lock and unlock functions. */
 int tdb_fcntl_lock(int fd, int rw, off_t off, off_t len, bool waitflag, void *);
