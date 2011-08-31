@@ -338,6 +338,9 @@ struct tdb_methods {
   internal prototypes
 */
 /* hash.c: */
+uint64_t tdb_jenkins_hash(const void *key, size_t length, uint64_t seed,
+			  void *unused);
+
 tdb_bool_err first_in_hash(struct tdb_context *tdb,
 			   struct traverse_info *tinfo,
 			   TDB_DATA *kbuf, size_t *dlen);

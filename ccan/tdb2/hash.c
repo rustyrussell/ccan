@@ -16,7 +16,19 @@
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
 #include "private.h"
+#include <ccan/hash/hash.h>
 #include <assert.h>
+
+/* Default hash function. */
+uint64_t tdb_jenkins_hash(const void *key, size_t length, uint64_t seed,
+			  void *unused)
+{
+	uint64_t ret;
+	/* hash64_stable assumes lower bits are more important; they are a
+	 * slightly better hash.  We use the upper bits first, so swap them. */
+	ret = hash64_stable((const unsigned char *)key, length, seed);
+	return (ret >> 32) | (ret << 32);
+}
 
 uint64_t tdb_hash(struct tdb_context *tdb, const void *ptr, size_t len)
 {

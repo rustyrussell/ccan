@@ -16,7 +16,6 @@
    License along with this library; if not, see <http://www.gnu.org/licenses/>.
 */
 #include "private.h"
-#include <ccan/hash/hash.h>
 #include <assert.h>
 
 /* all tdbs, to detect double-opens (fcntl file don't nest!) */
@@ -242,16 +241,6 @@ enum TDB_ERROR tdb_set_attribute(struct tdb_context *tdb,
 	return TDB_SUCCESS;
 }
 
-static uint64_t jenkins_hash(const void *key, size_t length, uint64_t seed,
-			     void *unused)
-{
-	uint64_t ret;
-	/* hash64_stable assumes lower bits are more important; they are a
-	 * slightly better hash.  We use the upper bits first, so swap them. */
-	ret = hash64_stable((const unsigned char *)key, length, seed);
-	return (ret >> 32) | (ret << 32);
-}
-
 enum TDB_ERROR tdb_get_attribute(struct tdb_context *tdb,
 				 union tdb_attribute *attr)
 {
@@ -371,7 +360,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 	tdb->openhook = NULL;
 	tdb->lock_fn = tdb_fcntl_lock;
 	tdb->unlock_fn = tdb_fcntl_unlock;
-	tdb->hash_fn = jenkins_hash;
+	tdb->hash_fn = tdb_jenkins_hash;
 	memset(&tdb->stats, 0, sizeof(tdb->stats));
 	tdb->stats.base.attr = TDB_ATTRIBUTE_STATS;
 	tdb->stats.size = sizeof(tdb->stats);

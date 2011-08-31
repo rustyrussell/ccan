@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
 		attr.base.attr = TDB_ATTRIBUTE_HASH;
 		ok1(tdb_get_attribute(tdb, &attr) == 0);
 		ok1(attr.base.attr == TDB_ATTRIBUTE_HASH);
-		ok1(attr.hash.fn == jenkins_hash);
+		ok1(attr.hash.fn == tdb_jenkins_hash);
 		attr.base.attr = TDB_ATTRIBUTE_FLOCK;
 		ok1(tdb_get_attribute(tdb, &attr) == 0);
 		ok1(attr.base.attr == TDB_ATTRIBUTE_FLOCK);
