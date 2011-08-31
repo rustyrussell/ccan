@@ -180,7 +180,8 @@ int tdb1_lock(struct tdb1_context *tdb, int list, int ltype)
 	int ret;
 
 	ret = tdb1_lock_list(tdb, list, ltype, TDB_LOCK_WAIT);
-	if (ret) {
+	/* Don't log for EAGAIN and EINTR: they could have overridden lock fns */
+	if (ret && errno != EAGAIN && errno != EINTR) {
 		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
 			   "tdb1_lock failed on list %d "
 			   "ltype=%d (%s)",  list, ltype, strerror(errno));

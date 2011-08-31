@@ -478,8 +478,11 @@ static int _tdb1_transaction_start(struct tdb1_context *tdb)
 	/* get a read lock from the freelist to the end of file. This
 	   is upgraded to a write lock during the commit */
 	if (tdb1_allrecord_lock(tdb, F_RDLCK, TDB_LOCK_WAIT, true) == -1) {
-		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
-			   "tdb1_transaction_start: failed to get hash locks");
+		if (errno != EAGAIN && errno != EINTR) {
+			tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+				   "tdb1_transaction_start:"
+				   " failed to get hash locks");
+		}
 		goto fail_allrecord_lock;
 	}
 
@@ -955,9 +958,11 @@ static int _tdb1_transaction_prepare_commit(struct tdb1_context *tdb)
 
 	/* upgrade the main transaction lock region to a write lock */
 	if (tdb1_allrecord_upgrade(tdb) == -1) {
-		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
-			   "tdb1_transaction_prepare_commit:"
-			   " failed to upgrade hash locks");
+		if (errno != EAGAIN && errno != EINTR) {
+			tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+				   "tdb1_transaction_prepare_commit:"
+				   " failed to upgrade hash locks");
+		}
 		_tdb1_transaction_cancel(tdb);
 		return -1;
 	}
@@ -965,9 +970,11 @@ static int _tdb1_transaction_prepare_commit(struct tdb1_context *tdb)
 	/* get the open lock - this prevents new users attaching to the database
 	   during the commit */
 	if (tdb1_nest_lock(tdb, TDB1_OPEN_LOCK, F_WRLCK, TDB_LOCK_WAIT) == -1) {
-		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
-			   "tdb1_transaction_prepare_commit:"
-			   " failed to get open lock");
+		if (errno != EAGAIN && errno != EINTR) {
+			tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
+				   "tdb1_transaction_prepare_commit:"
+				   " failed to get open lock");
+		}
 		_tdb1_transaction_cancel(tdb);
 		return -1;
 	}
