@@ -11,7 +11,10 @@ int main(int argc, char *argv[])
 	unsigned int i, messages = 0;
 	struct tdb_context *tdb;
 	int flags[] = { TDB_DEFAULT, TDB_NOMMAP,
-			TDB_CONVERT, TDB_NOMMAP|TDB_CONVERT };
+			TDB_CONVERT, TDB_NOMMAP|TDB_CONVERT,
+			TDB_VERSION1, TDB_NOMMAP|TDB_VERSION1,
+			TDB_CONVERT|TDB_VERSION1,
+			TDB_NOMMAP|TDB_CONVERT|TDB_VERSION1 };
 
 	failtest_init(argc, argv);
 	failtest_hook = block_repeat_failures;

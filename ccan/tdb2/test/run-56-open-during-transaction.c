@@ -128,15 +128,16 @@ static int ftruncate_check(int fd, off_t length)
 
 int main(int argc, char *argv[])
 {
-	const int flags[] = { TDB_DEFAULT,
-			      TDB_NOMMAP,
-			      TDB_CONVERT,
-			      TDB_CONVERT | TDB_NOMMAP };
+	const int flags[] = { TDB_DEFAULT, TDB_NOMMAP,
+			TDB_CONVERT, TDB_NOMMAP|TDB_CONVERT,
+			TDB_VERSION1, TDB_NOMMAP|TDB_VERSION1,
+			TDB_CONVERT|TDB_VERSION1,
+			TDB_NOMMAP|TDB_CONVERT|TDB_VERSION1 };
 	int i;
 	struct tdb_context *tdb;
 	TDB_DATA key, data;
 
-	plan_tests(20);
+	plan_tests(sizeof(flags)/sizeof(flags[0]) * 5);
 	agent = prepare_external_agent();
 	if (!agent)
 		err(1, "preparing agent");

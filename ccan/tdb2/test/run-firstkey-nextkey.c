@@ -49,10 +49,14 @@ int main(int argc, char *argv[])
 	struct tdb_context *tdb;
 	union tdb_attribute seed_attr;
 	enum TDB_ERROR ecode;
-
 	int flags[] = { TDB_INTERNAL, TDB_DEFAULT, TDB_NOMMAP,
 			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT, 
-			TDB_NOMMAP|TDB_CONVERT };
+			TDB_NOMMAP|TDB_CONVERT,
+			TDB_INTERNAL|TDB_VERSION1, TDB_VERSION1,
+			TDB_NOMMAP|TDB_VERSION1,
+			TDB_INTERNAL|TDB_CONVERT|TDB_VERSION1,
+			TDB_CONVERT|TDB_VERSION1,
+			TDB_NOMMAP|TDB_CONVERT|TDB_VERSION1 };
 
 	seed_attr.base.attr = TDB_ATTRIBUTE_SEED;
 	seed_attr.base.next = &tap_log_attr;
@@ -62,7 +66,8 @@ int main(int argc, char *argv[])
 		   * (NUM_RECORDS*6 + (NUM_RECORDS-1)*3 + 22) + 1);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		tdb = tdb_open("run-traverse.tdb", flags[i],
-			       O_RDWR|O_CREAT|O_TRUNC, 0600, &seed_attr);
+			       O_RDWR|O_CREAT|O_TRUNC, 0600,
+			       flags[i] & TDB_VERSION1 ? NULL : &seed_attr);
 		ok1(tdb);
 		if (!tdb)
 			continue;

@@ -1,5 +1,5 @@
 /* We save the locks so we can reaquire them. */
-#include <ccan/tdb2/private.h>
+#include <ccan/tdb2/tdb1_private.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdarg.h>
@@ -110,6 +110,17 @@ int fcntl_with_lockcheck(int fd, int cmd, ... /* arg */ )
 					i->type = F_WRLCK;
 				goto done;
 			}
+			/* allrecord upgrade for tdb1. */
+			if (i->type == F_RDLCK && fl->l_type == F_WRLCK
+			    && i->off == TDB1_FREELIST_TOP
+			    && fl->l_start == TDB1_FREELIST_TOP
+			    && i->len == 0
+			    && fl->l_len == 0) {
+				if (ret == 0)
+					i->type = F_WRLCK;
+				goto done;
+			}
+
 			if (!suppress_lockcheck) {
 				diag("%s lock %u@%u overlaps %u@%u",
 				     fl->l_type == F_WRLCK ? "write" : "read",

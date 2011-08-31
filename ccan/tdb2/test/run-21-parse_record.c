@@ -47,7 +47,12 @@ int main(int argc, char *argv[])
 	struct tdb_context *tdb;
 	int flags[] = { TDB_INTERNAL, TDB_DEFAULT, TDB_NOMMAP,
 			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT,
-			TDB_NOMMAP|TDB_CONVERT };
+			TDB_NOMMAP|TDB_CONVERT,
+			TDB_INTERNAL|TDB_VERSION1, TDB_VERSION1,
+			TDB_NOMMAP|TDB_VERSION1,
+			TDB_INTERNAL|TDB_CONVERT|TDB_VERSION1,
+			TDB_CONVERT|TDB_VERSION1,
+			TDB_NOMMAP|TDB_CONVERT|TDB_VERSION1 };
 
 	plan_tests(sizeof(flags) / sizeof(flags[0]) * 2 + 1);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {

@@ -146,7 +146,12 @@ int main(int argc, char *argv[])
 			      .data = &seed } };
 	int flags[] = { TDB_INTERNAL, TDB_DEFAULT, TDB_NOMMAP,
 			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT,
-			TDB_NOMMAP|TDB_CONVERT };
+			TDB_NOMMAP|TDB_CONVERT,
+			TDB_INTERNAL|TDB_VERSION1, TDB_VERSION1,
+			TDB_NOMMAP|TDB_VERSION1,
+			TDB_INTERNAL|TDB_CONVERT|TDB_VERSION1,
+			TDB_CONVERT|TDB_VERSION1,
+			TDB_NOMMAP|TDB_CONVERT|TDB_VERSION1 };
 	/* These two values gave trouble before. */
 	int vals[] = { 755, 837 };
 

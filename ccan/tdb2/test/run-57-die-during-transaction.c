@@ -31,11 +31,24 @@ static void *malloc_noleak(size_t len)
 	abort();
 }
 
+static void *realloc_noleak(void *p, size_t size)
+{
+	unsigned int i;
+
+	for (i = 0; i < MAX_ALLOCATIONS; i++) {
+		if (allocated[i] == p) {
+			return allocated[i] = realloc(p, size);
+		}
+	}
+	diag("Untracked realloc!");
+	abort();
+}
+
 static void free_noleak(void *p)
 {
 	unsigned int i;
 
-	/* We don't catch realloc, so don't care if we miss one. */
+	/* We don't catch asprintf, so don't complain if we miss one. */
 	for (i = 0; i < MAX_ALLOCATIONS; i++) {
 		if (allocated[i] == p) {
 			allocated[i] = NULL;
@@ -57,11 +70,13 @@ static void free_all(void)
 
 #define malloc malloc_noleak
 #define free free_noleak
+#define realloc realloc_noleak
 
 #include "tdb2-source.h"
 
 #undef malloc
 #undef free
+#undef realloc
 #undef write
 #undef pwrite
 #undef fcntl
@@ -128,7 +143,7 @@ static int ftruncate_check(int fd, off_t length)
 	return ret;
 }
 
-static bool test_death(enum operation op, struct agent *agent)
+static bool test_death(enum operation op, struct agent *agent, int flags)
 {
 	struct tdb_context *tdb = NULL;
 	TDB_DATA key;
@@ -138,7 +153,7 @@ static bool test_death(enum operation op, struct agent *agent)
 	current = target = 0;
 reset:
 	unlink(TEST_DBNAME);
-	tdb = tdb_open(TEST_DBNAME, TDB_NOMMAP,
+	tdb = tdb_open(TEST_DBNAME, flags|TDB_NOMMAP,
 		       O_CREAT|O_TRUNC|O_RDWR, 0600, &tap_log_attr);
 	if (!tdb) {
 		diag("Failed opening TDB: %s", strerror(errno));
@@ -250,18 +265,20 @@ int main(int argc, char *argv[])
 {
 	enum operation ops[] = { FETCH, STORE, TRANSACTION_START };
 	struct agent *agent;
-	int i;
+	int i, flags;
 
-	plan_tests(12);
+	plan_tests(24);
 	unlock_callback = maybe_die;
 
 	agent = prepare_external_agent();
 	if (!agent)
 		err(1, "preparing agent");
 
-	for (i = 0; i < sizeof(ops)/sizeof(ops[0]); i++) {
-		diag("Testing %s after death", operation_name(ops[i]));
-		ok1(test_death(ops[i], agent));
+	for (flags = TDB_DEFAULT; flags <= TDB_VERSION1; flags += TDB_VERSION1) {
+		for (i = 0; i < sizeof(ops)/sizeof(ops[0]); i++) {
+			diag("Testing %s after death", operation_name(ops[i]));
+			ok1(test_death(ops[i], agent, flags));
+		}
 	}
 
 	free_external_agent(agent);

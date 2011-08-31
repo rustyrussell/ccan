@@ -9,7 +9,8 @@
 
 static enum TDB_ERROR clear_if_first(int fd, void *arg)
 {
-/* We hold a lock offset 63 always, so we can tell if anyone is holding it. */
+/* We hold a lock offset 4 always, so we can tell if anyone is holding it.
+ * (This is compatible with tdb1's TDB_CLEAR_IF_FIRST flag).  */
 	struct flock fl;
 
 	if (arg != clear_if_first)
@@ -17,7 +18,7 @@ static enum TDB_ERROR clear_if_first(int fd, void *arg)
 
 	fl.l_type = F_WRLCK;
 	fl.l_whence = SEEK_SET;
-	fl.l_start = 63;
+	fl.l_start = 4;
 	fl.l_len = 1;
 
 	if (fcntl(fd, F_SETLK, &fl) == 0) {
@@ -42,7 +43,10 @@ int main(int argc, char *argv[])
 	union tdb_attribute cif;
 	struct tdb_data key = tdb_mkdata("key", 3);
 	int flags[] = { TDB_DEFAULT, TDB_NOMMAP,
-			TDB_CONVERT, TDB_NOMMAP|TDB_CONVERT };
+			TDB_CONVERT, TDB_NOMMAP|TDB_CONVERT,
+			TDB_VERSION1, TDB_NOMMAP|TDB_VERSION1,
+			TDB_CONVERT|TDB_VERSION1,
+			TDB_NOMMAP|TDB_CONVERT|TDB_VERSION1 };
 
 	cif.openhook.base.attr = TDB_ATTRIBUTE_OPENHOOK;
 	cif.openhook.base.next = &tap_log_attr;

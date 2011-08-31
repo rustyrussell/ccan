@@ -10,7 +10,7 @@
 #include <limits.h>
 #include <string.h>
 #include <errno.h>
-#include <ccan/tdb2/private.h>
+#include <ccan/tdb2/tdb1_private.h>
 #include <ccan/tap/tap.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -19,12 +19,13 @@ static struct tdb_context *tdb;
 
 static enum TDB_ERROR clear_if_first(int fd, void *arg)
 {
-/* We hold a lock offset 63 always, so we can tell if anyone is holding it. */
+/* We hold a lock offset 4 always, so we can tell if anyone is holding it.
+ * (This is compatible with tdb1's TDB_CLEAR_IF_FIRST flag).  */
 	struct flock fl;
 
 	fl.l_type = F_WRLCK;
 	fl.l_whence = SEEK_SET;
-	fl.l_start = 63;
+	fl.l_start = 4;
 	fl.l_len = 1;
 
 	if (fcntl(fd, F_SETLK, &fl) == 0) {
@@ -115,7 +116,10 @@ static enum agent_return do_operation(enum operation op, const char *name)
 		ret = tdb_transaction_commit(tdb)==0 ? SUCCESS : OTHER_FAILURE;
 		break;
 	case NEEDS_RECOVERY:
-		ret = tdb_needs_recovery(tdb) ? SUCCESS : FAILED;
+		if (tdb->flags & TDB_VERSION1)
+			ret = tdb1_needs_recovery(tdb) ? SUCCESS : FAILED;
+		else
+			ret = tdb_needs_recovery(tdb) ? SUCCESS : FAILED;
 		break;
 	case CHECK:
 		ret = tdb_check(tdb, NULL, NULL) == 0 ? SUCCESS : OTHER_FAILURE;

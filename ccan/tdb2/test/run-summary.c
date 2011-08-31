@@ -8,7 +8,12 @@ int main(int argc, char *argv[])
 	struct tdb_context *tdb;
 	int flags[] = { TDB_INTERNAL, TDB_DEFAULT, TDB_NOMMAP,
 			TDB_INTERNAL|TDB_CONVERT, TDB_CONVERT,
-			TDB_NOMMAP|TDB_CONVERT };
+			TDB_NOMMAP|TDB_CONVERT,
+			TDB_INTERNAL|TDB_VERSION1, TDB_VERSION1,
+			TDB_NOMMAP|TDB_VERSION1,
+			TDB_INTERNAL|TDB_CONVERT|TDB_VERSION1,
+			TDB_CONVERT|TDB_VERSION1,
+			TDB_NOMMAP|TDB_CONVERT|TDB_VERSION1 };
 	struct tdb_data key = { (unsigned char *)&j, sizeof(j) };
 	struct tdb_data data = { (unsigned char *)&j, sizeof(j) };
 	char *summary;
@@ -36,12 +41,14 @@ int main(int argc, char *argv[])
 			ok1(strstr(summary, "Number of records: 500\n"));
 			ok1(strstr(summary, "Smallest/average/largest keys: 4/4/4\n"));
 			ok1(strstr(summary, "Smallest/average/largest data: 0/2/4\n"));
-			if (j == TDB_SUMMARY_HISTOGRAMS)
+			if (!(flags[i] & TDB_VERSION1)
+			    && j == TDB_SUMMARY_HISTOGRAMS) {
 				ok1(strstr(summary, "|")
 				    && strstr(summary, "*"));
-			else
+			} else {
 				ok1(!strstr(summary, "|")
 				    && !strstr(summary, "*"));
+			}
 			free(summary);
 		}
 		tdb_close(tdb);

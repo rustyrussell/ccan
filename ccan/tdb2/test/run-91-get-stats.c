@@ -7,7 +7,10 @@ int main(int argc, char *argv[])
 	unsigned int i;
 	struct tdb_context *tdb;
 	int flags[] = { TDB_DEFAULT, TDB_NOMMAP,
-			TDB_CONVERT, TDB_NOMMAP|TDB_CONVERT };
+			TDB_CONVERT, TDB_NOMMAP|TDB_CONVERT,
+			TDB_VERSION1, TDB_NOMMAP|TDB_VERSION1,
+			TDB_CONVERT|TDB_VERSION1,
+			TDB_NOMMAP|TDB_CONVERT|TDB_VERSION1 };
 
 	plan_tests(sizeof(flags) / sizeof(flags[0]) * 11);
 
