@@ -436,7 +436,7 @@ fail:
 static enum TDB_ERROR check_hash(struct tdb_context *tdb,
 				 tdb_off_t used[],
 				 size_t num_used, size_t num_ftables,
-				 int (*check)(TDB_DATA, TDB_DATA, void *),
+				 enum TDB_ERROR (*check)(TDB_DATA, TDB_DATA, void *),
 				 void *data)
 {
 	/* Free tables also show up as used. */

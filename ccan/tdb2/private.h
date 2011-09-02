@@ -342,13 +342,13 @@ struct tdb_methods {
 uint64_t tdb_jenkins_hash(const void *key, size_t length, uint64_t seed,
 			  void *unused);
 
-tdb_bool_err first_in_hash(struct tdb_context *tdb,
-			   struct traverse_info *tinfo,
-			   TDB_DATA *kbuf, size_t *dlen);
+enum TDB_ERROR first_in_hash(struct tdb_context *tdb,
+			     struct traverse_info *tinfo,
+			     TDB_DATA *kbuf, size_t *dlen);
 
-tdb_bool_err next_in_hash(struct tdb_context *tdb,
-			  struct traverse_info *tinfo,
-			  TDB_DATA *kbuf, size_t *dlen);
+enum TDB_ERROR next_in_hash(struct tdb_context *tdb,
+			    struct traverse_info *tinfo,
+			    TDB_DATA *kbuf, size_t *dlen);
 
 /* Hash random memory. */
 uint64_t tdb_hash(struct tdb_context *tdb, const void *ptr, size_t len);
@@ -644,9 +644,9 @@ int tdb1_check(struct tdb_context *tdb,
 
 
 /* tdb1_open.c: */
-int tdb1_new_database(struct tdb_context *tdb,
-		      struct tdb_attribute_tdb1_hashsize *hashsize,
-		      struct tdb_attribute_tdb1_max_dead *max_dead);
+enum TDB_ERROR tdb1_new_database(struct tdb_context *tdb,
+				 struct tdb_attribute_tdb1_hashsize *hashsize,
+				 struct tdb_attribute_tdb1_max_dead *max_dead);
 enum TDB_ERROR tdb1_open(struct tdb_context *tdb,
 			 struct tdb_attribute_tdb1_max_dead *max_dead);
 
