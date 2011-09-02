@@ -203,7 +203,7 @@ static enum TDB_ERROR transaction_write(struct tdb_context *tdb, tdb_off_t off,
 		tdb_len_t len2 = PAGESIZE - (off % PAGESIZE);
 		ecode = transaction_write(tdb, off, buf, len2);
 		if (ecode != TDB_SUCCESS) {
-			return -1;
+			return ecode;
 		}
 		len -= len2;
 		off += len2;
