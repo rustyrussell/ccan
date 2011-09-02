@@ -1174,7 +1174,8 @@ int tdb1_transaction_commit(struct tdb_context *tdb)
 	_tdb1_transaction_cancel(tdb);
 
 	if (need_repack) {
-		return tdb_repack(tdb);
+		if (tdb_repack(tdb) != 0)
+			return -1;
 	}
 
 	return 0;
