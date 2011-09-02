@@ -1067,7 +1067,7 @@ enum TDB_ERROR tdb_transaction_prepare_commit(struct tdb_context *tdb)
 			return tdb->last_error;
 		return TDB_SUCCESS;
 	}
-	return _tdb_transaction_prepare_commit(tdb);
+	return tdb->last_error = _tdb_transaction_prepare_commit(tdb);
 }
 
 /*
