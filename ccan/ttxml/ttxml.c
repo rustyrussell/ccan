@@ -64,7 +64,7 @@ void xml_free(XmlNode *target)
 /* Raise flags if we have a character of special meaning.
  * This is where I've hidden the switch statements :-p
  */
-int is_special(char item)
+static int is_special(char item)
 {
 	if((item >= 'a' && item <= 'z') || (item >= 'A' && item <='Z'))
 		return XML_LETTER;
