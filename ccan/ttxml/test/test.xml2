@@ -1,0 +1,9 @@
+<xmlthisisaverylongtagnameIhopeitmesseswithyourstuff>
+	foobar
+	<one foobar barfoo="Hello \"World\"!" foo=bar>
+		<two/>
+	
+	</one>
+	<one></one>
+	<one></one>
+</xml>
