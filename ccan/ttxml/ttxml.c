@@ -6,8 +6,10 @@
 
 #include "ttxml.h"
 
-
+#ifndef BUFFER
 #define BUFFER 3264
+#endif
+
 
 #define XML_LETTER	1
 #define XML_NUMBER	2
@@ -33,7 +35,7 @@ typedef struct XMLBUF
 
 
 /* Allocate a new XmlNode */
-XmlNode* xml_new(char * name)
+static XmlNode* xml_new(char * name)
 {
 	XmlNode * ret = malloc(sizeof(XmlNode));
 	if(!ret)return NULL;
@@ -95,7 +97,6 @@ static void xml_read_file(XMLBUF *xml)
 	size = fread( xml->buf,	1, xml->len, xml->fptr);
 	if( size != xml->len )
 	{
-		printf("Buffer reduction\n");
 		xml->len = size;
 		xml->buf[size]=0;
 		xml->eof = 1;
@@ -333,10 +334,7 @@ XmlNode* xml_load(const char * filename)
 	xml.read_index = 0;
 	xml.fptr = fopen(filename, "rb");
 	if(!xml.fptr)
-	{
-		printf("Opening file failed\n");
 		return NULL;
-	}
 
 	xml.buf = malloc(BUFFER+1);
 	xml.buf[BUFFER]=0;
@@ -383,60 +381,4 @@ char* xml_attr(XmlNode *x, const char *name)
 	return 0;
 }
 
-
-#ifdef TEST
-/* print out the heirarchy of an XML file, useful for debugging */
-void xp(XmlNode *x, int level, int max)
-{
-	int i;
-	char text[] = "text";
-	char *name = text;
-	if(level > max)return;
-	if(!x)return;
-	if(x->name)name = x->name;
-	for(i=0; i<level; i++)printf("    ");
-	printf("%s:", name);
-	if(x->name)
-	for(i=0; i<x->nattrib; i++)
-		printf("%s=\"%s\",", x->attrib[i*2], x->attrib[i*2+1]);
-	else printf("%s", x->attrib[0]);
-	printf("\n");
-	if(x->child)xp(x->child, level+1, max);
-	if(x->next)xp(x->next, level, max);
-}
-
-
-int main(int argc, char *argv[])
-{
-	XmlNode *x, *tmp;
-	
-	if(!argv[1])
-	{
-		printf("USAGE: %s name\n\t reads name where name is an XML file.\n",
-				argv[0]);
-		return 1;
-	}
-
-#ifdef PROFILE
-	for(int i=0; i<1000; i++)
-	{
-#endif
-		x = xml_load(argv[1]);
-
-		if(!x)
-		{
-			printf("Failed to load.\n");
-			return 2;
-		}
-#ifndef PROFILE
-		xp(x, 1, 20);
-#endif
-		xml_free(x);
-#ifdef PROFILE
-	}
-#endif
-
-	return 0;
-}
-#endif
 
