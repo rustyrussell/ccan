@@ -9,7 +9,6 @@
 
 #define BUFFER 3264
 
-
 #define XML_LETTER	1
 #define XML_NUMBER	2
 #define XML_SPACE	4
@@ -62,10 +61,8 @@ void xml_free(XmlNode *target)
 	free(target);
 }
 
-/* raise flags if we have a character of special meaning
- *
+/* Raise flags if we have a character of special meaning.
  * This is where I've hidden the switch statements :-p
- *
  */
 int is_special(char item)
 {
@@ -88,14 +85,17 @@ int is_special(char item)
 	return 128;
 }
 
-/* Refresh the buffer, expects not to be called when EOF */
+/* Refresh the buffer, if possible */
 static void xml_read_file(XMLBUF *xml)
 {
 	int size;
 	
+	if(xml->eof)return;
+	  
 	size = fread( xml->buf,	1, xml->len, xml->fptr);
 	if( size != xml->len )
 	{
+		printf("Buffer reduction\n");
 		xml->len = size;
 		xml->buf[size]=0;
 		xml->eof = 1;
@@ -117,7 +117,11 @@ static char xml_read_byte(XMLBUF *xml)
 	xml->read_index++;
 	if(xml->read_index >= xml->len)
 	{
-		if(xml->eof)return ret;
+		if(xml->eof)
+		{
+		  xml->read_index = xml->len;
+		  return ret;
+		}
 		xml->read_index = 0 ;
 		xml_read_file(xml);
 	}
@@ -128,8 +132,7 @@ static char xml_read_byte(XMLBUF *xml)
 /* skip over bytes matching the is_special mask */
 static void xml_skip( XMLBUF *xml, int mask)
 {
-	printf("just called\n");
-	while( is_special(xml_peek(xml)) & mask && xml->len )
+	while( is_special(xml_peek(xml)) & mask && !(xml->eof && xml->read_index >= xml->len) )
 		xml_read_byte(xml);
 }
 
@@ -337,12 +340,11 @@ XmlNode* xml_load(const char * filename)
 
 	xml.buf = malloc(BUFFER+1);
 	xml.buf[BUFFER]=0;
+	xml.len = BUFFER;
 	if(!xml.buf)
 		goto xml_load_fail_malloc_buf;
 	
-	xml.len = fread(xml.buf, 1, BUFFER, xml.fptr);
-	if(xml.len < BUFFER)
-		xml.eof = 1;
+	xml_read_file(&xml);
 
 	ret = xml_parse(&xml);
 
@@ -407,8 +409,7 @@ void xp(XmlNode *x, int level, int max)
 int main(int argc, char *argv[])
 {
 	XmlNode *x, *tmp;
-	int i;
-
+	
 	if(!argv[1])
 	{
 		printf("USAGE: %s name\n\t reads name where name is an XML file.\n",
@@ -417,7 +418,7 @@ int main(int argc, char *argv[])
 	}
 
 #ifdef PROFILE
-	for(i=0; i<1000; i++)
+	for(int i=0; i<1000; i++)
 	{
 #endif
 		x = xml_load(argv[1]);
@@ -435,10 +436,6 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	
-//	tmp = xml_find(x, "geometry");
-//	xp(x, 1, 6);
-//	printf("Happily free.\n");
 	return 0;
 }
 #endif
