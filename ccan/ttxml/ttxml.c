@@ -337,10 +337,10 @@ XmlNode* xml_load(const char * filename)
 		return NULL;
 
 	xml.buf = malloc(BUFFER+1);
-	xml.buf[BUFFER]=0;
-	xml.len = BUFFER;
 	if(!xml.buf)
 		goto xml_load_fail_malloc_buf;
+	xml.buf[BUFFER]=0;
+	xml.len = BUFFER;
 	
 	xml_read_file(&xml);
 
