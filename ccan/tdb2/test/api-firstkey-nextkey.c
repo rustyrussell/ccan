@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
 	plan_tests(sizeof(flags) / sizeof(flags[0])
 		   * (NUM_RECORDS*6 + (NUM_RECORDS-1)*3 + 22) + 1);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
-		tdb = tdb_open("run-traverse.tdb", flags[i],
+		tdb = tdb_open("api-firstkey-nextkey.tdb", flags[i],
 			       O_RDWR|O_CREAT|O_TRUNC, 0600,
 			       flags[i] & TDB_VERSION1 ? NULL : &seed_attr);
 		ok1(tdb);

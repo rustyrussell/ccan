@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
 	failtest_suppress = true;
 	plan_tests(sizeof(flags) / sizeof(flags[0]) * 3 + 1);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
-		tdb = tdb_open("run-10-simple-store.tdb", flags[i],
+		tdb = tdb_open("run-12-check.tdb", flags[i],
 			       O_RDWR|O_CREAT|O_TRUNC, 0600, &tap_log_attr);
 		ok1(tdb);
 		ok1(tdb_store(tdb, key, data, TDB_INSERT) == 0);

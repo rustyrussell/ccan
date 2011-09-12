@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		struct hash_info h;
 
-		tdb = tdb_open("run-04-basichash.tdb", flags[i],
+		tdb = tdb_open("run-20-growhash.tdb", flags[i],
 			       O_RDWR|O_CREAT|O_TRUNC, 0600, &hattr);
 		ok1(tdb);
 		if (!tdb)

@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
 
 	plan_tests(sizeof(flags) / sizeof(flags[0]) * 15 + 8 * 13);
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
-		tdb = tdb_open("run-new_database.tdb", flags[i]|TDB_SEQNUM,
+		tdb = tdb_open("api-81-seqnum.tdb", flags[i]|TDB_SEQNUM,
 			       O_RDWR|O_CREAT|O_TRUNC, 0600, &tap_log_attr);
 		if (!ok1(tdb))
 			continue;
