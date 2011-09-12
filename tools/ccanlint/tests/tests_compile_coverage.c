@@ -28,30 +28,24 @@ static const char *can_run_coverage(struct manifest *m)
 	return NULL;
 }
 
-static char *cov_compile(const void *ctx,
-			 struct manifest *m,
-			 struct ccan_file *file,
-			 bool link_with_module,
-			 bool keep)
+static void cov_compile(const void *ctx,
+			unsigned int time_ms,
+			struct manifest *m,
+			struct ccan_file *file,
+			bool link_with_module,
+			bool keep)
 {
-	char *output;
 	char *flags = talloc_asprintf(ctx, "%s %s", cflags, COVERAGE_CFLAGS);
 
 	file->compiled[COMPILE_COVERAGE]
 		= maybe_temp_file(ctx, "", keep, file->fullname);
-	if (!compile_and_link(ctx, file->fullname, ccan_dir,
-			      test_obj_list(m, link_with_module,
-					    COMPILE_NORMAL,
-					    COMPILE_COVERAGE),
-			      compiler, flags,
-			      lib_list(m, COMPILE_NORMAL),
-			      file->compiled[COMPILE_COVERAGE], &output)) {
-		talloc_free(file->compiled[COMPILE_COVERAGE]);
-		file->compiled[COMPILE_COVERAGE] = NULL;
-		return output;
-	}
-	talloc_free(output);
-	return NULL;
+	compile_and_link_async(file, time_ms, file->fullname, ccan_dir,
+			       test_obj_list(m, link_with_module,
+					     COMPILE_NORMAL,
+					     COMPILE_COVERAGE),
+			       compiler, flags,
+			       lib_list(m, COMPILE_NORMAL),
+			       file->compiled[COMPILE_COVERAGE]);
 }
 
 /* FIXME: Coverage from testable examples as well. */
@@ -63,6 +57,7 @@ static void do_compile_coverage_tests(struct manifest *m,
 	char *cmdout;
 	struct ccan_file *i;
 	struct list_head *h;
+	bool ok;
 	char *f = talloc_asprintf(score, "%s %s", cflags, COVERAGE_CFLAGS);
 
 	/* For API tests, we need coverage version of module. */
@@ -77,14 +72,16 @@ static void do_compile_coverage_tests(struct manifest *m,
 
 	foreach_ptr(h, &m->run_tests, &m->api_tests) {
 		list_for_each(h, i, list) {
-			cmdout = cov_compile(m, m, i,
-					     h == &m->api_tests,
-					     keep);
-			if (cmdout) {
-				score_file_error(score, i, 0,
-				  "Failed to compile test with coverage: %s",
-				  cmdout);
-			}
+			cov_compile(m, *timeleft, m, i, h == &m->api_tests,
+				    keep);
+		}
+	}
+
+	while ((i = collect_command(&ok, &cmdout)) != NULL) {
+		if (!ok) {
+			score_file_error(score, i, 0,
+					 "Failed to compile test with coverage:"
+					 " %s", cmdout);
 		}
 	}
 	if (!score->error) {
