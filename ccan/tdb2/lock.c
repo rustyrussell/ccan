@@ -415,7 +415,7 @@ enum TDB_ERROR tdb_nest_lock(struct tdb_context *tdb,
 			tdb_brunlock(tdb, ltype, offset, 1);
 
 			if (berr < 0)
-				return berr;
+				return TDB_OFF_TO_ERR(berr);
 			ecode = tdb_lock_and_recover(tdb);
 			if (ecode == TDB_SUCCESS) {
 				ecode = tdb_brlock(tdb, ltype, offset, 1,
@@ -613,7 +613,7 @@ again:
 
 	tdb_allrecord_unlock(tdb, ltype);
 	if (berr < 0)
-		return berr;
+		return TDB_OFF_TO_ERR(berr);
 	ecode = tdb_lock_and_recover(tdb);
 	if (ecode != TDB_SUCCESS) {
 		return ecode;

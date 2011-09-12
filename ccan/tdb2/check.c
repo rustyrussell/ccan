@@ -148,7 +148,7 @@ static enum TDB_ERROR check_hash_chain(struct tdb_context *tdb,
 
 	off = tdb_read_off(tdb, off + offsetof(struct tdb_chain, next));
 	if (TDB_OFF_IS_ERR(off)) {
-		return off;
+		return TDB_OFF_TO_ERR(off);
 	}
 	if (off == 0)
 		return TDB_SUCCESS;
@@ -534,7 +534,7 @@ static enum TDB_ERROR check_free_table(struct tdb_context *tdb,
 		h = bucket_off(ftable_off, i);
 		for (off = tdb_read_off(tdb, h); off; off = f.next) {
 			if (TDB_OFF_IS_ERR(off)) {
-				return off;
+				return TDB_OFF_TO_ERR(off);
 			}
 			if (!first) {
 				off &= TDB_OFF_MASK;
@@ -589,7 +589,7 @@ tdb_off_t dead_space(struct tdb_context *tdb, tdb_off_t off)
 		char c;
 		ecode = tdb->tdb2.io->tread(tdb, off, &c, 1);
 		if (ecode != TDB_SUCCESS) {
-			return ecode;
+			return TDB_ERR_TO_OFF(ecode);
 		}
 		if (c != 0 && c != 0x43)
 			break;
@@ -634,7 +634,7 @@ static enum TDB_ERROR check_linear(struct tdb_context *tdb,
 			} else {
 				len = dead_space(tdb, off);
 				if (TDB_OFF_IS_ERR(len)) {
-					return len;
+					return TDB_OFF_TO_ERR(len);
 				}
 				if (len < sizeof(rec.r)) {
 					return tdb_logerr(tdb, TDB_ERR_CORRUPT,
@@ -811,7 +811,7 @@ enum TDB_ERROR tdb_check_(struct tdb_context *tdb,
 
 	for (ft = first_ftable(tdb); ft; ft = next_ftable(tdb, ft)) {
 		if (TDB_OFF_IS_ERR(ft)) {
-			ecode = ft;
+			ecode = TDB_OFF_TO_ERR(ft);
 			goto out;
 		}
 		ecode = check_free_table(tdb, ft, num_ftables, fr, num_free,

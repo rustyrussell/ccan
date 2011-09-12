@@ -668,7 +668,7 @@ static enum TDB_ERROR tdb_recovery_area(struct tdb_context *tdb,
 	*recovery_offset = tdb_read_off(tdb,
 					offsetof(struct tdb_header, recovery));
 	if (TDB_OFF_IS_ERR(*recovery_offset)) {
-		return *recovery_offset;
+		return TDB_OFF_TO_ERR(*recovery_offset);
 	}
 
 	if (*recovery_offset == 0) {
@@ -852,9 +852,10 @@ static tdb_off_t create_recovery_area(struct tdb_context *tdb,
 	tdb->stats.transaction_expand_file++;
 	ecode = methods->expand_file(tdb, addition);
 	if (ecode != TDB_SUCCESS) {
-		return tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
-				  "tdb_recovery_allocate:"
-				  " failed to create recovery area");
+		tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
+			   "tdb_recovery_allocate:"
+			   " failed to create recovery area");
+		return TDB_ERR_TO_OFF(ecode);
 	}
 
 	/* we have to reset the old map size so that we don't try to
@@ -869,9 +870,10 @@ static tdb_off_t create_recovery_area(struct tdb_context *tdb,
 	ecode = methods->twrite(tdb, offsetof(struct tdb_header, recovery),
 				&recovery_off, sizeof(tdb_off_t));
 	if (ecode != TDB_SUCCESS) {
-		return tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
-				  "tdb_recovery_allocate:"
-				  " failed to write recovery head");
+		tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
+			   "tdb_recovery_allocate:"
+			   " failed to write recovery head");
+		return TDB_ERR_TO_OFF(ecode);
 	}
 	transaction_write_existing(tdb, offsetof(struct tdb_header, recovery),
 				   &recovery_off,
@@ -928,7 +930,7 @@ static enum TDB_ERROR transaction_setup_recovery(struct tdb_context *tdb)
 						    recovery);
 		if (TDB_OFF_IS_ERR(recovery_off)) {
 			free(recovery);
-			return recovery_off;
+			return TDB_OFF_TO_ERR(recovery_off);
 		}
 	}
 
@@ -1194,7 +1196,8 @@ enum TDB_ERROR tdb_transaction_recover(struct tdb_context *tdb)
 	/* find the recovery area */
 	recovery_head = tdb_read_off(tdb, offsetof(struct tdb_header,recovery));
 	if (TDB_OFF_IS_ERR(recovery_head)) {
-		return tdb_logerr(tdb, recovery_head, TDB_LOG_ERROR,
+		ecode = TDB_OFF_TO_ERR(recovery_head);
+		return tdb_logerr(tdb, ecode, TDB_LOG_ERROR,
 				  "tdb_transaction_recover:"
 				  " failed to read recovery head");
 	}
@@ -1330,7 +1333,7 @@ tdb_bool_err tdb_needs_recovery(struct tdb_context *tdb)
 	/* read the recovery record */
 	ecode = tdb_read_convert(tdb, recovery_head, &rec, sizeof(rec));
 	if (ecode != TDB_SUCCESS) {
-		return ecode;
+		return TDB_ERR_TO_OFF(ecode);
 	}
 
 	return (rec.magic == TDB_RECOVERY_MAGIC);

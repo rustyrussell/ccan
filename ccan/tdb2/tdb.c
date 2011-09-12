@@ -50,7 +50,7 @@ static enum TDB_ERROR replace_data(struct tdb_context *tdb,
 	new_off = alloc(tdb, key.dsize, dbuf.dsize, h->h, TDB_USED_MAGIC,
 			growing);
 	if (TDB_OFF_IS_ERR(new_off)) {
-		return new_off;
+		return TDB_OFF_TO_ERR(new_off);
 	}
 
 	/* We didn't like the existing one: remove it. */
@@ -122,7 +122,7 @@ enum TDB_ERROR tdb_store(struct tdb_context *tdb,
 
 	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL);
 	if (TDB_OFF_IS_ERR(off)) {
-		return tdb->last_error = off;
+		return tdb->last_error = TDB_OFF_TO_ERR(off);
 	}
 
 	/* Now we have lock on this hash bucket. */
@@ -191,7 +191,7 @@ enum TDB_ERROR tdb_append(struct tdb_context *tdb,
 
 	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL);
 	if (TDB_OFF_IS_ERR(off)) {
-		return tdb->last_error = off;
+		return tdb->last_error = TDB_OFF_TO_ERR(off);
 	}
 
 	if (off) {
@@ -259,7 +259,7 @@ enum TDB_ERROR tdb_fetch(struct tdb_context *tdb, struct tdb_data key,
 
 	off = find_and_lock(tdb, key, F_RDLCK, &h, &rec, NULL);
 	if (TDB_OFF_IS_ERR(off)) {
-		return tdb->last_error = off;
+		return tdb->last_error = TDB_OFF_TO_ERR(off);
 	}
 
 	if (!off) {
@@ -290,7 +290,7 @@ bool tdb_exists(struct tdb_context *tdb, TDB_DATA key)
 
 	off = find_and_lock(tdb, key, F_RDLCK, &h, &rec, NULL);
 	if (TDB_OFF_IS_ERR(off)) {
-		tdb->last_error = off;
+		tdb->last_error = TDB_OFF_TO_ERR(off);
 		return false;
 	}
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_RDLCK);
@@ -314,7 +314,7 @@ enum TDB_ERROR tdb_delete(struct tdb_context *tdb, struct tdb_data key)
 
 	off = find_and_lock(tdb, key, F_WRLCK, &h, &rec, NULL);
 	if (TDB_OFF_IS_ERR(off)) {
-		return tdb->last_error = off;
+		return tdb->last_error = TDB_OFF_TO_ERR(off);
 	}
 
 	if (!off) {
@@ -465,16 +465,16 @@ void tdb_remove_flag(struct tdb_context *tdb, unsigned flag)
 const char *tdb_errorstr(enum TDB_ERROR ecode)
 {
 	/* Gcc warns if you miss a case in the switch, so use that. */
-	switch (ecode) {
-	case TDB_SUCCESS: return "Success";
-	case TDB_ERR_CORRUPT: return "Corrupt database";
-	case TDB_ERR_IO: return "IO Error";
-	case TDB_ERR_LOCK: return "Locking error";
-	case TDB_ERR_OOM: return "Out of memory";
-	case TDB_ERR_EXISTS: return "Record exists";
-	case TDB_ERR_EINVAL: return "Invalid parameter";
-	case TDB_ERR_NOEXIST: return "Record does not exist";
-	case TDB_ERR_RDONLY: return "write not permitted";
+	switch (TDB_ERR_TO_OFF(ecode)) {
+	case TDB_ERR_TO_OFF(TDB_SUCCESS): return "Success";
+	case TDB_ERR_TO_OFF(TDB_ERR_CORRUPT): return "Corrupt database";
+	case TDB_ERR_TO_OFF(TDB_ERR_IO): return "IO Error";
+	case TDB_ERR_TO_OFF(TDB_ERR_LOCK): return "Locking error";
+	case TDB_ERR_TO_OFF(TDB_ERR_OOM): return "Out of memory";
+	case TDB_ERR_TO_OFF(TDB_ERR_EXISTS): return "Record exists";
+	case TDB_ERR_TO_OFF(TDB_ERR_EINVAL): return "Invalid parameter";
+	case TDB_ERR_TO_OFF(TDB_ERR_NOEXIST): return "Record does not exist";
+	case TDB_ERR_TO_OFF(TDB_ERR_RDONLY): return "write not permitted";
 	}
 	return "Invalid error code";
 }
@@ -533,7 +533,7 @@ enum TDB_ERROR tdb_parse_record_(struct tdb_context *tdb,
 
 	off = find_and_lock(tdb, key, F_RDLCK, &h, &rec, NULL);
 	if (TDB_OFF_IS_ERR(off)) {
-		return tdb->last_error = off;
+		return tdb->last_error = TDB_OFF_TO_ERR(off);
 	}
 
 	if (!off) {
@@ -571,14 +571,14 @@ int64_t tdb_get_seqnum(struct tdb_context *tdb)
 		val = tdb1_get_seqnum(tdb);
 
 		if (tdb->last_error != TDB_SUCCESS)
-			return tdb->last_error;
+			return TDB_ERR_TO_OFF(tdb->last_error);
 		else
 			return val;
 	}
 
 	off = tdb_read_off(tdb, offsetof(struct tdb_header, seqnum));
 	if (TDB_OFF_IS_ERR(off))
-		tdb->last_error = off;
+		tdb->last_error = TDB_OFF_TO_ERR(off);
 	else
 		tdb->last_error = TDB_SUCCESS;
 	return off;

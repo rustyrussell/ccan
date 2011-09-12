@@ -28,7 +28,7 @@ static tdb_off_t count_hash(struct tdb_context *tdb,
 
 	h = tdb_access_read(tdb, hash_off, sizeof(*h) << bits, true);
 	if (TDB_PTR_IS_ERR(h)) {
-		return TDB_PTR_ERR(h);
+		return TDB_ERR_TO_OFF(TDB_PTR_ERR(h));
 	}
 	for (i = 0; i < (1 << bits); i++)
 		count += (h[i] != 0);
@@ -93,7 +93,7 @@ static enum TDB_ERROR summarize(struct tdb_context *tdb,
 						     off + sizeof(p->u),
 						     TDB_SUBLEVEL_HASH_BITS);
 			if (TDB_OFF_IS_ERR(count)) {
-				return count;
+				return TDB_OFF_TO_ERR(count);
 			}
 			tally_add(hashes, count);
 			tally_add(extra, rec_extra_padding(&p->u));
@@ -115,7 +115,7 @@ static enum TDB_ERROR summarize(struct tdb_context *tdb,
 		} else {
 			len = dead_space(tdb, off);
 			if (TDB_OFF_IS_ERR(len)) {
-				return len;
+				return TDB_OFF_TO_ERR(len);
 			}
 		}
 		tdb_access_release(tdb, p);

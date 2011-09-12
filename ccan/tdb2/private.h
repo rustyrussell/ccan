@@ -65,7 +65,9 @@ typedef uint64_t tdb_off_t;
 #define TDB_RECOVERY_MAGIC (0xf53bc0e7ad124589ULL)
 #define TDB_RECOVERY_INVALID_MAGIC (0x0ULL)
 
-#define TDB_OFF_IS_ERR(off) unlikely(off >= (tdb_off_t)TDB_ERR_LAST)
+#define TDB_OFF_IS_ERR(off) unlikely(off >= (tdb_off_t)(long)TDB_ERR_LAST)
+#define TDB_OFF_TO_ERR(off) ((enum TDB_ERROR)(long)(off))
+#define TDB_ERR_TO_OFF(ecode) ((tdb_off_t)(long)(ecode))
 
 /* Packing errors into pointers and v.v. */
 #define TDB_PTR_IS_ERR(ptr) \

@@ -706,7 +706,7 @@ finished:
 		berr = tdb_needs_recovery(tdb);
 		if (unlikely(berr != false)) {
 			if (berr < 0) {
-				ecode = berr;
+				ecode = TDB_OFF_TO_ERR(berr);
 				goto fail;
 			}
 			ecode = tdb_lock_and_recover(tdb);
@@ -727,18 +727,18 @@ finished:
 
  fail:
 	/* Map ecode to some logical errno. */
-	switch (ecode) {
-	case TDB_ERR_CORRUPT:
-	case TDB_ERR_IO:
+	switch (TDB_ERR_TO_OFF(ecode)) {
+	case TDB_ERR_TO_OFF(TDB_ERR_CORRUPT):
+	case TDB_ERR_TO_OFF(TDB_ERR_IO):
 		saved_errno = EIO;
 		break;
-	case TDB_ERR_LOCK:
+	case TDB_ERR_TO_OFF(TDB_ERR_LOCK):
 		saved_errno = EWOULDBLOCK;
 		break;
-	case TDB_ERR_OOM:
+	case TDB_ERR_TO_OFF(TDB_ERR_OOM):
 		saved_errno = ENOMEM;
 		break;
-	case TDB_ERR_EINVAL:
+	case TDB_ERR_TO_OFF(TDB_ERR_EINVAL):
 		saved_errno = EINVAL;
 		break;
 	default:

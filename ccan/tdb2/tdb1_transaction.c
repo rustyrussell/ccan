@@ -1318,7 +1318,7 @@ tdb_bool_err tdb1_needs_recovery(struct tdb_context *tdb)
 
 	/* find the recovery area */
 	if (tdb1_ofs_read(tdb, TDB1_RECOVERY_HEAD, &recovery_head) == -1) {
-		return tdb->last_error;
+		return TDB_ERR_TO_OFF(tdb->last_error);
 	}
 
 	if (recovery_head == 0) {
@@ -1329,7 +1329,7 @@ tdb_bool_err tdb1_needs_recovery(struct tdb_context *tdb)
 	/* read the recovery record */
 	if (tdb->tdb1.io->tdb1_read(tdb, recovery_head, &rec,
 				   sizeof(rec), TDB1_DOCONV()) == -1) {
-		return tdb->last_error;
+		return TDB_ERR_TO_OFF(tdb->last_error);
 	}
 
 	return (rec.magic == TDB1_RECOVERY_MAGIC);

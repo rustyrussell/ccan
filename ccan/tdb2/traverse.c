@@ -31,7 +31,7 @@ int64_t tdb_traverse_(struct tdb_context *tdb,
 	if (tdb->flags & TDB_VERSION1) {
 		count = tdb1_traverse(tdb, fn, p);
 		if (count == -1)
-			return tdb->last_error;
+			return TDB_ERR_TO_OFF(tdb->last_error);
 		return count;
 	}
 
@@ -51,7 +51,7 @@ int64_t tdb_traverse_(struct tdb_context *tdb,
 	}
 
 	if (ecode != TDB_ERR_NOEXIST) {
-		return tdb->last_error = ecode;
+		return TDB_ERR_TO_OFF(tdb->last_error = ecode);
 	}
 	tdb->last_error = TDB_SUCCESS;
 	return count;
@@ -96,7 +96,7 @@ enum TDB_ERROR tdb_nextkey(struct tdb_context *tdb, struct tdb_data *key)
 	tinfo.prev = find_and_lock(tdb, *key, F_RDLCK, &h, &rec, &tinfo);
 	free(key->dptr);
 	if (TDB_OFF_IS_ERR(tinfo.prev)) {
-		return tdb->last_error = tinfo.prev;
+		return tdb->last_error = TDB_OFF_TO_ERR(tinfo.prev);
 	}
 	tdb_unlock_hashes(tdb, h.hlock_start, h.hlock_range, F_RDLCK);
 
@@ -128,7 +128,7 @@ enum TDB_ERROR tdb_wipe_all(struct tdb_context *tdb)
 	/* FIXME: Be smarter. */
 	count = tdb_traverse(tdb, wipe_one, &ecode);
 	if (count < 0)
-		ecode = count;
+		ecode = TDB_OFF_TO_ERR(count);
 	tdb_allrecord_unlock(tdb, F_WRLCK);
 	return tdb->last_error = ecode;
 }

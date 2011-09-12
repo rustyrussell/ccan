@@ -70,7 +70,7 @@ enum TDB_ERROR tdb_ftable_init(struct tdb_context *tdb)
 
 	while (off) {
 		if (TDB_OFF_IS_ERR(off)) {
-			return off;
+			return TDB_OFF_TO_ERR(off);
 		}
 
 		rnd = random();
@@ -146,14 +146,14 @@ static enum TDB_ERROR remove_from_list(struct tdb_context *tdb,
 	/* Get prev->next */
 	prev_next = tdb_read_off(tdb, off);
 	if (TDB_OFF_IS_ERR(prev_next))
-		return prev_next;
+		return TDB_OFF_TO_ERR(prev_next);
 
 	/* If prev->next == 0, we were head: update bucket to point to next. */
 	if (prev_next == 0) {
 		/* We must preserve upper bits. */
 		head = tdb_read_off(tdb, b_off);
 		if (TDB_OFF_IS_ERR(head))
-			return head;
+			return TDB_OFF_TO_ERR(head);
 
 		if ((head & TDB_OFF_MASK) != r_off) {
 			return tdb_logerr(tdb, TDB_ERR_CORRUPT, TDB_LOG_ERROR,
@@ -178,7 +178,7 @@ static enum TDB_ERROR remove_from_list(struct tdb_context *tdb,
 	if (r->next == 0) {
 		head = tdb_read_off(tdb, b_off);
 		if (TDB_OFF_IS_ERR(head))
-			return head;
+			return TDB_OFF_TO_ERR(head);
 		head &= TDB_OFF_MASK;
 		off = head + offsetof(struct tdb_free_record, magic_and_prev);
 	} else {
@@ -215,7 +215,7 @@ static enum TDB_ERROR enqueue_in_free(struct tdb_context *tdb,
 
 	head = tdb_read_off(tdb, b_off);
 	if (TDB_OFF_IS_ERR(head))
-		return head;
+		return TDB_OFF_TO_ERR(head);
 
 	/* We only need to set ftable_and_len; rest is set in enqueue_in_free */
 	new.ftable_and_len = ((uint64_t)tdb->tdb2.ftable << (64 - TDB_OFF_UPPER_STEAL))
@@ -336,7 +336,7 @@ static tdb_len_t coalesce(struct tdb_context *tdb,
 		nb_off = ftable_offset(tdb, ftable);
 		if (TDB_OFF_IS_ERR(nb_off)) {
 			tdb_access_release(tdb, r);
-			ecode = nb_off;
+			ecode = TDB_OFF_TO_ERR(nb_off);
 			goto err;
 		}
 		nb_off = bucket_off(nb_off, bucket);
@@ -372,7 +372,7 @@ static tdb_len_t coalesce(struct tdb_context *tdb,
 		/* Did we just mess up a record you were hoping to use? */
 		if (end == *protect) {
 			tdb->stats.alloc_coalesce_iterate_clash++;
-			*protect = TDB_ERR_NOEXIST;
+			*protect = TDB_ERR_TO_OFF(TDB_ERR_NOEXIST);
 		}
 
 		ecode = remove_from_list(tdb, nb_off, end, &rec);
@@ -393,7 +393,7 @@ static tdb_len_t coalesce(struct tdb_context *tdb,
 
 	/* Before we expand, check this isn't one you wanted protected? */
 	if (off == *protect) {
-		*protect = TDB_ERR_EXISTS;
+		*protect = TDB_ERR_TO_OFF(TDB_ERR_EXISTS);
 		tdb->stats.alloc_coalesce_iterate_clash++;
 	}
 
@@ -421,7 +421,7 @@ static tdb_len_t coalesce(struct tdb_context *tdb,
 	if (ecode != TDB_SUCCESS) {
 		/* Need to drop lock.  Can't rely on anything stable. */
 		tdb->stats.alloc_coalesce_lockfail++;
-		*protect = TDB_ERR_CORRUPT;
+		*protect = TDB_ERR_TO_OFF(TDB_ERR_CORRUPT);
 
 		/* We have to drop this to avoid deadlocks, so make sure record
 		 * doesn't get coalesced by someone else! */
@@ -441,7 +441,7 @@ static tdb_len_t coalesce(struct tdb_context *tdb,
 		ecode = add_free_record(tdb, off, end - off, TDB_LOCK_WAIT,
 					false);
 		if (ecode != TDB_SUCCESS) {
-			return ecode;
+			return TDB_ERR_TO_OFF(ecode);
 		}
 	} else if (TDB_OFF_IS_ERR(*protect)) {
 		/* For simplicity, we always drop lock if they can't continue */
@@ -455,7 +455,7 @@ static tdb_len_t coalesce(struct tdb_context *tdb,
 err:
 	/* To unify error paths, we *always* unlock bucket on error. */
 	tdb_unlock_free_bucket(tdb, b_off);
-	return ecode;
+	return TDB_ERR_TO_OFF(ecode);
 }
 
 /* List is locked: we unlock it. */
@@ -469,7 +469,7 @@ static enum TDB_ERROR coalesce_list(struct tdb_context *tdb,
 
 	off = tdb_read_off(tdb, b_off);
 	if (TDB_OFF_IS_ERR(off)) {
-		ecode = off;
+		ecode = TDB_OFF_TO_ERR(off);
 		goto unlock_err;
 	}
 	/* A little bit of paranoia: counter should be 0. */
@@ -488,7 +488,7 @@ static enum TDB_ERROR coalesce_list(struct tdb_context *tdb,
 		coal = coalesce(tdb, off, b_off, frec_len(&rec), &next);
 		if (TDB_OFF_IS_ERR(coal)) {
 			/* This has already unlocked on error. */
-			return coal;
+			return TDB_OFF_TO_ERR(coal);
 		}
 		if (TDB_OFF_IS_ERR(next)) {
 			/* Coalescing had to unlock, so stop. */
@@ -520,7 +520,7 @@ static enum TDB_ERROR coalesce_list(struct tdb_context *tdb,
 		/* Get the old head. */
 		oldhoff = tdb_read_off(tdb, b_off);
 		if (TDB_OFF_IS_ERR(oldhoff)) {
-			ecode = oldhoff;
+			ecode = TDB_OFF_TO_ERR(oldhoff);
 			goto unlock_err;
 		}
 
@@ -661,7 +661,7 @@ static tdb_off_t lock_and_alloc(struct tdb_context *tdb,
 	/* Lock this bucket. */
 	ecode = tdb_lock_free_bucket(tdb, b_off, TDB_LOCK_WAIT);
 	if (ecode != TDB_SUCCESS) {
-		return ecode;
+		return TDB_ERR_TO_OFF(ecode);
 	}
 
 	best.ftable_and_len = -1ULL;
@@ -677,7 +677,7 @@ static tdb_off_t lock_and_alloc(struct tdb_context *tdb,
 	 * as we go. */
 	off = tdb_read_off(tdb, b_off);
 	if (TDB_OFF_IS_ERR(off)) {
-		ecode = off;
+		ecode = TDB_OFF_TO_ERR(off);
 		goto unlock_err;
 	}
 	off &= TDB_OFF_MASK;
@@ -768,7 +768,7 @@ static tdb_off_t lock_and_alloc(struct tdb_context *tdb,
 						+ frec_len(&best) - leftover,
 						leftover, TDB_LOCK_WAIT, false);
 			if (ecode != TDB_SUCCESS) {
-				best_off = ecode;
+				best_off = TDB_ERR_TO_OFF(ecode);
 			}
 		}
 		tdb_unlock_free_bucket(tdb, b_off);
@@ -781,7 +781,7 @@ static tdb_off_t lock_and_alloc(struct tdb_context *tdb,
 
 unlock_err:
 	tdb_unlock_free_bucket(tdb, b_off);
-	return ecode;
+	return TDB_ERR_TO_OFF(ecode);
 }
 
 /* Get a free block from current free list, or 0 if none, -ve on error. */
@@ -960,7 +960,7 @@ tdb_off_t alloc(struct tdb_context *tdb, size_t keylen, size_t datalen,
 
 		ecode = tdb_expand(tdb, adjust_size(keylen, datalen));
 		if (ecode != TDB_SUCCESS) {
-			return ecode;
+			return TDB_ERR_TO_OFF(ecode);
 		}
 	}
 

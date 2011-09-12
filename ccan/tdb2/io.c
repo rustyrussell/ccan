@@ -162,7 +162,7 @@ uint64_t tdb_find_nonzero_off(struct tdb_context *tdb,
 	val = tdb_access_read(tdb, base + start * sizeof(tdb_off_t),
 			      (end - start) * sizeof(tdb_off_t), false);
 	if (TDB_PTR_IS_ERR(val)) {
-		return TDB_PTR_ERR(val);
+		return TDB_ERR_TO_OFF(TDB_PTR_ERR(val));
 	}
 
 	for (i = 0; i < (end - start); i++) {
@@ -183,7 +183,7 @@ uint64_t tdb_find_zero_off(struct tdb_context *tdb, tdb_off_t off,
 	/* Zero vs non-zero is the same unconverted: minor optimization. */
 	val = tdb_access_read(tdb, off, num * sizeof(tdb_off_t), false);
 	if (TDB_PTR_IS_ERR(val)) {
-		return TDB_PTR_ERR(val);
+		return TDB_ERR_TO_OFF(TDB_PTR_ERR(val));
 	}
 
 	for (i = 0; i < num; i++) {
@@ -229,7 +229,7 @@ tdb_off_t tdb_read_off(struct tdb_context *tdb, tdb_off_t off)
 		tdb_off_t *p = tdb->tdb2.io->direct(tdb, off, sizeof(*p),
 						    false);
 		if (TDB_PTR_IS_ERR(p)) {
-			return TDB_PTR_ERR(p);
+			return TDB_ERR_TO_OFF(TDB_PTR_ERR(p));
 		}
 		if (p)
 			return *p;
@@ -237,7 +237,7 @@ tdb_off_t tdb_read_off(struct tdb_context *tdb, tdb_off_t off)
 
 	ecode = tdb_read_convert(tdb, off, &ret, sizeof(ret));
 	if (ecode != TDB_SUCCESS) {
-		return ecode;
+		return TDB_ERR_TO_OFF(ecode);
 	}
 	return ret;
 }
