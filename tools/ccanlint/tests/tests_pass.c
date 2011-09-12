@@ -46,9 +46,9 @@ static const char *concat(struct score *score, char *bits[])
 	return ret;
 }
 
-static bool run_test(void *ctx,
+static void run_test(void *ctx,
 		     struct manifest *m,
-		     unsigned int *timeleft, char **cmdout,
+		     unsigned int *timeleft,
 		     struct ccan_file *i)
 {
 	if (do_valgrind) {
@@ -66,19 +66,20 @@ static bool run_test(void *ctx,
 			talloc_set_destructor(i->valgrind_log,
 					      unlink_file_destructor);
 
-			return run_command(ctx, timeleft, cmdout,
-					   "valgrind -q"
-					   " --leak-check=full"
-					   " --log-fd=3 %s %s"
-					   " 3> %s",
-					   options,
-					   i->compiled[COMPILE_NORMAL],
-					   i->valgrind_log);
+			run_command_async(i, *timeleft,
+					  "valgrind -q"
+					  " --leak-check=full"
+					  " --log-fd=3 %s %s"
+					  " 3> %s",
+					  options,
+					  i->compiled[COMPILE_NORMAL],
+					  i->valgrind_log);
+			return;
 		}
 	}
 
-	return run_command(m, timeleft, cmdout, "%s",
-			   i->compiled[COMPILE_NORMAL]);
+	run_command_async(i, *timeleft, "%s",
+			  i->compiled[COMPILE_NORMAL]);
 }
 
 static void do_run_tests(struct manifest *m,
@@ -89,18 +90,25 @@ static void do_run_tests(struct manifest *m,
 	struct list_head *list;
 	struct ccan_file *i;
 	char *cmdout;
+	bool ok;
 
 	score->total = 0;
 	foreach_ptr(list, &m->run_tests, &m->api_tests) {
 		list_for_each(list, i, list) {
 			score->total++;
 			if (verbose >= 2)
-				printf("   %s\n", i->name);
-			if (run_test(score, m, timeleft, &cmdout, i))
-				score->score++;
-			else
-				score_file_error(score, i, 0, "%s", cmdout);
+				printf("   %s...\n", i->name);
+			run_test(score, m, timeleft, i);
 		}
+	}
+
+	while ((i = collect_command(&ok, &cmdout)) != NULL) {
+		if (!ok)
+			score_file_error(score, i, 0, "%s", cmdout);
+		else
+			score->score++;
+		if (verbose >= 2)
+			printf("   ...%s\n", i->name);
 	}
 
 	if (score->score == score->total)
