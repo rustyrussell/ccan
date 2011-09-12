@@ -235,7 +235,7 @@ char **get_libs(const void *ctx, const char *dir,
 }
 
 /* FIXME: This is O(n^2), which is dumb. */
-static void uniquify_deps(char **deps)
+static char **uniquify_deps(char **deps)
 {
 	unsigned int i, j, num;
 
@@ -251,7 +251,7 @@ static void uniquify_deps(char **deps)
 	}
 	deps[num] = NULL;
 	/* Make sure talloc_array_length() works */
-	deps = talloc_realloc(NULL, deps, char *, num + 1);
+	return talloc_realloc(NULL, deps, char *, num + 1);
 }
 
 char **get_deps(const void *ctx, const char *dir,
@@ -270,8 +270,7 @@ char **get_deps(const void *ctx, const char *dir,
 		unlink(temp);
 		talloc_free(temp);
 	}
-	uniquify_deps(ret);
-	return ret;
+	return uniquify_deps(ret);
 }
 
 char **get_safe_ccan_deps(const void *ctx, const char *dir,
@@ -283,6 +282,5 @@ char **get_safe_ccan_deps(const void *ctx, const char *dir,
 	} else {
 		ret = get_all_deps(ctx, dir, NULL, get_one_safe_deps);
 	}
-	uniquify_deps(ret);
-	return ret;
+	return uniquify_deps(ret);
 }
