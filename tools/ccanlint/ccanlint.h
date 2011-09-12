@@ -239,6 +239,13 @@ void score_file_error(struct score *, struct ccan_file *f, unsigned line,
 void run_command_async(const void *ctx, unsigned int time_ms,
 		       const char *fmt, ...);
 
+/* Async version of compile_and_link. */
+void compile_and_link_async(const void *ctx, unsigned int time_ms,
+			    const char *cfile, const char *ccandir,
+			    const char *objs, const char *compiler,
+			    const char *cflags,
+			    const char *libs, const char *outfile);
+
 /* Get results of a command, returning ctx (and free it). */
 void *collect_command(bool *ok, char **output);
 

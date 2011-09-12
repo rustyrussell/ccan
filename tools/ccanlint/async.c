@@ -198,3 +198,18 @@ void *collect_command(bool *ok, char **output)
 	talloc_free(c);
 	return (void *)ctx;
 }
+
+/* Compile and link single C file, with object files, async. */
+void compile_and_link_async(const void *ctx, unsigned int time_ms,
+			    const char *cfile, const char *ccandir,
+			    const char *objs, const char *compiler,
+			    const char *cflags,
+			    const char *libs, const char *outfile)
+{
+	if (compile_verbose)
+		printf("Compiling and linking (async) %s\n", outfile);
+	run_command_async(ctx, time_ms,
+			  "%s %s -I%s -o %s %s %s %s",
+			  compiler, cflags,
+			  ccandir, outfile, cfile, objs, libs);
+}

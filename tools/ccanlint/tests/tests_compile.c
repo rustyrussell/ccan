@@ -95,30 +95,57 @@ static bool compile(const void *ctx,
 	return true;
 }
 
+static void compile_async(const void *ctx,
+			  struct manifest *m,
+			  struct ccan_file *file,
+			  bool link_with_module,
+			  bool keep,
+			  enum compile_type ctype,
+			  unsigned int time_ms)
+{
+	char *flags;
+
+	file->compiled[ctype] = maybe_temp_file(ctx, "", keep, file->fullname);
+	flags = talloc_asprintf(ctx, "%s%s",
+				cflags,
+				ctype == COMPILE_NOFEAT
+				? " "REDUCE_FEATURES_FLAGS : "");
+
+	compile_and_link_async(file, time_ms, file->fullname, ccan_dir,
+			       test_obj_list(m, link_with_module, ctype, ctype),
+			       compiler, flags, lib_list(m, ctype),
+			       file->compiled[ctype]);
+}
+
 static void compile_tests(struct manifest *m, bool keep,
 			  struct score *score,
-			  enum compile_type ctype)
+			  enum compile_type ctype,
+			  unsigned int time_ms)
 {
 	char *cmdout;
 	struct ccan_file *i;
 	struct list_head *list;
-	bool errors = false, warnings = false;
+	bool errors = false, warnings = false, ok;
 
 	foreach_ptr(list, &m->compile_ok_tests, &m->run_tests, &m->api_tests) {
 		list_for_each(list, i, list) {
-			if (!compile(score, m, i, false,
-				     list == &m->api_tests, keep,
-				     ctype, &cmdout)) {
-				score_file_error(score, i, 0,
-						 "Compile failed:\n%s",
-						 cmdout);
-				errors = true;
-			} else if (!streq(cmdout, "")) {
-				score_file_error(score, i, 0,
-						 "Compile gave warnings:\n%s",
-						 cmdout);
-				warnings = true;
-			}
+			compile_async(score, m, i,
+				      list == &m->api_tests, keep,
+				      ctype, time_ms);
+		}
+	}
+
+	while ((i = collect_command(&ok, &cmdout)) != NULL) {
+		if (!ok) {
+			score_file_error(score, i, 0,
+					 "Compile failed:\n%s",
+					 cmdout);
+			errors = true;
+		} else if (!streq(cmdout, "")) {
+			score_file_error(score, i, 0,
+					 "Compile gave warnings:\n%s",
+					 cmdout);
+			warnings = true;
 		}
 	}
 
@@ -156,11 +183,12 @@ static void compile_tests(struct manifest *m, bool keep,
 	score->score = score->total - warnings;
 }
 
+/* FIXME: If we time out, set *timeleft to 0 */
 static void do_compile_tests(struct manifest *m,
 			     bool keep,
 			     unsigned int *timeleft, struct score *score)
 {
-	compile_tests(m, keep, score, COMPILE_NORMAL);
+	compile_tests(m, keep, score, COMPILE_NORMAL, *timeleft);
 }
 
 struct ccanlint tests_compile = {
@@ -185,7 +213,7 @@ static void do_compile_tests_without_features(struct manifest *m,
 					      unsigned int *timeleft,
 					      struct score *score)
 {
-	compile_tests(m, keep, score, COMPILE_NOFEAT);
+	compile_tests(m, keep, score, COMPILE_NOFEAT, *timeleft);
 }
 
 struct ccanlint tests_compile_without_features = {
