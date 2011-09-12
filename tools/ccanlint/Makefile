@@ -9,6 +9,7 @@ CORE_OBJS := \
 	ccan/grab_file/grab_file.o \
 	ccan/hash/hash.o \
 	ccan/htable/htable.o \
+	ccan/lbalance/lbalance.o \
 	ccan/noerr/noerr.o \
 	ccan/opt/helpers.o \
 	ccan/opt/opt.o \
@@ -20,6 +21,7 @@ CORE_OBJS := \
 	ccan/talloc/talloc.o \
 	ccan/talloc_link/talloc_link.o \
 	ccan/time/time.o \
+	tools/ccanlint/async.o \
 	tools/ccanlint/ccanlint.o \
 	tools/ccanlint/file_analysis.o \
 	tools/ccanlint/licenses.o \
