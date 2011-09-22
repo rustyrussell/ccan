@@ -148,14 +148,16 @@ static void reap_output(void)
 	tlist_for_each_safe(&running, c, next, list) {
 		if (FD_ISSET(c->output_fd, &in)) {
 			int old_len, len;
+			/* This length includes nul terminator! */
 			old_len = talloc_array_length(c->output);
 			c->output = talloc_realloc(c, c->output, char,
 						   old_len + 1024);
-			len = read(c->output_fd, c->output + old_len, 1024);
+			len = read(c->output_fd, c->output + old_len - 1, 1024);
 			if (len < 0)
 				err(1, "Reading from async command");
 			c->output = talloc_realloc(c, c->output, char,
 						   old_len + len);
+			c->output[old_len + len - 1] = '\0';
 			if (len == 0) {
 				struct rusage ru;
 				wait4(c->pid, &c->status, 0, &ru);
