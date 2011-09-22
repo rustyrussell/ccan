@@ -1,0 +1,26 @@
+#include "config.h"
+#include <string.h>
+
+/**
+ * tcon - routines for creating typesafe generic containers
+ *
+ * This code lets users create a structure with a typecanary; your API
+ * is then a set of macros which check the type canary before calling
+ * the generic routines.
+ *
+ * License: Public domain
+ *
+ * Author: Rusty Russell <rusty@rustcorp.com.au>
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		return 0;
+	}
+
+	return 1;
+}
