@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct jmap *jmap_new(void)
+struct jmap *jmap_new_(size_t size)
 {
 	struct jmap *map;
 
@@ -13,7 +13,8 @@ struct jmap *jmap_new(void)
 	/* We also put pointers into Judy, in jmap_types.h */
 	BUILD_ASSERT(sizeof(Word_t) >= sizeof(void *));
 
-	map = malloc(sizeof(*map));
+	assert(size >= sizeof(*map));
+	map = malloc(size);
 	if (map) {
 		map->judy = NULL;
 		memset(&map->err, 0, sizeof(map->err));
@@ -26,7 +27,7 @@ struct jmap *jmap_new(void)
 	return map;
 }
 
-const char *jmap_error_(struct jmap *map)
+const char *jmap_error_str_(struct jmap *map)
 {
 	char *str;
 	free((char *)map->errstr);
@@ -40,7 +41,7 @@ const char *jmap_error_(struct jmap *map)
 	return str;
 }
 
-void jmap_free(const struct jmap *map)
+void jmap_free_(const struct jmap *map)
 {
 	free((char *)map->errstr);
 	JudyLFreeArray((PPvoid_t)&map->judy, PJE0);

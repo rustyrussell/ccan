@@ -5,15 +5,19 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+struct map {
+	JMAP_MEMBERS(unsigned long, unsigned long);
+};
+
 int main(int argc, char *argv[])
 {
-	struct jmap *map;
+	struct map *map;
 	unsigned long *value;
 	int status;
 
 	plan_tests(9);
 
-	map = jmap_new();
+	map = jmap_new(struct map);
 	ok1(jmap_error(map) == NULL);
 	ok1(jmap_add(map, 0, 1));
 

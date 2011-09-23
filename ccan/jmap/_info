@@ -9,38 +9,46 @@
  * integers or pointers as an index, Judy arrays provide an efficient
  * map to integers or pointers.
  *
- * jmap.h simply contains wrappers for a size_t-indexed size_t values, and
- * jmap_type.h contain a wrapper macro for size_t->pointer maps and pointer
- * ->pointer maps.
+ * You define a struct for your particular index and value types using
+ * the JMAP_MEMBERS macro, then use the jmap routines to manipulate
+ * the mapping.
+ *
+ * Note: if you use an integer type for the index or value types and
+ * your compiler doesn't support "typeof", you will get warnings about
+ * mixing pointers and integers.
  *
  * Example:
  * // Silly example of associating data with arguments by pointer and int.
  * #include <string.h>
  * #include <stdio.h>
- * #include <ccan/jmap/jmap_type.h>
+ * #include <ccan/jmap/jmap.h>
  * 
  * struct opt_detail {
  * 	bool is_long;
  * 	unsigned int length; // == 1 if !is_long.
  * };
  * 
- * // Define jmap_arg_<op> and jmap_arg, for int -> argv.
- * JMAP_DEFINE_UINTIDX_TYPE(char, arg);
- * // Define jmap_opt_<op> and jmap_opt, for argv -> struct opt_detail *.
- * JMAP_DEFINE_PTRIDX_TYPE(char, struct opt_detail, opt);
+ * // Define map type for int -> argv.
+ * struct arg_map {
+ *	JMAP_MEMBERS(int, char *);
+ * };
+ * // Define map type for argv -> struct opt_detail *.
+ * struct opt_map {
+ *	JMAP_MEMBERS(char *, struct opt_detail *);
+ * };
  * 
  * int main(int argc, char *argv[])
  * {
  * 	int i;
  * 	// This map is equivalent to the argv[] array.  Silly example.
- * 	struct jmap_arg *arg = jmap_arg_new();
- * 	struct jmap_opt *opt = jmap_opt_new();
+ * 	struct arg_map *arg = jmap_new(struct arg_map);
+ * 	struct opt_map *opt = jmap_new(struct opt_map);
  * 	struct opt_detail *d;
  * 
  * 	// Note: this is not correct for real parsing!
- * 	for (i = 0; i < argc; i++) {
- * 		jmap_arg_add(arg, i, argv[i]);
- * 		if (i < 1 || argv[i][0] != '-')
+ * 	for (i = 1; i < argc; i++) {
+ * 		jmap_add(arg, i, argv[i]);
+ * 		if (argv[i][0] != '-')
  * 			continue;
  * 		d = malloc(sizeof(*d));
  * 		if (argv[i][1] == '-') {
@@ -52,27 +60,30 @@
  * 			d->is_long = false;
  * 			d->length = 1;
  * 		}
- * 		jmap_opt_add(opt, argv[i], d);
+ * 		jmap_add(opt, argv[i], d);
  * 	}
  * 
- * 	printf("Found %lu options:\n", jmap_opt_count(opt));
- * 	for (i = jmap_arg_first(arg,-1); i!=-1; i = jmap_arg_next(arg,i,-1)) {
- * 		char *a = jmap_arg_get(arg, i);
- * 		d = jmap_opt_get(opt, a);
+ * 	printf("Found %lu options:\n", jmap_count(opt));
+ * 	for (i = jmap_first(arg); i; i = jmap_next(arg,i)) {
+ * 		char *a = jmap_get(arg, i);
+ * 		d = jmap_get(opt, a);
  * 		printf("  Arg %i ('%s') is a %s of %u chars\n",
  * 		       i, a,
- * 		       d == NULL ? "normal argument"
- * 		       : d->is_long ? "long option"
- * 		       : "short option",
+ * 		       d == NULL ? "normal arg"
+ * 		       : d->is_long ? "long opt"
+ * 		       : "short opt",
  * 		       d == NULL ? strlen(a) : d->length);
  * 		// We no longer need it, so free it here.
  * 		free(d);
  * 	}
- * 	jmap_opt_free(opt);
- * 	jmap_arg_free(arg);
+ * 	jmap_free(opt);
+ * 	jmap_free(arg);
  * 	return 0;
  * }
- * 
+ * // Given "--help" output contains "Arg 1 ('--help') is a long opt of 4 chars"
+ * // Given "-h" output contains "Arg 1 ('-h') is a short opt of 1 chars"
+ * // Given "foo" output contains "Arg 1 ('foo') is a normal arg of 3 chars"
+ *
  * License: LGPL (v2.1 or any later version)
  * Author: Rusty Russell <rusty@rustcorp.com.au>
  */
@@ -84,6 +95,7 @@ int main(int argc, char *argv[])
 	if (strcmp(argv[1], "depends") == 0) {
 		printf("ccan/build_assert\n");
 		printf("ccan/compiler\n");
+		printf("ccan/tcon\n");
 		printf("Judy\n");
 		return 0;
 	}

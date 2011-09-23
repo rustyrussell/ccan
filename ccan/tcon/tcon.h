@@ -74,8 +74,10 @@
  */
 #if HAVE_TYPEOF
 #define tcon_cast(x, canary, expr) ((__typeof__((x)->_tcon[0].canary))(expr))
+#define tcon_cast_ptr(x, canary, expr) ((__typeof__(&(x)->_tcon[0].canary))(expr))
 #else
 #define tcon_cast(x, canary, expr) ((void *)(expr))
+#define tcon_cast_ptr(x, canary, expr) ((void *)(expr))
 #endif
 
 #endif /* CCAN_TCON_H */
