@@ -9,17 +9,17 @@
  * this extends it so you can create list head types which only accomodate
  * a specific entry type.
  *
- * You use TLIST_TYPE() to define the specific struct tlist_<name>, then use
- * the tlist_* variants of the various list_* operations.
- *
  * Example:
  *	#include <err.h>
  *	#include <stdio.h>
  *	#include <stdlib.h>
  *	#include <ccan/tlist/tlist.h>
  *
- *	// Defines struct tlist_children
- *	TLIST_TYPE(children, struct child);
+ *	// We could use TLIST_TYPE(children, struct child) to define this.
+ *	struct tlist_children {
+ *		struct list_head raw;
+ *		TCON(struct child *canary);
+ *	};
  *	struct parent {
  *		const char *name;
  *		struct tlist_children children;
@@ -66,6 +66,7 @@ int main(int argc, char *argv[])
 
 	if (strcmp(argv[1], "depends") == 0) {
 		printf("ccan/list\n");
+		printf("ccan/tcon\n");
 		return 0;
 	}
 

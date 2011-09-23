@@ -2,8 +2,8 @@
 #ifndef CCAN_TLIST_H
 #define CCAN_TLIST_H
 #include <ccan/list/list.h>
+#include <ccan/tcon/tcon.h>
 
-#if HAVE_FLEXIBLE_ARRAY_MEMBER
 /**
  * TLIST_TYPE - declare a typed list type (struct tlist)
  * @suffix: the name to use (struct tlist_@suffix)
@@ -27,30 +27,11 @@
  *		struct list_node list;
  *	};
  */
-#define TLIST_TYPE(suffix, type)					\
-	struct tlist_##suffix {						\
-		struct list_head raw;					\
-		const type *tcheck[];					\
+#define TLIST_TYPE(suffix, type)			\
+	struct tlist_##suffix {				\
+		struct list_head raw;			\
+		TCON(type *canary);			\
 	}
-
-/**
- * tlist_raw - access the raw list inside a typed list head.
- * @h: the head of the typed list (struct tlist_@suffix)
- * @test_var: a pointer to the expected element type.
- *
- * This elaborate macro usually causes the compiler to emit a warning
- * if the variable is of an unexpected type.  It is used internally
- * where we need to access the raw underlying list.
- */
-#define tlist_raw(h, test_var) \
-	(sizeof((h)->tcheck[0] == (test_var)) ? &(h)->raw : &(h)->raw)
-#else
-#define TLIST_TYPE(suffix, type)					\
-	struct tlist_##suffix {						\
-		struct list_head raw;					\
-	}
-#define tlist_raw(h, test_var) (&(h)->raw)
-#endif
 
 /**
  * TLIST_INIT - initalizer for an empty tlist
@@ -107,6 +88,17 @@
  *	parent->num_children = 0;
  */
 #define tlist_init(h) list_head_init(&(h)->raw)
+
+/**
+ * tlist_raw - unwrap the typed list and check the type
+ * @h: the tlist
+ * @expr: the expression to check the type against (not evaluated)
+ *
+ * This macro usually causes the compiler to emit a warning if the
+ * variable is of an unexpected type.  It is used internally where we
+ * need to access the raw underlying list.
+ */
+#define tlist_raw(h, expr) (&tcon_check((h), canary, (expr))->raw)
 
 /**
  * tlist_add - add an entry at the start of a linked list.
