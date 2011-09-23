@@ -12,7 +12,7 @@
 
 # Trying to build the whole repo is usually a lose; there will be some
 # dependencies you don't have.
-EXCLUDE=wwviaudio ogg_to_pcm jmap jbitset nfs
+EXCLUDE=wwviaudio ogg_to_pcm jmap jset nfs
 
 # Where make scores puts the results
 SCOREDIR=scores/$(shell whoami)/$(shell uname -s)-$(shell uname -m)-$(CC)-$(shell git describe --always --dirty)

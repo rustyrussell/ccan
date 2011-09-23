@@ -1,19 +1,20 @@
 /* Licensed under LGPLv2.1+ - see LICENSE file for details */
-#include <ccan/jbitset/jbitset.h>
+#include <ccan/jset/jset.h>
 #include <ccan/build_assert/build_assert.h>
 #include <stdlib.h>
 #include <string.h>
 
-struct jbitset *jbit_new(void)
+struct jset *jset_new_(size_t size)
 {
-	struct jbitset *set;
+	struct jset *set;
 
 	/* Judy uses Word_t, we use unsigned long directly. */
 	BUILD_ASSERT(sizeof(unsigned long) == sizeof(Word_t));
-	/* We pack pointers into jbitset (in jbitset_type.h) */
+	/* We pack pointers into jset (in jset_type.h) */
 	BUILD_ASSERT(sizeof(Word_t) >= sizeof(void *));
 
-	set = malloc(sizeof(*set));
+	assert(size >= sizeof(*set));
+	set = malloc(size);
 	if (set) {
 		set->judy = NULL;
 		memset(&set->err, 0, sizeof(set->err));
@@ -22,7 +23,7 @@ struct jbitset *jbit_new(void)
 	return set;
 }
 
-const char *jbit_error_(struct jbitset *set)
+const char *jset_error_str_(struct jset *set)
 {
 	char *str;
 	free((char *)set->errstr);
@@ -36,7 +37,7 @@ const char *jbit_error_(struct jbitset *set)
 	return str;
 }
 
-void jbit_free(const struct jbitset *set)
+void jset_free_(const struct jset *set)
 {
 	free((char *)set->errstr);
 	Judy1FreeArray((PPvoid_t)&set->judy, PJE0);

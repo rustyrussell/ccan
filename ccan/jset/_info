@@ -3,56 +3,56 @@
 #include "config.h"
 
 /**
- * jbitset - variable-length bitset (based on libJudy)
+ * jset - set of pointers (based on libJudy)
  *
  * This provides a convenient wrapper for using Judy bitsets; using
- * integers or pointers as an index, Judy arrays provide an efficient
- * bit array or bit map of variable size.
+ * pointers (or unsigned longs) as the index, Judy arrays provide an
+ * efficient bit array or bit map of variable size.
  *
- * jbitset.h simply contains wrappers for a size_t-indexed bitset, and
- * jbitset_type.h contain a wrapper macro for pointer bitsets.
+ * jset.h contains typesafe wrappers for this usage.
  *
  * Example:
  * // Simple analysis of one-byte mallocs.
+ * #include <ccan/jset/jset.h>
  * #include <stdlib.h>
  * #include <stdio.h>
  * #include <err.h>
- * #include <ccan/jbitset/jbitset_type.h>
- * 
- * // Define jbit_char_<op> and jbitset_char, for char * bitset.
- * JBIT_DEFINE_TYPE(char, char);
- * 
+ *
+ * struct jset_char {
+ *	JSET_MEMBERS(char *);
+ * };
+ *
  * int main(int argc, char *argv[])
  * {
  * 	unsigned int i, runs, reuse;
  * 	size_t mindist = -1;
- * 	struct jbitset_char *set = jbit_char_new();
+ * 	struct jset_char *set = jset_new(struct jset_char);
  * 	char *p, *prev;
- * 
+ *
  * 	runs = (argc == 1 ? 1000 : atoi(argv[1]));
  * 	if (!runs)
  * 		errx(1, "Invalid number of allocations '%s'", argv[1]);
- * 
+ *
  * 	for (i = 0; i < runs; i++)
- * 		if (!jbit_char_set(set, malloc(1)))
+ * 		if (!jset_set(set, malloc(1)))
  * 			errx(1, "same pointer allocated twice!");
- * 
+ *
  * 	// Calculate minimum distance
- * 	prev = jbit_char_first(set)+1;
- * 	for (p = jbit_char_first(set); p; prev = p, p = jbit_char_next(set,p))
+ * 	prev = jset_first(set)+1;
+ * 	for (p = jset_first(set); p; prev = p, p = jset_next(set,p))
  * 		if (p - prev < mindist)
  * 			mindist = p - prev;
- * 
+ *
  * 	// Free them all, see how many we reallocate.
- * 	for (p = jbit_char_first(set); p; p = jbit_char_next(set, p))
+ * 	for (p = jset_first(set); p; p = jset_next(set, p))
  * 		free(p);
  * 	for (reuse = 0, i = 0; i < runs; i++)
- * 		reuse += jbit_char_test(set, malloc(1));
- * 
+ * 		reuse += jset_test(set, malloc(1));
+ *
  * 	printf("Allocation density (bytes): %zu\n"
  * 	       "Minimum inter-pointer distance: %zu\n"
  * 	       "Reuse rate: %.0f%%\n",
- * 	       (jbit_char_last(set) - jbit_char_first(set)) / runs,
+ * 	       (jset_last(set) - jset_first(set)) / runs,
  * 	       mindist,
  * 	       100.0 * reuse / runs);
  * 	return 0;
@@ -69,6 +69,7 @@ int main(int argc, char *argv[])
 	if (strcmp(argv[1], "depends") == 0) {
 		printf("ccan/build_assert\n");
 		printf("ccan/compiler\n");
+		printf("ccan/tcon\n");
 		printf("Judy\n");
 		return 0;
 	}
