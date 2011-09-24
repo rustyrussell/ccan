@@ -101,8 +101,8 @@
  * Example:
  *	void _register_callback(void (*fn)(int, void *arg), void *arg);
  *	#define register_callback(fn, arg)				   \
- *		_register_callback(typesafe_cb_preargs(void, (fn), void *, \
- *				   (arg), int),				   \
+ *		_register_callback(typesafe_cb_preargs(void, void *,	   \
+ *				   (fn), (arg), int),			   \
  *				   (arg))
  */
 #define typesafe_cb_preargs(rtype, atype, fn, arg, ...)			\
