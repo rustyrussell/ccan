@@ -86,6 +86,9 @@ int str_isxdigit(int i)
 	return isxdigit(i);
 }
 
+#undef strstr
+#undef strchr
+#undef strrchr
 
 char *str_strstr(const char *haystack, const char *needle)
 {

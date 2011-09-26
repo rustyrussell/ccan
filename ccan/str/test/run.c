@@ -6,7 +6,8 @@
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
-static char *substrings[] = { "far", "bar", "baz", "b", "ba", "z", "ar", NULL };
+static const char *substrings[] = { "far", "bar", "baz", "b", "ba", "z", "ar",
+				    NULL };
 
 #define NUM_SUBSTRINGS (ARRAY_SIZE(substrings) - 1)
 
