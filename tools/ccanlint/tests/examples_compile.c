@@ -199,6 +199,8 @@ static bool looks_internal(char **lines, char **why)
 		if (!line[0] || cisspace(line[0]) || strstarts(line, "//"))
 			continue;
 
+		assert(line[strlen(line)-1] != '\n');
+
 		/* The winners. */
 		if (strstarts(line, "if") && len == 2) {
 			*why = cast_const(char *, "starts with if");
@@ -237,6 +239,12 @@ static bool looks_internal(char **lines, char **why)
 			}
 		}
 
+		/* Previously prepended. */
+		if (strstr(line, "didn't seem to belong inside a function")) {
+			*why = cast_const(char *, "Comment said so");
+			return false;
+		}
+
 		/* Single identifier then operator == inside function. */
 		if (last_ended && len
 		    && cispunct(line[len+strspn(line+len, " ")])) {
@@ -247,6 +255,7 @@ static bool looks_internal(char **lines, char **why)
 
 		last_ended = (strends(line, "}")
 			      || strends(line, ";")
+			      || strends(line, "*/")
 			      || streq(line, "..."));
 	}
 
@@ -298,7 +307,7 @@ static char **combine(const void *ctx, char **lines, char **prev)
 	prev_total = i;
 
 	ret = talloc_array(ctx, char *, 1 +lines_total + prev_total + 1);
-	ret[0] = talloc_asprintf(ret, "/* The example %s, thus %s */\n",
+	ret[0] = talloc_asprintf(ret, "/* The example %s, thus %s */",
 				 why, reasoning);
 	memcpy(ret+1, lines, count * sizeof(ret[0]));
 	memcpy(ret+1 + count, prev, prev_total * sizeof(ret[0]));
