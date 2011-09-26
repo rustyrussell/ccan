@@ -1,4 +1,4 @@
-/* Licensed under LGPLv2.1+ - see LICENSE file for details */
+/* Placed into the public domain. */
 #ifndef CCAN_STR_H
 #define CCAN_STR_H
 #include "config.h"

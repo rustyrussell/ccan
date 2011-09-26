@@ -1,4 +1,3 @@
-/* Licensed under LGPLv2.1+ - see LICENSE file for details */
 #ifndef CCAN_STR_DEBUG_H
 #define CCAN_STR_DEBUG_H
 
