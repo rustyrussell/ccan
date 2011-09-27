@@ -59,6 +59,7 @@ int main(int argc, char *argv[])
 					 NULL), "\n");
 	htable_str_init(&ht);
 	num = talloc_array_length(words) - 1;
+	/* Note that on my system, num is just > 98304, where we double! */
 	printf("%zu words\n", num);
 
 	/* Append and prepend last char for miss testing. */
