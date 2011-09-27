@@ -33,7 +33,7 @@ static bool cmp(const struct obj *obj, const unsigned int *key)
 	return obj->key == *key;
 }
 
-HTABLE_DEFINE_TYPE(struct obj, objkey, objhash, cmp, obj);
+HTABLE_DEFINE_TYPE(struct obj, objkey, objhash, cmp, htable_obj);
 
 static void add_vals(struct htable_obj *ht,
 		     struct obj val[], unsigned int num)
@@ -110,7 +110,7 @@ static bool check_mask(struct htable *ht, const struct obj val[], unsigned num)
 int main(int argc, char *argv[])
 {
 	unsigned int i;
-	struct htable_obj *ht;
+	struct htable_obj ht;
 	struct obj val[NUM_VALS];
 	unsigned int dne;
 	void *p;
@@ -121,57 +121,55 @@ int main(int argc, char *argv[])
 		val[i].key = i;
 	dne = i;
 
-	ht = htable_obj_new();
-	ok1(((struct htable *)ht)->max == 0);
-	ok1(((struct htable *)ht)->bits == 0);
+	htable_obj_init(&ht);
+	ok1(ht.raw.max == 0);
+	ok1(ht.raw.bits == 0);
 
 	/* We cannot find an entry which doesn't exist. */
-	ok1(!htable_obj_get(ht, &dne));
+	ok1(!htable_obj_get(&ht, &dne));
 
 	/* Fill it, it should increase in size. */
-	add_vals(ht, val, NUM_VALS);
-	ok1(((struct htable *)ht)->bits == NUM_BITS + 1);
-	ok1(((struct htable *)ht)->max < (1 << ((struct htable *)ht)->bits));
+	add_vals(&ht, val, NUM_VALS);
+	ok1(ht.raw.bits == NUM_BITS + 1);
+	ok1(ht.raw.max < (1 << ht.raw.bits));
 
 	/* Mask should be set. */
-	ok1(((struct htable *)ht)->common_mask != 0);
-	ok1(((struct htable *)ht)->common_mask != -1);
-	ok1(check_mask((struct htable *)ht, val, NUM_VALS));
+	ok1(ht.raw.common_mask != 0);
+	ok1(ht.raw.common_mask != -1);
+	ok1(check_mask(&ht.raw, val, NUM_VALS));
 
 	/* Find all. */
-	find_vals(ht, val, NUM_VALS);
-	ok1(!htable_obj_get(ht, &dne));
+	find_vals(&ht, val, NUM_VALS);
+	ok1(!htable_obj_get(&ht, &dne));
 
 	/* Walk once, should get them all. */
 	i = 0;
-	for (p = htable_obj_first(ht,&iter); p; p = htable_obj_next(ht, &iter))
+	for (p = htable_obj_first(&ht,&iter); p; p = htable_obj_next(&ht, &iter))
 		i++;
 	ok1(i == NUM_VALS);
 
 	/* Delete all. */
-	del_vals(ht, val, NUM_VALS);
-	ok1(!htable_obj_get(ht, &val[0].key));
+	del_vals(&ht, val, NUM_VALS);
+	ok1(!htable_obj_get(&ht, &val[0].key));
 
 	/* Worst case, a "pointer" which doesn't have any matching bits. */
-	htable_add((struct htable *)ht, 0,
-		   (void *)~(uintptr_t)&val[NUM_VALS-1]);
-	htable_obj_add(ht, &val[NUM_VALS-1]);
-	ok1(((struct htable *)ht)->common_mask == 0);
-	ok1(((struct htable *)ht)->common_bits == 0);
+	htable_add(&ht.raw, 0, (void *)~(uintptr_t)&val[NUM_VALS-1]);
+	htable_obj_add(&ht, &val[NUM_VALS-1]);
+	ok1(ht.raw.common_mask == 0);
+	ok1(ht.raw.common_bits == 0);
 	/* Delete the bogus one before we trip over it. */
-	htable_del((struct htable *)ht, 0,
-		   (void *)~(uintptr_t)&val[NUM_VALS-1]);
+	htable_del(&ht.raw, 0, (void *)~(uintptr_t)&val[NUM_VALS-1]);
 
 	/* Add the rest. */
-	add_vals(ht, val, NUM_VALS-1);
+	add_vals(&ht, val, NUM_VALS-1);
 
 	/* Check we can find them all. */
-	find_vals(ht, val, NUM_VALS);
-	ok1(!htable_obj_get(ht, &dne));
+	find_vals(&ht, val, NUM_VALS);
+	ok1(!htable_obj_get(&ht, &dne));
 
 	/* Delete them all by key. */
-	del_vals_bykey(ht, val, NUM_VALS);
-	htable_obj_free(ht);
+	del_vals_bykey(&ht, val, NUM_VALS);
+	htable_obj_clear(&ht);
 
 	return exit_status();
 }

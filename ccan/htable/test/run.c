@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
 {
 	unsigned int i;
 	uintptr_t perfect_bit;
-	struct htable *ht;
+	struct htable ht;
 	uint64_t val[NUM_VALS];
 	uint64_t dne;
 	void *p;
@@ -110,81 +110,79 @@ int main(int argc, char *argv[])
 		val[i] = i;
 	dne = i;
 
-	ht = htable_new(hash, NULL);
-	ok1(ht->max == 0);
-	ok1(ht->bits == 0);
+	htable_init(&ht, hash, NULL);
+	ok1(ht.max == 0);
+	ok1(ht.bits == 0);
 
 	/* We cannot find an entry which doesn't exist. */
-	ok1(!htable_get(ht, hash(&dne, NULL), objcmp, &dne));
+	ok1(!htable_get(&ht, hash(&dne, NULL), objcmp, &dne));
 
 	/* This should increase it once. */
-	add_vals(ht, val, 0, 1);
-	ok1(ht->bits == 1);
-	ok1(ht->max == 1);
-	ok1(ht->common_mask == -1);
+	add_vals(&ht, val, 0, 1);
+	ok1(ht.bits == 1);
+	ok1(ht.max == 1);
+	ok1(ht.common_mask == -1);
 
 	/* Mask should be set. */
-	ok1(check_mask(ht, val, 1));
+	ok1(check_mask(&ht, val, 1));
 
 	/* This should increase it again. */
-	add_vals(ht, val, 1, 1);
-	ok1(ht->bits == 2);
-	ok1(ht->max == 3);
+	add_vals(&ht, val, 1, 1);
+	ok1(ht.bits == 2);
+	ok1(ht.max == 3);
 
 	/* Mask should be set. */
-	ok1(ht->common_mask != 0);
-	ok1(ht->common_mask != -1);
-	ok1(check_mask(ht, val, 2));
+	ok1(ht.common_mask != 0);
+	ok1(ht.common_mask != -1);
+	ok1(check_mask(&ht, val, 2));
 
 	/* Now do the rest. */
-	add_vals(ht, val, 2, NUM_VALS - 2);
+	add_vals(&ht, val, 2, NUM_VALS - 2);
 
 	/* Find all. */
-	find_vals(ht, val, NUM_VALS);
-	ok1(!htable_get(ht, hash(&dne, NULL), objcmp, &dne));
+	find_vals(&ht, val, NUM_VALS);
+	ok1(!htable_get(&ht, hash(&dne, NULL), objcmp, &dne));
 
 	/* Walk once, should get them all. */
 	i = 0;
-	for (p = htable_first(ht,&iter); p; p = htable_next(ht, &iter))
+	for (p = htable_first(&ht,&iter); p; p = htable_next(&ht, &iter))
 		i++;
 	ok1(i == NUM_VALS);
 
 	/* Delete all. */
-	del_vals(ht, val, NUM_VALS);
-	ok1(!htable_get(ht, hash(&val[0], NULL), objcmp, &val[0]));
+	del_vals(&ht, val, NUM_VALS);
+	ok1(!htable_get(&ht, hash(&val[0], NULL), objcmp, &val[0]));
 
 	/* Worst case, a "pointer" which doesn't have any matching bits. */
-	htable_add(ht, 0, (void *)~(uintptr_t)&val[NUM_VALS-1]);
-	htable_add(ht, hash(&val[NUM_VALS-1], NULL), &val[NUM_VALS-1]);
-	ok1(ht->common_mask == 0);
-	ok1(ht->common_bits == 0);
+	htable_add(&ht, 0, (void *)~(uintptr_t)&val[NUM_VALS-1]);
+	htable_add(&ht, hash(&val[NUM_VALS-1], NULL), &val[NUM_VALS-1]);
+	ok1(ht.common_mask == 0);
+	ok1(ht.common_bits == 0);
 	/* Get rid of bogus pointer before we trip over it! */
-	htable_del(ht, 0, (void *)~(uintptr_t)&val[NUM_VALS-1]);
+	htable_del(&ht, 0, (void *)~(uintptr_t)&val[NUM_VALS-1]);
 
 	/* Add the rest. */
-	add_vals(ht, val, 0, NUM_VALS-1);
+	add_vals(&ht, val, 0, NUM_VALS-1);
 
 	/* Check we can find them all. */
-	find_vals(ht, val, NUM_VALS);
-	ok1(!htable_get(ht, hash(&dne, NULL), objcmp, &dne));
-
-	htable_free(ht);
+	find_vals(&ht, val, NUM_VALS);
+	ok1(!htable_get(&ht, hash(&dne, NULL), objcmp, &dne));
 
 	/* Corner cases: wipe out the perfect bit using bogus pointer. */
-	ht = htable_new(hash, NULL);
-	htable_add(ht, 0, (void *)((uintptr_t)&val[NUM_VALS-1]));
-	ok1(ht->perfect_bit);
-	perfect_bit = ht->perfect_bit;
-	htable_add(ht, 0, (void *)((uintptr_t)&val[NUM_VALS-1]
+	htable_clear(&ht);
+	htable_add(&ht, 0, (void *)((uintptr_t)&val[NUM_VALS-1]));
+	ok1(ht.perfect_bit);
+	perfect_bit = ht.perfect_bit;
+	htable_add(&ht, 0, (void *)((uintptr_t)&val[NUM_VALS-1]
 				   | perfect_bit));
-	ok1(ht->perfect_bit == 0);
-	htable_del(ht, 0, (void *)((uintptr_t)&val[NUM_VALS-1] | perfect_bit));
+	ok1(ht.perfect_bit == 0);
+	htable_del(&ht, 0, (void *)((uintptr_t)&val[NUM_VALS-1] | perfect_bit));
 
 	/* Enlarging should restore it... */
-	add_vals(ht, val, 0, NUM_VALS-1);
+	add_vals(&ht, val, 0, NUM_VALS-1);
 
-	ok1(ht->perfect_bit != 0);
-	htable_free(ht);
+	ok1(ht.perfect_bit != 0);
+	htable_clear(&ht);
 
 	return exit_status();
 }

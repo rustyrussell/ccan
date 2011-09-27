@@ -2,25 +2,43 @@
 #ifndef CCAN_HTABLE_H
 #define CCAN_HTABLE_H
 #include "config.h"
+#include <stdint.h>
 #include <stdbool.h>
 #include <stdlib.h>
 
-struct htable;
+/**
+ * struct htable - private definition of a htable.
+ *
+ * It's exposed here so you can put it in your structures and so we can
+ * supply inline functions.
+ */
+struct htable {
+	size_t (*rehash)(const void *elem, void *priv);
+	void *priv;
+	unsigned int bits;
+	size_t elems, deleted, max, max_with_deleted;
+	/* These are the bits which are the same in all pointers. */
+	uintptr_t common_mask, common_bits;
+	uintptr_t perfect_bit;
+	uintptr_t *table;
+};
 
 /**
- * htable_new - allocate a hash tree.
+ * htable_init - initialize an empty hash tree.
+ * @ht: the hash table to initialize
  * @rehash: hash function to use for rehashing.
  * @priv: private argument to @rehash function.
  */
-struct htable *htable_new(size_t (*hash)(const void *elem, void *priv),
-			  void *priv);
+void htable_init(struct htable *ht,
+		 size_t (*rehash)(const void *elem, void *priv), void *priv);
 
 /**
- * htable_free - dellocate a hash tree.
+ * htable_clear - empty a hash tree.
+ * @ht: the hash table to clear
  *
  * This doesn't do anything to any pointers left in it.
  */
-void htable_free(const struct htable *);
+void htable_clear(struct htable *ht);
 
 /**
  * htable_rehash - use a hashtree's rehash function

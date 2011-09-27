@@ -40,7 +40,8 @@ static bool dir_cmp(const struct manifest *m, const char *dir)
 	return strcmp(m->dir, dir) == 0;
 }
 
-HTABLE_DEFINE_TYPE(struct manifest, manifest_name, dir_hash, dir_cmp, manifest);
+HTABLE_DEFINE_TYPE(struct manifest, manifest_name, dir_hash, dir_cmp,
+		   htable_manifest);
 static struct htable_manifest *manifests;
 
 const char *get_ccan_file_contents(struct ccan_file *f)
@@ -211,8 +212,10 @@ struct manifest *get_manifest(const void *ctx, const char *dir)
 	unsigned int len;
 	struct list_head *list;
 
-	if (!manifests)
-		manifests = htable_manifest_new();
+	if (!manifests) {
+		manifests = talloc(NULL, struct htable_manifest);
+		htable_manifest_init(manifests);
+	}
 
 	olddir = talloc_getcwd(NULL);
 	if (!olddir)

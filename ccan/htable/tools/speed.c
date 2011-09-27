@@ -34,7 +34,7 @@ static bool cmp(const struct object *object, const unsigned int *key)
 	return object->key == *key;
 }
 
-HTABLE_DEFINE_TYPE(struct object, objkey, hash_obj, cmp, obj);
+HTABLE_DEFINE_TYPE(struct object, objkey, hash_obj, cmp, htable_obj);
 
 static unsigned int popcount(unsigned long val)
 {
@@ -136,8 +136,7 @@ int main(int argc, char *argv[])
 	struct object *objs;
 	size_t i, j, num, deleted;
 	struct timeval start, stop;
-	struct htable_obj *ht;
-	struct htable *htr;
+	struct htable_obj ht;
 	bool make_dumb = false;
 
 	if (argv[1] && strcmp(argv[1], "--dumb") == 0) {
@@ -152,32 +151,31 @@ int main(int argc, char *argv[])
 		objs[i].self = &objs[i];
 	}
 
-	ht = htable_obj_new();
-	htr = (void *)ht;
+	htable_obj_init(&ht);
 
 	printf("Initial insert: ");
 	fflush(stdout);
 	gettimeofday(&start, NULL);
 	for (i = 0; i < num; i++)
-		htable_obj_add(ht, objs[i].self);
+		htable_obj_add(&ht, objs[i].self);
 	gettimeofday(&stop, NULL);
 	printf(" %zu ns\n", normalize(&start, &stop, num));
 	printf("Details: hash size %u, mask bits %u, perfect %.0f%%\n",
-	       1U << htr->bits, popcount(htr->common_mask),
-	       perfect(htr) * 100.0 / htr->elems);
+	       1U << ht.raw.bits, popcount(ht.raw.common_mask),
+	       perfect(&ht.raw) * 100.0 / ht.raw.elems);
 
 	if (make_dumb) {
 		/* Screw with mask, to hobble us. */
-		update_common(htr, (void *)~htr->common_bits);
+		update_common(&ht.raw, (void *)~ht.raw.common_bits);
 		printf("Details: DUMB MODE: mask bits %u\n",
-		       popcount(htr->common_mask));
+		       popcount(ht.raw.common_mask));
 	}
 
 	printf("Initial lookup (match): ");
 	fflush(stdout);
 	gettimeofday(&start, NULL);
 	for (i = 0; i < num; i++)
-		if (htable_obj_get(ht, &i)->self != objs[i].self)
+		if (htable_obj_get(&ht, &i)->self != objs[i].self)
 			abort();
 	gettimeofday(&stop, NULL);
 	printf(" %zu ns\n", normalize(&start, &stop, num));
@@ -187,7 +185,7 @@ int main(int argc, char *argv[])
 	gettimeofday(&start, NULL);
 	for (i = 0; i < num; i++) {
 		unsigned int n = i + num;
-		if (htable_obj_get(ht, &n))
+		if (htable_obj_get(&ht, &n))
 			abort();
 	}
 	gettimeofday(&stop, NULL);
@@ -198,7 +196,7 @@ int main(int argc, char *argv[])
 	fflush(stdout);
 	gettimeofday(&start, NULL);
 	for (i = 0, j = 0; i < num; i++, j = (j + 10007) % num)
-		if (htable_obj_get(ht, &j)->self != &objs[j])
+		if (htable_obj_get(&ht, &j)->self != &objs[j])
 			abort();
 	gettimeofday(&stop, NULL);
 	printf(" %zu ns\n", normalize(&start, &stop, num));
@@ -208,7 +206,7 @@ int main(int argc, char *argv[])
 	fflush(stdout);
 	gettimeofday(&start, NULL);
 	for (i = 0; i < num; i++)
-		if (!htable_obj_del(ht, objs[i].self))
+		if (!htable_obj_del(&ht, objs[i].self))
 			abort();
 	gettimeofday(&stop, NULL);
 	printf(" %zu ns\n", normalize(&start, &stop, num));
@@ -218,7 +216,7 @@ int main(int argc, char *argv[])
 	fflush(stdout);
 	gettimeofday(&start, NULL);
 	for (i = 0; i < num; i++)
-		htable_obj_add(ht, objs[i].self);
+		htable_obj_add(&ht, objs[i].self);
 	gettimeofday(&stop, NULL);
 	printf(" %zu ns\n", normalize(&start, &stop, num));
 
@@ -227,13 +225,13 @@ int main(int argc, char *argv[])
 	fflush(stdout);
 	gettimeofday(&start, NULL);
 	for (i = 0; i < num; i+=2)
-		if (!htable_obj_del(ht, objs[i].self))
+		if (!htable_obj_del(&ht, objs[i].self))
 			abort();
 	gettimeofday(&stop, NULL);
 	printf(" %zu ns\n", normalize(&start, &stop, num));
 
 	printf("Details: rehashes %zu, delete markers %zu\n",
-	       hashcount, count_deleted(htr));
+	       hashcount, count_deleted(&ht.raw));
 
 	printf("Adding (a different) half: ");
 	fflush(stdout);
@@ -243,22 +241,22 @@ int main(int argc, char *argv[])
 
 	gettimeofday(&start, NULL);
 	for (i = 0; i < num; i+=2)
-		htable_obj_add(ht, objs[i].self);
+		htable_obj_add(&ht, objs[i].self);
 	gettimeofday(&stop, NULL);
 	printf(" %zu ns\n", normalize(&start, &stop, num));
 
 	printf("Details: delete markers %zu, perfect %.0f%%\n",
-	       count_deleted(htr), perfect(htr) * 100.0 / htr->elems);
+	       count_deleted(&ht.raw), perfect(&ht.raw) * 100.0 / ht.raw.elems);
 
 	printf("Lookup after half-change (match): ");
 	fflush(stdout);
 	gettimeofday(&start, NULL);
 	for (i = 1; i < num; i+=2)
-		if (htable_obj_get(ht, &i)->self != objs[i].self)
+		if (htable_obj_get(&ht, &i)->self != objs[i].self)
 			abort();
 	for (i = 0; i < num; i+=2) {
 		unsigned int n = i + num;
-		if (htable_obj_get(ht, &n)->self != objs[i].self)
+		if (htable_obj_get(&ht, &n)->self != objs[i].self)
 			abort();
 	}
 	gettimeofday(&stop, NULL);
@@ -269,7 +267,7 @@ int main(int argc, char *argv[])
 	gettimeofday(&start, NULL);
 	for (i = 0; i < num; i++) {
 		unsigned int n = i + num * 2;
-		if (htable_obj_get(ht, &n))
+		if (htable_obj_get(&ht, &n))
 			abort();
 	}
 	gettimeofday(&stop, NULL);
@@ -291,10 +289,10 @@ int main(int argc, char *argv[])
 		}
 		gettimeofday(&start, NULL);
 		for (j = 0; j < num; j++) {
-			if (!htable_obj_del(ht, &objs[j]))
+			if (!htable_obj_del(&ht, &objs[j]))
 				abort();
 			objs[j].key = num*i+j;
-			if (!htable_obj_add(ht, &objs[j]))
+			if (!htable_obj_add(&ht, &objs[j]))
 				abort();
 		}
 		gettimeofday(&stop, NULL);
@@ -305,15 +303,15 @@ int main(int argc, char *argv[])
 	/* Spread out the keys more to try to make it harder. */
 	printf("Details: reinserting with spread\n");
 	for (i = 0; i < num; i++) {
-		if (!htable_obj_del(ht, objs[i].self))
+		if (!htable_obj_del(&ht, objs[i].self))
 			abort();
 		objs[i].key = num * 5 + i * 9;
-		if (!htable_obj_add(ht, objs[i].self))
+		if (!htable_obj_add(&ht, objs[i].self))
 			abort();
 	}
 	printf("Details: delete markers %zu, perfect %.0f%%\n",
-	       count_deleted(htr), perfect(htr) * 100.0 / htr->elems);
-	i = worst_run(htr, &deleted);
+	       count_deleted(&ht.raw), perfect(&ht.raw) * 100.0 / ht.raw.elems);
+	i = worst_run(&ht.raw, &deleted);
 	printf("Details: worst run %zu (%zu deleted)\n", i, deleted);
 
 	printf("Lookup after churn & spread (match): ");
@@ -321,7 +319,7 @@ int main(int argc, char *argv[])
 	gettimeofday(&start, NULL);
 	for (i = 0; i < num; i++) {
 		unsigned int n = num * 5 + i * 9;
-		if (htable_obj_get(ht, &n)->self != objs[i].self)
+		if (htable_obj_get(&ht, &n)->self != objs[i].self)
 			abort();
 	}
 	gettimeofday(&stop, NULL);
@@ -332,7 +330,7 @@ int main(int argc, char *argv[])
 	gettimeofday(&start, NULL);
 	for (i = 0; i < num; i++) {
 		unsigned int n = num * (5 + 9) + i * 9;
-		if (htable_obj_get(ht, &n))
+		if (htable_obj_get(&ht, &n))
 			abort();
 	}
 	gettimeofday(&stop, NULL);
@@ -343,7 +341,7 @@ int main(int argc, char *argv[])
 	gettimeofday(&start, NULL);
 	for (i = 0, j = 0; i < num; i++, j = (j + 10007) % num) {
 		unsigned int n = num * 5 + j * 9;
-		if (htable_obj_get(ht, &n)->self != &objs[j])
+		if (htable_obj_get(&ht, &n)->self != &objs[j])
 			abort();
 	}
 	gettimeofday(&stop, NULL);
@@ -354,7 +352,7 @@ int main(int argc, char *argv[])
 	fflush(stdout);
 	gettimeofday(&start, NULL);
 	for (i = 0; i < num; i+=2)
-		if (!htable_obj_del(ht, objs[i].self))
+		if (!htable_obj_del(&ht, objs[i].self))
 			abort();
 	gettimeofday(&stop, NULL);
 	printf(" %zu ns\n", normalize(&start, &stop, num));
@@ -367,12 +365,12 @@ int main(int argc, char *argv[])
 
 	gettimeofday(&start, NULL);
 	for (i = 0; i < num; i+=2)
-		htable_obj_add(ht, objs[i].self);
+		htable_obj_add(&ht, objs[i].self);
 	gettimeofday(&stop, NULL);
 	printf(" %zu ns\n", normalize(&start, &stop, num));
 
 	printf("Details: delete markers %zu, perfect %.0f%%\n",
-	       count_deleted(htr), perfect(htr) * 100.0 / htr->elems);
+	       count_deleted(&ht.raw), perfect(&ht.raw) * 100.0 / ht.raw.elems);
 
 	return 0;
 }

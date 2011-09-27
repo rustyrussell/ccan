@@ -16,7 +16,7 @@ static size_t hash(const void *elem, void *unused)
 
 int main(int argc, char *argv[])
 {
-	struct htable *ht;
+	struct htable ht;
 	uint64_t val[NUM_VALS];
 	unsigned int i;
 
@@ -24,13 +24,13 @@ int main(int argc, char *argv[])
 	for (i = 0; i < NUM_VALS; i++)
 		val[i] = i;
 
-	ht = htable_new(hash, NULL);
+	htable_init(&ht, hash, NULL);
 	for (i = 0; i < NUM_VALS; i++) {
-		ok1(ht->max >= i);
-		ok1(ht->max <= i * 2);
-		htable_add(ht, hash(&val[i], NULL), &val[i]);
+		ok1(ht.max >= i);
+		ok1(ht.max <= i * 2);
+		htable_add(&ht, hash(&val[i], NULL), &val[i]);
 	}
-	htable_free(ht);
+	htable_clear(&ht);
 
 	return exit_status();
 }

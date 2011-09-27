@@ -40,7 +40,20 @@ static bool option_cmp(const char *name1, const char *name2)
 	return streq(name1, name2);
 }
 
-HTABLE_DEFINE_TYPE(char, option_name, option_hash, option_cmp, option);
+HTABLE_DEFINE_TYPE(char, option_name, option_hash, option_cmp, htable_option);
+
+static struct htable_option *htable_option_new(void)
+{
+	struct htable_option *opts = malloc(sizeof(*opts));
+	htable_option_init(opts);
+	return opts;
+}
+
+static void htable_option_free(struct htable_option *opts)
+{
+	htable_option_clear(opts);
+	free(opts);
+}
 
 static unsigned int add_options(struct htable_option *opts,
 				struct pp_conditions *cond)

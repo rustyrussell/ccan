@@ -31,7 +31,7 @@ static bool cmp(const char *obj, const char *key)
 	return strcmp(obj, key) == 0;
 }
 
-HTABLE_DEFINE_TYPE(char, strkey, hash_str, cmp, str);
+HTABLE_DEFINE_TYPE(char, strkey, hash_str, cmp, htable_str);
 
 /* Nanoseconds per operation */
 static size_t normalize(const struct timeval *start,
@@ -51,13 +51,13 @@ int main(int argc, char *argv[])
 {
 	size_t i, j, num;
 	struct timeval start, stop;
-	struct htable_str *ht;
+	struct htable_str ht;
 	char **words, **misswords;
 
 	words = strsplit(NULL, grab_file(NULL,
 					 argv[1] ? argv[1] : "/usr/share/dict/words",
 					 NULL), "\n");
-	ht = htable_str_new();
+	htable_str_init(&ht);
 	num = talloc_array_length(words) - 1;
 	printf("%zu words\n", num);
 
@@ -77,19 +77,18 @@ int main(int argc, char *argv[])
 	fflush(stdout);
 	start = time_now();
 	for (i = 0; i < num; i++)
-		htable_str_add(ht, words[i]);
+		htable_str_add(&ht, words[i]);
 	stop = time_now();
 	printf(" %zu ns\n", normalize(&start, &stop, num));
 
 	printf("Bytes allocated: %zu\n",
-	       sizeof(((struct htable *)ht)->table[0])
-	       << ((struct htable *)ht)->bits);
+	       sizeof(ht.raw.table[0]) << ht.raw.bits);
 
 	printf("#02: Initial lookup (match): ");
 	fflush(stdout);
 	start = time_now();
 	for (i = 0; i < num; i++)
-		if (htable_str_get(ht, words[i]) != words[i])
+		if (htable_str_get(&ht, words[i]) != words[i])
 			abort();
 	stop = time_now();
 	printf(" %zu ns\n", normalize(&start, &stop, num));
@@ -98,7 +97,7 @@ int main(int argc, char *argv[])
 	fflush(stdout);
 	start = time_now();
 	for (i = 0; i < num; i++) {
-		if (htable_str_get(ht, misswords[i]))
+		if (htable_str_get(&ht, misswords[i]))
 			abort();
 	}
 	stop = time_now();
@@ -109,7 +108,7 @@ int main(int argc, char *argv[])
 	fflush(stdout);
 	start = time_now();
 	for (i = 0, j = 0; i < num; i++, j = (j + 10007) % num)
-		if (htable_str_get(ht, words[j]) != words[j])
+		if (htable_str_get(&ht, words[j]) != words[j])
 			abort();
 	stop = time_now();
 	printf(" %zu ns\n", normalize(&start, &stop, num));
@@ -119,7 +118,7 @@ int main(int argc, char *argv[])
 	fflush(stdout);
 	start = time_now();
 	for (i = 0; i < num; i++)
-		if (!htable_str_del(ht, words[i]))
+		if (!htable_str_del(&ht, words[i]))
 			abort();
 	stop = time_now();
 	printf(" %zu ns\n", normalize(&start, &stop, num));
@@ -128,7 +127,7 @@ int main(int argc, char *argv[])
 	fflush(stdout);
 	start = time_now();
 	for (i = 0; i < num; i++)
-		htable_str_add(ht, words[i]);
+		htable_str_add(&ht, words[i]);
 	stop = time_now();
 	printf(" %zu ns\n", normalize(&start, &stop, num));
 
@@ -137,7 +136,7 @@ int main(int argc, char *argv[])
 	fflush(stdout);
 	start = time_now();
 	for (i = 0; i < num; i+=2)
-		if (!htable_str_del(ht, words[i]))
+		if (!htable_str_del(&ht, words[i]))
 			abort();
 	stop = time_now();
 	printf(" %zu ns\n", normalize(&start, &stop, num));
@@ -147,7 +146,7 @@ int main(int argc, char *argv[])
 
 	start = time_now();
 	for (i = 0; i < num; i+=2)
-		htable_str_add(ht, misswords[i]);
+		htable_str_add(&ht, misswords[i]);
 	stop = time_now();
 	printf(" %zu ns\n", normalize(&start, &stop, num));
 
@@ -155,10 +154,10 @@ int main(int argc, char *argv[])
 	fflush(stdout);
 	start = time_now();
 	for (i = 1; i < num; i+=2)
-		if (htable_str_get(ht, words[i]) != words[i])
+		if (htable_str_get(&ht, words[i]) != words[i])
 			abort();
 	for (i = 0; i < num; i+=2) {
-		if (htable_str_get(ht, misswords[i]) != misswords[i])
+		if (htable_str_get(&ht, misswords[i]) != misswords[i])
 			abort();
 	}
 	stop = time_now();
@@ -168,10 +167,10 @@ int main(int argc, char *argv[])
 	fflush(stdout);
 	start = time_now();
 	for (i = 0; i < num; i+=2)
-		if (htable_str_get(ht, words[i]))
+		if (htable_str_get(&ht, words[i]))
 			abort();
 	for (i = 1; i < num; i+=2) {
-		if (htable_str_get(ht, misswords[i]))
+		if (htable_str_get(&ht, misswords[i]))
 			abort();
 	}
 	stop = time_now();
@@ -182,9 +181,9 @@ int main(int argc, char *argv[])
 	printf("#11: Churn 1: ");
 	start = time_now();
 	for (j = 0; j < num; j+=2) {
-		if (!htable_str_del(ht, misswords[j]))
+		if (!htable_str_del(&ht, misswords[j]))
 			abort();
-		if (!htable_str_add(ht, words[j]))
+		if (!htable_str_add(&ht, words[j]))
 			abort();
 	}
 	stop = time_now();
@@ -193,9 +192,9 @@ int main(int argc, char *argv[])
 	printf("#12: Churn 2: ");
 	start = time_now();
 	for (j = 1; j < num; j+=2) {
-		if (!htable_str_del(ht, words[j]))
+		if (!htable_str_del(&ht, words[j]))
 			abort();
-		if (!htable_str_add(ht, misswords[j]))
+		if (!htable_str_add(&ht, misswords[j]))
 			abort();
 	}
 	stop = time_now();
@@ -204,9 +203,9 @@ int main(int argc, char *argv[])
 	printf("#13: Churn 3: ");
 	start = time_now();
 	for (j = 1; j < num; j+=2) {
-		if (!htable_str_del(ht, misswords[j]))
+		if (!htable_str_del(&ht, misswords[j]))
 			abort();
-		if (!htable_str_add(ht, words[j]))
+		if (!htable_str_add(&ht, words[j]))
 			abort();
 	}
 	stop = time_now();
@@ -217,7 +216,7 @@ int main(int argc, char *argv[])
 	fflush(stdout);
 	start = time_now();
 	for (i = 0; i < num; i++)
-		if (htable_str_get(ht, words[i]) != words[i])
+		if (htable_str_get(&ht, words[i]) != words[i])
 			abort();
 	stop = time_now();
 	printf(" %zu ns\n", normalize(&start, &stop, num));
@@ -226,7 +225,7 @@ int main(int argc, char *argv[])
 	fflush(stdout);
 	start = time_now();
 	for (i = 0; i < num; i++) {
-		if (htable_str_get(ht, misswords[i]))
+		if (htable_str_get(&ht, misswords[i]))
 			abort();
 	}
 	stop = time_now();
@@ -237,7 +236,7 @@ int main(int argc, char *argv[])
 	fflush(stdout);
 	start = time_now();
 	for (i = 0, j = 0; i < num; i++, j = (j + 10007) % num)
-		if (htable_str_get(ht, words[j]) != words[j])
+		if (htable_str_get(&ht, words[j]) != words[j])
 			abort();
 	stop = time_now();
 	printf(" %zu ns\n", normalize(&start, &stop, num));

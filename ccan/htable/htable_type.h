@@ -7,88 +7,90 @@
 /**
  * HTABLE_DEFINE_TYPE - create a set of htable ops for a type
  * @type: a type whose pointers will be values in the hash.
- * @keyof: a function/macro to extract a key from a @type element.
- * @hashfn: a hash function for a @key
- * @cmpfn: a comparison function for two keyof()s.
- * @name: a name for all the functions to define (of form htable_<name>_*)
+ * @keyof: a function/macro to extract a key: <keytype> @keyof(const type *elem)
+ * @hashfn: a hash function for a @key: size_t @hashfn(const <keytype> *)
+ * @eqfn: an equality function keys: bool @eqfn(const type *, const <keytype> *)
+ * @prefix: a prefix for all the functions to define (of form <name>_*)
  *
  * NULL values may not be placed into the hash table.
  *
- * The following wrapper functions are defined; each one is a
- * simplified version of the htable.h equivalent:
+ * This defines the type hashtable type and an iterator type:
+ *	struct <name>;
+ *	struct <name>_iter;
  *
- *	// Creating and freeing.
- *	struct htable_@name *htable_@name_new(void);
- *	void htable_@name_free(const struct htable_@name *ht);
+ * It also defines initialization and freeing functions:
+ *	void <name>_init(struct <name> *);
+ *	void <name>_clear(struct <name> *);
  *
- *	// Add, delete and find.
- *	bool htable_@name_add(struct htable_@name *ht, const type *e);
- *	bool htable_@name_del(struct htable_@name *ht, const type *e);
- *	bool htable_@name_delkey(struct htable_@name *ht, const ktype *k);
- *	type *htable_@name_get(const struct htable_@name *ht, const ktype *k);
+ * Add function only fails if we run out of memory:
+ *	bool <name>_add(struct <name> *ht, const <type> *e);
  *
- *	// Iteration.
- *	struct htable_@name_iter;
- *	type *htable_@name_first(const struct htable_@name *ht,
- *				 struct htable_@name_iter *i);
- *	type *htable_@name_next(const struct htable_@name *ht,
- *				struct htable_@name_iter *i);
+ * Delete and delete-by key return true if it was in the set:
+ *	bool <name>_del(struct <name> *ht, const <type> *e);
+ *	bool <name>_delkey(struct <name> *ht, const <keytype> *k);
+ *
+ * Find function return the matching element, or NULL:
+ *	type *<name>_get(const struct @name *ht, const <keytype> *k);
+ *
+ * Iteration over hashtable is also supported:
+ *	type *<name>_first(const struct <name> *ht, struct <name>_iter *i);
+ *	type *<name>_next(const struct <name> *ht, struct <name>_iter *i);
+ *
+ * It's currently safe to iterate over a changing hashtable, but you might
+ * miss an element.  Iteration isn't very efficient, either.
  */
-#define HTABLE_DEFINE_TYPE(type, keyof, hashfn, cmpfn, name)		\
-struct htable_##name;							\
-struct htable_##name##_iter { struct htable_iter i; };			\
-static inline size_t htable_##name##_hash(const void *elem, void *priv)	\
-{									\
-	return hashfn(keyof((const type *)elem));			\
-}									\
-static inline struct htable_##name *htable_##name##_new(void)		\
-{									\
-	return (struct htable_##name *)htable_new(htable_##name##_hash,	\
-						  NULL);		\
-}									\
-static inline void htable_##name##_free(const struct htable_##name *ht)	\
-{									\
-	htable_free((const struct htable *)ht);				\
-}									\
-static inline bool htable_##name##_add(struct htable_##name *ht,	\
-				       const type *elem)		\
-{									\
-	return htable_add((struct htable *)ht, hashfn(keyof(elem)), elem); \
-}									\
-static inline bool htable_##name##_del(const struct htable_##name *ht,	\
-				       const type *elem)		\
-{									\
-	return htable_del((struct htable *)ht, hashfn(keyof(elem)), elem); \
-}									\
-static inline type *htable_##name##_get(const struct htable_##name *ht,	\
-					const HTABLE_KTYPE(keyof) k)	\
-{									\
-	/* Typecheck for cmpfn */					\
-	(void)sizeof(cmpfn((const type *)NULL,				\
-			   keyof((const type *)NULL)));			\
-	return (type *)htable_get((const struct htable *)ht,		\
+#define HTABLE_DEFINE_TYPE(type, keyof, hashfn, eqfn, name)		\
+	struct name { struct htable raw; };				\
+	struct name##_iter { struct htable_iter i; };			\
+	static inline size_t name##_hash(const void *elem, void *priv)	\
+	{								\
+		return hashfn(keyof((const type *)elem));		\
+	}								\
+	static inline void name##_init(struct name *ht)			\
+	{								\
+		htable_init(&ht->raw, name##_hash, NULL);		\
+	}								\
+	static inline void name##_clear(struct name *ht)		\
+	{								\
+		htable_clear(&ht->raw);					\
+	}								\
+	static inline bool name##_add(struct name *ht, const type *elem) \
+	{								\
+		return htable_add(&ht->raw, hashfn(keyof(elem)), elem);	\
+	}								\
+	static inline bool name##_del(struct name *ht, const type *elem) \
+	{								\
+		return htable_del(&ht->raw, hashfn(keyof(elem)), elem);	\
+	}								\
+	static inline type *name##_get(const struct name *ht,		\
+				       const HTABLE_KTYPE(keyof) k)	\
+	{								\
+		/* Typecheck for eqfn */				\
+		(void)sizeof(eqfn((const type *)NULL,			\
+				  keyof((const type *)NULL)));		\
+		return htable_get(&ht->raw,				\
 				  hashfn(k),				\
-				  (bool (*)(const void *, void *))(cmpfn), \
+				  (bool (*)(const void *, void *))(eqfn), \
 				  k);					\
-}									\
-static inline bool htable_##name##_delkey(struct htable_##name *ht,	\
-					  const HTABLE_KTYPE(keyof) k) \
-{									\
-	type *elem = htable_##name##_get(ht, k);			\
-	if (elem)							\
-		return htable_##name##_del(ht, elem);			\
-	return false;							\
-}									\
-static inline type *htable_##name##_first(const struct htable_##name *ht, \
-					  struct htable_##name##_iter *iter) \
-{									\
-	return htable_first((const struct htable *)ht, &iter->i);	\
-}									\
-static inline type *htable_##name##_next(const struct htable_##name *ht, \
-					 struct htable_##name##_iter *iter) \
-{									\
-	return htable_next((const struct htable *)ht, &iter->i);	\
-}
+	}								\
+	static inline bool name##_delkey(struct name *ht,		\
+					 const HTABLE_KTYPE(keyof) k)	\
+	{								\
+		type *elem = name##_get(ht, k);				\
+		if (elem)						\
+			return name##_del(ht, elem);			\
+		return false;						\
+	}								\
+	static inline type *name##_first(const struct name *ht,		\
+					 struct name##_iter *iter)	\
+	{								\
+		return htable_first(&ht->raw, &iter->i);		\
+	}								\
+	static inline type *name##_next(const struct name *ht,		\
+					struct name##_iter *iter)	\
+	{								\
+		return htable_next(&ht->raw, &iter->i);			\
+	}
 
 #if HAVE_TYPEOF
 #define HTABLE_KTYPE(keyof) typeof(keyof(NULL))

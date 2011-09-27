@@ -62,7 +62,7 @@
  *
  *	int main(int argc, char *argv[])
  *	{
- *		struct htable *ht;
+ *		struct htable ht;
  *		unsigned int i;
  *		unsigned long val;
  *
@@ -71,14 +71,14 @@
  *			     argv[0]);
  *
  *		// Create and populate hash table.
- *		ht = htable_new(rehash, NULL);
+ *		htable_init(&ht, rehash, NULL);
  *		for (i = 0; i < sizeof(map)/sizeof(map[0]); i++)
- *			htable_add(ht, hash_string(map[i].name), &map[i]);
+ *			htable_add(&ht, hash_string(map[i].name), &map[i]);
  *
  *		// Add any aliases to the hash table.
  *		for (i = 1; i < argc; i++) {
  *			if (!strncmp(argv[i], "--alias=", strlen("--alias=")))
- *				add_alias(ht, argv[i] + strlen("--alias="));
+ *				add_alias(&ht, argv[i] + strlen("--alias="));
  *			else
  *				break;
  *		}
@@ -86,7 +86,7 @@
  *		// Find the other args in the hash table.
  *		for (val = 0; i < argc; i++) {
  *			struct name_to_digit *n;
- *			n = htable_get(ht, hash_string(argv[i]),
+ *			n = htable_get(&ht, hash_string(argv[i]),
  *				       streq, argv[i]);
  *			if (!n)
  *				errx(1, "Invalid digit name %s", argv[i]);

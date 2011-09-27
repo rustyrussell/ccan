@@ -1,7 +1,6 @@
 /* Licensed under LGPLv2+ - see LICENSE file for details */
 #include <ccan/htable/htable.h>
 #include <ccan/compiler/compiler.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <limits.h>
 #include <stdbool.h>
@@ -9,17 +8,6 @@
 
 /* We use 0x1 as deleted marker. */
 #define HTABLE_DELETED (0x1)
-
-struct htable {
-	size_t (*rehash)(const void *elem, void *priv);
-	void *priv;
-	unsigned int bits;
-	size_t elems, deleted, max, max_with_deleted;
-	/* These are the bits which are the same in all pointers. */
-	uintptr_t common_mask, common_bits;
-	uintptr_t perfect_bit;
-	uintptr_t *table;
-};
 
 /* We clear out the bits which are always the same, and put metadata there. */
 static inline uintptr_t get_extra_ptr_bits(const struct htable *ht,
@@ -54,33 +42,29 @@ static inline uintptr_t get_hash_ptr_bits(const struct htable *ht,
 		& ht->common_mask & ~ht->perfect_bit;
 }
 
-struct htable *htable_new(size_t (*rehash)(const void *elem, void *priv),
-			  void *priv)
+void htable_init(struct htable *ht,
+		 size_t (*rehash)(const void *elem, void *priv), void *priv)
 {
-	struct htable *ht = malloc(sizeof(struct htable));
-	if (ht) {
-		ht->bits = 0;
-		ht->rehash = rehash;
-		ht->priv = priv;
-		ht->elems = 0;
-		ht->deleted = 0;
-		ht->max = 0;
-		ht->max_with_deleted = 0;
-		/* This guarantees we enter update_common first add. */
-		ht->common_mask = -1;
-		ht->common_bits = 0;
-		ht->perfect_bit = 0;
-		/* Dummy table until first insert. */
-		ht->table = &ht->perfect_bit;
-	}
-	return ht;
+	ht->bits = 0;
+	ht->rehash = rehash;
+	ht->priv = priv;
+	ht->elems = 0;
+	ht->deleted = 0;
+	ht->max = 0;
+	ht->max_with_deleted = 0;
+	/* This guarantees we enter update_common first add. */
+	ht->common_mask = -1;
+	ht->common_bits = 0;
+	ht->perfect_bit = 0;
+	/* Dummy table until first insert. */
+	ht->table = &ht->perfect_bit;
 }
 
-void htable_free(const struct htable *ht)
+void htable_clear(struct htable *ht)
 {
 	if (ht->table != &ht->perfect_bit)
 		free((void *)ht->table);
-	free((void *)ht);
+	htable_init(ht, ht->rehash, ht->priv);
 }
 
 static size_t hash_bucket(const struct htable *ht, size_t h)
