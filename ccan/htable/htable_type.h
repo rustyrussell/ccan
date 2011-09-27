@@ -38,6 +38,9 @@
  *
  * It's currently safe to iterate over a changing hashtable, but you might
  * miss an element.  Iteration isn't very efficient, either.
+ *
+ * You can use HTABLE_INITIALIZER like so:
+ *	struct <name> ht = { HTABLE_INITIALIZER(ht.raw, <name>_hash, NULL) };
  */
 #define HTABLE_DEFINE_TYPE(type, keyof, hashfn, eqfn, name)		\
 	struct name { struct htable raw; };				\

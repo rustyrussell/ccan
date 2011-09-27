@@ -24,7 +24,26 @@ struct htable {
 };
 
 /**
- * htable_init - initialize an empty hash tree.
+ * HTABLE_INITIALIZER - static initialization for a hash table.
+ * @name: name of this htable.
+ * @rehash: hash function to use for rehashing.
+ * @priv: private argument to @rehash function.
+ *
+ * This is useful for setting up static and global hash tables.
+ *
+ * Example:
+ *	// For simplicity's sake, say hash value is contents of elem.
+ *	static size_t rehash(const void *elem, void *unused)
+ *	{
+ *		return *(size_t *)elem;
+ *	}
+ *	static struct htable ht = HTABLE_INITIALIZER(ht, rehash, NULL);
+ */
+#define HTABLE_INITIALIZER(name, rehash, priv)				\
+	{ rehash, priv, 0, 0, 0, 0, 0, -1, 0, 0, &name.perfect_bit }
+
+/**
+ * htable_init - initialize an empty hash table.
  * @ht: the hash table to initialize
  * @rehash: hash function to use for rehashing.
  * @priv: private argument to @rehash function.
@@ -33,7 +52,7 @@ void htable_init(struct htable *ht,
 		 size_t (*rehash)(const void *elem, void *priv), void *priv);
 
 /**
- * htable_clear - empty a hash tree.
+ * htable_clear - empty a hash table.
  * @ht: the hash table to clear
  *
  * This doesn't do anything to any pointers left in it.
@@ -48,7 +67,7 @@ void htable_clear(struct htable *ht);
 size_t htable_rehash(const void *elem);
 
 /**
- * htable_add - add a pointer into a hash tree.
+ * htable_add - add a pointer into a hash table.
  * @ht: the htable
  * @hash: the hash value of the object
  * @p: the non-NULL pointer
@@ -59,7 +78,7 @@ size_t htable_rehash(const void *elem);
 bool htable_add(struct htable *ht, size_t hash, const void *p);
 
 /**
- * htable_del - remove a pointer from a hash tree
+ * htable_del - remove a pointer from a hash table
  * @ht: the htable
  * @hash: the hash value of the object
  * @p: the pointer
@@ -145,7 +164,7 @@ void *htable_first(const struct htable *htable, struct htable_iter *i);
 void *htable_next(const struct htable *htable, struct htable_iter *i);
 
 /**
- * htable_delval - remove an iterated pointer from a hash tree
+ * htable_delval - remove an iterated pointer from a hash table
  * @ht: the htable
  * @i: the htable_iter
  *

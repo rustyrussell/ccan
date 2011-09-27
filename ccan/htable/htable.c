@@ -45,18 +45,10 @@ static inline uintptr_t get_hash_ptr_bits(const struct htable *ht,
 void htable_init(struct htable *ht,
 		 size_t (*rehash)(const void *elem, void *priv), void *priv)
 {
-	ht->bits = 0;
+	struct htable empty = HTABLE_INITIALIZER(empty, NULL, NULL);
+	*ht = empty;
 	ht->rehash = rehash;
 	ht->priv = priv;
-	ht->elems = 0;
-	ht->deleted = 0;
-	ht->max = 0;
-	ht->max_with_deleted = 0;
-	/* This guarantees we enter update_common first add. */
-	ht->common_mask = -1;
-	ht->common_bits = 0;
-	ht->perfect_bit = 0;
-	/* Dummy table until first insert. */
 	ht->table = &ht->perfect_bit;
 }
 
