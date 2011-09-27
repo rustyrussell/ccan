@@ -2,11 +2,9 @@
 #ifdef CCAN_LIKELY_DEBUG
 #include <ccan/likely/likely.h>
 #include <ccan/hash/hash.h>
-#include <ccan/htable/htable.h>
+#include <ccan/htable/htable_type.h>
 #include <stdlib.h>
 #include <stdio.h>
-static struct htable *htable;
-
 struct trace {
 	const char *condstr;
 	const char *file;
@@ -15,27 +13,27 @@ struct trace {
 	unsigned long count, right;
 };
 
-/* We hash the pointers, which will be identical for same call. */
-static unsigned long hash_trace(const struct trace *trace)
+static size_t hash_trace(const struct trace *trace)
 {
-	return hash_pointer(trace->condstr,
-			    hash_pointer(trace->file,
-					 trace->line + trace->expect));
+	return hash(trace->condstr, strlen(trace->condstr),
+		    hash(trace->file, strlen(trace->file),
+			 trace->line + trace->expect));
 }
 
-static bool hash_cmp(const void *htelem, void *cmpdata)
+static bool trace_eq(const struct trace *t1, const struct trace *t2)
 {
-	const struct trace *t1 = htelem, *t2 = cmpdata;
 	return t1->condstr == t2->condstr
 		&& t1->file == t2->file
 		&& t1->line == t2->line
 		&& t1->expect == t2->expect;
 }
 
-static size_t rehash(const void *elem, void *priv)
-{
-	return hash_trace(elem);
-}
+/* struct thash */
+HTABLE_DEFINE_TYPE(struct trace, (const struct trace *), hash_trace, trace_eq,
+		   thash);
+
+static struct thash htable
+= { HTABLE_INITIALIZER(htable.raw, thash_hash, NULL) };
 
 static void init_trace(struct trace *trace,
 		       const char *condstr, const char *file, unsigned int line,
@@ -48,12 +46,11 @@ static void init_trace(struct trace *trace,
 	trace->count = trace->right = 0;
 }
 
-static struct trace *add_trace(const char *condstr,
-			       const char *file, unsigned int line, bool expect)
+static struct trace *add_trace(const struct trace *t)
 {
 	struct trace *trace = malloc(sizeof(*trace));
-	init_trace(trace, condstr, file, line, expect);
-	htable_add(htable, hash_trace(trace), trace);
+	*trace = *t;
+	thash_add(&htable, trace);
 	return trace;
 }
 
@@ -63,13 +60,10 @@ long _likely_trace(bool cond, bool expect,
 {
 	struct trace *p, trace;
 
-	if (!htable)
-		htable = htable_new(rehash, NULL);
-
 	init_trace(&trace, condstr, file, line, expect);
-	p = htable_get(htable, hash_trace(&trace), hash_cmp, &trace);
+	p = thash_get(&htable, &trace);
 	if (!p)
-		p = add_trace(condstr, file, line, expect);
+		p = add_trace(&trace);
 
 	p->count++;
 	if (cond == expect)
@@ -78,65 +72,65 @@ long _likely_trace(bool cond, bool expect,
 	return cond;
 }
 
-struct get_stats_info {
-	struct trace *worst;
-	unsigned int min_hits;
-	double worst_ratio;
-};
-
 static double right_ratio(const struct trace *t)
 {
 	return (double)t->right / t->count;
 }
 
-static void get_stats(struct trace *trace, struct get_stats_info *info)
+char *likely_stats(unsigned int min_hits, unsigned int percent)
 {
-	if (trace->count < info->min_hits)
-		return;
-
-	if (right_ratio(trace) < info->worst_ratio) {
-		info->worst = trace;
-		info->worst_ratio = right_ratio(trace);
-	}
-}
-
-const char *likely_stats(unsigned int min_hits, unsigned int percent)
-{
-	struct get_stats_info info;
-	struct htable_iter i;
+	struct trace *worst;
+	double worst_ratio;
+	struct thash_iter i;
 	char *ret;
-	struct trace *trace;
+	struct trace *t;
 
-	if (!htable)
-		return NULL;
-
-	info.min_hits = min_hits;
-	info.worst = NULL;
-	info.worst_ratio = 2;
+	worst = NULL;
+	worst_ratio = 2;
 
 	/* This is O(n), but it's not likely called that often. */
-	for (trace = htable_first(htable, &i);
-	     trace;
-	     trace = htable_next(htable,&i)) {
-		get_stats(trace, &info);
+	for (t = thash_first(&htable, &i); t; t = thash_next(&htable, &i)) {
+		if (t->count >= min_hits) {
+			if (right_ratio(t) < worst_ratio) {
+				worst = t;
+				worst_ratio = right_ratio(t);
+			}
+		}
 	}
 
-	if (info.worst_ratio * 100 > percent)
+	if (worst_ratio * 100 > percent)
 		return NULL;
 
-	ret = malloc(strlen(info.worst->condstr) +
-		     strlen(info.worst->file) +
+	ret = malloc(strlen(worst->condstr) +
+		     strlen(worst->file) +
 		     sizeof(long int) * 8 +
 		     sizeof("%s:%u:%slikely(%s) correct %u%% (%lu/%lu)"));
 	sprintf(ret, "%s:%u:%slikely(%s) correct %u%% (%lu/%lu)",
-		info.worst->file, info.worst->line,
-		info.worst->expect ? "" : "un", info.worst->condstr,
-		(unsigned)(info.worst_ratio * 100),
-		info.worst->right, info.worst->count);
+		worst->file, worst->line,
+		worst->expect ? "" : "un", worst->condstr,
+		(unsigned)(worst_ratio * 100),
+		worst->right, worst->count);
 
-	htable_del(htable, hash_trace(info.worst), info.worst);
-	free(info.worst);
+	thash_del(&htable, worst);
+	free(worst);
 
 	return ret;
+}
+
+void likely_stats_reset(void)
+{
+	struct thash_iter i;
+	struct trace *t;
+
+	/* This is a bit better than O(n^2), but we have to loop since
+	 * first/next during delete is unreliable. */
+	while ((t = thash_first(&htable, &i)) != NULL) {
+		for (; t; t = thash_next(&htable, &i)) {
+			thash_del(&htable, t);
+			free(t);
+		}
+	}
+
+	thash_clear(&htable);
 }
 #endif /*CCAN_LIKELY_DEBUG*/

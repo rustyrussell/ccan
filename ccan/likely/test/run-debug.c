@@ -28,9 +28,9 @@ static bool likely_one_unlikely_two(unsigned int val1, unsigned int val2)
 
 int main(int argc, char *argv[])
 {
-	const char *bad;
+	char *bad;
 
-	plan_tests(13);
+	plan_tests(14);
 
 	/* Correct guesses. */
 	one_seems_likely(1);
@@ -46,6 +46,7 @@ int main(int argc, char *argv[])
 	bad = likely_stats(3, 90);
 	ok(strends(bad, "run-debug.c:9:likely(val == 1) correct 33% (1/3)"),
 	   "likely_stats returned %s", bad);
+	free(bad);
 
 	/* Nothing else above 90% */
 	ok1(!likely_stats(0, 90));
@@ -54,6 +55,7 @@ int main(int argc, char *argv[])
 	bad = likely_stats(0, 100);
 	ok(strends(bad, "run-debug.c:16:unlikely(val == 1) correct 100% (1/1)"),
 	   "likely_stats returned %s", bad);
+	free(bad);
 
 	/* Nothing left (table is actually cleared) */
 	ok1(!likely_stats(0, 100));
@@ -66,6 +68,7 @@ int main(int argc, char *argv[])
 	bad = likely_stats(0, 90);
 	ok(strends(bad, "run-debug.c:16:unlikely(val == 1) correct 66% (2/3)"),
 	   "likely_stats returned %s", bad);
+	free(bad);
 	ok1(!likely_stats(0, 100));
 
 	likely_one_unlikely_two(1, 1);
@@ -77,9 +80,19 @@ int main(int argc, char *argv[])
 	bad = likely_stats(0, 90);
 	ok(strends(bad, "run-debug.c:24:unlikely(val2 == 2) correct 75% (3/4)"),
 	   "likely_stats returned %s", bad);
+	free(bad);
 	bad = likely_stats(0, 100);
 	ok(strends(bad, "run-debug.c:24:likely(val1 == 1) correct 100% (4/4)"),
 	   "likely_stats returned %s", bad);
+	free(bad);
+
+	ok1(!likely_stats(0, 100));
+
+	/* Check that reset works! */
+	one_seems_unlikely(0);
+	one_seems_unlikely(2);
+	one_seems_unlikely(1);
+	likely_stats_reset();
 
 	ok1(!likely_stats(0, 100));
 
