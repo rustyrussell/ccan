@@ -9,11 +9,11 @@
  *
  * This declares a _tcon member for a structure.  It should be the
  * last element in your structure; with sufficient compiler support it
- * will not use any actual storage.  tcon_to_raw() will compare
+ * will not use any actual storage.  tcon_check() will compare
  * expressions with one of these "type canaries" to cause warnings if
  * the container is misused.
  *
- * A type of "void *" will allow tcon_to_raw() to pass on any (pointer) type.
+ * A type of "void *" will allow tcon_check() to pass on any (pointer) type.
  *
  * Example:
  *	// Simply typesafe linked list.
