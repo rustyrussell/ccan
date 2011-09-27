@@ -7,9 +7,6 @@
 #include <stdbool.h>
 #include <assert.h>
 
-/* This means a struct htable takes at least 512 bytes / 1k (32/64 bits). */
-#define HTABLE_BASE_BITS 7
-
 /* We use 0x1 as deleted marker. */
 #define HTABLE_DELETED (0x1)
 
@@ -62,29 +59,27 @@ struct htable *htable_new(size_t (*rehash)(const void *elem, void *priv),
 {
 	struct htable *ht = malloc(sizeof(struct htable));
 	if (ht) {
-		ht->bits = HTABLE_BASE_BITS;
+		ht->bits = 0;
 		ht->rehash = rehash;
 		ht->priv = priv;
 		ht->elems = 0;
 		ht->deleted = 0;
-		ht->max = ((size_t)1 << ht->bits) * 3 / 4;
-		ht->max_with_deleted = ((size_t)1 << ht->bits) * 9 / 10;
+		ht->max = 0;
+		ht->max_with_deleted = 0;
 		/* This guarantees we enter update_common first add. */
 		ht->common_mask = -1;
 		ht->common_bits = 0;
 		ht->perfect_bit = 0;
-		ht->table = calloc(1 << ht->bits, sizeof(uintptr_t));
-		if (!ht->table) {
-			free(ht);
-			ht = NULL;
-		}
+		/* Dummy table until first insert. */
+		ht->table = &ht->perfect_bit;
 	}
 	return ht;
 }
 
 void htable_free(const struct htable *ht)
 {
-	free((void *)ht->table);
+	if (ht->table != &ht->perfect_bit)
+		free((void *)ht->table);
 	free((void *)ht);
 }
 
@@ -169,8 +164,8 @@ static COLD bool double_table(struct htable *ht)
 		return false;
 	}
 	ht->bits++;
-	ht->max *= 2;
-	ht->max_with_deleted *= 2;
+	ht->max = ((size_t)3 << ht->bits) / 4;
+	ht->max_with_deleted = ((size_t)9 << ht->bits) / 10;
 
 	/* If we lost our "perfect bit", get it back now. */
 	if (!ht->perfect_bit && ht->common_mask) {
@@ -182,14 +177,16 @@ static COLD bool double_table(struct htable *ht)
 		}
 	}
 
-	for (i = 0; i < oldnum; i++) {
-		if (entry_is_valid(e = oldtable[i])) {
-			void *p = get_raw_ptr(ht, e);
-			ht_add(ht, p, ht->rehash(p, ht->priv));
+	if (oldtable != &ht->perfect_bit) {
+		for (i = 0; i < oldnum; i++) {
+			if (entry_is_valid(e = oldtable[i])) {
+				void *p = get_raw_ptr(ht, e);
+				ht_add(ht, p, ht->rehash(p, ht->priv));
+			}
 		}
+		free(oldtable);
 	}
 	ht->deleted = 0;
-	free(oldtable);
 	return true;
 }
 

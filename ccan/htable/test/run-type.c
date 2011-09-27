@@ -4,7 +4,8 @@
 #include <stdbool.h>
 #include <string.h>
 
-#define NUM_VALS (1 << HTABLE_BASE_BITS)
+#define NUM_BITS 7
+#define NUM_VALS (1 << NUM_BITS)
 
 struct obj {
 	/* Makes sure we don't try to treat and obj as a key or vice versa */
@@ -23,7 +24,7 @@ static const unsigned int *objkey(const struct obj *obj)
 static size_t objhash(const unsigned int *key)
 {
 	size_t h = *key / 2;
-	h |= -1UL << HTABLE_BASE_BITS;
+	h |= -1UL << NUM_BITS;
 	return h;
 }
 
@@ -121,15 +122,15 @@ int main(int argc, char *argv[])
 	dne = i;
 
 	ht = htable_obj_new();
-	ok1(((struct htable *)ht)->max < (1 << ((struct htable *)ht)->bits));
-	ok1(((struct htable *)ht)->bits == HTABLE_BASE_BITS);
+	ok1(((struct htable *)ht)->max == 0);
+	ok1(((struct htable *)ht)->bits == 0);
 
 	/* We cannot find an entry which doesn't exist. */
 	ok1(!htable_obj_get(ht, &dne));
 
-	/* Fill it, it should increase in size (once). */
+	/* Fill it, it should increase in size. */
 	add_vals(ht, val, NUM_VALS);
-	ok1(((struct htable *)ht)->bits == HTABLE_BASE_BITS + 1);
+	ok1(((struct htable *)ht)->bits == NUM_BITS + 1);
 	ok1(((struct htable *)ht)->max < (1 << ((struct htable *)ht)->bits));
 
 	/* Mask should be set. */

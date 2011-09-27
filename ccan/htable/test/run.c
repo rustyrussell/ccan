@@ -4,7 +4,8 @@
 #include <stdbool.h>
 #include <string.h>
 
-#define NUM_VALS (1 << HTABLE_BASE_BITS)
+#define NUM_BITS 7
+#define NUM_VALS (1 << NUM_BITS)
 
 /* We use the number divided by two as the hash (for lots of
    collisions), plus set all the higher bits so we can detect if they
@@ -12,7 +13,7 @@
 static size_t hash(const void *elem, void *unused)
 {
 	size_t h = *(uint64_t *)elem / 2;
-	h |= -1UL << HTABLE_BASE_BITS;
+	h |= -1UL << NUM_BITS;
 	return h;
 }
 
@@ -22,11 +23,12 @@ static bool objcmp(const void *htelem, void *cmpdata)
 }
 
 static void add_vals(struct htable *ht,
-		     const uint64_t val[], unsigned int num)
+		     const uint64_t val[],
+		     unsigned int off, unsigned int num)
 {
 	uint64_t i;
 
-	for (i = 0; i < num; i++) {
+	for (i = off; i < off+num; i++) {
 		if (htable_get(ht, hash(&i, NULL), objcmp, &i)) {
 			fail("%llu already in hash", (long long)i);
 			return;
@@ -103,27 +105,39 @@ int main(int argc, char *argv[])
 	void *p;
 	struct htable_iter iter;
 
-	plan_tests(23);
+	plan_tests(29);
 	for (i = 0; i < NUM_VALS; i++)
 		val[i] = i;
 	dne = i;
 
 	ht = htable_new(hash, NULL);
-	ok1(ht->max < (1 << ht->bits));
-	ok1(ht->bits == HTABLE_BASE_BITS);
+	ok1(ht->max == 0);
+	ok1(ht->bits == 0);
 
 	/* We cannot find an entry which doesn't exist. */
 	ok1(!htable_get(ht, hash(&dne, NULL), objcmp, &dne));
 
-	/* Fill it, it should increase in size (once). */
-	add_vals(ht, val, NUM_VALS);
-	ok1(ht->bits == HTABLE_BASE_BITS + 1);
-	ok1(ht->max < (1 << ht->bits));
+	/* This should increase it once. */
+	add_vals(ht, val, 0, 1);
+	ok1(ht->bits == 1);
+	ok1(ht->max == 1);
+	ok1(ht->common_mask == -1);
+
+	/* Mask should be set. */
+	ok1(check_mask(ht, val, 1));
+
+	/* This should increase it again. */
+	add_vals(ht, val, 1, 1);
+	ok1(ht->bits == 2);
+	ok1(ht->max == 3);
 
 	/* Mask should be set. */
 	ok1(ht->common_mask != 0);
 	ok1(ht->common_mask != -1);
-	ok1(check_mask(ht, val, NUM_VALS));
+	ok1(check_mask(ht, val, 2));
+
+	/* Now do the rest. */
+	add_vals(ht, val, 2, NUM_VALS - 2);
 
 	/* Find all. */
 	find_vals(ht, val, NUM_VALS);
@@ -148,7 +162,7 @@ int main(int argc, char *argv[])
 	htable_del(ht, 0, (void *)~(uintptr_t)&val[NUM_VALS-1]);
 
 	/* Add the rest. */
-	add_vals(ht, val, NUM_VALS-1);
+	add_vals(ht, val, 0, NUM_VALS-1);
 
 	/* Check we can find them all. */
 	find_vals(ht, val, NUM_VALS);
@@ -167,7 +181,7 @@ int main(int argc, char *argv[])
 	htable_del(ht, 0, (void *)((uintptr_t)&val[NUM_VALS-1] | perfect_bit));
 
 	/* Enlarging should restore it... */
-	add_vals(ht, val, NUM_VALS-1);
+	add_vals(ht, val, 0, NUM_VALS-1);
 
 	ok1(ht->perfect_bit != 0);
 	htable_free(ht);
