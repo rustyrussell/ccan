@@ -418,8 +418,8 @@ todo_end(void)
 	UNLOCK;
 }
 
-int
-exit_status(void)
+static int
+exit_status_(void)
 {
 	int r;
 
@@ -444,5 +444,14 @@ exit_status(void)
 	r = failures + e_tests - test_count;
 	UNLOCK;
 
+	return r;
+}
+
+int
+exit_status(void)
+{
+	int r = exit_status_();
+	if (r > 255)
+		r = 255;
 	return r;
 }
