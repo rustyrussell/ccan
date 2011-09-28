@@ -61,6 +61,43 @@
 #define tcon_check(x, canary, expr)				\
 	(sizeof((x)->_tcon[0].canary == (expr)) ? (x) : (x))
 
+/**
+ * tcon_check_ptr - typecheck a typed container
+ * @x: the structure containing the TCON.
+ * @canary: which canary to check against.
+ * @expr: the expression whose type must match &TCON (not evaluated)
+ *
+ * This macro is used to check that the expression is a pointer to the type
+ * expected for this structure (note the "useless" sizeof() argument
+ * which contains this comparison with the type canary), or NULL.
+ *
+ * It evaluates to @x so you can chain it.
+ */
+#define tcon_check_ptr(x, canary, expr)				\
+	(sizeof(&(x)->_tcon[0].canary == (expr)) ? (x) : (x))
+
+
+/**
+ * tcon_type - the type within a container (or void *)
+ * @x: the structure containing the TCON.
+ * @canary: which canary to check against.
+ */
+#if HAVE_TYPEOF
+#define tcon_type(x, canary) __typeof__((x)->_tcon[0].canary)
+#else
+#define tcon_type(x, canary) void *
+#endif
+
+/**
+ * tcon_ptr_type - pointer to the type within a container (or void *)
+ * @x: the structure containing the TCON.
+ * @canary: which canary to check against.
+ */
+#if HAVE_TYPEOF
+#define tcon_ptr_type(x, canary) __typeof__(&(x)->_tcon[0].canary)
+#else
+#define tcon_ptr_type(x, canary) void *
+#endif
 
 /**
  * tcon_cast - cast to a canary type for this container (or void *)
@@ -72,12 +109,7 @@
  * platform doesn't HAVE_TYPEOF, then it casts to void * (which will
  * cause a warning if the user doesn't expect a pointer type).
  */
-#if HAVE_TYPEOF
-#define tcon_cast(x, canary, expr) ((__typeof__((x)->_tcon[0].canary))(expr))
-#define tcon_cast_ptr(x, canary, expr) ((__typeof__(&(x)->_tcon[0].canary))(expr))
-#else
-#define tcon_cast(x, canary, expr) ((void *)(expr))
-#define tcon_cast_ptr(x, canary, expr) ((void *)(expr))
-#endif
+#define tcon_cast(x, canary, expr) ((tcon_type((x), canary))(expr))
+#define tcon_cast_ptr(x, canary, expr) ((tcon_ptr_type((x), canary))(expr))
 
 #endif /* CCAN_TCON_H */
