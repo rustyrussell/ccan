@@ -40,9 +40,7 @@ your project.
 
 <h2>Add Code</h2>
 <p>
-We always welcome new code!  Copy an existing module and run the "ccanlint"
-tool over it, or just send any code you have lying around any let someone
-else polish it up.
+We always welcome new code; see <a href="http://github.com/rustyrussell/ccan/wiki/Contribute">how!</a>.
 </p>
 
 <p>Anyone can send code or a git pull request to
