@@ -3,7 +3,7 @@
 $tempfolder = "/home/ccan/upload-temp/";
 
 //location of upload script (for posting uploads)
-$uploadscript = "http://ccan.ozlabs.org/uploader.php";
+$uploadscript = "http://ccodearchive.net/uploader.php";
 
 //infofile
 $infofile = '/_info';

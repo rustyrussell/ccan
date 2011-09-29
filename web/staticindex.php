@@ -22,7 +22,7 @@ for Perl code development and sharing.
 
 <p> You can get each module as a tarball (<a href="list.html">see
 list</a>), get a tarball of <a href="ccan.tar.bz2">the whole repository</a> with tools,
-or clone our <a href="http://git.ozlabs.org/?p=ccan">git repository</a> (<tt>git clone git://git.ozlabs.org/~ccan/ccan</tt>).
+or clone our <a href="http://git.ozlabs.org/?p=ccan">git repository</a> (<tt>git clone git://git.ozlabs.org/~ccan/ccan</tt>) or the one on <a href="http://github.com/rustyrussell/ccan/">github</a>.
 </p>
 
 <h2>Use The Code</h2>
@@ -68,7 +68,7 @@ We also have an IRC channel: #ccan on <a href="http://freenode.net">Freenode</a>
 </p>
 
 <p>
-We also have a <a href="Wiki/">wiki</a>; feel free to enhance it.
+We also have a <a href="http://github.com/rustyrussell/ccan/wiki/">wiki</a>; feel free to enhance it.
 </p>
 <hr>
 </body></html>
