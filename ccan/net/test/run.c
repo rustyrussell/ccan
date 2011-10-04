@@ -69,6 +69,10 @@ static struct addrinfo* double_addr_lookup(char* buf)
 				addr2 = net_client_lookup("localhost6", buf,
 							  AF_UNSPEC,
 							  SOCK_STREAM);
+			if (!addr2)
+				addr2 = net_client_lookup("::1", buf,
+							  AF_UNSPEC,
+							  SOCK_STREAM);
 		} else if (addr->ai_family == AF_INET6)
 			/* IPv6 only?  This is a guess... */
 			addr2 = net_client_lookup("ip4-localhost", buf,
