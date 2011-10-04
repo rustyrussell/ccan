@@ -29,7 +29,7 @@
  *			     unsigned int *posix_total, unsigned int *sht_total,
  *			     unsigned int *size_total)
  *	{
- *		printf("\t%ssigned %s: POSIX %i%%, short %i%%\n",
+ *		printf("\t%ssigned %s: POSIX %zu%%, short %zu%%\n",
  *		       sht[0] == 'u' ? "un" : "",
  *		       sht+1,
  *		       strlen(posix)*100 / size,
