@@ -258,7 +258,8 @@ static char * set_long_with_suffix(const char *arg, long *l, const long base)
 		return err;
 
 	*l = ll;
-	if (*l != ll)
+	/* Beware truncation, but don't generate untestable code. */
+	if (sizeof(*l) != sizeof(ll) && *l != ll)
 		return arg_bad("value '%s' does not fit into a long", arg);
 	return NULL;
 }
@@ -272,7 +273,8 @@ static char * set_ulong_with_suffix(const char *arg, unsigned long *ul, const lo
 	if (ll < 0)
 		return arg_bad("'%s' is negative but destination is unsigned", arg);
 	*ul = ll;
-	if (*ul != ll)
+	/* Beware truncation, but don't generate untestable code. */
+	if (sizeof(*ul) != sizeof(ll) && *ul != ll)
 		return arg_bad("value '%s' does not fit into an unsigned long", arg);
 	return NULL;
 }
