@@ -26,7 +26,7 @@ static enum TDB_ERROR check(struct tdb_data key,
 	int val;
 
 	if (key.dsize != sizeof(val)) {
-		diag("Wrong key size: %u\n", key.dsize);
+		diag("Wrong key size: %zu\n", key.dsize);
 		return TDB_ERR_CORRUPT;
 	}
 
