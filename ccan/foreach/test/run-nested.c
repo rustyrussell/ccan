@@ -47,7 +47,7 @@ int main(void)
 	int i, j, sum;
 	const char *istr, *jstr;
 
-	plan_tests(12);
+	plan_tests(16);
 
 	sum = 0;
 	foreach_int(i, 0, 1, 2, 3, 4)
@@ -68,12 +68,6 @@ int main(void)
 	ok1(sum == 100);
 	ok1(count_iters() <= 2);
 
-	sum = test_int_recursion(0);
-	diag("sum = %i\n", sum);
-	diag("iters = %i\n", count_iters());
-	ok1(sum == 160);
-	ok1(count_iters() <= 2 + 5); /* 5 is max depth of recursion. */
-
 	sum = 0;
 	foreach_ptr(istr, "0", "1", "2", "3", "4")
 		foreach_ptr(jstr, "0", "1", "2", "3", "4")
@@ -81,7 +75,7 @@ int main(void)
 	diag("sum = %i\n", sum);
 	diag("iters = %i\n", count_iters());
 	ok1(sum == 100);
-	ok1(count_iters() <= 2 + 5 + 2);
+	ok1(count_iters() <= 2 + 2);
 
 	/* Same again... reusing iterators. */
 	sum = 0;
@@ -91,13 +85,22 @@ int main(void)
 	diag("sum = %i\n", sum);
 	diag("iters = %i\n", count_iters());
 	ok1(sum == 100);
-	ok1(count_iters() <= 2 + 5 + 2);
+	ok1(count_iters() <= 2 + 2);
 
-	sum = test_ptr_recursion("0");
-	diag("sum = %i\n", sum);
-	diag("iters = %i\n", count_iters());
-	ok1(sum == 160);
-	ok1(count_iters() <= 2 + 5 + 2);
+	/* Do this twice, second time shouldn't increase iterators. */
+	for (i = 0; i < 2; i++) {
+		sum = test_int_recursion(0);
+		diag("sum = %i\n", sum);
+		diag("iters = %i\n", count_iters());
+		ok1(sum == 160);
+		ok1(count_iters() <= 2 + 2 + 5); /* 5 is max depth of recursion. */
+
+		sum = test_ptr_recursion("0");
+		diag("sum = %i\n", sum);
+		diag("iters = %i\n", count_iters());
+		ok1(sum == 160);
+		ok1(count_iters() <= 2 + 2 + 5);
+	}
 	return exit_status();
 }
        
