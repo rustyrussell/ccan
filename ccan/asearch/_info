@@ -39,7 +39,7 @@
  *			printf("Not found!\n");
  *			return 1;
  *		}
- *		printf("%u\n", p - &argv[2]);
+ *		printf("%u\n", (int)(p - &argv[2]));
  *		return 0;
  *	}
  */
