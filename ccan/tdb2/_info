@@ -68,7 +68,7 @@
  *
  * Ccanlint:
  *	// valgrind breaks fcntl locks.
- *	tests_pass_valgrind test/run-83-openhook.c:FAIL
+ *	tests_pass_valgrind test/api-83-openhook.c:FAIL
  */
 int main(int argc, char *argv[])
 {
