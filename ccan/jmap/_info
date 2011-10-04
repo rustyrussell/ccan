@@ -25,7 +25,7 @@
  * 
  * struct opt_detail {
  * 	bool is_long;
- * 	unsigned int length; // == 1 if !is_long.
+ * 	size_t length; // == 1 if !is_long.
  * };
  * 
  * // Define map type for int -> argv.
@@ -67,7 +67,7 @@
  * 	for (i = jmap_first(arg); i; i = jmap_next(arg,i)) {
  * 		char *a = jmap_get(arg, i);
  * 		d = jmap_get(opt, a);
- * 		printf("  Arg %i ('%s') is a %s of %u chars\n",
+ * 		printf("  Arg %i ('%s') is a %s of %zu chars\n",
  * 		       i, a,
  * 		       d == NULL ? "normal arg"
  * 		       : d->is_long ? "long opt"
