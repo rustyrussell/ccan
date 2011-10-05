@@ -47,6 +47,7 @@ static void run_more(void)
 
 	while (num_running < lbalance_target(lb)) {
 		int p[2];
+
 		c = tlist_top(&pending, struct command, list);
 		if (!c)
 			break;

@@ -35,9 +35,8 @@
 #include <ccan/cast/cast.h>
 
 int verbose = 0;
-static LIST_HEAD(compulsory_tests);
-static LIST_HEAD(normal_tests);
-static LIST_HEAD(finished_tests);
+static struct list_head compulsory_tests;
+static struct list_head normal_tests;
 bool safe_mode = false;
 static struct btree *cmdline_exclude;
 static struct btree *info_exclude;
@@ -98,7 +97,8 @@ static bool run_test(struct ccanlint *i,
 		     bool quiet,
 		     unsigned int *running_score,
 		     unsigned int *running_total,
-		     struct manifest *m)
+		     struct manifest *m,
+		     const char *prefix)
 {
 	unsigned int timeleft;
 	const struct dependent *d;
@@ -121,7 +121,7 @@ static bool run_test(struct ccanlint *i,
 	if (skip) {
 	skip:
 		if (verbose && !streq(skip, "not relevant to target"))
-			printf("%s: skipped (%s)\n", i->name, skip);
+			printf("%s%s: skipped (%s)\n", prefix, i->name, skip);
 
 		/* If we're skipping this because a prereq failed, we fail:
 		 * count it as a score of 1. */
@@ -129,7 +129,6 @@ static bool run_test(struct ccanlint *i,
 			(*running_total)++;
 			
 		list_del(&i->list);
-		list_add_tail(&finished_tests, &i->list);
 		list_for_each(&i->dependencies, d, node) {
 			if (d->dependent->skip)
 				continue;
@@ -150,7 +149,8 @@ static bool run_test(struct ccanlint *i,
 	if ((!score->pass && !quiet)
 	    || (score->score < score->total && verbose)
 	    || verbose > 1) {
-		printf("%s (%s): %s", i->name, i->key, score->pass ? "PASS" : "FAIL");
+		printf("%s%s (%s): %s",
+		       prefix, i->name, i->key, score->pass ? "PASS" : "FAIL");
 		if (score->total > 1)
 			printf(" (+%u/%u)", score->score, score->total);
 		printf("\n");
@@ -169,7 +169,6 @@ static bool run_test(struct ccanlint *i,
 	*running_total += score->total;
 
 	list_del(&i->list);
-	list_add_tail(&finished_tests, &i->list);
 
 	if (!score->pass) {
 		/* Skip any tests which depend on this one. */
@@ -188,6 +187,8 @@ static void register_test(struct list_head *h, struct ccanlint *test)
 	list_add(h, &test->list);
 	test->options = talloc_array(NULL, char *, 1);
 	test->options[0] = NULL;
+	test->skip = NULL;
+	test->skip_fail = false;
 }
 
 /**
@@ -240,6 +241,9 @@ static void init_tests(void)
 	struct btree *keys, *names;
 	struct list_head *list;
 
+	list_head_init(&normal_tests);
+	list_head_init(&compulsory_tests);
+
 #undef REGISTER_TEST
 #define REGISTER_TEST(name) register_test(&normal_tests, &name)
 #include "generated-normal-tests"
@@ -251,6 +255,7 @@ static void init_tests(void)
 	foreach_ptr(list, &compulsory_tests, &normal_tests) {
 		list_for_each(list, c, list) {
 			list_head_init(&c->dependencies);
+			c->num_depends = 0;
 		}
 	}
 
@@ -654,19 +659,16 @@ static char *opt_set_const_charp(const char *arg, const char **p)
 int main(int argc, char *argv[])
 {
 	bool summary = false, pass = true;
-	unsigned int score = 0, total_score = 0;
+	unsigned int i;
 	struct manifest *m;
-	struct ccanlint *i;
+	struct ccanlint *t;
 	const char *prefix = "";
-	char *dir = talloc_getcwd(NULL), *base_dir = dir, *target = NULL;
+	char *dir = talloc_getcwd(NULL), *base_dir = dir, *target = NULL,
+		*testlink;
 	
-	init_tests();
-
 	cmdline_exclude = btree_new(btree_strcmp);
 	info_exclude = btree_new(btree_strcmp);
 
-	opt_register_arg("--dir|-d", opt_set_charp, opt_show_charp, &dir,
-			 "use this directory");
 	opt_register_noarg("-n|--safe-mode", opt_set_bool, &safe_mode,
 			 "do not compile anything");
 	opt_register_noarg("-l|--list-tests", list_tests, NULL,
@@ -703,12 +705,6 @@ int main(int argc, char *argv[])
 
 	opt_parse(&argc, argv, opt_log_stderr_exit);
 
-	if (dir[0] != '/')
-		dir = talloc_asprintf_append(NULL, "%s/%s", base_dir, dir);
-	while (strends(dir, "/"))
-		dir[strlen(dir)-1] = '\0';
-	if (dir != base_dir)
-		prefix = talloc_append_string(talloc_basename(NULL, dir), ": ");
 	if (verbose >= 3) {
 		compile_verbose = true;
 		print_test_depends();
@@ -716,38 +712,76 @@ int main(int argc, char *argv[])
 	if (verbose >= 4)
 		tools_verbose = true;
 
-	m = get_manifest(talloc_autofree_context(), dir);
-	read_config_header();
-
-	/* Create a symlink from temp dir back to src dir's test directory. */
-	if (symlink(talloc_asprintf(m, "%s/test", dir),
-		    talloc_asprintf(m, "%s/test", temp_dir(NULL))) != 0)
-		err(1, "Creating test symlink in %s", temp_dir(NULL));
-
-	if (target) {
-		struct ccanlint *test;
-
-		test = find_test(target);
-		if (!test)
-			errx(1, "Unknown test to run '%s'", target);
-		skip_unrelated_tests(test);
+	/* Defaults to pwd. */
+	if (argc == 1) {
+		i = 1;
+		goto got_dir;
 	}
 
-	/* If you don't pass the compulsory tests, you get a score of 0. */
-	while ((i = get_next_test(&compulsory_tests)) != NULL) {
-		if (!run_test(i, summary, &score, &total_score, m)) {
-			printf("%sTotal score: 0/%u\n", prefix, total_score);
-			errx(1, "%s%s failed", prefix, i->name);
+	/* This links back to the module's test dir. */
+	testlink = talloc_asprintf(NULL, "%s/test", temp_dir(NULL));
+
+	for (i = 1; i < argc; i++) {
+		unsigned int score, total_score;
+		dir = argv[i];
+
+		if (dir[0] != '/')
+			dir = talloc_asprintf_append(NULL, "%s/%s",
+						     base_dir, dir);
+		while (strends(dir, "/"))
+			dir[strlen(dir)-1] = '\0';
+
+	got_dir:
+		if (dir != base_dir)
+			prefix = talloc_append_string(talloc_basename(NULL,dir),
+						      ": ");
+
+		init_tests();
+
+		if (target) {
+			struct ccanlint *test;
+
+			test = find_test(target);
+			if (!test)
+				errx(1, "Unknown test to run '%s'", target);
+			skip_unrelated_tests(test);
 		}
+
+		m = get_manifest(talloc_autofree_context(), dir);
+
+		/* FIXME: This has to come after we've got manifest. */
+		if (i == 1)
+			read_config_header();
+
+		/* Create a symlink from temp dir back to src dir's
+		 * test directory. */
+		unlink(testlink);
+		if (symlink(talloc_asprintf(m, "%s/test", dir), testlink) != 0)
+			err(1, "Creating test symlink in %s", temp_dir(NULL));
+
+		/* If you don't pass the compulsory tests, score is 0. */
+		score = total_score = 0;
+		while ((t = get_next_test(&compulsory_tests)) != NULL) {
+			if (!run_test(t, summary, &score, &total_score, m,
+				      prefix)) {
+				warnx("%s%s failed", prefix, t->name);
+				printf("%sTotal score: 0/%u\n",
+				       prefix, total_score);
+				pass = false;
+				goto next;
+			}
+		}
+
+		/* --target overrides known FAIL from _info */
+		if (m->info_file)
+			add_info_options(m->info_file, !target);
+
+		while ((t = get_next_test(&normal_tests)) != NULL)
+			pass &= run_test(t, summary, &score, &total_score, m,
+					 prefix);
+
+		printf("%sTotal score: %u/%u\n", prefix, score, total_score);
+	next: ;
 	}
-
-	/* --target overrides known FAIL from _info */
-	if (m->info_file)
-		add_info_options(m->info_file, !target);
-
-	while ((i = get_next_test(&normal_tests)) != NULL)
-		pass &= run_test(i, summary, &score, &total_score, m);
-
-	printf("%sTotal score: %u/%u\n", prefix, score, total_score);
 	return pass ? 0 : 1;
 }

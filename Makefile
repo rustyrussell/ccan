@@ -84,24 +84,24 @@ $(SCOREDIR)/SUMMARY: $(patsubst ccan/%/_info, $(SCOREDIR)/score-%, $(wildcard cc
 
 $(SCOREDIR)/score-%: ccan/%/_info tools/ccanlint/ccanlint $(OBJFILES)
 	mkdir -p $(SCOREDIR)
-	tools/ccanlint/ccanlint -v -s -d ccan/$* > $@ || true
+	tools/ccanlint/ccanlint -v -s ccan/$* > $@ || true
 
 $(ALL_DEPENDS): %/.depends: %/_info tools/ccan_depends
 	tools/ccan_depends $* > $@ || ( rm -f $@; exit 1 )
 
 # Actual dependencies are created in inter-depends
 check-%: tools/ccanlint/ccanlint
-	tools/ccanlint/ccanlint -d ccan/$*
+	tools/ccanlint/ccanlint ccan/$*
 
 fastcheck-%: tools/ccanlint/ccanlint
-	tools/ccanlint/ccanlint -t $(FASTTIMEOUT) -d ccan/$*
+	tools/ccanlint/ccanlint -t $(FASTTIMEOUT) ccan/$*
 
 # Doesn't test dependencies, doesn't print verbose fail results.
 summary-check-%: tools/ccanlint/ccanlint $(OBJFILES)
-	tools/ccanlint/ccanlint -s -d ccan/$*
+	tools/ccanlint/ccanlint -s ccan/$*
 
 summary-fastcheck-%: tools/ccanlint/ccanlint $(OBJFILES)
-	tools/ccanlint/ccanlint -x tests_pass_valgrind -x tests_compile_coverage -s -d ccan/$*
+	tools/ccanlint/ccanlint -x tests_pass_valgrind -x tests_compile_coverage -s ccan/$*
 
 ccan/%/info: ccan/%/_info
 	$(CC) $(CCAN_CFLAGS) -o $@ -x c $<
