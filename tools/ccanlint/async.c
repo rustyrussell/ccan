@@ -51,6 +51,7 @@ static void run_more(void)
 		if (!c)
 			break;
 
+		fflush(stdout);
 		if (pipe(p) != 0)
 			err(1, "Pipe failed");
 		c->pid = fork();
