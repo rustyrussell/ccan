@@ -16,7 +16,7 @@ static void handle_no_tests(struct manifest *m, struct score *score)
 {
 	FILE *run;
 	struct ccan_file *i;
-	char *test_dir = talloc_asprintf(m, "%s/test", m->dir);
+	char *test_dir = talloc_asprintf(m, "%s/test", m->dir), *run_file;
 
 	printf(
 	"CCAN modules have a directory called test/ which contains tests.\n"
@@ -55,7 +55,8 @@ static void handle_no_tests(struct manifest *m, struct score *score)
 			err(1, "Creating test/ directory");
 	}
 
-	run = fopen("test/run.c", "w");
+	run_file = talloc_asprintf(test_dir, "%s/run.c", test_dir);
+	run = fopen(run_file, "w");
 	if (!run)
 		err(1, "Trying to create a test/run.c");
 
