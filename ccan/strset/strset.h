@@ -65,8 +65,8 @@ char *strset_test(const struct strset *set, const char *member);
  * @set: the set.
  * @member: the string to place in the set.
  *
- * This returns false if we run out of memory, or (more normally) if that
- * string already appears in the set.
+ * This returns false if we run out of memory (errno = ENOMEM), or
+ * (more normally) if that string already appears in the set (EEXIST).
  *
  * Note that the pointer is placed in the set, the string is not copied.  If
  * you want a copy in the set, use strdup().

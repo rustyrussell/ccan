@@ -19,6 +19,7 @@
 #include <ccan/ilog/ilog.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <errno.h>
 
 struct node {
 	/* To differentiate us from strings. */
@@ -75,8 +76,10 @@ static bool set_string(struct strset *set,
 	/* Substitute magic empty node if this is the empty string */
 	if (unlikely(!member[0])) {
 		n->u.n = malloc(sizeof(*n->u.n));
-		if (unlikely(!n->u.n))
+		if (unlikely(!n->u.n)) {
+			errno = ENOMEM;
 			return false;
+		}
 		n->u.n->nul_byte = '\0';
 		n->u.n->byte_num = (size_t)-1;
 		/* Attach the string to child[0] */
@@ -108,6 +111,7 @@ bool strset_set(struct strset *set, const char *member)
 	for (byte_num = 0; str[byte_num] == member[byte_num]; byte_num++) {
 		if (member[byte_num] == '\0') {
 			/* All identical! */
+			errno = EEXIST;
 			return false;
 		}
 	}
@@ -122,7 +126,7 @@ bool strset_set(struct strset *set, const char *member)
 	/* Allocate new node. */
 	newn = malloc(sizeof(*newn));
 	if (!newn) {
-		/* FIXME */
+		errno = ENOMEM;
 		return false;
 	}
 	newn->nul_byte = '\0';

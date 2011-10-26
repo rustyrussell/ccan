@@ -10,7 +10,7 @@ int main(void)
 	char *dup = strdup(str);
 
 	/* This is how many tests you plan to run */
-	plan_tests(24);
+	plan_tests(26);
 
 	strset_init(&set);
 
@@ -24,6 +24,10 @@ int main(void)
 	/* We compare the string, not the pointer. */
 	ok1(strset_test(&set, dup));
 	ok1(!strset_test(&set, none));
+
+	/* Add of duplicate should fail. */
+	ok1(!strset_set(&set, dup));
+	ok1(errno == EEXIST);
 
 	/* Delete should return original string. */
 	ok1(strset_clear(&set, dup) == str);
