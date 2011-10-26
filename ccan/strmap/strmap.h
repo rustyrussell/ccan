@@ -94,8 +94,8 @@ void *strmap_get_(const struct strmap *map, const char *member);
  * @member: the string to place in the map.
  * @v: the (non-NULL) value.
  *
- * This returns false if we run out of memory, or (more normally) if that
- * string already appears in the map.
+ * This returns false if we run out of memory (errno = ENOMEM), or
+ * (more normally) if that string already appears in the map (EEXIST).
  *
  * Note that the pointer is placed in the map, the string is not copied.  If
  * you want a copy in the map, use strdup().  Similarly for the value.

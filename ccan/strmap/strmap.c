@@ -5,6 +5,7 @@
 #include <ccan/ilog/ilog.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <errno.h>
 
 struct node {
 	/* These point to strings or nodes. */
@@ -72,6 +73,7 @@ bool strmap_add_(struct strmap *map, const char *member, const void *value)
 	for (byte_num = 0; n->u.s[byte_num] == member[byte_num]; byte_num++) {
 		if (member[byte_num] == '\0') {
 			/* All identical! */
+			errno = EEXIST;
 			return false;
 		}
 	}
@@ -86,7 +88,7 @@ bool strmap_add_(struct strmap *map, const char *member, const void *value)
 	/* Allocate new node. */
 	newn = malloc(sizeof(*newn));
 	if (!newn) {
-		/* FIXME */
+		errno = ENOMEM;
 		return false;
 	}
 	newn->byte_num = byte_num;

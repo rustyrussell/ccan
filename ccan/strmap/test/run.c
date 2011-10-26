@@ -14,7 +14,7 @@ int main(void)
 	char *v;
 
 	/* This is how many tests you plan to run */
-	plan_tests(31);
+	plan_tests(32);
 
 	strmap_init(&map);
 
@@ -31,6 +31,7 @@ int main(void)
 
 	/* Add a duplicate should fail. */
 	ok1(!strmap_add(&map, dup, val));
+	ok1(errno == EEXIST);
 	ok1(strmap_get(&map, dup) == val);
 
 	/* Delete should return original string. */
