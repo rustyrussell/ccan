@@ -61,18 +61,18 @@
 #endif
 #endif
 
-#ifndef IDEMPOTENT
+#ifndef CONST_FUNCTION
 #if HAVE_ATTRIBUTE_CONST
 /**
- * IDEMPOTENT - a function's return depends only on its argument
+ * CONST_FUNCTION - a function's return depends only on its argument
  *
  * This allows the compiler to assume that the function will return the exact
  * same value for the exact same arguments.  This implies that the function
  * must not use global variables, or dereference pointer arguments.
  */
-#define IDEMPOTENT __attribute__((const))
+#define CONST_FUNCTION __attribute__((const))
 #else
-#define IDEMPOTENT
+#define CONST_FUNCTION
 #endif
 #endif
 

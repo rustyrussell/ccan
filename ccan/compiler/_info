@@ -10,7 +10,7 @@
  *	For functions not called in fast paths (aka. cold functions)
  * - PRINTF_FMT
  *	For functions which take printf-style parameters.
- * - IDEMPOTENT
+ * - CONST_FUNCTION
  *	For functions which return the same value for same parameters.
  * - NEEDED
  *	For functions and variables which must be emitted even if unused.
@@ -18,7 +18,7 @@
  *	For functions and variables which need not be emitted if unused.
  * - UNUSED
  *	For parameters which are not used.
- * - IS_COMPILE_CONSTANT
+ * - IS_COMPILE_CONSTANT()
  *	For using different tradeoffs for compiletime vs runtime evaluation.
  *
  * License: Public Domain
