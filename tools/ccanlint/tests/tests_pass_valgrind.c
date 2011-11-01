@@ -165,8 +165,10 @@ static void do_run_tests_vg(struct manifest *m,
 			options = concat(score,
 					 per_file_options(&tests_pass_valgrind,
 							  i));
-			if (streq(options, "FAIL"))
+			if (streq(options, "FAIL")) {
+				i->leak_info = NULL;
 				continue;
+			}
 
 			if (keep)
 				talloc_set_destructor(i->valgrind_log, NULL);
