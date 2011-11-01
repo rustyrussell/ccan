@@ -61,12 +61,13 @@ char *strset_test(const struct strset *set, const char *member)
 {
 	const char *str;
 
-	/* Empty set? */
-	if (!set->u.n)
-		return NULL;
-	str = closest(*set, member);
-	if (streq(member, str))
-		return (char *)str;
+	/* Non-empty set? */
+	if (set->u.n) {
+		str = closest(*set, member);
+		if (streq(member, str))
+			return (char *)str;
+	}
+	errno = ENOENT;
 	return NULL;
 }
 
@@ -171,8 +172,10 @@ char *strset_clear(struct strset *set, const char *member)
 	u8 direction = 0; /* prevent bogus gcc warning. */
 
 	/* Empty set? */
-	if (!set->u.n)
+	if (!set->u.n) {
+		errno = ENOENT;
 		return NULL;
+	}
 
 	/* Find closest, but keep track of parent. */
 	n = set;
@@ -184,8 +187,10 @@ char *strset_clear(struct strset *set, const char *member)
 		if (unlikely(n->u.n->byte_num == (size_t)-1)) {
 			const char *empty_str = n->u.n->child[0].u.s;
 
-			if (member[0])
+			if (member[0]) {
+				errno = ENOENT;
 				return NULL;
+			}
 
 			/* Sew empty string back so remaining logic works */
 			free(n->u.n);
@@ -203,8 +208,10 @@ char *strset_clear(struct strset *set, const char *member)
 	}
 
 	/* Did we find it? */
-	if (!streq(member, n->u.s))
+	if (!streq(member, n->u.s)) {
+		errno = ENOENT;
 		return NULL;
+	}
 
 	ret = n->u.s;
 

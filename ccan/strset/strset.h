@@ -52,7 +52,8 @@ static inline bool strset_empty(const struct strset *set)
  * @set: the set.
  * @member: the string to search for.
  *
- * Returns the member, or NULL if it isn't in the set.
+ * Returns the member, or NULL if it isn't in the set (and sets errno
+ * = ENOENT).
  *
  * Example:
  *	if (strset_test(&set, "hello"))
@@ -82,7 +83,9 @@ bool strset_set(struct strset *set, const char *member);
  * @set: the set.
  * @member: the string to remove from the set.
  *
- * This returns the string which was passed to strset_set(), or NULL.
+ * This returns the string which was passed to strset_set(), or NULL if
+ * the string was not in the map (in which case it sets errno = ENOENT).
+ *
  * This means that if you allocated a string (eg. using strdup()), you can
  * free it here.
  *
