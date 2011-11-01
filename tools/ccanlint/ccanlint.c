@@ -712,14 +712,14 @@ int main(int argc, char *argv[])
 	if (verbose >= 4)
 		tools_verbose = true;
 
+	/* This links back to the module's test dir. */
+	testlink = talloc_asprintf(NULL, "%s/test", temp_dir(NULL));
+
 	/* Defaults to pwd. */
 	if (argc == 1) {
 		i = 1;
 		goto got_dir;
 	}
-
-	/* This links back to the module's test dir. */
-	testlink = talloc_asprintf(NULL, "%s/test", temp_dir(NULL));
 
 	for (i = 1; i < argc; i++) {
 		unsigned int score, total_score;
