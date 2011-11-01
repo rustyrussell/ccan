@@ -77,7 +77,7 @@ static inline bool strmap_empty_(const struct strmap *map)
  * @map: the typed strmap to search.
  * @member: the string to search for.
  *
- * Returns the value, or NULL if it isn't in the map.
+ * Returns the value, or NULL if it isn't in the map (and sets errno = ENOENT).
  *
  * Example:
  *	int *val = strmap_get(&map, "hello");
@@ -118,7 +118,9 @@ bool strmap_add_(struct strmap *map, const char *member, const void *value);
  * @member: the string to remove from the map.
  * @valuep: the value (if non-NULL)
  *
- * This returns the string which was passed to strmap_map(), or NULL.
+ * This returns the string which was passed to strmap_map(), or NULL if
+ * it was not in the map (and sets errno = ENOENT).
+ *
  * This means that if you allocated a string (eg. using strdup()), you
  * can free it here.  Similarly, the value is returned in @valuep if
  * @valuep is not NULL.

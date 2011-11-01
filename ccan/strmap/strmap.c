@@ -39,12 +39,13 @@ void *strmap_get_(const struct strmap *map, const char *member)
 {
 	struct strmap *n;
 
-	/* Empty map? */
-	if (!map->u.n)
-		return NULL;
-	n = closest((struct strmap *)map, member);
-	if (streq(member, n->u.s))
-		return n->v;
+	/* Not empty map? */
+	if (map->u.n) {
+		n = closest((struct strmap *)map, member);
+		if (streq(member, n->u.s))
+			return n->v;
+	}
+	errno = ENOENT;
 	return NULL;
 }
 
@@ -129,8 +130,10 @@ char *strmap_del_(struct strmap *map, const char *member, void **valuep)
 	u8 direction = 0; /* prevent bogus gcc warning. */
 
 	/* Empty map? */
-	if (!map->u.n)
+	if (!map->u.n) {
+		errno = ENOENT;
 		return NULL;
+	}
 
 	/* Find closest, but keep track of parent. */
 	n = map;
@@ -148,8 +151,10 @@ char *strmap_del_(struct strmap *map, const char *member, void **valuep)
 	}
 
 	/* Did we find it? */
-	if (!streq(member, n->u.s))
+	if (!streq(member, n->u.s)) {
+		errno = ENOENT;
 		return NULL;
+	}
 
 	ret = n->u.s;
 	if (valuep)
