@@ -647,12 +647,9 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 		goto fail;
 	}
 
+	/* This is a version2 tdb. */
 	if (tdb->flags & TDB_VERSION1) {
-		ecode = tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
-				   "tdb_open:"
-				   " %s does not need TDB_VERSION1",
-				   name);
-		goto fail;
+		tdb->flags &= ~TDB_VERSION1;
 	}
 
 	tdb2_context_init(tdb);
