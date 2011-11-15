@@ -24,7 +24,7 @@ static void check_has_main_header(struct manifest *m,
 			score->pass = true;
 			score->score = score->total;
 			return;
-		} 
+		}
 	}
 	score->error = talloc_asprintf(score,
 	"You have no %s/%s.h header file.\n\n"
