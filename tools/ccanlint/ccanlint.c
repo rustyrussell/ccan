@@ -372,6 +372,7 @@ static void print_tests(struct list_head *tests, const char *type)
 
 static char *list_tests(void *arg)
 {
+	init_tests();
 	print_tests(&compulsory_tests, "Compulsory");
 	print_tests(&normal_tests, "Normal");
 	exit(0);
