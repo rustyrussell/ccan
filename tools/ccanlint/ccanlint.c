@@ -403,6 +403,7 @@ static void test_dgraph_edges(struct list_head *tests)
 
 static char *test_dependency_graph(void *arg)
 {
+	init_tests();
 	puts("digraph G {");
 
 	test_dgraph_vertices(&compulsory_tests, ", style=filled, fillcolor=yellow");
