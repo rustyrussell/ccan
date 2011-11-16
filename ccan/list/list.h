@@ -338,4 +338,34 @@ static inline void list_del_from(struct list_head *h, struct list_node *n)
 		nxt = container_of_var(i->member.next, i, member);	\
 	     &i->member != &(h)->n;					\
 	     i = nxt, nxt = container_of_var(i->member.next, i, member))
+
+/**
+ * list_for_each_opaque - iterate through a list of opaque types
+ * @h: the list_head
+ * @i: the pointer to an opaque type
+ *
+ * This is a convenient wrapper to iterate @i over the entire list.  It's
+ * a for loop, so you can break and continue as normal. This wrapper
+ * does not require it's caller to know the layout of the @i and
+ * allow it to remain opaque, providing it adheres to the following
+ * pattern
+ *
+ *	struct opaque {
+ *		struct list_node list;
+ *		...
+ *		Any other fields
+ *		...
+ *	};
+ *	typedef struct opaque opaque_t;
+ *
+ *	opaque_t *child;
+ *	list_for_each_opaque(&parent->children, child) {
+ *		give_candy_to(child);
+ *	}
+ */
+#define list_for_each_opaque(h, i)                      \
+  for (i = (void *) (h)->n.next;                        \
+       (struct list_node *) i != &(h)->n;               \
+       i = (void *) ((struct list_node *) i)->next) 
+
 #endif /* CCAN_LIST_H */

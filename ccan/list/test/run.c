@@ -13,6 +13,12 @@ struct child {
 	struct list_node list;
 };
 
+typedef struct {
+	struct list_node list;
+        const char  *name;
+        unsigned int answer;
+} opaque_t;
+
 static LIST_HEAD(static_list);
 
 int main(int argc, char *argv[])
@@ -22,7 +28,11 @@ int main(int argc, char *argv[])
 	unsigned int i;
 	struct list_head list = LIST_HEAD_INIT(list);
 
-	plan_tests(49);
+        opaque_t  q1, q2, q3, *q;
+        struct list_head opaque_list = LIST_HEAD_INIT(opaque_list);
+
+
+	plan_tests(53);
 	/* Test LIST_HEAD, LIST_HEAD_INIT, list_empty and check_list */
 	ok1(list_empty(&static_list));
 	ok1(list_check(&static_list, NULL));
@@ -127,6 +137,35 @@ int main(int argc, char *argv[])
 	}
 	ok1(i == 3);
 	ok1(list_empty(&parent.children));
+
+	/* Test list_for_each_opaque. */
+        q1.name   = "q1";
+        q1.answer = 42;
+        list_add_tail(&opaque_list, (struct list_node *)&q1);
+        q2.name   = "q2";
+        q2.answer = 42;
+        list_add_tail(&opaque_list, (struct list_node *)&q2);
+        q3.name   = "q3";
+        q3.answer = 42;
+        list_add_tail(&opaque_list, (struct list_node *)&q3);
+
+	i = 0;
+	list_for_each_opaque(&opaque_list, q) {
+		switch (i++) {
+		case 0:
+			ok1(q == &q1);
+			break;
+		case 1:
+			ok1(q == &q2);
+			break;
+		case 2:
+			ok1(q == &q3);
+			break;
+		}
+		if (i > 2)
+			break;
+	}
+	ok1(i == 3);
 
 	/* Test list_top/list_tail on empty list. */
 	ok1(list_top(&parent.children, struct child, list) == NULL);
