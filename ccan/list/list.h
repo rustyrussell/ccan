@@ -1,6 +1,7 @@
 /* Licensed under LGPLv2.1+ - see LICENSE file for details */
 #ifndef CCAN_LIST_H
 #define CCAN_LIST_H
+#include <stddef.h>
 #include <stdbool.h>
 #include <assert.h>
 #include <ccan/container_of/container_of.h>
@@ -297,6 +298,45 @@ static inline void list_del_from(struct list_head *h, struct list_node *n)
 #define list_tail(h, type, member) \
 	(list_empty(h) ? NULL : list_entry((h)->n.prev, type, member))
 
+
+#define __ptr_add_off(ptr, off)                 \
+  ((void *) ((char *) (ptr) + (ptrdiff_t) (off)))
+#define __ptr_sub_off(ptr, off)                 \
+  ((void *) ((char *) (ptr) - (ptrdiff_t) (off)))
+/**
+ * list_for_each_off - iterate through a list of memory regions.
+ * @h: the list_head
+ * @i: the pointer to a memory region wich contains list node data.
+ * @off: offset(relative to @i) at which list node data resides.
+ *
+ * This is a low-level wrapper to iterate @i over the entire list, used to
+ * implement all oher, more high-level, for-each constructs. It's a for loop,
+ * so you can break and continue as normal.
+ *
+ * WARNING! Being the low-level macro that it is, this wrapper doesn't know
+ * nor care about the type of @i. The only assumtion made is that @i points
+ * to a chunk of memory that at some @offset, relative to @i, contains a
+ * properly filled `struct node_list' which in turn contains pointers to
+ * memory chunks and it's turtles all the way down. Whith all that in mind
+ * remember that given the wrong pointer/offset couple this macro will
+ * happilly churn all you memory untill SEGFAULT stops it, in other words
+ * caveat emptor.
+ *
+ * It is worth mentioning that one of legitimate use-cases for that wrapper
+ * is operation on opaque types with known offset for `struct list_node'
+ * member(preferably 0), because it allows you not to disclose the type of
+ * @i.
+ *
+ * Example:
+ *	list_for_each_off(&parent->children, child, sizeof(const char *))
+ *		printf("Name: %s\n", child->name);
+ */
+#define list_for_each_off(h, i, off)                                    \
+  for (i = __ptr_sub_off(list_debug(h)->n.next, off);                   \
+       (struct list_node *) __ptr_add_off(i, off) != &(h)->n;           \
+       i = __ptr_sub_off(((struct list_node *)__ptr_add_off(i, off))->next, \
+                         off))
+
 /**
  * list_for_each - iterate through a list.
  * @h: the list_head
@@ -310,10 +350,57 @@ static inline void list_del_from(struct list_head *h, struct list_node *n)
  *	list_for_each(&parent->children, child, list)
  *		printf("Name: %s\n", child->name);
  */
-#define list_for_each(h, i, member)					\
-	for (i = container_of_var(list_debug(h)->n.next, i, member);	\
-	     &i->member != &(h)->n;					\
-	     i = container_of_var(i->member.next, i, member))
+#if HAVE_TYPEOF
+#define list_for_each(h, i, member)                     \
+  list_for_each_off(h, i, offsetof(typeof(*i), member))
+#else
+#define list_for_each(h, i, member)                             \
+  list_for_each_off(h, i, (char *)&(i)->member - (char *)(i))
+#endif
+
+/**
+ * list_for_each_off_safe - iterate through a list of memory regions, maybe
+ * during deletion
+ * @h: the list_head
+ * @i: the pointer to a memory region wich contains list node data.
+ * @nxt: the structure containing the list_node
+ * @off: offset(relative to @i) at which list node data resides.
+ *
+ * This is a low-level wrapper to iterate @i over the entire list, used to
+ * implement all oher, more high-level, for-each constructs. It's a for loop,
+ * so you can break and continue as normal. The extra variable
+ * @nxt is used to hold the next element, so you can delete @i from the list.
+ *
+ * WARNING! Being the low-level macro that it is, this wrapper doesn't know
+ * nor care about the type of @i. The only assumtion made is that @i points
+ * to a chunk of memory that at some @offset, relative to @i, contains a
+ * properly filled `struct node_list' which in turn contains pointers to
+ * memory chunks and it's turtles all the way down. Whith all that in mind
+ * remember that given the wrong pointer/offset couple this macro will
+ * happilly churn all you memory untill SEGFAULT stops it, in other words
+ * caveat emptor.
+ *
+ * It is worth mentioning that one of legitimate use-cases for that wrapper
+ * is operation on opaque types with known offset for `struct list_node'
+ * member(preferably 0), because it allows you not to disclose the type of
+ * @i.
+ *
+ * Example:
+ *	struct child *next;
+ *	list_for_each_off_safe(&parent->children, child,
+ *		next, sizeof(const char *))
+ *		printf("Name: %s\n", child->name);
+ */
+#define list_for_each_off_safe(h, i, nxt, off)                          \
+  for (i = __ptr_sub_off(list_debug(h)->n.next, off),                   \
+         nxt = __ptr_sub_off(((struct list_node *)                      \
+                              __ptr_add_off(i, off))->next,             \
+                             off);                                      \
+       (struct list_node *) __ptr_add_off(i, off) != &(h)->n;           \
+       i = nxt,                                                         \
+         nxt = __ptr_sub_off(((struct list_node *)                      \
+                              __ptr_add_off(i, off))->next,             \
+                             off))
 
 /**
  * list_for_each_safe - iterate through a list, maybe during deletion
@@ -327,45 +414,17 @@ static inline void list_del_from(struct list_head *h, struct list_node *n)
  * @nxt is used to hold the next element, so you can delete @i from the list.
  *
  * Example:
- *	struct child *next;
  *	list_for_each_safe(&parent->children, child, next, list) {
  *		list_del(&child->list);
  *		parent->num_children--;
  *	}
  */
-#define list_for_each_safe(h, i, nxt, member)				\
-	for (i = container_of_var(list_debug(h)->n.next, i, member),	\
-		nxt = container_of_var(i->member.next, i, member);	\
-	     &i->member != &(h)->n;					\
-	     i = nxt, nxt = container_of_var(i->member.next, i, member))
 
-/**
- * list_for_each_opaque - iterate through a list of opaque types
- * @h: the list_head
- * @i: the pointer to an opaque type
- *
- * This is a convenient wrapper to iterate @i over the entire list.  It's
- * a for loop, so you can break and continue as normal. This wrapper
- * does not require it's caller to know the layout of the @i and
- * allow it to remain opaque, providing it adheres to the following
- * pattern
- *
- *	struct opaque {
- *		struct list_node list;
- *		...
- *		Any other fields
- *		...
- *	};
- *	typedef struct opaque opaque_t;
- *
- *	opaque_t *child;
- *	list_for_each_opaque(&parent->children, child) {
- *		give_candy_to(child);
- *	}
- */
-#define list_for_each_opaque(h, i)                      \
-  for (i = (void *) (h)->n.next;                        \
-       (struct list_node *) i != &(h)->n;               \
-       i = (void *) ((struct list_node *) i)->next) 
-
+#if HAVE_TYPEOF
+#define list_for_each_safe(h, i, nxt, member)                           \
+  list_for_each_off_safe(h, i, nxt, offsetof(typeof(*i), member))
+#else
+#define list_for_each_safe(h, i, nxt, member)                           \
+  list_for_each_off_safe(h, i, nxt, (char *)&(i)->member - (char *)(i))
+#endif
 #endif /* CCAN_LIST_H */

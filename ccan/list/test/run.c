@@ -150,7 +150,8 @@ int main(int argc, char *argv[])
         list_add_tail(&opaque_list, (struct list_node *)&q3);
 
 	i = 0;
-	list_for_each_opaque(&opaque_list, q) {
+
+	list_for_each_off(&opaque_list, q, 0) {
 		switch (i++) {
 		case 0:
 			ok1(q == &q1);
