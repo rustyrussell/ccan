@@ -38,6 +38,7 @@
  *
  *		p.name = argv[1];
  *		list_head_init(&p.children);
+ *		p.num_children = 0;
  *		for (i = 2; i < argc; i++) {
  *			c = malloc(sizeof(*c));
  *			c->name = argv[i];
