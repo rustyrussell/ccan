@@ -12,6 +12,7 @@ JUNKBALLS=$(JUNKDIRS:%=$(WEBDIR)/%.tar.bz2)
 
 upload: fastcheck
 	git push origin HEAD:master
+	git push github HEAD:master
 
 clean-tree:
 	! git status --porcelain | grep .
