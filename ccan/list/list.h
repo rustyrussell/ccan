@@ -223,6 +223,7 @@ static inline void list_del(struct list_node *n)
 #endif
 }
 
+
 /**
  * list_del_from - delete an entry from a known linked list.
  * @h: the list_head the node is in.
@@ -295,14 +296,48 @@ static inline void list_del_from(struct list_head *h, struct list_node *n)
  *	struct child *last;
  *	last = list_tail(&parent->children, struct child, list);
  */
+
 #define list_tail(h, type, member) \
 	(list_empty(h) ? NULL : list_entry((h)->n.prev, type, member))
 
+/**
+ * list_for_each - iterate through a list.
+ * @h: the list_head
+ * @i: the structure containing the list_node
+ * @member: the list_node member of the structure
+ *
+ * This is a convenient wrapper to iterate @i over the entire list.  It's
+ * a for loop, so you can break and continue as normal.
+ *
+ * Example:
+ *	list_for_each(&parent->children, child, list)
+ *		printf("Name: %s\n", child->name);
+ */
+#define list_for_each(h, i, member)                             \
+  list_for_each_off(h, i, container_of_var_off(i, member))
 
-#define __ptr_add_off(ptr, off)                 \
-  ((void *) ((char *) (ptr) + (ptrdiff_t) (off)))
-#define __ptr_sub_off(ptr, off)                 \
-  ((void *) ((char *) (ptr) - (ptrdiff_t) (off)))
+/**
+ * list_for_each_safe - iterate through a list, maybe during deletion
+ * @h: the list_head
+ * @i: the structure containing the list_node
+ * @nxt: the structure containing the list_node
+ * @member: the list_node member of the structure
+ *
+ * This is a convenient wrapper to iterate @i over the entire list.  It's
+ * a for loop, so you can break and continue as normal.  The extra variable
+ * @nxt is used to hold the next element, so you can delete @i from the list.
+ *
+ * Example:
+ *      struct child *next;
+ *	list_for_each_safe(&parent->children, child, next, list) {
+ *		list_del(&child->list);
+ *		parent->num_children--;
+ *	}
+ */
+
+#define list_for_each_safe(h, i, nxt, member)                           \
+  list_for_each_safe_off(h, i, nxt, container_of_var_off(i, member))
+
 /**
  * list_for_each_off - iterate through a list of memory regions.
  * @h: the list_head
@@ -328,103 +363,67 @@ static inline void list_del_from(struct list_head *h, struct list_node *n)
  * @i.
  *
  * Example:
- *	list_for_each_off(&parent->children, child, sizeof(const char *))
+ *	list_for_each_off(&parent->children, child, 
+ *				offsetof(struct child, list))
  *		printf("Name: %s\n", child->name);
  */
 #define list_for_each_off(h, i, off)                                    \
-  for (i = __ptr_sub_off(list_debug(h)->n.next, off);                   \
-       (struct list_node *) __ptr_add_off(i, off) != &(h)->n;           \
-       i = __ptr_sub_off(((struct list_node *)__ptr_add_off(i, off))->next, \
-                         off))
+  for (i = list_node_to_off_(list_debug(h)->n.next, (off));             \
+       list_node_from_off_((void *)i, (off)) != &(h)->n;                \
+       i = list_node_to_off_(list_node_from_off_((void *)i, (off))->next, \
+                             (off)))
 
 /**
- * list_for_each - iterate through a list.
- * @h: the list_head
- * @i: the structure containing the list_node
- * @member: the list_node member of the structure
- *
- * This is a convenient wrapper to iterate @i over the entire list.  It's
- * a for loop, so you can break and continue as normal.
- *
- * Example:
- *	list_for_each(&parent->children, child, list)
- *		printf("Name: %s\n", child->name);
- */
-#if HAVE_TYPEOF
-#define list_for_each(h, i, member)                     \
-  list_for_each_off(h, i, offsetof(typeof(*i), member))
-#else
-#define list_for_each(h, i, member)                             \
-  list_for_each_off(h, i, (char *)&(i)->member - (char *)(i))
-#endif
-
-/**
- * list_for_each_off_safe - iterate through a list of memory regions, maybe
+ * list_for_each_safe_off - iterate through a list of memory regions, maybe
  * during deletion
  * @h: the list_head
  * @i: the pointer to a memory region wich contains list node data.
  * @nxt: the structure containing the list_node
  * @off: offset(relative to @i) at which list node data resides.
  *
- * This is a low-level wrapper to iterate @i over the entire list, used to
- * implement all oher, more high-level, for-each constructs. It's a for loop,
- * so you can break and continue as normal. The extra variable
- * @nxt is used to hold the next element, so you can delete @i from the list.
- *
- * WARNING! Being the low-level macro that it is, this wrapper doesn't know
- * nor care about the type of @i. The only assumtion made is that @i points
- * to a chunk of memory that at some @offset, relative to @i, contains a
- * properly filled `struct node_list' which in turn contains pointers to
- * memory chunks and it's turtles all the way down. Whith all that in mind
- * remember that given the wrong pointer/offset couple this macro will
- * happilly churn all you memory untill SEGFAULT stops it, in other words
- * caveat emptor.
- *
- * It is worth mentioning that one of legitimate use-cases for that wrapper
- * is operation on opaque types with known offset for `struct list_node'
- * member(preferably 0), because it allows you not to disclose the type of
- * @i.
+ * For details see `list_for_each_off' and `list_for_each_safe'
+ * descriptions.
  *
  * Example:
- *	struct child *next;
- *	list_for_each_off_safe(&parent->children, child,
- *		next, sizeof(const char *))
+ *	list_for_each_safe_off(&parent->children, child,
+ *		next, offsetof(struct child, list))
  *		printf("Name: %s\n", child->name);
  */
-#define list_for_each_off_safe(h, i, nxt, off)                          \
-  for (i = __ptr_sub_off(list_debug(h)->n.next, off),                   \
-         nxt = __ptr_sub_off(((struct list_node *)                      \
-                              __ptr_add_off(i, off))->next,             \
-                             off);                                      \
-       (struct list_node *) __ptr_add_off(i, off) != &(h)->n;           \
+#define list_for_each_safe_off(h, i, nxt, off)                          \
+  for (i = list_node_to_off_(list_debug(h)->n.next, (off)),             \
+         nxt = list_node_to_off_(list_node_from_off_(i, (off))->next,   \
+                                 (off));                                \
+       list_node_from_off_(i, (off)) != &(h)->n;                        \
        i = nxt,                                                         \
-         nxt = __ptr_sub_off(((struct list_node *)                      \
-                              __ptr_add_off(i, off))->next,             \
-                             off))
+         nxt = list_node_to_off_(list_node_from_off_(i, (off))->next,   \
+                                 (off)))
 
-/**
- * list_for_each_safe - iterate through a list, maybe during deletion
- * @h: the list_head
- * @i: the structure containing the list_node
- * @nxt: the structure containing the list_node
- * @member: the list_node member of the structure
- *
- * This is a convenient wrapper to iterate @i over the entire list.  It's
- * a for loop, so you can break and continue as normal.  The extra variable
- * @nxt is used to hold the next element, so you can delete @i from the list.
- *
- * Example:
- *	list_for_each_safe(&parent->children, child, next, list) {
- *		list_del(&child->list);
- *		parent->num_children--;
- *	}
- */
 
-#if HAVE_TYPEOF
-#define list_for_each_safe(h, i, nxt, member)                           \
-  list_for_each_off_safe(h, i, nxt, offsetof(typeof(*i), member))
-#else
-#define list_for_each_safe(h, i, nxt, member)                           \
-  list_for_each_off_safe(h, i, nxt, (char *)&(i)->member - (char *)(i))
-#endif
+static inline void *list_node_to_off_(struct list_node *node, size_t off)
+{
+  return (void *)((char *)node - off);
+}
+static inline struct list_node *list_node_from_off_(void *ptr, size_t off)
+{
+  return (struct list_node *)((char *)ptr + off);
+}
+
+
+/* Shouldn't these also be defined? */
+
+#define list_entry_off(q, off)                  \
+  list_node_from_off_(q, (off))
+
+#define list_tail_off(h, off)                                   \
+  (list_empty(h) ? NULL : list_entry_off((h)->n.prev, (off)))
+
+#define list_add_off(h, q, off)                 \
+  list_add((h), list_entry_off(q, (off)))
+
+#define list_del_off(q, off)                    \
+  list_del(list_entry_off(q, (off)))
+
+#define list_del_from_off(h, q, off)            \
+  list_del_from(h, list_entry_off(q, (off)))
+
 #endif /* CCAN_LIST_H */
