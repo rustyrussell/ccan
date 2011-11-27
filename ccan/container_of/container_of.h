@@ -5,6 +5,8 @@
 #include "config.h"
 #include <ccan/check_type/check_type.h>
 
+
+
 /**
  * container_of - get pointer to enclosing structure
  * @member_ptr: pointer to the structure member
@@ -34,7 +36,6 @@
 	  ((char *)(member_ptr) - offsetof(containing_type, member))	\
 	  - check_types_match(*(member_ptr), ((containing_type *)0)->member))
 
-
 /**
  * container_of_var - get pointer to enclosing structure using a variable
  * @member_ptr: pointer to the structure member
@@ -56,8 +57,26 @@
 	container_of(member_ptr, typeof(*var), member)
 #else
 #define container_of_var(member_ptr, var, member)		\
-	((void *)((char *)(member_ptr)				\
-		  - ((char *)&(var)->member - (char *)(var))))
+	((void *)((char *)(member_ptr)	-			\
+		  container_of_var_off(var, member)))
+#endif
+
+/**
+ * container_of_var_off - get of a field in enclosing structure
+ * @var: a pointer to a structure
+ * @member: the name of a member within the structure.
+ *
+ * Given a pointer to a structure and a its member name, this macro
+ * does pointer subtraction to return offset of member in a structure
+ * memory layout.
+ *
+ */
+#if HAVE_TYPEOF
+#define container_of_var_off(var, member)	\
+	offsetof(typeof(*var), member)
+#else
+#define container_of_var_off(var, member)	\
+	((char *)&(var)->member - (char *)(var))
 #endif
 
 #endif /* CCAN_CONTAINER_OF_H */

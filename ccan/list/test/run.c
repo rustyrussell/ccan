@@ -2,6 +2,8 @@
 #include <ccan/tap/tap.h>
 #include <ccan/list/list.c>
 
+
+
 struct parent {
 	const char *name;
 	struct list_head children;
@@ -15,6 +17,15 @@ struct child {
 
 static LIST_HEAD(static_list);
 
+
+struct opaque;
+typedef struct opaque opaque_t;
+
+opaque_t *create_opaque_blob(void);
+bool if_blobs_know_the_secret(opaque_t *blob);
+void destroy_opaque_blob(opaque_t *blob);
+
+
 int main(int argc, char *argv[])
 {
 	struct parent parent;
@@ -22,7 +33,11 @@ int main(int argc, char *argv[])
 	unsigned int i;
 	struct list_head list = LIST_HEAD_INIT(list);
 
-	plan_tests(49);
+        opaque_t *q, *nq;
+        struct list_head opaque_list = LIST_HEAD_INIT(opaque_list);
+
+
+	plan_tests(61);
 	/* Test LIST_HEAD, LIST_HEAD_INIT, list_empty and check_list */
 	ok1(list_empty(&static_list));
 	ok1(list_check(&static_list, NULL));
@@ -109,7 +124,7 @@ int main(int argc, char *argv[])
 	list_for_each_safe(&parent.children, c, n, list) {
 		switch (i++) {
 		case 0:
-			ok1(c == &c1);	
+			ok1(c == &c1);
 			list_del(&c->list);
 			break;
 		case 1:
@@ -127,6 +142,49 @@ int main(int argc, char *argv[])
 	}
 	ok1(i == 3);
 	ok1(list_empty(&parent.children));
+
+	/* Test list_for_each_off. */
+        list_add_tail(&opaque_list,
+                      (struct list_node *)create_opaque_blob());
+        list_add_tail(&opaque_list,
+                      (struct list_node *)create_opaque_blob());
+        list_add_tail(&opaque_list,
+                      (struct list_node *)create_opaque_blob());
+
+	i = 0;
+
+	list_for_each_off(&opaque_list, q, 0) {
+          i++;
+          ok1(if_blobs_know_the_secret(q));
+        }
+	ok1(i == 3);
+
+	/* Test list_for_each_safe_off, list_del_off and list_del_from_off. */
+	i = 0;
+	list_for_each_safe_off(&opaque_list, q, nq, 0) {
+		switch (i++) {
+		case 0:
+			ok1(if_blobs_know_the_secret(q));
+			list_del_off(q, 0);
+                        destroy_opaque_blob(q);
+			break;
+		case 1:
+			ok1(if_blobs_know_the_secret(q));
+			list_del_from_off(&opaque_list, q, 0);
+                        destroy_opaque_blob(q);
+			break;
+		case 2:
+			ok1(c == &c3);
+			list_del_from_off(&opaque_list, q, 0);
+                        destroy_opaque_blob(q);
+			break;
+		}
+		ok1(list_check(&opaque_list, NULL));
+		if (i > 2)
+			break;
+	}
+	ok1(i == 3);
+	ok1(list_empty(&opaque_list));
 
 	/* Test list_top/list_tail on empty list. */
 	ok1(list_top(&parent.children, struct child, list) == NULL);
