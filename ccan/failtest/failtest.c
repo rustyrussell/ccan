@@ -523,7 +523,12 @@ static bool should_fail(struct failtest_call *call)
 
 	/* Attach debugger if they asked for it. */
 	if (debugpath) {
-		char *path = failpath_string();
+		char *path;
+
+		/* Pretend this last call matches whatever path wanted:
+		 * keeps valgrind happy. */
+		call->fail = cisupper(debugpath[strlen(debugpath)-1]);
+		path = failpath_string();
 
 		if (streq(path, debugpath)) {
 			char str[80];
@@ -534,9 +539,14 @@ static bool should_fail(struct failtest_call *call)
 				getpid(), getpid());
 			if (system(str) == 0)
 				sleep(5);
-		} else if (!strstarts(path, debugpath)) {
-			fprintf(stderr, "--debugpath not followed: %s\n", path);
-			debugpath = NULL;
+		} else {
+			/* Ignore last character: could be upper or lower. */
+			path[strlen(path)-1] = '\0';
+			if (!strstarts(debugpath, path)) {
+				fprintf(stderr,
+					"--debugpath not followed: %s\n", path);
+				debugpath = NULL;
+			}
 		}
 		free(path);
 	}
