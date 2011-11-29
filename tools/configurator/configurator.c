@@ -89,6 +89,12 @@ static struct test tests[] = {
 	  "static int __attribute__((unused)) func(int x) { return x; }" },
 	{ "HAVE_ATTRIBUTE_USED", OUTSIDE_MAIN, NULL,
 	  "static int __attribute__((used)) func(int x) { return x; }" },
+	{ "HAVE_BACKTRACE", DEFINES_FUNC, NULL,
+	  "#include <execinfo.h>\n"
+	  "static int func(int x) {"
+	  "	void *bt[10];\n"
+	  "	return backtrace(bt, 10) < x;\n"
+	  "}" },
 	{ "HAVE_BIG_ENDIAN", INSIDE_MAIN|EXECUTE, NULL,
 	  "union { int i; char c[sizeof(int)]; } u;\n"
 	  "u.i = 0x01020304;\n"
