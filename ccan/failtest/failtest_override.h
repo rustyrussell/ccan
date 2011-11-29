@@ -29,6 +29,7 @@
 /* Replacement of I/O. */
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -61,6 +62,11 @@
 
 #undef fcntl
 #define fcntl(fd, ...) failtest_fcntl((fd), __FILE__, __LINE__, __VA_ARGS__)
+
+#undef mmap
+#define mmap(addr, length, prot, flags, fd, offset)			\
+	failtest_mmap((addr), (length), (prot), (flags), (fd), (offset), \
+		      __FILE__, __LINE__)
 
 /* Replacement of getpid (since failtest will fork). */
 #undef getpid

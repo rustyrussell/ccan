@@ -31,6 +31,10 @@
 #define write(fd, buf, count) \
 	failtest_write((fd), (buf), (count), NULL, 0)
 
+#undef mmap
+#define mmap(addr, length, prot, flags, fd, offset) \
+	failtest_mmap((addr), (length), (prot), (flags), (fd), (offset), NULL, 0)
+
 #undef close
 #define close(fd) failtest_close(fd)
 

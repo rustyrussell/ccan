@@ -13,6 +13,7 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/mman.h>
 #include <signal.h>
 #include <assert.h>
 #include <ccan/time/time.h>
@@ -96,7 +97,7 @@ static unsigned int lock_num = 0;
 
 static pid_t orig_pid;
 
-static const char info_to_arg[] = "mceoxprwf";
+static const char info_to_arg[] = "mceoxprwfa";
 
 /* Dummy call used for failtest_undo wrappers. */
 static struct failtest_call unrecorded_call;
@@ -858,6 +859,30 @@ int failtest_open(const char *pathname,
 	}
 	errno = p->error;
 	return p->u.open.ret;
+}
+
+void *failtest_mmap(void *addr, size_t length, int prot, int flags,
+		    int fd, off_t offset, const char *file, unsigned line)
+{
+	struct failtest_call *p;
+	struct mmap_call call;
+
+	call.addr = addr;
+	call.length = length;
+	call.prot = prot;
+	call.flags = flags;
+	call.offset = offset;
+	call.fd = fd;
+
+	p = add_history(FAILTEST_MMAP, file, line, &call);
+	if (should_fail(p)) {
+		p->u.mmap.ret = MAP_FAILED;
+		p->error = ENOMEM;
+	} else {
+		p->u.mmap.ret = mmap(addr, length, prot, flags, fd, offset);
+	}
+	errno = p->error;
+	return p->u.mmap.ret;
 }
 
 static void cleanup_pipe(struct pipe_call *call)

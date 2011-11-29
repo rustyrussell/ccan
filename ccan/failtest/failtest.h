@@ -47,6 +47,7 @@ enum failtest_call_type {
 	FAILTEST_READ,
 	FAILTEST_WRITE,
 	FAILTEST_FCNTL,
+	FAILTEST_MMAP,
 };
 
 struct calloc_call {
@@ -110,6 +111,16 @@ struct fcntl_call {
 	} arg;
 };
 
+struct mmap_call {
+	void *ret;
+	void *addr;
+	size_t length;
+	int prot;
+	int flags;
+	int fd;
+	off_t offset;
+};
+
 /**
  * struct failtest_call - description of a call redirected to failtest module
  * @type: the call type
@@ -151,6 +162,7 @@ struct failtest_call {
 		struct read_call read;
 		struct write_call write;
 		struct fcntl_call fcntl;
+		struct mmap_call mmap;
 	} u;
 };
 
