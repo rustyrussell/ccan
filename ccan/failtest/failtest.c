@@ -830,6 +830,9 @@ void *failtest_realloc(void *ptr, size_t size, const char *file, unsigned line)
 	return p->u.realloc.ret;
 }
 
+/* FIXME: Record free, so we can terminate fixup_ptr_history correctly.
+ * If there's an alloc we don't see, it could get confusing if it matches
+ * a previous allocation we did see. */
 void failtest_free(void *ptr)
 {
 	fixup_ptr_history(ptr);
