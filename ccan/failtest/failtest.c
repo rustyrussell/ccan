@@ -51,7 +51,7 @@ bool (*failtest_exit_check)(struct tlist_calls *history);
 static struct tlist_calls history = TLIST_INIT(history);
 static int control_fd = -1;
 static struct timeval start;
-static unsigned int probe_count = 0;
+static bool probing = false;
 
 static struct write_call *child_writes = NULL;
 static unsigned int child_writes_num = 0;
@@ -434,10 +434,6 @@ static bool should_fail(struct failtest_call *call)
 	size_t outlen = 0;
 	struct saved_file *files;
 
-	/* Are we probing? */
-	if (probe_count && --probe_count == 0 && control_fd != -1)
-		failtest_cleanup(true, 0);
-
 	if (call == &unrecorded_call)
 		return false;
 
@@ -478,23 +474,17 @@ static bool should_fail(struct failtest_call *call)
 		free(path);
 	}
 
+	/* Are we probing?  If so, we never fail twice. */
+	if (probing)
+		return call->fail = false;
+
 	if (failtest_hook) {
 		switch (failtest_hook(&history)) {
 		case FAIL_OK:
 			break;
 		case FAIL_PROBE:
-			/* Already down probe path?  Stop now. */
-			if (!probe_count) {
-				/* FIXME: We should run *parent* and
-				 * run probe until calls match up again. */
-				probe_count = 3;
-				break;
-			} else {
-				/* Child should give up now. */
-				if (control_fd != -1)
-					failtest_cleanup(true, 0);
-				/* Parent, don't fail again. */
-			}
+			probing = true;
+			break;
 		case FAIL_DONT_FAIL:
 			call->fail = false;
 			return false;
@@ -623,6 +613,9 @@ static bool should_fail(struct failtest_call *call)
 	signal(SIGUSR1, SIG_DFL);
 
 	restore_files(files);
+
+	/* Only child does probe. */
+	probing = false;
 
 	/* We continue onwards without failing. */
 	call->fail = false;
