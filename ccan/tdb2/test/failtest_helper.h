@@ -14,4 +14,7 @@ bool failmatch(const struct failtest_call *call,
 enum failtest_result
 block_repeat_failures(struct failtest_call *history, unsigned num);
 
+/* Set this to suppress failure. */
+extern bool failtest_suppress;
+
 #endif /* TDB2_TEST_LOGGING_H */

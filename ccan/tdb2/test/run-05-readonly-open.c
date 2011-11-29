@@ -5,17 +5,6 @@
 #include "logging.h"
 #include "failtest_helper.h"
 
-static bool failtest_suppress = false;
-
-/* Don't need to test everything here, just want expand testing. */
-static enum failtest_result
-suppress_failure(struct failtest_call *history, unsigned num)
-{
-	if (failtest_suppress)
-		return FAIL_DONT_FAIL;
-	return block_repeat_failures(history, num);
-}
-
 int main(int argc, char *argv[])
 {
 	unsigned int i;
@@ -31,7 +20,7 @@ int main(int argc, char *argv[])
 	unsigned int msgs = 0;
 
 	failtest_init(argc, argv);
-	failtest_hook = suppress_failure;
+	failtest_hook = block_repeat_failures;
 	failtest_exit_check = exit_check_log;
 
 	seed_attr.base.attr = TDB_ATTRIBUTE_SEED;

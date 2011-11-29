@@ -3,6 +3,8 @@
 #include <string.h>
 #include <ccan/tap/tap.h>
 
+bool failtest_suppress = false;
+
 /* FIXME: From ccan/str */
 static inline bool strends(const char *str, const char *postfix)
 {
@@ -83,6 +85,9 @@ enum failtest_result
 block_repeat_failures(struct failtest_call *history, unsigned num)
 {
 	const struct failtest_call *i, *last = &history[num-1];
+
+	if (failtest_suppress)
+		return FAIL_DONT_FAIL;
 
 	if (failmatch(last, INITIAL_TDB_MALLOC)
 	    || failmatch(last, URANDOM_OPEN)
