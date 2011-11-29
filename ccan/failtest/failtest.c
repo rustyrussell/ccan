@@ -518,8 +518,8 @@ static bool should_fail(struct failtest_call *call)
 		} else {
 			if (tolower((unsigned char)*failpath)
 			    != info_to_arg[call->type])
-				errx(1, "Failpath expected '%c' got '%c'\n",
-				     info_to_arg[call->type], *failpath);
+				errx(1, "Failpath expected '%s' got '%c'\n",
+				     failpath, info_to_arg[call->type]);
 			call->fail = cisupper(*(failpath++));
 			return call->fail;
 		}
