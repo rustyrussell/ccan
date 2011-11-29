@@ -95,6 +95,7 @@ int main(void)
 	unsigned int isize;
 
 	plan_tests(5835);
+	failtest_init(0, NULL);
 	failtest_hook = dont_fail;
 
 	fd = open("run-locking-scratch", O_RDWR|O_CREAT, 0600);

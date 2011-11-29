@@ -19,6 +19,8 @@
 #include <ccan/read_write_all/read_write_all.h>
 #include <ccan/failtest/failtest_proto.h>
 #include <ccan/build_assert/build_assert.h>
+#include <ccan/hash/hash.h>
+#include <ccan/htable/htable_type.h>
 #include <ccan/str/str.h>
 
 enum failtest_result (*failtest_hook)(struct tlist_calls *);
@@ -46,12 +48,44 @@ struct lock_info {
 	int type;
 };
 
+/* We hash the call location together with its backtrace. */
+static size_t hash_call(const struct failtest_call *call)
+{
+	return hash(call->file, strlen(call->file),
+		    hash(&call->line, 1,
+			 hash(call->backtrace, call->backtrace_num,
+			      call->type)));
+}
+
+static bool call_eq(const struct failtest_call *call1,
+		    const struct failtest_call *call2)
+{
+	unsigned int i;
+
+	if (strcmp(call1->file, call2->file) != 0
+	    || call1->line != call2->line
+	    || call1->type != call2->type
+	    || call1->backtrace_num != call2->backtrace_num)
+		return false;
+
+	for (i = 0; i < call1->backtrace_num; i++)
+		if (call1->backtrace[i] != call2->backtrace[i])
+			return false;
+
+	return true;
+}
+
+/* Defines struct failtable. */
+HTABLE_DEFINE_TYPE(struct failtest_call, (struct failtest_call *), hash_call,
+		   call_eq, failtable);
+
 bool (*failtest_exit_check)(struct tlist_calls *history);
 
 static struct tlist_calls history = TLIST_INIT(history);
 static int control_fd = -1;
 static struct timeval start;
 static bool probing = false;
+static struct failtable failtable;
 
 static struct write_call *child_writes = NULL;
 static unsigned int child_writes_num = 0;
@@ -66,6 +100,34 @@ static const char info_to_arg[] = "mceoxprwf";
 
 /* Dummy call used for failtest_undo wrappers. */
 static struct failtest_call unrecorded_call;
+
+#if HAVE_BACKTRACE
+#include <execinfo.h>
+
+static void **get_backtrace(unsigned int *num)
+{
+	static unsigned int max_back = 100;
+	void **ret;
+
+again:
+	ret = malloc(max_back * sizeof(void *));
+	*num = backtrace(ret, max_back);
+	if (*num == max_back) {
+		free(ret);
+		max_back *= 2;
+		goto again;
+	}
+	return ret;
+}
+#else
+/* This will test slightly less, since will consider all of the same
+ * calls as identical.  But, it's slightly faster! */
+static void **get_backtrace(unsigned int *num)
+{
+	*num = 0;
+	return NULL;
+}
+#endif /* HAVE_BACKTRACE */
 
 static struct failtest_call *add_history_(enum failtest_call_type type,
 					  const char *file,
@@ -84,6 +146,7 @@ static struct failtest_call *add_history_(enum failtest_call_type type,
 	call->file = file;
 	call->line = line;
 	call->cleanup = NULL;
+	call->backtrace = get_backtrace(&call->backtrace_num);
 	memcpy(&call->u, elem, elem_size);
 	tlist_add_tail(&history, call, list);
 	return call;
@@ -381,6 +444,7 @@ static void free_call(struct failtest_call *call)
 	/* We don't do this in cleanup: needed even for failed opens. */
 	if (call->type == FAILTEST_OPEN)
 		free((char *)call->u.open.pathname);
+	free(call->backtrace);
 	tlist_del_from(&history, call, list);
 	free(call);
 }
@@ -392,6 +456,8 @@ static void free_everything(void)
 
 	while ((i = tlist_top(&history, struct failtest_call, list)) != NULL)
 		free_call(i);
+
+	failtable_clear(&failtable);
 }
 
 static NORETURN void failtest_cleanup(bool forced_cleanup, int status)
@@ -433,6 +499,7 @@ static bool should_fail(struct failtest_call *call)
 	char *out = NULL;
 	size_t outlen = 0;
 	struct saved_file *files;
+	struct failtest_call *dup;
 
 	if (call == &unrecorded_call)
 		return false;
@@ -478,6 +545,11 @@ static bool should_fail(struct failtest_call *call)
 	if (probing)
 		return call->fail = false;
 
+	/* Don't more than once in the same place. */
+	dup = failtable_get(&failtable, call);
+	if (dup)
+		return call->fail = false;
+
 	if (failtest_hook) {
 		switch (failtest_hook(&history)) {
 		case FAIL_OK:
@@ -492,6 +564,9 @@ static bool should_fail(struct failtest_call *call)
 			abort();
 		}
 	}
+
+	/* Add it to our table of calls. */
+	failtable_add(&failtable, call);
 
 	files = save_files();
 
@@ -1123,6 +1198,7 @@ void failtest_init(int argc, char *argv[])
 			debugpath = argv[i] + strlen("--debugpath=");
 		}
 	}
+	failtable_init(&failtable);
 	start = time_now();
 }
 

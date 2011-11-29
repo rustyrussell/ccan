@@ -14,6 +14,7 @@ int main(void)
 	struct stat st;
 
 	plan_tests(12);
+	failtest_init(0, NULL);
 
 	if (pipe(pfd))
 		abort();

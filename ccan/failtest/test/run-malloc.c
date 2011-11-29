@@ -95,6 +95,7 @@ int main(void)
 	int status;
 
 	plan_tests(3);
+	failtest_init(0, NULL);
 
 	status = setjmp(exited);
 	if (status == 0) {

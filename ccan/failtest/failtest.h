@@ -137,6 +137,9 @@ struct failtest_call {
 	int error;
 	/* How do we clean this up? */
 	void (*cleanup)(void *u);
+	/* Backtrace of call chain. */
+	void **backtrace;
+	unsigned int backtrace_num;
 	/* The actual call data. */
 	union {
 		struct calloc_call calloc;

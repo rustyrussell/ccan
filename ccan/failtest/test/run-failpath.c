@@ -11,6 +11,7 @@ int main(void)
 	void *p;
 
 	plan_tests(14);
+	failtest_init(0, NULL);
 
 	failpath = "mceopwrMCEOPWR";
 
