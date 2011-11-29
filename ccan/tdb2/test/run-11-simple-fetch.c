@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
 		}
 	}
 	ok1(tap_log_messages == 0);
-	return exit_status();
+	failtest_exit(exit_status());
 
 fail:
 	failtest_suppress = true;

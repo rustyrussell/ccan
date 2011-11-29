@@ -25,21 +25,6 @@ bool failmatch(const struct failtest_call *call,
 			    == '/')));
 }
 
-static const struct failtest_call *
-find_repeat(const struct tlist_calls *history,
-	    const struct failtest_call *call)
-{
-	const struct failtest_call *i;
-
-	tlist_for_each(history, i, list) {
-		if (i != call)
-			continue;
-		if (failmatch(i, call->file, call->line, call->type))
-			return i;
-	}
-	return NULL;
-}
-
 static bool is_nonblocking_lock(const struct failtest_call *call)
 {
 	return call->type == FAILTEST_FCNTL && call->u.fcntl.cmd == F_SETLK;
@@ -85,7 +70,7 @@ bool exit_check_log(struct tlist_calls *history)
 enum failtest_result
 block_repeat_failures(struct tlist_calls *history)
 {
-	const struct failtest_call *i, *last;
+	const struct failtest_call *last;
 
 	last = tlist_tail(history, struct failtest_call, list);
 
@@ -95,25 +80,12 @@ block_repeat_failures(struct tlist_calls *history)
 	if (failmatch(last, INITIAL_TDB_MALLOC)
 	    || failmatch(last, URANDOM_OPEN)
 	    || failmatch(last, URANDOM_READ)) {
-		if (find_repeat(history, last))
-			return FAIL_DONT_FAIL;
 		return FAIL_PROBE;
 	}
 
 	/* Unlock or non-blocking lock is fail-once. */
-	if (is_unlock(last)) {
-		/* Find a previous unlock at this point? */
-		i = find_repeat(history, last);
-		if (i && is_unlock(i))
-			return FAIL_DONT_FAIL;
+	if (is_unlock(last) || is_nonblocking_lock(last))
 		return FAIL_PROBE;
-	} else if (is_nonblocking_lock(last)) {
-		/* Find a previous non-blocking lock at this point? */
-		i = find_repeat(history, last);
-		if (i && is_nonblocking_lock(i))
-			return FAIL_DONT_FAIL;
-		return FAIL_PROBE;
-	}
 
 	return FAIL_OK;
 }
