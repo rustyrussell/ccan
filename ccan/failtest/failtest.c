@@ -24,6 +24,7 @@
 enum failtest_result (*failtest_hook)(struct tlist_calls *);
 
 static int tracefd = -1;
+static int warnfd;
 
 unsigned int failtest_timeout_ms = 20000;
 
@@ -148,6 +149,37 @@ static char *failpath_string(void)
 		ret[++len] = '\0';
 	}
 	return ret;
+}
+
+static void warn_via_fd(int e, const char *fmt, va_list ap)
+{
+	char *p = failpath_string();
+
+	vdprintf(warnfd, fmt, ap);
+	if (e != -1)
+		dprintf(warnfd, ": %s", strerror(e));
+	dprintf(warnfd, " [%s]\n", p);
+	free(p);
+}
+
+static void fwarn(const char *fmt, ...)
+{
+	va_list ap;
+	int e = errno;
+
+	va_start(ap, fmt);
+	warn_via_fd(e, fmt, ap);
+	va_end(ap);
+}
+
+
+static void fwarnx(const char *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	warn_via_fd(-1, fmt, ap);
+	va_end(ap);
 }
 
 static void tell_parent(enum info_type type)
@@ -1085,12 +1117,13 @@ void failtest_init(int argc, char *argv[])
 	unsigned int i;
 
 	orig_pid = getpid();
-		
+
+	warnfd = move_fd_to_high(dup(STDERR_FILENO));
 	for (i = 1; i < argc; i++) {
 		if (!strncmp(argv[i], "--failpath=", strlen("--failpath="))) {
 			failpath = argv[i] + strlen("--failpath=");
 		} else if (strcmp(argv[i], "--tracepath") == 0) {
-			tracefd = move_fd_to_high(STDERR_FILENO);
+			tracefd = warnfd;
 			failtest_timeout_ms = -1;
 		} else if (!strncmp(argv[i], "--debugpath=",
 				    strlen("--debugpath="))) {
