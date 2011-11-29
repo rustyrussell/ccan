@@ -488,7 +488,10 @@ static NORETURN void failtest_cleanup(bool forced_cleanup, int status)
 	}
 
 	free_everything();
-	tell_parent(SUCCESS);
+	if (status == 0)
+		tell_parent(SUCCESS);
+	else
+		tell_parent(FAILURE);
 	exit(status);
 }
 
