@@ -495,6 +495,32 @@ static NORETURN void failtest_cleanup(bool forced_cleanup, int status)
 	exit(status);
 }
 
+static bool following_path(void)
+{
+	if (!failpath)
+		return false;
+	/* + means continue after end, like normal. */
+	if (*failpath == '+') {
+		failpath = NULL;
+		return false;
+	}
+	return true;
+}
+
+static bool follow_path(struct failtest_call *call)
+{
+	if (*failpath == '\0') {
+		/* Continue, but don't inject errors. */
+		return call->fail = false;
+	}
+
+	if (tolower((unsigned char)*failpath) != info_to_arg[call->type])
+		errx(1, "Failpath expected '%s' got '%c'\n",
+		     failpath, info_to_arg[call->type]);
+	call->fail = cisupper(*(failpath++));
+	return call->fail;
+}
+
 static bool should_fail(struct failtest_call *call)
 {
 	int status;
@@ -508,22 +534,8 @@ static bool should_fail(struct failtest_call *call)
 	if (call == &unrecorded_call)
 		return false;
 
-	if (failpath) {
-		/* + means continue after end, like normal. */
-		if (*failpath == '+')
-			failpath = NULL;
-		else if (*failpath == '\0') {
-			/* Continue, but don't inject errors. */
-			return call->fail = false;
-		} else {
-			if (tolower((unsigned char)*failpath)
-			    != info_to_arg[call->type])
-				errx(1, "Failpath expected '%s' got '%c'\n",
-				     failpath, info_to_arg[call->type]);
-			call->fail = cisupper(*(failpath++));
-			return call->fail;
-		}
-	}
+	if (following_path())
+		return follow_path(call);
 
 	/* Attach debugger if they asked for it. */
 	if (debugpath) {
@@ -850,6 +862,8 @@ int failtest_open(const char *pathname,
 	p->u.open.ret = open(pathname, call.flags, call.mode);
 
 	if (p->u.open.ret == -1) {
+		if (following_path())
+			follow_path(p);
 		p->fail = false;
 		p->error = errno;
 	} else if (should_fail(p)) {
@@ -1090,10 +1104,11 @@ int failtest_close(int fd, const char *file, unsigned line)
 	p = add_history(FAILTEST_CLOSE, file, line, &call);
 	p->fail = false;
 
-	/* Consume close from failpath. */
-	if (failpath)
-		if (should_fail(p))
+	/* Consume close from failpath (shouldn't tell us to fail). */
+	if (following_path()) {
+		if (follow_path(p))
 			abort();
+	}
 
 	if (fd < 0)
 		return close(fd);
