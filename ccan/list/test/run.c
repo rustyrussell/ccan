@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
 	unsigned int i;
 	struct list_head list = LIST_HEAD_INIT(list);
 
-	plan_tests(49);
+	plan_tests(53);
 	/* Test LIST_HEAD, LIST_HEAD_INIT, list_empty and check_list */
 	ok1(list_empty(&static_list));
 	ok1(list_check(&static_list, NULL));
@@ -97,6 +97,25 @@ int main(int argc, char *argv[])
 			break;
 		case 2:
 			ok1(c == &c3);
+			break;
+		}
+		if (i > 2)
+			break;
+	}
+	ok1(i == 3);
+
+	/* Test list_for_each_rev. */
+	i = 0;
+	list_for_each_rev(&parent.children, c, list) {
+		switch (i++) {
+		case 0:
+			ok1(c == &c3);
+			break;
+		case 1:
+			ok1(c == &c2);
+			break;
+		case 2:
+			ok1(c == &c1);
 			break;
 		}
 		if (i > 2)

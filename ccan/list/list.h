@@ -316,6 +316,24 @@ static inline void list_del_from(struct list_head *h, struct list_node *n)
 	     i = container_of_var(i->member.next, i, member))
 
 /**
+ * list_for_each_rev - iterate through a list backwards.
+ * @h: the list_head
+ * @i: the structure containing the list_node
+ * @member: the list_node member of the structure
+ *
+ * This is a convenient wrapper to iterate @i over the entire list.  It's
+ * a for loop, so you can break and continue as normal.
+ *
+ * Example:
+ *	list_for_each_rev(&parent->children, child, list)
+ *		printf("Name: %s\n", child->name);
+ */
+#define list_for_each_rev(h, i, member)					\
+	for (i = container_of_var(list_debug(h)->n.prev, i, member);	\
+	     &i->member != &(h)->n;					\
+	     i = container_of_var(i->member.prev, i, member))
+
+/**
  * list_for_each_safe - iterate through a list, maybe during deletion
  * @h: the list_head
  * @i: the structure containing the list_node
