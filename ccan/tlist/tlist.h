@@ -222,6 +222,22 @@
 	list_for_each(tlist_raw((h), (i)), (i), member)
 
 /**
+ * tlist_for_each - iterate through a list backwards.
+ * @h: the tlist
+ * @i: an iterator of suitable type for this list.
+ * @member: the list_node member of @i
+ *
+ * This is a convenient wrapper to iterate @i over the entire list.  It's
+ * a for loop, so you can break and continue as normal.
+ *
+ * Example:
+ *	tlist_for_each_rev(&parent->children, child, list)
+ *		printf("Name: %s\n", child->name);
+ */
+#define tlist_for_each_rev(h, i, member)					\
+	list_for_each_rev(tlist_raw((h), (i)), (i), member)
+
+/**
  * tlist_for_each_safe - iterate through a list, maybe during deletion
  * @h: the tlist
  * @i: an iterator of suitable type for this list.

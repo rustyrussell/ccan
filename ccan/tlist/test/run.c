@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
 	unsigned int i;
 	struct tlist_children tlist = TLIST_INIT(tlist);
 
-	plan_tests(44);
+	plan_tests(48);
 	/* Test TLIST_INIT, and tlist_empty */
 	ok1(tlist_empty(&tlist));
 	ok1(tlist_check(&tlist, NULL));
@@ -90,6 +90,25 @@ int main(int argc, char *argv[])
 			break;
 		case 2:
 			ok1(c == &c3);
+			break;
+		}
+		if (i > 2)
+			break;
+	}
+	ok1(i == 3);
+
+	/* Test tlist_for_each_rev. */
+	i = 0;
+	tlist_for_each_rev(&parent.children, c, list) {
+		switch (i++) {
+		case 0:
+			ok1(c == &c3);
+			break;
+		case 1:
+			ok1(c == &c2);
+			break;
+		case 2:
+			ok1(c == &c1);
 			break;
 		}
 		if (i > 2)
