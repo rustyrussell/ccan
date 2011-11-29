@@ -95,6 +95,24 @@ static struct failtest_call *add_history_(enum failtest_call_type type,
 #define set_cleanup(call, clean, type)			\
 	(call)->cleanup = (void *)((void)sizeof(clean((type *)NULL),1), (clean))
 
+
+/* Dup the fd to a high value (out of the way I hope!), and close the old fd. */
+static int move_fd_to_high(int fd)
+{
+	int i;
+
+	for (i = FD_SETSIZE - 1; i >= 0; i--) {
+		if (fcntl(i, F_GETFL) == -1 && errno == EBADF) {
+			if (dup2(fd, i) == -1)
+				err(1, "Failed to dup fd %i to %i", fd, i);
+			close(fd);
+			return i;
+		}
+	}
+	/* Nothing?  Really?  Er... ok? */
+	return fd;
+}
+
 static bool read_write_info(int fd)
 {
 	struct write_call *w;
@@ -493,7 +511,7 @@ static bool should_fail(struct failtest_call *call)
 		dup2(output[1], STDERR_FILENO);
 		if (output[1] != STDOUT_FILENO && output[1] != STDERR_FILENO)
 			close(output[1]);
-		control_fd = control[1];
+		control_fd = move_fd_to_high(control[1]);
 		/* Valgrind spots the leak if we don't free these. */
 		free_files(files);
 		return true;
@@ -1072,7 +1090,7 @@ void failtest_init(int argc, char *argv[])
 		if (!strncmp(argv[i], "--failpath=", strlen("--failpath="))) {
 			failpath = argv[i] + strlen("--failpath=");
 		} else if (strcmp(argv[i], "--tracepath") == 0) {
-			tracefd = dup(STDERR_FILENO);
+			tracefd = move_fd_to_high(STDERR_FILENO);
 			failtest_timeout_ms = -1;
 		} else if (!strncmp(argv[i], "--debugpath=",
 				    strlen("--debugpath="))) {
