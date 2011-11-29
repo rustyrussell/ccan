@@ -54,8 +54,8 @@ int main(void)
 	ok1(call->u.realloc.ptr == realloc_call.ptr);
 	ok1(call->u.realloc.size == realloc_call.size);
 
-	open_call.ret = open("test/run_history.c", O_RDONLY);
-	open_call.pathname = "test/run_history.c";
+	open_call.ret = open("test/run-history.c", O_RDONLY);
+	open_call.pathname = "test/run-history.c";
 	open_call.flags = O_RDONLY;
 	open_call.mode = 0;
 	call = add_history(FAILTEST_OPEN, "run-history.c", 4, &open_call);
