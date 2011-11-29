@@ -83,6 +83,11 @@ block_repeat_failures(struct tlist_calls *history)
 		return FAIL_PROBE;
 	}
 
+	/* We handle mmap failing, by falling back to read/write, so
+	 * don't try all possible paths. */
+	if (last->type == FAILTEST_MMAP)
+		return FAIL_PROBE;
+
 	/* Unlock or non-blocking lock is fail-once. */
 	if (is_unlock(last) || is_nonblocking_lock(last))
 		return FAIL_PROBE;
