@@ -102,20 +102,24 @@ int main(void)
 	ok1(call->u.write.fd == write_call.fd);
 	ok1(call->u.write.count == write_call.count);
 
-	ok1(history_num == 7);
+	i = 0;
+	tlist_for_each(&history, call, list)
+		i++;
 
-	for (i = 0; i < history_num; i++)
-		history[i].fail = false;
+	ok1(i == 7);
+
+	tlist_for_each(&history, call, list)
+		call->fail = false;
 
 	path = failpath_string();
-	ok1(strcmp(path, "cmeoprw") == 0);
+	ok1(streq(path, "cmeoprw"));
 	free(path);
 
-	for (i = 0; i < history_num; i++)
-		history[i].fail = true;
+	tlist_for_each(&history, call, list)
+		call->fail = true;
 
 	path = failpath_string();
-	ok1(strcmp(path, "CMEOPRW") == 0);
+	ok1(streq(path, "CMEOPRW"));
 	free(path);
 
 	return exit_status();

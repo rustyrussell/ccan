@@ -19,8 +19,9 @@
 #include <ccan/read_write_all/read_write_all.h>
 #include <ccan/failtest/failtest_proto.h>
 #include <ccan/build_assert/build_assert.h>
+#include <ccan/str/str.h>
 
-enum failtest_result (*failtest_hook)(struct failtest_call *, unsigned);
+enum failtest_result (*failtest_hook)(struct tlist_calls *);
 
 static int tracefd = -1;
 
@@ -44,10 +45,9 @@ struct lock_info {
 	int type;
 };
 
-bool (*failtest_exit_check)(struct failtest_call *history, unsigned num);
+bool (*failtest_exit_check)(struct tlist_calls *history);
 
-static struct failtest_call *history = NULL;
-static unsigned int history_num = 0;
+static struct tlist_calls history = TLIST_INIT(history);
 static int control_fd = -1;
 static struct timeval start;
 static unsigned int probe_count = 0;
@@ -72,17 +72,20 @@ static struct failtest_call *add_history_(enum failtest_call_type type,
 					  const void *elem,
 					  size_t elem_size)
 {
+	struct failtest_call *call;
+
 	/* NULL file is how we suppress failure. */
 	if (!file)
 		return &unrecorded_call;
 
-	history = realloc(history, (history_num + 1) * sizeof(*history));
-	history[history_num].type = type;
-	history[history_num].file = file;
-	history[history_num].line = line;
-	history[history_num].cleanup = NULL;
-	memcpy(&history[history_num].u, elem, elem_size);
-	return &history[history_num++];
+	call = malloc(sizeof *call);
+	call->type = type;
+	call->file = file;
+	call->line = line;
+	call->cleanup = NULL;
+	memcpy(&call->u, elem, elem_size);
+	tlist_add_tail(&history, call, list);
+	return call;
 }
 
 #define add_history(type, file, line, elem) \
@@ -114,15 +117,18 @@ static bool read_write_info(int fd)
 
 static char *failpath_string(void)
 {
-	unsigned int i;
-	char *ret = malloc(history_num + 1);
+	struct failtest_call *i;
+	char *ret = strdup("");
+	unsigned len = 0;
 
-	for (i = 0; i < history_num; i++) {
-		ret[i] = info_to_arg[history[i].type];
-		if (history[i].fail)
-			ret[i] = toupper(ret[i]);
+	/* Inefficient, but who cares? */
+	tlist_for_each(&history, i, list) {
+		ret = realloc(ret, len + 2);
+		ret[len] = info_to_arg[i->type];
+		if (i->fail)
+			ret[len] = toupper(ret[len]);
+		ret[++len] = '\0';
 	}
-	ret[i] = '\0';
 	return ret;
 }
 
@@ -265,23 +271,23 @@ static struct saved_file *save_file(struct saved_file *next, int fd)
 static struct saved_file *save_files(void)
 {
 	struct saved_file *files = NULL;
-	int i;
+	struct failtest_call *i;
 
 	/* Figure out the set of live fds. */
-	for (i = history_num - 2; i >= 0; i--) {
-		if (history[i].type == FAILTEST_OPEN) {
-			int fd = history[i].u.open.ret;
+	tlist_for_each_rev(&history, i, list) {
+		if (i->type == FAILTEST_OPEN) {
+			int fd = i->u.open.ret;
 			/* Only do successful, writable fds. */
 			if (fd < 0)
 				continue;
 
 			/* If it was closed, cleanup == NULL. */
-			if (!history[i].cleanup)
+			if (!i->cleanup)
 				continue;
 
-			if ((history[i].u.open.flags & O_RDWR) == O_RDWR) {
+			if ((i->u.open.flags & O_RDWR) == O_RDWR) {
 				files = save_file(files, fd);
-			} else if ((history[i].u.open.flags & O_WRONLY)
+			} else if ((i->u.open.flags & O_WRONLY)
 				   == O_WRONLY) {
 				/* FIXME: Handle O_WRONLY.  Open with O_RDWR? */
 				abort();
@@ -320,41 +326,48 @@ static void free_files(struct saved_file *s)
 	}
 }
 
+static void free_call(struct failtest_call *call)
+{
+	/* We don't do this in cleanup: needed even for failed opens. */
+	if (call->type == FAILTEST_OPEN)
+		free((char *)call->u.open.pathname);
+	tlist_del_from(&history, call, list);
+	free(call);
+}
+
 /* Free up memory, so valgrind doesn't report leaks. */
 static void free_everything(void)
 {
-	unsigned int i;
+	struct failtest_call *i;
 
-	/* We don't do this in cleanup: needed even for failed opens. */
-	for (i = 0; i < history_num; i++) {
-		if (history[i].type == FAILTEST_OPEN)
-			free((char *)history[i].u.open.pathname);
-	}
-	free(history);
+	while ((i = tlist_top(&history, struct failtest_call, list)) != NULL)
+		free_call(i);
 }
 
 static NORETURN void failtest_cleanup(bool forced_cleanup, int status)
 {
-	int i;
+	struct failtest_call *i;
 
 	/* For children, we don't care if they "failed" the testing. */
 	if (control_fd != -1)
 		status = 0;
 
-	if (forced_cleanup)
-		history_num--;
+	if (forced_cleanup) {
+		/* We didn't actually do final operation: remove it. */
+		i = tlist_tail(&history, struct failtest_call, list);
+		free_call(i);
+	}
 
 	/* Cleanup everything, in reverse order. */
-	for (i = history_num - 1; i >= 0; i--) {
-		if (!history[i].cleanup)
+	tlist_for_each_rev(&history, i, list) {
+		if (!i->cleanup)
 			continue;
 		if (!forced_cleanup) {
 			printf("Leak at %s:%u: --failpath=%s\n",
-			       history[i].file, history[i].line,
-			       failpath_string());
+			       i->file, i->line, failpath_string());
 			status = 1;
 		}
-		history[i].cleanup(&history[i].u);
+		i->cleanup(&i->u);
 	}
 
 	free_everything();
@@ -390,23 +403,16 @@ static bool should_fail(struct failtest_call *call)
 			    != info_to_arg[call->type])
 				errx(1, "Failpath expected '%c' got '%c'\n",
 				     info_to_arg[call->type], *failpath);
-			call->fail = isupper((unsigned char)*(failpath++));
+			call->fail = cisupper(*(failpath++));
 			return call->fail;
 		}
 	}
 
 	/* Attach debugger if they asked for it. */
-	if (debugpath && history_num == strlen(debugpath)) {
-		unsigned int i;
+	if (debugpath) {
+		char *path = failpath_string();
 
-		for (i = 0; i < history_num; i++) {
-			unsigned char c = info_to_arg[history[i].type];
-			if (history[i].fail)
-				c = toupper(c);
-			if (c != debugpath[i])
-				break;
-		}
-		if (i == history_num) {
+		if (streq(path, debugpath)) {
 			char str[80];
 
 			/* Don't timeout. */
@@ -415,11 +421,15 @@ static bool should_fail(struct failtest_call *call)
 				getpid(), getpid());
 			if (system(str) == 0)
 				sleep(5);
+		} else if (!strstarts(path, debugpath)) {
+			fprintf(stderr, "--debugpath not followed: %s\n", path);
+			debugpath = NULL;
 		}
+		free(path);
 	}
 
 	if (failtest_hook) {
-		switch (failtest_hook(history, history_num)) {
+		switch (failtest_hook(&history)) {
 		case FAIL_OK:
 			break;
 		case FAIL_PROBE:
@@ -460,18 +470,22 @@ static bool should_fail(struct failtest_call *call)
 		if (tracefd != -1) {
 			struct timeval diff;
 			const char *p;
+			char *failpath;
+			struct failtest_call *c;
 
+			c = tlist_tail(&history, struct failtest_call, list);
 			diff = time_sub(time_now(), start);
-			p = failpath_string();
+			failpath = failpath_string();
 			trace("%u->%u (%u.%02u): %s (", getppid(), getpid(),
-			      (int)diff.tv_sec, (int)diff.tv_usec / 10000, p);
-			free((char *)p);
-			p = strrchr(history[history_num-1].file, '/');
+			      (int)diff.tv_sec, (int)diff.tv_usec / 10000,
+			      failpath);
+			free(failpath);
+			p = strrchr(c->file, '/');
 			if (p)
 				trace("%s", p+1);
 			else
-				trace("%s", history[history_num-1].file);
-			trace(":%u)\n", history[history_num-1].line);
+				trace("%s", c->file);
+			trace(":%u)\n", c->line);
 		}
 		close(control[0]);
 		close(output[0]);
@@ -619,28 +633,28 @@ static void cleanup_realloc(struct realloc_call *call)
 }
 
 /* Walk back and find out if we got this ptr from a previous routine. */
-static void fixup_ptr_history(void *ptr, unsigned int last)
+static void fixup_ptr_history(void *ptr)
 {
-	int i;
+	struct failtest_call *i;
 
 	/* Start at end of history, work back. */
-	for (i = last - 1; i >= 0; i--) {
-		switch (history[i].type) {
+	tlist_for_each_rev(&history, i, list) {
+		switch (i->type) {
 		case FAILTEST_REALLOC:
-			if (history[i].u.realloc.ret == ptr) {
-				history[i].cleanup = NULL;
+			if (i->u.realloc.ret == ptr) {
+				i->cleanup = NULL;
 				return;
 			}
 			break;
 		case FAILTEST_MALLOC:
-			if (history[i].u.malloc.ret == ptr) {
-				history[i].cleanup = NULL;
+			if (i->u.malloc.ret == ptr) {
+				i->cleanup = NULL;
 				return;
 			}
 			break;
 		case FAILTEST_CALLOC:
-			if (history[i].u.calloc.ret == ptr) {
-				history[i].cleanup = NULL;
+			if (i->u.calloc.ret == ptr) {
+				i->cleanup = NULL;
 				return;
 			}
 			break;
@@ -662,7 +676,9 @@ void *failtest_realloc(void *ptr, size_t size, const char *file, unsigned line)
 		p->u.realloc.ret = NULL;
 		p->error = ENOMEM;
 	} else {
-		fixup_ptr_history(ptr, history_num-1);
+		/* Don't catch this one in the history fixup... */
+		p->u.realloc.ret = NULL;
+		fixup_ptr_history(ptr);
 		p->u.realloc.ret = realloc(ptr, size);
 		set_cleanup(p, cleanup_realloc, struct realloc_call);
 	}
@@ -672,7 +688,7 @@ void *failtest_realloc(void *ptr, size_t size, const char *file, unsigned line)
 
 void failtest_free(void *ptr)
 {
-	fixup_ptr_history(ptr, history_num);
+	fixup_ptr_history(ptr);
 	free(ptr);
 }
 
@@ -910,7 +926,7 @@ add_lock(struct lock_info *locks, int fd, off_t start, off_t end, int type)
 /* We trap this so we can record it: we don't fail it. */
 int failtest_close(int fd, const char *file, unsigned line)
 {
-	int i;
+	struct failtest_call *i;
 	struct close_call call;
 	struct failtest_call *p;
 
@@ -927,30 +943,30 @@ int failtest_close(int fd, const char *file, unsigned line)
 		return close(fd);
 
 	/* Trace history to find source of fd. */
-	for (i = history_num-1; i >= 0; i--) {
-		switch (history[i].type) {
+	tlist_for_each_rev(&history, i, list) {
+		switch (i->type) {
 		case FAILTEST_PIPE:
 			/* From a pipe? */
-			if (history[i].u.pipe.fds[0] == fd) {
-				assert(!history[i].u.pipe.closed[0]);
-				history[i].u.pipe.closed[0] = true;
-				if (history[i].u.pipe.closed[1])
-					history[i].cleanup = NULL;
+			if (i->u.pipe.fds[0] == fd) {
+				assert(!i->u.pipe.closed[0]);
+				i->u.pipe.closed[0] = true;
+				if (i->u.pipe.closed[1])
+					i->cleanup = NULL;
 				goto out;
 			}
-			if (history[i].u.pipe.fds[1] == fd) {
-				assert(!history[i].u.pipe.closed[1]);
-				history[i].u.pipe.closed[1] = true;
-				if (history[i].u.pipe.closed[0])
-					history[i].cleanup = NULL;
+			if (i->u.pipe.fds[1] == fd) {
+				assert(!i->u.pipe.closed[1]);
+				i->u.pipe.closed[1] = true;
+				if (i->u.pipe.closed[0])
+					i->cleanup = NULL;
 				goto out;
 			}
 			break;
 		case FAILTEST_OPEN:
-			if (history[i].u.open.ret == fd) {
-				assert((void *)history[i].cleanup
+			if (i->u.open.ret == fd) {
+				assert((void *)i->cleanup
 				       == (void *)cleanup_open);
-				history[i].cleanup = NULL;
+				i->cleanup = NULL;
 				goto out;
 			}
 			break;
@@ -1074,7 +1090,7 @@ bool failtest_has_failed(void)
 void failtest_exit(int status)
 {
 	if (failtest_exit_check) {
-		if (!failtest_exit_check(history, history_num))
+		if (!failtest_exit_check(&history))
 			child_fail(NULL, 0, "failtest_exit_check failed\n");
 	}
 

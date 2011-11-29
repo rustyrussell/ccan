@@ -10,8 +10,7 @@
 #define SIZE 8
 
 /* We don't want to fork and fail; we're just testing lock recording. */
-static enum failtest_result dont_fail(struct failtest_call *history,
-				      unsigned num)
+static enum failtest_result dont_fail(struct tlist_calls *history)
 {
 	return FAIL_DONT_FAIL;
 }

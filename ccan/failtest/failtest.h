@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <fcntl.h>
 #include <ccan/compiler/compiler.h>
+#include <ccan/tlist/tlist.h>
 
 /**
  * failtest_init - initialize the failtest module
@@ -124,6 +125,8 @@ struct fcntl_call {
  *	failtest_hook, failtest_exit_check
  */
 struct failtest_call {
+	/* We're in the history list. */
+	struct list_node list;
 	enum failtest_call_type type;
 	/* Where we were called from. */
 	const char *file;
@@ -148,6 +151,9 @@ struct failtest_call {
 	} u;
 };
 
+/* This defines struct tlist_calls. */
+TLIST_TYPE(calls, struct failtest_call);
+
 enum failtest_result {
 	/* Yes try failing this call. */
 	FAIL_OK,
@@ -160,7 +166,6 @@ enum failtest_result {
 /**
  * failtest_hook - whether a certain call should fail or not.
  * @history: the ordered history of all failtest calls.
- * @num: the number of elements in @history (greater than 0)
  *
  * The default value of this hook is failtest_default_hook(), which returns
  * FAIL_OK (ie. yes, fail the call).
@@ -170,25 +175,24 @@ enum failtest_result {
  * call.
  *
  * Example:
- *	static enum failtest_result dont_fail_alloc(struct failtest_call *hist,
- *						    unsigned num)
+ *	static enum failtest_result dont_fail_alloc(struct tlist_calls *history)
  *	{
- *		if (hist[num-1].type == FAILTEST_MALLOC
- *			|| hist[num-1].type == FAILTEST_CALLOC
- *			|| hist[num-1].type == FAILTEST_REALLOC)
+ *		struct failtest_call *call;
+ *		call = tlist_tail(history, struct failtest_call, list);
+ *		if (call->type == FAILTEST_MALLOC
+ *			|| call->type == FAILTEST_CALLOC
+ *			|| call->type == FAILTEST_REALLOC)
  *			return FAIL_DONT_FAIL;
  *		return FAIL_OK;
  *	}
  *	...
  *		failtest_hook = dont_fail_alloc;
  */
-extern enum failtest_result
-(*failtest_hook)(struct failtest_call *history, unsigned num);
+extern enum failtest_result (*failtest_hook)(struct tlist_calls *history);
 
 /**
  * failtest_exit_check - hook for additional checks on a failed child.
  * @history: the ordered history of all failtest calls.
- * @num: the number of elements in @history (greater than 0)
  *
  * Your program might have additional checks to do on failure, such as
  * check that a file is not corrupted, or than an error message has been
@@ -197,16 +201,15 @@ extern enum failtest_result
  * If this returns false, the path to this failure will be printed and the
  * overall test will fail.
  */
-extern bool (*failtest_exit_check)(struct failtest_call *history,
-				   unsigned num);
+extern bool (*failtest_exit_check)(struct tlist_calls *history);
 
 /**
  * failtest_has_failed - determine if a failure has occurred.
  *
- * Sometimes you want to exit immediately if you've experienced a failure.
- * This is useful when you have four separate tests in your test suite,
- * and you don't want to do the next one if you've had a failure in a
- * previous one.
+ * Sometimes you want to exit immediately if you've experienced an
+ * injected failure.  This is useful when you have four separate tests
+ * in your test suite, and you don't want to do the next one if you've
+ * had a failure in a previous one.
  */
 extern bool failtest_has_failed(void);
 
