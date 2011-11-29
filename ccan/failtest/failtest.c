@@ -603,14 +603,14 @@ void *failtest_malloc(size_t size, const char *file, unsigned line)
 
 	p = add_history(FAILTEST_MALLOC, file, line, &call);
 	if (should_fail(p)) {
-		p->u.calloc.ret = NULL;
+		p->u.malloc.ret = NULL;
 		p->error = ENOMEM;
 	} else {
-		p->u.calloc.ret = malloc(size);
+		p->u.malloc.ret = malloc(size);
 		set_cleanup(p, cleanup_malloc, struct malloc_call);
 	}
 	errno = p->error;
-	return p->u.calloc.ret;
+	return p->u.malloc.ret;
 }
 
 static void cleanup_realloc(struct realloc_call *call)
