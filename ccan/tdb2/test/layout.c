@@ -6,10 +6,9 @@
 #include <err.h>
 #include "logging.h"
 
-struct tdb_layout *new_tdb_layout(const char *filename)
+struct tdb_layout *new_tdb_layout(void)
 {
 	struct tdb_layout *layout = malloc(sizeof(*layout));
-	layout->filename = filename;
 	layout->num_elems = 0;
 	layout->elem = NULL;
 	return layout;
@@ -314,24 +313,23 @@ struct tdb_context *tdb_layout_get(struct tdb_layout *layout,
 	}
 
 	tdb->tdb2.ftable_off = find_ftable(layout, 0)->base.off;
-
-	/* Get physical if they asked for it. */
-	if (layout->filename) {
-		int fd = open(layout->filename, O_WRONLY|O_TRUNC|O_CREAT,
-			      0600);
-		if (fd < 0)
-			err(1, "opening %s for writing", layout->filename);
-		if (write(fd, tdb->file->map_ptr, tdb->file->map_size)
-		    != tdb->file->map_size)
-			err(1, "writing %s", layout->filename);
-		close(fd);
-		tdb_close(tdb);
-		/* NOMMAP is for lockcheck. */
-		tdb = tdb_open(layout->filename, TDB_NOMMAP, O_RDWR, 0,
-			       &tap_log_attr);
-	}
-
 	return tdb;
+}
+
+void tdb_layout_write(struct tdb_layout *layout, union tdb_attribute *attr,
+		      const char *filename)
+{
+	struct tdb_context *tdb = tdb_layout_get(layout, attr);
+	int fd;
+
+	fd = open(filename, O_WRONLY|O_TRUNC|O_CREAT,  0600);
+	if (fd < 0)
+		err(1, "opening %s for writing", filename);
+	if (write(fd, tdb->file->map_ptr, tdb->file->map_size)
+	    != tdb->file->map_size)
+		err(1, "writing %s", filename);
+	close(fd);
+	tdb_close(tdb);
 }
 
 void tdb_layout_free(struct tdb_layout *layout)

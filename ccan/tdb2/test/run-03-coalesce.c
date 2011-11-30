@@ -32,11 +32,14 @@ int main(int argc, char *argv[])
 	key = tdb_mkdata("hello", 5);
 
 	/* No coalescing can be done due to EOF */
-	layout = new_tdb_layout("run-03-coalesce.tdb");
+	layout = new_tdb_layout();
 	tdb_layout_add_freetable(layout);
 	len = 1024;
 	tdb_layout_add_free(layout, len, 0);
-	tdb = tdb_layout_get(layout, &tap_log_attr);
+	tdb_layout_write(layout, &tap_log_attr, "run-03-coalesce.tdb");
+	/* NOMMAP is for lockcheck. */
+	tdb = tdb_open("run-03-coalesce.tdb", TDB_NOMMAP, O_RDWR, 0,
+		       &tap_log_attr);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == len);
 
@@ -55,11 +58,14 @@ int main(int argc, char *argv[])
 	tdb_layout_free(layout);
 
 	/* No coalescing can be done due to used record */
-	layout = new_tdb_layout("run-03-coalesce.tdb");
+	layout = new_tdb_layout();
 	tdb_layout_add_freetable(layout);
 	tdb_layout_add_free(layout, 1024, 0);
 	tdb_layout_add_used(layout, key, data, 6);
-	tdb = tdb_layout_get(layout, &tap_log_attr);
+	tdb_layout_write(layout, &tap_log_attr, "run-03-coalesce.tdb");
+	/* NOMMAP is for lockcheck. */
+	tdb = tdb_open("run-03-coalesce.tdb", TDB_NOMMAP, O_RDWR, 0,
+		       &tap_log_attr);
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == 1024);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 
@@ -78,11 +84,14 @@ int main(int argc, char *argv[])
 	tdb_layout_free(layout);
 
 	/* Coalescing can be done due to two free records, then EOF */
-	layout = new_tdb_layout("run-03-coalesce.tdb");
+	layout = new_tdb_layout();
 	tdb_layout_add_freetable(layout);
 	tdb_layout_add_free(layout, 1024, 0);
 	tdb_layout_add_free(layout, 2048, 0);
-	tdb = tdb_layout_get(layout, &tap_log_attr);
+	tdb_layout_write(layout, &tap_log_attr, "run-03-coalesce.tdb");
+	/* NOMMAP is for lockcheck. */
+	tdb = tdb_open("run-03-coalesce.tdb", TDB_NOMMAP, O_RDWR, 0,
+		       &tap_log_attr);
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == 1024);
 	ok1(free_record_length(tdb, layout->elem[2].base.off) == 2048);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
@@ -104,12 +113,15 @@ int main(int argc, char *argv[])
 	tdb_layout_free(layout);
 
 	/* Coalescing can be done due to two free records, then data */
-	layout = new_tdb_layout("run-03-coalesce.tdb");
+	layout = new_tdb_layout();
 	tdb_layout_add_freetable(layout);
 	tdb_layout_add_free(layout, 1024, 0);
 	tdb_layout_add_free(layout, 512, 0);
 	tdb_layout_add_used(layout, key, data, 6);
-	tdb = tdb_layout_get(layout, &tap_log_attr);
+	tdb_layout_write(layout, &tap_log_attr, "run-03-coalesce.tdb");
+	/* NOMMAP is for lockcheck. */
+	tdb = tdb_open("run-03-coalesce.tdb", TDB_NOMMAP, O_RDWR, 0,
+		       &tap_log_attr);
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == 1024);
 	ok1(free_record_length(tdb, layout->elem[2].base.off) == 512);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
@@ -130,12 +142,15 @@ int main(int argc, char *argv[])
 	tdb_layout_free(layout);
 
 	/* Coalescing can be done due to three free records, then EOF */
-	layout = new_tdb_layout("run-03-coalesce.tdb");
+	layout = new_tdb_layout();
 	tdb_layout_add_freetable(layout);
 	tdb_layout_add_free(layout, 1024, 0);
 	tdb_layout_add_free(layout, 512, 0);
 	tdb_layout_add_free(layout, 256, 0);
-	tdb = tdb_layout_get(layout, &tap_log_attr);
+	tdb_layout_write(layout, &tap_log_attr, "run-03-coalesce.tdb");
+	/* NOMMAP is for lockcheck. */
+	tdb = tdb_open("run-03-coalesce.tdb", TDB_NOMMAP, O_RDWR, 0,
+		       &tap_log_attr);
 	ok1(free_record_length(tdb, layout->elem[1].base.off) == 1024);
 	ok1(free_record_length(tdb, layout->elem[2].base.off) == 512);
 	ok1(free_record_length(tdb, layout->elem[3].base.off) == 256);

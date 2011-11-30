@@ -2,7 +2,7 @@
 #define TDB2_TEST_LAYOUT_H
 #include <ccan/tdb2/private.h>
 
-struct tdb_layout *new_tdb_layout(const char *filename);
+struct tdb_layout *new_tdb_layout(void);
 void tdb_layout_add_freetable(struct tdb_layout *layout);
 void tdb_layout_add_free(struct tdb_layout *layout, tdb_len_t len,
 			 unsigned ftable);
@@ -17,6 +17,9 @@ void tdb_layout_add_hashtable(struct tdb_layout *layout,
 #endif
 struct tdb_context *tdb_layout_get(struct tdb_layout *layout,
 				   union tdb_attribute *attr);
+void tdb_layout_write(struct tdb_layout *layout, union tdb_attribute *attr,
+		      const char *filename);
+
 void tdb_layout_free(struct tdb_layout *layout);
 
 enum layout_type {
@@ -62,7 +65,6 @@ union tdb_layout_elem {
 };
 
 struct tdb_layout {
-	const char *filename;
 	unsigned int num_elems;
 	union tdb_layout_elem *elem;
 };

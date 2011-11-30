@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
 	data = tdb_mkdata("world", 5);
 
 	/* Create a TDB with three free tables. */
-	layout = new_tdb_layout(NULL);
+	layout = new_tdb_layout();
 	tdb_layout_add_freetable(layout);
 	tdb_layout_add_freetable(layout);
 	tdb_layout_add_freetable(layout);
