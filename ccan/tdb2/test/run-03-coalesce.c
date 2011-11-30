@@ -36,7 +36,7 @@ int main(int argc, char *argv[])
 	tdb_layout_add_freetable(layout);
 	len = 1024;
 	tdb_layout_add_free(layout, len, 0);
-	tdb_layout_write(layout, &tap_log_attr, "run-03-coalesce.tdb");
+	tdb_layout_write(layout, free, &tap_log_attr, "run-03-coalesce.tdb");
 	/* NOMMAP is for lockcheck. */
 	tdb = tdb_open("run-03-coalesce.tdb", TDB_NOMMAP, O_RDWR, 0,
 		       &tap_log_attr);
@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
 	tdb_layout_add_freetable(layout);
 	tdb_layout_add_free(layout, 1024, 0);
 	tdb_layout_add_used(layout, key, data, 6);
-	tdb_layout_write(layout, &tap_log_attr, "run-03-coalesce.tdb");
+	tdb_layout_write(layout, free, &tap_log_attr, "run-03-coalesce.tdb");
 	/* NOMMAP is for lockcheck. */
 	tdb = tdb_open("run-03-coalesce.tdb", TDB_NOMMAP, O_RDWR, 0,
 		       &tap_log_attr);
@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
 	tdb_layout_add_freetable(layout);
 	tdb_layout_add_free(layout, 1024, 0);
 	tdb_layout_add_free(layout, 2048, 0);
-	tdb_layout_write(layout, &tap_log_attr, "run-03-coalesce.tdb");
+	tdb_layout_write(layout, free, &tap_log_attr, "run-03-coalesce.tdb");
 	/* NOMMAP is for lockcheck. */
 	tdb = tdb_open("run-03-coalesce.tdb", TDB_NOMMAP, O_RDWR, 0,
 		       &tap_log_attr);
@@ -118,7 +118,7 @@ int main(int argc, char *argv[])
 	tdb_layout_add_free(layout, 1024, 0);
 	tdb_layout_add_free(layout, 512, 0);
 	tdb_layout_add_used(layout, key, data, 6);
-	tdb_layout_write(layout, &tap_log_attr, "run-03-coalesce.tdb");
+	tdb_layout_write(layout, free, &tap_log_attr, "run-03-coalesce.tdb");
 	/* NOMMAP is for lockcheck. */
 	tdb = tdb_open("run-03-coalesce.tdb", TDB_NOMMAP, O_RDWR, 0,
 		       &tap_log_attr);
@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
 	tdb_layout_add_free(layout, 1024, 0);
 	tdb_layout_add_free(layout, 512, 0);
 	tdb_layout_add_free(layout, 256, 0);
-	tdb_layout_write(layout, &tap_log_attr, "run-03-coalesce.tdb");
+	tdb_layout_write(layout, free, &tap_log_attr, "run-03-coalesce.tdb");
 	/* NOMMAP is for lockcheck. */
 	tdb = tdb_open("run-03-coalesce.tdb", TDB_NOMMAP, O_RDWR, 0,
 		       &tap_log_attr);

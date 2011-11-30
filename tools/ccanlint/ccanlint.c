@@ -331,6 +331,7 @@ static char *keep_test(const char *testname, void *unused)
 {
 	struct ccanlint *i;
 
+	init_tests();
 	if (streq(testname, "all")) {
 		struct list_head *list;
 		foreach_ptr(list, &compulsory_tests, &normal_tests) {

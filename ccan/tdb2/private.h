@@ -60,10 +60,17 @@ typedef uint64_t tdb_off_t;
 #define TDB_HTABLE_MAGIC ((uint64_t)0x1888)
 #define TDB_CHAIN_MAGIC ((uint64_t)0x1777)
 #define TDB_FTABLE_MAGIC ((uint64_t)0x1666)
+#define TDB_CAP_MAGIC ((uint64_t)0x1555)
 #define TDB_FREE_MAGIC ((uint64_t)0xFE)
 #define TDB_HASH_MAGIC (0xA1ABE11A01092008ULL)
 #define TDB_RECOVERY_MAGIC (0xf53bc0e7ad124589ULL)
 #define TDB_RECOVERY_INVALID_MAGIC (0x0ULL)
+
+/* Capability bits. */
+#define TDB_CAP_TYPE_MASK	0x1FFFFFFFFFFFFFFFULL
+#define TDB_CAP_NOCHECK		0x8000000000000000ULL
+#define TDB_CAP_NOWRITE		0x4000000000000000ULL
+#define TDB_CAP_NOOPEN		0x2000000000000000ULL
 
 #define TDB_OFF_IS_ERR(off) unlikely(off >= (tdb_off_t)(long)TDB_ERR_LAST)
 #define TDB_OFF_TO_ERR(off) ((enum TDB_ERROR)(long)(off))
@@ -230,7 +237,8 @@ struct tdb_header {
 
 	uint64_t seqnum; /* Sequence number for TDB_SEQNUM */
 
-	tdb_off_t reserved[23];
+	tdb_off_t capabilities; /* Optional linked list of capabilities. */
+	tdb_off_t reserved[22];
 
 	/* Top level hash table. */
 	tdb_off_t hashtable[1ULL << TDB_TOPLEVEL_HASH_BITS];
@@ -240,6 +248,13 @@ struct tdb_freetable {
 	struct tdb_used_record hdr;
 	tdb_off_t next;
 	tdb_off_t buckets[TDB_FREE_BUCKETS];
+};
+
+struct tdb_capability {
+	struct tdb_used_record hdr;
+	tdb_off_t type;
+	tdb_off_t next;
+	/* ... */
 };
 
 /* Information about a particular (locked) hash entry. */
@@ -377,6 +392,8 @@ enum TDB_ERROR delete_from_hash(struct tdb_context *tdb, struct hash_info *h);
 
 /* For tdb_check */
 bool is_subhash(tdb_off_t val);
+enum TDB_ERROR unknown_capability(struct tdb_context *tdb, const char *caller,
+				  tdb_off_t type);
 
 /* free.c: */
 enum TDB_ERROR tdb_ftable_init(struct tdb_context *tdb);
@@ -395,7 +412,7 @@ enum TDB_ERROR add_free_record(struct tdb_context *tdb,
 			       enum tdb_lock_flags waitflag,
 			       bool coalesce_ok);
 
-/* Set up header for a used/ftable/htable/chain record. */
+/* Set up header for a used/ftable/htable/chain/capability record. */
 enum TDB_ERROR set_header(struct tdb_context *tdb,
 			  struct tdb_used_record *rec,
 			  unsigned magic, uint64_t keylen, uint64_t datalen,

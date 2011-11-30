@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
 	key.dsize--;
 	tdb_layout_add_used(layout, key, data, 8);
 	tdb_layout_add_free(layout, 40, 0);
-	tdb = tdb_layout_get(layout, &seed);
+	tdb = tdb_layout_get(layout, free, &seed);
 	ok1(tdb_check(tdb, NULL, NULL) == 0);
 
 	off = get_free(tdb, 0, 80 - sizeof(struct tdb_used_record), 0,

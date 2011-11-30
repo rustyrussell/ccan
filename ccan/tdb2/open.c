@@ -135,6 +135,7 @@ static enum TDB_ERROR tdb_new_database(struct tdb_context *tdb,
 	newdb.hdr.recovery = 0;
 	newdb.hdr.features_used = newdb.hdr.features_offered = TDB_FEATURE_MASK;
 	newdb.hdr.seqnum = 0;
+	newdb.hdr.capabilities = 0;
 	memset(newdb.hdr.reserved, 0, sizeof(newdb.hdr.reserved));
 	/* Initial hashes are empty. */
 	memset(newdb.hdr.hashtable, 0, sizeof(newdb.hdr.hashtable));
@@ -373,6 +374,54 @@ static bool is_tdb1(struct tdb1_header *hdr, const void *buf, ssize_t rlen)
 
 	return hdr->version == TDB1_VERSION
 		|| hdr->version == TDB1_BYTEREV(TDB1_VERSION);
+}
+
+/* The top three bits of the capability tell us whether it matters. */
+enum TDB_ERROR unknown_capability(struct tdb_context *tdb, const char *caller,
+				  tdb_off_t type)
+{
+	if (type & TDB_CAP_NOOPEN) {
+		return tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+				  "%s: file has unknown capability %llu",
+				  caller, type & TDB_CAP_NOOPEN);
+	}
+
+	if ((type & TDB_CAP_NOWRITE) && !(tdb->flags & TDB_RDONLY)) {
+		return tdb_logerr(tdb, TDB_ERR_RDONLY, TDB_LOG_ERROR,
+				  "%s: file has unknown capability %llu"
+				  " (cannot write to it)",
+				  caller, type & TDB_CAP_NOOPEN);
+	}
+
+	if (type & TDB_CAP_NOCHECK) {
+		tdb->flags |= TDB_CANT_CHECK;
+	}
+	return TDB_SUCCESS;
+}
+
+static enum TDB_ERROR capabilities_ok(struct tdb_context *tdb,
+				      tdb_off_t capabilities)
+{
+	tdb_off_t off, next;
+	enum TDB_ERROR ecode = TDB_SUCCESS;
+	const struct tdb_capability *cap;
+
+	/* Check capability list. */
+	for (off = capabilities; off && ecode == TDB_SUCCESS; off = next) {
+		cap = tdb_access_read(tdb, off, sizeof(*cap), true);
+		if (TDB_PTR_IS_ERR(cap)) {
+			return TDB_PTR_ERR(cap);
+		}
+
+		switch (cap->type & TDB_CAP_TYPE_MASK) {
+		/* We don't understand any capabilities (yet). */
+		default:
+			ecode = unknown_capability(tdb, "tdb_open", cap->type);
+		}
+		next = cap->next;
+		tdb_access_release(tdb, cap);
+	}
+	return ecode;
 }
 
 struct tdb_context *tdb_open(const char *name, int tdb_flags,
@@ -664,6 +713,11 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 				   "tdb_open:"
 				   " %s uses a different hash function",
 				   name);
+		goto fail;
+	}
+
+	ecode = capabilities_ok(tdb, hdr.capabilities);
+	if (ecode != TDB_SUCCESS) {
 		goto fail;
 	}
 
