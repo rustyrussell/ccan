@@ -28,6 +28,9 @@
  *
  * License: GPL
  * Author: Daniel Burke <dan.p.burke@gmail.com>
+ * Ccanlint:
+ *	// Please add a comment about license in each source file
+ *	license_comment FAIL
  */
 int main(int argc, char *argv[])
 {
