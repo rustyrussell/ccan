@@ -19,6 +19,34 @@
 #include <assert.h>
 #include <ccan/tally/tally.h>
 
+#define SUMMARY_FORMAT \
+	"Size of file/data: %zu/%zu\n" \
+	"Number of records: %zu\n" \
+	"Smallest/average/largest keys: %zu/%zu/%zu\n%s" \
+	"Smallest/average/largest data: %zu/%zu/%zu\n%s" \
+	"Smallest/average/largest padding: %zu/%zu/%zu\n%s" \
+	"Number of free records: %zu\n" \
+	"Smallest/average/largest free records: %zu/%zu/%zu\n%s" \
+	"Number of uncoalesced records: %zu\n" \
+	"Smallest/average/largest uncoalesced runs: %zu/%zu/%zu\n%s" \
+	"Toplevel hash used: %u of %u\n" \
+	"Number of chains: %zu\n" \
+	"Number of subhashes: %zu\n" \
+	"Smallest/average/largest subhash entries: %zu/%zu/%zu\n%s" \
+	"Percentage keys/data/padding/free/rechdrs/freehdrs/hashes: %.0f/%.0f/%.0f/%.0f/%.0f/%.0f/%.0f\n"
+
+#define BUCKET_SUMMARY_FORMAT_A					\
+	"Free bucket %zu: total entries %zu.\n"			\
+	"Smallest/average/largest length: %zu/%zu/%zu\n%s"
+#define BUCKET_SUMMARY_FORMAT_B					\
+	"Free bucket %zu-%zu: total entries %zu.\n"		\
+	"Smallest/average/largest length: %zu/%zu/%zu\n%s"
+#define CAPABILITY_FORMAT					\
+	"Capability %llu%s\n"
+
+#define HISTO_WIDTH 70
+#define HISTO_HEIGHT 20
+
 static tdb_off_t count_hash(struct tdb_context *tdb,
 			    tdb_off_t hash_off, unsigned bits)
 {
@@ -125,37 +153,70 @@ static enum TDB_ERROR summarize(struct tdb_context *tdb,
 	return TDB_SUCCESS;
 }
 
-#define SUMMARY_FORMAT \
-	"Size of file/data: %zu/%zu\n" \
-	"Number of records: %zu\n" \
-	"Smallest/average/largest keys: %zu/%zu/%zu\n%s" \
-	"Smallest/average/largest data: %zu/%zu/%zu\n%s" \
-	"Smallest/average/largest padding: %zu/%zu/%zu\n%s" \
-	"Number of free records: %zu\n" \
-	"Smallest/average/largest free records: %zu/%zu/%zu\n%s" \
-	"Number of uncoalesced records: %zu\n" \
-	"Smallest/average/largest uncoalesced runs: %zu/%zu/%zu\n%s" \
-	"Toplevel hash used: %u of %u\n" \
-	"Number of chains: %zu\n" \
-	"Number of subhashes: %zu\n" \
-	"Smallest/average/largest subhash entries: %zu/%zu/%zu\n%s" \
-	"Percentage keys/data/padding/free/rechdrs/freehdrs/hashes: %.0f/%.0f/%.0f/%.0f/%.0f/%.0f/%.0f\n"
+static size_t num_capabilities(struct tdb_context *tdb)
+{
+	tdb_off_t off, next;
+	const struct tdb_capability *cap;
+	size_t count = 0;
 
-#define BUCKET_SUMMARY_FORMAT_A					\
-	"Free bucket %zu: total entries %zu.\n"			\
-	"Smallest/average/largest length: %zu/%zu/%zu\n%s"
-#define BUCKET_SUMMARY_FORMAT_B					\
-	"Free bucket %zu-%zu: total entries %zu.\n"		\
-	"Smallest/average/largest length: %zu/%zu/%zu\n%s"
+	off = tdb_read_off(tdb, offsetof(struct tdb_header, capabilities));
+	if (TDB_OFF_IS_ERR(off))
+		return count;
 
-#define HISTO_WIDTH 70
-#define HISTO_HEIGHT 20
+	/* Count capability list. */
+	for (; off; off = next) {
+		cap = tdb_access_read(tdb, off, sizeof(*cap), true);
+		if (TDB_PTR_IS_ERR(cap)) {
+			break;
+		}
+		count++;
+		next = cap->next;
+		tdb_access_release(tdb, cap);
+	}
+	return count;
+}
+
+static void add_capabilities(struct tdb_context *tdb, size_t num, char *summary)
+{
+	tdb_off_t off, next;
+	const struct tdb_capability *cap;
+	size_t count = 0;
+
+	/* Append to summary. */
+	summary += strlen(summary);
+
+	off = tdb_read_off(tdb, offsetof(struct tdb_header, capabilities));
+	if (TDB_OFF_IS_ERR(off))
+		return;
+
+	/* Walk capability list. */
+	for (; off; off = next) {
+		cap = tdb_access_read(tdb, off, sizeof(*cap), true);
+		if (TDB_PTR_IS_ERR(cap)) {
+			break;
+		}
+		count++;
+		sprintf(summary, CAPABILITY_FORMAT,
+			cap->type & TDB_CAP_TYPE_MASK,
+			/* Noopen?  How did we get here? */
+			(cap->type & TDB_CAP_NOOPEN) ? " (unopenable)"
+			: ((cap->type & TDB_CAP_NOWRITE)
+			   && (cap->type & TDB_CAP_NOCHECK)) ? " (uncheckable,read-only)"
+			: (cap->type & TDB_CAP_NOWRITE) ? " (read-only)"
+			: (cap->type & TDB_CAP_NOCHECK) ? " (uncheckable)"
+			: "");
+		summary += strlen(summary);
+		next = cap->next;
+		tdb_access_release(tdb, cap);
+	}
+}
 
 enum TDB_ERROR tdb_summary(struct tdb_context *tdb,
 			   enum tdb_summary_flags flags,
 			   char **summary)
 {
 	tdb_len_t len;
+	size_t num_caps;
 	struct tally *ftables, *hashes, *freet, *keys, *data, *extra, *uncoal,
 		*chains;
 	char *hashesg, *freeg, *keysg, *datag, *extrag, *uncoalg;
@@ -214,6 +275,8 @@ enum TDB_ERROR tdb_summary(struct tdb_context *tdb,
 		uncoalg = tally_histogram(uncoal, HISTO_WIDTH, HISTO_HEIGHT);
 	}
 
+	num_caps = num_capabilities(tdb);
+
 	/* 20 is max length of a %llu. */
 	len = strlen(SUMMARY_FORMAT) + 33*20 + 1
 		+ (hashesg ? strlen(hashesg) : 0)
@@ -221,7 +284,8 @@ enum TDB_ERROR tdb_summary(struct tdb_context *tdb,
 		+ (keysg ? strlen(keysg) : 0)
 		+ (datag ? strlen(datag) : 0)
 		+ (extrag ? strlen(extrag) : 0)
-		+ (uncoalg ? strlen(uncoalg) : 0);
+		+ (uncoalg ? strlen(uncoalg) : 0)
+		+ num_caps * (strlen(CAPABILITY_FORMAT) + 20*4);
 
 	*summary = malloc(len);
 	if (!*summary) {
@@ -267,6 +331,8 @@ enum TDB_ERROR tdb_summary(struct tdb_context *tdb,
 		 + (sizeof(tdb_off_t) << TDB_TOPLEVEL_HASH_BITS)
 		 + sizeof(struct tdb_chain) * tally_num(chains))
 		* 100.0 / tdb->file->map_size);
+
+	add_capabilities(tdb, num_caps, *summary);
 
 unlock:
 	free(hashesg);

@@ -79,11 +79,12 @@ static void create_tdb(const char *name,
 int main(int argc, char *argv[])
 {
 	struct tdb_context *tdb;
+	char *summary;
 
 	failtest_init(argc, argv);
 	failtest_hook = block_repeat_failures;
 	failtest_exit_check = exit_check_log;
-	plan_tests(35);
+	plan_tests(60);
 
 	failtest_suppress = true;
 	/* Capability says you can ignore it? */
@@ -114,6 +115,9 @@ int main(int argc, char *argv[])
 	ok1(tap_log_messages == 0);
 	ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 	ok1(tap_log_messages == 0);
+	ok1(tdb_summary(tdb, 0, &summary) == TDB_SUCCESS);
+	ok1(strstr(summary, "Capability 1\n"));
+	free(summary);
 	tdb_close(tdb);
 
 	/* Capability says you can't check. */
@@ -133,6 +137,10 @@ int main(int argc, char *argv[])
 	/* We expect a warning! */
 	ok1(tap_log_messages == 1);
 	ok1(strstr(log_last, "capabilit"));
+	ok1(tdb_summary(tdb, 0, &summary) == TDB_SUCCESS);
+	ok1(strstr(summary, "Capability 1\n"));
+	ok1(strstr(summary, "Capability 2 (uncheckable)\n"));
+	free(summary);
 	tdb_close(tdb);
 
 	/* Capability says you can't write. */
@@ -162,6 +170,10 @@ int main(int argc, char *argv[])
 	ok1(tap_log_messages == 2);
 	ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
 	ok1(tap_log_messages == 2);
+	ok1(tdb_summary(tdb, 0, &summary) == TDB_SUCCESS);
+	ok1(strstr(summary, "Capability 1\n"));
+	ok1(strstr(summary, "Capability 2 (read-only)\n"));
+	free(summary);
 	tdb_close(tdb);
 
 	/* Capability says you can't open. */
@@ -211,6 +223,48 @@ int main(int argc, char *argv[])
 	/* We expect a warning! */
 	ok1(tap_log_messages == 5);
 	ok1(strstr(log_last, "unknown"));
+	ok1(tdb_summary(tdb, 0, &summary) == TDB_SUCCESS);
+	ok1(strstr(summary, "Capability 1\n"));
+	ok1(strstr(summary, "Capability 2 (uncheckable)\n"));
+	ok1(strstr(summary, "Capability 3 (read-only)\n"));
+	free(summary);
+	tdb_close(tdb);
+
+	/* Two capability flags in one. */
+	create_tdb("run-capabilities.tdb",
+		   1, false, false, false,
+		   2, true, true, false,
+		   0);
+
+	failtest_suppress = false;
+	tdb = tdb_open("run-capabilities.tdb", TDB_DEFAULT, O_RDWR, 0,
+		       &tap_log_attr);
+	failtest_suppress = true;
+	/* We expect a message. */
+	ok1(!tdb);
+	if (!ok1(tap_log_messages == 6))
+		goto out;
+	if (!ok1(strstr(log_last, "unknown")))
+		goto out;
+	ok1(strstr(log_last, "write"));
+
+	/* We can open it read-only though! */
+	failtest_suppress = false;
+	tdb = tdb_open("run-capabilities.tdb", TDB_DEFAULT, O_RDONLY, 0,
+		       &tap_log_attr);
+	failtest_suppress = true;
+	if (!ok1(tdb))
+		goto out;
+	ok1(tap_log_messages == 6);
+	ok1(tdb_get_flags(tdb) & TDB_CANT_CHECK);
+	ok1(tdb_check(tdb, NULL, NULL) == TDB_SUCCESS);
+	/* We expect a warning! */
+	ok1(tap_log_messages == 7);
+	ok1(strstr(log_last, "unknown"));
+	ok1(tdb_summary(tdb, 0, &summary) == TDB_SUCCESS);
+	ok1(strstr(summary, "Capability 1\n"));
+	ok1(strstr(summary, "Capability 2 (uncheckable,read-only)\n"));
+	free(summary);
 	tdb_close(tdb);
 
 out:
