@@ -782,6 +782,12 @@ enum TDB_ERROR tdb_check_(struct tdb_context *tdb,
 	uint64_t features;
 	enum TDB_ERROR ecode;
 
+	if (tdb->flags & TDB_CANT_CHECK) {
+		return tdb_logerr(tdb, TDB_SUCCESS, TDB_LOG_WARNING,
+				  "tdb_check: database has unknown features,"
+				  " cannot check.");
+	}
+
 	if (tdb->flags & TDB_VERSION1) {
 		if (tdb1_check(tdb, check, data) == -1)
 			return tdb->last_error;

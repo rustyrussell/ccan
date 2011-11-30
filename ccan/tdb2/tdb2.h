@@ -87,6 +87,7 @@ struct tdb_context *tdb_open(const char *name, int tdb_flags,
 #define TDB_ALLOW_NESTING   256 /* fake nested transactions */
 #define TDB_RDONLY   512 /* implied by O_RDONLY */
 #define TDB_VERSION1  1024 /* create/open an old style TDB */
+#define TDB_CANT_CHECK  2048 /* has a feature which we don't understand */
 
 /**
  * tdb1_incompatible_hash - better (Jenkins) hash for tdb1
@@ -537,6 +538,11 @@ enum TDB_ERROR tdb_repack(struct tdb_context *tdb);
  * a check() function on each record so you can do your own data consistency
  * checks as well.  If check() returns an error, that is returned from
  * tdb_check().
+ *
+ * Note that the TDB uses a feature which we don't understand which
+ * indicates we can't run tdb_check(), this will log a warning to that
+ * effect and return TDB_SUCCESS.  You can detect this condition by
+ * looking for TDB_CANT_CHECK in tdb_get_flags().
  *
  * Returns TDB_SUCCESS or an error.
  */
