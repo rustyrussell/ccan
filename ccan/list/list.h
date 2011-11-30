@@ -279,8 +279,15 @@ static inline void list_del_from(struct list_head *h, struct list_node *n)
  *	struct child *first;
  *	first = list_top(&parent->children, struct child, list);
  */
-#define list_top(h, type, member) \
-	(list_empty(h) ? NULL : list_entry((h)->n.next, type, member))
+#define list_top(h, type, member)					\
+	((type *)list_top_((h), container_off((h)->n.next, type, member)))
+
+static inline const void *list_top_(const struct list_head *h, size_t off)
+{
+	if (list_empty(h))
+		return NULL;
+	return (const char *)h->n.next - off;
+}
 
 /**
  * list_tail - get the last entry in a list
@@ -295,11 +302,18 @@ static inline void list_del_from(struct list_head *h, struct list_node *n)
  *	last = list_tail(&parent->children, struct child, list);
  */
 #define list_tail(h, type, member) \
-	(list_empty(h) ? NULL : list_entry((h)->n.prev, type, member))
+	((type *)list_tail_((h), container_off((h)->n.next, type, member)))
+
+static inline const void *list_tail_(const struct list_head *h, size_t off)
+{
+	if (list_empty(h))
+		return NULL;
+	return (const char *)h->n.prev - off;
+}
 
 /**
  * list_for_each - iterate through a list.
- * @h: the list_head
+ * @h: the list_head (warning: evaluated multiple times!)
  * @i: the structure containing the list_node
  * @member: the list_node member of the structure
  *
