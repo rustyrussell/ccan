@@ -27,9 +27,8 @@
 
 enum failtest_result (*failtest_hook)(struct tlist_calls *);
 
-static int tracefd = -1;
+static FILE *tracef = NULL, *warnf;
 static int traceindent = 0;
-static int warnfd;
 
 unsigned int failtest_timeout_ms = 20000;
 
@@ -245,14 +244,14 @@ static char *failpath_string(void)
 	return ret;
 }
 
-static void warn_via_fd(int e, const char *fmt, va_list ap)
+static void do_warn(int e, const char *fmt, va_list ap)
 {
 	char *p = failpath_string();
 
-	vdprintf(warnfd, fmt, ap);
+	vfprintf(warnf, fmt, ap);
 	if (e != -1)
-		dprintf(warnfd, ": %s", strerror(e));
-	dprintf(warnfd, " [%s]\n", p);
+		fprintf(warnf, ": %s", strerror(e));
+	fprintf(warnf, " [%s]\n", p);
 	free(p);
 }
 
@@ -262,7 +261,7 @@ static void fwarn(const char *fmt, ...)
 	int e = errno;
 
 	va_start(ap, fmt);
-	warn_via_fd(e, fmt, ap);
+	do_warn(e, fmt, ap);
 	va_end(ap);
 }
 
@@ -272,7 +271,7 @@ static void fwarnx(const char *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-	warn_via_fd(-1, fmt, ap);
+	do_warn(-1, fmt, ap);
 	va_end(ap);
 }
 
@@ -302,17 +301,21 @@ static void PRINTF_FMT(1, 2) trace(const char *fmt, ...)
 {
 	va_list ap;
 	unsigned int i;
+	char *p;
+	static int idx;
 
-	if (tracefd == -1)
+	if (!tracef)
 		return;
 
 	for (i = 0; i < traceindent; i++)
-		dprintf(tracefd, "  ");
+		fprintf(tracef, "  ");
 
-	dprintf(tracefd, "%u: ", getpid());
+	p = failpath_string();
+	fprintf(tracef, "%i: %u: %s ", idx++, getpid(), p);
 	va_start(ap, fmt);
-	vdprintf(tracefd, fmt, ap);
+	vfprintf(tracef, fmt, ap);
 	va_end(ap);
+	free(p);
 }
 
 static pid_t child;
@@ -737,13 +740,16 @@ static bool should_fail(struct failtest_call *call)
 
 	/* Prevent double-printing (in child and parent) */
 	fflush(stdout);
+	fflush(warnf);
+	if (tracef)
+		fflush(tracef);
 	child = fork();
 	if (child == -1)
 		err(1, "forking failed");
 
 	if (child == 0) {
 		traceindent++;
-		if (tracefd != -1) {
+		if (tracef) {
 			struct timeval diff;
 			const char *p;
 			char *failpath;
@@ -752,16 +758,16 @@ static bool should_fail(struct failtest_call *call)
 			c = tlist_tail(&history, struct failtest_call, list);
 			diff = time_sub(time_now(), start);
 			failpath = failpath_string();
-			trace("%u->%u (%u.%02u): %s (", getppid(), getpid(),
-			      (int)diff.tv_sec, (int)diff.tv_usec / 10000,
-			      failpath);
-			free(failpath);
 			p = strrchr(c->file, '/');
 			if (p)
-				trace("%s", p+1);
+				p++;
 			else
-				trace("%s", c->file);
-			trace(":%u)\n", c->line);
+				p = c->file;
+			trace("%u->%u (%u.%02u): %s (%s:%u)\n",
+			      getppid(), getpid(),
+			      (int)diff.tv_sec, (int)diff.tv_usec / 10000,
+			      failpath, p, c->line);
+			free(failpath);
 		}
 		/* From here on, we have to clean up! */
 		our_history_start = tlist_tail(&history, struct failtest_call,
@@ -769,7 +775,7 @@ static bool should_fail(struct failtest_call *call)
 		close(control[0]);
 		close(output[0]);
 		/* Don't swallow stderr if we're tracing. */
-		if (tracefd != -1) {
+		if (!tracef) {
 			dup2(output[1], STDOUT_FILENO);
 			dup2(output[1], STDERR_FILENO);
 			if (output[1] != STDOUT_FILENO
@@ -1675,12 +1681,12 @@ void failtest_init(int argc, char *argv[])
 
 	orig_pid = getpid();
 
-	warnfd = move_fd_to_high(dup(STDERR_FILENO));
+	warnf = fdopen(move_fd_to_high(dup(STDERR_FILENO)), "w");
 	for (i = 1; i < argc; i++) {
 		if (!strncmp(argv[i], "--failpath=", strlen("--failpath="))) {
 			failpath = argv[i] + strlen("--failpath=");
 		} else if (strcmp(argv[i], "--trace") == 0) {
-			tracefd = warnfd;
+			tracef = warnf;
 			failtest_timeout_ms = -1;
 		} else if (!strncmp(argv[i], "--debugpath=",
 				    strlen("--debugpath="))) {
