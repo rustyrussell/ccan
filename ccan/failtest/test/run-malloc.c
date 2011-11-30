@@ -1,3 +1,4 @@
+#include "config.h"
 #include <stdlib.h>
 #include <setjmp.h>
 #include <stdio.h>

@@ -1,11 +1,11 @@
+/* Include the C files directly. */
+#include <ccan/failtest/failtest.c>
 #include <stdlib.h>
 #include <setjmp.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <assert.h>
 #include <ccan/tap/tap.h>
-/* Include the C files directly. */
-#include <ccan/failtest/failtest.c>
 
 #define SIZE 8
 

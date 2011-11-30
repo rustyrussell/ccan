@@ -1,9 +1,9 @@
+#include <ccan/failtest/failtest.c>
 #include <stdlib.h>
 #include <setjmp.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <ccan/tap/tap.h>
-#include <ccan/failtest/failtest.c>
 
 int main(void)
 {

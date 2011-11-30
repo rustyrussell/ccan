@@ -23,6 +23,8 @@ ssize_t failtest_pwrite(int fd, const void *buf, size_t count, off_t offset,
 			const char *file, unsigned line);
 void *failtest_mmap(void *addr, size_t length, int prot, int flags,
 		    int fd, off_t offset, const char *file, unsigned line);
+off_t failtest_lseek(int fd, off_t offset, int whence,
+		     const char *file, unsigned line);
 int failtest_close(int fd, const char *file, unsigned line);
 int failtest_fcntl(int fd, const char *file, unsigned line, int cmd, ...);
 pid_t failtest_getpid(const char *file, unsigned line);

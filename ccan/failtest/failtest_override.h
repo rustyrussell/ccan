@@ -68,6 +68,10 @@
 	failtest_mmap((addr), (length), (prot), (flags), (fd), (offset), \
 		      __FILE__, __LINE__)
 
+#undef lseek
+#define lseek(fd, offset, whence)					\
+	failtest_lseek((fd), (offset), (whence), __FILE__, __LINE__)
+
 /* Replacement of getpid (since failtest will fork). */
 #undef getpid
 #define getpid() failtest_getpid(__FILE__, __LINE__)

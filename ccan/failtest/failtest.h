@@ -48,6 +48,7 @@ enum failtest_call_type {
 	FAILTEST_WRITE,
 	FAILTEST_FCNTL,
 	FAILTEST_MMAP,
+	FAILTEST_LSEEK
 };
 
 struct calloc_call {
@@ -72,6 +73,10 @@ struct open_call {
 	const char *pathname;
 	int flags;
 	mode_t mode;
+	bool always_save;
+	bool closed;
+	/* This is used for O_TRUNC opens on existing files. */
+	struct contents_saved *saved;
 };
 
 struct close_call {
@@ -98,6 +103,9 @@ struct write_call {
 	const void *buf;
 	size_t count;
 	off_t off;
+	bool is_pwrite;
+	struct failtest_call *opener;
+	struct contents_saved *saved;
 };
 
 struct fcntl_call {
@@ -119,6 +127,16 @@ struct mmap_call {
 	int flags;
 	int fd;
 	off_t offset;
+	struct failtest_call *opener;
+	struct contents_saved *saved;
+};
+
+struct lseek_call {
+	ssize_t ret;
+	int fd;
+	off_t offset;
+	int whence;
+	off_t old_off;
 };
 
 /**
@@ -147,7 +165,9 @@ struct failtest_call {
 	/* What we set errno to. */
 	int error;
 	/* How do we clean this up? */
-	void (*cleanup)(void *u);
+	void (*cleanup)(void *u, bool restore);
+	/* Should their program have cleaned up? */
+	bool can_leak;
 	/* Backtrace of call chain. */
 	void **backtrace;
 	unsigned int backtrace_num;
@@ -163,6 +183,7 @@ struct failtest_call {
 		struct write_call write;
 		struct fcntl_call fcntl;
 		struct mmap_call mmap;
+		struct lseek_call lseek;
 	} u;
 };
 
