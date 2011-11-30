@@ -23,10 +23,12 @@
 #include <ccan/hash/hash.h>
 #include <ccan/htable/htable_type.h>
 #include <ccan/str/str.h>
+#include <ccan/compiler/compiler.h>
 
 enum failtest_result (*failtest_hook)(struct tlist_calls *);
 
 static int tracefd = -1;
+static int traceindent = 0;
 static int warnfd;
 
 unsigned int failtest_timeout_ms = 20000;
@@ -88,7 +90,7 @@ static struct tlist_calls history = TLIST_INIT(history);
 static int control_fd = -1;
 /* If we're a child, this is the first call we did ourselves. */
 static struct failtest_call *our_history_start = NULL;
-/* For printing runtime with --tracepath. */
+/* For printing runtime with --trace. */
 static struct timeval start;
 /* Set when failtest_hook returns FAIL_PROBE */
 static bool probing = false;
@@ -296,13 +298,18 @@ static void child_fail(const char *out, size_t outlen, const char *fmt, ...)
 	exit(1);
 }
 
-static void trace(const char *fmt, ...)
+static void PRINTF_FMT(1, 2) trace(const char *fmt, ...)
 {
 	va_list ap;
+	unsigned int i;
 
 	if (tracefd == -1)
 		return;
 
+	for (i = 0; i < traceindent; i++)
+		dprintf(tracefd, "  ");
+
+	dprintf(tracefd, "%u: ", getpid());
 	va_start(ap, fmt);
 	vdprintf(tracefd, fmt, ap);
 	va_end(ap);
@@ -330,6 +337,7 @@ static void release_locks(void)
 		fl.l_start = 0;
 		fl.l_len = 0;
 
+		trace("Releasing %u locks\n", lock_num);
 		for (i = 0; i < lock_num; i++)
 			fcntl(locks[i].fd, F_SETLK, &fl);
 	} else {
@@ -362,6 +370,7 @@ static void get_locks(void)
 	if (lock_owner != 0) {
 		enum info_type type = RELEASE_LOCKS;
 		assert(control_fd != -1);
+		trace("Asking parent to release locks\n");
 		write_all(control_fd, &type, sizeof(type));
 	}
 
@@ -378,11 +387,14 @@ static void get_locks(void)
 		if (fcntl(locks[i].fd, F_SETLKW, &fl) != 0)
 			abort();
 	}
+	trace("Acquired %u locks\n", lock_num);
 	lock_owner = getpid();
 }
 
 
-static struct contents_saved *save_contents(int fd, size_t count, off_t off)
+static struct contents_saved *save_contents(const char *filename,
+					    int fd, size_t count, off_t off,
+					    const char *why)
 {
 	struct contents_saved *s = malloc(sizeof(*s) + count);
 	ssize_t ret;
@@ -401,6 +413,10 @@ static struct contents_saved *save_contents(int fd, size_t count, off_t off)
 	off = lseek(fd, 0, SEEK_CUR);
 	s->old_len = lseek(fd, 0, SEEK_END);
 	lseek(fd, off, SEEK_SET);
+
+	trace("Saving %p %s %zu@%llu after %s (filelength %llu) via fd %i\n",
+	      s, filename, s->count, (long long)s->off, why,
+	      (long long)s->old_len, fd);
 	return s;
 }
 
@@ -425,11 +441,17 @@ static void restore_contents(struct failtest_call *opener,
 			return;
 		}
 		/* Make it clearly distinguisable from a "normal" fd. */
-		opener->u.open.ret = move_fd_to_high(fd);
+		fd = move_fd_to_high(fd);
+		trace("Reopening %s to restore it (was fd %i, now %i)\n",
+		      opener->u.open.pathname, opener->u.open.ret, fd);
+		opener->u.open.ret = fd;
 		opener->u.open.closed = false;
 	}
 	fd = opener->u.open.ret;
 
+	trace("Restoring %p %s %zu@%llu after %s (filelength %llu) via fd %i\n",
+	      s, opener->u.open.pathname, s->count, (long long)s->off, caller,
+	      (long long)s->old_len, fd);
 	if (pwrite(fd, s->contents, s->count, s->off) != s->count) {
 		fwarn("failtest: write failed cleaning up %s for %s!",
 		      opener->u.open.pathname, caller);
@@ -440,14 +462,18 @@ static void restore_contents(struct failtest_call *opener,
 		      opener->u.open.pathname, caller);
 	}
 
-	if (restore_offset)
+	if (restore_offset) {
+		trace("Restoring offset of fd %i to %llu\n",
+		      fd, (long long)s->off);
 		lseek(fd, s->off, SEEK_SET);
+	}
 }
 
 /* We save/restore most things on demand, but always do mmaped files. */
 static void save_mmapped_files(void)
 {
 	struct failtest_call *i;
+	trace("Saving mmapped files in child\n");
 
 	tlist_for_each_rev(&history, i, list) {
 		struct mmap_call *m = &i->u.mmap;
@@ -461,7 +487,9 @@ static void save_mmapped_files(void)
 			continue;
 
 		s = malloc(sizeof *s);
-		s->s = save_contents(m->fd, m->length, m->offset);
+		s->s = save_contents(m->opener->u.open.pathname,
+				     m->fd, m->length, m->offset,
+				     "mmapped file before fork");
 		s->opener = m->opener;
 		s->next = saved_mmapped_files;
 		saved_mmapped_files = s;
@@ -470,6 +498,8 @@ static void save_mmapped_files(void)
 
 static void free_mmapped_files(bool restore)
 {
+	trace("%s mmapped files in child\n",
+	      restore ? "Restoring" : "Discarding");
 	while (saved_mmapped_files) {
 		struct saved_mmapped_file *next = saved_mmapped_files->next;
 		if (restore)
@@ -660,13 +690,19 @@ static bool should_fail(struct failtest_call *call)
 	}
 
 	/* Are we probing?  If so, we never fail twice. */
-	if (probing)
+	if (probing) {
+		trace("Not failing %c due to FAIL_PROBE return\n",
+		      info_to_arg[call->type]);
 		return call->fail = false;
+	}
 
-	/* Don't more than once in the same place. */
+	/* Don't fail more than once in the same place. */
 	dup = failtable_get(&failtable, call);
-	if (dup)
+	if (dup) {
+		trace("Not failing %c due to duplicate\n",
+		      info_to_arg[call->type]);
 		return call->fail = false;
+	}
 
 	if (failtest_hook) {
 		switch (failtest_hook(&history)) {
@@ -676,6 +712,8 @@ static bool should_fail(struct failtest_call *call)
 			probing = true;
 			break;
 		case FAIL_DONT_FAIL:
+			trace("Not failing %c due to failhook return\n",
+			      info_to_arg[call->type]);
 			call->fail = false;
 			return false;
 		default:
@@ -704,6 +742,7 @@ static bool should_fail(struct failtest_call *call)
 		err(1, "forking failed");
 
 	if (child == 0) {
+		traceindent++;
 		if (tracefd != -1) {
 			struct timeval diff;
 			const char *p;
@@ -729,10 +768,14 @@ static bool should_fail(struct failtest_call *call)
 					       list);
 		close(control[0]);
 		close(output[0]);
-		dup2(output[1], STDOUT_FILENO);
-		dup2(output[1], STDERR_FILENO);
-		if (output[1] != STDOUT_FILENO && output[1] != STDERR_FILENO)
-			close(output[1]);
+		/* Don't swallow stderr if we're tracing. */
+		if (tracefd != -1) {
+			dup2(output[1], STDOUT_FILENO);
+			dup2(output[1], STDERR_FILENO);
+			if (output[1] != STDOUT_FILENO
+			    && output[1] != STDERR_FILENO)
+				close(output[1]);
+		}
 		control_fd = move_fd_to_high(control[1]);
 
 		/* Forget any of our parent's saved files. */
@@ -830,6 +873,7 @@ static bool should_fail(struct failtest_call *call)
 
 static void cleanup_calloc(struct calloc_call *call, bool restore)
 {
+	trace("undoing calloc %p\n", call->ret);
 	free(call->ret);
 }
 
@@ -849,12 +893,15 @@ void *failtest_calloc(size_t nmemb, size_t size,
 		p->u.calloc.ret = calloc(nmemb, size);
 		set_cleanup(p, cleanup_calloc, struct calloc_call);
 	}
+	trace("calloc %zu x %zu %s:%u -> %p\n",
+	      nmemb, size, file, line, p->u.calloc.ret);
 	errno = p->error;
 	return p->u.calloc.ret;
 }
 
 static void cleanup_malloc(struct malloc_call *call, bool restore)
 {
+	trace("undoing malloc %p\n", call->ret);
 	free(call->ret);
 }
 
@@ -872,17 +919,20 @@ void *failtest_malloc(size_t size, const char *file, unsigned line)
 		p->u.malloc.ret = malloc(size);
 		set_cleanup(p, cleanup_malloc, struct malloc_call);
 	}
+	trace("malloc %zu %s:%u -> %p\n",
+	      size, file, line, p->u.malloc.ret);
 	errno = p->error;
 	return p->u.malloc.ret;
 }
 
 static void cleanup_realloc(struct realloc_call *call, bool restore)
 {
+	trace("undoing realloc %p\n", call->ret);
 	free(call->ret);
 }
 
 /* Walk back and find out if we got this ptr from a previous routine. */
-static void fixup_ptr_history(void *ptr)
+static void fixup_ptr_history(void *ptr, const char *why)
 {
 	struct failtest_call *i;
 
@@ -891,6 +941,8 @@ static void fixup_ptr_history(void *ptr)
 		switch (i->type) {
 		case FAILTEST_REALLOC:
 			if (i->u.realloc.ret == ptr) {
+				trace("found realloc %p %s:%u matching %s\n",
+				      ptr, i->file, i->line, why);
 				i->cleanup = NULL;
 				i->can_leak = false;
 				return;
@@ -898,6 +950,8 @@ static void fixup_ptr_history(void *ptr)
 			break;
 		case FAILTEST_MALLOC:
 			if (i->u.malloc.ret == ptr) {
+				trace("found malloc %p %s:%u matching %s\n",
+				      ptr, i->file, i->line, why);
 				i->cleanup = NULL;
 				i->can_leak = false;
 				return;
@@ -905,6 +959,8 @@ static void fixup_ptr_history(void *ptr)
 			break;
 		case FAILTEST_CALLOC:
 			if (i->u.calloc.ret == ptr) {
+				trace("found calloc %p %s:%u matching %s\n",
+				      ptr, i->file, i->line, why);
 				i->cleanup = NULL;
 				i->can_leak = false;
 				return;
@@ -914,6 +970,7 @@ static void fixup_ptr_history(void *ptr)
 			break;
 		}
 	}
+	trace("Did not find %p matching %s\n", ptr, why);
 }
 
 void *failtest_realloc(void *ptr, size_t size, const char *file, unsigned line)
@@ -930,10 +987,12 @@ void *failtest_realloc(void *ptr, size_t size, const char *file, unsigned line)
 	} else {
 		/* Don't catch this one in the history fixup... */
 		p->u.realloc.ret = NULL;
-		fixup_ptr_history(ptr);
+		fixup_ptr_history(ptr, "realloc");
 		p->u.realloc.ret = realloc(ptr, size);
 		set_cleanup(p, cleanup_realloc, struct realloc_call);
 	}
+	trace("realloc %p %s:%u -> %p\n",
+	      ptr, file, line, p->u.realloc.ret);
 	errno = p->error;
 	return p->u.realloc.ret;
 }
@@ -943,7 +1002,8 @@ void *failtest_realloc(void *ptr, size_t size, const char *file, unsigned line)
  * a previous allocation we did see. */
 void failtest_free(void *ptr)
 {
-	fixup_ptr_history(ptr);
+	fixup_ptr_history(ptr, "free");
+	trace("free %p\n", ptr);
 	free(ptr);
 }
 
@@ -957,7 +1017,8 @@ static struct contents_saved *save_file(const char *pathname)
 	if (fd < 0)
 		return NULL;
 
-	s = save_contents(fd, lseek(fd, 0, SEEK_END), 0);
+	s = save_contents(pathname, fd, lseek(fd, 0, SEEK_END), 0,
+			  "open with O_TRUNC");
 	close(fd);
 	return s;
 }
@@ -1017,8 +1078,10 @@ int failtest_open(const char *pathname,
 
 	if (should_fail(p)) {
 		/* Don't bother inserting failures that would happen anyway. */
-		if (open_would_fail(pathname, call.flags))
+		if (open_would_fail(pathname, call.flags)) {
+			trace("Open would have failed anyway: stopping\n");
 			failtest_cleanup(true, 0);
+		}
 		p->u.open.ret = -1;
 		/* FIXME: Play with error codes? */
 		p->error = EACCES;
@@ -1036,12 +1099,16 @@ int failtest_open(const char *pathname,
 			set_cleanup(p, cleanup_open, struct open_call);
 		}
 	}
+	trace("open %s %s:%u -> %i (opener %p)\n",
+	      pathname, file, line, p->u.open.ret, &p->u.open);
 	errno = p->error;
 	return p->u.open.ret;
 }
 
 static void cleanup_mmap(struct mmap_call *mmap, bool restore)
 {
+	trace("cleaning up mmap @%p (opener %p)\n",
+	      mmap->ret, mmap->opener);
 	if (restore)
 		restore_contents(mmap->opener, mmap->saved, false, "mmap");
 	free(mmap->saved);
@@ -1067,7 +1134,9 @@ void *failtest_mmap(void *addr, size_t length, int prot, int flags,
 			fwarnx("failtest_mmap: couldn't figure out source for"
 			       " fd %i at %s:%u", fd, file, line);
 		}
-		return mmap(addr, length, prot, flags, fd, offset);
+		addr = mmap(addr, length, prot, flags, fd, offset);
+		trace("mmap of fd %i -> %p (opener = NULL)\n", fd, addr);
+		return addr;
 	}
 
 	p = add_history(FAILTEST_MMAP, false, file, line, &call);
@@ -1080,16 +1149,23 @@ void *failtest_mmap(void *addr, size_t length, int prot, int flags,
 		if (p->u.mmap.ret != MAP_FAILED
 		    && (prot & PROT_WRITE)
 		    && call.opener->type == FAILTEST_OPEN) {
-			p->u.mmap.saved = save_contents(fd, length, offset);
+			const char *fname = call.opener->u.open.pathname;
+			p->u.mmap.saved = save_contents(fname, fd, length,
+							offset, "being mmapped");
 			set_cleanup(p, cleanup_mmap, struct mmap_call);
 		}
 	}
+	trace("mmap of fd %i %s:%u -> %p (opener = %p)\n",
+	      fd, file, line, addr, call.opener);
 	errno = p->error;
 	return p->u.mmap.ret;
 }
 
 static void cleanup_pipe(struct pipe_call *call, bool restore)
 {
+	trace("cleaning up pipe fd=%i%s,%i%s\n",
+	      call->fds[0], call->closed[0] ? "(already closed)" : "",
+	      call->fds[1], call->closed[1] ? "(already closed)" : "");
 	if (!call->closed[0])
 		close(call->fds[0]);
 	if (!call->closed[1])
@@ -1111,6 +1187,11 @@ int failtest_pipe(int pipefd[2], const char *file, unsigned line)
 		p->u.pipe.closed[0] = p->u.pipe.closed[1] = false;
 		set_cleanup(p, cleanup_pipe, struct pipe_call);
 	}
+
+	trace("pipe %s:%u -> %i,%i\n", file, line,
+	      p->u.pipe.ret ? -1 : p->u.pipe.fds[0],
+	      p->u.pipe.ret ? -1 : p->u.pipe.fds[1]);
+
 	/* This causes valgrind to notice if they use pipefd[] after failure */
 	memcpy(pipefd, p->u.pipe.fds, sizeof(p->u.pipe.fds));
 	errno = p->error;
@@ -1120,6 +1201,9 @@ int failtest_pipe(int pipefd[2], const char *file, unsigned line)
 static void cleanup_read(struct read_call *call, bool restore)
 {
 	if (restore) {
+		trace("cleaning up read on fd %i: seeking to %llu\n",
+		      call->fd, (long long)call->off);
+
 		/* Read (not readv!) moves file offset! */
 		if (lseek(call->fd, call->off, SEEK_SET) != call->off) {
 			fwarn("Restoring lseek pointer failed (read)");
@@ -1151,12 +1235,16 @@ static ssize_t failtest_add_read(int fd, void *buf, size_t count, off_t off,
 				set_cleanup(p, cleanup_read, struct read_call);
 		}
 	}
+	trace("%sread %s:%u fd %i %zu@%llu -> %i\n",
+	      is_pread ? "p" : "", file, line, fd, count, (long long)off,
+	      p->u.read.ret);
 	errno = p->error;
 	return p->u.read.ret;
 }
 
 static void cleanup_write(struct write_call *write, bool restore)
 {
+	trace("cleaning up write on %s\n", write->opener->u.open.pathname);
 	if (restore)
 		restore_contents(write->opener, write->saved, !write->is_pwrite,
 				 "write");
@@ -1228,13 +1316,17 @@ static ssize_t failtest_add_write(int fd, const void *buf,
 				sizeof(child_writes[0]) * child_writes_num);
 
 			/* Child wrote it already. */
+			trace("write %s:%i on fd %i already done by child\n",
+			      file, line, fd);
 			p->u.write.ret = count;
 			errno = p->error;
 			return p->u.write.ret;
 		}
 
 		if (is_file) {
-			p->u.write.saved = save_contents(fd, count, off);
+			p->u.write.saved = save_contents(call.opener->u.open.pathname,
+							 fd, count, off,
+							 "being overwritten");
 			set_cleanup(p, cleanup_write, struct write_call);
 		}
 
@@ -1245,6 +1337,9 @@ static ssize_t failtest_add_write(int fd, const void *buf,
 		else
 			p->u.write.ret = write(fd, buf, count);
 	}
+	trace("%swrite %s:%i %zu@%llu on fd %i -> %i\n",
+	      p->u.write.is_pwrite ? "p" : "",
+	      file, line, count, (long long)off, fd, p->u.write.ret);
 	errno = p->error;
 	return p->u.write.ret;
 }
@@ -1305,23 +1400,38 @@ add_lock(struct lock_info *locks, int fd, off_t start, off_t end, int type)
 			off_t new_start, new_end;
 			new_start = end + 1;
 			new_end = l->end;
+			trace("splitting lock on fd %i from %llu-%llu"
+			      " to %llu-%llu\n",
+			      fd, (long long)l->start, (long long)l->end,
+			      (long long)l->start, (long long)start - 1);
 			l->end = start - 1;
 			locks = add_lock(locks,
 					 fd, new_start, new_end, l->type);
 			l = &locks[i];
 		} else if (start <= l->start && end >= l->end) {
 			/* Total overlap: eliminate entry. */
+			trace("erasing lock on fd %i %llu-%llu\n",
+			      fd, (long long)l->start, (long long)l->end);
 			l->end = 0;
 			l->start = 1;
 		} else if (end >= l->start && end < l->end) {
+			trace("trimming lock on fd %i from %llu-%llu"
+			      " to %llu-%llu\n",
+			      fd, (long long)l->start, (long long)l->end,
+			      (long long)end + 1, (long long)l->end);
 			/* Start overlap: trim entry. */
 			l->start = end + 1;
 		} else if (start > l->start && start <= l->end) {
+			trace("trimming lock on fd %i from %llu-%llu"
+			      " to %llu-%llu\n",
+			      fd, (long long)l->start, (long long)l->end,
+			      (long long)l->start, (long long)start - 1);
 			/* End overlap: trim entry. */
 			l->end = start-1;
 		}
 		/* Nothing left?  Remove it. */
 		if (l->end < l->start) {
+			trace("forgetting lock on fd %i\n", fd);
 			memmove(l, l + 1, (--lock_num - i) * sizeof(l[0]));
 			i--;
 		}
@@ -1334,6 +1444,8 @@ add_lock(struct lock_info *locks, int fd, off_t start, off_t end, int type)
 		l->start = start;
 		l->end = end;
 		l->type = type;
+		trace("new lock on fd %i %llu-%llu\n",
+		      fd, (long long)l->start, (long long)l->end);
 	}
 	return locks;
 }
@@ -1357,11 +1469,13 @@ int failtest_close(int fd, const char *file, unsigned line)
 			abort();
 	}
 
+	trace("close on fd %i\n", fd);
 	if (fd < 0)
 		return close(fd);
 
 	/* Mark opener as not leaking, remove its cleanup function. */
 	if (opener) {
+		trace("close on fd %i found opener %p\n", fd, opener);
 		if (opener->type == FAILTEST_PIPE) {
 			/* From a pipe? */
 			if (opener->u.pipe.fds[0] == fd) {
@@ -1391,12 +1505,15 @@ int failtest_close(int fd, const char *file, unsigned line)
 			if (i == opener)
 				break;
 			if (i->type == FAILTEST_LSEEK && i->u.lseek.fd == fd) {
+				trace("close on fd %i undoes lseek\n", fd);
 				/* This seeks back. */
 				i->cleanup(&i->u, true);
 				i->cleanup = NULL;
 			} else if (i->type == FAILTEST_WRITE
 				   && i->u.write.fd == fd
 				   && !i->u.write.is_pwrite) {
+				trace("close on fd %i undoes write"
+				      " offset change\n", fd);
 				/* Write (not pwrite!) moves file offset! */
 				if (lseek(fd, i->u.write.off, SEEK_SET)
 				    != i->u.write.off) {
@@ -1406,6 +1523,8 @@ int failtest_close(int fd, const char *file, unsigned line)
 				   && i->u.read.fd == fd) {
 				/* preads don't *have* cleanups */
 				if (i->cleanup) {
+					trace("close on fd %i undoes read"
+					      " offset change\n", fd);
 					/* This seeks back. */
 					i->cleanup(&i->u, true);
 					i->cleanup = NULL;
@@ -1444,11 +1563,14 @@ int failtest_fcntl(int fd, const char *file, unsigned line, int cmd, ...)
 		va_start(ap, cmd);
 		call.arg.l = va_arg(ap, long);
 		va_end(ap);
+		trace("fcntl on fd %i F_SETFL/F_SETFD\n", fd);
 		return fcntl(fd, cmd, call.arg.l);
 	case F_GETFD:
 	case F_GETFL:
+		trace("fcntl on fd %i F_GETFL/F_GETFD\n", fd);
 		return fcntl(fd, cmd);
 	case F_GETLK:
+		trace("fcntl on fd %i F_GETLK\n", fd);
 		get_locks();
 		va_start(ap, cmd);
 		call.arg.fl = *va_arg(ap, struct flock *);
@@ -1456,6 +1578,8 @@ int failtest_fcntl(int fd, const char *file, unsigned line, int cmd, ...)
 		return fcntl(fd, cmd, &call.arg.fl);
 	case F_SETLK:
 	case F_SETLKW:
+		trace("fcntl on fd %i F_SETLK%s\n",
+		      fd, cmd == F_SETLKW ? "W" : "");
 		va_start(ap, cmd);
 		call.arg.fl = *va_arg(ap, struct flock *);
 		va_end(ap);
@@ -1490,6 +1614,7 @@ int failtest_fcntl(int fd, const char *file, unsigned line, int cmd, ...)
 					 p->u.fcntl.arg.fl.l_type);
 		}
 	}
+	trace("fcntl on fd %i -> %i\n", fd, p->u.fcntl.ret);
 	errno = p->error;
 	return p->u.fcntl.ret;
 }
@@ -1497,6 +1622,8 @@ int failtest_fcntl(int fd, const char *file, unsigned line, int cmd, ...)
 static void cleanup_lseek(struct lseek_call *call, bool restore)
 {
 	if (restore) {
+		trace("cleaning up lseek on fd %i -> %llu\n",
+		      call->fd, (long long)call->old_off);
 		if (lseek(call->fd, call->old_off, SEEK_SET) != call->old_off)
 			fwarn("Restoring lseek pointer failed");
 	}
@@ -1525,6 +1652,12 @@ off_t failtest_lseek(int fd, off_t offset, int whence, const char *file,
 
 	if (p->u.lseek.ret != (off_t)-1)
 		set_cleanup(p, cleanup_lseek, struct lseek_call);
+
+	trace("lseek %s:%u on fd %i from %llu to %llu%s\n",
+	      file, line, fd, (long long)call.old_off, (long long)offset,
+	      whence == SEEK_CUR ? " (from current off)" :
+	      whence == SEEK_END ? " (from end)" :
+	      whence == SEEK_SET ? "" : " (invalid whence)");
 	return p->u.lseek.ret;
 }
 
@@ -1546,7 +1679,7 @@ void failtest_init(int argc, char *argv[])
 	for (i = 1; i < argc; i++) {
 		if (!strncmp(argv[i], "--failpath=", strlen("--failpath="))) {
 			failpath = argv[i] + strlen("--failpath=");
-		} else if (strcmp(argv[i], "--tracepath") == 0) {
+		} else if (strcmp(argv[i], "--trace") == 0) {
 			tracefd = warnfd;
 			failtest_timeout_ms = -1;
 		} else if (!strncmp(argv[i], "--debugpath=",
@@ -1565,6 +1698,7 @@ bool failtest_has_failed(void)
 
 void failtest_exit(int status)
 {
+	trace("failtest_exit with status %i\n", status);
 	if (failtest_exit_check) {
 		if (!failtest_exit_check(&history))
 			child_fail(NULL, 0, "failtest_exit_check failed\n");
