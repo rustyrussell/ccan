@@ -31,9 +31,39 @@
  */
 #define container_of(member_ptr, containing_type, member)		\
 	 ((containing_type *)						\
-	  ((char *)(member_ptr) - offsetof(containing_type, member))	\
-	  - check_types_match(*(member_ptr), ((containing_type *)0)->member))
+	  ((char *)(member_ptr)						\
+	   - container_off((member_ptr), containing_type, member)))
 
+/**
+ * container_off - get offset to enclosing structure
+ * @member_ptr: pointer to the structure member
+ * @containing_type: the type this member is within
+ * @member: the name of this member within the structure.
+ *
+ * Given a pointer to a member of a structure, this macro does
+ * typechecking and figures out the offset to the enclosing type.
+ *
+ * Note that @member_ptr is not evaluated.
+ *
+ * Example:
+ *	struct foo {
+ *		int fielda, fieldb;
+ *		// ...
+ *	};
+ *	struct info {
+ *		int some_other_field;
+ *		struct foo my_foo;
+ *	};
+ *
+ *	static struct info *foo_to_info(struct foo *foo)
+ *	{
+ *		size_t off = container_off(foo, struct info, my_foo);
+ *		return (void *)((char *)foo - off);
+ *	}
+ */
+#define container_off(member_ptr, containing_type, member)		\
+	(offsetof(containing_type, member)				\
+	 + check_types_match(*(member_ptr), ((containing_type *)0)->member))
 
 /**
  * container_of_var - get pointer to enclosing structure using a variable
