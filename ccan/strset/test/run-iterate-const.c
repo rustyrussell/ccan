@@ -19,11 +19,11 @@ int main(void)
 	plan_tests(3);
 
 	strset_init(&set);
-	ok1(strset_set(&set, "hello"));
-	ok1(strset_set(&set, "world"));
+	ok1(strset_add(&set, "hello"));
+	ok1(strset_add(&set, "world"));
 	strset_iterate(&set, find_string, (const char *)"hello");
 	ok1(found);
-	strset_destroy(&set);
+	strset_clear(&set);
 
 	/* This exits depending on whether all tests passed */
 	return exit_status();

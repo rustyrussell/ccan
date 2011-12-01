@@ -48,7 +48,7 @@ static inline bool strset_empty(const struct strset *set)
 }
 
 /**
- * strset_test - is this a member of this string set?
+ * strset_get - is this a member of this string set?
  * @set: the set.
  * @member: the string to search for.
  *
@@ -56,13 +56,13 @@ static inline bool strset_empty(const struct strset *set)
  * = ENOENT).
  *
  * Example:
- *	if (strset_test(&set, "hello"))
+ *	if (strset_get(&set, "hello"))
  *		printf("hello is in the set\n");
  */
-char *strset_test(const struct strset *set, const char *member);
+char *strset_get(const struct strset *set, const char *member);
 
 /**
- * strset_set - place a member in the string set.
+ * strset_add - place a member in the string set.
  * @set: the set.
  * @member: the string to place in the set.
  *
@@ -73,38 +73,38 @@ char *strset_test(const struct strset *set, const char *member);
  * you want a copy in the set, use strdup().
  *
  * Example:
- *	if (!strset_set(&set, "goodbye"))
+ *	if (!strset_add(&set, "goodbye"))
  *		printf("goodbye was already in the set\n");
  */
-bool strset_set(struct strset *set, const char *member);
+bool strset_add(struct strset *set, const char *member);
 
 /**
- * strset_clear - remove a member from the string set.
+ * strset_del - remove a member from the string set.
  * @set: the set.
  * @member: the string to remove from the set.
  *
- * This returns the string which was passed to strset_set(), or NULL if
+ * This returns the string which was passed to strset_add(), or NULL if
  * the string was not in the map (in which case it sets errno = ENOENT).
  *
  * This means that if you allocated a string (eg. using strdup()), you can
  * free it here.
  *
  * Example:
- *	if (!strset_clear(&set, "goodbye"))
+ *	if (!strset_del(&set, "goodbye"))
  *		printf("goodbye was not in the set?\n");
  */
-char *strset_clear(struct strset *set, const char *member);
+char *strset_del(struct strset *set, const char *member);
 
 /**
- * strset_destroy - remove every member from the set.
+ * strset_clear - remove every member from the set.
  * @set: the set.
  *
  * The set will be empty after this.
  *
  * Example:
- *	strset_destroy(&set);
+ *	strset_clear(&set);
  */
-void strset_destroy(struct strset *set);
+void strset_clear(struct strset *set);
 
 /**
  * strset_iterate - ordered iteration over a set

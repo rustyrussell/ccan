@@ -38,7 +38,7 @@
  *		for (word = strtok(file, " \t\r\n");
  *		     word;
  *		     word = strtok(NULL, " \t\r\n")) {
- *			strset_set(&words, word);
+ *			strset_add(&words, word);
  *		}
  *		strset_iterate(&words, dump, NULL);
  *		printf("\n");

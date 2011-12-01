@@ -38,7 +38,7 @@ int main(void)
 	}
 
 	for (i = 0; i < NUM; i++)
-		strset_set(&set, str[i]);
+		strset_add(&set, str[i]);
 
 	/* Nothing */
 	sub = strset_prefix(&set, "a");
@@ -70,13 +70,13 @@ int main(void)
 
 	/* Everything, *plus* empty string. */
 	empty = strdup("");
-	strset_set(&set, empty);
+	strset_add(&set, empty);
 
 	sub = strset_prefix(&set, "");
 	/* Check we get *our* empty string back! */
 	strset_iterate(sub, find_empty, empty);
 
-	strset_destroy(&set);
+	strset_clear(&set);
 
 	for (i = 0; i < NUM; i++)
 		free(str[i]);

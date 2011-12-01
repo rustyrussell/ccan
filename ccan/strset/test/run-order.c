@@ -43,7 +43,7 @@ int main(void)
 	}
 
 	for (i = 0; i < NUM; i++)
-		strset_set(&set, str[i]);
+		strset_add(&set, str[i]);
 
 	strset_iterate(&set, dump, NULL);
 
@@ -53,25 +53,25 @@ int main(void)
 
 	/* Preserve order after deletion. */
 	for (i = 0; i < NUM; i += 2)
-		ok1(strset_clear(&set, str[i]) == str[i]);
+		ok1(strset_del(&set, str[i]) == str[i]);
 
 	i = 1;
 	strset_iterate(&set, in_order_by_2, &i);
 
 	for (i = 1; i < NUM; i += 2)
-		ok1(strset_clear(&set, str[i]) == str[i]);
+		ok1(strset_del(&set, str[i]) == str[i]);
 
 	/* empty traverse. */
 	strset_iterate(&set, in_order_by_2, (unsigned int *)NULL);
 
 	/* insert backwards, should be fine. */
 	for (i = 0; i < NUM; i++)
-		strset_set(&set, str[NUM-1-i]);
+		strset_add(&set, str[NUM-1-i]);
 
 	i = 0;
 	strset_iterate(&set, in_order, &i);
 
-	strset_destroy(&set);
+	strset_clear(&set);
 
 	for (i = 0; i < NUM; i++)
 		free(str[i]);

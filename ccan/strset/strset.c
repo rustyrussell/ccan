@@ -57,7 +57,7 @@ static const char *closest(struct strset n, const char *member)
 	return n.u.s;
 }
 
-char *strset_test(const struct strset *set, const char *member)
+char *strset_get(const struct strset *set, const char *member)
 {
 	const char *str;
 
@@ -90,7 +90,7 @@ static bool set_string(struct strset *set,
 	return true;
 }
 
-bool strset_set(struct strset *set, const char *member)
+bool strset_add(struct strset *set, const char *member)
 {
 	size_t len = strlen(member);
 	const u8 *bytes = (const u8 *)member;
@@ -163,7 +163,7 @@ bool strset_set(struct strset *set, const char *member)
 	return true;
 }
 
-char *strset_clear(struct strset *set, const char *member)
+char *strset_del(struct strset *set, const char *member)
 {
 	size_t len = strlen(member);
 	const u8 *bytes = (const u8 *)member;
@@ -290,20 +290,20 @@ const struct strset *strset_prefix(const struct strset *set, const char *prefix)
 	return top;
 }
 
-static void destroy(struct strset n)
+static void clear(struct strset n)
 {
 	if (!n.u.s[0]) {
 		if (likely(n.u.n->byte_num != (size_t)-1)) {
-			destroy(n.u.n->child[0]);
-			destroy(n.u.n->child[1]);
+			clear(n.u.n->child[0]);
+			clear(n.u.n->child[1]);
 		}
 		free(n.u.n);
 	}
 }
 
-void strset_destroy(struct strset *set)
+void strset_clear(struct strset *set)
 {
 	if (set->u.n)
-		destroy(*set);
+		clear(*set);
 	set->u.n = NULL;
 }
