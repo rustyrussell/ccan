@@ -14,7 +14,7 @@ const char *next_sopt(const char *names, unsigned *i);
 const char *first_lopt(unsigned *i, unsigned *len);
 const char *next_lopt(const char *p, unsigned *i, unsigned *len);
 
-int parse_one(int *argc, char *argv[], unsigned *offset,
+int parse_one(int *argc, char *argv[], enum opt_type is_early, unsigned *offset,
 	      void (*errlog)(const char *fmt, ...));
 
 #endif /* CCAN_OPT_PRIVATE_H */

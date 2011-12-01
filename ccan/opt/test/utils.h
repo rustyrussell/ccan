@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 bool parse_args(int *argc, char ***argv, ...);
+bool parse_early_args(int *argc, char ***argv, ...);
 extern char *err_output;
 void save_err_output(const char *fmt, ...);
 void reset_options(void);

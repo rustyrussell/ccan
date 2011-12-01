@@ -107,7 +107,9 @@ static void check_opt(const struct opt_table *entry)
 	const char *p;
 	unsigned len;
 
-	if (entry->type != OPT_HASARG && entry->type != OPT_NOARG)
+	if (entry->type != OPT_HASARG && entry->type != OPT_NOARG
+	    && entry->type != (OPT_EARLY|OPT_HASARG)
+	    && entry->type != (OPT_EARLY|OPT_NOARG))
 		errx(1, "Option %s: unknown entry type %u",
 		     entry->names, entry->type);
 
@@ -196,7 +198,28 @@ bool opt_parse(int *argc, char *argv[], void (*errlog)(const char *fmt, ...))
 	/* This helps opt_usage. */
 	opt_argv0 = argv[0];
 
-	while ((ret = parse_one(argc, argv, &offset, errlog)) == 1);
+	while ((ret = parse_one(argc, argv, 0, &offset, errlog)) == 1);
+
+	/* parse_one returns 0 on finish, -1 on error */
+	return (ret == 0);
+}
+
+bool opt_early_parse(int argc, char *argv[],
+		     void (*errlog)(const char *fmt, ...))
+{
+	int ret;
+	unsigned off = 0;
+	char **tmpargv = malloc(sizeof(argv[0]) * (argc + 1));
+
+	/* We could avoid a copy and skip instead, but this is simple. */
+	memcpy(tmpargv, argv, sizeof(argv[0]) * (argc + 1));
+
+	/* This helps opt_usage. */
+	opt_argv0 = argv[0];
+
+	while ((ret = parse_one(&argc, tmpargv, OPT_EARLY, &off, errlog)) == 1);
+
+	free(tmpargv);
 
 	/* parse_one returns 0 on finish, -1 on error */
 	return (ret == 0);
