@@ -34,7 +34,7 @@ struct opt_table;
 	{ (names), OPT_CB_NOARG((cb), (arg)), { (arg) }, (desc) }
 
 /**
- * OPT_WITH_ARG() - macro for initializing long and short option (with arg)
+ * OPT_WITH_ARG() - macro for initializing an opt_table entry (with arg)
  * @names: the option names eg. "--foo=<arg>", "-f" or "-f|--foo <arg>".
  * @cb: the callback when the option is found (along with <arg>).
  * @show: the callback to print the value in get_usage (or NULL)
@@ -147,8 +147,9 @@ void opt_register_table(const struct opt_table *table, const char *desc);
  * where "type" is the type of the @arg argument.  The first argument to the
  * @cb is the argument found on the commandline.
  *
- * At least one of @longopt and @shortopt must be non-zero.  If the
- * @cb returns false, opt_parse() will stop parsing and return false.
+ * If the @cb returns non-NULL, opt_parse() will stop parsing, use the
+ * returned string to form an error message for errlog(), free() the
+ * string and return false.
  *
  * Example:
  * static char *explode(const char *optarg, void *unused)
@@ -168,12 +169,15 @@ void opt_register_table(const struct opt_table *table, const char *desc);
  * @errlog: the function to print errors
  *
  * This iterates through the command line and calls callbacks registered with
- * opt_register_table()/opt_register_arg()/opt_register_noarg().  If there
- * are unknown options, missing arguments or a callback returns false, then
- * an error message is printed and false is returned.
+ * opt_register_table()/opt_register_arg()/opt_register_noarg().  As this
+ * occurs successfully each option is removed from argc and argv.
  *
- * On success, argc and argv are adjusted so only the non-option elements
- * remain, and true is returned.
+ * If there are unknown options, missing arguments or a callback
+ * returns false, then an error message is printed and false is
+ * returned: the erroneous option is not removed.
+ *
+ * On success, argc and argv will contain only the non-option
+ * elements, and true is returned.
  *
  * Example:
  *	if (!opt_parse(&argc, argv, opt_log_stderr)) {
