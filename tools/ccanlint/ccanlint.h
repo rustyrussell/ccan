@@ -91,6 +91,9 @@ struct ccanlint {
 	/* Can we run this test?  Return string explaining why, if not. */
 	const char *(*can_run)(struct manifest *m);
 
+	/* Should we stop immediately if test fails? */
+	bool compulsory;
+
 	/* keep is set if you should keep the results.
 	 * If timeleft is set to 0, means it timed out.
 	 * score is the result, and a talloc context freed after all our

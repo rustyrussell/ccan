@@ -33,10 +33,13 @@
 #include <ccan/foreach/foreach.h>
 #include <ccan/grab_file/grab_file.h>
 #include <ccan/cast/cast.h>
+#include <ccan/tlist/tlist.h>
+
+/* Defines struct tlist_ccanlint. */
+TLIST_TYPE(ccanlint, struct ccanlint);
 
 int verbose = 0;
-static struct list_head compulsory_tests;
-static struct list_head normal_tests;
+static struct tlist_ccanlint tests = TLIST_INIT(tests);
 bool safe_mode = false;
 static struct btree *cmdline_exclude;
 static struct btree *info_exclude;
@@ -182,9 +185,9 @@ static bool run_test(struct ccanlint *i,
 	return score->pass;
 }
 
-static void register_test(struct list_head *h, struct ccanlint *test)
+static void register_test(struct ccanlint *test)
 {
-	list_add(h, &test->list);
+	tlist_add(&tests, test, list);
 	test->options = talloc_array(NULL, char *, 1);
 	test->options[0] = NULL;
 	test->skip = NULL;
@@ -194,14 +197,14 @@ static void register_test(struct list_head *h, struct ccanlint *test)
 /**
  * get_next_test - retrieves the next test to be processed
  **/
-static inline struct ccanlint *get_next_test(struct list_head *test)
+static inline struct ccanlint *get_next_test(void)
 {
 	struct ccanlint *i;
 
-	if (list_empty(test))
+	if (tlist_empty(&tests))
 		return NULL;
 
-	list_for_each(test, i, list) {
+	tlist_for_each(&tests, i, list) {
 		if (i->num_depends == 0)
 			return i;
 	}
@@ -212,11 +215,7 @@ static struct ccanlint *find_test(const char *key)
 {
 	struct ccanlint *i;
 
-	list_for_each(&compulsory_tests, i, list)
-		if (streq(i->key, key))
-			return i;
-
-	list_for_each(&normal_tests, i, list)
+	tlist_for_each(&tests, i, list)
 		if (streq(i->key, key))
 			return i;
 
@@ -232,91 +231,74 @@ bool is_excluded(const char *name)
 
 #undef REGISTER_TEST
 #define REGISTER_TEST(name, ...) extern struct ccanlint name
-#include "generated-normal-tests"
-#include "generated-compulsory-tests"
+#include "generated-testlist"
 
 static void init_tests(void)
 {
 	struct ccanlint *c;
 	struct btree *keys, *names;
-	struct list_head *list;
 
-	list_head_init(&normal_tests);
-	list_head_init(&compulsory_tests);
+	tlist_init(&tests);
 
 #undef REGISTER_TEST
-#define REGISTER_TEST(name) register_test(&normal_tests, &name)
-#include "generated-normal-tests"
-#undef REGISTER_TEST
-#define REGISTER_TEST(name) register_test(&compulsory_tests, &name)
-#include "generated-compulsory-tests"
+#define REGISTER_TEST(name) register_test(&name)
+#include "generated-testlist"
 
 	/* Initialize dependency lists. */
-	foreach_ptr(list, &compulsory_tests, &normal_tests) {
-		list_for_each(list, c, list) {
-			list_head_init(&c->dependencies);
-			c->num_depends = 0;
-		}
+	tlist_for_each(&tests, c, list) {
+		list_head_init(&c->dependencies);
+		c->num_depends = 0;
 	}
 
 	/* Resolve dependencies. */
-	foreach_ptr(list, &compulsory_tests, &normal_tests) {
-		list_for_each(list, c, list) {
-			char **deps = strsplit(NULL, c->needs, " ");
-			unsigned int i;
+	tlist_for_each(&tests, c, list) {
+		char **deps = strsplit(NULL, c->needs, " ");
+		unsigned int i;
 
-			for (i = 0; deps[i]; i++) {
-				struct ccanlint *dep;
-				struct dependent *dchild;
+		for (i = 0; deps[i]; i++) {
+			struct ccanlint *dep;
+			struct dependent *dchild;
 
-				dep = find_test(deps[i]);
-				if (!dep)
-					errx(1, "BUG: unknown dep '%s' for %s",
-					     deps[i], c->key);
-				dchild = talloc(NULL, struct dependent);
-				dchild->dependent = c;
-				list_add_tail(&dep->dependencies,
-					      &dchild->node);
-				c->num_depends++;
-			}
-			talloc_free(deps);
+			dep = find_test(deps[i]);
+			if (!dep)
+				errx(1, "BUG: unknown dep '%s' for %s",
+				     deps[i], c->key);
+			dchild = talloc(NULL, struct dependent);
+			dchild->dependent = c;
+			list_add_tail(&dep->dependencies, &dchild->node);
+			c->num_depends++;
 		}
+		talloc_free(deps);
 	}
 
 	/* Self-consistency check: make sure no two tests
 	   have the same key or name. */
 	keys = btree_new(btree_strcmp);
 	names = btree_new(btree_strcmp);
-	foreach_ptr(list, &compulsory_tests, &normal_tests) {
-		list_for_each(list, c, list) {
-			if (!btree_insert(keys, c->key))
-				errx(1, "BUG: Duplicate test key '%s'",
-				     c->key);
-			if (!btree_insert(names, c->name))
-				errx(1, "BUG: Duplicate test name '%s'",
-				     c->name);
-		}
+	tlist_for_each(&tests, c, list) {
+		if (!btree_insert(keys, c->key))
+			errx(1, "BUG: Duplicate test key '%s'",
+			     c->key);
+		if (!btree_insert(names, c->name))
+			errx(1, "BUG: Duplicate test name '%s'",
+			     c->name);
 	}
+
 	btree_delete(keys);
 	btree_delete(names);
 }
 
 static void print_test_depends(void)
 {
-	struct list_head *list;
+	struct ccanlint *c;
+	printf("Tests:\n");
 
-	foreach_ptr(list, &compulsory_tests, &normal_tests) {
-		struct ccanlint *c;
-		printf("\%s Tests\n",
-		       list == &compulsory_tests ? "Compulsory" : "Normal");
-
-		list_for_each(list, c, list) {
-			if (!list_empty(&c->dependencies)) {
-				const struct dependent *d;
-				printf("These depend on %s:\n", c->key);
-				list_for_each(&c->dependencies, d, node)
-					printf("\t%s\n", d->dependent->key);
-			}
+	tlist_for_each(&tests, c, list) {
+		if (!list_empty(&c->dependencies)) {
+			const struct dependent *d;
+			printf("These depend on %s:\n", c->key);
+			list_for_each(&c->dependencies, d, node)
+				printf("\t%s\n", d->dependent->key);
 		}
 	}
 }
@@ -333,11 +315,8 @@ static char *keep_test(const char *testname, void *unused)
 
 	init_tests();
 	if (streq(testname, "all")) {
-		struct list_head *list;
-		foreach_ptr(list, &compulsory_tests, &normal_tests) {
-			list_for_each(list, i, list)
-				i->keep_results = true;
-		}
+		tlist_for_each(&tests, i, list)
+			i->keep_results = true;
 	} else {
 		i = find_test(testname);
 		if (!i)
@@ -356,34 +335,29 @@ static char *skip_test(const char *testname, void *unused)
 	return NULL;
 }
 
-static void print_tests(struct list_head *tests, const char *type)
+static char *list_tests(void *arg)
 {
 	struct ccanlint *i;
 
-	printf("%s tests:\n", type);
+	init_tests();
+
+	printf("Tests:\n");
 	/* This makes them print in topological order. */
-	while ((i = get_next_test(tests)) != NULL) {
+	while ((i = get_next_test()) != NULL) {
 		const struct dependent *d;
 		printf("   %-25s %s\n", i->key, i->name);
 		list_del(&i->list);
 		list_for_each(&i->dependencies, d, node)
 			d->dependent->num_depends--;
 	}
-}
-
-static char *list_tests(void *arg)
-{
-	init_tests();
-	print_tests(&compulsory_tests, "Compulsory");
-	print_tests(&normal_tests, "Normal");
 	exit(0);
 }
 
-static void test_dgraph_vertices(struct list_head *tests, const char *style)
+static void test_dgraph_vertices(const char *style)
 {
 	const struct ccanlint *i;
 
-	list_for_each(tests, i, list) {
+	tlist_for_each(&tests, i, list) {
 		/*
 		 * todo: escape labels in case ccanlint test keys have
 		 *       characters interpreted as GraphViz syntax.
@@ -392,12 +366,12 @@ static void test_dgraph_vertices(struct list_head *tests, const char *style)
 	}
 }
 
-static void test_dgraph_edges(struct list_head *tests)
+static void test_dgraph_edges(void)
 {
 	const struct ccanlint *i;
 	const struct dependent *d;
 
-	list_for_each(tests, i, list)
+	tlist_for_each(&tests, i, list)
 		list_for_each(&i->dependencies, d, node)
 			printf("\t\"%p\" -> \"%p\"\n", d->dependent, i);
 }
@@ -407,11 +381,8 @@ static char *test_dependency_graph(void *arg)
 	init_tests();
 	puts("digraph G {");
 
-	test_dgraph_vertices(&compulsory_tests, ", style=filled, fillcolor=yellow");
-	test_dgraph_vertices(&normal_tests,     "");
-
-	test_dgraph_edges(&compulsory_tests);
-	test_dgraph_edges(&normal_tests);
+	test_dgraph_vertices("");
+	test_dgraph_edges();
 
 	puts("}");
 
@@ -552,12 +523,10 @@ static bool depends_on(struct ccanlint *i, struct ccanlint *target)
 static void skip_unrelated_tests(struct ccanlint *target)
 {
 	struct ccanlint *i;
-	struct list_head *list;
 
-	foreach_ptr(list, &compulsory_tests, &normal_tests)
-		list_for_each(list, i, list)
-			if (!depends_on(i, target))
-				i->skip = "not relevant to target";
+	tlist_for_each(&tests, i, list)
+		if (!depends_on(i, target))
+			i->skip = "not relevant to target";
 }
 
 static char *demangle_string(char *string)
@@ -726,6 +695,8 @@ int main(int argc, char *argv[])
 
 	for (i = 1; i < argc; i++) {
 		unsigned int score, total_score;
+		bool added_info_options = false;
+
 		dir = argv[i];
 
 		if (dir[0] != '/')
@@ -762,26 +733,25 @@ int main(int argc, char *argv[])
 		if (symlink(talloc_asprintf(m, "%s/test", dir), testlink) != 0)
 			err(1, "Creating test symlink in %s", temp_dir(NULL));
 
-		/* If you don't pass the compulsory tests, score is 0. */
 		score = total_score = 0;
-		while ((t = get_next_test(&compulsory_tests)) != NULL) {
+		while ((t = get_next_test()) != NULL) {
 			if (!run_test(t, summary, &score, &total_score, m,
 				      prefix)) {
-				warnx("%s%s failed", prefix, t->name);
-				printf("%sTotal score: 0/%u\n",
-				       prefix, total_score);
 				pass = false;
-				goto next;
+				if (t->compulsory) {
+					warnx("%s%s failed", prefix, t->name);
+					printf("%sTotal score: 0/%u\n",
+					       prefix, total_score);
+					goto next;
+				}
+			}
+
+			/* --target overrides known FAIL from _info */
+			if (!added_info_options && m->info_file) {
+				add_info_options(m->info_file, !target);
+				added_info_options = true;
 			}
 		}
-
-		/* --target overrides known FAIL from _info */
-		if (m->info_file)
-			add_info_options(m->info_file, !target);
-
-		while ((t = get_next_test(&normal_tests)) != NULL)
-			pass &= run_test(t, summary, &score, &total_score, m,
-					 prefix);
 
 		printf("%sTotal score: %u/%u\n", prefix, score, total_score);
 	next: ;

@@ -1,7 +1,7 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <ccan/talloc/talloc.h>
 #include "reduce_features.h"
-#include "../compulsory_tests/build.h"
+#include "build.h"
 
 static void check_objs_build_without_features(struct manifest *m,
 					      bool keep,

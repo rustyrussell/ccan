@@ -81,10 +81,10 @@ static void do_build(struct manifest *m,
 struct ccanlint module_builds = {
 	.key = "module_builds",
 	.name = "Module can be built from object files",
+	.compulsory = true,
 	.check = do_build,
 	.can_run = can_build,
 	.needs = "objects_build"
 };
 
 REGISTER_TEST(module_builds);
-

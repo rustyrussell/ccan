@@ -9,8 +9,7 @@ tools/doc_extract
 tools/namespacize
 tools/run_tests
 tools/ccanlint/ccanlint
-tools/ccanlint/generated-compulsory-tests
-tools/ccanlint/generated-normal-tests
+tools/ccanlint/generated-testlist
 inter-depends
 test-depends
 lib-depends

@@ -14,7 +14,7 @@
 #include <err.h>
 #include <string.h>
 #include <ctype.h>
-#include "../compulsory_tests/build.h"
+#include "build.h"
 #include "tests_compile.h"
 
 /* Note: we already test safe_mode in run_tests.c */

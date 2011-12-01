@@ -132,6 +132,6 @@ struct ccanlint tests_exist = {
 	.key = "tests_exist",
 	.name = "Module has test directory with tests in it",
 	.check = check_tests_exist,
-	.needs = ""
+	.needs = "info_exists"
 };
 

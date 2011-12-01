@@ -12,7 +12,7 @@
 #include <ctype.h>
 #include <assert.h>
 #include <err.h>
-#include "../compulsory_tests/build.h"
+#include "build.h"
 
 static const char *can_run(struct manifest *m)
 {

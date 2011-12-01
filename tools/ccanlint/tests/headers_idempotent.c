@@ -195,7 +195,7 @@ struct ccanlint headers_idempotent = {
 	.name = "Module headers are #ifndef/#define wrapped",
 	.check = check_idempotent,
 	.handle = handle_idem,
-	.needs = ""
+	.needs = "info_exists main_header_exists"
 };
 
 REGISTER_TEST(headers_idempotent);

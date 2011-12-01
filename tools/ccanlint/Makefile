@@ -1,6 +1,5 @@
-COMPULSORY_TEST_CFILES := $(wildcard tools/ccanlint/compulsory_tests/*.c)
-NORMAL_TEST_CFILES := $(wildcard tools/ccanlint/tests/*.c)
-TEST_OBJS := $(NORMAL_TEST_CFILES:.c=.o) $(COMPULSORY_TEST_CFILES:.c=.o)
+TEST_CFILES := $(wildcard tools/ccanlint/tests/*.c)
+TEST_OBJS := $(TEST_CFILES:.c=.o)
 
 CORE_OBJS := \
 	ccan/asort/asort.o \
@@ -33,20 +32,16 @@ CORE_OBJS := \
 OBJS := $(CORE_OBJS) $(TEST_OBJS)
 
 # FIXME: write a trivial C program to do this
-tools/ccanlint/generated-normal-tests: $(NORMAL_TEST_CFILES)
-	cat $^ | grep ^REGISTER_TEST > $@
-tools/ccanlint/generated-compulsory-tests: $(COMPULSORY_TEST_CFILES)
+tools/ccanlint/generated-testlist: $(TEST_CFILES)
 	cat $^ | grep ^REGISTER_TEST > $@
 
-$(TEST_OBJS): tools/ccanlint/generated-normal-tests tools/ccanlint/generated-compulsory-tests
+$(TEST_OBJS): tools/ccanlint/generated-testlist
 
 # Otherwise, ccanlint.c et al. may fail to build
-$(CORE_OBJS): tools/ccanlint/generated-normal-tests tools/ccanlint/generated-compulsory-tests config.h
+$(CORE_OBJS): tools/ccanlint/generated-testlist config.h
 
 tools/ccanlint/ccanlint: $(OBJS)
 
 ccanlint-clean:
-	$(RM) tools/ccanlint/generated-compulsory-tests
-	$(RM) tools/ccanlint/generated-normal-tests
+	$(RM) tools/ccanlint/generated-testlist
 	$(RM) tools/ccanlint/ccanlint
-

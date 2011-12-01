@@ -13,7 +13,7 @@
 #include <err.h>
 #include <string.h>
 #include <ctype.h>
-#include "../compulsory_tests/build.h"
+#include "build.h"
 
 static const char *can_build(struct manifest *m)
 {

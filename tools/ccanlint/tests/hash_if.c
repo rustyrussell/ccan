@@ -71,7 +71,7 @@ struct ccanlint hash_if = {
 	.key = "hash_if",
 	.name = "Features are checked with #if not #ifdef",
 	.check = check_hash_if,
-	.needs = ""
+	.needs = "info_exists"
 };
 
 REGISTER_TEST(hash_if);

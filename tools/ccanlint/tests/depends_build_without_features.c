@@ -14,7 +14,7 @@
 #include <string.h>
 #include <ctype.h>
 #include "reduce_features.h"
-#include "../compulsory_tests/build.h"
+#include "build.h"
 
 static const char *can_build(struct manifest *m)
 {
@@ -55,7 +55,7 @@ struct ccanlint depends_build_without_features = {
 	.name = "Module's CCAN dependencies can be found or built (reduced features)",
 	.check = check_depends_built_without_features,
 	.can_run = can_build,
-	.needs = "depends_exist reduce_features"
+	.needs = "depends_build reduce_features"
 };
 
 REGISTER_TEST(depends_build_without_features);

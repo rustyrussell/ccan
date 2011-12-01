@@ -53,7 +53,7 @@ struct ccanlint no_trailing_whitespace = {
 	.key = "no_trailing_whitespace",
 	.name = "Module's source code has no trailing whitespace",
 	.check = check_trailing_whitespace,
-	.needs = ""
+	.needs = "info_exists"
 };
 
 

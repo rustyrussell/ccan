@@ -29,7 +29,7 @@ static void check_has_info(struct manifest *m,
 	}
 }
 
-static const char template[] = 
+static const char template[] =
 	"#include <string.h>\n"
 	"#include \"config.h\"\n"
 	"\n"
@@ -78,6 +78,7 @@ static void create_info_template(struct manifest *m, struct score *score)
 struct ccanlint info_exists = {
 	.key = "info_exists",
 	.name = "Module has _info file",
+	.compulsory = true,
 	.check = check_has_info,
 	.handle = create_info_template,
 	.needs = ""
