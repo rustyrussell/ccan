@@ -3,7 +3,6 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <ccan/opt/opt.h>
-#include <getopt.h>
 #include <string.h>
 #include <stdio.h>
 #include "utils.h"
@@ -77,8 +76,6 @@ bool parse_args(int *argc, char ***argv, ...)
 
 	*argv = a;
 	allocated = true;
-	/* Re-set before parsing. */
-	optind = 0;
 
 	return opt_parse(argc, *argv, save_err_output);
 }
