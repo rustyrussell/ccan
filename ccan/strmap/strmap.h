@@ -189,8 +189,8 @@ void strmap_clear_(struct strmap *map);
 						  __typeof__(arg)), (handle)), \
 			(arg))
 void strmap_iterate_(const struct strmap *map,
-		     bool (*handle)(const char *, void *, void *), void *data);
-
+		     bool (*handle)(const char *, void *, void *),
+		     const void *data);
 
 /**
  * strmap_prefix - return a submap matching a prefix

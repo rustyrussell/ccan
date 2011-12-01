@@ -174,17 +174,19 @@ char *strmap_del_(struct strmap *map, const char *member, void **valuep)
 }
 
 static bool iterate(struct strmap n,
-		    bool (*handle)(const char *, void *, void *), void *data)
+		    bool (*handle)(const char *, void *, void *),
+		    const void *data)
 {
 	if (n.v)
-		return handle(n.u.s, n.v, data);
+		return handle(n.u.s, n.v, (void *)data);
 
 	return iterate(n.u.n->child[0], handle, data)
 		|| iterate(n.u.n->child[1], handle, data);
 }
 
 void strmap_iterate_(const struct strmap *map,
-		     bool (*handle)(const char *, void *, void *), void *data)
+		     bool (*handle)(const char *, void *, void *),
+		     const void *data)
 {
 	/* Empty map? */
 	if (!map->u.n)
