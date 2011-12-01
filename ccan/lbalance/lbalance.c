@@ -315,7 +315,7 @@ void lbalance_free(struct lbalance *lb)
 {
 	struct lbalance_task *task;
 
-	while ((task = tlist_top(&lb->tasks, struct lbalance_task, list))) {
+	while ((task = tlist_top(&lb->tasks, list))) {
 		assert(task->lb == lb);
 		tlist_del_from(&lb->tasks, task, list);
 		lb->num_tasks--;

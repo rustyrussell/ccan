@@ -570,7 +570,7 @@ static void free_everything(void)
 {
 	struct failtest_call *i;
 
-	while ((i = tlist_top(&history, struct failtest_call, list)) != NULL)
+	while ((i = tlist_top(&history, list)) != NULL)
 		free_call(i);
 
 	failtable_clear(&failtable);
@@ -755,7 +755,7 @@ static bool should_fail(struct failtest_call *call)
 			char *failpath;
 			struct failtest_call *c;
 
-			c = tlist_tail(&history, struct failtest_call, list);
+			c = tlist_tail(&history, list);
 			diff = time_sub(time_now(), start);
 			failpath = failpath_string();
 			p = strrchr(c->file, '/');
@@ -770,8 +770,7 @@ static bool should_fail(struct failtest_call *call)
 			free(failpath);
 		}
 		/* From here on, we have to clean up! */
-		our_history_start = tlist_tail(&history, struct failtest_call,
-					       list);
+		our_history_start = tlist_tail(&history, list);
 		close(control[0]);
 		close(output[0]);
 		/* Don't swallow stderr if we're tracing. */

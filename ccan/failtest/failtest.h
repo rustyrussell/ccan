@@ -214,7 +214,7 @@ enum failtest_result {
  *	static enum failtest_result dont_fail_alloc(struct tlist_calls *history)
  *	{
  *		struct failtest_call *call;
- *		call = tlist_tail(history, struct failtest_call, list);
+ *		call = tlist_tail(history, list);
  *		if (call->type == FAILTEST_MALLOC
  *			|| call->type == FAILTEST_CALLOC
  *			|| call->type == FAILTEST_REALLOC)

@@ -72,7 +72,7 @@ block_repeat_failures(struct tlist_calls *history)
 {
 	const struct failtest_call *last;
 
-	last = tlist_tail(history, struct failtest_call, list);
+	last = tlist_tail(history, list);
 
 	if (failtest_suppress)
 		return FAIL_DONT_FAIL;

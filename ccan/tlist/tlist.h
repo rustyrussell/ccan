@@ -178,32 +178,36 @@
 /**
  * tlist_top - get the first entry in a list
  * @h: the tlist
- * @type: the type of the entry
  * @member: the list_node member of the type
  *
  * If the list is empty, returns NULL.
  *
  * Example:
  *	struct child *first;
- *	first = tlist_top(&parent->children, struct child, list);
+ *	first = tlist_top(&parent->children, list);
  */
-#define tlist_top(h, type, member) \
-	list_top(tlist_raw((h), (type *)NULL), type, member)
+#define tlist_top(h, member)						\
+	((tcon_type((h), canary))					\
+	 list_top_(&(h)->raw,						\
+		   (char *)(&(h)->_tcon[0].canary->member) -		\
+		   (char *)((h)->_tcon[0].canary)))
 
 /**
  * tlist_tail - get the last entry in a list
  * @h: the tlist
- * @type: the type of the entry
  * @member: the list_node member of the type
  *
  * If the list is empty, returns NULL.
  *
  * Example:
  *	struct child *last;
- *	last = tlist_tail(&parent->children, struct child, list);
+ *	last = tlist_tail(&parent->children, list);
  */
-#define tlist_tail(h, type, member) \
-	list_tail(tlist_raw((h), (type *)NULL), type, member)
+#define tlist_tail(h, member)						\
+	((tcon_type((h), canary))					\
+	 list_tail_(&(h)->raw,						\
+		    (char *)(&(h)->_tcon[0].canary->member) -		\
+		    (char *)((h)->_tcon[0].canary)))
 
 /**
  * tlist_for_each - iterate through a list.

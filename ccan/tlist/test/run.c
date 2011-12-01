@@ -73,10 +73,10 @@ int main(int argc, char *argv[])
 	ok1(tlist_check(&parent.children, NULL));
 
 	/* Test tlist_top */
-	ok1(tlist_top(&parent.children, struct child, list) == &c1);
+	ok1(tlist_top(&parent.children, list) == &c1);
 
 	/* Test list_tail */
-	ok1(tlist_tail(&parent.children, struct child, list) == &c3);
+	ok1(tlist_tail(&parent.children, list) == &c3);
 
 	/* Test tlist_for_each. */
 	i = 0;
@@ -141,7 +141,7 @@ int main(int argc, char *argv[])
 	ok1(tlist_empty(&parent.children));
 
 	/* Test list_top/list_tail on empty list. */
-	ok1(tlist_top(&parent.children, struct child, list) == NULL);
-	ok1(tlist_tail(&parent.children, struct child, list) == NULL);
+	ok1(tlist_top(&parent.children, list) == (struct child *)NULL);
+	ok1(tlist_tail(&parent.children, list) == (struct child *)NULL);
 	return exit_status();
 }

@@ -48,7 +48,7 @@ static void run_more(void)
 	while (num_running < lbalance_target(lb)) {
 		int p[2];
 
-		c = tlist_top(&pending, struct command, list);
+		c = tlist_top(&pending, list);
 		if (!c)
 			break;
 
@@ -189,7 +189,7 @@ void *collect_command(bool *ok, char **output)
 	struct command *c;
 	const void *ctx;
 
-	while ((c = tlist_top(&done, struct command, list)) == NULL) {
+	while ((c = tlist_top(&done, list)) == NULL) {
 		if (tlist_empty(&pending) && tlist_empty(&running))
 			return NULL;
 		reap_output();
