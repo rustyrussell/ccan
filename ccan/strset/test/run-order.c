@@ -10,7 +10,7 @@ static bool in_order(const char *value, unsigned int *count)
 	int i = atoi(value);
 	ok1(*count == i);
 	(*count)++;
-	return false;
+	return true;
 }
 
 static bool in_order_by_2(const char *value, unsigned int *count)
@@ -18,13 +18,13 @@ static bool in_order_by_2(const char *value, unsigned int *count)
 	int i = atoi(value);
 	ok1(*count == i);
 	(*count) += 2;
-	return false;
+	return true;
 }
 
 static bool dump(const char *value, void *unused)
 {
 	diag("%s", value);
-	return false;
+	return true;
 }
 
 int main(void)

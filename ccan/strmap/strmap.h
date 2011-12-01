@@ -156,7 +156,7 @@ void strmap_clear_(struct strmap *map);
  * @handle's prototype should be:
  *	bool @handle(const char *member, type value, typeof(arg) arg)
  *
- * If @handle returns true, the iteration will stop.
+ * If @handle returns false, the iteration will stop.
  * You should not alter the map within the @handle function!
  *
  * Example:
@@ -167,9 +167,9 @@ void strmap_clear_(struct strmap *map);
  *	{
  *		// Only dump out num nodes.
  *		if (*(num--) == 0)
- *			return true;
+ *			return false;
  *		printf("%s=>%i\n", member, *value);
- *		return false;
+ *		return true;
  *	}
  *
  *	static void dump_map(const struct strmap_intp *map)

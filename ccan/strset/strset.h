@@ -113,16 +113,16 @@ void strset_clear(struct strset *set);
  * @arg: the argument for the function (types should match).
  *
  * You should not alter the set within the @handle function!  If it returns
- * true, the iteration will stop.
+ * false, the iteration will stop.
  *
  * Example:
  *	static bool dump_some(const char *member, int *num)
  *	{
  *		// Only dump out num nodes.
  *		if (*(num--) == 0)
- *			return true;
+ *			return false;
  *		printf("%s\n", member);
- *		return false;
+ *		return true;
  *	}
  *
  *	static void dump_set(const struct strset *set)

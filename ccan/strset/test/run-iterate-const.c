@@ -9,7 +9,7 @@ static bool find_string(const char *str, const char *cmp)
 {
 	if (strcmp(str, cmp) == 0)
 		found = true;
-	return false;
+	return true;
 }
 
 int main(void)

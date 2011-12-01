@@ -21,8 +21,8 @@
  * static bool dump(const char *member, size_t value, void *unused)
  * {
  * 	printf("%s at %zu. ", member, value);
- * 	// false means keep going with iteration.
- * 	return false;
+ * 	// true means keep going with iteration.
+ * 	return true;
  * }
  *
  * int main(int argc, char *argv[])

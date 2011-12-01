@@ -237,7 +237,7 @@ static bool iterate(struct strset n,
 		return handle(n.u.n->child[0].u.s, (void *)data);
 
 	return iterate(n.u.n->child[0], handle, data)
-		|| iterate(n.u.n->child[1], handle, data);
+		&& iterate(n.u.n->child[1], handle, data);
 }
 
 void strset_iterate_(const struct strset *set,

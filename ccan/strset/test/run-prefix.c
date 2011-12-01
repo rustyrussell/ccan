@@ -11,14 +11,14 @@ static bool in_order(const char *value, unsigned int *count)
 	int i = atoi(value);
 	ok1(*count == i);
 	(*count)++;
-	return false;
+	return true;
 }
 
 static bool find_empty(const char *value, char *empty)
 {
 	if (value == empty)
 		pass("Found empty entry!");
-	return false;
+	return true;
 }
 
 int main(void)

@@ -12,14 +12,14 @@ static bool in_order(const char *index, char *value, unsigned int *count)
 	ok1(i == atoi(value));
 	ok1(*count == i);
 	(*count)++;
-	return false;
+	return true;
 }
 
 static bool find_empty(const char *index, char *value, char *empty)
 {
 	if (index == empty)
 		pass("Found empty entry!");
-	return false;
+	return true;
 }
 
 int main(void)

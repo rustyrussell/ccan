@@ -22,7 +22,7 @@
  *	static bool dump(const char *member, void *unused)
  *	{
  *		printf("%s ", member);
- *		return false;
+ *		return true; // Keep going with iteration.
  *	}
  *
  *	int main(void)

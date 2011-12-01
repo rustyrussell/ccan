@@ -181,7 +181,7 @@ static bool iterate(struct strmap n,
 		return handle(n.u.s, n.v, (void *)data);
 
 	return iterate(n.u.n->child[0], handle, data)
-		|| iterate(n.u.n->child[1], handle, data);
+		&& iterate(n.u.n->child[1], handle, data);
 }
 
 void strmap_iterate_(const struct strmap *map,

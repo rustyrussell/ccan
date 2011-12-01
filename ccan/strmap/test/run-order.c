@@ -11,7 +11,7 @@ static bool in_order(const char *member, char *value, unsigned int *count)
 	ok1(i == atoi(value));
 	ok1(*count == i);
 	(*count)++;
-	return false;
+	return true;
 }
 
 static bool in_order_by_2(const char *member, char *value, unsigned int *count)
@@ -20,7 +20,7 @@ static bool in_order_by_2(const char *member, char *value, unsigned int *count)
 	ok1(i == atoi(value));
 	ok1(*count == i);
 	(*count) += 2;
-	return false;
+	return true;
 }
 
 static bool dump(const char *member, char *value, bool *ok)
@@ -28,7 +28,7 @@ static bool dump(const char *member, char *value, bool *ok)
 	diag("%s=>%s", member, value);
 	if (value != member + 1)
 		*ok = false;
-	return false;
+	return true;
 }
 
 int main(void)
