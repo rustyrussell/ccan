@@ -139,7 +139,7 @@ void strset_destroy(struct strset *set);
 						   const char *),	\
 			(arg))
 void strset_iterate_(const struct strset *set,
-		     bool (*handle)(const char *, void *), void *data);
+		     bool (*handle)(const char *, void *), const void *data);
 
 
 /**
