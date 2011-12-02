@@ -41,6 +41,7 @@ TLIST_TYPE(ccanlint, struct ccanlint);
 int verbose = 0;
 static struct tlist_ccanlint tests = TLIST_INIT(tests);
 bool safe_mode = false;
+static bool targeting = false;
 static struct btree *cmdline_exclude;
 static struct btree *info_exclude;
 static unsigned int timeout;
@@ -421,7 +422,7 @@ static void add_options(struct ccanlint *test, char **options,
 	memcpy(&test->options[num], options, (num_options + 1)*sizeof(char *));
 }
 
-static void add_info_options(struct ccan_file *info, bool mark_fails)
+void add_info_options(struct ccan_file *info)
 {
 	struct doc_section *d;
 	unsigned int i;
@@ -456,7 +457,7 @@ static void add_info_options(struct ccan_file *info, bool mark_fails)
 
 			/* Known failure? */
 			if (strcasecmp(words[1], "FAIL") == 0) {
-				if (mark_fails)
+				if (!targeting)
 					btree_insert(info_exclude, words[0]);
 			} else {
 				if (!test->takes_options)
@@ -698,7 +699,6 @@ int main(int argc, char *argv[])
 
 	for (i = 1; i < argc; i++) {
 		unsigned int score, total_score;
-		bool added_info_options = false;
 
 		dir = argv[i];
 
@@ -747,12 +747,6 @@ int main(int argc, char *argv[])
 					       prefix, total_score);
 					goto next;
 				}
-			}
-
-			/* --target overrides known FAIL from _info */
-			if (!added_info_options && m->info_file) {
-				add_info_options(m->info_file, !target);
-				added_info_options = true;
 			}
 		}
 

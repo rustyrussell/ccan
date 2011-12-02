@@ -20,6 +20,7 @@ static void check_has_info(struct manifest *m,
 	if (m->info_file) {
 		score->pass = true;
 		score->score = score->total;
+		add_info_options(m->info_file);
 	} else {
 		score->error = talloc_strdup(score,
 	"You have no _info file.\n\n"
