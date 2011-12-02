@@ -1,0 +1,267 @@
+CCANLINT(1)
+===========
+:doctype: manpage
+
+
+NAME
+----
+ccanlint - Make CCAN code modules, and the brightness up.
+
+
+SYNOPSIS
+--------
+*ccanlint* ['OPTIONS'] ['DIRECTORY'...]
+
+
+DESCRIPTION
+-----------
+No encoder? No need to *ccanlint*. You programmer?  Excited to *ccanlint*!
+
+CCAN module is small code of the song. *ccanlint* full CCAN testing
+tool. Each test spray bit of wisdom. Also score. Good score good.
+Bad bad score.
+
+*ccanlint* expect the source code in this directory, or command line can be
+more than one. Exit 0 happy if all modules all tests happy.
+
+OPTIONS
+-------
+*-v, --verbose*::
+  Make *ccanlint* talkative. "-vv" doing very talkative. "-vvvv" make stupid talker.
+
+*-n, --safe-mode*::
+  Do not compile anything. Could it be safer for the bad code, but *ccanlint*
+  sad useless.
+
+*-l, --list-tests*::
+  Tests show *ccanlint* can do. Then die happy.
+
+*--test-dep-graph*::
+  Chart of all parties *ccanlint* tests 'dot(1)' Graphviz, then die happy.
+
+*-k, --keep*::
+  *ccanlint* normally make mess temporary directory, but now it later in
+  forensic.
+
+*-s, --summary*::
+  *ccanlint* just realized there is no message unless you die horrible.
+
+*-x, --exclude*='TESTNAME'::
+  No test run. Can the use of time many, many do *ccanlint* very, very quickly.
+  Often hatred 'tests_run_valgrind' that the test slowed.
+
+*--timeout*='MILLISECONDS'::
+  Stop the test and forget it if you take too long. Generally, the same works as
+  '-x tests_run_valgrind'.
+
+*-t, --target*='TESTNAME'::
+  Do not run all tests. Run this test, and the proof you need. Used many times
+  for many tests.
+
+*--compiler*='COMPILER'::
+  *ccanlint* read config.h about finding 'CCAN_COMPILER'. Otherwise use the default
+  when it was built. The change, to use this compiler.
+
+*--cflags*='CFLAGS'::
+  Set compiler options to compile. Be sure to protect spaces shell hunger.
+
+
+TESTS
+-----
+*ccanlint* many tests. Each test will score soon. Not total score for
+each test unless stupid module or no life.  Worry if little or low
+score score after hacking.
+
+If test break, but not repair, or maybe the dumb test, put the magic
+lines '_info' file like this.  *ccanlint* to score from 0 of 1 for
+test, but happy:
+---------------------------------------------------------------------
+ * Ccanlint:
+ *	// Test module foolish for me great!
+ *	info_documentation_exists FAIL
+ *	// Error for the file may be only
+ *	tests_pass_valgrind_noleaks run-mytest.c:FAIL
+---------------------------------------------------------------------
+
+*info_exists*::
+  CCAN module must have '_info' file describing. No this score is 0.
+  However, *ccanlint* question may help to write one.
+
+*depends_exist*::
+  '_info' file CCAN other module without saying, must find. It is not score 0.
+
+*objects_build*::
+  All build purposes '.c' in the top dir. Not score 0.
+
+*module_builds*::
+  Link to all objects in an object module. Not score 0.
+
+*depends_accurate*::
+  Include other CCAN modules, we must say we need to '_info' depends.
+  Only one thing allows different, you can use 'ccan/tap' for testing anyway.
+
+*depends_build*::
+  We try to generate the CCAN module you need.
+
+*examples_exist*::
+  Rather hope that the comments in the header, and '_info'.  An
+  example of the section in each, please! Maybe more, *ccanlint* very
+  happy morning.
+
+*examples_relevant*::
+  Example, do not cut and paste away! You say the name of the thing in
+  the example or *ccanlint* unhappy.
+
+*hash_if*::
+  Module wants *ccanlint* 'config.h' "#define HAVE_FEATURE" for all
+  feature. Function test "#if HAVE_FEATURE" no "#ifdef HAVE_FEATURE"
+  because user might not know about the role at all.  Intelligent GCC
+  flag '-Wundef' say HAVE_FEATURE not 0, not 1! but only if the
+  use of '#if'.
+
+*info_documentation_exists*::
+  '_info' file format is pretty comments. Copying someone. It is not difficult
+  write documentation!
+
+*info_summary_single_line*::
+  Comments from a top line often describe the function or macro. '_info' comment
+  top line describes complete module. Characteristics make you scream!
+
+*license_exists*::
+  The lawyers eat me. '_info' have 'License:' in the observation and LICENSE
+  file there.  In general, is the link: *ccanlint* offer create a link, if they
+  know 'License:'.
+
+*license_comment*::
+  Attorney everywhere. Please put a comment saying something like "GPL
+  Version 4. Read LICENSE." in all source files in the directory.
+
+*license_file_compat*::
+  Do not lie about the license! *ccanlint* search files, see the license
+  of another, angry here.
+
+*license_depends_compat*::
+  Hostile to BSD license module, but requires another module of the GPL.
+  Perhaps poor encoder think all BSD code, unloading and damage
+  attorney stick! Ay ay!
+
+*main_header_exists*::
+  *ccanlint* know the module name directory name. Expect the same name for
+  header.
+
+*headers_idempotent*::
+  Good header '#include' many time happy.  Rap header around easy.
+  *ccanlint* say it can fix too.  Always work.
+
+*main_header_compiles*::
+  Simple program '#include' main header compile.
+
+*avoids_cpp_reserved*::
+  C\++ programmer to include code.  Not like them anyway, maybe, but wrong
+  end your program, do mourn.  Only main header compile C\++ and if
+  trying to compile C\++ module stupid to pieces.
+
+*no_trailing_whitespace*::
+  Linux kernel programmers more, solve the problem for the space of
+  the final ban the line. Now all lots of hackers working to fix
+  it. Want to famous and Linux? Leave extra space too!
+
+*examples_compile*::
+  *ccanlint* very smart! Take 'Example:' from a comment in the header and
+  '_info'. First try to compile anything.  If not, add many
+  headers and maybe put inside the function.  It does not work, adds
+  the latest example.  If the last example has '...' try that maybe. Sometimes
+  too complicated! '-vv' or '--keep' to see why it broke. Or maybe
+  bad example *ccanlint* says wow!
+
+*examples_run*::
+  If the example program that comments like '// given foo outputs bar'
+  *ccanlint* will run the food program 'foo' in the command line and
+  standard input. Happy if 'bar' are out. You can do ' or " about
+  the production or determined.  You can also 'output contains' more
+  relaxed controls.
+
+*module_links*::
+  CCAN link to the program module simply no error.
+
+*objects_build_with_stringchecks*::
+  Module 'ccan/str' is super difficult to detect errors debugging chain.
+  *ccanlint* use with the module and see break!
+
+*tests_exist*::
+  You have CCAN module directory called 'test'. You have proof
+  here. If there is no proof, *ccanlint* still offer make proof for
+  you.
+
+*tests_compile*::
+  In 'test' which has four such tests, start with different
+  name. 'run' compile the test files, but no link to the module, you
+  '#include' to get the bits of the module. 'api' test compile and
+  link with the module. 'compile-ok' as 'run' but only build.
+  'compile-fail' compile, but when 'FAIL' set has to break or
+  alert. This good for module supposed to warn.
+
+*test_helpers_compile*::
+  Other files 'test'? Compilation of links to all tests. Ask for help.
+
+*tests_pass*::
+  'run' and 'api' test happy departure. If not happy, offer debugger.
+
+*tests_pass_valgrind*::
+  *valgrind* the tool of all 'run' and 'api' slow test.  However, we
+  found many errors! If *valgrind* test rest, '_info' have *ccanlint* section,
+  make "tests_pass_valgrind TESTNAME:FAIL".  If required
+  valgrind additional option, "tests_pass_valgrind TESTNAME:--option".
+
+*tests_pass_valgrind_noleaks*::
+  *valgrind* complain if the memory leak test. '_info' can also be disabled.
+
+*tests_compile_coverage*::
+  Compile 'run', 'api' test coverage. Fun if not here!
+
+*tests_coverage*::
+  Run tests again, find lines that never try! Half of the lines 1
+  point 3/4 getting 2 points. Limit of 5 points, but the extra point
+  for all lines of evidence.  Not win unless the module silly or use
+  gimmick 'ccan/failtest'.
+
+*reduce_features*::
+  Code use 'HAVE_FEATURE' make special config.h turned off.  Not
+  stupid like HAVE_BIG_ENDIAN though!
+
+*depends_build_without_features*::
+  Make modules CCAN need. config.h but not more features.
+
+*objects_build_without_features*::
+  Make the module again, but not more features.
+
+*tests_helpers_compile_without_features*::
+  Helpers do try again, but not more features.
+
+*tests_compile_without_features*::
+  Collect the tests again, but not more features.
+
+*tests_pass_without_features*:
+  Run tests again, but not more features.
+
+BUGS
+----
+*ccanlint* rapid change. The bad man, bad page.
+
+AUTHOR
+------
+Rusty Russell wrote *ccanlint*. Helping others, but most break Rusty.
+
+
+RESOURCES
+---------
+Main web site: http://ccodearchive.net/
+
+Wiki: https://github.com/rustyrussell/ccan/wiki/
+
+COPYING
+-------
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the Free
+Software Foundation; either version 2 of the License, or (at your option)
+any later version.

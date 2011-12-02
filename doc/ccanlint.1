@@ -1,0 +1,455 @@
+'\" t
+.\"     Title: ccanlint
+.\"    Author: [see the "AUTHOR" section]
+.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
+.\"      Date: 12/02/2011
+.\"    Manual: \ \&
+.\"    Source: \ \&
+.\"  Language: English
+.\"
+.TH "CCANLINT" "1" "12/02/2011" "\ \&" "\ \&"
+.\" -----------------------------------------------------------------
+.\" * Define some portability stuff
+.\" -----------------------------------------------------------------
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.\" http://bugs.debian.org/507673
+.\" http://lists.gnu.org/archive/html/groff/2009-02/msg00013.html
+.\" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.ie \n(.g .ds Aq \(aq
+.el       .ds Aq '
+.\" -----------------------------------------------------------------
+.\" * set default formatting
+.\" -----------------------------------------------------------------
+.\" disable hyphenation
+.nh
+.\" disable justification (adjust text to left margin only)
+.ad l
+.\" -----------------------------------------------------------------
+.\" * MAIN CONTENT STARTS HERE *
+.\" -----------------------------------------------------------------
+.SH "NAME"
+ccanlint \- Make CCAN code modules, and the brightness up\&.
+.SH "SYNOPSIS"
+.sp
+\fBccanlint\fR [\fIOPTIONS\fR] [\fIDIRECTORY\fR\&...]
+.SH "DESCRIPTION"
+.sp
+No encoder? No need to \fBccanlint\fR\&. You programmer? Excited to \fBccanlint\fR!
+.sp
+CCAN module is small code of the song\&. \fBccanlint\fR full CCAN testing tool\&. Each test spray bit of wisdom\&. Also score\&. Good score good\&. Bad bad score\&.
+.sp
+\fBccanlint\fR expect the source code in this directory, or command line can be more than one\&. Exit 0 happy if all modules all tests happy\&.
+.SH "OPTIONS"
+.PP
+\fB\-v, \-\-verbose\fR
+.RS 4
+Make
+\fBccanlint\fR
+talkative\&. "\-vv" doing very talkative\&. "\-vvvv" make stupid talker\&.
+.RE
+.PP
+\fB\-n, \-\-safe\-mode\fR
+.RS 4
+Do not compile anything\&. Could it be safer for the bad code, but
+\fBccanlint\fR
+sad useless\&.
+.RE
+.PP
+\fB\-l, \-\-list\-tests\fR
+.RS 4
+Tests show
+\fBccanlint\fR
+can do\&. Then die happy\&.
+.RE
+.PP
+\fB\-\-test\-dep\-graph\fR
+.RS 4
+Chart of all parties
+\fBccanlint\fR
+tests
+\fIdot(1)\fR
+Graphviz, then die happy\&.
+.RE
+.PP
+\fB\-k, \-\-keep\fR
+.RS 4
+
+\fBccanlint\fR
+normally make mess temporary directory, but now it later in forensic\&.
+.RE
+.PP
+\fB\-s, \-\-summary\fR
+.RS 4
+
+\fBccanlint\fR
+just realized there is no message unless you die horrible\&.
+.RE
+.PP
+\fB\-x, \-\-exclude\fR=\fITESTNAME\fR
+.RS 4
+No test run\&. Can the use of time many, many do
+\fBccanlint\fR
+very, very quickly\&. Often hatred
+\fItests_run_valgrind\fR
+that the test slowed\&.
+.RE
+.PP
+\fB\-\-timeout\fR=\fIMILLISECONDS\fR
+.RS 4
+Stop the test and forget it if you take too long\&. Generally, the same works as
+\fI\-x tests_run_valgrind\fR\&.
+.RE
+.PP
+\fB\-t, \-\-target\fR=\fITESTNAME\fR
+.RS 4
+Do not run all tests\&. Run this test, and the proof you need\&. Used many times for many tests\&.
+.RE
+.PP
+\fB\-\-compiler\fR=\fICOMPILER\fR
+.RS 4
+
+\fBccanlint\fR
+read config\&.h about finding
+\fICCAN_COMPILER\fR\&. Otherwise use the default when it was built\&. The change, to use this compiler\&.
+.RE
+.PP
+\fB\-\-cflags\fR=\fICFLAGS\fR
+.RS 4
+Set compiler options to compile\&. Be sure to protect spaces shell hunger\&.
+.RE
+.SH "TESTS"
+.sp
+\fBccanlint\fR many tests\&. Each test will score soon\&. Not total score for each test unless stupid module or no life\&. Worry if little or low score score after hacking\&.
+.sp
+If test break, but not repair, or maybe the dumb test, put the magic lines \fI_info\fR file like this\&. \fBccanlint\fR to score from 0 of 1 for test, but happy:
+.sp
+.if n \{\
+.RS 4
+.\}
+.nf
+ * Ccanlint:
+ *      // Test module foolish for me great!
+ *      info_documentation_exists FAIL
+ *      // Error for the file may be only
+ *      tests_pass_valgrind_noleaks run\-mytest\&.c:FAIL
+.fi
+.if n \{\
+.RE
+.\}
+.PP
+\fBinfo_exists\fR
+.RS 4
+CCAN module must have
+\fI_info\fR
+file describing\&. No this score is 0\&. However,
+\fBccanlint\fR
+question may help to write one\&.
+.RE
+.PP
+\fBdepends_exist\fR
+.RS 4
+
+\fI_info\fR
+file CCAN other module without saying, must find\&. It is not score 0\&.
+.RE
+.PP
+\fBobjects_build\fR
+.RS 4
+All build purposes
+\fI\&.c\fR
+in the top dir\&. Not score 0\&.
+.RE
+.PP
+\fBmodule_builds\fR
+.RS 4
+Link to all objects in an object module\&. Not score 0\&.
+.RE
+.PP
+\fBdepends_accurate\fR
+.RS 4
+Include other CCAN modules, we must say we need to
+\fI_info\fR
+depends\&. Only one thing allows different, you can use
+\fIccan/tap\fR
+for testing anyway\&.
+.RE
+.PP
+\fBdepends_build\fR
+.RS 4
+We try to generate the CCAN module you need\&.
+.RE
+.PP
+\fBexamples_exist\fR
+.RS 4
+Rather hope that the comments in the header, and
+\fI_info\fR\&. An example of the section in each, please! Maybe more,
+\fBccanlint\fR
+very happy morning\&.
+.RE
+.PP
+\fBexamples_relevant\fR
+.RS 4
+Example, do not cut and paste away! You say the name of the thing in the example or
+\fBccanlint\fR
+unhappy\&.
+.RE
+.PP
+\fBhash_if\fR
+.RS 4
+Module wants
+\fBccanlint\fR
+\fIconfig\&.h\fR
+"#define HAVE_FEATURE" for all feature\&. Function test "#if HAVE_FEATURE" no "#ifdef HAVE_FEATURE" because user might not know about the role at all\&. Intelligent GCC flag
+\fI\-Wundef\fR
+say HAVE_FEATURE not 0, not 1! but only if the use of
+\fI#if\fR\&.
+.RE
+.PP
+\fBinfo_documentation_exists\fR
+.RS 4
+
+\fI_info\fR
+file format is pretty comments\&. Copying someone\&. It is not difficult write documentation!
+.RE
+.PP
+\fBinfo_summary_single_line\fR
+.RS 4
+Comments from a top line often describe the function or macro\&.
+\fI_info\fR
+comment top line describes complete module\&. Characteristics make you scream!
+.RE
+.PP
+\fBlicense_exists\fR
+.RS 4
+The lawyers eat me\&.
+\fI_info\fR
+have
+\fILicense:\fR
+in the observation and LICENSE file there\&. In general, is the link:
+\fBccanlint\fR
+offer create a link, if they know
+\fILicense:\fR\&.
+.RE
+.PP
+\fBlicense_comment\fR
+.RS 4
+Attorney everywhere\&. Please put a comment saying something like "GPL Version 4\&. Read LICENSE\&." in all source files in the directory\&.
+.RE
+.PP
+\fBlicense_file_compat\fR
+.RS 4
+Do not lie about the license!
+\fBccanlint\fR
+search files, see the license of another, angry here\&.
+.RE
+.PP
+\fBlicense_depends_compat\fR
+.RS 4
+Hostile to BSD license module, but requires another module of the GPL\&. Perhaps poor encoder think all BSD code, unloading and damage attorney stick! Ay ay!
+.RE
+.PP
+\fBmain_header_exists\fR
+.RS 4
+
+\fBccanlint\fR
+know the module name directory name\&. Expect the same name for header\&.
+.RE
+.PP
+\fBheaders_idempotent\fR
+.RS 4
+Good header
+\fI#include\fR
+many time happy\&. Rap header around easy\&.
+\fBccanlint\fR
+say it can fix too\&. Always work\&.
+.RE
+.PP
+\fBmain_header_compiles\fR
+.RS 4
+Simple program
+\fI#include\fR
+main header compile\&.
+.RE
+.PP
+\fBavoids_cpp_reserved\fR
+.RS 4
+C++ programmer to include code\&. Not like them anyway, maybe, but wrong end your program, do mourn\&. Only main header compile C++ and if trying to compile C\e++ module stupid to pieces\&.
+.RE
+.PP
+\fBno_trailing_whitespace\fR
+.RS 4
+Linux kernel programmers more, solve the problem for the space of the final ban the line\&. Now all lots of hackers working to fix it\&. Want to famous and Linux? Leave extra space too!
+.RE
+.PP
+\fBexamples_compile\fR
+.RS 4
+
+\fBccanlint\fR
+very smart! Take
+\fIExample:\fR
+from a comment in the header and
+\fI_info\fR\&. First try to compile anything\&. If not, add many headers and maybe put inside the function\&. It does not work, adds the latest example\&. If the last example has
+\fI\&...\fR
+try that maybe\&. Sometimes too complicated!
+\fI\-vv\fR
+or
+\fI\-\-keep\fR
+to see why it broke\&. Or maybe bad example
+\fBccanlint\fR
+says wow!
+.RE
+.PP
+\fBexamples_run\fR
+.RS 4
+If the example program that comments like
+\fI// given foo outputs bar\fR
+\fBccanlint\fR
+will run the food program
+\fIfoo\fR
+in the command line and standard input\&. Happy if
+\fIbar\fR
+are out\&. You can do \*(Aq or " about the production or determined\&. You can also
+\fIoutput contains\fR
+more relaxed controls\&.
+.RE
+.PP
+\fBmodule_links\fR
+.RS 4
+CCAN link to the program module simply no error\&.
+.RE
+.PP
+\fBobjects_build_with_stringchecks\fR
+.RS 4
+Module
+\fIccan/str\fR
+is super difficult to detect errors debugging chain\&.
+\fBccanlint\fR
+use with the module and see break!
+.RE
+.PP
+\fBtests_exist\fR
+.RS 4
+You have CCAN module directory called
+\fItest\fR\&. You have proof here\&. If there is no proof,
+\fBccanlint\fR
+still offer make proof for you\&.
+.RE
+.PP
+\fBtests_compile\fR
+.RS 4
+In
+\fItest\fR
+which has four such tests, start with different name\&.
+\fIrun\fR
+compile the test files, but no link to the module, you
+\fI#include\fR
+to get the bits of the module\&.
+\fIapi\fR
+test compile and link with the module\&.
+\fIcompile\-ok\fR
+as
+\fIrun\fR
+but only build\&.
+\fIcompile\-fail\fR
+compile, but when
+\fIFAIL\fR
+set has to break or alert\&. This good for module supposed to warn\&.
+.RE
+.PP
+\fBtest_helpers_compile\fR
+.RS 4
+Other files
+\fItest\fR? Compilation of links to all tests\&. Ask for help\&.
+.RE
+.PP
+\fBtests_pass\fR
+.RS 4
+
+\fIrun\fR
+and
+\fIapi\fR
+test happy departure\&. If not happy, offer debugger\&.
+.RE
+.PP
+\fBtests_pass_valgrind\fR
+.RS 4
+
+\fBvalgrind\fR
+the tool of all
+\fIrun\fR
+and
+\fIapi\fR
+slow test\&. However, we found many errors! If
+\fBvalgrind\fR
+test rest,
+\fI_info\fR
+have
+\fBccanlint\fR
+section, make "tests_pass_valgrind TESTNAME:FAIL"\&. If required valgrind additional option, "tests_pass_valgrind TESTNAME:\-\-option"\&.
+.RE
+.PP
+\fBtests_pass_valgrind_noleaks\fR
+.RS 4
+
+\fBvalgrind\fR
+complain if the memory leak test\&.
+\fI_info\fR
+can also be disabled\&.
+.RE
+.PP
+\fBtests_compile_coverage\fR
+.RS 4
+Compile
+\fIrun\fR,
+\fIapi\fR
+test coverage\&. Fun if not here!
+.RE
+.PP
+\fBtests_coverage\fR
+.RS 4
+Run tests again, find lines that never try! Half of the lines 1 point 3/4 getting 2 points\&. Limit of 5 points, but the extra point for all lines of evidence\&. Not win unless the module silly or use gimmick
+\fIccan/failtest\fR\&.
+.RE
+.PP
+\fBreduce_features\fR
+.RS 4
+Code use
+\fIHAVE_FEATURE\fR
+make special config\&.h turned off\&. Not stupid like HAVE_BIG_ENDIAN though!
+.RE
+.PP
+\fBdepends_build_without_features\fR
+.RS 4
+Make modules CCAN need\&. config\&.h but not more features\&.
+.RE
+.PP
+\fBobjects_build_without_features\fR
+.RS 4
+Make the module again, but not more features\&.
+.RE
+.PP
+\fBtests_helpers_compile_without_features\fR
+.RS 4
+Helpers do try again, but not more features\&.
+.RE
+.PP
+\fBtests_compile_without_features\fR
+.RS 4
+Collect the tests again, but not more features\&.
+.RE
+.sp
+\fBtests_pass_without_features\fR: Run tests again, but not more features\&.
+.SH "BUGS"
+.sp
+\fBccanlint\fR rapid change\&. The bad man, bad page\&.
+.SH "AUTHOR"
+.sp
+Rusty Russell wrote \fBccanlint\fR\&. Helping others, but most break Rusty\&.
+.SH "RESOURCES"
+.sp
+Main web site: http://ccodearchive\&.net/
+.sp
+Wiki: https://github\&.com/rustyrussell/ccan/wiki/
+.SH "COPYING"
+.sp
+This program is free software; you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version\&.
