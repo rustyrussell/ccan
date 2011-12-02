@@ -641,6 +641,8 @@ int main(int argc, char *argv[])
 	cmdline_exclude = btree_new(btree_strcmp);
 	info_exclude = btree_new(btree_strcmp);
 
+	opt_register_early_noarg("--verbose|-v", opt_inc_intval, &verbose,
+				 "verbose mode (up to -vvvv)");
 	opt_register_noarg("-n|--safe-mode", opt_set_bool, &safe_mode,
 			 "do not compile anything");
 	opt_register_noarg("-l|--list-tests", list_tests, NULL,
@@ -652,8 +654,6 @@ int main(int argc, char *argv[])
 			 " (can be used multiple times, or 'all')");
 	opt_register_noarg("--summary|-s", opt_set_bool, &summary,
 			   "simply give one line summary");
-	opt_register_noarg("--verbose|-v", opt_inc_intval, &verbose,
-			   "verbose mode (up to -vvvv)");
 	opt_register_arg("-x|--exclude <testname>", skip_test, NULL, NULL,
 			 "exclude <testname> (can be used multiple times)");
 	opt_register_arg("-t|--timeout <milleseconds>", opt_set_uintval,
@@ -670,6 +670,9 @@ int main(int argc, char *argv[])
 			   "\nA program for checking and guiding development"
 			   " of CCAN modules.",
 			   "This usage message");
+
+	/* Do verbose before anything else... */
+	opt_early_parse(argc, argv, opt_log_stderr_exit);
 
 	/* We move into temporary directory, so gcov dumps its files there. */
 	if (chdir(temp_dir(talloc_autofree_context())) != 0)
