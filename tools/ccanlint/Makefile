@@ -3,7 +3,6 @@ TEST_OBJS := $(TEST_CFILES:.c=.o)
 
 CORE_OBJS := \
 	ccan/asort/asort.o \
-	ccan/btree/btree.o \
 	ccan/dgraph/dgraph.o \
 	ccan/foreach/foreach.o \
 	ccan/grab_file/grab_file.o \
