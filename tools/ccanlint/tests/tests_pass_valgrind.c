@@ -146,7 +146,6 @@ static const char *concat(struct score *score, char *bits[])
 
 /* FIXME: Run examples, too! */
 static void do_run_tests_vg(struct manifest *m,
-			    bool keep,
 			    unsigned int *timeleft,
 			    struct score *score)
 {
@@ -170,9 +169,6 @@ static void do_run_tests_vg(struct manifest *m,
 				continue;
 			}
 
-			if (keep)
-				talloc_set_destructor(i->valgrind_log, NULL);
-
 			output = grab_file(i, i->valgrind_log, NULL);
 			/* No valgrind errors? */
 			if (!output || output[0] == '\0') {
@@ -191,7 +187,6 @@ static void do_run_tests_vg(struct manifest *m,
 }
 
 static void do_leakcheck_vg(struct manifest *m,
-			    bool keep,
 			    unsigned int *timeleft,
 			    struct score *score)
 {

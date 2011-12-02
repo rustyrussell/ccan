@@ -58,7 +58,7 @@ static void handle_idem(struct manifest *m, struct score *score)
 		if (!ask(q))
 			continue;
 
-		tmpname = maybe_temp_file(score, ".h", false, e->file->name);
+		tmpname = temp_file(score, ".h", e->file->name);
 		out = fopen(tmpname, "w");
 		if (!out)
 			err(1, "Opening %s", tmpname);
@@ -174,7 +174,6 @@ static void check_idem(struct ccan_file *f, struct score *score)
 }
 
 static void check_idempotent(struct manifest *m,
-			     bool keep,
 			     unsigned int *timeleft, struct score *score)
 {
 	struct ccan_file *f;

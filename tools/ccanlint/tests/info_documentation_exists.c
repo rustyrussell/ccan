@@ -59,9 +59,8 @@ static void create_info_template_doc(struct manifest *m, struct score *score)
 }
 
 static void check_info_documentation_exists(struct manifest *m,
-					 bool keep,
-					 unsigned int *timeleft,
-					 struct score *score)
+					    unsigned int *timeleft,
+					    struct score *score)
 {
 	struct list_head *infodocs = get_ccan_file_docs(m->info_file);
 	struct doc_section *d;

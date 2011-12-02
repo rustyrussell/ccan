@@ -213,8 +213,7 @@ int unlink_file_destructor(char *filename)
 	return 0;
 }
 
-char *maybe_temp_file(const void *ctx, const char *extension, bool keep,
-		      const char *srcname)
+char *temp_file(const void *ctx, const char *extension, const char *srcname)
 {
 	unsigned baselen;
 	char *f, *suffix = talloc_strdup(ctx, "");
@@ -237,10 +236,7 @@ char *maybe_temp_file(const void *ctx, const char *extension, bool keep,
 	} while (lstat(f, &st) == 0);
 
 	if (tools_verbose)
-		printf("Creating %sfile %s\n", keep ? "" : "temporary ", f);
-
-	if (!keep)
-		talloc_set_destructor(f, unlink_file_destructor);
+		printf("Creating file %s\n", f);
 
 	talloc_free(suffix);
 	return f;

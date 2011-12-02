@@ -4,13 +4,12 @@
 #include "build.h"
 
 static void check_objs_build_without_features(struct manifest *m,
-					      bool keep,
 					      unsigned int *timeleft,
 					      struct score *score)
 {
 	const char *flags = talloc_asprintf(score, "%s %s",
 					    REDUCE_FEATURES_FLAGS, cflags);
-	build_objects(m, keep, score, flags, COMPILE_NOFEAT);
+	build_objects(m, score, flags, COMPILE_NOFEAT);
 }
 
 struct ccanlint objects_build_without_features = {

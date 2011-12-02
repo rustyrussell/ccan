@@ -42,6 +42,7 @@ struct ccanlint_map {
 int verbose = 0;
 static struct ccanlint_map tests;
 bool safe_mode = false;
+bool keep_results = false;
 static bool targeting = false;
 static unsigned int timeout;
 
@@ -150,7 +151,7 @@ static bool run_test(struct dgraph_node *n, struct run_info *run)
 	}
 
 	timeleft = timeout ? timeout : default_timeout_ms;
-	i->check(run->m, i->keep_results, &timeleft, score);
+	i->check(run->m, &timeleft, score);
 	if (timeout && timeleft == 0) {
 		i->skip = "timeout";
 		if (verbose)
@@ -343,22 +344,9 @@ static int show_tmpdir(const char *dir)
 	return 0;
 }
 
-static bool keep_one_test(const char *member, struct ccanlint *c, void *unused)
+static char *keep_tests(void *unused)
 {
-	c->keep_results = true;
-	return true;
-}
-
-static char *keep_test(const char *testname, void *unused)
-{
-	if (streq(testname, "all")) {
-		strmap_iterate(&tests, keep_one_test, NULL);
-	} else {
-		struct ccanlint *i = find_test(testname);
-		if (!i)
-			errx(1, "No test %s to --keep", testname);
-		keep_one_test(testname, i, NULL);
-	}
+	keep_results = true;
 
 	/* Don't automatically destroy temporary dir. */
 	talloc_set_destructor(temp_dir(NULL), show_tmpdir);
@@ -726,9 +714,8 @@ int main(int argc, char *argv[])
 			 "list tests ccanlint performs (and exit)");
 	opt_register_noarg("--test-dep-graph", test_dependency_graph, NULL,
 			 "print dependency graph of tests in Graphviz .dot format");
-	opt_register_arg("-k|--keep <testname>", keep_test, NULL, NULL,
-			 "keep results of <testname>"
-			 " (can be used multiple times, or 'all')");
+	opt_register_noarg("-k|--keep", keep_tests, NULL,
+			 "do not delete ccanlint working files");
 	opt_register_noarg("--summary|-s", opt_set_bool, &summary,
 			   "simply give one line summary");
 	opt_register_arg("-x|--exclude <testname>", exclude_test, NULL, NULL,

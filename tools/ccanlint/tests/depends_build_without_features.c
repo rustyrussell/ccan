@@ -24,7 +24,6 @@ static const char *can_build(struct manifest *m)
 }
 
 static void check_depends_built_without_features(struct manifest *m,
-						 bool keep,
 						 unsigned int *timeleft,
 						 struct score *score)
 {

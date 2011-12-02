@@ -69,7 +69,6 @@ static bool compile(const void *ctx,
 		    struct ccan_file *file,
 		    bool fail,
 		    bool link_with_module,
-		    bool keep,
 		    enum compile_type ctype,
 		    char **output)
 {
@@ -81,7 +80,7 @@ static bool compile(const void *ctx,
 				ctype == COMPILE_NOFEAT
 				? " "REDUCE_FEATURES_FLAGS : "");
 
-	fname = maybe_temp_file(ctx, "", keep, file->fullname);
+	fname = temp_file(ctx, "", file->fullname);
 	if (!compile_and_link(ctx, file->fullname, ccan_dir,
 			      test_obj_list(m, link_with_module,
 					    ctype, ctype),
@@ -99,13 +98,12 @@ static void compile_async(const void *ctx,
 			  struct manifest *m,
 			  struct ccan_file *file,
 			  bool link_with_module,
-			  bool keep,
 			  enum compile_type ctype,
 			  unsigned int time_ms)
 {
 	char *flags;
 
-	file->compiled[ctype] = maybe_temp_file(ctx, "", keep, file->fullname);
+	file->compiled[ctype] = temp_file(ctx, "", file->fullname);
 	flags = talloc_asprintf(ctx, "%s%s",
 				cflags,
 				ctype == COMPILE_NOFEAT
@@ -117,7 +115,7 @@ static void compile_async(const void *ctx,
 			       file->compiled[ctype]);
 }
 
-static void compile_tests(struct manifest *m, bool keep,
+static void compile_tests(struct manifest *m,
 			  struct score *score,
 			  enum compile_type ctype,
 			  unsigned int time_ms)
@@ -130,7 +128,7 @@ static void compile_tests(struct manifest *m, bool keep,
 	foreach_ptr(list, &m->compile_ok_tests, &m->run_tests, &m->api_tests) {
 		list_for_each(list, i, list) {
 			compile_async(score, m, i,
-				      list == &m->api_tests, keep,
+				      list == &m->api_tests,
 				      ctype, time_ms);
 		}
 	}
@@ -155,8 +153,7 @@ static void compile_tests(struct manifest *m, bool keep,
 
 	/* For historical reasons, "fail" often means "gives warnings" */
 	list_for_each(&m->compile_fail_tests, i, list) {
-		if (!compile(score, m, i, false, false, false,
-			     ctype, &cmdout)) {
+		if (!compile(score, m, i, false, false, ctype, &cmdout)) {
 			score_file_error(score, i, 0,
 					 "Compile without -DFAIL failed:\n%s",
 					 cmdout);
@@ -169,8 +166,7 @@ static void compile_tests(struct manifest *m, bool keep,
 					 cmdout);
 			return;
 		}
-		if (compile(score, m, i, true, false, false,
-			    ctype, &cmdout)
+		if (compile(score, m, i, true, false, ctype, &cmdout)
 		    && streq(cmdout, "")) {
 			score_file_error(score, i, 0,
 					 "Compiled successfully with -DFAIL?");
@@ -185,10 +181,9 @@ static void compile_tests(struct manifest *m, bool keep,
 
 /* FIXME: If we time out, set *timeleft to 0 */
 static void do_compile_tests(struct manifest *m,
-			     bool keep,
 			     unsigned int *timeleft, struct score *score)
 {
-	compile_tests(m, keep, score, COMPILE_NORMAL, *timeleft);
+	compile_tests(m, score, COMPILE_NORMAL, *timeleft);
 }
 
 struct ccanlint tests_compile = {
@@ -209,11 +204,10 @@ static const char *features_reduced(struct manifest *m)
 }
 
 static void do_compile_tests_without_features(struct manifest *m,
-					      bool keep,
 					      unsigned int *timeleft,
 					      struct score *score)
 {
-	compile_tests(m, keep, score, COMPILE_NOFEAT, *timeleft);
+	compile_tests(m, score, COMPILE_NOFEAT, *timeleft);
 }
 
 struct ccanlint tests_compile_without_features = {

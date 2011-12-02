@@ -17,7 +17,6 @@
 
 /* Creates and adds an example file. */
 static char *add_example(struct manifest *m, struct ccan_file *source,
-			 bool keep,
 			 struct doc_section *example)
 {
 	char *name;
@@ -34,7 +33,7 @@ static char *add_example(struct manifest *m, struct ccan_file *source,
 	while (strchr(name, ' '))
 		*strchr(name, ' ') = '_';
 
-	name = maybe_temp_file(m, ".c", keep, name);
+	name = temp_file(m, ".c", name);
 	f = new_ccan_file(m, talloc_dirname(m, name), talloc_basename(m, name));
 	talloc_steal(f, name);
 	list_add_tail(&m->examples, &f->list);
@@ -59,7 +58,6 @@ static char *add_example(struct manifest *m, struct ccan_file *source,
 
 /* FIXME: We should have one example per function in header. */
 static void extract_examples(struct manifest *m,
-			     bool keep,
 			     unsigned int *timeleft,
 			     struct score *score)
 {
@@ -70,7 +68,7 @@ static void extract_examples(struct manifest *m,
 	score->total = 2;
 	list_for_each(get_ccan_file_docs(m->info_file), d, list) {
 		if (streq(d->type, "example")) {
-			score->error = add_example(m, m->info_file, keep, d);
+			score->error = add_example(m, m->info_file, d);
 			if (score->error)
 				return;
 			have_info_example = true;
@@ -86,7 +84,7 @@ static void extract_examples(struct manifest *m,
 		mainh = f;
 		list_for_each(get_ccan_file_docs(f), d, list) {
 			if (streq(d->type, "example")) {
-				score->error = add_example(m, f, keep, d);
+				score->error = add_example(m, f, d);
 				if (score->error)
 					return;
 				have_header_example = true;

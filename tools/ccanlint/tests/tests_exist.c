@@ -94,7 +94,6 @@ static void handle_no_tests(struct manifest *m, struct score *score)
 }
 
 static void check_tests_exist(struct manifest *m,
-			    bool keep,
 			    unsigned int *timeleft, struct score *score)
 {
 	struct stat st;

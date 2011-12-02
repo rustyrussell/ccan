@@ -15,7 +15,6 @@
 #include <ctype.h>
 
 static void examples_relevant_check(struct manifest *m,
-				    bool keep,
 				    unsigned int *timeleft,
 				    struct score *score)
 {

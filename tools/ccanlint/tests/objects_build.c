@@ -23,7 +23,7 @@ static const char *can_build(struct manifest *m)
 }
 
 void build_objects(struct manifest *m,
-		   bool keep, struct score *score, const char *flags,
+		   struct score *score, const char *flags,
 		   enum compile_type ctype)
 {
 	struct ccan_file *i;
@@ -38,7 +38,7 @@ void build_objects(struct manifest *m,
 		char *output;
 		char *fullfile = talloc_asprintf(m, "%s/%s", m->dir, i->name);
 
-		i->compiled[ctype] = maybe_temp_file(m, "", keep, fullfile);
+		i->compiled[ctype] = temp_file(m, "", fullfile);
 		if (!compile_object(score, fullfile, ccan_dir, compiler, flags,
 				    i->compiled[ctype], &output)) {
 			talloc_free(i->compiled[ctype]);
@@ -62,10 +62,9 @@ void build_objects(struct manifest *m,
 }
 
 static void check_objs_build(struct manifest *m,
-			     bool keep,
 			     unsigned int *timeleft, struct score *score)
 {
-	build_objects(m, keep, score, cflags, COMPILE_NORMAL);
+	build_objects(m, score, cflags, COMPILE_NORMAL);
 }
 
 struct ccanlint objects_build = {

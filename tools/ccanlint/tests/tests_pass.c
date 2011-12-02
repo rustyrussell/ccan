@@ -63,8 +63,6 @@ static void run_test(void *ctx,
 			i->valgrind_log = talloc_asprintf(m,
 					  "%s.valgrind-log",
 					  i->compiled[COMPILE_NORMAL]);
-			talloc_set_destructor(i->valgrind_log,
-					      unlink_file_destructor);
 
 			run_command_async(i, *timeleft,
 					  "valgrind -q"
@@ -83,7 +81,6 @@ static void run_test(void *ctx,
 }
 
 static void do_run_tests(struct manifest *m,
-			 bool keep,
 			 unsigned int *timeleft,
 			 struct score *score)
 {

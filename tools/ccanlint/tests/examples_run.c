@@ -225,7 +225,7 @@ static char *unexpected(struct ccan_file *i, const char *input,
 	return output;
 }
 
-static void run_examples(struct manifest *m, bool keep,
+static void run_examples(struct manifest *m,
 			 unsigned int *timeleft, struct score *score)
 {
 	struct ccan_file *i;

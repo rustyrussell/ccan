@@ -22,7 +22,6 @@ static char *get_trailing_whitespace(const char *line)
 }
 
 static void check_trailing_whitespace(struct manifest *m,
-				      bool keep,
 				      unsigned int *timeleft,
 				      struct score *score)
 {

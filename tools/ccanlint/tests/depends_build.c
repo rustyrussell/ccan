@@ -38,7 +38,7 @@ static char *build_subdir_objs(struct manifest *m,
 		char *fullfile = talloc_asprintf(m, "%s/%s", m->dir, i->name);
 		char *output;
 
-		i->compiled[ctype] = maybe_temp_file(m, "", false, fullfile);
+		i->compiled[ctype] = temp_file(m, "", fullfile);
 		if (!compile_object(m, fullfile, ccan_dir, compiler, flags,
 				    i->compiled[ctype], &output)) {
 			talloc_free(i->compiled[ctype]);
@@ -70,14 +70,13 @@ char *build_submodule(struct manifest *m, const char *flags,
 	if (errstr)
 		return errstr;
 
-	m->compiled[ctype] = build_module(m, false, ctype, &errstr);
+	m->compiled[ctype] = build_module(m, ctype, &errstr);
 	if (!m->compiled[ctype])
 		return errstr;
 	return NULL;
 }
 
 static void check_depends_built(struct manifest *m,
-				bool keep,
 				unsigned int *timeleft, struct score *score)
 {
 	struct manifest *i;

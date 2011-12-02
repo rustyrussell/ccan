@@ -36,7 +36,6 @@ static struct ccan_file *main_header(struct manifest *m)
 }
 
 static void check_includes_build(struct manifest *m,
-				 bool keep,
 				 unsigned int *timeleft, struct score *score)
 {
 	char *contents;
@@ -44,8 +43,8 @@ static void check_includes_build(struct manifest *m,
 	int fd;
 	struct ccan_file *mainh = main_header(m);
 
-	tmpsrc = maybe_temp_file(m, "-included.c", keep, mainh->fullname);
-	tmpobj = maybe_temp_file(m, ".o", keep, tmpsrc);
+	tmpsrc = temp_file(m, "-included.c", mainh->fullname);
+	tmpobj = temp_file(m, ".o", tmpsrc);
 
 	fd = open(tmpsrc, O_WRONLY | O_CREAT | O_EXCL, 0600);
 	if (fd < 0)

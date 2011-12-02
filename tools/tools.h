@@ -53,7 +53,7 @@ bool move_file(const char *oldname, const char *newname);
 /* If set, say what we're compiling to. */
 extern bool compile_verbose;
 /* Compile multiple object files into a single. */
-char *link_objects(const void *ctx, const char *basename, bool in_pwd,
+char *link_objects(const void *ctx, const char *basename,
 		   const char *objs, char **errmsg);
 /* Compile a single C file to an object file.  Returns false if fails. */
 bool compile_object(const void *ctx, const char *cfile, const char *ccandir,
@@ -66,9 +66,8 @@ bool compile_and_link(const void *ctx, const char *cfile, const char *ccandir,
 		      const char *compiler, const char *cflags,
 		      const char *libs, const char *outfile, char **output);
 
-/* If in_pwd is false, return a file int temp_dir, otherwise a local file. */
-char *maybe_temp_file(const void *ctx, const char *extension, bool in_pwd,
-		      const char *srcname);
+/* Returns a file in temp_dir() */
+char *temp_file(const void *ctx, const char *extension, const char *srcname);
 
 /* Default wait for run_command.  Should never time out. */
 extern const unsigned int default_timeout_ms;

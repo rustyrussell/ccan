@@ -129,7 +129,6 @@ static struct htable_option *get_config_options(struct manifest *m)
 }
 
 static void do_reduce_features(struct manifest *m,
-			       bool keep,
 			       unsigned int *timeleft, struct score *score)
 {
 	struct htable_option *options_used, *options_avail, *options;

@@ -23,19 +23,17 @@ static const char *can_run(struct manifest *m)
 }
 
 static bool compile(struct manifest *m,
-		    bool keep,
 		    struct ccan_file *cfile,
 		    const char *flags,
 		    enum compile_type ctype,
 		    char **output)
 {
-	cfile->compiled[ctype] = maybe_temp_file(m, ".o", keep, cfile->fullname);
+	cfile->compiled[ctype] = temp_file(m, ".o", cfile->fullname);
 	return compile_object(m, cfile->fullname, ccan_dir, compiler, flags,
 			      cfile->compiled[ctype], output);
 }
 
 static void compile_test_helpers(struct manifest *m,
-				 bool keep,
 				 unsigned int *timeleft,
 				 struct score *score,
 				 const char *flags,
@@ -52,7 +50,7 @@ static void compile_test_helpers(struct manifest *m,
 	list_for_each(&m->other_test_c_files, i, list) {
 		char *cmdout;
 
-		if (!compile(m, keep, i, flags, ctype, &cmdout)) {
+		if (!compile(m, i, flags, ctype, &cmdout)) {
 			errors = true;
 			score_file_error(score, i, 0, "Compile failed:\n%s",
 					 cmdout);
@@ -70,12 +68,10 @@ static void compile_test_helpers(struct manifest *m,
 }
 
 static void do_compile_test_helpers(struct manifest *m,
-				    bool keep,
 				    unsigned int *timeleft,
 				    struct score *score)
 {
-	compile_test_helpers(m, keep, timeleft, score, cflags,
-			     COMPILE_NORMAL);
+	compile_test_helpers(m, timeleft, score, cflags, COMPILE_NORMAL);
 }
 
 struct ccanlint tests_helpers_compile = {
@@ -96,7 +92,6 @@ static const char *features_reduced(struct manifest *m)
 }
 
 static void do_compile_test_helpers_without_features(struct manifest *m,
-						     bool keep,
 						     unsigned int *timeleft,
 						     struct score *score)
 {
@@ -105,8 +100,7 @@ static void do_compile_test_helpers_without_features(struct manifest *m,
 	flags = talloc_asprintf(score, "%s %s", cflags,
 				REDUCE_FEATURES_FLAGS);
 
-	compile_test_helpers(m, keep, timeleft, score, flags,
-			     COMPILE_NOFEAT);
+	compile_test_helpers(m, timeleft, score, flags, COMPILE_NOFEAT);
 }
 
 struct ccanlint tests_helpers_compile_without_features = {

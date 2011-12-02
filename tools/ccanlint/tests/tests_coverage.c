@@ -127,7 +127,6 @@ static void analyze_coverage(struct manifest *m, bool full_gcov,
 }
 
 static void do_run_coverage_tests(struct manifest *m,
-				  bool keep,
 				  unsigned int *timeleft, struct score *score)
 {
 	struct ccan_file *i;
@@ -143,16 +142,6 @@ static void do_run_coverage_tests(struct manifest *m,
 	covcmd = talloc_asprintf(m, "gcov %s -o %s",
 				 full_gcov ? "" : "-n",
 				 outdir);
-
-	/* Unlink these files afterwards. */
-	if (!keep) {
-		talloc_set_destructor(talloc_asprintf(score,
-						      "%s/run.gcno", outdir),
-				      unlink_file_destructor);
-		talloc_set_destructor(talloc_asprintf(score,
-						      "%s/run.gcda", outdir),
-				      unlink_file_destructor);
-	}
 
 	/* Run them all. */
 	foreach_ptr(list, &m->run_tests, &m->api_tests) {

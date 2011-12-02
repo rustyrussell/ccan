@@ -32,13 +32,11 @@ static void cov_compile(const void *ctx,
 			unsigned int time_ms,
 			struct manifest *m,
 			struct ccan_file *file,
-			bool link_with_module,
-			bool keep)
+			bool link_with_module)
 {
 	char *flags = talloc_asprintf(ctx, "%s %s", cflags, COVERAGE_CFLAGS);
 
-	file->compiled[COMPILE_COVERAGE]
-		= maybe_temp_file(ctx, "", keep, file->fullname);
+	file->compiled[COMPILE_COVERAGE] = temp_file(ctx, "", file->fullname);
 	compile_and_link_async(file, time_ms, file->fullname, ccan_dir,
 			       test_obj_list(m, link_with_module,
 					     COMPILE_NORMAL,
@@ -50,7 +48,6 @@ static void cov_compile(const void *ctx,
 
 /* FIXME: Coverage from testable examples as well. */
 static void do_compile_coverage_tests(struct manifest *m,
-				      bool keep,
 				      unsigned int *timeleft,
 				      struct score *score)
 {
@@ -62,7 +59,7 @@ static void do_compile_coverage_tests(struct manifest *m,
 
 	/* For API tests, we need coverage version of module. */
 	if (!list_empty(&m->api_tests)) {
-		build_objects(m, keep, score, f, COMPILE_COVERAGE);
+		build_objects(m, score, f, COMPILE_COVERAGE);
 		if (!score->pass) {
 			score->error = talloc_strdup(score,
 						     "Failed to compile module objects with coverage");
@@ -72,8 +69,7 @@ static void do_compile_coverage_tests(struct manifest *m,
 
 	foreach_ptr(h, &m->run_tests, &m->api_tests) {
 		list_for_each(h, i, list) {
-			cov_compile(m, *timeleft, m, i, h == &m->api_tests,
-				    keep);
+			cov_compile(m, *timeleft, m, i, h == &m->api_tests);
 		}
 	}
 

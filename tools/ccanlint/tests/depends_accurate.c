@@ -32,7 +32,6 @@ static bool has_dep(struct manifest *m, const char *depname)
 }
 
 static void check_depends_accurate(struct manifest *m,
-				   bool keep,
 				   unsigned int *timeleft, struct score *score)
 {
 	struct list_head *list;

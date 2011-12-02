@@ -17,8 +17,7 @@
 #include <ctype.h>
 
 static void check_hash_if(struct manifest *m,
-				   bool keep,
-				   unsigned int *timeleft, struct score *score)
+			  unsigned int *timeleft, struct score *score)
 {
 	struct list_head *list;
 	const char *explanation =

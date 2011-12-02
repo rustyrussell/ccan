@@ -93,12 +93,11 @@ struct ccanlint {
 	/* Should we stop immediately if test fails? */
 	bool compulsory;
 
-	/* keep is set if you should keep the results.
-	 * If timeleft is set to 0, means it timed out.
+	/* If timeleft is set to 0, means it timed out.
 	 * score is the result, and a talloc context freed after all our
 	 * depends are done. */
 	void (*check)(struct manifest *m,
-		      bool keep, unsigned int *timeleft, struct score *score);
+		      unsigned int *timeleft, struct score *score);
 
 	/* Can we do something about it? (NULL if not) */
 	void (*handle)(struct manifest *m, struct score *score);
@@ -116,8 +115,6 @@ struct ccanlint {
 	struct dgraph_node node;
 	/* Did we skip a dependency?  If so, must skip this, too. */
 	const char *skip;
-	/* Did the user want to keep these results? */
-	bool keep_results;
 	/* Have we already run this? */
 	bool done;
 };
@@ -266,6 +263,9 @@ void add_info_options(struct ccan_file *info);
 
 /* Are we happy to compile stuff, or just non-intrusive tests? */
 extern bool safe_mode;
+
+/* Did the user want to keep all the results? */
+extern bool keep_results;
 
 /* Where is the ccan dir?  Available after first manifest. */
 extern const char *ccan_dir;

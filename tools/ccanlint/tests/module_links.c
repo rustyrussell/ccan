@@ -49,7 +49,6 @@ static char *lib_list(const struct manifest *m)
 }
 
 static void check_use_build(struct manifest *m,
-			    bool keep,
 			    unsigned int *timeleft, struct score *score)
 {
 	char *contents;
@@ -57,7 +56,7 @@ static void check_use_build(struct manifest *m,
 	char *basename = talloc_asprintf(m, "%s/example.c", m->dir);
 	int fd;
 
-	tmpfile = maybe_temp_file(m, ".c", keep, basename);
+	tmpfile = temp_file(m, ".c", basename);
 
 	fd = open(tmpfile, O_WRONLY | O_CREAT | O_EXCL, 0600);
 	if (fd < 0)
@@ -76,7 +75,7 @@ static void check_use_build(struct manifest *m,
 
 	if (compile_and_link(score, tmpfile, ccan_dir, obj_list(m),
 			     compiler, cflags, lib_list(m),
-			     maybe_temp_file(m, "", keep, tmpfile),
+			     temp_file(m, "", tmpfile),
 			     &cmdout)) {
 		score->pass = true;
 		score->score = score->total;

@@ -5,10 +5,10 @@
 bool compile_verbose = false;
 
 /* Compile multiple object files into a single.  Returns NULL if fails. */
-char *link_objects(const void *ctx, const char *basename, bool in_pwd,
+char *link_objects(const void *ctx, const char *basename,
 		   const char *objs, char **errmsg)
 {
-	char *file = maybe_temp_file(ctx, ".o", in_pwd, basename);
+	char *file = temp_file(ctx, ".o", basename);
 
 	if (compile_verbose)
 		printf("Linking objects into %s\n", file);

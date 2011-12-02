@@ -35,26 +35,13 @@ static char *obj_list(const struct manifest *m, enum compile_type ctype)
 	return list;
 }
 
-char *build_module(struct manifest *m, bool keep,
+char *build_module(struct manifest *m,
 		   enum compile_type ctype, char **errstr)
 {
-	char *name = link_objects(m, m->basename, false, obj_list(m, ctype),
-				  errstr);
-	if (name) {
-		if (keep) {
-			char *realname = talloc_asprintf(m, "%s.o", m->dir);
-			assert(ctype == COMPILE_NORMAL);
-			/* We leave this object file around, all built. */
-			if (!move_file(name, realname))
-				err(1, "Renaming %s to %s", name, realname);
-			name = realname;
-		}
-	}
-	return name;
+	return link_objects(m, m->basename, obj_list(m, ctype), errstr);
 }
 
 static void do_build(struct manifest *m,
-		     bool keep,
 		     unsigned int *timeleft,
 		     struct score *score)
 {
@@ -68,7 +55,7 @@ static void do_build(struct manifest *m,
 	}
 
 	m->compiled[COMPILE_NORMAL]
-		= build_module(m, keep, COMPILE_NORMAL, &errstr);
+		= build_module(m, COMPILE_NORMAL, &errstr);
 	if (!m->compiled[COMPILE_NORMAL]) {
 		score_file_error(score, NULL, 0, "%s", errstr);
 		return;

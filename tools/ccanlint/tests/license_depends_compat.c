@@ -14,7 +14,6 @@
 #include <ccan/str_talloc/str_talloc.h>
 
 static void check_license_depends_compat(struct manifest *m,
-					 bool keep,
 					 unsigned int *timeleft,
 					 struct score *score)
 {

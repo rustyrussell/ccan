@@ -13,7 +13,6 @@
 #include <ccan/talloc/talloc.h>
 
 static void check_has_info(struct manifest *m,
-			   bool keep,
 			   unsigned int *timeleft,
 			   struct score *score)
 {

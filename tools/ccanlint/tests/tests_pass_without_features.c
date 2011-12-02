@@ -17,7 +17,6 @@
 
 /* We don't do these under valgrind: too slow! */
 static void do_run_tests_no_features(struct manifest *m,
-				     bool keep,
 				     unsigned int *timeleft,
 				     struct score *score)
 {

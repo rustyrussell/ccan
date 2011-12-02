@@ -58,14 +58,13 @@ static int start_file(const char *filename)
 static void test_compile(struct score *score,
 			 struct ccan_file *file,
 			 const char *filename,
-			 bool keep,
 			 const char *flags,
 			 bool *errors,
 			 bool *warnings)
 {
 	char *output, *compiled;
 
-	compiled = maybe_temp_file(score, "", keep, filename);
+	compiled = temp_file(score, "", filename);
 	if (!compile_object(score, filename, ccan_dir, compiler, flags,
 			    compiled, &output)) {
 		score_file_error(score, file, 0,
@@ -95,7 +94,7 @@ static struct ccan_file *get_main_header(struct manifest *m)
 }
 
 static void build_objects_with_stringchecks(struct manifest *m,
-					    bool keep, unsigned int *timeleft,
+					    unsigned int *timeleft,
 					    struct score *score)
 {
 	struct ccan_file *i;
@@ -110,21 +109,20 @@ static void build_objects_with_stringchecks(struct manifest *m,
 	if (list_empty(&m->c_files)) {
 		char *line;
 		i = get_main_header(m);
-		tmp = maybe_temp_file(score, ".c", keep, i->fullname);
+		tmp = temp_file(score, ".c", i->fullname);
 		tmpfd = start_file(tmp);
 		line = talloc_asprintf(score, "#include <ccan/%s/%s.h>\n",
 				       m->basename, m->basename);
 		write_str(tmpfd, line);
 		close(tmpfd);
-		test_compile(score, i, tmp, keep, flags, &errors, &warnings);
+		test_compile(score, i, tmp, flags, &errors, &warnings);
 	} else {
 		list_for_each(&m->c_files, i, list) {
-			tmp = maybe_temp_file(score, ".c", keep, i->fullname);
+			tmp = temp_file(score, ".c", i->fullname);
 			tmpfd = start_file(tmp);
 			write_str(tmpfd, get_ccan_file_contents(i));
 			close(tmpfd);
-			test_compile(score, i, tmp, keep, flags,
-				     &errors, &warnings);
+			test_compile(score, i, tmp, flags, &errors, &warnings);
 		}
 	}
 

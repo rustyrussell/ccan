@@ -122,19 +122,16 @@ static char *lib_list(const struct manifest *m)
 static bool compile(const void *ctx,
 		    struct manifest *m,
 		    struct ccan_file *file,
-		    bool keep, char **output)
+		    char **output)
 {
-	file->compiled[COMPILE_NORMAL]
-		= maybe_temp_file(ctx, "", keep, file->fullname);
+	file->compiled[COMPILE_NORMAL] = temp_file(ctx, "", file->fullname);
 	if (!compile_and_link(ctx, file->fullname, ccan_dir,
 			      example_obj_list(m, file),
 			      compiler, cflags,
 			      lib_list(m), file->compiled[COMPILE_NORMAL],
 			      output)) {
-		/* Don't keep failures. */
-		if (keep)
-			unlink(file->compiled[COMPILE_NORMAL]);
-		talloc_free(file->compiled[COMPILE_NORMAL]);
+		/* Don't keep failures, even with --keep */
+		unlink(file->compiled[COMPILE_NORMAL]);
 		file->compiled[COMPILE_NORMAL] = NULL;
 		return false;
 	}
@@ -441,16 +438,15 @@ static char *mangle(struct manifest *m, char **lines)
 
 static struct ccan_file *mangle_example(struct manifest *m,
 					struct ccan_file *example,
-					char **lines,
-					bool keep)
+					char **lines)
 {
 	char *name, *contents;
 	int fd;
 	struct ccan_file *f;
 
-	name = maybe_temp_file(example, ".c", keep, 
-			       talloc_asprintf(m, "%s/mangled-%s",
-					       m->dir, example->name));
+	name = temp_file(example, ".c",
+			 talloc_asprintf(m, "%s/mangled-%s",
+					 m->dir, example->name));
 	f = new_ccan_file(example,
 			  talloc_dirname(example, name),
 			  talloc_basename(example, name));
@@ -491,7 +487,6 @@ static bool has_expected_output(char **lines)
 static unsigned int try_compiling(struct manifest *m,
 				  struct ccan_file *i,
 				  char **prev,
-				  bool keep,
 				  struct ccan_file *mangled[3],
 				  bool res[3],
 				  char *err[3],
@@ -501,7 +496,7 @@ static unsigned int try_compiling(struct manifest *m,
 
 	/* Try standalone. */
 	mangled[0] = i;
-	res[0] = compile(i, m, mangled[0], keep, &err[0]);
+	res[0] = compile(i, m, mangled[0], &err[0]);
 	lines[0] = get_ccan_file_lines(i);
 	if (res[0] && streq(err[0], ""))
 		return 1;
@@ -509,8 +504,8 @@ static unsigned int try_compiling(struct manifest *m,
 	if (prev) {
 		lines[1] = combine(i, get_ccan_file_lines(i), prev);
 
-		mangled[1] = mangle_example(m, i, lines[1], keep);
-		res[1] = compile(i, m, mangled[1], keep, &err[1]);
+		mangled[1] = mangle_example(m, i, lines[1]);
+		res[1] = compile(i, m, mangled[1], &err[1]);
 		if (res[1] && streq(err[1], "")) {
 			return 2;
 		}
@@ -520,13 +515,13 @@ static unsigned int try_compiling(struct manifest *m,
 
 	/* Try standalone. */
 	lines[num] = get_ccan_file_lines(i);
-	mangled[num] = mangle_example(m, i, lines[num], keep);
-	res[num] = compile(i, m, mangled[num], keep, &err[num]);
+	mangled[num] = mangle_example(m, i, lines[num]);
+	res[num] = compile(i, m, mangled[num], &err[num]);
 
 	return num+1;
 }
 
-static void build_examples(struct manifest *m, bool keep,
+static void build_examples(struct manifest *m,
 			   unsigned int *timeleft, struct score *score)
 {
 	struct ccan_file *i;
@@ -549,7 +544,7 @@ static void build_examples(struct manifest *m, bool keep,
 		/* Simplify our dumb parsing. */
 		strip_leading_whitespace(get_ccan_file_lines(i));
 
-		num = try_compiling(m, i, prev, keep, file, res, err, lines);
+		num = try_compiling(m, i, prev, file, res, err, lines);
 
 		/* First look for a compile without any warnings. */
 		for (j = 0; j < num; j++) {

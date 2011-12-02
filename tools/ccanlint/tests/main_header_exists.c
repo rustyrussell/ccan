@@ -13,7 +13,6 @@
 #include <ccan/noerr/noerr.h>
 
 static void check_has_main_header(struct manifest *m,
-				  bool keep,
 				  unsigned int *timeleft, struct score *score)
 {
 	struct ccan_file *f;

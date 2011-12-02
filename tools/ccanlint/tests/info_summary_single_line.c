@@ -5,7 +5,6 @@
 #include <ccan/str/str.h>
 
 static void check_info_summary_single_line(struct manifest *m,
-					   bool keep,
 					   unsigned int *timeleft,
 					   struct score *score)
 {
