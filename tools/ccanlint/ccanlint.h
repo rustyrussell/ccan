@@ -114,14 +114,14 @@ struct ccanlint {
 	/* Internal use fields: */
 	/* We are a node in a dependency graph. */
 	struct dgraph_node node;
-	/* Are we targeted? */
-	bool should_run;
 	/* Did we skip a dependency?  If so, must skip this, too. */
 	const char *skip;
 	/* Did we fail a dependency?  If so, skip and mark as fail. */
 	bool skip_fail;
 	/* Did the user want to keep these results? */
 	bool keep_results;
+	/* Have we already run this? */
+	bool done;
 };
 
 /* Ask the user a yes/no question: the answer is NO if there's an error. */

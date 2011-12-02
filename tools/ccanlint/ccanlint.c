@@ -47,6 +47,7 @@ static bool targeting = false;
 static struct btree *cmdline_exclude;
 static struct btree *info_exclude;
 static unsigned int timeout;
+static struct dgraph_node all;
 
 /* These are overridden at runtime if we can find config.h */
 const char *compiler = NULL;
@@ -113,85 +114,99 @@ static bool skip_node(struct dgraph_node *to, const char *failmsg)
 	return true;
 }
 
-static bool run_test(struct ccanlint *i,
-		     bool quiet,
-		     unsigned int *running_score,
-		     unsigned int *running_total,
-		     struct manifest *m,
-		     const char *prefix)
+struct run_info {
+	bool quiet;
+	unsigned int score, total;
+	struct manifest *m;
+	const char *prefix;
+	bool pass;
+};
+
+static bool run_test(struct dgraph_node *n, struct run_info *run)
 {
+	struct ccanlint *i = container_of(n, struct ccanlint, node);
 	unsigned int timeleft;
 	const char *skip;
 	struct score *score;
 
-	strmap_del(&tests, i->key, NULL);
-
-	if (!i->should_run) {
-		dgraph_clear_node(&i->node);
+	if (i->done)
 		return true;
-	}
 
-	score = talloc(m, struct score);
+	score = talloc(run->m, struct score);
 	list_head_init(&score->per_file_errors);
 	score->error = NULL;
 	score->pass = false;
 	score->score = 0;
 	score->total = 1;
 
-	skip = should_skip(m, i);
+	skip = should_skip(run->m, i);
 
 	if (skip) {
 	skip:
 		if (verbose)
-			printf("%s%s: skipped (%s)\n", prefix, i->name, skip);
+			printf("%s%s: skipped (%s)\n",
+			       run->prefix, i->name, skip);
 
 		/* If we're skipping this because a prereq failed, we fail:
 		 * count it as a score of 1. */
 		if (i->skip_fail)
-			(*running_total)++;
+			run->total++;
 
 		dgraph_traverse_from(&i->node, skip_node,
 				     i->skip_fail ? "dependency failed" : NULL);
 		dgraph_clear_node(&i->node);
-		return i->skip_fail ? false : true;
+		score->pass = i->skip_fail ? false : true;
+		goto out;
 	}
 
 	timeleft = timeout ? timeout : default_timeout_ms;
-	i->check(m, i->keep_results, &timeleft, score);
+	i->check(run->m, i->keep_results, &timeleft, score);
 	if (timeout && timeleft == 0) {
 		skip = "timeout";
 		goto skip;
 	}
 
 	assert(score->score <= score->total);
-	if ((!score->pass && !quiet)
+	if ((!score->pass && !run->quiet)
 	    || (score->score < score->total && verbose)
 	    || verbose > 1) {
 		printf("%s%s (%s): %s",
-		       prefix, i->name, i->key, score->pass ? "PASS" : "FAIL");
+		       run->prefix, i->name, i->key,
+		       score->pass ? "PASS" : "FAIL");
 		if (score->total > 1)
 			printf(" (+%u/%u)", score->score, score->total);
 		printf("\n");
 	}
 
-	if ((!quiet && !score->pass) || verbose) {
+	if ((!run->quiet && !score->pass) || verbose) {
 		if (score->error) {
 			printf("%s%s", score->error,
 			       strends(score->error, "\n") ? "" : "\n");
 		}
 	}
-	if (!quiet && score->score < score->total && i->handle)
-		i->handle(m, score);
+	if (!run->quiet && score->score < score->total && i->handle)
+		i->handle(run->m, score);
 
-	*running_score += score->score;
-	*running_total += score->total;
+	run->score += score->score;
+	run->total += score->total;
 
 	if (!score->pass) {
 		/* Skip any tests which depend on this one. */
 		dgraph_traverse_from(&i->node, skip_node, "dependency failed");
 	}
 	dgraph_clear_node(&i->node);
-	return score->pass;
+
+out:
+	/* FIXME: Free score. */
+	run->pass &= score->pass;
+	i->done = true;
+
+	if (!score->pass && i->compulsory) {
+		warnx("%s%s failed", run->prefix, i->name);
+		run->score = 0;
+		return false;
+	}
+	return true;
 }
 
 static void register_test(struct ccanlint *test)
@@ -201,6 +216,8 @@ static void register_test(struct ccanlint *test)
 	test->options = talloc_array(NULL, char *, 1);
 	test->options[0] = NULL;
 	dgraph_init_node(&test->node);
+	dgraph_add_edge(&test->node, &all);
+	test->done = false;
 }
 
 static bool get_test(const char *member, struct ccanlint *i,
@@ -277,6 +294,9 @@ static bool check_names(const char *member, struct ccanlint *c,
 static void init_tests(void)
 {
 	struct ccanlint_map names;
+
+	/* This is the default target. */
+	dgraph_init_node(&all);
 
 	strmap_init(&tests);
 
@@ -624,37 +644,46 @@ static char *opt_set_const_charp(const char *arg, const char **p)
 	return opt_set_charp(arg, cast_const2(char **, p));
 }
 
-static bool should_run_ccanlint(const char *name, struct ccanlint *c,
-				void *unused)
+static char *opt_set_target(const char *arg, struct ccanlint **t)
 {
-	c->should_run = true;
-	return true;
-}
-
-static bool should_run_node(struct dgraph_node *to, void *unused)
-{
-	should_run_ccanlint(NULL, container_of(to, struct ccanlint, node),
-			    unused);
-	return true;
-}
-
-static char *add_target(const char *arg, bool *targeting)
-{
-	struct ccanlint *c = find_test(arg);
-	if (!c)
-		return talloc_asprintf(NULL, "Unknown test %s", arg);
-
-	dgraph_traverse_to(&c->node, should_run_node, NULL);
-	*targeting = true;
+	*t = find_test(arg);
+	if (!*t)
+		return talloc_asprintf(NULL, "unknown --target %s", arg);
 	return NULL;
+}
+
+static bool run_tests(struct ccanlint *target,
+		      bool summary,
+		      struct manifest *m,
+		      const char *prefix)
+{
+	struct run_info run;
+
+	run.quiet = summary;
+	run.m = m;
+	run.prefix = prefix;
+	run.score = run.total = 0;
+	run.pass = true;
+
+	if (target) {
+		dgraph_traverse_to(&target->node, run_test, &run);
+		if (run.pass)
+			run_test(&target->node, &run);
+	} else
+		dgraph_traverse_to(&all, run_test, &run);
+
+	printf("%sTotal score: %u/%u\n",
+	       prefix, run.score, run.total);
+
+	return run.pass;
 }
 
 int main(int argc, char *argv[])
 {
-	bool summary = false, pass = true, targeting = false;
+	bool summary = false, pass = true;
 	unsigned int i;
 	struct manifest *m;
-	struct ccanlint *t;
+	struct ccanlint *target = NULL;
 	const char *prefix = "";
 	char *dir = talloc_getcwd(NULL), *base_dir = dir, *testlink;
 	
@@ -679,8 +708,9 @@ int main(int argc, char *argv[])
 	opt_register_arg("-t|--timeout <milleseconds>", opt_set_uintval,
 			 NULL, &timeout,
 			 "ignore (terminate) tests that are slower than this");
-	opt_register_arg("--target <testname>", add_target, NULL, &targeting,
-			 "run this test and prerequisites (can specify multiple times)");
+	opt_register_arg("--target <testname>", opt_set_target,
+			 NULL, &target,
+			 "only run one test (and its prerequisites)");
 	opt_register_arg("--compiler <compiler>", opt_set_const_charp,
 			 NULL, &compiler, "set the compiler");
 	opt_register_arg("--cflags <flags>", opt_set_const_charp,
@@ -710,10 +740,6 @@ int main(int argc, char *argv[])
 
 	/* This links back to the module's test dir. */
 	testlink = talloc_asprintf(NULL, "%s/test", temp_dir(NULL));
-
-	/* If no --target, run all tests. */
-	if (!targeting)
-		strmap_iterate(&tests, should_run_ccanlint, NULL);
 
 	/* Defaults to pwd. */
 	if (argc == 1) {
@@ -752,21 +778,8 @@ int main(int argc, char *argv[])
 			err(1, "Creating test symlink in %s", temp_dir(NULL));
 
 		score = total_score = 0;
-		while ((t = get_next_test()) != NULL) {
-			if (!run_test(t, summary, &score, &total_score, m,
-				      prefix)) {
-				pass = false;
-				if (t->compulsory) {
-					warnx("%s%s failed", prefix, t->name);
-					printf("%sTotal score: 0/%u\n",
-					       prefix, total_score);
-					goto next;
-				}
-			}
-		}
-
-		printf("%sTotal score: %u/%u\n", prefix, score, total_score);
-	next: ;
+		if (!run_tests(target, summary, m, prefix))
+			pass = false;
 	}
 	return pass ? 0 : 1;
 }
