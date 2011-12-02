@@ -34,12 +34,14 @@
 #include <ccan/grab_file/grab_file.h>
 #include <ccan/cast/cast.h>
 #include <ccan/tlist/tlist.h>
+#include <ccan/strmap/strmap.h>
 
-/* Defines struct tlist_ccanlint. */
-TLIST_TYPE(ccanlint, struct ccanlint);
+struct ccanlint_map {
+	STRMAP_MEMBERS(struct ccanlint *);
+};
 
 int verbose = 0;
-static struct tlist_ccanlint tests = TLIST_INIT(tests);
+static struct ccanlint_map tests;
 bool safe_mode = false;
 static bool targeting = false;
 static struct btree *cmdline_exclude;
@@ -97,6 +99,20 @@ static const char *should_skip(struct manifest *m, struct ccanlint *i)
 	return NULL;
 }
 
+static bool skip_node(struct dgraph_node *to, const char *failmsg)
+{
+	struct ccanlint *c = container_of(to, struct ccanlint, node);
+	if (!c->skip) {
+		if (failmsg) {
+			c->skip = failmsg;
+			c->skip_fail = true;
+		} else {
+			c->skip = "dependency was skipped";
+		}
+	}
+	return true;
+}
+
 static bool run_test(struct ccanlint *i,
 		     bool quiet,
 		     unsigned int *running_score,
@@ -105,13 +121,15 @@ static bool run_test(struct ccanlint *i,
 		     const char *prefix)
 {
 	unsigned int timeleft;
-	const struct dependent *d;
 	const char *skip;
 	struct score *score;
 
-	//one less test to run through
-	list_for_each(&i->dependencies, d, node)
-		d->dependent->num_depends--;
+	strmap_del(&tests, i->key, NULL);
+
+	if (!i->should_run) {
+		dgraph_clear_node(&i->node);
+		return true;
+	}
 
 	score = talloc(m, struct score);
 	list_head_init(&score->per_file_errors);
@@ -124,21 +142,17 @@ static bool run_test(struct ccanlint *i,
 
 	if (skip) {
 	skip:
-		if (verbose && !streq(skip, "not relevant to target"))
+		if (verbose)
 			printf("%s%s: skipped (%s)\n", prefix, i->name, skip);
 
 		/* If we're skipping this because a prereq failed, we fail:
 		 * count it as a score of 1. */
 		if (i->skip_fail)
 			(*running_total)++;
-			
-		list_del(&i->list);
-		list_for_each(&i->dependencies, d, node) {
-			if (d->dependent->skip)
-				continue;
-			d->dependent->skip = "dependency was skipped";
-			d->dependent->skip_fail = i->skip_fail;
-		}
+
+		dgraph_traverse_from(&i->node, skip_node,
+				     i->skip_fail ? "dependency failed" : NULL);
+		dgraph_clear_node(&i->node);
 		return i->skip_fail ? false : true;
 	}
 
@@ -172,27 +186,31 @@ static bool run_test(struct ccanlint *i,
 	*running_score += score->score;
 	*running_total += score->total;
 
-	list_del(&i->list);
-
 	if (!score->pass) {
 		/* Skip any tests which depend on this one. */
-		list_for_each(&i->dependencies, d, node) {
-			if (d->dependent->skip)
-				continue;
-			d->dependent->skip = "dependency failed";
-			d->dependent->skip_fail = true;
-		}
+		dgraph_traverse_from(&i->node, skip_node, "dependency failed");
 	}
+	dgraph_clear_node(&i->node);
 	return score->pass;
 }
 
 static void register_test(struct ccanlint *test)
 {
-	tlist_add(&tests, test, list);
+	if (!strmap_add(&tests, test->key, test))
+		err(1, "Adding test %s", test->key);
 	test->options = talloc_array(NULL, char *, 1);
 	test->options[0] = NULL;
-	test->skip = NULL;
-	test->skip_fail = false;
+	dgraph_init_node(&test->node);
+}
+
+static bool get_test(const char *member, struct ccanlint *i,
+		     struct ccanlint **ret)
+{
+	if (tlist_empty(&i->node.edge[DGRAPH_TO])) {
+		*ret = i;
+		return false;
+	}
+	return true;
 }
 
 /**
@@ -200,27 +218,21 @@ static void register_test(struct ccanlint *test)
  **/
 static inline struct ccanlint *get_next_test(void)
 {
-	struct ccanlint *i;
+	struct ccanlint *i = NULL;
 
-	if (tlist_empty(&tests))
+	strmap_iterate(&tests, get_test, &i);
+	if (i)
+		return i;
+
+	if (strmap_empty(&tests))
 		return NULL;
 
-	tlist_for_each(&tests, i, list) {
-		if (i->num_depends == 0)
-			return i;
-	}
 	errx(1, "Can't make process; test dependency cycle");
 }
 
 static struct ccanlint *find_test(const char *key)
 {
-	struct ccanlint *i;
-
-	tlist_for_each(&tests, i, list)
-		if (streq(i->key, key))
-			return i;
-
-	return NULL;
+	return strmap_get(&tests, key);
 }
 
 bool is_excluded(const char *name)
@@ -230,79 +242,79 @@ bool is_excluded(const char *name)
 		|| find_test(name)->skip != NULL;
 }
 
+static bool reset_deps(const char *member, struct ccanlint *c, void *unused)
+{
+	char **deps = strsplit(NULL, c->needs, " ");
+	unsigned int i;
+
+	c->skip = NULL;
+	c->skip_fail = false;
+	for (i = 0; deps[i]; i++) {
+		struct ccanlint *dep;
+
+		dep = find_test(deps[i]);
+		if (!dep)
+			errx(1, "BUG: unknown dep '%s' for %s",
+			     deps[i], c->key);
+		dgraph_add_edge(&dep->node, &c->node);
+	}
+	talloc_free(deps);
+	return true;
+}
+
+static bool check_names(const char *member, struct ccanlint *c,
+			struct ccanlint_map *names)
+{
+	if (!strmap_add(names, c->name, c))
+		err(1, "Duplicate name %s", c->name);
+	return true;
+}
+
 #undef REGISTER_TEST
 #define REGISTER_TEST(name, ...) extern struct ccanlint name
 #include "generated-testlist"
 
 static void init_tests(void)
 {
-	struct ccanlint *c;
-	struct btree *keys, *names;
+	struct ccanlint_map names;
 
-	tlist_init(&tests);
+	strmap_init(&tests);
 
 #undef REGISTER_TEST
 #define REGISTER_TEST(name) register_test(&name)
 #include "generated-testlist"
 
-	/* Initialize dependency lists. */
-	tlist_for_each(&tests, c, list) {
-		list_head_init(&c->dependencies);
-		c->num_depends = 0;
-	}
+	strmap_iterate(&tests, reset_deps, NULL);
 
-	/* Resolve dependencies. */
-	tlist_for_each(&tests, c, list) {
-		char **deps = strsplit(NULL, c->needs, " ");
-		unsigned int i;
+	/* Check for duplicate names. */
+	strmap_init(&names);
+	strmap_iterate(&tests, check_names, &names);
+	strmap_clear(&names);
+}
 
-		for (i = 0; deps[i]; i++) {
-			struct ccanlint *dep;
-			struct dependent *dchild;
+static bool print_deps(const char *member, struct ccanlint *c, void *unused)
+{
+	if (!tlist_empty(&c->node.edge[DGRAPH_FROM])) {
+		struct dgraph_edge *e;
 
-			dep = find_test(deps[i]);
-			if (!dep)
-				errx(1, "BUG: unknown dep '%s' for %s",
-				     deps[i], c->key);
-			dchild = talloc(NULL, struct dependent);
-			dchild->dependent = c;
-			list_add_tail(&dep->dependencies, &dchild->node);
-			c->num_depends++;
+		printf("These depend on %s:\n", c->key);
+		dgraph_for_each_edge(&c->node, e, DGRAPH_FROM) {
+			struct ccanlint *to = container_of(e->n[DGRAPH_TO],
+							   struct ccanlint,
+							   node);
+			printf("\t%s\n", to->key);
 		}
-		talloc_free(deps);
 	}
-
-	/* Self-consistency check: make sure no two tests
-	   have the same key or name. */
-	keys = btree_new(btree_strcmp);
-	names = btree_new(btree_strcmp);
-	tlist_for_each(&tests, c, list) {
-		if (!btree_insert(keys, c->key))
-			errx(1, "BUG: Duplicate test key '%s'",
-			     c->key);
-		if (!btree_insert(names, c->name))
-			errx(1, "BUG: Duplicate test name '%s'",
-			     c->name);
-	}
-
-	btree_delete(keys);
-	btree_delete(names);
+	return true;
 }
 
 static void print_test_depends(void)
 {
-	struct ccanlint *c;
 	printf("Tests:\n");
 
-	tlist_for_each(&tests, c, list) {
-		if (!list_empty(&c->dependencies)) {
-			const struct dependent *d;
-			printf("These depend on %s:\n", c->key);
-			list_for_each(&c->dependencies, d, node)
-				printf("\t%s\n", d->dependent->key);
-		}
-	}
+	strmap_iterate(&tests, print_deps, NULL);
 }
+
 
 static int show_tmpdir(const char *dir)
 {
@@ -310,19 +322,21 @@ static int show_tmpdir(const char *dir)
 	return 0;
 }
 
+static bool keep_one_test(const char *member, struct ccanlint *c, void *unused)
+{
+	c->keep_results = true;
+	return true;
+}
+
 static char *keep_test(const char *testname, void *unused)
 {
-	struct ccanlint *i;
-
-	init_tests();
 	if (streq(testname, "all")) {
-		tlist_for_each(&tests, i, list)
-			i->keep_results = true;
+		strmap_iterate(&tests, keep_one_test, NULL);
 	} else {
-		i = find_test(testname);
+		struct ccanlint *i = find_test(testname);
 		if (!i)
 			errx(1, "No test %s to --keep", testname);
-		i->keep_results = true;
+		keep_one_test(testname, i, NULL);
 	}
 
 	/* Don't automatically destroy temporary dir. */
@@ -340,46 +354,51 @@ static char *list_tests(void *arg)
 {
 	struct ccanlint *i;
 
-	init_tests();
-
 	printf("Tests:\n");
 	/* This makes them print in topological order. */
 	while ((i = get_next_test()) != NULL) {
-		const struct dependent *d;
 		printf("   %-25s %s\n", i->key, i->name);
-		list_del(&i->list);
-		list_for_each(&i->dependencies, d, node)
-			d->dependent->num_depends--;
+		dgraph_clear_node(&i->node);
+		strmap_del(&tests, i->key, NULL);
 	}
 	exit(0);
 }
 
+static bool draw_test(const char *member, struct ccanlint *c, const char *style)
+{
+	/*
+	 * todo: escape labels in case ccanlint test keys have
+	 *       characters interpreted as GraphViz syntax.
+	 */
+	printf("\t\"%p\" [label=\"%s\"%s]\n", c, c->key, style);
+	return true;
+}
+
 static void test_dgraph_vertices(const char *style)
 {
-	const struct ccanlint *i;
+	strmap_iterate(&tests, draw_test, style);
+}
 
-	tlist_for_each(&tests, i, list) {
-		/*
-		 * todo: escape labels in case ccanlint test keys have
-		 *       characters interpreted as GraphViz syntax.
-		 */
-		printf("\t\"%p\" [label=\"%s\"%s]\n", i, i->key, style);
+static bool draw_edges(const char *member, struct ccanlint *c, void *unused)
+{
+	struct dgraph_edge *e;
+
+	dgraph_for_each_edge(&c->node, e, DGRAPH_FROM) {
+		struct ccanlint *to = container_of(e->n[DGRAPH_TO],
+						   struct ccanlint,
+						   node);
+		printf("\t\"%p\" -> \"%p\"\n", c->name, to->name);
 	}
+	return true;
 }
 
 static void test_dgraph_edges(void)
 {
-	const struct ccanlint *i;
-	const struct dependent *d;
-
-	tlist_for_each(&tests, i, list)
-		list_for_each(&i->dependencies, d, node)
-			printf("\t\"%p\" -> \"%p\"\n", d->dependent, i);
+	strmap_iterate(&tests, draw_edges, NULL);
 }
 
 static char *test_dependency_graph(void *arg)
 {
-	init_tests();
 	puts("digraph G {");
 
 	test_dgraph_vertices("");
@@ -506,30 +525,6 @@ char **per_file_options(const struct ccanlint *test, struct ccan_file *f)
 	return talloc_realloc(NULL, ret, char *, j + 1);
 }
 
-static bool depends_on(struct ccanlint *i, struct ccanlint *target)
-{
-	const struct dependent *d;
-
-	if (i == target)
-		return true;
-
-	list_for_each(&i->dependencies, d, node) {
-		if (depends_on(d->dependent, target))
-			return true;
-	}
-	return false;
-}
-
-/* O(N^2), who cares? */
-static void skip_unrelated_tests(struct ccanlint *target)
-{
-	struct ccanlint *i;
-
-	tlist_for_each(&tests, i, list)
-		if (!depends_on(i, target))
-			i->skip = "not relevant to target";
-}
-
 static char *demangle_string(char *string)
 {
 	unsigned int i;
@@ -629,15 +624,39 @@ static char *opt_set_const_charp(const char *arg, const char **p)
 	return opt_set_charp(arg, cast_const2(char **, p));
 }
 
+static bool should_run_ccanlint(const char *name, struct ccanlint *c,
+				void *unused)
+{
+	c->should_run = true;
+	return true;
+}
+
+static bool should_run_node(struct dgraph_node *to, void *unused)
+{
+	should_run_ccanlint(NULL, container_of(to, struct ccanlint, node),
+			    unused);
+	return true;
+}
+
+static char *add_target(const char *arg, bool *targeting)
+{
+	struct ccanlint *c = find_test(arg);
+	if (!c)
+		return talloc_asprintf(NULL, "Unknown test %s", arg);
+
+	dgraph_traverse_to(&c->node, should_run_node, NULL);
+	*targeting = true;
+	return NULL;
+}
+
 int main(int argc, char *argv[])
 {
-	bool summary = false, pass = true;
+	bool summary = false, pass = true, targeting = false;
 	unsigned int i;
 	struct manifest *m;
 	struct ccanlint *t;
 	const char *prefix = "";
-	char *dir = talloc_getcwd(NULL), *base_dir = dir, *target = NULL,
-		*testlink;
+	char *dir = talloc_getcwd(NULL), *base_dir = dir, *testlink;
 	
 	cmdline_exclude = btree_new(btree_strcmp);
 	info_exclude = btree_new(btree_strcmp);
@@ -660,9 +679,8 @@ int main(int argc, char *argv[])
 	opt_register_arg("-t|--timeout <milleseconds>", opt_set_uintval,
 			 NULL, &timeout,
 			 "ignore (terminate) tests that are slower than this");
-	opt_register_arg("--target <testname>", opt_set_charp,
-			 NULL, &target,
-			 "only run one test (and its prerequisites)");
+	opt_register_arg("--target <testname>", add_target, NULL, &targeting,
+			 "run this test and prerequisites (can specify multiple times)");
 	opt_register_arg("--compiler <compiler>", opt_set_const_charp,
 			 NULL, &compiler, "set the compiler");
 	opt_register_arg("--cflags <flags>", opt_set_const_charp,
@@ -679,7 +697,7 @@ int main(int argc, char *argv[])
 	if (chdir(temp_dir(talloc_autofree_context())) != 0)
 		err(1, "Error changing to %s temporary dir", temp_dir(NULL));
 
-	opt_parse(&argc, argv, opt_log_stderr_exit);
+	init_tests();
 
 	if (verbose >= 3) {
 		compile_verbose = true;
@@ -688,8 +706,14 @@ int main(int argc, char *argv[])
 	if (verbose >= 4)
 		tools_verbose = true;
 
+	opt_parse(&argc, argv, opt_log_stderr_exit);
+
 	/* This links back to the module's test dir. */
 	testlink = talloc_asprintf(NULL, "%s/test", temp_dir(NULL));
+
+	/* If no --target, run all tests. */
+	if (!targeting)
+		strmap_iterate(&tests, should_run_ccanlint, NULL);
 
 	/* Defaults to pwd. */
 	if (argc == 1) {
@@ -714,15 +738,6 @@ int main(int argc, char *argv[])
 						      ": ");
 
 		init_tests();
-
-		if (target) {
-			struct ccanlint *test;
-
-			test = find_test(target);
-			if (!test)
-				errx(1, "Unknown test to run '%s'", target);
-			skip_unrelated_tests(test);
-		}
 
 		m = get_manifest(talloc_autofree_context(), dir);
 

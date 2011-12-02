@@ -2,6 +2,7 @@
 #define CCAN_LINT_H
 #include "config.h"
 #include <ccan/list/list.h>
+#include <ccan/dgraph/dgraph.h>
 #include <stdbool.h>
 #include "../doc_extract.h"
 #include "licenses.h"
@@ -80,8 +81,6 @@ struct score {
 };
 
 struct ccanlint {
-	struct list_node list;
-
 	/* More concise unique name of test. */
 	const char *key;
 
@@ -113,10 +112,10 @@ struct ccanlint {
 	const char *needs;
 
 	/* Internal use fields: */
-	/* Who depends on us? */
-	struct list_head dependencies;
-	/* How many things do we (still) depend on? */
-	unsigned int num_depends;
+	/* We are a node in a dependency graph. */
+	struct dgraph_node node;
+	/* Are we targeted? */
+	bool should_run;
 	/* Did we skip a dependency?  If so, must skip this, too. */
 	const char *skip;
 	/* Did we fail a dependency?  If so, skip and mark as fail. */

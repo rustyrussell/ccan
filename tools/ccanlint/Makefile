@@ -4,6 +4,7 @@ TEST_OBJS := $(TEST_CFILES:.c=.o)
 CORE_OBJS := \
 	ccan/asort/asort.o \
 	ccan/btree/btree.o \
+	ccan/dgraph/dgraph.o \
 	ccan/foreach/foreach.o \
 	ccan/grab_file/grab_file.o \
 	ccan/hash/hash.o \
@@ -17,6 +18,7 @@ CORE_OBJS := \
 	ccan/read_write_all/read_write_all.o \
 	ccan/str/str.o ccan/str/debug.o \
 	ccan/str_talloc/str_talloc.o \
+	ccan/strmap/strmap.o \
 	ccan/talloc/talloc.o \
 	ccan/talloc_link/talloc_link.o \
 	ccan/time/time.o \
