@@ -733,10 +733,10 @@ int main(int argc, char *argv[])
 			   "simply give one line summary");
 	opt_register_arg("-x|--exclude <testname>", exclude_test, NULL, NULL,
 			 "exclude <testname> (can be used multiple times)");
-	opt_register_arg("-t|--timeout <milleseconds>", opt_set_uintval,
+	opt_register_arg("--timeout <milleseconds>", opt_set_uintval,
 			 NULL, &timeout,
 			 "ignore (terminate) tests that are slower than this");
-	opt_register_arg("--target <testname>", opt_set_target, NULL, &all,
+	opt_register_arg("-t|--target <testname>", opt_set_target, NULL, &all,
 			 "only run one test (and its prerequisites)");
 	opt_register_arg("--compiler <compiler>", opt_set_const_charp,
 			 NULL, &compiler, "set the compiler");

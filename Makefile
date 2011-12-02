@@ -94,7 +94,7 @@ check-%: tools/ccanlint/ccanlint
 	tools/ccanlint/ccanlint ccan/$*
 
 fastcheck-%: tools/ccanlint/ccanlint
-	tools/ccanlint/ccanlint -t $(FASTTIMEOUT) ccan/$*
+	tools/ccanlint/ccanlint --timeout $(FASTTIMEOUT) ccan/$*
 
 # Doesn't test dependencies, doesn't print verbose fail results.
 summary-check-%: tools/ccanlint/ccanlint $(OBJFILES)
