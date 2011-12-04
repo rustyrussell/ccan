@@ -1,0 +1,61 @@
+#include <string.h>
+#include "config.h"
+
+/**
+ * objset - unordered set of pointers.
+ *
+ * This code implements a very simple unordered set of pointers.  It's very
+ * fast to add and check if something is in the set; it's implemented by
+ * a hash table.
+ *
+ * License: LGPL (v2.1 or any later version)
+ *
+ * Example:
+ *	// Silly example to determine if an arg starts with a -
+ *	#include <ccan/objset/objset.h>
+ *	#include <stdio.h>
+ *
+ *	struct objset_arg {
+ *		OBJSET_MEMBERS(const char *);
+ *	};
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		struct objset_arg args;
+ *		unsigned int i;
+ *
+ *		objset_init(&args);
+ *		// Put all args starting with - in the set.
+ *		for (i = 1; i < argc; i++)
+ *			if (argv[i][0] == '-')
+ *				objset_add(&args, argv[i]);
+ *
+ *		if (objset_empty(&args))
+ *			printf("No arguments start with -.\n");
+ *		else {
+ *			for (i = 1; i < argc; i++)
+ *				if (objset_get(&args, argv[i]))
+ *					printf("%i,", i);
+ *			printf("\n");
+ *		}
+ *		return 0;
+ *	}
+ *	// Given 'a b c' outputs No arguments start with -.
+ *	// Given 'a -b c' outputs 2,
+ *	// Given 'a -b -c d' outputs 2,3,
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/hash\n");
+		printf("ccan/htable\n");
+		printf("ccan/tcon\n");
+		return 0;
+	}
+
+	return 1;
+}
