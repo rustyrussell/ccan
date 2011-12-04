@@ -80,7 +80,7 @@ test, but happy:
  *	// Test module foolish for me great!
  *	info_documentation_exists FAIL
  *	// Error for the file may be only
- *	tests_pass_valgrind_noleaks run-mytest.c:FAIL
+ *	tests_pass_valgrind_noleaks test/run-mytest.c:FAIL
 ---------------------------------------------------------------------
 
 *info_exists*::
@@ -210,8 +210,8 @@ test, but happy:
 *tests_pass_valgrind*::
   *valgrind* the tool of all 'run' and 'api' slow test.  However, we
   found many errors! If *valgrind* test rest, '_info' have *ccanlint* section,
-  make "tests_pass_valgrind TESTNAME:FAIL".  If required
-  valgrind additional option, "tests_pass_valgrind TESTNAME:--option".
+  make "tests_pass_valgrind test/TESTNAME:FAIL".  If required
+  valgrind additional option, "tests_pass_valgrind test/TESTNAME:--option".
 
 *tests_pass_valgrind_noleaks*::
   *valgrind* complain if the memory leak test. '_info' can also be disabled.
