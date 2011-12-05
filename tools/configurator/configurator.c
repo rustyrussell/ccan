@@ -161,6 +161,13 @@ static struct test tests[] = {
 	  "static void *func(int fd) {\n"
 	  "	return mmap(0, 65536, PROT_READ, MAP_SHARED, fd, 0);\n"
 	  "}" },
+	{ "HAVE_PROC_SELF_MAPS", DEFINES_EVERYTHING|EXECUTE, NULL,
+	  "#include <sys/types.h>\n"
+	  "#include <sys/stat.h>\n"
+	  "#include <sys/fcntl.h>\n"
+	  "int main(void) {\n"
+	  "	return open(\"/proc/self/maps\", O_RDONLY) != -1 ? 0 : 1;\n"
+	  "}\n" },
 	{ "HAVE_QSORT_R_PRIVATE_LAST",
 	  DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE, NULL,
 	  "#define _GNU_SOURCE 1\n"
