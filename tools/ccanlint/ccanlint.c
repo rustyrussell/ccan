@@ -279,19 +279,18 @@ static bool check_names(const char *member, struct ccanlint *c,
 	return true;
 }
 
-#undef REGISTER_TEST
-#define REGISTER_TEST(name, ...) extern struct ccanlint name
-#include "generated-testlist"
-
 static void init_tests(void)
 {
 	struct ccanlint_map names;
+	struct ccanlint **table;
+	size_t i, num;
 
 	strmap_init(&tests);
 
-#undef REGISTER_TEST
-#define REGISTER_TEST(name) register_test(&name)
-#include "generated-testlist"
+	table = autodata_get(ccanlint_tests, &num);
+	for (i = 0; i < num; i++)
+		register_test(table[i]);
+	autodata_free(table);
 
 	strmap_iterate(&tests, init_deps, NULL);
 

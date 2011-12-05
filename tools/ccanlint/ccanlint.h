@@ -3,11 +3,13 @@
 #include "config.h"
 #include <ccan/list/list.h>
 #include <ccan/dgraph/dgraph.h>
+#include <ccan/autodata/autodata.h>
 #include <stdbool.h>
 #include "../doc_extract.h"
 #include "licenses.h"
 
-#define REGISTER_TEST(name, ...) extern struct ccanlint name
+AUTODATA_TYPE(ccanlint_tests, struct ccanlint);
+#define REGISTER_TEST(test) AUTODATA(ccanlint_tests, &test)
 
 /* 0 == Describe failed tests.
    1 == Describe results for partial failures.

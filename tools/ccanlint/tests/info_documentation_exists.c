@@ -15,7 +15,16 @@
 #include <ccan/noerr/noerr.h>
 #include <ccan/grab_file/grab_file.h>
 
-REGISTER_TEST(info_documentation_exists);
+static void check_info_documentation_exists(struct manifest *m,
+					    unsigned int *timeleft,
+					    struct score *score);
+
+static struct ccanlint info_documentation_exists = {
+	.key = "info_documentation_exists",
+	.name = "Module has documentation in _info",
+	.check = check_info_documentation_exists,
+	.needs = "info_exists"
+};
 
 static void create_info_template_doc(struct manifest *m, struct score *score)
 {
@@ -95,10 +104,5 @@ static void check_info_documentation_exists(struct manifest *m,
 	}
 }
 
-struct ccanlint info_documentation_exists = {
-	.key = "info_documentation_exists",
-	.name = "Module has documentation in _info",
-	.check = check_info_documentation_exists,
-	.needs = "info_exists"
-};
+REGISTER_TEST(info_documentation_exists);
 

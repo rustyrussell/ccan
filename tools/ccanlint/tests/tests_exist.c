@@ -10,6 +10,15 @@
 #include <err.h>
 #include <ccan/talloc/talloc.h>
 
+static void check_tests_exist(struct manifest *m,
+			      unsigned int *timeleft, struct score *score);
+
+static struct ccanlint tests_exist = {
+	.key = "tests_exist",
+	.name = "Module has test directory with tests in it",
+	.check = check_tests_exist,
+	.needs = "info_exists"
+};
 REGISTER_TEST(tests_exist);
 
 static void handle_no_tests(struct manifest *m, struct score *score)
@@ -126,11 +135,3 @@ static void check_tests_exist(struct manifest *m,
 	score->pass = true;
 	score->score = score->total;
 }
-
-struct ccanlint tests_exist = {
-	.key = "tests_exist",
-	.name = "Module has test directory with tests in it",
-	.check = check_tests_exist,
-	.needs = "info_exists"
-};
-
