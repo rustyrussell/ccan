@@ -181,6 +181,13 @@ static struct test tests[] = {
 	  " qsort_r(array, 3, sizeof(int), cmp, &called);\n"
 	  " return called && array[0] == 2 && array[1] == 5 && array[2] == 9 ? 0 : 1;\n"
 	  "}\n" },
+	{ "HAVE_SECTION_START_STOP",
+	  DEFINES_FUNC, NULL,
+	  "static void *__attribute__((__section__(\"mysec\"))) p = &p;\n"
+	  "static int func(void) {\n"
+	  "	extern void *__start_mysec[], *__stop_mysec[];\n"
+	  "	return __stop_mysec - __start_mysec;\n"
+	  "}\n" },
 	{ "HAVE_STACK_GROWS_UPWARDS", DEFINES_EVERYTHING|EXECUTE, NULL,
 	  "static long nest(const void *base, unsigned int i)\n"
 	  "{\n"
