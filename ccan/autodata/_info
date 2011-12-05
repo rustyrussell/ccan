@@ -1,0 +1,27 @@
+#include <string.h>
+#include "config.h"
+
+/**
+ * autodata - stash pointers in your binary for automatic registration
+ *
+ * This code allows declarations in your source which you can gather
+ * together at runtime to form tables.  This is often used in place of
+ * having to patch a registration function call out, or a central
+ * table.
+ *
+ * License: BSD-MIT
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/compiler\n");
+		printf("ccan/ptr_valid\n");
+		return 0;
+	}
+
+	return 1;
+}
