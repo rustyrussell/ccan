@@ -8,6 +8,23 @@
 #include <ccan/grab_file/grab_file.h>
 #include "doc_extract.h"
 
+/* We regard non-alphanumerics as equiv. */
+static bool typematch(const char *a, const char *b)
+{
+	size_t i;
+
+	for (i = 0; a[i]; i++) {
+		if (cisalnum(a[i])) {
+			if (a[i] != b[i])
+				return false;
+		} else {
+			if (cisalnum(b[i]))
+				return false;
+		}
+	}
+	return b[i] == '\0';
+}
+
 int main(int argc, char *argv[])
 {
 	unsigned int i;
@@ -16,7 +33,7 @@ int main(int argc, char *argv[])
 
 	if (argc < 3)
 		errx(1, "Usage: doc_extract [--function=<funcname>] TYPE <file>...\n"
-		     "Where TYPE is functions|author|license|maintainer|summary|description|example|all");
+		     "Where TYPE is functions|author|license|maintainer|summary|description|example|see_also|all");
 
 	if (strstarts(argv[1], "--function=")) {
 		function = argv[1] + strlen("--function=");
@@ -60,7 +77,7 @@ int main(int argc, char *argv[])
 				}
 				if (streq(type, "all"))
 					printf("%s:\n", d->type);
-				else if (!streq(d->type, type))
+				else if (!typematch(d->type, type))
 					continue;
 
 				for (j = 0; j < d->num_lines; j++)
