@@ -16,6 +16,8 @@
  * autodata functions in the file.
  *
  * Example:
+ *	#include <ccan/autodata/autodata.h>
+ *
  *	// My set of char pointers.
  *	AUTODATA_TYPE(names, char);
  */
