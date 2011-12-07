@@ -7,6 +7,9 @@
  *
  * Simple but powerful command line parsing.
  *
+ * See Also:
+ *	ccan/autodata
+ *
  * Example:
  * #include <ccan/opt/opt.h>
  * #include <stdio.h>
