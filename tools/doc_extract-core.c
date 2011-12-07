@@ -165,6 +165,7 @@ static void add_detabbed_line(struct doc_section *curr, const char *rawline)
 static void trim_lines(struct doc_section *curr)
 {
 	unsigned int i, trim = -1;
+	int last_non_empty = -1;
 
 	/* Get minimum whitespace prefix. */
 	for (i = 0; i < curr->num_lines; i++) {
@@ -183,7 +184,14 @@ static void trim_lines(struct doc_section *curr)
 			curr->lines[i] += prefix;
 		else
 			curr->lines[i] += trim;
+
+		/* All blank?  Potential to trim. */
+		if (curr->lines[i][strspn(curr->lines[i], " \t")] != '\0')
+			last_non_empty = i;
 	}
+
+	/* Remove trailing blank lines. */
+	curr->num_lines = last_non_empty + 1;
 }
 
 struct list_head *extract_doc_sections(char **rawlines)
