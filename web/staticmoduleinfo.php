@@ -8,6 +8,7 @@ $module=basename($module_path);
 $maintainer=extract_field('maintainer',$module_path);
 $author=extract_field('author',$module_path);
 $summary=extract_field('summary',$module_path);
+$see_also=extract_field('see_also',$module_path);
 $description=htmlize_field('description',$module_path);
 $example=extract_field('example',$module_path);
 $dependencies=htmlspecialchars(shell_exec('tools/ccan_depends --direct '.$module_path));
@@ -86,7 +87,20 @@ if ($extdepends) {
 <tr align="left" bgcolor="FFFFCC">
 <td><h3>Description: </h3> <?=$description;?> </td>
 </tr>
+
 <?php 
+if ($see_also) {
+?>
+<tr align="left" bgcolor="FFFFCC">
+<td><h3>See Also: </h3> <pre> <?php
+	foreach (preg_split("/[\s,]+/", trim($see_also)) as $see) {
+		echo '<a href="'.substr($see, 5).'.html">'.$see.'</a> ';
+        }
+?></pre></td>
+</tr>
+<?php
+}
+
 if ($example) {
 ?>
 <tr align="left" bgcolor="FFFFCC"> 
