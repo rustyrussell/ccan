@@ -11,7 +11,7 @@
  * argument is of the expected type.  No type promotion of the expression is
  * done: an unsigned int is not the same as an int!
  *
- * check_type() always evaluates to 1.
+ * check_type() always evaluates to 0.
  *
  * If your compiler does not support typeof, then the best we can do is fail
  * to compile if the sizes of the types are unequal (a less complete check).
