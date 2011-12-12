@@ -326,9 +326,7 @@ static inline const void *list_tail_(const struct list_head *h, size_t off)
  *		printf("Name: %s\n", child->name);
  */
 #define list_for_each(h, i, member)					\
-	for (i = container_of_var(list_debug(h)->n.next, i, member);	\
-	     &i->member != &(h)->n;					\
-	     i = container_of_var(i->member.next, i, member))
+	list_for_each_off(h, i, list_off_var_(i, member))
 
 /**
  * list_for_each_rev - iterate through a list backwards.
@@ -367,14 +365,105 @@ static inline const void *list_tail_(const struct list_head *h, size_t off)
  *	}
  */
 #define list_for_each_safe(h, i, nxt, member)				\
-	for (i = container_of_var(list_debug(h)->n.next, i, member),	\
-		nxt = container_of_var(i->member.next, i, member);	\
-	     &i->member != &(h)->n;					\
-	     i = nxt, nxt = container_of_var(i->member.next, i, member))
+	list_for_each_safe_off(h, i, nxt, list_off_var_(i, member))
+
+/**
+ * list_for_each_off - iterate through a list of memory regions.
+ * @h: the list_head
+ * @i: the pointer to a memory region wich contains list node data.
+ * @off: offset(relative to @i) at which list node data resides.
+ *
+ * This is a low-level wrapper to iterate @i over the entire list, used to
+ * implement all oher, more high-level, for-each constructs. It's a for loop,
+ * so you can break and continue as normal.
+ *
+ * WARNING! Being the low-level macro that it is, this wrapper doesn't know
+ * nor care about the type of @i. The only assumtion made is that @i points
+ * to a chunk of memory that at some @offset, relative to @i, contains a
+ * properly filled `struct node_list' which in turn contains pointers to
+ * memory chunks and it's turtles all the way down. Whith all that in mind
+ * remember that given the wrong pointer/offset couple this macro will
+ * happilly churn all you memory untill SEGFAULT stops it, in other words
+ * caveat emptor.
+ *
+ * It is worth mentioning that one of legitimate use-cases for that wrapper
+ * is operation on opaque types with known offset for `struct list_node'
+ * member(preferably 0), because it allows you not to disclose the type of
+ * @i.
+ *
+ * Example:
+ *	list_for_each_off(&parent->children, child,
+ *				offsetof(struct child, list))
+ *		printf("Name: %s\n", child->name);
+ */
+#define list_for_each_off(h, i, off)                                    \
+  for (i = list_node_to_off_(list_debug(h)->n.next, (off));             \
+       list_node_from_off_((void *)i, (off)) != &(h)->n;                \
+       i = list_node_to_off_(list_node_from_off_((void *)i, (off))->next, \
+                             (off)))
+
+/**
+ * list_for_each_safe_off - iterate through a list of memory regions, maybe
+ * during deletion
+ * @h: the list_head
+ * @i: the pointer to a memory region wich contains list node data.
+ * @nxt: the structure containing the list_node
+ * @off: offset(relative to @i) at which list node data resides.
+ *
+ * For details see `list_for_each_off' and `list_for_each_safe'
+ * descriptions.
+ *
+ * Example:
+ *	list_for_each_safe_off(&parent->children, child,
+ *		next, offsetof(struct child, list))
+ *		printf("Name: %s\n", child->name);
+ */
+#define list_for_each_safe_off(h, i, nxt, off)                          \
+  for (i = list_node_to_off_(list_debug(h)->n.next, (off)),             \
+         nxt = list_node_to_off_(list_node_from_off_(i, (off))->next,   \
+                                 (off));                                \
+       list_node_from_off_(i, (off)) != &(h)->n;                        \
+       i = nxt,                                                         \
+         nxt = list_node_to_off_(list_node_from_off_(i, (off))->next,   \
+                                 (off)))
+
+
+/* Other -off variants. */
+#define list_entry_off(n, type, off)		\
+	((type *)list_node_from_off_((n), (off)))
+
+#define list_head_off(h, type, off)		\
+	((type *)list_head_off((h), (off)))
+
+#define list_tail_off(h, type, off)		\
+	((type *)list_tail_((h), (off)))
+
+#define list_add_off(h, n, off)                 \
+	list_add((h), list_node_from_off_((n), (off)))
+
+#define list_del_off(n, off)                    \
+	list_del(list_node_from_off_((n), (off)))
+
+#define list_del_from_off(h, n, off)			\
+	list_del_from(h, list_node_from_off_((n), (off)))
+
+/* Offset helper functions so we only single-evaluate. */
+static inline void *list_node_to_off_(struct list_node *node, size_t off)
+{
+	return (void *)((char *)node - off);
+}
+static inline struct list_node *list_node_from_off_(void *ptr, size_t off)
+{
+	return (struct list_node *)((char *)ptr + off);
+}
 
 /* Get the offset of the member, but make sure it's a list_node. */
 #define list_off_(type, member)					\
 	(container_off(type, member) +				\
 	 check_type(((type *)0)->member, struct list_node))
+
+#define list_off_var_(var, member)			\
+	(container_off_var(var, member) +		\
+	 check_type(var->member, struct list_node))
 
 #endif /* CCAN_LIST_H */
