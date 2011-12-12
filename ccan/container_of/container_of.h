@@ -82,10 +82,27 @@
 #define container_of_var(member_ptr, container_var, member) \
 	container_of(member_ptr, typeof(*container_var), member)
 #else
-#define container_of_var(member_ptr, container_var, member)		\
-	((void *)((char *)(member_ptr)					\
-		  - ((char *)&(container_var)->member			\
-		     - (char *)(container_var))))
+#define container_of_var(member_ptr, container_var, member)	\
+	((void *)((char *)(member_ptr)	-			\
+		  container_off_var(container_var, member)))
+#endif
+
+/**
+ * container_off_var - get offset of a field in enclosing structure
+ * @container_var: a pointer to a container structure
+ * @member: the name of a member within the structure.
+ *
+ * Given (any) pointer to a structure and a its member name, this
+ * macro does pointer subtraction to return offset of member in a
+ * structure memory layout.
+ *
+ */
+#if HAVE_TYPEOF
+#define container_off_var(var, member)		\
+	container_off(typeof(*var), member)
+#else
+#define container_off_var(var, member)			\
+	((char *)&(var)->member - (char *)(var))
 #endif
 
 #endif /* CCAN_CONTAINER_OF_H */
