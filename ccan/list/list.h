@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <assert.h>
 #include <ccan/container_of/container_of.h>
+#include <ccan/check_type/check_type.h>
 
 /**
  * struct list_node - an entry in a doubly-linked list
@@ -280,7 +281,7 @@ static inline void list_del_from(struct list_head *h, struct list_node *n)
  *	first = list_top(&parent->children, struct child, list);
  */
 #define list_top(h, type, member)					\
-	((type *)list_top_((h), container_off((h)->n.next, type, member)))
+	((type *)list_top_((h), list_off_(type, member)))
 
 static inline const void *list_top_(const struct list_head *h, size_t off)
 {
@@ -302,7 +303,7 @@ static inline const void *list_top_(const struct list_head *h, size_t off)
  *	last = list_tail(&parent->children, struct child, list);
  */
 #define list_tail(h, type, member) \
-	((type *)list_tail_((h), container_off((h)->n.next, type, member)))
+	((type *)list_tail_((h), list_off_(type, member)))
 
 static inline const void *list_tail_(const struct list_head *h, size_t off)
 {
@@ -370,4 +371,10 @@ static inline const void *list_tail_(const struct list_head *h, size_t off)
 		nxt = container_of_var(i->member.next, i, member);	\
 	     &i->member != &(h)->n;					\
 	     i = nxt, nxt = container_of_var(i->member.next, i, member))
+
+/* Get the offset of the member, but make sure it's a list_node. */
+#define list_off_(type, member)					\
+	(container_off(type, member) +				\
+	 check_type(((type *)0)->member, struct list_node))
+
 #endif /* CCAN_LIST_H */

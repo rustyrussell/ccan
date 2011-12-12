@@ -18,7 +18,7 @@ int main(int argc, char *argv[])
 	ok1(container_of_var(intp, &foo, a) == &foo);
 	ok1(container_of_var(charp, &foo, b) == &foo);
 
-	ok1(container_off(intp, struct foo, a) == 0);
-	ok1(container_off(charp, struct foo, b) == offsetof(struct foo, b));
+	ok1(container_off(struct foo, a) == 0);
+	ok1(container_off(struct foo, b) == offsetof(struct foo, b));
 	return exit_status();
 }
