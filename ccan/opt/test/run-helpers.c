@@ -19,9 +19,6 @@ static int saved_fprintf(FILE *ignored, const char *fmt, ...);
 #define vfprintf(f, fmt, ap) saved_vprintf(fmt, ap)
 static int saved_vprintf(const char *fmt, va_list ap);
 
-#define malloc(size) saved_malloc(size)
-static void *saved_malloc(size_t size);
-
 #include <ccan/opt/helpers.c>
 #include <ccan/opt/opt.c>
 #include <ccan/opt/usage.c>
@@ -65,13 +62,6 @@ static int saved_fprintf(FILE *ignored, const char *fmt, ...)
 	return ret;
 }
 
-#undef malloc
-static void *last_allocation;
-static void *saved_malloc(size_t size)
-{
-	return last_allocation = malloc(size);
-}
-
 static void set_args(int *argc, char ***argv, ...)
 {
 	va_list ap;
@@ -87,7 +77,7 @@ static void set_args(int *argc, char ***argv, ...)
 /* Test helpers. */
 int main(int argc, char *argv[])
 {
-	plan_tests(452);
+	plan_tests(454);
 
 	/* opt_set_bool */
 	{
@@ -1005,6 +995,8 @@ int main(int argc, char *argv[])
 			fail("opt_show_version_and_exit returned?");
 		} else {
 			ok1(exitval - 1 == 0);
+			/* We should have freed table!. */
+			ok1(opt_table == NULL);
 		}
 		ok1(strcmp(output, "1.2.3\n") == 0);
 		free(output);
@@ -1027,14 +1019,14 @@ int main(int argc, char *argv[])
 			fail("opt_usage_and_exit returned?");
 		} else {
 			ok1(exitval - 1 == 0);
+			/* We should have freed table!. */
+			ok1(opt_table == NULL);
 		}
 		ok1(strstr(output, "[args]"));
 		ok1(strstr(output, argv[0]));
 		ok1(strstr(output, "[-a]"));
 		free(output);
 		free(argv);
-		/* It exits without freeing usage string. */
-		free(last_allocation);
 		output = NULL;
 	}
 

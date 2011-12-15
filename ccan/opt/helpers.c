@@ -123,12 +123,18 @@ char *opt_inc_intval(int *i)
 char *opt_version_and_exit(const char *version)
 {
 	printf("%s\n", version);
+	/* Don't have valgrind complain! */
+	opt_free_table();
 	exit(0);
 }
 
 char *opt_usage_and_exit(const char *extra)
 {
-	printf("%s", opt_usage(opt_argv0, extra));
+	char *usage = opt_usage(opt_argv0, extra);
+	printf("%s", usage);
+	/* Don't have valgrind complain! */
+	free(usage);
+	opt_free_table();
 	exit(0);
 }
 
