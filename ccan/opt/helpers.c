@@ -1,5 +1,6 @@
 /* Licensed under GPLv3+ - see LICENSE file for details */
 #include <ccan/opt/opt.h>
+#include <ccan/cast/cast.h>
 #include <string.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -52,7 +53,7 @@ char *opt_set_invbool_arg(const char *arg, bool *b)
 /* Set a char *. */
 char *opt_set_charp(const char *arg, char **p)
 {
-	*p = (char *)arg;
+	*p = cast_const(char *, arg);
 	return NULL;
 }
 

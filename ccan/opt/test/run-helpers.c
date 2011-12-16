@@ -122,7 +122,7 @@ int main(int argc, char *argv[])
 	}
 	/* opt_set_charp */
 	{
-		char *arg = (char *)"wrong";
+		char *arg = cast_const(char *, "wrong");
 		reset_options();
 		opt_register_arg("-a", opt_set_charp, NULL, &arg, "All");
 		ok1(parse_args(&argc, &argv, "-a", "string", NULL));
