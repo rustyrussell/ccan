@@ -4,6 +4,15 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include "utils.h"
+
+/* Ensure width is sane. */
+static const char *getenv_override(const char *name)
+{
+	return "100";
+}
+
+#define getenv getenv_override
+
 #include <ccan/opt/opt.c>
 #include <ccan/opt/usage.c>
 #include <ccan/opt/helpers.c>

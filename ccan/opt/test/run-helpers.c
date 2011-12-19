@@ -1024,7 +1024,7 @@ int main(int argc, char *argv[])
 		}
 		ok1(strstr(output, "[args]"));
 		ok1(strstr(output, argv[0]));
-		ok1(strstr(output, "[-a]"));
+		ok1(strstr(output, "\n-a"));
 		free(output);
 		free(argv);
 		output = NULL;
