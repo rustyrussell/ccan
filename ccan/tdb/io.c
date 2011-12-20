@@ -303,13 +303,39 @@ static int tdb_expand_file(struct tdb_context *tdb, tdb_off_t size, tdb_off_t ad
 	return 0;
 }
 
+/* You need 'size', this tells you how much you should expand by. */
+tdb_off_t tdb_expand_adjust(tdb_off_t map_size, tdb_off_t size, int page_size)
+{
+	tdb_off_t new_size, top_size;
+
+	/* limit size in order to avoid using up huge amounts of memory for
+	 * in memory tdbs if an oddball huge record creeps in */
+	if (size > 100 * 1024) {
+		top_size = map_size + size * 2;
+	} else {
+		top_size = map_size + size * 100;
+	}
+
+	/* always make room for at least top_size more records, and at
+	   least 25% more space. if the DB is smaller than 100MiB,
+	   otherwise grow it by 10% only. */
+	if (map_size > 100 * 1024 * 1024) {
+		new_size = map_size * 1.10;
+	} else {
+		new_size = map_size * 1.25;
+	}
+
+	/* Round the database up to a multiple of the page size */
+	new_size = MAX(top_size, new_size);
+	return TDB_ALIGN(new_size, page_size) - map_size;
+}
 
 /* expand the database at least size bytes by expanding the underlying
    file and doing the mmap again if necessary */
 int tdb_expand(struct tdb_context *tdb, tdb_off_t size)
 {
 	struct tdb_record rec;
-	tdb_off_t offset, new_size;	
+	tdb_off_t offset;
 
 	if (tdb_lock(tdb, -1, F_WRLCK) == -1) {
 		TDB_LOG((tdb, TDB_DEBUG_ERROR, "lock failed in tdb_expand\n"));
@@ -319,11 +345,7 @@ int tdb_expand(struct tdb_context *tdb, tdb_off_t size)
 	/* must know about any previous expansions by another process */
 	tdb->methods->tdb_oob(tdb, tdb->map_size + 1, 1);
 
-	/* always make room for at least 100 more records, and at
-           least 25% more space. Round the database up to a multiple
-           of the page size */
-	new_size = MAX(tdb->map_size + size*100, tdb->map_size * 1.25);
-	size = TDB_ALIGN(new_size, tdb->page_size) - tdb->map_size;
+	size = tdb_expand_adjust(tdb->map_size, size, tdb->page_size);
 
 	if (!(tdb->flags & TDB_INTERNAL))
 		tdb_munmap(tdb);

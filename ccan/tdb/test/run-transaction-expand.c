@@ -41,13 +41,10 @@ static void write_record(struct tdb_context *tdb, size_t extra_len,
 	key.dsize = strlen("hi");
 	key.dptr = (void *)"hi";
 
-	data->dptr = realloc(data->dptr, data->dsize + extra_len);
-	memset(data->dptr + data->dsize, 'x', extra_len);
 	data->dsize += extra_len;
 	tdb_transaction_start(tdb);
 	tdb_store(tdb, key, *data, TDB_REPLACE);
 	tdb_transaction_commit(tdb);
-	diag("TDB size = %zu", (size_t)tdb->map_size);
 }
 
 int main(int argc, char *argv[])
@@ -55,6 +52,8 @@ int main(int argc, char *argv[])
 	struct tdb_context *tdb;
 	size_t i;
 	TDB_DATA data;
+	struct tdb_record rec;
+	tdb_off_t off;
 
 	plan_tests(2);
 	tdb = tdb_open_ex("run-transaction-expand.tdb",
@@ -63,14 +62,19 @@ int main(int argc, char *argv[])
 	ok1(tdb);
 
 	data.dsize = 0;
-	data.dptr = NULL;
+	data.dptr = calloc(1000, getpagesize());
 
 	/* Simulate a slowly growing record. */
 	for (i = 0; i < 1000; i++)
 		write_record(tdb, getpagesize(), &data);
 
-	/* We should only be about 3 times larger than largest record. */
-	ok1(tdb->map_size < 3 * i * getpagesize());
+	tdb_ofs_read(tdb, TDB_RECOVERY_HEAD, &off);
+	tdb_read(tdb, off, &rec, sizeof(rec), DOCONV());
+	diag("TDB size = %zu, recovery = %u-%u",
+	     (size_t)tdb->map_size, off, off + sizeof(rec) + rec.rec_len);
+
+	/* We should only be about 5 times larger than largest record. */
+	ok1(tdb->map_size < 6 * i * getpagesize());
 	tdb_close(tdb);
 	free(data.dptr);
 

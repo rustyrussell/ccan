@@ -699,7 +699,11 @@ static int tdb_recovery_allocate(struct tdb_context *tdb,
 	*recovery_size = tdb_recovery_size(tdb);
 
 	/* round up to a multiple of page size */
-	*recovery_max_size = TDB_ALIGN(sizeof(rec) + *recovery_size, tdb->page_size) - sizeof(rec);
+	*recovery_max_size = tdb_expand_adjust(tdb->map_size,
+					       *recovery_size,
+					       tdb->page_size)
+		- sizeof(rec);
+
 	*recovery_offset = tdb->map_size;
 	recovery_head = *recovery_offset;
 

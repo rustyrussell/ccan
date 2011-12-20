@@ -298,6 +298,7 @@ tdb_off_t tdb_find_lock_hash(struct tdb_context *tdb, TDB_DATA key, uint32_t has
 			   struct tdb_record *rec);
 void tdb_io_init(struct tdb_context *tdb);
 int tdb_expand(struct tdb_context *tdb, tdb_off_t size);
+tdb_off_t tdb_expand_adjust(tdb_off_t map_size, tdb_off_t size, int page_size);
 int tdb_rec_free_read(struct tdb_context *tdb, tdb_off_t off,
 		      struct tdb_record *rec);
 void tdb_header_hash(struct tdb_context *tdb,
