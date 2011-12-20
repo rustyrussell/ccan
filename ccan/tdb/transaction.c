@@ -653,7 +653,7 @@ static int tdb_recovery_allocate(struct tdb_context *tdb,
 {
 	struct tdb_record rec;
 	const struct tdb_methods *methods = tdb->transaction->io_methods;
-	tdb_off_t recovery_head;
+	tdb_off_t recovery_head, new_end;
 
 	if (tdb_ofs_read(tdb, TDB_RECOVERY_HEAD, &recovery_head) == -1) {
 		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_recovery_allocate: failed to read recovery head\n"));
@@ -676,6 +676,7 @@ static int tdb_recovery_allocate(struct tdb_context *tdb,
 
 	*recovery_size = tdb_recovery_size(tdb);
 
+	/* Existing recovery area? */
 	if (recovery_head != 0 && *recovery_size <= rec.rec_len) {
 		/* it fits in the existing area */
 		*recovery_max_size = rec.rec_len;
@@ -683,33 +684,45 @@ static int tdb_recovery_allocate(struct tdb_context *tdb,
 		return 0;
 	}
 
-	/* we need to free up the old recovery area, then allocate a
-	   new one at the end of the file. Note that we cannot use
-	   tdb_allocate() to allocate the new one as that might return
-	   us an area that is being currently used (as of the start of
-	   the transaction) */
-	if (recovery_head != 0) {
-		if (tdb_free(tdb, recovery_head, &rec) == -1) {
-			TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_recovery_allocate: failed to free previous recovery area\n"));
-			return -1;
+	/* If recovery area in middle of file, we need a new one. */
+	if (recovery_head == 0
+	    || recovery_head + sizeof(rec) + rec.rec_len != tdb->map_size) {
+		/* we need to free up the old recovery area, then allocate a
+		   new one at the end of the file. Note that we cannot use
+		   tdb_allocate() to allocate the new one as that might return
+		   us an area that is being currently used (as of the start of
+		   the transaction) */
+		if (recovery_head) {
+			if (tdb_free(tdb, recovery_head, &rec) == -1) {
+				TDB_LOG((tdb, TDB_DEBUG_FATAL,
+					 "tdb_recovery_allocate: failed to"
+					 " free previous recovery area\n"));
+				return -1;
+			}
+
+			/* the tdb_free() call might have increased
+			 * the recovery size */
+			*recovery_size = tdb_recovery_size(tdb);
 		}
+
+		/* New head will be at end of file. */
+		recovery_head = tdb->map_size;
 	}
 
-	/* the tdb_free() call might have increased the recovery size */
-	*recovery_size = tdb_recovery_size(tdb);
+	/* Now we know where it will be. */
+	*recovery_offset = recovery_head;
 
-	/* round up to a multiple of page size */
+	/* Expand by more than we need, so we don't do it often. */
 	*recovery_max_size = tdb_expand_adjust(tdb->map_size,
 					       *recovery_size,
 					       tdb->page_size)
 		- sizeof(rec);
 
-	*recovery_offset = tdb->map_size;
-	recovery_head = *recovery_offset;
+	new_end = recovery_head + sizeof(rec) + *recovery_max_size;
 
 	if (methods->tdb_expand_file(tdb, tdb->transaction->old_map_size, 
-				     (tdb->map_size - tdb->transaction->old_map_size) +
-				     sizeof(rec) + *recovery_max_size) == -1) {
+				     new_end - tdb->transaction->old_map_size)
+	    == -1) {
 		TDB_LOG((tdb, TDB_DEBUG_FATAL, "tdb_recovery_allocate: failed to create recovery area\n"));
 		return -1;
 	}

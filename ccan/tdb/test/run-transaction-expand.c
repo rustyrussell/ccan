@@ -55,7 +55,7 @@ int main(int argc, char *argv[])
 	struct tdb_record rec;
 	tdb_off_t off;
 
-	plan_tests(2);
+	plan_tests(4);
 	tdb = tdb_open_ex("run-transaction-expand.tdb",
 			  1024, TDB_CLEAR_IF_FIRST,
 			  O_CREAT|O_TRUNC|O_RDWR, 0600, &taplogctx, NULL);
@@ -75,6 +75,30 @@ int main(int argc, char *argv[])
 
 	/* We should only be about 5 times larger than largest record. */
 	ok1(tdb->map_size < 6 * i * getpagesize());
+	tdb_close(tdb);
+
+	tdb = tdb_open_ex("run-transaction-expand.tdb",
+			  1024, TDB_CLEAR_IF_FIRST,
+			  O_CREAT|O_TRUNC|O_RDWR, 0600, &taplogctx, NULL);
+	ok1(tdb);
+
+	data.dsize = 0;
+
+	/* Simulate a slowly growing record, repacking to keep
+	 * recovery area at end. */
+	for (i = 0; i < 1000; i++) {
+		write_record(tdb, getpagesize(), &data);
+		if (i % 10 == 0)
+			tdb_repack(tdb);
+	}
+
+	tdb_ofs_read(tdb, TDB_RECOVERY_HEAD, &off);
+	tdb_read(tdb, off, &rec, sizeof(rec), DOCONV());
+	diag("TDB size = %zu, recovery = %u-%u",
+	     (size_t)tdb->map_size, off, off + sizeof(rec) + rec.rec_len);
+
+	/* We should only be about 4 times larger than largest record. */
+	ok1(tdb->map_size < 5 * i * getpagesize());
 	tdb_close(tdb);
 	free(data.dptr);
 
