@@ -747,7 +747,7 @@ finished:
 	if (tdb->flags & TDB_VERSION1) {
 		ecode = tdb1_probe_length(tdb);
 	} else {
-		ecode = tdb->tdb2.io->oob(tdb, tdb->file->map_size + 1, true);
+		ecode = tdb->tdb2.io->oob(tdb, tdb->file->map_size, 1, true);
 	}
 	if (unlikely(ecode != TDB_SUCCESS))
 		goto fail;

@@ -347,7 +347,7 @@ struct tdb_methods {
 				tdb_len_t);
 	enum TDB_ERROR (*twrite)(struct tdb_context *, tdb_off_t, const void *,
 				 tdb_len_t);
-	enum TDB_ERROR (*oob)(struct tdb_context *, tdb_off_t, bool);
+	enum TDB_ERROR (*oob)(struct tdb_context *, tdb_off_t, tdb_len_t, bool);
 	enum TDB_ERROR (*expand_file)(struct tdb_context *, tdb_len_t);
 	void *(*direct)(struct tdb_context *, tdb_off_t, size_t, bool);
 };

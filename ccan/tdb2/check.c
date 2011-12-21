@@ -497,8 +497,8 @@ static enum TDB_ERROR check_free(struct tdb_context *tdb,
 
 	}
 
-	ecode = tdb->tdb2.io->oob(tdb, off
-				  + frec_len(frec)
+	ecode = tdb->tdb2.io->oob(tdb, off,
+				  frec_len(frec)
 				  + sizeof(struct tdb_used_record),
 				  false);
 	if (ecode != TDB_SUCCESS) {

@@ -898,7 +898,7 @@ static enum TDB_ERROR tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 
 	/* Someone else may have expanded the file, so retry. */
 	old_size = tdb->file->map_size;
-	tdb->tdb2.io->oob(tdb, tdb->file->map_size + 1, true);
+	tdb->tdb2.io->oob(tdb, tdb->file->map_size, 1, true);
 	if (tdb->file->map_size != old_size) {
 		tdb_unlock_expand(tdb, F_WRLCK);
 		return TDB_SUCCESS;

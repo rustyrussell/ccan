@@ -81,8 +81,8 @@ void tdb_mmap(struct tdb_context *tdb)
 
    If probe is true, len being too large isn't a failure.
 */
-static enum TDB_ERROR tdb_oob(struct tdb_context *tdb, tdb_off_t len,
-			      bool probe)
+static enum TDB_ERROR tdb_oob(struct tdb_context *tdb,
+			      tdb_off_t off, tdb_len_t len, bool probe)
 {
 	struct stat st;
 	enum TDB_ERROR ecode;
@@ -92,7 +92,16 @@ static enum TDB_ERROR tdb_oob(struct tdb_context *tdb, tdb_off_t len,
 	       || (tdb->flags & TDB_NOLOCK)
 	       || tdb_has_expansion_lock(tdb));
 
-	if (len <= tdb->file->map_size)
+	if (len + off < len) {
+		if (probe)
+			return TDB_SUCCESS;
+
+		return tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+				  "tdb_oob off %llu len %llu wrap\n",
+				  (long long)off, (long long)len);
+	}
+
+	if (len + off <= tdb->file->map_size)
 		return TDB_SUCCESS;
 	if (tdb->flags & TDB_INTERNAL) {
 		if (probe)
@@ -101,7 +110,7 @@ static enum TDB_ERROR tdb_oob(struct tdb_context *tdb, tdb_off_t len,
 		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 			   "tdb_oob len %lld beyond internal"
 			   " malloc size %lld",
-			   (long long)len,
+			   (long long)(off + len),
 			   (long long)tdb->file->map_size);
 		return TDB_ERR_IO;
 	}
@@ -120,13 +129,13 @@ static enum TDB_ERROR tdb_oob(struct tdb_context *tdb, tdb_off_t len,
 
 	tdb_unlock_expand(tdb, F_RDLCK);
 
-	if (st.st_size < (size_t)len) {
+	if (st.st_size < off + len) {
 		if (probe)
 			return TDB_SUCCESS;
 
 		tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
-			   "tdb_oob len %zu beyond eof at %zu",
-			   (size_t)len, st.st_size);
+			   "tdb_oob len %llu beyond eof at %zu",
+			   (long long)(off + len), st.st_size);
 		return TDB_ERR_IO;
 	}
 
@@ -253,7 +262,7 @@ static enum TDB_ERROR tdb_write(struct tdb_context *tdb, tdb_off_t off,
 				  "Write to read-only database");
 	}
 
-	ecode = tdb->tdb2.io->oob(tdb, off + len, false);
+	ecode = tdb->tdb2.io->oob(tdb, off, len, false);
 	if (ecode != TDB_SUCCESS) {
 		return ecode;
 	}
@@ -283,7 +292,7 @@ static enum TDB_ERROR tdb_read(struct tdb_context *tdb, tdb_off_t off,
 {
 	enum TDB_ERROR ecode;
 
-	ecode = tdb->tdb2.io->oob(tdb, off + len, false);
+	ecode = tdb->tdb2.io->oob(tdb, off, len, false);
 	if (ecode != TDB_SUCCESS) {
 		return ecode;
 	}
@@ -574,7 +583,7 @@ static void *tdb_direct(struct tdb_context *tdb, tdb_off_t off, size_t len,
 	if (unlikely(!tdb->file->map_ptr))
 		return NULL;
 
-	ecode = tdb_oob(tdb, off + len, false);
+	ecode = tdb_oob(tdb, off, len, false);
 	if (unlikely(ecode != TDB_SUCCESS))
 		return TDB_ERR_PTR(ecode);
 	return (char *)tdb->file->map_ptr + off;

@@ -345,16 +345,16 @@ static void transaction_write_existing(struct tdb_context *tdb, tdb_off_t off,
 /*
   out of bounds check during a transaction
 */
-static enum TDB_ERROR transaction_oob(struct tdb_context *tdb, tdb_off_t len,
-				      bool probe)
+static enum TDB_ERROR transaction_oob(struct tdb_context *tdb,
+				      tdb_off_t off, tdb_len_t len, bool probe)
 {
-	if (len <= tdb->file->map_size || probe) {
+	if ((off + len >= off && off + len <= tdb->file->map_size) || probe) {
 		return TDB_SUCCESS;
 	}
 
 	tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
 		   "tdb_oob len %lld beyond transaction size %lld",
-		   (long long)len,
+		   (long long)(off + len),
 		   (long long)tdb->file->map_size);
 	return TDB_ERR_IO;
 }
@@ -601,7 +601,7 @@ enum TDB_ERROR tdb_transaction_start(struct tdb_context *tdb)
 
 	/* make sure we know about any file expansions already done by
 	   anyone else */
-	tdb->tdb2.io->oob(tdb, tdb->file->map_size + 1, true);
+	tdb->tdb2.io->oob(tdb, tdb->file->map_size, 1, true);
 	tdb->tdb2.transaction->old_map_size = tdb->file->map_size;
 
 	/* finally hook the io methods, replacing them with
