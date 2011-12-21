@@ -36,16 +36,26 @@
    if necessary
    note that "len" is the minimum length needed for the db
 */
-static int tdb1_oob(struct tdb_context *tdb, tdb1_off_t len, int probe)
+static int tdb1_oob(struct tdb_context *tdb, tdb1_off_t off, tdb1_len_t len,
+		    int probe)
 {
 	struct stat st;
-	if (len <= tdb->file->map_size)
+	if (len + off < len) {
+		if (!probe) {
+			tdb->last_error = tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+						     "tdb1_oob off %d len %d wrap\n",
+						     (int)off, (int)len);
+		}
+		return -1;
+	}
+
+	if (off + len <= tdb->file->map_size)
 		return 0;
 	if (tdb->flags & TDB_INTERNAL) {
 		if (!probe) {
 			tdb->last_error = tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
-						"tdb1_oob len %d beyond internal malloc size %d",
-						(int)len, (int)tdb->file->map_size);
+						     "tdb1_oob len %d beyond internal malloc size %u",
+						     (int)(off + len), (int)tdb->file->map_size);
 		}
 		return -1;
 	}
@@ -55,12 +65,20 @@ static int tdb1_oob(struct tdb_context *tdb, tdb1_off_t len, int probe)
 		return -1;
 	}
 
-	if (st.st_size < (size_t)len) {
+	if (st.st_size < (size_t)off + len) {
 		if (!probe) {
 			tdb->last_error = tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
-						"tdb1_oob len %d beyond eof at %d",
-						(int)len, (int)st.st_size);
+						     "tdb1_oob len %u beyond eof at %u",
+						     (int)(off + len), (int)st.st_size);
 		}
+		return -1;
+	}
+
+	/* Beware >4G files! */
+	if ((tdb1_off_t)st.st_size != st.st_size) {
+		tdb->last_error = tdb_logerr(tdb, TDB_ERR_IO, TDB_LOG_ERROR,
+					     "tdb1_oob len %llu too large!\n",
+					     (long long)st.st_size);
 		return -1;
 	}
 
@@ -87,7 +105,7 @@ static int tdb1_write(struct tdb_context *tdb, tdb1_off_t off,
 		return -1;
 	}
 
-	if (tdb->tdb1.io->tdb1_oob(tdb, off + len, 0) != 0)
+	if (tdb->tdb1.io->tdb1_oob(tdb, off, len, 0) != 0)
 		return -1;
 
 	if (tdb->file->map_ptr) {
@@ -136,7 +154,7 @@ void *tdb1_convert(void *buf, uint32_t size)
 static int tdb1_read(struct tdb_context *tdb, tdb1_off_t off, void *buf,
 		    tdb1_len_t len, int cv)
 {
-	if (tdb->tdb1.io->tdb1_oob(tdb, off + len, 0) != 0) {
+	if (tdb->tdb1.io->tdb1_oob(tdb, off, len, 0) != 0) {
 		return -1;
 	}
 
@@ -326,7 +344,7 @@ int tdb1_expand(struct tdb_context *tdb, tdb1_off_t size)
 	}
 
 	/* must know about any previous expansions by another process */
-	tdb->tdb1.io->tdb1_oob(tdb, tdb->file->map_size + 1, 1);
+	tdb->tdb1.io->tdb1_oob(tdb, tdb->file->map_size, 1, 1);
 
 	/* limit size in order to avoid using up huge amounts of memory for
 	 * in memory tdbs if an oddball huge record creeps in */
@@ -456,7 +474,7 @@ enum TDB_ERROR tdb1_parse_data(struct tdb_context *tdb, TDB_DATA key,
 		 * Optimize by avoiding the malloc/memcpy/free, point the
 		 * parser directly at the mmap area.
 		 */
-		if (tdb->tdb1.io->tdb1_oob(tdb, offset+len, 0) != 0) {
+		if (tdb->tdb1.io->tdb1_oob(tdb, offset, len, 0) != 0) {
 			return tdb->last_error;
 		}
 		data.dptr = offset + (unsigned char *)tdb->file->map_ptr;
@@ -483,7 +501,7 @@ int tdb1_rec_read(struct tdb_context *tdb, tdb1_off_t offset, struct tdb1_record
 					rec->magic, offset);
 		return -1;
 	}
-	return tdb->tdb1.io->tdb1_oob(tdb, rec->next+sizeof(*rec), 0);
+	return tdb->tdb1.io->tdb1_oob(tdb, rec->next, sizeof(*rec), 0);
 }
 
 int tdb1_rec_write(struct tdb_context *tdb, tdb1_off_t offset, struct tdb1_record *rec)
@@ -511,6 +529,6 @@ void tdb1_io_init(struct tdb_context *tdb)
 enum TDB_ERROR tdb1_probe_length(struct tdb_context *tdb)
 {
 	tdb->last_error = TDB_SUCCESS;
-	tdb->tdb1.io->tdb1_oob(tdb, tdb->file->map_size + 1, true);
+	tdb->tdb1.io->tdb1_oob(tdb, tdb->file->map_size, 1, true);
 	return tdb->last_error;
 }

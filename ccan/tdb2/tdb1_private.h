@@ -112,7 +112,7 @@ struct tdb1_methods {
 	int (*tdb1_read)(struct tdb_context *, tdb1_off_t , void *, tdb1_len_t , int );
 	int (*tdb1_write)(struct tdb_context *, tdb1_off_t, const void *, tdb1_len_t);
 	void (*next_hash_chain)(struct tdb_context *, uint32_t *);
-	int (*tdb1_oob)(struct tdb_context *, tdb1_off_t , int );
+	int (*tdb1_oob)(struct tdb_context *, tdb1_off_t, tdb1_len_t, int );
 	int (*tdb1_expand_file)(struct tdb_context *, tdb1_off_t , tdb1_off_t );
 };
 

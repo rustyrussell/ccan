@@ -50,7 +50,7 @@ int tdb1_rec_free_read(struct tdb_context *tdb, tdb1_off_t off, struct tdb1_reco
 					rec->magic, off);
 		return -1;
 	}
-	if (tdb->tdb1.io->tdb1_oob(tdb, rec->next+sizeof(*rec), 0) != 0)
+	if (tdb->tdb1.io->tdb1_oob(tdb, rec->next, sizeof(*rec), 0) != 0)
 		return -1;
 	return 0;
 }

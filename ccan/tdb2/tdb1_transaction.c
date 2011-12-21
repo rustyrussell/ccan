@@ -376,9 +376,9 @@ static void transaction1_next_hash_chain(struct tdb_context *tdb, uint32_t *chai
 /*
   out of bounds check during a transaction
 */
-static int transaction1_oob(struct tdb_context *tdb, tdb1_off_t len, int probe)
+static int transaction1_oob(struct tdb_context *tdb, tdb1_off_t off, tdb1_off_t len, int probe)
 {
-	if (len <= tdb->file->map_size) {
+	if (off + len >= off && off + len <= tdb->file->map_size) {
 		return 0;
 	}
 	tdb->last_error = TDB_ERR_IO;
@@ -520,7 +520,7 @@ static int _tdb1_transaction_start(struct tdb_context *tdb)
 
 	/* make sure we know about any file expansions already done by
 	   anyone else */
-	tdb->tdb1.io->tdb1_oob(tdb, tdb->file->map_size + 1, 1);
+	tdb->tdb1.io->tdb1_oob(tdb, tdb->file->map_size, 1, 1);
 	tdb->tdb1.transaction->old_map_size = tdb->file->map_size;
 
 	/* finally hook the io methods, replacing them with
@@ -761,7 +761,7 @@ static int tdb1_recovery_allocate(struct tdb_context *tdb,
 	tdb->stats.transaction_expand_file++;
 
 	/* remap the file (if using mmap) */
-	methods->tdb1_oob(tdb, tdb->file->map_size + 1, 1);
+	methods->tdb1_oob(tdb, tdb->file->map_size, 1, 1);
 
 	/* we have to reset the old map size so that we don't try to expand the file
 	   again in the transaction commit, which would destroy the recovery area */
@@ -1022,7 +1022,7 @@ static int _tdb1_transaction_prepare_commit(struct tdb_context *tdb)
 		}
 		tdb->stats.transaction_expand_file++;
 		tdb->file->map_size = tdb->tdb1.transaction->old_map_size;
-		methods->tdb1_oob(tdb, tdb->file->map_size + 1, 1);
+		methods->tdb1_oob(tdb, tdb->file->map_size, 1, 1);
 	}
 
 	/* Keep the open lock until the actual commit */
