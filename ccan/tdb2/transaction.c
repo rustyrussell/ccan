@@ -836,10 +836,13 @@ static tdb_off_t create_recovery_area(struct tdb_context *tdb,
 
 	/* round up to a multiple of page size. Overallocate, since each
 	 * such allocation forces us to expand the file. */
-	rec->max_len
-		= (((sizeof(*rec) + rec_length + rec_length / 2)
-		    + PAGESIZE-1) & ~(PAGESIZE-1))
+	rec->max_len = tdb_expand_adjust(tdb->file->map_size, rec_length);
+
+	/* Round up to a page. */
+	rec->max_len = ((sizeof(*rec) + rec->max_len + PAGESIZE-1)
+			& ~(PAGESIZE-1))
 		- sizeof(*rec);
+
 	off = tdb->file->map_size;
 
 	/* Restore ->map_size before calling underlying expand_file.

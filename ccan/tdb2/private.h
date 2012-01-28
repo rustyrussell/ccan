@@ -425,6 +425,9 @@ tdb_off_t bucket_off(tdb_off_t ftable_off, unsigned bucket);
 /* Used by tdb_summary */
 tdb_off_t dead_space(struct tdb_context *tdb, tdb_off_t off);
 
+/* Adjust expansion, used by create_recovery_area */
+tdb_off_t tdb_expand_adjust(tdb_off_t map_size, tdb_off_t size);
+
 /* io.c: */
 /* Initialize tdb->methods. */
 void tdb_io_init(struct tdb_context *tdb);

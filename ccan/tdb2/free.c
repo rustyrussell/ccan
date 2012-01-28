@@ -876,10 +876,38 @@ enum TDB_ERROR set_header(struct tdb_context *tdb,
 	return TDB_SUCCESS;
 }
 
+/* You need 'size', this tells you how much you should expand by. */
+tdb_off_t tdb_expand_adjust(tdb_off_t map_size, tdb_off_t size)
+{
+	tdb_off_t new_size, top_size;
+
+	/* limit size in order to avoid using up huge amounts of memory for
+	 * in memory tdbs if an oddball huge record creeps in */
+	if (size > 100 * 1024) {
+		top_size = map_size + size * 2;
+	} else {
+		top_size = map_size + size * 100;
+	}
+
+	/* always make room for at least top_size more records, and at
+	   least 25% more space. if the DB is smaller than 100MiB,
+	   otherwise grow it by 10% only. */
+	if (map_size > 100 * 1024 * 1024) {
+		new_size = map_size * 1.10;
+	} else {
+		new_size = map_size * 1.25;
+	}
+
+	/* Round the database up to a multiple of the page size */
+	if (new_size < top_size)
+		new_size = top_size;
+	return new_size - map_size;
+}
+
 /* Expand the database. */
 static enum TDB_ERROR tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 {
-	uint64_t old_size, rec_size, map_size;
+	uint64_t old_size;
 	tdb_len_t wanted;
 	enum TDB_ERROR ecode;
 
@@ -904,29 +932,8 @@ static enum TDB_ERROR tdb_expand(struct tdb_context *tdb, tdb_len_t size)
 		return TDB_SUCCESS;
 	}
 
-	/* limit size in order to avoid using up huge amounts of memory for
-	 * in memory tdbs if an oddball huge record creeps in */
-	if (size > 100 * 1024) {
-		rec_size = size * 2;
-	} else {
-		rec_size = size * 100;
-	}
-
-	/* always make room for at least rec_size more records, and at
-	   least 25% more space. if the DB is smaller than 100MiB,
-	   otherwise grow it by 10% only. */
-	if (old_size > 100 * 1024 * 1024) {
-		map_size = old_size / 10;
-	} else {
-		map_size = old_size / 4;
-	}
-
-	if (map_size > rec_size) {
-		wanted = map_size;
-	} else {
-		wanted = rec_size;
-	}
-
+	/* Overallocate. */
+	wanted = tdb_expand_adjust(old_size, size);
 	/* We need room for the record header too. */
 	wanted = adjust_size(0, sizeof(struct tdb_used_record) + wanted);
 
