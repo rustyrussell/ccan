@@ -168,6 +168,7 @@ tdb1_off_t tdb1_find_lock_hash(struct tdb_context *tdb, TDB_DATA key, uint32_t h
 			   struct tdb1_record *rec);
 void tdb1_io_init(struct tdb_context *tdb);
 int tdb1_expand(struct tdb_context *tdb, tdb1_off_t size);
+tdb1_off_t tdb1_expand_adjust(tdb1_off_t map_size, tdb1_off_t size, int page_size);
 int tdb1_rec_free_read(struct tdb_context *tdb, tdb1_off_t off,
 		      struct tdb1_record *rec);
 bool tdb1_write_all(int fd, const void *buf, size_t count);

@@ -330,12 +330,39 @@ static int tdb1_expand_file(struct tdb_context *tdb, tdb1_off_t size, tdb1_off_t
 }
 
 
+/* You need 'size', this tells you how much you should expand by. */
+tdb1_off_t tdb1_expand_adjust(tdb1_off_t map_size, tdb1_off_t size, int page_size)
+{
+	tdb1_off_t new_size, top_size;
+
+	/* limit size in order to avoid using up huge amounts of memory for
+	 * in memory tdbs if an oddball huge record creeps in */
+	if (size > 100 * 1024) {
+		top_size = map_size + size * 2;
+	} else {
+		top_size = map_size + size * 100;
+	}
+
+	/* always make room for at least top_size more records, and at
+	   least 25% more space. if the DB is smaller than 100MiB,
+	   otherwise grow it by 10% only. */
+	if (map_size > 100 * 1024 * 1024) {
+		new_size = map_size * 1.10;
+	} else {
+		new_size = map_size * 1.25;
+	}
+
+	/* Round the database up to a multiple of the page size */
+	new_size = MAX(top_size, new_size);
+	return TDB1_ALIGN(new_size, page_size) - map_size;
+}
+
 /* expand the database at least size bytes by expanding the underlying
    file and doing the mmap again if necessary */
 int tdb1_expand(struct tdb_context *tdb, tdb1_off_t size)
 {
 	struct tdb1_record rec;
-	tdb1_off_t offset, new_size, top_size, map_size;
+	tdb1_off_t offset;
 
 	if (tdb1_lock(tdb, -1, F_WRLCK) == -1) {
 		tdb_logerr(tdb, tdb->last_error, TDB_LOG_ERROR,
@@ -346,26 +373,8 @@ int tdb1_expand(struct tdb_context *tdb, tdb1_off_t size)
 	/* must know about any previous expansions by another process */
 	tdb->tdb1.io->tdb1_oob(tdb, tdb->file->map_size, 1, 1);
 
-	/* limit size in order to avoid using up huge amounts of memory for
-	 * in memory tdbs if an oddball huge record creeps in */
-	if (size > 100 * 1024) {
-		top_size = tdb->file->map_size + size * 2;
-	} else {
-		top_size = tdb->file->map_size + size * 100;
-	}
-
-	/* always make room for at least top_size more records, and at
-	   least 25% more space. if the DB is smaller than 100MiB,
-	   otherwise grow it by 10% only. */
-	if (tdb->file->map_size > 100 * 1024 * 1024) {
-		map_size = tdb->file->map_size * 1.10;
-	} else {
-		map_size = tdb->file->map_size * 1.25;
-	}
-
-	/* Round the database up to a multiple of the page size */
-	new_size = MAX(top_size, map_size);
-	size = TDB1_ALIGN(new_size, tdb->tdb1.page_size) - tdb->file->map_size;
+	size = tdb1_expand_adjust(tdb->file->map_size, size,
+				  tdb->tdb1.page_size);
 
 	if (!(tdb->flags & TDB_INTERNAL))
 		tdb1_munmap(tdb);
