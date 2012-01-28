@@ -478,7 +478,6 @@ static int _tdb1_store(struct tdb_context *tdb, TDB_DATA key,
 {
 	struct tdb1_record rec;
 	tdb1_off_t rec_ptr;
-	char *p = NULL;
 	int ret = -1;
 
 	/* check for it existing, on insert. */
@@ -515,20 +514,6 @@ static int _tdb1_store(struct tdb_context *tdb, TDB_DATA key,
 	if (flag != TDB_INSERT)
 		tdb1_delete_hash(tdb, key, hash);
 
-	/* Copy key+value *before* allocating free space in case malloc
-	   fails and we are left with a dead spot in the tdb. */
-
-	if (!(p = (char *)malloc(key.dsize + dbuf.dsize))) {
-		tdb->last_error = tdb_logerr(tdb, TDB_ERR_OOM, TDB_LOG_ERROR,
-					     "tdb1_store: out of memory"
-					     " allocating copy");
-		goto fail;
-	}
-
-	memcpy(p, key.dptr, key.dsize);
-	if (dbuf.dsize)
-		memcpy(p+key.dsize, dbuf.dptr, dbuf.dsize);
-
 	if (tdb->tdb1.max_dead_records != 0) {
 		/*
 		 * Allow for some dead records per hash chain, look if we can
@@ -548,7 +533,10 @@ static int _tdb1_store(struct tdb_context *tdb, TDB_DATA key,
 			if (tdb1_rec_write(tdb, rec_ptr, &rec) == -1
 			    || tdb->tdb1.io->tdb1_write(
 				    tdb, rec_ptr + sizeof(rec),
-				    p, key.dsize + dbuf.dsize) == -1) {
+				    key.dptr, key.dsize) == -1
+			    || tdb->tdb1.io->tdb1_write(
+				    tdb, rec_ptr + sizeof(rec) + key.dsize,
+				    dbuf.dptr, dbuf.dsize) == -1) {
 				goto fail;
 			}
 			goto done;
@@ -591,7 +579,10 @@ static int _tdb1_store(struct tdb_context *tdb, TDB_DATA key,
 
 	/* write out and point the top of the hash chain at it */
 	if (tdb1_rec_write(tdb, rec_ptr, &rec) == -1
-	    || tdb->tdb1.io->tdb1_write(tdb, rec_ptr+sizeof(rec), p, key.dsize+dbuf.dsize)==-1
+	    || tdb->tdb1.io->tdb1_write(tdb, rec_ptr + sizeof(rec),
+					key.dptr, key.dsize) == -1
+	    || tdb->tdb1.io->tdb1_write(tdb, rec_ptr + sizeof(rec) + key.dsize,
+					dbuf.dptr, dbuf.dsize) == -1
 	    || tdb1_ofs_write(tdb, TDB1_HASH_TOP(hash), &rec_ptr) == -1) {
 		/* Need to tdb1_unallocate() here */
 		goto fail;
@@ -603,8 +594,6 @@ static int _tdb1_store(struct tdb_context *tdb, TDB_DATA key,
 	if (ret == 0) {
 		tdb1_increment_seqnum(tdb);
 	}
-
-	SAFE_FREE(p);
 	return ret;
 }
 
