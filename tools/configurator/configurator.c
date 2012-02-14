@@ -440,6 +440,8 @@ int main(int argc, const char *argv[])
 	printf("#endif\n");
 	printf("#define CCAN_COMPILER \"%s\"\n", argv[1]);
 	printf("#define CCAN_CFLAGS \"%s\"\n\n", cmd + strlen(argv[1]) + 1);
+	/* This one implies "#include <ccan/..." works, eg. for tdb2.h */
+	printf("#define HAVE_CCAN 1\n");
 	for (i = 0; i < sizeof(tests)/sizeof(tests[0]); i++)
 		printf("#define %s %u\n", tests[i].name, tests[i].answer);
 	printf("#endif /* CCAN_CONFIG_H */\n");

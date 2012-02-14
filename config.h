@@ -7,6 +7,7 @@
 #define CCAN_COMPILER "cc"
 #define CCAN_CFLAGS "-g3 -ggdb -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Wpointer-arith -Wwrite-strings -DCCAN_STR_DEBUG=1"
 
+#define HAVE_CCAN 1
 #define HAVE_32BIT_OFF_T 1
 #define HAVE_ALIGNOF 1
 #define HAVE_ASPRINTF 1
