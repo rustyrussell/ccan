@@ -6,28 +6,6 @@
 #include <ccan/ttxml/ttxml.c>
 #include <ccan/tap/tap.h>
 
-/* print out the heirarchy of an XML file, useful for debugging */
-
-static void xp(XmlNode *x, int level, int max)
-{
-	int i;
-	char text[] = "text";
-	char *name = text;
-	if(level > max)return;
-	if(!x)return;
-	if(x->name)name = x->name;
-	for(i=0; i<level; i++)printf("    ");
-	printf("%s:", name);
-	if(x->name)
-	for(i=0; i<x->nattrib; i++)
-		printf("%s=\"%s\",", x->attrib[i*2], x->attrib[i*2+1]);
-	else printf("%s", x->attrib[0]);
-	printf("\n");
-	if(x->child)xp(x->child, level+1, max);
-	if(x->next)xp(x->next, level, max);
-}
-
-
 
 static int test_load(const char * filename)
 {

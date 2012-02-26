@@ -26,7 +26,7 @@
  *	return 0;
  * }
  *
- * License: GPL
+ * Licensed under GPL - see LICENSE file for details.
  * Author: Daniel Burke <dan.p.burke@gmail.com>
  */
 

@@ -31,6 +31,7 @@ typedef struct XMLBUF
 	int len;
 	int read_index;
 	int eof;
+	int error;
 } XMLBUF;
 
 
@@ -104,6 +105,14 @@ static void xml_read_file(XMLBUF *xml)
 }
 
 
+static void xml_end_file(XMLBUF *xml)
+{
+	xml->len = 0;
+	xml->eof = 1;
+	xml->read_index = 0 ;
+	xml->error = 1;
+}
+
 /* All reading of the XML buffer done through these two functions */
 /*** read a byte without advancing the offset */
 static char xml_peek(XMLBUF *xml)
@@ -173,6 +182,7 @@ static char* xml_feed( XMLBUF *xml, int (*test)(char) )
 	int offset = xml->read_index;
 	int delta;
 	char *ret = NULL;
+	char *tmp = NULL;
 	int size = 0;
 
 	/* perform first and N middle realloc()'s */
@@ -183,7 +193,9 @@ static char* xml_feed( XMLBUF *xml, int (*test)(char) )
 		if(offset >= xml->len)
 		{
 			delta = offset - xml->read_index;
-			ret = realloc(ret, size + delta + 1);
+			tmp = realloc(ret, size + delta + 1);
+			if(!tmp)goto xml_feed_malloc;
+			ret = tmp;
 			memcpy(ret+size, xml->buf + xml->read_index, delta);
 			size += delta;
 			ret[size]=0;
@@ -197,13 +209,19 @@ static char* xml_feed( XMLBUF *xml, int (*test)(char) )
 	if(offset > xml->read_index)
 	{
 		delta = offset - xml->read_index;
-		ret = realloc(ret, size + delta + 1);
+		tmp = realloc(ret, size + delta + 1);
+		if(!tmp)goto xml_feed_malloc;
+		ret = tmp;
 		memcpy(ret+size, xml->buf + xml->read_index, delta);
 		xml->read_index = offset;
 		size += delta;
 		ret[size]=0;
 	}
 	return ret;
+xml_feed_malloc:
+	free(ret);
+	xml_end_file(xml);
+	return 0;
 }
 
 /* this reads attributes from tags, of the form...
@@ -215,6 +233,7 @@ static char* xml_feed( XMLBUF *xml, int (*test)(char) )
 static void xml_read_attr(struct XMLBUF *xml, XmlNode *node)
 {
 	int n=0;
+	char **tmp;
 
 	// how does this tag finish?
 	while(xml->len)
@@ -223,7 +242,9 @@ static void xml_read_attr(struct XMLBUF *xml, XmlNode *node)
 			return;
 
 		n = ++node->nattrib;
-		node->attrib = realloc(node->attrib, n * 2 * sizeof(char*) );
+		tmp = realloc(node->attrib, n * 2 * sizeof(char*) );
+		if(!tmp)goto xml_read_attr_malloc;
+		node->attrib = tmp;
 		node->attrib[--n*2+1] = 0;
 		
 		feed_mask = XML_EQUALS | XML_SPACE | XML_CLOSE | XML_SLASH;
@@ -245,6 +266,9 @@ static void xml_read_attr(struct XMLBUF *xml, XmlNode *node)
 		}
 		xml_skip(xml, XML_SPACE);
 	}
+	return;
+xml_read_attr_malloc:
+	xml_end_file(xml);
 }
 
 /* The big decision maker, is it a regular node, or a text node.
@@ -256,7 +280,8 @@ static XmlNode* xml_parse(struct XMLBUF *xml)
 {
 	int offset;
 	int toff;
-	char *tmp;
+	char **tmp;
+	char *stmp;
 	XmlNode **this, *ret = NULL;
 	
 	this = &ret;
@@ -274,6 +299,7 @@ static XmlNode* xml_parse(struct XMLBUF *xml)
 				// read the tag name
 				feed_mask = XML_SPACE | XML_SLASH | XML_CLOSE;
 				*this = xml_new( xml_feed(xml, test_mask));
+				if(xml->error)goto xml_parse_malloc;
 				xml_skip(xml, XML_SPACE);	// skip any whitespace
 
 				xml_read_attr(xml, *this);	// read attributes
@@ -299,26 +325,32 @@ static XmlNode* xml_parse(struct XMLBUF *xml)
 				xml_skip(xml, XML_SPACE);	// skip any whitespace
 				feed_mask = XML_OPEN;
 				(*this)->nattrib=1;
-				(*this)->attrib = malloc(sizeof(char*)*2);
+				tmp = malloc(sizeof(char*)*2);
+				if(!tmp)goto xml_parse_malloc;
+				(*this)->attrib = tmp;
 				(*this)->attrib[1] = NULL;
-				tmp = (*this)->attrib[0] = xml_feed(xml, test_mask);
+				stmp = (*this)->attrib[0] = xml_feed(xml, test_mask);
 
 				/* trim the whitespace off the end of text nodes,
 				 * by overwriting the spaces will null termination. */
-				toff = strlen(tmp)-1;
-				while( ( is_special(tmp[toff]) & XML_SPACE ) )
+				toff = strlen(stmp)-1;
+				while( ( is_special(stmp[toff]) & XML_SPACE ) )
 				{
-					tmp[toff] = 0;
+					stmp[toff] = 0;
 					toff --;
 				}
 
 				break;
 		}
-		this = &(*this)->next; 
+		this = &(*this)->next;
 		xml_skip(xml, XML_SPACE);	// skip whitespace
-	}	
+	}
 
 	return ret;
+xml_parse_malloc:
+	xml_end_file(xml);
+	if(ret)xml_free(ret);
+	return 0;
 }
 
 
@@ -330,6 +362,7 @@ XmlNode* xml_load(const char * filename)
 
 //	printf("xml_load(\"%s\");\n", filename);
 
+	xml.error = 0;
 	xml.eof = 0;
 	xml.read_index = 0;
 	xml.fptr = fopen(filename, "rb");
@@ -345,6 +378,12 @@ XmlNode* xml_load(const char * filename)
 	xml_read_file(&xml);
 
 	ret = xml_parse(&xml);
+
+	if(xml.error)
+	{
+		xml_free(ret);
+		ret = NULL;
+	}
 
 	free(xml.buf);
 xml_load_fail_malloc_buf:
