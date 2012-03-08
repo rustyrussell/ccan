@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/mman.h>
+#include <sys/resource.h>
 #include <signal.h>
 #include <assert.h>
 #include <ccan/time/time.h>
@@ -194,11 +195,21 @@ static struct failtest_call *add_history_(enum failtest_call_type type,
 static int move_fd_to_high(int fd)
 {
 	int i;
+	struct rlimit lim;
+	int max;
 
-	for (i = FD_SETSIZE - 1; i >= 0; i--) {
+	if (getrlimit(RLIMIT_NOFILE, &lim) == 0) {
+		max = lim.rlim_cur;
+		printf("Max is %i\n", max);
+	} else
+		max = FD_SETSIZE;
+
+	for (i = max - 1; i > fd; i--) {
 		if (fcntl(i, F_GETFL) == -1 && errno == EBADF) {
-			if (dup2(fd, i) == -1)
-				err(1, "Failed to dup fd %i to %i", fd, i);
+			if (dup2(fd, i) == -1) {
+				warn("Failed to dup fd %i to %i", fd, i);
+				continue;
+			}
 			close(fd);
 			return i;
 		}

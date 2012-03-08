@@ -54,6 +54,9 @@
  *
  * License: LGPL
  * Author: Rusty Russell <rusty@rustcorp.com.au>
+ * Ccanlint:
+ *	// valgrind seems to mess up rlimit.
+ *	tests_pass_valgrind test/run-with-fdlimit.c:FAIL
  */
 int main(int argc, char *argv[])
 {
