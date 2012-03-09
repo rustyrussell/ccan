@@ -197,8 +197,17 @@ static COLD void update_common(struct htable *ht, const void *p)
 	uintptr_t maskdiff, bitsdiff;
 
 	if (ht->elems == 0) {
-		ht->common_mask = -1;
-		ht->common_bits = (uintptr_t)p;
+		/* Always reveal one bit of the pointer in the bucket,
+		 * so it's not zero or HTABLE_DELETED (1), even if
+		 * hash happens to be 0.  Assumes (void *)1 is not a
+		 * valid pointer. */
+		for (i = sizeof(uintptr_t)*CHAR_BIT - 1; i > 0; i--) {
+			if ((uintptr_t)p & ((uintptr_t)1 << i))
+				break;
+		}
+
+		ht->common_mask = ~((uintptr_t)1 << i);
+		ht->common_bits = ((uintptr_t)p & ht->common_mask);
 		ht->perfect_bit = 1;
 		return;
 	}
