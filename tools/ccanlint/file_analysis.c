@@ -105,40 +105,6 @@ static bool continues(const char *line)
 	return strends(line, "\\");
 }
 
-/* Get token if it's equal to token. */
-bool get_token(const char **line, const char *token)
-{
-	unsigned int toklen;
-
-	*line += strspn(*line, " \t");
-	if (cisalnum(token[0]) || token[0] == '_')
-		toklen = strspn(*line, IDENT_CHARS);
-	else {
-		/* FIXME: real tokenizer handles ++ and other multi-chars.  */
-		toklen = strlen(token);
-	}
-
-	if (toklen == strlen(token) && !strncmp(*line, token, toklen)) {
-		*line += toklen;
-		return true;
-	}
-	return false;
-}
-
-char *get_symbol_token(void *ctx, const char **line)
-{
-	unsigned int toklen;
-	char *ret;
-
-	*line += strspn(*line, " \t");
-	toklen = strspn(*line, IDENT_CHARS);
-	if (!toklen)
-		return NULL;
-	ret = talloc_strndup(ctx, *line, toklen);
-	*line += toklen;
-	return ret;
-}
-
 static bool parse_hash_if(struct pp_conditions *cond, const char **line)
 {
 	bool brackets, defined;

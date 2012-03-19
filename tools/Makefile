@@ -8,6 +8,7 @@ DEP_OBJS = ccan/grab_file/grab_file.o \
 	ccan/str_talloc/str_talloc.o \
 	ccan/talloc/talloc.o \
 	ccan/time/time.o \
+	tools/read_config_header.o \
 	tools/compile.o \
 	tools/depends.o \
 	tools/tools.o

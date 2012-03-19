@@ -32,6 +32,7 @@ CORE_OBJS := \
 	tools/depends.o \
 	tools/doc_extract-core.o \
 	tools/manifest.o \
+	tools/read_config_header.o \
 	tools/tools.o
 
 OBJS := $(CORE_OBJS) $(TEST_OBJS)
