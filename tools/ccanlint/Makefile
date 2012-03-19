@@ -27,6 +27,7 @@ CORE_OBJS := \
 	tools/ccanlint/ccanlint.o \
 	tools/ccanlint/file_analysis.o \
 	tools/ccanlint/licenses.o \
+	tools/ccan_dir.o \
 	tools/compile.o \
 	tools/depends.o \
 	tools/doc_extract-core.o \

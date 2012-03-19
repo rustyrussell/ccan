@@ -89,7 +89,4 @@ const char *get_ccan_file_contents(struct ccan_file *f);
 /* Use this rather than accessing f->lines directly: loads on demand. */
 char **get_ccan_file_lines(struct ccan_file *f);
 
-/* Where is the ccan dir?  Available after first manifest. */
-extern const char *ccan_dir;
-
 #endif /* CCAN_TOOLS_MANIFEST_H */

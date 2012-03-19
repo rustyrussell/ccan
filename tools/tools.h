@@ -75,4 +75,6 @@ extern const unsigned int default_timeout_ms;
 /* Talloc destructor which unlinks file. */
 int unlink_file_destructor(char *filename);
 
+/* Get ccan/ top dir, given a directory within it. */
+const char *find_ccan_dir(const char *base);
 #endif /* CCAN_TOOLS_H */

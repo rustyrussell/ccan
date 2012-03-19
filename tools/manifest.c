@@ -23,8 +23,6 @@
 #include <stdarg.h>
 #include <assert.h>
 
-const char *ccan_dir;
-
 static size_t dir_hash(const char *name)
 {
 	return hash(name, strlen(name), 0);
@@ -196,22 +194,6 @@ static void sort_files(struct list_head *list)
 	talloc_free(files);
 }
 
-/* Walk up tp find /ccan/ => ccan directory. */
-static unsigned int ccan_dir_prefix(const char *fulldir)
-{
-	unsigned int i;
-
-	assert(fulldir[0] == '/');
-	for (i = strlen(fulldir) - 1; i > 0; i--) {
-		if (strncmp(fulldir+i, "/ccan", 5) != 0)
-			continue;
-		if (fulldir[i+5] != '\0' && fulldir[i+5] != '/')
-			continue;
-		return i + 1;
-	}
-	errx(1, "Could not find /ccan/ dir in %s", fulldir);
-}
-
 struct manifest *get_manifest(const void *ctx, const char *dir)
 {
 	struct manifest *m;
@@ -264,12 +246,6 @@ struct manifest *get_manifest(const void *ctx, const char *dir)
 	if (!m->basename)
 		errx(1, "I don't expect to be run from the root directory");
 	m->basename++;
-
-	if (!ccan_dir) {
-		unsigned int prefix = ccan_dir_prefix(m->dir);
-
-		ccan_dir = talloc_strndup(NULL, m->dir, prefix);
-	}
 
 	add_files(m, "");
 

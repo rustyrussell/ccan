@@ -52,6 +52,8 @@ const char *cflags = NULL;
 
 const char *config_header;
 
+const char *ccan_dir;
+
 #if 0
 static void indent_print(const char *string)
 {
@@ -777,15 +779,20 @@ int main(int argc, char *argv[])
 			dir[strlen(dir)-1] = '\0';
 
 	got_dir:
+		/* We assume there's a ccan/ in there somewhere... */
+		if (i == 1) {
+			ccan_dir = find_ccan_dir(dir);
+			if (!ccan_dir)
+				errx(1, "Cannot find ccan/ base directory in %s",
+				     dir);
+			read_config_header();
+		}
+
 		if (dir != base_dir)
 			prefix = talloc_append_string(talloc_basename(NULL,dir),
 						      ": ");
 
 		m = get_manifest(talloc_autofree_context(), dir);
-
-		/* FIXME: This has to come after we've got manifest. */
-		if (i == 1)
-			read_config_header();
 
 		/* Create a symlink from temp dir back to src dir's
 		 * test directory. */

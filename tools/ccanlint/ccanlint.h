@@ -191,4 +191,7 @@ extern const char *compiler, *cflags;
 /* Contents of config.h (or NULL if not found) */
 extern const char *config_header;
 
+/* Where is the ccan dir?   */
+extern const char *ccan_dir;
+
 #endif /* CCAN_LINT_H */
