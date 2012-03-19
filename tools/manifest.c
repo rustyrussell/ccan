@@ -196,6 +196,22 @@ static void sort_files(struct list_head *list)
 	talloc_free(files);
 }
 
+/* Walk up tp find /ccan/ => ccan directory. */
+static unsigned int ccan_dir_prefix(const char *fulldir)
+{
+	unsigned int i;
+
+	assert(fulldir[0] == '/');
+	for (i = strlen(fulldir) - 1; i > 0; i--) {
+		if (strncmp(fulldir+i, "/ccan", 5) != 0)
+			continue;
+		if (fulldir[i+5] != '\0' && fulldir[i+5] != '/')
+			continue;
+		return i + 1;
+	}
+	errx(1, "Could not find /ccan/ dir in %s", fulldir);
+}
+
 struct manifest *get_manifest(const void *ctx, const char *dir)
 {
 	struct manifest *m;
@@ -249,19 +265,10 @@ struct manifest *get_manifest(const void *ctx, const char *dir)
 		errx(1, "I don't expect to be run from the root directory");
 	m->basename++;
 
-	/* We expect the ccan dir to be two levels above module dir. */
 	if (!ccan_dir) {
-		char *p, *dir;
-		dir = talloc_strdup(NULL, m->dir);
-		p = strrchr(dir, '/');
-		if (!p)
-			errx(1, "I expect the ccan root directory in ../..");
-		*p = '\0';
-		p = strrchr(dir, '/');
-		if (!p)
-			errx(1, "I expect the ccan root directory in ../..");
-		*p = '\0';
-		ccan_dir = dir;
+		unsigned int prefix = ccan_dir_prefix(m->dir);
+
+		ccan_dir = talloc_strndup(NULL, m->dir, prefix);
 	}
 
 	add_files(m, "");
