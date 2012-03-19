@@ -30,6 +30,7 @@ CORE_OBJS := \
 	tools/compile.o \
 	tools/depends.o \
 	tools/doc_extract-core.o \
+	tools/manifest.o \
 	tools/tools.o
 
 OBJS := $(CORE_OBJS) $(TEST_OBJS)
