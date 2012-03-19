@@ -19,6 +19,7 @@
  */
 #include "ccanlint.h"
 #include "../tools.h"
+#include "../read_config_header.h"
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -51,6 +52,8 @@ const char *compiler = NULL;
 const char *cflags = NULL;
 
 const char *config_header;
+
+const char *ccan_dir;
 
 #if 0
 static void indent_print(const char *string)
@@ -557,100 +560,6 @@ char **per_file_options(const struct ccanlint *test, struct ccan_file *f)
 	return talloc_realloc(NULL, ret, char *, j + 1);
 }
 
-static char *demangle_string(char *string)
-{
-	unsigned int i;
-	const char mapfrom[] = "abfnrtv";
-	const char mapto[] = "\a\b\f\n\r\t\v";
-
-	if (!strchr(string, '"'))
-		return NULL;
-	string = strchr(string, '"') + 1;
-	if (!strrchr(string, '"'))
-		return NULL;
-	*strrchr(string, '"') = '\0';
-
-	for (i = 0; i < strlen(string); i++) {
-		if (string[i] == '\\') {
-			char repl;
-			unsigned len = 0;
-			const char *p = strchr(mapfrom, string[i+1]);
-			if (p) {
-				repl = mapto[p - mapfrom];
-				len = 1;
-			} else if (strlen(string+i+1) >= 3) {
-				if (string[i+1] == 'x') {
-					repl = (string[i+2]-'0')*16
-						+ string[i+3]-'0';
-					len = 3;
-				} else if (cisdigit(string[i+1])) {
-					repl = (string[i+2]-'0')*8*8
-						+ (string[i+3]-'0')*8
-						+ (string[i+4]-'0');
-					len = 3;
-				}
-			}
-			if (len == 0) {
-				repl = string[i+1];
-				len = 1;
-			}
-
-			string[i] = repl;
-			memmove(string + i + 1, string + i + len + 1,
-				strlen(string + i + len + 1) + 1);
-		}
-	}
-
-	return string;
-}
-
-
-static void read_config_header(void)
-{
-	char *fname = talloc_asprintf(NULL, "%s/config.h", ccan_dir);
-	char **lines;
-	unsigned int i;
-
-	config_header = grab_file(NULL, fname, NULL);
-	if (!config_header) {
-		talloc_free(fname);
-		return;
-	}
-
-	lines = strsplit(config_header, config_header, "\n");
-	for (i = 0; i < talloc_array_length(lines) - 1; i++) {
-		char *sym;
-		const char **line = (const char **)&lines[i];
-
-		if (!get_token(line, "#"))
-			continue;
-		if (!get_token(line, "define"))
-			continue;
-		sym = get_symbol_token(lines, line);
-		if (streq(sym, "CCAN_COMPILER") && !compiler) {
-			compiler = demangle_string(lines[i]);
-			if (!compiler)
-				errx(1, "%s:%u:could not parse CCAN_COMPILER",
-				     fname, i+1);
-			if (verbose > 1)
-				printf("%s: compiler set to '%s'\n",
-				       fname, compiler);
-		} else if (streq(sym, "CCAN_CFLAGS") && !cflags) {
-			cflags = demangle_string(lines[i]);
-			if (!cflags)
-				errx(1, "%s:%u:could not parse CCAN_CFLAGS",
-				     fname, i+1);
-			if (verbose > 1)
-				printf("%s: compiler flags set to '%s'\n",
-				       fname, cflags);
-		}
-	}
-	if (!compiler)
-		compiler = CCAN_COMPILER;
-	if (!cflags)
-		compiler = CCAN_CFLAGS;
-}
-
 static char *opt_set_const_charp(const char *arg, const char **p)
 {
 	return opt_set_charp(arg, cast_const2(char **, p));
@@ -689,7 +598,9 @@ static bool run_tests(struct dgraph_node *all,
 static bool add_to_all(const char *member, struct ccanlint *c,
 		       struct dgraph_node *all)
 {
-	dgraph_add_edge(&c->node, all);
+	/* If we're excluded on cmdline, don't add. */
+	if (!c->skip)
+		dgraph_add_edge(&c->node, all);
 	return true;
 }
 
@@ -775,15 +686,22 @@ int main(int argc, char *argv[])
 			dir[strlen(dir)-1] = '\0';
 
 	got_dir:
+		/* We assume there's a ccan/ in there somewhere... */
+		if (i == 1) {
+			ccan_dir = find_ccan_dir(dir);
+			if (!ccan_dir)
+				errx(1, "Cannot find ccan/ base directory in %s",
+				     dir);
+			config_header = read_config_header(ccan_dir,
+							   &compiler, &cflags,
+							   verbose > 1);
+		}
+
 		if (dir != base_dir)
 			prefix = talloc_append_string(talloc_basename(NULL,dir),
 						      ": ");
 
 		m = get_manifest(talloc_autofree_context(), dir);
-
-		/* FIXME: This has to come after we've got manifest. */
-		if (i == 1)
-			read_config_header();
 
 		/* Create a symlink from temp dir back to src dir's
 		 * test directory. */
