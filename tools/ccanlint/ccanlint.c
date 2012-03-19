@@ -689,7 +689,9 @@ static bool run_tests(struct dgraph_node *all,
 static bool add_to_all(const char *member, struct ccanlint *c,
 		       struct dgraph_node *all)
 {
-	dgraph_add_edge(&c->node, all);
+	/* If we're excluded on cmdline, don't add. */
+	if (!c->skip)
+		dgraph_add_edge(&c->node, all);
 	return true;
 }
 
