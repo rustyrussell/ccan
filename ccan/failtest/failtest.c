@@ -1177,6 +1177,15 @@ void *failtest_mmap(void *addr, size_t length, int prot, int flags,
 	return p->u.mmap.ret;
 }
 
+/* Since OpenBSD can't handle adding args, we use this file and line.
+ * This will make all mmaps look the same, reducing coverage. */
+void *failtest_mmap_noloc(void *addr, size_t length, int prot, int flags,
+			  int fd, off_t offset)
+{
+	return failtest_mmap(addr, length, prot, flags, fd, offset,
+			     __FILE__, __LINE__);
+}
+
 static void cleanup_pipe(struct pipe_call *call, bool restore)
 {
 	trace("cleaning up pipe fd=%i%s,%i%s\n",

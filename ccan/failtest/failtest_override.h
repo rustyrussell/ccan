@@ -64,9 +64,15 @@
 #define fcntl(fd, ...) failtest_fcntl((fd), __FILE__, __LINE__, __VA_ARGS__)
 
 #undef mmap
+/* OpenBSD doesn't idempotent-protect sys/mman.h, so we can't add args. */
+#ifdef __OpenBSD__
+#define mmap(addr, length, prot, flags, fd, offset)			\
+	failtest_mmap_noloc((addr), (length), (prot), (flags), (fd), (offset))
+#else
 #define mmap(addr, length, prot, flags, fd, offset)			\
 	failtest_mmap((addr), (length), (prot), (flags), (fd), (offset), \
 		      __FILE__, __LINE__)
+#endif /* !__OpenBSD__ */
 
 #undef lseek
 #define lseek(fd, offset, whence)					\
