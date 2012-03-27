@@ -200,6 +200,8 @@ static struct test tests[] = {
 	  "}\n" },
 	{ "HAVE_STATEMENT_EXPR", INSIDE_MAIN, NULL,
 	  "return ({ int x = argc; x == argc ? 0 : 1; });" },
+	{ "HAVE_SYS_FILIO_H", OUTSIDE_MAIN, NULL, /* Solaris needs this for FIONREAD */
+	  "#include <sys/filio.h>\n" },
 	{ "HAVE_TYPEOF", INSIDE_MAIN, NULL,
 	  "__typeof__(argc) i; i = argc; return i == argc ? 0 : 1;" },
 	{ "HAVE_UTIME", DEFINES_FUNC, NULL,

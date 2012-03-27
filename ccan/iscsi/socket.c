@@ -15,6 +15,7 @@
    along with this program; if not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,6 +32,9 @@
 #include "iscsi.h"
 #include "iscsi-private.h"
 #include "dlinklist.h"
+#if HAVE_SYS_FILIO_H
+#include <sys/filio.h>
+#endif
 
 static void set_nonblocking(int fd)
 {
