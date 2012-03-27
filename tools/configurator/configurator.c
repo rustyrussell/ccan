@@ -164,7 +164,7 @@ static struct test tests[] = {
 	{ "HAVE_PROC_SELF_MAPS", DEFINES_EVERYTHING|EXECUTE, NULL,
 	  "#include <sys/types.h>\n"
 	  "#include <sys/stat.h>\n"
-	  "#include <sys/fcntl.h>\n"
+	  "#include <fcntl.h>\n"
 	  "int main(void) {\n"
 	  "	return open(\"/proc/self/maps\", O_RDONLY) != -1 ? 0 : 1;\n"
 	  "}\n" },
