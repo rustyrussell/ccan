@@ -92,7 +92,6 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 		close_noerr(p[1]);
 		return talloc_asprintf(ctx, "Failed to fork: %s",
 				       strerror(errno));
-		return NULL;
 	}
 
 	if (pid == 0) {
