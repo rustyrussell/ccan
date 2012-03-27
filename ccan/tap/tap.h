@@ -42,10 +42,6 @@
  */
 void plan_tests(unsigned int tests);
 
-#if (!defined(__STDC_VERSION__) || __STDC_VERSION__ < 199901L) && !defined(__GNUC__)
-# error "Needs gcc or C99 compiler for variadic macros."
-#else
-
 /**
  * ok1 - Simple conditional test
  * @e: the expression which we expect to be true.
@@ -252,5 +248,4 @@ void plan_skip_all(const char *reason);
  */
 void (*tap_fail_callback)(void);
 
-#endif /* C99 or gcc */
 #endif /* CCAN_TAP_H */
