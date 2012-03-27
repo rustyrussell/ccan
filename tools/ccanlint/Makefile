@@ -9,6 +9,7 @@ CORE_OBJS := \
 	ccan/grab_file/grab_file.o \
 	ccan/hash/hash.o \
 	ccan/htable/htable.o \
+	ccan/ilog/ilog.o \
 	ccan/lbalance/lbalance.o \
 	ccan/noerr/noerr.o \
 	ccan/opt/helpers.o \
