@@ -3,6 +3,7 @@
 #include <ccan/grab_file/grab_file.h>
 #include <ccan/str_talloc/str_talloc.h>
 #include <ccan/read_write_all/read_write_all.h>
+#include <ccan/compiler/compiler.h>
 #include "tools.h"
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -12,7 +13,7 @@
 #include <unistd.h>
 #include <errno.h>
 
-static char ** __attribute__((format(printf, 2, 3)))
+static char ** PRINTF_FMT(2, 3)
 lines_from_cmd(const void *ctx, const char *format, ...)
 {
 	va_list ap;
