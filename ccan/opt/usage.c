@@ -1,6 +1,8 @@
 /* Licensed under GPLv3+ - see LICENSE file for details */
 #include <ccan/opt/opt.h>
 #include <sys/ioctl.h>
+#include <sys/termios.h> /* Required on Solaris for struct winsize */
+#include <sys/unistd.h> /* Required on Solaris for ioctl */
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
