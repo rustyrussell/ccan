@@ -23,13 +23,18 @@ static const char *can_build(struct manifest *m)
 
 static char *obj_list(const struct manifest *m)
 {
-	char *list = talloc_strdup(m, "");
+	char *list;
 	struct manifest *i;
+
+	if (m->compiled[COMPILE_NORMAL])
+		list = talloc_strdup(m, m->compiled[COMPILE_NORMAL]);
+	else
+		list = talloc_strdup(m, "");
 
 	/* Other CCAN deps. */
 	list_for_each(&m->deps, i, list) {
 		if (i->compiled[COMPILE_NORMAL])
-			list = talloc_asprintf_append(list, "%s ",
+			list = talloc_asprintf_append(list, " %s",
 						      i->compiled
 						      [COMPILE_NORMAL]);
 	}
