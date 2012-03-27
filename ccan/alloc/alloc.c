@@ -773,7 +773,8 @@ void alloc_free(void *pool, unsigned long poolsize, void *free)
 	struct page_header *ph;
 
 	if (poolsize < MIN_USEFUL_SIZE) {
-		return tiny_alloc_free(pool, poolsize, free);
+		tiny_alloc_free(pool, poolsize, free);
+		return;
 	}
 	
 	/* Get page header. */
