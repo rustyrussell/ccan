@@ -122,8 +122,9 @@ inter-depends: $(ALL_DEPENDS) Makefile
 test-depends: $(ALL_DEPENDS) Makefile
 	for f in $(ALL_DEPENDS); do echo check-`basename \`dirname $$f\``: `sed -n 's,ccan/\(.*\),check-\1,p' < $$f`; done > $@
 
+# Ensure we don't end up with empty file if configurator fails!
 config.h: tools/configurator/configurator Makefile Makefile-ccan
-	@tools/configurator/configurator $(CC) $(CCAN_CFLAGS) > config.h
+	tools/configurator/configurator $(CC) $(CCAN_CFLAGS) > $@ || rm -f $@
 
 include tools/Makefile
 -include inter-depends
