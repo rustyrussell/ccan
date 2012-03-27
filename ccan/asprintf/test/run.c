@@ -1,13 +1,13 @@
 #include <ccan/asprintf/asprintf.h>
 /* Include the C files directly. */
 
+#include <stdarg.h>
 /* Override vasprintf for testing. */
 #if HAVE_ASPRINTF
 #define vasprintf my_vasprintf
 static int my_vasprintf(char **strp, const char *fmt, va_list ap);
 #else
 #include <stdio.h>
-#include <stdarg.h>
 #define vsnprintf my_vsnprintf
 static int my_vsnprintf(char *str, size_t size, const char *format, va_list ap);
 #endif
