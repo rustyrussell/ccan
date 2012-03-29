@@ -15,8 +15,8 @@
  * only differs in signed/unsigned, not in type or const-ness.
  */
 #define cast_signed(type, expr)						\
-	((type)(expr)							\
-	 + BUILD_ASSERT_OR_ZERO(cast_sign_compatible(type, (expr))))
+	(0 ? BUILD_ASSERT_OR_ZERO(cast_sign_compatible(type, (expr))) :	\
+	 (type)(expr))
 
 /**
  * cast_const - remove a const qualifier from a pointer.
@@ -25,6 +25,10 @@
  *
  * This ensures that you are only removing the const qualifier from an
  * expression.  The expression must otherwise match @type.
+ *
+ * We cast via intptr_t to suppress gcc's -Wcast-qual (which SAMBA
+ * uses), and via the ? : so Sun CC doesn't complain about the result
+ * not being constant.
  *
  * If @type is a pointer to a pointer, you must use cast_const2 (etc).
  *
@@ -40,8 +44,8 @@
  *	}
  */
 #define cast_const(type, expr)						\
-	((type)((intptr_t)(expr)					\
-		+ BUILD_ASSERT_OR_ZERO(cast_const_compat1((expr), type))))
+        (0 ? BUILD_ASSERT_OR_ZERO(cast_const_compat1((expr), type)) :   \
+         (type)(intptr_t)(expr))
 
 /**
  * cast_const2 - remove a const qualifier from a pointer to a pointer.
@@ -52,8 +56,8 @@
  * expression.  The expression must otherwise match @type.
  */
 #define cast_const2(type, expr)						\
-	((type)((intptr_t)(expr)					\
-		+ BUILD_ASSERT_OR_ZERO(cast_const_compat2((expr), type))))
+        (0 ? BUILD_ASSERT_OR_ZERO(cast_const_compat2((expr), type)) :   \
+	 (type)(intptr_t)(expr))
 
 /**
  * cast_const3 - remove a const from a pointer to a pointer to a pointer..
@@ -64,8 +68,8 @@
  * expression.  The expression must otherwise match @type.
  */
 #define cast_const3(type, expr)						\
-	((type)((intptr_t)(expr)					\
-		+ BUILD_ASSERT_OR_ZERO(cast_const_compat3((expr), type))))
+        (0 ? BUILD_ASSERT_OR_ZERO(cast_const_compat3((expr), type)) :   \
+	 (type)(intptr_t)(expr))
 
 
 /**
