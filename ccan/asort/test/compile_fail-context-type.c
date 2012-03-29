@@ -9,9 +9,10 @@ static int cmp(char *const *a, char *const *b, int *flag)
 int main(int argc, char **argv)
 {
 #ifdef FAIL
+#if HAVE_TYPEOF && HAVE_BUILTIN_CHOOSE_EXPR && HAVE_BUILTIN_TYPES_COMPATIBLE_P
 	char flag;
-#if !HAVE_TYPEOF
-#error "Unfortunately we don't fail if no typeof."
+#else
+#error "Unfortunately we don't fail if no typecheck_cb support."
 #endif
 #else
 	int flag;
