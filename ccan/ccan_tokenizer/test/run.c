@@ -915,7 +915,7 @@ struct tokenizer_msg_test {
 #define M(...) array_count_pair(const char *, __VA_ARGS__)
 
 struct tokenizer_test tokenizer_tests[] = {
-	T(""),
+	{ "", 0, 0 },
 	T("\n",
 		{.type = TOK_WHITE, txt("\n")}
 	),
