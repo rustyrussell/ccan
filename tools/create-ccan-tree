@@ -1,0 +1,177 @@
+#!/bin/bash
+
+progname=$(basename $0)
+
+usage() {
+	cat >&2 <<EOF
+Usage: $progname [options] <outdir> <depends>...
+
+options:
+  -t, --exclude-tests         exclude test/ directories from ccan modules
+  -c, --exclude-configurator  exclude configurator. config.h must be
+                              supplied by another method (eg, autotools)
+EOF
+}
+
+# parse options, setting the following flags
+exclude_tests=
+exclude_configurator=
+
+opts=$(getopt -o tc --long exclude-tests,exclude-configurator -n $progname \
+		-- "$@")
+
+if [ $? != 0 ]
+then
+	usage
+	exit 1
+fi
+
+eval set -- "$opts"
+
+while :
+do
+	case "$1" in
+		-t|--exclude-tests)
+			exclude_tests=1
+			shift
+			;;
+		-c|--exclude-configurator)
+			exclude_configurator=1
+			shift
+			;;
+		--)
+			shift
+			break
+			;;
+		*)
+			echo "Internal error!">&2
+			exit 1
+			;;
+	esac
+done
+
+# we need at least two non-option arguments: outdir and a list of ccan
+# modules
+if [ $# -lt 2 ]
+then
+	usage
+	exit 1
+fi
+
+srcdir=$(dirname $0)/../
+outdir="$1"
+shift
+modules="$@"
+
+if [ -e "$outdir" ]
+then
+	echo "Output directory '$outdir' already exists" >&2
+	exit 1
+fi
+
+tmpdir="$(mktemp -d)"
+# sanity check, we don't want to be overwriting stuff in arbitrary dirs
+[ $? -eq 0 -a -d "${tmpdir}" ] || exit 1
+
+# We'll need the ccan_depends tool, but also a clean source tree. Build
+# tools/ccan_depends, and store it in $tmpdir for later use
+
+echo "Building ccan_depends"
+ccan_depends="$tmpdir/ccan_depends"
+make -s -C "$srcdir" tools/ccan_depends
+[ $? -eq 0 ] || exit 1
+cp "$srcdir/tools/ccan_depends" "$ccan_depends"
+
+echo "Cleaning source tree"
+make -s -C "$srcdir" clean
+[ $? -eq 0 ] || exit 1
+
+# clean up on error
+trap 'rm -rf $tmpdir' EXIT
+
+# generate list of directories to copy
+for module in $modules
+do
+	# ccan_depends takes a directory name
+	module_dir="$srcdir/ccan/$module"
+
+	# we need the module itself...
+	echo "ccan/$module"
+
+	# .. plus dependencies
+	"$ccan_depends" "$module_dir"
+
+	if [ $? -ne 0 ]
+	then
+		echo "Invalid ccan module '$module'?" >&2
+		exit 1
+	fi
+done |
+sort -u |
+while read dir
+do
+	module_srcdir="$srcdir/$dir"
+	module_destdir="$tmpdir/$dir"
+	echo "Adding $dir"
+	mkdir -p "$(dirname "$module_destdir")"
+	cp -a "$module_srcdir" "$module_destdir"
+	if [ -n "$exclude_tests" ]
+	then
+		rm -rf "$module_destdir/test"
+	fi
+done
+
+# we're done with the dependency-tracking, remove the tool from our
+# temporary directory
+rm "$ccan_depends"
+
+echo "Adding licenses"
+license_dir="$tmpdir/licenses"
+mkdir "$license_dir"
+
+find "$tmpdir" -type l -name LICENSE |
+while read license
+do
+	license_link=$(readlink "$license")
+	licence_file=$(basename "$license_link")
+	license_src="$srcdir/licenses/$licence_file"
+	license_dest="$license_dir/$license_file"
+	cp "$license_src" "$license_dest"
+done
+
+# add ccan Makefile
+echo "Adding build infrastructure"
+cp "$srcdir/Makefile-ccan" "$tmpdir/"
+
+# add top-level Makefile
+top_makefile="$tmpdir/Makefile"
+cat > "$top_makefile" << EOF
+all: libccan.a
+
+include Makefile-ccan
+EOF
+
+# optionally add configurator, and relevant parts to top-level Makefile
+if [ -z "$exclude_configurator" ]
+then
+	echo "Adding configurator"
+	mkdir -p "$tmpdir/tools/configurator"
+	cp -a "$srcdir/tools/configurator" "$tmpdir/tools/"
+
+	cat >> "$top_makefile" <<EOF
+tools/configurator/configurator: tools/configurator/configurator.c
+
+config.h: tools/configurator/configurator Makefile Makefile-ccan
+	tools/configurator/configurator \$(CC) \$(CCAN_CFLAGS) > \$@ \\
+		|| rm -f \$@
+
+objs = \$(patsubst %.c, %.o, \$(wildcard ccan/*/*.c))
+\$(objs): config.h
+
+EOF
+fi
+
+mv "$tmpdir" "$outdir"
+echo "Done. ccan source tree built in $outdir"
+
+trap - EXIT
