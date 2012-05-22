@@ -16,6 +16,8 @@ DEP_OBJS = ccan/grab_file/grab_file.o \
 .PHONY: tools
 tools: $(ALL_TOOLS)
 
+tools/ccan_depends.o: config.h
+
 tools/ccan_depends: tools/ccan_depends.o $(DEP_OBJS)
 
 tools/doc_extract: tools/doc_extract.o tools/doc_extract-core.o $(DEP_OBJS)
