@@ -7,18 +7,18 @@ usage() {
 Usage: $progname [options] <outdir> <depends>...
 
 options:
-  -t, --exclude-tests         exclude test/ directories from ccan modules
+  -a, --copy-all              copy all files in module tree (not just
+                              sources required for build)
   -c, --exclude-configurator  exclude configurator. config.h must be
                               supplied by another method (eg, autotools)
 EOF
 }
 
 # parse options, setting the following flags
-exclude_tests=
+copy_all=
 exclude_configurator=
 
-opts=$(getopt -o tc --long exclude-tests,exclude-configurator -n $progname \
-		-- "$@")
+opts=$(getopt -o ac --long copy-all,exclude-configurator -n $progname -- "$@")
 
 if [ $? != 0 ]
 then
@@ -31,8 +31,8 @@ eval set -- "$opts"
 while :
 do
 	case "$1" in
-		-t|--exclude-tests)
-			exclude_tests=1
+		-a|--copy-all)
+			copy_all=1
 			shift
 			;;
 		-c|--exclude-configurator)
@@ -89,6 +89,25 @@ make -s -C "$srcdir" clean
 # clean up on error
 trap 'rm -rf $tmpdir' EXIT
 
+copy_ccan_module() {
+	module_dir="$1"
+	module_srcdir="$srcdir/$module_dir"
+	module_destdir="$tmpdir/$module_dir"
+
+	if [ -n "$copy_all" ]
+	then
+		# bulk copy
+		mkdir -p "$(dirname "$module_destdir")"
+		cp -a "$module_srcdir" "$module_destdir"
+	else
+		mkdir -p "$module_destdir"
+		# only copy sources & license
+		license="$module_srcdir/LICENSE"
+		cp -a "$module_srcdir"/*.[ch] "$module_destdir"
+		[ -e "$license" ] && cp -a "$license" "$module_destdir"
+	fi
+}
+
 # generate list of directories to copy
 for module in $modules
 do
@@ -110,15 +129,8 @@ done |
 sort -u |
 while read dir
 do
-	module_srcdir="$srcdir/$dir"
-	module_destdir="$tmpdir/$dir"
 	echo "Adding $dir"
-	mkdir -p "$(dirname "$module_destdir")"
-	cp -a "$module_srcdir" "$module_destdir"
-	if [ -n "$exclude_tests" ]
-	then
-		rm -rf "$module_destdir/test"
-	fi
+	copy_ccan_module $dir
 done
 
 # we're done with the dependency-tracking, remove the tool from our
