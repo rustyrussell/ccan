@@ -10,7 +10,7 @@ options:
   -a, --copy-all         copy all files in module tree (not just sources
 		         required for build)
   -b, --build-type=TYPE  generate build infrastructure of TYPE
-                         (one of 'make', 'make+config')
+                         (one of 'make', 'make+config', 'automake')
 EOF
 }
 
@@ -60,7 +60,7 @@ fi
 
 # check --build-type argument sanity
 case "$build_type" in
-	''|'make'|'make+config')
+	''|'make'|'make+config'|'automake')
 		;;
 	*)
 		echo "Invalid build type '$build_type'" >&2
@@ -161,6 +161,19 @@ do
 done
 
 echo "Adding build infrastructure"
+
+# generate automake Makefile.am
+automakefile="$tmpdir/Makefile.am"
+if [ "$build_type" = "automake" ]
+then
+	(
+		echo "noinst_LIBRARIES = libccan.a"
+		echo "libccan_a_SOURCES = \\"
+		cd "$tmpdir"
+		find ccan -maxdepth 2 -name '*.[ch]' |
+			sed -e 's,^,\t,;$!s,$, \\,'
+	) > "$automakefile"
+fi
 
 makefile="$tmpdir/Makefile"
 if [ "$build_type" = "make" -o "$build_type" = "make+config" ]
