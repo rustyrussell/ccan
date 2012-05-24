@@ -7,18 +7,18 @@ usage() {
 Usage: $progname [options] <outdir> <depends>...
 
 options:
-  -a, --copy-all              copy all files in module tree (not just
-                              sources required for build)
-  -c, --exclude-configurator  exclude configurator. config.h must be
-                              supplied by another method (eg, autotools)
+  -a, --copy-all         copy all files in module tree (not just sources
+		         required for build)
+  -b, --build-type=TYPE  generate build infrastructure of TYPE
+                         (one of 'make', 'make+config')
 EOF
 }
 
 # parse options, setting the following flags
 copy_all=
-exclude_configurator=
+build_type=
 
-opts=$(getopt -o ac --long copy-all,exclude-configurator -n $progname -- "$@")
+opts=$(getopt -o ab: --long copy-all,build-type: -n $progname -- "$@")
 
 if [ $? != 0 ]
 then
@@ -35,9 +35,9 @@ do
 			copy_all=1
 			shift
 			;;
-		-c|--exclude-configurator)
-			exclude_configurator=1
-			shift
+		-b|--build-type)
+			build_type="$2"
+			shift 2
 			;;
 		--)
 			shift
@@ -57,6 +57,15 @@ then
 	usage
 	exit 1
 fi
+
+# check --build-type argument sanity
+case "$build_type" in
+	''|'make'|'make+config')
+		;;
+	*)
+		echo "Invalid build type '$build_type'" >&2
+		exit 1
+esac
 
 srcdir=$(dirname $0)/../
 outdir="$1"
@@ -151,26 +160,30 @@ do
 	cp "$license_src" "$license_dest"
 done
 
-# add ccan Makefile
 echo "Adding build infrastructure"
-cp "$srcdir/Makefile-ccan" "$tmpdir/"
 
-# add top-level Makefile
-top_makefile="$tmpdir/Makefile"
-cat > "$top_makefile" << EOF
+makefile="$tmpdir/Makefile"
+if [ "$build_type" = "make" -o "$build_type" = "make+config" ]
+then
+	# add ccan Makefile
+	cp "$srcdir/Makefile-ccan" "$tmpdir/"
+
+	# add top-level Makefile
+	cat > "$makefile" << EOF
 all: libccan.a
 
 include Makefile-ccan
 EOF
+fi
 
 # optionally add configurator, and relevant parts to top-level Makefile
-if [ -z "$exclude_configurator" ]
+if [ "$build_type" = "make+config" ]
 then
 	echo "Adding configurator"
 	mkdir -p "$tmpdir/tools/configurator"
 	cp -a "$srcdir/tools/configurator" "$tmpdir/tools/"
 
-	cat >> "$top_makefile" <<EOF
+	cat >> "$makefile" <<EOF
 tools/configurator/configurator: tools/configurator/configurator.c
 
 config.h: tools/configurator/configurator Makefile Makefile-ccan
