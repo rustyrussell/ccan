@@ -10,7 +10,7 @@ options:
   -a, --copy-all         copy all files in module tree (not just sources
 		         required for build)
   -b, --build-type=TYPE  generate build infrastructure of TYPE
-                         (one of 'make', 'make+config', 'automake')
+                         (one of 'make', 'make+config', 'automake', 'waf')
 EOF
 }
 
@@ -60,7 +60,7 @@ fi
 
 # check --build-type argument sanity
 case "$build_type" in
-	''|'make'|'make+config'|'automake')
+	''|'make'|'make+config'|'automake'|'waf')
 		;;
 	*)
 		echo "Invalid build type '$build_type'" >&2
@@ -206,6 +206,18 @@ config.h: tools/configurator/configurator Makefile Makefile-ccan
 objs = \$(patsubst %.c, %.o, \$(wildcard ccan/*/*.c))
 \$(objs): config.h
 
+EOF
+fi
+
+if [ "$build_type" = "waf" ]
+then
+	echo "Adding waf wscript"
+	cat > "$tmpdir/wscript" << EOF
+def build(ctx):
+    ctx(features     = 'c cstlib',
+        source       = ctx.path.ant_glob('**/*.c'),
+        target       = 'ccan',
+        includes     = '.')
 EOF
 fi
 
