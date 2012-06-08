@@ -127,6 +127,18 @@ static struct test tests[] = {
 	{ "HAVE_COMPOUND_LITERALS", INSIDE_MAIN, NULL,
 	  "int *foo = (int[]) { 1, 2, 3, 4 };\n"
 	  "return foo[0] ? 0 : 1;" },
+	{ "HAVE_ERR_H", DEFINES_FUNC, NULL,
+	  "#include <err.h>\n"
+	  "static void func(int arg) {\n"
+	  "	if (arg == 0)\n"
+	  "		err(1, \"err %u\", arg);\n"
+	  "	if (arg == 1)\n"
+	  "		errx(1, \"err %u\", arg);\n"
+	  "	if (arg == 3)\n"
+	  "		warn(\"warn %u\", arg);\n"
+	  "	if (arg == 4)\n"
+	  "		warnx(\"warn %u\", arg);\n"
+	  "}\n" },
 	{ "HAVE_FILE_OFFSET_BITS", DEFINES_EVERYTHING|EXECUTE,
 	  "HAVE_32BIT_OFF_T",
 	  "#define _FILE_OFFSET_BITS 64\n"
