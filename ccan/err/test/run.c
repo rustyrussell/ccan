@@ -1,4 +1,4 @@
-#include <ccan/err/err.h>
+#include <ccan/err/err.c>
 #include <ccan/tap/tap.h>
 #include <unistd.h>
 #include <string.h>
@@ -10,15 +10,25 @@
 
 #define BUFFER_MAX 1024
 
-int main(void)
+int main(int argc, char *argv[])
 {
 	int pfd[2];
+	const char *base;
 
-	plan_tests(20);
-	fflush(stdout);
+	plan_tests(24);
+
+	err_set_progname(argv[0]);
+
+	/* In case it only prints out the basename of argv[0]. */
+	base = strrchr(argv[0], '/');
+	if (base)
+		base++;
+	else
+		base = argv[0];
 
 	/* Test err() in child */
 	pipe(pfd);
+	fflush(stdout);
 	if (fork()) {
 		char buffer[BUFFER_MAX+1];
 		unsigned int i;
@@ -31,6 +41,7 @@ int main(void)
 				buffer[i] = '\0';
 				ok1(strstr(buffer, "running err:"));
 				ok1(strstr(buffer, strerror(ENOENT)));
+				ok1(strstr(buffer, base));
 				ok1(buffer[i-1] == '\n');
 				break;
 			}
@@ -61,6 +72,7 @@ int main(void)
 			if (read(pfd[0], buffer + i, 1) == 0) {
 				buffer[i] = '\0';
 				ok1(strstr(buffer, "running errx\n"));
+				ok1(strstr(buffer, base));
 				break;
 			}
 		}
@@ -91,6 +103,7 @@ int main(void)
 				buffer[i] = '\0';
 				ok1(strstr(buffer, "running warn:"));
 				ok1(strstr(buffer, strerror(ENOENT)));
+				ok1(strstr(buffer, base));
 				ok1(buffer[i-1] == '\n');
 				break;
 			}
@@ -121,6 +134,7 @@ int main(void)
 			if (read(pfd[0], buffer + i, 1) == 0) {
 				buffer[i] = '\0';
 				ok1(strstr(buffer, "running warnx\n"));
+				ok1(strstr(buffer, base));
 				break;
 			}
 		}

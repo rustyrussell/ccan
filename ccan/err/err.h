@@ -4,8 +4,26 @@
 
 #if HAVE_ERR_H
 #include <err.h>
+
+/* This is unnecessary with a real err.h.  See below */
+#define err_set_progname(name) ((void)name)
+
 #else
 #include <ccan/compiler/compiler.h>
+
+/**
+ * err_set_progname - set the program name
+ * @name: the name to use for err, errx, warn and warnx
+ *
+ * The BSD err.h calls know the program name, unfortunately there's no
+ * portable way for the CCAN replacements to do that on other systems.
+ *
+ * If you don't call this with argv[0], it will be "unknown program".
+ *
+ * Example:
+ *	err_set_progname(argv[0]);
+ */
+void err_set_progname(const char *name);
 
 /**
  * err - exit(eval) with message based on format and errno.

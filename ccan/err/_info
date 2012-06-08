@@ -8,11 +8,15 @@
  * A few platforms don't provide err.h; for those, this provides replacements.
  * For most, it simple includes the system err.h.
  *
+ * Unfortunately, you have to call err_set_progname() to tell the replacements
+ * your program name, otherwise it prints "unknown program".
+ *
  * Example:
  *	#include <ccan/err/err.h>
  *
  *	int main(int argc, char *argv[])
  *	{
+ *		err_set_progname(argv[0]);
  *		if (argc != 1)
  *			errx(1, "Expect no arguments");
  *		exit(0);
