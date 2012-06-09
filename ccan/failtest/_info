@@ -66,6 +66,7 @@ int main(int argc, char *argv[])
 	if (strcmp(argv[1], "depends") == 0) {
 		printf("ccan/build_assert\n");
 		printf("ccan/compiler\n");
+		printf("ccan/err\n");
 		printf("ccan/hash\n");
 		printf("ccan/htable\n");
 		printf("ccan/read_write_all\n");

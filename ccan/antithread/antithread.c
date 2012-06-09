@@ -10,8 +10,8 @@
 #include <signal.h>
 #include <errno.h>
 #include <assert.h>
-#include <err.h>
 #include "antithread.h"
+#include <ccan/err/err.h>
 #include <ccan/noerr/noerr.h>
 #include <ccan/talloc/talloc.h>
 #include <ccan/read_write_all/read_write_all.h>

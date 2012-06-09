@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <ctype.h>
-#include <err.h>
 #include <unistd.h>
 #include <poll.h>
 #include <errno.h>
@@ -17,6 +16,7 @@
 #include <sys/resource.h>
 #include <signal.h>
 #include <assert.h>
+#include <ccan/err/err.h>
 #include <ccan/time/time.h>
 #include <ccan/read_write_all/read_write_all.h>
 #include <ccan/failtest/failtest_proto.h>

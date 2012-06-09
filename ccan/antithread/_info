@@ -91,6 +91,7 @@ int main(int argc, char *argv[])
 
 	if (strcmp(argv[1], "depends") == 0) {
 		printf("ccan/alloc\n");
+		printf("ccan/err\n");
 		printf("ccan/list\n");
 		printf("ccan/noerr\n");
 		printf("ccan/read_write_all\n"); /* For tests */
