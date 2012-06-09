@@ -4,7 +4,6 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <err.h>
 #include <assert.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -102,6 +101,12 @@ const char *next_sopt(const char *p, unsigned *i)
 	return p;
 }
 
+/* Avoids dependency on err.h or ccan/err */
+#ifndef failmsg
+#define failmsg(fmt, ...) \
+	do { fprintf(stderr, fmt, __VA_ARGS__); exit(1); } while(0)
+#endif
+
 static void check_opt(const struct opt_table *entry)
 {
 	const char *p;
@@ -110,26 +115,26 @@ static void check_opt(const struct opt_table *entry)
 	if (entry->type != OPT_HASARG && entry->type != OPT_NOARG
 	    && entry->type != (OPT_EARLY|OPT_HASARG)
 	    && entry->type != (OPT_EARLY|OPT_NOARG))
-		errx(1, "Option %s: unknown entry type %u",
-		     entry->names, entry->type);
+		failmsg("Option %s: unknown entry type %u",
+			entry->names, entry->type);
 
 	if (!entry->desc)
-		errx(1, "Option %s: description cannot be NULL", entry->names);
+		failmsg("Option %s: description cannot be NULL", entry->names);
 
 
 	if (entry->names[0] != '-')
-		errx(1, "Option %s: does not begin with '-'", entry->names);
+		failmsg("Option %s: does not begin with '-'", entry->names);
 
 	for (p = first_name(entry->names, &len); p; p = next_name(p, &len)) {
 		if (*p == '-') {
 			if (len == 1)
-				errx(1, "Option %s: invalid long option '--'",
-				     entry->names);
+				failmsg("Option %s: invalid long option '--'",
+					entry->names);
 			opt_num_long++;
 		} else {
 			if (len != 1)
-				errx(1, "Option %s: invalid short option"
-				     " '%.*s'", entry->names, len+1, p-1);
+				failmsg("Option %s: invalid short option"
+					" '%.*s'", entry->names, len+1, p-1);
 			opt_num_short++;
 			if (entry->type == OPT_HASARG)
 				opt_num_short_arg++;
@@ -137,8 +142,8 @@ static void check_opt(const struct opt_table *entry)
 		/* Don't document args unless there are some. */
 		if (entry->type == OPT_NOARG) {
 			if (p[len] == ' ' || p[len] == '=')
-				errx(1, "Option %s: does not take arguments"
-				     " '%s'", entry->names, p+len+1);
+				failmsg("Option %s: does not take arguments"
+					" '%s'", entry->names, p+len+1);
 		}
 	}
 }

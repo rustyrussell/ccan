@@ -9,9 +9,9 @@
 
 /* We don't actually want it to exit... */
 static jmp_buf exited;
-#define errx save_and_jump
+#define failmsg save_and_jump
 
-static void save_and_jump(int ecode, const char *fmt, ...);
+static void save_and_jump(const char *fmt, ...);
 
 #include <ccan/opt/helpers.c>
 #include <ccan/opt/opt.c>
@@ -34,14 +34,14 @@ static int saved_vprintf(const char *fmt, va_list ap)
 	return ret;
 }
 
-static void save_and_jump(int ecode, const char *fmt, ...)
+static void save_and_jump(const char *fmt, ...)
 {
 	va_list ap;
 
 	va_start(ap, fmt);
 	saved_vprintf(fmt, ap);
 	va_end(ap);
-	longjmp(exited, ecode + 1);
+	longjmp(exited, 1);
 }
 
 static void reset(void)
@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 			      NULL, NULL, "1.2.3", "");
 		fail("_opt_register returned?");
 	} else {
-		ok1(exitval - 1 == 1);
+		ok1(exitval == 1);
 		ok1(strstr(output, "Option -a: unknown entry type"));
 	}
 	reset();
@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
 		opt_register_noarg("-a", test_noarg, "", NULL);
 		fail("_opt_register returned?");
 	} else {
-		ok1(exitval - 1 == 1);
+		ok1(exitval == 1);
 		ok1(strstr(output, "Option -a: description cannot be NULL"));
 	}
 	reset();
@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
 		opt_register_noarg("a", test_noarg, "", "");
 		fail("_opt_register returned?");
 	} else {
-		ok1(exitval - 1 == 1);
+		ok1(exitval == 1);
 		ok1(strstr(output, "Option a: does not begin with '-'"));
 	}
 
@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
 		opt_register_noarg("--", test_noarg, "", "");
 		fail("_opt_register returned?");
 	} else {
-		ok1(exitval - 1 == 1);
+		ok1(exitval == 1);
 		ok1(strstr(output, "Option --: invalid long option '--'"));
 	}
 
@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 		opt_register_noarg("--a|-aaa", test_noarg, "", "");
 		fail("_opt_register returned?");
 	} else {
-		ok1(exitval - 1 == 1);
+		ok1(exitval == 1);
 		ok1(strstr(output,
 			   "Option --a|-aaa: invalid short option '-aaa'"));
 	}
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
 		opt_register_noarg("--a foo", test_noarg, "", "");
 		fail("_opt_register returned?");
 	} else {
-		ok1(exitval - 1 == 1);
+		ok1(exitval == 1);
 		ok1(strstr(output,
 			   "Option --a foo: does not take arguments 'foo'"));
 	}
@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
 		opt_register_noarg("--a=foo", test_noarg, "", "");
 		fail("_opt_register returned?");
 	} else {
-		ok1(exitval - 1 == 1);
+		ok1(exitval == 1);
 		ok1(strstr(output,
 			   "Option --a=foo: does not take arguments 'foo'"));
 	}
