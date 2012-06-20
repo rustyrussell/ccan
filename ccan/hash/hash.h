@@ -301,11 +301,11 @@ static inline uint32_t hash_pointer(const void *p, uint32_t base)
 	if (sizeof(p) % sizeof(uint32_t) == 0) {
 		/* This convoluted union is the right way of aliasing. */
 		union {
-			uint32_t u32[sizeof(p) / sizeof(uint32_t)];
+			uint32_t a[sizeof(p) / sizeof(uint32_t)];
 			const void *p;
 		} u;
 		u.p = p;
-		return hash_u32(u.u32, sizeof(p) / sizeof(uint32_t), base);
+		return hash_u32(u.a, sizeof(p) / sizeof(uint32_t), base);
 	} else
 		return hash(&p, 1, base);
 }
