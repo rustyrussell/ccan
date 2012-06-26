@@ -1,0 +1,54 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * rfc822 - Parsing of RFC822 emails
+ *
+ * This code allows easy processing of RFC822/RFC2822/RFC5322
+ * formatted email messages.  For now only read-only operation is
+ * supported.
+ *
+ * The important design goals are these:
+ * - Be lazy.  Don't compute immediately compute fancy indexes for the
+ *   message.  Just reading messages into the system and then sending
+ *   them out again should not incur a serious performance hit.
+ * - But cache.  Once the user does request data that needs parsing,
+ *   cache the results in suitable data structures so that if lots
+ *   more lookups are done they're then fast.
+ * - Cope with ill-formatted messages.  Even if the input is not
+ *   RFC822 compliant, don't SEGV and try to return as much useful
+ *   data as possible.
+ *
+ * Example:
+ *	char buf[] = "From: <from@example.com>\n"
+ *		     "To: <to@example.com>\n\n"
+ *                   "body\n";
+ *	struct rfc822_msg *msg;
+ *	struct bytestring body;
+ *
+ *	msg = rfc822_start(NULL, buf, sizeof(buf));
+ *	body = rfc822_body(msg);
+ *	fwrite(body.ptr, 1, body.len, stdout);
+ *
+ * License: LGPL (v2.1 or any later version)
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/array_size\n");
+		printf("ccan/talloc\n");
+		printf("ccan/list\n");
+		printf("ccan/foreach\n");
+		printf("ccan/failtest\n");
+		printf("ccan/str\n");
+		printf("ccan/bytestring\n");
+		return 0;
+	}
+
+	return 1;
+}
