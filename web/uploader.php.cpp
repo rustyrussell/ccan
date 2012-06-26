@@ -14,6 +14,7 @@ if ($_FILES["uploadedfile"]["error"] > 0) {
 
 $dest = tempnam($tempfolder, "upload-");
 move_uploaded_file($_FILES["uploadedfile"]["tmp_name"], $dest);
+umask 0740
 
 $subject = "CCAN: code upload by '" . $_POST['email'] . "' with name " . $_FILES["uploadedfile"]["name"];
 $message = "File type: ".$_FILES["uploadedfile"]["type"]."\n".
