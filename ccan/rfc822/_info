@@ -32,6 +32,10 @@
  *	fwrite(body.ptr, 1, body.len, stdout);
  *
  * License: LGPL (v2.1 or any later version)
+ *
+ * Ccanlint:
+ *	// The failtest module is only used for tests: ccanlint is overzealous
+ *	license_depends_compat FAIL
  */
 int main(int argc, char *argv[])
 {
