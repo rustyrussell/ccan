@@ -1,0 +1,41 @@
+#include <string.h>
+#include "config.h"
+
+/**
+ * bytestring - simple bytestring handling
+ *
+ * This code handles manipulation of "bytestrings" represented as a
+ * structure containing a pointer and length.  Bytestrings are not
+ * NUL-terminated, and may include internal \0 characters.  The main
+ * use case is for referencing sub-sections of a large data buffer
+ * without the inconvenience of manually passing (and returning) both
+ * pointer and length all the time.
+ *
+ * Because of this use case, the bytestrings are treated as having
+ * immutable contents (we use a const char pointer).  The caller code
+ * is responsible for ensuring that the lifetime of the data
+ * referenced by the bytestrings is long enough not to leave
+ * bytestring structures with a dangling pointer.
+ *
+ * Example:
+ *	const char buf[] = "ABCDEFGH";
+ *	struct bytestring abcd = BYTESTRING("ABCD");
+ *
+ *	assert(bytestring_eq(bytestring(buf, 4), abcd));
+ *
+ * License: LGPL (v2.1 or any later version)
+ * Author: David Gibson <david@gibson.dropbear.id.au>
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/array_size\n");
+		return 0;
+	}
+
+	return 1;
+}
