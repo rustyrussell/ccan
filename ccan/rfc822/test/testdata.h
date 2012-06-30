@@ -53,11 +53,15 @@ AEXAMPLE(test_msg_nlnl_crlf);
 const char test_msg_nlnl_mixed_body[] = "Message containing both \n\n and \r\n\r\n inside body\n\r\n";
 AEXAMPLE(test_msg_nlnl_mixed);
 
+#define test_msg_space_body_hdrs test_msg_1_hdrs
+const char test_msg_space_body_body[] = " Message with LWS at start of body\n";
+AEXAMPLE(test_msg_space_body);
 
 #define for_each_aexample(_e)				     \
 	foreach_ptr((_e), &test_msg_1, &test_msg_empty_body, \
 		    &test_msg_nlnl_lf, &test_msg_nlnl_crlf, \
-		    &test_msg_nlnl_mixed)
+		    &test_msg_nlnl_mixed, \
+		    &test_msg_space_body)
 
 #define for_each_aexample_buf(_e, _buf, _len)	\
 	for_each_aexample((_e)) 		\
