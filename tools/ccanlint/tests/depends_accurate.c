@@ -36,9 +36,6 @@ static void check_depends_accurate(struct manifest *m,
 {
 	struct list_head *list;
 
-	/* FIXME: This isn't reliable enough with #ifdefs, so we don't fail. */
-	score->pass = true;
-
 	foreach_ptr(list, &m->c_files, &m->h_files,
 		    &m->run_tests, &m->api_tests,
 		    &m->compile_ok_tests, &m->compile_fail_tests,
@@ -48,6 +45,7 @@ static void check_depends_accurate(struct manifest *m,
 		list_for_each(list, f, list) {
 			unsigned int i;
 			char **lines = get_ccan_file_lines(f);
+			struct line_info *li = get_ccan_line_info(f);
 
 			for (i = 0; lines[i]; i++) {
 				char *mod;
@@ -55,17 +53,25 @@ static void check_depends_accurate(struct manifest *m,
 					    "^[ \t]*#[ \t]*include[ \t]*[<\"]"
 					    "ccan/+([^/]+)/", &mod))
 					continue;
+
 				if (has_dep(m, mod))
 					continue;
-				score_file_error(score, f, i+1,
-						 "%s not listed in _info",
-						 mod);
+
+				/* FIXME: we can't be sure about
+				 * conditional includes, so don't
+				 * complain. */
+				if (!li[i].cond) {
+					score_file_error(score, f, i+1,
+							 "%s not listed in _info",
+							 mod);
+				}
 			}
 		}
 	}
 
 	if (!score->error) {
 		score->score = score->total;
+		score->pass = true;
 	}
 }
 
