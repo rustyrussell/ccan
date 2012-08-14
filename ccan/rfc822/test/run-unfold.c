@@ -89,7 +89,7 @@ static void check_folded_header(const char *buf, size_t len)
 	hunfold = rfc822_header_unfolded_value(msg, hdr);
 	allocation_failure_check();
 
-	ok(hunfold.len == strlen(UNFOLDED), "Unfolded length %d, should be %d",
+	ok(hunfold.len == strlen(UNFOLDED), "Unfolded length %zd, should be %zd",
 	   hunfold.len, strlen(UNFOLDED));
 	ok1(memcmp(hunfold.ptr, UNFOLDED, hunfold.len) == 0);
 
