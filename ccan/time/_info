@@ -17,7 +17,7 @@
  *
  *	int main(int argc, char *argv[])
  *	{
- *		struct timeval t;
+ *		struct timespec t;
  *
  *		if (argc != 2)
  *			errx(1, "Usage: %s <diff in millisec>", argv[0]);
@@ -28,8 +28,8 @@
  *		else
  *			t = time_add(t, time_from_msec(atol(argv[1])));
  *
- *		printf("%lu.%06u\n",
- *		       (unsigned long)t.tv_sec, (unsigned)t.tv_usec);
+ *		printf("%lu.%09u\n",
+ *		       (unsigned long)t.tv_sec, (unsigned)t.tv_nsec);
  *		return 0;
  *	}
  */
@@ -42,6 +42,13 @@ int main(int argc, char *argv[])
 	if (strcmp(argv[1], "depends") == 0) {
 		return 0;
 	}
+
+#if HAVE_CLOCK_GETTIME_IN_LIBRT
+	if (strcmp(argv[1], "libs") == 0) {
+		printf("rt\n");
+		return 0;
+	}
+#endif
 
 	return 1;
 }
