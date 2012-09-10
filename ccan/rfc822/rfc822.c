@@ -150,28 +150,32 @@ static struct rfc822_header *next_header_parse(struct rfc822_msg *msg)
 	if (msg->body && (msg->remainder >= msg->body))
 		return NULL;
 
-	eh = h = msg->remainder;
-	do {
-		eh = next_line(eh, msg->end);
-	} while ((eh < msg->end) && rfc822_iswsp(*eh));
-
-	if (eh >= msg->end)
-		msg->remainder = NULL;
-	else
-		msg->remainder = eh;
+	h = msg->remainder;
+	eh = next_line(h, msg->end);
 
 	ev = eh;
 	if ((ev > h) && (ev[-1] == '\n'))
 		ev--;
 	if ((ev > h) && (ev[-1] == '\r'))
 		ev--;
-
 	if (ev == h) {
 		/* Found the end of the headers */
+
+		assert(!msg->body || (msg->body == eh));
+
 		if (eh < msg->end)
 			msg->body = eh;
 		return NULL;
 	}
+
+	while ((eh < msg->end) && rfc822_iswsp(*eh))
+		eh = next_line(eh, msg->end);
+
+	if (eh >= msg->end)
+		msg->remainder = NULL;
+	else
+		msg->remainder = eh;
+
 
 	hi = talloc_zero(msg, struct rfc822_header);
 	ALLOC_CHECK(hi, NULL);

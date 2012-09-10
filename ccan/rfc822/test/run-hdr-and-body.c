@@ -45,7 +45,7 @@ static void check_header(struct rfc822_msg *msg,
 	allocation_failure_check();
 
 	ok(hname.ptr && bytestring_eq(hname, bytestring_from_string(name)),
-	   "Header name \"%.*s\"", hname.len, hname.ptr);
+	   "Header name \"%.*s\"", (int)hname.len, hname.ptr);
 
 	hvalue = rfc822_header_raw_value(msg, h);
 	allocation_failure_check();
