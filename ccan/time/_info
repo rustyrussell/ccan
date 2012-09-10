@@ -4,7 +4,8 @@
 /**
  * time - routines for dealing with time
  *
- * This code provides convenient functions for working with time.
+ * This code provides convenient functions for working with time, in the
+ * form of 'struct timespec'.
  *
  * Author: Rusty Russell <rusty@rustcorp.com.au>
  * License: BSD-MIT
