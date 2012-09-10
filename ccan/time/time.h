@@ -249,4 +249,25 @@ static inline struct timespec timeval_to_timespec(struct timeval tv)
 	ts.tv_nsec = tv.tv_usec * 1000;
 	return ts;
 }
+
+/**
+ * time_check - check if a time is malformed.
+ * @in: the time to check (returned)
+ * @abortstr: the string to print to stderr before aborting (if set).
+ *
+ * This can be used to make sure a time isn't negative and doesn't
+ * have a tv_nsec >= 1000000000.  If it is, and @abortstr is non-NULL,
+ * that will be printed and abort() is called.  Otherwise, if
+ * @abortstr is NULL then the returned timespec will be normalized and
+ * tv_sec set to 0 if it was negative.
+ *
+ * Note that if ccan/time is compiled with DEBUG, then it will call this
+ * for all passed and returned times.
+ *
+ * Example:
+ *	printf("Now is %lu seconds since epoch\n",
+ *		(long)time_check(time_now(), "time_now() failed?").tv_sec);
+ */
+struct timespec time_check(struct timespec in, const char *abortstr);
+
 #endif /* CCAN_TIME_H */
