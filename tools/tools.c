@@ -73,7 +73,7 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 	int p[2];
 	char *ret;
 	int status, ms;
-	struct timeval start;
+	struct timespec start;
 
 	*ok = false;
 	if (pipe(p) != 0)
@@ -106,7 +106,7 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 
 		signal(SIGALRM, killme);
 		itim.it_interval.tv_sec = itim.it_interval.tv_usec = 0;
-		itim.it_value = time_from_msec(*timeout_ms);
+		itim.it_value = timespec_to_timeval(time_from_msec(*timeout_ms));
 		setitimer(ITIMER_REAL, &itim, NULL);
 
 		status = system(cmd);

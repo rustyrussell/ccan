@@ -91,7 +91,7 @@ static int control_fd = -1;
 /* If we're a child, this is the first call we did ourselves. */
 static struct failtest_call *our_history_start = NULL;
 /* For printing runtime with --trace. */
-static struct timeval start;
+static struct timespec start;
 /* Set when failtest_hook returns FAIL_PROBE */
 static bool probing = false;
 /* Table to track duplicates. */
@@ -761,7 +761,7 @@ static bool should_fail(struct failtest_call *call)
 	if (child == 0) {
 		traceindent++;
 		if (tracef) {
-			struct timeval diff;
+			struct timespec diff;
 			const char *p;
 			char *failpath;
 			struct failtest_call *c;
@@ -776,7 +776,7 @@ static bool should_fail(struct failtest_call *call)
 				p = c->file;
 			trace("%u->%u (%u.%02u): %s (%s:%u)\n",
 			      getppid(), getpid(),
-			      (int)diff.tv_sec, (int)diff.tv_usec / 10000,
+			      (int)diff.tv_sec, (int)diff.tv_nsec / 10000000,
 			      failpath, p, c->line);
 			free(failpath);
 		}
