@@ -57,8 +57,7 @@ static void check_depends_exist(struct manifest *m,
 	if (safe_mode)
 		deps = get_safe_ccan_deps(m, m->dir, true);
 	else
-		deps = get_deps(m, m->dir, true,
-				&m->info_file->compiled[COMPILE_NORMAL]);
+		deps = get_deps(m, m->dir, true, get_or_compile_info);
 
 	for (i = 0; deps[i]; i++) {
 		if (!strstarts(deps[i], "ccan/"))

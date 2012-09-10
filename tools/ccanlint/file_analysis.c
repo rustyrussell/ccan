@@ -394,3 +394,13 @@ void score_file_error(struct score *score, struct ccan_file *f, unsigned line,
 		score->error = talloc_append_string(score->error,
 				    "... more (use -vv to see them all)\n");
 }
+
+char *get_or_compile_info(const void *ctx, const char *dir)
+{
+	struct manifest *m = get_manifest(NULL, dir);
+
+	if (!m->info_file->compiled[COMPILE_NORMAL])
+		m->info_file->compiled[COMPILE_NORMAL] = compile_info(m, dir);
+
+	return m->info_file->compiled[COMPILE_NORMAL];
+}

@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
 
 	if (compile)
 		deps = get_deps(talloc_autofree_context(), argv[1],
-				recurse, NULL);
+				recurse, compile_info);
 	else
 		deps = get_safe_ccan_deps(talloc_autofree_context(),
 					  argv[1], recurse);

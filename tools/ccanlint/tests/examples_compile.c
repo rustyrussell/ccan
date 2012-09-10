@@ -62,8 +62,7 @@ static void add_dep(struct manifest ***deps, const char *basename)
 	if (m->info_file) {
 		char **infodeps;
 
-		infodeps = get_deps(m, m->dir, false,
-				    &m->info_file->compiled[COMPILE_NORMAL]);
+		infodeps = get_deps(m, m->dir, false, get_or_compile_info);
 
 		for (i = 0; infodeps[i]; i++) {
 			if (strstarts(infodeps[i], "ccan/"))

@@ -164,6 +164,9 @@ void compile_and_link_async(const void *ctx, unsigned int time_ms,
 /* Get results of a command, returning ctx (and free it). */
 void *collect_command(bool *ok, char **output);
 
+/* Find manifest for this dir and return compiled _info filename. */
+char *get_or_compile_info(const void *ctx, const char *dir);
+
 /* Normal tests. */
 extern struct ccanlint trailing_whitespace;
 

@@ -19,9 +19,12 @@
 
 #define COVERAGE_CFLAGS "-fprofile-arcs -ftest-coverage"
 
+/* This compiles up the _info file into a temporary. */
+char *compile_info(const void *ctx, const char *dir);
+
 /* This actually compiles and runs the info file to get dependencies. */
 char **get_deps(const void *ctx, const char *dir, bool recurse,
-		char **infofile);
+		char *(*get_info)(const void *ctx, const char *dir));
 
 /* This is safer: just looks for ccan/ strings in info */
 char **get_safe_ccan_deps(const void *ctx, const char *dir, bool recurse);

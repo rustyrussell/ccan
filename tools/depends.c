@@ -38,7 +38,7 @@ lines_from_cmd(const void *ctx, const char *format, ...)
 
 /* Be careful about trying to compile over running programs (parallel make).
  * temp_file helps here. */
-static char *compile_info(const void *ctx, const char *dir)
+char *compile_info(const void *ctx, const char *dir)
 {
 	char *info_c_file, *info, *ccandir, *compiled, *output;
 	size_t len;
@@ -71,17 +71,16 @@ static char *compile_info(const void *ctx, const char *dir)
 	return NULL;
 }
 
-static char **get_one_deps(const void *ctx, const char *dir, char **infofile)
+static char **get_one_deps(const void *ctx, const char *dir,
+			   char *(*get_info)(const void *ctx, const char *dir))
 {
 	char **deps, *cmd;
+	char *infofile = get_info(ctx, dir);
 
-	if (!*infofile) {
-		*infofile = compile_info(ctx, dir);
-		if (!*infofile)
-			errx(1, "Could not compile _info for '%s'", dir);
-	}
+	if (!infofile)
+		return NULL;
 
-	cmd = talloc_asprintf(ctx, "%s depends", *infofile);
+	cmd = talloc_asprintf(ctx, "%s depends", infofile);
 	deps = lines_from_cmd(cmd, "%s", cmd);
 	if (!deps)
 		err(1, "Could not run '%s'", cmd);
@@ -118,7 +117,7 @@ static char *replace(const void *ctx, const char *src,
 /* This is a terrible hack.  We scan for ccan/ strings. */
 static char **get_one_safe_deps(const void *ctx,
 				const char *dir,
-				char **infofile)
+				char *(*unused)(const void *, const char *))
 {
 	char **deps, **lines, *raw, *fname;
 	unsigned int i, n;
@@ -178,17 +177,17 @@ static bool have_dep(char **deps, const char *dep)
 /* Gets all the dependencies, recursively. */
 static char **
 get_all_deps(const void *ctx, const char *dir,
-	     char **infofile,
-	     char **(*get_one)(const void *, const char *, char **))
+	     char *(*get_info)(const void *ctx, const char *dir),
+	     char **(*get_one)(const void *, const char *,
+			       char *(*get_info)(const void *, const char *)))
 {
 	char **deps;
 	unsigned int i;
 
-	deps = get_one(ctx, dir, infofile);
+	deps = get_one(ctx, dir, get_info);
 	for (i = 0; i < talloc_array_length(deps)-1; i++) {
 		char **newdeps;
 		unsigned int j;
-		char *subinfo = NULL;
 		char *subdir;
 
 		if (!strstarts(deps[i], "ccan/"))
@@ -197,7 +196,7 @@ get_all_deps(const void *ctx, const char *dir,
 		subdir = talloc_asprintf(ctx, "%s/%s",
 					 talloc_dirname(ctx, dir),
 					 deps[i] + strlen("ccan/"));
-		newdeps = get_one(ctx, subdir, &subinfo);
+		newdeps = get_one(ctx, subdir, get_info);
 
 		/* Should be short, so brute-force out dups. */
 		for (j = 0; j < talloc_array_length(newdeps)-1; j++) {
@@ -240,6 +239,9 @@ static char **uniquify_deps(char **deps)
 {
 	unsigned int i, j, num;
 
+	if (!deps)
+		return NULL;
+
 	num = talloc_array_length(deps) - 1;
 	for (i = 0; i < num; i++) {
 		for (j = i + 1; j < num; j++) {
@@ -255,22 +257,16 @@ static char **uniquify_deps(char **deps)
 	return talloc_realloc(NULL, deps, char *, num + 1);
 }
 
-char **get_deps(const void *ctx, const char *dir,
-		bool recurse, char **infofile)
+char **get_deps(const void *ctx, const char *dir, bool recurse,
+		char *(*get_info)(const void *ctx, const char *dir))
 {
-	char *temp = NULL, **ret;
-	if (!infofile)
-		infofile = &temp;
+	char **ret;
 
 	if (!recurse) {
-		ret = get_one_deps(ctx, dir, infofile);
+		ret = get_one_deps(ctx, dir, get_info);
 	} else
-		ret = get_all_deps(ctx, dir, infofile, get_one_deps);
+		ret = get_all_deps(ctx, dir, get_info, get_one_deps);
 
-	if (infofile == &temp && temp) {
-		unlink(temp);
-		talloc_free(temp);
-	}
 	return uniquify_deps(ret);
 }
 
