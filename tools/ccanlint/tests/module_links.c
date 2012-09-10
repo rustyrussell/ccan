@@ -43,12 +43,12 @@ static char *obj_list(const struct manifest *m)
 
 static char *lib_list(const struct manifest *m)
 {
-	unsigned int i, num;
-	char **libs = get_libs(m, ".",
-			       &num, &m->info_file->compiled[COMPILE_NORMAL]);
+	unsigned int i;
+	char **libs;
 	char *ret = talloc_strdup(m, "");
 
-	for (i = 0; i < num; i++)
+	libs = get_libs(m, m->dir, true, get_or_compile_info);
+	for (i = 0; libs[i]; i++)
 		ret = talloc_asprintf_append(ret, "-l%s ", libs[i]);
 	return ret;
 }

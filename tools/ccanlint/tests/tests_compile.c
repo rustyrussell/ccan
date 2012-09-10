@@ -54,12 +54,12 @@ char *test_obj_list(const struct manifest *m, bool link_with_module,
 
 char *lib_list(const struct manifest *m, enum compile_type ctype)
 {
-	unsigned int i, num;
-	char **libs = get_libs(m, m->dir, &num,
-			       &m->info_file->compiled[ctype]);
+	unsigned int i;
+	char **libs;
 	char *ret = talloc_strdup(m, "");
 
-	for (i = 0; i < num; i++)
+	libs = get_libs(m, m->dir, true, get_or_compile_info);
+	for (i = 0; libs[i]; i++)
 		ret = talloc_asprintf_append(ret, "-l%s ", libs[i]);
 	return ret;
 }

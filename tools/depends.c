@@ -214,23 +214,55 @@ get_all_deps(const void *ctx, const char *dir,
 	return deps;
 }
 
-char **get_libs(const void *ctx, const char *dir,
-		unsigned int *num, char **infofile)
+/* Can return NULL: _info may not support 'libs'. */
+static char **get_one_libs(const void *ctx, const char *dir,
+			   char *(*get_info)(const void *ctx, const char *dir))
 {
-	char **libs, *cmd;
+	char *cmd, **lines;
 
-	if (!*infofile) {
-		*infofile = compile_info(ctx, dir);
-		if (!*infofile)
-			errx(1, "Could not compile _info for '%s'", dir);
+	cmd = talloc_asprintf(ctx, "%s libs", get_info(ctx, dir));
+	lines = lines_from_cmd(cmd, "%s", cmd);
+	/* Strip final NULL. */
+	if (lines)
+		lines = talloc_realloc(NULL, lines, char *,
+				       talloc_array_length(lines)-1);
+	return lines;
+}
+
+char **get_libs(const void *ctx, const char *dir, bool recurse,
+		char *(*get_info)(const void *ctx, const char *dir))
+{
+	char **deps, **libs;
+	unsigned int i, len;
+
+	libs = get_one_libs(ctx, dir, get_info);
+	len = talloc_array_length(libs);
+
+	if (recurse) {
+		deps = get_deps(ctx, dir, true, get_info);
+		for (i = 0; deps[i]; i++) {
+			char **newlibs, *subdir;
+			size_t newlen;
+
+			if (!strstarts(deps[i], "ccan/"))
+				continue;
+
+			subdir = talloc_asprintf(ctx, "%s/%s",
+						 talloc_dirname(ctx, dir),
+						 deps[i] + strlen("ccan/"));
+
+			newlibs = get_one_libs(ctx, subdir, get_info);
+			newlen = talloc_array_length(newlibs);
+			libs = talloc_realloc(ctx, libs, char *, len + newlen);
+			memcpy(&libs[len], newlibs,
+			       sizeof(newlibs[0])*newlen);
+			len += newlen;
+		}
 	}
 
-	cmd = talloc_asprintf(ctx, "%s libs", *infofile);
-	libs = lines_from_cmd(cmd, "%s", cmd);
-	if (!libs)
-		err(1, "Could not run '%s'", cmd);
-	/* FIXME: Do we need num arg? */
-	*num = talloc_array_length(libs) - 1;
+	/* Append NULL entry. */
+	libs = talloc_realloc(ctx, libs, char *, len + 1);
+	libs[len] = NULL;
 	return libs;
 }
 

@@ -30,8 +30,8 @@ char **get_deps(const void *ctx, const char *dir, bool recurse,
 char **get_safe_ccan_deps(const void *ctx, const char *dir, bool recurse);
 
 /* This also needs to compile the info file. */
-char **get_libs(const void *ctx, const char *dir,
-		unsigned int *num, char **infofile);
+char **get_libs(const void *ctx, const char *dir, bool recurse,
+		char *(*get_info)(const void *ctx, const char *dir));
 
 /* From tools.c */
 /* If set, print all commands run, all output they give and exit status. */
