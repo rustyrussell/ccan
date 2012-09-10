@@ -121,6 +121,9 @@ static struct htable_option *get_config_options(struct manifest *m)
 		/* Don't override endian... */
 		if (strends(sym, "_ENDIAN"))
 			continue;
+		/* Don't override HAVE_STRUCT_TIMESPEC. */
+		if (streq(sym, "HAVE_STRUCT_TIMESPEC"))
+			continue;
 		if (!get_token(&lines[i], "1"))
 			continue;
 		htable_option_add(opts, sym);
