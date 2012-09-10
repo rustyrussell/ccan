@@ -71,11 +71,11 @@ static void add_dep(struct manifest ***deps, const char *basename)
 	}
 }
 
-static char *example_obj_list(struct manifest *m, struct ccan_file *f)
+static struct manifest **get_example_deps(struct manifest *m,
+					  struct ccan_file *f)
 {
+	char **lines;
 	struct manifest **deps = talloc_array(f, struct manifest *, 0);
-	char **lines, *list;
-	unsigned int i;
 
 	/* This one for a start. */
 	add_dep(&deps, m->basename);
@@ -94,8 +94,15 @@ static char *example_obj_list(struct manifest *m, struct ccan_file *f)
 		}
 	}
 
-	list = talloc_strdup(f, "");
-	for (i = 0; i < talloc_get_size(deps) / sizeof(*deps); i++) {
+	return deps;
+}
+
+static char *example_obj_list(const void *ctx, struct manifest **deps)
+{
+	char *list = talloc_strdup(ctx, "");
+	unsigned int i;
+
+	for (i = 0; i < talloc_array_length(deps); i++) {
 		if (deps[i]->compiled[COMPILE_NORMAL])
 			list = talloc_asprintf_append(list, " %s",
 						      deps[i]->compiled
@@ -104,29 +111,35 @@ static char *example_obj_list(struct manifest *m, struct ccan_file *f)
 	return list;
 }
 
-/* FIXME: Test with reduced features! */
-static char *lib_list(const struct manifest *m)
+static char *example_lib_list(const void *ctx, struct manifest **deps)
 {
-	unsigned int i;
+	char *list = talloc_strdup(ctx, "");
 	char **libs;
-	char *ret = talloc_strdup(m, "");
+	unsigned int i, j;
 
-	libs = get_libs(m, m->dir, true, get_or_compile_info);
-	for (i = 0; libs[i]; i++)
-		ret = talloc_asprintf_append(ret, "-l%s ", libs[i]);
-	return ret;
+	/* FIXME: This doesn't uniquify. */
+	for (i = 0; i < talloc_array_length(deps); i++) {
+		libs = get_libs(ctx, deps[i]->dir, false, get_or_compile_info);
+		for (j = 0; libs[j]; j++)
+			list = talloc_asprintf_append(list, "-l%s ", libs[j]);
+	}
+	return list;
 }
 
+/* FIXME: Test with reduced features! */
 static bool compile(const void *ctx,
 		    struct manifest *m,
 		    struct ccan_file *file,
 		    char **output)
 {
+	struct manifest **deps = get_example_deps(m, file);
+
 	file->compiled[COMPILE_NORMAL] = temp_file(ctx, "", file->fullname);
 	if (!compile_and_link(ctx, file->fullname, ccan_dir,
-			      example_obj_list(m, file),
+			      example_obj_list(file, deps),
 			      compiler, cflags,
-			      lib_list(m), file->compiled[COMPILE_NORMAL],
+			      example_lib_list(file, deps),
+			      file->compiled[COMPILE_NORMAL],
 			      output)) {
 		/* Don't keep failures, even with --keep */
 		unlink(file->compiled[COMPILE_NORMAL]);
