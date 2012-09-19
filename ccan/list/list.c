@@ -1,4 +1,4 @@
-/* Licensed under LGPLv2.1+ - see LICENSE file for details */
+/* Licensed under BSD-MIT - see LICENSE file for details */
 #include <stdio.h>
 #include <stdlib.h>
 #include "list.h"
