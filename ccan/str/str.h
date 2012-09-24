@@ -4,6 +4,7 @@
 #include "config.h"
 #include <string.h>
 #include <stdbool.h>
+#include <limits.h>
 #include <ctype.h>
 
 /**
@@ -71,6 +72,33 @@ static inline bool strends(const char *str, const char *postfix)
  *      i = strcount("aaa aaa", "aa"); // i = 2;
  */
 size_t strcount(const char *haystack, const char *needle);
+
+/**
+ * STR_MAX_CHARS - Maximum possible size of numeric string for this type.
+ * @type_or_expr: a pointer or integer type or expression.
+ *
+ * This provides enough space for a nul-terminated string which represents the
+ * largest possible value for the type or expression.
+ *
+ * Note: The implementation adds extra space so hex values or negative
+ * values will fit (eg. sprintf(... "%p"). )
+ *
+ * Example:
+ *	char str[STR_MAX_CHARS(i)];
+ *
+ *	sprintf(str, "%i", i);
+ */
+#define STR_MAX_CHARS(type_or_expr)				\
+	((sizeof(type_or_expr) * CHAR_BIT + 8) / 9 * 3 + 2	\
+	 + STR_MAX_CHARS_TCHECK_(type_or_expr))
+
+#if HAVE_TYPEOF
+/* Only a simple type can have 0 assigned, so test that. */
+#define STR_MAX_CHARS_TCHECK_(type_or_expr)		\
+	({ typeof(type_or_expr) x = 0; (void)x; 0; })
+#else
+#define STR_MAX_CHARS_TCHECK_(type_or_expr) 0
+#endif
 
 /**
  * cisalnum - isalnum() which takes a char (and doesn't accept EOF)
