@@ -56,3 +56,43 @@ void failtest_setup(int argc, char *argv[])
 	rfc822_set_allocation_failure_handler(allocation_failure_continue);
 	talloc_set_allocator(malloc_wrapper, free_wrapper, realloc_wrapper);
 }
+
+void check_header(struct rfc822_msg *msg, struct rfc822_header *h,
+		  const char *name, const char *val,
+		  int crlf)
+{
+	struct bytestring hname, hvalue, hfull;
+	size_t namelen = strlen(name);
+	size_t valuelen = strlen(val);
+	size_t nln = crlf ? 2 : 1;
+	size_t fulllen = namelen + valuelen + 1 + nln;
+
+	ok(rfc822_header_errors(msg, h) == 0, "Header valid");
+	allocation_failure_check();
+
+	hname = rfc822_header_raw_name(msg, h);
+	allocation_failure_check();
+
+	ok(hname.ptr && bytestring_eq(hname, bytestring_from_string(name)),
+	   "Header name \"%.*s\"", (int)hname.len, hname.ptr);
+
+	hvalue = rfc822_header_raw_value(msg, h);
+	allocation_failure_check();
+
+	ok(hvalue.ptr && ((valuelen + nln) == hvalue.len)
+	   && (memcmp(val, hvalue.ptr, valuelen) == 0)
+	   && (!crlf || (hvalue.ptr[hvalue.len - 2] == '\r'))
+	   && (hvalue.ptr[hvalue.len - 1] == '\n'),
+	   "Header value");
+
+	hfull = rfc822_header_raw_content(msg, h);
+	allocation_failure_check();
+
+	ok(hfull.ptr && (fulllen == hfull.len)
+	   && (memcmp(name, hfull.ptr, namelen) == 0)
+	   && (hfull.ptr[namelen] == ':')
+	   && (memcmp(val, hfull.ptr + namelen + 1, valuelen) == 0)
+	   && (!crlf || (hfull.ptr[fulllen-2] == '\r'))
+	   && (hfull.ptr[fulllen-1] == '\n'),
+	   "Full header");
+}
