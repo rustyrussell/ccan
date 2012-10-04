@@ -40,7 +40,7 @@ static bool bad_name(const char *buf, char c)
 
 	allocation_failure_check();
 
-	ok1(!(errs & ~RFC822_HDR_BAD_NAME));
+	ok1(!(errs & ~RFC822_HDR_BAD_NAME_CHARS));
 
 	/* Check raw_name still works properly */
 	hname = rfc822_header_raw_name(msg, hdr);
@@ -55,7 +55,7 @@ static bool bad_name(const char *buf, char c)
 
 	allocation_failure_check();
 
-	return !!(errs & RFC822_HDR_BAD_NAME);
+	return !!(errs & RFC822_HDR_BAD_NAME_CHARS);
 }
 
 int main(int argc, char *argv[])

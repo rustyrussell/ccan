@@ -117,7 +117,7 @@ struct bytestring rfc822_body(struct rfc822_msg *msg);
 
 enum rfc822_header_errors {
 	RFC822_HDR_NO_COLON = 1,
-	RFC822_HDR_BAD_NAME = 2,
+	RFC822_HDR_BAD_NAME_CHARS = 2,
 };
 
 enum rfc822_header_errors rfc822_header_errors(struct rfc822_msg *msg,

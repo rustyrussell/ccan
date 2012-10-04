@@ -257,7 +257,7 @@ enum rfc822_header_errors rfc822_header_errors(struct rfc822_msg *msg,
 			assert(c != ':');
 
 			if ((c < 33) || (c > 126)) {
-				err |= RFC822_HDR_BAD_NAME;
+				err |= RFC822_HDR_BAD_NAME_CHARS;
 				break;
 			}
 		}
