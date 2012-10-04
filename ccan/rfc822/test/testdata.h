@@ -7,6 +7,7 @@
 
 struct testhdr {
 	const char *name, *val;
+	enum rfc822_header_errors errors;
 };
 
 struct aexample {
@@ -57,11 +58,23 @@ AEXAMPLE(test_msg_nlnl_mixed);
 const char test_msg_space_body_body[] = " Message with LWS at start of body\n";
 AEXAMPLE(test_msg_space_body);
 
+struct testhdr bad_hdrs_hdrs[] = {
+	{"From", "Mister From <from@example.com>"},
+	{"To", "Mizz To <to@example.org>"},
+	{"X-Bad-\bName", "This header field has bad characters in the name",
+		 .errors = RFC822_HDR_BAD_NAME_CHARS},
+	{"Subject", "Some subject"},
+	{"Message-ID", "<20110221131559.GA28327@example>"},
+};
+#define bad_hdrs_body test_msg_1_body
+AEXAMPLE(bad_hdrs)
+
 #define for_each_aexample(_e)				     \
 	foreach_ptr((_e), &test_msg_1, &test_msg_empty_body, \
 		    &test_msg_nlnl_lf, &test_msg_nlnl_crlf, \
 		    &test_msg_nlnl_mixed, \
-		    &test_msg_space_body)
+		    &test_msg_space_body, \
+		    &bad_hdrs)
 
 #define for_each_aexample_buf(_e, _buf, _len)	\
 	for_each_aexample((_e)) 		\

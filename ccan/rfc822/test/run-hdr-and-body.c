@@ -23,7 +23,8 @@
 			if (!(_h)) \
 				break; \
 			check_header((_msg), (_h), (_e)->hdrs[_i].name,	\
-				     (_e)->hdrs[_i].val, crlf); \
+				     (_e)->hdrs[_i].val,		\
+				     (_e)->hdrs[_i].errors, crlf);	\
 		} \
 	} while (0)
 

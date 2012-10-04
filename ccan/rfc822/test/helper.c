@@ -57,17 +57,20 @@ void failtest_setup(int argc, char *argv[])
 	talloc_set_allocator(malloc_wrapper, free_wrapper, realloc_wrapper);
 }
 
-void check_header(struct rfc822_msg *msg, struct rfc822_header *h,
+void check_header(struct rfc822_msg *msg,
+		  struct rfc822_header *h,
 		  const char *name, const char *val,
-		  int crlf)
+		  enum rfc822_header_errors experr, int crlf)
 {
+	enum rfc822_header_errors errs;
 	struct bytestring hname, hvalue, hfull;
 	size_t namelen = strlen(name);
 	size_t valuelen = strlen(val);
 	size_t nln = crlf ? 2 : 1;
 	size_t fulllen = namelen + valuelen + 1 + nln;
 
-	ok(rfc822_header_errors(msg, h) == 0, "Header valid");
+	errs = rfc822_header_errors(msg, h);
+	ok(errs == experr, "Header errors 0x%x != 0x%x", errs, experr);
 	allocation_failure_check();
 
 	hname = rfc822_header_raw_name(msg, h);
