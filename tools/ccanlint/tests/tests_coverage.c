@@ -60,13 +60,19 @@ static void analyze_coverage(struct manifest *m, bool full_gcov,
 	bool lines_matter = false;
 
 	/*
-	  Output looks like:
+	  Output looks like: (gcov 4.6.3)
 	   File '../../../ccan/tdb2/private.h'
 	   Lines executed:0.00% of 8
 	   /home/ccan/ccan/tdb2/test/run-simple-delete.c:creating 'run-simple-delete.c.gcov'
 
 	   File '../../../ccan/tdb2/tdb.c'
 	   Lines executed:0.00% of 450
+
+	 For gcov 4.7.2:
+
+	   File '/home/dwg/src/ccan/ccan/rfc822/test/run-check-check.c'
+	   Lines executed:100.00% of 19
+	   Creating 'run-check-check.c.gcov'
 	*/
 
 	for (i = 0; lines[i]; i++) {
@@ -86,7 +92,9 @@ static void analyze_coverage(struct manifest *m, bool full_gcov,
 				errx(1, "Could not parse line '%s'", lines[i]);
 			total_lines += of;
 			covered_lines += ex / 100.0 * of;
-		} else if (full_gcov && strstr(lines[i], ":creating '")) {
+		} else if (full_gcov
+			   && (strstr(lines[i], ":creating '")
+			       || strstarts(lines[i], "Creating '"))) {
 			char *file, *filename, *apostrophe;
 			apostrophe = strchr(lines[i], '\'');
 			filename = apostrophe + 1;
