@@ -350,3 +350,49 @@ struct bytestring rfc822_header_unfolded_value(struct rfc822_msg *msg,
 
 	return hdr->unfolded;
 }
+
+/* Specifically locale *un*aware tolower() - headers should be ascii
+ * only, and if they're not best to leave them as is */
+static char xtolower(char c)
+{
+	if ((c >= 'A') && (c <= 'Z'))
+		return 'a' + (c - 'A');
+	else
+		return c;
+}
+
+static bool hdr_name_eq(struct bytestring a, struct bytestring b)
+{
+	int i;
+
+	if (a.len != b.len)
+		return false;
+
+	for (i = 0; i < a.len; i++)
+		if (xtolower(a.ptr[i]) != xtolower(b.ptr[i]))
+			return false;
+
+	return true;
+}
+
+bool rfc822_header_is(struct rfc822_msg *msg, struct rfc822_header *hdr,
+		      const char *name)
+{
+	struct bytestring hname = rfc822_header_raw_name(msg, hdr);
+
+	if (!hname.ptr || !name)
+		return false;
+
+	return hdr_name_eq(hname, bytestring_from_string(name));
+}
+
+struct rfc822_header *rfc822_next_header_of_name(struct rfc822_msg *msg,
+						 struct rfc822_header *hdr,
+						 const char *name)
+{
+	do {
+		hdr = rfc822_next_header(msg, hdr);
+	} while (hdr && !rfc822_header_is(msg, hdr, name));
+
+	return hdr;
+}

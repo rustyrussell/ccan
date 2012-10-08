@@ -7,6 +7,7 @@
 
 struct testhdr {
 	const char *name, *val;
+	int index, last;
 	enum rfc822_header_errors errors;
 };
 
@@ -69,12 +70,31 @@ struct testhdr bad_hdrs_hdrs[] = {
 #define bad_hdrs_body test_msg_1_body
 AEXAMPLE(bad_hdrs)
 
+struct testhdr repeated_hdrs_1_hdrs[] = {
+	{"X-Repeated-Header", "#1", 0, 4},
+	{"x-repeated-header", "#2", 1, 4},
+	{"X-REPEATED-HEADER", "#3", 2, 4},
+	{"x-rEpEaTeD-hEaDeR", "#4", 3, 4},
+	{"X-Repeated-Header", "#5", 4, 4},
+};
+#define repeated_hdrs_1_body test_msg_1_body
+AEXAMPLE(repeated_hdrs_1);
+
+struct testhdr prefix_hdr_hdrs[] = {
+	{"X-Prefix", "Prefix", 0},
+	{"X-Prefix-and-Suffix", "Suffix", 0},
+};
+#define prefix_hdr_body test_msg_1_body
+AEXAMPLE(prefix_hdr);
+
 #define for_each_aexample(_e)				     \
 	foreach_ptr((_e), &test_msg_1, &test_msg_empty_body, \
 		    &test_msg_nlnl_lf, &test_msg_nlnl_crlf, \
 		    &test_msg_nlnl_mixed, \
 		    &test_msg_space_body, \
-		    &bad_hdrs)
+		    &bad_hdrs,		  \
+		    &repeated_hdrs_1,	  \
+		    &prefix_hdr)
 
 #define for_each_aexample_buf(_e, _buf, _len)	\
 	for_each_aexample((_e)) 		\

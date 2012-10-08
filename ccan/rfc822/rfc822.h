@@ -168,4 +168,23 @@ struct bytestring rfc822_header_raw_value(struct rfc822_msg *msg,
 struct bytestring rfc822_header_unfolded_value(struct rfc822_msg *msg,
 					       struct rfc822_header *hdr);
 
+/**
+ * rfc822_header_is - determine if a header is of a given name
+ * @msg: message
+ * @hdr: a header handle
+ * @name: header name
+ *
+ * This returns true if the header field @hdr has name @name (case
+ * insensitive), otherwise false.
+ */
+bool rfc822_header_is(struct rfc822_msg *msg, struct rfc822_header *hdr,
+		      const char *name);
+
+struct rfc822_header *rfc822_next_header_of_name(struct rfc822_msg *msg,
+						 struct rfc822_header *hdr,
+						 const char *name);
+
+#define rfc822_first_header_of_name(_msg, _name) \
+	(rfc822_next_header_of_name((_msg), NULL, (_name)))
+
 #endif /* CCAN_RFC822_H_ */

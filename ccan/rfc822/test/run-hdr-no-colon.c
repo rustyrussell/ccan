@@ -29,7 +29,7 @@ static void test_no_colon(const char *buf, size_t len)
 	struct rfc822_header *hdr;
 	struct bytestring hfull;
 
-	plan_tests(3);
+	plan_tests(6);
 
 	msg = rfc822_start(NULL, buf, len);
 
@@ -46,6 +46,10 @@ static void test_no_colon(const char *buf, size_t len)
 
 	ok(hdr && (rfc822_header_errors(msg, hdr) == RFC822_HDR_NO_COLON),
 	   "Second header invalid");
+
+	ok1(hdr && !rfc822_header_is(msg, hdr, NULL));
+	ok1(hdr && !rfc822_header_is(msg, hdr, ""));
+	ok1(hdr && !rfc822_header_is(msg, hdr, NO_COLON_STR));
 
 	hfull = rfc822_header_raw_content(msg, hdr);
 	allocation_failure_check();
