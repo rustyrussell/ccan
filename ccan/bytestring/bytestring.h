@@ -62,6 +62,8 @@ static inline struct bytestring bytestring(const char *p, size_t l)
  */
 static inline struct bytestring bytestring_from_string(const char *s)
 {
+	if (!s)
+		return bytestring_NULL;
 	return bytestring(s, strlen(s));
 }
 
