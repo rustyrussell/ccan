@@ -180,11 +180,10 @@ struct bytestring rfc822_header_unfolded_value(struct rfc822_msg *msg,
 bool rfc822_header_is(struct rfc822_msg *msg, struct rfc822_header *hdr,
 		      const char *name);
 
+struct rfc822_header *rfc822_first_header_of_name(struct rfc822_msg *msg,
+						  const char *name);
 struct rfc822_header *rfc822_next_header_of_name(struct rfc822_msg *msg,
 						 struct rfc822_header *hdr,
 						 const char *name);
-
-#define rfc822_first_header_of_name(_msg, _name) \
-	(rfc822_next_header_of_name((_msg), NULL, (_name)))
 
 #endif /* CCAN_RFC822_H_ */

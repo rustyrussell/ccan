@@ -57,10 +57,18 @@ void rfc822_set_allocation_failure_handler(void (*h)(const char *))
 		} \
 	} while (0)
 
+/*
+ * No real point doing fancy resizing hashes, when any given mail
+ * message is unlikely to have more than a fairly small number of
+ * distinct header types.  This should be ample.
+ */
+#define INDEX_HASH_SIZE		63
+
 struct rfc822_msg {
 	const char *data, *end;
 	const char *remainder;
 	struct list_head headers;
+	struct list_head header_index[INDEX_HASH_SIZE];
 	const char *body;
 };
 
@@ -68,6 +76,14 @@ struct rfc822_header {
 	struct bytestring all, rawname, rawvalue;
 	struct bytestring unfolded;
 	struct list_node list;
+	struct rfc822_header *name_next;
+};
+
+struct rfc822_headers_of_name {
+	struct bytestring name;
+	struct rfc822_header *first;
+	struct rfc822_header **lastptr;
+	struct list_node bucket;
 };
 
 struct rfc822_msg *rfc822_check(const struct rfc822_msg *msg,
@@ -88,6 +104,7 @@ struct rfc822_msg *rfc822_check(const struct rfc822_msg *msg,
 struct rfc822_msg *rfc822_start(const void *ctx, const char *p, size_t len)
 {
 	struct rfc822_msg *msg;
+	int i;
 
 	msg = talloc(ctx, struct rfc822_msg);
 	ALLOC_CHECK(msg, NULL);
@@ -99,6 +116,9 @@ struct rfc822_msg *rfc822_start(const void *ctx, const char *p, size_t len)
 	msg->body = NULL;
 
 	list_head_init(&msg->headers);
+
+	for (i = 0; i < INDEX_HASH_SIZE; i++)
+		list_head_init(&msg->header_index[i]);
 
 	CHECK(msg, "<rfc22_start");
 
@@ -136,6 +156,9 @@ static const char *next_line(const char *start, const char *end)
 
 	return p ? (p + 1) : end;
 }
+
+static struct rfc822_header *index_header(struct rfc822_msg *msg,
+					  struct rfc822_header *hdr);
 
 static struct rfc822_header *next_header_parse(struct rfc822_msg *msg)
 {
@@ -194,7 +217,7 @@ static struct rfc822_header *next_header_parse(struct rfc822_msg *msg)
 
 	CHECK(msg, "<next_header_parse");
 
-	return hi;
+	return index_header(msg, hi);
 }
 
 struct rfc822_header *rfc822_next_header(struct rfc822_msg *msg,
@@ -386,13 +409,95 @@ bool rfc822_header_is(struct rfc822_msg *msg, struct rfc822_header *hdr,
 	return hdr_name_eq(hname, bytestring_from_string(name));
 }
 
+static unsigned headerhash(struct bytestring name)
+{
+	/*
+	 * This is stolen from hash_string() in ccan/hash, but adapted
+	 * to add the xtolower() call and use a bytestring
+	 */
+	unsigned ret = 0;
+	size_t i;
+
+	for (i = 0; i < name.len; i++)
+		ret = (ret << 5) - ret + xtolower(name.ptr[i]);
+
+	return ret % INDEX_HASH_SIZE;
+}
+
+static struct rfc822_headers_of_name *headers_of_name(struct rfc822_msg *msg,
+						      struct bytestring name)
+{
+	unsigned hash = headerhash(name);
+	struct rfc822_headers_of_name *hn;
+
+	list_for_each(&msg->header_index[hash], hn, bucket) {
+		if (hdr_name_eq(hn->name, name))
+			return hn;
+	}
+
+	return NULL;
+}
+
+static struct rfc822_header *index_header(struct rfc822_msg *msg,
+					  struct rfc822_header *hdr)
+{
+	struct bytestring hname = rfc822_header_raw_name(msg, hdr);
+	struct rfc822_headers_of_name *hn = headers_of_name(msg, hname);
+
+	if (!hn) {
+		unsigned hash = headerhash(hname);
+
+		hn = talloc_zero(msg, struct rfc822_headers_of_name);
+		ALLOC_CHECK(hn, NULL);
+
+		hn->name = hname;
+		hn->first = NULL;
+		hn->lastptr = &hn->first;
+		list_add_tail(&msg->header_index[hash], &hn->bucket);
+	}
+
+	hdr->name_next = NULL;
+	*(hn->lastptr) = hdr;
+	hn->lastptr = &hdr->name_next;
+	return hdr;
+}
+
+struct rfc822_header *rfc822_first_header_of_name(struct rfc822_msg *msg,
+						  const char *name)
+{
+	struct bytestring namebs = bytestring_from_string(name);
+	struct rfc822_headers_of_name *hn = headers_of_name(msg, namebs);
+	struct rfc822_header *hdr;
+
+	if (hn)
+		return hn->first;
+
+	do {
+		hdr = next_header_parse(msg);
+		if (hdr && rfc822_header_is(msg, hdr, name))
+			return hdr;
+	} while (hdr);
+
+	return NULL;
+}
+
 struct rfc822_header *rfc822_next_header_of_name(struct rfc822_msg *msg,
 						 struct rfc822_header *hdr,
 						 const char *name)
 {
-	do {
-		hdr = rfc822_next_header(msg, hdr);
-	} while (hdr && !rfc822_header_is(msg, hdr, name));
+	if (!hdr)
+		return rfc822_first_header_of_name(msg, name);
 
-	return hdr;
+	if (hdr->name_next) {
+		assert(rfc822_header_is(msg, hdr->name_next, name));
+		return hdr->name_next;
+	}
+
+	do {
+		hdr = next_header_parse(msg);
+		if (hdr && rfc822_header_is(msg, hdr, name))
+			return hdr;
+	} while (hdr);
+
+	return NULL;
 }
