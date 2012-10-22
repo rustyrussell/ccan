@@ -675,8 +675,6 @@ int main(int argc, char *argv[])
 	}
 
 	for (i = 1; i < argc; i++) {
-		unsigned int score, total_score;
-
 		dir = argv[i];
 
 		if (dir[0] != '/')
@@ -709,7 +707,6 @@ int main(int argc, char *argv[])
 		if (symlink(talloc_asprintf(m, "%s/test", dir), testlink) != 0)
 			err(1, "Creating test symlink in %s", temp_dir(NULL));
 
-		score = total_score = 0;
 		if (!run_tests(&all, summary, m, prefix))
 			pass = false;
 
