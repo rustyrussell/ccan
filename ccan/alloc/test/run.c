@@ -162,6 +162,7 @@ static void test(unsigned int pool_size)
 	ok1(alloc_check(mem, pool_size));
 
 	free(mem);
+	free(p);
 }
 
 int main(int argc, char *argv[])
