@@ -37,8 +37,7 @@ int main(int argc, char *argv[])
 	double d;
 
 	/* Make sure we use all the variables. */
-	c = 0;
-	c2 = c3 = c4 = c;
+	c = c2 = c3 = c4 = 0;
 
 	plan_tests(15);
 	ok1((unsigned long)&c % ALIGNOF(char) == 0);
