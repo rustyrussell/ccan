@@ -334,6 +334,7 @@ static inline struct timespec time_from_nsec(uint64_t nsec)
  *	struct timeval tv;
  *
  *	tv = timespec_to_timeval(time_now());
+ *	printf("time = %lu.%06u\n", (long)tv.tv_sec, (int)tv.tv_usec);
  */
 static inline struct timeval timespec_to_timeval(struct timespec ts)
 {
@@ -352,6 +353,7 @@ static inline struct timeval timespec_to_timeval(struct timespec ts)
  *	struct timespec ts;
  *
  *	ts = timeval_to_timespec(tv);
+ *	printf("timespec = %lu.%09lu\n", (long)ts.tv_sec, (long)ts.tv_nsec);
  */
 static inline struct timespec timeval_to_timespec(struct timeval tv)
 {
