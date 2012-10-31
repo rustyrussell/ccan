@@ -242,7 +242,7 @@ void lbalance_task_free(struct lbalance_task *task,
  * are overloaded. */
 static unsigned int best_target(const struct lbalance *lb)
 {
-	unsigned int i, best = 0, found_drop = 0;
+	unsigned int i, found_drop = 0;
 	float best_f_max = -1.0, cliff = -1.0;
 
 #if 0
@@ -267,7 +267,6 @@ static unsigned int best_target(const struct lbalance *lb)
 #endif
 			best_f_max = f - (f / (i + 1)) / 4;
 			cliff = f - (f / (i + 1)) / 2;
-			best = i;
 			found_drop = 0;
 		} else if (!found_drop && f < cliff) {
 #if 0
