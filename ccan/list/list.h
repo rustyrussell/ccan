@@ -279,6 +279,8 @@ static inline void list_del_from(struct list_head *h, struct list_node *n)
  * Example:
  *	struct child *first;
  *	first = list_top(&parent->children, struct child, list);
+ *	if (!first)
+ *		printf("Empty list!\n");
  */
 #define list_top(h, type, member)					\
 	((type *)list_top_((h), list_off_(type, member)))
@@ -301,6 +303,8 @@ static inline const void *list_top_(const struct list_head *h, size_t off)
  * Example:
  *	struct child *last;
  *	last = list_tail(&parent->children, struct child, list);
+ *	if (!last)
+ *		printf("Empty list!\n");
  */
 #define list_tail(h, type, member) \
 	((type *)list_tail_((h), list_off_(type, member)))
