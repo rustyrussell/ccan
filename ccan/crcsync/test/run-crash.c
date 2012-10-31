@@ -14,7 +14,7 @@ typedef struct {
 	uint64_t *crcs;
 } crc_info_t;
 
-static void crcblocks(crc_info_t *crc_info, char *data, int datalen, int blocksize)
+static void crcblocks(crc_info_t *crc_info, const char *data, int datalen, int blocksize)
 {
 	crc_info->block_count = (datalen+blocksize-1)/blocksize;
 	crc_info->crcs = malloc(sizeof(uint64_t)*(crc_info->block_count + 1));
@@ -26,11 +26,11 @@ static void crcblocks(crc_info_t *crc_info, char *data, int datalen, int blocksi
 int main(int argc, char *argv[])
 {
 	/* Divided into BLOCKSIZE blocks */
-	char *data1 =
+	const char *data1 =
 		"abcde" "fghij" "klmno" "pqrst" "uvwxy" "z ABC"
 		"DEFGH" "IJKLM" "NOPQR" "STUVW" "XYZ 0" "12345" "6789";
 	/* Divided into blocks that match. */
-	char *data2 =
+	const char *data2 =
 		/* NO MATCH */
 		"acde"
 		/* MATCH */
