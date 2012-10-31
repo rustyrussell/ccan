@@ -35,6 +35,9 @@ static const char *expected_link(enum license license)
 	case LICENSE_MIT:
 		return "../../licenses/BSD-MIT";
 
+	case LICENSE_CC0:
+		return "../../licenses/CC0";
+
 	default:
 		return NULL;
 	}

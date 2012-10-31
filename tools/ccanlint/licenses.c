@@ -65,6 +65,12 @@ const struct license_info licenses[] = {
 	    "without warranty"
 	  }
 	},
+	{ "CC0", "CC0",
+	  { "Waiver.",
+	    "unconditionally waives",
+	    NULL
+	  }
+	},
 	{ "Public domain", "Public domain",
 	  { NULL, NULL, NULL  }
 	},
@@ -75,33 +81,40 @@ const struct license_info licenses[] = {
 
 /* License compatibilty chart (simplified: we don't test that licenses between
  * files are compatible). */
+#define O true
+#define X false
 bool license_compatible[LICENSE_UNKNOWN+1][LICENSE_UNKNOWN] = {
-/*       LGPL2+ LGPL2 LGPL3 LGPL  GPL2+ GPL2  GPL3  GPL   BSD   MIT   PD   */
+/*     LGPL2+   LGPL3   GPL2+   GPL3     BSD     CC0
+            LGPL2    LGPL   GPL2     GPL     MIT     PD   */
 /* _info says: LGPL2+ */
-	{ true, false,false,true, false,false,false,false,true, true, true },
+	{ O,  X,  X,  O,  X,  X,  X,  X,  O,  O,  O,  O },
 /* _info says: LGPL2 only */
-	{ true, true, false,true, false,false,false,false,true, true, true },
+	{ O,  O,  X,  O,  X,  X,  X,  X,  O,  O,  O,  O },
 /* _info says: LGPL3 (or any later version) */
-	{ true, false,true, true, false,false,false,false,true, true, true },
+	{ O,  X,  O,  O,  X,  X,  X,  X,  O,  O,  O,  O },
 /* _info says: LGPL (no version specified) */
-	{ true, true, true, true, false,false,false,false,true, true, true },
+	{ O,  O,  O,  O,  X,  X,  X,  X,  O,  O,  O,  O },
 /* _info says: GPL2+ */
-	{ true, true, true, true, true, false,false,true, true, true, true },
+	{ O,  O,  O,  O,  O,  X,  X,  O,  O,  O,  O,  O },
 /* _info says: GPL2 only */
-	{ true, true, true, true, true, true, false,true, true, true, true },
+	{ O,  O,  O,  O,  O,  O,  X,  O,  O,  O,  O,  O },
 /* _info says: GPL3 (or any later version) */
-	{ true, true, true, true, true, false,true, true, true, true, true },
+	{ O,  O,  O,  O,  O,  X,  O,  O,  O,  O,  O,  O },
 /* _info says: GPL (unknown version) */
-	{ true, true, true, true, true, true, true, true, true, true, true },
+	{ O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O,  O },
 /* _info says: BSD (3-clause) */
-	{ false,false,false,false,false,false,false,false,true, true, true },
+	{ X,  X,  X,  X,  X,  X,  X,  X,  O,  O,  O,  O },
 /* _info says: MIT */
-	{ false,false,false,false,false,false,false,false,false,true, true },
+	{ X,  X,  X,  X,  X,  X,  X,  X,  X,  O,  O,  O },
+/* _info says: CC0 */
+	{ X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  O,  O },
 /* _info says: Public domain */
-	{ false,false,false,false,false,false,false,false,false,false,true },
+	{ X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  O,  O },
 /* _info says something we don't understand */
-	{ false,false,false,false,false,false,false,false,false,false,true }
+	{ X,  X,  X,  X,  X,  X,  X,  X,  X,  X,  O,  O }
 };
+#undef X
+#undef O
 
 /* See GPLv2 and v2 (basically same wording) for interpreting versions:
  * the "any later version" means the recepient can choose. */
@@ -140,6 +153,10 @@ enum license which_license(struct doc_section *d)
 		return LICENSE_MIT;
 	if (streq(d->lines[0], "BSD (3 clause)"))
 		return LICENSE_BSD;
+	if (streq(d->lines[0], "CC0"))
+		return LICENSE_CC0;
+	if (strreg(NULL, d->lines[0], "CC0 \\([Pp]ublic [Dd]omain\\)", NULL))
+		return LICENSE_CC0;
 	if (strreg(NULL, d->lines[0], "[Pp]ublic [Dd]omain"))
 		return LICENSE_PUBLIC_DOMAIN;
 
