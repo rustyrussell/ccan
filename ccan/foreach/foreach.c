@@ -144,10 +144,8 @@ int _foreach_intval_next(const void *i, int val, ...)
 
 void *_foreach_ptrval_init(const void *i, const void *val, ...)
 {
-	struct iter_info *info;
-
 	free_old_iters(i);
-	info = new_iter(i);
+	new_iter(i);
 
 	return (void *)val;
 }
