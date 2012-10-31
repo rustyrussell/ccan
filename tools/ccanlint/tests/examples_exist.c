@@ -19,7 +19,7 @@
 static char *add_example(struct manifest *m, struct ccan_file *source,
 			 struct doc_section *example)
 {
-	char *name;
+	char *name, *linemarker;
 	unsigned int i;
 	int fd;
 	struct ccan_file *f;
@@ -42,6 +42,11 @@ static char *add_example(struct manifest *m, struct ccan_file *source,
 	if (fd < 0)
 		return talloc_asprintf(m, "Creating temporary file %s: %s",
 				       f->fullname, strerror(errno));
+
+	/* Add #line to demark where we are from, so errors are correct! */
+	linemarker = talloc_asprintf(f, "#line %i \"%s\"\n",
+				     example->srcline+2, source->fullname);
+	write(fd, linemarker, strlen(linemarker));
 
 	for (i = 0; i < example->num_lines; i++) {
 		if (write(fd, example->lines[i], strlen(example->lines[i]))

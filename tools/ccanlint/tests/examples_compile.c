@@ -204,7 +204,8 @@ static bool looks_internal(char **lines, char **why)
 		const char *line = lines[i] + strspn(lines[i], " \t");
 		unsigned len = strspn(line, IDENT_CHARS);
 
-		if (!line[0] || cisspace(line[0]) || strstarts(line, "//"))
+		if (!line[0] || cisspace(line[0]) || strstarts(line, "//")
+		    || strstarts(line, "#line"))
 			continue;
 
 		assert(line[strlen(line)-1] != '\n');
