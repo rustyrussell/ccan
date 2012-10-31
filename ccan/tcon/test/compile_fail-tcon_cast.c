@@ -25,5 +25,5 @@ int main(int argc, char *argv[])
 
 	icon.raw.p = NULL;
 	x = tcon_cast(&icon, tc1, icon.raw.p);
-	return 0;
+	return x != NULL ? 0 : 1;
 }
