@@ -66,10 +66,9 @@ static inline bool strends(const char *str, const char *postfix)
  * @needle: a substring
  *
  * Example:
- *	int i;
- *      i = strcount("aaa aaa", "a");  // i = 6;
- *      i = strcount("aaa aaa", "ab"); // i = 0;
- *      i = strcount("aaa aaa", "aa"); // i = 2;
+ *      assert(strcount("aaa aaa", "a") == 6);
+ *      assert(strcount("aaa aaa", "ab") == 0);
+ *      assert(strcount("aaa aaa", "aa") == 2);
  */
 size_t strcount(const char *haystack, const char *needle);
 
@@ -84,9 +83,9 @@ size_t strcount(const char *haystack, const char *needle);
  * values will fit (eg. sprintf(... "%p"). )
  *
  * Example:
- *	char str[STR_MAX_CHARS(i)];
+ *	char str[STR_MAX_CHARS(int)];
  *
- *	sprintf(str, "%i", i);
+ *	sprintf(str, "%i", 7);
  */
 #define STR_MAX_CHARS(type_or_expr)				\
 	((sizeof(type_or_expr) * CHAR_BIT + 8) / 9 * 3 + 2	\
