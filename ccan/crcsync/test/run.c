@@ -285,5 +285,7 @@ int main(int argc, char *argv[])
 			  BLOCK_SIZE, res, num_res);
 	}
 
+	free(buffer1);
+	free(buffer2);
 	return exit_status();
 }

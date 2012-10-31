@@ -92,6 +92,7 @@ int main(int argc, char *argv[])
 		}
 	}
 	ok1(expected_i == ARRAY_SIZE(expected));
-	
+	crc_context_free(crcctx);
+	free(crc_info1.crcs);
 	return 0;
 }
