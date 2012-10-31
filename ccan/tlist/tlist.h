@@ -185,6 +185,8 @@
  * Example:
  *	struct child *first;
  *	first = tlist_top(&parent->children, list);
+ *	if (!first)
+ *		printf("Empty list!\n");
  */
 #define tlist_top(h, member)						\
 	((tcon_type((h), canary))					\
@@ -202,6 +204,8 @@
  * Example:
  *	struct child *last;
  *	last = tlist_tail(&parent->children, list);
+ *	if (!last)
+ *		printf("Empty list!\n");
  */
 #define tlist_tail(h, member)						\
 	((tcon_type((h), canary))					\
