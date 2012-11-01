@@ -1,3 +1,4 @@
+/* CC0 (Public domain) - see LICENSE file for details */
 /*
 -------------------------------------------------------------------------------
 lookup3.c, by Bob Jenkins, May 2006, Public Domain.
