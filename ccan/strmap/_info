@@ -9,7 +9,7 @@
  *  http://cr.yp.to/critbit.html
  *  http://github.com/agl/critbit (which this code is based on)
  *
- * License: Public domain (but some dependencies are LGPL!)
+ * License: CC0 (but some dependencies are LGPL!)
  * Author: Rusty Russell <rusty@rustcorp.com.au>
  * Ccanlint:
  *	license_depends_compat FAIL

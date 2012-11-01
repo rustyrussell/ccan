@@ -1,4 +1,5 @@
-/*Written by Timothy B. Terriberry (tterribe@xiph.org) 1999-2009 public domain.
+/*Written by Timothy B. Terriberry (tterribe@xiph.org) 1999-2009.
+  CC0 (Public domain) - see LICENSE file for details
   Based on the public domain implementation by Robert J. Jenkins Jr.*/
 #include <float.h>
 #include <math.h>

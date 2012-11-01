@@ -56,7 +56,7 @@
  *	// Given "foo" outputs "Last arg is foo of 1 arguments"
  *	// Given "foo bar" outputs "Last arg is bar of 2 arguments"
  *
- * License: Public domain
+ * License: CC0 (Public domain)
  *
  * Author: Rusty Russell <rusty@rustcorp.com.au>
  */

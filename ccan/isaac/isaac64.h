@@ -1,3 +1,4 @@
+/* CC0 (Public domain) - see LICENSE file for details */
 #if !defined(_isaac64_H)
 # define _isaac64_H (1)
 # include <stdint.h>

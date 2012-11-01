@@ -99,7 +99,7 @@
  *    return 0;
  *  }
  *
- * License: Public Domain
+ * License: CC0 (Public domain)
  * Ccanlint:
  *	// We actually depend on the LGPL ilog routines, so not PD :(
  *	license_depends_compat FAIL

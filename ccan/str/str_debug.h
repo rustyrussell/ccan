@@ -1,3 +1,4 @@
+/* CC0 (Public domain) - see LICENSE file for details */
 #ifndef CCAN_STR_DEBUG_H
 #define CCAN_STR_DEBUG_H
 

@@ -14,7 +14,7 @@
  * since they have to use sizeof() which can only distiguish between types of
  * different size.
  *
- * License: Public domain
+ * License: CC0 (Public domain)
  * Author: Rusty Russell <rusty@rustcorp.com.au>
  */
 int main(int argc, char *argv[])

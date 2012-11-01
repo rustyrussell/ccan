@@ -1,3 +1,4 @@
+/* CC0 (Public domain) - see LICENSE file for details */
 #ifndef NOERR_H
 #define NOERR_H
 #include <stdio.h>

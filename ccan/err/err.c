@@ -1,3 +1,4 @@
+/* CC0 (Public domain) - see LICENSE file for details */
 #include "err.h"
 
 #if !HAVE_ERR_H

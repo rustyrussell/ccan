@@ -33,7 +33,7 @@
  *		return (char *)foo;
  *	}
  *
- * License: Public domain
+ * License: CC0 (Public domain)
  * Author: Rusty Russell <rusty@rustcorp.com.au>
  */
 int main(int argc, char *argv[])

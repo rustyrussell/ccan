@@ -1,4 +1,4 @@
-/* Placed into the public domain */
+/* CC0 (Public domain) - see LICENSE file for details */
 #ifndef CCAN_TCON_H
 #define CCAN_TCON_H
 #include "config.h"

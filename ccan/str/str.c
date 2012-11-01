@@ -1,3 +1,4 @@
+/* CC0 (Public domain) - see LICENSE file for details */
 #include <ccan/str/str.h>
 
 size_t strcount(const char *haystack, const char *needle)

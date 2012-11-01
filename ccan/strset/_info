@@ -47,7 +47,7 @@
  *	// Given "foo bar" outputs "bar foo "
  *	// Given "foo foo bar" outputs "bar foo "
  *
- * License: Public domain (but some dependencies are LGPL!)
+ * License: CC0 (but some dependencies are LGPL!)
  * Author: Rusty Russell <rusty@rustcorp.com.au>
  * Ccanlint:
  *	license_depends_compat FAIL

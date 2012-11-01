@@ -1,3 +1,4 @@
+/* CC0 (Public domain) - see LICENSE file for details */
 #ifndef CCAN_SHORT_TYPES_H
 #define CCAN_SHORT_TYPES_H
 #include <stdint.h>

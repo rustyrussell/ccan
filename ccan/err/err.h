@@ -1,3 +1,4 @@
+/* CC0 (Public domain) - see LICENSE file for details */
 #ifndef CCAN_ERR_H
 #define CCAN_ERR_H
 #include "config.h"

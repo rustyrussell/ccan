@@ -1,3 +1,4 @@
+/* CC0 (Public domain) - see LICENSE file for details */
 #ifndef CCAN_CONTAINER_OF_H
 #define CCAN_CONTAINER_OF_H
 #include <stddef.h>

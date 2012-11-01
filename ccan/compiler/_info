@@ -21,7 +21,7 @@
  * - IS_COMPILE_CONSTANT()
  *	For using different tradeoffs for compiletime vs runtime evaluation.
  *
- * License: Public Domain
+ * License: CC0 (Public domain)
  * Author: Rusty Russell <rusty@rustcorp.com.au>
  *
  * Example:

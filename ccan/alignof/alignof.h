@@ -1,3 +1,4 @@
+/* CC0 (Public domain) - see LICENSE file for details */
 #ifndef CCAN_ALIGNOF_H
 #define CCAN_ALIGNOF_H
 #include "config.h"
