@@ -100,6 +100,10 @@ int main(int argc, char *argv[])
 	if (strcmp(argv[1], "depends") == 0) {
 		printf("ccan/compiler\n");
 		printf("ccan/typesafe_cb\n");
+		return 0;
+	}
+
+	if (strcmp(argv[1], "testdepends") == 0) {
 		printf("ccan/failtest\n");
 		return 0;
 	}
