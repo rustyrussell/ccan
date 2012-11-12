@@ -2,6 +2,7 @@
 #include <tools/tools.h>
 #include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
+#include <ccan/foreach/foreach.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -27,21 +28,27 @@ static void check_depends_built_without_features(struct manifest *m,
 						 unsigned int *timeleft,
 						 struct score *score)
 {
+	struct list_head *list;
 	struct manifest *i;
 	char *flags;
 
 	flags = talloc_asprintf(score, "%s %s", cflags,
 				REDUCE_FEATURES_FLAGS);
 
-	list_for_each(&m->deps, i, list) {
-		char *errstr = build_submodule(i, flags, COMPILE_NOFEAT);
+	foreach_ptr(list, &m->deps, &m->test_deps) {
+		list_for_each(list, i, list) {
+			char *errstr = build_submodule(i, flags,
+						       COMPILE_NOFEAT);
 
-		if (errstr) {
-			score->error = talloc_asprintf(score,
-						       "Dependency %s"
-						       " did not build:\n%s",
-						       i->basename, errstr);
-			return;
+			if (errstr) {
+				score->error = talloc_asprintf(score,
+							       "Dependency %s"
+							       " did not"
+							       " build:\n%s",
+							       i->basename,
+							       errstr);
+				return;
+			}
 		}
 	}
 

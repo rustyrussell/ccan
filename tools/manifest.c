@@ -237,6 +237,7 @@ struct manifest *get_manifest(const void *ctx, const char *dir)
 	list_head_init(&m->examples);
 	list_head_init(&m->mangled_examples);
 	list_head_init(&m->deps);
+	list_head_init(&m->test_deps);
 
 	len = strlen(m->dir);
 	while (len && m->dir[len-1] == '/')

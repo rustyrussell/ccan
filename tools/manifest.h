@@ -38,6 +38,7 @@ struct manifest {
 
 	/* From tests/check_depends_exist.c */
 	struct list_head deps;
+	struct list_head test_deps;
 
 	/* From tests/license_exists.c */
 	enum license license;

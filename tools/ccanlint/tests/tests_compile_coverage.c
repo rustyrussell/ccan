@@ -46,7 +46,7 @@ static void cov_compile(const void *ctx,
 					     COMPILE_NORMAL,
 					     COMPILE_COVERAGE),
 			       compiler, flags,
-			       lib_list(m, COMPILE_NORMAL),
+			       test_lib_list(m, COMPILE_NORMAL),
 			       file->compiled[COMPILE_COVERAGE]);
 }
 

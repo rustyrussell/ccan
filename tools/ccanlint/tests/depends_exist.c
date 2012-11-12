@@ -14,7 +14,20 @@
 #include <string.h>
 #include <ctype.h>
 
-static bool add_dep(struct manifest *m, const char *dep, struct score *score)
+static bool have_dep(struct manifest *m, const char *dep)
+{
+	struct manifest *i;
+
+	list_for_each(&m->deps, i, list)
+		if (streq(i->basename, dep + strlen("ccan/")))
+			return true;
+
+	return false;
+}
+
+static bool add_dep(struct manifest *m,
+		    struct list_head *deplist,
+		    const char *dep, struct score *score)
 {
 	struct stat st;
 	struct manifest *subm;
@@ -29,7 +42,7 @@ static bool add_dep(struct manifest *m, const char *dep, struct score *score)
 		return false;
 	}
 	subm = get_manifest(m, dir);
-	list_add_tail(&m->deps, &subm->list);
+	list_add_tail(deplist, &subm->list);
 	return true;
 }
 
@@ -39,20 +52,6 @@ static void check_depends_exist(struct manifest *m,
 {
 	unsigned int i;
 	char **deps;
-	char *updir = talloc_strdup(m, m->dir);
-	bool needs_tap;
-
-	if (strrchr(updir, '/'))
-		*strrchr(updir, '/') = '\0';
-
-	/* We may need libtap for testing, unless we're "tap" */
-	if (streq(m->basename, "tap")) {
-		needs_tap = false;
-	} else if (list_empty(&m->run_tests) && list_empty(&m->api_tests)) {
-		needs_tap = false;
-	} else {
-		needs_tap = true;
-	}
 
 	if (safe_mode)
 		deps = get_safe_ccan_deps(m, m->dir, "depends", true);
@@ -64,7 +63,44 @@ static void check_depends_exist(struct manifest *m,
 		if (!strstarts(deps[i], "ccan/"))
 			continue;
 
-		if (!add_dep(m, deps[i], score))
+		if (!add_dep(m, &m->deps, deps[i], score))
+			return;
+	}
+
+	score->pass = true;
+	score->score = score->total;
+}
+
+static void check_test_depends_exist(struct manifest *m,
+				     unsigned int *timeleft,
+				     struct score *score)
+{
+	unsigned int i;
+	char **deps;
+	bool needs_tap;
+
+	/* We may need libtap for testing, unless we're "tap" */
+	if (streq(m->basename, "tap")) {
+		needs_tap = false;
+	} else if (list_empty(&m->run_tests) && list_empty(&m->api_tests)) {
+		needs_tap = false;
+	} else {
+		needs_tap = true;
+	}
+
+	if (safe_mode)
+		deps = get_safe_ccan_deps(m, m->dir, "testdepends", true);
+	else
+		deps = get_deps(m, m->dir, "testdepends", true,
+				get_or_compile_info);
+
+	for (i = 0; deps[i]; i++) {
+		if (!strstarts(deps[i], "ccan/"))
+			continue;
+
+		/* Don't add dependency twice: we can only be on one list! */
+		if (!have_dep(m, deps[i])
+		    && !add_dep(m, &m->test_deps, deps[i], score))
 			return;
 
 		if (streq(deps[i], "ccan/tap")) {
@@ -72,7 +108,8 @@ static void check_depends_exist(struct manifest *m,
 		}
 	}
 
-	if (needs_tap && !add_dep(m, "ccan/tap", score)) {
+	if (needs_tap && !have_dep(m, "ccan/tap")
+	    && !add_dep(m, &m->test_deps, "ccan/tap", score)) {
 		return;
 	}
 
@@ -89,3 +126,13 @@ struct ccanlint depends_exist = {
 };
 
 REGISTER_TEST(depends_exist);
+
+struct ccanlint test_depends_exist = {
+	.key = "test_depends_exist",
+	.name = "Module's CCAN test dependencies can be found",
+	.compulsory = false,
+	.check = check_test_depends_exist,
+	.needs = "depends_exist"
+};
+
+REGISTER_TEST(test_depends_exist);

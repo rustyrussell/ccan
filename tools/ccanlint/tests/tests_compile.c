@@ -42,8 +42,15 @@ char *test_obj_list(const struct manifest *m, bool link_with_module,
 			list = talloc_asprintf_append(list, " %s",
 						      i->compiled[own_ctype]);
 
-	/* Other ccan modules. */
+	/* Other ccan modules (normal depends). */
 	list_for_each(&m->deps, subm, list) {
+		if (subm->compiled[ctype])
+			list = talloc_asprintf_append(list, " %s",
+						      subm->compiled[ctype]);
+	}
+
+	/* Other ccan modules (test depends). */
+	list_for_each(&m->test_deps, subm, list) {
 		if (subm->compiled[ctype])
 			list = talloc_asprintf_append(list, " %s",
 						      subm->compiled[ctype]);
@@ -52,13 +59,13 @@ char *test_obj_list(const struct manifest *m, bool link_with_module,
 	return list;
 }
 
-char *lib_list(const struct manifest *m, enum compile_type ctype)
+char *test_lib_list(const struct manifest *m, enum compile_type ctype)
 {
 	unsigned int i;
 	char **libs;
 	char *ret = talloc_strdup(m, "");
 
-	libs = get_libs(m, m->dir, "depends", get_or_compile_info);
+	libs = get_libs(m, m->dir, "testdepends", get_or_compile_info);
 	for (i = 0; libs[i]; i++)
 		ret = talloc_asprintf_append(ret, "-l%s ", libs[i]);
 	return ret;
@@ -84,7 +91,7 @@ static bool compile(const void *ctx,
 	if (!compile_and_link(ctx, file->fullname, ccan_dir,
 			      test_obj_list(m, link_with_module,
 					    ctype, ctype),
-			      compiler, flags, lib_list(m, ctype), fname,
+			      compiler, flags, test_lib_list(m, ctype), fname,
 			      output)) {
 		talloc_free(fname);
 		return false;
@@ -111,7 +118,7 @@ static void compile_async(const void *ctx,
 
 	compile_and_link_async(file, time_ms, file->fullname, ccan_dir,
 			       test_obj_list(m, link_with_module, ctype, ctype),
-			       compiler, flags, lib_list(m, ctype),
+			       compiler, flags, test_lib_list(m, ctype),
 			       file->compiled[ctype]);
 }
 

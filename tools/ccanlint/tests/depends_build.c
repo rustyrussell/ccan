@@ -1,6 +1,7 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
 #include <ccan/talloc/talloc.h>
+#include <ccan/foreach/foreach.h>
 #include <ccan/str/str.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -79,17 +80,24 @@ char *build_submodule(struct manifest *m, const char *flags,
 static void check_depends_built(struct manifest *m,
 				unsigned int *timeleft, struct score *score)
 {
-	struct manifest *i;
+	struct list_head *list;
 
-	list_for_each(&m->deps, i, list) {
-		char *errstr = build_submodule(i, cflags, COMPILE_NORMAL);
+	foreach_ptr(list, &m->deps, &m->test_deps) {
+		struct manifest *i;
+		list_for_each(list, i, list) {
+			char *errstr;
 
-		if (errstr) {
-			score->error = talloc_asprintf(score,
-						       "Dependency %s"
-						       " did not build:\n%s",
-						       i->basename, errstr);
-			return;
+			errstr = build_submodule(i, cflags, COMPILE_NORMAL);
+
+			if (errstr) {
+				score->error = talloc_asprintf(score,
+							       "Dependency %s"
+							       " did not"
+							       " build:\n%s",
+							       i->basename,
+							       errstr);
+				return;
+			}
 		}
 	}
 
@@ -102,7 +110,7 @@ struct ccanlint depends_build = {
 	.name = "Module's CCAN dependencies can be found or built",
 	.check = check_depends_built,
 	.can_run = can_build,
-	.needs = "depends_exist"
+	.needs = "depends_exist test_depends_exist"
 };
 
 REGISTER_TEST(depends_build);
