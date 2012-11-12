@@ -33,9 +33,6 @@
  *
  * License: LGPL (v2.1 or any later version)
  *
- * Ccanlint:
- *	// The failtest module is only used for tests: ccanlint is overzealous
- *	license_depends_compat FAIL
  */
 int main(int argc, char *argv[])
 {
@@ -44,13 +41,17 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
-		printf("ccan/array_size\n");
 		printf("ccan/talloc\n");
 		printf("ccan/list\n");
-		printf("ccan/foreach\n");
-		printf("ccan/failtest\n");
 		printf("ccan/str\n");
 		printf("ccan/bytestring\n");
+		return 0;
+	}
+
+	if (strcmp(argv[1], "testdepends") == 0) {
+		printf("ccan/failtest\n");
+		printf("ccan/foreach\n");
+		printf("ccan/array_size\n");
 		return 0;
 	}
 
