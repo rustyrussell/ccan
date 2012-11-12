@@ -23,11 +23,13 @@
 char *compile_info(const void *ctx, const char *dir);
 
 /* This actually compiles and runs the info file to get dependencies. */
-char **get_deps(const void *ctx, const char *dir, bool recurse,
+char **get_deps(const void *ctx, const char *dir, const char *style,
+		bool recurse,
 		char *(*get_info)(const void *ctx, const char *dir));
 
 /* This is safer: just looks for ccan/ strings in info */
-char **get_safe_ccan_deps(const void *ctx, const char *dir, bool recurse);
+char **get_safe_ccan_deps(const void *ctx, const char *dir, const char *style,
+			  bool recurse);
 
 /* This also needs to compile the info file. */
 char **get_libs(const void *ctx, const char *dir, bool recurse,

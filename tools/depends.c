@@ -71,7 +71,7 @@ char *compile_info(const void *ctx, const char *dir)
 	return NULL;
 }
 
-static char **get_one_deps(const void *ctx, const char *dir,
+static char **get_one_deps(const void *ctx, const char *dir, const char *style,
 			   char *(*get_info)(const void *ctx, const char *dir))
 {
 	char **deps, *cmd;
@@ -80,10 +80,15 @@ static char **get_one_deps(const void *ctx, const char *dir,
 	if (!infofile)
 		return NULL;
 
-	cmd = talloc_asprintf(ctx, "%s depends", infofile);
+	cmd = talloc_asprintf(ctx, "%s %s", infofile, style);
 	deps = lines_from_cmd(cmd, "%s", cmd);
-	if (!deps)
-		err(1, "Could not run '%s'", cmd);
+	if (!deps) {
+		/* You must understand depends, maybe not testdepends. */
+		if (streq(style, "depends"))
+			err(1, "Could not run '%s'", cmd);
+		deps = talloc(ctx, char *);
+		deps[0] = NULL;
+	}
 	return deps;
 }
 
@@ -117,10 +122,12 @@ static char *replace(const void *ctx, const char *src,
 /* This is a terrible hack.  We scan for ccan/ strings. */
 static char **get_one_safe_deps(const void *ctx,
 				const char *dir,
+				const char *style,
 				char *(*unused)(const void *, const char *))
 {
 	char **deps, **lines, *raw, *fname;
 	unsigned int i, n;
+	bool correct_style = false;
 
 	fname = talloc_asprintf(ctx, "%s/_info", dir);
 	raw = grab_file(fname, fname, NULL);
@@ -138,6 +145,14 @@ static char **get_one_safe_deps(const void *ctx,
 
 		/* Ignore lines starting with # (e.g. #include) */
 		if (lines[i][0] == '#')
+			continue;
+
+		if (strstr(lines[i], "\"testdepends\""))
+			correct_style = streq(style, "testdepends");
+		else if (strstr(lines[i], "\"depends\""))
+			correct_style = streq(style, "depends");
+
+		if (!correct_style)
 			continue;
 
 		/* Start of line, or after ". */
@@ -176,15 +191,15 @@ static bool have_dep(char **deps, const char *dep)
 
 /* Gets all the dependencies, recursively. */
 static char **
-get_all_deps(const void *ctx, const char *dir,
+get_all_deps(const void *ctx, const char *dir, const char *style,
 	     char *(*get_info)(const void *ctx, const char *dir),
-	     char **(*get_one)(const void *, const char *,
+	     char **(*get_one)(const void *, const char *, const char *,
 			       char *(*get_info)(const void *, const char *)))
 {
 	char **deps;
 	unsigned int i;
 
-	deps = get_one(ctx, dir, get_info);
+	deps = get_one(ctx, dir, style, get_info);
 	for (i = 0; i < talloc_array_length(deps)-1; i++) {
 		char **newdeps;
 		unsigned int j;
@@ -196,7 +211,7 @@ get_all_deps(const void *ctx, const char *dir,
 		subdir = talloc_asprintf(ctx, "%s/%s",
 					 talloc_dirname(ctx, dir),
 					 deps[i] + strlen("ccan/"));
-		newdeps = get_one(ctx, subdir, get_info);
+		newdeps = get_one(ctx, subdir, "depends", get_info);
 
 		/* Should be short, so brute-force out dups. */
 		for (j = 0; j < talloc_array_length(newdeps)-1; j++) {
@@ -239,7 +254,7 @@ char **get_libs(const void *ctx, const char *dir, bool recurse,
 	len = talloc_array_length(libs);
 
 	if (recurse) {
-		deps = get_deps(ctx, dir, true, get_info);
+		deps = get_deps(ctx, dir, "depends", true, get_info);
 		for (i = 0; deps[i]; i++) {
 			char **newlibs, *subdir;
 			size_t newlen;
@@ -289,27 +304,28 @@ static char **uniquify_deps(char **deps)
 	return talloc_realloc(NULL, deps, char *, num + 1);
 }
 
-char **get_deps(const void *ctx, const char *dir, bool recurse,
+char **get_deps(const void *ctx, const char *dir, const char *style,
+		bool recurse,
 		char *(*get_info)(const void *ctx, const char *dir))
 {
 	char **ret;
 
 	if (!recurse) {
-		ret = get_one_deps(ctx, dir, get_info);
+		ret = get_one_deps(ctx, dir, style, get_info);
 	} else
-		ret = get_all_deps(ctx, dir, get_info, get_one_deps);
+		ret = get_all_deps(ctx, dir, style, get_info, get_one_deps);
 
 	return uniquify_deps(ret);
 }
 
-char **get_safe_ccan_deps(const void *ctx, const char *dir,
+char **get_safe_ccan_deps(const void *ctx, const char *dir, const char *style,
 			  bool recurse)
 {
 	char **ret;
 	if (!recurse) {
-		ret = get_one_safe_deps(ctx, dir, NULL);
+		ret = get_one_safe_deps(ctx, dir, style, NULL);
 	} else {
-		ret = get_all_deps(ctx, dir, NULL, get_one_safe_deps);
+		ret = get_all_deps(ctx, dir, style, NULL, get_one_safe_deps);
 	}
 	return uniquify_deps(ret);
 }
