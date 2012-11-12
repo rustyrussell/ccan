@@ -244,7 +244,24 @@ static char **get_one_libs(const void *ctx, const char *dir,
 	return lines;
 }
 
-char **get_libs(const void *ctx, const char *dir, bool recurse,
+/* O(n^2) but n is small. */
+static char **add_deps(char **deps1, char **deps2)
+{
+	unsigned int i, len;
+
+	len = talloc_array_length(deps1);
+
+	for (i = 0; deps2[i]; i++) {
+		if (have_dep(deps1, deps2[i]))
+			continue;
+		deps1 = talloc_realloc(NULL, deps1, char *, len + 1);
+		deps1[len-1] = talloc_steal(deps1, deps2[i]);
+		deps1[len++] = NULL;
+	}
+	return deps1;
+}
+
+char **get_libs(const void *ctx, const char *dir, const char *style,
 		char *(*get_info)(const void *ctx, const char *dir))
 {
 	char **deps, **libs;
@@ -253,8 +270,13 @@ char **get_libs(const void *ctx, const char *dir, bool recurse,
 	libs = get_one_libs(ctx, dir, get_info);
 	len = talloc_array_length(libs);
 
-	if (recurse) {
-		deps = get_deps(ctx, dir, "depends", true, get_info);
+	if (style) {
+		deps = get_deps(ctx, dir, style, true, get_info);
+		if (streq(style, "testdepends"))
+			deps = add_deps(deps,
+					get_deps(ctx, dir, "depends", true,
+						 get_info));
+
 		for (i = 0; deps[i]; i++) {
 			char **newlibs, *subdir;
 			size_t newlen;

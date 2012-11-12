@@ -31,8 +31,12 @@ char **get_deps(const void *ctx, const char *dir, const char *style,
 char **get_safe_ccan_deps(const void *ctx, const char *dir, const char *style,
 			  bool recurse);
 
-/* This also needs to compile the info file. */
-char **get_libs(const void *ctx, const char *dir, bool recurse,
+/* This also needs to compile the info file:
+ * style == NULL: don't recurse.
+ * style == depends: recurse dependencies.
+ * style == testdepends: recurse testdepends and depends.
+ */
+char **get_libs(const void *ctx, const char *dir, const char *style,
 		char *(*get_info)(const void *ctx, const char *dir));
 
 /* From tools.c */

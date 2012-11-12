@@ -120,7 +120,7 @@ static char *example_lib_list(const void *ctx, struct manifest **deps)
 
 	/* FIXME: This doesn't uniquify. */
 	for (i = 0; i < talloc_array_length(deps); i++) {
-		libs = get_libs(ctx, deps[i]->dir, false, get_or_compile_info);
+		libs = get_libs(ctx, deps[i]->dir, NULL, get_or_compile_info);
 		for (j = 0; libs[j]; j++)
 			list = talloc_asprintf_append(list, "-l%s ", libs[j]);
 	}

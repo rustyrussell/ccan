@@ -58,7 +58,7 @@ char *lib_list(const struct manifest *m, enum compile_type ctype)
 	char **libs;
 	char *ret = talloc_strdup(m, "");
 
-	libs = get_libs(m, m->dir, true, get_or_compile_info);
+	libs = get_libs(m, m->dir, "depends", get_or_compile_info);
 	for (i = 0; libs[i]; i++)
 		ret = talloc_asprintf_append(ret, "-l%s ", libs[i]);
 	return ret;
