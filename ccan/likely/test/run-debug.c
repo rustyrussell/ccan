@@ -98,3 +98,8 @@ int main(int argc, char *argv[])
 
 	exit(exit_status());
 }
+
+/* Fools ccanlint: it doesn't think we use str, htable or hash. */
+#include <ccan/hash/hash.h>
+#include <ccan/htable/htable.h>
+#include <ccan/str/str.h>

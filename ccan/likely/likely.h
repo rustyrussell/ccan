@@ -2,7 +2,6 @@
 #ifndef CCAN_LIKELY_H
 #define CCAN_LIKELY_H
 #include "config.h"
-#include <ccan/str/str.h>
 #include <stdbool.h>
 
 #ifndef CCAN_LIKELY_DEBUG
@@ -57,6 +56,8 @@
 #define unlikely(cond) (!!(cond))
 #endif
 #else /* CCAN_LIKELY_DEBUG versions */
+#include <ccan/str/str.h>
+
 #define likely(cond) \
 	(_likely_trace(!!(cond), 1, stringify(cond), __FILE__, __LINE__))
 #define unlikely(cond) \
@@ -65,9 +66,6 @@
 long _likely_trace(bool cond, bool expect,
 		   const char *condstr,
 		   const char *file, unsigned int line);
-#endif
-
-#ifdef CCAN_LIKELY_DEBUG
 /**
  * likely_stats - return description of abused likely()/unlikely()
  * @min_hits: minimum number of hits
