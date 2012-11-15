@@ -10,9 +10,9 @@
  * compiler and the reader.
  *
  * With CCAN_LIKELY_DEBUG defined, it provides statistics for each
- * likely()/unlikely() call.
+ * likely()/unlikely() call (but note that this requires LGPL dependencies).
  *
- * License: LGPL (v2.1 or any later version)
+ * License: CC0 (Public domain)
  * Author: Rusty Russell <rusty@rustcorp.com.au>
  *
  * Example:
