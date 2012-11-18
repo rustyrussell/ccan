@@ -1,0 +1,103 @@
+#include <stdio.h>
+#include <string.h>
+#include "config.h"
+
+/**
+ * tal - compact tree allocator routines (inspired by talloc)
+ *
+ * Tal is a hierarchical allocator; any pointer allocated by tal can
+ * become the parent of another allocation.  When you free that parent,
+ * the children (and grandchildren, etc) are automatically freed.
+ *
+ * This allows you to build complex objects based on their lifetimes, eg:
+ *
+ *  struct foo *X = tal(NULL, struct foo);
+ *  X->name = tal_strdup(X, "foo");
+ *
+ * and the pointer X->name would be a "child" of the tal context "X";
+ * tal_free(X->name) would free X->name as expected, by tal_free(X) would
+ * free X and X->name.
+ *
+ * With an overhead of approximately 2.1 pointers per object (vs. talloc's
+ * 12 pointers), it's a little slower in freeing single objects, though
+ * comparable for allocation and freeing whole object trees).  It does not
+ * support talloc's references or failing destructors.
+ *
+ * Example:
+ *	#include <stdio.h>
+ *	#include <stdarg.h>
+ *	#include <err.h>
+ *	#include <ccan/talloc/talloc.h>
+ *
+ *	// A structure containing a popened command.
+ *	struct command {
+ *		FILE *f;
+ *		const char *command;
+ *	};
+ *
+ *	// When struct command is freed, we also want to pclose pipe.
+ *	static void close_cmd(struct command *cmd)
+ *	{
+ *		pclose(cmd->f);
+ *	}
+ *
+ *	// This function opens a writable pipe to the given command.
+ *	static struct command *open_output_cmd(const tal_t *ctx,
+ *					       const char *fmt, ...)
+ *	{
+ *		va_list ap;
+ *		struct command *cmd = tal(ctx, struct command);
+ *
+ *		if (!cmd)
+ *			return NULL;
+ *
+ *		va_start(ap, fmt);
+ *		cmd->command = tal_vasprintf(cmd, fmt, ap);
+ *		va_end(ap);
+ *		if (!cmd->command) {
+ *			tal_free(cmd);
+ *			return NULL;
+ *		}
+ *
+ *		cmd->f = popen(cmd->command, "w");
+ *		if (!cmd->f) {
+ *			tal_free(cmd);
+ *			return NULL;
+ *		}
+ *		tal_add_destructor(cmd, close_cmd);
+ *		return cmd;
+ *	}
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		struct command *cmd;
+ *
+ *		if (argc != 2)
+ *			errx(1, "Usage: %s <command>\n", argv[0]);
+ *
+ *		cmd = open_output_cmd(NULL, "%s hello", argv[1]);
+ *		if (!cmd)
+ *			err(1, "Running '%s hello'", argv[1]);
+ *		fprintf(cmd->f, "This is a test\n");
+ *		tal_free(cmd);
+ *		return 0;
+ *	}
+ *
+ * License: BSD-MIT
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/compiler\n");
+		printf("ccan/hash\n");
+		printf("ccan/likely\n");
+		printf("ccan/list\n");
+		printf("ccan/typesafe_cb\n");
+		return 0;
+	}
+
+	return 1;
+}
