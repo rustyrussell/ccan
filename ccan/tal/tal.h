@@ -5,6 +5,7 @@
 #include <ccan/compiler/compiler.h>
 #include <ccan/likely/likely.h>
 #include <ccan/typesafe_cb/typesafe_cb.h>
+#include <ccan/str/str.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdarg.h>
@@ -34,9 +35,12 @@ typedef void tal_t;
  * @ctx: NULL, or tal allocated object to be parent.
  * @type: the type to allocate.
  *
- * Allocates a specific type, with a given parent context.
+ * Allocates a specific type, with a given parent context.  The name
+ * of the object is a string of the type, but if CCAN_TAL_DEBUG is
+ * defined it also contains the file and line which allocated it.
  */
-#define tal(ctx, type) tal_arr((ctx), type, 1)
+#define tal(ctx, type) \
+	((type *)tal_alloc_((ctx), sizeof(type), false, TAL_LABEL(type, "")))
 
 /**
  * talz - zeroing allocator function
@@ -45,7 +49,8 @@ typedef void tal_t;
  *
  * Equivalent to tal() followed by memset() to zero.
  */
-#define talz(ctx, type) tal_arrz((ctx), type, 1)
+#define talz(ctx, type) \
+	((type *)tal_alloc_((ctx), sizeof(type), true, TAL_LABEL(type, "")))
 
 /**
  * tal_free - free a tal-allocated pointer.
@@ -63,7 +68,8 @@ void tal_free(const tal_t *p);
  * @count: the number to allocate.
  */
 #define tal_arr(ctx, type, count) \
-	((type *)tal_alloc_((ctx), tal_sizeof_(sizeof(type), (count)), false))
+	((type *)tal_alloc_((ctx), tal_sizeof_(sizeof(type), (count)), false, \
+			    TAL_LABEL(type, "[]")))
 
 /**
  * tal_arrz - allocate an array of zeroed objects.
@@ -72,7 +78,8 @@ void tal_free(const tal_t *p);
  * @count: the number to allocate.
  */
 #define tal_arrz(ctx, type, count) \
-	((type *)tal_alloc_((ctx), tal_sizeof_(sizeof(type), (count)), true))
+	((type *)tal_alloc_((ctx), tal_sizeof_(sizeof(type), (count)), true, \
+			    TAL_LABEL(type, "[]")))
 
 /**
  * tal_resize - enlarge or reduce a tal_arr(z).
@@ -246,6 +253,19 @@ void tal_dump(void);
 #endif
 
 /* Internal support functions */
+#ifndef TAL_LABEL
+#ifdef CCAN_TAL_NO_LABELS
+#define TAL_LABEL(type, arr) NULL
+#else
+#ifdef CCAN_TAL_DEBUG
+#define TAL_LABEL(type, arr) \
+	__FILE__ ":" stringify(__LINE__) ":" stringify(type) arr
+#else
+#define TAL_LABEL(type, arr) stringify(type) arr
+#endif /* CCAN_TAL_DEBUG */
+#endif
+#endif
+
 #if HAVE_BUILTIN_CONSTANT_P
 #define TAL_IS_LITERAL(str) __builtin_constant_p(str)
 #else
@@ -275,7 +295,7 @@ static inline size_t tal_sizeof_(size_t size, size_t count)
 #define tal_typeof(ptr)
 #endif
 
-void *tal_alloc_(const tal_t *ctx, size_t bytes, bool clear);
+void *tal_alloc_(const tal_t *ctx, size_t bytes, bool clear, const char *label);
 
 tal_t *tal_steal_(const tal_t *new_parent, const tal_t *t);
 

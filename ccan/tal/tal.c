@@ -417,7 +417,7 @@ static void del_tree(struct tal_hdr *t)
         freefn(t);
 }
 
-void *tal_alloc_(const tal_t *ctx, size_t size, bool clear)
+void *tal_alloc_(const tal_t *ctx, size_t size, bool clear, const char *label)
 {
         struct tal_hdr *child, *parent = debug_tal(to_tal_hdr_or_null(ctx));
 
@@ -426,7 +426,7 @@ void *tal_alloc_(const tal_t *ctx, size_t size, bool clear)
 		return NULL;
 	if (clear)
 		memset(from_tal_hdr(child), 0, size);
-        child->prop = NULL;
+        child->prop = (void *)label;
         if (!add_child(parent, child)) {
 		freefn(child);
 		return NULL;

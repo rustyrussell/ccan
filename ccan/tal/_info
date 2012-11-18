@@ -95,6 +95,7 @@ int main(int argc, char *argv[])
 		printf("ccan/hash\n");
 		printf("ccan/likely\n");
 		printf("ccan/list\n");
+		printf("ccan/str\n");
 		printf("ccan/typesafe_cb\n");
 		return 0;
 	}
