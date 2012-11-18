@@ -706,7 +706,12 @@ char *tal_strndup(const tal_t *ctx, const char *p, size_t n)
 
 void *tal_memdup(const tal_t *ctx, const void *p, size_t n)
 {
-	void *ret = tal_arr(ctx, char, n);
+	void *ret;
+
+	if (ctx == TAL_TAKE)
+		return (void *)p;
+
+	ret = tal_arr(ctx, char, n);
 	if (ret)
 		memcpy(ret, p, n);
 	return ret;
@@ -727,8 +732,13 @@ char *tal_asprintf(const tal_t *ctx, const char *fmt, ...)
 char *tal_vasprintf(const tal_t *ctx, const char *fmt, va_list ap)
 {
 	size_t max = strlen(fmt) * 2;
-	char *buf = tal_arr(ctx, char, max);
+	char *buf;
 	int ret;
+
+	if (ctx == TAL_TAKE)
+		buf = tal_arr(tal_parent(fmt), char, max);
+	else
+		buf = tal_arr(ctx, char, max);
 
 	while (buf) {
 		va_list ap2;
@@ -741,6 +751,8 @@ char *tal_vasprintf(const tal_t *ctx, const char *fmt, va_list ap)
 			break;
 		buf = tal_resize(buf, max *= 2);
 	}
+	if (ctx == TAL_TAKE)
+		tal_free(fmt);
 	return buf;
 }
 
