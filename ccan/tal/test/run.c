@@ -7,10 +7,12 @@ int main(void)
 	char *parent, *c[4], *p;
 	int i, j;
 
-	plan_tests(10);
+	plan_tests(12);
 
 	parent = tal(NULL, char);
 	ok1(parent);
+	ok1(tal_parent(parent) == NULL);
+	ok1(tal_parent(NULL) == NULL);
 
 	for (i = 0; i < 4; i++)
 		c[i] = tal(parent, char);

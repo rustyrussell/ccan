@@ -159,7 +159,7 @@ tal_t *tal_next(const tal_t *root, const tal_t *prev);
  * tal_parent - get the parent of a tal object.
  * @ctx: The tal allocated object.
  *
- * Returns the parent, which may be NULL.
+ * Returns the parent, which may be NULL.  Returns NULL if @ctx is NULL.
  */
 tal_t *tal_parent(const tal_t *ctx);
 

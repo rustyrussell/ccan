@@ -638,7 +638,12 @@ tal_t *tal_next(const tal_t *root, const tal_t *prev)
 tal_t *tal_parent(const tal_t *ctx)
 {
         struct group *group;
-        struct tal_hdr *t = debug_tal(to_tal_hdr(ctx));
+        struct tal_hdr *t;
+
+	if (!ctx)
+		return NULL;
+
+	t = debug_tal(to_tal_hdr(ctx));
 
 	while (!(group = find_property(t, GROUP)))
 		t = t->next;
