@@ -294,6 +294,7 @@ static struct children *add_child_property(struct tal_hdr *parent,
 
 		init_group_property(&prop->group, prop, child);
 		list_head_init(&prop->group.list);
+		update_bounds(&prop->group);
 	}
 	return prop;
 }
@@ -887,7 +888,8 @@ static bool check_node(struct group *group,
 			name = (struct name *)p;
 			break;
 		}
-		if (p != &null_parent.c.hdr && !in_bounds(p))
+		if (p != &null_parent.c.hdr && p != &null_parent.c.group.hdr
+		    && !in_bounds(p))
 			return check_err(t, errorstr,
 					 "has bad property pointer");
 
