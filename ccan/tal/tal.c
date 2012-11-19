@@ -317,8 +317,7 @@ static bool add_child(struct tal_hdr *parent, struct tal_hdr *child)
 		children = add_child_property(parent, child);
 		if (!children)
 			return false;
-		children->group.list.n.next = children->group.list.n.prev
-			= &children->group.list.n;
+		list_head_init(&children->group.list);
 
 		/* Child links to itself. */
                 child->next = child;
