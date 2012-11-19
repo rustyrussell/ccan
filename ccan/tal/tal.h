@@ -58,6 +58,8 @@ typedef void tal_t;
  *
  * This calls the destructors for p (if any), then does the same for all its
  * children (recursively) before finally freeing the memory.
+ *
+ * Note: errno is preserved by this call.
  */
 void tal_free(const tal_t *p);
 

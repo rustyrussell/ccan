@@ -9,6 +9,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <limits.h>
+#include <errno.h>
 
 //#define TAL_DEBUG 1
 
@@ -482,6 +483,7 @@ static struct tal_hdr *remove_node(struct tal_hdr *t)
 void tal_free(const tal_t *ctx)
 {
         struct tal_hdr *t;
+	int saved_errno = errno;
 
         if (!ctx)
                 return;
@@ -489,6 +491,7 @@ void tal_free(const tal_t *ctx)
         t = debug_tal(to_tal_hdr(ctx));
         remove_node(t);
         del_tree(t);
+	errno = saved_errno;
 }
 
 void *tal_steal_(const tal_t *new_parent, const tal_t *ctx)
