@@ -455,6 +455,7 @@ static struct tal_hdr *remove_node(struct tal_hdr *t)
 
 		/* Are we the only one? */
 		if (prev == t) {
+			struct prop_hdr *next = (*prop)->next;
 			struct children *c = group->parent_child;
 			/* Is this the group embedded in the child property? */
 			if (group == &c->group) {
@@ -462,9 +463,9 @@ static struct tal_hdr *remove_node(struct tal_hdr *t)
 			} else {
 				/* Empty group, so free it. */
 				list_del_from(&c->group.list, &group->list.n);
-				*prop = group->hdr.next;
 				freefn(group);
 			}
+			*prop = next;
 			return c->parent;
 		} else {
 			/* Move property to next node. */
