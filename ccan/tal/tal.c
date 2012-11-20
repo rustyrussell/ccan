@@ -657,22 +657,23 @@ tal_t *tal_parent(const tal_t *ctx)
         return from_tal_hdr(group->parent_child->parent);
 }
 
-void *tal_realloc_(tal_t *ctx, size_t size)
+bool tal_resize_(tal_t **ctxp, size_t size)
 {
         struct tal_hdr *old_t, *t, **prev;
         struct group *group;
         struct children *child;
 
-        old_t = debug_tal(to_tal_hdr(ctx));
+        old_t = debug_tal(to_tal_hdr(*ctxp));
 
         t = resizefn(old_t, size + sizeof(struct tal_hdr));
 	if (!t) {
 		call_error("Reallocation failure");
-		tal_free(old_t);
-		return NULL;
+		return false;
 	}
+
+	/* If it didn't move, we're done! */
         if (t == old_t)
-                return ctx;
+                return true;
 	update_bounds(t);
 
 	/* Fix up linked list pointer. */
@@ -692,8 +693,8 @@ void *tal_realloc_(tal_t *ctx, size_t size)
 		assert(child->parent == old_t);
 		child->parent = t;
 	}
-
-        return from_tal_hdr(debug_tal(t));
+	*ctxp = from_tal_hdr(debug_tal(t));
+	return true;
 }
 
 char *tal_strdup(const tal_t *ctx, const char *p)
@@ -758,7 +759,10 @@ char *tal_vasprintf(const tal_t *ctx, const char *fmt, va_list ap)
 
 		if (ret < max)
 			break;
-		buf = tal_resize(buf, max *= 2);
+		if (!tal_resize(&buf, max *= 2)) {
+			tal_free(buf);
+			buf = NULL;
+		}
 	}
 	if (ctx == TAL_TAKE)
 		tal_free(fmt);

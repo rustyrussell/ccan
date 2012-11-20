@@ -38,6 +38,10 @@ typedef void tal_t;
  * Allocates a specific type, with a given parent context.  The name
  * of the object is a string of the type, but if CCAN_TAL_DEBUG is
  * defined it also contains the file and line which allocated it.
+ *
+ * Example:
+ *	int *p = tal(NULL, int);
+ *	*p = 1;
  */
 #define tal(ctx, type) \
 	((type *)tal_alloc_((ctx), sizeof(type), false, TAL_LABEL(type, "")))
@@ -48,6 +52,10 @@ typedef void tal_t;
  * @type: the type to allocate.
  *
  * Equivalent to tal() followed by memset() to zero.
+ *
+ * Example:
+ *	p = talz(NULL, int);
+ *	assert(*p == 0);
  */
 #define talz(ctx, type) \
 	((type *)tal_alloc_((ctx), sizeof(type), true, TAL_LABEL(type, "")))
@@ -60,6 +68,9 @@ typedef void tal_t;
  * children (recursively) before finally freeing the memory.
  *
  * Note: errno is preserved by this call.
+ *
+ * Example:
+ *	tal_free(p);
  */
 void tal_free(const tal_t *p);
 
@@ -68,6 +79,11 @@ void tal_free(const tal_t *p);
  * @ctx: NULL, or tal allocated object to be parent.
  * @type: the type to allocate.
  * @count: the number to allocate.
+ *
+ * Example:
+ *	p = tal_arr(NULL, int, 2);
+ *	p[0] = 0;
+ *	p[1] = 1;
  */
 #define tal_arr(ctx, type, count) \
 	((type *)tal_alloc_((ctx), tal_sizeof_(sizeof(type), (count)), false, \
@@ -78,21 +94,27 @@ void tal_free(const tal_t *p);
  * @ctx: NULL, or tal allocated object to be parent.
  * @type: the type to allocate.
  * @count: the number to allocate.
+ *
+ * Example:
+ *	p = tal_arrz(NULL, int, 2);
+ *	assert(p[0] == 0 && p[1] == 0);
  */
 #define tal_arrz(ctx, type, count) \
 	((type *)tal_alloc_((ctx), tal_sizeof_(sizeof(type), (count)), true, \
 			    TAL_LABEL(type, "[]")))
 
 /**
- * tal_resize - enlarge or reduce a tal_arr(z).
- * @p: The tal allocated array to resize.
+ * tal_resize - enlarge or reduce a tal_arr[z].
+ * @p: A pointer to the tal allocated array to resize.
  * @count: the number to allocate.
  *
- * This returns the new pointer, or NULL (and destroys the old one)
- * on failure.
+ * This returns true on success (and may move *@p), or false on failure.
+ *
+ * Example:
+ *	tal_resize(&p, 100);
  */
 #define tal_resize(p, count) \
-	((tal_typeof(p) tal_realloc_((p), tal_sizeof_(sizeof(*p), (count)))))
+	tal_resize_((void **)(p), tal_sizeof_(sizeof**(p), (count)))
 
 /**
  * tal_steal - change the parent of a tal-allocated pointer.
@@ -102,7 +124,7 @@ void tal_free(const tal_t *p);
  * This may need to perform an allocation, in which case it may fail; thus
  * it can return NULL, otherwise returns @ptr.
  *
- * Weird macro avoids gcc's 'warning: value computed is not used'.
+ * Note: weird macro avoids gcc's 'warning: value computed is not used'.
  */
 #if HAVE_STATEMENT_EXPR
 #define tal_steal(ctx, ptr) \
@@ -301,7 +323,7 @@ void *tal_alloc_(const tal_t *ctx, size_t bytes, bool clear, const char *label);
 
 tal_t *tal_steal_(const tal_t *new_parent, const tal_t *t);
 
-void *tal_realloc_(tal_t *ctx, size_t size);
+bool tal_resize_(tal_t **ctxp, size_t size);
 
 bool tal_add_destructor_(tal_t *ctx, void (*destroy)(void *me));
 

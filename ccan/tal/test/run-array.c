@@ -7,7 +7,7 @@ int main(void)
 	char *parent, *c[4];
 	int i;
 
-	plan_tests(9);
+	plan_tests(11);
 
 	parent = tal(NULL, char);
 	ok1(parent);
@@ -33,6 +33,14 @@ int main(void)
 		strcpy(c[i], "abc");
 		tal_free(c[i]);
 	}
+
+	/* Resizing. */
+	c[0] = tal_arrz(parent, char, 4);
+	ok1(tal_resize(&c[0], 6));
+	strcpy(c[0], "hello");
+	tal_free(c[0]);
+	ok1(tal_first(parent) == NULL);
+
 	tal_free(parent);
 
 	return exit_status();

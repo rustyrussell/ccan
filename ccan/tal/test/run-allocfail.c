@@ -15,6 +15,15 @@ static void *failing_alloc(size_t len)
 	return malloc(len);
 }
 
+static void *failing_realloc(void *p, size_t len)
+{
+	if (alloc_count++ == when_to_fail)
+		return NULL;
+
+	return realloc(p, len);
+}
+
+
 static void nofail_on_error(const char *msg)
 {
 	diag("ERROR: %s", msg);
@@ -27,12 +36,12 @@ static void destroy_p(void *p)
 
 int main(void)
 {
-	void *p, *c1, *c2;
+	char *p, *c1, *c2;
 	bool success;
 
-	plan_tests(21);
+	plan_tests(25);
 
-	tal_set_backend(failing_alloc, NULL, NULL, nofail_on_error);
+	tal_set_backend(failing_alloc, failing_realloc, NULL, nofail_on_error);
 
 	/* Fail at each possible point in an allocation. */
 	when_to_fail = err_count = 0;
@@ -55,6 +64,23 @@ int main(void)
 	ok1(alloc_count >= 1);
 	ok1(when_to_fail > 1);
 	ok1(err_count == when_to_fail - 1);
+
+	/* Now during resize. */
+	c2 = c1;
+	when_to_fail = err_count = 0;
+	for (;;) {
+		alloc_count = 0;
+		if (tal_resize(&c1, 100))
+			break;
+		/* Failing alloc will not change pointer. */
+		ok1(c1 == c2);
+		when_to_fail++;
+	};
+	ok1(alloc_count == 1);
+	ok1(when_to_fail == 1);
+	ok1(err_count == 1);
+	/* Make sure it's really resized. */
+	memset(c1, 1, 100);
 
 	/* Now for second child. */
 	when_to_fail = err_count = 0;
