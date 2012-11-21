@@ -188,13 +188,18 @@ tal_t *tal_next(const tal_t *root, const tal_t *prev);
 tal_t *tal_parent(const tal_t *ctx);
 
 /**
- * tal_memdup - duplicate memory.
+ * tal_dup - duplicate an array.
  * @ctx: NULL, or tal allocated object to be parent (or TAL_TAKE).
- * @p: the memory to copy
- * @n: the number of bytes.
- *
+ * @type: the type (should match type of @p!)
+ * @p: the array to copy
+ * @n: the number of sizeof(type) entries to copy.
+ * @extra: the number of extra sizeof(type) entries to allocate.
  */
-void *tal_memdup(const tal_t *ctx, const void *p, size_t n);
+#define tal_dup(ctx, type, p, n, extra)				\
+	((type *)tal_dup_((ctx), tal_typechk_(p, type *),	\
+			  tal_sizeof_(sizeof(type), (n)),	\
+			  tal_sizeof_(sizeof(type), (extra)),	\
+			  TAL_LABEL(type, "[]")))
 
 /**
  * tal_strdup - duplicate a string
@@ -315,11 +320,22 @@ static inline size_t tal_sizeof_(size_t size, size_t count)
 
 #if HAVE_TYPEOF
 #define tal_typeof(ptr) (__typeof__(ptr))
+#if HAVE_STATEMENT_EXPR
+/* Careful: ptr can be const foo *, ptype is foo *.  Also, ptr could
+ * be an array, eg "hello". */
+#define tal_typechk_(ptr, ptype) ({ __typeof__(&*(ptr)) _p = (ptype)(ptr); _p; })
 #else
+#define tal_typechk_(ptr, ptype) (ptr)
+#endif
+#else /* !HAVE_TYPEOF */
 #define tal_typeof(ptr)
+#define tal_typechk_(ptr, ptype) (ptr)
 #endif
 
 void *tal_alloc_(const tal_t *ctx, size_t bytes, bool clear, const char *label);
+
+void *tal_dup_(const tal_t *ctx, const void *p, size_t n, size_t extra,
+	       const char *label);
 
 tal_t *tal_steal_(const tal_t *new_parent, const tal_t *t);
 

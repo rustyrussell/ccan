@@ -6,7 +6,7 @@ int main(void)
 {
 	char *parent, *c;
 
-	plan_tests(13);
+	plan_tests(15);
 
 	parent = tal(NULL, char);
 	ok1(parent);
@@ -25,8 +25,13 @@ int main(void)
 	ok1(strcmp(c, "hel") == 0);
 	ok1(tal_parent(c) == parent);
 
-	c = tal_memdup(TAL_TAKE, c, 1);
+	c = tal_dup(TAL_TAKE, char, c, 1, 0);
 	ok1(c[0] == 'h');
+	ok1(tal_parent(c) == parent);
+
+	c = tal_dup(TAL_TAKE, char, c, 1, 2);
+	ok1(c[0] == 'h');
+	strcpy(c, "hi");
 	ok1(tal_parent(c) == parent);
 
 	/* No leftover allocations. */

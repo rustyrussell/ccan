@@ -665,6 +665,12 @@ bool tal_resize_(tal_t **ctxp, size_t size)
 
         old_t = debug_tal(to_tal_hdr(*ctxp));
 
+	/* Don't hand silly sizes to realloc. */
+	if (size >> (CHAR_BIT*sizeof(size) - 1)) {
+		call_error("Reallocation size overflow");
+		return false;
+	}
+
         t = resizefn(old_t, size + sizeof(struct tal_hdr));
 	if (!t) {
 		call_error("Reallocation failure");
@@ -699,7 +705,7 @@ bool tal_resize_(tal_t **ctxp, size_t size)
 
 char *tal_strdup(const tal_t *ctx, const char *p)
 {
-	return tal_memdup(ctx, p, strlen(p)+1);
+	return tal_dup(ctx, char, p, strlen(p)+1, 0);
 }
 
 char *tal_strndup(const tal_t *ctx, const char *p, size_t n)
@@ -708,20 +714,35 @@ char *tal_strndup(const tal_t *ctx, const char *p, size_t n)
 
 	if (strlen(p) < n)
 		n = strlen(p);
-	ret = tal_memdup(ctx, p, n+1);
+	ret = tal_dup(ctx, char, p, n, 1);
 	if (ret)
 		ret[n] = '\0';
 	return ret;
 }
 
-void *tal_memdup(const tal_t *ctx, const void *p, size_t n)
+void *tal_dup_(const tal_t *ctx, const void *p, size_t n, size_t extra,
+	       const char *label)
 {
 	void *ret;
 
-	if (ctx == TAL_TAKE)
-		return (void *)p;
+	/* Beware overflow! */
+	if (n + extra < n || n + extra + sizeof(struct tal_hdr) < n) {
+		call_error("dup size overflow");
+		if (ctx == TAL_TAKE)
+			tal_free(p);
+		return NULL;
+	}
 
-	ret = tal_arr(ctx, char, n);
+	if (ctx == TAL_TAKE) {
+		if (unlikely(!p))
+			return NULL;
+		if (!tal_resize_((void **)&p, n + extra)) {
+			tal_free(p);
+			return NULL;
+		}
+		return (void *)p;
+	}
+	ret = tal_alloc_(ctx, n + extra, false, label);
 	if (ret)
 		memcpy(ret, p, n);
 	return ret;
