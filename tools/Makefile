@@ -1,6 +1,8 @@
 ALL_TOOLS = tools/configurator/configurator tools/ccan_depends tools/doc_extract tools/namespacize tools/ccanlint/ccanlint
 LDLIBS = -lrt
-DEP_OBJS = ccan/grab_file/grab_file.o \
+DEP_OBJS = ccan/err/err.o \
+	ccan/foreach/foreach.o \
+	ccan/grab_file/grab_file.o \
 	ccan/noerr/noerr.o \
 	ccan/read_write_all/read_write_all.o \
 	ccan/str/debug.o \

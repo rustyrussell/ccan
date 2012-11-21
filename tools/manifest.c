@@ -12,11 +12,11 @@
 #include <ccan/foreach/foreach.h>
 #include <ccan/asort/asort.h>
 #include <ccan/array_size/array_size.h>
+#include <ccan/err/err.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <err.h>
 #include <errno.h>
 #include <dirent.h>
 #include <ctype.h>

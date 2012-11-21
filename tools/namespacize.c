@@ -1,5 +1,4 @@
 /* Code to move a ccan module into the ccan_ namespace. */
-#include <err.h>
 #include <errno.h>
 #include <string.h>
 #include <stdbool.h>
@@ -14,6 +13,7 @@
 #include "ccan/str_talloc/str_talloc.h"
 #include "ccan/grab_file/grab_file.h"
 #include "ccan/talloc/talloc.h"
+#include "ccan/err/err.h"
 #include "tools.h"
 
 static bool verbose = false;

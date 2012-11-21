@@ -4,11 +4,11 @@
 #include <ccan/str_talloc/str_talloc.h>
 #include <ccan/read_write_all/read_write_all.h>
 #include <ccan/compiler/compiler.h>
+#include <ccan/err/err.h>
 #include "tools.h"
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <err.h>
 #include <stdbool.h>
 #include <unistd.h>
 #include <errno.h>

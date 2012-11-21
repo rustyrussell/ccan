@@ -1,3 +1,4 @@
+#include <ccan/err/err.h>
 #include <ccan/grab_file/grab_file.h>
 #include <ccan/str/str.h>
 #include <ccan/str_talloc/str_talloc.h>
@@ -5,7 +6,6 @@
 #include "read_config_header.h"
 #include "tools.h"
 #include <string.h>
-#include <err.h>
 
 /* Get an identifier token. */
 char *get_symbol_token(void *ctx, const char **line)

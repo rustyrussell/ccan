@@ -1,11 +1,11 @@
 /* This merely extracts, doesn't do XML or anything. */
-#include <err.h>
-#include <string.h>
-#include <stdio.h>
 #include <ccan/str/str.h>
 #include <ccan/str_talloc/str_talloc.h>
 #include <ccan/talloc/talloc.h>
 #include <ccan/grab_file/grab_file.h>
+#include <ccan/err/err.h>
+#include <string.h>
+#include <stdio.h>
 #include "doc_extract.h"
 
 /* We regard non-alphanumerics as equiv. */

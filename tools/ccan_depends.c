@@ -1,7 +1,7 @@
 #include "tools.h"
-#include <err.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <ccan/err/err.h>
 #include <ccan/str/str.h>
 #include <ccan/talloc/talloc.h>
 
