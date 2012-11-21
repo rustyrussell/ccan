@@ -53,14 +53,15 @@ typedef void tal_t;
  * @p: NULL, or tal allocated object to free.
  *
  * This calls the destructors for p (if any), then does the same for all its
- * children (recursively) before finally freeing the memory.
+ * children (recursively) before finally freeing the memory.  It returns
+ * NULL, for convenience.
  *
  * Note: errno is preserved by this call.
  *
  * Example:
- *	tal_free(p);
+ *	p = tal_free(p);
  */
-void tal_free(const tal_t *p);
+void *tal_free(const tal_t *p);
 
 /**
  * tal_arr - allocate an array of objects.

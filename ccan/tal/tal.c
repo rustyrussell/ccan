@@ -493,18 +493,17 @@ static struct tal_hdr *remove_node(struct tal_hdr *t)
 	return NULL;
 }
 
-void tal_free(const tal_t *ctx)
+void *tal_free(const tal_t *ctx)
 {
-        struct tal_hdr *t;
-	int saved_errno = errno;
-
-        if (!ctx)
-                return;
-
-        t = debug_tal(to_tal_hdr(ctx));
-        remove_node(t);
-        del_tree(t);
-	errno = saved_errno;
+        if (ctx) {
+		struct tal_hdr *t;
+		int saved_errno = errno;
+		t = debug_tal(to_tal_hdr(ctx));
+		remove_node(t);
+		del_tree(t);
+		errno = saved_errno;
+	}
+	return NULL;
 }
 
 void *tal_steal_(const tal_t *new_parent, const tal_t *ctx)
@@ -757,14 +756,10 @@ void *tal_dup_(const tal_t *ctx, const void *p, size_t n, size_t extra,
 	if (taken(p)) {
 		if (unlikely(!p))
 			return NULL;
-		if (unlikely(!tal_resize_((void **)&p, n + extra))) {
-			tal_free(p);
-			return NULL;
-		}
-		if (unlikely(!tal_steal(ctx, p))) {
-			tal_free(p);
-			return NULL;
-		}
+		if (unlikely(!tal_resize_((void **)&p, n + extra)))
+			return tal_free(p);
+		if (unlikely(!tal_steal(ctx, p)))
+			return tal_free(p);
 		return (void *)p;
 	}
 	ret = tal_alloc_(ctx, n + extra, false, label);
@@ -806,10 +801,8 @@ char *tal_vasprintf(const tal_t *ctx, const char *fmt, va_list ap)
 
 		if (ret < max)
 			break;
-		if (!tal_resize(&buf, max *= 2)) {
-			tal_free(buf);
-			buf = NULL;
-		}
+		if (!tal_resize(&buf, max *= 2))
+			buf = tal_free(buf);
 	}
 	if (taken(fmt))
 		tal_free(fmt);

@@ -7,7 +7,10 @@ int main(void)
 	char *parent, *c[4], *p;
 	int i, j;
 
-	plan_tests(12);
+	plan_tests(14);
+
+	/* tal_free(NULL) works. */
+	ok1(tal_free(NULL) == NULL);
 
 	parent = tal(NULL, char);
 	ok1(parent);
@@ -33,7 +36,7 @@ int main(void)
 	ok1(*c[3] == '1');
 
 	/* Free parent. */
-	tal_free(parent);
+	ok1(tal_free(parent) == NULL);
 
 	parent = tal(NULL, char);
 
