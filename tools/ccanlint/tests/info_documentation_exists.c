@@ -28,10 +28,14 @@ static struct ccanlint info_documentation_exists = {
 
 static void create_info_template_doc(struct manifest *m, struct score *score)
 {
-	int fd = open("_info.new", O_WRONLY|O_CREAT|O_EXCL, 0666);
+	int fd;
 	FILE *new;
 	char *oldcontents;
 
+	if (!ask("Should I prepend description to _info file for you?"))
+		return;
+
+	fd = open("_info.new", O_WRONLY|O_CREAT|O_EXCL, 0666);
 	if (fd < 0 || !(new = fdopen(fd, "w")))
 		err(1, "Creating _info.new to insert documentation");
 
@@ -48,10 +52,10 @@ static void create_info_template_doc(struct manifest *m, struct score *score)
 		err(1, "Writing to _info.new to insert documentation");
 	}
 
-	oldcontents = grab_file(m, "_info", NULL);
+	oldcontents = grab_file(m, m->info_file->fullname, NULL);
 	if (!oldcontents) {
 		unlink_noerr("_info.new");
-		err(1, "Reading _info");
+		err(1, "Reading %s", m->info_file->fullname);
 	}
 	if (fprintf(new, "%s", oldcontents) < 0) {
 		unlink_noerr("_info.new");
@@ -61,9 +65,9 @@ static void create_info_template_doc(struct manifest *m, struct score *score)
 		unlink_noerr("_info.new");
 		err(1, "Closing _info.new");
 	}
-	if (!move_file("_info.new", "_info")) {
+	if (!move_file("_info.new", m->info_file->fullname)) {
 		unlink_noerr("_info.new");
-		err(1, "Renaming _info.new to _info");
+		err(1, "Renaming _info.new to %s", m->info_file->fullname);
 	}
 }
 
