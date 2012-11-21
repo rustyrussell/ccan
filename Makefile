@@ -129,7 +129,7 @@ FORCE:
 
 # Ensure we don't end up with empty file if configurator fails!
 config.h: tools/configurator/configurator Makefile Makefile-ccan
-	tools/configurator/configurator $(CC) $(CCAN_CFLAGS) > $@ || rm -f $@
+	tools/configurator/configurator $(CC) $(CCAN_CFLAGS) > $@.tmp && mv $@.tmp $@
 
 include tools/Makefile
 -include inter-depends
