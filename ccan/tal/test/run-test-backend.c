@@ -12,7 +12,8 @@ static void *my_alloc(size_t len)
 
 static void my_free(void *p)
 {
-	return free((char *)p - 16);
+	if (p)
+		free((char *)p - 16);
 }
 
 static void *my_realloc(void *old, size_t new_size)

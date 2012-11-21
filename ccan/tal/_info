@@ -96,6 +96,7 @@ int main(int argc, char *argv[])
 		printf("ccan/likely\n");
 		printf("ccan/list\n");
 		printf("ccan/str\n");
+		printf("ccan/take\n");
 		printf("ccan/typesafe_cb\n");
 		return 0;
 	}

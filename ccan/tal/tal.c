@@ -3,6 +3,7 @@
 #include <ccan/compiler/compiler.h>
 #include <ccan/hash/hash.h>
 #include <ccan/list/list.h>
+#include <ccan/take/take.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -103,12 +104,14 @@ static struct group *next_group(struct group *group)
 	return list_entry(group->list.n.next, struct group, list.n);
 }
 
-static bool atexit_set = false;
+static bool initialized = false;
+
 /* This means valgrind can see leaks. */
-static void unlink_null(void)
+static void tal_cleanup(void)
 {
 	struct group *i, *next;
 
+	/* Unlink null_parent. */
 	for (i = next_group(&null_parent.c.group);
 	     i != &null_parent.c.group;
 	     i = next) {
@@ -116,6 +119,15 @@ static void unlink_null(void)
 		freefn(i);
 	}
 	null_parent.c.group.first_child = NULL;
+
+	/* Cleanup any taken pointers. */
+	take_cleanup();
+}
+
+/* For allocation failures inside ccan/take */
+static void take_alloc_failed(const void *p)
+{
+	tal_free(p);
 }
 
 #ifndef NDEBUG
@@ -332,9 +344,10 @@ static bool add_child(struct tal_hdr *parent, struct tal_hdr *child)
 	if (unlikely(!group->first_child)) {
 		assert(group == &children->group);
 		/* This hits on first child appended to null parent. */
-		if (unlikely(!atexit_set)) {
-			atexit(unlink_null);
-			atexit_set = true;
+		if (unlikely(!initialized)) {
+			atexit(tal_cleanup);
+			take_allocfail(take_alloc_failed);
+			initialized = true;
 		}
 		/* Link group into this child, make it the first one. */
 		group->hdr.next = child->prop;
@@ -728,15 +741,19 @@ void *tal_dup_(const tal_t *ctx, const void *p, size_t n, size_t extra,
 	/* Beware overflow! */
 	if (n + extra < n || n + extra + sizeof(struct tal_hdr) < n) {
 		call_error("dup size overflow");
-		if (ctx == TAL_TAKE)
+		if (taken(p))
 			tal_free(p);
 		return NULL;
 	}
 
-	if (ctx == TAL_TAKE) {
+	if (taken(p)) {
 		if (unlikely(!p))
 			return NULL;
-		if (!tal_resize_((void **)&p, n + extra)) {
+		if (unlikely(!tal_resize_((void **)&p, n + extra))) {
+			tal_free(p);
+			return NULL;
+		}
+		if (unlikely(!tal_steal(ctx, p))) {
 			tal_free(p);
 			return NULL;
 		}
@@ -766,11 +783,7 @@ char *tal_vasprintf(const tal_t *ctx, const char *fmt, va_list ap)
 	char *buf;
 	int ret;
 
-	if (ctx == TAL_TAKE)
-		buf = tal_arr(tal_parent(fmt), char, max);
-	else
-		buf = tal_arr(ctx, char, max);
-
+	buf = tal_arr(ctx, char, max);
 	while (buf) {
 		va_list ap2;
 
@@ -785,7 +798,7 @@ char *tal_vasprintf(const tal_t *ctx, const char *fmt, va_list ap)
 			buf = NULL;
 		}
 	}
-	if (ctx == TAL_TAKE)
+	if (taken(fmt))
 		tal_free(fmt);
 	return buf;
 }

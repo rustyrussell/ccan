@@ -19,18 +19,6 @@
 typedef void tal_t;
 
 /**
- * TAL_TAKE - fake tal_t to indicate function will own arguments.
- *
- * Various functions take a context on which to allocate: if you use
- * TAL_TAKE there instead, it means that the argument(s) are actually
- * tal objects.  The returned value will share the same parent; it may
- * even be the same pointer as the arguments.  The arguments themselves
- * will be reused, freed, or made a child of the return value: they are
- * no longer valid for external use.
- */
-#define TAL_TAKE ((tal_t *)-2L)
-
-/**
  * tal - basic allocator function
  * @ctx: NULL, or tal allocated object to be parent.
  * @type: the type to allocate.
@@ -123,10 +111,9 @@ void tal_free(const tal_t *p);
  *
  * This may need to perform an allocation, in which case it may fail; thus
  * it can return NULL, otherwise returns @ptr.
- *
- * Note: weird macro avoids gcc's 'warning: value computed is not used'.
  */
 #if HAVE_STATEMENT_EXPR
+/* Weird macro avoids gcc's 'warning: value computed is not used'. */
 #define tal_steal(ctx, ptr) \
 	({ (tal_typeof(ptr) tal_steal_((ctx),(ptr))); })
 #else
@@ -189,9 +176,9 @@ tal_t *tal_parent(const tal_t *ctx);
 
 /**
  * tal_dup - duplicate an array.
- * @ctx: NULL, or tal allocated object to be parent (or TAL_TAKE).
+ * @ctx: The tal allocated object to be parent of the result (may be NULL).
  * @type: the type (should match type of @p!)
- * @p: the array to copy
+ * @p: the array to copy (or resized & reparented if take())
  * @n: the number of sizeof(type) entries to copy.
  * @extra: the number of extra sizeof(type) entries to allocate.
  */
@@ -203,15 +190,15 @@ tal_t *tal_parent(const tal_t *ctx);
 
 /**
  * tal_strdup - duplicate a string
- * @ctx: NULL, or tal allocated object to be parent (or TAL_TAKE).
- * @p: the string to copy
+ * @ctx: NULL, or tal allocated object to be parent.
+ * @p: the string to copy (can be take()).
  */
 char *tal_strdup(const tal_t *ctx, const char *p);
 
 /**
  * tal_strndup - duplicate a limited amount of a string.
- * @ctx: NULL, or tal allocated object to be parent (or TAL_TAKE).
- * @p: the string to copy
+ * @ctx: NULL, or tal allocated object to be parent.
+ * @p: the string to copy (can be take()).
  * @n: the maximum length to copy.
  *
  * Always gives a nul-terminated string, with strlen() <= @n.
@@ -220,22 +207,16 @@ char *tal_strndup(const tal_t *ctx, const char *p, size_t n);
 
 /**
  * tal_asprintf - allocate a formatted string
- * @ctx: NULL, or tal allocated object to be parent (or TAL_TAKE).
- * @fmt: the printf-style format.
- *
- * If @ctx is TAL_TAKE, @fmt is freed and its parent will be the parent
- * of the return value.
+ * @ctx: NULL, or tal allocated object to be parent.
+ * @fmt: the printf-style format (can be take()).
  */
 char *tal_asprintf(const tal_t *ctx, const char *fmt, ...) PRINTF_FMT(2,3);
 
 /**
  * tal_vasprintf - allocate a formatted string (va_list version)
- * @ctx: NULL, or tal allocated object to be parent (or TAL_TAKE).
- * @fmt: the printf-style format.
+ * @ctx: NULL, or tal allocated object to be parent.
+ * @fmt: the printf-style format (can be take()).
  * @va: the va_list containing the format args.
- *
- * If @ctx is TAL_TAKE, @fmt is freed and its parent will be the parent
- * of the return value.
  */
 char *tal_vasprintf(const tal_t *ctx, const char *fmt, va_list ap)
 	PRINTF_FMT(2,0);
