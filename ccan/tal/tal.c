@@ -718,18 +718,26 @@ bool tal_resize_(tal_t **ctxp, size_t size)
 
 char *tal_strdup(const tal_t *ctx, const char *p)
 {
-	return tal_dup(ctx, char, p, strlen(p)+1, 0);
+	/* We have to let through NULL for take(). */
+	return tal_dup(ctx, char, p, p ? strlen(p) + 1: 1, 0);
 }
 
 char *tal_strndup(const tal_t *ctx, const char *p, size_t n)
 {
+	size_t len;
 	char *ret;
 
-	if (strlen(p) < n)
-		n = strlen(p);
-	ret = tal_dup(ctx, char, p, n, 1);
+	/* We have to let through NULL for take(). */
+	if (likely(p)) {
+		len = strlen(p);
+		if (len > n)
+			len = n;
+	} else
+		len = n;
+
+	ret = tal_dup(ctx, char, p, len, 1);
 	if (ret)
-		ret[n] = '\0';
+		ret[len] = '\0';
 	return ret;
 }
 
@@ -779,10 +787,15 @@ char *tal_asprintf(const tal_t *ctx, const char *fmt, ...)
 
 char *tal_vasprintf(const tal_t *ctx, const char *fmt, va_list ap)
 {
-	size_t max = strlen(fmt) * 2;
+	size_t max;
 	char *buf;
 	int ret;
 
+	if (!fmt && taken(fmt))
+		return NULL;
+
+	/* A decent guess to start. */
+	max = strlen(fmt) * 2;
 	buf = tal_arr(ctx, char, max);
 	while (buf) {
 		va_list ap2;

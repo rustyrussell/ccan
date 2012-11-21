@@ -304,7 +304,7 @@ static inline size_t tal_sizeof_(size_t size, size_t count)
 #if HAVE_STATEMENT_EXPR
 /* Careful: ptr can be const foo *, ptype is foo *.  Also, ptr could
  * be an array, eg "hello". */
-#define tal_typechk_(ptr, ptype) ({ __typeof__(&*(ptr)) _p = (ptype)(ptr); _p; })
+#define tal_typechk_(ptr, ptype) ({ __typeof__((ptr)+0) _p = (ptype)(ptr); _p; })
 #else
 #define tal_typechk_(ptr, ptype) (ptr)
 #endif

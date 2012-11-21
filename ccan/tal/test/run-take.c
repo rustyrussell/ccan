@@ -6,18 +6,22 @@ int main(void)
 {
 	char *parent, *c;
 
-	plan_tests(24);
+	plan_tests(32);
 
 	/* We can take NULL. */
 	ok1(take(NULL) == NULL);
+	ok1(is_taken(NULL));
 	ok1(taken(NULL)); /* Undoes take() */
+	ok1(!is_taken(NULL));
 	ok1(!taken(NULL));
 
 	parent = tal(NULL, char);
 	ok1(parent);
 
 	ok1(take(parent) == parent);
+	ok1(is_taken(parent));
 	ok1(taken(parent)); /* Undoes take() */
+	ok1(!is_taken(parent));
 	ok1(!taken(parent));
 
 	c = tal_strdup(parent, "hello");
@@ -62,6 +66,13 @@ int main(void)
 
 	tal_free(parent);
 	ok1(!taken_any());
+
+	/* NULL pass-through. */
+	c = NULL;
+	ok1(tal_strdup(NULL, take(c)) == NULL);
+	ok1(tal_strndup(NULL, take(c), 5) == NULL);
+	ok1(tal_dup(NULL, char, take(c), 5, 5) == NULL);
+	ok1(tal_asprintf(NULL, take(c), 0) == NULL);
 
 	return exit_status();
 }
