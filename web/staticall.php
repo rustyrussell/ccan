@@ -25,13 +25,7 @@ Or you can just download the <a href="ccan.tar.bz2">tarball of everything includ
 <th align="right">Download</th>
 
 <?php 
-$d = dir($argv[1]);
-$modules = array();
-while (false !== ($entry = $d->read())) {
-	if ($entry[0] != '.' && is_file($argv[1].$entry."/_info")) {
-		array_push($modules, $entry);
-	}
-}
+$modules = array_slice($argv, 4);
 sort($modules);
 
 foreach ($modules as $module) {
@@ -49,7 +43,6 @@ foreach ($modules as $module) {
 	</tr>
 	<?php
 }
-$d->close();
 ?>
 </table>
 

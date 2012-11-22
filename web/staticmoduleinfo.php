@@ -4,7 +4,7 @@ include('logo.html');
 include('menulist.html');
 include('static-configuration');
 $module_path=$argv[1];
-$module=basename($module_path);
+$module=$argv[2];
 $maintainer=extract_field('maintainer',$module_path);
 $author=extract_field('author',$module_path);
 $summary=extract_field('summary',$module_path);
@@ -15,6 +15,7 @@ $dependencies=htmlspecialchars(shell_exec('tools/ccan_depends --direct '.$module
 $extdepends=htmlspecialchars(shell_exec('tools/ccan_depends --compile --non-ccan '.$module_path));
 $licence=extract_field('licence',$module_path);
 $license=extract_field('license',$module_path);
+$url_prefix = getenv("URLPREFIX");
 ?>
 <table align="center" bgcolor="lightblue" width="70%" border="0" cellpadding="3" cellspacing="1">
 <tr align="center" bgcolor="FFFFCC">
@@ -22,8 +23,8 @@ $license=extract_field('license',$module_path);
 <a href="<?=$repo_base.$module?>">Browse Source</a>
 </td>
 <td>
-<a href="../<?=$tar_dir?>/with-deps/<?=$module?>.tar.bz2">Download</a>
-<a href="../<?=$tar_dir?>/<?=$module?>.tar.bz2">(without any required ccan dependencies)</a>
+<a href="<?=$url_prefix?><?=$tar_dir?>/with-deps/<?=$module?>.tar.bz2">Download</a>
+<a href="<?=$url_prefix?><?=$tar_dir?>/<?=$module?>.tar.bz2">(without any required ccan dependencies)</a>
 </tr>
 </table>
 
