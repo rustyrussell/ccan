@@ -13,45 +13,6 @@
 # Where make scores puts the results
 SCOREDIR=scores/$(shell whoami)/$(shell uname -s)-$(shell uname -m)-$(CC)-$(shell git describe --always --dirty)
 
-# Here's my rough logarithmic timeout graph for my laptop:
-#
-# 302                                                  -     
-#    |                                                  / --*  
-#    |                                                 /       
-#    |                                                 /       
-#    |                                                /        
-#    |Execution Time, seconds                        /        
-#    |                                               /         
-#    |                                          ---//          
-#    |                                         /               
-#    |                                       //                
-#    |                    ---\            ---                  
-#    |                 ---    \\    ------                     
-#    |-----------------         \---                           
-# 19 +------------------------------------------------------+--
-#    0           Timeout (ms, logarithmic)               262144
-#
-# 140
-#    |                                                         
-#    |------------                                             
-#    |            ---                                          
-#    |               ---------                                 
-#    |                        -------                          
-#    |                               --\                       
-#    |                                  \\-                    
-#    | Tests skipped                       --\                 
-#    |                                        \                
-#    |                                         \\              
-#    |                                           \\\           
-#    |                                              \          
-#    |                                               \----     
-#  --+0---------------------------------------------------==+--
-#    0           Timeout (ms, logarithmic)               262144
-#
-# On my laptop, this runs 574 tests in 40 seconds, vs. a full check which
-# runs 676 tests in 260 seconds.
-FASTTIMEOUT=750
-
 default: libccan.a
 
 ALL_DEPENDS=$(patsubst %, ccan/%/.depends, $(MODS_NORMAL) $(MODS_EXTERNAL))
@@ -85,7 +46,7 @@ check-%: tools/ccanlint/ccanlint
 	tools/ccanlint/ccanlint ccan/$*
 
 fastcheck-%: tools/ccanlint/ccanlint
-	tools/ccanlint/ccanlint --timeout $(FASTTIMEOUT) ccan/$*
+	tools/ccanlint/ccanlint -x tests_pass_valgrind -x tests_compile_coverage ccan/$*
 
 # Doesn't test dependencies, doesn't print verbose fail results.
 summary-check-%: tools/ccanlint/ccanlint $(OBJFILES)
