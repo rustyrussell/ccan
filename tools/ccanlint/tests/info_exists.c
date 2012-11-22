@@ -68,7 +68,7 @@ static void create_info_template(struct manifest *m, struct score *score)
 	if (!info)
 		err(1, "Trying to create a template _info in %s", filename);
 
-	if (fprintf(info, template, m->basename) < 0) {
+	if (fprintf(info, template, m->modname) < 0) {
 		unlink_noerr(filename);
 		err(1, "Writing template into %s", filename);
 	}

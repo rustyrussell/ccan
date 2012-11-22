@@ -47,7 +47,7 @@ static void create_info_template_doc(struct manifest *m, struct score *score)
 		    " *\n"
 		    " * Followed by an Example: section with a standalone\n"
 		    " * (trivial and usually useless) program\n"
-		    " */\n", m->basename, m->basename) < 0) {
+		    " */\n", m->modname, m->basename) < 0) {
 		unlink_noerr("_info.new");
 		err(1, "Writing to _info.new to insert documentation");
 	}
@@ -83,7 +83,7 @@ static void check_info_documentation_exists(struct manifest *m,
 	score->pass = true;
 
 	list_for_each(infodocs, d, list) {
-		if (!streq(d->function, m->basename))
+		if (!streq(d->function, m->modname))
 			continue;
 		if (streq(d->type, "summary"))
 			summary = true;

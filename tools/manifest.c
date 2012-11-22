@@ -239,6 +239,7 @@ struct manifest *get_manifest(const void *ctx, const char *dir)
 	list_head_init(&m->deps);
 	list_head_init(&m->test_deps);
 
+	/* Trim trailing /. */
 	len = strlen(m->dir);
 	while (len && m->dir[len-1] == '/')
 		m->dir[--len] = '\0';
@@ -247,6 +248,9 @@ struct manifest *get_manifest(const void *ctx, const char *dir)
 	if (!m->basename)
 		errx(1, "I don't expect to be run from the root directory");
 	m->basename++;
+
+	assert(strstarts(m->dir, find_ccan_dir(m->dir)));
+	m->modname = m->dir + strlen(find_ccan_dir(m->dir)) + strlen("ccan/");
 
 	add_files(m, "");
 

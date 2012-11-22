@@ -58,10 +58,9 @@ static void check_use_build(struct manifest *m,
 {
 	char *contents;
 	char *tmpfile, *cmdout;
-	char *basename = talloc_asprintf(m, "%s/example.c", m->dir);
 	int fd;
 
-	tmpfile = temp_file(m, ".c", basename);
+	tmpfile = temp_file(m, ".c", "example.c");
 
 	fd = open(tmpfile, O_WRONLY | O_CREAT | O_EXCL, 0600);
 	if (fd < 0)
@@ -73,7 +72,7 @@ static void check_use_build(struct manifest *m,
 				   "{\n"
 				   "	return 0;\n"
 				   "}\n",
-				   m->basename, m->basename);
+				   m->modname, m->basename);
 	if (write(fd, contents, strlen(contents)) != strlen(contents))
 		err(1, "Failure writing to temporary file %s", tmpfile);
 	close(fd);

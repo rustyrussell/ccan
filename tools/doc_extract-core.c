@@ -71,7 +71,8 @@ static unsigned int is_summary_line(const char *line)
 {
 	unsigned int id_len;
 
-	id_len = strspn(line, IDENT_CHARS" ");
+	/* We allow /, because it can be in (nested) module names. */
+	id_len = strspn(line, IDENT_CHARS" /");
 	if (id_len == 0)
 		return 0;
 	if (strspn(line, " ") == id_len)

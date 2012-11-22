@@ -112,7 +112,7 @@ static void build_objects_with_stringchecks(struct manifest *m,
 		tmp = temp_file(score, ".c", i->fullname);
 		tmpfd = start_file(tmp);
 		line = talloc_asprintf(score, "#include <ccan/%s/%s.h>\n",
-				       m->basename, m->basename);
+				       m->modname, m->basename);
 		write_str(tmpfd, line);
 		close(tmpfd);
 		test_compile(score, i, tmp, flags, &errors, &warnings);

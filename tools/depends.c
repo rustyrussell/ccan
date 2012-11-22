@@ -40,7 +40,7 @@ lines_from_cmd(const void *ctx, const char *format, ...)
  * temp_file helps here. */
 char *compile_info(const void *ctx, const char *dir)
 {
-	char *info_c_file, *info, *ccandir, *compiled, *output;
+	char *info_c_file, *info, *compiled, *output;
 	size_t len;
 	int fd;
 
@@ -59,12 +59,8 @@ char *compile_info(const void *ctx, const char *dir)
 	if (close(fd) != 0)
 		return NULL;
 
-	ccandir = talloc_dirname(ctx, dir);
-	if (strrchr(ccandir, '/'))
-		*strrchr(ccandir, '/') = '\0';
-
 	compiled = temp_file(ctx, "", "info");
-	if (compile_and_link(ctx, info_c_file, ccandir, "",
+	if (compile_and_link(ctx, info_c_file, find_ccan_dir(dir), "",
 			     CCAN_COMPILER, CCAN_CFLAGS " -I.", "",
 			     compiled, &output))
 		return compiled;
@@ -209,8 +205,7 @@ get_all_deps(const void *ctx, const char *dir, const char *style,
 			continue;
 
 		subdir = talloc_asprintf(ctx, "%s/%s",
-					 talloc_dirname(ctx, dir),
-					 deps[i] + strlen("ccan/"));
+					 find_ccan_dir(dir), deps[i]);
 		newdeps = get_one(ctx, subdir, "depends", get_info);
 
 		/* Should be short, so brute-force out dups. */
@@ -285,8 +280,7 @@ char **get_libs(const void *ctx, const char *dir, const char *style,
 				continue;
 
 			subdir = talloc_asprintf(ctx, "%s/%s",
-						 talloc_dirname(ctx, dir),
-						 deps[i] + strlen("ccan/"));
+						 find_ccan_dir(dir), deps[i]);
 
 			newlibs = get_one_libs(ctx, subdir, get_info);
 			newlen = talloc_array_length(newlibs);

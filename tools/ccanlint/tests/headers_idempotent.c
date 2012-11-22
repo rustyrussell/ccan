@@ -46,10 +46,10 @@ static void handle_idem(struct manifest *m, struct score *score)
 		/* Main header gets CCAN_FOO_H, others CCAN_FOO_XXX_H */
 		if (strstarts(e->file->name, m->basename)
 		    || strlen(e->file->name) == strlen(m->basename) + 2)
-			name = talloc_asprintf(score, "CCAN_%s_H", m->basename);
+			name = talloc_asprintf(score, "CCAN_%s_H", m->modname);
 		else
 			name = talloc_asprintf(score, "CCAN_%s_%s",
-					       m->basename, e->file->name);
+					       m->modname, e->file->name);
 		fix_name(name);
 
 		q = talloc_asprintf(score,

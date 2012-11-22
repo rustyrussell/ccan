@@ -47,7 +47,7 @@ static char *build_subdir_objs(struct manifest *m,
 			return talloc_asprintf(m,
 					       "Dependency %s"
 					       " did not build:\n%s",
-					       m->basename, output);
+					       m->modname, output);
 		}
 	}
 	return NULL;
@@ -94,7 +94,7 @@ static void check_depends_built(struct manifest *m,
 							       "Dependency %s"
 							       " did not"
 							       " build:\n%s",
-							       i->basename,
+							       i->modname,
 							       errstr);
 				return;
 			}

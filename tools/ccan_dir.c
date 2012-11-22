@@ -1,4 +1,5 @@
 #include <ccan/talloc/talloc.h>
+#include <ccan/err/err.h>
 #include "tools.h"
 #include <assert.h>
 #include <string.h>
@@ -22,10 +23,19 @@ static unsigned int ccan_dir_prefix(const char *fulldir)
 
 const char *find_ccan_dir(const char *base)
 {
-	unsigned int prefix = ccan_dir_prefix(base);
+	static char *ccan_dir;
 
-	if (!prefix)
-		return NULL;
-
-	return talloc_strndup(NULL, base, prefix);
+	if (!ccan_dir) {
+		if (base[0] != '/') {
+			const char *tmpctx = talloc_getcwd(NULL);
+			find_ccan_dir(talloc_asprintf(tmpctx, "%s/%s",
+						      tmpctx, base));
+			talloc_free(tmpctx);
+		} else {
+			unsigned int prefix = ccan_dir_prefix(base);
+			if (prefix)
+				ccan_dir = talloc_strndup(NULL, base, prefix);
+		}
+	}
+	return ccan_dir;
 }

@@ -19,7 +19,7 @@ static bool have_dep(struct manifest *m, const char *dep)
 	struct manifest *i;
 
 	list_for_each(&m->deps, i, list)
-		if (streq(i->basename, dep + strlen("ccan/")))
+		if (streq(i->modname, dep + strlen("ccan/")))
 			return true;
 
 	return false;
@@ -80,7 +80,7 @@ static void check_test_depends_exist(struct manifest *m,
 	bool needs_tap;
 
 	/* We may need libtap for testing, unless we're "tap" */
-	if (streq(m->basename, "tap")) {
+	if (streq(m->modname, "tap")) {
 		needs_tap = false;
 	} else if (list_empty(&m->run_tests) && list_empty(&m->api_tests)) {
 		needs_tap = false;

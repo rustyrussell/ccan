@@ -69,12 +69,12 @@ static void handle_no_tests(struct manifest *m, struct score *score)
 	if (!run)
 		err(1, "Trying to create a test/run.c");
 
-	fprintf(run, "#include <ccan/%s/%s.h>\n", m->basename, m->basename);
+	fprintf(run, "#include <ccan/%s/%s.h>\n", m->modname, m->basename);
 	if (!list_empty(&m->c_files)) {
 		fputs("/* Include the C files directly. */\n", run);
 		list_for_each(&m->c_files, i, list)
 			fprintf(run, "#include <ccan/%s/%s>\n",
-				m->basename, i->name);
+				m->modname, i->name);
 	}
 	fprintf(run, "%s",
 		"#include <ccan/tap/tap.h>\n\n"

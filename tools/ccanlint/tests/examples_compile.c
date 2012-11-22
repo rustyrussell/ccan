@@ -30,27 +30,27 @@ static void add_mod(struct manifest ***deps, struct manifest *m)
 	(*deps)[num] = m;
 }
 
-static bool have_mod(struct manifest *deps[], const char *basename)
+static bool have_mod(struct manifest *deps[], const char *modname)
 {
 	unsigned int i;
 
 	for (i = 0; i < talloc_get_size(deps) / sizeof(*deps); i++)
-		if (strcmp(deps[i]->basename, basename) == 0)
+		if (strcmp(deps[i]->modname, modname) == 0)
 			return true;
 	return false;
 }
 
-static void add_dep(struct manifest ***deps, const char *basename)
+static void add_dep(struct manifest ***deps, const char *modname)
 {
 	unsigned int i;
 	struct manifest *m;
 	char *errstr;
 
-	if (have_mod(*deps, basename))
+	if (have_mod(*deps, modname))
 		return;
 
 	m = get_manifest(*deps, talloc_asprintf(*deps, "%s/ccan/%s",
-						ccan_dir, basename));
+						ccan_dir, modname));
 	errstr = build_submodule(m, cflags, COMPILE_NORMAL);
 	if (errstr)
 		errx(1, "%s", errstr);
@@ -79,7 +79,7 @@ static struct manifest **get_example_deps(struct manifest *m,
 	struct manifest **deps = talloc_array(f, struct manifest *, 0);
 
 	/* This one for a start. */
-	add_dep(&deps, m->basename);
+	add_dep(&deps, m->modname);
 
 	/* Other modules implied by includes. */
 	for (lines = get_ccan_file_lines(f); *lines; lines++) {
@@ -362,7 +362,7 @@ static char *mangle(struct manifest *m, char **lines)
 			      "#include <sys/stat.h>\n"
 			      "#include <sys/types.h>\n"
 			      "#include <unistd.h>\n",
-			      m->basename, m->basename);
+			      m->modname, m->basename);
 
 	ret = talloc_asprintf_append(ret, "/* Useful dummy functions. */\n"
 				     "extern int somefunc(void);\n"

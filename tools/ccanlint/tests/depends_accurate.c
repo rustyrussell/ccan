@@ -22,7 +22,7 @@ static bool has_dep(struct manifest *m, char **deps, bool *used,
 	unsigned int i;
 
 	/* We can include ourselves, of course. */
-	if (streq(depname + strlen("ccan/"), m->basename))
+	if (streq(depname + strlen("ccan/"), m->modname))
 		return true;
 
 	for (i = 0; deps[i]; i++) {
@@ -48,7 +48,7 @@ static bool check_dep_includes(struct manifest *m,
 		char *mod;
 		if (!strreg(f, lines[i],
 			    "^[ \t]*#[ \t]*include[ \t]*[<\"]"
-			    "(ccan/+[^/]+)/", &mod))
+			    "(ccan/+.+)/+[^/]+.h", &mod))
 			continue;
 
 		if (has_dep(m, deps, used, mod))

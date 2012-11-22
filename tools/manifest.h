@@ -13,7 +13,9 @@ enum compile_type {
 
 struct manifest {
 	char *dir;
-	/* The module name, ie. final element of dir name */
+	/* The name of the module, ie. elements of dir name after ccan/. */
+	char *modname;
+	/* The final element of dir name */
 	char *basename;
 	struct ccan_file *info_file;
 

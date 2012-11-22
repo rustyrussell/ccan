@@ -36,7 +36,7 @@ static void check_license_depends_compat(struct manifest *m,
 			score_file_error(score, i->info_file, 0,
 					 "Dependency ccan/%s has"
 					 " incompatible license '%s'",
-					 i->basename,
+					 i->modname,
 					 licenses[i->license].name);
 			score->pass = false;
 		}

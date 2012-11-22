@@ -11,48 +11,72 @@
 #include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
 
-static const char *expected_link(enum license license)
+/* We might need more ../ for nested modules. */
+static const char *link_prefix(struct manifest *m)
 {
+	char *prefix = talloc_strdup(m, "../../");
+	unsigned int i;
+
+	for (i = 0; i < strcount(m->modname, "/"); i++)
+		prefix = talloc_append_string(prefix, "../");
+
+	return talloc_append_string(prefix, "licenses/");
+}
+
+static const char *expected_link(const char *prefix, enum license license)
+{
+	const char *shortname;
+
 	switch (license) {
 	case LICENSE_LGPLv2_PLUS:
 	case LICENSE_LGPLv2:
-		return "../../licenses/LGPL-2.1";
+		shortname = "LGPL-2.1";
+		break;
 	case LICENSE_LGPLv3:
 	case LICENSE_LGPL:
-		return "../../licenses/LGPL-3";
+		shortname = "LGPL-3";
+		break;
 
 	case LICENSE_GPLv2_PLUS:
 	case LICENSE_GPLv2:
-		return "../../licenses/GPL-2";
+		shortname = "GPL-2";
+		break;
 
 	case LICENSE_GPLv3:
 	case LICENSE_GPL:
-		return "../../licenses/GPL-3";
+		shortname = "GPL-3";
+		break;
 
 	case LICENSE_BSD:
-		return "../../licenses/BSD-3CLAUSE";
+		shortname = "BSD-3CLAUSE";
+		break;
 
 	case LICENSE_MIT:
-		return "../../licenses/BSD-MIT";
+		shortname = "BSD-MIT";
+		break;
 
 	case LICENSE_CC0:
-		return "../../licenses/CC0";
+		shortname = "CC0";
+		break;
 
 	default:
 		return NULL;
 	}
+
+	return talloc_append_string(talloc_strdup(prefix, prefix), shortname);
 }
 
 static void handle_license_link(struct manifest *m, struct score *score)
 {
 	struct doc_section *d = find_license_tag(m);
+	const char *prefix = link_prefix(m);
 	const char *link = talloc_asprintf(m, "%s/LICENSE", m->dir);
-	const char *ldest = expected_link(m->license);
+	const char *ldest = expected_link(prefix, m->license);
 	char *q;
 
 	printf(
 	"Most modules want a copy of their license, so usually we create a\n"
-	"LICENSE symlink into ../../licenses to avoid too many copies.\n");
+	"LICENSE symlink into %s to avoid too many copies.\n", prefix);
 
 	/* FIXME: make ask printf-like */
 	q = talloc_asprintf(m, "Set up link to %s (license is %s)?",
@@ -73,6 +97,7 @@ static void check_has_license(struct manifest *m,
 	char *license = talloc_asprintf(m, "%s/LICENSE", m->dir);
 	const char *expected;
 	struct doc_section *d;
+	const char *prefix = link_prefix(m);
 
 	d = find_license_tag(m);
 	if (!d) {
@@ -93,7 +118,7 @@ static void check_has_license(struct manifest *m,
 	/* If they have a license tag at all, we pass. */
 	score->pass = true;
 
-	expected = expected_link(m->license);
+	expected = expected_link(prefix, m->license);
 
 	len = readlink(license, buf, sizeof(buf));
 	if (len < 0) {
@@ -129,11 +154,10 @@ static void check_has_license(struct manifest *m,
 
 	buf[len] = '\0';
 
-	if (!strstarts(buf, "../../licenses/")) {
+	if (!strstarts(buf, prefix)) {
 		score->error = talloc_asprintf(score,
-					       "Expected symlink to"
-					       " ../../licenses/..."
-					       " not %s", buf);
+					       "Expected symlink into"
+					       " %s not %s", prefix, buf);
 		return;
 	}
 

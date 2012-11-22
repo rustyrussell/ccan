@@ -45,7 +45,7 @@ static void check_depends_built_without_features(struct manifest *m,
 							       "Dependency %s"
 							       " did not"
 							       " build:\n%s",
-							       i->basename,
+							       i->modname,
 							       errstr);
 				return;
 			}

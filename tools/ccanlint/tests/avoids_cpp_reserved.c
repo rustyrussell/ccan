@@ -85,7 +85,7 @@ static void check_headers_no_cpp(struct manifest *m,
 		   "#define using #DONT_USE_CPLUSPLUS_RESERVED_NAMES\n"
 		   "#define virtual #DONT_USE_CPLUSPLUS_RESERVED_NAMES\n"
 		   "#include <ccan/%s/%s.h>\n",
-				   m->basename, m->basename);
+				   m->modname, m->basename);
 	if (write(fd, contents, strlen(contents)) != strlen(contents))
 		err(1, "writing to temporary file %s", tmpsrc);
 	close(fd);

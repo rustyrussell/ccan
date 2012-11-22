@@ -11,6 +11,7 @@ DEP_OBJS = ccan/err/err.o \
 	ccan/talloc/talloc.o \
 	ccan/time/time.o \
 	tools/read_config_header.o \
+	tools/ccan_dir.o \
 	tools/compile.o \
 	tools/depends.o \
 	tools/tools.o

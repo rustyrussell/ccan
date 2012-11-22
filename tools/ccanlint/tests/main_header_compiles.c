@@ -51,7 +51,7 @@ static void check_includes_build(struct manifest *m,
 		err(1, "Creating temporary file %s", tmpsrc);
 
 	contents = talloc_asprintf(tmpsrc, "#include <ccan/%s/%s.h>\n",
-				   m->basename, m->basename);
+				   m->modname, m->basename);
 	if (write(fd, contents, strlen(contents)) != strlen(contents))
 		err(1, "writing to temporary file %s", tmpsrc);
 	close(fd);

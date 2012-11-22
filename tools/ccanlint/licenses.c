@@ -208,7 +208,7 @@ struct doc_section *find_license_tag(const struct manifest *m)
 	struct doc_section *d;
 
 	list_for_each(get_ccan_file_docs(m->info_file), d, list) {
-		if (!streq(d->function, m->basename))
+		if (!streq(d->function, m->modname))
 			continue;
 		if (streq(d->type, "license"))
 			return d;

@@ -29,7 +29,7 @@ static void check_has_main_header(struct manifest *m,
 	"You have no %s/%s.h header file.\n\n"
 	"CCAN modules have a name, the same as the directory name.  They're\n"
 	"expected to have an interface in the header of the same name.\n",
-				       m->basename, m->basename);
+				       m->modname, m->basename);
 }
 
 struct ccanlint main_header_exists = {
