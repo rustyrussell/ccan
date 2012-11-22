@@ -59,6 +59,9 @@ summary-fastcheck-%: tools/ccanlint/ccanlint $(OBJFILES)
 summary-fastcheck-antithread/%: tools/ccanlint/ccanlint $(OBJFILES)
 	tools/ccanlint/ccanlint -x tests_pass_valgrind -x tests_compile_coverage -s ccan/antithread/$*
 
+summary-fastcheck-tal/%: tools/ccanlint/ccanlint $(OBJFILES)
+	tools/ccanlint/ccanlint -x tests_pass_valgrind -x tests_compile_coverage -s ccan/tal/$*
+
 ccan/%/info: ccan/%/_info
 	$(CC) $(CCAN_CFLAGS) -o $@ -x c $<
 
