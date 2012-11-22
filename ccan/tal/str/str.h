@@ -13,16 +13,18 @@ enum strsplit {
 
 /**
  * strsplit - Split string into an array of substrings
- * @ctx: the parent to tal from (often NULL)
- * @string: the string to split
- * @delims: delimiters where lines should be split.
+ * @ctx: the context to tal from (often NULL).
+ * @string: the string to split (can be take()).
+ * @delims: delimiters where lines should be split (can be take()).
  * @flags: whether to include empty substrings.
  *
- * This function splits a single string into multiple strings.  The
- * original string is untouched: an array is allocated (using tal)
- * pointing to copies of each substring.  Multiple delimiters result
- * in empty substrings.  By definition, no delimiters will appear in
- * the substrings.
+ * This function splits a single string into multiple strings.
+ *
+ * If @string is take(), the returned array will point into the
+ * mangled @string.
+ *
+ * Multiple delimiters result in empty substrings.  By definition, no
+ * delimiters will appear in the substrings.
  *
  * The final char * in the array will be NULL.
  *
@@ -43,8 +45,8 @@ enum strsplit {
  *		return long_lines;
  *	}
  */
-char **strsplit(const void *ctx, const char *string, const char *delims,
-		enum strsplit flags);
+char **strsplit(const tal_t *ctx,
+		const char *string, const char *delims, enum strsplit flags);
 
 enum strjoin {
 	STR_TRAIL,
@@ -53,9 +55,9 @@ enum strjoin {
 
 /**
  * strjoin - Join an array of substrings into one long string
- * @ctx: the context to tal from (often NULL)
- * @strings: the NULL-terminated array of strings to join
- * @delim: the delimiter to insert between the strings
+ * @ctx: the context to tal from (often NULL).
+ * @strings: the NULL-terminated array of strings to join (can be take())
+ * @delim: the delimiter to insert between the strings (can be take())
  * @flags: whether to add a delimieter to the end
  *
  * This function joins an array of strings into a single string.  The
@@ -80,8 +82,8 @@ char *strjoin(const void *ctx, char *strings[], const char *delim,
 /**
  * strreg - match and extract from a string via (extended) regular expressions.
  * @ctx: the context to tal from (often NULL)
- * @string: the string to try to match.
- * @regex: the regular expression to match.
+ * @string: the string to try to match (can be take())
+ * @regex: the regular expression to match (can be take())
  * ...: pointers to strings to allocate for subexpressions.
  *
  * Returns true if we matched, in which case any parenthesized

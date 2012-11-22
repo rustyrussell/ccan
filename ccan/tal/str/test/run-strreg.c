@@ -2,16 +2,6 @@
 #include <ccan/tal/str/str.c>
 #include <ccan/tap/tap.h>
 
-static unsigned int tal_total_blocks(tal_t *ctx)
-{
-	unsigned int num = 1;
-	tal_t *i;
-
-	for (i = tal_first(ctx); i; i = tal_next(ctx, i))
-		num++;
-	return num;
-}
-
 static bool find_parent(tal_t *child, tal_t *parent)
 {
 	tal_t *i;
@@ -26,12 +16,11 @@ static bool find_parent(tal_t *child, tal_t *parent)
 int main(int argc, char *argv[])
 {
 	void *ctx = tal_strdup(NULL, "toplevel");
-	unsigned int top_blocks = tal_total_blocks(ctx);
 	char *a, *b;
 	/* If it accesses this, it will crash. */
 	char **invalid = (char **)1L;
 
-	plan_tests(25);
+	plan_tests(40);
 	/* Simple matching. */
 	ok1(strreg(ctx, "hello world!", "hello") == true);
 	ok1(strreg(ctx, "hello world!", "hi") == false);
@@ -88,7 +77,42 @@ int main(int argc, char *argv[])
 	tal_free(a);
 
 	/* No leaks! */
-	ok1(tal_total_blocks(ctx) == top_blocks);
+	ok1(!tal_first(ctx));
+
+	/* NULL arg with take means always fail. */
+	ok1(strreg(ctx, take(NULL), "((hello|goodbye) world)",
+		   &b, NULL, invalid) == false);
+
+	/* Take string. */
+	a = tal_strdup(ctx, "hello world!");
+	ok1(strreg(ctx, take(a), "([a-z]+)", &b, invalid) == true);
+	ok1(streq(b, "hello"));
+	ok1(tal_parent(b) == ctx);
+	tal_free(b);
+	ok1(tal_first(ctx) == NULL);
+
+	/* Take regex. */
+	a = tal_strdup(ctx, "([a-z]+)");
+	ok1(strreg(ctx, "hello world!", take(a), &b, invalid) == true);
+	ok1(streq(b, "hello"));
+	ok1(tal_parent(b) == ctx);
+	tal_free(b);
+	ok1(tal_first(ctx) == NULL);
+
+	/* Take both. */
+	a = tal_strdup(ctx, "([a-z]+)");
+	ok1(strreg(ctx, take(tal_strdup(ctx, "hello world!")),
+		   take(a), &b, invalid) == true);
+	ok1(streq(b, "hello"));
+	ok1(tal_parent(b) == ctx);
+	tal_free(b);
+	ok1(tal_first(ctx) == NULL);
+
+	/* ... even if we fail to match. */
+	a = tal_strdup(ctx, "([a-z]+)");
+	ok1(strreg(ctx, take(tal_strdup(ctx, "HELLO WORLD!")),
+		   take(a), &b, invalid) == false);
+	ok1(tal_first(ctx) == NULL);
 	tal_free(ctx);
 
 	return exit_status();
