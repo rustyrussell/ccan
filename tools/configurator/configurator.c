@@ -146,6 +146,15 @@ static struct test tests[] = {
 	{ "HAVE_COMPOUND_LITERALS", INSIDE_MAIN, NULL, NULL,
 	  "int *foo = (int[]) { 1, 2, 3, 4 };\n"
 	  "return foo[0] ? 0 : 1;" },
+	{ "HAVE_FCHDIR", DEFINES_EVERYTHING|EXECUTE, NULL, NULL,
+	  "#include <sys/types.h>\n"
+	  "#include <sys/stat.h>\n"
+	  "#include <fcntl.h>\n"
+	  "#include <unistd.h>\n"
+	  "int main(void) {\n"
+	  "	int fd = open(\"..\", O_RDONLY);\n"
+	  "	return fchdir(fd) == 0 ? 0 : 1;\n"
+	  "}\n" },
 	{ "HAVE_ERR_H", DEFINES_FUNC, NULL, NULL,
 	  "#include <err.h>\n"
 	  "static void func(int arg) {\n"
