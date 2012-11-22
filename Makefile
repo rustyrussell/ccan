@@ -10,19 +10,8 @@
 #        Especially tools/ccanlint/ccanlint and tools/namespacize.
 # distclean: destroy everything back to pristine state
 
-# Trying to build the whole repo is usually a lose; there will be some
-# dependencies you don't have.
-EXCLUDE=wwviaudio ogg_to_pcm jmap jset nfs
-
 # Where make scores puts the results
 SCOREDIR=scores/$(shell whoami)/$(shell uname -s)-$(shell uname -m)-$(CC)-$(shell git describe --always --dirty)
-
-ALL=$(filter-out $(EXCLUDE), $(REALLY_ALL))
-
-ALL_DEPENDS=$(patsubst %, ccan/%/.depends, $(REALLY_ALL))
-
-# Not all modules have tests.
-ALL_TESTS=$(patsubst ccan/%/test/, %, $(foreach dir, $(ALL), $(wildcard ccan/$(dir)/test/)))
 
 # Here's my rough logarithmic timeout graph for my laptop:
 #
@@ -65,18 +54,20 @@ FASTTIMEOUT=750
 
 default: libccan.a
 
+ALL_DEPENDS=$(patsubst %, ccan/%/.depends, $(MODS_NORMAL) $(MODS_EXTERNAL))
+
 include Makefile-ccan
 
-fastcheck: $(ALL_TESTS:%=summary-fastcheck-%)
+fastcheck: $(MODS_NORMAL:%=summary-fastcheck-%)
 
-check: $(ALL_TESTS:%=summary-check-%)
+check: $(MODS_NORMAL:%=summary-check-%)
 
 distclean: clean
 	rm -f $(ALL_DEPENDS)
 
 scores: $(SCOREDIR)/SUMMARY
 
-$(SCOREDIR)/SUMMARY: $(patsubst ccan/%/_info, $(SCOREDIR)/score-%, $(wildcard ccan/*/_info))
+$(SCOREDIR)/SUMMARY: $(MODS:%=$(SCOREDIR)/score-%)
 	git describe --always > $@
 	uname -a >> $@
 	$(CC) -v >> $@

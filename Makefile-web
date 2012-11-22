@@ -1,23 +1,26 @@
 # This can be overridden on cmdline to generate pages elsewhere.
 WEBDIR=/home/rusty/www/html/ccan
 
-# Ignore EXCLUDE when making webpages.
-ALL_PAGES=$(patsubst %, $(WEBDIR)/info/%.html, $(REALLY_ALL))
-DIRECT_TARBALLS=$(patsubst %, $(WEBDIR)/tarballs/%.tar.bz2, $(REALLY_ALL))
-DEPEND_TARBALLS=$(patsubst %, $(WEBDIR)/tarballs/with-deps/%.tar.bz2, $(REALLY_ALL))
+ALL_PAGES=$(patsubst %, $(WEBDIR)/info/%.html, $(MODS_NORMAL) $(MODS_EXTERNAL))
+DIRECT_TARBALLS=$(patsubst %, $(WEBDIR)/tarballs/%.tar.bz2, $(MODS_NORMAL) $(MODS_EXTERNAL))
+DEPEND_TARBALLS=$(patsubst %, $(WEBDIR)/tarballs/with-deps/%.tar.bz2, $(MODS_NORMAL) $(MODS_EXTERNAL))
 WEB_SUBDIRS=$(WEBDIR)/tarballs $(WEBDIR)/junkcode $(WEBDIR)/tarballs/with-deps $(WEBDIR)/info
 JUNKDIRS=$(wildcard junkcode/*)
 JUNKPAGES=$(JUNKDIRS:%=$(WEBDIR)/%.html)
 JUNKBALLS=$(JUNKDIRS:%=$(WEBDIR)/%.tar.bz2)
 
-upload: fastcheck
+upload: fastcheck modcheck
 	git push origin HEAD:master
 	git push github HEAD:master
+
+# Check MODS list in Makefile-ccan matches modules we find.
+modcheck:
+	@FOUND=$$(echo $$(find ccan -name _info | sed 's,ccan/\(.*\)/_info,\1,' | sort) ); LISTED=$$(echo $$(echo $(MODS) | tr ' ' '\012' | sort) ); if [ "$$FOUND" = "$$LISTED" ]; then exit 0; fi; while true; do a="$${FOUND%% *}"; b="$${LISTED%% *}"; if [ "$$a" != "$$b" ]; then echo "$$a found but $$b in MOD" >&2; exit 1; fi; FOUND="$${FOUND#* }"; LISTED="$${LISTED#* }"; done
 
 clean-tree:
 	! git status --porcelain | grep .
 
-webpages: clean-tree $(WEB_SUBDIRS) $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.jpg $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan $(ALL_PAGES) junkpages
+webpages: modcheck clean-tree $(WEB_SUBDIRS) $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.jpg $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan $(ALL_PAGES) junkpages
 
 junkpages: $(WEBDIR)/list.html $(WEBDIR)/junkcode $(JUNKPAGES) $(JUNKBALLS)
 $(WEB_SUBDIRS): $(WEBDIR)

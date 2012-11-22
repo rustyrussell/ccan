@@ -6,6 +6,93 @@
 CCAN_CFLAGS=-g3 -ggdb -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Wpointer-arith -Wwrite-strings -Wundef -DCCAN_STR_DEBUG=1
 CFLAGS = $(CCAN_CFLAGS) -I. $(DEPGEN)
 
+# Normal modules: no external dependencies, just a header:
+MODS_NORMAL_NO_SRC := alignof \
+	array_size \
+	asearch \
+	build_assert \
+	bytestring \
+	cast \
+	check_type \
+	compiler \
+	container_of \
+	darray \
+	endian \
+	objset \
+	short_types \
+	tcon \
+	tlist \
+	typesafe_cb
+
+# No external dependencies, with C code:
+MODS_NORMAL_WITH_SRC := alloc \
+	antithread \
+	asort \
+	asprintf \
+	autodata \
+	avl \
+	bdelta \
+	block_pool \
+	btree \
+	ccan_tokenizer \
+	charset \
+	ciniparser \
+	crc \
+	crcsync \
+	daemonize \
+	daemon_with_notify \
+	dgraph \
+	err \
+	failtest \
+	foreach \
+	grab_file \
+	hash \
+	htable \
+	idtree \
+	ilog \
+	isaac \
+	iscsi \
+	json \
+	lbalance \
+	likely \
+	list \
+	md4 \
+	net \
+	noerr \
+	opt \
+	ptr_valid \
+	rbtree \
+	read_write_all \
+	rfc822 \
+	sparse_bsearch \
+	str \
+	stringmap \
+	strmap \
+	strset \
+	str_talloc \
+	take \
+	tal \
+	talloc \
+	talloc_link \
+	tally \
+	tap \
+	time \
+	ttxml
+
+MODS_NORMAL:=$(MODS_NORMAL_WITH_SRC) $(MODS_NORMAL_NO_SRC)
+
+# Modules which require external dependencies, thus may not pass check.
+MODS_EXTERNAL_NO_SRC:=
+
+MODS_EXTERNAL_WITH_SRC:=jmap \
+	jset \
+	nfs \
+	ogg_to_pcm \
+	wwviaudio
+
+MODS_EXTERNAL:=$(MODS_EXTERNAL_NO_SRC) $(MODS_EXTERNAL_WITH_SRC)
+
+MODS:=$(MODS_EXTERNAL) $(MODS_NORMAL)
 
 default: libccan.a
 
@@ -13,14 +100,8 @@ default: libccan.a
 DEPGEN=-MD
 -include ccan/*/*.d
 
-# Anything with an _info file is a module.
-REALLY_ALL=$(patsubst ccan/%/_info, %, $(wildcard ccan/*/_info))
-
-# Exclude any modules we can't build.
-ALL=$(filter-out $(EXCLUDE), $(REALLY_ALL))
-
 # Anything with C files needs building; dir leaves / on, sort uniquifies
-DIRS=$(patsubst %/, %, $(sort $(foreach m, $(ALL), $(dir $(wildcard ccan/$m/*.c)))))
+DIRS=$(patsubst %/, %, $(sort $(foreach m, $(MODS_NORMAL_WITH_SRC), $(dir $(wildcard ccan/$m/*.c)))))
 
 # Generate everyone's separate Makefiles.
 -include $(foreach dir, $(DIRS), $(dir)-Makefile)
