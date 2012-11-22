@@ -72,6 +72,7 @@ MODS_NORMAL_WITH_SRC := antithread \
 	str_talloc \
 	take \
 	tal \
+	tal/path \
 	tal/str \
 	talloc \
 	talloc_link \
