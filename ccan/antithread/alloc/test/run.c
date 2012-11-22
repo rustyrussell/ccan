@@ -1,8 +1,8 @@
-#include <ccan/alloc/alloc.h>
+#include <ccan/antithread/alloc/alloc.h>
 #include <ccan/tap/tap.h>
-#include <ccan/alloc/alloc.c>
-#include <ccan/alloc/bitops.c>
-#include <ccan/alloc/tiny.c>
+#include <ccan/antithread/alloc/alloc.c>
+#include <ccan/antithread/alloc/bitops.c>
+#include <ccan/antithread/alloc/tiny.c>
 #include <stdlib.h>
 #include <err.h>
 
@@ -22,9 +22,9 @@ static bool unique(void *p[], unsigned int num)
 		if (p[i] == p[i-1])
 			return false;
 	return true;
-}	
+}
 
-static bool free_every_second_one(void *mem, unsigned int num, 
+static bool free_every_second_one(void *mem, unsigned int num,
 				  unsigned long pool_size, void *p[])
 {
 	unsigned int i;

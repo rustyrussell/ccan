@@ -55,6 +55,10 @@ summary-check-%: tools/ccanlint/ccanlint $(OBJFILES)
 summary-fastcheck-%: tools/ccanlint/ccanlint $(OBJFILES)
 	tools/ccanlint/ccanlint -x tests_pass_valgrind -x tests_compile_coverage -s ccan/$*
 
+# FIXME: Horrible hacks because % doesn't match /
+summary-fastcheck-antithread/%: tools/ccanlint/ccanlint $(OBJFILES)
+	tools/ccanlint/ccanlint -x tests_pass_valgrind -x tests_compile_coverage -s ccan/antithread/$*
+
 ccan/%/info: ccan/%/_info
 	$(CC) $(CCAN_CFLAGS) -o $@ -x c $<
 

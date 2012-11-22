@@ -1,7 +1,7 @@
 #include <ccan/tap/tap.h>
 #include "config.h"
-#include <ccan/alloc/tiny.c>
-#include <ccan/alloc/bitops.c>
+#include <ccan/antithread/alloc/tiny.c>
+#include <ccan/antithread/alloc/bitops.c>
 #include <stdlib.h>
 #include <err.h>
 

@@ -1,8 +1,8 @@
-#include <ccan/alloc/alloc.h>
+#include <ccan/antithread/alloc/alloc.h>
 #include <ccan/tap/tap.h>
-#include <ccan/alloc/alloc.c>
-#include <ccan/alloc/bitops.c>
-#include <ccan/alloc/tiny.c>
+#include <ccan/antithread/alloc/alloc.c>
+#include <ccan/antithread/alloc/bitops.c>
+#include <ccan/antithread/alloc/tiny.c>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <err.h>

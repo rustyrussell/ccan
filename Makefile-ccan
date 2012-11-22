@@ -25,8 +25,8 @@ MODS_NORMAL_NO_SRC := alignof \
 	typesafe_cb
 
 # No external dependencies, with C code:
-MODS_NORMAL_WITH_SRC := alloc \
-	antithread \
+MODS_NORMAL_WITH_SRC := antithread \
+	antithread/alloc \
 	asort \
 	asprintf \
 	autodata \

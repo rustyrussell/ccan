@@ -3,7 +3,7 @@
 #include "config.h"
 
 /**
- * alloc - memory allocator routines
+ * antithread/alloc - memory allocator routines
  *
  * The alloc module implements a simple allocator which you can use to
  * dynamically allocate space within a region of memory.  This can be useful
@@ -24,7 +24,7 @@
  *	#include <fcntl.h>
  *	#include <string.h>
  *	#include <stdlib.h>
- *	#include <ccan/alloc/alloc.h>
+ *	#include <ccan/antithread/alloc/alloc.h>
  *
  *	static void usage(const char *name)
  *	{

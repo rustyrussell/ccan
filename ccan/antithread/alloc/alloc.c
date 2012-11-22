@@ -20,7 +20,7 @@
    http://samba.org/~tridge/junkcode/alloc_mmap/
 
    Copyright (C) Andrew Tridgell 2007
-   
+
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public
    License as published by the Free Software Foundation; either
@@ -362,7 +362,7 @@ void alloc_init(void *pool, unsigned long poolsize)
 
 	/* We rely on page numbers fitting in 16 bit. */
 	BUILD_ASSERT(MAX_SMALL_PAGES < 65536);
-	
+
 	sp_bits = small_page_bits(poolsize);
 	lp_bits = sp_bits + BITS_FROM_SMALL_TO_LARGE_PAGE;
 
@@ -776,7 +776,7 @@ void alloc_free(void *pool, unsigned long poolsize, void *free)
 		tiny_alloc_free(pool, poolsize, free);
 		return;
 	}
-	
+
 	/* Get page header. */
 	sp_bits = small_page_bits(poolsize);
 	pgnum = offset >> sp_bits;
@@ -1097,7 +1097,7 @@ bool alloc_check(void *pool, unsigned long poolsize)
 
 		prev = i;
 	}
-		
+
 	/* Make sure every page accounted for. */
 	for (i = 0; i < poolsize >> sp_bits; i++) {
 		if (!test_bit(pages, i))
@@ -1200,7 +1200,7 @@ void alloc_visualize(FILE *out, void *pool, unsigned long poolsize)
 		tiny_alloc_visualize(out, pool, poolsize);
 		return;
 	}
-	
+
 	sp_bits = small_page_bits(poolsize);
 	lp_bits = sp_bits + BITS_FROM_SMALL_TO_LARGE_PAGE;
 

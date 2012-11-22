@@ -4,7 +4,6 @@ TAGS
 *.o
 libccan.a
 config.h
-ccan/*-Makefile
 *~
 tools/ccan_depends
 tools/doc_extract

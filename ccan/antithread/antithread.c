@@ -15,7 +15,7 @@
 #include <ccan/noerr/noerr.h>
 #include <ccan/talloc/talloc.h>
 #include <ccan/read_write_all/read_write_all.h>
-#include <ccan/alloc/alloc.h>
+#include <ccan/antithread/alloc/alloc.h>
 #include <ccan/list/list.h>
 
 /* FIXME: Valgrind support should be possible for some cases.  Tricky
