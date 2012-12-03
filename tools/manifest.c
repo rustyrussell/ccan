@@ -60,7 +60,8 @@ char **get_ccan_file_lines(struct ccan_file *f)
 	return f->lines;
 }
 
-struct ccan_file *new_ccan_file(const void *ctx, const char *dir, char *name)
+struct ccan_file *new_ccan_file(const void *ctx, const char *dir,
+				const char *name)
 {
 	struct ccan_file *f;
 	unsigned int i;
@@ -73,25 +74,28 @@ struct ccan_file *new_ccan_file(const void *ctx, const char *dir, char *name)
 	f->doc_sections = NULL;
 	for (i = 0; i < ARRAY_SIZE(f->compiled); i++)
 		f->compiled[i] = NULL;
-	f->name = tal_steal(f, name);
+	f->name = tal_strdup(f, name);
 	f->fullname = path_join(f, dir, f->name);
 	f->contents = NULL;
 	f->simplified = NULL;
 	return f;
 }
 
-static void add_files(struct manifest *m, const char *dir)
+static void add_files(struct manifest *m, const char *base, const char *subdir)
 {
 	DIR *d;
 	struct dirent *ent;
 	char **subs = tal_arr(m, char *, 0);
+	const char *thisdir;
 
-	if (dir[0])
-		d = opendir(dir);
+	if (!subdir)
+		thisdir = base;
 	else
-		d = opendir(".");
+		thisdir = path_join(subs, base, subdir);
+
+	d = opendir(thisdir);
 	if (!d)
-		err(1, "Opening directory %s", dir[0] ? dir : ".");
+		err(1, "Opening directory %s", thisdir);
 
 	while ((ent = readdir(d)) != NULL) {
 		struct stat st;
@@ -103,9 +107,10 @@ static void add_files(struct manifest *m, const char *dir)
 			continue;
 
 		f = new_ccan_file(m, m->dir,
-				  tal_fmt(m, "%s%s", dir, ent->d_name));
-		if (lstat(f->name, &st) != 0)
-			err(1, "lstat %s", f->name);
+				  subdir ? path_join(m, subdir, ent->d_name)
+				  : ent->d_name);
+		if (lstat(f->fullname, &st) != 0)
+			err(1, "lstat %s", f->fullname);
 
 		if (S_ISDIR(st.st_mode)) {
 			size_t len = tal_count(subs);
@@ -153,7 +158,7 @@ static void add_files(struct manifest *m, const char *dir)
 	closedir(d);
 
 	/* Before we recurse, sanity check this is a ccan module. */
-	if (!dir[0]) {
+	if (!subdir) {
 		size_t i;
 
 		if (!m->info_file
@@ -162,7 +167,7 @@ static void add_files(struct manifest *m, const char *dir)
 			errx(1, "No _info, C or H files found here!");
 
 		for (i = 0; i < tal_count(subs); i++)
-			add_files(m, subs[i]);
+			add_files(m, base, subs[i]);
 	}
 	tal_free(subs);
 }
@@ -195,25 +200,20 @@ struct manifest *get_manifest(const void *ctx, const char *dir)
 	char *canon_dir;
 	unsigned int len;
 	struct list_head *list;
-	struct path_pushd *old;
 
 	if (!manifests) {
 		manifests = tal(NULL, struct htable_manifest);
 		htable_manifest_init(manifests);
 	}
 
-	/* FIXME: Use path_canon, don't chdir! */
-	old = path_pushd(ctx, dir);
-	if (!old)
-		err(1, "Failed to chdir to %s", dir);
-
-	canon_dir = path_cwd(old);
+	canon_dir = path_canon(ctx, dir);
 	if (!canon_dir)
-		err(1, "Getting current directory");
+		err(1, "Getting canonical version of directory %s", dir);
 
 	m = htable_manifest_get(manifests, canon_dir);
 	if (m)
-		goto done;
+		return m;
+
 	m = tal_linkable(tal(NULL, struct manifest));
 	m->info_file = NULL;
 	m->compiled[COMPILE_NORMAL] = m->compiled[COMPILE_NOFEAT] = NULL;
@@ -245,7 +245,7 @@ struct manifest *get_manifest(const void *ctx, const char *dir)
 	assert(strstarts(m->dir, find_ccan_dir(m->dir)));
 	m->modname = m->dir + strlen(find_ccan_dir(m->dir)) + strlen("ccan/");
 
-	add_files(m, "");
+	add_files(m, canon_dir, NULL);
 
 	/* Nicer to run tests in a predictable order. */
 	foreach_ptr(list, &m->api_tests, &m->run_tests, &m->compile_ok_tests,
@@ -253,10 +253,6 @@ struct manifest *get_manifest(const void *ctx, const char *dir)
 		sort_files(list);
 
 	htable_manifest_add(manifests, tal_link(manifests, m));
-
-done:
-	if (!path_popd(old))
-		err(1, "Returning to original directory");
 
 	return m;
 }

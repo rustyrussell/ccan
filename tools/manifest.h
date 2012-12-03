@@ -82,8 +82,9 @@ struct ccan_file {
 	char *simplified;
 };
 
-/* A new ccan_file, with the given name (tal_steal onto returned value). */
-struct ccan_file *new_ccan_file(const void *ctx, const char *dir, char *name);
+/* A new ccan_file, with the given dir and name (either can be take()). */
+struct ccan_file *new_ccan_file(const void *ctx,
+				const char *dir, const char *name);
 
 /* Use this rather than accessing f->contents directly: loads on demand. */
 const char *get_ccan_file_contents(struct ccan_file *f);

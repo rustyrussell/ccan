@@ -464,8 +464,8 @@ static struct ccan_file *mangle_example(struct manifest *m,
 	name = temp_file(example, ".c",
 			 take(tal_fmt(NULL, "mangled-%s", example->name)));
 	f = new_ccan_file(example,
-			  path_dirname(example, name),
-			  path_basename(example, name));
+			  take(path_dirname(example, name)),
+			  take(path_basename(example, name)));
 	tal_steal(f, name);
 
 	fd = open(f->fullname, O_WRONLY | O_CREAT | O_EXCL, 0600);

@@ -32,7 +32,8 @@ static char *add_example(struct manifest *m, struct ccan_file *source,
 		*strchr(name, ' ') = '_';
 
 	name = temp_file(m, ".c", take(name));
-	f = new_ccan_file(m, path_dirname(m, name), path_basename(m, name));
+	f = new_ccan_file(m, take(path_dirname(m, name)),
+			  take(path_basename(m, name)));
 	tal_steal(f, name);
 	list_add_tail(&m->examples, &f->list);
 
