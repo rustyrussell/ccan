@@ -126,6 +126,8 @@ void *tal_free(const tal_t *p);
  * tal_add_destructor - add a callback function when this context is destroyed.
  * @ptr: The tal allocated object.
  * @function: the function to call before it's freed.
+ *
+ * Note that this can only fail if your allocfn fails and your errorfn returns.
  */
 #define tal_add_destructor(ptr, function)				      \
 	tal_add_destructor_((ptr), typesafe_cb(void, void *, (function), (ptr)))
@@ -140,6 +142,71 @@ void *tal_free(const tal_t *p);
  */
 #define tal_del_destructor(ptr, function)				      \
 	tal_del_destructor_((ptr), typesafe_cb(void, void *, (function), (ptr)))
+
+enum tal_notify_type {
+	TAL_NOTIFY_FREE = 1,
+	TAL_NOTIFY_STEAL = 2,
+	TAL_NOTIFY_MOVE = 4,
+	TAL_NOTIFY_RESIZE = 8,
+	TAL_NOTIFY_RENAME = 16,
+	TAL_NOTIFY_ADD_CHILD = 32,
+	TAL_NOTIFY_DEL_CHILD = 64,
+	TAL_NOTIFY_ADD_NOTIFIER = 128,
+	TAL_NOTIFY_DEL_NOTIFIER = 256
+};
+
+/**
+ * tal_add_notifier - add a callback function when this context changes.
+ * @ptr: The tal allocated object.
+ * @types: Bitwise OR of the types the callback is interested in.
+ * @callback: the function to call.
+ *
+ * Note that this can only fail if your allocfn fails and your errorfn
+ * returns.  Also note that notifiers are not reliable in the case
+ * where an allocation fails, as they may be called before any
+ * allocation is actually done.
+ *
+ * TAL_NOTIFY_FREE is called when @ptr is freed, either directly or
+ * because an ancestor is freed: @info is the argument to tal_free().
+ * It is exactly equivalent to a destructor, with more information.
+ *
+ * TAL_NOTIFY_STEAL is called when @ptr's parent changes: @info is the
+ * new parent.
+ *
+ * TAL_NOTIFY_MOVE is called when @ptr is realloced (via tal_resize)
+ * and moved.  In this case, @ptr arg here is the new memory, and
+ * @info is the old pointer.
+ *
+ * TAL_NOTIFY_RESIZE is called when @ptr is realloced via tal_resize:
+ * @info is the new size, in bytes.  If the pointer has moved,
+ * TAL_NOTIFY_MOVE callbacks are called first.
+ *
+ * TAL_NOTIFY_ADD_CHILD/TAL_NOTIFY_DEL_CHILD are called when @ptr is
+ * the context for a tal() allocating call, or a direct child is
+ * tal_free()d: @info is the child.  Note that TAL_NOTIFY_DEL_CHILD is
+ * not called when this context is tal_free()d: TAL_NOTIFY_FREE is
+ * considered sufficient for that case.
+ *
+ * TAL_NOTIFY_ADD_NOTIFIER/TAL_NOTIFIER_DEL_NOTIFIER are called when
+ * a notifier is added or removed (not for this notifier): @info is the
+ * callback.
+ */
+#define tal_add_notifier(ptr, types, callback)				\
+	tal_add_notifier_((ptr), (types),				\
+			  typesafe_cb_postargs(void, tal_t *, (callback), \
+					       (ptr),			\
+					       enum tal_notify_type, void *))
+
+/**
+ * tal_del_notifier - remove a notifier callback function.
+ * @ptr: The tal allocated object.
+ * @callback: the function to call.
+ */
+#define tal_del_notifier(ptr, callback)					\
+	tal_del_notifier_((ptr),					\
+			  typesafe_cb_postargs(void, void *, (callback), \
+					       (ptr),			\
+					       enum tal_notify_type, void *))
 
 /**
  * tal_set_name - attach a name to a tal pointer.
@@ -337,4 +404,10 @@ bool tal_resize_(tal_t **ctxp, size_t size);
 bool tal_add_destructor_(tal_t *ctx, void (*destroy)(void *me));
 bool tal_del_destructor_(tal_t *ctx, void (*destroy)(void *me));
 
+bool tal_add_notifier_(tal_t *ctx, enum tal_notify_type types,
+		       void (*notify)(tal_t *ctx, enum tal_notify_type,
+				      void *info));
+bool tal_del_notifier_(tal_t *ctx,
+		       void (*notify)(tal_t *ctx, enum tal_notify_type,
+				      void *info));
 #endif /* CCAN_TAL_H */
