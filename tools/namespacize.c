@@ -12,6 +12,7 @@
 #include "ccan/str/str.h"
 #include "ccan/take/take.h"
 #include "ccan/rbuf/rbuf.h"
+#include "ccan/tal/path/path.h"
 #include "ccan/err/err.h"
 #include "tools.h"
 
@@ -255,7 +256,8 @@ static void analyze_headers(const char *dir, struct replace **repl)
 	char *hdr, *contents;
 
 	/* Get hold of header, assume that's it. */
-	hdr = tal_fmt(dir, "%s/%s.h", dir, tal_basename(dir, dir));
+	hdr = tal_fmt(dir, "%s/%s.h", dir, path_basename(dir, dir));
+
 	contents = tal_grab_file(dir, hdr, NULL);
 	if (!contents)
 		err(1, "Reading %s", hdr);
@@ -445,7 +447,7 @@ static struct replace *read_replacement_file(const char *depdir)
 
 static void adjust_dir(const char *dir)
 {
-	char *parent = tal_dirname(autofree(), dir);
+	char *parent = path_dirname(autofree(), dir);
 	char **deps;
 
 	verbose("Adjusting %s\n", dir);
@@ -473,8 +475,8 @@ static void adjust_dir(const char *dir)
 
 static void adjust_dependents(const char *dir)
 {
-	char *parent = tal_dirname(NULL, dir);
-	char *base = tal_basename(parent, dir);
+	char *parent = path_dirname(NULL, dir);
+	char *base = path_basename(parent, dir);
 	char **file;
 
 	verbose("Looking for dependents in %s\n", parent);
@@ -483,7 +485,7 @@ static void adjust_dependents(const char *dir)
 		char *info, **deps;
 		bool isdep = false;
 
-		if (tal_basename(*file, *file)[0] == '.')
+		if (path_basename(*file, *file)[0] == '.')
 			continue;
 
 		info = tal_fmt(*file, "%s/_info", *file);

@@ -4,6 +4,7 @@
 #include <ccan/tal/str/str.h>
 #include <ccan/take/take.h>
 #include <ccan/cast/cast.h>
+#include <ccan/tal/path/path.h>
 #include <ccan/str/str.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -461,10 +462,10 @@ static struct ccan_file *mangle_example(struct manifest *m,
 	struct ccan_file *f;
 
 	name = temp_file(example, ".c",
-			 tal_fmt(m, "%s/mangled-%s", m->dir, example->name));
+			 take(tal_fmt(NULL, "mangled-%s", example->name)));
 	f = new_ccan_file(example,
-			  tal_dirname(example, name),
-			  tal_basename(example, name));
+			  path_dirname(example, name),
+			  path_basename(example, name));
 	tal_steal(f, name);
 
 	fd = open(f->fullname, O_WRONLY | O_CREAT | O_EXCL, 0600);

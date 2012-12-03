@@ -1,4 +1,5 @@
 #include <ccan/err/err.h>
+#include <ccan/tal/path/path.h>
 #include "tools.h"
 #include <assert.h>
 #include <string.h>
@@ -26,8 +27,8 @@ const char *find_ccan_dir(const char *base)
 
 	if (!ccan_dir) {
 		if (base[0] != '/') {
-			const char *tmpctx = tal_getcwd(NULL);
-			find_ccan_dir(tal_fmt(tmpctx, "%s/%s", tmpctx, base));
+			const char *tmpctx = path_cwd(NULL);
+			find_ccan_dir(path_join(tmpctx, tmpctx, base));
 			tal_free(tmpctx);
 		} else {
 			unsigned int prefix = ccan_dir_prefix(base);

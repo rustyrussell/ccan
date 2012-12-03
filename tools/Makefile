@@ -11,6 +11,7 @@ DEP_OBJS = ccan/err/err.o \
 	ccan/take/take.o \
 	ccan/tal/tal.o \
 	ccan/tal/link/link.o \
+	ccan/tal/path/path.o \
 	ccan/tal/str/str.o \
 	ccan/time/time.o \
 	tools/read_config_header.o \

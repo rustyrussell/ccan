@@ -3,6 +3,7 @@
 #include "tools.h"
 #include <ccan/str/str.h>
 #include <ccan/tal/link/link.h>
+#include <ccan/tal/path/path.h>
 #include <ccan/hash/hash.h>
 #include <ccan/htable/htable_type.h>
 #include <ccan/noerr/noerr.h>
@@ -193,23 +194,22 @@ static void sort_files(struct list_head *list)
 struct manifest *get_manifest(const void *ctx, const char *dir)
 {
 	struct manifest *m;
-	char *olddir, *canon_dir;
+	char *canon_dir;
 	unsigned int len;
 	struct list_head *list;
+	struct path_pushd *old;
 
 	if (!manifests) {
 		manifests = tal(NULL, struct htable_manifest);
 		htable_manifest_init(manifests);
 	}
 
-	olddir = tal_getcwd(NULL);
-	if (!olddir)
-		err(1, "Getting current directory");
-
-	if (chdir(dir) != 0)
+	/* FIXME: Use path_canon, don't chdir! */
+	old = path_pushd(ctx, dir);
+	if (!old)
 		err(1, "Failed to chdir to %s", dir);
 
-	canon_dir = tal_getcwd(olddir);
+	canon_dir = path_cwd(old);
 	if (!canon_dir)
 		err(1, "Getting current directory");
 
@@ -257,9 +257,8 @@ struct manifest *get_manifest(const void *ctx, const char *dir)
 	htable_manifest_add(manifests, tal_link(manifests, m));
 
 done:
-	if (chdir(olddir) != 0)
-		err(1, "Returning to original directory '%s'", olddir);
-	tal_free(olddir);
+	if (!path_popd(old))
+		err(1, "Returning to original directory");
 
 	return m;
 }

@@ -46,9 +46,6 @@ char **get_libs(const void *ctx, const char *dir, const char *style,
 /* From tools.c */
 /* If set, print all commands run, all output they give and exit status. */
 extern bool tools_verbose;
-char *tal_basename(const void *ctx, const char *dir);
-char *tal_dirname(const void *ctx, const char *dir);
-char *tal_getcwd(const void *ctx);
 bool PRINTF_FMT(4,5) run_command(const void *ctx,
 				 unsigned int *time_ms,
 				 char **output,

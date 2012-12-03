@@ -32,6 +32,7 @@
 #include <ccan/foreach/foreach.h>
 #include <ccan/cast/cast.h>
 #include <ccan/tlist/tlist.h>
+#include <ccan/tal/path/path.h>
 #include <ccan/strmap/strmap.h>
 
 struct ccanlint_map {
@@ -590,7 +591,7 @@ int main(int argc, char *argv[])
 	unsigned int i;
 	struct manifest *m;
 	const char *prefix = "";
-	char *dir = tal_getcwd(NULL), *base_dir = dir, *testlink;
+	char *dir = path_cwd(NULL), *base_dir = dir, *testlink;
 	struct dgraph_node all;
 	
 	/* Empty graph node to which we attach everything else. */
@@ -675,7 +676,8 @@ int main(int argc, char *argv[])
 		}
 
 		if (dir != base_dir)
-			prefix = tal_strcat(NULL, take(tal_basename(NULL,dir)),
+			prefix = tal_strcat(NULL,
+					    take(path_basename(NULL,dir)),
 					    ": ");
 
 		m = get_manifest(autofree(), dir);

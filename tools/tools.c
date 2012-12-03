@@ -5,6 +5,7 @@
 #include <ccan/read_write_all/read_write_all.h>
 #include <ccan/noerr/noerr.h>
 #include <ccan/time/time.h>
+#include <ccan/tal/path/path.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/time.h>
@@ -24,42 +25,6 @@ bool tools_verbose = false;
 
 /* Ten minutes. */
 const unsigned int default_timeout_ms = 10 * 60 * 1000;
-
-char *tal_basename(const void *ctx, const char *dir)
-{
-	const char *p = strrchr(dir, '/');
-
-	if (!p)
-		return tal_strdup(ctx, dir);
-	return tal_strdup(ctx, p+1);
-}
-
-char *tal_dirname(const void *ctx, const char *dir)
-{
-	const char *p = strrchr(dir, '/');
-
-	if (!p)
-		return tal_strdup(ctx, ".");
-	return tal_strndup(ctx, dir, p - dir);
-}
-
-char *tal_getcwd(const void *ctx)
-{
-	unsigned int len;
-	char *cwd;
-
-	/* *This* is why people hate C. */
-	len = 32;
-	cwd = tal_arr(ctx, char, len);
-	while (!getcwd(cwd, len)) {
-		if (errno != ERANGE) {
-			tal_free(cwd);
-			return NULL;
-		}
-		tal_resize(&cwd, len *= 2);
-	}
-	return cwd;
-}
 
 static void killme(int sig)
 {
@@ -229,28 +194,24 @@ void keep_temp_dir(void)
 
 char *temp_file(const void *ctx, const char *extension, const char *srcname)
 {
-	unsigned baselen;
-	char *f, *suffix = tal_strdup(ctx, "");
+	char *f, *base, *suffix;
 	struct stat st;
 	unsigned int count = 0;
 
-	srcname = tal_basename(ctx, srcname);
-	if (strrchr(srcname, '.'))
-		baselen = strrchr(srcname, '.') - srcname;
-	else
-		baselen = strlen(srcname);
+	base = path_join(ctx, temp_dir(), take(path_basename(ctx, srcname)));
+	/* Trim extension. */
+	base[path_ext_off(base)] = '\0';
+	suffix = tal_strdup(ctx, extension);
 
 	do {
-		f = tal_fmt(ctx, "%s/%.*s%s%s",
-			    temp_dir(), baselen, srcname, suffix, extension);
-		tal_free(suffix);
-		suffix = tal_fmt(ctx, "-%u", ++count);
+		f = tal_strcat(ctx, base, suffix);
+		suffix = tal_fmt(base, "-%u%s", ++count, extension);
 	} while (lstat(f, &st) == 0);
 
 	if (tools_verbose)
 		printf("Creating file %s\n", f);
 
-	tal_free(suffix);
+	tal_free(base);
 	return f;
 }
 

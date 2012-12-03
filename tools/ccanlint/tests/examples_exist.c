@@ -1,6 +1,8 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
 #include <ccan/str/str.h>
+#include <ccan/tal/path/path.h>
+#include <ccan/take/take.h>
 #include <ccan/cast/cast.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -23,16 +25,14 @@ static char *add_example(struct manifest *m, struct ccan_file *source,
 	int fd;
 	struct ccan_file *f;
 
-	name = tal_fmt(m, "%s/example-%s-%s.c",
-		       tal_dirname(m, source->fullname),
-		       source->name,
-		       example->function);
+	name = tal_fmt(m, "example-%s-%s",
+		       source->name, example->function);
 	/* example->function == 'struct foo' */
 	while (strchr(name, ' '))
 		*strchr(name, ' ') = '_';
 
-	name = temp_file(m, ".c", name);
-	f = new_ccan_file(m, tal_dirname(m, name), tal_basename(m, name));
+	name = temp_file(m, ".c", take(name));
+	f = new_ccan_file(m, path_dirname(m, name), path_basename(m, name));
 	tal_steal(f, name);
 	list_add_tail(&m->examples, &f->list);
 

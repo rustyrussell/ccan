@@ -1,6 +1,7 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
 #include <ccan/str/str.h>
+#include <ccan/tal/path/path.h>
 #include <ccan/foreach/foreach.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -142,8 +143,8 @@ static void do_run_coverage_tests(struct manifest *m,
 	bool ran_some = false;
 
 	/* This tells gcov where we put those .gcno files. */
-	outdir = tal_dirname(score,
-				m->info_file->compiled[COMPILE_NORMAL]);
+	outdir = path_dirname(score,
+			      m->info_file->compiled[COMPILE_NORMAL]);
 	covcmd = tal_fmt(m, "gcov %s -o %s",
 			 full_gcov ? "" : "-n",
 			 outdir);
