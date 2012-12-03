@@ -154,11 +154,11 @@ static struct tal_hdr *to_tal_hdr(const void *ctx)
 
 	t = (struct tal_hdr *)((char *)ctx - sizeof(struct tal_hdr));
 	check_bounds(t);
-	if (t->prop && !is_literal(t->prop))
-		check_bounds(t->prop);
 	check_bounds(ignore_destroying_bit(t->parent_child));
 	check_bounds(t->list.next);
 	check_bounds(t->list.prev);
+	if (t->prop && !is_literal(t->prop))
+		check_bounds(t->prop);
 	return t;
 }
 
