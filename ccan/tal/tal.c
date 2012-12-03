@@ -1,7 +1,6 @@
 /* Licensed under BSD-MIT - see LICENSE file for details */
 #include <ccan/tal/tal.h>
 #include <ccan/compiler/compiler.h>
-#include <ccan/hash/hash.h>
 #include <ccan/list/list.h>
 #include <ccan/take/take.h>
 #include <assert.h>
@@ -14,20 +13,17 @@
 
 //#define TAL_DEBUG 1
 
-/* How large should grouips get? */
-#define GROUP_NODE_AVERAGE 32
-
 /* 32-bit type field, first byte 0 in either endianness. */
 enum prop_type {
 	CHILDREN = 0x00c1d500,
-	GROUP = 0x00600d00,
 	DESTRUCTOR = 0x00de5700,
 	NAME = 0x00111100,
 };
 
 struct tal_hdr {
-	struct tal_hdr *next;
+	struct list_node list;
 	struct prop_hdr *prop;
+	struct children *parent_child;
 };
 
 struct prop_hdr {
@@ -35,20 +31,10 @@ struct prop_hdr {
 	struct prop_hdr *next;
 };
 
-/* Unlike other properties, this is owned by parent, not child! */
-struct group {
-	struct prop_hdr hdr; /* GROUP */
-	struct list_head list; /* Head for child->group, node for others. */
-	/* We point to parent's children property, as it doesn't move! */
-	struct children *parent_child;
-	struct tal_hdr *first_child;
-};
-
 struct children {
 	struct prop_hdr hdr; /* CHILDREN */
 	struct tal_hdr *parent;
-	/* We always have one group.  Others may be added. */
-	struct group group;
+	struct list_head children; /* Head of siblings. */
 };
 
 struct destructor {
@@ -64,13 +50,13 @@ struct name {
 static struct {
 	struct tal_hdr hdr;
 	struct children c;
-} null_parent = { { NULL, &null_parent.c.hdr },
+} null_parent = { { { &null_parent.hdr.list, &null_parent.hdr.list },
+		    &null_parent.c.hdr, NULL },
 		  { { CHILDREN, NULL },
 		    &null_parent.hdr,
-		    { { GROUP, NULL },
-		      { { &null_parent.c.group.list.n,
-			  &null_parent.c.group.list.n } },
-		      &null_parent.c, NULL } }
+		    { { &null_parent.c.children.n,
+			&null_parent.c.children.n } }
+		  }
 };
 
 
@@ -84,24 +70,19 @@ static inline void COLD call_error(const char *msg)
 	errorfn(msg);
 }
 
-static bool get_destroying_bit(struct tal_hdr *next)
+static bool get_destroying_bit(struct children *parent_child)
 {
-	return (size_t)next & 1;
+	return (size_t)parent_child & 1;
 }
 
-static void set_destroying_bit(struct tal_hdr **next)
+static void set_destroying_bit(struct children **parent_child)
 {
-	*next = (void *)((size_t)next | 1);
+	*parent_child = (void *)((size_t)*parent_child | 1);
 }
 
-static struct tal_hdr *ignore_destroying_bit(struct tal_hdr *next)
+static struct children *ignore_destroying_bit(struct children *parent_child)
 {
-	return (void *)((size_t)next & ~(size_t)1);
-}
-
-static struct group *next_group(struct group *group)
-{
-	return list_entry(group->list.n.next, struct group, list.n);
+	return (void *)((size_t)parent_child & ~(size_t)1);
 }
 
 static bool initialized = false;
@@ -109,16 +90,10 @@ static bool initialized = false;
 /* This means valgrind can see leaks. */
 static void tal_cleanup(void)
 {
-	struct group *i, *next;
+	struct tal_hdr *i;
 
-	/* Unlink null_parent. */
-	for (i = next_group(&null_parent.c.group);
-	     i != &null_parent.c.group;
-	     i = next) {
-		next = next_group(i);
-		freefn(i);
-	}
-	null_parent.c.group.first_child = NULL;
+	while ((i = list_top(&null_parent.c.children, struct tal_hdr, list)))
+		list_del(&i->list);
 
 	/* Cleanup any taken pointers. */
 	take_cleanup();
@@ -130,25 +105,34 @@ static void take_alloc_failed(const void *p)
 	tal_free(p);
 }
 
+/* We carefully start all real properties with a zero byte. */
+static bool is_literal(const struct prop_hdr *prop)
+{
+	return ((char *)prop)[0] != 0;
+}
+
 #ifndef NDEBUG
 static const void *bounds_start, *bounds_end;
 
-static void update_bounds(const void *new)
+static void update_bounds(const void *new, size_t size)
 {
-	if (unlikely(!bounds_start))
-		bounds_start = bounds_end = new;
-	else if (new < bounds_start)
+	if (unlikely(!bounds_start)) {
 		bounds_start = new;
-	else if (new > bounds_end)
-		bounds_end = new;
+		bounds_end = (char *)new + size;
+	} else if (new < bounds_start)
+		bounds_start = new;
+	else if ((char *)new + size > (char *)bounds_end)
+		bounds_end = (char *)new + size;
 }
 
 static bool in_bounds(const void *p)
 {
-	return !p || (p >= bounds_start && p <= bounds_end);
+	return !p
+		|| (p >= (void *)&null_parent && p <= (void *)(&null_parent + 1))
+		|| (p >= bounds_start && p <= bounds_end);
 }
 #else
-static void update_bounds(const void *new)
+static void update_bounds(const void *new, size_t size)
 {
 }
 
@@ -170,7 +154,11 @@ static struct tal_hdr *to_tal_hdr(const void *ctx)
 
 	t = (struct tal_hdr *)((char *)ctx - sizeof(struct tal_hdr));
 	check_bounds(t);
-	check_bounds(ignore_destroying_bit(t->next));
+	if (t->prop && !is_literal(t->prop))
+		check_bounds(t->prop);
+	check_bounds(ignore_destroying_bit(t->parent_child));
+	check_bounds(t->list.next);
+	check_bounds(t->list.prev);
 	return t;
 }
 
@@ -220,14 +208,8 @@ static void *allocate(size_t size)
 	if (!ret)
 		call_error("allocation failed");
 	else
-		update_bounds(ret);
+		update_bounds(ret, size);
 	return ret;
-}
-
-/* We carefully start all real properties with a zero byte. */
-static bool is_literal(const struct prop_hdr *prop)
-{
-	return ((char *)prop)[0] != 0;
 }
 
 static struct prop_hdr **find_property_ptr(const struct tal_hdr *t,
@@ -288,15 +270,6 @@ static struct name *add_name_property(struct tal_hdr *t, const char *name)
 	return prop;
 }
 
-static void init_group_property(struct group *group,
-				struct children *parent_child,
-				struct tal_hdr *child)
-{
-	init_property(&group->hdr, child, GROUP);
-	group->parent_child = parent_child;
-	group->first_child = child;
-}
-
 static struct children *add_child_property(struct tal_hdr *parent,
 					   struct tal_hdr *child)
 {
@@ -304,78 +277,27 @@ static struct children *add_child_property(struct tal_hdr *parent,
 	if (prop) {
 		init_property(&prop->hdr, parent, CHILDREN);
 		prop->parent = parent;
-
-		init_group_property(&prop->group, prop, child);
-		list_head_init(&prop->group.list);
-		update_bounds(&prop->group);
+		list_head_init(&prop->children);
 	}
-	return prop;
-}
-
-static struct group *add_group_property(struct tal_hdr *child,
-					struct children *parent_child)
-{
-	struct group *prop = allocate(sizeof(*prop));
-	if (prop)
-		init_group_property(prop, parent_child, child);
 	return prop;
 }
 
 static bool add_child(struct tal_hdr *parent, struct tal_hdr *child)
 {
-        struct group *group;
 	struct children *children = find_property(parent, CHILDREN);
 
         if (!children) {
-		children = add_child_property(parent, child);
-		if (!children)
-			return false;
-		list_head_init(&children->group.list);
-
-		/* Child links to itself. */
-                child->next = child;
-		return true;
-	}
-
-	/* Last one (may be children->group itself). */
-	group = next_group(&children->group);
-
-	/* Empty group can happen: null_parent, or all children freed. */
-	if (unlikely(!group->first_child)) {
-		assert(group == &children->group);
-		/* This hits on first child appended to null parent. */
 		if (unlikely(!initialized)) {
 			atexit(tal_cleanup);
 			take_allocfail(take_alloc_failed);
 			initialized = true;
 		}
-		/* Link group into this child, make it the first one. */
-		group->hdr.next = child->prop;
-		child->prop = &group->hdr;
-		group->first_child = child;
-
-		/* Child links to itself. */
-		child->next = child;
-		return true;
+		children = add_child_property(parent, child);
+		if (!children)
+			return false;
 	}
-
-	if (unlikely(hash_pointer(child, 0) % GROUP_NODE_AVERAGE == 0)) {
-		struct group *newgroup;
-
-		newgroup = add_group_property(child, children);
-		if (likely(newgroup)) {
-			list_add(&children->group.list, &newgroup->list.n);
-
-			/* Child links to itself. */
-			child->next = child;
-			return true;
-		}
-		/* Fall through: on allocation failure reuse old group. */
-        }
-
-	/* We insert after head, otherwise we'd need to find end. */
-	child->next = group->first_child->next;
-	group->first_child->next = child;
+	list_add(&children->children, &child->list);
+	child->parent_child = children;
 	return true;
 }
 
@@ -384,10 +306,10 @@ static void del_tree(struct tal_hdr *t)
 	struct prop_hdr **prop, *p, *next;
 
         /* Already being destroyed?  Don't loop. */
-        if (unlikely(get_destroying_bit(t->next)))
+        if (unlikely(get_destroying_bit(t->parent_child)))
                 return;
 
-        set_destroying_bit(&t->next);
+        set_destroying_bit(&t->parent_child);
 
         /* Carefully call destructors, removing as we go. */
         while ((prop = find_property_ptr(t, DESTRUCTOR))) {
@@ -400,33 +322,19 @@ static void del_tree(struct tal_hdr *t)
 	/* Now free children and groups. */
 	prop = find_property_ptr(t, CHILDREN);
 	if (prop) {
+		struct tal_hdr *i;
 		struct children *c = (struct children *)*prop;
-		struct group *group, *next;
 
-		group = &c->group;
-		do {
-			next = next_group(group);
-			if (group->first_child) {
-				struct tal_hdr *i, *nextc;
-
-				i = group->first_child;
-				do {
-					nextc = i->next;
-					del_tree(i);
-					i = nextc;
-				} while (i != group->first_child);
-			}
-			if (group != &c->group)
-				freefn(group);
-			group = next;
-		} while (group != &c->group);
+		while ((i = list_top(&c->children, struct tal_hdr, list))) {
+			list_del(&i->list);
+			del_tree(i);
+		}
 	}
 
-        /* Finally free our properties (groups are freed by parent). */
+        /* Finally free our properties. */
         for (p = t->prop; p && !is_literal(p); p = next) {
                 next = p->next;
-		if (p->type != GROUP)
-			freefn(p);
+		freefn(p);
         }
         freefn(t);
 }
@@ -449,57 +357,13 @@ void *tal_alloc_(const tal_t *ctx, size_t size, bool clear, const char *label)
 	return from_tal_hdr(debug_tal(child));
 }
 
-/* Update back ptrs, etc, as required.
- * May return pointer to parent. */
-static struct tal_hdr *remove_node(struct tal_hdr *t)
-{
-        struct prop_hdr **prop;
-        struct tal_hdr *prev;
-
-	/* Loop around to find previous node. */
-	for (prev = t->next; prev->next != t; prev = prev->next);
-
-	/* Unlink ourselves. */
-	prev->next = t->next;
-
-	/* Are we the node with the group property? */
-	prop = find_property_ptr(t, GROUP);
-	if (prop) {
-		struct group *group = (struct group *)*prop;
-
-		/* Are we the only one? */
-		if (prev == t) {
-			struct prop_hdr *next = (*prop)->next;
-			struct children *c = group->parent_child;
-			/* Is this the group embedded in the child property? */
-			if (group == &c->group) {
-				group->first_child = NULL;
-			} else {
-				/* Empty group, so free it. */
-				list_del_from(&c->group.list, &group->list.n);
-				freefn(group);
-			}
-			*prop = next;
-			return c->parent;
-		} else {
-			/* Move property to next node. */
-			group->first_child = t->next;
-
-			*prop = group->hdr.next;
-			group->hdr.next = t->next->prop;
-			t->next->prop = &group->hdr;
-		}
-	}
-	return NULL;
-}
-
 void *tal_free(const tal_t *ctx)
 {
         if (ctx) {
 		struct tal_hdr *t;
 		int saved_errno = errno;
 		t = debug_tal(to_tal_hdr(ctx));
-		remove_node(t);
+		list_del(&t->list);
 		del_tree(t);
 		errno = saved_errno;
 	}
@@ -509,28 +373,18 @@ void *tal_free(const tal_t *ctx)
 void *tal_steal_(const tal_t *new_parent, const tal_t *ctx)
 {
         if (ctx) {
-		struct tal_hdr *newpar, *t, *old_next, *old_parent;
+		struct tal_hdr *newpar, *t, *old_parent;
 
                 newpar = debug_tal(to_tal_hdr_or_null(new_parent));
                 t = debug_tal(to_tal_hdr(ctx));
 
-		/* Save enough data to get us back if we fail! */
-		old_next = t->next;
-
                 /* Unlink it from old parent. */
-                old_parent = remove_node(t);
+		list_del(&t->list);
+		old_parent = ignore_destroying_bit(t->parent_child)->parent;
+
                 if (unlikely(!add_child(newpar, t))) {
-			/* If we were last child, parent returned by
-			 * remove_node, otherwise search old siblings
-			 * for it. */
-			if (!old_parent) {
-				struct group *g;
-				while (!(g = find_property(old_next, GROUP)))
-					old_next = old_next->next;
-				old_parent = g->parent_child->parent;
-			}
-			/* We can always add to old parent, becuase it has one
-			 * group already. */
+			/* We can always add to old parent, becuase it has a
+			 * children property already. */
 			if (!add_child(old_parent, t))
 				abort();
 			return NULL;
@@ -592,22 +446,12 @@ const char *tal_name(const tal_t *t)
 static struct tal_hdr *first_child(struct tal_hdr *parent)
 {
 	struct children *child;
-	struct group *group;
 
 	child = find_property(parent, CHILDREN);
         if (!child)
                 return NULL;
 
-	/* Careful of empty group embedded in child property. */
-	if (child->group.first_child)
-		return child->group.first_child->next;
-
-	/* There could still be another group! */
-	group = next_group(&child->group);
-	if (group == &child->group)
-		return NULL;
-
-	return group->first_child->next;
+	return list_top(&child->children, struct tal_hdr, list);
 }
 
 tal_t *tal_first(const tal_t *root)
@@ -623,7 +467,6 @@ tal_t *tal_first(const tal_t *root)
 tal_t *tal_next(const tal_t *root, const tal_t *prev)
 {
         struct tal_hdr *c, *t = debug_tal(to_tal_hdr(prev)), *top;
-        struct group *group;
 
         /* Children? */
 	c = first_child(t);
@@ -632,20 +475,17 @@ tal_t *tal_next(const tal_t *root, const tal_t *prev)
 
         top = to_tal_hdr_or_null(root);
         do {
-		struct group *next;
+		struct tal_hdr *next;
+		struct list_node *end;
 
-		/* Are we back to first child in group? */
-		group = find_property(t, GROUP);
-		if (!group)
-                        return from_tal_hdr(t->next);
+		end = &ignore_destroying_bit(t->parent_child)->children.n;
 
-		/* Last group is one inside children property. */
-		next = next_group(group);
-		if (next != &group->parent_child->group)
-			return from_tal_hdr(next->first_child->next);
+		next = list_entry(t->list.next, struct tal_hdr, list);
+		if (&next->list != end)
+			return from_tal_hdr(next);
 
                 /* OK, go back to parent. */
-                t = group->parent_child->parent;
+                t = ignore_destroying_bit(t->parent_child)->parent;
         } while (t != top);
 
         return NULL;
@@ -653,26 +493,20 @@ tal_t *tal_next(const tal_t *root, const tal_t *prev)
 
 tal_t *tal_parent(const tal_t *ctx)
 {
-        struct group *group;
         struct tal_hdr *t;
 
 	if (!ctx)
 		return NULL;
 
 	t = debug_tal(to_tal_hdr(ctx));
-
-	while (!(group = find_property(t, GROUP)))
-		t = t->next;
-
-	if (group->parent_child->parent == &null_parent.hdr)
+	if (ignore_destroying_bit(t->parent_child)->parent == &null_parent.hdr)
 		return NULL;
-        return from_tal_hdr(group->parent_child->parent);
+        return from_tal_hdr(ignore_destroying_bit(t->parent_child)->parent);
 }
 
 bool tal_resize_(tal_t **ctxp, size_t size)
 {
-        struct tal_hdr *old_t, *t, **prev;
-        struct group *group;
+        struct tal_hdr *old_t, *t;
         struct children *child;
 
         old_t = debug_tal(to_tal_hdr(*ctxp));
@@ -692,20 +526,13 @@ bool tal_resize_(tal_t **ctxp, size_t size)
 	/* If it didn't move, we're done! */
         if (t == old_t)
                 return true;
-	update_bounds(t);
+	update_bounds(t, size + sizeof(struct tal_hdr));
 
-	/* Fix up linked list pointer. */
-	for (prev = &t->next; *prev != old_t; prev = &(*prev)->next);
-	*prev = t;
+	/* Fix up linked list pointers. */
+	if (list_entry(t->list.next, struct tal_hdr, list) != old_t)
+		t->list.next->prev = t->list.prev->next = &t->list;
 
-	/* Fix up group pointer, if any. */
-	group = find_property(t, GROUP);
-	if (group) {
-		assert(group->first_child == old_t);
-		group->first_child = t;
-	}
-
-	/* Fix up child propertie's parent pointer. */
+	/* Fix up child property's parent pointer. */
 	child = find_property(t, CHILDREN);
 	if (child) {
 		assert(child->parent == old_t);
@@ -834,7 +661,6 @@ static void dump_node(unsigned int indent, const struct tal_hdr *t)
 		printf("  ");
 	printf("%p", t);
         for (p = t->prop; p; p = p->next) {
-		struct group *g;
 		struct children *c;
 		struct destructor *d;
 		struct name *n;
@@ -845,18 +671,9 @@ static void dump_node(unsigned int indent, const struct tal_hdr *t)
 		switch (p->type) {
 		case CHILDREN:
 			c = (struct children *)p;
-			printf(" CHILDREN(%p):parent=%p,group=%p\n",
-			       p, c->parent, &c->group);
-			g = &c->group;
-			printf("  GROUP(%p):list={%p,%p},parent_ch=%p,first=%p",
-			       g, g->list.n.next, g->list.n.next,
-			       g->parent_child, g->first_child);
-			break;
-		case GROUP:
-			g = (struct group *)p;
-			printf(" GROUP(%p):list={%p,%p},,parent_ch=%p,first=%p",
-			       p, g->list.n.next, g->list.n.next,
-			       g->parent_child, g->first_child);
+			printf(" CHILDREN(%p):parent=%p,children={%p,%p}\n",
+			       p, c->parent,
+			       c->children.n.prev, c->children.n.next);
 			break;
 		case DESTRUCTOR:
 			d = (struct destructor *)p;
@@ -876,27 +693,16 @@ static void dump_node(unsigned int indent, const struct tal_hdr *t)
 static void tal_dump_(unsigned int level, const struct tal_hdr *t)
 {
         struct children *children;
-	struct group *group;
 
 	dump_node(level, t);
 
 	children = find_property(t, CHILDREN);
-	if (!children)
-		return;
-
-	group = &children->group;
-	do {
+	if (children) {
 		struct tal_hdr *i;
 
-		i = group->first_child;
-		if (i) {
-			do {
-				tal_dump_(level+1, i);
-				i = i->next;
-			} while (i != group->first_child);
-		}
-		group = next_group(group);
-	} while (group != &children->group);
+		list_for_each(&children->children, i, list)
+			tal_dump_(level + 1, i);
+	}
 }
 
 void tal_dump(void)
@@ -918,19 +724,18 @@ static bool check_err(struct tal_hdr *t, const char *errorstr,
 	return false;
 }
 
-static bool check_group(struct group *group,
-			struct tal_hdr *t, const char *errorstr);
-
-static bool check_node(struct group *group,
+static bool check_node(struct children *parent_child,
 		       struct tal_hdr *t, const char *errorstr)
 {
 	struct prop_hdr *p;
 	struct name *name = NULL;
 	struct children *children = NULL;
-	struct group *gr = NULL;
 
-	if (t != &null_parent.hdr && !in_bounds(t))
+	if (!in_bounds(t))
 		return check_err(t, errorstr, "invalid pointer");
+
+	if (ignore_destroying_bit(t->parent_child) != parent_child)
+		return check_err(t, errorstr, "incorrect parent");
 
 	for (p = t->prop; p; p = p->next) {
 		if (is_literal(p)) {
@@ -940,18 +745,11 @@ static bool check_node(struct group *group,
 			name = (struct name *)p;
 			break;
 		}
-		if (p != &null_parent.c.hdr && p != &null_parent.c.group.hdr
-		    && !in_bounds(p))
+		if (!in_bounds(p))
 			return check_err(t, errorstr,
 					 "has bad property pointer");
 
 		switch (p->type) {
-		case GROUP:
-			if (gr)
-				return check_err(t, errorstr,
-						 "has two groups");
-			gr = (struct group *)p;
-			break;
 		case CHILDREN:
 			if (children)
 				return check_err(t, errorstr,
@@ -970,40 +768,16 @@ static bool check_node(struct group *group,
 			return check_err(t, errorstr, "has unknown property");
 		}
 	}
-	if (group && gr != group)
-		return check_err(t, errorstr, "has bad group");
-
 	if (children) {
-		if (!list_check(&children->group.list, errorstr))
+		struct tal_hdr *i;
+
+		if (!list_check(&children->children, errorstr))
 			return false;
-		gr = &children->group;
-		do {
-			if (gr->first_child) {
-				if (!check_group(gr, gr->first_child, errorstr))
-					return false;
-			} else if (gr != &children->group) {
-				/* Empty groups should be deleted! */
-				return check_err(t, errorstr,
-						 "has empty group");
-			}
-			gr = next_group(gr);
-		} while (gr != &children->group);
+		list_for_each(&children->children, i, list) {
+			if (!check_node(children, i, errorstr))
+				return false;
+		}
 	}
-	return true;
-}
-
-static bool check_group(struct group *group,
-			struct tal_hdr *t, const char *errorstr)
-{
-	struct tal_hdr *i;
-
-	i = t;
-	do {
-		if (!check_node(group, i, errorstr))
-			return false;
-		group = NULL;
-		i = i->next;
-	} while (i != t);
 	return true;
 }
 
@@ -1011,7 +785,7 @@ bool tal_check(const tal_t *ctx, const char *errorstr)
 {
 	struct tal_hdr *t = to_tal_hdr_or_null(ctx);
 
-	return check_node(NULL, t, errorstr);
+	return check_node(ignore_destroying_bit(t->parent_child), t, errorstr);
 }
 #else /* NDEBUG */
 bool tal_check(const tal_t *ctx, const char *errorstr)

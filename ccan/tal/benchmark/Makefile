@@ -6,16 +6,14 @@ LDLIBS=-lrt
 
 all: speed samba-allocs
 
-speed: speed.o tal.o talloc.o time.o hash.o list.o take.o
-samba-allocs: samba-allocs.o tal.o talloc.o time.o hash.o list.o take.o
+speed: speed.o tal.o talloc.o time.o list.o take.o
+samba-allocs: samba-allocs.o tal.o talloc.o time.o list.o take.o
 
 tal.o: ../tal.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 talloc.o: ../../talloc/talloc.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 time.o: ../../time/time.c
-	$(CC) $(CFLAGS) -c -o $@ $<
-hash.o: ../../hash/hash.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 list.o: ../../list/list.c
 	$(CC) $(CFLAGS) -c -o $@ $<

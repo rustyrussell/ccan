@@ -6,21 +6,14 @@
 
 int main(void)
 {
-	char *p[NUM], *iter;
+	char *p[NUM] = { NULL }, *iter;
 	int i;
 
 	plan_tests(NUM + 1 + NUM);
 
-	/* Create a random tree, but make sure we get multiple
-	 * top-level groups! */
+	/* Create a random tree */
 	for (i = 0; i < NUM; i++) {
-		p[i] = tal(NULL, char);
-		*p[i] = '0';
-		if (next_group(&null_parent.c.group) != &null_parent.c.group)
-			break;
-	}
-	for (i++; i < NUM; i++) {
-		p[i] = tal(p[rand() % i], char);
+		p[i] = tal(p[rand() % (i + 1)], char);
 		*p[i] = '0';
 	}
 

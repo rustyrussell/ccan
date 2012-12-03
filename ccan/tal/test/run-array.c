@@ -40,7 +40,6 @@ int main(void)
 	strcpy(c[0], "hello");
 	tal_free(c[0]);
 	ok1(tal_first(parent) == NULL);
-
 	tal_free(parent);
 
 	return exit_status();

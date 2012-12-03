@@ -9,7 +9,7 @@ int main(void)
 
 	plan_tests(9);
 
-	p[0] = NULL;
+	p[0] = tal(NULL, char);
 	for (i = 1; i < 5; i++)
 		p[i] = tal(p[i-1], char);
 

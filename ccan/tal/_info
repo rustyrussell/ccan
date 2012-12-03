@@ -18,10 +18,10 @@
  * tal_free(X->name) would free X->name as expected, by tal_free(X) would
  * free X and X->name.
  *
- * With an overhead of approximately 2.1 pointers per object (vs. talloc's
- * 12 pointers), it's a little slower in freeing single objects, though
- * comparable for allocation and freeing whole object trees).  It does not
- * support talloc's references or failing destructors.
+ * With an overhead of approximately 4 pointers per object
+ * (vs. talloc's 12 pointers), it uses dynamic allocation for
+ * destructors and child lists, so those operations can fail.  It does
+ * not support talloc's references or failing destructors.
  *
  * Example:
  *	#include <stdio.h>
@@ -92,7 +92,6 @@ int main(int argc, char *argv[])
 
 	if (strcmp(argv[1], "depends") == 0) {
 		printf("ccan/compiler\n");
-		printf("ccan/hash\n");
 		printf("ccan/likely\n");
 		printf("ccan/list\n");
 		printf("ccan/str\n");
