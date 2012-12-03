@@ -62,6 +62,7 @@ MODS_NORMAL_WITH_SRC := antithread \
 	opt \
 	ptr_valid \
 	rbtree \
+	rbuf \
 	read_write_all \
 	rfc822 \
 	sparse_bsearch \
