@@ -28,14 +28,14 @@ distclean: clean
 
 scores: $(SCOREDIR)/SUMMARY
 
-$(SCOREDIR)/SUMMARY: $(MODS:%=$(SCOREDIR)/score-%)
+$(SCOREDIR)/SUMMARY: $(MODS:%=$(SCOREDIR)/%.score)
 	git describe --always > $@
 	uname -a >> $@
 	$(CC) -v >> $@
 	cat $^ | grep 'Total score:' >> $@
 
-$(SCOREDIR)/score-%: ccan/%/_info tools/ccanlint/ccanlint $(OBJFILES)
-	mkdir -p $(SCOREDIR)
+$(SCOREDIR)/%.score: ccan/%/_info tools/ccanlint/ccanlint $(OBJFILES)
+	mkdir -p `dirname $@`
 	tools/ccanlint/ccanlint -v -s ccan/$* > $@ || true
 
 $(ALL_DEPENDS): %/.depends: %/_info tools/ccan_depends
