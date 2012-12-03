@@ -6,7 +6,6 @@ CORE_OBJS := \
 	ccan/autodata/autodata.o \
 	ccan/dgraph/dgraph.o \
 	ccan/foreach/foreach.o \
-	ccan/grab_file/grab_file.o \
 	ccan/hash/hash.o \
 	ccan/htable/htable.o \
 	ccan/ilog/ilog.o \
@@ -17,6 +16,7 @@ CORE_OBJS := \
 	ccan/opt/parse.o \
 	ccan/opt/usage.o \
 	ccan/ptr_valid/ptr_valid.o \
+	ccan/rbuf/rbuf.o \
 	ccan/read_write_all/read_write_all.o \
 	ccan/str/str.o ccan/str/debug.o \
 	ccan/str_talloc/str_talloc.o \

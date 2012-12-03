@@ -6,7 +6,6 @@
 #include <ccan/talloc_link/talloc_link.h>
 #include <ccan/hash/hash.h>
 #include <ccan/htable/htable_type.h>
-#include <ccan/grab_file/grab_file.h>
 #include <ccan/noerr/noerr.h>
 #include <ccan/foreach/foreach.h>
 #include <ccan/asort/asort.h>

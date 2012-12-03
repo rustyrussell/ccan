@@ -3,7 +3,6 @@
 #include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
 #include <ccan/foreach/foreach.h>
-#include <ccan/grab_file/grab_file.h>
 #include <ccan/str_talloc/str_talloc.h>
 #include "tests_pass.h"
 #include <sys/types.h>
@@ -180,7 +179,7 @@ static void do_run_tests_vg(struct manifest *m,
 				continue;
 			}
 
-			output = grab_file(i, i->valgrind_log, NULL);
+			output = talloc_grab_file(i, i->valgrind_log, NULL);
 			/* No valgrind errors? */
 			if (!output || output[0] == '\0') {
 				err = NULL;

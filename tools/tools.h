@@ -1,8 +1,10 @@
 #ifndef CCAN_TOOLS_H
 #define CCAN_TOOLS_H
-#include <stdbool.h>
-#include <ccan/compiler/compiler.h>
 #include "config.h"
+#include <ccan/compiler/compiler.h>
+#include <ccan/rbuf/rbuf.h>
+#include <stdlib.h>
+#include <stdbool.h>
 
 #ifndef CCAN_COMPILER
 #define CCAN_COMPILER "cc"
@@ -53,6 +55,9 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 		       bool *ok, unsigned *timeout_ms);
 const char *temp_dir(const void *ctx);
 bool move_file(const char *oldname, const char *newname);
+
+void *do_talloc_realloc(void *p, size_t size);
+void *talloc_grab_file(const void *ctx, const char *filename, size_t *size);
 
 /* From compile.c.
  *

@@ -7,7 +7,6 @@
 #include <ccan/talloc_link/talloc_link.h>
 #include <ccan/hash/hash.h>
 #include <ccan/htable/htable_type.h>
-#include <ccan/grab_file/grab_file.h>
 #include <ccan/noerr/noerr.h>
 #include <ccan/foreach/foreach.h>
 #include <ccan/asort/asort.h>
@@ -45,7 +44,8 @@ static struct htable_manifest *manifests;
 const char *get_ccan_file_contents(struct ccan_file *f)
 {
 	if (!f->contents) {
-		f->contents = grab_file(f, f->fullname, &f->contents_size);
+		f->contents = talloc_grab_file(f, f->fullname,
+					       &f->contents_size);
 		if (!f->contents)
 			err(1, "Reading file %s", f->fullname);
 	}

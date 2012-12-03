@@ -3,7 +3,6 @@
 #include <ccan/htable/htable_type.h>
 #include <ccan/foreach/foreach.h>
 #include <ccan/talloc/talloc.h>
-#include <ccan/grab_file/grab_file.h>
 #include <ccan/str/str.h>
 #include <ccan/str_talloc/str_talloc.h>
 #include <ccan/hash/hash.h>

@@ -31,7 +31,6 @@
 #include <ccan/talloc/talloc.h>
 #include <ccan/opt/opt.h>
 #include <ccan/foreach/foreach.h>
-#include <ccan/grab_file/grab_file.h>
 #include <ccan/cast/cast.h>
 #include <ccan/tlist/tlist.h>
 #include <ccan/strmap/strmap.h>

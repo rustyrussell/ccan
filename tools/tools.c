@@ -1,7 +1,7 @@
 #include <ccan/talloc/talloc.h>
-#include <ccan/grab_file/grab_file.h>
 #include <ccan/err/err.h>
 #include <ccan/noerr/noerr.h>
+#include <ccan/rbuf/rbuf.h>
 #include <ccan/read_write_all/read_write_all.h>
 #include <ccan/noerr/noerr.h>
 #include <ccan/time/time.h>
@@ -71,7 +71,7 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 {
 	pid_t pid;
 	int p[2];
-	char *ret;
+	struct rbuf in;
 	int status, ms;
 	struct timespec start;
 
@@ -117,7 +117,12 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 	}
 
 	close(p[1]);
-	ret = grab_fd(ctx, p[0], NULL);
+	rbuf_init(&in, p[0], talloc_array(ctx, char, 4096), 4096);
+	if (!rbuf_read_str(&in, 0, do_talloc_realloc) && errno) {
+		talloc_free(in.buf);
+		in.buf = NULL;
+	}
+
 	/* This shouldn't fail... */
 	if (waitpid(pid, &status, 0) != pid)
 		err(1, "Failed to wait for child");
@@ -129,14 +134,14 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 		*timeout_ms -= ms;
 	close(p[0]);
 	if (tools_verbose) {
-		printf("%s", ret);
+		printf("%s", in.buf);
 		printf("Finished: %u ms, %s %u\n", ms,
 		       WIFEXITED(status) ? "exit status" : "killed by signal",
 		       WIFEXITED(status) ? WEXITSTATUS(status)
 		       : WTERMSIG(status));
 	}
 	*ok = (WIFEXITED(status) && WEXITSTATUS(status) == 0);
-	return ret;
+	return in.buf;
 }
 
 /* Tallocs *output off ctx; return false if command fails. */
@@ -259,7 +264,7 @@ bool move_file(const char *oldname, const char *newname)
 	}
 
 	/* Try copy and delete: not atomic! */
-	contents = grab_file(NULL, oldname, &size);
+	contents = talloc_grab_file(NULL, oldname, &size);
 	if (!contents) {
 		if (tools_verbose)
 			printf("read failed: %s\n", strerror(errno));
@@ -291,4 +296,31 @@ bool move_file(const char *oldname, const char *newname)
 free:
 	talloc_free(contents);
 	return ret;
+}
+
+void *do_talloc_realloc(void *p, size_t size)
+{
+	return talloc_realloc(NULL, p, char, size);
+}
+
+void *talloc_grab_file(const void *ctx, const char *filename, size_t *size)
+{
+	struct rbuf rbuf;
+	char *buf = talloc_size(ctx, 4096);
+
+	if (!rbuf_open(&rbuf, filename, buf, 4096)) {
+		talloc_free(buf);
+		return NULL;
+	}
+	if (!rbuf_fill_all(&rbuf, do_talloc_realloc)) {
+		talloc_free(rbuf.buf);
+		rbuf.buf = NULL;
+	} else {
+		rbuf.buf[rbuf.len] = '\0';
+		if (size)
+			*size = rbuf.len;
+	}
+	close(rbuf.fd);
+
+	return rbuf.buf;
 }

@@ -2,7 +2,6 @@
 #include <tools/tools.h>
 #include <ccan/talloc/talloc.h>
 #include <ccan/str_talloc/str_talloc.h>
-#include <ccan/grab_file/grab_file.h>
 #include <ccan/str/str.h>
 #include <ccan/foreach/foreach.h>
 #include <sys/types.h>
@@ -101,7 +100,7 @@ static void analyze_coverage(struct manifest *m, bool full_gcov,
 			apostrophe = strchr(filename, '\'');
 			*apostrophe = '\0';
 			if (lines_matter) {
-				file = grab_file(score, filename, NULL);
+				file = talloc_grab_file(score, filename, NULL);
 				if (!file) {
 					score->error = talloc_asprintf(score,
 							    "Reading %s",

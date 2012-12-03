@@ -1,8 +1,8 @@
 #include <ccan/str/str.h>
 #include <ccan/talloc/talloc.h>
-#include <ccan/grab_file/grab_file.h>
 #include <ccan/str_talloc/str_talloc.h>
 #include <ccan/read_write_all/read_write_all.h>
+#include <ccan/rbuf/rbuf.h>
 #include <ccan/compiler/compiler.h>
 #include <ccan/err/err.h>
 #include "tools.h"
@@ -17,8 +17,9 @@ static char ** PRINTF_FMT(2, 3)
 lines_from_cmd(const void *ctx, const char *format, ...)
 {
 	va_list ap;
-	char *cmd, *buffer;
+	char *cmd;
 	FILE *p;
+	struct rbuf in;
 
 	va_start(ap, format);
 	cmd = talloc_vasprintf(ctx, format, ap);
@@ -28,12 +29,13 @@ lines_from_cmd(const void *ctx, const char *format, ...)
 	if (!p)
 		err(1, "Executing '%s'", cmd);
 
-	buffer = grab_fd(ctx, fileno(p), NULL);
-	if (!buffer)
+	/* FIXME: Use rbuf_read_str(&in, '\n') rather than strsplit! */
+	rbuf_init(&in, fileno(p), talloc_array(ctx, char, 4096), 4096);
+	if (!rbuf_read_str(&in, 0, do_talloc_realloc) && errno)
 		err(1, "Reading from '%s'", cmd);
 	pclose(p);
 
-	return strsplit(ctx, buffer, "\n");
+	return strsplit(ctx, in.buf, "\n");
 }
 
 /* Be careful about trying to compile over running programs (parallel make).
@@ -45,7 +47,8 @@ char *compile_info(const void *ctx, const char *dir)
 	int fd;
 
 	/* Copy it to a file with proper .c suffix. */
-	info = grab_file(ctx, talloc_asprintf(ctx, "%s/_info", dir), &len);
+	info = talloc_grab_file(ctx, talloc_asprintf(ctx, "%s/_info", dir),
+				&len);
 	if (!info)
 		return NULL;
 
@@ -126,7 +129,7 @@ static char **get_one_safe_deps(const void *ctx,
 	bool correct_style = false;
 
 	fname = talloc_asprintf(ctx, "%s/_info", dir);
-	raw = grab_file(fname, fname, NULL);
+	raw = talloc_grab_file(fname, fname, NULL);
 	if (!raw)
 		errx(1, "Could not open %s", fname);
 

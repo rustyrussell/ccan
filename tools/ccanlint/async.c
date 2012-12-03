@@ -12,7 +12,6 @@
 #include <assert.h>
 #include <ccan/lbalance/lbalance.h>
 #include <ccan/tlist/tlist.h>
-#include <ccan/grab_file/grab_file.h>
 #include <ccan/time/time.h>
 #include <ccan/talloc/talloc.h>
 

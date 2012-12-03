@@ -13,7 +13,6 @@
 #include <ccan/str/str.h>
 #include <ccan/talloc/talloc.h>
 #include <ccan/noerr/noerr.h>
-#include <ccan/grab_file/grab_file.h>
 
 static void check_info_documentation_exists(struct manifest *m,
 					    unsigned int *timeleft,
@@ -52,7 +51,7 @@ static void create_info_template_doc(struct manifest *m, struct score *score)
 		err(1, "Writing to _info.new to insert documentation");
 	}
 
-	oldcontents = grab_file(m, m->info_file->fullname, NULL);
+	oldcontents = talloc_grab_file(m, m->info_file->fullname, NULL);
 	if (!oldcontents) {
 		unlink_noerr("_info.new");
 		err(1, "Reading %s", m->info_file->fullname);

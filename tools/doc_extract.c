@@ -2,8 +2,8 @@
 #include <ccan/str/str.h>
 #include <ccan/str_talloc/str_talloc.h>
 #include <ccan/talloc/talloc.h>
-#include <ccan/grab_file/grab_file.h>
 #include <ccan/err/err.h>
+#include "tools.h"
 #include <string.h>
 #include <stdio.h>
 #include "doc_extract.h"
@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
 		struct list_head *list;
 		struct doc_section *d;
 
-		file = grab_file(NULL, argv[i], NULL);
+		file = talloc_grab_file(NULL, argv[i], NULL);
 		if (!file)
 			err(1, "Reading file %s", argv[i]);
 		lines = strsplit(file, file, "\n");

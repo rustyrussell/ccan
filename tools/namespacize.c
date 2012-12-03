@@ -11,7 +11,7 @@
 #include <fcntl.h>
 #include "ccan/str/str.h"
 #include "ccan/str_talloc/str_talloc.h"
-#include "ccan/grab_file/grab_file.h"
+#include "ccan/rbuf/rbuf.h"
 #include "ccan/talloc/talloc.h"
 #include "ccan/err/err.h"
 #include "tools.h"
@@ -262,7 +262,7 @@ static void analyze_headers(const char *dir, struct replace **repl)
 
 	/* Get hold of header, assume that's it. */
 	hdr = talloc_asprintf(dir, "%s/%s.h", dir, talloc_basename(dir, dir));
-	contents = grab_file(dir, hdr, NULL);
+	contents = talloc_grab_file(dir, hdr, NULL);
 	if (!contents)
 		err(1, "Reading %s", hdr);
 
@@ -338,7 +338,7 @@ static const char *rewrite_file(const char *filename,
 	int fd;
 
 	verbose("Rewriting %s\n", filename);
-	file = grab_file(filename, filename, NULL);
+	file = talloc_grab_file(filename, filename, NULL);
 	if (!file)
 		err(1, "Reading file %s", filename);
 
@@ -439,7 +439,7 @@ static struct replace *read_replacement_file(const char *depdir)
 	char *replname = talloc_asprintf(depdir, "%s/.namespacize", depdir);
 	char *file, **line;
 
-	file = grab_file(replname, replname, NULL);
+	file = talloc_grab_file(replname, replname, NULL);
 	if (!file) {
 		if (errno != ENOENT)
 			err(1, "Opening %s", replname);

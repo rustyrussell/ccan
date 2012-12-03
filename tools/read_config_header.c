@@ -1,5 +1,4 @@
 #include <ccan/err/err.h>
-#include <ccan/grab_file/grab_file.h>
 #include <ccan/str/str.h>
 #include <ccan/str_talloc/str_talloc.h>
 #include <ccan/talloc/talloc.h>
@@ -98,7 +97,7 @@ char *read_config_header(const char *ccan_dir,
 	unsigned int i;
 	char *config_header;
 
-	config_header = grab_file(NULL, fname, NULL);
+	config_header = talloc_grab_file(NULL, fname, NULL);
 	talloc_free(fname);
 
 	if (!config_header)
