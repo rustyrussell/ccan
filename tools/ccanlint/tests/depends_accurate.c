@@ -48,7 +48,7 @@ static bool check_dep_includes(struct manifest *m,
 		char *mod;
 		if (!strreg(f, lines[i],
 			    "^[ \t]*#[ \t]*include[ \t]*[<\"]"
-			    "(ccan/+.+)/+[^/]+.h", &mod))
+			    "(ccan/+.+)/+[^/]+\\.h", &mod))
 			continue;
 
 		if (has_dep(m, deps, used, mod))

@@ -1,6 +1,7 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
 #include <ccan/talloc/talloc.h>
+#include <ccan/str_talloc/str_talloc.h>
 #include <ccan/cast/cast.h>
 #include <ccan/str/str.h>
 #include <sys/types.h>
@@ -83,13 +84,10 @@ static struct manifest **get_example_deps(struct manifest *m,
 
 	/* Other modules implied by includes. */
 	for (lines = get_ccan_file_lines(f); *lines; lines++) {
-		unsigned preflen = strspn(*lines, " \t");
-		if (strstarts(*lines + preflen, "#include <ccan/")) {
-			char *modname;
-
-			modname = talloc_strdup(f, *lines + preflen
-						+ strlen("#include <ccan/"));
-			modname[strcspn(modname, "/")] = '\0';
+		char *modname;
+		if (strreg(f, *lines,
+			    "^[ \t]*#[ \t]*include[ \t]*[<\"]"
+			   "ccan/+(.+)/+[^/]+\\.h", &modname)) {
 			if (!have_mod(deps, modname))
 				add_dep(&deps, modname);
 		}
