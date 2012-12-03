@@ -1,5 +1,6 @@
 #include <ccan/err/err.h>
 #include <ccan/str/str.h>
+#include <ccan/tal/path/path.h>
 #include "read_config_header.h"
 #include "tools.h"
 #include <string.h>
@@ -90,7 +91,7 @@ char *read_config_header(const char *ccan_dir,
 			 const char **compiler, const char **cflags,
 			 bool verbose)
 {
-	char *fname = tal_fmt(NULL, "%s/config.h", ccan_dir);
+	char *fname = path_join(NULL, ccan_dir, "config.h");
 	char **lines;
 	unsigned int i;
 	char *config_header;

@@ -256,7 +256,8 @@ static void analyze_headers(const char *dir, struct replace **repl)
 	char *hdr, *contents;
 
 	/* Get hold of header, assume that's it. */
-	hdr = tal_fmt(dir, "%s/%s.h", dir, path_basename(dir, dir));
+	hdr = tal_fmt(dir, "%s.h",
+		      path_join(NULL, dir, take(path_basename(NULL, dir))));
 
 	contents = tal_grab_file(dir, hdr, NULL);
 	if (!contents)
@@ -275,7 +276,7 @@ static void analyze_headers(const char *dir, struct replace **repl)
 
 static void write_replacement_file(const char *dir, struct replace **repl)
 {
-	char *replname = tal_fmt(dir, "%s/.namespacize", dir);
+	char *replname = path_join(dir, dir, ".namespacize");
 	int fd;
 	struct replace *r;
 
@@ -415,10 +416,7 @@ static void convert_dir(const char *dir)
 	struct adjusted *adj = NULL;
 
 	/* Remove any ugly trailing slashes. */
-	name = tal_strdup(NULL, dir);
-	while (strends(name, "/"))
-		name[strlen(name)-1] = '\0';
-
+	name = path_canon(NULL, dir);
 	analyze_headers(name, &replace);
 	write_replacement_file(name, &replace);
 	setup_adjust_files(name, replace, &adj);
@@ -430,7 +428,7 @@ static void convert_dir(const char *dir)
 static struct replace *read_replacement_file(const char *depdir)
 {
 	struct replace *repl = NULL;
-	char *replname = tal_fmt(depdir, "%s/.namespacize", depdir);
+	char *replname = path_join(depdir, depdir, ".namespacize");
 	char *file, **line;
 
 	file = tal_grab_file(replname, replname, NULL);
@@ -459,7 +457,7 @@ static void adjust_dir(const char *dir)
 		struct adjusted *adj = NULL;
 		struct replace *repl;
 
-		depdir = tal_fmt(parent, "%s/%s", parent, *deps);
+		depdir = path_join(parent, parent, *deps);
 		repl = read_replacement_file(depdir);
 		if (repl) {
 			verbose("%s has been namespacized\n", depdir);
@@ -488,7 +486,7 @@ static void adjust_dependents(const char *dir)
 		if (path_basename(*file, *file)[0] == '.')
 			continue;
 
-		info = tal_fmt(*file, "%s/_info", *file);
+		info = path_join(*file, *file, "_info");
 		if (access(info, R_OK) != 0)
 			continue;
 

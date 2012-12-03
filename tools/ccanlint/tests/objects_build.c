@@ -1,6 +1,7 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
 #include <ccan/str/str.h>
+#include <ccan/tal/path/path.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -35,7 +36,7 @@ void build_objects(struct manifest *m,
 
 	list_for_each(&m->c_files, i, list) {
 		char *output;
-		char *fullfile = tal_fmt(m, "%s/%s", m->dir, i->name);
+		char *fullfile = path_join(m, m->dir, i->name);
 
 		i->compiled[ctype] = temp_file(m, "", fullfile);
 		if (!compile_object(score, fullfile, ccan_dir, compiler, flags,

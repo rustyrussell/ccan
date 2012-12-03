@@ -647,7 +647,7 @@ int main(int argc, char *argv[])
 		strmap_iterate(&tests, add_to_all, &all);
 
 	/* This links back to the module's test dir. */
-	testlink = tal_fmt(NULL, "%s/test", temp_dir());
+	testlink = path_join(NULL, temp_dir(), "test");
 
 	/* Defaults to pwd. */
 	if (argc == 1) {
@@ -656,12 +656,8 @@ int main(int argc, char *argv[])
 	}
 
 	for (i = 1; i < argc; i++) {
-		dir = argv[i];
-
-		if (dir[0] != '/')
-			dir = tal_fmt(NULL, "%s/%s", base_dir, dir);
-		while (strends(dir, "/"))
-			dir[strlen(dir)-1] = '\0';
+		dir = path_simplify(NULL,
+				    take(path_join(NULL, base_dir, argv[i])));
 
 	got_dir:
 		/* We assume there's a ccan/ in there somewhere... */
@@ -685,7 +681,7 @@ int main(int argc, char *argv[])
 		/* Create a symlink from temp dir back to src dir's
 		 * test directory. */
 		unlink(testlink);
-		if (symlink(tal_fmt(m, "%s/test", dir), testlink) != 0)
+		if (symlink(path_join(m, dir, "test"), testlink) != 0)
 			err(1, "Creating test symlink in %s", temp_dir());
 
 		if (!run_tests(&all, summary, m, prefix))

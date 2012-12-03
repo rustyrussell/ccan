@@ -1,6 +1,7 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
 #include <ccan/str/str.h>
+#include <ccan/tal/path/path.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -30,7 +31,7 @@ static bool add_dep(struct manifest *m,
 {
 	struct stat st;
 	struct manifest *subm;
-	char *dir = tal_fmt(m, "%s/%s", ccan_dir, dep);
+	char *dir = path_join(m, ccan_dir, dep);
 
 	/* FIXME: get_manifest has a tendency to exit. */
 	if (stat(dir, &st) != 0) {

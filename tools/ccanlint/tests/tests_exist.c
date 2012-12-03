@@ -1,5 +1,6 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <ccan/tal/str/str.h>
+#include <ccan/tal/path/path.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -106,7 +107,7 @@ static void check_tests_exist(struct manifest *m,
 			    unsigned int *timeleft, struct score *score)
 {
 	struct stat st;
-	char *test_dir = tal_fmt(m, "%s/test", m->dir);
+	char *test_dir = path_join(m, m->dir, "test");
 
 	if (lstat(test_dir, &st) != 0) {
 		score->error = tal_strdup(score, "No test directory");

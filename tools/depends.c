@@ -1,6 +1,7 @@
 #include <ccan/str/str.h>
 #include <ccan/read_write_all/read_write_all.h>
 #include <ccan/rbuf/rbuf.h>
+#include <ccan/tal/path/path.h>
 #include <ccan/compiler/compiler.h>
 #include <ccan/err/err.h>
 #include "tools.h"
@@ -125,7 +126,7 @@ static char **get_one_safe_deps(const void *ctx,
 	unsigned int i, n;
 	bool correct_style = false;
 
-	fname = tal_fmt(ctx, "%s/_info", dir);
+	fname = path_join(ctx, dir, "_info");
 	raw = tal_grab_file(fname, fname, NULL);
 	if (!raw)
 		errx(1, "Could not open %s", fname);
@@ -206,7 +207,7 @@ get_all_deps(const void *ctx, const char *dir, const char *style,
 		if (!strstarts(deps[i], "ccan/"))
 			continue;
 
-		subdir = tal_fmt(ctx, "%s/%s", find_ccan_dir(dir), deps[i]);
+		subdir = path_join(ctx, find_ccan_dir(dir), deps[i]);
 		newdeps = get_one(ctx, subdir, "depends", get_info);
 
 		/* Should be short, so brute-force out dups. */
@@ -279,8 +280,7 @@ char **get_libs(const void *ctx, const char *dir, const char *style,
 			if (!strstarts(deps[i], "ccan/"))
 				continue;
 
-			subdir = tal_fmt(ctx, "%s/%s",
-					 find_ccan_dir(dir), deps[i]);
+			subdir = path_join(ctx, find_ccan_dir(dir), deps[i]);
 
 			newlibs = get_one_libs(ctx, subdir, get_info);
 			newlen = tal_count(newlibs);

@@ -76,7 +76,7 @@ struct ccan_file *new_ccan_file(const void *ctx, const char *dir, char *name)
 	for (i = 0; i < ARRAY_SIZE(f->compiled); i++)
 		f->compiled[i] = NULL;
 	f->name = tal_steal(f, name);
-	f->fullname = tal_fmt(f, "%s/%s", dir, f->name);
+	f->fullname = path_join(f, dir, f->name);
 	f->contents = NULL;
 	f->simplified = NULL;
 	return f;

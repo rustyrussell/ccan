@@ -1,6 +1,7 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <ccan/tal/tal.h>
 #include <ccan/tal/str/str.h>
+#include <ccan/tal/path/path.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -73,7 +74,7 @@ static void handle_license_link(struct manifest *m, struct score *score)
 {
 	struct doc_section *d = find_license_tag(m);
 	const char *prefix = link_prefix(m);
-	const char *link = tal_fmt(m, "%s/LICENSE", m->dir);
+	const char *link = path_join(m, m->dir, "LICENSE");
 	const char *ldest = expected_link(score, prefix, m->license);
 	char *q;
 
@@ -97,7 +98,7 @@ static void check_has_license(struct manifest *m,
 {
 	char buf[PATH_MAX];
 	ssize_t len;
-	char *license = tal_fmt(m, "%s/LICENSE", m->dir);
+	char *license = path_join(m, m->dir, "LICENSE");
 	const char *expected;
 	struct doc_section *d;
 	const char *prefix = link_prefix(m);
