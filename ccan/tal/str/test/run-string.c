@@ -36,7 +36,7 @@ int main(void)
 	strcat(c, "x");
 	tal_free(c);
 
-	c = tal_asprintf(parent, "hello %s", "there");
+	c = tal_fmt(parent, "hello %s", "there");
 	ok1(strcmp(c, "hello there") == 0);
 	ok1(tal_parent(c) == parent);
 	tal_free(c);

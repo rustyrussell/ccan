@@ -27,7 +27,7 @@ int main(void)
 	tal_free(c);
 
 	c = tal_strdup(parent, "hello %s");
-	c = tal_asprintf(parent, take(c), "there");
+	c = tal_fmt(parent, take(c), "there");
 	ok1(strcmp(c, "hello there") == 0);
 	ok1(tal_parent(c) == parent);
 	/* No leftover allocations. */
@@ -41,7 +41,7 @@ int main(void)
 	c = NULL;
 	ok1(tal_strdup(NULL, take(c)) == NULL);
 	ok1(tal_strndup(NULL, take(c), 5) == NULL);
-	ok1(tal_asprintf(NULL, take(c), 0) == NULL);
+	ok1(tal_fmt(NULL, take(c), 0) == NULL);
 
 	return exit_status();
 }

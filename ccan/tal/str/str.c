@@ -40,19 +40,19 @@ char *tal_strndup(const tal_t *ctx, const char *p, size_t n)
 	return ret;
 }
 
-char *tal_asprintf(const tal_t *ctx, const char *fmt, ...)
+char *tal_fmt(const tal_t *ctx, const char *fmt, ...)
 {
 	va_list ap;
 	char *ret;
 
 	va_start(ap, fmt);
-	ret = tal_vasprintf(ctx, fmt, ap);
+	ret = tal_vfmt(ctx, fmt, ap);
 	va_end(ap);
 
 	return ret;
 }
 
-char *tal_vasprintf(const tal_t *ctx, const char *fmt, va_list ap)
+char *tal_vfmt(const tal_t *ctx, const char *fmt, va_list ap)
 {
 	size_t max;
 	char *buf;

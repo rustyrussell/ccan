@@ -24,19 +24,19 @@ char *tal_strdup(const tal_t *ctx, const char *p);
 char *tal_strndup(const tal_t *ctx, const char *p, size_t n);
 
 /**
- * tal_asprintf - allocate a formatted string
+ * tal_fmt - allocate a formatted string
  * @ctx: NULL, or tal allocated object to be parent.
  * @fmt: the printf-style format (can be take()).
  */
-char *tal_asprintf(const tal_t *ctx, const char *fmt, ...) PRINTF_FMT(2,3);
+char *tal_fmt(const tal_t *ctx, const char *fmt, ...) PRINTF_FMT(2,3);
 
 /**
- * tal_vasprintf - allocate a formatted string (va_list version)
+ * tal_vfmt - allocate a formatted string (va_list version)
  * @ctx: NULL, or tal allocated object to be parent.
  * @fmt: the printf-style format (can be take()).
  * @va: the va_list containing the format args.
  */
-char *tal_vasprintf(const tal_t *ctx, const char *fmt, va_list ap)
+char *tal_vfmt(const tal_t *ctx, const char *fmt, va_list ap)
 	PRINTF_FMT(2,0);
 
 /**
