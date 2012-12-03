@@ -405,13 +405,13 @@ tal_t *tal_steal_(const tal_t *new_parent, const tal_t *t);
 
 bool tal_resize_(tal_t **ctxp, size_t size);
 
-bool tal_add_destructor_(tal_t *ctx, void (*destroy)(void *me));
-bool tal_del_destructor_(tal_t *ctx, void (*destroy)(void *me));
+bool tal_add_destructor_(const tal_t *ctx, void (*destroy)(void *me));
+bool tal_del_destructor_(const tal_t *ctx, void (*destroy)(void *me));
 
-bool tal_add_notifier_(tal_t *ctx, enum tal_notify_type types,
+bool tal_add_notifier_(const tal_t *ctx, enum tal_notify_type types,
 		       void (*notify)(tal_t *ctx, enum tal_notify_type,
 				      void *info));
-bool tal_del_notifier_(tal_t *ctx,
+bool tal_del_notifier_(const tal_t *ctx,
 		       void (*notify)(tal_t *ctx, enum tal_notify_type,
 				      void *info));
 #endif /* CCAN_TAL_H */

@@ -455,14 +455,14 @@ void *tal_steal_(const tal_t *new_parent, const tal_t *ctx)
         return (void *)ctx;
 }
 
-bool tal_add_destructor_(tal_t *ctx, void (*destroy)(void *me))
+bool tal_add_destructor_(const tal_t *ctx, void (*destroy)(void *me))
 {
 	tal_t *t = debug_tal(to_tal_hdr(ctx));
 	return add_notifier_property(t, TAL_NOTIFY_FREE|NOTIFY_IS_DESTRUCTOR,
 				     (void *)destroy);
 }
 
-bool tal_add_notifier_(tal_t *ctx, enum tal_notify_type types,
+bool tal_add_notifier_(const tal_t *ctx, enum tal_notify_type types,
 		       void (*callback)(tal_t *, enum tal_notify_type, void *))
 {
 	tal_t *t = debug_tal(to_tal_hdr(ctx));
@@ -489,7 +489,7 @@ bool tal_add_notifier_(tal_t *ctx, enum tal_notify_type types,
 	return true;
 }
 
-bool tal_del_notifier_(tal_t *ctx,
+bool tal_del_notifier_(const tal_t *ctx,
 		       void (*callback)(tal_t *, enum tal_notify_type, void *))
 {
 	struct tal_hdr *t = debug_tal(to_tal_hdr(ctx));
@@ -505,7 +505,7 @@ bool tal_del_notifier_(tal_t *ctx,
 	return false;
 }
 
-bool tal_del_destructor_(tal_t *ctx, void (*destroy)(void *me))
+bool tal_del_destructor_(const tal_t *ctx, void (*destroy)(void *me))
 {
 	return tal_del_notifier_(ctx, (void *)destroy);
 }
