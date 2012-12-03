@@ -19,7 +19,8 @@
 enum prop_type {
 	CHILDREN = 0x00c1d500,
 	NAME = 0x00111100,
-	NOTIFIER = 0x00071f00
+	NOTIFIER = 0x00071f00,
+	LENGTH = 0x00515300
 };
 
 struct tal_hdr {
@@ -42,6 +43,11 @@ struct children {
 struct name {
 	struct prop_hdr hdr; /* NAME */
 	char name[];
+};
+
+struct length {
+	struct prop_hdr hdr; /* LENGTH */
+	size_t count;
 };
 
 struct notifier {
@@ -226,15 +232,7 @@ static void notify(const struct tal_hdr *ctx,
 
 static void *allocate(size_t size)
 {
-	void *ret;
-
-	/* Don't hand silly sizes to malloc. */
-	if (size >> (CHAR_BIT*sizeof(size) - 1)) {
-		call_error("allocation size overflow");
-		return NULL;
-	}
-
-	ret = allocfn(size);
+	void *ret = allocfn(size);
 	if (!ret)
 		call_error("allocation failed");
 	else
@@ -329,6 +327,18 @@ static struct name *add_name_property(struct tal_hdr *t, const char *name)
 	return prop;
 }
 
+static struct length *add_length_property(struct tal_hdr *t, size_t count)
+{
+	struct length *prop;
+
+	prop = allocate(sizeof(*prop));
+	if (prop) {
+		init_property(&prop->hdr, t, LENGTH);
+		prop->count = count;
+	}
+	return prop;
+}
+
 static struct children *add_child_property(struct tal_hdr *parent,
 					   struct tal_hdr *child)
 {
@@ -411,6 +421,39 @@ void *tal_alloc_(const tal_t *ctx, size_t size, bool clear, const char *label)
 	if (notifiers)
 		notify(parent, TAL_NOTIFY_ADD_CHILD, from_tal_hdr(child));
 	return from_tal_hdr(debug_tal(child));
+}
+
+static bool adjust_size(size_t *size, size_t count)
+{
+	/* Multiplication wrap */
+        if (count && unlikely(*size * count / *size != count))
+		goto overflow;
+
+        *size *= count;
+
+        /* Make sure we don't wrap adding header. */
+        if (*size + sizeof(struct tal_hdr) < sizeof(struct tal_hdr))
+		goto overflow;
+	return true;
+overflow:
+	call_error("allocation size overflow");
+	return false;
+}
+
+void *tal_alloc_arr_(const tal_t *ctx, size_t size, size_t count, bool clear,
+		     bool add_count, const char *label)
+{
+	void *ret;
+
+	if (!adjust_size(&size, count))
+		return NULL;
+
+	ret = tal_alloc_(ctx, size, clear, label);
+	if (likely(ret) && add_count) {
+		if (unlikely(!add_length_property(to_tal_hdr(ret), count)))
+			ret = tal_free(ret);
+	}
+	return ret;
 }
 
 void *tal_free(const tal_t *ctx)
@@ -554,6 +597,16 @@ const char *tal_name(const tal_t *t)
 	return n->name;
 }
 
+size_t tal_count(const tal_t *ptr)
+{
+	struct length *l;
+
+	l = find_property(debug_tal(to_tal_hdr(ptr)), LENGTH);
+	if (!l)
+		return 0;
+	return l->count;
+}
+
 /* Start one past first child: make stopping natural in circ. list. */
 static struct tal_hdr *first_child(struct tal_hdr *parent)
 {
@@ -616,18 +669,16 @@ tal_t *tal_parent(const tal_t *ctx)
         return from_tal_hdr(ignore_destroying_bit(t->parent_child)->parent);
 }
 
-bool tal_resize_(tal_t **ctxp, size_t size)
+bool tal_resize_(tal_t **ctxp, size_t size, size_t count)
 {
         struct tal_hdr *old_t, *t;
         struct children *child;
+	struct length *len;
 
         old_t = debug_tal(to_tal_hdr(*ctxp));
 
-	/* Don't hand silly sizes to realloc. */
-	if (size >> (CHAR_BIT*sizeof(size) - 1)) {
-		call_error("Reallocation size overflow");
+	if (!adjust_size(&size, count))
 		return false;
-	}
 
         t = resizefn(old_t, size + sizeof(struct tal_hdr));
 	if (!t) {
@@ -653,6 +704,9 @@ bool tal_resize_(tal_t **ctxp, size_t size)
 		if (notifiers)
 			notify(t, TAL_NOTIFY_MOVE, from_tal_hdr(old_t));
 	}
+	len = find_property(t, LENGTH);
+	if (len)
+		len->count = count;
 	if (notifiers)
 		notify(t, TAL_NOTIFY_RESIZE, (void *)size);
 
@@ -662,7 +716,8 @@ bool tal_resize_(tal_t **ctxp, size_t size)
 char *tal_strdup(const tal_t *ctx, const char *p)
 {
 	/* We have to let through NULL for take(). */
-	return tal_dup(ctx, char, p, p ? strlen(p) + 1: 1, 0);
+	return tal_dup_(ctx, p, 1, p ? strlen(p) + 1: 1, 0, false,
+			TAL_LABEL(char, "[]"));
 }
 
 char *tal_strndup(const tal_t *ctx, const char *p, size_t n)
@@ -678,19 +733,27 @@ char *tal_strndup(const tal_t *ctx, const char *p, size_t n)
 	} else
 		len = n;
 
-	ret = tal_dup(ctx, char, p, len, 1);
+	ret = tal_dup_(ctx, p, 1, len, 1, false, TAL_LABEL(char, "[]"));
 	if (ret)
 		ret[len] = '\0';
 	return ret;
 }
 
-void *tal_dup_(const tal_t *ctx, const void *p, size_t n, size_t extra,
+void *tal_dup_(const tal_t *ctx, const void *p, size_t size,
+	       size_t n, size_t extra, bool add_count,
 	       const char *label)
 {
 	void *ret;
+	size_t nbytes = size;
 
-	/* Beware overflow! */
-	if (n + extra < n || n + extra + sizeof(struct tal_hdr) < n) {
+	if (!adjust_size(&nbytes, n)) {
+		if (taken(p))
+			tal_free(p);
+		return NULL;
+	}
+
+	/* Beware addition overflow! */
+	if (n + extra < n) {
 		call_error("dup size overflow");
 		if (taken(p))
 			tal_free(p);
@@ -700,15 +763,16 @@ void *tal_dup_(const tal_t *ctx, const void *p, size_t n, size_t extra,
 	if (taken(p)) {
 		if (unlikely(!p))
 			return NULL;
-		if (unlikely(!tal_resize_((void **)&p, n + extra)))
+		if (unlikely(!tal_resize_((void **)&p, size, n + extra)))
 			return tal_free(p);
 		if (unlikely(!tal_steal(ctx, p)))
 			return tal_free(p);
 		return (void *)p;
 	}
-	ret = tal_alloc_(ctx, n + extra, false, label);
+
+	ret = tal_alloc_arr_(ctx, size, n + extra, false, add_count, label);
 	if (ret)
-		memcpy(ret, p, n);
+		memcpy(ret, p, nbytes);
 	return ret;
 }
 
@@ -781,6 +845,7 @@ static void dump_node(unsigned int indent, const struct tal_hdr *t)
 		struct children *c;
 		struct name *n;
 		struct notifier *no;
+		struct length *l;
                 if (is_literal(p)) {
 			printf(" \"%s\"", (const char *)p);
 			break;
@@ -799,6 +864,10 @@ static void dump_node(unsigned int indent, const struct tal_hdr *t)
 		case NOTIFIER:
 			no = (struct notifier *)p;
 			printf(" NOTIFIER(%p):fn=%p", p, no->u.notifyfn);
+			break;
+		case LENGTH:
+			l = (struct length *)p;
+			printf(" LENGTH(%p):count=%zu", p, l->count);
 			break;
 		default:
 			printf(" **UNKNOWN(%p):%i**", p, p->type);
@@ -847,6 +916,7 @@ static bool check_node(struct children *parent_child,
 	struct prop_hdr *p;
 	struct name *name = NULL;
 	struct children *children = NULL;
+	struct length *length = NULL;
 
 	if (!in_bounds(t))
 		return check_err(t, errorstr, "invalid pointer");
@@ -872,6 +942,12 @@ static bool check_node(struct children *parent_child,
 				return check_err(t, errorstr,
 						 "has two child nodes");
 			children = (struct children *)p;
+			break;
+		case LENGTH:
+			if (length)
+				return check_err(t, errorstr,
+						 "has two lengths");
+			length = (struct length *)p;
 			break;
 		case NOTIFIER:
 			break;

@@ -31,7 +31,7 @@ typedef void tal_t;
  *	int *p = tal(NULL, int);
  *	*p = 1;
  */
-#define tal(ctx, type) \
+#define tal(ctx, type)							\
 	((type *)tal_alloc_((ctx), sizeof(type), false, TAL_LABEL(type, "")))
 
 /**
@@ -45,7 +45,7 @@ typedef void tal_t;
  *	p = talz(NULL, int);
  *	assert(*p == 0);
  */
-#define talz(ctx, type) \
+#define talz(ctx, type)							\
 	((type *)tal_alloc_((ctx), sizeof(type), true, TAL_LABEL(type, "")))
 
 /**
@@ -69,14 +69,17 @@ void *tal_free(const tal_t *p);
  * @type: the type to allocate.
  * @count: the number to allocate.
  *
+ * Note that an object allocated with tal_arr() has a length property;
+ * see tal_count().
+ *
  * Example:
  *	p = tal_arr(NULL, int, 2);
  *	p[0] = 0;
  *	p[1] = 1;
  */
-#define tal_arr(ctx, type, count) \
-	((type *)tal_alloc_((ctx), tal_sizeof_(sizeof(type), (count)), false, \
-			    TAL_LABEL(type, "[]")))
+#define tal_arr(ctx, type, count)					\
+	((type *)tal_alloc_arr_((ctx), sizeof(type), (count), false,	\
+				true, TAL_LABEL(type, "[]")))
 
 /**
  * tal_arrz - allocate an array of zeroed objects.
@@ -84,13 +87,16 @@ void *tal_free(const tal_t *p);
  * @type: the type to allocate.
  * @count: the number to allocate.
  *
+ * Note that an object allocated with tal_arrz() has a length property;
+ * see tal_count().
+ *
  * Example:
  *	p = tal_arrz(NULL, int, 2);
  *	assert(p[0] == 0 && p[1] == 0);
  */
 #define tal_arrz(ctx, type, count) \
-	((type *)tal_alloc_((ctx), tal_sizeof_(sizeof(type), (count)), true, \
-			    TAL_LABEL(type, "[]")))
+	((type *)tal_alloc_arr_((ctx), sizeof(type), (count), true,	\
+				true, TAL_LABEL(type, "[]")))
 
 /**
  * tal_resize - enlarge or reduce a tal_arr[z].
@@ -98,12 +104,13 @@ void *tal_free(const tal_t *p);
  * @count: the number to allocate.
  *
  * This returns true on success (and may move *@p), or false on failure.
+ * If @p has a length property, it is updated on success.
  *
  * Example:
  *	tal_resize(&p, 100);
  */
 #define tal_resize(p, count) \
-	tal_resize_((void **)(p), tal_sizeof_(sizeof**(p), (count)))
+	tal_resize_((void **)(p), sizeof**(p), (count))
 
 /**
  * tal_steal - change the parent of a tal-allocated pointer.
@@ -231,6 +238,15 @@ enum tal_notify_type {
 const char *tal_name(const tal_t *ptr);
 
 /**
+ * tal_count - get the count of objects in a tal_arr.
+ * @ptr: The tal allocated object array.
+ *
+ * Returns 0 if @ptr has no length property, but we aware that that is
+ * also a valid size!
+ */
+size_t tal_count(const tal_t *ptr);
+
+/**
  * tal_first - get the first tal object child.
  * @root: The tal allocated object to start with, or NULL.
  *
@@ -267,9 +283,8 @@ tal_t *tal_parent(const tal_t *ctx);
  */
 #define tal_dup(ctx, type, p, n, extra)				\
 	((type *)tal_dup_((ctx), tal_typechk_(p, type *),	\
-			  tal_sizeof_(sizeof(type), (n)),	\
-			  tal_sizeof_(sizeof(type), (extra)),	\
-			  TAL_LABEL(type, "[]")))
+			  sizeof(type), (n), (extra),		\
+			  true, TAL_LABEL(type, "[]")))
 
 /**
  * tal_strdup - duplicate a string
@@ -367,21 +382,6 @@ void tal_dump(void);
 
 bool tal_set_name_(tal_t *ctx, const char *name, bool literal);
 
-static inline size_t tal_sizeof_(size_t size, size_t count)
-{
-	/* Multiplication wrap */
-        if (count && unlikely(size * count / size != count))
-		return (size_t)-1024;
-
-        size *= count;
-
-        /* Make sure we don't wrap adding header. */
-        if (size > (size_t)-1024)
-		return (size_t)-1024;
-
-        return size;
-}
-
 #if HAVE_TYPEOF
 #define tal_typeof(ptr) (__typeof__(ptr))
 #if HAVE_STATEMENT_EXPR
@@ -397,13 +397,16 @@ static inline size_t tal_sizeof_(size_t size, size_t count)
 #endif
 
 void *tal_alloc_(const tal_t *ctx, size_t bytes, bool clear, const char *label);
+void *tal_alloc_arr_(const tal_t *ctx, size_t bytes, size_t count, bool clear,
+		     bool add_count, const char *label);
 
-void *tal_dup_(const tal_t *ctx, const void *p, size_t n, size_t extra,
+void *tal_dup_(const tal_t *ctx, const void *p, size_t size,
+	       size_t n, size_t extra, bool add_count,
 	       const char *label);
 
 tal_t *tal_steal_(const tal_t *new_parent, const tal_t *t);
 
-bool tal_resize_(tal_t **ctxp, size_t size);
+bool tal_resize_(tal_t **ctxp, size_t size, size_t count);
 
 bool tal_add_destructor_(const tal_t *ctx, void (*destroy)(void *me));
 bool tal_del_destructor_(const tal_t *ctx, void (*destroy)(void *me));
