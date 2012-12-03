@@ -5,7 +5,6 @@
 #include <ccan/take/take.h>
 #include <assert.h>
 #include <stdio.h>
-#include <stdarg.h>
 #include <stddef.h>
 #include <string.h>
 #include <limits.h>
@@ -713,32 +712,6 @@ bool tal_resize_(tal_t **ctxp, size_t size, size_t count)
 	return true;
 }
 
-char *tal_strdup(const tal_t *ctx, const char *p)
-{
-	/* We have to let through NULL for take(). */
-	return tal_dup_(ctx, p, 1, p ? strlen(p) + 1: 1, 0, false,
-			TAL_LABEL(char, "[]"));
-}
-
-char *tal_strndup(const tal_t *ctx, const char *p, size_t n)
-{
-	size_t len;
-	char *ret;
-
-	/* We have to let through NULL for take(). */
-	if (likely(p)) {
-		len = strlen(p);
-		if (len > n)
-			len = n;
-	} else
-		len = n;
-
-	ret = tal_dup_(ctx, p, 1, len, 1, false, TAL_LABEL(char, "[]"));
-	if (ret)
-		ret[len] = '\0';
-	return ret;
-}
-
 void *tal_dup_(const tal_t *ctx, const void *p, size_t size,
 	       size_t n, size_t extra, bool add_count,
 	       const char *label)
@@ -774,47 +747,6 @@ void *tal_dup_(const tal_t *ctx, const void *p, size_t size,
 	if (ret)
 		memcpy(ret, p, nbytes);
 	return ret;
-}
-
-char *tal_asprintf(const tal_t *ctx, const char *fmt, ...)
-{
-	va_list ap;
-	char *ret;
-
-	va_start(ap, fmt);
-	ret = tal_vasprintf(ctx, fmt, ap);
-	va_end(ap);
-
-	return ret;
-}
-
-char *tal_vasprintf(const tal_t *ctx, const char *fmt, va_list ap)
-{
-	size_t max;
-	char *buf;
-	int ret;
-
-	if (!fmt && taken(fmt))
-		return NULL;
-
-	/* A decent guess to start. */
-	max = strlen(fmt) * 2;
-	buf = tal_arr(ctx, char, max);
-	while (buf) {
-		va_list ap2;
-
-		va_copy(ap2, ap);
-		ret = vsnprintf(buf, max, fmt, ap2);
-		va_end(ap2);
-
-		if (ret < max)
-			break;
-		if (!tal_resize(&buf, max *= 2))
-			buf = tal_free(buf);
-	}
-	if (taken(fmt))
-		tal_free(fmt);
-	return buf;
 }
 
 void tal_set_backend(void *(*alloc_fn)(size_t size),

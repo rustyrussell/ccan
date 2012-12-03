@@ -53,7 +53,8 @@ int main(void)
 	tal_add_destructor(p, destroy_p);
 
 	tal_set_name(p, "test");
-	name = tal_asprintf(NULL, "test2");
+	name = tal_arr(NULL, char, 6);
+	strcpy(name, "test2");
 	tal_set_name(p, name);
 	/* makes us free old name */
 	tal_set_name(p, name);

@@ -286,39 +286,6 @@ tal_t *tal_parent(const tal_t *ctx);
 			  sizeof(type), (n), (extra),		\
 			  true, TAL_LABEL(type, "[]")))
 
-/**
- * tal_strdup - duplicate a string
- * @ctx: NULL, or tal allocated object to be parent.
- * @p: the string to copy (can be take()).
- */
-char *tal_strdup(const tal_t *ctx, const char *p);
-
-/**
- * tal_strndup - duplicate a limited amount of a string.
- * @ctx: NULL, or tal allocated object to be parent.
- * @p: the string to copy (can be take()).
- * @n: the maximum length to copy.
- *
- * Always gives a nul-terminated string, with strlen() <= @n.
- */
-char *tal_strndup(const tal_t *ctx, const char *p, size_t n);
-
-/**
- * tal_asprintf - allocate a formatted string
- * @ctx: NULL, or tal allocated object to be parent.
- * @fmt: the printf-style format (can be take()).
- */
-char *tal_asprintf(const tal_t *ctx, const char *fmt, ...) PRINTF_FMT(2,3);
-
-/**
- * tal_vasprintf - allocate a formatted string (va_list version)
- * @ctx: NULL, or tal allocated object to be parent.
- * @fmt: the printf-style format (can be take()).
- * @va: the va_list containing the format args.
- */
-char *tal_vasprintf(const tal_t *ctx, const char *fmt, va_list ap)
-	PRINTF_FMT(2,0);
-
 
 /**
  * tal_set_backend - set the allocation or error functions to use

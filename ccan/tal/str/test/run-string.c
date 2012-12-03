@@ -1,5 +1,5 @@
-#include <ccan/tal/tal.h>
-#include <ccan/tal/tal.c>
+#include <ccan/tal/str/str.h>
+#include <ccan/tal/str/str.c>
 #include <ccan/tap/tap.h>
 
 int main(void)

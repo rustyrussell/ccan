@@ -6,7 +6,7 @@ int main(void)
 {
 	char *parent, *c;
 
-	plan_tests(32);
+	plan_tests(21);
 
 	/* We can take NULL. */
 	ok1(take(NULL) == NULL);
@@ -24,20 +24,8 @@ int main(void)
 	ok1(!is_taken(parent));
 	ok1(!taken(parent));
 
-	c = tal_strdup(parent, "hello");
-
-	c = tal_strdup(parent, take(c));
-	ok1(strcmp(c, "hello") == 0);
-	ok1(tal_parent(c) == parent);
-
-	c = tal_strndup(parent, take(c), 5);
-	ok1(strcmp(c, "hello") == 0);
-	ok1(tal_parent(c) == parent);
-
-	c = tal_strndup(parent, take(c), 3);
-	ok1(strcmp(c, "hel") == 0);
-	ok1(tal_parent(c) == parent);
-
+	c = tal(parent, char);
+	*c = 'h';
 	c = tal_dup(parent, char, take(c), 1, 0);
 	ok1(c[0] == 'h');
 	ok1(tal_parent(c) == parent);
@@ -56,23 +44,13 @@ int main(void)
 	tal_free(c);
 	ok1(tal_first(parent) == NULL);
 
-	c = tal_strdup(parent, "hello %s");
-	c = tal_asprintf(parent, take(c), "there");
-	ok1(strcmp(c, "hello there") == 0);
-	ok1(tal_parent(c) == parent);
-	/* No leftover allocations. */
-	tal_free(c);
-	ok1(tal_first(parent) == NULL);
-
 	tal_free(parent);
 	ok1(!taken_any());
 
 	/* NULL pass-through. */
 	c = NULL;
-	ok1(tal_strdup(NULL, take(c)) == NULL);
-	ok1(tal_strndup(NULL, take(c), 5) == NULL);
 	ok1(tal_dup(NULL, char, take(c), 5, 5) == NULL);
-	ok1(tal_asprintf(NULL, take(c), 0) == NULL);
+	ok1(!taken_any());
 
 	return exit_status();
 }
