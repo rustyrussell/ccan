@@ -33,16 +33,26 @@ int main(void)
 {
 	char *child2;
 
-	plan_tests(12);
+	plan_tests(18);
 
+	destroy_count = 0;
 	parent = tal(NULL, char);
 	child = tal(parent, char);
 	ok1(tal_add_destructor(parent, destroy_parent));
 	ok1(tal_add_destructor(child, destroy_child));
-
 	tal_free(parent);
 	ok1(destroy_count == 2);
 
+	destroy_count = 0;
+	parent = tal(NULL, char);
+	child = tal(parent, char);
+	ok1(tal_add_destructor(parent, destroy_parent));
+	ok1(tal_add_destructor(child, destroy_child));
+	ok1(tal_del_destructor(child, destroy_child));
+	tal_free(parent);
+	ok1(destroy_count == 1);
+
+	destroy_count = 0;
 	parent = tal(NULL, char);
 	child = tal(parent, char);
 	child2 = tal(parent, char);
@@ -51,7 +61,7 @@ int main(void)
 	ok1(tal_add_destructor(child, destroy_inc));
 	ok1(tal_add_destructor(child2, destroy_inc));
 	tal_free(parent);
-	ok1(destroy_count == 6);
+	ok1(destroy_count == 4);
 
 	return exit_status();
 }

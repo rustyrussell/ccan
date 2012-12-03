@@ -131,6 +131,17 @@ void *tal_free(const tal_t *p);
 	tal_add_destructor_((ptr), typesafe_cb(void, void *, (function), (ptr)))
 
 /**
+ * tal_del_destructor - remove a destructor callback function.
+ * @ptr: The tal allocated object.
+ * @function: the function to call before it's freed.
+ *
+ * If @function has not been successfully added as a destructor, this returns
+ * false.
+ */
+#define tal_del_destructor(ptr, function)				      \
+	tal_del_destructor_((ptr), typesafe_cb(void, void *, (function), (ptr)))
+
+/**
  * tal_set_name - attach a name to a tal pointer.
  * @ptr: The tal allocated object.
  * @name: The name to use.
@@ -324,5 +335,6 @@ tal_t *tal_steal_(const tal_t *new_parent, const tal_t *t);
 bool tal_resize_(tal_t **ctxp, size_t size);
 
 bool tal_add_destructor_(tal_t *ctx, void (*destroy)(void *me));
+bool tal_del_destructor_(tal_t *ctx, void (*destroy)(void *me));
 
 #endif /* CCAN_TAL_H */

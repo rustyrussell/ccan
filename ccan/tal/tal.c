@@ -258,6 +258,28 @@ static struct destructor *add_destructor_property(struct tal_hdr *t,
 	return prop;
 }
 
+static bool del_destructor_property(struct tal_hdr *t,
+				    void (*destroy)(void *))
+{
+        struct prop_hdr **p;
+
+        for (p = (struct prop_hdr **)&t->prop; *p; p = &(*p)->next) {
+		struct destructor *d;
+
+                if (is_literal(*p))
+			break;
+                if ((*p)->type != DESTRUCTOR)
+			continue;
+		d = (struct destructor *)*p;
+		if (d->destroy == destroy) {
+			*p = (*p)->next;
+			freefn(d);
+			return true;
+		}
+        }
+        return false;
+}
+
 static struct name *add_name_property(struct tal_hdr *t, const char *name)
 {
 	struct name *prop;
@@ -397,6 +419,11 @@ void *tal_steal_(const tal_t *new_parent, const tal_t *ctx)
 bool tal_add_destructor_(tal_t *ctx, void (*destroy)(void *me))
 {
         return add_destructor_property(debug_tal(to_tal_hdr(ctx)), destroy);
+}
+
+bool tal_del_destructor_(tal_t *ctx, void (*destroy)(void *me))
+{
+        return del_destructor_property(debug_tal(to_tal_hdr(ctx)), destroy);
 }
 
 bool tal_set_name_(tal_t *ctx, const char *name, bool literal)
