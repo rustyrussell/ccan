@@ -64,7 +64,7 @@ static void handle_idem(struct manifest *m, struct score *score)
 		if (fprintf(out, "#ifndef %s\n#define %s\n", name, name) < 0)
 			err(1, "Writing %s", tmpname);
 
-		for (i = 0; i < e->file->num_lines; i++)
+		for (i = 0; e->file->lines[i]; i++)
 			if (fprintf(out, "%s\n", e->file->lines[i]) < 0)
 				err(1, "Writing %s", tmpname);
 
@@ -86,11 +86,11 @@ static void check_idem(struct ccan_file *f, struct score *score)
 	const char *line, *sym;
 
 	line_info = get_ccan_line_info(f);
-	if (f->num_lines < 3)
+	if (tal_count(f->lines) < 4)
 		/* FIXME: We assume small headers probably uninteresting. */
 		return;
 
-	for (i = 0; i < f->num_lines; i++) {
+	for (i = 0; f->lines[i]; i++) {
 		if (line_info[i].type == DOC_LINE
 		    || line_info[i].type == COMMENT_LINE)
 			continue;
@@ -104,11 +104,11 @@ static void check_idem(struct ccan_file *f, struct score *score)
 	}
 
 	/* No code at all?  Don't complain. */
-	if (i == f->num_lines)
+	if (!f->lines[i])
 		return;
 
 	first_preproc_line = i;
-	for (i = first_preproc_line+1; i < f->num_lines; i++) {
+	for (i = first_preproc_line+1; f->lines[i]; i++) {
 		if (line_info[i].type == DOC_LINE
 		    || line_info[i].type == COMMENT_LINE)
 			continue;
@@ -122,7 +122,7 @@ static void check_idem(struct ccan_file *f, struct score *score)
 	}
 
 	/* No code at all?  Weird. */
-	if (i == f->num_lines)
+	if (!f->lines[i])
 		return;
 
 	/* We expect a condition on this line. */
@@ -158,7 +158,7 @@ static void check_idem(struct ccan_file *f, struct score *score)
 	}
 
 	/* Rest of code should all be covered by that conditional. */
-	for (i++; i < f->num_lines; i++) {
+	for (i++; f->lines[i]; i++) {
 		unsigned int val = 0;
 		if (line_info[i].type == DOC_LINE
 		    || line_info[i].type == COMMENT_LINE)

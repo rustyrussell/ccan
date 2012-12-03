@@ -57,8 +57,6 @@ char **get_ccan_file_lines(struct ccan_file *f)
 		f->lines = tal_strsplit(f, get_ccan_file_contents(f), "\n",
 					STR_EMPTY_OK);
 
-	/* FIXME: is f->num_lines necessary? */
-	f->num_lines = tal_count(f->lines) - 1;
 	return f->lines;
 }
 

@@ -34,7 +34,7 @@ static void check_trailing_whitespace(struct manifest *m,
 	foreach_ptr(list, &m->c_files, &m->h_files) {
 		list_for_each(list, f, list) {
 			char **lines = get_ccan_file_lines(f);
-			for (i = 0; i < f->num_lines; i++) {
+			for (i = 0; f->lines[i]; i++) {
 				char *err = get_trailing_whitespace(score,
 								    lines[i]);
 				if (err)

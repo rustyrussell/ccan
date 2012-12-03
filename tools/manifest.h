@@ -64,7 +64,6 @@ struct ccan_file {
 	size_t contents_size;
 
 	/* Use get_ccan_file_lines / get_ccan_line_info to fill these. */
-	unsigned int num_lines;
 	char **lines;
 	struct line_info *line_info;
 

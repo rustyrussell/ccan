@@ -218,9 +218,10 @@ struct line_info *get_ccan_line_info(struct ccan_file *f)
 		return f->line_info;
 
 	get_ccan_file_lines(f);
-	f->line_info = tal_arr(f->lines, struct line_info, f->num_lines);
+	f->line_info = tal_arr(f->lines, struct line_info,
+			       tal_count(f->lines)-1);
 
-	for (i = 0; i < f->num_lines; continued = continues(f->lines[i++])) {
+	for (i = 0; f->lines[i]; continued = continues(f->lines[i++])) {
 		char *p;
 		bool still_doc_line;
 

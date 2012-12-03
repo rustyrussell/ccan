@@ -83,7 +83,7 @@ static struct htable_option *get_used_options(struct manifest *m)
 			info = get_ccan_line_info(f);
 			struct pp_conditions *prev = NULL;
 
-			for (i = 0; i < f->num_lines; i++) {
+			for (i = 0; f->lines[i]; i++) {
 				if (info[i].cond && info[i].cond != prev) {
 					num += add_options(opts, info[i].cond);
 					prev = info[i].cond;
