@@ -81,6 +81,31 @@ char *tal_vasprintf(const tal_t *ctx, const char *fmt, va_list ap)
 	return buf;
 }
 
+char *tal_strcat(const tal_t *ctx, const char *s1, const char *s2)
+{
+	size_t len1, len2;
+	char *ret;
+
+	if (unlikely(!s2) && taken(s2)) {
+		if (taken(s1))
+			tal_free(s1);
+		return NULL;
+	}
+	/* We have to let through NULL for take(). */
+	len1 = s1 ? strlen(s1) : 0;
+	len2 = strlen(s2);
+
+	/* We use tal_dup_ here to avoid attaching a length property. */
+	ret = tal_dup_(ctx, s1, 1, len1, len2 + 1, false,
+		       TAL_LABEL(char, "[]"));
+	if (likely(ret))
+		memcpy(ret + len1, s2, len2 + 1);
+
+	if (taken(s2))
+		tal_free(s2);
+	return ret;
+}
+
 char **tal_strsplit(const tal_t *ctx,
 		    const char *string, const char *delims, enum strsplit flags)
 {

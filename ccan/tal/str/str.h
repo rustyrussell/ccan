@@ -39,6 +39,14 @@ char *tal_asprintf(const tal_t *ctx, const char *fmt, ...) PRINTF_FMT(2,3);
 char *tal_vasprintf(const tal_t *ctx, const char *fmt, va_list ap)
 	PRINTF_FMT(2,0);
 
+/**
+ * tal_strcat - join two strings together
+ * @ctx: NULL, or tal allocated object to be parent.
+ * @s1: the first string (can be take()).
+ * @s2: the second string (can be take()).
+ */
+char *tal_strcat(const tal_t *ctx, const char *s1, const char *s2);
+
 enum strsplit {
 	STR_EMPTY_OK,
 	STR_NO_EMPTY
