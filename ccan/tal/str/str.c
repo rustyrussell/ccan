@@ -13,8 +13,8 @@
 #include <ccan/tal/tal.h>
 #include <ccan/take/take.h>
 
-char **strsplit(const tal_t *ctx,
-		const char *string, const char *delims, enum strsplit flags)
+char **tal_strsplit(const tal_t *ctx,
+		    const char *string, const char *delims, enum strsplit flags)
 {
 	char **parts, *str;
 	size_t max = 64, num = 0;
@@ -65,8 +65,8 @@ fail:
 	return NULL;
 }
 
-char *strjoin(const tal_t *ctx,
-	      char *strings[], const char *delim, enum strjoin flags)
+char *tal_strjoin(const tal_t *ctx,
+		  char *strings[], const char *delim, enum strjoin flags)
 {
 	unsigned int i;
 	char *ret = NULL;
@@ -108,7 +108,7 @@ fail:
 	goto out;
 }
 
-bool strreg(const tal_t *ctx, const char *string, const char *regex, ...)
+bool tal_strreg(const tal_t *ctx, const char *string, const char *regex, ...)
 {
 	size_t nmatch = 1 + strcount(regex, "(");
 	regmatch_t matches[nmatch];

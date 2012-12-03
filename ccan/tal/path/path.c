@@ -525,7 +525,7 @@ bool path_is_dir(const char *path)
 char **path_split(const tal_t *ctx, const char *path)
 {
 	bool empty = path && !path[0];
-	char **ret = strsplit(ctx, path, PATH_SEP_STR, STR_NO_EMPTY);
+	char **ret = tal_strsplit(ctx, path, PATH_SEP_STR, STR_NO_EMPTY);
 
 	/* Handle the "/" case */
 	if (ret && !empty && !ret[0]) {

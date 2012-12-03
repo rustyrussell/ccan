@@ -24,10 +24,10 @@
  *		textfile = grab_file(NULL, argv[1], NULL);
  *		if (!textfile)
  *			err(1, "Failed reading %s", argv[1]);
- *		lines = strsplit(textfile, textfile, "\n", STR_EMPTY_OK);
+ *		lines = tal_strsplit(textfile, textfile, "\n", STR_EMPTY_OK);
  *
  *		// Join them back together with two linefeeds.
- *		printf("%s", strjoin(textfile, lines, "\n\n", STR_TRAIL));
+ *		printf("%s", tal_strjoin(textfile, lines, "\n\n", STR_TRAIL));
  *
  *		// Free everything, just because we can.
  *		tal_free(textfile);

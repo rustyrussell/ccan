@@ -12,7 +12,7 @@ enum strsplit {
 };
 
 /**
- * strsplit - Split string into an array of substrings
+ * tal_strsplit - Split string into an array of substrings
  * @ctx: the context to tal from (often NULL).
  * @string: the string to split (can be take()).
  * @delims: delimiters where lines should be split (can be take()).
@@ -38,7 +38,7 @@ enum strsplit {
  *		unsigned int i, long_lines = 0;
  *
  *		// Can only fail on out-of-memory.
- *		lines = strsplit(NULL, string, "\n", STR_NO_EMPTY);
+ *		lines = tal_strsplit(NULL, string, "\n", STR_NO_EMPTY);
  *		for (i = 0; lines[i] != NULL; i++)
  *			if (strlen(lines[i]) > 80)
  *				long_lines++;
@@ -46,8 +46,8 @@ enum strsplit {
  *		return long_lines;
  *	}
  */
-char **strsplit(const tal_t *ctx,
-		const char *string, const char *delims, enum strsplit flags);
+char **tal_strsplit(const tal_t *ctx,
+		    const char *string, const char *delims, enum strsplit flag);
 
 enum strjoin {
 	STR_TRAIL,
@@ -55,7 +55,7 @@ enum strjoin {
 };
 
 /**
- * strjoin - Join an array of substrings into one long string
+ * tal_strjoin - Join an array of substrings into one long string
  * @ctx: the context to tal from (often NULL).
  * @strings: the NULL-terminated array of strings to join (can be take())
  * @delim: the delimiter to insert between the strings (can be take())
@@ -71,17 +71,17 @@ enum strjoin {
  *	{
  *		char **lines, *ret;
  *
- *		lines = strsplit(NULL, string, "\n", STR_EMPTY_OK);
- *		ret = strjoin(NULL, lines, "-- EOL\n", STR_TRAIL);
+ *		lines = tal_strsplit(NULL, string, "\n", STR_EMPTY_OK);
+ *		ret = tal_strjoin(NULL, lines, "-- EOL\n", STR_TRAIL);
  *		tal_free(lines);
  *		return ret;
  *	}
  */
-char *strjoin(const void *ctx, char *strings[], const char *delim,
-	      enum strjoin flags);
+char *tal_strjoin(const void *ctx, char *strings[], const char *delim,
+		  enum strjoin flags);
 
 /**
- * strreg - match and extract from a string via (extended) regular expressions.
+ * tal_strreg - match/extract from a string via (extended) regular expressions.
  * @ctx: the context to tal from (often NULL)
  * @string: the string to try to match (can be take())
  * @regex: the regular expression to match (can be take())
@@ -109,14 +109,15 @@ char *strjoin(const void *ctx, char *strings[], const char *delim,
  *		char *person, *input;
  *
  *		// Join args and trim trailing space.
- *		input = strjoin(NULL, argv+1, " ", STR_NO_TRAIL);
- *		if (strreg(NULL, input, "[Mm]y (first )?name is ([A-Za-z ]+)",
- *			   NULL, &person))
+ *		input = tal_strjoin(NULL, argv+1, " ", STR_NO_TRAIL);
+ *		if (tal_strreg(NULL, input,
+ *			       "[Mm]y (first )?name is ([A-Za-z ]+)",
+ *			       NULL, &person))
  *			printf("Hello %s!\n", person);
  *		else
  *			printf("Hello there!\n");
  *		return 0;
  *	}
  */
-bool strreg(const void *ctx, const char *string, const char *regex, ...);
+bool tal_strreg(const void *ctx, const char *string, const char *regex, ...);
 #endif /* CCAN_STR_TAL_H */
