@@ -27,7 +27,7 @@ struct list_head *get_ccan_file_docs(struct ccan_file *f)
 {
 	if (!f->doc_sections) {
 		get_ccan_file_lines(f);
-		f->doc_sections = extract_doc_sections(f->lines);
+		f->doc_sections = extract_doc_sections(f->lines, f->name);
 	}
 	return f->doc_sections;
 }

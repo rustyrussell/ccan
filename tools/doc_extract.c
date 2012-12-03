@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
 			err(1, "Reading file %s", argv[i]);
 		lines = strsplit(file, file, "\n");
 
-		list = extract_doc_sections(lines);
+		list = extract_doc_sections(lines, argv[i]);
 		if (list_empty(list))
 			errx(1, "No documentation in file %s", argv[i]);
 		talloc_free(file);

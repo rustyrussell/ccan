@@ -13,5 +13,5 @@ struct doc_section {
 	char **lines;
 };
 
-struct list_head *extract_doc_sections(char **rawlines);
+struct list_head *extract_doc_sections(char **rawlines, const char *file);
 #endif /* _DOC_EXTRACT_CORE_H */

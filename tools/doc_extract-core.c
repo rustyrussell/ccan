@@ -15,7 +15,8 @@
 #include "doc_extract.h"
 #include "tools.h"
 
-static char **grab_doc(char **lines, unsigned int **linemap)
+static char **grab_doc(char **lines, unsigned int **linemap,
+		       const char *file)
 {
 	char **ret;
 	unsigned int i, num;
@@ -39,8 +40,19 @@ static char **grab_doc(char **lines, unsigned int **linemap)
 				ret[num++] = talloc_strdup(ret, lines[i]+3);
 			else if (strstarts(lines[i], " *"))
 				ret[num++] = talloc_strdup(ret, lines[i]+2);
-			else
-				errx(1, "Malformed line %u", i);
+			else {
+				/* Weird, malformed? */
+				static bool warned;
+				if (!warned) {
+					warnx("%s:%u:"
+					      " Expected ' *' in comment.",
+					      file, i+1);
+					warned++;
+				}
+				ret[num++] = talloc_strdup(ret, lines[i]);
+				if (strstr(lines[i], "*/"))
+					printing = false;
+			}
 			(*linemap)[num-1] = i;
 		}
 	}
@@ -195,10 +207,10 @@ static void trim_lines(struct doc_section *curr)
 	curr->num_lines = last_non_empty + 1;
 }
 
-struct list_head *extract_doc_sections(char **rawlines)
+struct list_head *extract_doc_sections(char **rawlines, const char *file)
 {
 	unsigned int *linemap;
-	char **lines = grab_doc(rawlines, &linemap);
+	char **lines = grab_doc(rawlines, &linemap, file);
 	const char *function = NULL;
 	struct doc_section *curr = NULL;
 	unsigned int i;
