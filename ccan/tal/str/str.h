@@ -26,7 +26,8 @@ enum strsplit {
  * Multiple delimiters result in empty substrings.  By definition, no
  * delimiters will appear in the substrings.
  *
- * The final char * in the array will be NULL.
+ * The final char * in the array will be NULL, and tal_count() will
+ * return the number of elements plus 1 (for that NULL).
  *
  * Example:
  *	#include <ccan/tal/str/str.h>

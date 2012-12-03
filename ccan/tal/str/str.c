@@ -49,6 +49,11 @@ char **strsplit(const tal_t *ctx,
 			goto fail;
 	}
 	parts[num] = NULL;
+
+	/* Ensure that tal_count() is correct. */
+	if (unlikely(!tal_resize(&parts, num+1)))
+		goto fail;
+
 	if (taken(delims))
 		tal_free(delims);
 	return parts;

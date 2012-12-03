@@ -14,24 +14,27 @@ int main(int argc, char *argv[])
 	char **split, *str;
 	void *ctx;
 
-	plan_tests(65);
+	plan_tests(69);
 	split = strsplit(NULL, "hello  world", " ", STR_EMPTY_OK);
 	ok1(!strcmp(split[0], "hello"));
 	ok1(!strcmp(split[1], ""));
 	ok1(!strcmp(split[2], "world"));
 	ok1(split[3] == NULL);
+	ok1(tal_count(split) == 4);
 	tal_free(split);
 
 	split = strsplit(NULL, "hello  world", " ", STR_NO_EMPTY);
 	ok1(!strcmp(split[0], "hello"));
 	ok1(!strcmp(split[1], "world"));
 	ok1(split[2] == NULL);
+	ok1(tal_count(split) == 3);
 	tal_free(split);
 
 	split = strsplit(NULL, "  hello  world", " ", STR_NO_EMPTY);
 	ok1(!strcmp(split[0], "hello"));
 	ok1(!strcmp(split[1], "world"));
 	ok1(split[2] == NULL);
+	ok1(tal_count(split) == 3);
 	tal_free(split);
 
 	split = strsplit(NULL, "hello  world", "o ", STR_EMPTY_OK);
@@ -41,6 +44,7 @@ int main(int argc, char *argv[])
 	ok1(!strcmp(split[3], "w"));
 	ok1(!strcmp(split[4], "rld"));
 	ok1(split[5] == NULL);
+	ok1(tal_count(split) == 6);
 
 	ctx = split;
 	split = strsplit(ctx, "hello  world", "o ", STR_EMPTY_OK);
