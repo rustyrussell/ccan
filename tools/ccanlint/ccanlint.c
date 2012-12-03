@@ -585,13 +585,27 @@ static bool add_to_all(const char *member, struct ccanlint *c,
 	return true;
 }
 
+static bool test_module(struct dgraph_node *all,
+			const char *dir, const char *prefix, bool summary)
+{
+	struct manifest *m = get_manifest(autofree(), dir);
+	char *testlink = path_join(NULL, temp_dir(), "test");
+
+	/* Create a symlink from temp dir back to src dir's
+	 * test directory. */
+	unlink(testlink);
+	if (symlink(path_join(m, dir, "test"), testlink) != 0)
+		err(1, "Creating test symlink in %s", temp_dir());
+
+	return run_tests(all, summary, m, prefix);
+}
+
 int main(int argc, char *argv[])
 {
 	bool summary = false, pass = true;
 	unsigned int i;
-	struct manifest *m;
 	const char *prefix = "";
-	char *dir = path_cwd(NULL), *base_dir = dir, *testlink;
+	char *cwd = path_cwd(NULL), *dir;
 	struct dgraph_node all;
 	
 	/* Empty graph node to which we attach everything else. */
@@ -646,48 +660,31 @@ int main(int argc, char *argv[])
 	if (!targeting)
 		strmap_iterate(&tests, add_to_all, &all);
 
-	/* This links back to the module's test dir. */
-	testlink = path_join(NULL, temp_dir(), "test");
+	if (argc == 1)
+		dir = cwd;
+	else
+		dir = path_join(NULL, cwd, argv[1]);
 
-	/* Defaults to pwd. */
-	if (argc == 1) {
-		i = 1;
-		goto got_dir;
-	}
+	ccan_dir = find_ccan_dir(dir);
+	if (!ccan_dir)
+		errx(1, "Cannot find ccan/ base directory in %s", dir);
+	config_header = read_config_header(ccan_dir, &compiler, &cflags,
+					   verbose > 1);
 
-	for (i = 1; i < argc; i++) {
-		dir = path_simplify(NULL,
-				    take(path_join(NULL, base_dir, argv[i])));
+	if (argc == 1)
+		pass = test_module(&all, cwd, "", summary);
+	else {
+		for (i = 1; i < argc; i++) {
+			dir = path_canon(NULL,
+					 take(path_join(NULL, cwd, argv[i])));
 
-	got_dir:
-		/* We assume there's a ccan/ in there somewhere... */
-		if (i == 1) {
-			ccan_dir = find_ccan_dir(dir);
-			if (!ccan_dir)
-				errx(1, "Cannot find ccan/ base directory in %s",
-				     dir);
-			config_header = read_config_header(ccan_dir,
-							   &compiler, &cflags,
-							   verbose > 1);
+			prefix = path_join(NULL, ccan_dir, "ccan");
+			prefix = path_rel(NULL, take(prefix), dir);
+			prefix = tal_strcat(NULL, take(prefix), ": ");
+
+			pass &= test_module(&all, dir, prefix, summary);
+			reset_tests(&all);
 		}
-
-		if (dir != base_dir)
-			prefix = tal_strcat(NULL,
-					    take(path_basename(NULL,dir)),
-					    ": ");
-
-		m = get_manifest(autofree(), dir);
-
-		/* Create a symlink from temp dir back to src dir's
-		 * test directory. */
-		unlink(testlink);
-		if (symlink(path_join(m, dir, "test"), testlink) != 0)
-			err(1, "Creating test symlink in %s", temp_dir());
-
-		if (!run_tests(&all, summary, m, prefix))
-			pass = false;
-
-		reset_tests(&all);
 	}
 	return pass ? 0 : 1;
 }
