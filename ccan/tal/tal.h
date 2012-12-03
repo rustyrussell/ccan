@@ -127,6 +127,9 @@ void *tal_free(const tal_t *p);
  * @ptr: The tal allocated object.
  * @function: the function to call before it's freed.
  *
+ * This is a more convenient form of tal_add_notifier(@ptr,
+ * TAL_NOTIFY_FREE, ...), in that the function prototype takes only @ptr.
+ *
  * Note that this can only fail if your allocfn fails and your errorfn returns.
  */
 #define tal_add_destructor(ptr, function)				      \
@@ -187,9 +190,10 @@ enum tal_notify_type {
  * not called when this context is tal_free()d: TAL_NOTIFY_FREE is
  * considered sufficient for that case.
  *
- * TAL_NOTIFY_ADD_NOTIFIER/TAL_NOTIFIER_DEL_NOTIFIER are called when
- * a notifier is added or removed (not for this notifier): @info is the
- * callback.
+ * TAL_NOTIFY_ADD_NOTIFIER/TAL_NOTIFIER_DEL_NOTIFIER are called when a
+ * notifier is added or removed (not for this notifier): @info is the
+ * callback.  This is also called for tal_add_destructor and
+ * tal_del_destructor.
  */
 #define tal_add_notifier(ptr, types, callback)				\
 	tal_add_notifier_((ptr), (types),				\

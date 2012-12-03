@@ -13,10 +13,11 @@
 
 //#define TAL_DEBUG 1
 
+#define NOTIFY_IS_DESTRUCTOR 512
+
 /* 32-bit type field, first byte 0 in either endianness. */
 enum prop_type {
 	CHILDREN = 0x00c1d500,
-	DESTRUCTOR = 0x00de5700,
 	NAME = 0x00111100,
 	NOTIFIER = 0x00071f00
 };
@@ -38,11 +39,6 @@ struct children {
 	struct list_head children; /* Head of siblings. */
 };
 
-struct destructor {
-	struct prop_hdr hdr; /* DESTRUCTOR */
-	void (*destroy)(void *me);
-};
-
 struct name {
 	struct prop_hdr hdr; /* NAME */
 	char name[];
@@ -51,7 +47,10 @@ struct name {
 struct notifier {
 	struct prop_hdr hdr; /* NOTIFIER */
 	enum tal_notify_type types;
-	void (*notifyfn)(tal_t *, enum tal_notify_type, void *);
+	union {
+		void (*notifyfn)(tal_t *, enum tal_notify_type, void *);
+		void (*destroy)(tal_t *); /* If NOTIFY_IS_DESTRUCTOR set */
+	} u;
 };
 
 static struct {
@@ -214,8 +213,13 @@ static void notify(const struct tal_hdr *ctx,
                 if (p->type != NOTIFIER)
 			continue;
 		n = (struct notifier *)p;
-		if (n->types & type)
-			n->notifyfn(from_tal_hdr(ctx), type, (void *)info);
+		if (n->types & type) {
+			if (n->types & NOTIFY_IS_DESTRUCTOR)
+				n->u.destroy(from_tal_hdr(ctx));
+			else
+				n->u.notifyfn(from_tal_hdr(ctx), type,
+					      (void *)info);
+		}
 	}
 }
 
@@ -272,39 +276,6 @@ static void init_property(struct prop_hdr *hdr,
 	parent->prop = hdr;
 }
 
-static struct destructor *add_destructor_property(struct tal_hdr *t,
-						  void (*destroy)(void *))
-{
-	struct destructor *prop = allocate(sizeof(*prop));
-	if (prop) {
-		init_property(&prop->hdr, t, DESTRUCTOR);
-		prop->destroy = destroy;
-	}
-	return prop;
-}
-
-static bool del_destructor_property(struct tal_hdr *t,
-				    void (*destroy)(void *))
-{
-        struct prop_hdr **p;
-
-        for (p = (struct prop_hdr **)&t->prop; *p; p = &(*p)->next) {
-		struct destructor *d;
-
-                if (is_literal(*p))
-			break;
-                if ((*p)->type != DESTRUCTOR)
-			continue;
-		d = (struct destructor *)*p;
-		if (d->destroy == destroy) {
-			*p = (*p)->next;
-			freefn(d);
-			return true;
-		}
-        }
-        return false;
-}
-
 static struct notifier *add_notifier_property(struct tal_hdr *t,
 					      enum tal_notify_type types,
 					      void (*fn)(void *,
@@ -315,7 +286,7 @@ static struct notifier *add_notifier_property(struct tal_hdr *t,
 	if (prop) {
 		init_property(&prop->hdr, t, NOTIFIER);
 		prop->types = types;
-		prop->notifyfn = fn;
+		prop->u.notifyfn = fn;
 	}
 	return prop;
 }
@@ -334,7 +305,7 @@ static bool del_notifier_property(struct tal_hdr *t,
                 if ((*p)->type != NOTIFIER)
 			continue;
 		n = (struct notifier *)*p;
-		if (n->notifyfn == fn) {
+		if (n->u.notifyfn == fn) {
 			*p = (*p)->next;
 			freefn(n);
 			return true;
@@ -395,14 +366,6 @@ static void del_tree(struct tal_hdr *t, const tal_t *orig)
                 return;
 
         set_destroying_bit(&t->parent_child);
-
-        /* Carefully call destructors, removing as we go. */
-        while ((prop = find_property_ptr(t, DESTRUCTOR))) {
-		struct destructor *d = (struct destructor *)*prop;
-                d->destroy(from_tal_hdr(t));
-                *prop = d->hdr.next;
-		freefn(d);
-        }
 
 	/* Call free notifiers. */
 	notify(t, TAL_NOTIFY_FREE, (tal_t *)orig);
@@ -489,7 +452,8 @@ void *tal_steal_(const tal_t *new_parent, const tal_t *ctx)
 bool tal_add_destructor_(tal_t *ctx, void (*destroy)(void *me))
 {
 	tal_t *t = debug_tal(to_tal_hdr(ctx));
-        return add_destructor_property(t, destroy);
+	return add_notifier_property(t, TAL_NOTIFY_FREE|NOTIFY_IS_DESTRUCTOR,
+				     (void *)destroy);
 }
 
 bool tal_add_notifier_(tal_t *ctx, enum tal_notify_type types,
@@ -529,8 +493,7 @@ bool tal_del_notifier_(tal_t *ctx,
 
 bool tal_del_destructor_(tal_t *ctx, void (*destroy)(void *me))
 {
-	struct tal_hdr *t = debug_tal(to_tal_hdr(ctx));
-        return del_destructor_property(t, destroy);
+	return tal_del_notifier_(ctx, (void *)destroy);
 }
 
 bool tal_set_name_(tal_t *ctx, const char *name, bool literal)
@@ -799,7 +762,6 @@ static void dump_node(unsigned int indent, const struct tal_hdr *t)
 	printf("%p", t);
         for (p = t->prop; p; p = p->next) {
 		struct children *c;
-		struct destructor *d;
 		struct name *n;
 		struct notifier *no;
                 if (is_literal(p)) {
@@ -813,17 +775,13 @@ static void dump_node(unsigned int indent, const struct tal_hdr *t)
 			       p, c->parent,
 			       c->children.n.prev, c->children.n.next);
 			break;
-		case DESTRUCTOR:
-			d = (struct destructor *)p;
-			printf(" DESTRUCTOR(%p):fn=%p", p, d->destroy);
-			break;
 		case NAME:
 			n = (struct name *)p;
 			printf(" NAME(%p):%s", p, n->name);
 			break;
 		case NOTIFIER:
 			no = (struct notifier *)p;
-			printf(" NOTIFIER(%p):fn=%p", p, no->notifyfn);
+			printf(" NOTIFIER(%p):fn=%p", p, no->u.notifyfn);
 			break;
 		default:
 			printf(" **UNKNOWN(%p):%i**", p, p->type);
@@ -898,7 +856,6 @@ static bool check_node(struct children *parent_child,
 						 "has two child nodes");
 			children = (struct children *)p;
 			break;
-		case DESTRUCTOR:
 		case NOTIFIER:
 			break;
 		case NAME:
