@@ -6,7 +6,7 @@ int main(void)
 {
 	char *parent, *c;
 
-	plan_tests(27);
+	plan_tests(32);
 
 	parent = tal(NULL, char);
 	ok1(parent);
@@ -69,6 +69,15 @@ int main(void)
 	c = tal_strcat(parent, take(NULL), take(NULL));
 	ok1(!c);
 	ok1(!tal_first(parent));
+
+	/* Appending formatted strings. */
+	c = tal_strdup(parent, "hi");
+	ok1(tal_append_fmt(&c, "%s %s", "there", "world"));
+	ok1(strcmp(c, "hithere world") == 0);
+	ok1(tal_parent(c) == parent);
+
+	ok1(!tal_append_fmt(&c, take(NULL), "there", "world"));
+	ok1(strcmp(c, "hithere world") == 0);
 
 	tal_free(parent);
 

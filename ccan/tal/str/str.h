@@ -40,6 +40,25 @@ char *tal_vfmt(const tal_t *ctx, const char *fmt, va_list ap)
 	PRINTF_FMT(2,0);
 
 /**
+ * tal_append_fmt - append a formatted string to a talloc string.
+ * @baseptr: a pointer to the tal string to be appended to.
+ * @fmt: the printf-style format (can be take()).
+ *
+ * Returns false on allocation failure.
+ */
+bool tal_append_fmt(char **baseptr, const char *fmt, ...) PRINTF_FMT(2,3);
+
+/**
+ * tal_append_vfmt - append a formatted string to a talloc string (va_list)
+ * @baseptr: a pointer to the tal string to be appended to.
+ * @fmt: the printf-style format (can be take()).
+ * @va: the va_list containing the format args.
+ *
+ * Returns false on allocation failure.
+ */
+bool tal_append_vfmt(char **baseptr, const char *fmt, va_list ap);
+
+/**
  * tal_strcat - join two strings together
  * @ctx: NULL, or tal allocated object to be parent.
  * @s1: the first string (can be take()).
