@@ -13,8 +13,9 @@ int main(void)
 {
 	void *p;
 	int *pi, *origpi;
+	char *cp;
 
-	plan_tests(26);
+	plan_tests(30);
 
 	tal_set_backend(NULL, NULL, NULL, my_error);
 
@@ -80,6 +81,18 @@ int main(void)
 	ok1(!pi);
 	ok1(error_count == 1);
 	ok1(!tal_first(NULL));
+
+	/* Overflow on expand addition. */
+	cp = tal_arr(p, char, 100);
+	ok1(!tal_expand(&cp, NULL, (size_t)-99UL));
+	ok1(error_count == 2);
+	tal_free(cp);
+
+	/* Overflow when multiplied by size */
+	origpi = tal_arr(NULL, int, 100);
+	ok1(!tal_expand(&origpi, NULL, (size_t)-1UL / sizeof(int)));
+	ok1(error_count == 3);
+	tal_free(origpi);
 
 	return exit_status();
 }

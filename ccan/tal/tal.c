@@ -712,6 +712,37 @@ bool tal_resize_(tal_t **ctxp, size_t size, size_t count)
 	return true;
 }
 
+bool tal_expand_(tal_t **ctxp, const void *src, size_t size, size_t count)
+{
+	struct length *l;
+	bool ret = false;
+
+	l = find_property(debug_tal(to_tal_hdr(*ctxp)), LENGTH);
+
+	/* Check for additive overflow */
+	if (l->count + count < count) {
+		call_error("dup size overflow");
+		goto out;
+	}
+
+	/* Don't point src inside thing we're expanding! */
+	assert(src < *ctxp
+	       || (char *)src >= (char *)(*ctxp) + (size * l->count));
+
+	/* Note: updates l->count. */
+	if (!tal_resize_(ctxp, size, l->count + count))
+		goto out;
+
+	memcpy((char *)*ctxp + size * (l->count - count),
+	       src, count * size);
+	ret = true;
+
+out:
+	if (taken(src))
+		tal_free(src);
+	return ret;
+}
+
 void *tal_dup_(const tal_t *ctx, const void *p, size_t size,
 	       size_t n, size_t extra, bool add_count,
 	       const char *label)

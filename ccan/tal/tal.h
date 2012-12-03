@@ -305,6 +305,28 @@ void tal_set_backend(void *(*alloc_fn)(size_t size),
 		     void (*free_fn)(void *),
 		     void (*error_fn)(const char *msg));
 
+/**
+ * tal_expand - expand a tal array with contents.
+ * @a1p: a pointer to the tal array to expand.
+ * @a2: the second array (can be take()).
+ * @num2: the number of elements in the second array.
+ *
+ * Note that *@a1 and @a2 should be the same type.  tal_count(@a1) will
+ * be increased by @num2.
+ *
+ * Example:
+ *	int *arr1 = tal_arrz(NULL, int, 2);
+ *	int arr2[2] = { 1, 3 };
+ *
+ *	tal_expand(&arr1, arr2, 2);
+ *	assert(tal_count(arr1) == 4);
+ *	assert(arr1[2] == 1);
+ *	assert(arr1[3] == 3);
+ */
+#define tal_expand(a1p, a2, num2)				\
+	tal_expand_((void **)(a1p), (a2), sizeof**(a1p),	\
+		    (num2) + 0*sizeof(*(a1p) == (a2)))
+
 
 /**
  * tal_check - set the allocation or error functions to use
@@ -374,6 +396,7 @@ void *tal_dup_(const tal_t *ctx, const void *p, size_t size,
 tal_t *tal_steal_(const tal_t *new_parent, const tal_t *t);
 
 bool tal_resize_(tal_t **ctxp, size_t size, size_t count);
+bool tal_expand_(tal_t **ctxp, const void *src, size_t size, size_t count);
 
 bool tal_add_destructor_(const tal_t *ctx, void (*destroy)(void *me));
 bool tal_del_destructor_(const tal_t *ctx, void (*destroy)(void *me));
