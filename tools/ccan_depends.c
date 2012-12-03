@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <ccan/err/err.h>
 #include <ccan/str/str.h>
-#include <ccan/talloc/talloc.h>
 
 int main(int argc, char *argv[])
 {
@@ -43,11 +42,9 @@ int main(int argc, char *argv[])
 		errx(1, "--non-ccan needs --compile");
 
 	if (compile)
-		deps = get_deps(talloc_autofree_context(), argv[1],
-				style, recurse, compile_info);
+		deps = get_deps(NULL, argv[1], style, recurse, compile_info);
 	else
-		deps = get_safe_ccan_deps(talloc_autofree_context(),
-					  argv[1], style, recurse);
+		deps = get_safe_ccan_deps(NULL, argv[1], style, recurse);
 
 	for (i = 0; deps[i]; i++)
 		if (strstarts(deps[i], "ccan/") == ccan)

@@ -2,13 +2,16 @@ ALL_TOOLS = tools/configurator/configurator tools/ccan_depends tools/doc_extract
 LDLIBS = -lrt
 DEP_OBJS = ccan/err/err.o \
 	ccan/foreach/foreach.o \
+	ccan/list/list.o \
 	ccan/noerr/noerr.o \
 	ccan/rbuf/rbuf.o \
 	ccan/read_write_all/read_write_all.o \
 	ccan/str/debug.o \
 	ccan/str/str.o \
-	ccan/str_talloc/str_talloc.o \
-	ccan/talloc/talloc.o \
+	ccan/take/take.o \
+	ccan/tal/tal.o \
+	ccan/tal/link/link.o \
+	ccan/tal/str/str.o \
 	ccan/time/time.o \
 	tools/read_config_header.o \
 	tools/ccan_dir.o \

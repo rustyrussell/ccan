@@ -1,6 +1,4 @@
 #include <ccan/str/str.h>
-#include <ccan/talloc/talloc.h>
-#include <ccan/str_talloc/str_talloc.h>
 #include <ccan/read_write_all/read_write_all.h>
 #include <ccan/rbuf/rbuf.h>
 #include <ccan/compiler/compiler.h>
@@ -22,7 +20,7 @@ lines_from_cmd(const void *ctx, const char *format, ...)
 	struct rbuf in;
 
 	va_start(ap, format);
-	cmd = talloc_vasprintf(ctx, format, ap);
+	cmd = tal_vfmt(ctx, format, ap);
 	va_end(ap);
 
 	p = popen(cmd, "r");
@@ -30,12 +28,12 @@ lines_from_cmd(const void *ctx, const char *format, ...)
 		err(1, "Executing '%s'", cmd);
 
 	/* FIXME: Use rbuf_read_str(&in, '\n') rather than strsplit! */
-	rbuf_init(&in, fileno(p), talloc_array(ctx, char, 4096), 4096);
-	if (!rbuf_read_str(&in, 0, do_talloc_realloc) && errno)
+	rbuf_init(&in, fileno(p), tal_arr(ctx, char, 0), 0);
+	if (!rbuf_read_str(&in, 0, do_tal_realloc) && errno)
 		err(1, "Reading from '%s'", cmd);
 	pclose(p);
 
-	return strsplit(ctx, in.buf, "\n");
+	return tal_strsplit(ctx, in.buf, "\n", STR_EMPTY_OK);
 }
 
 /* Be careful about trying to compile over running programs (parallel make).
@@ -47,8 +45,7 @@ char *compile_info(const void *ctx, const char *dir)
 	int fd;
 
 	/* Copy it to a file with proper .c suffix. */
-	info = talloc_grab_file(ctx, talloc_asprintf(ctx, "%s/_info", dir),
-				&len);
+	info = tal_grab_file(ctx, tal_fmt(ctx, "%s/_info", dir), &len);
 	if (!info)
 		return NULL;
 
@@ -79,13 +76,13 @@ static char **get_one_deps(const void *ctx, const char *dir, const char *style,
 	if (!infofile)
 		return NULL;
 
-	cmd = talloc_asprintf(ctx, "%s %s", infofile, style);
+	cmd = tal_fmt(ctx, "%s %s", infofile, style);
 	deps = lines_from_cmd(cmd, "%s", cmd);
 	if (!deps) {
 		/* You must understand depends, maybe not testdepends. */
 		if (streq(style, "depends"))
 			err(1, "Could not run '%s'", cmd);
-		deps = talloc(ctx, char *);
+		deps = tal(ctx, char *);
 		deps[0] = NULL;
 	}
 	return deps;
@@ -95,7 +92,7 @@ static char **get_one_deps(const void *ctx, const char *dir, const char *style,
 static char *replace(const void *ctx, const char *src,
 		     const char *from, const char *to)
 {
-	char *ret = talloc_strdup(ctx, "");
+	char *ret = tal_strdup(ctx, "");
 	unsigned int rlen, len, add;
 
 	rlen = len = 0;
@@ -106,7 +103,7 @@ static char *replace(const void *ctx, const char *src,
 		else
 			add = next - (src+len);
 
-		ret = talloc_realloc(ctx, ret, char, rlen + add + strlen(to)+1);
+		tal_resize(&ret, rlen + add + strlen(to)+1);
 		memcpy(ret+rlen, src+len, add);
 		if (!next)
 			return ret;
@@ -128,15 +125,16 @@ static char **get_one_safe_deps(const void *ctx,
 	unsigned int i, n;
 	bool correct_style = false;
 
-	fname = talloc_asprintf(ctx, "%s/_info", dir);
-	raw = talloc_grab_file(fname, fname, NULL);
+	fname = tal_fmt(ctx, "%s/_info", dir);
+	raw = tal_grab_file(fname, fname, NULL);
 	if (!raw)
 		errx(1, "Could not open %s", fname);
 
 	/* Replace \n by actual line breaks, and split it. */
-	lines = strsplit(raw, replace(raw, raw, "\\n", "\n"), "\n");
+	lines = tal_strsplit(raw, replace(raw, raw, "\\n", "\n"), "\n",
+			     STR_EMPTY_OK);
 
-	deps = talloc_array(ctx, char *, talloc_array_length(lines));
+	deps = tal_arr(ctx, char *, tal_count(lines));
 
 	for (n = i = 0; lines[i]; i++) {
 		char *str;
@@ -167,13 +165,14 @@ static char **get_one_safe_deps(const void *ctx,
 		len = strspn(str, "/abcdefghijklmnopqrstuvxwyz12345678980_");
 		if (len == 5)
 			continue;
-		deps[n++] = talloc_strndup(deps, str, len);
+		deps[n++] = tal_strndup(deps, str, len);
 	}
 	deps[n] = NULL;
-	talloc_free(fname);
+	tal_free(fname);
 
-	/* Make sure talloc_array_length() works */
-	return talloc_realloc(NULL, deps, char *, n + 1);
+	/* Make sure tal_array_length() works */
+	tal_resize(&deps, n + 1);
+	return deps;
 }
 
 static bool have_dep(char **deps, const char *dep)
@@ -199,7 +198,7 @@ get_all_deps(const void *ctx, const char *dir, const char *style,
 	unsigned int i;
 
 	deps = get_one(ctx, dir, style, get_info);
-	for (i = 0; i < talloc_array_length(deps)-1; i++) {
+	for (i = 0; i < tal_count(deps)-1; i++) {
 		char **newdeps;
 		unsigned int j;
 		char *subdir;
@@ -207,19 +206,18 @@ get_all_deps(const void *ctx, const char *dir, const char *style,
 		if (!strstarts(deps[i], "ccan/"))
 			continue;
 
-		subdir = talloc_asprintf(ctx, "%s/%s",
-					 find_ccan_dir(dir), deps[i]);
+		subdir = tal_fmt(ctx, "%s/%s", find_ccan_dir(dir), deps[i]);
 		newdeps = get_one(ctx, subdir, "depends", get_info);
 
 		/* Should be short, so brute-force out dups. */
-		for (j = 0; j < talloc_array_length(newdeps)-1; j++) {
+		for (j = 0; j < tal_count(newdeps)-1; j++) {
 			unsigned int num;
 
 			if (have_dep(deps, newdeps[j]))
 				continue;
 
-			num = talloc_array_length(deps)-1;
-			deps = talloc_realloc(NULL, deps, char *, num + 2);
+			num = tal_count(deps)-1;
+			tal_resize(&deps, num + 2);
 			deps[num] = newdeps[j];
 			deps[num+1] = NULL;
 		}
@@ -233,12 +231,11 @@ static char **get_one_libs(const void *ctx, const char *dir,
 {
 	char *cmd, **lines;
 
-	cmd = talloc_asprintf(ctx, "%s libs", get_info(ctx, dir));
+	cmd = tal_fmt(ctx, "%s libs", get_info(ctx, dir));
 	lines = lines_from_cmd(cmd, "%s", cmd);
 	/* Strip final NULL. */
 	if (lines)
-		lines = talloc_realloc(NULL, lines, char *,
-				       talloc_array_length(lines)-1);
+		tal_resize(&lines, tal_count(lines)-1);
 	return lines;
 }
 
@@ -247,13 +244,13 @@ static char **add_deps(char **deps1, char **deps2)
 {
 	unsigned int i, len;
 
-	len = talloc_array_length(deps1);
+	len = tal_count(deps1);
 
 	for (i = 0; deps2[i]; i++) {
 		if (have_dep(deps1, deps2[i]))
 			continue;
-		deps1 = talloc_realloc(NULL, deps1, char *, len + 1);
-		deps1[len-1] = talloc_steal(deps1, deps2[i]);
+		tal_resize(&deps1, len + 1);
+		deps1[len-1] = tal_strdup(deps1, deps2[i]);
 		deps1[len++] = NULL;
 	}
 	return deps1;
@@ -266,7 +263,7 @@ char **get_libs(const void *ctx, const char *dir, const char *style,
 	unsigned int i, len;
 
 	libs = get_one_libs(ctx, dir, get_info);
-	len = talloc_array_length(libs);
+	len = tal_count(libs);
 
 	if (style) {
 		deps = get_deps(ctx, dir, style, true, get_info);
@@ -282,12 +279,12 @@ char **get_libs(const void *ctx, const char *dir, const char *style,
 			if (!strstarts(deps[i], "ccan/"))
 				continue;
 
-			subdir = talloc_asprintf(ctx, "%s/%s",
-						 find_ccan_dir(dir), deps[i]);
+			subdir = tal_fmt(ctx, "%s/%s",
+					 find_ccan_dir(dir), deps[i]);
 
 			newlibs = get_one_libs(ctx, subdir, get_info);
-			newlen = talloc_array_length(newlibs);
-			libs = talloc_realloc(ctx, libs, char *, len + newlen);
+			newlen = tal_count(newlibs);
+			tal_resize(&libs, len + newlen);
 			memcpy(&libs[len], newlibs,
 			       sizeof(newlibs[0])*newlen);
 			len += newlen;
@@ -295,7 +292,7 @@ char **get_libs(const void *ctx, const char *dir, const char *style,
 	}
 
 	/* Append NULL entry. */
-	libs = talloc_realloc(ctx, libs, char *, len + 1);
+	tal_resize(&libs, len + 1);
 	libs[len] = NULL;
 	return libs;
 }
@@ -308,7 +305,7 @@ static char **uniquify_deps(char **deps)
 	if (!deps)
 		return NULL;
 
-	num = talloc_array_length(deps) - 1;
+	num = tal_count(deps) - 1;
 	for (i = 0; i < num; i++) {
 		for (j = i + 1; j < num; j++) {
 			if (streq(deps[i], deps[j])) {
@@ -319,8 +316,9 @@ static char **uniquify_deps(char **deps)
 		}
 	}
 	deps[num] = NULL;
-	/* Make sure talloc_array_length() works */
-	return talloc_realloc(NULL, deps, char *, num + 1);
+	/* Make sure tal_count() works */
+	tal_resize(&deps, num + 1);
+	return deps;
 }
 
 char **get_deps(const void *ctx, const char *dir, const char *style,

@@ -1,6 +1,5 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -31,14 +30,12 @@ static bool add_dep(struct manifest *m,
 {
 	struct stat st;
 	struct manifest *subm;
-	char *dir = talloc_asprintf(m, "%s/%s", ccan_dir, dep);
+	char *dir = tal_fmt(m, "%s/%s", ccan_dir, dep);
 
 	/* FIXME: get_manifest has a tendency to exit. */
 	if (stat(dir, &st) != 0) {
-		score->error
-			= talloc_asprintf(m,
-					  "Could not stat dependency %s: %s",
-					  dir, strerror(errno));
+		score->error = tal_fmt(m, "Could not stat dependency %s: %s",
+				       dir, strerror(errno));
 		return false;
 	}
 	subm = get_manifest(m, dir);

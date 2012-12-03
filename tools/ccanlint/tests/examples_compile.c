@@ -1,7 +1,8 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
-#include <ccan/talloc/talloc.h>
-#include <ccan/str_talloc/str_talloc.h>
+#include <ccan/tal/tal.h>
+#include <ccan/tal/str/str.h>
+#include <ccan/take/take.h>
 #include <ccan/cast/cast.h>
 #include <ccan/str/str.h>
 #include <sys/types.h>
@@ -26,8 +27,8 @@ static const char *can_run(struct manifest *m)
 
 static void add_mod(struct manifest ***deps, struct manifest *m)
 {
-	unsigned int num = talloc_get_size(*deps) / sizeof(*deps);
-	*deps = talloc_realloc(NULL, *deps, struct manifest *, num + 1);
+	unsigned int num = tal_count(*deps);
+	tal_resize(deps, num + 1);
 	(*deps)[num] = m;
 }
 
@@ -35,7 +36,7 @@ static bool have_mod(struct manifest *deps[], const char *modname)
 {
 	unsigned int i;
 
-	for (i = 0; i < talloc_get_size(deps) / sizeof(*deps); i++)
+	for (i = 0; i < tal_count(deps); i++)
 		if (strcmp(deps[i]->modname, modname) == 0)
 			return true;
 	return false;
@@ -50,8 +51,8 @@ static void add_dep(struct manifest ***deps, const char *modname)
 	if (have_mod(*deps, modname))
 		return;
 
-	m = get_manifest(*deps, talloc_asprintf(*deps, "%s/ccan/%s",
-						ccan_dir, modname));
+	m = get_manifest(*deps,
+			 tal_fmt(*deps, "%s/ccan/%s", ccan_dir, modname));
 	errstr = build_submodule(m, cflags, COMPILE_NORMAL);
 	if (errstr)
 		errx(1, "%s", errstr);
@@ -77,7 +78,7 @@ static struct manifest **get_example_deps(struct manifest *m,
 					  struct ccan_file *f)
 {
 	char **lines;
-	struct manifest **deps = talloc_array(f, struct manifest *, 0);
+	struct manifest **deps = tal_arr(f, struct manifest *, 0);
 
 	/* This one for a start. */
 	add_dep(&deps, m->modname);
@@ -85,9 +86,9 @@ static struct manifest **get_example_deps(struct manifest *m,
 	/* Other modules implied by includes. */
 	for (lines = get_ccan_file_lines(f); *lines; lines++) {
 		char *modname;
-		if (strreg(f, *lines,
-			    "^[ \t]*#[ \t]*include[ \t]*[<\"]"
-			   "ccan/+(.+)/+[^/]+\\.h", &modname)) {
+		if (tal_strreg(f, *lines,
+			       "^[ \t]*#[ \t]*include[ \t]*[<\"]"
+			       "ccan/+(.+)/+[^/]+\\.h", &modname)) {
 			if (!have_mod(deps, modname))
 				add_dep(&deps, modname);
 		}
@@ -98,29 +99,28 @@ static struct manifest **get_example_deps(struct manifest *m,
 
 static char *example_obj_list(const void *ctx, struct manifest **deps)
 {
-	char *list = talloc_strdup(ctx, "");
+	char *list = tal_strdup(ctx, "");
 	unsigned int i;
 
-	for (i = 0; i < talloc_array_length(deps); i++) {
+	for (i = 0; i < tal_count(deps); i++) {
 		if (deps[i]->compiled[COMPILE_NORMAL])
-			list = talloc_asprintf_append(list, " %s",
-						      deps[i]->compiled
-						      [COMPILE_NORMAL]);
+			tal_append_fmt(&list, " %s",
+				       deps[i]->compiled[COMPILE_NORMAL]);
 	}
 	return list;
 }
 
 static char *example_lib_list(const void *ctx, struct manifest **deps)
 {
-	char *list = talloc_strdup(ctx, "");
+	char *list = tal_strdup(ctx, "");
 	char **libs;
 	unsigned int i, j;
 
 	/* FIXME: This doesn't uniquify. */
-	for (i = 0; i < talloc_array_length(deps); i++) {
+	for (i = 0; i < tal_count(deps); i++) {
 		libs = get_libs(ctx, deps[i]->dir, NULL, get_or_compile_info);
 		for (j = 0; libs[j]; j++)
-			list = talloc_asprintf_append(list, "-l%s ", libs[j]);
+			tal_append_fmt(&list, "-l%s ", libs[j]);
 	}
 	return list;
 }
@@ -148,18 +148,20 @@ static bool compile(const void *ctx,
 	return true;
 }
 
-static char *start_main(char *ret, const char *why)
+static void start_main(char **ret, const char *why)
 {
-	return talloc_asprintf_append(ret,
+	tal_append_fmt(ret,
 	      "/* The example %s, so fake function wrapper inserted */\n"
 	      "int main(int argc, char *argv[])\n"
-	      "{\n", why);
+	       "{\n", why);
 }
 
 /* We only handle simple function definitions here. */
-static char *add_func(char *others, const char *line)
+static char *add_func(const tal_t *ctx, char *others, const char *line)
 {
 	const char *p, *end = strchr(line, '(') - 1;
+	char *use;
+
 	while (cisspace(*end)) {
 		end--;
 		if (end == line)
@@ -171,8 +173,12 @@ static char *add_func(char *others, const char *line)
 			return others;
 	}
 
-	return talloc_asprintf_append(others, "printf(\"%%p\", %.*s);\n",
-				      (unsigned)(end - p), p+1);
+	use = tal_fmt(ctx, "printf(\"%%p\", %.*s);\n",
+		      (unsigned)(end - p), p+1);
+	if (others)
+		use = tal_strcat(ctx, take(others), take(use));
+
+	return use;
 }
 
 static void strip_leading_whitespace(char **lines)
@@ -314,9 +320,9 @@ static char **combine(const void *ctx, char **lines, char **prev)
 	for (i = 0; prev[i]; i++);
 	prev_total = i;
 
-	ret = talloc_array(ctx, char *, 1 +lines_total + prev_total + 1);
-	ret[0] = talloc_asprintf(ret, "/* The example %s, thus %s */",
-				 why, reasoning);
+	ret = tal_arr(ctx, char *, 1 + lines_total + prev_total + 1);
+	ret[0] = tal_fmt(ret, "/* The example %s, thus %s */",
+			 why, reasoning);
 	memcpy(ret+1, lines, count * sizeof(ret[0]));
 	memcpy(ret+1 + count, prev, prev_total * sizeof(ret[0]));
 	memcpy(ret+1 + count + prev_total, lines + count,
@@ -327,7 +333,7 @@ static char **combine(const void *ctx, char **lines, char **prev)
 /* Only handles very simple comments. */
 static char *strip_comment(const void *ctx, const char *orig_line)
 {
-	char *p, *ret = talloc_strdup(ctx, orig_line);
+	char *p, *ret = tal_strdup(ctx, orig_line);
 
 	p = strstr(ret, "/*");
 	if (!p)
@@ -343,26 +349,26 @@ static char *mangle(struct manifest *m, char **lines)
 	bool in_function = false, fake_function = false, has_main = false;
 	unsigned int i;
 
-	ret = talloc_asprintf(m, 
-			      "/* Include header from module. */\n"
-			      "#include <ccan/%s/%s.h>\n"
-			      "/* Prepend a heap of headers. */\n"
-			      "#include <assert.h>\n"
-			      "#include <err.h>\n"
-			      "#include <errno.h>\n"
-			      "#include <fcntl.h>\n"
-			      "#include <limits.h>\n"
-			      "#include <stdbool.h>\n"
-			      "#include <stdint.h>\n"
-			      "#include <stdio.h>\n"
-			      "#include <stdlib.h>\n"
-			      "#include <string.h>\n"
-			      "#include <sys/stat.h>\n"
-			      "#include <sys/types.h>\n"
-			      "#include <unistd.h>\n",
-			      m->modname, m->basename);
+	ret = tal_fmt(m,
+		      "/* Include header from module. */\n"
+		      "#include <ccan/%s/%s.h>\n"
+		      "/* Prepend a heap of headers. */\n"
+		      "#include <assert.h>\n"
+		      "#include <err.h>\n"
+		      "#include <errno.h>\n"
+		      "#include <fcntl.h>\n"
+		      "#include <limits.h>\n"
+		      "#include <stdbool.h>\n"
+		      "#include <stdint.h>\n"
+		      "#include <stdio.h>\n"
+		      "#include <stdlib.h>\n"
+		      "#include <string.h>\n"
+		      "#include <sys/stat.h>\n"
+		      "#include <sys/types.h>\n"
+		      "#include <unistd.h>\n",
+		      m->modname, m->basename);
 
-	ret = talloc_asprintf_append(ret, "/* Useful dummy functions. */\n"
+	ret = tal_strcat(m, take(ret), "/* Useful dummy functions. */\n"
 				     "extern int somefunc(void);\n"
 				     "int somefunc(void) { return 0; }\n"
 				     "extern char somestring[];\n"
@@ -370,14 +376,14 @@ static char *mangle(struct manifest *m, char **lines)
 
 	if (looks_internal(lines, &why)) {
 		/* Wrap it all in main(). */
-		ret = start_main(ret, why);
+		start_main(&ret, why);
 		fake_function = true;
 		in_function = true;
 		has_main = true;
 	} else
-		ret = talloc_asprintf_append(ret,
+		tal_append_fmt(&ret,
 			     "/* The example %s, so didn't wrap in main() */\n",
-				     why);
+			       why);
 
 	/* Primitive, very primitive. */
 	for (i = 0; lines[i]; i++) {
@@ -398,7 +404,7 @@ static char *mangle(struct manifest *m, char **lines)
 				if (strncmp(line, "int main", 8) == 0)
 					has_main = true;
 				if (strncmp(line, "static", 6) == 0) {
-					use_funcs = add_func(use_funcs,
+					use_funcs = add_func(m, use_funcs,
 							     line);
 				}
 			}
@@ -408,42 +414,41 @@ static char *mangle(struct manifest *m, char **lines)
 			if (!in_function && !has_main
 			    && looks_internal(lines + i + 1, &why)) {
 				/* This implies we start a function here. */
-				ret = start_main(ret, why);
+				start_main(&ret, why);
 				has_main = true;
 				fake_function = true;
 				in_function = true;
 			}
-			ret = talloc_asprintf_append(ret,
-						     "/* ... removed */\n");
+			ret = tal_strcat(m, take(ret), "/* ... removed */\n");
 			continue;
 		}
-		ret = talloc_asprintf_append(ret, "%s\n", lines[i]);
+		ret = tal_strcat(m, take(ret), lines[i]);
+		ret = tal_strcat(m, take(ret), "\n");
 	}
 
 	if (!has_main) {
-		ret = talloc_asprintf_append(ret,
+		ret = tal_strcat(m, take(ret),
 			     "/* Need a main to link successfully. */\n"
 			     "int main(void)\n{\n");
 		fake_function = true;
 	}
 
 	if (use_funcs) {
-		ret = talloc_asprintf_append(ret,
-					     "/* Get rid of unused warnings"
-					     " by printing addresses of"
-					     " static funcs. */\n");
+		ret = tal_strcat(m, take(ret),
+				 "/* Get rid of unused warnings"
+				 " by printing addresses of"
+				 " static funcs. */\n");
 		if (!fake_function) {
-			ret = talloc_asprintf_append(ret,
-						     "int use_funcs(void);\n"
-						     "int use_funcs(void) {\n");
+			ret = tal_strcat(m, take(ret),
+					 "int use_funcs(void);\n"
+					 "int use_funcs(void) {\n");
 			fake_function = true;
 		}
-		ret = talloc_asprintf_append(ret, "	%s\n", use_funcs);
+		tal_append_fmt(&ret, "	%s\n", use_funcs);
 	}
 
 	if (fake_function)
-		ret = talloc_asprintf_append(ret, "return 0;\n"
-					     "}\n");
+		ret = tal_strcat(m, take(ret), "return 0;\n}\n");
 	return ret;
 }
 
@@ -456,12 +461,11 @@ static struct ccan_file *mangle_example(struct manifest *m,
 	struct ccan_file *f;
 
 	name = temp_file(example, ".c",
-			 talloc_asprintf(m, "%s/mangled-%s",
-					 m->dir, example->name));
+			 tal_fmt(m, "%s/mangled-%s", m->dir, example->name));
 	f = new_ccan_file(example,
-			  talloc_dirname(example, name),
-			  talloc_basename(example, name));
-	talloc_steal(f, name);
+			  tal_dirname(example, name),
+			  tal_basename(example, name));
+	tal_steal(f, name);
 
 	fd = open(f->fullname, O_WRONLY | O_CREAT | O_EXCL, 0600);
 	if (fd < 0)
@@ -473,7 +477,7 @@ static struct ccan_file *mangle_example(struct manifest *m,
 		return NULL;
 	}
 	close(fd);
-	f->contents = talloc_steal(f, contents);
+	f->contents = tal_steal(f, contents);
 	list_add(&m->mangled_examples, &f->list);
 	return f;
 }
@@ -598,7 +602,7 @@ static void build_examples(struct manifest *m,
 					" adding headers both failed";
 		} else {
 			if (num == 3) {
-				error = talloc_asprintf(score,
+				error = tal_fmt(score,
 				      "Standalone example:\n"
 				      "%s\n"
 				      "Errors: %s\n\n"
@@ -615,7 +619,7 @@ static void build_examples(struct manifest *m,
 				      get_ccan_file_contents(file[2]),
 				      err[2]);
 			} else {
-				error = talloc_asprintf(score,
+				error = tal_fmt(score,
 				      "Standalone example:\n"
 				      "%s\n"
 				      "Errors: %s\n\n"

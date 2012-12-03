@@ -1,5 +1,4 @@
 #include "tools.h"
-#include <ccan/talloc/talloc.h>
 #include <stdlib.h>
 
 bool compile_verbose = false;
@@ -16,7 +15,7 @@ char *link_objects(const void *ctx, const char *basename,
 	if (run_command(ctx, NULL, errmsg, "ld -r -o %s %s", file, objs))
 		return file;
 
-	talloc_free(file);
+	tal_free(file);
 	return NULL;
 }
 

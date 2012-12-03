@@ -2,9 +2,7 @@
 #include <tools/tools.h>
 #include <ccan/htable/htable_type.h>
 #include <ccan/foreach/foreach.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
-#include <ccan/str_talloc/str_talloc.h>
 #include <ccan/hash/hash.h>
 #include <ccan/read_write_all/read_write_all.h>
 #include <errno.h>
@@ -20,7 +18,7 @@ bool features_were_reduced;
 static const char *can_run(struct manifest *m)
 {
 	if (!config_header)
-		return talloc_strdup(m, "Could not read config.h");
+		return tal_strdup(m, "Could not read config.h");
 	return NULL;
 }
 
@@ -103,11 +101,12 @@ static struct htable_option *get_used_options(struct manifest *m)
 
 static struct htable_option *get_config_options(struct manifest *m)
 {
-	const char **lines = (const char **)strsplit(m, config_header, "\n");
+	const char **lines = (const char **)tal_strsplit(m, config_header, "\n",
+							 STR_EMPTY_OK);
 	unsigned int i;
 	struct htable_option *opts = htable_option_new();
 
-	for (i = 0; i < talloc_array_length(lines) - 1; i++) {
+	for (i = 0; i < tal_count(lines) - 1; i++) {
 		char *sym;
 
 		if (!get_token(&lines[i], "#"))
@@ -166,13 +165,12 @@ static void do_reduce_features(struct manifest *m,
 		return;
 
 	/* Now make our own config.h variant, with our own options. */
-	hdr = talloc_strdup(m, "/* Modified by reduce_features */\n");
-	hdr = talloc_append_string(hdr, config_header);
+	hdr = tal_strcat(m, "/* Modified by reduce_features */\n",
+			 config_header);
 	for (sym = htable_option_first(options, &i);
 	     sym;
 	     sym = htable_option_next(options, &i)) {
-		hdr = talloc_asprintf_append
-			(hdr, "#undef %s\n#define %s 0\n", sym, sym);
+		tal_append_fmt(&hdr, "#undef %s\n#define %s 0\n", sym, sym);
 	}
 	if (mkdir("reduced-features", 0700) != 0 && errno != EEXIST)
 		err(1, "Creating reduced-features directory");

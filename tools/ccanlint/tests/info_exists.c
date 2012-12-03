@@ -1,4 +1,6 @@
 #include <tools/ccanlint/ccanlint.h>
+#include <ccan/tal/tal.h>
+#include <ccan/tal/str/str.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -10,7 +12,6 @@
 #include <err.h>
 #include <string.h>
 #include <ccan/noerr/noerr.h>
-#include <ccan/talloc/talloc.h>
 
 static void check_has_info(struct manifest *m,
 			   unsigned int *timeleft,
@@ -21,7 +22,7 @@ static void check_has_info(struct manifest *m,
 		score->score = score->total;
 		add_info_options(m->info_file);
 	} else {
-		score->error = talloc_strdup(score,
+		score->error = tal_strdup(score,
 	"You have no _info file.\n\n"
 	"The file _info contains the metadata for a ccan package: things\n"
 	"like the dependencies, the documentation for the package as a whole\n"
@@ -63,7 +64,7 @@ static void create_info_template(struct manifest *m, struct score *score)
 	if (!ask("Should I create a template _info file for you?"))
 		return;
 
-	filename = talloc_asprintf(m, "%s/%s", m->dir, "_info");
+	filename = tal_fmt(m, "%s/%s", m->dir, "_info");
 	info = fopen(filename, "w");
 	if (!info)
 		err(1, "Trying to create a template _info in %s", filename);

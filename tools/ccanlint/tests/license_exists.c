@@ -1,4 +1,6 @@
 #include <tools/ccanlint/ccanlint.h>
+#include <ccan/tal/tal.h>
+#include <ccan/tal/str/str.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -8,22 +10,23 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <err.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
+#include <ccan/take/take.h>
 
 /* We might need more ../ for nested modules. */
 static const char *link_prefix(struct manifest *m)
 {
-	char *prefix = talloc_strdup(m, "../../");
+	char *prefix = tal_strdup(m, "../../");
 	unsigned int i;
 
 	for (i = 0; i < strcount(m->modname, "/"); i++)
-		prefix = talloc_append_string(prefix, "../");
+		prefix = tal_strcat(m, take(prefix), "../");
 
-	return talloc_append_string(prefix, "licenses/");
+	return tal_strcat(m, take(prefix), "licenses/");
 }
 
-static const char *expected_link(const char *prefix, enum license license)
+static const char *expected_link(const tal_t *ctx,
+				 const char *prefix, enum license license)
 {
 	const char *shortname;
 
@@ -63,15 +66,15 @@ static const char *expected_link(const char *prefix, enum license license)
 		return NULL;
 	}
 
-	return talloc_append_string(talloc_strdup(prefix, prefix), shortname);
+	return tal_strcat(ctx, prefix, shortname);
 }
 
 static void handle_license_link(struct manifest *m, struct score *score)
 {
 	struct doc_section *d = find_license_tag(m);
 	const char *prefix = link_prefix(m);
-	const char *link = talloc_asprintf(m, "%s/LICENSE", m->dir);
-	const char *ldest = expected_link(prefix, m->license);
+	const char *link = tal_fmt(m, "%s/LICENSE", m->dir);
+	const char *ldest = expected_link(score, prefix, m->license);
 	char *q;
 
 	printf(
@@ -79,8 +82,8 @@ static void handle_license_link(struct manifest *m, struct score *score)
 	"LICENSE symlink into %s to avoid too many copies.\n", prefix);
 
 	/* FIXME: make ask printf-like */
-	q = talloc_asprintf(m, "Set up link to %s (license is %s)?",
-			    ldest, d->lines[0]);
+	q = tal_fmt(m, "Set up link to %s (license is %s)?",
+		    ldest, d->lines[0]);
 	if (ask(q)) {
 		if (symlink(ldest, link) != 0)
 			err(1, "Creating symlink %s -> %s", link, ldest);
@@ -94,14 +97,14 @@ static void check_has_license(struct manifest *m,
 {
 	char buf[PATH_MAX];
 	ssize_t len;
-	char *license = talloc_asprintf(m, "%s/LICENSE", m->dir);
+	char *license = tal_fmt(m, "%s/LICENSE", m->dir);
 	const char *expected;
 	struct doc_section *d;
 	const char *prefix = link_prefix(m);
 
 	d = find_license_tag(m);
 	if (!d) {
-		score->error = talloc_strdup(score, "No License: tag in _info");
+		score->error = tal_strdup(score, "No License: tag in _info");
 		return;
 	}
 
@@ -118,7 +121,7 @@ static void check_has_license(struct manifest *m,
 	/* If they have a license tag at all, we pass. */
 	score->pass = true;
 
-	expected = expected_link(prefix, m->license);
+	expected = expected_link(m, prefix, m->license);
 
 	len = readlink(license, buf, sizeof(buf));
 	if (len < 0) {
@@ -129,7 +132,7 @@ static void check_has_license(struct manifest *m,
 				return;
 			}
 			score->error
-				= talloc_asprintf(score,
+				= tal_fmt(score,
 					  "License in _info is '%s',"
 					  " expect LICENSE symlink '%s'",
 					  d->lines[0], expected);
@@ -141,7 +144,7 @@ static void check_has_license(struct manifest *m,
 				score->score = score->total;
 				return;
 			}
-			score->error = talloc_strdup(score,
+			score->error = tal_strdup(score,
 						     "LICENSE does not exist");
 			if (expected)
 				license_exists.handle = handle_license_link;
@@ -155,22 +158,22 @@ static void check_has_license(struct manifest *m,
 	buf[len] = '\0';
 
 	if (!strstarts(buf, prefix)) {
-		score->error = talloc_asprintf(score,
-					       "Expected symlink into"
-					       " %s not %s", prefix, buf);
+		score->error = tal_fmt(score,
+				       "Expected symlink into %s not %s",
+				       prefix, buf);
 		return;
 	}
 
 	if (!expected) {
-		score->error = talloc_asprintf(score,
-					  "License in _info is unknown '%s',"
-					  " but LICENSE symlink is '%s'",
-					  d->lines[0], buf);
+		score->error = tal_fmt(score,
+				       "License in _info is unknown '%s',"
+				       " but LICENSE symlink is '%s'",
+				       d->lines[0], buf);
 		return;
 	}
 
 	if (!streq(buf, expected)) {
-		score->error = talloc_asprintf(score,
+		score->error = tal_fmt(score,
 				       "Expected symlink to %s not %s",
 				       expected, buf);
 		return;

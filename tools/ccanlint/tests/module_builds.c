@@ -1,7 +1,7 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
+#include <ccan/take/take.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -24,14 +24,14 @@ static const char *can_build(struct manifest *m)
 
 static char *obj_list(const struct manifest *m, enum compile_type ctype)
 {
-	char *list = talloc_strdup(m, "");
+	char *list = tal_strdup(m, "");
 	struct ccan_file *i;
 
 	/* Objects from all the C files. */
-	list_for_each(&m->c_files, i, list)
-		list = talloc_asprintf_append(list, "%s ",
-					      i->compiled[ctype]);
-
+	list_for_each(&m->c_files, i, list) {
+		list = tal_strcat(m, take(list), i->compiled[ctype]);
+		list = tal_strcat(m, take(list), " ");
+	}
 	return list;
 }
 

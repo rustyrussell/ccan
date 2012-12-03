@@ -1,6 +1,5 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
 #include <ccan/foreach/foreach.h>
 #include <sys/types.h>
@@ -32,8 +31,7 @@ static void check_depends_built_without_features(struct manifest *m,
 	struct manifest *i;
 	char *flags;
 
-	flags = talloc_asprintf(score, "%s %s", cflags,
-				REDUCE_FEATURES_FLAGS);
+	flags = tal_fmt(score, "%s %s", cflags, REDUCE_FEATURES_FLAGS);
 
 	foreach_ptr(list, &m->deps, &m->test_deps) {
 		list_for_each(list, i, list) {
@@ -41,12 +39,11 @@ static void check_depends_built_without_features(struct manifest *m,
 						       COMPILE_NOFEAT);
 
 			if (errstr) {
-				score->error = talloc_asprintf(score,
-							       "Dependency %s"
-							       " did not"
-							       " build:\n%s",
-							       i->modname,
-							       errstr);
+				score->error = tal_fmt(score,
+						       "Dependency %s"
+						       " did not build:\n%s",
+						       i->modname,
+						       errstr);
 				return;
 			}
 		}

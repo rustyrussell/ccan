@@ -1,7 +1,5 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
-#include <ccan/talloc/talloc.h>
-#include <ccan/str_talloc/str_talloc.h>
 #include <ccan/str/str.h>
 #include <ccan/foreach/foreach.h>
 #include <sys/types.h>
@@ -53,7 +51,7 @@ static unsigned int score_coverage(float covered, unsigned total)
 static void analyze_coverage(struct manifest *m, bool full_gcov,
 			     const char *output, struct score *score)
 {
-	char **lines = strsplit(score, output, "\n");
+	char **lines = tal_strsplit(score, output, "\n", STR_EMPTY_OK);
 	float covered_lines = 0.0;
 	unsigned int i, total_lines = 0;
 	bool lines_matter = false;
@@ -100,11 +98,11 @@ static void analyze_coverage(struct manifest *m, bool full_gcov,
 			apostrophe = strchr(filename, '\'');
 			*apostrophe = '\0';
 			if (lines_matter) {
-				file = talloc_grab_file(score, filename, NULL);
+				file = tal_grab_file(score, filename, NULL);
 				if (!file) {
-					score->error = talloc_asprintf(score,
-							    "Reading %s",
-							    filename);
+					score->error = tal_fmt(score,
+							       "Reading %s",
+							       filename);
 					return;
 				}
 				printf("%s", file);
@@ -144,19 +142,18 @@ static void do_run_coverage_tests(struct manifest *m,
 	bool ran_some = false;
 
 	/* This tells gcov where we put those .gcno files. */
-	outdir = talloc_dirname(score,
+	outdir = tal_dirname(score,
 				m->info_file->compiled[COMPILE_NORMAL]);
-	covcmd = talloc_asprintf(m, "gcov %s -o %s",
-				 full_gcov ? "" : "-n",
-				 outdir);
+	covcmd = tal_fmt(m, "gcov %s -o %s",
+			 full_gcov ? "" : "-n",
+			 outdir);
 
 	/* Run them all. */
 	foreach_ptr(list, &m->run_tests, &m->api_tests) {
 		list_for_each(list, i, list) {
 			if (run_command(score, timeleft, &cmdout,
 					"%s", i->compiled[COMPILE_COVERAGE])) {
-				covcmd = talloc_asprintf_append(covcmd, " %s",
-								i->fullname);
+				tal_append_fmt(&covcmd, " %s", i->fullname);
 			} else {
 				score_file_error(score, i, 0,
 						 "Running test with coverage"
@@ -176,8 +173,7 @@ static void do_run_coverage_tests(struct manifest *m,
 
 	/* Now run gcov: we want output even if it succeeds. */
 	if (!run_command(score, timeleft, &cmdout, "%s", covcmd)) {
-		score->error = talloc_asprintf(score, "Running gcov: %s",
-					       cmdout);
+		score->error = tal_fmt(score, "Running gcov: %s", cmdout);
 		return;
 	}
 

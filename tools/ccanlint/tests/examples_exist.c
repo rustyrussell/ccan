@@ -1,6 +1,5 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
 #include <ccan/cast/cast.h>
 #include <sys/types.h>
@@ -24,28 +23,27 @@ static char *add_example(struct manifest *m, struct ccan_file *source,
 	int fd;
 	struct ccan_file *f;
 
-	name = talloc_asprintf(m, "%s/example-%s-%s.c",
-			       talloc_dirname(m,
-					      source->fullname),
-			       source->name,
-			       example->function);
+	name = tal_fmt(m, "%s/example-%s-%s.c",
+		       tal_dirname(m, source->fullname),
+		       source->name,
+		       example->function);
 	/* example->function == 'struct foo' */
 	while (strchr(name, ' '))
 		*strchr(name, ' ') = '_';
 
 	name = temp_file(m, ".c", name);
-	f = new_ccan_file(m, talloc_dirname(m, name), talloc_basename(m, name));
-	talloc_steal(f, name);
+	f = new_ccan_file(m, tal_dirname(m, name), tal_basename(m, name));
+	tal_steal(f, name);
 	list_add_tail(&m->examples, &f->list);
 
 	fd = open(f->fullname, O_WRONLY | O_CREAT | O_EXCL, 0600);
 	if (fd < 0)
-		return talloc_asprintf(m, "Creating temporary file %s: %s",
-				       f->fullname, strerror(errno));
+		return tal_fmt(m, "Creating temporary file %s: %s",
+			       f->fullname, strerror(errno));
 
 	/* Add #line to demark where we are from, so errors are correct! */
-	linemarker = talloc_asprintf(f, "#line %i \"%s\"\n",
-				     example->srcline+2, source->fullname);
+	linemarker = tal_fmt(f, "#line %i \"%s\"\n",
+			     example->srcline+2, source->fullname);
 	write(fd, linemarker, strlen(linemarker));
 
 	for (i = 0; i < example->num_lines; i++) {

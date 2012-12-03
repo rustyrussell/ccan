@@ -1,6 +1,5 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
 #include <ccan/foreach/foreach.h>
 #include <sys/types.h>
@@ -55,9 +54,8 @@ static void run_under_debugger(struct manifest *m, struct score *score)
 	if (!ask("Should I run the first failing test under the debugger?"))
 		return;
 
-	command = talloc_asprintf(m, "gdb -ex 'break tap.c:139' -ex 'run' %s",
-				  first->file->compiled
-				  [COMPILE_NOFEAT]);
+	command = tal_fmt(m, "gdb -ex 'break tap.c:139' -ex 'run' %s",
+			  first->file->compiled[COMPILE_NOFEAT]);
 	if (system(command))
 		doesnt_matter();
 }

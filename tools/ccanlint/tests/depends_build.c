@@ -1,6 +1,5 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/foreach/foreach.h>
 #include <ccan/str/str.h>
 #include <sys/types.h>
@@ -36,18 +35,17 @@ static char *build_subdir_objs(struct manifest *m,
 	struct ccan_file *i;
 
 	list_for_each(&m->c_files, i, list) {
-		char *fullfile = talloc_asprintf(m, "%s/%s", m->dir, i->name);
+		char *fullfile = tal_fmt(m, "%s/%s", m->dir, i->name);
 		char *output;
 
 		i->compiled[ctype] = temp_file(m, "", fullfile);
 		if (!compile_object(m, fullfile, ccan_dir, compiler, flags,
 				    i->compiled[ctype], &output)) {
-			talloc_free(i->compiled[ctype]);
+			tal_free(i->compiled[ctype]);
 			i->compiled[ctype] = NULL;
-			return talloc_asprintf(m,
-					       "Dependency %s"
-					       " did not build:\n%s",
-					       m->modname, output);
+			return tal_fmt(m,
+				       "Dependency %s did not build:\n%s",
+				       m->modname, output);
 		}
 	}
 	return NULL;
@@ -90,12 +88,12 @@ static void check_depends_built(struct manifest *m,
 			errstr = build_submodule(i, cflags, COMPILE_NORMAL);
 
 			if (errstr) {
-				score->error = talloc_asprintf(score,
-							       "Dependency %s"
-							       " did not"
-							       " build:\n%s",
-							       i->modname,
-							       errstr);
+				score->error = tal_fmt(score,
+						       "Dependency %s"
+						       " did not"
+						       " build:\n%s",
+						       i->modname,
+						       errstr);
 				return;
 			}
 		}

@@ -1,4 +1,3 @@
-#include <ccan/talloc/talloc.h>
 #include <ccan/err/err.h>
 #include "tools.h"
 #include <assert.h>
@@ -27,14 +26,13 @@ const char *find_ccan_dir(const char *base)
 
 	if (!ccan_dir) {
 		if (base[0] != '/') {
-			const char *tmpctx = talloc_getcwd(NULL);
-			find_ccan_dir(talloc_asprintf(tmpctx, "%s/%s",
-						      tmpctx, base));
-			talloc_free(tmpctx);
+			const char *tmpctx = tal_getcwd(NULL);
+			find_ccan_dir(tal_fmt(tmpctx, "%s/%s", tmpctx, base));
+			tal_free(tmpctx);
 		} else {
 			unsigned int prefix = ccan_dir_prefix(base);
 			if (prefix)
-				ccan_dir = talloc_strndup(NULL, base, prefix);
+				ccan_dir = tal_strndup(NULL, base, prefix);
 		}
 	}
 	return ccan_dir;

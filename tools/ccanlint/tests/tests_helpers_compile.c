@@ -1,6 +1,5 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -97,8 +96,7 @@ static void do_compile_test_helpers_without_features(struct manifest *m,
 {
 	char *flags;
 
-	flags = talloc_asprintf(score, "%s %s", cflags,
-				REDUCE_FEATURES_FLAGS);
+	flags = tal_fmt(score, "%s %s", cflags, REDUCE_FEATURES_FLAGS);
 
 	compile_test_helpers(m, timeleft, score, flags, COMPILE_NOFEAT);
 }

@@ -9,9 +9,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <err.h>
-#include <ccan/talloc/talloc.h>
-#include <ccan/str/str.h>
-#include <ccan/str_talloc/str_talloc.h>
 
 static void check_license_depends_compat(struct manifest *m,
 					 unsigned int *timeleft,

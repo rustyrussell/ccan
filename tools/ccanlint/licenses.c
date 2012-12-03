@@ -1,8 +1,8 @@
 #include "licenses.h"
 #include "ccanlint.h"
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
-#include <ccan/str_talloc/str_talloc.h>
+#include <ccan/tal/tal.h>
+#include <ccan/tal/str/str.h>
 
 const struct license_info licenses[] = {
 	{ "LGPLv2+", "LGPL",
@@ -155,9 +155,10 @@ enum license which_license(struct doc_section *d)
 		return LICENSE_BSD;
 	if (streq(d->lines[0], "CC0"))
 		return LICENSE_CC0;
-	if (strreg(NULL, d->lines[0], "CC0 \\([Pp]ublic [Dd]omain\\)", NULL))
+	if (tal_strreg(NULL, d->lines[0], "CC0 \\([Pp]ublic [Dd]omain\\)",
+		       NULL))
 		return LICENSE_CC0;
-	if (strreg(NULL, d->lines[0], "[Pp]ublic [Dd]omain"))
+	if (tal_strreg(NULL, d->lines[0], "[Pp]ublic [Dd]omain"))
 		return LICENSE_PUBLIC_DOMAIN;
 
 	return LICENSE_UNKNOWN;
@@ -169,7 +170,7 @@ const char *get_ccan_simplified(struct ccan_file *f)
 		unsigned int i, j;
 
 		/* Simplify for easy matching: only alnum and single spaces. */
-		f->simplified = talloc_strdup(f, get_ccan_file_contents(f));
+		f->simplified = tal_strdup(f, get_ccan_file_contents(f));
 		for (i = 0, j = 0; f->simplified[i]; i++) {
 			if (cisupper(f->simplified[i]))
 				f->simplified[j++] = tolower(f->simplified[i]);

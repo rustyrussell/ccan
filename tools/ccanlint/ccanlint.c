@@ -27,8 +27,7 @@
 #include <err.h>
 #include <ctype.h>
 #include <ccan/str/str.h>
-#include <ccan/str_talloc/str_talloc.h>
-#include <ccan/talloc/talloc.h>
+#include <ccan/take/take.h>
 #include <ccan/opt/opt.h>
 #include <ccan/foreach/foreach.h>
 #include <ccan/cast/cast.h>
@@ -117,7 +116,7 @@ static bool run_test(struct dgraph_node *n, struct run_info *run)
 	if (i->done)
 		return true;
 
-	score = talloc(run->m, struct score);
+	score = tal(run->m, struct score);
 	list_head_init(&score->per_file_errors);
 	score->error = NULL;
 	score->pass = false;
@@ -213,7 +212,7 @@ static void register_test(struct ccanlint *test)
 {
 	if (!strmap_add(&tests, test->key, test))
 		err(1, "Adding test %s", test->key);
-	test->options = talloc_array(NULL, char *, 1);
+	test->options = tal_arr(NULL, char *, 1);
 	test->options[0] = NULL;
 	dgraph_init_node(&test->node);
 }
@@ -257,7 +256,7 @@ bool is_excluded(const char *name)
 
 static bool init_deps(const char *member, struct ccanlint *c, void *unused)
 {
-	char **deps = strsplit(NULL, c->needs, " ");
+	char **deps = tal_strsplit(NULL, c->needs, " ", STR_EMPTY_OK);
 	unsigned int i;
 
 	for (i = 0; deps[i]; i++) {
@@ -269,7 +268,7 @@ static bool init_deps(const char *member, struct ccanlint *c, void *unused)
 			     deps[i], c->key);
 		dgraph_add_edge(&dep->node, &c->node);
 	}
-	talloc_free(deps);
+	tal_free(deps);
 	return true;
 }
 
@@ -339,10 +338,9 @@ static void print_test_depends(void)
 }
 
 
-static int show_tmpdir(const char *dir)
+static void show_tmpdir(const char *dir)
 {
 	printf("You can find ccanlint working files in '%s'\n", dir);
-	return 0;
 }
 
 static char *keep_tests(void *unused)
@@ -350,7 +348,8 @@ static char *keep_tests(void *unused)
 	keep_results = true;
 
 	/* Don't automatically destroy temporary dir. */
-	talloc_set_destructor(temp_dir(NULL), show_tmpdir);
+	keep_temp_dir();
+	tal_add_destructor(temp_dir(), show_tmpdir);
 	return NULL;
 }
 
@@ -366,8 +365,7 @@ static char *exclude_test(const char *testname, void *unused)
 {
 	struct ccanlint *i = find_test(testname);
 	if (!i)
-		return talloc_asprintf(NULL, "No test %s to --exclude",
-				       testname);
+		return tal_fmt(NULL, "No test %s to --exclude", testname);
 
 	/* Remove this, and everything which depends on it. */
 	dgraph_traverse_from(&i->node, remove_test, "excluded on command line");
@@ -441,21 +439,6 @@ static char *test_dependency_graph(void *arg)
 	exit(0);
 }
 
-/* Remove empty lines. */
-static char **collapse(char **lines, unsigned int *nump)
-{
-	unsigned int i, j;
-	for (i = j = 0; lines[i]; i++) {
-		if (lines[i][0])
-			lines[j++] = lines[i];
-	}
-	lines[j] = NULL;
-	if (nump)
-		*nump = j;
-	return lines;
-}
-
-
 static void add_options(struct ccanlint *test, char **options,
 			unsigned int num_options)
 {
@@ -465,11 +448,9 @@ static void add_options(struct ccanlint *test, char **options,
 		num = 0;
 	else
 		/* -1, because last one is NULL. */
-		num = talloc_array_length(test->options) - 1;
+		num = tal_count(test->options) - 1;
 
-	test->options = talloc_realloc(NULL, test->options,
-				       char *,
-				       num + num_options + 1);
+	tal_resize(&test->options, num + num_options + 1);
 	memcpy(&test->options[num], options, (num_options + 1)*sizeof(char *));
 }
 
@@ -484,10 +465,9 @@ void add_info_options(struct ccan_file *info)
 			continue;
 
 		for (i = 0; i < d->num_lines; i++) {
-			unsigned int num_words;
-			char **words = collapse(strsplit(d, d->lines[i], " \t"),
-						&num_words);
-			if (num_words == 0)
+			char **words = tal_strsplit(d, d->lines[i], " \t",
+						    STR_NO_EMPTY);
+			if (!words[0])
 				continue;
 
 			if (strncmp(words[0], "//", 2) == 0)
@@ -516,7 +496,7 @@ void add_info_options(struct ccan_file *info)
 				if (!test->takes_options)
 					warnx("%s: %s doesn't take options",
 					      info->fullname, words[0]);
-				add_options(test, words+1, num_words-1);
+				add_options(test, words+1, tal_count(words)-1);
 			}
 		}
 	}
@@ -532,7 +512,7 @@ char **per_file_options(const struct ccanlint *test, struct ccan_file *f)
 	if (!test->options[0])
 		return test->options;
 
-	ret = talloc_array(f, char *, talloc_array_length(test->options));
+	ret = tal_arr(f, char *, tal_count(test->options));
 	for (i = 0; test->options[i]; i++) {
 		char *optname;
 
@@ -546,7 +526,7 @@ char **per_file_options(const struct ccanlint *test, struct ccan_file *f)
 
 		/* FAIL overrides anything else. */
 		if (streq(optname, "FAIL")) {
-			ret = talloc_array(f, char *, 2);
+			ret = tal_arr(f, char *, 2);
 			ret[0] = (char *)"FAIL";
 			ret[1] = NULL;
 			return ret;
@@ -555,8 +535,9 @@ char **per_file_options(const struct ccanlint *test, struct ccan_file *f)
 	}
 	ret[j] = NULL;
 
-	/* Shrink it to size so talloc_array_length() works as expected. */
-	return talloc_realloc(NULL, ret, char *, j + 1);
+	/* Shrink it to size so tal_array_length() works as expected. */
+	tal_resize(&ret, j + 1);
+	return ret;
 }
 
 static char *opt_set_const_charp(const char *arg, const char **p)
@@ -568,7 +549,7 @@ static char *opt_set_target(const char *arg, struct dgraph_node *all)
 {
 	struct ccanlint *t = find_test(arg);
 	if (!t)
-		return talloc_asprintf(NULL, "unknown --target %s", arg);
+		return tal_fmt(NULL, "unknown --target %s", arg);
 
 	targeting = true;
 	dgraph_add_edge(&t->node, all);
@@ -609,7 +590,7 @@ int main(int argc, char *argv[])
 	unsigned int i;
 	struct manifest *m;
 	const char *prefix = "";
-	char *dir = talloc_getcwd(NULL), *base_dir = dir, *testlink;
+	char *dir = tal_getcwd(NULL), *base_dir = dir, *testlink;
 	struct dgraph_node all;
 	
 	/* Empty graph node to which we attach everything else. */
@@ -647,8 +628,8 @@ int main(int argc, char *argv[])
 	opt_early_parse(argc, argv, opt_log_stderr_exit);
 
 	/* We move into temporary directory, so gcov dumps its files there. */
-	if (chdir(temp_dir(talloc_autofree_context())) != 0)
-		err(1, "Error changing to %s temporary dir", temp_dir(NULL));
+	if (chdir(temp_dir()) != 0)
+		err(1, "Error changing to %s temporary dir", temp_dir());
 
 	init_tests();
 
@@ -665,7 +646,7 @@ int main(int argc, char *argv[])
 		strmap_iterate(&tests, add_to_all, &all);
 
 	/* This links back to the module's test dir. */
-	testlink = talloc_asprintf(NULL, "%s/test", temp_dir(NULL));
+	testlink = tal_fmt(NULL, "%s/test", temp_dir());
 
 	/* Defaults to pwd. */
 	if (argc == 1) {
@@ -677,8 +658,7 @@ int main(int argc, char *argv[])
 		dir = argv[i];
 
 		if (dir[0] != '/')
-			dir = talloc_asprintf_append(NULL, "%s/%s",
-						     base_dir, dir);
+			dir = tal_fmt(NULL, "%s/%s", base_dir, dir);
 		while (strends(dir, "/"))
 			dir[strlen(dir)-1] = '\0';
 
@@ -695,16 +675,16 @@ int main(int argc, char *argv[])
 		}
 
 		if (dir != base_dir)
-			prefix = talloc_append_string(talloc_basename(NULL,dir),
-						      ": ");
+			prefix = tal_strcat(NULL, take(tal_basename(NULL,dir)),
+					    ": ");
 
-		m = get_manifest(talloc_autofree_context(), dir);
+		m = get_manifest(autofree(), dir);
 
 		/* Create a symlink from temp dir back to src dir's
 		 * test directory. */
 		unlink(testlink);
-		if (symlink(talloc_asprintf(m, "%s/test", dir), testlink) != 0)
-			err(1, "Creating test symlink in %s", temp_dir(NULL));
+		if (symlink(tal_fmt(m, "%s/test", dir), testlink) != 0)
+			err(1, "Creating test symlink in %s", temp_dir());
 
 		if (!run_tests(&all, summary, m, prefix))
 			pass = false;

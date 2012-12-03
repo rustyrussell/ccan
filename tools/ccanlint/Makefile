@@ -10,6 +10,7 @@ CORE_OBJS := \
 	ccan/htable/htable.o \
 	ccan/ilog/ilog.o \
 	ccan/lbalance/lbalance.o \
+	ccan/list/list.o \
 	ccan/noerr/noerr.o \
 	ccan/opt/helpers.o \
 	ccan/opt/opt.o \
@@ -19,10 +20,11 @@ CORE_OBJS := \
 	ccan/rbuf/rbuf.o \
 	ccan/read_write_all/read_write_all.o \
 	ccan/str/str.o ccan/str/debug.o \
-	ccan/str_talloc/str_talloc.o \
 	ccan/strmap/strmap.o \
-	ccan/talloc/talloc.o \
-	ccan/talloc_link/talloc_link.o \
+	ccan/take/take.o \
+	ccan/tal/tal.o \
+	ccan/tal/link/link.o \
+	ccan/tal/str/str.o \
 	ccan/time/time.o \
 	tools/ccanlint/async.o \
 	tools/ccanlint/ccanlint.o \

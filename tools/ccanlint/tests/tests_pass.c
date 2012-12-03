@@ -1,6 +1,6 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
-#include <ccan/talloc/talloc.h>
+#include <ccan/take/take.h>
 #include <ccan/str/str.h>
 #include <ccan/foreach/foreach.h>
 #include <sys/types.h>
@@ -36,12 +36,12 @@ static const char *can_run(struct manifest *m)
 static const char *concat(struct score *score, char *bits[])
 {
 	unsigned int i;
-	char *ret = talloc_strdup(score, "");
+	char *ret = tal_strdup(score, "");
 
 	for (i = 0; bits[i]; i++) {
 		if (i)
-			ret = talloc_append_string(ret, " ");
-		ret = talloc_append_string(ret, bits[i]);
+			ret = tal_strcat(score, take(ret), " ");
+		ret = tal_strcat(score, take(ret), bits[i]);
 	}
 	return ret;
 }
@@ -60,7 +60,7 @@ static void run_test(void *ctx,
 			/* FIXME: Valgrind's output sucks.  XML is
 			 * unreadable by humans *and* doesn't support
 			 * children reporting. */
-			i->valgrind_log = talloc_asprintf(m,
+			i->valgrind_log = tal_fmt(m,
 					  "%s.valgrind-log",
 					  i->compiled[COMPILE_NORMAL]);
 
@@ -126,8 +126,8 @@ static void run_under_debugger(struct manifest *m, struct score *score)
 	if (!ask("Should I run the first failing test under the debugger?"))
 		return;
 
-	command = talloc_asprintf(m, "gdb -ex 'break tap.c:139' -ex 'run' %s",
-				  first->file->compiled[COMPILE_NORMAL]);
+	command = tal_fmt(m, "gdb -ex 'break tap.c:139' -ex 'run' %s",
+			  first->file->compiled[COMPILE_NORMAL]);
 	if (system(command))
 		doesnt_matter();
 }

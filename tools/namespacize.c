@@ -10,9 +10,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "ccan/str/str.h"
-#include "ccan/str_talloc/str_talloc.h"
+#include "ccan/take/take.h"
 #include "ccan/rbuf/rbuf.h"
-#include "ccan/talloc/talloc.h"
 #include "ccan/err/err.h"
 #include "tools.h"
 
@@ -41,20 +40,18 @@ static char **get_dir(const char *dir)
 {
 	DIR *d;
 	struct dirent *ent;
-	char **names = NULL;
-	unsigned int size = 0;
+	char **names = tal_arr(NULL, char *, 0), *n;
 
 	d = opendir(dir);
 	if (!d)
 		return NULL;
 
 	while ((ent = readdir(d)) != NULL) {
-		names = talloc_realloc(dir, names, char *, size + 2);
-		names[size++]
-			= talloc_asprintf(names, "%s/%s", dir, ent->d_name);
+		n = tal_fmt(names, "%s/%s", dir, ent->d_name);
+		tal_expand(&names, &n, 1);
 	}
-	/* FIXME: if the loop doesn't run at least once, we'll segfault here */
-	names[size] = NULL;
+	n = NULL;
+	tal_expand(&names, &n, 1);
 	closedir(d);
 	return names;
 }
@@ -86,9 +83,9 @@ static void add_replace(struct replace **repl, const char *str)
 		if (streq(i->string, str))
 			return;
 
-	new = talloc(*repl, struct replace);
+	new = tal(*repl, struct replace);
 	new->next = *repl;
-	new->string = talloc_strdup(new, str);
+	new->string = tal_strdup(new, str);
 	*repl = new;
 }
 
@@ -97,9 +94,9 @@ static void add_replace_tok(struct replace **repl, const char *s)
 	struct replace *new;
 	unsigned int len = strspn(s, IDENT_CHARS);
 
-	new = talloc(*repl, struct replace);
+	new = tal(*repl, struct replace);
 	new->next = *repl;
-	new->string = talloc_strndup(new, s, len);
+	new->string = tal_strndup(new, s, len);
 	*repl = new;
 }
 
@@ -124,7 +121,7 @@ static void look_for_macros(char *contents, struct replace **repl)
 				len = strspn(p, IDENT_CHARS);
 				if (len) {
 					char *s;
-					s = talloc_strndup(contents, p, len);
+					s = tal_strndup(contents, p, len);
 					/* Don't wrap idempotent wrappers */
 					if (!strstarts(s, "CCAN_")) {
 						verbose("Found %s\n", s);
@@ -164,7 +161,7 @@ static char *get_statement(const void *ctx, char **p)
 {
 	unsigned brackets = 0;
 	bool seen_brackets = false;
-	char *answer = talloc_strdup(ctx, "");
+	char *answer = tal_strdup(ctx, "");
 
 	for (;;) {
 		if ((*p)[0] == '/' && (*p)[1] == '/')
@@ -190,10 +187,7 @@ static char *get_statement(const void *ctx, char **p)
 				brackets--;
 
 			if (answer[0] != '\0' || c != ' ') {
-				answer = talloc_realloc(NULL, answer, char,
-							strlen(answer) + 2);
-				answer[strlen(answer)+1] = '\0';
-				answer[strlen(answer)] = c;
+				tal_append_fmt(&answer, "%c", c);
 			}
 			if (c == '}' && seen_brackets && brackets == 0) {
 				(*p)++;
@@ -261,8 +255,8 @@ static void analyze_headers(const char *dir, struct replace **repl)
 	char *hdr, *contents;
 
 	/* Get hold of header, assume that's it. */
-	hdr = talloc_asprintf(dir, "%s/%s.h", dir, talloc_basename(dir, dir));
-	contents = talloc_grab_file(dir, hdr, NULL);
+	hdr = tal_fmt(dir, "%s/%s.h", dir, tal_basename(dir, dir));
+	contents = tal_grab_file(dir, hdr, NULL);
 	if (!contents)
 		err(1, "Reading %s", hdr);
 
@@ -279,7 +273,7 @@ static void analyze_headers(const char *dir, struct replace **repl)
 
 static void write_replacement_file(const char *dir, struct replace **repl)
 {
-	char *replname = talloc_asprintf(dir, "%s/.namespacize", dir);
+	char *replname = tal_fmt(dir, "%s/.namespacize", dir);
 	int fd;
 	struct replace *r;
 
@@ -305,10 +299,9 @@ static void write_replacement_file(const char *dir, struct replace **repl)
 	close(fd);
 }
 
-static int unlink_destroy(char *name)
+static void unlink_destroy(char *name)
 {
 	unlink(name);
-	return 0;
 }
 
 static char *find_word(char *f, const char *str)
@@ -338,7 +331,7 @@ static const char *rewrite_file(const char *filename,
 	int fd;
 
 	verbose("Rewriting %s\n", filename);
-	file = talloc_grab_file(filename, filename, NULL);
+	file = tal_grab_file(filename, filename, NULL);
 	if (!file)
 		err(1, "Reading file %s", filename);
 
@@ -347,7 +340,7 @@ static const char *rewrite_file(const char *filename,
 
 		while ((p = find_word(file, repl->string)) != NULL) {
 			unsigned int off;
-			char *new = talloc_array(file, char, strlen(file)+6);
+			char *new = tal_arr(file, char, strlen(file)+6);
 
 			off = p - file;
 			memcpy(new, file, off);
@@ -361,13 +354,12 @@ static const char *rewrite_file(const char *filename,
 	}
 
 	/* If we exit for some reason, we want this erased. */
-	newname = talloc_asprintf(talloc_autofree_context(), "%s.tmp",
-				  filename);
+	newname = tal_fmt(autofree(), "%s.tmp", filename);
 	fd = open(newname, O_WRONLY|O_CREAT|O_EXCL, 0644);
 	if (fd < 0)
 		err(1, "Creating %s", newname);
 
-	talloc_set_destructor(newname, unlink_destroy);
+	tal_add_destructor(newname, unlink_destroy);
 	if (write(fd, file, strlen(file)) != strlen(file)) {
 		if (errno == 0)
 			errx(1, "Short write to %s: disk full?", newname);
@@ -394,7 +386,7 @@ static void setup_adjust_files(const char *dir,
 		if (strends(*files, "/test"))
 			setup_adjust_files(*files, repl, adj);
 		else if (strends(*files, ".c") || strends(*files, ".h")) {
-			struct adjusted *a = talloc(dir, struct adjusted);
+			struct adjusted *a = tal(dir, struct adjusted);
 			a->next = *adj;
 			a->file = *files;
 			a->tmpfile = rewrite_file(a->file, repl);
@@ -421,7 +413,7 @@ static void convert_dir(const char *dir)
 	struct adjusted *adj = NULL;
 
 	/* Remove any ugly trailing slashes. */
-	name = talloc_strdup(NULL, dir);
+	name = tal_strdup(NULL, dir);
 	while (strends(name, "/"))
 		name[strlen(name)-1] = '\0';
 
@@ -429,31 +421,31 @@ static void convert_dir(const char *dir)
 	write_replacement_file(name, &replace);
 	setup_adjust_files(name, replace, &adj);
 	rename_files(adj);
-	talloc_free(name);
-	talloc_free(replace);
+	tal_free(name);
+	tal_free(replace);
 }
 
 static struct replace *read_replacement_file(const char *depdir)
 {
 	struct replace *repl = NULL;
-	char *replname = talloc_asprintf(depdir, "%s/.namespacize", depdir);
+	char *replname = tal_fmt(depdir, "%s/.namespacize", depdir);
 	char *file, **line;
 
-	file = talloc_grab_file(replname, replname, NULL);
+	file = tal_grab_file(replname, replname, NULL);
 	if (!file) {
 		if (errno != ENOENT)
 			err(1, "Opening %s", replname);
 		return NULL;
 	}
 
-	for (line = strsplit(file, file, "\n"); *line; line++)
+	for (line = tal_strsplit(file, file, "\n", STR_EMPTY_OK); *line; line++)
 		add_replace(&repl, *line);
 	return repl;
 }
 
 static void adjust_dir(const char *dir)
 {
-	char *parent = talloc_dirname(talloc_autofree_context(), dir);
+	char *parent = tal_dirname(autofree(), dir);
 	char **deps;
 
 	verbose("Adjusting %s\n", dir);
@@ -465,7 +457,7 @@ static void adjust_dir(const char *dir)
 		struct adjusted *adj = NULL;
 		struct replace *repl;
 
-		depdir = talloc_asprintf(parent, "%s/%s", parent, *deps);
+		depdir = tal_fmt(parent, "%s/%s", parent, *deps);
 		repl = read_replacement_file(depdir);
 		if (repl) {
 			verbose("%s has been namespacized\n", depdir);
@@ -473,16 +465,16 @@ static void adjust_dir(const char *dir)
 			rename_files(adj);
 		} else
 			verbose("%s has not been namespacized\n", depdir);
-		talloc_free(depdir);
+		tal_free(depdir);
 	}
 	verbose_unindent();
-	talloc_free(parent);
+	tal_free(parent);
 }
 
 static void adjust_dependents(const char *dir)
 {
-	char *parent = talloc_dirname(NULL, dir);
-	char *base = talloc_basename(parent, dir);
+	char *parent = tal_dirname(NULL, dir);
+	char *base = tal_basename(parent, dir);
 	char **file;
 
 	verbose("Looking for dependents in %s\n", parent);
@@ -491,10 +483,10 @@ static void adjust_dependents(const char *dir)
 		char *info, **deps;
 		bool isdep = false;
 
-		if (talloc_basename(*file, *file)[0] == '.')
+		if (tal_basename(*file, *file)[0] == '.')
 			continue;
 
-		info = talloc_asprintf(*file, "%s/_info", *file);
+		info = tal_fmt(*file, "%s/_info", *file);
 		if (access(info, R_OK) != 0)
 			continue;
 

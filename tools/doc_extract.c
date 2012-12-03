@@ -1,7 +1,5 @@
 /* This merely extracts, doesn't do XML or anything. */
 #include <ccan/str/str.h>
-#include <ccan/str_talloc/str_talloc.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/err/err.h>
 #include "tools.h"
 #include <string.h>
@@ -47,15 +45,15 @@ int main(int argc, char *argv[])
 		struct list_head *list;
 		struct doc_section *d;
 
-		file = talloc_grab_file(NULL, argv[i], NULL);
+		file = tal_grab_file(NULL, argv[i], NULL);
 		if (!file)
 			err(1, "Reading file %s", argv[i]);
-		lines = strsplit(file, file, "\n");
+		lines = tal_strsplit(file, file, "\n", STR_EMPTY_OK);
 
 		list = extract_doc_sections(lines, argv[i]);
 		if (list_empty(list))
 			errx(1, "No documentation in file %s", argv[i]);
-		talloc_free(file);
+		tal_free(file);
 
 		if (streq(type, "functions")) {
 			const char *last = NULL;
@@ -84,7 +82,7 @@ int main(int argc, char *argv[])
 					printf("%s\n", d->lines[j]);
 			}
 		}
-		talloc_free(list);
+		tal_free(list);
 	}
 	return 0;
 }

@@ -11,7 +11,6 @@
 #include <stdio.h>
 #include <err.h>
 #include <ccan/str/str.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/noerr/noerr.h>
 
 static void check_info_documentation_exists(struct manifest *m,
@@ -51,7 +50,7 @@ static void create_info_template_doc(struct manifest *m, struct score *score)
 		err(1, "Writing to _info.new to insert documentation");
 	}
 
-	oldcontents = talloc_grab_file(m, m->info_file->fullname, NULL);
+	oldcontents = tal_grab_file(m, m->info_file->fullname, NULL);
 	if (!oldcontents) {
 		unlink_noerr("_info.new");
 		err(1, "Reading %s", m->info_file->fullname);
@@ -93,13 +92,13 @@ static void check_info_documentation_exists(struct manifest *m,
 	if (summary && description) {
 		score->score = score->total;
 	} else if (!summary) {
-		score->error = talloc_strdup(score,
+		score->error = tal_strdup(score,
 		"_info file has no module documentation.\n\n"
 		"CCAN modules use /**-style comments for documentation: the\n"
 		"overall documentation belongs in the _info metafile.\n");
 		info_documentation_exists.handle = create_info_template_doc;
 	} else if (!description)  {
-		score->error = talloc_strdup(score,
+		score->error = tal_strdup(score,
 		"_info file has no module description.\n\n"
 		"The lines after the first summary line in the _info file\n"
 		"documentation should describe the purpose and use of the\n"

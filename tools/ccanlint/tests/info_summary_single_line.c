@@ -1,7 +1,6 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
 #include <stdio.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
 
 static void check_info_summary_single_line(struct manifest *m,

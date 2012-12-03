@@ -1,9 +1,7 @@
 #include "config.h"
 #include "ccanlint.h"
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
-#include <ccan/str_talloc/str_talloc.h>
-#include <ccan/talloc_link/talloc_link.h>
+#include <ccan/take/take.h>
 #include <ccan/hash/hash.h>
 #include <ccan/htable/htable_type.h>
 #include <ccan/noerr/noerr.h>
@@ -38,10 +36,11 @@ struct list_head *get_ccan_file_docs(struct ccan_file *f)
  * @in_comment: are we already within a comment (from prev line).
  * @unterminated: are we still in a comment for next line.
  */
-static char *remove_comments(const char *line, bool in_comment,
+static char *remove_comments(const tal_t *ctx,
+			     const char *line, bool in_comment,
 			     bool *unterminated)
 {
-	char *p, *ret = talloc_array(line, char, strlen(line) + 1);
+	char *p, *ret = tal_arr(ctx, char, strlen(line) + 1);
 
 	p = ret;
 	for (;;) {
@@ -121,7 +120,7 @@ static bool parse_hash_if(struct pp_conditions *cond, const char **line)
 
 	/* FIXME: We just chain them, ignoring operators. */
 	if (get_token(line, "||") || get_token(line, "&&")) {
-		struct pp_conditions *sub = talloc(cond, struct pp_conditions);
+		struct pp_conditions *sub = tal(cond, struct pp_conditions);
 
 		sub->parent = cond->parent;
 		sub->type = PP_COND_IFDEF;
@@ -137,10 +136,10 @@ static struct pp_conditions *analyze_directive(struct ccan_file *f,
 					       const char *line,
 					       struct pp_conditions *parent)
 {
-	struct pp_conditions *cond = talloc(f, struct pp_conditions);
+	struct pp_conditions *cond = tal(f, struct pp_conditions);
 	bool unused;
 
-	line = remove_comments(line, false, &unused);
+	line = remove_comments(f, line, false, &unused);
 
 	cond->parent = parent;
 	cond->type = PP_COND_IFDEF;
@@ -187,7 +186,7 @@ static struct pp_conditions *analyze_directive(struct ccan_file *f,
 		cond->inverse = !cond->inverse;
 		return cond;
 	} else if (get_token(&line, "endif")) {
-		talloc_free(cond);
+		tal_free(cond);
 		/* Malformed? */
 		if (!parent)
 			return NULL;
@@ -195,7 +194,7 @@ static struct pp_conditions *analyze_directive(struct ccan_file *f,
 		return parent->parent;
 	} else {
 		/* Not a conditional. */
-		talloc_free(cond);
+		tal_free(cond);
 		return parent;
 	}
 
@@ -219,7 +218,7 @@ struct line_info *get_ccan_line_info(struct ccan_file *f)
 		return f->line_info;
 
 	get_ccan_file_lines(f);
-	f->line_info = talloc_array(f->lines, struct line_info, f->num_lines);
+	f->line_info = tal_arr(f->lines, struct line_info, f->num_lines);
 
 	for (i = 0; i < f->num_lines; continued = continues(f->lines[i++])) {
 		char *p;
@@ -233,7 +232,7 @@ struct line_info *get_ccan_line_info(struct ccan_file *f)
 			/* Same as last line. */
 			f->line_info[i].type = f->line_info[i-1].type;
 			/* Update in_comment. */
-			remove_comments(f->lines[i], in_comment, &in_comment);
+			remove_comments(f, f->lines[i], in_comment, &in_comment);
 			continue;
 		}
 
@@ -248,7 +247,7 @@ struct line_info *get_ccan_line_info(struct ccan_file *f)
 		still_doc_line = (in_comment
 				  && f->line_info[i-1].type == DOC_LINE);
 
-		p = remove_comments(f->lines[i], in_comment, &in_comment);
+		p = remove_comments(f, f->lines[i], in_comment, &in_comment);
 		if (is_empty(p)) {
 			if (strstarts(f->lines[i], "/**") || still_doc_line)
 				f->line_info[i].type = DOC_LINE;
@@ -256,7 +255,7 @@ struct line_info *get_ccan_line_info(struct ccan_file *f)
 				f->line_info[i].type = COMMENT_LINE;
 		} else
 			f->line_info[i].type = CODE_LINE;
-		talloc_free(p);
+		tal_free(p);
 	}
 	return f->line_info;
 }
@@ -330,7 +329,7 @@ static enum line_compiled get_pp(struct pp_conditions *cond,
 static void add_symbol(struct list_head *head,
 		       const char *symbol, const unsigned int *value)
 {
-	struct symbol *sym = talloc(head, struct symbol);
+	struct symbol *sym = tal(head, struct symbol);
 	sym->name = symbol;
 	sym->value = value;
 	list_add(head, &sym->list);
@@ -345,7 +344,7 @@ enum line_compiled get_ccan_line_pp(struct pp_conditions *cond,
 	struct list_head *head;
 	va_list ap;
 
-	head = talloc(NULL, struct list_head);
+	head = tal(NULL, struct list_head);
 	list_head_init(head);
 
 	va_start(ap, value);
@@ -356,7 +355,7 @@ enum line_compiled get_ccan_line_pp(struct pp_conditions *cond,
 		add_symbol(head, symbol, value);
 	}
 	ret = get_pp(cond, head);
-	talloc_free(head);
+	tal_free(head);
 	return ret;
 }
 
@@ -365,33 +364,34 @@ void score_file_error(struct score *score, struct ccan_file *f, unsigned line,
 {
 	va_list ap;
 
-	struct file_error *fe = talloc(score, struct file_error);
+	struct file_error *fe = tal(score, struct file_error);
 	fe->file = f;
 	fe->line = line;
 	list_add_tail(&score->per_file_errors, &fe->list);
 
 	if (!score->error)
-		score->error = talloc_strdup(score, "");
+		score->error = tal_strdup(score, "");
 	
-	if (verbose < 2 && strcount(score->error, "\n") > 5)
+	if (verbose < 2 && strcount(score->error, "\n") > 5) {
+		if (!strends(score->error,
+			     "... more (use -vv to see them all)\n")) {
+			score->error = tal_strcat(score,
+						  take(score->error),
+						  "... more (use -vv to see"
+						  " them all)\n");
+		}
 		return;
+	}
 
 	if (line)
-		score->error = talloc_asprintf_append(score->error,
-						      "%s:%u:",
-						      f->fullname, line);
+		tal_append_fmt(&score->error, "%s:%u:", f->fullname, line);
 	else
-		score->error = talloc_asprintf_append(score->error,
-						      "%s:", f->fullname);
+		tal_append_fmt(&score->error, "%s:", f->fullname);
 
 	va_start(ap, errorfmt);
-	score->error = talloc_vasprintf_append(score->error, errorfmt, ap);
+	tal_append_vfmt(&score->error, errorfmt, ap);
 	va_end(ap);
-	score->error = talloc_append_string(score->error, "\n");
-
-	if (verbose < 2 && strcount(score->error, "\n") > 5)
-		score->error = talloc_append_string(score->error,
-				    "... more (use -vv to see them all)\n");
+	score->error = tal_strcat(score, take(score->error),"\n");
 }
 
 char *get_or_compile_info(const void *ctx, const char *dir)

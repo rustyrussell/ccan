@@ -2,6 +2,7 @@
 #define CCAN_LINT_H
 #include "config.h"
 #include <ccan/list/list.h>
+#include <ccan/tal/tal.h>
 #include <ccan/dgraph/dgraph.h>
 #include <ccan/autodata/autodata.h>
 #include <stdbool.h>
@@ -55,7 +56,7 @@ struct ccanlint {
 	bool compulsory;
 
 	/* If timeleft is set to 0, means it timed out.
-	 * score is the result, and a talloc context freed after all our
+	 * score is the result, and a tal context freed after all our
 	 * depends are done. */
 	void (*check)(struct manifest *m,
 		      unsigned int *timeleft, struct score *score);
@@ -137,7 +138,7 @@ enum line_compiled get_ccan_line_pp(struct pp_conditions *cond,
 
 /* Get token if it's equal to token. */
 bool get_token(const char **line, const char *token);
-/* Talloc copy of symbol token, or NULL.  Increment line. */
+/* Tal copy of symbol token, or NULL.  Increment line. */
 char *get_symbol_token(void *ctx, const char **line);
 
 /* Similarly for ->doc_sections */

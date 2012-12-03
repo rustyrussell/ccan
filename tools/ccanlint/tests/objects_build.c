@@ -1,6 +1,5 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -36,12 +35,12 @@ void build_objects(struct manifest *m,
 
 	list_for_each(&m->c_files, i, list) {
 		char *output;
-		char *fullfile = talloc_asprintf(m, "%s/%s", m->dir, i->name);
+		char *fullfile = tal_fmt(m, "%s/%s", m->dir, i->name);
 
 		i->compiled[ctype] = temp_file(m, "", fullfile);
 		if (!compile_object(score, fullfile, ccan_dir, compiler, flags,
 				    i->compiled[ctype], &output)) {
-			talloc_free(i->compiled[ctype]);
+			tal_free(i->compiled[ctype]);
 			score_file_error(score, i, 0,
 					 "Compiling object files:\n%s",
 					 output);

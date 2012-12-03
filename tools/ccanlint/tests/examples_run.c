@@ -1,6 +1,5 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/foreach/foreach.h>
 #include <ccan/str/str.h>
 #include <ccan/cast/cast.h>
@@ -60,7 +59,7 @@ static bool scan_forv(const void *ctx,
 		for (len = 1; input[len-1]; len++) {
 			ret = scan_forv(ctx, input + len, fmt+2, &ap);
 			if (ret) {
-				*p = talloc_strndup(ctx, input, len);
+				*p = tal_strndup(ctx, input, len);
 				ret = true;
 				break;
 			}
@@ -208,12 +207,12 @@ static char *unexpected(struct ccan_file *i, const char *input,
 	bool ok;
 	unsigned int default_time = default_timeout_ms;
 
-	cmd = talloc_asprintf(i, "echo '%s' | %s %s",
-			      input, i->compiled[COMPILE_NORMAL], input);
+	cmd = tal_fmt(i, "echo '%s' | %s %s",
+		      input, i->compiled[COMPILE_NORMAL], input);
 
 	output = run_with_timeout(i, cmd, &ok, &default_time);
 	if (!ok)
-		return talloc_asprintf(i, "Exited with non-zero status\n");
+		return tal_fmt(i, "Exited with non-zero status\n");
 
 	if (exact) {
 		if (streq(output, expect) || streq(trim(output), expect))

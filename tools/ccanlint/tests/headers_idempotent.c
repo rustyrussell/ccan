@@ -1,6 +1,5 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -46,13 +45,13 @@ static void handle_idem(struct manifest *m, struct score *score)
 		/* Main header gets CCAN_FOO_H, others CCAN_FOO_XXX_H */
 		if (strstarts(e->file->name, m->basename)
 		    || strlen(e->file->name) == strlen(m->basename) + 2)
-			name = talloc_asprintf(score, "CCAN_%s_H", m->modname);
+			name = tal_fmt(score, "CCAN_%s_H", m->modname);
 		else
-			name = talloc_asprintf(score, "CCAN_%s_%s",
-					       m->modname, e->file->name);
+			name = tal_fmt(score, "CCAN_%s_%s",
+				       m->modname, e->file->name);
 		fix_name(name);
 
-		q = talloc_asprintf(score,
+		q = tal_fmt(score,
 			    "Should I wrap %s in #ifndef/#define %s for you?",
 			    e->file->name, name);
 		if (!ask(q))

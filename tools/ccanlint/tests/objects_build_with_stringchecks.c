@@ -1,8 +1,6 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
-#include <ccan/str_talloc/str_talloc.h>
 #include <ccan/foreach/foreach.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -26,7 +24,7 @@ static const char *uses_stringfuncs(struct manifest *m)
 		char *match;
 
 		list_for_each(list, i, list) {
-			if (strreg(m, get_ccan_file_contents(i),
+			if (tal_strreg(m, get_ccan_file_contents(i),
 				   "(isalnum|isalpha|isascii|isblank|iscntrl"
 				   "|isdigit|isgraph|islower|isprint|ispunct"
 				   "|isspace|isupper|isxdigit"
@@ -103,7 +101,7 @@ static void build_objects_with_stringchecks(struct manifest *m,
 	int tmpfd;
 
 	/* FIXME:: We need -I so local #includes work outside normal dir. */
-	flags = talloc_asprintf(score, "-I%s %s", m->dir, cflags);
+	flags = tal_fmt(score, "-I%s %s", m->dir, cflags);
 
 	/* Won't work into macros, but will get inline functions. */
 	if (list_empty(&m->c_files)) {
@@ -111,8 +109,8 @@ static void build_objects_with_stringchecks(struct manifest *m,
 		i = get_main_header(m);
 		tmp = temp_file(score, ".c", i->fullname);
 		tmpfd = start_file(tmp);
-		line = talloc_asprintf(score, "#include <ccan/%s/%s.h>\n",
-				       m->modname, m->basename);
+		line = tal_fmt(score, "#include <ccan/%s/%s.h>\n",
+			       m->modname, m->basename);
 		write_str(tmpfd, line);
 		close(tmpfd);
 		test_compile(score, i, tmp, flags, &errors, &warnings);

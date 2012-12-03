@@ -1,4 +1,6 @@
 #include <tools/ccanlint/ccanlint.h>
+#include <ccan/tal/tal.h>
+#include <ccan/tal/str/str.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -9,7 +11,6 @@
 #include <stdio.h>
 #include <err.h>
 #include <ccan/str/str.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/noerr/noerr.h>
 
 static void check_has_main_header(struct manifest *m,
@@ -25,7 +26,7 @@ static void check_has_main_header(struct manifest *m,
 			return;
 		}
 	}
-	score->error = talloc_asprintf(score,
+	score->error = tal_fmt(score,
 	"You have no %s/%s.h header file.\n\n"
 	"CCAN modules have a name, the same as the directory name.  They're\n"
 	"expected to have an interface in the header of the same name.\n",

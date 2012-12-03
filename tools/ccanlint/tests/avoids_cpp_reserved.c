@@ -1,6 +1,5 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -51,7 +50,7 @@ static void check_headers_no_cpp(struct manifest *m,
 	if (fd < 0)
 		err(1, "Creating temporary file %s", tmpsrc);
 
-	contents = talloc_asprintf(tmpsrc,
+	contents = tal_fmt(tmpsrc,
 		   "#define alignas #DONT_USE_CPLUSPLUS_RESERVED_NAMES\n"
 		   "#define class #DONT_USE_CPLUSPLUS_RESERVED_NAMES\n"
 		   "#define constexpr #DONT_USE_CPLUSPLUS_RESERVED_NAMES\n"
@@ -93,7 +92,7 @@ static void check_headers_no_cpp(struct manifest *m,
 			   tmpobj, &cmdout)) {
 		score->score = score->total;
 	} else {
-		score->error = talloc_asprintf(score,
+		score->error = tal_fmt(score,
 				       "Main header file with C++ names:\n%s",
 				       cmdout);
 	}

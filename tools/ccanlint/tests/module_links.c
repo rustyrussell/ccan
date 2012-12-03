@@ -1,7 +1,7 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
+#include <ccan/take/take.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -27,16 +27,16 @@ static char *obj_list(const struct manifest *m)
 	struct manifest *i;
 
 	if (m->compiled[COMPILE_NORMAL])
-		list = talloc_strdup(m, m->compiled[COMPILE_NORMAL]);
+		list = tal_strdup(m, m->compiled[COMPILE_NORMAL]);
 	else
-		list = talloc_strdup(m, "");
+		list = tal_strdup(m, "");
 
 	/* Other CCAN deps. */
 	list_for_each(&m->deps, i, list) {
-		if (i->compiled[COMPILE_NORMAL])
-			list = talloc_asprintf_append(list, " %s",
-						      i->compiled
-						      [COMPILE_NORMAL]);
+		if (!i->compiled[COMPILE_NORMAL])
+			continue;
+		list = tal_strcat(m, take(list), " ");
+		list = tal_strcat(m, take(list), i->compiled[COMPILE_NORMAL]);
 	}
 	return list;
 }
@@ -45,11 +45,11 @@ static char *lib_list(const struct manifest *m)
 {
 	unsigned int i;
 	char **libs;
-	char *ret = talloc_strdup(m, "");
+	char *ret = tal_strdup(m, "");
 
 	libs = get_libs(m, m->dir, "depends", get_or_compile_info);
 	for (i = 0; libs[i]; i++)
-		ret = talloc_asprintf_append(ret, "-l%s ", libs[i]);
+		tal_append_fmt(&ret, "-l%s ", libs[i]);
 	return ret;
 }
 
@@ -66,13 +66,13 @@ static void check_use_build(struct manifest *m,
 	if (fd < 0)
 		err(1, "Creating temporary file %s", tmpfile);
 
-	contents = talloc_asprintf(tmpfile,
-				   "#include <ccan/%s/%s.h>\n"
-				   "int main(void)\n"
-				   "{\n"
-				   "	return 0;\n"
-				   "}\n",
-				   m->modname, m->basename);
+	contents = tal_fmt(tmpfile,
+			   "#include <ccan/%s/%s.h>\n"
+			   "int main(void)\n"
+			   "{\n"
+			   "	return 0;\n"
+			   "}\n",
+			   m->modname, m->basename);
 	if (write(fd, contents, strlen(contents)) != strlen(contents))
 		err(1, "Failure writing to temporary file %s", tmpfile);
 	close(fd);

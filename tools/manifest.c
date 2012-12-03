@@ -1,10 +1,8 @@
 #include "config.h"
 #include "manifest.h"
 #include "tools.h"
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
-#include <ccan/str_talloc/str_talloc.h>
-#include <ccan/talloc_link/talloc_link.h>
+#include <ccan/tal/link/link.h>
 #include <ccan/hash/hash.h>
 #include <ccan/htable/htable_type.h>
 #include <ccan/noerr/noerr.h>
@@ -44,7 +42,7 @@ static struct htable_manifest *manifests;
 const char *get_ccan_file_contents(struct ccan_file *f)
 {
 	if (!f->contents) {
-		f->contents = talloc_grab_file(f, f->fullname,
+		f->contents = tal_grab_file(f, f->fullname,
 					       &f->contents_size);
 		if (!f->contents)
 			err(1, "Reading file %s", f->fullname);
@@ -55,10 +53,11 @@ const char *get_ccan_file_contents(struct ccan_file *f)
 char **get_ccan_file_lines(struct ccan_file *f)
 {
 	if (!f->lines)
-		f->lines = strsplit(f, get_ccan_file_contents(f), "\n");
+		f->lines = tal_strsplit(f, get_ccan_file_contents(f), "\n",
+					STR_EMPTY_OK);
 
 	/* FIXME: is f->num_lines necessary? */
-	f->num_lines = talloc_array_length(f->lines) - 1;
+	f->num_lines = tal_count(f->lines) - 1;
 	return f->lines;
 }
 
@@ -69,14 +68,14 @@ struct ccan_file *new_ccan_file(const void *ctx, const char *dir, char *name)
 
 	assert(dir[0] == '/');
 
-	f = talloc(ctx, struct ccan_file);
+	f = tal(ctx, struct ccan_file);
 	f->lines = NULL;
 	f->line_info = NULL;
 	f->doc_sections = NULL;
 	for (i = 0; i < ARRAY_SIZE(f->compiled); i++)
 		f->compiled[i] = NULL;
-	f->name = talloc_steal(f, name);
-	f->fullname = talloc_asprintf(f, "%s/%s", dir, f->name);
+	f->name = tal_steal(f, name);
+	f->fullname = tal_fmt(f, "%s/%s", dir, f->name);
 	f->contents = NULL;
 	f->simplified = NULL;
 	return f;
@@ -86,7 +85,7 @@ static void add_files(struct manifest *m, const char *dir)
 {
 	DIR *d;
 	struct dirent *ent;
-	char **subs = NULL;
+	char **subs = tal_arr(m, char *, 0);
 
 	if (dir[0])
 		d = opendir(dir);
@@ -105,19 +104,18 @@ static void add_files(struct manifest *m, const char *dir)
 			continue;
 
 		f = new_ccan_file(m, m->dir,
-				  talloc_asprintf(m, "%s%s",
-						  dir, ent->d_name));
+				  tal_fmt(m, "%s%s", dir, ent->d_name));
 		if (lstat(f->name, &st) != 0)
 			err(1, "lstat %s", f->name);
 
 		if (S_ISDIR(st.st_mode)) {
-			size_t len = talloc_array_length(subs);
-			subs = talloc_realloc(m, subs, char *, len+1);
-			subs[len] = talloc_append_string(f->name, "/");
+			size_t len = tal_count(subs);
+			tal_resize(&subs, len+1);
+			subs[len] = tal_strcat(subs, f->name, "/");
 			continue;
 		}
 		if (!S_ISREG(st.st_mode)) {
-			talloc_free(f);
+			tal_free(f);
 			continue;
 		}
 
@@ -164,10 +162,10 @@ static void add_files(struct manifest *m, const char *dir)
 		    && list_empty(&m->h_files))
 			errx(1, "No _info, C or H files found here!");
 
-		for (i = 0; i < talloc_array_length(subs); i++)
+		for (i = 0; i < tal_count(subs); i++)
 			add_files(m, subs[i]);
 	}
-	talloc_free(subs);
+	tal_free(subs);
 }
 
 static int cmp_names(struct ccan_file *const *a, struct ccan_file *const *b,
@@ -178,20 +176,18 @@ static int cmp_names(struct ccan_file *const *a, struct ccan_file *const *b,
 
 static void sort_files(struct list_head *list)
 {
-	struct ccan_file **files = NULL, *f;
-	unsigned int i, num;
+	struct ccan_file **files = tal_arr(NULL, struct ccan_file *, 0), *f;
+	unsigned int i;
 
-	num = 0;
 	while ((f = list_top(list, struct ccan_file, list)) != NULL) {
-		files = talloc_realloc(NULL, files, struct ccan_file *, num+1);
-		files[num++] = f;
+		tal_expand(&files, &f, 1);
 		list_del(&f->list);
 	}
-	asort(files, num, cmp_names, NULL);
+	asort(files, tal_count(files), cmp_names, NULL);
 
-	for (i = 0; i < num; i++)
+	for (i = 0; i < tal_count(files); i++)
 		list_add_tail(list, &files[i]->list);
-	talloc_free(files);
+	tal_free(files);
 }
 
 struct manifest *get_manifest(const void *ctx, const char *dir)
@@ -202,29 +198,28 @@ struct manifest *get_manifest(const void *ctx, const char *dir)
 	struct list_head *list;
 
 	if (!manifests) {
-		manifests = talloc(NULL, struct htable_manifest);
+		manifests = tal(NULL, struct htable_manifest);
 		htable_manifest_init(manifests);
 	}
 
-	olddir = talloc_getcwd(NULL);
+	olddir = tal_getcwd(NULL);
 	if (!olddir)
 		err(1, "Getting current directory");
 
 	if (chdir(dir) != 0)
 		err(1, "Failed to chdir to %s", dir);
 
-	canon_dir = talloc_getcwd(olddir);
+	canon_dir = tal_getcwd(olddir);
 	if (!canon_dir)
 		err(1, "Getting current directory");
 
 	m = htable_manifest_get(manifests, canon_dir);
 	if (m)
 		goto done;
-
-	m = talloc_linked(ctx, talloc(NULL, struct manifest));
+	m = tal_linkable(tal(NULL, struct manifest));
 	m->info_file = NULL;
 	m->compiled[COMPILE_NORMAL] = m->compiled[COMPILE_NOFEAT] = NULL;
-	m->dir = talloc_steal(m, canon_dir);
+	m->dir = tal_steal(m, canon_dir);
 	list_head_init(&m->c_files);
 	list_head_init(&m->h_files);
 	list_head_init(&m->api_tests);
@@ -259,12 +254,12 @@ struct manifest *get_manifest(const void *ctx, const char *dir)
 		    &m->compile_fail_tests)
 		sort_files(list);
 
-	htable_manifest_add(manifests, m);
+	htable_manifest_add(manifests, tal_link(manifests, m));
 
 done:
 	if (chdir(olddir) != 0)
 		err(1, "Returning to original directory '%s'", olddir);
-	talloc_free(olddir);
+	tal_free(olddir);
 
 	return m;
 }

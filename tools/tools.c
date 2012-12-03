@@ -1,4 +1,4 @@
-#include <ccan/talloc/talloc.h>
+#include <ccan/take/take.h>
 #include <ccan/err/err.h>
 #include <ccan/noerr/noerr.h>
 #include <ccan/rbuf/rbuf.h>
@@ -25,38 +25,38 @@ bool tools_verbose = false;
 /* Ten minutes. */
 const unsigned int default_timeout_ms = 10 * 60 * 1000;
 
-char *talloc_basename(const void *ctx, const char *dir)
+char *tal_basename(const void *ctx, const char *dir)
 {
-	char *p = strrchr(dir, '/');
+	const char *p = strrchr(dir, '/');
 
 	if (!p)
-		return talloc_strdup(ctx, dir);
-	return talloc_strdup(ctx, p+1);
+		return tal_strdup(ctx, dir);
+	return tal_strdup(ctx, p+1);
 }
 
-char *talloc_dirname(const void *ctx, const char *dir)
+char *tal_dirname(const void *ctx, const char *dir)
 {
-	char *p = strrchr(dir, '/');
+	const char *p = strrchr(dir, '/');
 
 	if (!p)
-		return talloc_strdup(ctx, ".");
-	return talloc_strndup(ctx, dir, p - dir);
+		return tal_strdup(ctx, ".");
+	return tal_strndup(ctx, dir, p - dir);
 }
 
-char *talloc_getcwd(const void *ctx)
+char *tal_getcwd(const void *ctx)
 {
 	unsigned int len;
 	char *cwd;
 
 	/* *This* is why people hate C. */
 	len = 32;
-	cwd = talloc_array(ctx, char, len);
+	cwd = tal_arr(ctx, char, len);
 	while (!getcwd(cwd, len)) {
 		if (errno != ERANGE) {
-			talloc_free(cwd);
+			tal_free(cwd);
 			return NULL;
 		}
-		cwd = talloc_realloc(ctx, cwd, char, len *= 2);
+		tal_resize(&cwd, len *= 2);
 	}
 	return cwd;
 }
@@ -77,8 +77,8 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 
 	*ok = false;
 	if (pipe(p) != 0)
-		return talloc_asprintf(ctx, "Failed to create pipe: %s",
-				       strerror(errno));
+		return tal_fmt(ctx, "Failed to create pipe: %s",
+			       strerror(errno));
 
 	if (tools_verbose)
 		printf("Running: %s\n", cmd);
@@ -90,8 +90,7 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 	if (pid == -1) {
 		close_noerr(p[0]);
 		close_noerr(p[1]);
-		return talloc_asprintf(ctx, "Failed to fork: %s",
-				       strerror(errno));
+		return tal_fmt(ctx, "Failed to fork: %s", strerror(errno));
 	}
 
 	if (pid == 0) {
@@ -117,11 +116,9 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 	}
 
 	close(p[1]);
-	rbuf_init(&in, p[0], talloc_array(ctx, char, 4096), 4096);
-	if (!rbuf_read_str(&in, 0, do_talloc_realloc) && errno) {
-		talloc_free(in.buf);
-		in.buf = NULL;
-	}
+	rbuf_init(&in, p[0], tal_arr(ctx, char, 4096), 4096);
+	if (!rbuf_read_str(&in, 0, do_tal_realloc) && errno)
+		in.buf = tal_free(in.buf);
 
 	/* This shouldn't fail... */
 	if (waitpid(pid, &status, 0) != pid)
@@ -144,7 +141,7 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 	return in.buf;
 }
 
-/* Tallocs *output off ctx; return false if command fails. */
+/* Tals *output off ctx; return false if command fails. */
 bool run_command(const void *ctx, unsigned int *time_ms, char **output,
 		 const char *fmt, ...)
 {
@@ -156,12 +153,12 @@ bool run_command(const void *ctx, unsigned int *time_ms, char **output,
 	if (!time_ms)
 		time_ms = &default_time;
 	else if (*time_ms == 0) {
-		*output = talloc_strdup(ctx, "\n== TIMED OUT ==\n");
+		*output = tal_strdup(ctx, "\n== TIMED OUT ==\n");
 		return false;
 	}
 
 	va_start(ap, fmt);
-	cmd = talloc_vasprintf(ctx, fmt, ap);
+	cmd = tal_vfmt(ctx, fmt, ap);
 	va_end(ap);
 
 	*output = run_with_timeout(ctx, cmd, &ok, time_ms);
@@ -170,12 +167,11 @@ bool run_command(const void *ctx, unsigned int *time_ms, char **output,
 	if (!*output)
 		err(1, "Problem running child");
 	if (*time_ms == 0)
-		*output = talloc_asprintf_append(*output,
-						 "\n== TIMED OUT ==\n");
+		*output = tal_strcat(ctx, take(*output), "\n== TIMED OUT ==\n");
 	return false;
 }
 
-static int unlink_all(const char *dir)
+static void unlink_all(const char *dir)
 {
 	char cmd[strlen(dir) + sizeof("rm -rf ")];
 	sprintf(cmd, "rm -rf %s", dir);
@@ -183,66 +179,78 @@ static int unlink_all(const char *dir)
 		printf("Running: %s\n", cmd);
 	if (system(cmd) != 0)
 		warn("Could not remove temporary work in %s", dir);
-	return 0;
 }
 
-const char *temp_dir(const void *ctx)
+static pid_t *afree;
+static void free_autofree(void)
+{
+	if (*afree == getpid())
+		tal_free(afree);
+}
+
+tal_t *autofree(void)
+{
+	if (!afree) {
+		afree = tal(NULL, pid_t);
+		*afree = getpid();
+		atexit(free_autofree);
+	}
+	return afree;
+}
+
+const char *temp_dir(void)
 {
 	/* For first call, create dir. */
 	while (!tmpdir) {
 		tmpdir = getenv("TMPDIR");
 		if (!tmpdir)
 			tmpdir = "/tmp";
-		tmpdir = talloc_asprintf(talloc_autofree_context(),
-					 "%s/ccanlint-%u.%lu",
-					 tmpdir, getpid(), random());
+		tmpdir = tal_fmt(autofree(), "%s/ccanlint-%u.%lu",
+				 tmpdir, getpid(), random());
 		if (mkdir(tmpdir, 0700) != 0) {
 			if (errno == EEXIST) {
-				talloc_free(tmpdir);
+				tal_free(tmpdir);
 				tmpdir = NULL;
 				continue;
 			}
 			err(1, "mkdir %s failed", tmpdir);
 		}
-		talloc_set_destructor(tmpdir, unlink_all);
+		tal_add_destructor(tmpdir, unlink_all);
 		if (tools_verbose)
 			printf("Created temporary directory %s\n", tmpdir);
 	}
 	return tmpdir;
 }
 
-int unlink_file_destructor(char *filename)
+void keep_temp_dir(void)
 {
-	unlink(filename);
-	return 0;
+	tal_del_destructor(temp_dir(), unlink_all);
 }
 
 char *temp_file(const void *ctx, const char *extension, const char *srcname)
 {
 	unsigned baselen;
-	char *f, *suffix = talloc_strdup(ctx, "");
+	char *f, *suffix = tal_strdup(ctx, "");
 	struct stat st;
 	unsigned int count = 0;
 
-	srcname = talloc_basename(ctx, srcname);
+	srcname = tal_basename(ctx, srcname);
 	if (strrchr(srcname, '.'))
 		baselen = strrchr(srcname, '.') - srcname;
 	else
 		baselen = strlen(srcname);
 
 	do {
-		f = talloc_asprintf(ctx, "%s/%.*s%s%s",
-				    temp_dir(ctx),
-				    baselen, srcname,
-				    suffix, extension);
-		talloc_free(suffix);
-		suffix = talloc_asprintf(ctx, "-%u", ++count);
+		f = tal_fmt(ctx, "%s/%.*s%s%s",
+			    temp_dir(), baselen, srcname, suffix, extension);
+		tal_free(suffix);
+		suffix = tal_fmt(ctx, "-%u", ++count);
 	} while (lstat(f, &st) == 0);
 
 	if (tools_verbose)
 		printf("Creating file %s\n", f);
 
-	talloc_free(suffix);
+	tal_free(suffix);
 	return f;
 }
 
@@ -264,7 +272,7 @@ bool move_file(const char *oldname, const char *newname)
 	}
 
 	/* Try copy and delete: not atomic! */
-	contents = talloc_grab_file(NULL, oldname, &size);
+	contents = tal_grab_file(NULL, oldname, &size);
 	if (!contents) {
 		if (tools_verbose)
 			printf("read failed: %s\n", strerror(errno));
@@ -294,28 +302,27 @@ bool move_file(const char *oldname, const char *newname)
 	}
 
 free:
-	talloc_free(contents);
+	tal_free(contents);
 	return ret;
 }
 
-void *do_talloc_realloc(void *p, size_t size)
+void *do_tal_realloc(void *p, size_t size)
 {
-	return talloc_realloc(NULL, p, char, size);
+	tal_resize((char **)&p, size);
+	return p;
 }
 
-void *talloc_grab_file(const void *ctx, const char *filename, size_t *size)
+void *tal_grab_file(const void *ctx, const char *filename, size_t *size)
 {
 	struct rbuf rbuf;
-	char *buf = talloc_size(ctx, 4096);
+	char *buf = tal_arr(ctx, char, 0);
 
-	if (!rbuf_open(&rbuf, filename, buf, 4096)) {
-		talloc_free(buf);
-		return NULL;
-	}
-	if (!rbuf_fill_all(&rbuf, do_talloc_realloc)) {
-		talloc_free(rbuf.buf);
-		rbuf.buf = NULL;
-	} else {
+	if (!rbuf_open(&rbuf, filename, buf, 0))
+		return tal_free(buf);
+
+	if (!rbuf_fill_all(&rbuf, do_tal_realloc) && errno)
+		rbuf.buf = tal_free(rbuf.buf);
+	else {
 		rbuf.buf[rbuf.len] = '\0';
 		if (size)
 			*size = rbuf.len;

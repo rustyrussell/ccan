@@ -1,7 +1,6 @@
 /* This merely extracts, doesn't do XML or anything. */
-#include <ccan/talloc/talloc.h>
+#include <ccan/take/take.h>
 #include <ccan/str/str.h>
-#include <ccan/str_talloc/str_talloc.h>
 #include <err.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -22,24 +21,24 @@ static char **grab_doc(char **lines, unsigned int **linemap,
 	unsigned int i, num;
 	bool printing = false;
 
-	ret = talloc_array(NULL, char *, talloc_array_length(lines));
-	*linemap = talloc_array(ret, unsigned int, talloc_array_length(lines));
+	ret = tal_arr(NULL, char *, tal_count(lines));
+	*linemap = tal_arr(ret, unsigned int, tal_count(lines));
 
 	num = 0;
 	for (i = 0; lines[i]; i++) {
 		if (streq(lines[i], "/**")) {
 			printing = true;
 			if (num != 0) {
-				ret[num-1] = talloc_append_string(ret[num-1],
-								  "\n");
+				ret[num-1] = tal_strcat(NULL,
+							take(ret[num-1]), "\n");
 			}
 		} else if (streq(lines[i], " */")) 
 			printing = false;
 		else if (printing) {
 			if (strstarts(lines[i], " * "))
-				ret[num++] = talloc_strdup(ret, lines[i]+3);
+				ret[num++] = tal_strdup(ret, lines[i]+3);
 			else if (strstarts(lines[i], " *"))
-				ret[num++] = talloc_strdup(ret, lines[i]+2);
+				ret[num++] = tal_strdup(ret, lines[i]+2);
 			else {
 				/* Weird, malformed? */
 				static bool warned;
@@ -49,7 +48,7 @@ static char **grab_doc(char **lines, unsigned int **linemap,
 					      file, i+1);
 					warned++;
 				}
-				ret[num++] = talloc_strdup(ret, lines[i]);
+				ret[num++] = tal_strdup(ret, lines[i]);
 				if (strstr(lines[i], "*/"))
 					printing = false;
 			}
@@ -70,7 +69,7 @@ static char *is_section(const void *ctx, const char *line, char **value)
 	char *secname;
 
 	/* Any number of upper case words separated by spaces, ending in : */
-	if (!strreg(ctx, line,
+	if (!tal_strreg(ctx, line,
 		    "^([A-Z][a-zA-Z0-9_]*( [A-Z][a-zA-Z0-9_]*)*):[ \t\n]*(.*)",
 		    &secname, NULL, value))
 		return NULL;
@@ -117,17 +116,17 @@ static struct doc_section *new_section(struct list_head *list,
 	d = list_tail(list, struct doc_section, list);
 	if (d && empty_section(d)) {
 		list_del(&d->list);
-		talloc_free(d);
+		tal_free(d);
 	}
 
-	d = talloc(list, struct doc_section);
+	d = tal(list, struct doc_section);
 	d->function = function;
-	lowertype = talloc_size(d, strlen(type) + 1);
+	lowertype = tal_arr(d, char, strlen(type) + 1);
 	/* Canonicalize type to lower case. */
 	for (i = 0; i < strlen(type)+1; i++)
 		lowertype[i] = tolower(type[i]);
 	d->type = lowertype;
-	d->lines = NULL;
+	d->lines = tal_arr(d, char *, 0);
 	d->num_lines = 0;
 	d->srcline = srcline;
 
@@ -137,9 +136,9 @@ static struct doc_section *new_section(struct list_head *list,
 
 static void add_line(struct doc_section *curr, const char *line)
 {
-	curr->lines = talloc_realloc(curr, curr->lines, char *,
-				     curr->num_lines+1);
-	curr->lines[curr->num_lines++] = talloc_strdup(curr->lines, line);
+	char *myline = tal_strdup(curr->lines, line);
+	tal_expand(&curr->lines, &myline, 1);
+	curr->num_lines++;
 }
 
 /* We convert tabs to spaces here. */
@@ -149,8 +148,8 @@ static void add_detabbed_line(struct doc_section *curr, const char *rawline)
 	char *line;
 
 	/* Worst-case alloc: 8 spaces per tab. */
-	line = talloc_array(curr, char, strlen(rawline) +
-			    strcount(rawline, "\t") * 7 + 1);
+	line = tal_arr(curr, char, strlen(rawline) +
+		       strcount(rawline, "\t") * 7 + 1);
 	len = 0;
 
 	/* We keep track of the *effective* offset of i. */
@@ -170,7 +169,7 @@ static void add_detabbed_line(struct doc_section *curr, const char *rawline)
 	line[len] = '\0';
 
 	add_line(curr, line + off);
-	talloc_free(line);
+	tal_free(line);
 }
 
 /* Not very efficient: we could track prefix length while doing
@@ -216,7 +215,7 @@ struct list_head *extract_doc_sections(char **rawlines, const char *file)
 	unsigned int i;
 	struct list_head *list;
 
-	list = talloc(NULL, struct list_head);
+	list = tal(NULL, struct list_head);
 	list_head_init(list);
 
 	for (i = 0; lines[i]; i++) {
@@ -225,7 +224,7 @@ struct list_head *extract_doc_sections(char **rawlines, const char *file)
 
 		funclen = is_summary_line(lines[i]);
 		if (funclen) {
-			function = talloc_strndup(list, lines[i], funclen);
+			function = tal_strndup(list, lines[i], funclen);
 			curr = new_section(list, function, "summary",
 					   linemap[i]);
 			add_line(curr, lines[i] + funclen + 3);
@@ -246,6 +245,6 @@ struct list_head *extract_doc_sections(char **rawlines, const char *file)
 	list_for_each(list, curr, list)
 		trim_lines(curr);
 
-	talloc_free(lines);
+	tal_free(lines);
 	return list;
 }

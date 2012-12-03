@@ -1,8 +1,7 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
-#include <ccan/str_talloc/str_talloc.h>
+#include <ccan/take/take.h>
 #include <ccan/foreach/foreach.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -46,9 +45,9 @@ static bool check_dep_includes(struct manifest *m,
 
 	for (i = 0; lines[i]; i++) {
 		char *mod;
-		if (!strreg(f, lines[i],
-			    "^[ \t]*#[ \t]*include[ \t]*[<\"]"
-			    "(ccan/+.+)/+[^/]+\\.h", &mod))
+		if (!tal_strreg(f, lines[i],
+				"^[ \t]*#[ \t]*include[ \t]*[<\"]"
+				"(ccan/+.+)/+[^/]+\\.h", &mod))
 			continue;
 
 		if (has_dep(m, deps, used, mod))
@@ -86,10 +85,10 @@ static void check_depends_accurate(struct manifest *m,
 				 get_or_compile_info);
 	}
 
-	core_deps = talloc_array_length(deps) - 1;
-	test_deps = talloc_array_length(tdeps) - 1;
+	core_deps = tal_count(deps) - 1;
+	test_deps = tal_count(tdeps) - 1;
 
-	used = talloc_zero_array(m, bool, core_deps + test_deps + 1);
+	used = tal_arrz(m, bool, core_deps + test_deps + 1);
 
 	foreach_ptr(list, &m->c_files, &m->h_files) {
 		struct ccan_file *f;
@@ -105,10 +104,9 @@ static void check_depends_accurate(struct manifest *m,
 					 deps[i]);
 	}
 
-	/* Now append test dependencies to deps. */
-	deps = talloc_realloc(NULL, deps, char *,
-			      (core_deps + test_deps + 1) * sizeof(char *));
-	memcpy(&deps[core_deps], tdeps, test_deps * sizeof(char *));
+	/* Now remove NUL and append test dependencies to deps. */
+	deps = tal_dup(m, char *, take(deps), core_deps, test_deps + 2);
+	memcpy(deps + core_deps, tdeps, sizeof(tdeps[0]) * test_deps);
 	/* ccan/tap is given a free pass. */
 	deps[core_deps + test_deps] = (char *)"ccan/tap";
 	deps[core_deps + test_deps + 1] = NULL;

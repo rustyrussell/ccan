@@ -1,4 +1,5 @@
 #include <tools/ccanlint/ccanlint.h>
+#include <ccan/tal/str/str.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -8,7 +9,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <err.h>
-#include <ccan/talloc/talloc.h>
 
 static void check_tests_exist(struct manifest *m,
 			      unsigned int *timeleft, struct score *score);
@@ -25,7 +25,7 @@ static void handle_no_tests(struct manifest *m, struct score *score)
 {
 	FILE *run;
 	struct ccan_file *i;
-	char *test_dir = talloc_asprintf(m, "%s/test", m->dir), *run_file;
+	char *test_dir = tal_fmt(m, "%s/test", m->dir), *run_file;
 
 	printf(
 	"CCAN modules have a directory called test/ which contains tests.\n"
@@ -64,7 +64,7 @@ static void handle_no_tests(struct manifest *m, struct score *score)
 			err(1, "Creating test/ directory");
 	}
 
-	run_file = talloc_asprintf(test_dir, "%s/run.c", test_dir);
+	run_file = tal_fmt(test_dir, "%s/run.c", test_dir);
 	run = fopen(run_file, "w");
 	if (!run)
 		err(1, "Trying to create a test/run.c");
@@ -106,10 +106,10 @@ static void check_tests_exist(struct manifest *m,
 			    unsigned int *timeleft, struct score *score)
 {
 	struct stat st;
-	char *test_dir = talloc_asprintf(m, "%s/test", m->dir);
+	char *test_dir = tal_fmt(m, "%s/test", m->dir);
 
 	if (lstat(test_dir, &st) != 0) {
-		score->error = talloc_strdup(score, "No test directory");
+		score->error = tal_strdup(score, "No test directory");
 		if (errno != ENOENT)
 			err(1, "statting %s", test_dir);
 		tests_exist.handle = handle_no_tests;
@@ -119,7 +119,7 @@ static void check_tests_exist(struct manifest *m,
 	}
 
 	if (!S_ISDIR(st.st_mode)) {
-		score->error = talloc_strdup(score, "test is not a directory");
+		score->error = tal_strdup(score, "test is not a directory");
 		return;
 	}
 
@@ -127,8 +127,7 @@ static void check_tests_exist(struct manifest *m,
 	    && list_empty(&m->run_tests)
 	    && list_empty(&m->compile_ok_tests)
 	    && list_empty(&m->compile_fail_tests)) {
-		score->error = talloc_strdup(score,
-					     "No tests in test directory");
+		score->error = tal_strdup(score, "No tests in test directory");
 		tests_exist.handle = handle_no_tests;
 		return;
 	}

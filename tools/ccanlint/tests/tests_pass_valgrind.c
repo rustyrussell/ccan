@@ -1,9 +1,8 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
+#include <ccan/take/take.h>
 #include <ccan/foreach/foreach.h>
-#include <ccan/str_talloc/str_talloc.h>
 #include "tests_pass.h"
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -21,7 +20,7 @@
 static const char *can_run_vg(struct manifest *m)
 {
 	if (!do_valgrind)
-		return talloc_asprintf(m, "No valgrind support");
+		return tal_fmt(m, "No valgrind support");
 	return NULL;
 }
 
@@ -61,35 +60,34 @@ static bool blank_line(const char *line)
 static char **extract_matching(const char *prefix, char *lines[])
 {
 	unsigned int i, num_ret = 0;
-	char **ret = talloc_array(lines, char *, talloc_array_length(lines));
+	char **ret = tal_arr(lines, char *, tal_count(lines));
 
-	for (i = 0; i < talloc_array_length(lines) - 1; i++) {
+	for (i = 0; i < tal_count(lines) - 1; i++) {
 		if (strstarts(lines[i], prefix)) {
-			ret[num_ret++] = talloc_steal(ret, lines[i]);
+			ret[num_ret++] = tal_strdup(ret, lines[i]);
 			lines[i] = (char *)"";
 		}
 	}
 	ret[num_ret++] = NULL;
 
-	/* Make sure length is correct! */
-	return talloc_realloc(NULL, ret, char *, num_ret);
+	/* Make sure tal_count is correct! */
+	tal_resize(&ret, num_ret);
+	return ret;
 }
 
 static char *get_leaks(char *lines[], char **errs)
 {
-	char *leaks = talloc_strdup(lines, "");
+	char *leaks = tal_strdup(lines, "");
 	unsigned int i;
 
-	for (i = 0; i < talloc_array_length(lines) - 1; i++) {
+	for (i = 0; i < tal_count(lines) - 1; i++) {
 		if (strstr(lines[i], " lost ")) {
 			/* A leak... */
 			if (strstr(lines[i], " definitely lost ")) {
 				/* Definite leak, report. */
 				while (lines[i] && !blank_line(lines[i])) {
-					leaks = talloc_append_string(leaks,
-								     lines[i]);
-					leaks = talloc_append_string(leaks,
-								     "\n");
+					tal_append_fmt(&leaks, "%s\n",
+						       lines[i]);
 					i++;
 				}
 			} else
@@ -99,8 +97,10 @@ static char *get_leaks(char *lines[], char **errs)
 		} else {
 			/* A real error. */
 			while (lines[i] && !blank_line(lines[i])) {
-				*errs = talloc_append_string(*errs, lines[i]);
-				*errs = talloc_append_string(*errs, "\n");
+				if (!*errs)
+					*errs = tal_fmt(NULL, "%s\n", lines[i]);
+				else
+					tal_append_fmt(errs, "%s\n", lines[i]);
 				i++;
 			}
 		}
@@ -111,12 +111,12 @@ static char *get_leaks(char *lines[], char **errs)
 /* Returns leaks, and sets errs[] */
 static char *analyze_output(const char *output, char **errs)
 {
-	char *leaks = talloc_strdup(output, "");
+	char *leaks = tal_strdup(output, "");
 	unsigned int i;
-	char **lines = strsplit(output, output, "\n");
+	char **lines = tal_strsplit(output, output, "\n", STR_EMPTY_OK);
 
-	*errs = talloc_strdup(output, "");
-	for (i = 0; i < talloc_array_length(lines) - 1; i++) {
+	*errs = tal_strdup(output, "");
+	for (i = 0; i < tal_count(lines) - 1; i++) {
 		unsigned int preflen = strspn(lines[i], "=0123456789");
 		char *prefix, **sublines;
 
@@ -124,18 +124,19 @@ static char *analyze_output(const char *output, char **errs)
 		if (preflen == 0)
 			continue;
 
-		prefix = talloc_strndup(output, lines[i], preflen);
+		prefix = tal_strndup(output, lines[i], preflen);
 		sublines = extract_matching(prefix, lines);
 
-		leaks = talloc_append_string(leaks, get_leaks(sublines, errs));
+		leaks = tal_strcat(output, take(leaks),
+				   take(get_leaks(sublines, errs)));
 	}
 
 	if (!leaks[0]) {
-		talloc_free(leaks);
+		tal_free(leaks);
 		leaks = NULL;
 	}
 	if (!(*errs)[0]) {
-		talloc_free(*errs);
+		tal_free(*errs);
 		*errs = NULL;
 	}
 	return leaks;
@@ -144,12 +145,12 @@ static char *analyze_output(const char *output, char **errs)
 static const char *concat(struct score *score, char *bits[])
 {
 	unsigned int i;
-	char *ret = talloc_strdup(score, "");
+	char *ret = tal_strdup(score, "");
 
 	for (i = 0; bits[i]; i++) {
 		if (i)
-			ret = talloc_append_string(ret, " ");
-		ret = talloc_append_string(ret, bits[i]);
+			ret = tal_strcat(score, take(ret), " ");
+		ret = tal_strcat(score, take(ret), bits[i]);
 	}
 	return ret;
 }
@@ -179,7 +180,7 @@ static void do_run_tests_vg(struct manifest *m,
 				continue;
 			}
 
-			output = talloc_grab_file(i, i->valgrind_log, NULL);
+			output = tal_grab_file(i, i->valgrind_log, NULL);
 			/* No valgrind errors? */
 			if (!output || output[0] == '\0') {
 				err = NULL;
@@ -249,11 +250,10 @@ static void run_under_debugger_vg(struct manifest *m, struct score *score)
 		return;
 
 	first = list_top(&score->per_file_errors, struct file_error, list);
-	command = talloc_asprintf(m, "valgrind --leak-check=full --db-attach=yes%s %s",
-				  concat(score,
-					 per_file_options(&tests_pass_valgrind,
-							  first->file)),
-				  first->file->compiled[COMPILE_NORMAL]);
+	command = tal_fmt(m, "valgrind --leak-check=full --db-attach=yes%s %s",
+			  concat(score, per_file_options(&tests_pass_valgrind,
+							 first->file)),
+			  first->file->compiled[COMPILE_NORMAL]);
 	if (system(command))
 		doesnt_matter();
 }

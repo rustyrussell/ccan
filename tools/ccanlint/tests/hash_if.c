@@ -1,8 +1,6 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
-#include <ccan/str_talloc/str_talloc.h>
 #include <ccan/foreach/foreach.h>
 #include <sys/types.h>
 #include <sys/stat.h>

@@ -3,6 +3,8 @@
 #include "config.h"
 #include <ccan/compiler/compiler.h>
 #include <ccan/rbuf/rbuf.h>
+#include <ccan/tal/tal.h>
+#include <ccan/tal/str/str.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
@@ -44,20 +46,24 @@ char **get_libs(const void *ctx, const char *dir, const char *style,
 /* From tools.c */
 /* If set, print all commands run, all output they give and exit status. */
 extern bool tools_verbose;
-char *talloc_basename(const void *ctx, const char *dir);
-char *talloc_dirname(const void *ctx, const char *dir);
-char *talloc_getcwd(const void *ctx);
+char *tal_basename(const void *ctx, const char *dir);
+char *tal_dirname(const void *ctx, const char *dir);
+char *tal_getcwd(const void *ctx);
 bool PRINTF_FMT(4,5) run_command(const void *ctx,
 				 unsigned int *time_ms,
 				 char **output,
 				 const char *fmt, ...);
 char *run_with_timeout(const void *ctx, const char *cmd,
 		       bool *ok, unsigned *timeout_ms);
-const char *temp_dir(const void *ctx);
+const char *temp_dir(void);
+void keep_temp_dir(void);
 bool move_file(const char *oldname, const char *newname);
 
-void *do_talloc_realloc(void *p, size_t size);
-void *talloc_grab_file(const void *ctx, const char *filename, size_t *size);
+void *do_tal_realloc(void *p, size_t size);
+void *tal_grab_file(const void *ctx, const char *filename, size_t *size);
+
+/* Freed on exit: a good parent for auto cleanup. */
+tal_t *autofree(void);
 
 /* From compile.c.
  *
@@ -85,9 +91,6 @@ char *temp_file(const void *ctx, const char *extension, const char *srcname);
 
 /* Default wait for run_command.  Should never time out. */
 extern const unsigned int default_timeout_ms;
-
-/* Talloc destructor which unlinks file. */
-int unlink_file_destructor(char *filename);
 
 /* Get ccan/ top dir, given a directory within it. */
 const char *find_ccan_dir(const char *base);

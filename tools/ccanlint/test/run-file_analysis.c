@@ -98,15 +98,15 @@ int main(int argc, char *argv[])
 {
 	unsigned int i;
 	struct line_info *line_info;
-	struct ccan_file *f = talloc(NULL, struct ccan_file);
+	struct ccan_file *f = tal(NULL, struct ccan_file);
 
 	plan_tests(NUM_LINES * 2 + 2 + 86);
 
 	f->num_lines = NUM_LINES;
 	f->line_info = NULL;
-	f->lines = talloc_array(f, char *, f->num_lines);
+	f->lines = tal_array(f, char *, f->num_lines);
 	for (i = 0; i < f->num_lines; i++)
-		f->lines[i] = talloc_strdup(f->lines, testfile[i].line);
+		f->lines[i] = tal_strdup(f->lines, testfile[i].line);
 	
 	line_info = get_ccan_line_info(f);
 	ok1(line_info == f->line_info);

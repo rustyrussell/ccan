@@ -1,6 +1,5 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
 #include <ccan/foreach/foreach.h>
 #include <sys/types.h>
@@ -27,33 +26,29 @@ static const char *can_build(struct manifest *m)
 char *test_obj_list(const struct manifest *m, bool link_with_module,
 		    enum compile_type ctype, enum compile_type own_ctype)
 {
-	char *list = talloc_strdup(m, "");
+	char *list = tal_strdup(m, "");
 	struct ccan_file *i;
 	struct manifest *subm;
 
 	/* Objects from any other C files. */
 	list_for_each(&m->other_test_c_files, i, list)
-		list = talloc_asprintf_append(list, " %s",
-					      i->compiled[ctype]);
+		tal_append_fmt(&list, " %s", i->compiled[ctype]);
 
 	/* Our own object files. */
 	if (link_with_module)
 		list_for_each(&m->c_files, i, list)
-			list = talloc_asprintf_append(list, " %s",
-						      i->compiled[own_ctype]);
+			tal_append_fmt(&list, " %s", i->compiled[own_ctype]);
 
 	/* Other ccan modules (normal depends). */
 	list_for_each(&m->deps, subm, list) {
 		if (subm->compiled[ctype])
-			list = talloc_asprintf_append(list, " %s",
-						      subm->compiled[ctype]);
+			tal_append_fmt(&list, " %s", subm->compiled[ctype]);
 	}
 
 	/* Other ccan modules (test depends). */
 	list_for_each(&m->test_deps, subm, list) {
 		if (subm->compiled[ctype])
-			list = talloc_asprintf_append(list, " %s",
-						      subm->compiled[ctype]);
+			tal_append_fmt(&list, " %s", subm->compiled[ctype]);
 	}
 
 	return list;
@@ -63,11 +58,11 @@ char *test_lib_list(const struct manifest *m, enum compile_type ctype)
 {
 	unsigned int i;
 	char **libs;
-	char *ret = talloc_strdup(m, "");
+	char *ret = tal_strdup(m, "");
 
 	libs = get_libs(m, m->dir, "testdepends", get_or_compile_info);
 	for (i = 0; libs[i]; i++)
-		ret = talloc_asprintf_append(ret, "-l%s ", libs[i]);
+		tal_append_fmt(&ret, "-l%s ", libs[i]);
 	return ret;
 }
 
@@ -81,11 +76,11 @@ static bool compile(const void *ctx,
 {
 	char *fname, *flags;
 
-	flags = talloc_asprintf(ctx, "%s%s%s",
-				fail ? "-DFAIL " : "",
-				cflags,
-				ctype == COMPILE_NOFEAT
-				? " "REDUCE_FEATURES_FLAGS : "");
+	flags = tal_fmt(ctx, "%s%s%s",
+			fail ? "-DFAIL " : "",
+			cflags,
+			ctype == COMPILE_NOFEAT
+			? " "REDUCE_FEATURES_FLAGS : "");
 
 	fname = temp_file(ctx, "", file->fullname);
 	if (!compile_and_link(ctx, file->fullname, ccan_dir,
@@ -93,7 +88,7 @@ static bool compile(const void *ctx,
 					    ctype, ctype),
 			      compiler, flags, test_lib_list(m, ctype), fname,
 			      output)) {
-		talloc_free(fname);
+		tal_free(fname);
 		return false;
 	}
 
@@ -111,10 +106,10 @@ static void compile_async(const void *ctx,
 	char *flags;
 
 	file->compiled[ctype] = temp_file(ctx, "", file->fullname);
-	flags = talloc_asprintf(ctx, "%s%s",
-				cflags,
-				ctype == COMPILE_NOFEAT
-				? " "REDUCE_FEATURES_FLAGS : "");
+	flags = tal_fmt(ctx, "%s%s",
+			cflags,
+			ctype == COMPILE_NOFEAT
+			? " "REDUCE_FEATURES_FLAGS : "");
 
 	compile_and_link_async(file, time_ms, file->fullname, ccan_dir,
 			       test_obj_list(m, link_with_module, ctype, ctype),

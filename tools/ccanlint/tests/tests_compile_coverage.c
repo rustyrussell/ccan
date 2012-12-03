@@ -1,6 +1,5 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
 #include <ccan/foreach/foreach.h>
 #include <sys/types.h>
@@ -25,7 +24,7 @@ static const char *can_run_coverage(struct manifest *m)
 	char *output;
 
 	if (!run_command(m, &timeleft, &output, "gcov -h"))
-		return talloc_asprintf(m, "No gcov support: %s", output);
+		return tal_fmt(m, "No gcov support: %s", output);
 	return NULL;
 #else
 	return "No coverage support for this compiler";
@@ -38,7 +37,7 @@ static void cov_compile(const void *ctx,
 			struct ccan_file *file,
 			bool link_with_module)
 {
-	char *flags = talloc_asprintf(ctx, "%s %s", cflags, COVERAGE_CFLAGS);
+	char *flags = tal_fmt(ctx, "%s %s", cflags, COVERAGE_CFLAGS);
 
 	file->compiled[COMPILE_COVERAGE] = temp_file(ctx, "", file->fullname);
 	compile_and_link_async(file, time_ms, file->fullname, ccan_dir,
@@ -59,13 +58,13 @@ static void do_compile_coverage_tests(struct manifest *m,
 	struct ccan_file *i;
 	struct list_head *h;
 	bool ok;
-	char *f = talloc_asprintf(score, "%s %s", cflags, COVERAGE_CFLAGS);
+	char *f = tal_fmt(score, "%s %s", cflags, COVERAGE_CFLAGS);
 
 	/* For API tests, we need coverage version of module. */
 	if (!list_empty(&m->api_tests)) {
 		build_objects(m, score, f, COMPILE_COVERAGE);
 		if (!score->pass) {
-			score->error = talloc_strdup(score,
+			score->error = tal_strdup(score,
 						     "Failed to compile module objects with coverage");
 			return;
 		}

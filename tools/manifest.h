@@ -83,7 +83,7 @@ struct ccan_file {
 	char *simplified;
 };
 
-/* A new ccan_file, with the given name (talloc_steal onto returned value). */
+/* A new ccan_file, with the given name (tal_steal onto returned value). */
 struct ccan_file *new_ccan_file(const void *ctx, const char *dir, char *name);
 
 /* Use this rather than accessing f->contents directly: loads on demand. */

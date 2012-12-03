@@ -1,7 +1,5 @@
 #include <ccan/err/err.h>
 #include <ccan/str/str.h>
-#include <ccan/str_talloc/str_talloc.h>
-#include <ccan/talloc/talloc.h>
 #include "read_config_header.h"
 #include "tools.h"
 #include <string.h>
@@ -16,7 +14,7 @@ char *get_symbol_token(void *ctx, const char **line)
 	toklen = strspn(*line, IDENT_CHARS);
 	if (!toklen)
 		return NULL;
-	ret = talloc_strndup(ctx, *line, toklen);
+	ret = tal_strndup(ctx, *line, toklen);
 	*line += toklen;
 	return ret;
 }
@@ -92,19 +90,19 @@ char *read_config_header(const char *ccan_dir,
 			 const char **compiler, const char **cflags,
 			 bool verbose)
 {
-	char *fname = talloc_asprintf(NULL, "%s/config.h", ccan_dir);
+	char *fname = tal_fmt(NULL, "%s/config.h", ccan_dir);
 	char **lines;
 	unsigned int i;
 	char *config_header;
 
-	config_header = talloc_grab_file(NULL, fname, NULL);
-	talloc_free(fname);
+	config_header = tal_grab_file(NULL, fname, NULL);
+	tal_free(fname);
 
 	if (!config_header)
 		goto out;
 
-	lines = strsplit(config_header, config_header, "\n");
-	for (i = 0; i < talloc_array_length(lines) - 1; i++) {
+	lines = tal_strsplit(config_header, config_header, "\n", STR_EMPTY_OK);
+	for (i = 0; i < tal_count(lines) - 1; i++) {
 		char *sym;
 		const char **line = (const char **)&lines[i];
 

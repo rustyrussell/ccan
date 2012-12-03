@@ -1,6 +1,5 @@
 #include <tools/ccanlint/ccanlint.h>
 #include <tools/tools.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/str/str.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -49,8 +48,8 @@ static void check_includes_build(struct manifest *m,
 	if (fd < 0)
 		err(1, "Creating temporary file %s", tmpsrc);
 
-	contents = talloc_asprintf(tmpsrc, "#include <ccan/%s/%s.h>\n",
-				   m->modname, m->basename);
+	contents = tal_fmt(tmpsrc, "#include <ccan/%s/%s.h>\n",
+			   m->modname, m->basename);
 	if (write(fd, contents, strlen(contents)) != strlen(contents))
 		err(1, "writing to temporary file %s", tmpsrc);
 	close(fd);
@@ -60,7 +59,7 @@ static void check_includes_build(struct manifest *m,
 		score->pass = true;
 		score->score = score->total;
 	} else {
-		score->error = talloc_asprintf(score,
+		score->error = tal_fmt(score,
 				       "#include of the main header file:\n%s",
 				       cmdout);
 	}

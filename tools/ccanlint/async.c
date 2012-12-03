@@ -13,7 +13,6 @@
 #include <ccan/lbalance/lbalance.h>
 #include <ccan/tlist/tlist.h>
 #include <ccan/time/time.h>
-#include <ccan/talloc/talloc.h>
 
 static struct lbalance *lb;
 TLIST_TYPE(command, struct command);
@@ -91,7 +90,7 @@ static void run_more(void)
 	}
 }
 
-static int destroy_command(struct command *command)
+static void destroy_command(struct command *command)
 {
 	if (!command->done && command->pid) {
 		kill(-command->pid, SIGKILL);
@@ -100,7 +99,6 @@ static int destroy_command(struct command *command)
 	}
 
 	tlist_del(command, list);
-	return 0;
 }
 
 void run_command_async(const void *ctx, unsigned int time_ms,
@@ -114,17 +112,18 @@ void run_command_async(const void *ctx, unsigned int time_ms,
 	if (!lb)
 		lb = lbalance_new();
 
-	command = talloc(ctx, struct command);
+	command = tal(ctx, struct command);
 	command->ctx = ctx;
 	command->time_ms = time_ms;
 	command->pid = 0;
-	command->output = talloc_strdup(command, "");
+	/* We want to track length, so don't use tal_strdup */
+	command->output = tal_arrz(command, char, 1);
 	va_start(ap, fmt);
-	command->command = talloc_vasprintf(command, fmt, ap);
+	command->command = tal_vfmt(command, fmt, ap);
 	va_end(ap);
 	tlist_add_tail(&pending, command, list);
 	command->done = false;
-	talloc_set_destructor(command, destroy_command);
+	tal_add_destructor(command, destroy_command);
 
 	run_more();
 }
@@ -150,14 +149,12 @@ static void reap_output(void)
 		if (FD_ISSET(c->output_fd, &in)) {
 			int old_len, len;
 			/* This length includes nul terminator! */
-			old_len = talloc_array_length(c->output);
-			c->output = talloc_realloc(c, c->output, char,
-						   old_len + 1024);
+			old_len = tal_count(c->output);
+			tal_resize(&c->output, old_len + 1024);
 			len = read(c->output_fd, c->output + old_len - 1, 1024);
 			if (len < 0)
 				err(1, "Reading from async command");
-			c->output = talloc_realloc(c, c->output, char,
-						   old_len + len);
+			tal_resize(&c->output, old_len + len);
 			c->output[old_len + len - 1] = '\0';
 			if (len == 0) {
 				struct rusage ru;
@@ -197,8 +194,8 @@ void *collect_command(bool *ok, char **output)
 
 	*ok = (WIFEXITED(c->status) && WEXITSTATUS(c->status) == 0);
 	ctx = c->ctx;
-	*output = talloc_steal(ctx, c->output);
-	talloc_free(c);
+	*output = tal_steal(ctx, c->output);
+	tal_free(c);
 	return (void *)ctx;
 }
 

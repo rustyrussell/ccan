@@ -1,11 +1,11 @@
 /* Trailing whitespace test.  Almost embarrassing, but trivial. */
 #include <tools/ccanlint/ccanlint.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/foreach/foreach.h>
 #include <ccan/str/str.h>
+#include <ccan/tal/str/str.h>
 
 /* FIXME: only print full analysis if verbose >= 2.  */
-static char *get_trailing_whitespace(const char *line)
+static char *get_trailing_whitespace(const tal_t *ctx, const char *line)
 {
 	const char *e = strchr(line, 0);
 	while (e>line && (e[-1]==' ' || e[-1]=='\t'))
@@ -16,9 +16,8 @@ static char *get_trailing_whitespace(const char *line)
 		return NULL; //the line only consists of spaces
 
 	if (strlen(line) > 20)
-		return talloc_asprintf(line, "...'%s'",
-				       line + strlen(line) - 20);
-	return talloc_asprintf(line, "'%s'", line);
+		return tal_fmt(ctx, "...'%s'", line + strlen(line) - 20);
+	return tal_fmt(ctx, "'%s'", line);
 }
 
 static void check_trailing_whitespace(struct manifest *m,
@@ -36,7 +35,8 @@ static void check_trailing_whitespace(struct manifest *m,
 		list_for_each(list, f, list) {
 			char **lines = get_ccan_file_lines(f);
 			for (i = 0; i < f->num_lines; i++) {
-				char *err = get_trailing_whitespace(lines[i]);
+				char *err = get_trailing_whitespace(score,
+								    lines[i]);
 				if (err)
 					score_file_error(score, f, i+1,
 							 "%s", err);
