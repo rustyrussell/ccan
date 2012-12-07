@@ -21,15 +21,27 @@
  *   data as possible.
  *
  * Example:
+ *	// Given '' outputs 'body'
+ *	// Given 'From' outputs ' <from@example.com>'
+ *	// Given 'To' outputs ' <to@example.com>'
  *	char buf[] = "From: <from@example.com>\n"
  *		     "To: <to@example.com>\n\n"
  *                   "body\n";
  *	struct rfc822_msg *msg;
- *	struct bytestring body;
+ *	struct bytestring out;
  *
  *	msg = rfc822_start(NULL, buf, sizeof(buf));
- *	body = rfc822_body(msg);
- *	fwrite(body.ptr, 1, body.len, stdout);
+ *	if (!argv[1] || !argv[1][0])
+ *		out = rfc822_body(msg);
+ *	else {
+ *		struct rfc822_header *hdr;
+ *		hdr = rfc822_first_header_of_name(msg, argv[1]);
+ *		if (!hdr)
+ *			exit(1);
+ *		out = rfc822_header_unfolded_value(msg, hdr);
+ *	}
+ *	fwrite(out.ptr, 1, out.len, stdout);
+ *	rfc822_free(msg);
  *
  * License: LGPL (v2.1 or any later version)
  *
