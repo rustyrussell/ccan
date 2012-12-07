@@ -1,6 +1,7 @@
-#include <ccan/tap/tap.h>
+#include "config.h"
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include <signal.h>
 #include <errno.h>
@@ -9,18 +10,32 @@
 
 #include <ccan/rfc822/rfc822.h>
 
+#include <ccan/talloc/talloc.h>
+
+static bool should_fail = false;
+
+static void *mayfail_alloc(const void *ctx, size_t size)
+{
+	if (should_fail)
+		return NULL;
+	return talloc_zero_size(ctx, size);
+}
+
+/* Override various tallocation functions. */
+#undef talloc
+#undef talloc_zero
+#undef talloc_array
+#define talloc(ctx, type) mayfail_alloc((ctx), sizeof(type))
+#define talloc_zero(ctx, type) mayfail_alloc((ctx), sizeof(type))
+#define talloc_array(ctx, type, num) mayfail_alloc((ctx), sizeof(type)*(num))
+
 #include <ccan/rfc822/rfc822.c>
 
 #include "testdata.h"
 
-static void *failing_malloc(size_t size)
-{
-	return NULL;
-}
-
 static void abort_handler(int signum)
 {
-	ok(1, "Aborted");
+	printf("Aborted");
 	exit(0);
 }
 
@@ -34,23 +49,15 @@ int main(int argc, char *argv[])
 	};
 	int ret;
 
-	plan_tests(2);
-
 	ret = sigaction(SIGABRT, &sa, NULL);
-	ok(ret, "Couldn't install signal handler: %s", strerror(errno));
+	assert(ret == 0);
 
 	buf = assemble_msg(&test_msg_1, &len, 0);
 
 	msg = rfc822_start(NULL, buf, len);
-
-	talloc_set_allocator(failing_malloc, free, realloc);
-
+	should_fail = true;
 	(void) rfc822_next_header(msg, NULL);
 
-	ok(0, "Didn't get SIGABRT");
-
-	rfc822_free(msg);
-	talloc_free(buf);
-
-	exit(exit_status());
+	/* We should never get here! */
+	abort();
 }
