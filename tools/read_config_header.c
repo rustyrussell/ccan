@@ -87,9 +87,7 @@ static char *demangle_string(char *string)
 	return string;
 }
 
-char *read_config_header(const char *ccan_dir,
-			 const char **compiler, const char **cflags,
-			 bool verbose)
+char *read_config_header(const char *ccan_dir, bool verbose)
 {
 	char *fname = path_join(NULL, ccan_dir, "config.h");
 	char **lines;
@@ -100,7 +98,7 @@ char *read_config_header(const char *ccan_dir,
 	tal_free(fname);
 
 	if (!config_header)
-		goto out;
+		return NULL;
 
 	lines = tal_strsplit(config_header, config_header, "\n", STR_EMPTY_OK);
 	for (i = 0; i < tal_count(lines) - 1; i++) {
@@ -112,30 +110,23 @@ char *read_config_header(const char *ccan_dir,
 		if (!get_token(line, "define"))
 			continue;
 		sym = get_symbol_token(lines, line);
-		if (streq(sym, "CCAN_COMPILER") && !compiler) {
-			*compiler = demangle_string(lines[i]);
-			if (!*compiler)
+		if (streq(sym, "CCAN_COMPILER")) {
+			compiler = demangle_string(lines[i]);
+			if (!compiler)
 				errx(1, "%s:%u:could not parse CCAN_COMPILER",
 				     fname, i+1);
 			if (verbose)
 				printf("%s: compiler set to '%s'\n",
-				       fname, *compiler);
-		} else if (streq(sym, "CCAN_CFLAGS") && !cflags) {
-			*cflags = demangle_string(lines[i]);
-			if (!*cflags)
+				       fname, compiler);
+		} else if (streq(sym, "CCAN_CFLAGS")) {
+			cflags = demangle_string(lines[i]);
+			if (!cflags)
 				errx(1, "%s:%u:could not parse CCAN_CFLAGS",
 				     fname, i+1);
 			if (verbose)
 				printf("%s: compiler flags set to '%s'\n",
-				       fname, *cflags);
+				       fname, cflags);
 		}
 	}
-
-out:
-	if (!*compiler)
-		*compiler = CCAN_COMPILER;
-	if (!*cflags)
-		*cflags = CCAN_CFLAGS;
-
 	return config_header;
 }

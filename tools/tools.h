@@ -8,12 +8,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#ifndef CCAN_COMPILER
-#define CCAN_COMPILER "cc"
-#endif
-#ifndef CCAN_CFLAGS
-#define CCAN_CFLAGS "-g -Wall -Wundef -Wmissing-prototypes -Wmissing-declarations -Wstrict-prototypes -Wold-style-definition -Werror"
-#endif
+/* These are the defaults. */
+#define DEFAULT_CCAN_COMPILER "cc"
+#define DEFAULT_CCAN_CFLAGS "-g"
 
 #define IDENT_CHARS	"ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
 			"abcdefghijklmnopqrstuvwxyz" \
@@ -22,6 +19,9 @@
 #define SPACE_CHARS	" \f\n\r\t\v"
 
 #define COVERAGE_CFLAGS "-fprofile-arcs -ftest-coverage"
+
+/* Actual compiler and cflags (defaults to CCAN_COMPILER and CCAN_CFLAGS). */
+extern const char *compiler, *cflags;
 
 /* This compiles up the _info file into a temporary. */
 char *compile_info(const void *ctx, const char *dir);

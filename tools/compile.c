@@ -1,6 +1,15 @@
 #include "tools.h"
 #include <stdlib.h>
 
+#ifndef CCAN_COMPILER
+#define CCAN_COMPILER DEFAULT_CCAN_COMPILER
+#endif
+#ifndef CCAN_CFLAGS
+#define CCAN_CFLAGS DEFAULT_CCAN_CFLAGS
+#endif
+const char *compiler = CCAN_COMPILER;
+const char *cflags = CCAN_CFLAGS;
+
 bool compile_verbose = false;
 
 /* Compile multiple object files into a single.  Returns NULL if fails. */

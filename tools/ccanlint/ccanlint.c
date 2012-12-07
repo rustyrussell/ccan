@@ -46,10 +46,6 @@ bool keep_results = false;
 static bool targeting = false;
 static unsigned int timeout;
 
-/* These are overridden at runtime if we can find config.h */
-const char *compiler = NULL;
-const char *cflags = NULL;
-
 const char *config_header;
 
 const char *ccan_dir;
@@ -607,6 +603,7 @@ int main(int argc, char *argv[])
 	const char *prefix = "";
 	char *cwd = path_cwd(NULL), *dir;
 	struct dgraph_node all;
+	const char *override_compiler = NULL, *override_cflags = NULL;
 	
 	/* Empty graph node to which we attach everything else. */
 	dgraph_init_node(&all);
@@ -631,9 +628,9 @@ int main(int argc, char *argv[])
 	opt_register_arg("-t|--target <testname>", opt_set_target, NULL, &all,
 			 "only run one test (and its prerequisites)");
 	opt_register_arg("--compiler <compiler>", opt_set_const_charp,
-			 NULL, &compiler, "set the compiler");
+			 NULL, &override_compiler, "set the compiler");
 	opt_register_arg("--cflags <flags>", opt_set_const_charp,
-			 NULL, &cflags, "set the compiler flags");
+			 NULL, &override_cflags, "set the compiler flags");
 	opt_register_noarg("-?|-h|--help", opt_usage_and_exit,
 			   "\nA program for checking and guiding development"
 			   " of CCAN modules.",
@@ -668,8 +665,13 @@ int main(int argc, char *argv[])
 	ccan_dir = find_ccan_dir(dir);
 	if (!ccan_dir)
 		errx(1, "Cannot find ccan/ base directory in %s", dir);
-	config_header = read_config_header(ccan_dir, &compiler, &cflags,
-					   verbose > 1);
+	config_header = read_config_header(ccan_dir, verbose > 1);
+
+	/* We do this after read_config_header has set compiler & cflags */
+	if (override_cflags)
+		cflags = override_cflags;
+	if (override_compiler)
+		compiler = override_compiler;
 
 	if (argc == 1)
 		pass = test_module(&all, cwd, "", summary);

@@ -8,6 +8,7 @@
 #include <stdbool.h>
 #include "../doc_extract.h"
 #include "../manifest.h"
+#include "../tools.h"
 #include "licenses.h"
 
 AUTODATA_TYPE(ccanlint_tests, struct ccanlint);
@@ -188,9 +189,6 @@ extern bool safe_mode;
 
 /* Did the user want to keep all the results? */
 extern bool keep_results;
-
-/* Compiler and CFLAGS, from config.h if available. */
-extern const char *compiler, *cflags;
 
 /* Contents of config.h (or NULL if not found) */
 extern const char *config_header;
