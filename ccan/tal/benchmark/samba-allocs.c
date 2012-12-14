@@ -340,7 +340,6 @@ after_talloc:
 	printf("Tal time:                %lluns\n", time_to_nsec(alloc_time));
 	printf("Tal_free time:           %lluns\n", time_to_nsec(free_time));
 
-after_tal:
 	free_time.tv_sec = free_time.tv_nsec = 0;
 	for (i = 0; i < LOOPS; i++) {
 		do_tals(root);
@@ -351,6 +350,7 @@ after_tal:
 	}
 	free_time = time_divide(free_time, i);
 	printf("Single tal_free time:    %lluns\n", time_to_nsec(free_time));
+after_tal:
 
 	return 0;
 }
