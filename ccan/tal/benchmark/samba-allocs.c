@@ -141,8 +141,14 @@ static int unused_talloc_destructor(void *p)
 static void do_tallocs(struct node *node)
 {
 	unsigned int i;
+	static int count;
 
-	node->n = talloc_size(node->parent ? node->parent->n : NULL, node->len);
+	if (count++ % 16 == 0)
+		node->n = talloc_array(node->parent ? node->parent->n : NULL,
+				       char, node->len);
+	else
+		node->n = talloc_size(node->parent ? node->parent->n : NULL,
+				      node->len);
 	if (node->destructor)
 		talloc_set_destructor(node->n, unused_talloc_destructor);
 	if (node->name)
@@ -169,9 +175,18 @@ static void unused_tal_destructor(void *p)
 static void do_tals(struct node *node)
 {
 	unsigned int i;
+	static int count;
 
-	node->n = tal_arr(node->parent ? node->parent->n : NULL,
-			  char, node->len);
+	/* Tal pays a penalty for arrays, but we can't tell which is an array
+	 * and which isn't.  Grepping samba source gives 1221 talloc_array of
+	 * 33137 talloc occurrences, so conservatively assume 1 in 16 */
+	if (count++ % 16 == 0)
+		node->n = tal_arr(node->parent ? node->parent->n : NULL,
+				  char, node->len);
+	else
+		node->n = tal_alloc_(node->parent ? node->parent->n : NULL,
+				     node->len, false, TAL_LABEL(type, ""));
+
 	if (node->destructor)
 		tal_add_destructor(node->n, unused_tal_destructor);
 	if (node->name)
