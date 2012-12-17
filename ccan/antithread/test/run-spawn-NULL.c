@@ -4,13 +4,14 @@
 
 int main(int argc, char *argv[])
 {
-	struct at_pool *atp;
-	struct athread *at;
+	struct at_pool *pool;
+	struct at_parent *parent;
+	struct at_child *at;
 	int err;
 
-	atp = at_get_pool(&argc, argv, NULL);
-	if (atp) {
-		at_tell_parent(atp, (void *)1UL);
+	parent = at_get_parent(&argc, argv, NULL);
+	if (parent) {
+		at_tell_parent(parent, (void *)1UL);
 		exit(0);
 	}
 	assert(!argv[1]);
@@ -19,16 +20,17 @@ int main(int argc, char *argv[])
 	plan_tests(3);
 	ok1(err == EINVAL);
 
-	atp = at_pool(1*1024*1024);
-	assert(atp);
+	pool = at_new_pool(1*1024*1024);
+	assert(pool);
 
 	/* This should work */
-	at = at_spawn(atp, NULL, argv);
+	at = at_spawn(pool, NULL, argv);
 	ok1(at);
 
 	/* Should read back the magic pointer. */
-	ok1(at_read(at) == (void *)1);
-	talloc_free(at);
+	ok1(at_read_child(at) == (void *)1);
+	tal_free(at);
 
+	tal_cleanup();
 	return exit_status();
 }

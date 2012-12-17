@@ -5,29 +5,31 @@
 int main(int argc, char *argv[])
 {
 	struct at_pool *atp;
-	struct athread *at;
+	struct at_parent *parent;
+	struct at_child *at;
 	int err, *pid;
 	void *arg;
 	char *bad_args[] = { (char *)"/", NULL };
 
-	atp = at_get_pool(&argc, argv, &arg);
-	if (atp) {
+	parent = at_get_parent(&argc, argv, &arg);
+	if (parent) {
 		*(int *)arg = getpid();
-		at_tell_parent(atp, arg);
+		at_tell_parent(parent, arg);
 		exit(0);
 	}
 	assert(!argv[1]);
 
 	err = errno;
-	plan_tests(7);
+	plan_tests(9);
 	ok1(err == EINVAL);
 
-	atp = at_pool(1*1024*1024);
+	atp = at_new_pool(1*1024*1024);
 	assert(atp);
-	pid = talloc(at_pool_ctx(atp), int);
+	ok1(tal_check(NULL, NULL));
+	pid = tal(atp, int);
 	assert(pid);
-	ok1((char *)pid >= (char *)atp->p->pool
-	    && (char *)pid < (char *)atp->p->pool + atp->p->poolsize);
+	ok1((char *)pid >= atp->map && (char *)pid < atp->map + atp->mapsize);
+	ok1(tal_check(NULL, NULL));
 
 	/* This is a failed spawn. */
 	at = at_spawn(atp, pid, bad_args);
@@ -38,11 +40,12 @@ int main(int argc, char *argv[])
 	ok1(at);
 
 	/* Should read back the pid pointer. */
-	ok1(at_read(at) == pid);
-	talloc_free(at);
+	ok1(at_read_child(at) == pid);
+	tal_free(at);
 
 	ok1(*pid != 0);
 	ok1(*pid != getpid());
 
+	tal_cleanup();
 	return exit_status();
 }

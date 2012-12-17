@@ -24,23 +24,24 @@
  * main process and the children: usually pointers into the shared memory.
  *
  * Example:
+ *	// Given 'foo bar' outputs 'sbb one '
  *	#include <ccan/antithread/antithread.h>
- *	#include <ccan/talloc/talloc.h>
+ *	#include <ccan/tal/str/str.h>
  *	#include <ctype.h>
  *	#include <stdlib.h>
  *	#include <stdio.h>
  *	#include <string.h>
  *	
  *	// Silly example: child makes rot13 copy.
- *	static void *rot13(struct at_pool *pool, void *unused)
+ *	static void *rot13(struct at_parent *parent, void *unused)
  *	{
  *		char *r, *p;
- *		while ((r = at_read_parent(pool)) != NULL) {
+ *		while ((r = at_read_parent(parent)) != NULL) {
  *			unsigned int i;
  *			// r is inside pool, so talloc off it is also inside.
- *			p = talloc_array(r, char, strlen(r) + 1);
+ *			p = tal_arr(r, char, strlen(r) + 1);
  *			for (i = 0; r[i]; i++) {
- *				if (!isalpha(r[i]))
+ *				if (!isalpha((unsigned char)r[i]))
  *					p[i] = r[i];
  *				else if (toupper(r[i]) < 'N')
  *					p[i] = r[i] + 13;
@@ -48,7 +49,7 @@
  *					p[i] = r[i] - 13;
  *			}
  *			// Tell parent about our copy.
- *			at_tell_parent(pool, p);
+ *			at_tell_parent(parent, p);
  *		}
  *		return NULL;
  *	}
@@ -58,26 +59,27 @@
  *	int main(int argc, char *argv[])
  *	{
  *		struct at_pool *pool;
- *		struct athread *child[NUM_CHILDREN];
+ *		struct at_child *child[NUM_CHILDREN];
  *		unsigned int i;
  *	
  *		// Create pool and some children
- *		pool = at_pool(1024*1024);
+ *		pool = at_new_pool(1024*1024);
  *		for (i = 0; i < NUM_CHILDREN; i++)
  *			child[i] = at_run(pool, rot13, NULL);
  *	
  *		// Pass out work to children.
  *		for (i = 1; i < argc; i++)
- *			at_tell(child[i % NUM_CHILDREN],
- *				talloc_strdup(at_pool_ctx(pool), argv[i]));
+ *			at_tell_child(child[i % NUM_CHILDREN],
+ *				      tal_strdup(pool, argv[i]));
  *	
  *		// Read back results.
  *		for (i = 1; i < argc; i++)
- *			printf("%s ", (char *)at_read(child[i % NUM_CHILDREN]));
+ *			printf("%s ",
+ *				(char *)at_read_child(child[i % NUM_CHILDREN]));
  *		printf("\n");
  *	
  *		// Freeing pool kills children, too.
- *		talloc_free(pool);
+ *		tal_free(pool);
  *		return 0;
  *	}
  *
@@ -94,8 +96,13 @@ int main(int argc, char *argv[])
 		printf("ccan/err\n");
 		printf("ccan/list\n");
 		printf("ccan/noerr\n");
-		printf("ccan/read_write_all\n"); /* For tests */
-		printf("ccan/talloc\n");
+		printf("ccan/tal\n");
+		printf("ccan/tal/str\n");
+		return 0;
+	}
+
+	if (strcmp(argv[1], "testdepends") == 0) {
+		printf("ccan/read_write_all\n");
 		return 0;
 	}
 

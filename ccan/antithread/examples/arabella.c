@@ -1,10 +1,11 @@
 /* Antithread example to approximate picture with triangles using
  * genetic algorithm.   Example for a 2 cpu system:
- *	./arabella arabella.jpg out out.save 2
+ *	./arabella arabella.jpg out out.save 1000 2
  */
 #include <stdio.h>
 #include <jpeglib.h>
-#include <ccan/talloc/talloc.h>
+#include <ccan/tal/tal.h>
+#include <ccan/tal/str/str.h>
 #include <err.h>
 #include <assert.h>
 #include <limits.h>
@@ -14,6 +15,7 @@
 #include <sys/select.h>
 #include <ccan/str/str.h>
 #include <ccan/antithread/antithread.h>
+#include <ccan/ilog/ilog.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -54,15 +56,15 @@ struct triangle {
 };
 
 /* Get pointer into image at a specific location. */
-static unsigned char *image_at(struct image *image,
+static unsigned char *image_at(const struct image *image,
 			       unsigned int x, unsigned int y)
 {
-	return image->buffer + y * image->stride + x * 3;
+	return (unsigned char *)image->buffer + y * image->stride + x * 3;
 }
 
 /* Blend a dot into this location. */
 static void add_dot(unsigned char *buf,
-		    unsigned char mult, const uint16_t add[])
+		    unsigned int mult, const uint16_t add[])
 {
 	unsigned int c;
 	/* /256 isn't quite right, but it's much faster than /255 */
@@ -153,13 +155,12 @@ static void paint_triangle(struct image *image, const struct triangle *tri)
 static struct image *new_image(const void *ctx,
 			       unsigned width, unsigned height, unsigned stride)
 {
-	struct image *image = talloc(ctx, struct image);
+	struct image *image = tal(ctx, struct image);
 
 	image->width = width;
 	image->height = height;
 	image->stride = stride;
-	image->buffer = talloc_zero_array(image, unsigned char,
-					  stride * height);
+	image->buffer = tal_arrz(image, unsigned char, stride * height);
 	return image;
 }
 
@@ -249,9 +250,9 @@ static unsigned long compare_images(const struct image *a,
 
 	for (i = 0; i < a->height * a->stride; i++) {
 		if (a->buffer[i] > b->buffer[i])
-			result += a->buffer[i] - b->buffer[i];
+			result += ilog32_nz(a->buffer[i] - b->buffer[i]);
 		else
-			result += b->buffer[i] - a->buffer[i];
+			result += ilog32(b->buffer[i] - a->buffer[i]);
 	}
 	return result;
 }
@@ -292,7 +293,7 @@ static void score_drawing(struct drawing *drawing,
 	 * it inside the shared area. */
 	image = image_of_drawing(NULL, drawing, master);
 	drawing->score = compare_images(image, master);
-	talloc_free(image);
+	tal_free(image);
 }
 
 /* Create a new drawing allocated off context (which is the antithread
@@ -301,9 +302,9 @@ static void score_drawing(struct drawing *drawing,
  */
 static struct drawing *new_drawing(const void *ctx, unsigned int num_tris)
 {
-	struct drawing *drawing = talloc_zero(ctx, struct drawing);
+	struct drawing *drawing = talz(ctx, struct drawing);
 	drawing->num_tris = num_tris;
-	drawing->tri = talloc_array(drawing, struct triangle, num_tris);
+	drawing->tri = tal_arr(drawing, struct triangle, num_tris);
 	return drawing;
 }
 
@@ -332,9 +333,13 @@ static void mutate_drawing(struct drawing *drawing,
 			tri->coord[i].y = random() % master->height;
 		}
 	} else {
-		/* Completely change a triangle's colour. */
-		for (i = 0; i < 4; i++)
-			tri->color[i] = random() % 256;
+		unsigned int x, y;
+		/* Correct a triangle's colour, to midpoint color. */
+		x = (tri->coord[0].x + tri->coord[1].x + tri->coord[2].x) / 3;
+		y = (tri->coord[0].y + tri->coord[1].y + tri->coord[2].y) / 3;
+		memcpy(tri->color, image_at(master, x, y), 3);
+		/* Random Alpha */
+		tri->color[3] = random() % 256;
 	}
 	calc_multipliers(tri);
 }
@@ -377,19 +382,19 @@ static struct drawing *breed_drawing(const void *ctx,
 
 /* This is our anti-thread.  It does the time-consuming operation of
  * breeding two drawings together and scoring the result. */
-static void *breeder(struct at_pool *atp, struct image *master)
+static void *breeder(struct at_parent *parent, struct image *master)
 {
 	const struct drawing *a, *b;
 
 	/* For simplicity, controller just hands us two pointers in
 	 * separate writes.  It could put them in the pool for us to
 	 * read. */
-	while ((a = at_read_parent(atp)) != NULL) {
+	while ((a = at_read_parent(parent)) != NULL) {
 		struct drawing *child;
-		b = at_read_parent(atp);
+		b = at_read_parent(parent);
 
-		child = breed_drawing(at_pool_ctx(atp), a, b, master);
-		at_tell_parent(atp, child);
+		child = breed_drawing(parent, a, b, master);
+		at_tell_parent(parent, child);
 	}
 	/* Unused: we never exit. */
 	return NULL;
@@ -403,7 +408,7 @@ static void *breeder(struct at_pool *atp, struct image *master)
  * keep looking in that shared area until they can't see any more
  * work, then they'd at_tell_parent() back. */
 struct athread_work {
-	struct athread *at;
+	struct at_child *at;
 	unsigned int pending;
 };
 
@@ -419,23 +424,23 @@ static unsigned gather_results(struct athread_work *athreads,
 
 	/* If it mattered, we could cache this fd mask and maxfd. */
 	for (i = 0; i < num_threads; i++) {
-		if (at_fd(athreads[i].at) > maxfd)
-			maxfd = at_fd(athreads[i].at);
+		if (at_child_rfd(athreads[i].at) > maxfd)
+			maxfd = at_child_rfd(athreads[i].at);
 	}
 
 	do {
 		fd_set set;
 		FD_ZERO(&set);
 		for (i = 0; i < num_threads; i++)
-			FD_SET(at_fd(athreads[i].at), &set);
+			FD_SET(at_child_rfd(athreads[i].at), &set);
 
 		if (select(maxfd+1, &set, NULL, NULL, block ? NULL : &zero) < 0)
 			err(1, "Selecting on antithread results");
 
 		for (i = 0; i < num_threads; i++) {
-			if (!FD_ISSET(at_fd(athreads[i].at), &set))
+			if (!FD_ISSET(at_child_rfd(athreads[i].at), &set))
 				continue;
-			*drawing = at_read(athreads[i].at);
+			*drawing = at_read_child(athreads[i].at);
 			if (!*drawing)
 				err(1, "Error with thread %u", i);
 			drawing++;
@@ -461,8 +466,8 @@ static void tell_some_breeder(struct athread_work *athreads,
 			best = i;
 	}
 
-	at_tell(athreads[best].at, a);
-	at_tell(athreads[best].at, b);
+	at_tell_child(athreads[best].at, a);
+	at_tell_child(athreads[best].at, b);
 	athreads[best].pending++;
 }
 
@@ -541,7 +546,7 @@ static void dump_drawings(struct drawing **drawing, const char *outname,
 {
 	FILE *out;
 	unsigned int i, j;
-	char *tmpout = talloc_asprintf(NULL, "%s.tmp", outname);
+	char *tmpout = tal_fmt(NULL, "%s.tmp", outname);
 
 	out = fopen(tmpout, "w");
 	if (!out)
@@ -569,7 +574,7 @@ static void dump_drawings(struct drawing **drawing, const char *outname,
 
 	if (rename(tmpout, outname) != 0)
 		err(1, "Renaming %s over %s", tmpout, outname);
-	talloc_free(tmpout);
+	tal_free(tmpout);
 }
 
 /* Save state file. */
@@ -579,13 +584,13 @@ static void dump_state(struct drawing *drawing[POPULATION_SIZE],
 		       const char *outstate,
 		       unsigned int gen)
 {
-	char *out = talloc_asprintf(NULL, "%s.%08u.jpg", outpic, gen);
+	char *out = tal_fmt(NULL, "%s.%08u.jpg", outpic, gen);
 	struct image *image;
 	printf("Dumping gen %u to %s & %s\n", gen, out, outstate);
 	dump_drawings(drawing, outstate, gen);
 	image = image_of_drawing(out, drawing[0], master);
 	write_jpeg_file(image, out, 80);
-	talloc_free(out);
+	tal_free(out);
 }
 
 /* Biassed coinflip moves us towards top performers.  I didn't spend
@@ -594,16 +599,22 @@ static void dump_state(struct drawing *drawing[POPULATION_SIZE],
 static struct drawing *select_good_drawing(struct drawing *drawing[],
 					   unsigned int population)
 {
-	if (population == 1)
+	if (population / 4 == 0)
 		return drawing[0];
 	if (random() % 32)
-		return select_good_drawing(drawing, population/2);
-	return select_good_drawing(drawing + population/2, population/2);
+		return select_good_drawing(drawing, population/4);
+	return select_good_drawing(drawing, population);
 }
 
 static void usage(void)
 {
 	errx(1, "usage: <infile> <outfile> <statefile> <numtriangles> <numcpus> [<instatefile>]");
+}
+
+static struct at_pool *atp;
+static void free_pool(void)
+{
+	tal_free(atp);
 }
 
 int main(int argc, char *argv[])
@@ -612,7 +623,6 @@ int main(int argc, char *argv[])
 	unsigned int gen, since_prev_best, num_threads, i;
 	struct drawing *drawing[POPULATION_SIZE];
 	unsigned long prev_best, poolsize;
-	struct at_pool *atp;
 	struct athread_work *athreads;
 
 	if (argc != 6 && argc != 7)
@@ -623,21 +633,21 @@ int main(int argc, char *argv[])
 	 * more precise than "about 3MB".  ccan/alloc also needs some 
 	 * more work to be more efficient. */
 	poolsize = (POPULATION_SIZE + POPULATION_SIZE/4) * (sizeof(struct drawing) + atoi(argv[4]) * sizeof(struct triangle)) * 2 + 1000 * 1000 * 3;
-	atp = at_pool(poolsize);
+	atp = at_new_pool(poolsize);
 	if (!atp)
 		err(1, "Creating pool of %lu bytes", poolsize);
 
 	/* Auto-free the pool and anything hanging off it (eg. threads). */
-	talloc_steal(talloc_autofree_context(), atp);
+	atexit(free_pool);
 
 	/* Read in file */
-	master = read_jpeg_file(at_pool_ctx(atp), argv[1]);
+	master = read_jpeg_file(atp, argv[1]);
 
 	if (argc == 6) {
 		printf("Creating initial population");
 		fflush(stdout);
 		for (i = 0; i < POPULATION_SIZE; i++) {
-			drawing[i] = random_drawing(at_pool_ctx(atp),
+			drawing[i] = random_drawing(atp,
 						    master, atoi(argv[4]));
 			printf(".");
 			fflush(stdout);
@@ -655,7 +665,7 @@ int main(int argc, char *argv[])
 		printf("Loading initial population from %s: %s", argv[6],
 			header);
 		for (i = 0; i < POPULATION_SIZE; i++) {
-			drawing[i] = read_drawing(at_pool_ctx(atp),
+			drawing[i] = read_drawing(atp,
 						  state, master, &gen);
 			gen++;	/* We start working on the _next_ gen */
 			printf(".");
@@ -668,7 +678,7 @@ int main(int argc, char *argv[])
 		usage();
 
 	/* Hang the threads off the pool (not *in* the pool). */
-	athreads = talloc_array(atp, struct athread_work, num_threads);
+	athreads = tal_arr(atp, struct athread_work, num_threads);
 	for (i = 0; i < num_threads; i++) {
 		athreads[i].pending = 0;
 		athreads[i].at = at_run(atp, breeder, master);
@@ -711,7 +721,7 @@ int main(int argc, char *argv[])
 
 		/* Overwrite bottom 1/4 */
 		for (j = POPULATION_SIZE * 3 / 4; j < POPULATION_SIZE; j++) {
-			talloc_free(drawing[j]);
+			tal_free(drawing[j]);
 			drawing[j] = new[j - POPULATION_SIZE * 3 / 4];
 		}
 
