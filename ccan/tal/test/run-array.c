@@ -42,5 +42,6 @@ int main(void)
 	ok1(tal_first(parent) == NULL);
 	tal_free(parent);
 
+	tal_cleanup();
 	return exit_status();
 }

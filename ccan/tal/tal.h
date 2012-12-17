@@ -327,6 +327,17 @@ void tal_set_backend(void *(*alloc_fn)(size_t size),
 	tal_expand_((void **)(a1p), (a2), sizeof**(a1p),	\
 		    (num2) + 0*sizeof(*(a1p) == (a2)))
 
+/**
+ * tal_cleanup - remove pointers from NULL node
+ *
+ * Internally, tal keeps a list of nodes allocated from @ctx NULL; this
+ * prevents valgrind from noticing memory leaks.  This re-initializes
+ * that list to empty.
+ *
+ * It also calls take_cleanup() for you.
+ */
+void tal_cleanup(void);
+
 
 /**
  * tal_check - set the allocation or error functions to use

@@ -42,5 +42,7 @@ int main(void)
 
 	/* We can expect some residue from having any child, but limited! */
 	ok1(num_allocated <= allocated_after_first);
+	tal_free(p);
+	tal_cleanup();
 	return exit_status();
 }

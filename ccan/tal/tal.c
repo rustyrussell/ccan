@@ -76,7 +76,6 @@ static void *(*allocfn)(size_t size) = malloc;
 static void *(*resizefn)(void *, size_t size) = realloc;
 static void (*freefn)(void *) = free;
 static void (*errorfn)(const char *msg) = (void *)abort;
-static bool initialized = false;
 /* Count on non-destrutor notifiers; often stays zero. */
 static size_t notifiers = 0;
 
@@ -101,21 +100,17 @@ static struct children *ignore_destroying_bit(struct children *parent_child)
 }
 
 /* This means valgrind can see leaks. */
-static void tal_cleanup(void)
+void tal_cleanup(void)
 {
 	struct tal_hdr *i;
 
-	while ((i = list_top(&null_parent.c.children, struct tal_hdr, list)))
+	while ((i = list_top(&null_parent.c.children, struct tal_hdr, list))) {
 		list_del(&i->list);
+		memset(i, 0, sizeof(*i));
+	}
 
 	/* Cleanup any taken pointers. */
 	take_cleanup();
-}
-
-/* For allocation failures inside ccan/take */
-static void take_alloc_failed(const void *p)
-{
-	tal_free(p);
 }
 
 /* We carefully start all real properties with a zero byte. */
@@ -344,11 +339,6 @@ static bool add_child(struct tal_hdr *parent, struct tal_hdr *child)
 	struct children *children = find_property(parent, CHILDREN);
 
         if (!children) {
-		if (unlikely(!initialized)) {
-			atexit(tal_cleanup);
-			take_allocfail(take_alloc_failed);
-			initialized = true;
-		}
 		children = add_child_property(parent, child);
 		if (!children)
 			return false;

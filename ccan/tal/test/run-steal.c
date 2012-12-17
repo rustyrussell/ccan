@@ -36,5 +36,6 @@ int main(void)
 	ok1(tal_parent(p[4]) == p[0]);
 	tal_free(p[0]);
 
+	tal_cleanup();
 	return exit_status();
 }

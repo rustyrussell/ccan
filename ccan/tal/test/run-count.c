@@ -82,5 +82,7 @@ int main(void)
 		tal_free(p2);
 		tal_free(p1);
 	}
+
+	tal_cleanup();
 	return exit_status();
 }

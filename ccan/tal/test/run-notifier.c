@@ -126,5 +126,6 @@ int main(void)
 	tal_del_notifier(new_ctx, resize_notifier);
 	tal_free(new_ctx);
 
+	tal_cleanup();
 	return exit_status();
 }

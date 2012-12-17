@@ -29,5 +29,6 @@ int main(void)
 		ok1(*p[i] == '1');
 		tal_free(p[i]);
 	}
+	tal_cleanup();
 	return exit_status();
 }

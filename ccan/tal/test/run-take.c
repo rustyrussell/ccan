@@ -52,5 +52,6 @@ int main(void)
 	ok1(tal_dup(NULL, char, take(c), 5, 5) == NULL);
 	ok1(!taken_any());
 
+	tal_cleanup();
 	return exit_status();
 }

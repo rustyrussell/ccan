@@ -75,5 +75,6 @@ int main(void)
 	/* Finally, free the parent. */
 	tal_free(p);
 
+	tal_cleanup();
 	return exit_status();
 }

@@ -148,5 +148,6 @@ int main(void)
 	ok1(err_count == when_to_fail - 1);
 
 	tal_free(p);
+	tal_cleanup();
 	return exit_status();
 }

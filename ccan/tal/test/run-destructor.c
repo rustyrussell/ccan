@@ -63,5 +63,6 @@ int main(void)
 	tal_free(parent);
 	ok1(destroy_count == 4);
 
+	tal_cleanup();
 	return exit_status();
 }

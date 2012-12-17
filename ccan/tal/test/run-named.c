@@ -29,5 +29,6 @@ int main(void)
 	ok1(strcmp(tal_name(p), "int[]") == 0);
 	tal_free(p);
 
+	tal_cleanup();
 	return exit_status();
 }

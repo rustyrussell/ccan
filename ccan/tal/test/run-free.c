@@ -21,5 +21,6 @@ int main(void)
 	tal_free(p);
 	ok1(errno == EINVAL);
 
+	tal_cleanup();
 	return exit_status();
 }

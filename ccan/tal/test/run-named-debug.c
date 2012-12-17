@@ -30,5 +30,6 @@ int main(void)
 	ok1(strcmp(tal_name(p), __FILE__ ":29:int[]") == 0);
 	tal_free(p);
 
+	tal_cleanup();
 	return exit_status();
 }

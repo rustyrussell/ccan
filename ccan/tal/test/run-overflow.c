@@ -94,5 +94,6 @@ int main(void)
 	ok1(error_count == 3);
 	tal_free(origpi);
 
+	tal_cleanup();
 	return exit_status();
 }
