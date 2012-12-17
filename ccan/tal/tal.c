@@ -3,6 +3,7 @@
 #include <ccan/compiler/compiler.h>
 #include <ccan/list/list.h>
 #include <ccan/take/take.h>
+#include <ccan/alignof/alignof.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stddef.h>
@@ -326,18 +327,6 @@ static struct name *add_name_property(struct tal_hdr *t, const char *name)
 	return prop;
 }
 
-static struct length *add_length_property(struct tal_hdr *t, size_t count)
-{
-	struct length *prop;
-
-	prop = allocate(sizeof(*prop));
-	if (prop) {
-		init_property(&prop->hdr, t, LENGTH);
-		prop->count = count;
-	}
-	return prop;
-}
-
 static struct children *add_child_property(struct tal_hdr *parent,
 					   struct tal_hdr *child)
 {
@@ -397,7 +386,9 @@ static void del_tree(struct tal_hdr *t, const tal_t *orig)
         /* Finally free our properties. */
         for (p = t->prop; p && !is_literal(p); p = next) {
                 next = p->next;
-		freefn(p);
+		/* LENGTH is appended, so don't free separately! */
+		if (p->type != LENGTH)
+			freefn(p);
         }
         freefn(t);
 }
@@ -424,19 +415,32 @@ void *tal_alloc_(const tal_t *ctx, size_t size, bool clear, const char *label)
 
 static bool adjust_size(size_t *size, size_t count)
 {
+	const size_t extra = sizeof(struct tal_hdr) + sizeof(struct length)*2;
+
 	/* Multiplication wrap */
         if (count && unlikely(*size * count / *size != count))
 		goto overflow;
 
         *size *= count;
 
-        /* Make sure we don't wrap adding header. */
-        if (*size + sizeof(struct tal_hdr) < sizeof(struct tal_hdr))
+        /* Make sure we don't wrap adding header/tailer. */
+        if (*size + extra < extra)
 		goto overflow;
 	return true;
 overflow:
 	call_error("allocation size overflow");
 	return false;
+}
+
+static size_t extra_for_length(size_t size)
+{
+	size_t extra;
+	const size_t align = ALIGNOF(struct length);
+
+	/* Round up size, and add tailer. */
+	extra = ((size + align-1) & ~(align-1)) - size;
+	extra += sizeof(struct length);
+	return extra;
 }
 
 void *tal_alloc_arr_(const tal_t *ctx, size_t size, size_t count, bool clear,
@@ -447,10 +451,18 @@ void *tal_alloc_arr_(const tal_t *ctx, size_t size, size_t count, bool clear,
 	if (!adjust_size(&size, count))
 		return NULL;
 
+	if (add_count)
+		size += extra_for_length(size);
+
 	ret = tal_alloc_(ctx, size, clear, label);
-	if (likely(ret) && add_count) {
-		if (unlikely(!add_length_property(to_tal_hdr(ret), count)))
-			ret = tal_free(ret);
+	if (unlikely(!ret))
+		return ret;
+
+	if (add_count) {
+		struct length *lprop;
+		lprop = (struct length *)((char *)ret + size) - 1;
+		init_property(&lprop->hdr, to_tal_hdr(ret), LENGTH);
+		lprop->count = count;
 	}
 	return ret;
 }
@@ -672,26 +684,49 @@ bool tal_resize_(tal_t **ctxp, size_t size, size_t count)
 {
         struct tal_hdr *old_t, *t;
         struct children *child;
-	struct length *len;
+	struct prop_hdr **lenp;
+	struct length len;
+	size_t extra = 0;
 
         old_t = debug_tal(to_tal_hdr(*ctxp));
 
 	if (!adjust_size(&size, count))
 		return false;
 
-        t = resizefn(old_t, size + sizeof(struct tal_hdr));
+	lenp = find_property_ptr(old_t, LENGTH);
+	if (lenp) {
+		/* Copy here, in case we're shrinking! */
+		len = *(struct length *)*lenp;
+		extra = extra_for_length(size);
+	}
+
+        t = resizefn(old_t, sizeof(struct tal_hdr) + size + extra);
 	if (!t) {
 		call_error("Reallocation failure");
 		return false;
 	}
 
+	/* Copy length to end. */
+	if (lenp) {
+		struct length *new_len;
+
+		new_len = (struct length *)((char *)(t + 1) + size);
+		len.count = count;
+		*new_len = len;
+
+		/* Be careful replacing next ptr; could be old hdr. */
+		if (lenp == &old_t->prop)
+			t->prop = &new_len->hdr;
+		else
+			*lenp = &new_len->hdr;
+	}
+
+	update_bounds(t, sizeof(struct tal_hdr) + size + extra);
+
 	/* If it didn't move, we're done! */
         if (t != old_t) {
-		update_bounds(t, size + sizeof(struct tal_hdr));
-
 		/* Fix up linked list pointers. */
-		if (list_entry(t->list.next, struct tal_hdr, list) != old_t)
-			t->list.next->prev = t->list.prev->next = &t->list;
+		t->list.next->prev = t->list.prev->next = &t->list;
 
 		/* Fix up child property's parent pointer. */
 		child = find_property(t, CHILDREN);
@@ -703,9 +738,6 @@ bool tal_resize_(tal_t **ctxp, size_t size, size_t count)
 		if (notifiers)
 			notify(t, TAL_NOTIFY_MOVE, from_tal_hdr(old_t));
 	}
-	len = find_property(t, LENGTH);
-	if (len)
-		len->count = count;
 	if (notifiers)
 		notify(t, TAL_NOTIFY_RESIZE, (void *)size);
 
@@ -715,26 +747,26 @@ bool tal_resize_(tal_t **ctxp, size_t size, size_t count)
 bool tal_expand_(tal_t **ctxp, const void *src, size_t size, size_t count)
 {
 	struct length *l;
+	size_t old_count;
 	bool ret = false;
 
 	l = find_property(debug_tal(to_tal_hdr(*ctxp)), LENGTH);
+	old_count = l->count;
 
 	/* Check for additive overflow */
-	if (l->count + count < count) {
+	if (old_count + count < count) {
 		call_error("dup size overflow");
 		goto out;
 	}
 
 	/* Don't point src inside thing we're expanding! */
 	assert(src < *ctxp
-	       || (char *)src >= (char *)(*ctxp) + (size * l->count));
+	       || (char *)src >= (char *)(*ctxp) + (size * old_count));
 
-	/* Note: updates l->count. */
-	if (!tal_resize_(ctxp, size, l->count + count))
+	if (!tal_resize_(ctxp, size, old_count + count))
 		goto out;
 
-	memcpy((char *)*ctxp + size * (l->count - count),
-	       src, count * size);
+	memcpy((char *)*ctxp + size * old_count, src, count * size);
 	ret = true;
 
 out:
