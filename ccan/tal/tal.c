@@ -79,6 +79,27 @@ static void (*errorfn)(const char *msg) = (void *)abort;
 /* Count on non-destrutor notifiers; often stays zero. */
 static size_t notifiers = 0;
 
+static const void *shared_start = NULL, *shared_end = NULL;
+static void *shared_priv;
+static void *(*shared_allocfn)(size_t size, void *priv);
+static void *(*shared_resizefn)(void *, size_t size, void *priv);
+static void (*shared_freefn)(void *, void *priv);
+static void (*shared_lockfn)(const tal_t *ctx, void *priv);
+static void (*shared_unlockfn)(const tal_t *ctx, void *priv);
+
+static bool is_shared(const void *ptr)
+{
+	return ptr < shared_end && ptr >= shared_start;
+}
+
+static void free_obj(void *ptr)
+{
+	if (is_shared(ptr))
+		shared_freefn(ptr, shared_priv);
+	else
+		freefn(ptr);
+}
+
 static inline void COLD call_error(const char *msg)
 {
 	errorfn(msg);
@@ -137,7 +158,8 @@ static bool in_bounds(const void *p)
 {
 	return !p
 		|| (p >= (void *)&null_parent && p <= (void *)(&null_parent + 1))
-		|| (p >= bounds_start && p <= bounds_end);
+		|| (p >= bounds_start && p <= bounds_end)
+		|| is_shared(p);
 }
 #else
 static void update_bounds(const void *new, size_t size)
@@ -225,13 +247,19 @@ static void notify(const struct tal_hdr *ctx,
 	}
 }
 
-static void *allocate(size_t size)
+static void *allocate(size_t size, const void *where)
 {
-	void *ret = allocfn(size);
+	void *ret;
+
+	if (is_shared(where))
+		ret = shared_allocfn(size, shared_priv);
+	else {
+		ret = allocfn(size);
+		if (likely(ret))
+			update_bounds(ret, size);
+	}
 	if (!ret)
 		call_error("allocation failed");
-	else
-		update_bounds(ret, size);
 	return ret;
 }
 
@@ -276,7 +304,7 @@ static struct notifier *add_notifier_property(struct tal_hdr *t,
 							 enum tal_notify_type,
 							 void *))
 {
-	struct notifier *prop = allocate(sizeof(*prop));
+	struct notifier *prop = allocate(sizeof(*prop), t);
 	if (prop) {
 		init_property(&prop->hdr, t, NOTIFIER);
 		prop->types = types;
@@ -303,7 +331,7 @@ static enum tal_notify_type del_notifier_property(struct tal_hdr *t,
 		if (n->u.notifyfn == fn) {
 			enum tal_notify_type types = n->types;
 			*p = (*p)->next;
-			freefn(n);
+			free_obj(n);
 			return types & ~NOTIFY_IS_DESTRUCTOR;
 		}
         }
@@ -314,7 +342,7 @@ static struct name *add_name_property(struct tal_hdr *t, const char *name)
 {
 	struct name *prop;
 
-	prop = allocate(sizeof(*prop) + strlen(name) + 1);
+	prop = allocate(sizeof(*prop) + strlen(name) + 1, t);
 	if (prop) {
 		init_property(&prop->hdr, t, NAME);
 		strcpy(prop->name, name);
@@ -322,10 +350,9 @@ static struct name *add_name_property(struct tal_hdr *t, const char *name)
 	return prop;
 }
 
-static struct children *add_child_property(struct tal_hdr *parent,
-					   struct tal_hdr *child)
+static struct children *add_child_property(struct tal_hdr *parent)
 {
-	struct children *prop = allocate(sizeof(*prop));
+	struct children *prop = allocate(sizeof(*prop), parent);
 	if (prop) {
 		init_property(&prop->hdr, parent, CHILDREN);
 		prop->parent = parent;
@@ -336,16 +363,27 @@ static struct children *add_child_property(struct tal_hdr *parent,
 
 static bool add_child(struct tal_hdr *parent, struct tal_hdr *child)
 {
-	struct children *children = find_property(parent, CHILDREN);
+	struct children *children;
+	bool ret;
 
+	if (is_shared(parent))
+		shared_lockfn(from_tal_hdr(parent), shared_priv);
+
+	children = find_property(parent, CHILDREN);
         if (!children) {
-		children = add_child_property(parent, child);
-		if (!children)
-			return false;
+		children = add_child_property(parent);
+		if (!children) {
+			ret = false;
+			goto out;
+		}
 	}
 	list_add(&children->children, &child->list);
 	child->parent_child = children;
-	return true;
+	ret = true;
+out:
+	if (is_shared(parent))
+		shared_unlockfn(from_tal_hdr(parent), shared_priv);
+	return ret;
 }
 
 static void del_tree(struct tal_hdr *t, const tal_t *orig)
@@ -374,27 +412,39 @@ static void del_tree(struct tal_hdr *t, const tal_t *orig)
 	}
 
         /* Finally free our properties. */
-        for (p = t->prop; p && !is_literal(p); p = next) {
-                next = p->next;
-		/* LENGTH is appended, so don't free separately! */
-		if (p->type != LENGTH)
-			freefn(p);
+	if (is_shared(t)) {
+		for (p = t->prop; p && !is_literal(p); p = next) {
+			next = p->next;
+			/* LENGTH is appended, so don't free separately! */
+			if (p->type != LENGTH) {
+				shared_freefn(p, shared_priv);
+			}
+		}
+		shared_freefn(t, shared_priv);
+	} else {
+		for (p = t->prop; p && !is_literal(p); p = next) {
+			next = p->next;
+			/* LENGTH is appended, so don't free separately! */
+			if (p->type != LENGTH) {
+				freefn(p);
+			}
+		}
+		freefn(t);
         }
-        freefn(t);
 }
 
 void *tal_alloc_(const tal_t *ctx, size_t size, bool clear, const char *label)
 {
         struct tal_hdr *child, *parent = debug_tal(to_tal_hdr_or_null(ctx));
 
-        child = allocate(sizeof(struct tal_hdr) + size);
+        child = allocate(sizeof(struct tal_hdr) + size, ctx);
 	if (!child)
 		return NULL;
 	if (clear)
 		memset(from_tal_hdr(child), 0, size);
         child->prop = (void *)label;
-        if (!add_child(parent, child)) {
-		freefn(child);
+        if (unlikely(!add_child(parent, child))) {
+		free_obj(child);
 		return NULL;
 	}
 	debug_tal(parent);
@@ -457,6 +507,22 @@ void *tal_alloc_arr_(const tal_t *ctx, size_t size, size_t count, bool clear,
 	return ret;
 }
 
+static void unlink(struct tal_hdr *t, tal_t *parent)
+{
+	/* This assumes that unshared children don't have shared parents! */
+	if (is_shared(t)) {
+		if (!parent)
+			parent = from_tal_hdr(ignore_destroying_bit(t->parent_child)
+					      ->parent);
+		if (is_shared(parent))
+			shared_lockfn(parent, shared_priv);
+		list_del(&t->list);
+		if (is_shared(parent))
+			shared_unlockfn(parent, shared_priv);
+	} else
+		list_del(&t->list);
+}
+
 void *tal_free(const tal_t *ctx)
 {
         if (ctx) {
@@ -466,7 +532,7 @@ void *tal_free(const tal_t *ctx)
 		if (notifiers)
 			notify(ignore_destroying_bit(t->parent_child)->parent,
 			       TAL_NOTIFY_DEL_CHILD, ctx);
-		list_del(&t->list);
+		unlink(t, NULL);
 		del_tree(t, ctx);
 		errno = saved_errno;
 	}
@@ -482,8 +548,8 @@ void *tal_steal_(const tal_t *new_parent, const tal_t *ctx)
                 t = debug_tal(to_tal_hdr(ctx));
 
                 /* Unlink it from old parent. */
-		list_del(&t->list);
 		old_parent = ignore_destroying_bit(t->parent_child)->parent;
+		unlink(t, old_parent);
 
                 if (unlikely(!add_child(newpar, t))) {
 			/* We can always add to old parent, becuase it has a
@@ -566,7 +632,7 @@ bool tal_set_name_(tal_t *ctx, const char *name, bool literal)
                         *prop = NULL;
                 else {
                         *prop = name->hdr.next;
-			freefn(name);
+			free_obj(name);
                 }
         }
 
@@ -676,6 +742,7 @@ bool tal_resize_(tal_t **ctxp, size_t size, size_t count)
         struct children *child;
 	struct prop_hdr **lenp;
 	struct length len;
+	struct tal_hdr *parent;
 	size_t extra = 0;
 
         old_t = debug_tal(to_tal_hdr(*ctxp));
@@ -690,10 +757,24 @@ bool tal_resize_(tal_t **ctxp, size_t size, size_t count)
 		extra = extra_for_length(size);
 	}
 
-        t = resizefn(old_t, sizeof(struct tal_hdr) + size + extra);
-	if (!t) {
-		call_error("Reallocation failure");
-		return false;
+	if (is_shared(old_t)) {
+		parent = ignore_destroying_bit(old_t->parent_child)->parent;
+		shared_lockfn(from_tal_hdr(parent), shared_priv);
+		t = shared_resizefn(old_t,
+				    size + sizeof(struct tal_hdr) + extra,
+				    shared_priv);
+		if (!t) {
+			shared_unlockfn(from_tal_hdr(parent), shared_priv);
+			call_error("Reallocation failure");
+			return false;
+		}
+	} else {
+		parent = NULL;
+		t = resizefn(old_t, size + sizeof(struct tal_hdr) + extra);
+		if (!t) {
+			call_error("Reallocation failure");
+			return false;
+		}
 	}
 
 	/* Copy length to end. */
@@ -730,6 +811,8 @@ bool tal_resize_(tal_t **ctxp, size_t size, size_t count)
 	}
 	if (notifiers)
 		notify(t, TAL_NOTIFY_RESIZE, (void *)size);
+	if (parent)
+		shared_unlockfn(from_tal_hdr(parent), shared_priv);
 
 	return true;
 }
@@ -815,6 +898,47 @@ void tal_set_backend(void *(*alloc_fn)(size_t size),
 		freefn = free_fn;
 	if (error_fn)
 		errorfn = error_fn;
+}
+
+void *tal_shared_init_(size_t len,
+		       void *(*alloc_fn)(size_t size, void *alloc_priv),
+		       void *alloc_priv)
+{
+	struct tal_hdr *t;
+
+	assert(!shared_start);
+
+        t = alloc_fn(sizeof(struct tal_hdr) + len, alloc_priv);
+	if (!t) {
+		call_error("tal_shared allocation failed");
+		return NULL;
+	}
+
+	t->prop = NULL;
+	/* Like, I am your father... */
+	t->parent_child = &null_parent.c;
+	/* This solves the case where we list_del() on free. */
+	t->list.next = t->list.prev = &t->list;
+
+	return from_tal_hdr(t);
+}
+
+void tal_set_shared_(const void *start, size_t size,
+		     void *(*alloc_fn)(size_t size, void *priv),
+		     void *(*resize_fn)(void *, size_t size, void *priv),
+		     void (*free_fn)(void *, void *priv),
+		     void (*lock)(const tal_t *ctx, void *priv),
+		     void (*unlock)(const tal_t *ctx, void *priv),
+		     void *priv)
+{
+	shared_start = start;
+	shared_end = (const char *)start + size;
+	shared_allocfn = alloc_fn;
+	shared_resizefn = resize_fn;
+	shared_freefn = free_fn;
+	shared_lockfn = lock;
+	shared_unlockfn = unlock;
+	shared_priv = priv;
 }
 
 #ifdef CCAN_TAL_DEBUG
@@ -908,6 +1032,13 @@ static bool check_node(struct children *parent_child,
 
 	if (ignore_destroying_bit(t->parent_child) != parent_child)
 		return check_err(t, errorstr, "incorrect parent");
+
+	if (parent_child && t == parent_child->parent) {
+		/* Shared top node can self-parent. */
+		if (is_shared(t))
+			return true;
+		return check_err(t, errorstr, "we are our own parent");
+	}
 
 	for (p = t->prop; p; p = p->next) {
 		if (is_literal(p)) {

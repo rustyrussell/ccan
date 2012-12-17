@@ -350,6 +350,69 @@ void tal_cleanup(void);
  */
 bool tal_check(const tal_t *ctx, const char *errorstr);
 
+/**
+ * tal_shared_init - setup a region of memory which is shared.
+ * @len: length to allocate for head tal node inside region.
+ * @alloc_fn: allocator for within shared region.
+ * @alloc_priv: initial extra argument for @alloc_fn (whose type should match).
+ *
+ * This function exists for supporting tal within shared memory (ie. for
+ * ccan/antithread).
+ *
+ * This function forces a node of length @len to be allocated using
+ * @alloc_fn and @alloc_priv, in preparation for setting up a shared
+ * region.  This node's parent will be NULL, but since it's in shared
+ * memory it will not be referenced by the NULL node (ie. tal_check and
+ * tal_first/tal_next will never reach it), as this view would be
+ * incorrect for other processes.
+ *
+ * You can currently only have one shared area; calling tal_shared_init
+ * twice will fail an assertion.
+ */
+#define tal_shared_init(len, alloc_fn, alloc_priv)			\
+	tal_shared_init_((len),						\
+			 typesafe_cb_preargs(void *, void *, alloc_fn,	\
+					     (alloc_priv), size_t),	\
+			 (alloc_priv))
+
+/**
+ * tal_set_shared - tell tal of a region of memory which is shared.
+ * @start: first address in shared region
+ * @size: length of shared region
+ * @alloc_fn: allocator for within shared region.
+ * @resize_fn: re-allocator for within shared region.
+ * @free_fn: free function for within shared region.
+ * @lock_fn: function to lock objects within shared region.
+ * @unlock_fn: function to unlock objects within shared region.
+ * @priv: extra argument for functions (whose type should match).
+ *
+ * This function lets you mark a region of memory from @start to @start + @size
+ * as shared memory; if you tal off a context within this region, the
+ * @alloc_fn allocator will be used instead of the normal one.
+ *
+ * @lock_fn and @unlock_fn are called when we alter a node within the
+ * shared region.  This only protects against races with *different*
+ * nodes, thus it locks the parent of the node being added or removed.
+ * If you want to perform tal_steal() or tal_set_name() on the same
+ * node in parallel, you need to perform your own locking!
+ *
+ * @lock_fn and @unlock_fn calls will always match, and never nest.
+ */
+#define tal_set_shared(start, size,					\
+		       alloc_fn, resize_fn, free_fn, lock_fn, unlock_fn, priv) \
+	tal_set_shared_((start), (size),				\
+			typesafe_cb_preargs(void *, void *, alloc_fn,	\
+					    (priv), size_t),		\
+			typesafe_cb_preargs(void *, void *, resize_fn,	\
+					    (priv), void *, size_t),	\
+			typesafe_cb_preargs(void, void *, free_fn,	\
+					    (priv), void *),		\
+			typesafe_cb_preargs(void, void *, lock_fn,	\
+					    (priv), const tal_t *),	\
+			typesafe_cb_preargs(void, void *, unlock_fn,	\
+					    (priv), const tal_t *),	\
+			(priv))
+
 #ifdef CCAN_TAL_DEBUG
 /**
  * tal_dump - dump entire tal tree.
@@ -418,4 +481,14 @@ bool tal_add_notifier_(const tal_t *ctx, enum tal_notify_type types,
 bool tal_del_notifier_(const tal_t *ctx,
 		       void (*notify)(tal_t *ctx, enum tal_notify_type,
 				      void *info));
+tal_t *tal_shared_init_(size_t len,
+			void *(*alloc_fn)(size_t size, void *alloc_priv),
+			void *alloc_priv);
+void tal_set_shared_(const void *start, size_t size,
+		     void *(*alloc_fn)(size_t size, void *priv),
+		     void *(*resize_fn)(void *, size_t size, void *priv),
+		     void (*free_fn)(void *, void *priv),
+		     void (*lock)(const tal_t *ctx, void *priv),
+		     void (*unlock)(const tal_t *ctx, void *priv),
+		     void *priv);
 #endif /* CCAN_TAL_H */
