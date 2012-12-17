@@ -1,0 +1,59 @@
+/**
+ * qc - A C port of the QuickCheck unit test framework
+ *
+ * QuickCheck approaches the problem of program correctness by
+ * testing properties. An example of a property would be a
+ * function is_even(int) which returns true if an integer is even
+ * and false otherwise. QuickCheck is good at throwing a hundred
+ * random test cases at a property. If the property fails to hold
+ * for some input, QuickCheck halts and prints the offending values.
+ *
+ * Andrew Pennebaker <andrew.pennebaker@gmail.com>
+ *
+ * Example:
+ *
+ * $ make
+ * $ ./example 
+ * +++ OK, passed 100 tests.
+ * *** Failed!
+ * 453045430
+ * *** Failed!
+ * 1505013395
+ * 1697735399
+ * 223633304
+ * *** Failed!
+ * '4'
+ * 4
+ * *** Failed!
+ * ff<GC"z<z #9_zN 1.>w`Uhl~M~; >FTWjt{qQ+0Iek~
+ *
+ */
+
+#include <stdio.h>
+#include <string.h>
+
+void depends() {
+	printf("Boehm GC\n");
+}
+
+void libs() {
+	printf("gc\n");
+}
+
+int main() {
+	if (argc > 1) {
+		if (strcmp(argv[1], "depends") == 0) {
+			depends();
+			exit(0);
+		}
+		else if (strcmp(argv[1], "libs") == 0) {
+			libs();
+			exit(0);
+		}
+		else {
+			exit(1);
+		}
+	}
+
+	return 0;
+}
