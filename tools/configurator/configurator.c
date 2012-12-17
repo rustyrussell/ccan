@@ -179,6 +179,14 @@ static struct test tests[] = {
 	  "return 1;" },
 	{ "HAVE_FLEXIBLE_ARRAY_MEMBER", OUTSIDE_MAIN, NULL, NULL,
 	  "struct foo { unsigned int x; int arr[]; };" },
+	{ "HAVE_GCC_ATOMICS", DEFINES_FUNC, NULL, NULL,
+	  "static int func(int *p) {\n"
+	  "	int x;\n"
+	  "	__atomic_store_n(p, 0, __ATOMIC_SEQ_CST);\n"
+	  "	x = __atomic_load_n(p, __ATOMIC_RELAXED);\n"
+	  "	__atomic_add_fetch(p, x, __ATOMIC_SEQ_CST);\n"
+	  "	return x;\n"
+	  "}\n" },
 	{ "HAVE_GETPAGESIZE", DEFINES_FUNC, NULL, NULL,
 	  "#include <unistd.h>\n"
 	  "static int func(void) { return getpagesize(); }" },
