@@ -1,0 +1,27 @@
+#include <stdio.h>
+#include <string.h>
+#include "config.h"
+
+/**
+ * antithread/queue - queues for antithreads.
+ *
+ * This is a simple ordered queue of pointers for antithreads.  It's simply
+ * a demonstration at this point, as it doesn't block but merely spins.
+ *
+ * License: BSD-MIT
+ * Author: Rusty Russell <rusty@rustcorp.com.au>
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		return 0;
+	}
+	if (strcmp(argv[1], "testdepends") == 0) {
+		printf("ccan/antithread\n");
+		return 0;
+	}
+	return 1;
+}
