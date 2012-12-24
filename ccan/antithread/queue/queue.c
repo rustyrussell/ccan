@@ -39,20 +39,10 @@ static void atomic_dec(unsigned int *val, int memmodel)
 }
 
 static bool compare_and_swap(unsigned int *ptr,
-			     unsigned int old, unsigned int new)
+			     unsigned int old, unsigned int new, int memmodel)
 {
 	return __atomic_compare_exchange_n(ptr, &old, new, false,
-					   __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
-}
-
-static void lock(unsigned int *lptr)
-{
-	while (__atomic_test_and_set(lptr, __ATOMIC_ACQUIRE));
-}
-
-static void unlock(unsigned int *lptr)
-{
-	__atomic_clear(lptr, __ATOMIC_RELEASE);
+					   memmodel, memmodel);
 }
 #else
 #undef __ATOMIC_SEQ_CST
@@ -122,7 +112,8 @@ static void atomic_dec(unsigned int *val, bool barrier)
 }
 
 static bool compare_and_swap(unsigned int *ptr,
-			     unsigned int old, unsigned int new)
+			     unsigned int old, unsigned int new,
+			     int memmodel)
 {
 #ifdef __i386__
 	unsigned int prev;
@@ -133,16 +124,6 @@ static bool compare_and_swap(unsigned int *ptr,
 #else
 #error implement compare_and_swap
 #endif
-}
-
-static void lock(unsigned int *lptr)
-{
-	while (!compare_and_swap(lptr, 0, 1));
-}
-
-static void unlock(unsigned int *lptr)
-{
-	store_once(lptr, 0, __ATOMIC_RELEASE);
 }
 #endif /* ! GCC 4.7 or above */
 
@@ -176,19 +157,19 @@ void queue_insert_excl(struct queue *q, void *elem)
 
 	h = read_once(&q->head, __ATOMIC_RELAXED);
 	t = read_once(&q->tail, __ATOMIC_RELAXED);
+	assert(!(h & 1));
 
-	if (h == t + QUEUE_ELEMS) {
+	if (h == t + QUEUE_ELEMS * 2) {
 		atomic_inc(&q->prod_waiting, __ATOMIC_SEQ_CST);
-		/* FIXME: Drop lock? */
 		wait_for_change(&q->tail, t);
 		atomic_dec(&q->prod_waiting, __ATOMIC_RELAXED);
 	}
 
 	/* Make sure contents of elem are written first, and head is
-	 * written afterards. */
-	store_ptr(&q->elems[h % QUEUE_ELEMS], elem, __ATOMIC_SEQ_CST);
+	 * written afterwards. */
+	store_ptr(&q->elems[(h/2) % QUEUE_ELEMS], elem, __ATOMIC_SEQ_CST);
 	assert(read_once(&q->head, __ATOMIC_RELAXED) == h);
-	store_once(&q->head, h+1, __ATOMIC_SEQ_CST);
+	store_once(&q->head, h+2, __ATOMIC_SEQ_CST);
 	if (q->cons_waiting)
 		wake_consumer(q);
 	return;
@@ -201,15 +182,16 @@ void *queue_remove_excl(struct queue *q)
 	void *elem;
 
 	t = q->tail;
-	if ((h = read_once(&q->head, __ATOMIC_RELAXED)) == t) {
+	if (((h = read_once(&q->head, __ATOMIC_RELAXED)) & ~1) == t) {
 		/* Empty... */
 		atomic_inc(&q->cons_waiting, __ATOMIC_SEQ_CST);
-		wait_for_change(&q->head, h);
+		wait_for_change(&q->head, h & ~1);
+		wait_for_change(&q->head, (h & ~1) + 1);
 		atomic_dec(&q->cons_waiting, __ATOMIC_RELAXED);
 	}
 	/* Grab element, then increment tail. */
-	elem = read_ptr(&q->elems[t % QUEUE_ELEMS], __ATOMIC_SEQ_CST);
-	store_once(&q->tail, t+1, __ATOMIC_SEQ_CST);
+	elem = read_ptr(&q->elems[(t/2) % QUEUE_ELEMS], __ATOMIC_SEQ_CST);
+	store_once(&q->tail, t+2, __ATOMIC_SEQ_CST);
 
 	if (q->prod_waiting)
 		wake_producer(q);
@@ -219,12 +201,36 @@ void *queue_remove_excl(struct queue *q)
 
 void queue_insert(struct queue *q, void *elem)
 {
-	/* Grab producer lock. */
-	lock(&q->prod_lock);
+	unsigned int t, h;
 
-	queue_insert_excl(q, elem);
+again:
+	/* Bottom bit means someone is updating now. */
+	while ((h = read_once(&q->head, __ATOMIC_RELAXED)) & 1) {
+		atomic_inc(&q->prod_waiting, __ATOMIC_SEQ_CST);
+		wait_for_change(&q->head, h);
+		atomic_dec(&q->prod_waiting, __ATOMIC_RELAXED);
+	}
+	t = read_once(&q->tail, __ATOMIC_RELAXED);
 
-	unlock(&q->prod_lock);
+	if (h == t + QUEUE_ELEMS * 2) {
+		/* Full.  Wait. */
+		atomic_inc(&q->prod_waiting, __ATOMIC_SEQ_CST);
+		wait_for_change(&q->tail, t);
+		atomic_dec(&q->prod_waiting, __ATOMIC_RELAXED);
+		goto again;
+	}
+
+	/* This tells everyone we're updating. */
+	if (!compare_and_swap(&q->head, h, h+1, __ATOMIC_ACQUIRE))
+		goto again;
+
+	store_ptr(&q->elems[(h/2) % QUEUE_ELEMS], elem, __ATOMIC_RELAXED);
+	assert(read_once(&q->head, __ATOMIC_RELAXED) == h + 1);
+	store_once(&q->head, h+2, __ATOMIC_RELEASE);
+
+	if (read_once(&q->cons_waiting, __ATOMIC_SEQ_CST))
+		wake_consumer(q);
+	return;
 }
 
 void *queue_remove(struct queue *q)
@@ -237,7 +243,7 @@ void *queue_remove(struct queue *q)
 			/* Read tail before head (reverse how they change) */
 			t = read_once(&q->tail, __ATOMIC_SEQ_CST);
 			h = read_once(&q->head, __ATOMIC_SEQ_CST);
-			if (h != t)
+			if ((h & ~1) != t)
 				break;
 			/* Empty... */
 			atomic_inc(&q->cons_waiting, __ATOMIC_SEQ_CST);
@@ -245,8 +251,9 @@ void *queue_remove(struct queue *q)
 			atomic_dec(&q->cons_waiting, __ATOMIC_RELAXED);
 		}
 		assert(t < h);
-		elem = read_ptr(&q->elems[t % QUEUE_ELEMS], __ATOMIC_SEQ_CST);
-	} while (!compare_and_swap(&q->tail, t, t+1));
+		elem = read_ptr(&q->elems[(t/2) % QUEUE_ELEMS],
+				__ATOMIC_SEQ_CST);
+	} while (!compare_and_swap(&q->tail, t, t+2, __ATOMIC_SEQ_CST));
 
 	if (q->prod_waiting)
 		wake_producer(q);
