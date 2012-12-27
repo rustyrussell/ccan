@@ -10,7 +10,7 @@ loop=for i in `seq 100`; do $1; done | $(STATS)
 
 all: qbench
 
-benchmarks: benchmarks-dumb benchmarks-full benchmarks-excl
+benchmarks: benchmarks-dumb benchmarks-full benchmarks-excl benchmarks-dumb-nocontend benchmarks-nocontend
 
 # Measuring a dumb queue
 benchmarks-dumb: qbench
@@ -20,6 +20,10 @@ benchmarks-dumb: qbench
 	@$(call loop,./qbench --dumb 1000000 2 1)
 	@$(call loop,./qbench --dumb 1000000 3 1)
 	@$(call loop,./qbench --dumb 1000000 2 2)
+
+benchmarks-dumb-nocontend: qbench
+	@$(call loop,./qbench --dumb 10000000 1 0)
+	@$(call loop,./qbench --dumb 10000000 0 1)
 
 # Completely generic, no assumptions about exclusivity.
 benchmarks-full:
@@ -39,6 +43,10 @@ benchmarks-excl: qbench
 	@$(call loop,./qbench --xcons 1000000 1 1)
 	@$(call loop,./qbench --xcons 1000000 2 1)
 	@$(call loop,./qbench --xcons 1000000 3 1)
+
+benchmarks-nocontend: qbench
+	@$(call loop,./qbench 10000000 1 0)
+	@$(call loop,./qbench 10000000 0 1)
 
 qbench: qbench.o $(DEPS)
 

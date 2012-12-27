@@ -20,6 +20,35 @@ static void bind_to_cpu(struct at_parent *parent, void *cpu)
 	at_tell_parent(parent, parent);
 }
 
+/* For benchmarking... */
+static unsigned int read_once(unsigned int *ptr, int memmodel)
+{
+	return __atomic_load_n(ptr, memmodel);
+}
+
+static void store_once(unsigned int *ptr, unsigned int val, int memmodel)
+{
+	__atomic_store_n(ptr, val, memmodel);
+}
+
+static void queue_discard(struct queue *q)
+{
+	unsigned int h;
+
+	h = read_once(&q->head, __ATOMIC_RELAXED);
+
+	store_once(&q->tail, h, __ATOMIC_RELAXED);
+}
+
+static void queue_fill(struct queue *q)
+{
+	unsigned int t;
+
+	t = read_once(&q->tail, __ATOMIC_RELAXED);
+
+	store_once(&q->head, t + QUEUE_ELEMS*2, __ATOMIC_RELAXED);
+}
+
 static void *produce(struct at_parent *parent, void *cpu)
 {
 	unsigned long i, sum = 0;
@@ -30,6 +59,24 @@ static void *produce(struct at_parent *parent, void *cpu)
 	q = at_read_parent(parent);
 
 	for (i = 0; i < prod_num; i++) {
+		queue_insert(q, (void *)i);
+		sum += i;
+	}
+	return (void *)sum;
+}
+
+static void *produce_no_consume(struct at_parent *parent, void *cpu)
+{
+	unsigned long i, sum = 0;
+	struct queue *q;
+
+	bind_to_cpu(parent, cpu);
+
+	q = at_read_parent(parent);
+
+	for (i = 0; i < prod_num; i++) {
+		if (i % QUEUE_ELEMS == 0)
+			queue_discard(q);
 		queue_insert(q, (void *)i);
 		sum += i;
 	}
@@ -47,6 +94,23 @@ static void *consume(struct at_parent *parent, void *cpu)
 
 	for (i = 0; i < cons_num; i++)
 		ret -= (unsigned long)queue_remove(q);
+	return (void *)ret;
+}
+
+static void *consume_no_produce(struct at_parent *parent, void *cpu)
+{
+	unsigned long i, ret = 0;
+	struct queue *q;
+
+	bind_to_cpu(parent, cpu);
+
+	q = at_read_parent(parent);
+
+	for (i = 0; i < cons_num; i++) {
+		if (i % QUEUE_ELEMS == 0)
+			queue_fill(q);
+		ret -= (unsigned long)queue_remove(q);
+	}
 	return (void *)ret;
 }
 
@@ -116,6 +180,32 @@ static void *dumb_produce(struct at_parent *parent, void *cpu)
 	return (void *)sum;
 }
 
+static void *dumb_produce_no_consume(struct at_parent *parent, void *cpu)
+{
+	unsigned long i, sum = 0;
+	struct queue *q;
+
+	bind_to_cpu(parent, cpu);
+
+	q = at_read_parent(parent);
+
+	for (i = 0; i < prod_num; i++) {
+	again:
+		lock(&q->prod_lock);
+		if (q->head == q->tail + QUEUE_ELEMS) {
+			queue_discard(q);
+			unlock(&q->prod_lock);
+			goto again;
+		}
+		q->elems[q->head % QUEUE_ELEMS] = (void *)i;
+		q->head++;
+		unlock(&q->prod_lock);
+		sum += i;
+	}
+
+	return (void *)sum;
+}
+
 static void *dumb_consume(struct at_parent *parent, void *cpu)
 {
 	unsigned long i, ret = 0;
@@ -140,6 +230,32 @@ static void *dumb_consume(struct at_parent *parent, void *cpu)
 
 	return (void *)ret;
 }
+
+static void *dumb_consume_no_produce(struct at_parent *parent, void *cpu)
+{
+	unsigned long i, ret = 0;
+	struct queue *q;
+
+	bind_to_cpu(parent, cpu);
+
+	q = at_read_parent(parent);
+
+	for (i = 0; i < cons_num; i++) {
+	again:
+		lock(&q->prod_lock);
+		if (q->head == q->tail) {
+			queue_fill(q);
+			unlock(&q->prod_lock);
+			goto again;
+		}
+		ret -= (unsigned long)q->elems[q->tail % QUEUE_ELEMS];
+		q->tail++;
+		unlock(&q->prod_lock);
+	}
+
+	return (void *)ret;
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -177,14 +293,31 @@ int main(int argc, char *argv[])
 	prods = atoi(argv[2]);
 	cons = atoi(argv[3]);
 
+	if (prods == 0) {
+		if (consfn == dumb_consume)
+			consfn = dumb_consume_no_produce;
+		else
+			consfn = consume_no_produce;
+	}
+	if (cons == 0) {
+		if (prodfn == dumb_produce)
+			prodfn = dumb_produce_no_consume;
+		else
+			prodfn = produce_no_consume;
+	}
+
 	/* Make it evenly divisible. */
-	while ((num % prods) || (num % cons))
-		num++;
+	if (prods && cons) {
+		while ((num % prods) || (num % cons))
+			num++;
+	}
 	sprintf(numstr, "%lu", num);
 	argv[1] = numstr;
 
-	prod_num = num / prods;
-	cons_num = num / cons;
+	if (prods)
+		prod_num = num / prods;
+	if (cons)
+		cons_num = num / cons;
 
 	children = tal_arr(NULL, struct at_child *, prods + cons);
 
@@ -212,7 +345,7 @@ int main(int argc, char *argv[])
 	end = time_now();
 
 	/* They should cancel out... */
-	if (total != 0)
+	if (prods && cons && total != 0)
 		errx(1, "Unbalanced total: %li\n", total);
 
 	/* Kill them all. */
