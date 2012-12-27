@@ -33,23 +33,6 @@ void queue_init(struct queue *q);
 void queue_insert(struct queue *q, void *elem);
 
 /**
- * queue_insert_excl - add an element to the queue (exclusive)
- * @q: the queue
- * @ptr: the pointer to add
- *
- * Use this if you know that no other process will be inserting in the queue.
- */
-void queue_insert_excl(struct queue *q, void *elem);
-
-/**
- * queue_remove_excl - remove an element to the queue (exclusive)
- * @q: the queue
- *
- * Use this if you know that no other process will be removing from the queue.
- */
-void *queue_remove_excl(struct queue *q);
-
-/**
  * queue_remove - remove an element to the queue
  * @q: the queue
  */

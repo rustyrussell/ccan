@@ -150,55 +150,6 @@ void queue_init(struct queue *q)
 	store_once(&q->head, 0, __ATOMIC_SEQ_CST);
 }
 
-/* We are the only producer accessing the queue. */
-void queue_insert_excl(struct queue *q, void *elem)
-{
-	unsigned int t, h;
-
-	h = read_once(&q->head, __ATOMIC_RELAXED);
-	t = read_once(&q->tail, __ATOMIC_RELAXED);
-	assert(!(h & 1));
-
-	if (h == t + QUEUE_ELEMS * 2) {
-		atomic_inc(&q->prod_waiting, __ATOMIC_SEQ_CST);
-		wait_for_change(&q->tail, t);
-		atomic_dec(&q->prod_waiting, __ATOMIC_RELAXED);
-	}
-
-	/* Make sure contents of elem are written first, and head is
-	 * written afterwards. */
-	store_ptr(&q->elems[(h/2) % QUEUE_ELEMS], elem, __ATOMIC_SEQ_CST);
-	assert(read_once(&q->head, __ATOMIC_RELAXED) == h);
-	store_once(&q->head, h+2, __ATOMIC_SEQ_CST);
-	if (q->cons_waiting)
-		wake_consumer(q);
-	return;
-}
-
-/* We are the only consumer accessing the queue. */
-void *queue_remove_excl(struct queue *q)
-{
-	unsigned int h, t;
-	void *elem;
-
-	t = q->tail;
-	if (((h = read_once(&q->head, __ATOMIC_RELAXED)) & ~1) == t) {
-		/* Empty... */
-		atomic_inc(&q->cons_waiting, __ATOMIC_SEQ_CST);
-		wait_for_change(&q->head, h & ~1);
-		wait_for_change(&q->head, (h & ~1) + 1);
-		atomic_dec(&q->cons_waiting, __ATOMIC_RELAXED);
-	}
-	/* Grab element, then increment tail. */
-	elem = read_ptr(&q->elems[(t/2) % QUEUE_ELEMS], __ATOMIC_SEQ_CST);
-	store_once(&q->tail, t+2, __ATOMIC_SEQ_CST);
-
-	if (q->prod_waiting)
-		wake_producer(q);
-
-	return elem;
-}
-
 void queue_insert(struct queue *q, void *elem)
 {
 	unsigned int t, h;
