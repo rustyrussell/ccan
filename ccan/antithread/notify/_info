@@ -1,0 +1,72 @@
+#include <stdio.h>
+#include <string.h>
+#include "config.h"
+
+/**
+ * antithread/notify - notifications for antithreads.
+ *
+ * This provides notifiers; you can create one and then block on it or
+ * activate it.  It is implemented in terms of futexes where
+ * available, or file descriptors otherwise.
+ *
+ * Example:
+ *	// Given 'A' outputs 'Child exited OK'
+ *	// Given 'B' outputs 'Child exited OK'
+ *	#include <ccan/antithread/notify/notify.h>
+ *	#include <ccan/err/err.h>
+ *	#include <unistd.h>
+ *	#include <sys/mman.h>
+ *      #include <sys/types.h>
+ *      #include <sys/wait.h>
+ *
+ *	// Silly example to notify a child after 1 second.
+ *	int main(int argc, char *argv[])
+ *	{
+ *		struct notify *n;
+ *		u32 *mem = mmap(NULL, getpagesize(), PROT_READ|PROT_WRITE,
+ *				MAP_SHARED, open("/dev/zero", O_RDWR), 0);
+ *		n = notify_new(NULL, mem);
+ *		if (fork()) {
+ *			// Parent
+ *			int status;
+ *			sleep(1);
+ *			*mem = argv[1][0];
+ *			if (!notify_send(n))
+ *				err(1, "Notifying child");
+ *			wait(&status);
+ *			if (WIFSIGNALED(status))
+ *				errx(1, "Child died with signal %i",
+ *				     WTERMSIG(status));
+ *			printf("Child exited OK\n");
+ *			return WEXITSTATUS(status);
+ *		}
+ *
+ *		if (*mem != 0)
+ *			errx(1, "Non-zero mem?");
+ *		if (!notify_recv(n, 0))
+ *			err(1, "Parent failed?");
+ *		if (*mem != argv[1][0])
+ *			errx(1, "Wrong value in mem (%u)?", *mem);
+ *		return 0;
+ *	}
+ * License: BSD-MIT
+ * Author: Rusty Russell <rusty@rustcorp.com.au>
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/short_types\n");
+#ifndef HAVE_FUTEX
+		printf("ccan/tal\n");
+#endif
+		return 0;
+	}
+	if (strcmp(argv[1], "testdepends") == 0) {
+		printf("ccan/antithread\n");
+		return 0;
+	}
+	return 1;
+}
