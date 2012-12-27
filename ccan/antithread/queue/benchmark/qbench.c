@@ -2,7 +2,8 @@
 #define _GNU_SOURCE
 #include <sched.h>
 #include <ccan/antithread/antithread.h>
-#include <ccan/antithread/queue/queue.h>
+/* We want access to internals. */
+#include <ccan/antithread/queue/queue.c>
 #include <ccan/err/err.h>
 #include <ccan/time/time.h>
 #include <stdio.h>
@@ -21,16 +22,6 @@ static void bind_to_cpu(struct at_parent *parent, void *cpu)
 }
 
 /* For benchmarking... */
-static unsigned int read_once(unsigned int *ptr, int memmodel)
-{
-	return __atomic_load_n(ptr, memmodel);
-}
-
-static void store_once(unsigned int *ptr, unsigned int val, int memmodel)
-{
-	__atomic_store_n(ptr, val, memmodel);
-}
-
 static void queue_discard(struct queue *q)
 {
 	unsigned int h;
@@ -83,6 +74,99 @@ static void *produce_no_consume(struct at_parent *parent, void *cpu)
 	return (void *)sum;
 }
 
+/* We double index, to maintain compatibility, but otherwise this uses
+ * the buf_ring(9) scheme from FreeBSD:
+ *
+ * Copyright (c) 2007-2009 Kip Macy <kmacy@freebsd.org>
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ */
+static void bsd_queue_insert(struct queue *q, void *elem)
+{
+	unsigned int prod_head;
+	unsigned int cons_tail;
+
+	do {
+		prod_head = read_once(&q->prod_lock, __ATOMIC_RELAXED);
+		cons_tail = read_once(&q->tail, __ATOMIC_RELAXED);
+
+		if (prod_head == cons_tail + QUEUE_ELEMS*2) {
+			/* Full.  Wait. */
+			atomic_inc(&q->prod_waiting, __ATOMIC_SEQ_CST);
+			wait_for_change(&q->tail, cons_tail);
+			atomic_dec(&q->prod_waiting, __ATOMIC_RELAXED);
+			continue;
+		}
+	} while (!compare_and_swap(&q->prod_lock, prod_head, prod_head + 2,
+				   __ATOMIC_SEQ_CST));
+	store_ptr(&q->elems[(prod_head / 2) % QUEUE_ELEMS],
+		  elem, __ATOMIC_SEQ_CST);
+
+	/*
+	 * If there are other enqueues in progress
+	 * that preceeded us, we need to wait for them
+	 * to complete
+	 */
+	while (read_once(&q->head, __ATOMIC_SEQ_CST) != prod_head);
+
+	store_once(&q->head, prod_head + 2, __ATOMIC_SEQ_CST);
+	if (read_once(&q->cons_waiting, __ATOMIC_SEQ_CST))
+		wake_consumer(q);
+}
+
+static void *bsd_produce(struct at_parent *parent, void *cpu)
+{
+	unsigned long i, sum = 0;
+	struct queue *q;
+
+	bind_to_cpu(parent, cpu);
+
+	q = at_read_parent(parent);
+
+	for (i = 0; i < prod_num; i++) {
+		bsd_queue_insert(q, (void *)i);
+		sum += i;
+	}
+	return (void *)sum;
+}
+
+static void *bsd_produce_no_consume(struct at_parent *parent, void *cpu)
+{
+	unsigned long i, sum = 0;
+	struct queue *q;
+
+	bind_to_cpu(parent, cpu);
+
+	q = at_read_parent(parent);
+
+	for (i = 0; i < prod_num; i++) {
+		if (i % QUEUE_ELEMS == 0)
+			queue_discard(q);
+		bsd_queue_insert(q, (void *)i);
+		sum += i;
+	}
+	return (void *)sum;
+}
 static void *consume(struct at_parent *parent, void *cpu)
 {
 	unsigned long i, ret = 0;
@@ -285,9 +369,14 @@ int main(int argc, char *argv[])
 		argv++;
 		argc--;
 	}
+	if (argv[1] && strcmp(argv[1], "--bsd") == 0) {
+		prodfn = bsd_produce;
+		argv++;
+		argc--;
+	}
 
 	if (argc != 4)
-		errx(1, "Usage: qbench [--xprod][--xcons][--dumb] <num> <num-producers> <num-consumers>");
+		errx(1, "Usage: qbench [--xprod][--xcons][--dumb][--bsd] <num> <num-producers> <num-consumers>");
 
 	num = atoi(argv[1]);
 	prods = atoi(argv[2]);
@@ -302,7 +391,8 @@ int main(int argc, char *argv[])
 	if (cons == 0) {
 		if (prodfn == dumb_produce)
 			prodfn = dumb_produce_no_consume;
-		else
+		else if (prodfn == bsd_produce)
+			prodfn = bsd_produce_no_consume;
 			prodfn = produce_no_consume;
 	}
 

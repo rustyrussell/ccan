@@ -2,7 +2,7 @@ CFLAGS=-g -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes 
 LDFLAGS=-O3 -flto
 LDLIBS=-lrt
 
-DEPS := ccan-alloc.o ccan-alloc-bitops.o ccan-alloc-tiny.o ccan-err.o ccan-list.o ccan-noerr.o ccan-tal.o ccan-tal-str.o ccan-time.o ccan-ilog.o ccan-likely.o ccan-queue.o ccan-str.o ccan-take.o ccan-antithread.o
+DEPS := ccan-alloc.o ccan-alloc-bitops.o ccan-alloc-tiny.o ccan-err.o ccan-list.o ccan-noerr.o ccan-tal.o ccan-tal-str.o ccan-time.o ccan-ilog.o ccan-likely.o ccan-str.o ccan-take.o ccan-antithread.o
 
 STATS=stats.c --trim-outliers
 
@@ -57,8 +57,6 @@ ccan-alloc-bitops.o: ../../alloc/bitops.c
 ccan-alloc-tiny.o: ../../alloc/tiny.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 ccan-antithread.o: ../../antithread.c
-	$(CC) $(CFLAGS) -c -o $@ $<
-ccan-queue.o: ../queue.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 ccan-err.o: ../../../err/err.c
 	$(CC) $(CFLAGS) -c -o $@ $<
