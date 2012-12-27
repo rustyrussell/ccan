@@ -179,6 +179,19 @@ static struct test tests[] = {
 	  "return 1;" },
 	{ "HAVE_FLEXIBLE_ARRAY_MEMBER", OUTSIDE_MAIN, NULL, NULL,
 	  "struct foo { unsigned int x; int arr[]; };" },
+	{ "HAVE_FUTEX", DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE, NULL, NULL,
+	  "#include <linux/futex.h>\n"
+	  "#include <unistd.h>\n"
+	  "#include <sys/syscall.h>\n"
+	  "#include <errno.h>\n"
+	  "int main(void) {\n"
+	  "	int val = 100;\n"
+	  "	if (syscall(SYS_futex, &val, FUTEX_WAIT, 99) == -1) {\n"
+	  "		if (errno == EWOULDBLOCK)\n"
+	  "			return 0;\n"
+	  "	}\n"
+	  "	return 1;\n"
+	  "}\n" },
 	{ "HAVE_GCC_ATOMICS", DEFINES_FUNC, NULL, NULL,
 	  "static int func(int *p) {\n"
 	  "	int x;\n"
