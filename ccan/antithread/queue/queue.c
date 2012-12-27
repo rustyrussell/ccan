@@ -127,19 +127,13 @@ static bool compare_and_swap(unsigned int *ptr,
 }
 #endif /* ! GCC 4.7 or above */
 
-static void wait_for_change(unsigned int *ptr, unsigned int val)
+static void wait_for_change(unsigned int *ptr, unsigned int val,
+			    struct notify *notify)
 {
-	while (read_once(ptr, __ATOMIC_RELAXED) == val);
+	while (read_once(ptr, __ATOMIC_RELAXED) == val)
+		notify_recv(notify, val);
 }
 
-
-static void wake_consumer(struct queue *q)
-{
-}
-
-static void wake_producer(struct queue *q)
-{
-}
 
 void queue_init(struct queue *q)
 {
@@ -158,7 +152,7 @@ again:
 	/* Bottom bit means someone is updating now. */
 	while ((h = read_once(&q->head, __ATOMIC_RELAXED)) & 1) {
 		atomic_inc(&q->prod_waiting, __ATOMIC_SEQ_CST);
-		wait_for_change(&q->head, h);
+		wait_for_change(&q->head, h, q->produced);
 		atomic_dec(&q->prod_waiting, __ATOMIC_RELAXED);
 	}
 	t = read_once(&q->tail, __ATOMIC_RELAXED);
@@ -166,7 +160,7 @@ again:
 	if (h == t + QUEUE_ELEMS * 2) {
 		/* Full.  Wait. */
 		atomic_inc(&q->prod_waiting, __ATOMIC_SEQ_CST);
-		wait_for_change(&q->tail, t);
+		wait_for_change(&q->tail, t, q->consumed);
 		atomic_dec(&q->prod_waiting, __ATOMIC_RELAXED);
 		goto again;
 	}
@@ -180,7 +174,7 @@ again:
 	store_once(&q->head, h+2, __ATOMIC_RELEASE);
 
 	if (read_once(&q->cons_waiting, __ATOMIC_SEQ_CST))
-		wake_consumer(q);
+		notify_send(q->produced);
 	return;
 }
 
@@ -198,7 +192,7 @@ void *queue_remove(struct queue *q)
 				break;
 			/* Empty... */
 			atomic_inc(&q->cons_waiting, __ATOMIC_SEQ_CST);
-			wait_for_change(&q->head, h);
+			wait_for_change(&q->head, h, q->produced);
 			atomic_dec(&q->cons_waiting, __ATOMIC_RELAXED);
 		}
 		assert(t < h);
@@ -206,8 +200,8 @@ void *queue_remove(struct queue *q)
 				__ATOMIC_SEQ_CST);
 	} while (!compare_and_swap(&q->tail, t, t+2, __ATOMIC_SEQ_CST));
 
-	if (q->prod_waiting)
-		wake_producer(q);
-
+	if (read_once(q->prod_waiting, __ATOMIC_SEQ_CST))
+		notify_send(q->consumed);
+	
 	return elem;
 }

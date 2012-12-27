@@ -42,7 +42,7 @@ int main(void)
 	ok1(pool);
 	q = tal(pool, struct queue);
 	ok1(q);
-	queue_init(q);
+	queue_init(q, notify_new(q, );
 
 	queue_insert(q, q);
 	ok1(queue_remove(q) == q);
