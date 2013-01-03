@@ -98,7 +98,7 @@ static void check_depends_accurate(struct manifest *m,
 	}
 
 	for (i = 0; i < core_deps; i++) {
-		if (!used[i])
+		if (!used[i] && strstarts(deps[i], "ccan/"))
 			score_file_error(score, m->info_file, 0,
 					 "%s is an unused dependency",
 					 deps[i]);

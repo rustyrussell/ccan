@@ -44,7 +44,11 @@ int main(int argc, char *argv[])
 
 	if (strcmp(argv[1], "depends") == 0) {
 		printf("ccan/str\n");
+#ifdef TAL_USE_TALLOC
+		printf("ccan/tal/talloc\n");
+#else
 		printf("ccan/tal\n");
+#endif
 		printf("ccan/take\n");
 		return 0;
 	}

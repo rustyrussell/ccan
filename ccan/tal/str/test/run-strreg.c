@@ -1,6 +1,7 @@
 #include <ccan/tal/str/str.h>
 #include <ccan/tal/str/str.c>
 #include <ccan/tap/tap.h>
+#include "helper.h"
 
 static bool find_parent(tal_t *child, tal_t *parent)
 {
@@ -77,7 +78,7 @@ int main(int argc, char *argv[])
 	tal_free(a);
 
 	/* No leaks! */
-	ok1(!tal_first(ctx));
+	ok1(no_children(ctx));
 
 	/* NULL arg with take means always fail. */
 	ok1(tal_strreg(ctx, take(NULL), "((hello|goodbye) world)",
@@ -89,7 +90,7 @@ int main(int argc, char *argv[])
 	ok1(streq(b, "hello"));
 	ok1(tal_parent(b) == ctx);
 	tal_free(b);
-	ok1(tal_first(ctx) == NULL);
+	ok1(no_children(ctx));
 
 	/* Take regex. */
 	a = tal_strdup(ctx, "([a-z]+)");
@@ -97,7 +98,7 @@ int main(int argc, char *argv[])
 	ok1(streq(b, "hello"));
 	ok1(tal_parent(b) == ctx);
 	tal_free(b);
-	ok1(tal_first(ctx) == NULL);
+	ok1(no_children(ctx));
 
 	/* Take both. */
 	a = tal_strdup(ctx, "([a-z]+)");
@@ -106,13 +107,13 @@ int main(int argc, char *argv[])
 	ok1(streq(b, "hello"));
 	ok1(tal_parent(b) == ctx);
 	tal_free(b);
-	ok1(tal_first(ctx) == NULL);
+	ok1(no_children(ctx));
 
 	/* ... even if we fail to match. */
 	a = tal_strdup(ctx, "([a-z]+)");
 	ok1(tal_strreg(ctx, take(tal_strdup(ctx, "HELLO WORLD!")),
 		       take(a), &b, invalid) == false);
-	ok1(tal_first(ctx) == NULL);
+	ok1(no_children(ctx));
 	tal_free(ctx);
 
 	return exit_status();

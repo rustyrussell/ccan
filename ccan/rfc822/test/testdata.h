@@ -1,7 +1,7 @@
 #ifndef RFC822_TESTDATA_H
 #define RFC822_TESTDATA_H
 
-#include <ccan/talloc/talloc.h>
+#include <ccan/tal/str/str.h>
 #include <ccan/array_size/array_size.h>
 #include <ccan/foreach/foreach.h>
 
@@ -127,30 +127,26 @@ static inline const char *assemble_msg(const struct aexample *e,
 {
 	const char *nl = crlf ? "\r\n" : "\n";
 	int nln = crlf ? 2 : 1;
-	char *msg, *amsg;
+	char *msg;
 	size_t n = 0;
 	int i;
 
-	msg = talloc_strdup(NULL, "");
+	msg = tal_strdup(NULL, "");
 	if (!msg)
 		return NULL;
 
 	for (i = 0; i < e->nhdrs; i++) {
-		amsg = talloc_asprintf_append(msg, "%s:%s%s", e->hdrs[i].name,
-					      e->hdrs[i].val, nl);
-		if (!amsg) {
-			talloc_free(msg);
+		if (!tal_append_fmt(&msg, "%s:%s%s", e->hdrs[i].name,
+				    e->hdrs[i].val, nl)) {
+			tal_free(msg);
 			return NULL;
 		}
-		msg = amsg;
 		n += strlen(e->hdrs[i].name) + strlen(e->hdrs[i].val) + 1 + nln;
 	}
-	amsg = talloc_asprintf_append(msg, "%s%s", nl, e->body);
-	if (!amsg) {
-		talloc_free(msg);
+	if (!tal_append_fmt(&msg, "%s%s", nl, e->body)) {
+		tal_free(msg);
 		return NULL;
 	}
-	msg = amsg;
 	n += strlen(e->body) + nln;
 	*len = n;
 	return msg;

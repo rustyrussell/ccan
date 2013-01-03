@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include <ccan/talloc/talloc.h>
 #include <ccan/failtest/failtest_override.h>
 #include <ccan/failtest/failtest.h>
 
@@ -11,6 +10,7 @@
 
 /* failtest limitations mean we need these wrappers to test talloc
  * failure paths. */
+#ifndef TAL_USE_TALLOC
 static void *malloc_wrapper(size_t size)
 {
 	return malloc(size);
@@ -25,6 +25,7 @@ static void *realloc_wrapper(void *ptr, size_t size)
 {
 	return realloc(ptr, size);
 }
+#endif
 
 #if 0
 static void allocation_failure_exit(const char *s)
@@ -50,11 +51,29 @@ void allocation_failure_check(void)
 	}
 }
 
+#ifdef TAL_USE_TALLOC
+#include <ccan/tal/talloc/talloc.h>
+#else
+#include <ccan/tal/tal.h>
+#endif
+
+/* Don't abort on allocation failures! */
+static void noabort_wrapper(const char *why)
+{
+	return;
+}
+
 void failtest_setup(int argc, char *argv[])
 {
 	failtest_init(argc, argv);
 	rfc822_set_allocation_failure_handler(allocation_failure_continue);
-	talloc_set_allocator(malloc_wrapper, free_wrapper, realloc_wrapper);
+#ifdef TAL_USE_TALLOC
+	/* FIXME: we can't inject allocation failures in talloc! */
+	tal_set_backend(NULL, NULL, NULL, noabort_wrapper);
+#else
+	tal_set_backend(malloc_wrapper, realloc_wrapper, free_wrapper,
+			noabort_wrapper);
+#endif
 }
 
 void check_header(struct rfc822_msg *msg,

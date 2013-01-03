@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <ccan/tal/str/str.c>
 #include <ccan/tap/tap.h>
+#include "helper.h"
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
@@ -85,7 +86,7 @@ int main(int argc, char *argv[])
 	ok1(tal_check(ctx, NULL));
 	tal_free(split);
 	/* Previous free should get rid of str */
-	ok1(!tal_first(ctx));
+	ok1(no_children(ctx));
 
 	/* tal_strsplit take delims */
 	str = tal_strdup(ctx, " ");
@@ -98,7 +99,7 @@ int main(int argc, char *argv[])
 	ok1(tal_check(ctx, NULL));
 	tal_free(split);
 	/* str is gone... */
-	ok1(!tal_first(ctx));
+	ok1(no_children(ctx));
 
 	/* tal_strsplit takes both. */
 	split = tal_strsplit(ctx, take(tal_strdup(NULL, "hello world")),
@@ -111,7 +112,7 @@ int main(int argc, char *argv[])
 	ok1(tal_check(ctx, NULL));
 	tal_free(split);
 	/* temp allocs are gone... */
-	ok1(!tal_first(ctx));
+	ok1(no_children(ctx));
 
 	/* tal_strjoin passthrough taken NULLs OK. */
 	ok1(tal_strjoin(ctx, take(NULL), "", STR_TRAIL) == NULL);
@@ -125,9 +126,9 @@ int main(int argc, char *argv[])
 	ok1(!strcmp(str, "hello there world"));
 	ok1(tal_parent(str) == ctx);
 	/* split is gone... */
-	ok1(tal_first(ctx) == str && !tal_next(ctx, str));
+	ok1(single_child(ctx, str));
 	tal_free(str);
-	ok1(!tal_first(ctx));
+	ok1(no_children(ctx));
 
 	/* tal_strjoin take delim */
 	split = tal_strsplit(ctx, "hello world", " ", STR_EMPTY_OK);
@@ -137,9 +138,9 @@ int main(int argc, char *argv[])
 	ok1(tal_parent(str) == ctx);
 	tal_free(split);
 	/* tmp alloc is gone, str is only remainder. */
-	ok1(tal_first(ctx) == str && !tal_next(ctx, str));
+	ok1(single_child(ctx, str));
 	tal_free(str);
-	ok1(!tal_first(ctx));
+	ok1(no_children(ctx));
 
 	/* tal_strjoin take both. */
 	str = tal_strjoin(ctx, take(tal_strsplit(ctx, "hello world", " ",
@@ -148,9 +149,9 @@ int main(int argc, char *argv[])
 	ok1(!strcmp(str, "hello there world"));
 	ok1(tal_parent(str) == ctx);
 	/* tmp allocs are gone, str is only remainder. */
-	ok1(tal_first(ctx) == str && !tal_next(ctx, str));
+	ok1(single_child(ctx, str));
 	tal_free(str);
-	ok1(!tal_first(ctx));
+	ok1(no_children(ctx));
 	tal_free(ctx);
 
 	return exit_status();

@@ -31,7 +31,7 @@ static struct bytestring fold_and_assemble(int foldat, int crlf, int truncated)
 	char *buf, *p;
 	int i, n = 0;
 
-	buf = talloc_array(NULL, char, strlen(BEFORE) + strlen(AFTER) + 3*strlen(UNFOLDED) + 2);
+	buf = tal_arr(NULL, char, strlen(BEFORE) + strlen(AFTER) + 3*strlen(UNFOLDED) + 2);
 	if (!buf)
 		exit(0);
 
@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
 			for (i = -1; i <= FOLD_POINTS; i++) {
 				msgbuf = fold_and_assemble(i, crlf, truncated);
 				check_folded_header(msgbuf.ptr, msgbuf.len);
-				talloc_free(msgbuf.ptr);
+				tal_free(msgbuf.ptr);
 			}
 		}
 	}

@@ -20,16 +20,32 @@
  *   RFC822 compliant, don't SEGV and try to return as much useful
  *   data as possible.
  *
+ * Define TAL_USE_TALLOC to use libtalloc as the allocator, otherwise
+ * it will use ccan/tal (usually done on the cmdline, as tal/str will need
+ * it too).
+ *
  * Example:
+ *	// Given '' outputs 'body'
+ *	// Given 'From' outputs ' <from@example.com>'
+ *	// Given 'To' outputs ' <to@example.com>'
  *	char buf[] = "From: <from@example.com>\n"
  *		     "To: <to@example.com>\n\n"
  *                   "body\n";
  *	struct rfc822_msg *msg;
- *	struct bytestring body;
+ *	struct bytestring out;
  *
  *	msg = rfc822_start(NULL, buf, sizeof(buf));
- *	body = rfc822_body(msg);
- *	fwrite(body.ptr, 1, body.len, stdout);
+ *	if (!argv[1] || !argv[1][0])
+ *		out = rfc822_body(msg);
+ *	else {
+ *		struct rfc822_header *hdr;
+ *		hdr = rfc822_first_header_of_name(msg, argv[1]);
+ *		if (!hdr)
+ *			exit(1);
+ *		out = rfc822_header_unfolded_value(msg, hdr);
+ *	}
+ *	fwrite(out.ptr, 1, out.len, stdout);
+ *	rfc822_free(msg);
  *
  * License: LGPL (v2.1 or any later version)
  *
@@ -41,7 +57,11 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
-		printf("ccan/talloc\n");
+#ifdef TAL_USE_TALLOC
+		printf("ccan/tal/talloc\n");
+#else
+		printf("ccan/tal\n");
+#endif
 		printf("ccan/list\n");
 		printf("ccan/str\n");
 		printf("ccan/bytestring\n");
@@ -52,6 +72,7 @@ int main(int argc, char *argv[])
 		printf("ccan/failtest\n");
 		printf("ccan/foreach\n");
 		printf("ccan/array_size\n");
+		printf("ccan/tal/str\n");
 		return 0;
 	}
 

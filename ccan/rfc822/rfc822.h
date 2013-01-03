@@ -22,6 +22,9 @@ struct rfc822_msg;
  * callback is called with a string describing where the failure
  * occurred, which can be used to log a more useful error message.
  *
+ * Note that tal also has a default function which calls abort() on allocation
+ * failure: see tal_set_backend().
+ *
  * Example:
  *	static void my_handler(const char *str)
  *	{
@@ -53,15 +56,15 @@ static inline bool rfc822_iswsp(char c)
  * inconsistent, and the function will abort.  If the state of the
  * structure is valid it returns it unchanged.
  *
- * Returns the list head if the list is consistent, NULL if not (it
- * can never return NULL if @abortstr is set).
+ * Returns the @msg if the message is consistent, NULL if not (it can
+ * never return NULL if @abortstr is set).
  */
 struct rfc822_msg *rfc822_check(const struct rfc822_msg *msg,
 				const char *abortstr);
 
 /**
  * rfc822_start - start parsing a new rfc822 message
- * @ctx: talloc context to make allocations in
+ * @ctx: tal context to make allocations in (or talloc #ifdef TAL_USE_TALLOC)
  * @p: pointer to a buffer containing the message text
  * @len: length of the message text
  *

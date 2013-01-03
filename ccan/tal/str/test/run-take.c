@@ -1,6 +1,7 @@
 #include <ccan/tal/str/str.h>
 #include <ccan/tal/str/str.c>
 #include <ccan/tap/tap.h>
+#include "helper.h"
 
 int main(void)
 {
@@ -32,7 +33,7 @@ int main(void)
 	ok1(tal_parent(c) == parent);
 	/* No leftover allocations. */
 	tal_free(c);
-	ok1(tal_first(parent) == NULL);
+	ok1(no_children(parent));
 
 	tal_free(parent);
 	ok1(!taken_any());
