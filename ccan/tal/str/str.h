@@ -1,8 +1,11 @@
 /* Licensed under BSD-MIT - see LICENSE file for details */
 #ifndef CCAN_STR_TAL_H
 #define CCAN_STR_TAL_H
+#ifdef TAL_USE_TALLOC
+#include <ccan/tal/talloc/talloc.h>
+#else
 #include <ccan/tal/tal.h>
-#include <ccan/tal/tal.h>
+#endif
 #include <string.h>
 #include <stdbool.h>
 
