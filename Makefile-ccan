@@ -92,6 +92,7 @@ MODS_EXTERNAL_WITH_SRC:=jmap \
 	jset \
 	nfs \
 	ogg_to_pcm \
+	tal/talloc \
 	wwviaudio
 
 MODS_EXTERNAL:=$(MODS_EXTERNAL_NO_SRC) $(MODS_EXTERNAL_WITH_SRC)
