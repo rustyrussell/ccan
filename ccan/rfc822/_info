@@ -20,6 +20,10 @@
  *   RFC822 compliant, don't SEGV and try to return as much useful
  *   data as possible.
  *
+ * Define TAL_USE_TALLOC to use libtalloc as the allocator, otherwise
+ * it will use ccan/tal (usually done on the cmdline, as tal/str will need
+ * it too).
+ *
  * Example:
  *	// Given '' outputs 'body'
  *	// Given 'From' outputs ' <from@example.com>'
@@ -53,7 +57,11 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
-		printf("ccan/talloc\n");
+#ifdef TAL_USE_TALLOC
+		printf("ccan/tal/talloc\n");
+#else
+		printf("ccan/tal\n");
+#endif
 		printf("ccan/list\n");
 		printf("ccan/str\n");
 		printf("ccan/bytestring\n");
@@ -64,6 +72,7 @@ int main(int argc, char *argv[])
 		printf("ccan/failtest\n");
 		printf("ccan/foreach\n");
 		printf("ccan/array_size\n");
+		printf("ccan/tal/str\n");
 		return 0;
 	}
 

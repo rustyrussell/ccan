@@ -137,7 +137,7 @@ int main(int argc, char *argv[])
 			test_hdrbody(e, buf, len, exname, crlf);
 			test_hdrhdr(e, buf, len, exname, crlf);
 
-			talloc_free(buf);
+			tal_free(buf);
 		}
 	}
 

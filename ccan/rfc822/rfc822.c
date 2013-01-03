@@ -5,10 +5,16 @@
 #include <string.h>
 
 #include <ccan/str/str.h>
-#include <ccan/talloc/talloc.h>
 #include <ccan/list/list.h>
+#include <stdio.h>
 
 #include <ccan/rfc822/rfc822.h>
+
+#ifdef TAL_USE_TALLOC
+#include <ccan/tal/talloc/talloc.h>
+#else
+#include <ccan/tal/tal.h>
+#endif
 
 #if !HAVE_MEMMEM
 void *memmem(const void *haystack, size_t haystacklen,
@@ -92,6 +98,8 @@ struct rfc822_msg *rfc822_check(const struct rfc822_msg *msg,
 	assert(msg);
 	if (!list_check(&msg->headers, abortstr))
                 return NULL;
+	if (!tal_check(msg, abortstr))
+		return NULL;
         return (struct rfc822_msg *)msg;
 }
 
@@ -106,7 +114,7 @@ struct rfc822_msg *rfc822_start(const void *ctx, const char *p, size_t len)
 	struct rfc822_msg *msg;
 	int i;
 
-	msg = talloc(ctx, struct rfc822_msg);
+	msg = tal(ctx, struct rfc822_msg);
 	ALLOC_CHECK(msg, NULL);
 
 	msg->data = p;
@@ -128,7 +136,7 @@ struct rfc822_msg *rfc822_start(const void *ctx, const char *p, size_t len)
 void rfc822_free(struct rfc822_msg *msg)
 {
 	CHECK(msg, ">rfc822_free");
-	talloc_free(msg);
+	tal_free(msg);
 }
 
 static struct rfc822_header *next_header_cached(struct rfc822_msg *msg,
@@ -200,7 +208,7 @@ static struct rfc822_header *next_header_parse(struct rfc822_msg *msg)
 		msg->remainder = eh;
 
 
-	hi = talloc_zero(msg, struct rfc822_header);
+	hi = talz(msg, struct rfc822_header);
 	ALLOC_CHECK(hi, NULL);
 
 	hi->all = bytestring(h, eh - h);
@@ -354,7 +362,7 @@ struct bytestring rfc822_header_unfolded_value(struct rfc822_msg *msg,
 		if (lines <= 1) {
 			hdr->unfolded = bytestring(raw.ptr, len);
 		} else {
-			char *unfold = talloc_array(msg, char, len);
+			char *unfold = tal_arr(msg, char, len);
 			char *p = unfold;
 
 			ALLOC_CHECK(unfold, bytestring_NULL);
@@ -447,7 +455,7 @@ static struct rfc822_header *index_header(struct rfc822_msg *msg,
 	if (!hn) {
 		unsigned hash = headerhash(hname);
 
-		hn = talloc_zero(msg, struct rfc822_headers_of_name);
+		hn = talz(msg, struct rfc822_headers_of_name);
 		ALLOC_CHECK(hn, NULL);
 
 		hn->name = hname;

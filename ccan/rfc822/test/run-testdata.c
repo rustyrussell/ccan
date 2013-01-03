@@ -39,7 +39,7 @@ static void test_assemble(const struct aexample *e, int crlf,
 		len, cmplen);
 	ok1(len == cmplen);
 	ok1(memcmp(msg, cmp, cmplen) == 0);
-	talloc_free(msg);
+	tal_free(msg);
 }
 
 int main(int argc, char *argv[])

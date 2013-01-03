@@ -10,7 +10,11 @@
 
 #include <ccan/rfc822/rfc822.h>
 
-#include <ccan/talloc/talloc.h>
+#ifdef TAL_USE_TALLOC
+#include <ccan/tal/talloc/talloc.h>
+#else
+#include <ccan/tal/tal.h>
+#endif
 
 static bool should_fail = false;
 
@@ -18,16 +22,16 @@ static void *mayfail_alloc(const void *ctx, size_t size)
 {
 	if (should_fail)
 		return NULL;
-	return talloc_zero_size(ctx, size);
+	return tal_arrz(ctx, char, size);
 }
 
 /* Override various tallocation functions. */
-#undef talloc
-#undef talloc_zero
-#undef talloc_array
-#define talloc(ctx, type) mayfail_alloc((ctx), sizeof(type))
-#define talloc_zero(ctx, type) mayfail_alloc((ctx), sizeof(type))
-#define talloc_array(ctx, type, num) mayfail_alloc((ctx), sizeof(type)*(num))
+#undef tal
+#undef talz
+#undef tal_arr
+#define tal(ctx, type) mayfail_alloc((ctx), sizeof(type))
+#define talz(ctx, type) mayfail_alloc((ctx), sizeof(type))
+#define tal_arr(ctx, type, num) mayfail_alloc((ctx), sizeof(type)*(num))
 
 #include <ccan/rfc822/rfc822.c>
 
