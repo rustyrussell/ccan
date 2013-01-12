@@ -198,6 +198,8 @@ get_all_deps(const void *ctx, const char *dir, const char *style,
 	unsigned int i;
 
 	deps = get_one(ctx, dir, style, get_info);
+	if (!deps)
+		return NULL;
 	for (i = 0; i < tal_count(deps)-1; i++) {
 		char **newdeps;
 		unsigned int j;

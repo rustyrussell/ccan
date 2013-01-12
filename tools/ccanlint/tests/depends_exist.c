@@ -57,6 +57,11 @@ static void check_depends_exist(struct manifest *m,
 		deps = get_deps(m, m->dir, "depends", true,
 				get_or_compile_info);
 
+	if (!deps) {
+		score->error = tal_fmt(m, "Could not extract dependencies");
+		return;
+	}
+
 	for (i = 0; deps[i]; i++) {
 		if (!strstarts(deps[i], "ccan/"))
 			continue;
