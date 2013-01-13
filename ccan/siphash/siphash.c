@@ -2,6 +2,8 @@
 
 #include <ccan/endian/endian.h>
 
+#include <string.h>
+
 #include "siphash.h"
 
 typedef uint64_t u64;
@@ -23,8 +25,13 @@ enum sip_index { A=0, B=2, C=1, D=3, E=4 };
         SIP_HALF_ROUND((W)[C], (W)[B], (W)[A], (W)[D], 17, 21); \
     } while(0)
 
-/* Load a 64-bit word as little endian */
-#define W64(S,I) (le64_to_cpu(*((u64 *)(S) + (I))))
+
+static inline u64 W64(const void *p, size_t I)
+{
+    uint64_t x;
+    memcpy(&x, (char *)p + I*sizeof(x), sizeof(x));
+    return le64_to_cpu(x);
+}
 
 static void siphash_init(u64 v[5], const unsigned char key[16])
 {
