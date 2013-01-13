@@ -65,6 +65,7 @@ MODS_NORMAL_WITH_SRC := antithread \
 	rbuf \
 	read_write_all \
 	rfc822 \
+	siphash \
 	sparse_bsearch \
 	str \
 	stringmap \
