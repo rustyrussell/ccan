@@ -40,28 +40,46 @@ void dgraph_clear_node(struct dgraph_node *n);
 void dgraph_add_edge(struct dgraph_node *from, struct dgraph_node *to);
 bool dgraph_del_edge(struct dgraph_node *from, struct dgraph_node *to);
 
+#ifdef CCAN_DGRAPH_DEBUG
+#define dgraph_debug(n) dgraph_check((n), __func__)
+#else
+#define dgraph_debug(n) (n)
+#endif
+
 /* You can dgraph_clear_node() the node you're on safely. */
 #define dgraph_traverse_from(n, fn, arg)				\
-	dgraph_traverse((n), DGRAPH_FROM,				\
+	dgraph_traverse(dgraph_debug(n), DGRAPH_FROM,			\
 			typesafe_cb_preargs(bool, void *, (fn), (arg),	\
 					    struct dgraph_node *),	\
 			(arg))
 
 #define dgraph_traverse_to(n, fn, arg)					\
-	dgraph_traverse((n), DGRAPH_TO,					\
+	dgraph_traverse(dgraph_debug(n), DGRAPH_TO,			\
 			typesafe_cb_preargs(bool, void *, (fn), (arg),	\
 					    struct dgraph_node *),	\
 			(arg))
 
-void dgraph_traverse(struct dgraph_node *n,
+void dgraph_traverse(const struct dgraph_node *n,
 		     enum dgraph_dir dir,
 		     bool (*fn)(struct dgraph_node *from, void *data),
 		     const void *data);
 
 #define dgraph_for_each_edge(n, i, dir)		\
-	tlist_for_each(&(n)->edge[dir], i, list[dir])
+	tlist_for_each(&dgraph_debug(n)->edge[dir], i, list[dir])
 
 #define dgraph_for_each_edge_safe(n, i, next, dir)		\
-	tlist_for_each_safe(&(n)->edge[dir], i, next, list[dir])
+	tlist_for_each_safe(&dgraph_debug(n)->edge[dir], i, next, list[dir])
 
+/**
+ * dgraph_check - check a graph for consistency
+ * @n: the dgraph_node to check.
+ * @abortstr: the string to print on aborting, or NULL.
+ *
+ * Returns @n if the list is consistent, NULL if not (it can never
+ * return NULL if @abortstr is set).
+ *
+ * See also: tlist_check()
+ */
+struct dgraph_node *dgraph_check(const struct dgraph_node *n,
+				 const char *abortstr);
 #endif /* CCAN_DGRAPH_H */

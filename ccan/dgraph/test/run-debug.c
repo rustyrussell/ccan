@@ -1,3 +1,4 @@
+#define CCAN_DGRAPH_DEBUG 1
 #include <ccan/dgraph/dgraph.h>
 /* Include the C files directly. */
 #include <ccan/dgraph/dgraph.c>
