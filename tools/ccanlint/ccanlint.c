@@ -89,10 +89,11 @@ static const char *dep_failed(struct manifest *m)
 	return "dependency couldn't run";
 }
 
-static bool cannot_run(struct dgraph_node *node, void *unused)
+static bool cannot_run(struct dgraph_node *node, void *all)
 {
 	struct ccanlint *c = container_of(node, struct ccanlint, node);
 	c->can_run = dep_failed;
+
 	return true;
 }
 
@@ -602,11 +603,11 @@ int main(int argc, char *argv[])
 	unsigned int i;
 	const char *prefix = "";
 	char *cwd = path_cwd(NULL), *dir;
-	struct dgraph_node all;
+	struct ccanlint top;  /* cannot_run may try to set ->can_run */
 	const char *override_compiler = NULL, *override_cflags = NULL;
 	
 	/* Empty graph node to which we attach everything else. */
-	dgraph_init_node(&all);
+	dgraph_init_node(&top.node);
 
 	opt_register_early_noarg("--verbose|-v", opt_inc_intval, &verbose,
 				 "verbose mode (up to -vvvv)");
@@ -625,7 +626,8 @@ int main(int argc, char *argv[])
 	opt_register_arg("--timeout <milleseconds>", opt_set_uintval,
 			 NULL, &timeout,
 			 "ignore (terminate) tests that are slower than this");
-	opt_register_arg("-t|--target <testname>", opt_set_target, NULL, &all,
+	opt_register_arg("-t|--target <testname>", opt_set_target, NULL,
+			 &top.node,
 			 "only run one test (and its prerequisites)");
 	opt_register_arg("--compiler <compiler>", opt_set_const_charp,
 			 NULL, &override_compiler, "set the compiler");
@@ -655,7 +657,7 @@ int main(int argc, char *argv[])
 	opt_parse(&argc, argv, opt_log_stderr_exit);
 
 	if (!targeting)
-		strmap_iterate(&tests, add_to_all, &all);
+		strmap_iterate(&tests, add_to_all, &top.node);
 
 	if (argc == 1)
 		dir = cwd;
@@ -674,7 +676,7 @@ int main(int argc, char *argv[])
 		compiler = override_compiler;
 
 	if (argc == 1)
-		pass = test_module(&all, cwd, "", summary);
+		pass = test_module(&top.node, cwd, "", summary);
 	else {
 		for (i = 1; i < argc; i++) {
 			dir = path_canon(NULL,
@@ -684,8 +686,8 @@ int main(int argc, char *argv[])
 			prefix = path_rel(NULL, take(prefix), dir);
 			prefix = tal_strcat(NULL, take(prefix), ": ");
 
-			pass &= test_module(&all, dir, prefix, summary);
-			reset_tests(&all);
+			pass &= test_module(&top.node, dir, prefix, summary);
+			reset_tests(&top.node);
 		}
 	}
 	return pass ? 0 : 1;
