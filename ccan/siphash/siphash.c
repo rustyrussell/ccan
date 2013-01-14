@@ -43,18 +43,18 @@ static void siphash_init(u64 v[5], const unsigned char key[16])
 }
 
 /* Load the last 0-7 bytes of `in` and put in len & 255 */
-static void siphash_epilogue(u64 *m, const void *in, size_t len)
+static void siphash_epilogue(u64 *m, const unsigned char *in, size_t len)
 {
-    in = (char *)in + (len & ~7);
+    in += (len & ~7);
     *m = (u64)(len & 255) << 56;
     switch (len & 7) {
-        case 7: *m |= (u64)*((unsigned char *)in+6) << 48;
-        case 6: *m |= (u64)*((unsigned char *)in+5) << 40;
-        case 5: *m |= (u64)*((unsigned char *)in+4) << 32;
-        case 4: *m |= (u64)*((unsigned char *)in+3) << 24;
-        case 3: *m |= (u64)*((unsigned char *)in+2) << 16;
-        case 2: *m |= (u64)*((unsigned char *)in+1) << 8;
-        case 1: *m |= (u64)*((unsigned char *)in+0);
+        case 7: *m |= (u64) in[6] << 48;
+        case 6: *m |= (u64) in[5] << 40;
+        case 5: *m |= (u64) in[4] << 32;
+        case 4: *m |= (u64) in[3] << 24;
+        case 3: *m |= (u64) in[2] << 16;
+        case 2: *m |= (u64) in[1] << 8;
+        case 1: *m |= (u64) in[0];
         case 0: ;
     }
 }
