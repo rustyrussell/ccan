@@ -26,8 +26,6 @@ char *log_tags[2][5] = { { "[CRITICAL] ",
 			   "[+] ",
 			   "[~] " }};
 
-extern FILE *_logging_file;
-extern int _log_current_mode;
 #define LOG_VERBOSE 0
 #define LOG_CONCISE 1
 
