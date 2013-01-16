@@ -13,15 +13,15 @@
 #define TEXT_BOLD 	"\033[1m"
 #define COLOR_END	"\033[0m" // reset colors to default
 
-FILE *_logging_files[16] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+static FILE *_logging_files[16] = { stdout, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
-int  _log_current_mode, _current_log_file;
+static int  _log_current_mode, _current_log_file = 1;
 
 FILE *set_log_file(char *filename)
 {
 	if (_current_log_file+1 > 16) return NULL; // we only support 16 different files
 	_logging_files[_current_log_file++] = fopen(filename, "a+");
-	return _logging_files[_current_log_file++];
+	return _logging_files[_current_log_file];
 }
 
 void set_log_mode(int mode)
@@ -40,7 +40,7 @@ void _print_log(int loglevel, char *file, const char *func, char *clock, int lin
 	// this is so that our pipe chars don't get fucked later.
 	// also, make sure we don't get an invalid loglevel.
 	char buffer[strlen(msg) + 1024];
-	vsprintf(buffer, msg, args);	
+	vsnprintf(buffer, strlen(msg)+1024, msg, args);	
 	if (loglevel < 0 || loglevel > 3) loglevel = LOG_INVALID;
 
 	// set console color for printing the tag
@@ -62,7 +62,6 @@ void _print_log(int loglevel, char *file, const char *func, char *clock, int lin
 			break;
 	}
 	// print the log tag
-	printf("%s", log_tags[_log_current_mode][loglevel]);
 	int i;
 	for (i=0; i < 16; i++)
 		if (_logging_files[i])
@@ -71,7 +70,6 @@ void _print_log(int loglevel, char *file, const char *func, char *clock, int lin
 	printf(COLOR_END);
 	
 	if (_log_current_mode == LOG_VERBOSE) {
-		printf("%s() (%s:%d) at %s |\t", func, file, line, clock);
 		for (i=0; i < 16; i++)
 			if (_logging_files[i])
 				fprintf(_logging_files[i],
@@ -82,7 +80,6 @@ void _print_log(int loglevel, char *file, const char *func, char *clock, int lin
 
 	// print the first line
 	 char *to_print = strtok(buffer, "\n");
-	 printf("%s\n", to_print);
 	 for (i = 0; i < 16; i++)
 	 	if (_logging_files[i])
 	 		fprintf(_logging_files[i], "%s\n", to_print);
@@ -90,7 +87,6 @@ void _print_log(int loglevel, char *file, const char *func, char *clock, int lin
 
 	// for these next lines, add a pipe and tab once.
 	while (to_print = strtok(NULL, "\n")) {
-		printf(" |\t%s\n", to_print);
 		for (i = 0; i < 16; i++)
 			if (_logging_files[i])
 				fprintf(_logging_files[i], "%s\n", to_print);

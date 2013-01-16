@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CCAN_LOG_H
+#define CCAN_LOG_H
 
 #include <stdio.h>
 #include <string.h>
@@ -40,27 +41,4 @@ extern void set_log_mode(int);
 			     } while (0)
 
 extern void _print_log(int, char *, char *, char*, int, char *, ...);
-
-#ifdef TEST
-extern FILE *_logging_file;
-int main(int argc, char *argv[])
-{
-	set_log_file("test.log");
-	set_log_mode(LOG_VERBOSE);
-	print_log(LOG_CRITICAL, "This is a critical log with variable:\ni=%d", 3);
-	print_log(LOG_ERROR, "This is an error log with variable:\nj=%d", 4);
-	print_log(LOG_WARNING, "This is a warning log.");
-	print_log(LOG_INFO, "This is an info log.");
-	print_log(43, "This loglevel is invalid.\n");
-	print_log(LOG_INFO, "THis is a log\nwith multiple newlines\nSo that you suffer while\nreading this.");
-	log(LOG_CRITICAL, "This is a critical message.");
-	log(LOG_ERROR, "This is an error message.");
-	log(LOG_WARNING, "This is a warning message.");
-	log(LOG_INFO, "This is an info message.");
-	log(LOG_INFO, "This is an info message\nwith multiple lines\nin order to test\nhow printing is handled.");
-	set_log_mode(LOG_CONCISE);
-	print_log(LOG_CRITICAL, "This is a critical log with variable:\ni=%d", 3);
-	print_log(LOG_ERROR, "This is an error log with variable:\nj=%d", 4);
-	return 0;
-}
-#endif // TEST
+#endif // CCAN_LOG_H
