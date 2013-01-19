@@ -13,7 +13,7 @@
 #define TEXT_BOLD 	"\033[1m"
 #define COLOR_END	"\033[0m" // reset colors to default
 
-static FILE *_logging_files[16] = { stdout, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+static FILE *_logging_files[16] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 static int  _log_current_mode, _current_log_file = 1;
 
@@ -29,10 +29,15 @@ void set_log_mode(int mode)
 	_log_current_mode = mode;
 }
 
+void get_log_mode()
+{
+	return _log_current_mode;
+}
 
 // this function is headache-inducing.
 void _print_log(int loglevel, char *file, const char *func, char *clock, int line, char *msg, ...)
 {
+	_logging_files[0] = stdout;
 	va_list args;
 	va_start(args, msg);
 	
