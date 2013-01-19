@@ -5,7 +5,6 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdarg.h>
-#include <colors.h>
 #include <time.h>
 
 #define LOG_CRITICAL 0
