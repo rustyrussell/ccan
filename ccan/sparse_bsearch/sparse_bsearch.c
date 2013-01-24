@@ -1,4 +1,5 @@
 /* Licensed under LGPLv2+ - see LICENSE file for details */
+#include <sys/types.h> //for ssize_t definition
 #include "sparse_bsearch.h"
 
 void *_sparse_bsearch(const void *key, const void *base,
