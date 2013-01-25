@@ -26,10 +26,10 @@ enum sip_index { A=0, B=2, C=1, D=3, E=4 };
     } while(0)
 
 
-static inline u64 W64(const void *p, size_t I)
+static inline u64 W64(const unsigned char *p, size_t j)
 {
     uint64_t x;
-    memcpy(&x, (char *)p + I*sizeof(x), sizeof(x));
+    memcpy(&x, p + j*sizeof(x), sizeof(x));
     return le64_to_cpu(x);
 }
 
