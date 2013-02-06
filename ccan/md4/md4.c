@@ -21,18 +21,13 @@
 #include "md4.h"
 #include <string.h>
 
-#define os_memcpy memcpy
-#define u64 uint64_t
-#define u32 uint32_t
-#define u8 uint8_t
-
 #define	MD4_BLOCK_LENGTH		64
 #define	MD4_DIGEST_LENGTH		16
 
 #define	MD4_DIGEST_STRING_LENGTH	(MD4_DIGEST_LENGTH * 2 + 1)
 
 static void
-MD4Transform(u32 state[4], const u8 block[MD4_BLOCK_LENGTH]);
+MD4Transform(uint32_t state[4], const uint8_t block[MD4_BLOCK_LENGTH]);
 
 #define PUT_64BIT_LE(cp, value) do {					\
 	(cp)[7] = (value) >> 56;					\
@@ -50,7 +45,7 @@ MD4Transform(u32 state[4], const u8 block[MD4_BLOCK_LENGTH]);
 	(cp)[1] = (value) >> 8;						\
 	(cp)[0] = (value); } while (0)
 
-static u8 PADDING[MD4_BLOCK_LENGTH] = {
+static uint8_t PADDING[MD4_BLOCK_LENGTH] = {
 	0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
@@ -83,11 +78,11 @@ void md4_hash(struct md4_ctx *ctx, const void *p, size_t len)
 	need = MD4_BLOCK_LENGTH - have;
 
 	/* Update bitcount */
-	ctx->byte_count += (u64)len << 3;
+	ctx->byte_count += (uint64_t)len << 3;
 
 	if (len >= need) {
 		if (have != 0) {
-			os_memcpy(ctx->buffer + have, input, need);
+			memcpy(ctx->buffer + have, input, need);
 			MD4Transform(ctx->hash.words, ctx->buffer);
 			input += need;
 			len -= need;
@@ -104,7 +99,7 @@ void md4_hash(struct md4_ctx *ctx, const void *p, size_t len)
 
 	/* Handle any remaining bytes of data. */
 	if (len != 0)
-		os_memcpy(ctx->buffer + have, input, len);
+		memcpy(ctx->buffer + have, input, len);
 }
 
 /*
@@ -113,7 +108,7 @@ void md4_hash(struct md4_ctx *ctx, const void *p, size_t len)
  */
 static void MD4Pad(struct md4_ctx *ctx)
 {
-	u8 count[8];
+	uint8_t count[8];
 	size_t padlen;
 
 	/* Convert count to 8 bytes in little endian order. */
@@ -139,7 +134,7 @@ void md4_finish(struct md4_ctx *ctx)
 	MD4Pad(ctx);
 	for (i = 0; i < 4; i++)
 		PUT_32BIT_LE(digest + i * 4, ctx->hash.words[i]);
-	os_memcpy(ctx->hash.bytes, digest, sizeof(ctx->hash.bytes));
+	memcpy(ctx->hash.bytes, digest, sizeof(ctx->hash.bytes));
 }
 
 
@@ -160,19 +155,19 @@ void md4_finish(struct md4_ctx *ctx)
  * the data and converts bytes into longwords for this routine.
  */
 static void
-MD4Transform(u32 state[4], const u8 block[MD4_BLOCK_LENGTH])
+MD4Transform(uint32_t state[4], const uint8_t block[MD4_BLOCK_LENGTH])
 {
-	u32 a, b, c, d, in[MD4_BLOCK_LENGTH / 4];
+	uint32_t a, b, c, d, in[MD4_BLOCK_LENGTH / 4];
 
 #if BYTE_ORDER == LITTLE_ENDIAN
-	os_memcpy(in, block, sizeof(in));
+	memcpy(in, block, sizeof(in));
 #else
 	for (a = 0; a < MD4_BLOCK_LENGTH / 4; a++) {
-		in[a] = (u32)(
-		    (u32)(block[a * 4 + 0]) |
-		    (u32)(block[a * 4 + 1]) <<  8 |
-		    (u32)(block[a * 4 + 2]) << 16 |
-		    (u32)(block[a * 4 + 3]) << 24);
+		in[a] = (uint32_t)(
+		    (uint32_t)(block[a * 4 + 0]) |
+		    (uint32_t)(block[a * 4 + 1]) <<  8 |
+		    (uint32_t)(block[a * 4 + 2]) << 16 |
+		    (uint32_t)(block[a * 4 + 3]) << 24);
 	}
 #endif
 
