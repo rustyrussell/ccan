@@ -1,4 +1,4 @@
-/* Licensed under LGPLv2+ - see LICENSE file for details */
+/* Licensed under BSD-MIT - see LICENSE file for details */
 #ifndef CCAN_READ_WRITE_H
 #define CCAN_READ_WRITE_H
 #include <stddef.h>
