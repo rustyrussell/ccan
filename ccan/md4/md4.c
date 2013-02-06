@@ -26,8 +26,100 @@
 
 #define	MD4_DIGEST_STRING_LENGTH	(MD4_DIGEST_LENGTH * 2 + 1)
 
+/* The three core functions - F1 is optimized somewhat */
+
+/* #define F1(x, y, z) (x & y | ~x & z) */
+#define F1(x, y, z) (z ^ (x & (y ^ z)))
+#define F2(x, y, z) ((x & y) | (x & z) | (y & z))
+#define F3(x, y, z) (x ^ y ^ z)
+
+/* This is the central step in the MD4 algorithm. */
+#define MD4STEP(f, w, x, y, z, data, s) \
+	( w += f(x, y, z) + data,  w = w<<s | w>>(32-s) )
+
+/*
+ * The core of the MD4 algorithm, this alters an existing MD4 hash to
+ * reflect the addition of 16 longwords of new data.  MD4Update blocks
+ * the data and converts bytes into longwords for this routine.
+ */
 static void
-MD4Transform(uint32_t state[4], const uint8_t block[MD4_BLOCK_LENGTH]);
+MD4Transform(uint32_t state[4], const uint8_t block[MD4_BLOCK_LENGTH])
+{
+	uint32_t a, b, c, d, in[MD4_BLOCK_LENGTH / 4];
+
+#if BYTE_ORDER == LITTLE_ENDIAN
+	memcpy(in, block, sizeof(in));
+#else
+	for (a = 0; a < MD4_BLOCK_LENGTH / 4; a++) {
+		in[a] = (uint32_t)(
+		    (uint32_t)(block[a * 4 + 0]) |
+		    (uint32_t)(block[a * 4 + 1]) <<  8 |
+		    (uint32_t)(block[a * 4 + 2]) << 16 |
+		    (uint32_t)(block[a * 4 + 3]) << 24);
+	}
+#endif
+
+	a = state[0];
+	b = state[1];
+	c = state[2];
+	d = state[3];
+
+	MD4STEP(F1, a, b, c, d, in[ 0],  3);
+	MD4STEP(F1, d, a, b, c, in[ 1],  7);
+	MD4STEP(F1, c, d, a, b, in[ 2], 11);
+	MD4STEP(F1, b, c, d, a, in[ 3], 19);
+	MD4STEP(F1, a, b, c, d, in[ 4],  3);
+	MD4STEP(F1, d, a, b, c, in[ 5],  7);
+	MD4STEP(F1, c, d, a, b, in[ 6], 11);
+	MD4STEP(F1, b, c, d, a, in[ 7], 19);
+	MD4STEP(F1, a, b, c, d, in[ 8],  3);
+	MD4STEP(F1, d, a, b, c, in[ 9],  7);
+	MD4STEP(F1, c, d, a, b, in[10], 11);
+	MD4STEP(F1, b, c, d, a, in[11], 19);
+	MD4STEP(F1, a, b, c, d, in[12],  3);
+	MD4STEP(F1, d, a, b, c, in[13],  7);
+	MD4STEP(F1, c, d, a, b, in[14], 11);
+	MD4STEP(F1, b, c, d, a, in[15], 19);
+
+	MD4STEP(F2, a, b, c, d, in[ 0] + 0x5a827999,  3);
+	MD4STEP(F2, d, a, b, c, in[ 4] + 0x5a827999,  5);
+	MD4STEP(F2, c, d, a, b, in[ 8] + 0x5a827999,  9);
+	MD4STEP(F2, b, c, d, a, in[12] + 0x5a827999, 13);
+	MD4STEP(F2, a, b, c, d, in[ 1] + 0x5a827999,  3);
+	MD4STEP(F2, d, a, b, c, in[ 5] + 0x5a827999,  5);
+	MD4STEP(F2, c, d, a, b, in[ 9] + 0x5a827999,  9);
+	MD4STEP(F2, b, c, d, a, in[13] + 0x5a827999, 13);
+	MD4STEP(F2, a, b, c, d, in[ 2] + 0x5a827999,  3);
+	MD4STEP(F2, d, a, b, c, in[ 6] + 0x5a827999,  5);
+	MD4STEP(F2, c, d, a, b, in[10] + 0x5a827999,  9);
+	MD4STEP(F2, b, c, d, a, in[14] + 0x5a827999, 13);
+	MD4STEP(F2, a, b, c, d, in[ 3] + 0x5a827999,  3);
+	MD4STEP(F2, d, a, b, c, in[ 7] + 0x5a827999,  5);
+	MD4STEP(F2, c, d, a, b, in[11] + 0x5a827999,  9);
+	MD4STEP(F2, b, c, d, a, in[15] + 0x5a827999, 13);
+
+	MD4STEP(F3, a, b, c, d, in[ 0] + 0x6ed9eba1,  3);
+	MD4STEP(F3, d, a, b, c, in[ 8] + 0x6ed9eba1,  9);
+	MD4STEP(F3, c, d, a, b, in[ 4] + 0x6ed9eba1, 11);
+	MD4STEP(F3, b, c, d, a, in[12] + 0x6ed9eba1, 15);
+	MD4STEP(F3, a, b, c, d, in[ 2] + 0x6ed9eba1,  3);
+	MD4STEP(F3, d, a, b, c, in[10] + 0x6ed9eba1,  9);
+	MD4STEP(F3, c, d, a, b, in[ 6] + 0x6ed9eba1, 11);
+	MD4STEP(F3, b, c, d, a, in[14] + 0x6ed9eba1, 15);
+	MD4STEP(F3, a, b, c, d, in[ 1] + 0x6ed9eba1,  3);
+	MD4STEP(F3, d, a, b, c, in[ 9] + 0x6ed9eba1,  9);
+	MD4STEP(F3, c, d, a, b, in[ 5] + 0x6ed9eba1, 11);
+	MD4STEP(F3, b, c, d, a, in[13] + 0x6ed9eba1, 15);
+	MD4STEP(F3, a, b, c, d, in[ 3] + 0x6ed9eba1,  3);
+	MD4STEP(F3, d, a, b, c, in[11] + 0x6ed9eba1,  9);
+	MD4STEP(F3, c, d, a, b, in[ 7] + 0x6ed9eba1, 11);
+	MD4STEP(F3, b, c, d, a, in[15] + 0x6ed9eba1, 15);
+
+	state[0] += a;
+	state[1] += b;
+	state[2] += c;
+	state[3] += d;
+}
 
 #define PUT_64BIT_LE(cp, value) do {					\
 	(cp)[7] = (value) >> 56;					\
@@ -138,97 +230,3 @@ void md4_finish(struct md4_ctx *ctx)
 }
 
 
-/* The three core functions - F1 is optimized somewhat */
-
-/* #define F1(x, y, z) (x & y | ~x & z) */
-#define F1(x, y, z) (z ^ (x & (y ^ z)))
-#define F2(x, y, z) ((x & y) | (x & z) | (y & z))
-#define F3(x, y, z) (x ^ y ^ z)
-
-/* This is the central step in the MD4 algorithm. */
-#define MD4STEP(f, w, x, y, z, data, s) \
-	( w += f(x, y, z) + data,  w = w<<s | w>>(32-s) )
-
-/*
- * The core of the MD4 algorithm, this alters an existing MD4 hash to
- * reflect the addition of 16 longwords of new data.  MD4Update blocks
- * the data and converts bytes into longwords for this routine.
- */
-static void
-MD4Transform(uint32_t state[4], const uint8_t block[MD4_BLOCK_LENGTH])
-{
-	uint32_t a, b, c, d, in[MD4_BLOCK_LENGTH / 4];
-
-#if BYTE_ORDER == LITTLE_ENDIAN
-	memcpy(in, block, sizeof(in));
-#else
-	for (a = 0; a < MD4_BLOCK_LENGTH / 4; a++) {
-		in[a] = (uint32_t)(
-		    (uint32_t)(block[a * 4 + 0]) |
-		    (uint32_t)(block[a * 4 + 1]) <<  8 |
-		    (uint32_t)(block[a * 4 + 2]) << 16 |
-		    (uint32_t)(block[a * 4 + 3]) << 24);
-	}
-#endif
-
-	a = state[0];
-	b = state[1];
-	c = state[2];
-	d = state[3];
-
-	MD4STEP(F1, a, b, c, d, in[ 0],  3);
-	MD4STEP(F1, d, a, b, c, in[ 1],  7);
-	MD4STEP(F1, c, d, a, b, in[ 2], 11);
-	MD4STEP(F1, b, c, d, a, in[ 3], 19);
-	MD4STEP(F1, a, b, c, d, in[ 4],  3);
-	MD4STEP(F1, d, a, b, c, in[ 5],  7);
-	MD4STEP(F1, c, d, a, b, in[ 6], 11);
-	MD4STEP(F1, b, c, d, a, in[ 7], 19);
-	MD4STEP(F1, a, b, c, d, in[ 8],  3);
-	MD4STEP(F1, d, a, b, c, in[ 9],  7);
-	MD4STEP(F1, c, d, a, b, in[10], 11);
-	MD4STEP(F1, b, c, d, a, in[11], 19);
-	MD4STEP(F1, a, b, c, d, in[12],  3);
-	MD4STEP(F1, d, a, b, c, in[13],  7);
-	MD4STEP(F1, c, d, a, b, in[14], 11);
-	MD4STEP(F1, b, c, d, a, in[15], 19);
-
-	MD4STEP(F2, a, b, c, d, in[ 0] + 0x5a827999,  3);
-	MD4STEP(F2, d, a, b, c, in[ 4] + 0x5a827999,  5);
-	MD4STEP(F2, c, d, a, b, in[ 8] + 0x5a827999,  9);
-	MD4STEP(F2, b, c, d, a, in[12] + 0x5a827999, 13);
-	MD4STEP(F2, a, b, c, d, in[ 1] + 0x5a827999,  3);
-	MD4STEP(F2, d, a, b, c, in[ 5] + 0x5a827999,  5);
-	MD4STEP(F2, c, d, a, b, in[ 9] + 0x5a827999,  9);
-	MD4STEP(F2, b, c, d, a, in[13] + 0x5a827999, 13);
-	MD4STEP(F2, a, b, c, d, in[ 2] + 0x5a827999,  3);
-	MD4STEP(F2, d, a, b, c, in[ 6] + 0x5a827999,  5);
-	MD4STEP(F2, c, d, a, b, in[10] + 0x5a827999,  9);
-	MD4STEP(F2, b, c, d, a, in[14] + 0x5a827999, 13);
-	MD4STEP(F2, a, b, c, d, in[ 3] + 0x5a827999,  3);
-	MD4STEP(F2, d, a, b, c, in[ 7] + 0x5a827999,  5);
-	MD4STEP(F2, c, d, a, b, in[11] + 0x5a827999,  9);
-	MD4STEP(F2, b, c, d, a, in[15] + 0x5a827999, 13);
-
-	MD4STEP(F3, a, b, c, d, in[ 0] + 0x6ed9eba1,  3);
-	MD4STEP(F3, d, a, b, c, in[ 8] + 0x6ed9eba1,  9);
-	MD4STEP(F3, c, d, a, b, in[ 4] + 0x6ed9eba1, 11);
-	MD4STEP(F3, b, c, d, a, in[12] + 0x6ed9eba1, 15);
-	MD4STEP(F3, a, b, c, d, in[ 2] + 0x6ed9eba1,  3);
-	MD4STEP(F3, d, a, b, c, in[10] + 0x6ed9eba1,  9);
-	MD4STEP(F3, c, d, a, b, in[ 6] + 0x6ed9eba1, 11);
-	MD4STEP(F3, b, c, d, a, in[14] + 0x6ed9eba1, 15);
-	MD4STEP(F3, a, b, c, d, in[ 1] + 0x6ed9eba1,  3);
-	MD4STEP(F3, d, a, b, c, in[ 9] + 0x6ed9eba1,  9);
-	MD4STEP(F3, c, d, a, b, in[ 5] + 0x6ed9eba1, 11);
-	MD4STEP(F3, b, c, d, a, in[13] + 0x6ed9eba1, 15);
-	MD4STEP(F3, a, b, c, d, in[ 3] + 0x6ed9eba1,  3);
-	MD4STEP(F3, d, a, b, c, in[11] + 0x6ed9eba1,  9);
-	MD4STEP(F3, c, d, a, b, in[ 7] + 0x6ed9eba1, 11);
-	MD4STEP(F3, b, c, d, a, in[15] + 0x6ed9eba1, 15);
-
-	state[0] += a;
-	state[1] += b;
-	state[2] += c;
-	state[3] += d;
-}
