@@ -1,0 +1,27 @@
+#include <stdio.h>
+#include <string.h>
+#include "config.h"
+
+/**
+ * softsync - routines to provide consistency without durability guarantees
+ *
+ * License: BSD-MIT
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/md4\n");
+		printf("ccan/noerr\n");
+		printf("ccan/read_write_all\n");
+		printf("ccan/short_types\n");
+		return 0;
+	}
+	if (strcmp(argv[1], "testdepends") == 0) {
+		printf("ccan/failtest\n");
+		return 0;
+	}
+	return 1;
+}

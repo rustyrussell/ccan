@@ -1,0 +1,7 @@
+O_TRUNCATE handling on open.
+Random seed in md4.
+Multiple openers.
+Recovery on R/O filesystems.
+Simultaneous openers.
+Handle malloc fail on recovery.
+Make journal endian safe.
