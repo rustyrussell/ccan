@@ -5,26 +5,31 @@
  * This code is in the public domain; do with it what you wish.
  * Todd C. Miller modified the MD5 code to do MD4 based on RFC 1186.
  *
- * CCAN-ized by Rusty Russell, 2013, based on FreeBSD's
- * contrib/wpa/src/crypto/md4-internal.c.
- *
- * Equivalent code is available from RSA Data Security, Inc.
- * This code has been tested against that, and is equivalent,
- * except that you don't need to include two pages of legalese
- * with every copy.
- *
- * To compute the message digest of a chunk of bytes, declare an
- * MD4Context structure, pass it to MD4Init, call MD4Update as
- * needed on buffers full of bytes, and then call MD4Final, which
- * will fill a supplied 16-byte array with the digest.
+ * CCAN-ized by Rusty Russell, 2013, based on Public Domain part of
+ * FreeBSD's contrib/wpa/src/crypto/md4-internal.c.
  */
 #include "md4.h"
+#include <ccan/endian/endian.h>
+#include <ccan/array_size/array_size.h>
 #include <string.h>
 
-#define	MD4_BLOCK_LENGTH		64
-#define	MD4_DIGEST_LENGTH		16
+#define	MD4_BLOCK_LENGTH	sizeof(((struct md4_ctx *)0)->buffer)
 
-#define	MD4_DIGEST_STRING_LENGTH	(MD4_DIGEST_LENGTH * 2 + 1)
+static inline void le32_to_cpu_array(uint32_t *buf, unsigned int words)
+{
+	while (words--) {
+		*buf = le32_to_cpu(*buf);
+		buf++;
+	}
+}
+
+static inline void cpu_to_le32_array(uint32_t *buf, unsigned int words)
+{
+	while (words--) {
+		*buf = cpu_to_le32(*buf);
+		buf++;
+	}
+}
 
 /* The three core functions - F1 is optimized somewhat */
 
@@ -47,17 +52,8 @@ MD4Transform(uint32_t state[4], const uint8_t block[MD4_BLOCK_LENGTH])
 {
 	uint32_t a, b, c, d, in[MD4_BLOCK_LENGTH / 4];
 
-#if BYTE_ORDER == LITTLE_ENDIAN
 	memcpy(in, block, sizeof(in));
-#else
-	for (a = 0; a < MD4_BLOCK_LENGTH / 4; a++) {
-		in[a] = (uint32_t)(
-		    (uint32_t)(block[a * 4 + 0]) |
-		    (uint32_t)(block[a * 4 + 1]) <<  8 |
-		    (uint32_t)(block[a * 4 + 2]) << 16 |
-		    (uint32_t)(block[a * 4 + 3]) << 24);
-	}
-#endif
+	cpu_to_le32_array(in, ARRAY_SIZE(in));
 
 	a = state[0];
 	b = state[1];
@@ -200,11 +196,11 @@ void md4_hash(struct md4_ctx *ctx, const void *p, size_t len)
  */
 static void MD4Pad(struct md4_ctx *ctx)
 {
-	uint8_t count[8];
+	uint64_t count;
 	size_t padlen;
 
 	/* Convert count to 8 bytes in little endian order. */
-	PUT_64BIT_LE(count, ctx->byte_count);
+	count = cpu_to_le64(ctx->byte_count);
 
 	/* Pad out to 56 mod 64. */
 	padlen = MD4_BLOCK_LENGTH -
@@ -212,7 +208,7 @@ static void MD4Pad(struct md4_ctx *ctx)
 	if (padlen < 1 + 8)
 		padlen += MD4_BLOCK_LENGTH;
 	md4_hash(ctx, PADDING, padlen - 8);		/* padlen - 8 <= 64 */
-	md4_hash(ctx, count, 8);
+	md4_hash(ctx, &count, 8);
 }
 
 /*
@@ -220,13 +216,8 @@ static void MD4Pad(struct md4_ctx *ctx)
  */
 void md4_finish(struct md4_ctx *ctx)
 {
-	int i;
-	unsigned char digest[MD4_DIGEST_LENGTH];
-
 	MD4Pad(ctx);
-	for (i = 0; i < 4; i++)
-		PUT_32BIT_LE(digest + i * 4, ctx->hash.words[i]);
-	memcpy(ctx->hash.bytes, digest, sizeof(ctx->hash.bytes));
+	cpu_to_le32_array(ctx->hash.words, ARRAY_SIZE(ctx->hash.words));
 }
 
 

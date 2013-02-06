@@ -32,6 +32,8 @@
  *	}
  *
  * License: Public domain
+ * Ccanlint:
+ *	license_depends_compat FAIL // array_size is BSD-MIT
  */
 int main(int argc, char *argv[])
 {
@@ -39,6 +41,8 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/array_size\n");
+		printf("ccan/endian\n");
 		return 0;
 	}
 
