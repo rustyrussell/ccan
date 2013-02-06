@@ -31,7 +31,7 @@
  *		return 0;
  *	}
  *
- * License: GPL (v2 or any later version)
+ * License: Public domain
  */
 int main(int argc, char *argv[])
 {
@@ -39,8 +39,6 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
-		printf("ccan/endian\n");
-		printf("ccan/array_size\n");
 		return 0;
 	}
 

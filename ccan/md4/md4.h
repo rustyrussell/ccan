@@ -1,4 +1,4 @@
-/* Licensed under GPLv2+ - see LICENSE file for details */
+/* Licensed under Public Domain */
 #ifndef CCAN_MD4_H
 #define CCAN_MD4_H
 #include <stdint.h>
@@ -15,7 +15,7 @@ struct md4_ctx {
 		unsigned char bytes[16];
 		uint32_t words[4];
 	} hash;
-	uint32_t block[16];
+	unsigned char buffer[64];
 	uint64_t byte_count;
 };
 

@@ -1,200 +1,239 @@
 /*
- * MD4 Message Digest Algorithm (RFC1320).
+ * This code implements the MD4 message-digest algorithm.
+ * The algorithm is due to Ron Rivest.	This code was
+ * written by Colin Plumb in 1993, no copyright is claimed.
+ * This code is in the public domain; do with it what you wish.
+ * Todd C. Miller modified the MD5 code to do MD4 based on RFC 1186.
  *
- * Based on linux kernel 2.6.28-rc5:
+ * CCAN-ized by Rusty Russell, 2013, based on FreeBSD's
+ * contrib/wpa/src/crypto/md4-internal.c.
  *
- * Implementation derived from Andrew Tridgell and Steve French's
- * CIFS MD4 implementation, and the cryptoapi implementation
- * originally based on the public domain implementation written
- * by Colin Plumb in 1993.
+ * Equivalent code is available from RSA Data Security, Inc.
+ * This code has been tested against that, and is equivalent,
+ * except that you don't need to include two pages of legalese
+ * with every copy.
  *
- * Copyright (c) Andrew Tridgell 1997-1998.
- * Modified by Steve French (sfrench@us.ibm.com) 2002
- * Copyright (c) Cryptoapi developers.
- * Copyright (c) 2002 David S. Miller (davem@redhat.com)
- * Copyright (c) 2002 James Morris <jmorris@intercode.com.au>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
+ * To compute the message digest of a chunk of bytes, declare an
+ * MD4Context structure, pass it to MD4Init, call MD4Update as
+ * needed on buffers full of bytes, and then call MD4Final, which
+ * will fill a supplied 16-byte array with the digest.
  */
 #include "md4.h"
-#include <ccan/endian/endian.h>
-#include <ccan/array_size/array_size.h>
 #include <string.h>
 
-static inline uint32_t lshift(uint32_t x, unsigned int s)
+#define os_memcpy memcpy
+#define u64 uint64_t
+#define u32 uint32_t
+#define u8 uint8_t
+
+#define	MD4_BLOCK_LENGTH		64
+#define	MD4_DIGEST_LENGTH		16
+
+#define	MD4_DIGEST_STRING_LENGTH	(MD4_DIGEST_LENGTH * 2 + 1)
+
+static void
+MD4Transform(u32 state[4], const u8 block[MD4_BLOCK_LENGTH]);
+
+#define PUT_64BIT_LE(cp, value) do {					\
+	(cp)[7] = (value) >> 56;					\
+	(cp)[6] = (value) >> 48;					\
+	(cp)[5] = (value) >> 40;					\
+	(cp)[4] = (value) >> 32;					\
+	(cp)[3] = (value) >> 24;					\
+	(cp)[2] = (value) >> 16;					\
+	(cp)[1] = (value) >> 8;						\
+	(cp)[0] = (value); } while (0)
+
+#define PUT_32BIT_LE(cp, value) do {					\
+	(cp)[3] = (value) >> 24;					\
+	(cp)[2] = (value) >> 16;					\
+	(cp)[1] = (value) >> 8;						\
+	(cp)[0] = (value); } while (0)
+
+static u8 PADDING[MD4_BLOCK_LENGTH] = {
+	0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
+/*
+ * Start MD4 accumulation.
+ * Set bit count to 0 and buffer to mysterious initialization constants.
+ */
+void md4_init(struct md4_ctx *ctx)
 {
-	x &= 0xFFFFFFFF;
-	return ((x << s) & 0xFFFFFFFF) | (x >> (32 - s));
+	ctx->byte_count = 0;
+	ctx->hash.words[0] = 0x67452301;
+	ctx->hash.words[1] = 0xefcdab89;
+	ctx->hash.words[2] = 0x98badcfe;
+	ctx->hash.words[3] = 0x10325476;
 }
 
-static inline uint32_t F(uint32_t x, uint32_t y, uint32_t z)
+/*
+ * Update context to reflect the concatenation of another buffer full
+ * of bytes.
+ */
+void md4_hash(struct md4_ctx *ctx, const void *p, size_t len)
 {
-	return (x & y) | ((~x) & z);
-}
+	size_t have, need;
+	const unsigned char *input = p;
 
-static inline uint32_t G(uint32_t x, uint32_t y, uint32_t z)
-{
-	return (x & y) | (x & z) | (y & z);
-}
+	/* Check how many bytes we already have and how many more we need. */
+	have = (size_t)((ctx->byte_count >> 3) & (MD4_BLOCK_LENGTH - 1));
+	need = MD4_BLOCK_LENGTH - have;
 
-static inline uint32_t H(uint32_t x, uint32_t y, uint32_t z)
-{
-	return x ^ y ^ z;
-}
+	/* Update bitcount */
+	ctx->byte_count += (u64)len << 3;
 
-#define ROUND1(a,b,c,d,k,s) (a = lshift(a + F(b,c,d) + k, s))
-#define ROUND2(a,b,c,d,k,s) (a = lshift(a + G(b,c,d) + k + (uint32_t)0x5A827999,s))
-#define ROUND3(a,b,c,d,k,s) (a = lshift(a + H(b,c,d) + k + (uint32_t)0x6ED9EBA1,s))
+	if (len >= need) {
+		if (have != 0) {
+			os_memcpy(ctx->buffer + have, input, need);
+			MD4Transform(ctx->hash.words, ctx->buffer);
+			input += need;
+			len -= need;
+			have = 0;
+		}
 
-static inline void le32_to_cpu_array(uint32_t *buf, unsigned int words)
-{
-	while (words--) {
-		*buf = le32_to_cpu(*buf);
-		buf++;
-	}
-}
-
-static inline void cpu_to_le32_array(uint32_t *buf, unsigned int words)
-{
-	while (words--) {
-		*buf = cpu_to_le32(*buf);
-		buf++;
-	}
-}
-
-static void md4_transform(uint32_t *hash, uint32_t const *in)
-{
-	uint32_t a, b, c, d;
-
-	a = hash[0];
-	b = hash[1];
-	c = hash[2];
-	d = hash[3];
-
-	ROUND1(a, b, c, d, in[0], 3);
-	ROUND1(d, a, b, c, in[1], 7);
-	ROUND1(c, d, a, b, in[2], 11);
-	ROUND1(b, c, d, a, in[3], 19);
-	ROUND1(a, b, c, d, in[4], 3);
-	ROUND1(d, a, b, c, in[5], 7);
-	ROUND1(c, d, a, b, in[6], 11);
-	ROUND1(b, c, d, a, in[7], 19);
-	ROUND1(a, b, c, d, in[8], 3);
-	ROUND1(d, a, b, c, in[9], 7);
-	ROUND1(c, d, a, b, in[10], 11);
-	ROUND1(b, c, d, a, in[11], 19);
-	ROUND1(a, b, c, d, in[12], 3);
-	ROUND1(d, a, b, c, in[13], 7);
-	ROUND1(c, d, a, b, in[14], 11);
-	ROUND1(b, c, d, a, in[15], 19);
-
-	ROUND2(a, b, c, d,in[ 0], 3);
-	ROUND2(d, a, b, c, in[4], 5);
-	ROUND2(c, d, a, b, in[8], 9);
-	ROUND2(b, c, d, a, in[12], 13);
-	ROUND2(a, b, c, d, in[1], 3);
-	ROUND2(d, a, b, c, in[5], 5);
-	ROUND2(c, d, a, b, in[9], 9);
-	ROUND2(b, c, d, a, in[13], 13);
-	ROUND2(a, b, c, d, in[2], 3);
-	ROUND2(d, a, b, c, in[6], 5);
-	ROUND2(c, d, a, b, in[10], 9);
-	ROUND2(b, c, d, a, in[14], 13);
-	ROUND2(a, b, c, d, in[3], 3);
-	ROUND2(d, a, b, c, in[7], 5);
-	ROUND2(c, d, a, b, in[11], 9);
-	ROUND2(b, c, d, a, in[15], 13);
-
-	ROUND3(a, b, c, d,in[ 0], 3);
-	ROUND3(d, a, b, c, in[8], 9);
-	ROUND3(c, d, a, b, in[4], 11);
-	ROUND3(b, c, d, a, in[12], 15);
-	ROUND3(a, b, c, d, in[2], 3);
-	ROUND3(d, a, b, c, in[10], 9);
-	ROUND3(c, d, a, b, in[6], 11);
-	ROUND3(b, c, d, a, in[14], 15);
-	ROUND3(a, b, c, d, in[1], 3);
-	ROUND3(d, a, b, c, in[9], 9);
-	ROUND3(c, d, a, b, in[5], 11);
-	ROUND3(b, c, d, a, in[13], 15);
-	ROUND3(a, b, c, d, in[3], 3);
-	ROUND3(d, a, b, c, in[11], 9);
-	ROUND3(c, d, a, b, in[7], 11);
-	ROUND3(b, c, d, a, in[15], 15);
-
-	hash[0] += a;
-	hash[1] += b;
-	hash[2] += c;
-	hash[3] += d;
-}
-
-static inline void md4_transform_helper(struct md4_ctx *ctx)
-{
-	le32_to_cpu_array(ctx->block, ARRAY_SIZE(ctx->block));
-	md4_transform(ctx->hash.words, ctx->block);
-}
-
-void md4_init(struct md4_ctx *mctx)
-{
-	mctx->hash.words[0] = 0x67452301;
-	mctx->hash.words[1] = 0xefcdab89;
-	mctx->hash.words[2] = 0x98badcfe;
-	mctx->hash.words[3] = 0x10325476;
-	mctx->byte_count = 0;
-}
-
-void md4_hash(struct md4_ctx *mctx, const void *p, size_t len)
-{
-	const unsigned char *data = p;
-	const uint32_t avail = sizeof(mctx->block) - (mctx->byte_count & 0x3f);
-
-	mctx->byte_count += len;
-
-	if (avail > len) {
-		memcpy((char *)mctx->block + (sizeof(mctx->block) - avail),
-		       data, len);
-		return;
+		/* Process data in MD4_BLOCK_LENGTH-byte chunks. */
+		while (len >= MD4_BLOCK_LENGTH) {
+			MD4Transform(ctx->hash.words, input);
+			input += MD4_BLOCK_LENGTH;
+			len -= MD4_BLOCK_LENGTH;
+		}
 	}
 
-	memcpy((char *)mctx->block + (sizeof(mctx->block) - avail),
-	       data, avail);
-
-	md4_transform_helper(mctx);
-	data += avail;
-	len -= avail;
-
-	while (len >= sizeof(mctx->block)) {
-		memcpy(mctx->block, data, sizeof(mctx->block));
-		md4_transform_helper(mctx);
-		data += sizeof(mctx->block);
-		len -= sizeof(mctx->block);
-	}
-
-	memcpy(mctx->block, data, len);
+	/* Handle any remaining bytes of data. */
+	if (len != 0)
+		os_memcpy(ctx->buffer + have, input, len);
 }
 
-void md4_finish(struct md4_ctx *mctx)
+/*
+ * Pad pad to 64-byte boundary with the bit pattern
+ * 1 0* (64-bit count of bits processed, MSB-first)
+ */
+static void MD4Pad(struct md4_ctx *ctx)
 {
-	const unsigned int offset = mctx->byte_count & 0x3f;
-	char *p = (char *)mctx->block + offset;
-	int padding = 56 - (offset + 1);
+	u8 count[8];
+	size_t padlen;
 
-	*p++ = 0x80;
-	if (padding < 0) {
-		memset(p, 0x00, padding + sizeof (uint64_t));
-		md4_transform_helper(mctx);
-		p = (char *)mctx->block;
-		padding = 56;
+	/* Convert count to 8 bytes in little endian order. */
+	PUT_64BIT_LE(count, ctx->byte_count);
+
+	/* Pad out to 56 mod 64. */
+	padlen = MD4_BLOCK_LENGTH -
+	    ((ctx->byte_count >> 3) & (MD4_BLOCK_LENGTH - 1));
+	if (padlen < 1 + 8)
+		padlen += MD4_BLOCK_LENGTH;
+	md4_hash(ctx, PADDING, padlen - 8);		/* padlen - 8 <= 64 */
+	md4_hash(ctx, count, 8);
+}
+
+/*
+ * Final wrapup--call MD4Pad, fill in digest and zero out ctx.
+ */
+void md4_finish(struct md4_ctx *ctx)
+{
+	int i;
+	unsigned char digest[MD4_DIGEST_LENGTH];
+
+	MD4Pad(ctx);
+	for (i = 0; i < 4; i++)
+		PUT_32BIT_LE(digest + i * 4, ctx->hash.words[i]);
+	os_memcpy(ctx->hash.bytes, digest, sizeof(ctx->hash.bytes));
+}
+
+
+/* The three core functions - F1 is optimized somewhat */
+
+/* #define F1(x, y, z) (x & y | ~x & z) */
+#define F1(x, y, z) (z ^ (x & (y ^ z)))
+#define F2(x, y, z) ((x & y) | (x & z) | (y & z))
+#define F3(x, y, z) (x ^ y ^ z)
+
+/* This is the central step in the MD4 algorithm. */
+#define MD4STEP(f, w, x, y, z, data, s) \
+	( w += f(x, y, z) + data,  w = w<<s | w>>(32-s) )
+
+/*
+ * The core of the MD4 algorithm, this alters an existing MD4 hash to
+ * reflect the addition of 16 longwords of new data.  MD4Update blocks
+ * the data and converts bytes into longwords for this routine.
+ */
+static void
+MD4Transform(u32 state[4], const u8 block[MD4_BLOCK_LENGTH])
+{
+	u32 a, b, c, d, in[MD4_BLOCK_LENGTH / 4];
+
+#if BYTE_ORDER == LITTLE_ENDIAN
+	os_memcpy(in, block, sizeof(in));
+#else
+	for (a = 0; a < MD4_BLOCK_LENGTH / 4; a++) {
+		in[a] = (u32)(
+		    (u32)(block[a * 4 + 0]) |
+		    (u32)(block[a * 4 + 1]) <<  8 |
+		    (u32)(block[a * 4 + 2]) << 16 |
+		    (u32)(block[a * 4 + 3]) << 24);
 	}
+#endif
 
-	memset(p, 0, padding);
-	mctx->block[14] = mctx->byte_count << 3;
-	mctx->block[15] = mctx->byte_count >> 29;
-	le32_to_cpu_array(mctx->block, (sizeof(mctx->block) -
-	                  sizeof(uint64_t)) / sizeof(uint32_t));
-	md4_transform(mctx->hash.words, mctx->block);
-	cpu_to_le32_array(mctx->hash.words, ARRAY_SIZE(mctx->hash.words));
+	a = state[0];
+	b = state[1];
+	c = state[2];
+	d = state[3];
+
+	MD4STEP(F1, a, b, c, d, in[ 0],  3);
+	MD4STEP(F1, d, a, b, c, in[ 1],  7);
+	MD4STEP(F1, c, d, a, b, in[ 2], 11);
+	MD4STEP(F1, b, c, d, a, in[ 3], 19);
+	MD4STEP(F1, a, b, c, d, in[ 4],  3);
+	MD4STEP(F1, d, a, b, c, in[ 5],  7);
+	MD4STEP(F1, c, d, a, b, in[ 6], 11);
+	MD4STEP(F1, b, c, d, a, in[ 7], 19);
+	MD4STEP(F1, a, b, c, d, in[ 8],  3);
+	MD4STEP(F1, d, a, b, c, in[ 9],  7);
+	MD4STEP(F1, c, d, a, b, in[10], 11);
+	MD4STEP(F1, b, c, d, a, in[11], 19);
+	MD4STEP(F1, a, b, c, d, in[12],  3);
+	MD4STEP(F1, d, a, b, c, in[13],  7);
+	MD4STEP(F1, c, d, a, b, in[14], 11);
+	MD4STEP(F1, b, c, d, a, in[15], 19);
+
+	MD4STEP(F2, a, b, c, d, in[ 0] + 0x5a827999,  3);
+	MD4STEP(F2, d, a, b, c, in[ 4] + 0x5a827999,  5);
+	MD4STEP(F2, c, d, a, b, in[ 8] + 0x5a827999,  9);
+	MD4STEP(F2, b, c, d, a, in[12] + 0x5a827999, 13);
+	MD4STEP(F2, a, b, c, d, in[ 1] + 0x5a827999,  3);
+	MD4STEP(F2, d, a, b, c, in[ 5] + 0x5a827999,  5);
+	MD4STEP(F2, c, d, a, b, in[ 9] + 0x5a827999,  9);
+	MD4STEP(F2, b, c, d, a, in[13] + 0x5a827999, 13);
+	MD4STEP(F2, a, b, c, d, in[ 2] + 0x5a827999,  3);
+	MD4STEP(F2, d, a, b, c, in[ 6] + 0x5a827999,  5);
+	MD4STEP(F2, c, d, a, b, in[10] + 0x5a827999,  9);
+	MD4STEP(F2, b, c, d, a, in[14] + 0x5a827999, 13);
+	MD4STEP(F2, a, b, c, d, in[ 3] + 0x5a827999,  3);
+	MD4STEP(F2, d, a, b, c, in[ 7] + 0x5a827999,  5);
+	MD4STEP(F2, c, d, a, b, in[11] + 0x5a827999,  9);
+	MD4STEP(F2, b, c, d, a, in[15] + 0x5a827999, 13);
+
+	MD4STEP(F3, a, b, c, d, in[ 0] + 0x6ed9eba1,  3);
+	MD4STEP(F3, d, a, b, c, in[ 8] + 0x6ed9eba1,  9);
+	MD4STEP(F3, c, d, a, b, in[ 4] + 0x6ed9eba1, 11);
+	MD4STEP(F3, b, c, d, a, in[12] + 0x6ed9eba1, 15);
+	MD4STEP(F3, a, b, c, d, in[ 2] + 0x6ed9eba1,  3);
+	MD4STEP(F3, d, a, b, c, in[10] + 0x6ed9eba1,  9);
+	MD4STEP(F3, c, d, a, b, in[ 6] + 0x6ed9eba1, 11);
+	MD4STEP(F3, b, c, d, a, in[14] + 0x6ed9eba1, 15);
+	MD4STEP(F3, a, b, c, d, in[ 1] + 0x6ed9eba1,  3);
+	MD4STEP(F3, d, a, b, c, in[ 9] + 0x6ed9eba1,  9);
+	MD4STEP(F3, c, d, a, b, in[ 5] + 0x6ed9eba1, 11);
+	MD4STEP(F3, b, c, d, a, in[13] + 0x6ed9eba1, 15);
+	MD4STEP(F3, a, b, c, d, in[ 3] + 0x6ed9eba1,  3);
+	MD4STEP(F3, d, a, b, c, in[11] + 0x6ed9eba1,  9);
+	MD4STEP(F3, c, d, a, b, in[ 7] + 0x6ed9eba1, 11);
+	MD4STEP(F3, b, c, d, a, in[15] + 0x6ed9eba1, 15);
+
+	state[0] += a;
+	state[1] += b;
+	state[2] += c;
+	state[3] += d;
 }
