@@ -7,10 +7,12 @@ int close_noerr(int fd)
 {
 	int saved_errno = errno, ret;
 
-	if (close(fd) != 0)
+	while ((ret = close(fd)) != 0) {
+		if (errno == EINTR)
+			continue;
 		ret = errno;
-	else
-		ret = 0;
+		break;
+	}
 
 	errno = saved_errno;
 	return ret;

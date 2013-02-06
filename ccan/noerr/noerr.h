@@ -9,6 +9,8 @@
  *
  * errno is saved and restored across the call to close: if an error occurs,
  * the resulting (non-zero) errno is returned.
+ *
+ * Note: this also loops should it fail with EINTR.
  */
 int close_noerr(int fd);
 
