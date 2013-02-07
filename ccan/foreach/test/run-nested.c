@@ -44,10 +44,10 @@ static int count_iters(void)
 
 int main(void)
 {
-	int i, j, sum;
+	int i, j, sum, max_iters;
 	const char *istr, *jstr;
 
-	plan_tests(16);
+	plan_tests(13);
 
 	sum = 0;
 	foreach_int(i, 0, 1, 2, 3, 4)
@@ -93,13 +93,15 @@ int main(void)
 		diag("sum = %i\n", sum);
 		diag("iters = %i\n", count_iters());
 		ok1(sum == 160);
-		ok1(count_iters() <= 2 + 2 + 5); /* 5 is max depth of recursion. */
 
 		sum = test_ptr_recursion("0");
 		diag("sum = %i\n", sum);
 		diag("iters = %i\n", count_iters());
 		ok1(sum == 160);
-		ok1(count_iters() <= 2 + 2 + 5);
+		if (i == 0)
+			max_iters = count_iters();
+		else
+			ok1(count_iters() <= max_iters);
 	}
 	return exit_status();
 }
