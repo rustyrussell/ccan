@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <err.h>
 
-static unsigned int server(int protocol, int type)
+static int server(int protocol, int type)
 {
 	int sock;
 	union {
@@ -17,9 +17,12 @@ static unsigned int server(int protocol, int type)
 	socklen_t addlen = sizeof(addr);
 
 	sock = socket(protocol, type, 0);
+	if (sock < 0)
+		return -1;
 
 	/* Bind to free port. */
-	listen(sock, 0);
+	if (listen(sock, 0) != 0)
+		return -1;
 
 	/* Figure out what port it gave us. */
 	getsockname(sock, &addr.addr, &addlen);
@@ -43,10 +46,8 @@ static unsigned int server(int protocol, int type)
 		     ? addr.ipv4.sin_port : addr.ipv6.sin6_port);
 }
 
-static bool we_faked_double = false;
-
-/* Get a localhost on ipv4 and IPv6.  Fake it if we have to. */
-static struct addrinfo* double_addr_lookup(char* buf)
+/* Get a localhost on ipv4 and IPv6.  Fake it if we can. */
+static struct addrinfo* double_addr_lookup(char* buf, bool *fake_double)
 {
 	struct addrinfo *addr, *addr2;
 
@@ -57,9 +58,8 @@ static struct addrinfo* double_addr_lookup(char* buf)
 	/* If we only got one, we need to fake up the other one. */
 	if (addr->ai_next) {
 		addr2 = addr->ai_next;
+		*fake_double = false;
 	} else {
-		we_faked_double = true;
-
 		/* OK, IPv4 only? */
 		if (addr->ai_family == AF_INET) {
 			/* These are the names I found on my Ubuntu system. */
@@ -77,8 +77,14 @@ static struct addrinfo* double_addr_lookup(char* buf)
 			/* IPv6 only?  This is a guess... */
 			addr2 = net_client_lookup("ip4-localhost", buf,
 						  AF_UNSPEC, SOCK_STREAM);
-		if (!addr2)
-			return NULL;
+
+		/* Perhaps no support on this system?  Go ahead with one. */
+		if (!addr2) {
+			*fake_double = false;
+			return addr;
+		}
+
+		*fake_double = true;
 		addr->ai_next = addr2;
 	}
 
@@ -93,16 +99,13 @@ static struct addrinfo* double_addr_lookup(char* buf)
 	return NULL;
 }
 
-static void double_addr_free(struct addrinfo* addr)
+static void double_addr_free(struct addrinfo* addr, bool fake_double)
 {
-	struct addrinfo *addr2;
-	if (we_faked_double) {
-		addr2 = addr->ai_next;
+	if (fake_double) {
+		freeaddrinfo(addr->ai_next);
 		addr->ai_next = NULL;
 	}
 	freeaddrinfo(addr);
-	if (we_faked_double)
-		freeaddrinfo(addr2);
 }
 
 int main(void)
@@ -112,45 +115,65 @@ int main(void)
 	struct sockaddr saddr;
 	socklen_t slen;
 	char buf[20];
-	unsigned int port;
+	int port;
+	bool fake_double;
 
 	plan_tests(14);
+
 	port = server(AF_INET, SOCK_STREAM);
-	sprintf(buf, "%u", port);
+	if (port == -1) {
+		/* No IPv4 support?  Maybe one day this will happen! */
+		if (errno == EAFNOSUPPORT)
+			skip(6, "No IPv4 socket support");
+		else
+			fail("Could not create IPv4 listening socket: %s",
+			     strerror(errno));
+	} else {
+		sprintf(buf, "%u", port);
 
-	addr = double_addr_lookup(buf);
-	ok1(addr);
-	fd = net_connect(addr);
-	ok1(fd >= 0);
+		addr = double_addr_lookup(buf, &fake_double);
+		ok1(addr);
+		fd = net_connect(addr);
+		ok1(fd >= 0);
 
-	slen = sizeof(saddr);
-	ok1(getsockname(fd, &saddr, &slen) == 0);
-	diag("family = %d", saddr.sa_family);
-	ok1(saddr.sa_family == AF_INET);
-	status = read(fd, buf, sizeof(buf));
-	ok(status == strlen("Yay!"),
-	   "Read returned %i (%s)", status, strerror(errno));
-	ok1(strncmp(buf, "Yay!", strlen("Yay!")) == 0);
-	close(fd);
-	double_addr_free(addr);
+		slen = sizeof(saddr);
+		ok1(getsockname(fd, &saddr, &slen) == 0);
+		diag("family = %d", saddr.sa_family);
+		ok1(saddr.sa_family == AF_INET);
+		status = read(fd, buf, sizeof(buf));
+		ok(status == strlen("Yay!"),
+		   "Read returned %i (%s)", status, strerror(errno));
+		ok1(strncmp(buf, "Yay!", strlen("Yay!")) == 0);
+		close(fd);
+		double_addr_free(addr, fake_double);
+	}
 
 	port = server(AF_INET6, SOCK_STREAM);
-	sprintf(buf, "%u", port);
+	if (port == -1) {
+		/* No IPv6 support? */
+		if (errno == EAFNOSUPPORT)
+			skip(6, "No IPv6 socket support");
+		else
+			fail("Could not create IPv6 listening socket: %s",
+			     strerror(errno));
+	} else {
+		sprintf(buf, "%u", port);
 
-	addr = double_addr_lookup(buf);
-	ok1(addr);
-	fd = net_connect(addr);
-	ok1(fd >= 0);
+		addr = double_addr_lookup(buf, &fake_double);
+		ok1(addr);
+		fd = net_connect(addr);
+		ok1(fd >= 0);
 
-	slen = sizeof(saddr);
-	ok1(getsockname(fd, &saddr, &slen) == 0);
-	ok1(saddr.sa_family == AF_INET6);
-	status = read(fd, buf, sizeof(buf));
-	ok(status == strlen("Yay!"),
-	   "Read returned %i (%s)", status, strerror(errno));
-	ok1(strncmp(buf, "Yay!", strlen("Yay!")) == 0);
-	close(fd);
-	double_addr_free(addr);
+		slen = sizeof(saddr);
+		ok1(getsockname(fd, &saddr, &slen) == 0);
+		ok1(saddr.sa_family == AF_INET6);
+		status = read(fd, buf, sizeof(buf));
+		ok(status == strlen("Yay!"),
+		   "Read returned %i (%s)", status, strerror(errno));
+		ok1(strncmp(buf, "Yay!", strlen("Yay!")) == 0);
+		close(fd);
+		double_addr_free(addr, fake_double);
+	}
 
 	wait(&status);
 	ok1(WIFEXITED(status));
