@@ -2,6 +2,7 @@
 #include <ccan/noerr/noerr.h>
 #include <ccan/short_types/short_types.h>
 #include <ccan/read_write_all/read_write_all.h>
+#include <ccan/str/str.h>
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
@@ -263,31 +264,71 @@ static bool journal_write(struct softsync *s, const void *data, size_t len)
 	return true;
 }
 
+static bool needs_recovery(const char *jpath, int fd)
+{
+#if HAVE_MINCORE_DIRTY_BIT
+#error Implement me
+#else
+	struct stat st;
+	struct sysinfo info;
+	char path[PATH_MAX];
+	struct timeval now;
+
+	/* On any error, we return true: ie. try to do recovery. */
+	if (realpath(jpath, path) != path)
+		return true;
+
+	/* We assume /usr, /var and /tmp are mounted since boot. */
+	if (!strstarts(path, "/usr/")
+	    && !strstarts(path, "/tmp/")
+	    && !strstarts(path, "/var/"))
+		return true;
+
+	if (fstat(fd, &st) != 0)
+		return true;
+
+	gettimeofday(&now, NULL);
+	if (sysinfo(&info) != 0)
+		return true;
+
+	/* If it has been modified since boot, assume it's been recovered,
+	 * but be paranoid. */
+	if (st.st_mtime > now.tv_sec)
+		return true;
+
+	return st.st_mtime < now.tv_sec - info.uptime;
+#endif
+}
+
 int softsync_init_fd(struct softsync *s,
 		     int fd, const char *pathname, mode_t mode)
 {
-	char sspath[strlen(pathname) + sizeof(SOFTSYNC_EXT)];
+	char jpath[strlen(pathname) + sizeof(SOFTSYNC_EXT)];
 
-	strcpy(sspath, pathname);
-	strcat(sspath, SOFTSYNC_EXT);
+	strcpy(jpath, pathname);
+	strcat(jpath, SOFTSYNC_EXT);
 
 	s->base_fd = fd;
-	s->journal_fd = open(sspath, O_RDWR);
+	s->journal_fd = open(jpath, O_RDWR);
 
 	if (s->journal_fd != -1) {
-		s->needs_recovery = true;
-		s->journal_len = validate_journal(s->journal_fd,
-						  &s->base_len, false);
+		s->needs_recovery = needs_recovery(jpath, fd);
+		if (s->needs_recovery) {
+			s->journal_len = validate_journal(s->journal_fd,
+							  &s->base_len, false);
 
-		if (!try_recovery(s, pathname))
-			return -1;
-		s->needs_recovery = false;
+			if (!try_recovery(s, pathname)) {
+				close_noerr(s->journal_fd);
+				return -1;
+			}
+			s->needs_recovery = false;
+		}
 	} else {
 		s->needs_recovery = false;
 
 		/* Mode must match, since anyone writing to
 		 * file must write to journal. */
-		s->journal_fd = open(sspath, O_RDWR|O_CREAT, mode);
+		s->journal_fd = open(jpath, O_RDWR|O_CREAT, mode);
 		if (s->journal_fd == -1)
 			return -1;
 
