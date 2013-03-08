@@ -278,16 +278,14 @@ xml_read_attr_malloc:
  */
 static XmlNode* xml_parse(struct XMLBUF *xml)
 {
-	int offset;
 	int toff;
 	char **tmp;
 	char *stmp;
 	XmlNode **this, *ret = NULL;
-	
+
 	this = &ret;
 
 	xml_skip(xml, XML_SPACE);	// skip whitespace
-	offset=0;
 	while( (xml->read_index < xml->len) || !xml->eof )
 	{
 		switch(is_special(xml_peek(xml)))

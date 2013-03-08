@@ -45,7 +45,6 @@ static void set_nonblocking(int fd)
 
 int iscsi_connect_async(struct iscsi_context *iscsi, const char *target, iscsi_command_cb cb, void *private_data)
 {
-	int tpgt = -1;
 	int port = 3260;
 	char *str;
 	char *addr;
@@ -73,7 +72,6 @@ int iscsi_connect_async(struct iscsi_context *iscsi, const char *target, iscsi_c
 	
 	/* check if we have a target portal group tag */
 	if ((str = rindex(addr, ',')) != NULL) {
-		tpgt = atoi(str+1);
 		str[0] = 0;
 	}
 
