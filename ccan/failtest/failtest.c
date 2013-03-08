@@ -1260,7 +1260,7 @@ static ssize_t failtest_add_read(int fd, void *buf, size_t count, off_t off,
 				set_cleanup(p, cleanup_read, struct read_call);
 		}
 	}
-	trace("%sread %s:%u fd %i %zu@%llu -> %i\n",
+	trace("%sread %s:%u fd %i %zu@%llu -> %zi\n",
 	      is_pread ? "p" : "", file, line, fd, count, (long long)off,
 	      p->u.read.ret);
 	errno = p->error;
@@ -1362,7 +1362,7 @@ static ssize_t failtest_add_write(int fd, const void *buf,
 		else
 			p->u.write.ret = write(fd, buf, count);
 	}
-	trace("%swrite %s:%i %zu@%llu on fd %i -> %i\n",
+	trace("%swrite %s:%i %zu@%llu on fd %i -> %zi\n",
 	      p->u.write.is_pwrite ? "p" : "",
 	      file, line, count, (long long)off, fd, p->u.write.ret);
 	errno = p->error;
