@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
 	opaque_t *q, *nq;
 	struct list_head opaque_list = LIST_HEAD_INIT(opaque_list);
 
-	plan_tests(65);
+	plan_tests(68);
 	/* Test LIST_HEAD, LIST_HEAD_INIT, list_empty and check_list */
 	ok1(list_empty(&static_list));
 	ok1(list_check(&static_list, NULL));
@@ -84,6 +84,11 @@ int main(int argc, char *argv[])
 
 	/* Test list_top */
 	ok1(list_top(&parent.children, struct child, list) == &c1);
+
+	/* Test list_pop */
+	ok1(list_pop(&parent.children, struct child, list) == &c1);
+	ok1(list_top(&parent.children, struct child, list) == &c2);
+	list_add(&parent.children, &c1.list);
 
 	/* Test list_tail */
 	ok1(list_tail(&parent.children, struct child, list) == &c3);
@@ -193,8 +198,9 @@ int main(int argc, char *argv[])
 	ok1(i == 3);
 	ok1(list_empty(&opaque_list));
 
-	/* Test list_top/list_tail on empty list. */
+	/* Test list_top/list_tail/list_pop on empty list. */
 	ok1(list_top(&parent.children, struct child, list) == NULL);
 	ok1(list_tail(&parent.children, struct child, list) == NULL);
+	ok1(list_pop(&parent.children, struct child, list) == NULL);
 	return exit_status();
 }

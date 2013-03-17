@@ -293,6 +293,34 @@ static inline const void *list_top_(const struct list_head *h, size_t off)
 }
 
 /**
+ * list_pop - remove the first entry in a list
+ * @h: the list_head
+ * @type: the type of the entry
+ * @member: the list_node member of the type
+ *
+ * If the list is empty, returns NULL.
+ *
+ * Example:
+ *	struct child *one;
+ *	one = list_pop(&parent->children, struct child, list);
+ *	if (!one)
+ *		printf("Empty list!\n");
+ */
+#define list_pop(h, type, member)					\
+	((type *)list_pop_((h), list_off_(type, member)))
+
+static inline const void *list_pop_(const struct list_head *h, size_t off)
+{
+	struct list_node *n;
+
+	if (list_empty(h))
+		return NULL;
+	n = h->n.next;
+	list_del(n);
+	return (const char *)n - off;
+}
+
+/**
  * list_tail - get the last entry in a list
  * @h: the list_head
  * @type: the type of the entry
