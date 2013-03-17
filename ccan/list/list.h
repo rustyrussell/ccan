@@ -372,6 +372,68 @@ static inline const void *list_tail_(const struct list_head *h, size_t off)
 	list_for_each_safe_off(h, i, nxt, list_off_var_(i, member))
 
 /**
+ * list_append_list - empty one list onto the end of another.
+ * @to: the list to append into
+ * @from: the list to empty.
+ *
+ * This takes the entire contents of @from and moves it to the end of
+ * @to.  After this @from will be empty.
+ *
+ * Example:
+ *	struct list_head adopter;
+ *
+ *	list_append_list(&adopter, &parent->children);
+ *	assert(list_empty(&parent->children));
+ *	parent->num_children = 0;
+ */
+static inline void list_append_list(struct list_head *to,
+				    struct list_head *from)
+{
+	struct list_node *from_tail = list_debug(from)->n.prev;
+	struct list_node *to_tail = list_debug(to)->n.prev;
+
+	/* Sew in head and entire list. */
+	to->n.prev = from_tail;
+	from_tail->next = &to->n;
+	to_tail->next = &from->n;
+	from->n.prev = to_tail;
+
+	/* Now remove head. */
+	list_del(&from->n);
+	list_head_init(from);
+}
+
+/**
+ * list_prepend_list - empty one list into the start of another.
+ * @to: the list to prepend into
+ * @from: the list to empty.
+ *
+ * This takes the entire contents of @from and moves it to the start
+ * of @to.  After this @from will be empty.
+ *
+ * Example:
+ *	list_prepend_list(&adopter, &parent->children);
+ *	assert(list_empty(&parent->children));
+ *	parent->num_children = 0;
+ */
+static inline void list_prepend_list(struct list_head *to,
+				     struct list_head *from)
+{
+	struct list_node *from_tail = list_debug(from)->n.prev;
+	struct list_node *to_head = list_debug(to)->n.next;
+
+	/* Sew in head and entire list. */
+	to->n.next = &from->n;
+	from->n.prev = &to->n;
+	to_head->prev = from_tail;
+	from_tail->next = to_head;
+
+	/* Now remove head. */
+	list_del(&from->n);
+	list_head_init(from);
+}
+
+/**
  * list_for_each_off - iterate through a list of memory regions.
  * @h: the list_head
  * @i: the pointer to a memory region wich contains list node data.
