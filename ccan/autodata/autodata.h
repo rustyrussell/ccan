@@ -23,7 +23,7 @@
  */
 #define AUTODATA_TYPE(name, type)					\
 	typedef type autodata_##name##_;				\
-	extern type *__start_autodata_##name[], *__stop_autodata_##name[]
+	extern type *__start_xautodata_##name[], *__stop_xautodata_##name[]
 
 /**
  * AUTODATA - add a pointer to this autodata set
@@ -42,7 +42,7 @@
  */
 #define AUTODATA(name, ptr) \
 	static const autodata_##name##_ *NEEDED		\
-	__attribute__((section("autodata_" #name)))	\
+	__attribute__((section("xautodata_" #name)))	\
 	AUTODATA_VAR_(name, __LINE__) = (ptr);
 
 /**
@@ -68,8 +68,8 @@
  */
 #define autodata_get(name, nump)					\
 	((autodata_##name##_ **)					\
-	 autodata_get_section(__start_autodata_##name,			\
-			      __stop_autodata_##name, (nump)))
+	 autodata_get_section(__start_xautodata_##name,			\
+			      __stop_xautodata_##name, (nump)))
 #endif /* HAVE_SECTION_START_STOP */
 
 /**
