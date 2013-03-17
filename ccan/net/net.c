@@ -150,3 +150,91 @@ out:
 	errno = saved_errno;
 	return sockfd;
 }
+
+struct addrinfo *net_server_lookup(const char *service,
+				   int family,
+				   int socktype)
+{
+	struct addrinfo *res, hints;
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = family;
+	hints.ai_socktype = socktype;
+	hints.ai_flags = AI_PASSIVE;
+	hints.ai_protocol = 0;
+
+	if (getaddrinfo(NULL, service, &hints, &res) != 0)
+		return NULL;
+
+	return res;
+}
+
+static bool should_listen(const struct addrinfo *addrinfo)
+{
+#ifdef SOCK_SEQPACKET
+	if (addrinfo->ai_socktype == SOCK_SEQPACKET)
+		return true;
+#endif
+	return (addrinfo->ai_socktype == SOCK_STREAM);
+}
+
+static int make_listen_fd(const struct addrinfo *addrinfo)
+{
+	int saved_errno, fd, on = 1;
+
+	fd = socket(addrinfo->ai_family, addrinfo->ai_socktype,
+		    addrinfo->ai_protocol);
+	if (fd < 0)
+		return -1;
+
+	setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+	if (bind(fd, addrinfo->ai_addr, addrinfo->ai_addrlen) != 0)
+		goto fail;
+
+	if (should_listen(addrinfo) && listen(fd, 5) != 0)
+		goto fail;
+	return fd;
+
+fail:
+	saved_errno = errno;
+	close(fd);
+	errno = saved_errno;
+	return -1;
+}
+
+int net_bind(const struct addrinfo *addrinfo, int fds[2])
+{
+	const struct addrinfo *ipv6, *ipv4;
+	unsigned int num;
+
+	if (addrinfo->ai_family == AF_INET)
+		ipv4 = addrinfo;
+	else if (addrinfo->ai_family == AF_INET6)
+		ipv6 = addrinfo;
+
+	if (addrinfo->ai_next) {
+		if (addrinfo->ai_next->ai_family == AF_INET)
+			ipv4 = addrinfo->ai_next;
+		else if (addrinfo->ai_next->ai_family == AF_INET6)
+			ipv6 = addrinfo->ai_next;
+	}
+
+	num = 0;
+	/* Take IPv6 first, since it might bind to IPv4 port too. */
+	if (ipv6) {
+		if ((fds[num] = make_listen_fd(ipv6)) >= 0)
+			num++;
+		else
+			ipv6 = NULL;
+	}
+	if (ipv4) {
+		if ((fds[num] = make_listen_fd(ipv4)) >= 0)
+			num++;
+		else
+			ipv4 = NULL;
+	}
+	if (num == 0)
+		return -1;
+
+	return num;
+}

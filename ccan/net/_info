@@ -2,9 +2,11 @@
 #include "config.h"
 
 /**
- * net - simple IPv4/IPv6 client library
+ * net - simple IPv4/IPv6 socket library
  *
- * This code makes it simple to support IPv4 and IPv6 without speed penalty.
+ * This code makes it simple to support IPv4 and IPv6 without speed penalty
+ * in clients by using non-blocking simultaneous connect, and using
+ * a convenience function to create both IPv4 and IPv6 sockets for servers.
  *
  * License: MIT
  *
