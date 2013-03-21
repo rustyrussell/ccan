@@ -1,0 +1,41 @@
+#include <string.h>
+#include "config.h"
+
+/**
+ * tok_itr - iterate over tokens in a string
+ *
+ * The list header contains routines for manipulating double linked lists.
+ * It defines two types: struct list_head used for anchoring lists, and
+ * struct list_node which is usually embedded in the structure which is placed
+ * in the list.
+ *
+ * Example:
+ *  #include <stdio.h>
+ *  #include <ccan/tok_itr/tok_itr.h>
+ *
+ *  int main(int argc, char *argv[]) {
+ *    char path[] = "/bin:/usr/bin:/sbin:/usr/local/bin";
+ *    // any token with length greater than 31 will be truncated 
+ *	  char token[32]; 
+ *    struct tok_itr itr;
+ *
+ *    TOK_ITR_FOREACH(token, 32, path, ':', &itr) {
+ *      printf("token = %s\n", token);
+ *    }
+ *
+ *    return 0;
+ *  }
+ * License: LGPL (v3 or any later version)
+ * Author: anthony cantor <ar.cantor@gmail.com>
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		return 0;
+	}
+
+	return 1;
+}

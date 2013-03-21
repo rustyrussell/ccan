@@ -82,6 +82,7 @@ MODS_NORMAL_WITH_SRC := antithread \
 	tally \
 	tap \
 	time \
+	tok_itr \
 	ttxml
 
 MODS_NORMAL:=$(MODS_NORMAL_WITH_SRC) $(MODS_NORMAL_NO_SRC)
