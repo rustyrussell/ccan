@@ -22,7 +22,8 @@ MODS_NORMAL_NO_SRC := alignof \
 	short_types \
 	tcon \
 	tlist \
-	typesafe_cb
+	typesafe_cb \
+	version
 
 # No external dependencies, with C code:
 MODS_NORMAL_WITH_SRC := antithread \

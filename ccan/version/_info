@@ -1,0 +1,37 @@
+#include <string.h>
+#include "config.h"
+
+/**
+ * version - helper functions for major.minor-style version numbers
+ *
+ * This code provides some helper functions to deal with version numbers in
+ * the form major.minor.
+ *
+ * Author: Peter Hutterer <peter.hutterer@who-t.net>
+ * Maintainer: Peter Hutterer <peter.hutterer@who-t.net>
+ * License: BSD-MIT
+ *
+ * Example:
+ *	struct version a = version(1, 0);
+ *	struct version b = version(2, 2);
+ *
+ *	if (version_cmp(a, b) < 0)
+ *		printf("Feature supported in version 2.2 but we have %d.%d\n",
+ *			version_major(a), version_minor(a));
+ *
+ *	if (version_cmp(a, version(3, 4)) < 0)
+ *		printf("Feature only supported in version 3.4\n");
+ *
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		return 0;
+	}
+
+	return 1;
+}
