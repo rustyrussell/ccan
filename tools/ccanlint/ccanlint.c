@@ -681,6 +681,9 @@ int main(int argc, char *argv[])
 		for (i = 1; i < argc; i++) {
 			dir = path_canon(NULL,
 					 take(path_join(NULL, cwd, argv[i])));
+			if (!dir)
+				err(1, "Cannot get canonical name of '%s'",
+				    argv[i]);
 
 			prefix = path_join(NULL, ccan_dir, "ccan");
 			prefix = path_rel(NULL, take(prefix), dir);
