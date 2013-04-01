@@ -4,6 +4,8 @@ LIBS=
 
 LIBNFS_OBJ = libnfs-raw-mount.o libnfs-raw-portmap.o libnfs-raw-nfs.o libnfs-raw-nfsacl.o mount.o nfs.o nfsacl.o portmap.o pdu.o init.o socket.o libnfs.o libnfs-sync.o
 
+LICENSE_LINE = echo '/* Licensed under GPLv3+ - see LICENSE file for details */' > $@
+
 all: tools/nfsclient-raw tools/nfsclient-async tools/nfsclient-sync
 
 tools/nfsclient-async: tools/nfsclient-async.c libnfs.a
@@ -22,11 +24,11 @@ libnfs.a: $(LIBNFS_OBJ)
 
 rpc/mount.h: rpc/mount.x
 	@echo Generating $@
-	rpcgen -h rpc/mount.x > $@
+	$(LICENSE_LINE) && rpcgen -h rpc/mount.x >> $@
 
 libnfs-raw-mount.c: rpc/mount.x
 	@echo Generating $@
-	rpcgen -c rpc/mount.x > libnfs-raw-mount.c
+	$(LICENSE_LINE) && rpcgen -c rpc/mount.x >> $@
 
 libnfs-raw-mount.o: libnfs-raw-mount.c rpc/mount.h
 	@echo Compiling $@
@@ -34,11 +36,11 @@ libnfs-raw-mount.o: libnfs-raw-mount.c rpc/mount.h
 
 rpc/nfs.h: rpc/nfs.x
 	@echo Generating $@
-	rpcgen -h rpc/nfs.x > $@
+	$(LICENSE_LINE) && rpcgen -h rpc/nfs.x >> $@
 
 libnfs-raw-nfs.c: rpc/nfs.x
 	@echo Generating $@
-	rpcgen -c rpc/nfs.x > $@
+	$(LICENSE_LINE) && rpcgen -c rpc/nfs.x >> $@
 
 libnfs-raw-nfs.o: libnfs-raw-nfs.c rpc/nfs.h
 	@echo Compiling $@
@@ -46,11 +48,11 @@ libnfs-raw-nfs.o: libnfs-raw-nfs.c rpc/nfs.h
 
 rpc/nfsacl.h: rpc/nfsacl.x
 	@echo Generating $@
-	rpcgen -h rpc/nfsacl.x > $@
+	$(LICENSE_LINE) && rpcgen -h rpc/nfsacl.x >> $@
 
 libnfs-raw-nfsacl.c: rpc/nfsacl.x
 	@echo Generating $@
-	rpcgen -c rpc/nfsacl.x > $@
+	$(LICENSE_LINE) && rpcgen -c rpc/nfsacl.x >> $@
 
 libnfs-raw-nfsacl.o: libnfs-raw-nfsacl.c rpc/nfsacl.h
 	@echo Compiling $@
@@ -58,11 +60,11 @@ libnfs-raw-nfsacl.o: libnfs-raw-nfsacl.c rpc/nfsacl.h
 
 rpc/portmap.h: rpc/portmap.x
 	@echo Generating $@
-	rpcgen -h rpc/portmap.x > $@
+	$(LICENSE_LINE) && rpcgen -h rpc/portmap.x >> $@
 
 libnfs-raw-portmap.c: rpc/portmap.x
 	@echo Generating $@
-	rpcgen -c rpc/portmap.x > $@
+	$(LICENSE_LINE) && rpcgen -c rpc/portmap.x >> $@
 
 libnfs-raw-portmap.o: libnfs-raw-portmap.c rpc/portmap.h
 	@echo Compiling $@
