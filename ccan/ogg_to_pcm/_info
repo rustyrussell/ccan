@@ -10,7 +10,7 @@
  *
  * Example:
  * 	#include <stdint.h>
- * 	#include <ogg_to_pcm.h>
+ * 	#include <ccan/ogg_to_pcm/ogg_to_pcm.h>
  *
  * 	int main(int argc, char *argv[]) 
  * 	{
