@@ -58,7 +58,8 @@ void build_objects(struct manifest *m,
 	if (!errors) {
 		score->pass = true;
 		score->score = score->total - warnings;
-	}
+	} else
+		build_failed = true;
 }
 
 static void check_objs_build(struct manifest *m,

@@ -190,6 +190,12 @@ extern bool safe_mode;
 /* Did the user want to keep all the results? */
 extern bool keep_results;
 
+/* Did we find non-ccan dependencies? */
+extern bool non_ccan_deps;
+
+/* Did we fail to build? */
+extern bool build_failed;
+
 /* Contents of config.h (or NULL if not found) */
 extern const char *config_header;
 

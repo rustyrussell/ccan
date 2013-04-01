@@ -63,8 +63,10 @@ static void check_depends_exist(struct manifest *m,
 	}
 
 	for (i = 0; deps[i]; i++) {
-		if (!strstarts(deps[i], "ccan/"))
+		if (!strstarts(deps[i], "ccan/")) {
+			non_ccan_deps = true;
 			continue;
+		}
 
 		if (!add_dep(m, &m->deps, deps[i], score))
 			return;

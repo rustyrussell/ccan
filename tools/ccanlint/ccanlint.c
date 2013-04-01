@@ -43,6 +43,8 @@ int verbose = 0;
 static struct ccanlint_map tests;
 bool safe_mode = false;
 bool keep_results = false;
+bool non_ccan_deps = false;
+bool build_failed = false;
 static bool targeting = false;
 static unsigned int timeout;
 
@@ -556,10 +558,12 @@ static char *opt_set_target(const char *arg, struct dgraph_node *all)
 
 static bool run_tests(struct dgraph_node *all,
 		      bool summary,
+		      bool deps_fail_ignore,
 		      struct manifest *m,
 		      const char *prefix)
 {
 	struct run_info run;
+	const char *comment = "";
 
 	run.quiet = summary;
 	run.m = m;
@@ -567,9 +571,18 @@ static bool run_tests(struct dgraph_node *all,
 	run.score = run.total = 0;
 	run.pass = true;
 
+	non_ccan_deps = build_failed = false;
+
 	dgraph_traverse_to(all, run_test, &run);
 
-	printf("%sTotal score: %u/%u\n", prefix, run.score, run.total);
+	/* We can completely fail if we're missing external stuff: ignore */
+	if (deps_fail_ignore && non_ccan_deps && build_failed) {
+		comment = " (missing non-ccan dependencies?)";
+		run.pass = true;
+	}
+	printf("%sTotal score: %u/%u%s\n",
+	       prefix, run.score, run.total, comment);
+
 	return run.pass;
 }
 
@@ -583,7 +596,8 @@ static bool add_to_all(const char *member, struct ccanlint *c,
 }
 
 static bool test_module(struct dgraph_node *all,
-			const char *dir, const char *prefix, bool summary)
+			const char *dir, const char *prefix, bool summary,
+			bool deps_fail_ignore)
 {
 	struct manifest *m = get_manifest(autofree(), dir);
 	char *testlink = path_join(NULL, temp_dir(), "test");
@@ -594,12 +608,12 @@ static bool test_module(struct dgraph_node *all,
 	if (symlink(path_join(m, dir, "test"), testlink) != 0)
 		err(1, "Creating test symlink in %s", temp_dir());
 
-	return run_tests(all, summary, m, prefix);
+	return run_tests(all, summary, deps_fail_ignore, m, prefix);
 }
 
 int main(int argc, char *argv[])
 {
-	bool summary = false, pass = true;
+	bool summary = false, pass = true, deps_fail_ignore = false;
 	unsigned int i;
 	const char *prefix = "";
 	char *cwd = path_cwd(NULL), *dir;
@@ -633,6 +647,9 @@ int main(int argc, char *argv[])
 			 NULL, &override_compiler, "set the compiler");
 	opt_register_arg("--cflags <flags>", opt_set_const_charp,
 			 NULL, &override_cflags, "set the compiler flags");
+	opt_register_noarg("--deps-fail-ignore", opt_set_bool,
+			   &deps_fail_ignore,
+			   "don't fail if external dependencies are missing");
 	opt_register_noarg("-?|-h|--help", opt_usage_and_exit,
 			   "\nA program for checking and guiding development"
 			   " of CCAN modules.",
@@ -676,7 +693,8 @@ int main(int argc, char *argv[])
 		compiler = override_compiler;
 
 	if (argc == 1)
-		pass = test_module(&top.node, cwd, "", summary);
+		pass = test_module(&top.node, cwd, "",
+				   summary, deps_fail_ignore);
 	else {
 		for (i = 1; i < argc; i++) {
 			dir = path_canon(NULL,
@@ -689,7 +707,8 @@ int main(int argc, char *argv[])
 			prefix = path_rel(NULL, take(prefix), dir);
 			prefix = tal_strcat(NULL, take(prefix), ": ");
 
-			pass &= test_module(&top.node, dir, prefix, summary);
+			pass &= test_module(&top.node, dir, prefix, summary,
+					    deps_fail_ignore);
 			reset_tests(&top.node);
 		}
 	}
