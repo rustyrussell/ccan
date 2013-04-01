@@ -12,16 +12,21 @@
 
 # Where make scores puts the results
 SCOREDIR=scores/$(shell whoami)/$(shell uname -s)-$(shell uname -m)-$(CC)-$(shell git describe --always --dirty)
+CCANLINT=tools/ccanlint/ccanlint --deps-fail-ignore
+CCANLINT_FAST=$(CCANLINT) -x tests_pass_valgrind -x tests_compile_coverage
 
 default: libccan.a
 
-ALL_DEPENDS=$(patsubst %, ccan/%/.depends, $(MODS_NORMAL) $(MODS_EXTERNAL))
+ALL_DEPENDS=$(patsubst %, ccan/%/.depends, $(MODS))
+
+# By default, we skip modules with external deps.
+MODS_EXCLUDE:=jmap jset nfs ogg_to_pcm tal/talloc wwviaudio
 
 include Makefile-ccan
 
-fastcheck: $(MODS_NORMAL:%=summary-fastcheck-%)
+fastcheck: $(MODS:%=summary-fastcheck-%)
 
-check: $(MODS_NORMAL:%=summary-check-%)
+check: $(MODS:%=summary-check-%)
 
 distclean: clean
 	rm -f $(ALL_DEPENDS)
@@ -36,43 +41,40 @@ $(SCOREDIR)/SUMMARY: $(MODS:%=$(SCOREDIR)/%.score)
 
 $(SCOREDIR)/%.score: ccan/%/_info tools/ccanlint/ccanlint $(OBJFILES)
 	mkdir -p `dirname $@`
-	tools/ccanlint/ccanlint -v -s ccan/$* > $@ || true
+	$(CCANLINT) -v -s ccan/$* > $@ || true
 
 $(ALL_DEPENDS): %/.depends: %/_info tools/ccan_depends
 	tools/ccan_depends $* > $@ || ( rm -f $@; exit 1 )
 
 # Actual dependencies are created in inter-depends
 check-%: tools/ccanlint/ccanlint
-	tools/ccanlint/ccanlint ccan/$*
+	$(CCANLINT) ccan/$*
 
 fastcheck-%: tools/ccanlint/ccanlint
-	tools/ccanlint/ccanlint -x tests_pass_valgrind -x tests_compile_coverage ccan/$*
+	$(CCANLINT_FAST) ccan/$*
 
 # Doesn't test dependencies, doesn't print verbose fail results.
 summary-check-%: tools/ccanlint/ccanlint $(OBJFILES)
-	tools/ccanlint/ccanlint -s ccan/$*
+	$(CCANLINT) -s ccan/$*
 
 summary-fastcheck-%: tools/ccanlint/ccanlint $(OBJFILES)
-	tools/ccanlint/ccanlint -x tests_pass_valgrind -x tests_compile_coverage -s ccan/$*
+	$(CCANLINT_FAST) -s ccan/$*
 
 # FIXME: Horrible hacks because % doesn't match /
 summary-check-antithread/%: tools/ccanlint/ccanlint $(OBJFILES)
-	tools/ccanlint/ccanlint -s ccan/antithread/$*
+	$(CCANLINT) -s ccan/antithread/$*
 
 summary-fastcheck-antithread/%: tools/ccanlint/ccanlint $(OBJFILES)
-	tools/ccanlint/ccanlint -x tests_pass_valgrind -x tests_compile_coverage -s ccan/antithread/$*
+	$(CCANLINT_FAST) -s ccan/antithread/$*
 
 summary-check-tal/%: tools/ccanlint/ccanlint $(OBJFILES)
-	tools/ccanlint/ccanlint -s ccan/tal/$*
+	$(CCANLINT) -s ccan/tal/$*
 
 summary-fastcheck-tal/%: tools/ccanlint/ccanlint $(OBJFILES)
-	tools/ccanlint/ccanlint -x tests_pass_valgrind -x tests_compile_coverage -s ccan/tal/$*
+	$(CCANLINT_FAST) -s ccan/tal/$*
 
 ccan/%/info: ccan/%/_info
 	$(CC) $(CCAN_CFLAGS) -o $@ -x c $<
-
-libccan.a(%.o): ccan/%.o
-	$(AR) r $@ $<
 
 clean: tools-clean
 	$(RM) `find * -name '*.o'` `find * -name '.depends'` `find * -name '*.a'`  `find * -name info` `find * -name '*.d'`

@@ -6,8 +6,8 @@
 CCAN_CFLAGS=-g3 -ggdb -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Wpointer-arith -Wwrite-strings -Wundef -DCCAN_STR_DEBUG=1
 CFLAGS = $(CCAN_CFLAGS) -I. $(DEPGEN)
 
-# Normal modules: no external dependencies, just a header:
-MODS_NORMAL_NO_SRC := alignof \
+# Modules which are just a header:
+MODS_NO_SRC := alignof \
 	array_size \
 	asearch \
 	build_assert \
@@ -26,7 +26,7 @@ MODS_NORMAL_NO_SRC := alignof \
 	version
 
 # No external dependencies, with C code:
-MODS_NORMAL_WITH_SRC := antithread \
+MODS_WITH_SRC := antithread \
 	antithread/alloc \
 	asort \
 	asprintf \
@@ -53,13 +53,17 @@ MODS_NORMAL_WITH_SRC := antithread \
 	ilog \
 	isaac \
 	iscsi \
+	jmap \
 	json \
+	jset \
 	lbalance \
 	likely \
 	list \
 	md4 \
 	net \
+	nfs \
 	noerr \
+	ogg_to_pcm \
 	opt \
 	ptr_valid \
 	rbtree \
@@ -78,28 +82,16 @@ MODS_NORMAL_WITH_SRC := antithread \
 	tal/link \
 	tal/path \
 	tal/str \
+	tal/talloc \
 	talloc \
 	talloc_link \
 	tally \
 	tap \
 	time \
-	ttxml
-
-MODS_NORMAL:=$(MODS_NORMAL_WITH_SRC) $(MODS_NORMAL_NO_SRC)
-
-# Modules which require external dependencies, thus may not pass check.
-MODS_EXTERNAL_NO_SRC:=
-
-MODS_EXTERNAL_WITH_SRC:=jmap \
-	jset \
-	nfs \
-	ogg_to_pcm \
-	tal/talloc \
+	ttxml \
 	wwviaudio
 
-MODS_EXTERNAL:=$(MODS_EXTERNAL_NO_SRC) $(MODS_EXTERNAL_WITH_SRC)
-
-MODS:=$(MODS_EXTERNAL) $(MODS_NORMAL)
+MODS:=$(MODS_WITH_SRC) $(MODS_NO_SRC)
 
 default: libccan.a
 
@@ -108,7 +100,7 @@ DEPGEN=-MD
 -include ccan/*/*.d
 
 # Anything with C files needs building; dir leaves / on, sort uniquifies
-DIRS=$(patsubst %/, %, $(sort $(foreach m, $(MODS_NORMAL_WITH_SRC), $(dir $(wildcard ccan/$m/*.c)))))
+DIRS=$(patsubst %/, %, $(sort $(foreach m, $(filter-out $(MODS_EXCLUDE), $(MODS_WITH_SRC)), $(dir $(wildcard ccan/$m/*.c)))))
 
 # Generate everyone's separate Makefiles.
 -include $(foreach dir, $(DIRS), $(dir)-Makefile)
