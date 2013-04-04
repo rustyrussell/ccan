@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
 	char delim = ':';
 	char *cptr;
 
-	plan_tests(2*NUM_TOKENS);
+	plan_tests(3*NUM_TOKENS);
 
 	srand(time(NULL));
 
@@ -58,11 +58,12 @@ int main(int argc, char *argv[]) {
 	
 	i = 0;
 	for(tok_itr_init(&itr, str, delim); !tok_itr_end(&itr); tok_itr_next(&itr) ) {
+		ok1( tok_itr_val_len(&itr) == strlen(arr[i]) );
 		ok1( tok_itr_val(&itr, val, 1024) == strlen(arr[i]) );
 		ok1( strcmp(val, arr[i++]) == 0 );
 		/*diag("val: %s\n", val);*/
 	}	
-
+	
 
 	diag("----rand----\n#");
 

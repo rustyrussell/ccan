@@ -14,7 +14,7 @@ int main(int argc, char *argv[]) {
 	struct tok_itr itr;
 	int i;
 
-	plan_tests(2*4 + 1);
+	plan_tests(3*4 + 1 + 1);
 
 	diag("++++basic++++");
 #	define TOKALL TOK1 ":" TOK2 ":" TOK3 ":" TOK4
@@ -24,10 +24,12 @@ int main(int argc, char *argv[]) {
 
 	i = 0;
 	for(tok_itr_init(&itr, str, ':'); !tok_itr_end(&itr); tok_itr_next(&itr) ) {
+		ok1( tok_itr_val_len(&itr) == strlen(arr[i]) );
 		ok1( tok_itr_val(&itr, val, 32) == strlen(arr[i]) );	
 		/*diag("%d: '%s'\t(%s) %d\n", i, val, str, strlen(arr[i]) );*/
 		ok1( strcmp(val, arr[i++]) == 0 );
-	}	
+	}
+	ok1( tok_itr_partial_val(&itr) == true );
 	
 	diag("test whether iterator modified the string it iterated over");
 	ok1( strcmp(str, TOKALL) == 0 );

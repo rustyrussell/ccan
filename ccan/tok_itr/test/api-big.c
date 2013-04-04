@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
 	struct tok_itr itr;
 	int i;
 
-	plan_tests(2*6);
+	plan_tests(3*6 + 1);
 
 	diag("++++big++++");
 	
@@ -42,10 +42,11 @@ int main(int argc, char *argv[]) {
 
 	i = 0;
 	for(tok_itr_init(&itr, str, ':'); !tok_itr_end(&itr); tok_itr_next(&itr) ) {
-		int status = tok_itr_val(&itr, val, 32);
+		size_t tlen = tok_itr_val_len(&itr);
 		int len = strlen(arr[i]);
 		int cmplen;
-		
+
+		ok1(tok_itr_val(&itr, val, 32) == tlen);
 		if(arr[i][len-1] == ':')
 			len--;
 
@@ -55,12 +56,13 @@ int main(int argc, char *argv[]) {
 			cmplen = 31;
 		}
 
-		ok1(status == len);
+		ok1(tlen == len);
 
 		/*diag("%d: '%s'\t(%s) %d\n", i, val, str, strlen(arr[i]) );*/
 		ok1( strncmp(val, arr[i++], cmplen) == 0 );
 	}	
-
+	ok1( tok_itr_partial_val(&itr) == false );
+	
 	diag("----big----\n#");
 
 	return exit_status();

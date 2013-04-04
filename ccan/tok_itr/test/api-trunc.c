@@ -9,7 +9,7 @@ int main(int argc, char *argv[]) {
 	int i;
 	struct tok_itr itr;
 
-	plan_tests(4);
+	plan_tests(4 + 1);
 
 	diag("++++trunc++++");
 	diag("test token truncation due to small output buffer");
@@ -19,6 +19,7 @@ int main(int argc, char *argv[]) {
 		diag("token = %s", val);
 		ok1( strcmp(val, arr[i++]) == 0 );
 	}	
+	ok1( tok_itr_partial_val(&itr) == true );
 
 	diag("----trunc----\n#");
 

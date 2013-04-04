@@ -9,16 +9,21 @@ int main(int argc, char *argv[]) {
 	int i;
 	struct tok_itr itr;
 
-	plan_tests(4);
+	plan_tests(2*4 + 1);
 	diag("++++example++++");
 	diag("test token iterator use case/example");
 
 	i = 0;
-	TOK_ITR_FOREACH(val, 32, "/bin:/usr/bin:/sbin:/usr/local/bin", ':', &itr) {
+	TOK_ITR_FOREACH(val, 32, "/bin:/usr/bin:/sbin:/usr/local/bin:", ':', &itr) {
 		diag("token = %s", val);
+		if(i > 3)
+			continue;
+
+		ok1( tok_itr_val_len(&itr) == strlen(arr[i]) );
 		ok1( strcmp(val, arr[i++]) == 0 );
 	}
-
+	ok1( tok_itr_partial_val(&itr) == false );
+	
 	diag("----example----\n#");
 
 	return exit_status();
