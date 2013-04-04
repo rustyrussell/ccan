@@ -14,7 +14,7 @@ int main(int argc, char *argv[]) {
 
 	i = 0;
 	for(tok_itr_init(&itr, "ab&cd&ef", '&'); !tok_itr_end(&itr); tok_itr_next(&itr) ) {
-		ok1( tok_itr_val(&itr, NULL, 0) == 0 );	
+		ok1( tok_itr_val(&itr, NULL, 0) == 2 );	
 		i++;
 	}	
 	
