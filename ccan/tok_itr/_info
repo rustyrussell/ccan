@@ -4,10 +4,8 @@
 /**
  * tok_itr - iterate over tokens in a string
  *
- * The list header contains routines for manipulating double linked lists.
- * It defines two types: struct list_head used for anchoring lists, and
- * struct list_node which is usually embedded in the structure which is placed
- * in the list.
+ * The tok_itr module iterates for tokens separated by 
+ * a delimiter character in a null terminated string.
  *
  * Example:
  *  #include <stdio.h>
