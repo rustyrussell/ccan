@@ -12,13 +12,17 @@
  *  #include <ccan/tok_itr/tok_itr.h>
  *
  *  int main(int argc, char *argv[]) {
- *    char path[] = "/bin:/usr/bin:/sbin:/usr/local/bin";
- *    // any token with length greater than 31 will be truncated 
- *	  char token[32]; 
+ *    size_t len;
+ *    char *token;
  *    struct tok_itr itr;
+ *    char str[] = "/bin:/usr/bin:/usr/local/sbin";
  *
- *    TOK_ITR_FOREACH(&itr, token, 32, path, ':') {
+ *    for(tok_itr_init(&itr, str, ':'); !tok_itr_end(&itr); tok_itr_next(&itr) ) {
+ *      len = (tok_itr_val_len(&itr) + 1);
+ *      token = malloc(sizeof(char) * len);
+ *      tok_itr_val(&itr, token, len);
  *      printf("token = %s\n", token);
+ *      free(token);
  *    }
  *
  *    return 0;
