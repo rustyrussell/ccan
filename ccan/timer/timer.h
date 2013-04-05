@@ -5,10 +5,15 @@
 #include <ccan/list/list.h>
 #include <stdint.h>
 
+#ifndef TIMER_GRANULARITY
 /* We divide all nsec values by 1000, reducing it to usec granularity. */
 #define TIMER_GRANULARITY 1000
-/* This gives 16 pointers per level, up to 13 levels deep. */
-#define TIMER_LEVEL_BITS 4
+#endif
+
+#ifndef TIMER_LEVEL_BITS
+/* This gives 32 pointers per level, up to 13 levels deep. */
+#define TIMER_LEVEL_BITS 5
+#endif
 
 struct timers;
 struct timer;
