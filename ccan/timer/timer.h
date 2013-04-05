@@ -61,7 +61,7 @@ void timer_del(struct timers *timers, struct timer *timer);
  * timers.  Otherwise, it sets @first to the expiry time of the first
  * timer (rounded to TIMER_GRANULARITY nanoseconds), and returns true.
  */
-bool timer_earliest(const struct timers *timers, struct timespec *first);
+bool timer_earliest(struct timers *timers, struct timespec *first);
 
 /**
  * timer_expire - update timers structure and remove expired timers.
@@ -123,6 +123,7 @@ struct timers {
 	/* Far in the future. */
 	struct list_head far;
 	uint64_t base;
+	uint64_t first;
 
 	struct timer_level *level[(64 + TIMER_LEVEL_BITS-1) / TIMER_LEVEL_BITS];
 };

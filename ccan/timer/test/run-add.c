@@ -36,8 +36,7 @@ int main(void)
 		for (timers.base = 0;
 		     timers.base < (1ULL << MAX_ORD)+2;
 		     timers.base = next(timers.base)) {
-			t.time = timers.base + diff;
-			timer_add_raw(&timers, &t);
+			timer_add(&timers, &t, grains_to_time(timers.base + diff));
 			ok1(timers_check(&timers, NULL));
 			timer_del(&timers, &t);
 		}

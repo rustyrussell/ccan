@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
 
 	opt_parse(&argc, argv, opt_log_stderr_exit);
 
-	num = argv[1] ? atoi(argv[1]) : (check ? 10000 : 1000000);
+	num = argv[1] ? atoi(argv[1]) : (check ? 100000 : 100000000);
 
 	list_head_init(&expired);
 	curr = start = time_now();

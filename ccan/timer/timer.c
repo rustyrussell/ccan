@@ -34,19 +34,24 @@ void timers_init(struct timers *timers, struct timespec start)
 
 	list_head_init(&timers->far);
 	timers->base = time_to_grains(start);
+	timers->first = -1ULL;
 	for (i = 0; i < ARRAY_SIZE(timers->level); i++)
 		timers->level[i] = NULL;
+}
+
+static unsigned int level_of(const struct timers *timers, uint64_t time)
+{
+	uint64_t diff;
+
+	/* Level depends how far away it is. */
+	diff = time - timers->base;
+	return ilog64(diff / 2) / TIMER_LEVEL_BITS;
 }
 
 static void timer_add_raw(struct timers *timers, struct timer *t)
 {
 	struct list_head *l;
-	uint64_t diff;
-	unsigned int level;
-
-	/* Level depends how far away it is. */
-	diff = t->time - timers->base;
-	level = ilog64(diff / 2) / TIMER_LEVEL_BITS;
+	unsigned int level = level_of(timers, t->time);
 
 	if (!timers->level[level])
 		l = &timers->far;
@@ -65,6 +70,8 @@ void timer_add(struct timers *timers, struct timer *t, struct timespec when)
 	/* Added in the past?  Treat it as imminent. */
 	if (t->time < timers->base)
 		t->time = timers->base;
+	if (t->time < timers->first)
+		timers->first = t->time;
 
 	timer_add_raw(timers, t);
 }
@@ -159,17 +166,26 @@ static const struct timer *find_first(const struct list_head *list,
 	return prev;
 }
 
-static struct timer *get_first(const struct timers *timers)
+static const struct timer *get_first(const struct timers *timers)
 {
-	unsigned int level = 0, i, off;
+	unsigned int level, i, off;
 	bool need_next;
-	uint64_t base = timers->base;
+	uint64_t base;
 	const struct timer *found = NULL;
 	struct list_head *h;
 
+	if (timers->first < timers->base) {
+		base = timers->base;
+		level = 0;
+	} else {
+		/* May not be accurate, due to timer_del / expiry. */
+		level = level_of(timers, timers->first);
+		base = timers->first >> (TIMER_LEVEL_BITS * level);
+	}
+
 next:
 	if (!timers->level[level])
-		return (struct timer *)find_first(&timers->far, NULL);
+		return find_first(&timers->far, NULL);
 
 	need_next = false;
 	off = base % PER_LEVEL;
@@ -206,17 +222,28 @@ next:
 			found = find_first(h, found);
 		}
 	}
-
-	return (struct timer *)found;
+	return found;
 }
 
-bool timer_earliest(const struct timers *timers, struct timespec *first)
+static bool update_first(struct timers *timers)
 {
-	struct timer *found = get_first(timers);
+	const struct timer *found = get_first(timers);
 
-	if (!found)
+	if (!found) {
+		timers->first = -1ULL;
 		return false;
-	*first = grains_to_time(found->time);
+	}
+
+	timers->first = found->time;
+	return true;
+}
+
+bool timer_earliest(struct timers *timers, struct timespec *first)
+{
+	if (!update_first(timers))
+		return false;
+
+	*first = grains_to_time(timers->first);
 	return true;
 }
 
@@ -274,7 +301,6 @@ void timers_expire(struct timers *timers,
 {
 	uint64_t now = time_to_grains(expire);
 	unsigned int off;
-	const struct timer *first;
 
 	assert(now >= timers->base);
 
@@ -286,24 +312,23 @@ void timers_expire(struct timers *timers,
 		add_level(timers, 0);
 	}
 
-	while ((first = get_first(timers)) != NULL) {
-		assert(first->time >= timers->base);
-		if (first->time > now) {
+	do {
+		if (timers->first > now) {
 			timer_fast_forward(timers, now);
 			break;
 		}
 
-		timer_fast_forward(timers, first->time);
+		timer_fast_forward(timers, timers->first);
 		off = timers->base % PER_LEVEL;
 
 		list_append_list(list, &timers->level[0]->list[off]);
 		if (timers->base == now)
 			break;
-	}
+	} while (update_first(timers));
 }
 
 static bool timer_list_check(const struct list_head *l,
-			     uint64_t min, uint64_t max,
+			     uint64_t min, uint64_t max, uint64_t first,
 			     const char *abortstr)
 {
 	const struct timer *t;
@@ -317,6 +342,15 @@ static bool timer_list_check(const struct list_head *l,
 				fprintf(stderr,
 					"%s: timer %p %llu not %llu-%llu\n",
 					abortstr, t, t->time, min, max);
+				abort();
+			}
+			return false;
+		}
+		if (t->time < first) {
+			if (abortstr) {
+				fprintf(stderr,
+					"%s: timer %p %llu < minimum %llu\n",
+					abortstr, t, t->time, first);
 				abort();
 			}
 			return false;
@@ -341,7 +375,7 @@ struct timers *timers_check(const struct timers *timers, const char *abortstr)
 
 		h = &timers->level[l]->list[(i+off) % PER_LEVEL];
 		if (!timer_list_check(h, timers->base + i, timers->base + i,
-				      abortstr))
+				      timers->first, abortstr))
 			return NULL;
 	}
 
@@ -359,7 +393,7 @@ struct timers *timers_check(const struct timers *timers, const char *abortstr)
 
 			h = &timers->level[l]->list[(i+off) % PER_LEVEL];
 			if (!timer_list_check(h, base, base + per_bucket - 1,
-					      abortstr))
+					      timers->first, abortstr))
 				return NULL;
 			base += per_bucket;
 		}
@@ -368,7 +402,8 @@ struct timers *timers_check(const struct timers *timers, const char *abortstr)
 past_levels:
 	base = (timers->base & ~((1ULL << (TIMER_LEVEL_BITS * l)) - 1))
 		+ (1ULL << (TIMER_LEVEL_BITS * l)) - 1;
-	if (!timer_list_check(&timers->far, base, -1ULL, abortstr))
+	if (!timer_list_check(&timers->far, base, -1ULL, timers->first,
+			      abortstr))
 		return NULL;
 
 	return (struct timers *)timers;
