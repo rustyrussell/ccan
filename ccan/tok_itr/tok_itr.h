@@ -29,6 +29,11 @@ struct tok_itr {
  * single macro. It's a for loop, so all the normal for loop
  * operations such as break and continue apply.
  *
+ * If desired, possible truncation of tokens can be prevented by
+ * using the module functions directly and calling tok_itr_val_len
+ * in order to allocate an appropriately sized buffer for the call
+ * to tok_itr_val.
+ *
  * Example:
  *   char val[32];
  *   struct tok_itr itr;
@@ -63,8 +68,8 @@ void tok_itr_init(struct tok_itr *itr, const char *tokens, char delim);
  * tok_itr_end - checks whether iterator has finished
  * @itr: a pointer to a tok_itr struct
  *
- * This function returns 0 if @itr is not at the end of the list,
- * otherwise it returns non-zero.
+ * This function returns false if @itr is not at the end of the token
+ * string, otherwise it returns true.
  */
 static inline bool tok_itr_end(const struct tok_itr *itr) {
 	return (itr->curr == NULL);
@@ -76,7 +81,7 @@ static inline bool tok_itr_end(const struct tok_itr *itr) {
  *
  * This function modifies @itr such that a call to
  * tok_itr_val() will return the value of the next
- * token (provided tok_itr_end() returns 0).
+ * token (provided tok_itr_end() returns false).
  */
 void tok_itr_next(struct tok_itr *itr);
 
@@ -110,7 +115,8 @@ static inline bool tok_itr_partial_val(const struct tok_itr *itr) {
  * This function returns the length of the current token
  * value in bytes. After tok_itr_end has returned true,
  * the value returned by this function will be the length
- * of the last token found in the token string.
+ * of the last token found in the token string (not including
+ * a null terminator).
  */
 static inline size_t tok_itr_val_len(const struct tok_itr *itr) {
 	return itr->len;
@@ -131,24 +137,22 @@ static inline size_t tok_itr_val_len(const struct tok_itr *itr) {
  * then that is considered an empty token and @val will point to
  * an empty string.
  *
- * The return value of this function is the length of the token
- * saved in @val.
- *
  * Calling this function on a tok_itr struct for which tok_itr_end()
- * has returned non-zero (and which has not been subsequently
+ * has returned true (and which has not been subsequently
  * re-initialized) is undefined.
  *
  * Example:
  *   size_t len;
- *   char val[12]; //tokens of length greater than 11 will be truncated
+ *   char *token;
  *   struct tok_itr itr;
  *   char str[] = "/bin:/usr/bin:/usr/local/sbin";
  *
- *   for(tok_itr_init(&itr, str, ':'); tok_itr_end(&itr) == 0; tok_itr_next(&itr) ) {
- *     len = tok_itr_val(&itr, val, 12);
- *     if(len >= 12)
- *       printf("truncated ");
- *     printf("token = %s\n", val);
+ *   for(tok_itr_init(&itr, str, ':'); !tok_itr_end(&itr); tok_itr_next(&itr) ) {
+ *     len = (tok_itr_val_len(&itr) + 1);
+ *     token = malloc(sizeof(char) * len);
+ *     tok_itr_val(&itr, token, len);
+ *     printf("token = %s\n", token);
+ *     free(token);
  *   }
  */
 size_t tok_itr_val(const struct tok_itr *itr, char *val, size_t size);
