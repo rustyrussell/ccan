@@ -19,11 +19,11 @@ struct tok_itr {
 
 /**
  * TOK_ITR_FOREACH - iterate through tokens in a string
+ * @tok_itr_ptr: a pointer to a tok_itr struct
  * @str: the current token value for each iteration will be saved here.
  * @str_size: the maximum number of bytes writable to @str
  * @tokens: a string containing tokens separated by @delim
  * @delim: the token delimiter
- * @tok_itr_ptr: a pointer to a tok_itr struct
  *
  * This wraps the most straightforward usage of this module in a
  * single macro. It's a for loop, so all the normal for loop
@@ -33,11 +33,11 @@ struct tok_itr {
  *   char val[32];
  *   struct tok_itr itr;
  *
- *   TOK_ITR_FOREACH(val, 32, "/bin:/usr/bin:/sbin:/usr/local/bin", ':', &itr) {
+ *   TOK_ITR_FOREACH(&itr, val, 32, "/bin:/usr/bin:/sbin:/usr/local/bin", ':') {
  *     printf("token = %s", val);
  *   }
  */
-#define TOK_ITR_FOREACH(str, str_size, tokens, delim, tok_itr_ptr) \
+#define TOK_ITR_FOREACH(tok_itr_ptr, str, str_size, tokens, delim) \
 	for(tok_itr_init(tok_itr_ptr, tokens, delim); \
 		!tok_itr_end(tok_itr_ptr) && (tok_itr_val(tok_itr_ptr, str, str_size) || 1); \
 		tok_itr_next(tok_itr_ptr) \
@@ -87,16 +87,16 @@ void tok_itr_next(struct tok_itr *itr);
  * In situations where one is iterating over tokens coming from
  * a file, it is possible that the last token in the token string
  * may be a partial token value, with the rest of it arriving in
- * the next chunk of bytes to be read from the file. In this 
- * situation, this function can be used to differentiate between a 
+ * the next chunk of bytes to be read from the file. In this
+ * situation, this function can be used to differentiate between a
  * complete token and an incomplete one.
  *
- * This function returns true if the last token encountered was 
+ * This function returns true if the last token encountered was
  * non-empty and was terminated by the null terminator and not
  * a delimiter (thus, if there is more data, the last token may
  * be continued in the next chunk of bytes).
- * 
- * The value of this function will remain valid even after 
+ *
+ * The value of this function will remain valid even after
  * tok_itr_end has returned true.
  */
 static inline bool tok_itr_partial_val(const struct tok_itr *itr) {
@@ -108,7 +108,7 @@ static inline bool tok_itr_partial_val(const struct tok_itr *itr) {
  * @itr: a pointer to a tok_itr struct.
  *
  * This function returns the length of the current token
- * value in bytes. After tok_itr_end has returned true, 
+ * value in bytes. After tok_itr_end has returned true,
  * the value returned by this function will be the length
  * of the last token found in the token string.
  */

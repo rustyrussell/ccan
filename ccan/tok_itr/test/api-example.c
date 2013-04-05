@@ -14,7 +14,7 @@ int main(int argc, char *argv[]) {
 	diag("test token iterator use case/example");
 
 	i = 0;
-	TOK_ITR_FOREACH(val, 32, "/bin:/usr/bin:/sbin:/usr/local/bin:", ':', &itr) {
+	TOK_ITR_FOREACH(&itr, val, 32, "/bin:/usr/bin:/sbin:/usr/local/bin:", ':') {
 		diag("token = %s", val);
 		if(i > 3)
 			continue;

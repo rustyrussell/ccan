@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
 	diag("test token truncation due to small output buffer");
 
 	i = 0;
-	TOK_ITR_FOREACH(val, 4, "/bin:/usr/bin:/sbin:/usr/local/bin", ':', &itr) {
+	TOK_ITR_FOREACH(&itr, val, 4, "/bin:/usr/bin:/sbin:/usr/local/bin", ':') {
 		diag("token = %s", val);
 		ok1( strcmp(val, arr[i++]) == 0 );
 	}	

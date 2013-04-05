@@ -19,7 +19,7 @@ void tok_itr_next(struct tok_itr *itr) {
 		else {
 			itr->len = itr->next - itr->curr;
 			/* increment next to the actual token, not the delimiter */
-			itr->next++; 
+			itr->next++;
 		}
 	}
 }

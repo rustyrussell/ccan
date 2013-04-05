@@ -23,7 +23,7 @@ int main(int argc, char *argv[]) {
 	diag("test token iterator FOREACH basics");
 
 	i = 0;
-	TOK_ITR_FOREACH(val, 32, str, ':', &itr) {
+	TOK_ITR_FOREACH(&itr, val, 32, str, ':') {
 		ok1( tok_itr_val_len(&itr) == strlen(arr[i]) );
 		ok1( strcmp(val, arr[i++]) == 0 );
 	}	

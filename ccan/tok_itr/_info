@@ -17,7 +17,7 @@
  *	  char token[32]; 
  *    struct tok_itr itr;
  *
- *    TOK_ITR_FOREACH(token, 32, path, ':', &itr) {
+ *    TOK_ITR_FOREACH(&itr, token, 32, path, ':') {
  *      printf("token = %s\n", token);
  *    }
  *
