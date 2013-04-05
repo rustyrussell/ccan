@@ -1,4 +1,5 @@
-#include <log.h>
+/* Licensed under BSD-MIT - see LICENSE file for details */
+#include <ccan/log/log.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
@@ -13,11 +14,23 @@
 #define TEXT_BOLD 	"\033[1m"
 #define COLOR_END	"\033[0m" // reset colors to default
 
+static 
+const char *log_tags[2][5] = { { "[CRITICAL] ",
+				 "[ERROR]    ",
+				 "[WARNING]  ",
+				 "[INFO]     ", 
+				 "[INVALID LOG LEVEL] "},
+			       {   "[!] ",
+				   "[*] ",
+				   "[-] ",
+				   "[+] ",
+				   "[~] " }};
+
 static FILE *_logging_files[16] = { NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
                              NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 static int  _log_current_mode, _current_log_file = 1;
 
-FILE *set_log_file(char *filename)
+FILE *set_log_file(const char *filename)
 {
 	if (_current_log_file+1 > 16) return NULL; // we only support 16 different files
 	_logging_files[_current_log_file++] = fopen(filename, "a+");
@@ -29,13 +42,13 @@ void set_log_mode(int mode)
 	_log_current_mode = mode;
 }
 
-void get_log_mode()
+int get_log_mode(void)
 {
 	return _log_current_mode;
 }
 
 // this function is headache-inducing.
-void _print_log(int loglevel, char *file, const char *func, char *clock, int line, char *msg, ...)
+void _print_log(int loglevel, const char *file, const char *func, char *clock, int line, const char *msg, ...)
 {
 	_logging_files[0] = stdout;
 	va_list args;
