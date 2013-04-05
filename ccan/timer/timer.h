@@ -25,6 +25,11 @@ struct timer;
  *
  * This sets up a timers struct: any timers added before @start will be
  * set to expire immediately.
+ *
+ * Example:
+ *	struct timers timeouts;
+ *
+ *	timers_init(&timeouts, time_now());
  */
 void timers_init(struct timers *timers, struct timespec start);
 
@@ -33,6 +38,9 @@ void timers_init(struct timers *timers, struct timespec start);
  * @timers: the struct timers
  *
  * This frees any timer layers allocated during use.
+ *
+ * Example:
+ *	timers_cleanup(&timeouts);
  */
 void timers_cleanup(struct timers *timers);
 
@@ -44,6 +52,12 @@ void timers_cleanup(struct timers *timers);
  *
  * This efficiently adds @timer to @timers, to expire @when (rounded to
  * TIMER_GRANULARITY nanoseconds).
+ *
+ * Example:
+ *	struct timer t;
+ *
+ *	// Timeout in 100ms.
+ *	timer_add(&timeouts, &t, time_add(time_now(), time_from_msec(100)));
  */
 void timer_add(struct timers *timers, struct timer *timer,
 	       struct timespec when);
@@ -54,6 +68,9 @@ void timer_add(struct timers *timers, struct timer *timer,
  * @timer: the timer previously added with timer_add()
  *
  * This efficiently removes @timer from @timers.
+ *
+ * Example:
+ *	timer_del(&timeouts, &t);
  */
 void timer_del(struct timers *timers, struct timer *timer);
 
@@ -65,11 +82,15 @@ void timer_del(struct timers *timers, struct timer *timer);
  * This returns false, and doesn't alter @first if there are no
  * timers.  Otherwise, it sets @first to the expiry time of the first
  * timer (rounded to TIMER_GRANULARITY nanoseconds), and returns true.
+ *
+ * Example:
+ *	struct timespec next = { (time_t)-1ULL, -1UL };
+ *	timer_earliest(&timeouts, &next);
  */
 bool timer_earliest(struct timers *timers, struct timespec *first);
 
 /**
- * timer_expire - update timers structure and remove expired timers.
+ * timers_expire - update timers structure and remove expired timers.
  * @timers: the struct timers
  * @expire: the current time
  * @list: the list for expired timers.
@@ -84,6 +105,13 @@ bool timer_earliest(struct timers *timers, struct timespec *first);
  *
  * You should not move @expire backwards, though it need not move
  * forwards.
+ *
+ * Example:
+ *	struct list_head expired;
+ *
+ *	timers_expire(&timeouts, time_now(), &expired);
+ *	if (!list_empty(&expired))
+ *		printf("Timer expired!\n");
  */
 void timers_expire(struct timers *timers,
 		   struct timespec expire,
@@ -101,6 +129,9 @@ void timers_expire(struct timers *timers,
  *
  * Returns the timers struct if it is consistent, NULL if not (it can
  * never return NULL if @abortstr is set).
+ *
+ * Example:
+ *	timers_check(&timeouts, "After timer_expire");
  */
 struct timers *timers_check(const struct timers *t, const char *abortstr);
 

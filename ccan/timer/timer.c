@@ -119,41 +119,6 @@ static void add_level(struct timers *timers, unsigned int level)
 		timer_add_raw(timers, t);
 }
 
-/* Take timers from level and distribute them down one. */
-static void cascade(struct timers *timers, unsigned int level)
-{
-	struct timer *i;
-	struct list_head from_far, *list;
-
-	if (level == ARRAY_SIZE(timers->level) || !timers->level[level]) {
-		list_head_init(&from_far);
-		timers_far_get(timers, &from_far,
-			       timers->base
-			       + (1ULL << (level*TIMER_LEVEL_BITS))-1);
-		list = &from_far;
-		if (level != ARRAY_SIZE(timers->level))
-			add_level(timers, level);
-	} else {
-		unsigned src;
-
-		src = (timers->base >> (level * TIMER_LEVEL_BITS)) % PER_LEVEL;
-		if (src == 0)
-			cascade(timers, level + 1);
-		list = &timers->level[level]->list[src];
-	}
-
-	while ((i = list_pop(list, struct timer, list)) != NULL) {
-		unsigned dst;
-
-		assert(i->time >= timers->base);
-		assert(i->time < (timers->base
-				  + (1ULL << ((level+1)*TIMER_LEVEL_BITS))));
-
-		dst = (i->time >> ((level-1)*TIMER_LEVEL_BITS)) % PER_LEVEL;
-		list_add_tail(&timers->level[level-1]->list[dst], &i->list);
-	}
-}
-
 static const struct timer *find_first(const struct list_head *list,
 				      const struct timer *prev)
 {
@@ -409,7 +374,7 @@ past_levels:
 	return (struct timers *)timers;
 }
 
-//#ifdef CCAN_TIMER_DEBUG
+#ifdef CCAN_TIMER_DEBUG
 void timers_dump(const struct timers *timers, FILE *fp)
 {
 	unsigned int l, i;
@@ -455,7 +420,7 @@ void timers_dump(const struct timers *timers, FILE *fp)
 	}
 	fprintf(stderr, "Far: %llu (%llu-%llu)\n", num, min, max);
 }
-//#endif
+#endif
 
 void timers_cleanup(struct timers *timers)
 {
