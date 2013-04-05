@@ -9,6 +9,8 @@
  * struct tok_itr - a structure containing the token iterator state
  * @delim: the token delimiter
  * @curr: a pointer the current token (may be empty)
+ * @next: a pointer to the next token
+ * @len: the length of the token at which @curr points.
  */
 struct tok_itr {
 	char delim;
