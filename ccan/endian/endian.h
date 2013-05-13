@@ -5,49 +5,49 @@
 #include "config.h"
 
 /**
- * BSWAP_16_CONST - reverse bytes in a constant uint16_t value.
+ * BSWAP_16 - reverse bytes in a constant uint16_t value.
  * @val: constant value whose bytes to swap.
  *
  * Designed to be usable in constant-requiring initializers.
  *
  * Example:
  *	struct mystruct {
- *		char buf[BSWAP_16_CONST(0x1234)];
+ *		char buf[BSWAP_16(0x1234)];
  *	};
  */
-#define BSWAP_16_CONST(val)				\
+#define BSWAP_16(val)				\
 	((((uint16_t)val & 0x00ff) << 8)	\
 	 | (((uint16_t)val & 0xff00) >> 8))
 
 /**
- * BSWAP_32_CONST - reverse bytes in a constant uint32_t value.
+ * BSWAP_32 - reverse bytes in a constant uint32_t value.
  * @val: constant value whose bytes to swap.
  *
  * Designed to be usable in constant-requiring initializers.
  *
  * Example:
  *	struct mystruct {
- *		char buf[BSWAP_32_CONST(0xff000000)];
+ *		char buf[BSWAP_32(0xff000000)];
  *	};
  */
-#define BSWAP_32_CONST(val)				\
+#define BSWAP_32(val)					\
 	((((uint32_t)val & 0x000000ff) << 24)		\
 	 | (((uint32_t)val & 0x0000ff00) << 8)		\
 	 | (((uint32_t)val & 0x00ff0000) >> 8)		\
 	 | (((uint32_t)val & 0xff000000) >> 24))
 
 /**
- * BSWAP_64_CONST - reverse bytes in a constant uint64_t value.
+ * BSWAP_64 - reverse bytes in a constant uint64_t value.
  * @val: constantvalue whose bytes to swap.
  *
  * Designed to be usable in constant-requiring initializers.
  *
  * Example:
  *	struct mystruct {
- *		char buf[BSWAP_64_CONST(0xff00000000000000ULL)];
+ *		char buf[BSWAP_64(0xff00000000000000ULL)];
  *	};
  */
-#define BSWAP_64_CONST(val)					\
+#define BSWAP_64(val)						\
 	((((uint64_t)val & 0x00000000000000ffULL) << 56)	\
 	 | (((uint64_t)val & 0x000000000000ff00ULL) << 40)	\
 	 | (((uint64_t)val & 0x0000000000ff0000ULL) << 24)	\
@@ -70,7 +70,7 @@
  */
 static inline uint16_t bswap_16(uint16_t val)
 {
-	return BSWAP_16_CONST(val);
+	return BSWAP_16(val);
 }
 
 /**
@@ -83,7 +83,7 @@ static inline uint16_t bswap_16(uint16_t val)
  */
 static inline uint32_t bswap_32(uint32_t val)
 {
-	return BSWAP_32_CONST(val);
+	return BSWAP_32(val);
 }
 #endif /* !HAVE_BYTESWAP_H */
 
@@ -99,7 +99,7 @@ static inline uint32_t bswap_32(uint32_t val)
  */
 static inline uint64_t bswap_64(uint64_t val)
 {
-	return BSWAP_64_CONST(val);
+	return BSWAP_64(val);
 }
 #endif
 
@@ -112,94 +112,94 @@ static inline uint64_t bswap_64(uint64_t val)
 
 #if HAVE_LITTLE_ENDIAN
 /**
- * CPU_TO_LE64_CONST - convert a constant uint64_t value to little-endian
+ * CPU_TO_LE64 - convert a constant uint64_t value to little-endian
  * @native: constant to convert
  */
-#define CPU_TO_LE64_CONST(native) (native)
+#define CPU_TO_LE64(native) (native)
 
 /**
- * CPU_TO_LE32_CONST - convert a constant uint32_t value to little-endian
+ * CPU_TO_LE32 - convert a constant uint32_t value to little-endian
  * @native: constant to convert
  */
-#define CPU_TO_LE32_CONST(native) (native)
+#define CPU_TO_LE32(native) (native)
 
 /**
- * CPU_TO_LE16_CONST - convert a constant uint16_t value to little-endian
+ * CPU_TO_LE16 - convert a constant uint16_t value to little-endian
  * @native: constant to convert
  */
-#define CPU_TO_LE16_CONST(native) (native)
+#define CPU_TO_LE16(native) (native)
 
 /**
- * LE64_TO_CPU_CONST - convert a little-endian uint64_t constant
+ * LE64_TO_CPU - convert a little-endian uint64_t constant
  * @le_val: little-endian constant to convert
  */
-#define LE64_TO_CPU_CONST(le_val) (le_val)
+#define LE64_TO_CPU(le_val) (le_val)
 
 /**
- * LE32_TO_CPU_CONST - convert a little-endian uint32_t constant
+ * LE32_TO_CPU - convert a little-endian uint32_t constant
  * @le_val: little-endian constant to convert
  */
-#define LE32_TO_CPU_CONST(le_val) (le_val)
+#define LE32_TO_CPU(le_val) (le_val)
 
 /**
- * LE16_TO_CPU_CONST - convert a little-endian uint16_t constant
+ * LE16_TO_CPU - convert a little-endian uint16_t constant
  * @le_val: little-endian constant to convert
  */
-#define LE16_TO_CPU_CONST(le_val) (le_val)
+#define LE16_TO_CPU(le_val) (le_val)
 
 #else /* ... HAVE_BIG_ENDIAN */
-#define CPU_TO_LE64_CONST(native) BSWAP_64_CONST(native)
-#define CPU_TO_LE32_CONST(native) BSWAP_32_CONST(native)
-#define CPU_TO_LE16_CONST(native) BSWAP_16_CONST(native)
-#define LE64_TO_CPU_CONST(le_val) BSWAP_64_CONST(le_val)
-#define LE32_TO_CPU_CONST(le_val) BSWAP_32_CONST(le_val)
-#define LE16_TO_CPU_CONST(le_val) BSWAP_16_CONST(le_val)
+#define CPU_TO_LE64(native) BSWAP_64(native)
+#define CPU_TO_LE32(native) BSWAP_32(native)
+#define CPU_TO_LE16(native) BSWAP_16(native)
+#define LE64_TO_CPU(le_val) BSWAP_64(le_val)
+#define LE32_TO_CPU(le_val) BSWAP_32(le_val)
+#define LE16_TO_CPU(le_val) BSWAP_16(le_val)
 #endif /* HAVE_BIG_ENDIAN */
 
 #if HAVE_BIG_ENDIAN
 /**
- * CPU_TO_BE64_CONST - convert a constant uint64_t value to big-endian
+ * CPU_TO_BE64 - convert a constant uint64_t value to big-endian
  * @native: constant to convert
  */
-#define CPU_TO_BE64_CONST(native) (native)
+#define CPU_TO_BE64(native) (native)
 
 /**
- * CPU_TO_BE32_CONST - convert a constant uint32_t value to big-endian
+ * CPU_TO_BE32 - convert a constant uint32_t value to big-endian
  * @native: constant to convert
  */
-#define CPU_TO_BE32_CONST(native) (native)
+#define CPU_TO_BE32(native) (native)
 
 /**
- * CPU_TO_BE16_CONST - convert a constant uint16_t value to big-endian
+ * CPU_TO_BE16 - convert a constant uint16_t value to big-endian
  * @native: constant to convert
  */
-#define CPU_TO_BE16_CONST(native) (native)
+#define CPU_TO_BE16(native) (native)
 
 /**
- * BE64_TO_CPU_CONST - convert a big-endian uint64_t constant
+ * BE64_TO_CPU - convert a big-endian uint64_t constant
  * @le_val: big-endian constant to convert
  */
-#define BE64_TO_CPU_CONST(le_val) (le_val)
+#define BE64_TO_CPU(le_val) (le_val)
 
 /**
- * BE32_TO_CPU_CONST - convert a big-endian uint32_t constant
+ * BE32_TO_CPU - convert a big-endian uint32_t constant
  * @le_val: big-endian constant to convert
  */
-#define BE32_TO_CPU_CONST(le_val) (le_val)
+#define BE32_TO_CPU(le_val) (le_val)
 
 /**
- * BE16_TO_CPU_CONST - convert a big-endian uint16_t constant
+ * BE16_TO_CPU - convert a big-endian uint16_t constant
  * @le_val: big-endian constant to convert
  */
-#define BE16_TO_CPU_CONST(le_val) (le_val)
+#define BE16_TO_CPU(le_val) (le_val)
 
 #else /* ... HAVE_LITTLE_ENDIAN */
-#define CPU_TO_BE64_CONST(native) BSWAP_64_CONST(native)
-#define CPU_TO_BE32_CONST(native) BSWAP_32_CONST(native)
-#define CPU_TO_BE16_CONST(native) BSWAP_16_CONST(native)
-#define BE64_TO_CPU_CONST(le_val) BSWAP_64_CONST(le_val)
-#define BE32_TO_CPU_CONST(le_val) BSWAP_32_CONST(le_val)
-#define BE16_TO_CPU_CONST(le_val) BSWAP_16_CONST(le_val)
+#define CPU_TO_BE64(native) BSWAP_64(native)
+#define CPU_TO_BE32(native) BSWAP_32(native)
+#define CPU_TO_BE16(native) BSWAP_16(native)
+#define BE64_TO_CPU(le_val) BSWAP_64(le_val)
+#define BE32_TO_CPU(le_val) BSWAP_32(le_val)
+#define BE16_TO_CPU(le_val) BSWAP_16(le_val)
 #endif /* HAVE_LITTE_ENDIAN */
 
 
@@ -209,7 +209,7 @@ static inline uint64_t bswap_64(uint64_t val)
  */
 static inline uint64_t cpu_to_le64(uint64_t native)
 {
-	return CPU_TO_LE64_CONST(native);
+	return CPU_TO_LE64(native);
 }
 
 /**
@@ -218,7 +218,7 @@ static inline uint64_t cpu_to_le64(uint64_t native)
  */
 static inline uint32_t cpu_to_le32(uint32_t native)
 {
-	return CPU_TO_LE32_CONST(native);
+	return CPU_TO_LE32(native);
 }
 
 /**
@@ -227,7 +227,7 @@ static inline uint32_t cpu_to_le32(uint32_t native)
  */
 static inline uint16_t cpu_to_le16(uint16_t native)
 {
-	return CPU_TO_LE16_CONST(native);
+	return CPU_TO_LE16(native);
 }
 
 /**
@@ -236,7 +236,7 @@ static inline uint16_t cpu_to_le16(uint16_t native)
  */
 static inline uint64_t le64_to_cpu(uint64_t le_val)
 {
-	return LE64_TO_CPU_CONST(le_val);
+	return LE64_TO_CPU(le_val);
 }
 
 /**
@@ -245,7 +245,7 @@ static inline uint64_t le64_to_cpu(uint64_t le_val)
  */
 static inline uint32_t le32_to_cpu(uint32_t le_val)
 {
-	return LE32_TO_CPU_CONST(le_val);
+	return LE32_TO_CPU(le_val);
 }
 
 /**
@@ -254,7 +254,7 @@ static inline uint32_t le32_to_cpu(uint32_t le_val)
  */
 static inline uint16_t le16_to_cpu(uint16_t le_val)
 {
-	return LE16_TO_CPU_CONST(le_val);
+	return LE16_TO_CPU(le_val);
 }
 
 /**
@@ -263,7 +263,7 @@ static inline uint16_t le16_to_cpu(uint16_t le_val)
  */
 static inline uint64_t cpu_to_be64(uint64_t native)
 {
-	return CPU_TO_BE64_CONST(native);
+	return CPU_TO_BE64(native);
 }
 
 /**
@@ -272,7 +272,7 @@ static inline uint64_t cpu_to_be64(uint64_t native)
  */
 static inline uint32_t cpu_to_be32(uint32_t native)
 {
-	return CPU_TO_BE32_CONST(native);
+	return CPU_TO_BE32(native);
 }
 
 /**
@@ -281,7 +281,7 @@ static inline uint32_t cpu_to_be32(uint32_t native)
  */
 static inline uint16_t cpu_to_be16(uint16_t native)
 {
-	return CPU_TO_BE16_CONST(native);
+	return CPU_TO_BE16(native);
 }
 
 /**
@@ -290,7 +290,7 @@ static inline uint16_t cpu_to_be16(uint16_t native)
  */
 static inline uint64_t be64_to_cpu(uint64_t be_val)
 {
-	return BE64_TO_CPU_CONST(be_val);
+	return BE64_TO_CPU(be_val);
 }
 
 /**
@@ -299,7 +299,7 @@ static inline uint64_t be64_to_cpu(uint64_t be_val)
  */
 static inline uint32_t be32_to_cpu(uint32_t be_val)
 {
-	return BE32_TO_CPU_CONST(be_val);
+	return BE32_TO_CPU(be_val);
 }
 
 /**
@@ -308,7 +308,7 @@ static inline uint32_t be32_to_cpu(uint32_t be_val)
  */
 static inline uint16_t be16_to_cpu(uint16_t be_val)
 {
-	return BE16_TO_CPU_CONST(be_val);
+	return BE16_TO_CPU(be_val);
 }
 
 #endif /* CCAN_ENDIAN_H */
