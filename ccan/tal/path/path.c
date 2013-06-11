@@ -244,8 +244,10 @@ char *path_rel(const tal_t *ctx, const char *from, const char *to)
 
 	/* This frees to if we're supposed to take it. */
 	cto = path_canon(tmpctx, to);
-	if (!cto)
+	if (!cto) {
+		ret = NULL;
 		goto out;
+	}
 
 	/* How much is in common? */
 	for (common = i = 0; cfrom[i] && cto[i]; i++) {
@@ -323,7 +325,9 @@ fail_take_to:
 			goto fail;
 	}
 
-	ret[len] = '\0';
+	if (ret)
+		ret[len] = '\0';
+
 out:
 	if (taken(linkname))
 		tal_free(linkname);
