@@ -506,11 +506,11 @@ char *tally_histogram(const struct tally *tally,
 
 		if (count > covered) {
 			count -= covered;
+			memset(p, '*', count);
 		} else {
 			count = 0;
 		}
 
-		memset(p, '*', count);
 		p += count;
 		*p = '\n';
 		p++;
