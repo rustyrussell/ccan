@@ -400,6 +400,43 @@ static inline const void *list_tail_(const struct list_head *h, size_t off)
 	list_for_each_safe_off(h, i, nxt, list_off_var_(i, member))
 
 /**
+ * list_next - get the next entry in a list
+ * @h: the list_head
+ * @i: a pointer to an entry in the list.
+ * @member: the list_node member of the structure
+ *
+ * If @i was the last entry in the list, returns NULL.
+ *
+ * Example:
+ *	struct child *second;
+ *	second = list_next(&parent->children, first, list);
+ *	if (!second)
+ *		printf("No second child!\n");
+ */
+#define list_next(h, i, member)						\
+	((list_typeof(i))list_entry_or_null(list_debug(h),		\
+					    (i)->member.next,		\
+					    list_off_var_((i), member)))
+
+/**
+ * list_prev - get the previous entry in a list
+ * @h: the list_head
+ * @i: a pointer to an entry in the list.
+ * @member: the list_node member of the structure
+ *
+ * If @i was the first entry in the list, returns NULL.
+ *
+ * Example:
+ *	first = list_prev(&parent->children, second, list);
+ *	if (!first)
+ *		printf("Can't go back to first child?!\n");
+ */
+#define list_prev(h, i, member)						\
+	((list_typeof(i))list_entry_or_null(list_debug(h),		\
+					    (i)->member.prev,		\
+					    list_off_var_((i), member)))
+
+/**
  * list_append_list - empty one list onto the end of another.
  * @to: the list to append into
  * @from: the list to empty.
@@ -560,4 +597,19 @@ static inline struct list_node *list_node_from_off_(void *ptr, size_t off)
 	(container_off_var(var, member) +		\
 	 check_type(var->member, struct list_node))
 
+#if HAVE_TYPEOF
+#define list_typeof(var) typeof(var)
+#else
+#define list_typeof(var) void *
+#endif
+
+/* Returns member, or NULL if at end of list. */
+static inline void *list_entry_or_null(struct list_head *h,
+				       struct list_node *n,
+				       size_t off)
+{
+	if (n == &h->n)
+		return NULL;
+	return (char *)n - off;
+}
 #endif /* CCAN_LIST_H */
