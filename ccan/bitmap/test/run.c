@@ -13,7 +13,7 @@ int bitmap_sizes[] = {
 
 static void test_sizes(int nbits)
 {
-	void *bitmap = bitmap_alloc(nbits);
+	bitmap *bitmap = bitmap_alloc(nbits);
 	int i, j;
 	bool wrong;
 

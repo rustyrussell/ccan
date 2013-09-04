@@ -8,6 +8,14 @@
 
 #define BITS_PER_LONG	(sizeof(unsigned long) * 8)
 
+/*
+ * We use an unsigned long to get alignment, but wrap it in a
+ * structure for type checking
+ */
+typedef struct {
+	unsigned long l;
+} bitmap;
+
 #define BYTE(_bm, _n)	(((unsigned char *)(_bm))[(_n) / 8])
 #define LONG(_bm, _n)	(((unsigned long *)(_bm))[(_n) / BITS_PER_LONG])
 #define BIT(_n)		(0x80 >> ((_n) % 8))
@@ -15,42 +23,42 @@
 #define BYTES(_nbits)	((_nbits) / 8)
 #define BITS(_nbits)	((~(0xff >> ((_nbits) % 8))) & 0xff)
 
-static inline void bitmap_set_bit(void *bitmap, int n)
+static inline void bitmap_set_bit(bitmap *bitmap, int n)
 {
 	BYTE(bitmap, n) |= BIT(n);
 }
 
-static inline void bitmap_clear_bit(void *bitmap, int n)
+static inline void bitmap_clear_bit(bitmap *bitmap, int n)
 {
 	BYTE(bitmap, n) &= ~BIT(n);
 }
 
-static inline void bitmap_change_bit(void *bitmap, int n)
+static inline void bitmap_change_bit(bitmap *bitmap, int n)
 {
 	BYTE(bitmap, n) ^= BIT(n);
 }
 
-static inline bool bitmap_test_bit(void *bitmap, int n)
+static inline bool bitmap_test_bit(bitmap *bitmap, int n)
 {
 	return !!(BYTE(bitmap, n) & BIT(n));
 }
 
 
-static inline void bitmap_zero(void *bitmap, int nbits)
+static inline void bitmap_zero(bitmap *bitmap, int nbits)
 {
 	memset(bitmap, 0, BYTES(nbits));
 	if (BITS(nbits))
 		BYTE(bitmap, nbits) &= ~BITS(nbits);
 }
 
-static inline void bitmap_fill(void *bitmap, int nbits)
+static inline void bitmap_fill(bitmap *bitmap, int nbits)
 {
 	memset(bitmap, 0xff, BYTES(nbits));
 	if (BITS(nbits))
 		BYTE(bitmap, nbits) |= BITS(nbits);
 }
 
-static inline void bitmap_copy(void *dst, void *src, int nbits)
+static inline void bitmap_copy(bitmap *dst, bitmap *src, int nbits)
 {
 	memcpy(dst, src, BYTES(nbits));
 	if (BITS(nbits)) {
@@ -60,7 +68,7 @@ static inline void bitmap_copy(void *dst, void *src, int nbits)
 }
 
 #define DEF_BINOP(_name, _op) \
-	static inline void bitmap_##_name(void *dst, void *src1, void *src2, \
+	static inline void bitmap_##_name(bitmap *dst, bitmap *src1, bitmap *src2, \
 					 int nbits) \
 	{ \
 		int n = 0; \
@@ -86,7 +94,7 @@ DEF_BINOP(andnot, & ~)
 
 #undef DEF_BINOP
 
-static inline void bitmap_complement(void *dst, void *src, int nbits)
+static inline void bitmap_complement(bitmap *dst, bitmap *src, int nbits)
 {
 	int n = 0;
 
@@ -104,7 +112,7 @@ static inline void bitmap_complement(void *dst, void *src, int nbits)
 	}
 }
 
-static inline bool bitmap_equal(void *src1, void *src2, int nbits)
+static inline bool bitmap_equal(bitmap *src1, bitmap *src2, int nbits)
 {
 	if (memcmp(src1, src2, BYTES(nbits)) != 0)
 		return false;
@@ -114,7 +122,7 @@ static inline bool bitmap_equal(void *src1, void *src2, int nbits)
 	return true;
 }
 
-static inline bool bitmap_intersects(void *src1, void *src2, int nbits)
+static inline bool bitmap_intersects(bitmap *src1, bitmap *src2, int nbits)
 {
 	int n = 0;
 
@@ -134,7 +142,7 @@ static inline bool bitmap_intersects(void *src1, void *src2, int nbits)
 	return false;
 }
 
-static inline bool bitmap_subset(void *src1, void *src2, int nbits)
+static inline bool bitmap_subset(bitmap *src1, bitmap *src2, int nbits)
 {
 	int n = 0;
 
@@ -154,7 +162,7 @@ static inline bool bitmap_subset(void *src1, void *src2, int nbits)
 	return true;
 }
 
-static inline bool bitmap_full(void *bitmap, int nbits)
+static inline bool bitmap_full(bitmap *bitmap, int nbits)
 {
 	int n = 0;
 
@@ -175,7 +183,7 @@ static inline bool bitmap_full(void *bitmap, int nbits)
 	return true;
 }
 
-static inline bool bitmap_empty(void *bitmap, int nbits)
+static inline bool bitmap_empty(bitmap *bitmap, int nbits)
 {
 	int n = 0;
 
@@ -196,7 +204,7 @@ static inline bool bitmap_empty(void *bitmap, int nbits)
 }
 
 
-static inline void *bitmap_alloc(int nbits)
+static inline bitmap *bitmap_alloc(int nbits)
 {
 	return malloc((nbits + 7) / 8);
 }
