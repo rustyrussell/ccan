@@ -7,10 +7,13 @@
 #include <string.h>
 #include <limits.h>
 
+#include <ccan/endian/endian.h>
+
 typedef unsigned long bitmap_word;
 
 #define BITMAP_WORD_BITS	(sizeof(bitmap_word) * CHAR_BIT)
-#define BITMAP_NWORDS(_n)	(((_n) + BITMAP_WORD_BITS - 1) / BITMAP_WORD_BITS)
+#define BITMAP_NWORDS(_n)	\
+	(((_n) + BITMAP_WORD_BITS - 1) / BITMAP_WORD_BITS)
 
 /*
  * We wrap each word in a structure for type checking.
@@ -29,198 +32,154 @@ static inline bitmap *bitmap_alloc(int nbits)
 	return malloc(bitmap_sizeof(nbits));
 }
 
-#define BYTE(_bm, _n)	(((unsigned char *)(_bm))[(_n) / CHAR_BIT])
-#define BIT(_n)		(0x80 >> ((_n) % 8))
-#define WORD(_bm, _n)	((_bm)[(_n) / BITMAP_WORD_BITS].w)
+static inline bitmap_word bitmap_bswap(bitmap_word w)
+{
+	if (BITMAP_WORD_BITS == 32)
+		return cpu_to_be32(w);
+	else if (BITMAP_WORD_BITS == 64)
+		return cpu_to_be64(w);
+}
 
-#define BYTES(_nbits)	((_nbits) / 8)
-#define BITS(_nbits)	((~(0xff >> ((_nbits) % 8))) & 0xff)
+#define BITMAP_WORD(_bm, _n)	((_bm)[(_n) / BITMAP_WORD_BITS].w)
+#define BITMAP_WORDBIT(_n) 	\
+	(bitmap_bswap(1UL << (BITMAP_WORD_BITS - ((_n) % BITMAP_WORD_BITS) - 1)))
+
+#define BITMAP_HEADWORDS(_nbits) \
+	((_nbits) / BITMAP_WORD_BITS)
+#define BITMAP_HEADBYTES(_nbits) \
+	(BITMAP_HEADWORDS(_nbits) * sizeof(bitmap_word))
+
+#define BITMAP_TAILWORD(_bm, _nbits) \
+	((_bm)[BITMAP_HEADWORDS(_nbits)].w)
+#define BITMAP_HASTAIL(_nbits)	(((_nbits) % BITMAP_WORD_BITS) != 0)
+#define BITMAP_TAILBITS(_nbits)	\
+	(bitmap_bswap(~(-1UL >> ((_nbits) % BITMAP_WORD_BITS))))
+#define BITMAP_TAIL(_bm, _nbits) \
+	(BITMAP_TAILWORD(_bm, _nbits) & BITMAP_TAILBITS(_nbits))
 
 static inline void bitmap_set_bit(bitmap *bitmap, int n)
 {
-	BYTE(bitmap, n) |= BIT(n);
+	BITMAP_WORD(bitmap, n) |= BITMAP_WORDBIT(n);
 }
 
 static inline void bitmap_clear_bit(bitmap *bitmap, int n)
 {
-	BYTE(bitmap, n) &= ~BIT(n);
+	BITMAP_WORD(bitmap, n) &= ~BITMAP_WORDBIT(n);
 }
 
 static inline void bitmap_change_bit(bitmap *bitmap, int n)
 {
-	BYTE(bitmap, n) ^= BIT(n);
+	BITMAP_WORD(bitmap, n) ^= BITMAP_WORDBIT(n);
 }
 
 static inline bool bitmap_test_bit(bitmap *bitmap, int n)
 {
-	return !!(BYTE(bitmap, n) & BIT(n));
+	return !!(BITMAP_WORD(bitmap, n) & BITMAP_WORDBIT(n));
 }
 
 
 static inline void bitmap_zero(bitmap *bitmap, int nbits)
 {
-	memset(bitmap, 0, BYTES(nbits));
-	if (BITS(nbits))
-		BYTE(bitmap, nbits) &= ~BITS(nbits);
+	memset(bitmap, 0, bitmap_sizeof(nbits));
 }
 
 static inline void bitmap_fill(bitmap *bitmap, int nbits)
 {
-	memset(bitmap, 0xff, BYTES(nbits));
-	if (BITS(nbits))
-		BYTE(bitmap, nbits) |= BITS(nbits);
+	memset(bitmap, 0xff, bitmap_sizeof(nbits));
 }
 
 static inline void bitmap_copy(bitmap *dst, bitmap *src, int nbits)
 {
-	memcpy(dst, src, BYTES(nbits));
-	if (BITS(nbits)) {
-		BYTE(dst, nbits) &= ~BITS(nbits);
-		BYTE(dst, nbits) |= BYTE(src, nbits) & BITS(nbits);
-	}
+	memcpy(dst, src, bitmap_sizeof(nbits));
 }
 
-#define DEF_BINOP(_name, _op) \
+#define BITMAP_DEF_BINOP(_name, _op) \
 	static inline void bitmap_##_name(bitmap *dst, bitmap *src1, bitmap *src2, \
 					 int nbits) \
 	{ \
-		int n = 0; \
-		while ((nbits - n) >= BITMAP_WORD_BITS) { \
-			WORD(dst, n) = WORD(src1, n) _op WORD(src2, n); \
-			n += BITMAP_WORD_BITS; \
-		} \
-		while ((nbits - n) >= 8) { \
-			BYTE(dst, n) = BYTE(src1, n) _op BYTE(src2, n); \
-			n += 8; \
-		} \
-		if (BITS(nbits)) { \
-			BYTE(dst, nbits) &= ~BITS(nbits); \
-			BYTE(dst, nbits) |= (BYTE(src1, nbits) _op BYTE(src2, nbits)) \
-				& BITS(nbits); \
+		int i = 0; \
+		for (i = 0; i < BITMAP_NWORDS(nbits); i++) { \
+			dst[i].w = src1[i].w _op src2[i].w; \
 		} \
 	}
 
-DEF_BINOP(and, &)
-DEF_BINOP(or, |)
-DEF_BINOP(xor, ^)
-DEF_BINOP(andnot, & ~)
+BITMAP_DEF_BINOP(and, &)
+BITMAP_DEF_BINOP(or, |)
+BITMAP_DEF_BINOP(xor, ^)
+BITMAP_DEF_BINOP(andnot, & ~)
 
-#undef DEF_BINOP
+#undef BITMAP_DEF_BINOP
 
 static inline void bitmap_complement(bitmap *dst, bitmap *src, int nbits)
 {
-	int n = 0;
+	int i;
 
-	while ((nbits - n) >= BITMAP_WORD_BITS) {
-		WORD(dst, n) = ~WORD(src, n);
-		n += BITMAP_WORD_BITS;
-	}
-	while ((nbits - n) >= 8) {
-		BYTE(dst, n) = ~BYTE(src, n);
-		n += 8;
-	}
-	if (BITS(nbits)) {
-		BYTE(dst, nbits) &= ~BITS(nbits);
-		BYTE(dst, nbits) |= ~BYTE(src, nbits) & BITS(nbits);
-	}
+	for (i = 0; i < BITMAP_NWORDS(nbits); i++)
+		dst[i].w = ~src[i].w;
 }
 
 static inline bool bitmap_equal(bitmap *src1, bitmap *src2, int nbits)
 {
-	if (memcmp(src1, src2, BYTES(nbits)) != 0)
-		return false;
-	if ((BYTE(src1, nbits) & BITS(nbits))
-	    != (BYTE(src2, nbits) & BITS(nbits)))
-		return false;
-	return true;
+	return (memcmp(src1, src2, BITMAP_HEADBYTES(nbits)) == 0)
+		&& (!BITMAP_HASTAIL(nbits)
+		    || (BITMAP_TAIL(src1, nbits) == BITMAP_TAIL(src2, nbits)));
 }
 
 static inline bool bitmap_intersects(bitmap *src1, bitmap *src2, int nbits)
 {
-	int n = 0;
+	int i;
 
-	while ((nbits - n) >= BITMAP_WORD_BITS) {
-		if (WORD(src1, n) & WORD(src2, n))
+	for (i = 0; i < BITMAP_HEADWORDS(nbits); i++) {
+		if (src1[i].w & src2[i].w)
 			return true;
-		n += BITMAP_WORD_BITS;
 	}
-	while ((nbits - n) >= 8) {
-		if (BYTE(src1, n) & BYTE(src2, n))
-			return true;
-		n += 8;
-	}
-	if (BITS(nbits) & BYTE(src1, nbits) & BYTE(src2, nbits)) {
+	if (BITMAP_HASTAIL(nbits) &&
+	    (BITMAP_TAIL(src1, nbits) & BITMAP_TAIL(src2, nbits)))
 		return true;
-	}
 	return false;
 }
 
 static inline bool bitmap_subset(bitmap *src1, bitmap *src2, int nbits)
 {
-	int n = 0;
+	int i;
 
-	while ((nbits - n) >= BITMAP_WORD_BITS) {
-		if (WORD(src1, n) & ~WORD(src2, n))
+	for (i = 0; i < BITMAP_HEADWORDS(nbits); i++) {
+		if (src1[i].w  & ~src2[i].w)
 			return false;
-		n += BITMAP_WORD_BITS;
 	}
-	while ((nbits - n) >= 8) {
-		if (BYTE(src1, n) & ~BYTE(src2, n))
-			return false;
-		n += 8;
-	}
-	if (BITS(nbits) & (BYTE(src1, nbits) & ~BYTE(src2, nbits))) {
+	if (BITMAP_HASTAIL(nbits) &&
+	    (BITMAP_TAIL(src1, nbits) & ~BITMAP_TAIL(src2, nbits)))
 		return false;
-	}
 	return true;
 }
 
 static inline bool bitmap_full(bitmap *bitmap, int nbits)
 {
-	int n = 0;
+	int i;
 
-	while ((nbits - n) >= BITMAP_WORD_BITS) {
-		if (WORD(bitmap, n) != -1UL)
+	for (i = 0; i < BITMAP_HEADWORDS(nbits); i++) {
+		if (bitmap[i].w != -1UL)
 			return false;
-		n += BITMAP_WORD_BITS;
 	}
-	while ((nbits - n) >= 8) {
-		if (BYTE(bitmap, n) != 0xff)
-			return false;
-		n += 8;
-	}
-	if (BITS(nbits)
-	    && ((BITS(nbits) & BYTE(bitmap, nbits)) != BITS(nbits))) {
+	if (BITMAP_HASTAIL(nbits) &&
+	    (BITMAP_TAIL(bitmap, nbits) != BITMAP_TAILBITS(nbits)))
 		return false;
-	}
+
 	return true;
 }
 
 static inline bool bitmap_empty(bitmap *bitmap, int nbits)
 {
-	int n = 0;
+	int i;
 
-	while ((nbits - n) >= BITMAP_WORD_BITS) {
-		if (WORD(bitmap, n))
+	for (i = 0; i < BITMAP_HEADWORDS(nbits); i++) {
+		if (bitmap[i].w != 0)
 			return false;
-		n += BITMAP_WORD_BITS;
 	}
-	while ((nbits - n) >= 8) {
-		if (BYTE(bitmap, n))
-			return false;
-		n += 8;
-	}
-	if (BITS(nbits) && ((BITS(nbits) & BYTE(bitmap, nbits)))) {
+	if (BITMAP_HASTAIL(nbits) && (BITMAP_TAIL(bitmap, nbits) != 0))
 		return false;
-	}
+
 	return true;
 }
-
-
-#undef BYTE
-#undef WORD
-#undef BIT
-#undef BYTES
-#undef BITS
 
 #endif /* CCAN_BITMAP_H_ */
