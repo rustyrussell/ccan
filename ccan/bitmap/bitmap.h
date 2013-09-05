@@ -22,6 +22,9 @@ typedef struct {
 	bitmap_word w;
 } bitmap;
 
+#define BITMAP_DECLARE(_name, _nbits) \
+	bitmap (_name)[BITMAP_NWORDS(_nbits)]
+
 static inline size_t bitmap_sizeof(int nbits)
 {
 	return BITMAP_NWORDS(nbits) * sizeof(bitmap_word);
