@@ -5,20 +5,33 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
-#define BITS_PER_LONG	(sizeof(unsigned long) * 8)
+typedef unsigned long bitmap_word;
+
+#define BITMAP_WORD_BITS	(sizeof(bitmap_word) * CHAR_BIT)
+#define BITMAP_NWORDS(_n)	(((_n) + BITMAP_WORD_BITS - 1) / BITMAP_WORD_BITS)
 
 /*
- * We use an unsigned long to get alignment, but wrap it in a
- * structure for type checking
+ * We wrap each word in a structure for type checking.
  */
 typedef struct {
-	unsigned long l;
+	bitmap_word w;
 } bitmap;
 
-#define BYTE(_bm, _n)	(((unsigned char *)(_bm))[(_n) / 8])
-#define LONG(_bm, _n)	(((unsigned long *)(_bm))[(_n) / BITS_PER_LONG])
+static inline size_t bitmap_sizeof(int nbits)
+{
+	return BITMAP_NWORDS(nbits) * sizeof(bitmap_word);
+}
+
+static inline bitmap *bitmap_alloc(int nbits)
+{
+	return malloc(bitmap_sizeof(nbits));
+}
+
+#define BYTE(_bm, _n)	(((unsigned char *)(_bm))[(_n) / CHAR_BIT])
 #define BIT(_n)		(0x80 >> ((_n) % 8))
+#define WORD(_bm, _n)	((_bm)[(_n) / BITMAP_WORD_BITS].w)
 
 #define BYTES(_nbits)	((_nbits) / 8)
 #define BITS(_nbits)	((~(0xff >> ((_nbits) % 8))) & 0xff)
@@ -72,9 +85,9 @@ static inline void bitmap_copy(bitmap *dst, bitmap *src, int nbits)
 					 int nbits) \
 	{ \
 		int n = 0; \
-		while ((nbits - n) >= BITS_PER_LONG) { \
-			LONG(dst, n) = LONG(src1, n) _op LONG(src2, n); \
-			n += BITS_PER_LONG; \
+		while ((nbits - n) >= BITMAP_WORD_BITS) { \
+			WORD(dst, n) = WORD(src1, n) _op WORD(src2, n); \
+			n += BITMAP_WORD_BITS; \
 		} \
 		while ((nbits - n) >= 8) { \
 			BYTE(dst, n) = BYTE(src1, n) _op BYTE(src2, n); \
@@ -98,9 +111,9 @@ static inline void bitmap_complement(bitmap *dst, bitmap *src, int nbits)
 {
 	int n = 0;
 
-	while ((nbits - n) >= BITS_PER_LONG) {
-		LONG(dst, n) = ~LONG(src, n);
-		n += BITS_PER_LONG;
+	while ((nbits - n) >= BITMAP_WORD_BITS) {
+		WORD(dst, n) = ~WORD(src, n);
+		n += BITMAP_WORD_BITS;
 	}
 	while ((nbits - n) >= 8) {
 		BYTE(dst, n) = ~BYTE(src, n);
@@ -126,10 +139,10 @@ static inline bool bitmap_intersects(bitmap *src1, bitmap *src2, int nbits)
 {
 	int n = 0;
 
-	while ((nbits - n) >= BITS_PER_LONG) {
-		if (LONG(src1, n) & LONG(src2, n))
+	while ((nbits - n) >= BITMAP_WORD_BITS) {
+		if (WORD(src1, n) & WORD(src2, n))
 			return true;
-		n += BITS_PER_LONG;
+		n += BITMAP_WORD_BITS;
 	}
 	while ((nbits - n) >= 8) {
 		if (BYTE(src1, n) & BYTE(src2, n))
@@ -146,10 +159,10 @@ static inline bool bitmap_subset(bitmap *src1, bitmap *src2, int nbits)
 {
 	int n = 0;
 
-	while ((nbits - n) >= BITS_PER_LONG) {
-		if (LONG(src1, n) & ~LONG(src2, n))
+	while ((nbits - n) >= BITMAP_WORD_BITS) {
+		if (WORD(src1, n) & ~WORD(src2, n))
 			return false;
-		n += BITS_PER_LONG;
+		n += BITMAP_WORD_BITS;
 	}
 	while ((nbits - n) >= 8) {
 		if (BYTE(src1, n) & ~BYTE(src2, n))
@@ -166,10 +179,10 @@ static inline bool bitmap_full(bitmap *bitmap, int nbits)
 {
 	int n = 0;
 
-	while ((nbits - n) >= BITS_PER_LONG) {
-		if (LONG(bitmap, n) != -1UL)
+	while ((nbits - n) >= BITMAP_WORD_BITS) {
+		if (WORD(bitmap, n) != -1UL)
 			return false;
-		n += BITS_PER_LONG;
+		n += BITMAP_WORD_BITS;
 	}
 	while ((nbits - n) >= 8) {
 		if (BYTE(bitmap, n) != 0xff)
@@ -187,10 +200,10 @@ static inline bool bitmap_empty(bitmap *bitmap, int nbits)
 {
 	int n = 0;
 
-	while ((nbits - n) >= BITS_PER_LONG) {
-		if (LONG(bitmap, n))
+	while ((nbits - n) >= BITMAP_WORD_BITS) {
+		if (WORD(bitmap, n))
 			return false;
-		n += BITS_PER_LONG;
+		n += BITMAP_WORD_BITS;
 	}
 	while ((nbits - n) >= 8) {
 		if (BYTE(bitmap, n))
@@ -204,13 +217,8 @@ static inline bool bitmap_empty(bitmap *bitmap, int nbits)
 }
 
 
-static inline bitmap *bitmap_alloc(int nbits)
-{
-	return malloc((nbits + 7) / 8);
-}
-
 #undef BYTE
-#undef LONG
+#undef WORD
 #undef BIT
 #undef BYTES
 #undef BITS
