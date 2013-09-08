@@ -15,18 +15,21 @@ typedef int16_t s16;
 typedef uint8_t u8;
 typedef int8_t s8;
 
+/* Whichever they include first, they get these definitions. */
+#ifdef CCAN_ENDIAN_H
 /**
  * be64/be32/be16 - 64/32/16 bit big-endian representation.
  */
-typedef uint64_t be64;
-typedef uint32_t be32;
-typedef uint16_t be16;
+typedef beint64_t be64;
+typedef beint32_t be32;
+typedef beint16_t be16;
 
 /**
  * le64/le32/le16 - 64/32/16 bit little-endian representation.
  */
-typedef uint64_t le64;
-typedef uint32_t le32;
-typedef uint16_t le16;
+typedef leint64_t le64;
+typedef leint32_t le32;
+typedef leint16_t le16;
+#endif
 
 #endif /* CCAN_SHORT_TYPES_H */

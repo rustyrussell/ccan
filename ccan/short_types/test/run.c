@@ -5,7 +5,7 @@
 
 int main(int argc, char *argv[])
 {
-	plan_tests(22);
+	plan_tests(16);
 
 	ok1(sizeof(u64) == 8);
 	ok1(sizeof(s64) == 8);
@@ -15,14 +15,6 @@ int main(int argc, char *argv[])
 	ok1(sizeof(s16) == 2);
 	ok1(sizeof(u8) == 1);
 	ok1(sizeof(s8) == 1);
-
-	ok1(sizeof(be64) == 8);
-	ok1(sizeof(be32) == 4);
-	ok1(sizeof(be16) == 2);
-
-	ok1(sizeof(le64) == 8);
-	ok1(sizeof(le32) == 4);
-	ok1(sizeof(le16) == 2);
 
 	/* Signedness tests. */
 	ok1((u64)-1 > 0);

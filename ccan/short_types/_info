@@ -77,5 +77,10 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
+	if (strcmp(argv[1], "testdepends") == 0) {
+		printf("ccan/endian\n");
+		return 0;
+	}
+
 	return 1;
 }
