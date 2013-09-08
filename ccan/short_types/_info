@@ -9,8 +9,9 @@
  *	-- Linus Torvalds
  *
  * The short_types header provides for convenient abbreviations for the
- * posixly-damned uint32_t types.  It also provides be32/le32 for explicitly
- * annotating types of specific endian.
+ * posixly-damned uint32_t types.  If ccan/endian/endian.h is included,
+ * it also provides be32/le32 for explicitly annotating types of specific
+ * endian.
  *
  * Include this header, if only to stop people using these identifiers
  * for other things!
