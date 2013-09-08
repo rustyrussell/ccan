@@ -670,13 +670,13 @@ tal_t *tal_parent(const tal_t *ctx)
         return from_tal_hdr(ignore_destroying_bit(t->parent_child)->parent);
 }
 
-bool tal_resize_(tal_t **ctxp, size_t size, size_t count)
+bool tal_resize_(tal_t **ctxp, size_t size, size_t count, bool clear)
 {
         struct tal_hdr *old_t, *t;
         struct children *child;
 	struct prop_hdr **lenp;
 	struct length len;
-	size_t extra = 0;
+	size_t extra = 0, elemsize = size;
 
         old_t = debug_tal(to_tal_hdr(*ctxp));
 
@@ -688,7 +688,8 @@ bool tal_resize_(tal_t **ctxp, size_t size, size_t count)
 		/* Copy here, in case we're shrinking! */
 		len = *(struct length *)*lenp;
 		extra = extra_for_length(size);
-	}
+	} else /* If we don't have an old length, we can't clear! */
+		assert(!clear);
 
         t = resizefn(old_t, sizeof(struct tal_hdr) + size + extra);
 	if (!t) {
@@ -699,6 +700,12 @@ bool tal_resize_(tal_t **ctxp, size_t size, size_t count)
 	/* Copy length to end. */
 	if (lenp) {
 		struct length *new_len;
+
+		/* Clear between old end and new end. */
+		if (clear && count > len.count) {
+			char *old_end = (char *)(t + 1) + len.count * elemsize;
+			memset(old_end, 0, elemsize * (count - len.count));
+		}
 
 		new_len = (struct length *)((char *)(t + 1) + size);
 		len.count = count;
@@ -753,7 +760,7 @@ bool tal_expand_(tal_t **ctxp, const void *src, size_t size, size_t count)
 	assert(src < *ctxp
 	       || (char *)src >= (char *)(*ctxp) + (size * old_count));
 
-	if (!tal_resize_(ctxp, size, old_count + count))
+	if (!tal_resize_(ctxp, size, old_count + count, false))
 		goto out;
 
 	memcpy((char *)*ctxp + size * old_count, src, count * size);
@@ -789,7 +796,7 @@ void *tal_dup_(const tal_t *ctx, const void *p, size_t size,
 	if (taken(p)) {
 		if (unlikely(!p))
 			return NULL;
-		if (unlikely(!tal_resize_((void **)&p, size, n + extra)))
+		if (unlikely(!tal_resize_((void **)&p, size, n + extra, false)))
 			return tal_free(p);
 		if (unlikely(!tal_steal(ctx, p)))
 			return tal_free(p);

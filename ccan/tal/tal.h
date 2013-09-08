@@ -110,7 +110,22 @@ void *tal_free(const tal_t *p);
  *	tal_resize(&p, 100);
  */
 #define tal_resize(p, count) \
-	tal_resize_((void **)(p), sizeof**(p), (count))
+	tal_resize_((void **)(p), sizeof**(p), (count), false)
+
+/**
+ * tal_resizez - enlarge or reduce a tal_arr[z]; zero out extra.
+ * @p: A pointer to the tal allocated array to resize.
+ * @count: the number to allocate.
+ *
+ * This returns true on success (and may move *@p), or false on failure.
+ * If @p has a length property, it is updated on success.
+ * On expand, new elements are memset to 0 bytes.
+ *
+ * Example:
+ *	tal_resizez(&p, 200);
+ */
+#define tal_resizez(p, count) \
+	tal_resize_((void **)(p), sizeof**(p), (count), true)
 
 /**
  * tal_steal - change the parent of a tal-allocated pointer.
@@ -406,7 +421,7 @@ void *tal_dup_(const tal_t *ctx, const void *p, size_t size,
 
 tal_t *tal_steal_(const tal_t *new_parent, const tal_t *t);
 
-bool tal_resize_(tal_t **ctxp, size_t size, size_t count);
+bool tal_resize_(tal_t **ctxp, size_t size, size_t count, bool clear);
 bool tal_expand_(tal_t **ctxp, const void *src, size_t size, size_t count);
 
 bool tal_add_destructor_(const tal_t *ctx, void (*destroy)(void *me));
