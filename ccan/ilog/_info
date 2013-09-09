@@ -2,15 +2,18 @@
  * ilog - Integer logarithm.
  *
  * ilog_32() and ilog_64() compute the minimum number of bits required to store
- *  an unsigned 32-bit or 64-bit value without any leading zero bits.
+ * an unsigned 32-bit or 64-bit value without any leading zero bits.
+ *
  * This can also be thought of as the location of the highest set bit, with
- *  counting starting from one (so that 0 returns 0, 1 returns 1, and 2**31
- *  returns 32).
+ * counting starting from one (so that 0 returns 0, 1 returns 1, and 2**31
+ * returns 32).
+ *
  * When the value is known to be non-zero ilog32_nz() and ilog64_nz() can
- *  compile into as few as two instructions, one of which may get optimized out
- *  later.
+ * compile into as few as two instructions, one of which may get optimized out
+ * later.
+ *
  * STATIC_ILOG_32 and STATIC_ILOG_64 allow computation on compile-time
- *  constants, so other compile-time constants can be derived from them.
+ * constants, so other compile-time constants can be derived from them.
  *
  * Example:
  *  #include <stdio.h>
