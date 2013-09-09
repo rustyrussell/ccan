@@ -1,4 +1,4 @@
-/*(C) Timothy B. Terriberry (tterribe@xiph.org) 2001-2009 LGPL (v2 or later).
+/*(C) Timothy B. Terriberry (tterribe@xiph.org) 2001-2009 CC0 (Public domain).
  * See LICENSE file for details. */
 #include "ilog.h"
 #include <limits.h>
