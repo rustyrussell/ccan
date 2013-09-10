@@ -49,6 +49,7 @@ MODS_WITH_SRC := antithread \
 	foreach \
 	grab_file \
 	hash \
+	heap \
 	htable \
 	idtree \
 	ilog \

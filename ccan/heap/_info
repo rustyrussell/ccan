@@ -1,0 +1,67 @@
+#include <string.h>
+#include "config.h"
+
+/**
+ * heap - a simple heap implementation
+ *
+ * Each heap entry is added as a void pointer. This means the implementation
+ * does _not_ assume you already have an array of entries. Instead, it keeps
+ * an internal array of pointers to those entries.
+ *
+ * Example:
+ *	#include <stdio.h>
+ *
+ *	#include <ccan/heap/heap.h>
+ *
+ *	static bool less(const int *i, const int *j)
+ *	{
+ *		return *i < *j;
+ *	}
+ *
+ *	static bool __less(const void *i, const void *j)
+ *	{
+ *		return less(i, j);
+ *	}
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		struct heap *h;
+ *		int arr[] = {1, 0, 2};
+ *		int i;
+ *
+ *		h = heap_init(__less);
+ *		if (h == NULL) {
+ *			perror("heap alloc");
+ *			exit(1);
+ *		}
+ *
+ *		for (i = 0; i < 3; i++) {
+ *			if (heap_push(h, &arr[i])) {
+ *				perror("heap push");
+ *				exit(1);
+ *			}
+ *		}
+ *		// should print 0, 1, 2
+ *		for (i = 0; i < 3; i++) {
+ *			int *v = heap_pop(h);
+ *			printf("%d\n", *v);
+ *		}
+ *		heap_free(h);
+ *		return 0;
+ *	}
+ *
+ * License: BSD-MIT
+ * Author: Emilio G. Cota <cota@braap.org>
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		return 0;
+	}
+
+	return 1;
+}
