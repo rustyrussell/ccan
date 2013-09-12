@@ -88,7 +88,8 @@ int heap_push(struct heap *h, void *data);
  *
  * Returns the root entry of the heap after extracting it, or NULL on error.
  *
- * Note: Calling heap_pop() on an empty heap is a bug--don't do it.
+ * Note: Calling heap_pop() on an empty heap is a bug. When in doubt,
+ * check heap->len. See heap_peek()'s documentation for an example.
  *
  * Complexity: O(log n)
  *
@@ -102,9 +103,16 @@ void *heap_pop(struct heap *h);
  *
  * Returns the root entry in the heap, without extracting it from @h.
  *
- * Note: Calling heap_peek() on an empty heap is a bug--don't do it.
+ * Note: Calling heap_peek() on an empty heap is a bug; check the heap's
+ * number of items and act accordingly, as in the example below.
  *
  * See also: heap_pop()
+ *
+ * Example:
+ *	static inline void *heap_peek_safe(const struct heap *h)
+ *	{
+ *		return h->len ? heap_peek(h) : NULL;
+ *	}
  */
 static inline void *heap_peek(const struct heap *h)
 {
