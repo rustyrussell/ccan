@@ -10,6 +10,7 @@ CFLAGS = $(CCAN_CFLAGS) -I. $(DEPGEN)
 MODS_NO_SRC := alignof \
 	array_size \
 	asearch \
+	bitmap \
 	build_assert \
 	bytestring \
 	cast \
