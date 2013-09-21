@@ -1,0 +1,38 @@
+#include "cpuid.h"
+
+/**
+ * cpuid - a CPUID instruction parser for x86/x86_64 CPUs.
+ *
+ * This module tries to keep-it-simple to get information about the CPU
+ * from the CPU.
+ *
+ * Example:
+ * #include <ccan/cpuid/cpuid.h>
+ *
+ * int main()
+ * {
+ * 	int highest;
+ * 	cpuid(CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED, &highest);
+ * 	printf ("Highest extended function supported: %d\n", highest);
+ *
+ *      return 0;
+ * }
+ *
+ * Author: Ahmed Samy <f.fallen45@gmail.com>
+ * License: MIT
+ * Version: 0.1
+ */
+
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		/* Nothing.  */
+		return 0;
+	}
+
+	return 1;
+}
+

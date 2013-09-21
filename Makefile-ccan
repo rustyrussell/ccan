@@ -42,6 +42,7 @@ MODS_WITH_SRC := antithread \
 	ciniparser \
 	crc \
 	crcsync \
+	cpuid \
 	daemonize \
 	daemon_with_notify \
 	dgraph \
@@ -112,6 +113,7 @@ DIRS=$(patsubst %/, %, $(sort $(foreach m, $(filter-out $(MODS_EXCLUDE), $(MODS_
 ccan/%-Makefile:
 	@echo $@: $(wildcard ccan/$*/*.[ch]) ccan/$*/_info > $@
 	@echo ccan/$*.o: $(patsubst %.c, %.o, $(wildcard ccan/$*/*.c)) >> $@
+	@echo ccan/$*.o: $(patsubst %.S, %.o, $(wildcard ccan/$*/*.S)) >> $@
 
 # We compile all the ccan/foo/*.o files together into ccan/foo.o
 OBJFILES=$(DIRS:=.o)
