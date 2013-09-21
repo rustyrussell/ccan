@@ -22,6 +22,43 @@
 #ifndef CCAN_CPUID_H
 #define CCAN_CPUID_H
 
+/**
+ * enum cpuid - stuff to get information on from the CPU.
+ *
+ * This is used as a parameter in cpuid().
+ *
+ * CPU_VENDORID:
+ * 	The CPU's Vendor ID.
+ *
+ * CPU_PROCINFO_AND_FEATUREBITS:
+ * 	Processor information and feature bits (SSE, etc.).
+ *
+ * CPU_CACHE_AND_TLBD_INFO
+ * 	Cache and TLBD Information.
+ *
+ * CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED:
+ * 	Highest extended function supported address.
+ * 	Can be like 0x80000008.
+ *
+ * CPU_EXTENDED_PROC_INFO_FEATURE_BITS:
+ * 	Extended processor information and feature bits (64bit etc.)
+ *
+ * CPU_PROC_BRAND_STRING:
+ * 	The Processor's brand string.
+ *
+ * CPU_L1_CACHE_AND_TLB_IDS:
+ * 	L1 Cache and TLB Identifications.
+ *
+ * CPU_EXTENDED_L2_CACHE_FEATURES:
+ * 	Extended L2 Cache features.
+ *
+ * CPU_ADV_POWER_MGT_INFO:
+ * 	Advaned power management information.
+ *
+ * CPU_VIRT_PHYS_ADDR_SIZES:
+ * 	Virtual and physical address sizes.
+ */
+
 typedef enum cpuid {
 	CPU_VENDORID 					= 0,
 	CPU_PROCINFO_AND_FEATUREBITS 			= 1,
@@ -35,6 +72,24 @@ typedef enum cpuid {
 	CPU_ADV_POWER_MGT_INFO 				= 0x80000007,
 	CPU_VIRT_PHYS_ADDR_SIZES 			= 0x80000008
 } cpuid_t;
+
+/**
+ * enum cpufeature
+ *
+ * This is used by cpuid_has_feature().
+ *
+ * CF_MMX:
+ * 	Test for MMX support.
+ *
+ * CF_SSE*:
+ * 	Test for SSE* support.
+ *
+ * CF_AVX:
+ * 	Test for AVX support.
+ *
+ * CF_FMA:
+ * 	Test for FMA support.
+ */
 
 typedef enum cpufeature {
 	CF_MMX 		= 1 << 23,
@@ -50,6 +105,19 @@ typedef enum cpufeature {
 	CF_FMA 		= 1 << 12
 } cpufeature_t;
 
+/**
+ * enum cpuextfeature - Test for an extended feature provided by the CPU
+ *
+ * This is used by cpuid_has_ext_feature()
+ *
+ * CEF_x64:
+ * 	Test for 64-bits.
+ *
+ * CEF_SSE4a:
+ * CEF_FMA4:
+ * CEF_XOP:
+ * 	Test for SSE4a/FMA4/XOP
+ */
 typedef enum cpuextfeature {
 	CEF_x64 	= 1 << 29,
 	CEF_SSE4a 	= 1 << 6,
@@ -57,24 +125,36 @@ typedef enum cpuextfeature {
 	CEF_XOP 	= 1 << 11
 } cpuextfeature_t;
 
-/* returns 1 if the cpuid instruction is supported, 0 otherwise.
+/**
+ * cpuid_is_supported - test if the CPUID instruction is supported
  *
- * CPUID isn't supported on very old Intel CPUs.
- * Defined in issupprted.S
+ * CPUID is not supported by old CPUS.
+ *
+ * Returns 1 if the cpuid instruction is supported, 0 otherwise.
+ *
+ * See also: cpuid()
  */
 int cpuid_is_supported(void);
 
-/* returns the highest extended function supported.
+/**
+ * highest_ext_func_supported - Get the highest extended function supported
+ *
+ *
+ * Returns the highest extended function supported.
  *
  * This is the same as calling:
  * 	cpuid(CPU_HIGHEST_EEXTENDED_FUNCTION_SUPPORTED, &highest);
  *
  * This is made visible to the linker because it's easier to call it
  * instead of calling cpuid with less type-checking.  cpuid calls this.
+ *
+ * See also: cpuid()
  */
 int highest_ext_func_supported(void);
 
-/* Get Some information from the CPU.
+/**
+ * cpuid - Get Some information from the CPU.
+ *
  * This function expects buf to be a valid pointer to a string/int/...
  * depending on the requested information.
  *
@@ -110,7 +190,9 @@ int highest_ext_func_supported(void);
  */
 void cpuid(cpuid_t info, void *buf);
 
-/*
+/**
+ * cpuid_test_feature - Test if @feature is available
+ *
  * Returns 1 if feature is supported, 0 otherwise.
  *
  * The feature parameter must be >= CPU_EXTENDED_PROC_INFO_FEATURE_BITS
@@ -118,7 +200,10 @@ void cpuid(cpuid_t info, void *buf);
  */
 int cpuid_test_feature(cpuid_t feature);
 
-/* Test if the CPU supports MMX/SSE*
+/**
+ * cpuid_has_feature - Test if @feature is supported
+ *
+ * Test if the CPU supports MMX/SSE* etc
  *
  * Returns 1 if the feature is available, 0 otherwise.
  */
@@ -133,7 +218,11 @@ int cpuid_test_feature(cpuid_t feature);
 #define cpuid_has_fma() 	cpuid_has_feature(CF_FMA)
 int cpuid_has_feature(cpufeature_t feature);
 
-/* Test if the CPU supports an extended feature.
+/**
+ * cpuid_has_ext_feature - Test if @extfeature is an extended feature
+ * that's supported by the CPU.
+ *
+ * Test if the CPU supports this extended feature.
  *
  * Returns 1 if available, 0 otherwise.
  */
