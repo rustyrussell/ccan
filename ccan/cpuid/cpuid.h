@@ -126,6 +126,43 @@ typedef enum cpuextfeature {
 } cpuextfeature_t;
 
 /**
+ * enum cputype - CPU type
+ *
+ * Warning, do not change this order or odd stuff may happen.
+ */
+typedef enum cputype {
+	CT_NONE,
+	CT_AMDK5,
+	CT_AMD,
+	CT_CENTAUR,
+	CT_CYRIX,
+	CT_INTEL,
+	CT_TRANSMETA,
+	CT_NATIONAL_SEMICONDUCTOR,
+	CT_NEXGEN,
+	CT_RISE,
+	CT_SIS,
+	CT_UMC,
+	CT_VIA,
+	CT_VORTEX,
+	CT_KVM
+} cputype_t;
+
+/**
+ * get_cpu_type - Get CPU Type
+ *
+ * Returns the CPU Type as cputype_t.
+ */
+cputype_t get_cpu_type(void);
+
+/**
+ * get_cpu_type_string - Get CPU Type string
+ *
+ * Returns the CPU type string based off cputype_t.
+ */
+const char *get_cpu_type_string(const cputype_t cputype);
+
+/**
  * cpuid_is_supported - test if the CPUID instruction is supported
  *
  * CPUID is not supported by old CPUS.

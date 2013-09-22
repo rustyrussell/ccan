@@ -23,6 +23,7 @@
  * 	http://en.wikipedia.org/wiki/CPUID
  */
 #include <stdint.h>
+#include <string.h>
 
 #include "cpuid.h"
 
@@ -121,6 +122,54 @@ int cpuid_has_ext_feature(cpuextfeature_t extfeature)
 	return 0;
 }
 
+static const char *cpuids[] = {
+	"Nooooooooone",
+	"AMDisbetter!",
+	"AuthenticAMD",
+	"CentaurHauls",
+	"CyrixInstead",
+	"GenuineIntel",
+	"TransmetaCPU",
+	"GeniuneTMx86",
+	"Geode by NSC",
+	"NexGenDriven",
+	"RiseRiseRise",
+	"SiS SiS SiS ",
+	"UMC UMC UMC ",
+	"VIA VIA VIA ",
+	"Vortex86 SoC",
+	"KVMKVMKVMKVM"
+};
+
+cputype_t get_cpu_type(void)
+{
+	static cputype_t cputype;
+	if (cputype == CT_NONE) {
+		union {
+			char buf[12];
+			uint32_t bufu32[3];
+		} u;
+		uint32_t i;
+
+		___cpuid(CPU_VENDORID, &i, &u.bufu32[0], &u.bufu32[2], &u.bufu32[1]);
+		u.buf[12] = '\0';
+
+		for (i = 0; i < sizeof(cpuids) / sizeof(cpuids[0]); ++i) {
+			if (strncmp(cpuids[i], u.buf, 12) == 0) {
+				cputype = (cputype_t)i;
+				break;
+			}
+		}
+	}
+
+	return cputype;
+}
+
+const char *get_cpu_type_string(const cputype_t cputype)
+{
+	return cpuids[(int)cputype];
+}
+
 void cpuid(cpuid_t info, void *buf)
 {
 	/* Sanity checks, make sure we're not trying to do something
@@ -169,11 +218,10 @@ void cpuid(cpuid_t info, void *buf)
 		case CPU_L1_CACHE_AND_TLB_IDS:
 			break;
 		case CPU_EXTENDED_L2_CACHE_FEATURES:
-			ubuf[0] = (ecx & 0xFF); 		/* Cache size  */
-			ubuf[1] = (ecx >> 12) & 0xF; 		/* Line size  */
-			ubuf[2] = (ecx >> 16) & 0xFFFF; 	/* Associativity  */
+			*ubuf = ecx;
 			break;
 		case CPU_ADV_POWER_MGT_INFO:
+			*ubuf = edx;
 			break;
 		case CPU_VIRT_PHYS_ADDR_SIZES:
 			*ubuf = eax;
