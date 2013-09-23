@@ -204,7 +204,8 @@ fail:
 
 int net_bind(const struct addrinfo *addrinfo, int fds[2])
 {
-	const struct addrinfo *ipv6, *ipv4;
+	const struct addrinfo *ipv6 = NULL;
+	const struct addrinfo *ipv4 = NULL;
 	unsigned int num;
 
 	if (addrinfo->ai_family == AF_INET)
