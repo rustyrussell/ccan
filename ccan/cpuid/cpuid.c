@@ -58,19 +58,49 @@ static void ___cpuid(cpuid_t info, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, 
 }
 #endif
 
-int highest_ext_func_supported(void)
-{
-	static int highest;
+static struct {
+	int feature;
+	unsigned mask;
+	int instruction; 	/* 0 = ecx, 1 = edx.  */
+} features[] = {
+	{ CF_MMX, 		1 << 23, 	1 },
+	{ CF_SSE, 		1 << 25, 	1 },
+	{ CF_SSE2, 		1 << 26, 	1 },
+	{ CF_SSE3, 		1 << 9,  	0 },
+	{ CF_FPU, 		1 << 0,  	1 },
 
-	if (!highest) {
-		asm volatile(
-			"cpuid\n\t"
-			: "=a" (highest)
-			: "a" (CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED)
-		);
+	{ CF_TSC, 		1 << 4,  	1 },
+	{ CF_MSR, 		1 << 5,  	1 },
+
+	{ CF_SSSE3,     	1 << 9,  	0 },
+	{ CF_AVX, 		1 << 28, 	0 },
+
+	/* Extended ones.  */
+	{ CEF_x64, 		1 << 30, 	1 },
+	{ CEF_FPU, 		1 << 0,  	1 },
+	{ CEF_DE, 		1 << 2,  	1 },
+	{ CEF_SYSCALLRET, 	1 << 11, 	1 },
+	{ CEF_CMOV, 		1 << 15, 	1 },
+
+	{ CEF_SSE4a, 		1 << 6, 	0 },
+	{ CEF_FMA4, 		1 << 16, 	0 },
+	{ CEF_XOP, 		1 << 11, 	0 }
+};
+
+static int has_feature(int feature, uint32_t ecx, uint32_t edx)
+{
+	int i;
+
+	for (i = 0; i < sizeof(features) / sizeof(features[0]); ++i) {
+		if (features[i].feature == feature) {
+			if (features[i].instruction == 0)
+				return (ecx & features[i].mask);
+			else
+				return (edx & features[i].mask);
+		}
 	}
 
-	return highest;
+	return 0;
 }
 
 int cpuid_test_feature(cpuid_t feature)
@@ -78,48 +108,19 @@ int cpuid_test_feature(cpuid_t feature)
 	if (feature > CPU_VIRT_PHYS_ADDR_SIZES || feature < CPU_EXTENDED_PROC_INFO_FEATURE_BITS)
 		return 0;
 
-	return (feature <= highest_ext_func_supported());
+	return (feature <= cpuid_highest_ext_func_supported());
 }
 
-int cpuid_has_feature(cpufeature_t feature)
+int cpuid_has_feature(int feature, int extended)
 {
 	uint32_t eax, ebx, ecx, edx;
 
-	___cpuid(CPU_PROCINFO_AND_FEATUREBITS, &eax, &ebx, &ecx, &edx);
-	switch (feature) {
-		case CF_MMX:
-		case CF_SSE:
-		case CF_SSE2:
-			return (edx & ((int)feature)) != 0;
-		case CF_SSE3:
-		case CF_SSSE3:
-		case CF_SSE41:
-		case CF_SSE42:
-		case CF_AVX:
-		case CF_FMA:
-			return (ecx & ((int)feature)) != 0;
-	}
+	if (extended == 0)
+		___cpuid(CPU_PROCINFO_AND_FEATUREBITS, &eax, &ebx, &ecx, &edx);
+	else
+		___cpuid(CPU_EXTENDED_PROC_INFO_FEATURE_BITS, &eax, &ebx, &ecx, &edx);
 
-	return 0;
-}
-
-int cpuid_has_ext_feature(cpuextfeature_t extfeature)
-{
-	uint32_t eax, ebx, ecx, edx;
-	if (!cpuid_test_feature(CPU_EXTENDED_PROC_INFO_FEATURE_BITS))
-		return 0;
-
-	___cpuid(CPU_EXTENDED_PROC_INFO_FEATURE_BITS, &eax, &ebx, &ecx, &edx);
-	switch (extfeature) {
-		case CEF_x64:
-			return (edx & ((int)extfeature)) != 0;
-		case CEF_SSE4a:
-		case CEF_FMA4:
-		case CEF_XOP:
-			return (ecx & ((int)extfeature)) != 0;
-	}
-
-	return 0;
+	return has_feature(feature, ecx, edx);
 }
 
 static const char *cpuids[] = {
@@ -141,7 +142,7 @@ static const char *cpuids[] = {
 	"KVMKVMKVMKVM"
 };
 
-cputype_t get_cpu_type(void)
+cputype_t cpuid_get_cpu_type(void)
 {
 	static cputype_t cputype;
 	if (cputype == CT_NONE) {
@@ -165,9 +166,24 @@ cputype_t get_cpu_type(void)
 	return cputype;
 }
 
-const char *get_cpu_type_string(const cputype_t cputype)
+const char *cpuid_get_cpu_type_string(const cputype_t cputype)
 {
 	return cpuids[(int)cputype];
+}
+
+int cpuid_highest_ext_func_supported(void)
+{
+	static int highest;
+
+	if (!highest) {
+		asm volatile(
+			"cpuid\n\t"
+			: "=a" (highest)
+			: "a" (CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED)
+		);
+	}
+
+	return highest;
 }
 
 void cpuid(cpuid_t info, void *buf)
@@ -186,7 +202,7 @@ void cpuid(cpuid_t info, void *buf)
 		___cpuid(CPU_PROC_BRAND_STRING_INTERNAL1, &ubuf[8], &ubuf[9], &ubuf[10], &ubuf[11]);
 		return;
 	} else if (info == CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED) {
-		*ubuf = highest_ext_func_supported();
+		*ubuf = cpuid_highest_ext_func_supported();
 		return;
 	}
 

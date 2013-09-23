@@ -73,63 +73,26 @@ typedef enum cpuid {
 	CPU_VIRT_PHYS_ADDR_SIZES 			= 0x80000008
 } cpuid_t;
 
-/**
- * enum cpufeature
- *
- * This is used by cpuid_has_feature().
- *
- * CF_MMX:
- * 	Test for MMX support.
- *
- * CF_SSE*:
- * 	Test for SSE* support.
- *
- * CF_AVX:
- * 	Test for AVX support.
- *
- * CF_FMA:
- * 	Test for FMA support.
- */
+#define CF_MMX 		0
+#define CF_SSE 		1
+#define CF_SSE2 	2
+#define CF_SSE3 	3
+#define CF_FPU 		4
+#define CF_TSC 		5
+#define CF_MSR 		6
+#define CF_SSSE3 	7
+#define CF_AVX 		8
+#define CF_FMA 		9
 
-typedef enum cpufeature {
-	CF_MMX 		= 1 << 23,
-	CF_SSE 		= 1 << 25,
-	CF_SSE2 	= 1 << 26,
-	CF_SSE3 	= 1 << 0,
+#define CEF_x64 	10
+#define CEF_FPU 	11
+#define CEF_DE 		12
+#define CEF_SYSCALLRET 	13
+#define CEF_CMOV 	14
+#define CEF_SSE4a 	15
+#define CEF_FMA4 	16
+#define CEF_XOP 	17
 
-	CF_SSSE3 	= 1 << 9,
-	CF_SSE41 	= 1 << 19,
-	CF_SSE42 	= 1 << 20,
-
-	CF_AVX 		= 1 << 28,
-	CF_FMA 		= 1 << 12
-} cpufeature_t;
-
-/**
- * enum cpuextfeature - Test for an extended feature provided by the CPU
- *
- * This is used by cpuid_has_ext_feature()
- *
- * CEF_x64:
- * 	Test for 64-bits.
- *
- * CEF_SSE4a:
- * CEF_FMA4:
- * CEF_XOP:
- * 	Test for SSE4a/FMA4/XOP
- */
-typedef enum cpuextfeature {
-	CEF_x64 	= 1 << 29,
-	CEF_SSE4a 	= 1 << 6,
-	CEF_FMA4 	= 1 << 16,
-	CEF_XOP 	= 1 << 11
-} cpuextfeature_t;
-
-/**
- * enum cputype - CPU type
- *
- * Warning, do not change this order or odd stuff may happen.
- */
 typedef enum cputype {
 	CT_NONE,
 	CT_AMDK5,
@@ -149,18 +112,20 @@ typedef enum cputype {
 } cputype_t;
 
 /**
- * get_cpu_type - Get CPU Type
+ * cpuid_get_cpu_type - Get CPU Type
  *
  * Returns the CPU Type as cputype_t.
+ *
+ * See also: cpuid_get_cpu_type_string()
  */
-cputype_t get_cpu_type(void);
+cputype_t cpuid_get_cpu_type(void);
 
 /**
- * get_cpu_type_string - Get CPU Type string
+ * cpuid_get_cpu_type_string - Get CPU Type string
  *
  * Returns the CPU type string based off cputype_t.
  */
-const char *get_cpu_type_string(const cputype_t cputype);
+const char *cpuid_get_cpu_type_string(const cputype_t cputype);
 
 /**
  * cpuid_is_supported - test if the CPUID instruction is supported
@@ -174,7 +139,7 @@ const char *get_cpu_type_string(const cputype_t cputype);
 int cpuid_is_supported(void);
 
 /**
- * highest_ext_func_supported - Get the highest extended function supported
+ * cpuid_highest_ext_func_supported - Get the highest extended function supported
  *
  *
  * Returns the highest extended function supported.
@@ -187,7 +152,7 @@ int cpuid_is_supported(void);
  *
  * See also: cpuid()
  */
-int highest_ext_func_supported(void);
+int cpuid_highest_ext_func_supported(void);
 
 /**
  * cpuid - Get Some information from the CPU.
@@ -240,34 +205,28 @@ int cpuid_test_feature(cpuid_t feature);
 /**
  * cpuid_has_feature - Test if @feature is supported
  *
- * Test if the CPU supports MMX/SSE* etc
+ * Test if the CPU supports MMX/SSE* etc.
+ * For the extended parameter, usually you want to pass it as
+ * 0 if you're not passing CEF_*.
+ *
+ * For more information about the CPU extended features, have a look
+ * at:
+ * 	http://en.wikipedia.org/wiki/CPUID
  *
  * Returns 1 if the feature is available, 0 otherwise.
  */
-#define cpuid_has_mmx() 	cpuid_has_feature(CF_MMX)
-#define cpuid_has_sse() 	cpuid_has_feature(CF_SSE)
-#define cpuid_has_sse2() 	cpuid_has_feature(CF_SSE2)
-#define cpuid_has_sse3() 	cpuid_has_feature(CF_SSE3)
-#define cpuid_has_ssse3() 	cpuid_has_feature(CF_SSSE3)
-#define cpuid_has_sse41() 	cpuid_has_feature(CF_SSE41)
-#define cpuid_has_sse42() 	cpuid_has_feature(CF_SSE42)
-#define cpuid_has_avx() 	cpuid_has_feature(CF_AVX)
-#define cpuid_has_fma() 	cpuid_has_feature(CF_FMA)
-int cpuid_has_feature(cpufeature_t feature);
-
-/**
- * cpuid_has_ext_feature - Test if @extfeature is an extended feature
- * that's supported by the CPU.
- *
- * Test if the CPU supports this extended feature.
- *
- * Returns 1 if available, 0 otherwise.
- */
-#define cpuid_has_x64() 	cpuid_has_ext_feature(CEF_x64)
-#define cpuid_has_sse4a() 	cpuid_has_ext_feature(CEF_SSE4a)
-#define cpuid_has_fma4() 	cpuid_has_ext_feature(CEF_FMA4)
-#define cpuid_has_xop() 	cpuid_has_ext_feature(CEF_XOP)
-int cpuid_has_ext_feature(cpuextfeature_t extfeature);
+#define cpuid_has_mmx() 	cpuid_has_feature(CF_MMX, 	0)
+#define cpuid_has_sse() 	cpuid_has_feature(CF_SSE, 	0)
+#define cpuid_has_sse2() 	cpuid_has_feature(CF_SSE2, 	0)
+#define cpuid_has_sse3() 	cpuid_has_feature(CF_SSE3, 	0)
+#define cpuid_has_ssse3() 	cpuid_has_feature(CF_SSSE3, 	0)
+#define cpuid_has_avx() 	cpuid_has_feature(CF_AVX, 	0)
+#define cpuid_has_fma() 	cpuid_has_feature(CF_FMA, 	0)
+#define cpuid_has_x64() 	cpuid_has_feature(CEF_x64, 	1)
+#define cpuid_has_sse4a() 	cpuid_has_feature(CEF_SSE4a, 	1)
+#define cpuid_has_fma4() 	cpuid_has_feature(CEF_FMA4, 	1)
+#define cpuid_has_xop() 	cpuid_has_feature(CEF_XOP, 	1)
+int cpuid_has_feature(int feature, int extended);
 
 #endif
 
