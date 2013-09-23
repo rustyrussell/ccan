@@ -22,6 +22,10 @@
  * This file has been written with some help from wikipedia:
  * 	http://en.wikipedia.org/wiki/CPUID
  */
+
+/* Only compile this file if we're on a x86 machine.  */
+#if defined(__i386__) || defined(__i386) || defined(__x86_64) \
+	|| defined(_M_AMD64) || defined(__M_X64)
 #include <stdint.h>
 #include <string.h>
 
@@ -247,4 +251,8 @@ void cpuid(cpuid_t info, void *buf)
 			break;
 	}
 }
+
+#else
+#warning "Cannot compile this file on a non-x86 machine"
+#endif
 

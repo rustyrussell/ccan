@@ -10,16 +10,13 @@ int main()
 		return 1;
 	}
 
-	char buf[128];
-	cpuid(CPU_VENDORID, buf);
-	printf ("Vendor ID: %s\n", buf);
+	printf ("Vendor ID: %s\n", cpuid_get_cpu_type_string (cpuid_get_cpu_type ()));
 
+	char buf[48];
 	cpuid(CPU_PROC_BRAND_STRING, buf);
 	printf ("Processor Brand: %s\n", buf);
 
-	int addr;
-	cpuid(CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED, &addr);
-	printf ("Highest extended function supported: %#010x\n", addr);
+	printf ("Highest extended function supported: %#010x\n", cpuid_highest_ext_func_supported());
 
 	union {
 		struct {
@@ -48,7 +45,7 @@ int main()
 	} l2c;
 
 	cpuid(CPU_EXTENDED_L2_CACHE_FEATURES, &l2c.w);
-	printf ("L2 Cache Size: %u KB\tLine Size: %u bytes\tAssociativity: %02xh\n",
+	printf ("L2 Cache Size: %ld KB\tLine Size: %ld bytes\tAssociativity: %02xh\n",
 			l2c.cache_size, l2c.line_size, l2c.assoc);
 
 	int invalid;
