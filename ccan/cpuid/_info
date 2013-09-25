@@ -29,7 +29,12 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
+#if defined(__i386__) || defined(__i386) || defined(__x86_64) \
+		|| defined(_M_AMD64) || defined(__M_X64)
 		/* Nothing.  */
+#else
+		printf("ccan/build_assert\n");
+#endif
 		return 0;
 	}
 

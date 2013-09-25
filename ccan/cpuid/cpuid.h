@@ -235,6 +235,7 @@ bool cpuid_test_feature(cpuid_t feature);
 bool cpuid_has_feature(int feature, bool extended);
 
 #else
+#include <ccan/build_assert/build_assert.h>
 
 #define cpuid_get_cpu_type() 			BUILD_ASSERT_OR_ZERO(0)
 #define cpuid_get_cpu_type_string() 		BUILD_ASSERT_OR_ZERO(0)
