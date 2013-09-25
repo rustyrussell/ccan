@@ -22,6 +22,9 @@
 #ifndef CCAN_CPUID_H
 #define CCAN_CPUID_H
 
+#include <stdbool.h>
+#include <stdint.h>
+
 /**
  * enum cpuid - stuff to get information on from the CPU.
  *
@@ -111,6 +114,9 @@ typedef enum cputype {
 	CT_KVM
 } cputype_t;
 
+#if defined(__i386__) || defined(__i386) || defined(__x86_64) \
+	|| defined(_M_AMD64) || defined(__M_X64)
+
 /**
  * cpuid_get_cpu_type - Get CPU Type
  *
@@ -132,11 +138,11 @@ const char *cpuid_get_cpu_type_string(const cputype_t cputype);
  *
  * CPUID is not supported by old CPUS.
  *
- * Returns 1 if the cpuid instruction is supported, 0 otherwise.
+ * Returns true if the cpuid instruction is supported, false otherwise.
  *
  * See also: cpuid()
  */
-int cpuid_is_supported(void);
+bool cpuid_is_supported(void);
 
 /**
  * cpuid_highest_ext_func_supported - Get the highest extended function supported
@@ -152,7 +158,7 @@ int cpuid_is_supported(void);
  *
  * See also: cpuid()
  */
-int cpuid_highest_ext_func_supported(void);
+uint32_t cpuid_highest_ext_func_supported(void);
 
 /**
  * cpuid - Get Some information from the CPU.
@@ -190,43 +196,56 @@ int cpuid_highest_ext_func_supported(void);
  *
  * If an invalid flag has been passed a 0xbaadf00d is returned in *buf.
  */
-void cpuid(cpuid_t info, void *buf);
+void cpuid(cpuid_t info, uint32_t *buf);
 
 /**
  * cpuid_test_feature - Test if @feature is available
  *
- * Returns 1 if feature is supported, 0 otherwise.
+ * Returns true if feature is supported, false otherwise.
  *
  * The feature parameter must be >= CPU_EXTENDED_PROC_INFO_FEATURE_BITS
  *  and <= CPU_VIRT_PHYS_ADDR_SIZES.
  */
-int cpuid_test_feature(cpuid_t feature);
+bool cpuid_test_feature(cpuid_t feature);
 
 /**
  * cpuid_has_feature - Test if @feature is supported
  *
  * Test if the CPU supports MMX/SSE* etc.
  * For the extended parameter, usually you want to pass it as
- * 0 if you're not passing CEF_*.
+ * false if you're not passing CEF_*.
  *
  * For more information about the CPU extended features, have a look
  * at:
  * 	http://en.wikipedia.org/wiki/CPUID
  *
- * Returns 1 if the feature is available, 0 otherwise.
+ * Returns true if the feature is available, false otherwise.
  */
-#define cpuid_has_mmx() 	cpuid_has_feature(CF_MMX, 	0)
-#define cpuid_has_sse() 	cpuid_has_feature(CF_SSE, 	0)
-#define cpuid_has_sse2() 	cpuid_has_feature(CF_SSE2, 	0)
-#define cpuid_has_sse3() 	cpuid_has_feature(CF_SSE3, 	0)
-#define cpuid_has_ssse3() 	cpuid_has_feature(CF_SSSE3, 	0)
-#define cpuid_has_avx() 	cpuid_has_feature(CF_AVX, 	0)
-#define cpuid_has_fma() 	cpuid_has_feature(CF_FMA, 	0)
-#define cpuid_has_x64() 	cpuid_has_feature(CEF_x64, 	1)
-#define cpuid_has_sse4a() 	cpuid_has_feature(CEF_SSE4a, 	1)
-#define cpuid_has_fma4() 	cpuid_has_feature(CEF_FMA4, 	1)
-#define cpuid_has_xop() 	cpuid_has_feature(CEF_XOP, 	1)
-int cpuid_has_feature(int feature, int extended);
+#define cpuid_has_mmx() 	cpuid_has_feature(CF_MMX, 	false)
+#define cpuid_has_sse() 	cpuid_has_feature(CF_SSE, 	false)
+#define cpuid_has_sse2() 	cpuid_has_feature(CF_SSE2, 	false)
+#define cpuid_has_sse3() 	cpuid_has_feature(CF_SSE3, 	false)
+#define cpuid_has_ssse3() 	cpuid_has_feature(CF_SSSE3, 	false)
+#define cpuid_has_avx() 	cpuid_has_feature(CF_AVX, 	false)
+#define cpuid_has_fma() 	cpuid_has_feature(CF_FMA, 	false)
+#define cpuid_has_x64() 	cpuid_has_feature(CEF_x64, 	true)
+#define cpuid_has_sse4a() 	cpuid_has_feature(CEF_SSE4a, 	true)
+#define cpuid_has_fma4() 	cpuid_has_feature(CEF_FMA4, 	true)
+#define cpuid_has_xop() 	cpuid_has_feature(CEF_XOP, 	true)
+bool cpuid_has_feature(int feature, bool extended);
 
+#else
+
+#define cpuid_get_cpu_type() 			BUILD_ASSERT_OR_ZERO(0)
+#define cpuid_get_cpu_type_string() 		BUILD_ASSERT_OR_ZERO(0)
+
+#define cpuid_is_supported() 			BUILD_ASSERT_OR_ZERO(0)
+#define cpuid(info, buf) 			BUILD_ASSERT_OR_ZERO(0)
+
+#define cpuid_highest_ext_func_supported() 	BUILD_ASSERT_OR_ZERO(0)
+#define cpuid_test_feature(feature) 		BUILD_ASSERT_OR_ZERO(0)
+#define cpuid_has_feature(feature, ext) 	BUILD_ASSERT_OR_ZERO(0)
+
+#endif
 #endif
 

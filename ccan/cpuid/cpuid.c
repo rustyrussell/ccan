@@ -26,10 +26,9 @@
 /* Only compile this file if we're on a x86 machine.  */
 #if defined(__i386__) || defined(__i386) || defined(__x86_64) \
 	|| defined(_M_AMD64) || defined(__M_X64)
-#include <stdint.h>
-#include <string.h>
-
 #include "cpuid.h"
+
+#include <string.h>
 
 enum {
 	CPU_PROC_BRAND_STRING_INTERNAL0  		= 0x80000003,
@@ -65,61 +64,87 @@ static void ___cpuid(cpuid_t info, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, 
 static struct {
 	int feature;
 	unsigned mask;
-	int instruction; 	/* 0 = ecx, 1 = edx.  */
+	bool use_edx; 		/* ecx will be used if false.  */
 } features[] = {
-	{ CF_MMX, 		1 << 23, 	1 },
-	{ CF_SSE, 		1 << 25, 	1 },
-	{ CF_SSE2, 		1 << 26, 	1 },
-	{ CF_SSE3, 		1 << 9,  	0 },
-	{ CF_FPU, 		1 << 0,  	1 },
+	{ CF_MMX, 		1 << 23, 	true },
+	{ CF_SSE, 		1 << 25, 	true },
+	{ CF_SSE2, 		1 << 26, 	true },
+	{ CF_SSE3, 		1 << 9,  	false },
+	{ CF_FPU, 		1 << 0,  	true },
 
-	{ CF_TSC, 		1 << 4,  	1 },
-	{ CF_MSR, 		1 << 5,  	1 },
+	{ CF_TSC, 		1 << 4,  	true },
+	{ CF_MSR, 		1 << 5,  	true },
 
-	{ CF_SSSE3,     	1 << 9,  	0 },
-	{ CF_AVX, 		1 << 28, 	0 },
+	{ CF_SSSE3,     	1 << 9,  	false },
+	{ CF_AVX, 		1 << 28, 	false },
 
 	/* Extended ones.  */
-	{ CEF_x64, 		1 << 30, 	1 },
-	{ CEF_FPU, 		1 << 0,  	1 },
-	{ CEF_DE, 		1 << 2,  	1 },
-	{ CEF_SYSCALLRET, 	1 << 11, 	1 },
-	{ CEF_CMOV, 		1 << 15, 	1 },
+	{ CEF_x64, 		1 << 30, 	true },
+	{ CEF_FPU, 		1 << 0,  	true },
+	{ CEF_DE, 		1 << 2,  	true },
+	{ CEF_SYSCALLRET, 	1 << 11, 	true },
+	{ CEF_CMOV, 		1 << 15, 	true },
 
-	{ CEF_SSE4a, 		1 << 6, 	0 },
-	{ CEF_FMA4, 		1 << 16, 	0 },
-	{ CEF_XOP, 		1 << 11, 	0 }
+	{ CEF_SSE4a, 		1 << 6, 	false },
+	{ CEF_FMA4, 		1 << 16, 	false },
+	{ CEF_XOP, 		1 << 11, 	false }
 };
 
-static int has_feature(int feature, uint32_t ecx, uint32_t edx)
+static bool has_feature(int feature, uint32_t ecx, uint32_t edx)
 {
 	int i;
 
 	for (i = 0; i < sizeof(features) / sizeof(features[0]); ++i) {
 		if (features[i].feature == feature) {
-			if (features[i].instruction == 0)
-				return (ecx & features[i].mask);
-			else
+			if (features[i].use_edx)
 				return (edx & features[i].mask);
+			else
+				return (ecx & features[i].mask);
 		}
 	}
 
-	return 0;
+	return false;
 }
 
-int cpuid_test_feature(cpuid_t feature)
+bool cpuid_is_supported(void)
+{
+	int ret = 0;
+
+	asm volatile(
+		"pushfl\n\t"
+		"popl %%eax\n\t"
+		"movl %%eax, %%ecx\n\t"
+		"xorl $0x200000, %%eax\n\t"
+		"pushl %%eax\n\t"
+		"popfl\n\t"
+
+		"pushfl\n\t"
+		"popl %%eax\n\t"
+		"xorl %%ecx, %%eax\n\t"
+		"shrl $21, %%eax\n\t"
+		"andl $1, %%eax\n\t"
+		"pushl %%ecx\n\t"
+		"popfl\n\t"
+
+		: "=a" (ret)
+	);
+
+	return !!ret;
+}
+
+bool cpuid_test_feature(cpuid_t feature)
 {
 	if (feature > CPU_VIRT_PHYS_ADDR_SIZES || feature < CPU_EXTENDED_PROC_INFO_FEATURE_BITS)
-		return 0;
+		return false;
 
 	return (feature <= cpuid_highest_ext_func_supported());
 }
 
-int cpuid_has_feature(int feature, int extended)
+bool cpuid_has_feature(int feature, bool extended)
 {
 	uint32_t eax, ebx, ecx, edx;
 
-	if (extended == 0)
+	if (!extended)
 		___cpuid(CPU_PROCINFO_AND_FEATUREBITS, &eax, &ebx, &ecx, &edx);
 	else
 		___cpuid(CPU_EXTENDED_PROC_INFO_FEATURE_BITS, &eax, &ebx, &ecx, &edx);
@@ -175,9 +200,9 @@ const char *cpuid_get_cpu_type_string(const cputype_t cputype)
 	return cpuids[(int)cputype];
 }
 
-int cpuid_highest_ext_func_supported(void)
+uint32_t cpuid_highest_ext_func_supported(void)
 {
-	static int highest;
+	static uint32_t highest;
 
 	if (!highest) {
 		asm volatile(
@@ -190,7 +215,7 @@ int cpuid_highest_ext_func_supported(void)
 	return highest;
 }
 
-void cpuid(cpuid_t info, void *buf)
+void cpuid(cpuid_t info, uint32_t *buf)
 {
 	/* Sanity checks, make sure we're not trying to do something
 	 * invalid or we are trying to get information that isn't supported
@@ -199,14 +224,13 @@ void cpuid(cpuid_t info, void *buf)
 		&& !cpuid_test_feature(info)))
 		return;
 
-	uint32_t *ubuf = buf;
 	if (info == CPU_PROC_BRAND_STRING) {
-		___cpuid(CPU_PROC_BRAND_STRING,  	  &ubuf[0], &ubuf[1], &ubuf[2],  &ubuf[3]);
-		___cpuid(CPU_PROC_BRAND_STRING_INTERNAL0, &ubuf[4], &ubuf[5], &ubuf[6],  &ubuf[7]);
-		___cpuid(CPU_PROC_BRAND_STRING_INTERNAL1, &ubuf[8], &ubuf[9], &ubuf[10], &ubuf[11]);
+		___cpuid(CPU_PROC_BRAND_STRING,  	  &buf[0], &buf[1], &buf[2],  &buf[3]);
+		___cpuid(CPU_PROC_BRAND_STRING_INTERNAL0, &buf[4], &buf[5], &buf[6],  &buf[7]);
+		___cpuid(CPU_PROC_BRAND_STRING_INTERNAL1, &buf[8], &buf[9], &buf[10], &buf[11]);
 		return;
 	} else if (info == CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED) {
-		*ubuf = cpuid_highest_ext_func_supported();
+		*buf = cpuid_highest_ext_func_supported();
 		return;
 	}
 
@@ -215,44 +239,42 @@ void cpuid(cpuid_t info, void *buf)
 
 	switch (info) {
 		case CPU_VENDORID:
-			ubuf[0] = ebx;
-			ubuf[1] = edx;
-			ubuf[2] = ecx;
+			buf[0] = ebx;
+			buf[1] = edx;
+			buf[2] = ecx;
 			break;
 		case CPU_PROCINFO_AND_FEATUREBITS:
-			ubuf[0] = eax; 	/* The so called "signature" of the CPU.  */
-			ubuf[1] = edx; 	/* Feature flags #1.  */
-			ubuf[2] = ecx; 	/* Feature flags #2.  */
-			ubuf[3] = ebx; 	/* Additional feature information.  */
+			buf[0] = eax; 	/* The so called "signature" of the CPU.  */
+			buf[1] = edx; 	/* Feature flags #1.  */
+			buf[2] = ecx; 	/* Feature flags #2.  */
+			buf[3] = ebx; 	/* Additional feature information.  */
 			break;
 		case CPU_CACHE_AND_TLBD_INFO:
-			ubuf[0] = eax;
-			ubuf[1] = ebx;
-			ubuf[2] = ecx;
-			ubuf[3] = edx;
+			buf[0] = eax;
+			buf[1] = ebx;
+			buf[2] = ecx;
+			buf[3] = edx;
 			break;
 		case CPU_EXTENDED_PROC_INFO_FEATURE_BITS:
-			ubuf[0] = edx;
-			ubuf[1] = ecx;
+			buf[0] = edx;
+			buf[1] = ecx;
 			break;
 		case CPU_L1_CACHE_AND_TLB_IDS:
 			break;
 		case CPU_EXTENDED_L2_CACHE_FEATURES:
-			*ubuf = ecx;
+			*buf = ecx;
 			break;
 		case CPU_ADV_POWER_MGT_INFO:
-			*ubuf = edx;
+			*buf = edx;
 			break;
 		case CPU_VIRT_PHYS_ADDR_SIZES:
-			*ubuf = eax;
+			*buf = eax;
 			break;
 		default:
-			*ubuf = 0xbaadf00d;
+			*buf = 0xbaadf00d;
 			break;
 	}
 }
 
-#else
-#warning "Cannot compile this file on a non-x86 machine"
 #endif
 

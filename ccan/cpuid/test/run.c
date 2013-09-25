@@ -13,7 +13,7 @@ int main()
 	printf ("Vendor ID: %s\n", cpuid_get_cpu_type_string (cpuid_get_cpu_type ()));
 
 	char buf[48];
-	cpuid(CPU_PROC_BRAND_STRING, buf);
+	cpuid(CPU_PROC_BRAND_STRING, (uint32_t *)buf);
 	printf ("Processor Brand: %s\n", buf);
 
 	printf ("Highest extended function supported: %#010x\n", cpuid_highest_ext_func_supported());
@@ -29,7 +29,7 @@ int main()
 	cpuid(CPU_VIRT_PHYS_ADDR_SIZES, &s.w);
 	printf ("Physical address size: %d\nVirtual: %d\n", s.phys_bits, s.virt_bits);
 
-	int extfeatures[2];
+	uint32_t extfeatures[2];
 	cpuid(CPU_EXTENDED_PROC_INFO_FEATURE_BITS, extfeatures);
 	printf ("Extended processor info and feature bits: %d %d\n", extfeatures[0], extfeatures[1]);
 
@@ -45,11 +45,12 @@ int main()
 	} l2c;
 
 	cpuid(CPU_EXTENDED_L2_CACHE_FEATURES, &l2c.w);
-	printf ("L2 Cache Size: %ld KB\tLine Size: %ld bytes\tAssociativity: %02xh\n",
+	printf ("L2 Cache Size: %u KB\tLine Size: %u bytes\tAssociativity: %02xh\n",
 			l2c.cache_size, l2c.line_size, l2c.assoc);
 
-	int invalid;
+	uint32_t invalid;
 	cpuid(0x0ffffffUL, &invalid);
 	printf ("Testing invalid: %#010x\n", invalid);
 	return 0;
 }
+
