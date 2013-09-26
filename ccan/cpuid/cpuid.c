@@ -62,8 +62,8 @@ static void ___cpuid(cpuid_t info, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, 
 #endif
 
 static struct {
-	int feature;
-	unsigned mask;
+	uint32_t feature;
+	uint32_t mask;
 	bool use_edx; 		/* ecx will be used if false.  */
 } features[] = {
 	{ CF_MMX, 		1 << 23, 	true },
@@ -152,7 +152,7 @@ bool cpuid_has_feature(int feature, bool extended)
 	return has_feature(feature, ecx, edx);
 }
 
-static const char *cpuids[] = {
+static const char *const cpuids[] = {
 	"Nooooooooone",
 	"AMDisbetter!",
 	"AuthenticAMD",
