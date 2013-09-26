@@ -182,6 +182,23 @@ uint32_t cpuid_highest_ext_func_supported(void);
  * 	buf[3]:
  * 		Additional feature information.
  *
+ * For CPU_L1_CACHE_AND_TLB_IDS:
+ * 	buf[0]: (eax):
+ * 		- 7..0 	Number of times to exec cpuid to get all descriptors.
+ * 		- 15..8 Instruction TLB: 4K Pages, 4-way set associtive, 128 entries.
+ * 		- 23..16 Data TLB: 4k Pages, 4-way set associtive, 128 entries.
+ * 		- 24..31 Instruction TLB: 4K Pages, 4-way set associtive, 2 entries.
+ * 	buf[1]: (ebx):
+ * 		- 7..0 64-byte prefetching
+ * 		- 8..31 Null descriptor
+ * 	buf[2]: (ecx):
+ * 		- 0..31 Null descriptor
+ * 	buf[3]: (edx):
+ * 		- 7..0 2nd-level cache, 2M, 8-way set associtive, 64-byte line size
+ * 		- 15..8 1st-level instruction cache: 32K, 8-way set associtive, 64 byte line size
+ * 		- 16..23 Data TLB: 4M Pages, 4-way set associtive, 8 entires.
+ * 		- 24..31 1st-level data cache: 32K, 8-way set associtive, 64 byte line size
+ *
  * For CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED:
  * 	Returns the highest supported function in *buf (expects an integer ofc)
  *
@@ -193,6 +210,9 @@ uint32_t cpuid_highest_ext_func_supported(void);
  *
  * For CPU_PROC_BRAND_STRING:
  * 	Have a char array with at least 48 bytes assigned to it.
+ *
+ * Here's a page which will help you parse the data provided by this function.
+ * 	http://www.flounder.com/cpuid_explorer2.htm
  *
  * If an invalid flag has been passed a 0xbaadf00d is returned in *buf.
  */

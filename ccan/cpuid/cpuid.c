@@ -260,6 +260,10 @@ void cpuid(cpuid_t info, uint32_t *buf)
 			buf[1] = ecx;
 			break;
 		case CPU_L1_CACHE_AND_TLB_IDS:
+			buf[0] = eax;
+			buf[1] = ebx;
+			buf[2] = ecx;
+			buf[3] = edx;
 			break;
 		case CPU_EXTENDED_L2_CACHE_FEATURES:
 			*buf = ecx;
