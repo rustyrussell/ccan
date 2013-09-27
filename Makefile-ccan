@@ -42,6 +42,7 @@ MODS_WITH_SRC := antithread \
 	ciniparser \
 	crc \
 	crcsync \
+	cpuid \
 	daemonize \
 	daemon_with_notify \
 	dgraph \
