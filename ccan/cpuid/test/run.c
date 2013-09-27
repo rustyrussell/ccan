@@ -1,9 +1,9 @@
-#include "cpuid.h"
+#include "../cpuid.c"
 
 #include <stdio.h>
 #include <stdint.h>
 
-int main()
+int main(void)
 {
 	if (!cpuid_is_supported()) {
 		printf ("CPUID instruction is not supported by this CPU\n");

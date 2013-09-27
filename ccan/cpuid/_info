@@ -8,10 +8,11 @@
  *
  * Example:
  * #include <ccan/cpuid/cpuid.h>
+ * #include <stdio.h>
  *
- * int main()
+ * int main(void)
  * {
- * 	int highest;
+ * 	uint32_t highest;
  * 	cpuid(CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED, &highest);
  * 	printf ("Highest extended function supported: %d\n", highest);
  *
