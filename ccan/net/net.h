@@ -1,6 +1,10 @@
 /* Licensed under BSD-MIT - see LICENSE file for details */
 #ifndef CCAN_NET_H
 #define CCAN_NET_H
+#include <stdbool.h>
+
+struct pollfd;
+
 /**
  * net_client_lookup - look up a network name to connect to.
  * @hostname: the name to look up
@@ -16,6 +20,7 @@
  *	#include <sys/socket.h>
  *	#include <stdio.h>
  *	#include <netdb.h>
+ *	#include <poll.h>
  *	#include <err.h>
  *	...
  *	struct addrinfo *addr;
@@ -47,6 +52,67 @@ struct addrinfo *net_client_lookup(const char *hostname,
  *	freeaddrinfo(addr);
  */
 int net_connect(const struct addrinfo *addrinfo);
+
+/**
+ * net_connect_async - initiate connect to a server
+ * @addrinfo: linked list struct addrinfo (usually from net_client_lookup).
+ * @pfds: array of two struct pollfd.
+ *
+ * This begins connecting to a server described by @addrinfo,
+ * and places the one or two file descriptors into pfds[0] and pfds[1].
+ * It returns a valid file descriptor if connect() returned immediately.
+ *
+ * Otherwise it returns -1 and sets errno, most likely EINPROGRESS.
+ * In this case, poll() on pfds and call net_connect_complete().
+ *
+ * Example:
+ *	struct pollfd pfds[2];
+ *	...
+ *	fd = net_connect_async(addr, pfds);
+ *	if (fd < 0 && errno != EINPROGRESS)
+ *		err(1, "Failed to connect to ccan.ozlabs.org");
+ */
+int net_connect_async(const struct addrinfo *addrinfo, struct pollfd *pfds);
+
+/**
+ * net_connect_complete - complete net_connect_async call.
+ * @pfds: array of two struct pollfd handed to net_connect_async.
+ *
+ * When poll() reports some activity, this determines whether a connection
+ * has completed.  If so, it cleans up and returns the connected fd.
+ * Otherwise, it returns -1, and sets errno (usually EINPROGRESS).
+ *
+ * Example:
+ *	// After net_connect_async.
+ *	while (fd < 0 && errno == EINPROGRESS) {
+ *		// Wait for activity...
+ *		poll(pfds, 2, -1);
+ *		fd = net_connect_complete(pfds);
+ *	}
+ *	if (fd < 0)
+ *		err(1, "connecting");
+ *	printf("Connected on fd %i!\n", fd);
+ */
+int net_connect_complete(struct pollfd *pfds);
+
+/**
+ * net_connect_abort - abort a net_connect_async call.
+ * @pfds: array of two struct pollfd handed to net_connect_async.
+ *
+ * Closes the file descriptors.
+ *
+ * Example:
+ *	// After net_connect_async.
+ *	if (poll(pfds, 2, 1000) == 0) { // Timeout.
+ *		net_connect_abort(pfds);
+ *		fd = -1;
+ *	} else {
+ *		fd = net_connect_complete(pfds);
+ *		if (fd < 0)
+ *			err(1, "connecting");
+ *	}
+ */
+void net_connect_abort(struct pollfd *pfds);
 
 /**
  * net_server_lookup - look up a service name to bind to.
