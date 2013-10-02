@@ -12,6 +12,9 @@
 struct opt_table *opt_table;
 unsigned int opt_count, opt_num_short, opt_num_short_arg, opt_num_long;
 const char *opt_argv0;
+struct opt_alloc opt_alloc = {
+	malloc, realloc, free
+};
 
 /* Returns string after first '-'. */
 static const char *first_name(const char *names, unsigned *len)
@@ -150,7 +153,8 @@ static void check_opt(const struct opt_table *entry)
 
 static void add_opt(const struct opt_table *entry)
 {
-	opt_table = realloc(opt_table, sizeof(opt_table[0]) * (opt_count+1));
+	opt_table = opt_alloc.realloc(opt_table,
+				      sizeof(opt_table[0]) * (opt_count+1));
 	opt_table[opt_count++] = *entry;
 }
 
@@ -214,7 +218,7 @@ bool opt_early_parse(int argc, char *argv[],
 {
 	int ret;
 	unsigned off = 0;
-	char **tmpargv = malloc(sizeof(argv[0]) * (argc + 1));
+	char **tmpargv = opt_alloc.alloc(sizeof(argv[0]) * (argc + 1));
 
 	/* We could avoid a copy and skip instead, but this is simple. */
 	memcpy(tmpargv, argv, sizeof(argv[0]) * (argc + 1));
@@ -224,7 +228,7 @@ bool opt_early_parse(int argc, char *argv[],
 
 	while ((ret = parse_one(&argc, tmpargv, OPT_EARLY, &off, errlog)) == 1);
 
-	free(tmpargv);
+	opt_alloc.free(tmpargv);
 
 	/* parse_one returns 0 on finish, -1 on error */
 	return (ret == 0);
@@ -232,7 +236,7 @@ bool opt_early_parse(int argc, char *argv[],
 
 void opt_free_table(void)
 {
-	free(opt_table);
+	opt_alloc.free(opt_table);
 	opt_table = NULL;
 	opt_count = opt_num_short = opt_num_short_arg = opt_num_long = 0;
 }
@@ -260,7 +264,16 @@ void opt_log_stderr_exit(const char *fmt, ...)
 
 char *opt_invalid_argument(const char *arg)
 {
-	char *str = malloc(sizeof("Invalid argument '%s'") + strlen(arg));
+	char *str = opt_alloc.alloc(sizeof("Invalid argument '%s'") + strlen(arg));
 	sprintf(str, "Invalid argument '%s'", arg);
 	return str;
+}
+
+void opt_set_alloc(void *(*allocfn)(size_t size),
+		   void *(*reallocfn)(void *ptr, size_t size),
+		   void (*freefn)(void *ptr))
+{
+	opt_alloc.alloc = allocfn;
+	opt_alloc.realloc = reallocfn;
+	opt_alloc.free = freefn;
 }

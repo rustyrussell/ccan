@@ -116,7 +116,7 @@ int parse_one(int *argc, char *argv[], enum opt_type is_early, unsigned *offset,
 
 	if (problem) {
 		parse_err(errlog, argv[0], o, len, problem);
-		free(problem);
+		opt_alloc.free(problem);
 		return -1;
 	}
 

@@ -21,7 +21,7 @@ struct opt_table;
  *
  * If the @cb returns non-NULL, opt_parse() will stop parsing, use the
  * returned string to form an error message for errlog(), free() the
- * string and return false.
+ * string (or see opt_set_alloc) and return false.
  *
  * Any number of equivalent short or long options can be listed in @names,
  * separated by '|'.  Short options are a single hyphen followed by a single
@@ -60,7 +60,7 @@ struct opt_table;
  *
  * If the @cb returns non-NULL, opt_parse() will stop parsing, use the
  * returned string to form an error message for errlog(), free() the
- * string and return false.
+ * string (or see opt_set_alloc) and return false.
  *
  * See Also:
  *	OPT_WITHOUT_ARG()
@@ -159,7 +159,7 @@ void opt_register_table(const struct opt_table *table, const char *desc);
  *
  * If the @cb returns non-NULL, opt_parse() will stop parsing, use the
  * returned string to form an error message for errlog(), free() the
- * string and return false.
+ * string (or see opt_set_alloc) and return false.
  */
 #define opt_register_noarg(names, cb, arg, desc)			\
 	_opt_register((names), OPT_CB_NOARG((cb), 0, (arg)), (arg), (desc))
@@ -182,7 +182,7 @@ void opt_register_table(const struct opt_table *table, const char *desc);
  *
  * If the @cb returns non-NULL, opt_parse() will stop parsing, use the
  * returned string to form an error message for errlog(), free() the
- * string and return false.
+ * string (or see opt_set_alloc) and return false.
  *
  * Example:
  * static char *explode(const char *optarg, void *unused)
@@ -295,6 +295,19 @@ bool opt_early_parse(int argc, char *argv[],
  * options registered).
  */
 void opt_free_table(void);
+
+/**
+ * opt_set_alloc - set alloc/realloc/free function for opt to use.
+ * @allocfn: allocator function
+ * @reallocfn: reallocator function, ptr may be NULL, size never 0.
+ * @freefn: free function
+ *
+ * By default opt uses malloc/realloc/free, and simply crashes if they fail.
+ * You can set your own variants here.
+ */
+void opt_set_alloc(void *(*allocfn)(size_t size),
+		   void *(*reallocfn)(void *ptr, size_t size),
+		   void (*freefn)(void *ptr));
 
 /**
  * opt_log_stderr - print message to stderr.

@@ -60,7 +60,7 @@ static char *add_str_len(char *base, size_t *len, size_t *max,
 			 const char *str, size_t slen)
 {
 	if (slen >= *max - *len)
-		base = realloc(base, *max = (*max * 2 + slen + 1));
+		base = opt_alloc.realloc(base, *max = (*max * 2 + slen + 1));
 	memcpy(base + *len, str, slen);
 	*len += slen;
 	return base;
@@ -74,7 +74,7 @@ static char *add_str(char *base, size_t *len, size_t *max, const char *str)
 static char *add_indent(char *base, size_t *len, size_t *max, size_t indent)
 {
 	if (indent >= *max - *len)
-		base = realloc(base, *max = (*max * 2 + indent + 1));
+		base = opt_alloc.realloc(base, *max = (*max * 2 + indent + 1));
 	memset(base + *len, ' ', indent);
 	*len += indent;
 	return base;

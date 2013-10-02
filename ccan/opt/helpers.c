@@ -134,7 +134,7 @@ char *opt_usage_and_exit(const char *extra)
 	char *usage = opt_usage(opt_argv0, extra);
 	printf("%s", usage);
 	/* Don't have valgrind complain! */
-	free(usage);
+	opt_alloc.free(usage);
 	opt_free_table();
 	exit(0);
 }
