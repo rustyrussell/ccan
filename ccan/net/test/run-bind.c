@@ -117,6 +117,7 @@ int main(void)
 	close(fd);
 	for (i = 0; i < num_fds; i++)
 		close(fds[i]);
+	freeaddrinfo(addr);
 
 	/* Simple UDP test. */
 	addr = net_server_lookup(TEST_PORT, AF_UNSPEC, SOCK_DGRAM);
@@ -155,6 +156,7 @@ int main(void)
 	if (addr->ai_next)
 		ipv6_only = true;
 #endif
+	freeaddrinfo(addr);
 
 	if (ipv6_only) {
 		int j;
