@@ -90,22 +90,6 @@ static struct {
 	{ CEF_XOP, 		1 << 11, 	false }
 };
 
-static bool has_feature(int feature, uint32_t ecx, uint32_t edx)
-{
-	int i;
-
-	for (i = 0; i < sizeof(features) / sizeof(features[0]); ++i) {
-		if (features[i].feature == feature) {
-			if (features[i].use_edx)
-				return (edx & features[i].mask);
-			else
-				return (ecx & features[i].mask);
-		}
-	}
-
-	return false;
-}
-
 bool cpuid_is_supported(void)
 {
 	/* The following assembly code uses EAX as the return value,
@@ -180,7 +164,15 @@ bool cpuid_has_feature(int feature, bool extended)
 	else
 		___cpuid(CPU_EXTENDED_PROC_INFO_FEATURE_BITS, &eax, &ebx, &ecx, &edx);
 
-	return has_feature(feature, ecx, edx);
+	for (i = 0; i < sizeof(features) / sizeof(features[0]); ++i) {
+		if (features[i].feature == feature) {
+			if (features[i].use_edx)
+				return (edx & features[i].mask);
+			else
+				return (ecx & features[i].mask);
+		}
+	}
+	return false;
 }
 
 static const char *const cpuids[] = {
