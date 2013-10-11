@@ -248,9 +248,16 @@ void cpuid(cpuid_t info, uint32_t *buf)
 		return;
 
 	if (info == CPU_PROC_BRAND_STRING) {
-		___cpuid(CPU_PROC_BRAND_STRING,  	  &buf[0], &buf[1], &buf[2],  &buf[3]);
-		___cpuid(CPU_PROC_BRAND_STRING_INTERNAL0, &buf[4], &buf[5], &buf[6],  &buf[7]);
-		___cpuid(CPU_PROC_BRAND_STRING_INTERNAL1, &buf[8], &buf[9], &buf[10], &buf[11]);
+		static char cached[48] = { 0 };
+		if (cached[0] == '\0') {
+			___cpuid(CPU_PROC_BRAND_STRING,		  &buf[0], &buf[1], &buf[2],  &buf[3]);
+			___cpuid(CPU_PROC_BRAND_STRING_INTERNAL0, &buf[4], &buf[5], &buf[6],  &buf[7]);
+			___cpuid(CPU_PROC_BRAND_STRING_INTERNAL1, &buf[8], &buf[9], &buf[10], &buf[11]);
+
+			memcpy(cached, buf, sizeof cached);
+		} else
+			buf = (uint32_t *)cached;
+
 		return;
 	} else if (info == CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED) {
 		*buf = cpuid_highest_ext_func_supported();
