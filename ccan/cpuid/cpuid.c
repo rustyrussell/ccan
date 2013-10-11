@@ -108,26 +108,57 @@ static bool has_feature(int feature, uint32_t ecx, uint32_t edx)
 
 bool cpuid_is_supported(void)
 {
-	int ret = 0;
+	/* The following assembly code uses EAX as the return value,
+	 * but we store the value of EAX into ret since GCC uses EAX
+	 * as the return register for every C function.  That's a double
+	 * operation, but there's no other way to do this unless doing this
+	 * function entirely in assembly.  */
 
+	/* This check is to make sure that the compiler is actually compiling
+	 * for 64-bit.
+	 *
+	 * The compiler can be 32-bit and the system 64-bit so the 
+	 * following would be true:
+	 * 	#if defined(__x86_64) ...
+	 */
+
+#if UINTPTR_MAX == 0xffffffffffffffff
+#define ASM_PUSHF 	"pushfq\n\t"
+#define ASM_POPF	"popfq\n\t"
+#define ASM_PUSHEAX 	"pushq %%rax\n\t"
+#define ASM_POPEAX 	"popq %%rax\n\t"
+#define ASM_PUSHECX 	"popq %%rcx\n\t"
+#elif UINTPTR_MAX == 0xffffffff
+#define ASM_PUSHF 	"pushfl\n\t"
+#define ASM_POPF	"popfl\n\t"
+#define ASM_PUSHEAX 	"pushl %%eax\n\t"
+#define ASM_POPEAX 	"popl %%eax\n\t"
+#define ASM_PUSHECX 	"popl %%ecx\n\t"
+#endif
+
+	int ret = 0;
 	asm volatile(
-		"pushfl\n\t"
-		"popl %%eax\n\t"
+		ASM_PUSHF
+		ASM_POPEAX
 		"movl %%eax, %%ecx\n\t"
 		"xorl $0x200000, %%eax\n\t"
-		"pushl %%eax\n\t"
-		"popfl\n\t"
-
-		"pushfl\n\t"
-		"popl %%eax\n\t"
+		ASM_PUSHEAX
+		ASM_POPF
+		ASM_PUSHF
+		ASM_POPEAX
 		"xorl %%ecx, %%eax\n\t"
 		"shrl $21, %%eax\n\t"
 		"andl $1, %%eax\n\t"
-		"pushl %%ecx\n\t"
-		"popfl\n\t"
-
+		ASM_PUSHECX
+		ASM_POPF
 		: "=a" (ret)
 	);
+
+#undef ASM_PUSHF
+#undef ASM_POPF
+#undef ASM_PUSHEAX
+#undef ASM_POPEAX
+#undef ASM_PUSHECX
 
 	return !!ret;
 }
