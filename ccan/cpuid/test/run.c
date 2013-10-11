@@ -27,7 +27,7 @@ int main(void)
 		uint32_t w;
 	} s;
 	cpuid(CPU_VIRT_PHYS_ADDR_SIZES, &s.w);
-	printf ("Physical address size: %d\nVirtual: %d\n", s.phys_bits, s.virt_bits);
+	printf ("Physical address size: %d\nVirtual address size: %d\n", s.phys_bits, s.virt_bits);
 
 	uint32_t extfeatures[2];
 	cpuid(CPU_EXTENDED_PROC_INFO_FEATURE_BITS, extfeatures);

@@ -96,9 +96,13 @@ bool cpuid_is_supported(void)
 	 * but we store the value of EAX into ret since GCC uses EAX
 	 * as the return register for every C function.  That's a double
 	 * operation, but there's no other way to do this unless doing this
-	 * function entirely in assembly.  */
-
-	/* This check is to make sure that the compiler is actually compiling
+	 * function entirely in assembly.
+	 *
+	 * The following assembly code has been shamelessly stolen from:
+	 * 	http://wiki.osdev.org/CPUID
+	 * and converted to work with AT&T syntax.
+	 *
+	 * This check is to make sure that the compiler is actually compiling
 	 * for 64-bit.
 	 *
 	 * The compiler can be 32-bit and the system 64-bit so the 
@@ -157,7 +161,7 @@ bool cpuid_test_feature(cpuid_t feature)
 
 bool cpuid_has_feature(int feature, bool extended)
 {
-	uint32_t eax, ebx, ecx, edx;
+	uint32_t eax, ebx, ecx, edx, i;
 
 	if (!extended)
 		___cpuid(CPU_PROCINFO_AND_FEATUREBITS, &eax, &ebx, &ecx, &edx);
@@ -205,8 +209,6 @@ cputype_t cpuid_get_cpu_type(void)
 		uint32_t i;
 
 		___cpuid(CPU_VENDORID, &i, &u.bufu32[0], &u.bufu32[2], &u.bufu32[1]);
-		u.buf[12] = '\0';
-
 		for (i = 0; i < sizeof(cpuids) / sizeof(cpuids[0]); ++i) {
 			if (strncmp(cpuids[i], u.buf, 12) == 0) {
 				cputype = (cputype_t)i;
@@ -311,4 +313,3 @@ void cpuid(cpuid_t info, uint32_t *buf)
 }
 
 #endif
-
