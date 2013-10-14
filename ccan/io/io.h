@@ -6,12 +6,60 @@
 #include <stdbool.h>
 #include <unistd.h>
 
+struct io_conn;
+
+struct io_state_read {
+	char *buf;
+	size_t len;
+};
+
+struct io_state_write {
+	const char *buf;
+	size_t len;
+};
+
+struct io_state_readpart {
+	char *buf;
+	size_t *lenp;
+};
+
+struct io_state_writepart {
+	const char *buf;
+	size_t *lenp;
+};
+
+enum io_result {
+	RESULT_AGAIN,
+	RESULT_FINISHED,
+	RESULT_CLOSE
+};
+
+enum io_state {
+	IO_IO,
+	IO_NEXT, /* eg starting, woken from idle, return from io_break. */
+	IO_IDLE,
+	IO_FINISHED
+};
+
 /**
- * struct io_plan - pointer to return from a setup function.
+ * struct io_plan - returned from a setup function.
  *
  * A plan of what IO to do, when.
  */
-struct io_plan;
+struct io_plan {
+	int pollflag;
+	enum io_state state;
+	enum io_result (*io)(struct io_conn *conn);
+	struct io_plan (*next)(struct io_conn *, void *arg);
+	void *next_arg;
+
+	union {
+		struct io_state_read read;
+		struct io_state_write write;
+		struct io_state_readpart readpart;
+		struct io_state_writepart writepart;
+	} u;
+};
 
 /**
  * io_new_conn - create a new connection.
@@ -32,13 +80,13 @@ struct io_plan;
  */
 #define io_new_conn(fd, start, finish, arg)				\
 	io_new_conn_((fd),						\
-		     typesafe_cb_preargs(struct io_plan *, void *,	\
+		     typesafe_cb_preargs(struct io_plan, void *,	\
 					 (start), (arg), struct io_conn *), \
 		     typesafe_cb_preargs(void, void *, (finish), (arg),	\
 					 struct io_conn *),		\
 		     (arg))
 struct io_conn *io_new_conn_(int fd,
-			     struct io_plan *(*start)(struct io_conn *, void *),
+			     struct io_plan (*start)(struct io_conn *, void *),
 			     void (*finish)(struct io_conn *, void *),
 			     void *arg);
 
@@ -56,14 +104,14 @@ struct io_conn *io_new_conn_(int fd,
  */
 #define io_new_listener(fd, start, finish, arg)				\
 	io_new_listener_((fd),						\
-			 typesafe_cb_preargs(struct io_plan *, void *,	\
+			 typesafe_cb_preargs(struct io_plan, void *,	\
 					     (start), (arg),		\
 					     struct io_conn *),		\
 			 typesafe_cb_preargs(void, void *, (finish),	\
 					     (arg), struct io_conn *),	\
 			 (arg))
 struct io_listener *io_new_listener_(int fd,
-				     struct io_plan *(*start)(struct io_conn *,
+				     struct io_plan (*start)(struct io_conn *,
 							      void *arg),
 				     void (*finish)(struct io_conn *,
 						    void *arg),
@@ -93,12 +141,12 @@ void io_close_listener(struct io_listener *listener);
  */
 #define io_write(conn, data, len, cb, arg)				\
 	io_write_((conn), (data), (len),				\
-		  typesafe_cb_preargs(struct io_plan *, void *,		\
+		  typesafe_cb_preargs(struct io_plan, void *,		\
 				      (cb), (arg), struct io_conn *),	\
 		  (arg))
-struct io_plan *io_write_(struct io_conn *conn, const void *data, size_t len,
-			  struct io_plan *(*cb)(struct io_conn *, void *),
-			  void *arg);
+struct io_plan io_write_(struct io_conn *conn, const void *data, size_t len,
+			 struct io_plan (*cb)(struct io_conn *, void *),
+			 void *arg);
 
 /**
  * io_read - queue buffer to be read.
@@ -116,12 +164,12 @@ struct io_plan *io_write_(struct io_conn *conn, const void *data, size_t len,
  */
 #define io_read(conn, data, len, cb, arg)				\
 	io_read_((conn), (data), (len),					\
-		 typesafe_cb_preargs(struct io_plan *, void *,		\
+		 typesafe_cb_preargs(struct io_plan, void *,		\
 				     (cb), (arg), struct io_conn *),	\
 		 (arg))
-struct io_plan *io_read_(struct io_conn *conn, void *data, size_t len,
-			 struct io_plan *(*cb)(struct io_conn *, void *),
-			 void *arg);
+struct io_plan io_read_(struct io_conn *conn, void *data, size_t len,
+			struct io_plan (*cb)(struct io_conn *, void *),
+			void *arg);
 
 
 /**
@@ -140,12 +188,12 @@ struct io_plan *io_read_(struct io_conn *conn, void *data, size_t len,
  */
 #define io_read_partial(conn, data, len, cb, arg)			\
 	io_read_partial_((conn), (data), (len),				\
-			 typesafe_cb_preargs(struct io_plan *, void *,	\
+			 typesafe_cb_preargs(struct io_plan, void *,	\
 					     (cb), (arg), struct io_conn *), \
 			 (arg))
-struct io_plan *io_read_partial_(struct io_conn *conn, void *data, size_t *len,
-				 struct io_plan *(*cb)(struct io_conn *, void *),
-				 void *arg);
+struct io_plan io_read_partial_(struct io_conn *conn, void *data, size_t *len,
+				struct io_plan (*cb)(struct io_conn *, void *),
+				void *arg);
 
 /**
  * io_write_partial - queue data to be written (partial OK).
@@ -163,13 +211,13 @@ struct io_plan *io_read_partial_(struct io_conn *conn, void *data, size_t *len,
  */
 #define io_write_partial(conn, data, len, cb, arg)			\
 	io_write_partial_((conn), (data), (len),			\
-			  typesafe_cb_preargs(struct io_plan *, void *,	\
+			  typesafe_cb_preargs(struct io_plan, void *,	\
 					      (cb), (arg), struct io_conn *), \
 			  (arg))
-struct io_plan *io_write_partial_(struct io_conn *conn,
-				  const void *data, size_t *len,
-				  struct io_plan *(*cb)(struct io_conn *, void*),
-				  void *arg);
+struct io_plan io_write_partial_(struct io_conn *conn,
+				 const void *data, size_t *len,
+				 struct io_plan (*cb)(struct io_conn *, void*),
+				 void *arg);
 
 
 /**
@@ -180,7 +228,7 @@ struct io_plan *io_write_partial_(struct io_conn *conn,
  * later call io_read/io_write etc. (or io_close) on it, in which case
  * it will do that.
  */
-struct io_plan *io_idle(struct io_conn *conn);
+struct io_plan io_idle(struct io_conn *conn);
 
 /**
  * io_timeout - set timeout function if the callback doesn't fire.
@@ -198,12 +246,12 @@ struct io_plan *io_idle(struct io_conn *conn);
  */
 #define io_timeout(conn, ts, fn, arg)					\
 	io_timeout_((conn), (ts),					\
-		    typesafe_cb_preargs(struct io_plan *, void *,	\
+		    typesafe_cb_preargs(struct io_plan, void *,		\
 					(fn), (arg),			\
 					struct io_conn *),		\
 		    (arg))
 bool io_timeout_(struct io_conn *conn, struct timespec ts,
-		 struct io_plan *(*fn)(struct io_conn *, void *), void *arg);
+		 struct io_plan (*fn)(struct io_conn *, void *), void *arg);
 
 /**
  * io_duplex - split an fd into two connections.
@@ -221,14 +269,14 @@ bool io_timeout_(struct io_conn *conn, struct timespec ts,
  */
 #define io_duplex(conn, start, finish, arg)				\
 	io_duplex_((conn),						\
-		   typesafe_cb_preargs(struct io_plan *, void *,	\
+		   typesafe_cb_preargs(struct io_plan, void *,		\
 				       (start), (arg), struct io_conn *), \
 		   typesafe_cb_preargs(void, void *, (finish), (arg),	\
 				       struct io_conn *),		\
 		   (arg))
 
 struct io_conn *io_duplex_(struct io_conn *conn,
-			   struct io_plan *(*start)(struct io_conn *, void *),
+			   struct io_plan (*start)(struct io_conn *, void *),
 			   void (*finish)(struct io_conn *, void *),
 			   void *arg);
 
@@ -243,11 +291,11 @@ struct io_conn *io_duplex_(struct io_conn *conn,
  */
 #define io_wake(conn, fn, arg)						\
 	io_wake_((conn),						\
-		 typesafe_cb_preargs(struct io_plan *, void *,		\
+		 typesafe_cb_preargs(struct io_plan, void *,		\
 				     (fn), (arg), struct io_conn *),	\
 		 (arg))
 void io_wake_(struct io_conn *conn,
-	      struct io_plan *(*fn)(struct io_conn *, void *), void *arg);
+	      struct io_plan (*fn)(struct io_conn *, void *), void *arg);
 
 /**
  * io_break - return from io_loop()
@@ -264,12 +312,12 @@ void io_wake_(struct io_conn *conn,
  */
 #define io_break(conn, ret, fn, arg)					\
 	io_break_((conn), (ret),					\
-		  typesafe_cb_preargs(struct io_plan *, void *,		\
+		  typesafe_cb_preargs(struct io_plan, void *,		\
 				      (fn), (arg), struct io_conn *),	\
 		  (arg))
-struct io_plan *io_break_(struct io_conn *conn, void *ret,
-			  struct io_plan *(*fn)(struct io_conn *, void *),
-			  void *arg);
+struct io_plan io_break_(struct io_conn *conn, void *ret,
+			 struct io_plan (*fn)(struct io_conn *, void *),
+			 void *arg);
 
 /* FIXME: io_recvfrom/io_sendto */
 
@@ -284,7 +332,7 @@ struct io_plan *io_break_(struct io_conn *conn, void *ret,
  * It's common to 'return io_close(...)' from a @next function, but
  * io_close can also be used as an argument to io_next().
  */
-struct io_plan *io_close(struct io_conn *, void *unused);
+struct io_plan io_close(struct io_conn *, void *unused);
 
 /**
  * io_loop - process fds until all closed on io_break.

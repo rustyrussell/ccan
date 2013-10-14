@@ -16,24 +16,24 @@ struct buffer {
 	char buf[32];
 };
 
-static struct io_plan *poke_writer(struct io_conn *conn, struct buffer *buf);
-static struct io_plan *poke_reader(struct io_conn *conn, struct buffer *buf);
+static struct io_plan poke_writer(struct io_conn *conn, struct buffer *buf);
+static struct io_plan poke_reader(struct io_conn *conn, struct buffer *buf);
 
-static struct io_plan *do_read(struct io_conn *conn, struct buffer *buf)
+static struct io_plan do_read(struct io_conn *conn, struct buffer *buf)
 {
 	assert(conn == buf->reader);
 
 	return io_read(conn, &buf->buf, sizeof(buf->buf), poke_writer, buf);
 }
 
-static struct io_plan *do_write(struct io_conn *conn, struct buffer *buf)
+static struct io_plan do_write(struct io_conn *conn, struct buffer *buf)
 {
 	assert(conn == buf->writer);
 
 	return io_write(conn, &buf->buf, sizeof(buf->buf), poke_reader, buf);
 }
 
-static struct io_plan *poke_writer(struct io_conn *conn, struct buffer *buf)
+static struct io_plan poke_writer(struct io_conn *conn, struct buffer *buf)
 {
 	assert(conn == buf->reader);
 
@@ -47,7 +47,7 @@ static struct io_plan *poke_writer(struct io_conn *conn, struct buffer *buf)
 	return io_idle(conn);
 }
 
-static struct io_plan *poke_reader(struct io_conn *conn, struct buffer *buf)
+static struct io_plan poke_reader(struct io_conn *conn, struct buffer *buf)
 {
 	assert(conn == buf->writer);
 	/* You read. */
@@ -60,7 +60,7 @@ static struct io_plan *poke_reader(struct io_conn *conn, struct buffer *buf)
 	return io_idle(conn);
 }
 
-static struct io_plan *reader(struct io_conn *conn, struct buffer *buf)
+static struct io_plan reader(struct io_conn *conn, struct buffer *buf)
 {
 	assert(conn == buf->reader);
 

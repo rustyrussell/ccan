@@ -12,7 +12,7 @@ struct data {
 	char *buf;
 };
 
-static struct io_plan *start_ok(struct io_conn *conn, struct data *d)
+static struct io_plan start_ok(struct io_conn *conn, struct data *d)
 {
 	ok1(d->state == 0);
 	d->state++;

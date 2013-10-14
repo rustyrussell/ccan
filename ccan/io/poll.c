@@ -101,9 +101,9 @@ static void del_conn(struct io_conn *conn)
 		conn->duplex->duplex = NULL;
 	} else
 		del_fd(&conn->fd);
-	if (conn->state == IO_FINISHED)
+	if (conn->plan.state == IO_FINISHED)
 		num_finished--;
-	else if (conn->state == IO_NEXT)
+	else if (conn->plan.state == IO_NEXT)
 		num_next--;
 }
 
@@ -112,17 +112,16 @@ void del_listener(struct io_listener *l)
 	del_fd(&l->fd);
 }
 
-static void backend_set_state(struct io_conn *conn, struct io_plan *plan)
+static void backend_set_state(struct io_conn *conn, struct io_plan plan)
 {
-	enum io_state state = from_ioplan(plan);
 	struct pollfd *pfd = &pollfds[conn->fd.backend_info];
 
 	if (pfd->events)
 		num_waiting--;
 
-	pfd->events = conn->pollflag;
+	pfd->events = plan.pollflag;
 	if (conn->duplex) {
-		int mask = conn->duplex->pollflag;
+		int mask = conn->duplex->plan.pollflag;
 		/* You can't *both* read/write. */
 		assert(!mask || pfd->events != mask);
 		pfd->events |= mask;
@@ -130,12 +129,12 @@ static void backend_set_state(struct io_conn *conn, struct io_plan *plan)
 	if (pfd->events)
 		num_waiting++;
 
-	if (state == IO_NEXT)
+	if (plan.state == IO_NEXT)
 		num_next++;
-	else if (state == IO_FINISHED)
+	else if (plan.state == IO_FINISHED)
 		num_finished++;
 
-	conn->state = state;
+	conn->plan = plan;
 }
 
 void backend_wakeup(struct io_conn *conn)
@@ -174,12 +173,12 @@ static void finish_and_next(bool finished_only)
 			continue;
 		c = (void *)fds[i];
 		for (duplex = c->duplex; c; c = duplex, duplex = NULL) {
-			if (c->state == IO_FINISHED) {
+			if (c->plan.state == IO_FINISHED) {
 				del_conn(c);
 				free(c);
 				i--;
-			} else if (!finished_only && c->state == IO_NEXT) {
-				backend_set_state(c, c->next(c, c->next_arg));
+			} else if (!finished_only && c->plan.state == IO_NEXT) {
+				backend_set_state(c, c->plan.next(c, c->plan.next_arg));
 				num_next--;
 			}
 		}
@@ -271,7 +270,7 @@ void *io_loop(void)
 			} else if (events & (POLLIN|POLLOUT)) {
 				r--;
 				if (c->duplex) {
-					int mask = c->duplex->pollflag;
+					int mask = c->duplex->plan.pollflag;
 					if (events & mask) {
 						ready(c->duplex);
 						events &= ~mask;
