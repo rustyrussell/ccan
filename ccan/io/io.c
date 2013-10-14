@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <poll.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 void *io_loop_return;
 
@@ -334,6 +336,59 @@ struct io_plan io_write_partial_(const void *data, size_t *len,
 	plan.next_arg = arg;
 	plan.pollflag = POLLOUT;
 
+	return plan;
+}
+
+static int already_connected(int fd, struct io_plan *plan)
+{
+	return io_debug_io(1);
+}
+
+static int do_connect(int fd, struct io_plan *plan)
+{
+	int err, ret;
+	socklen_t len = sizeof(err);
+
+	/* Has async connect finished? */
+	ret = getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &len);
+	if (ret < 0)
+		return -1;
+
+	if (err == 0) {
+		/* Restore blocking if it was initially. */
+		fcntl(fd, F_SETFD, plan->u.len_len.len1);
+		return 1;
+	}
+	return 0;
+}
+
+struct io_plan io_connect_(int fd, const struct addrinfo *addr,
+			   struct io_plan (*cb)(struct io_conn*, void *),
+			   void *arg)
+{
+	struct io_plan plan;
+
+	assert(cb);
+
+	plan.next = cb;
+	plan.next_arg = arg;
+
+	/* Save old flags, set nonblock if not already. */
+	plan.u.len_len.len1 = fcntl(fd, F_GETFD);
+	fcntl(fd, F_SETFD, plan.u.len_len.len1 | O_NONBLOCK);
+
+	/* Immediate connect can happen. */
+	if (connect(fd, addr->ai_addr, addr->ai_addrlen) == 0) {
+		/* Dummy will be called immediately. */
+		plan.pollflag = POLLOUT;
+		plan.io = already_connected;
+	} else {
+		if (errno != EINPROGRESS)
+			return io_close_();
+
+		plan.pollflag = POLLIN;
+		plan.io = do_connect;
+	}
 	return plan;
 }
 

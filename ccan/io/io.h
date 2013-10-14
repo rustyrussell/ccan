@@ -161,6 +161,31 @@ struct io_plan io_write_partial_(const void *data, size_t *len,
 				 void *arg);
 
 /**
+ * io_connect - plan to connect to a listening socket.
+ * @fd: file descriptor.
+ * @addr: where to connect.
+ * @cb: function to call once it's done.
+ * @arg: @cb argument
+ *
+ * This initiates a connection, and creates a plan for
+ * (asynchronously).  completing it.  Once complete, @len is updated
+ * and the @cb function will be called: on an error, the finish
+ * function is called instead.
+ *
+ * Note that the connect may actually be done immediately.
+ */
+struct addrinfo;
+#define io_connect(fd, addr, cb, arg)					\
+	io_debug(io_connect_((fd), (addr),				\
+			     typesafe_cb_preargs(struct io_plan, void *, \
+						 (cb), (arg),		\
+						 struct io_conn *),	\
+			     (arg)))
+struct io_plan io_connect_(int fd, const struct addrinfo *addr,
+			   struct io_plan (*cb)(struct io_conn *, void*),
+			   void *arg);
+
+/**
  * io_idle - plan to do nothing.
  *
  * This indicates the connection is idle: io_wake() will be called later do
