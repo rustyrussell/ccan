@@ -30,25 +30,23 @@ static struct io_plan timeout(struct io_conn *conn, struct data *d)
 	return io_close(conn, d);
 }
 
-static struct io_plan start_ok(struct io_conn *conn, struct data *d)
-{
-	ok1(d->state == 0);
-	d->state++;
-	io_timeout(conn, time_from_usec(d->timeout_usec), timeout, d);
-	return io_read(d->buf, sizeof(d->buf), no_timeout, d);
-}
-
 static void finish_ok(struct io_conn *conn, struct data *d)
 {
 	ok1(d->state == 2);
 	d->state++;
-	io_break(d, NULL, NULL);
+	io_break(d, io_idle());
 }
 
 static void init_conn(int fd, struct data *d)
 {
-	if (!io_new_conn(fd, start_ok, finish_ok, d))
-		abort();
+	struct io_conn *conn;
+
+	ok1(d->state == 0);
+	d->state++;
+
+	conn = io_new_conn(fd, io_read(d->buf, sizeof(d->buf), no_timeout, d),
+			   finish_ok, d);
+	io_timeout(conn, time_from_usec(d->timeout_usec), timeout, d);
 }
 
 static int make_listen_fd(const char *port, struct addrinfo **info)

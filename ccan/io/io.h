@@ -64,29 +64,23 @@ struct io_plan {
 /**
  * io_new_conn - create a new connection.
  * @fd: the file descriptor.
- * @start: the first function to call.
+ * @plan: the first I/O function.
  * @finish: the function to call when it's closed or fails.
- * @arg: the argument to both @start and @finish.
+ * @arg: the argument to @finish.
  *
- * This creates a connection which owns @fd.  @start will be called on the
- * next return to io_loop(), and @finish will be called when an I/O operation
+ * This creates a connection which owns @fd.  @plan will be called on the
+ * next io_loop(), and @finish will be called when an I/O operation
  * fails, or you call io_close() on the connection.
- *
- * The @start function must call one of the io queueing functions
- * (eg. io_read, io_write) and return the next function to call once
- * that is done using io_next().  The alternative is to call io_close().
  *
  * Returns NULL on error (and sets errno).
  */
-#define io_new_conn(fd, start, finish, arg)				\
-	io_new_conn_((fd),						\
-		     typesafe_cb_preargs(struct io_plan, void *,	\
-					 (start), (arg), struct io_conn *), \
+#define io_new_conn(fd, plan, finish, arg)				\
+	io_new_conn_((fd), (plan),					\
 		     typesafe_cb_preargs(void, void *, (finish), (arg),	\
 					 struct io_conn *),		\
 		     (arg))
 struct io_conn *io_new_conn_(int fd,
-			     struct io_plan (*start)(struct io_conn *, void *),
+			     struct io_plan plan,
 			     void (*finish)(struct io_conn *, void *),
 			     void *arg);
 
@@ -243,9 +237,9 @@ bool io_timeout_(struct io_conn *conn, struct timespec ts,
 /**
  * io_duplex - split an fd into two connections.
  * @conn: a connection.
- * @start: the first function to call.
+ * @plan: the first I/O function to call.
  * @finish: the function to call when it's closed or fails.
- * @arg: the argument to both @start and @finish.
+ * @arg: the argument to @finish.
  *
  * Sometimes you want to be able to simultaneously read and write on a
  * single fd, but io forces a linear call sequence.  The solition is
@@ -254,56 +248,38 @@ bool io_timeout_(struct io_conn *conn, struct timespec ts,
  *
  * You must io_close() both of them to close the fd.
  */
-#define io_duplex(conn, start, finish, arg)				\
-	io_duplex_((conn),						\
-		   typesafe_cb_preargs(struct io_plan, void *,		\
-				       (start), (arg), struct io_conn *), \
+#define io_duplex(conn, plan, finish, arg)				\
+	io_duplex_((conn), (plan),					\
 		   typesafe_cb_preargs(void, void *, (finish), (arg),	\
 				       struct io_conn *),		\
 		   (arg))
 
 struct io_conn *io_duplex_(struct io_conn *conn,
-			   struct io_plan (*start)(struct io_conn *, void *),
+			   struct io_plan plan,
 			   void (*finish)(struct io_conn *, void *),
 			   void *arg);
 
 /**
- * io_wake - wake up and idle connection.
+ * io_wake - wake up an idle connection.
  * @conn: an idle connection.
- * @fn: the next function to call once queued IO is complete.
- * @arg: the argument to @next.
+ * @plan: the next I/O function for @conn.
  *
- * This makes @conn run its @next function the next time around the
- * io_loop().
+ * This makes @conn do I/O the next time around the io_loop().
  */
-#define io_wake(conn, fn, arg)						\
-	io_wake_((conn),						\
-		 typesafe_cb_preargs(struct io_plan, void *,		\
-				     (fn), (arg), struct io_conn *),	\
-		 (arg))
-void io_wake_(struct io_conn *conn,
-	      struct io_plan (*fn)(struct io_conn *, void *), void *arg);
+void io_wake(struct io_conn *conn, struct io_plan plan);
 
 /**
  * io_break - return from io_loop()
  * @ret: non-NULL value to return from io_loop().
- * @cb: function to call once on return
- * @arg: @cb argument
+ * @plan: I/O to perform on return (if any)
  *
  * This breaks out of the io_loop.  As soon as the current @next
  * function returns, any io_closed()'d connections will have their
  * finish callbacks called, then io_loop() with return with @ret.
  *
- * If io_loop() is called again, then @cb will be called.
+ * If io_loop() is called again, then @plan will be carried out.
  */
-#define io_break(ret, fn, arg)						\
-	io_break_((ret),						\
-		  typesafe_cb_preargs(struct io_plan, void *,		\
-				      (fn), (arg), struct io_conn *),	\
-		  (arg))
-struct io_plan io_break_(void *ret,
-			 struct io_plan (*fn)(struct io_conn *, void *),
-			 void *arg);
+struct io_plan io_break(void *ret, struct io_plan plan);
 
 /* FIXME: io_recvfrom/io_sendto */
 

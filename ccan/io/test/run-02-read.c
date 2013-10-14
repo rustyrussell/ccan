@@ -11,23 +11,20 @@ struct data {
 	char buf[4];
 };
 
-static struct io_plan start_ok(struct io_conn *conn, struct data *d)
-{
-	ok1(d->state == 0);
-	d->state++;
-	return io_read(d->buf, sizeof(d->buf), io_close, d);
-}
-
 static void finish_ok(struct io_conn *conn, struct data *d)
 {
 	ok1(d->state == 1);
 	d->state++;
-	io_break(d, NULL, NULL);
+	io_break(d, io_idle());
 }
 
 static void init_conn(int fd, struct data *d)
 {
-	if (!io_new_conn(fd, start_ok, finish_ok, d))
+	ok1(d->state == 0);
+	d->state++;
+
+	if (!io_new_conn(fd, io_read(d->buf, sizeof(d->buf), io_close, d),
+			 finish_ok, d))
 		abort();
 }
 

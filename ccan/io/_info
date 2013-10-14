@@ -34,49 +34,29 @@
  * // This reads from stdin.
  * static struct io_plan wake_writer(struct io_conn *, struct stdin_buffer *);
  * // This writes the stdin buffer to the child.
- * static struct io_plan write_to_child(struct io_conn *c,
- *					struct stdin_buffer *b);
- * static struct io_plan read_stdin(struct io_conn *c, struct stdin_buffer *b)
- * {
- * 	assert(c == b->reader);
- * 	b->len = sizeof(b->inbuf);
- * 	return io_read_partial(b->inbuf, &b->len, wake_writer, b);
- * }
+ * static struct io_plan wake_reader(struct io_conn *, struct stdin_buffer *);
  *
  * static struct io_plan wake_writer(struct io_conn *c, struct stdin_buffer *b)
  * {
  * 	assert(c == b->reader);
- * 	io_wake(b->writer, write_to_child, b);
+ * 	io_wake(b->writer, io_write(b->inbuf, b->len, wake_reader, b));
  * 	return io_idle();
  * }
  *
  * static void reader_exit(struct io_conn *c, struct stdin_buffer *b)
  * {
  * 	assert(c == b->reader);
- * 	io_wake(b->writer, write_to_child, b);
+ * 	io_wake(b->writer, io_close(b->writer, NULL));
  * 	b->reader = NULL;
  * }
  *
  * static struct io_plan wake_reader(struct io_conn *c, struct stdin_buffer *b)
  * {
  * 	assert(c == b->writer);
- * 	io_wake(b->reader, read_stdin, b);
- * 	return io_idle();
- * }
- *
- * static struct io_plan write_to_child(struct io_conn *conn,
- * 				        struct stdin_buffer *b)
- * {
- * 	assert(conn == b->writer);
- * 	if (!b->reader)
- * 		return io_close(conn, NULL);
- * 	return io_write(b->inbuf, b->len, wake_reader, b);
- * }
- *
- * static struct io_plan start_writer(struct io_conn *conn,
- * 				      struct stdin_buffer *b)
- * {
- * 	assert(conn == b->writer);
+ *	if (!b->reader)
+ *		return io_close(c, NULL);
+ *	b->len = sizeof(b->inbuf);
+ * 	io_wake(b->reader, io_read_partial(b->inbuf, &b->len, wake_writer, b));
  * 	return io_idle();
  * }
  *
@@ -92,15 +72,8 @@
  * {
  * 	b->off += b->rlen;
  *
- * 	if (b->off == b->max) {
- * 		if (b->max == 0)
- * 			b->max = 128;
- * 		else if (b->max >= 1024*1024)
- * 			b->max += 1024*1024;
- * 		else
- * 			b->max *= 2;
- * 		b->buf = realloc(b->buf, b->max);
- * 	}
+ * 	if (b->off == b->max)
+ * 		b->buf = realloc(b->buf, b->max *= 2);
  *
  * 	b->rlen = b->max - b->off;
  * 	return io_read_partial(b->buf + b->off, &b->rlen, read_from_child, b);
@@ -110,11 +83,12 @@
  * int main(int argc, char *argv[])
  * {
  * 	int tochild[2], fromchild[2];
- * 	struct buffer out = { 0, 0, 0, NULL };
+ * 	struct buffer out;
  * 	struct stdin_buffer sbuf;
  * 	int status;
  * 	size_t off;
  * 	ssize_t ret;
+ *	struct io_conn *from_child;
  *
  * 	if (argc == 1)
  * 		errx(1, "Usage: runner <cmdline>...");
@@ -137,11 +111,23 @@
  * 	close(fromchild[1]);
  * 	signal(SIGPIPE, SIG_IGN);
  *
- * 	sbuf.reader = io_new_conn(STDIN_FILENO, read_stdin, reader_exit, &sbuf);
- * 	sbuf.writer = io_new_conn(tochild[1], start_writer, fail_child_write,
+ *	sbuf.len = sizeof(sbuf.inbuf);
+ * 	sbuf.reader = io_new_conn(STDIN_FILENO,
+ *				  io_read_partial(sbuf.inbuf, &sbuf.len,
+ *						  wake_writer, &sbuf),
+ *				  reader_exit, &sbuf);
+ * 	sbuf.writer = io_new_conn(tochild[1], io_idle(), fail_child_write,
  * 				  &sbuf);
- * 	if (!sbuf.reader || !sbuf.writer
- * 	    || !io_new_conn(fromchild[0], read_from_child, NULL, &out))
+ *
+ *	out.max = 128;
+ *	out.off = 0;
+ *	out.rlen = 128;
+ *	out.buf = malloc(out.max);
+ *	from_child = io_new_conn(fromchild[0],
+ *				 io_read_partial(out.buf, &out.rlen,
+ *						 read_from_child, &out),
+ *				 NULL, NULL);
+ * 	if (!sbuf.reader || !sbuf.writer || !from_child)
  * 		err(1, "Allocating connections");
  *
  * 	io_loop();

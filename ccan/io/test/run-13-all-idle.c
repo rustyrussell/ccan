@@ -7,11 +7,6 @@
 #include <stdio.h>
 #include <signal.h>
 
-static struct io_plan start(struct io_conn *conn, void *unused)
-{
-	return io_idle();
-}
-
 int main(void)
 {
 	int status;
@@ -22,7 +17,7 @@ int main(void)
 		int fds[2];
 
 		ok1(pipe(fds) == 0);
-		io_new_conn(fds[0], start, NULL, NULL);
+		io_new_conn(fds[0], io_idle(), NULL, NULL);
 		io_loop();
 		exit(1);
 	}

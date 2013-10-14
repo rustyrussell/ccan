@@ -37,6 +37,9 @@ static bool add_fd(struct fd *fd, short events)
 	fds[num_fds] = fd;
 	fd->backend_info = num_fds;
 	num_fds++;
+	if (events)
+		num_waiting++;
+
 	return true;
 }
 
@@ -46,6 +49,8 @@ static void del_fd(struct fd *fd)
 
 	assert(n != -1);
 	assert(n < num_fds);
+	if (pollfds[n].events)
+		num_waiting--;
 	if (n != num_fds - 1) {
 		/* Move last one over us. */
 		pollfds[n] = pollfds[num_fds-1];
@@ -69,22 +74,49 @@ bool add_listener(struct io_listener *l)
 {
 	if (!add_fd(&l->fd, POLLIN))
 		return false;
-	num_waiting++;
 	return true;
+}
+
+static void adjust_counts(enum io_state state)
+{
+	if (state == IO_NEXT)
+		num_next++;
+	else if (state == IO_FINISHED)
+		num_finished++;
+}
+
+static void update_pollevents(struct io_conn *conn)
+{
+	struct pollfd *pfd = &pollfds[conn->fd.backend_info];
+
+	if (pfd->events)
+		num_waiting--;
+
+	pfd->events = conn->plan.pollflag;
+	if (conn->duplex) {
+		int mask = conn->duplex->plan.pollflag;
+		/* You can't *both* read/write. */
+		assert(!mask || pfd->events != mask);
+		pfd->events |= mask;
+	}
+	if (pfd->events)
+		num_waiting++;
+
+	adjust_counts(conn->plan.state);
 }
 
 bool add_conn(struct io_conn *c)
 {
-	if (!add_fd(&c->fd, 0))
+	if (!add_fd(&c->fd, c->plan.pollflag))
 		return false;
-	num_next++;
+	adjust_counts(c->plan.state);
 	return true;
 }
 
 bool add_duplex(struct io_conn *c)
 {
 	c->fd.backend_info = c->duplex->fd.backend_info;
-	num_next++;
+	update_pollevents(c);
 	return true;
 }
 
@@ -114,32 +146,13 @@ void del_listener(struct io_listener *l)
 
 static void backend_set_state(struct io_conn *conn, struct io_plan plan)
 {
-	struct pollfd *pfd = &pollfds[conn->fd.backend_info];
-
-	if (pfd->events)
-		num_waiting--;
-
-	pfd->events = plan.pollflag;
-	if (conn->duplex) {
-		int mask = conn->duplex->plan.pollflag;
-		/* You can't *both* read/write. */
-		assert(!mask || pfd->events != mask);
-		pfd->events |= mask;
-	}
-	if (pfd->events)
-		num_waiting++;
-
-	if (plan.state == IO_NEXT)
-		num_next++;
-	else if (plan.state == IO_FINISHED)
-		num_finished++;
-
 	conn->plan = plan;
+	update_pollevents(conn);
 }
 
 void backend_wakeup(struct io_conn *conn)
 {
-	num_next++;
+	update_pollevents(conn);
 }
 
 static void accept_conn(struct io_listener *l)

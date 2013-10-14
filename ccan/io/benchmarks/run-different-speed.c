@@ -28,7 +28,7 @@ struct client {
 static struct io_plan write_reply(struct io_conn *conn, struct client *client);
 static struct io_plan read_request(struct io_conn *conn, struct client *client)
 {
-	return io_read(conn, client->request_buffer, REQUEST_SIZE,
+	return io_read(client->request_buffer, REQUEST_SIZE,
 		       write_reply, client);
 }
 
@@ -41,7 +41,7 @@ static struct io_plan write_complete(struct io_conn *conn, struct client *client
 
 static struct io_plan write_reply(struct io_conn *conn, struct client *client)
 {
-	return io_write(conn, client->reply_buffer, REPLY_SIZE,
+	return io_write(client->reply_buffer, REPLY_SIZE,
 			write_complete, client);
 }
 
@@ -108,12 +108,7 @@ static void sigalarm(int sig)
 
 static struct io_plan do_timeout(struct io_conn *conn, char *buf)
 {
-	return io_break(conn, buf, NULL, NULL);
-}
-
-static struct io_plan do_timeout_read(struct io_conn *conn, char *buf)
-{
-	return io_read(conn, buf, 1, do_timeout, buf);
+	return io_break(buf, io_idle());
 }
 
 int main(int argc, char *argv[])
@@ -155,11 +150,14 @@ int main(int argc, char *argv[])
 			if (ret < 0)
 				err(1, "Accepting fd");
 			/* For efficiency, we share client structure */
-			io_new_conn(ret, read_request, NULL, &client);
+			io_new_conn(ret,
+				    io_read(client.request_buffer, REQUEST_SIZE,
+					    write_reply, &client),
+				    NULL, NULL);
 		}
 	}
 
-	io_new_conn(timeout[0], do_timeout_read, NULL, &buf);
+	io_new_conn(timeout[0], io_read(&buf, 1, do_timeout, &buf), NULL, NULL);
 
 	close(wake[0]);
 	for (i = 0; i < NUM_CHILDREN; i++)

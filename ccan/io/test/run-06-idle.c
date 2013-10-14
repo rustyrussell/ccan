@@ -16,55 +16,39 @@ struct data {
 	char buf[4];
 };
 
-static struct io_plan plan_read(struct io_conn *conn, struct data *d)
+static struct io_plan read_done(struct io_conn *conn, struct data *d)
 {
 	ok1(d->state == 2 || d->state == 3);
 	d->state++;
-	return io_read(d->buf, sizeof(d->buf), io_close, d);
-}
-
-static struct io_plan start_waker(struct io_conn *conn, struct data *d)
-{
-	ok1(d->state == 1);
-	d->state++;
-
-	io_wake(idler, plan_read, d);
 	return io_close(conn, NULL);
 }
 
 static void finish_waker(struct io_conn *conn, struct data *d)
 {
-	ok1(d->state == 2 || d->state == 3);
+	io_wake(idler, io_read(d->buf, sizeof(d->buf), read_done, d));
+	ok1(d->state == 1);
 	d->state++;
-}
-
-static struct io_plan start_idle(struct io_conn *conn, struct data *d)
-{
-	int fd;
-
-	ok1(d->state == 0);
-	d->state++;
-	idler = conn;
-
-	/* This will wake us up. */
-	fd = open("/dev/null", O_RDONLY);
-	ok1(fd >= 0);
-	ok1(io_new_conn(fd, start_waker, finish_waker, d));
-
-	return io_idle();
 }
 
 static void finish_idle(struct io_conn *conn, struct data *d)
 {
-	ok1(d->state == 4);
+	ok1(d->state == 3);
 	d->state++;
-	io_break(d, NULL, NULL);
+	io_break(d, io_idle());
 }
 
 static void init_conn(int fd, struct data *d)
 {
-	if (!io_new_conn(fd, start_idle, finish_idle, d))
-		abort();
+	int fd2;
+
+	ok1(d->state == 0);
+	d->state++;
+	idler = io_new_conn(fd, io_idle(), finish_idle, d);
+
+	/* This will wake us up, as read will fail. */
+	fd2 = open("/dev/null", O_RDONLY);
+	ok1(fd2 >= 0);
+	ok1(io_new_conn(fd2, io_read(idler, 1, NULL, NULL), finish_waker, d));
 }
 
 static int make_listen_fd(const char *port, struct addrinfo **info)
@@ -107,7 +91,7 @@ int main(void)
 	int fd, status;
 
 	/* This is how many tests you plan to run */
-	plan_tests(15);
+	plan_tests(14);
 	d->state = 0;
 	fd = make_listen_fd("65006", &addrinfo);
 	ok1(fd >= 0);
@@ -137,7 +121,7 @@ int main(void)
 	freeaddrinfo(addrinfo);
 
 	ok1(io_loop() == d);
-	ok1(d->state == 5);
+	ok1(d->state == 4);
 	ok1(memcmp(d->buf, "hellothere", sizeof(d->buf)) == 0);
 	free(d);
 	io_close_listener(l);

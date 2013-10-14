@@ -40,7 +40,7 @@ void io_close_listener(struct io_listener *l)
 }
 
 struct io_conn *io_new_conn_(int fd,
-			     struct io_plan (*start)(struct io_conn *, void *),
+			     struct io_plan plan,
 			     void (*finish)(struct io_conn *, void *),
 			     void *arg)
 {
@@ -51,11 +51,9 @@ struct io_conn *io_new_conn_(int fd,
 
 	conn->fd.listener = false;
 	conn->fd.fd = fd;
-	conn->plan.next = start;
+	conn->plan = plan;
 	conn->finish = finish;
-	conn->finish_arg = conn->plan.next_arg = arg;
-	conn->plan.pollflag = 0;
-	conn->plan.state = IO_NEXT;
+	conn->finish_arg = arg;
 	conn->duplex = NULL;
 	conn->timeout = NULL;
 	if (!add_conn(conn)) {
@@ -66,9 +64,9 @@ struct io_conn *io_new_conn_(int fd,
 }
 
 struct io_conn *io_duplex_(struct io_conn *old,
-			     struct io_plan (*start)(struct io_conn *, void *),
-			     void (*finish)(struct io_conn *, void *),
-			     void *arg)
+			   struct io_plan plan,
+			   void (*finish)(struct io_conn *, void *),
+			   void *arg)
 {
 	struct io_conn *conn;
 
@@ -80,12 +78,10 @@ struct io_conn *io_duplex_(struct io_conn *old,
 
 	conn->fd.listener = false;
 	conn->fd.fd = old->fd.fd;
-	conn->plan.next = start;
-	conn->finish = finish;
-	conn->finish_arg = conn->plan.next_arg = arg;
-	conn->plan.pollflag = 0;
-	conn->plan.state = IO_NEXT;
+	conn->plan = plan;
 	conn->duplex = old;
+	conn->finish = finish;
+	conn->finish_arg = arg;
 	conn->timeout = NULL;
 	if (!add_duplex(conn)) {
 		free(conn);
@@ -239,18 +235,14 @@ struct io_plan io_idle(void)
 	return plan;
 }
 
-void io_wake_(struct io_conn *conn,
-	      struct io_plan (*fn)(struct io_conn *, void *), void *arg)
+void io_wake(struct io_conn *conn, struct io_plan plan)
 
 {
 	/* It might have finished, but we haven't called its finish() yet. */
 	if (conn->plan.state == IO_FINISHED)
 		return;
 	assert(conn->plan.state == IO_IDLE);
-	conn->plan.next = fn;
-	conn->plan.next_arg = arg;
-	conn->plan.pollflag = 0;
-	conn->plan.state = IO_NEXT;
+	conn->plan = plan;
 	backend_wakeup(conn);
 }
 
@@ -289,18 +281,9 @@ struct io_plan io_close(struct io_conn *conn, void *arg)
 }
 
 /* Exit the loop, returning this (non-NULL) arg. */
-struct io_plan io_break_(void *ret,
-			 struct io_plan (*fn)(struct io_conn *, void *),
-			 void *arg)
+struct io_plan io_break(void *ret, struct io_plan plan)
 {
-	struct io_plan plan;
-
 	io_loop_return = ret;
-
-	plan.state = IO_NEXT;
-	plan.pollflag = 0;
-	plan.next = fn;
-	plan.next_arg = arg;
 
 	return plan;
 }

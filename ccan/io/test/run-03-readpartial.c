@@ -12,24 +12,21 @@ struct data {
 	char buf[4];
 };
 
-static struct io_plan start_ok(struct io_conn *conn, struct data *d)
-{
-	ok1(d->state == 0);
-	d->state++;
-	d->bytes = sizeof(d->buf);
-	return io_read_partial(d->buf, &d->bytes, io_close, d);
-}
-
 static void finish_ok(struct io_conn *conn, struct data *d)
 {
 	ok1(d->state == 1);
 	d->state++;
-	io_break(d, NULL, NULL);
+	io_break(d, io_idle());
 }
 
 static void init_conn(int fd, struct data *d)
 {
-	if (!io_new_conn(fd, start_ok, finish_ok, d))
+	ok1(d->state == 0);
+	d->state++;
+	d->bytes = sizeof(d->buf);
+
+	if (!io_new_conn(fd, io_read_partial(d->buf, &d->bytes, io_close, d),
+			 finish_ok, d))
 		abort();
 }
 

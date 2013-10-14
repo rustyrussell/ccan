@@ -18,28 +18,27 @@ static void finish_ok(struct io_conn *conn, struct data *d)
 	d->state++;
 }
 
-static struct io_plan write_out(struct io_conn *conn, struct data *d)
+static struct io_plan write_done(struct io_conn *conn, struct data *d)
 {
 	d->state++;
-	return io_write(d->wbuf, sizeof(d->wbuf), io_close, d);
+	return io_close(conn, NULL);
 }
 
-static struct io_plan start_ok(struct io_conn *conn, struct data *d)
+static void init_conn(int fd, struct data *d)
 {
+	struct io_conn *conn;
+
 	ok1(d->state == 0);
 	d->state++;
 
 	io_close_listener(d->l);
 
 	memset(d->wbuf, 7, sizeof(d->wbuf));
-	ok1(io_duplex(conn, write_out, finish_ok, d));
-	return io_read(d->buf, sizeof(d->buf), io_close, d);
-}
 
-static void init_conn(int fd, struct data *d)
-{
-	if (!io_new_conn(fd, start_ok, finish_ok, d))
-		abort();
+	conn = io_new_conn(fd, io_read(d->buf, sizeof(d->buf), io_close, d),
+			   finish_ok, d);
+	ok1(io_duplex(conn, io_write(d->wbuf, sizeof(d->wbuf), write_done, d),
+		      finish_ok, d));
 }
 
 static int make_listen_fd(const char *port, struct addrinfo **info)

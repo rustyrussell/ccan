@@ -6,23 +6,18 @@
 #include <sys/wait.h>
 #include <stdio.h>
 
-static struct io_plan start_ok(struct io_conn *conn, int *state)
-{
-	ok1(*state == 0);
-	(*state)++;
-	return io_close(conn, NULL);
-}
-
 static void finish_ok(struct io_conn *conn, int *state)
 {
 	ok1(*state == 1);
 	(*state)++;
-	io_break(state + 1, NULL, NULL);
+	io_break(state + 1, io_idle());
 }
 
 static void init_conn(int fd, int *state)
 {
-	if (!io_new_conn(fd, start_ok, finish_ok, state))
+	ok1(*state == 0);
+	(*state)++;
+	if (!io_new_conn(fd, io_close(NULL, NULL), finish_ok, state))
 		abort();
 }
 

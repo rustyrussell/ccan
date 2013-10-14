@@ -29,26 +29,25 @@ static struct io_plan write_reply(struct io_conn *conn, struct client *client);
 static struct io_plan read_body(struct io_conn *conn, struct client *client)
 {
 	assert(client->len <= REQUEST_MAX);
-	return io_read(conn, client->request_buffer, client->len,
+	return io_read(client->request_buffer, client->len,
 		       write_reply, client);
 }
 
-static struct io_plan read_header(struct io_conn *conn, struct client *client)
+static struct io_plan io_read_header(struct client *client)
 {
-	return io_read(conn, &client->len, sizeof(client->len),
-		       read_body, client);
+	return io_read(&client->len, sizeof(client->len), read_body, client);
 }
 
 /* once we're done, loop again. */
 static struct io_plan write_complete(struct io_conn *conn, struct client *client)
 {
 	completed++;
-	return read_header(conn, client);
+	return io_read_header(client);
 }
 
 static struct io_plan write_reply(struct io_conn *conn, struct client *client)
 {
-	return io_write(conn, &client->len, sizeof(client->len),
+	return io_write(&client->len, sizeof(client->len),
 			write_complete, client);
 }
 
@@ -114,12 +113,7 @@ static void sigalarm(int sig)
 
 static struct io_plan do_timeout(struct io_conn *conn, char *buf)
 {
-	return io_break(conn, buf, NULL, NULL);
-}
-
-static struct io_plan do_timeout_read(struct io_conn *conn, char *buf)
-{
-	return io_read(conn, buf, 1, do_timeout, buf);
+	return io_break(buf, io_idle());
 }
 
 int main(int argc, char *argv[])
@@ -163,11 +157,11 @@ int main(int argc, char *argv[])
 				err(1, "Accepting fd");
 			/* For efficiency, we share buffer */
 			client->request_buffer = buffer;
-			io_new_conn(ret, read_header, NULL, client);
+			io_new_conn(ret, io_read_header(client), NULL, NULL);
 		}
 	}
 
-	io_new_conn(timeout[0], do_timeout_read, NULL, &buf);
+	io_new_conn(timeout[0], io_read(&buf, 1, do_timeout, &buf), NULL, NULL);
 
 	close(wake[0]);
 	for (i = 0; i < NUM_CHILDREN; i++)

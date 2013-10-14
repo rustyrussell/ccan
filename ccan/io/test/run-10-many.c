@@ -15,22 +15,7 @@ struct buffer {
 	char buf[32];
 };
 
-static struct io_plan poke_writer(struct io_conn *conn, struct buffer *buf);
 static struct io_plan poke_reader(struct io_conn *conn, struct buffer *buf);
-
-static struct io_plan plan_read(struct io_conn *conn, struct buffer *buf)
-{
-	assert(conn == buf->reader);
-
-	return io_read(&buf->buf, sizeof(buf->buf), poke_writer, buf);
-}
-
-static struct io_plan plan_write(struct io_conn *conn, struct buffer *buf)
-{
-	assert(conn == buf->writer);
-
-	return io_write(&buf->buf, sizeof(buf->buf), poke_reader, buf);
-}
 
 static struct io_plan poke_writer(struct io_conn *conn, struct buffer *buf)
 {
@@ -40,7 +25,8 @@ static struct io_plan poke_writer(struct io_conn *conn, struct buffer *buf)
 		return io_close(conn, NULL);
 
 	/* You write. */
-	io_wake(buf->writer, plan_write, buf);
+	io_wake(buf->writer,
+		io_write(&buf->buf, sizeof(buf->buf), poke_reader, buf));
 
 	/* I'll wait until you wake me. */
 	return io_idle();
@@ -50,20 +36,13 @@ static struct io_plan poke_reader(struct io_conn *conn, struct buffer *buf)
 {
 	assert(conn == buf->writer);
 	/* You read. */
-	io_wake(buf->reader, plan_read, buf);
+	io_wake(buf->reader,
+		io_read(&buf->buf, sizeof(buf->buf), poke_writer, buf));
 
 	if (++buf->iters == NUM_ITERS)
 		return io_close(conn, NULL);
 
 	/* I'll wait until you tell me to write. */
-	return io_idle();
-}
-
-static struct io_plan reader(struct io_conn *conn, struct buffer *buf)
-{
-	assert(conn == buf->reader);
-
-	/* Wait for writer to tell us to read. */
 	return io_idle();
 }
 
@@ -86,10 +65,15 @@ int main(void)
 		memset(buf[i].buf, i, sizeof(buf[i].buf));
 		sprintf(buf[i].buf, "%i-%i", i, i);
 
-		buf[i].reader = io_new_conn(last_read, reader, NULL, &buf[i]);
+		/* Wait for writer to tell us to read. */
+		buf[i].reader = io_new_conn(last_read, io_idle(), NULL, &buf[i]);
 		if (!buf[i].reader)
 			break;
-		buf[i].writer = io_new_conn(fds[1], plan_write, NULL, &buf[i]);
+		buf[i].writer = io_new_conn(fds[1],
+					    io_write(&buf[i].buf,
+						     sizeof(buf[i].buf),
+						     poke_reader, &buf[i]),
+					    NULL, &buf[i]);
 		if (!buf[i].writer)
 			break;
 		last_read = fds[0];
@@ -100,9 +84,12 @@ int main(void)
 	/* Last one completes the cirle. */
 	i = 0;
 	sprintf(buf[i].buf, "%i-%i", i, i);
-	buf[i].reader = io_new_conn(last_read, reader, NULL, &buf[i]);
+	buf[i].reader = io_new_conn(last_read, io_idle(), NULL, NULL);
 	ok1(buf[i].reader);
-	buf[i].writer = io_new_conn(last_write, plan_write, NULL, &buf[i]);
+	buf[i].writer = io_new_conn(last_write,
+				    io_write(&buf[i].buf, sizeof(buf[i].buf),
+					     poke_reader, &buf[i]),
+				    NULL, NULL);
 	ok1(buf[i].writer);
 
 	/* They should eventually exit */
