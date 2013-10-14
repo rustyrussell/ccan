@@ -15,9 +15,8 @@ struct io_listener {
 	struct fd fd;
 
 	/* These are for connections we create. */
-	struct io_plan (*next)(struct io_conn *, void *arg);
-	void (*finish)(struct io_conn *, void *arg);
-	void *conn_arg;
+	void (*init)(int fd, void *arg);
+	void *arg;
 };
 
 struct io_timeout {

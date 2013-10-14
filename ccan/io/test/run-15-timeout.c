@@ -45,6 +45,12 @@ static void finish_ok(struct io_conn *conn, struct data *d)
 	io_break(d, NULL, NULL);
 }
 
+static void init_conn(int fd, struct data *d)
+{
+	if (!io_new_conn(fd, start_ok, finish_ok, d))
+		abort();
+}
+
 static int make_listen_fd(const char *port, struct addrinfo **info)
 {
 	int fd, on = 1;
@@ -91,7 +97,7 @@ int main(void)
 	d->timeout_usec = 100000;
 	fd = make_listen_fd("65002", &addrinfo);
 	ok1(fd >= 0);
-	l = io_new_listener(fd, start_ok, finish_ok, d);
+	l = io_new_listener(fd, init_conn, d);
 	ok1(l);
 	fflush(stdout);
 

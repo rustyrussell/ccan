@@ -13,9 +13,7 @@
 void *io_loop_return;
 
 struct io_listener *io_new_listener_(int fd,
-				     struct io_plan (*start)(struct io_conn *,
-							     void *arg),
-				     void (*finish)(struct io_conn *, void *),
+				     void (*init)(int fd, void *arg),
 				     void *arg)
 {
 	struct io_listener *l = malloc(sizeof(*l));
@@ -25,9 +23,8 @@ struct io_listener *io_new_listener_(int fd,
 
 	l->fd.listener = true;
 	l->fd.fd = fd;
-	l->next = start;
-	l->finish = finish;
-	l->conn_arg = arg;
+	l->init = init;
+	l->arg = arg;
 	if (!add_listener(l)) {
 		free(l);
 		return NULL;

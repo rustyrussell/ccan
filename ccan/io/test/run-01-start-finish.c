@@ -20,6 +20,12 @@ static void finish_ok(struct io_conn *conn, int *state)
 	io_break(state + 1, NULL, NULL);
 }
 
+static void init_conn(int fd, int *state)
+{
+	if (!io_new_conn(fd, start_ok, finish_ok, state))
+		abort();
+}
+
 static int make_listen_fd(const char *port, struct addrinfo **info)
 {
 	int fd, on = 1;
@@ -63,7 +69,7 @@ int main(void)
 	plan_tests(9);
 	fd = make_listen_fd("65001", &addrinfo);
 	ok1(fd >= 0);
-	l = io_new_listener(fd, start_ok, finish_ok, &state);
+	l = io_new_listener(fd, init_conn, &state);
 	ok1(l);
 	fflush(stdout);
 	if (!fork()) {

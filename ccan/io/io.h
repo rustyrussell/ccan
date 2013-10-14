@@ -93,28 +93,21 @@ struct io_conn *io_new_conn_(int fd,
 /**
  * io_new_listener - create a new accepting listener.
  * @fd: the file descriptor.
- * @start: the first function to call on new connections.
- * @finish: the function to call when the connection is closed or fails.
- * @arg: the argument to both @start and @finish.
+ * @init: the function to call for a new connection
+ * @arg: the argument to @init.
  *
- * When @fd becomes readable, we accept() and turn that fd into a new
- * connection.
+ * When @fd becomes readable, we accept() and pass that fd to init().
  *
  * Returns NULL on error (and sets errno).
  */
-#define io_new_listener(fd, start, finish, arg)				\
+#define io_new_listener(fd, init, arg)					\
 	io_new_listener_((fd),						\
-			 typesafe_cb_preargs(struct io_plan, void *,	\
-					     (start), (arg),		\
-					     struct io_conn *),		\
-			 typesafe_cb_preargs(void, void *, (finish),	\
-					     (arg), struct io_conn *),	\
+			 typesafe_cb_preargs(void, void *,		\
+					     (init), (arg),		\
+					     int fd),			\
 			 (arg))
 struct io_listener *io_new_listener_(int fd,
-				     struct io_plan (*start)(struct io_conn *,
-							      void *arg),
-				     void (*finish)(struct io_conn *,
-						    void *arg),
+				     void (*init)(int fd, void *arg),
 				     void *arg);
 
 /**

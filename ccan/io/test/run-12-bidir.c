@@ -36,6 +36,12 @@ static struct io_plan start_ok(struct io_conn *conn, struct data *d)
 	return io_read(d->buf, sizeof(d->buf), io_close, d);
 }
 
+static void init_conn(int fd, struct data *d)
+{
+	if (!io_new_conn(fd, start_ok, finish_ok, d))
+		abort();
+}
+
 static int make_listen_fd(const char *port, struct addrinfo **info)
 {
 	int fd, on = 1;
@@ -79,7 +85,7 @@ int main(void)
 	d->state = 0;
 	fd = make_listen_fd("65012", &addrinfo);
 	ok1(fd >= 0);
-	d->l = io_new_listener(fd, start_ok, finish_ok, d);
+	d->l = io_new_listener(fd, init_conn, d);
 	ok1(d->l);
 	fflush(stdout);
 	if (!fork()) {

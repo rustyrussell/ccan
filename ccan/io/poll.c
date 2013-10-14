@@ -144,17 +144,12 @@ void backend_wakeup(struct io_conn *conn)
 
 static void accept_conn(struct io_listener *l)
 {
-	struct io_conn *c;
 	int fd = accept(l->fd.fd, NULL, NULL);
 
 	/* FIXME: What to do here? */
 	if (fd < 0)
 		return;
-	c = io_new_conn(fd, l->next, l->finish, l->conn_arg);
-	if (!c) {
-		close(fd);
-		return;
-	}
+	l->init(fd, l->arg);
 }
 
 /* It's OK to miss some, as long as we make progress. */
