@@ -77,7 +77,7 @@ bool add_listener(struct io_listener *l)
 	return true;
 }
 
-static void update_pollevents(struct io_conn *conn)
+void backend_plan_changed(struct io_conn *conn)
 {
 	struct pollfd *pfd = &pollfds[conn->fd.backend_info];
 
@@ -111,7 +111,7 @@ bool add_conn(struct io_conn *c)
 bool add_duplex(struct io_conn *c)
 {
 	c->fd.backend_info = c->duplex->fd.backend_info;
-	update_pollevents(c);
+	backend_plan_changed(c);
 	return true;
 }
 
@@ -136,15 +136,10 @@ void del_listener(struct io_listener *l)
 	del_fd(&l->fd);
 }
 
-static void backend_set_state(struct io_conn *conn, struct io_plan plan)
+static void set_plan(struct io_conn *conn, struct io_plan plan)
 {
 	conn->plan = plan;
-	update_pollevents(conn);
-}
-
-void backend_wakeup(struct io_conn *conn)
-{
-	update_pollevents(conn);
+	backend_plan_changed(conn);
 }
 
 static void accept_conn(struct io_listener *l)
@@ -179,11 +174,6 @@ static void finish_conns(void)
 			}
 		}
 	}
-}
-
-static void ready(struct io_conn *c)
-{
-	backend_set_state(c, do_ready(c));
 }
 
 void backend_add_timeout(struct io_conn *conn, struct timespec duration)
@@ -224,7 +214,7 @@ void *io_loop(void)
 				struct io_conn *conn = t->conn;
 				/* Clear, in case timer re-adds */
 				t->conn = NULL;
-				backend_set_state(conn, t->next(conn, t->next_arg));
+				set_plan(conn, t->next(conn, t->next_arg));
 			}
 
 			/* Now figure out how long to wait for the next one. */
@@ -268,20 +258,19 @@ void *io_loop(void)
 				if (c->duplex) {
 					int mask = c->duplex->plan.pollflag;
 					if (events & mask) {
-						ready(c->duplex);
+						io_ready(c->duplex);
 						events &= ~mask;
 						if (!(events&(POLLIN|POLLOUT)))
 							continue;
 					}
 				}
-				ready(c);
+				io_ready(c);
 			} else if (events & POLLHUP) {
 				r--;
-				backend_set_state(c, io_close(c, NULL));
+				set_plan(c, io_close(c, NULL));
 				if (c->duplex)
-					backend_set_state(c->duplex,
-							  io_close(c->duplex,
-								   NULL));
+					set_plan(c->duplex,
+						 io_close(c->duplex, NULL));
 			}
 		}
 	}

@@ -255,22 +255,17 @@ void io_wake(struct io_conn *conn, struct io_plan plan)
 	/* It was idle, right? */
 	assert(!conn->plan.io);
 	conn->plan = plan;
-	backend_wakeup(conn);
+	backend_plan_changed(conn);
 }
 
-static struct io_plan do_next(struct io_conn *conn)
+void io_ready(struct io_conn *conn)
 {
-	if (timeout_active(conn))
-		backend_del_timeout(conn);
-	return conn->plan.next(conn, conn->plan.next_arg);
-}
-
-struct io_plan do_ready(struct io_conn *conn)
-{
-	if (conn->plan.io(conn->fd.fd, &conn->plan))
-		return do_next(conn);
-
-	return conn->plan;
+	if (conn->plan.io(conn->fd.fd, &conn->plan)) {
+		if (timeout_active(conn))
+			backend_del_timeout(conn);
+		conn->plan = conn->plan.next(conn, conn->plan.next_arg);
+		backend_plan_changed(conn);
+	}
 }
 
 /* Useful next functions. */

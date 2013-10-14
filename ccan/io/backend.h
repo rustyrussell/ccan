@@ -51,9 +51,9 @@ bool add_listener(struct io_listener *l);
 bool add_conn(struct io_conn *c);
 bool add_duplex(struct io_conn *c);
 void del_listener(struct io_listener *l);
-void backend_wakeup(struct io_conn *conn);
+void backend_plan_changed(struct io_conn *conn);
 void backend_add_timeout(struct io_conn *conn, struct timespec ts);
 void backend_del_timeout(struct io_conn *conn);
 
-struct io_plan do_ready(struct io_conn *conn);
+void io_ready(struct io_conn *conn);
 #endif /* CCAN_IO_BACKEND_H */
