@@ -36,7 +36,6 @@ enum io_result {
 
 enum io_state {
 	IO_IO,
-	IO_NEXT, /* eg starting, woken from idle, return from io_break. */
 	IO_IDLE,
 	IO_FINISHED
 };

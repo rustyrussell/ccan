@@ -8,7 +8,7 @@
 #include <sys/socket.h>
 #include <limits.h>
 
-static size_t num_fds = 0, max_fds = 0, num_next = 0, num_finished = 0, num_waiting = 0;
+static size_t num_fds = 0, max_fds = 0, num_finished = 0, num_waiting = 0;
 static struct pollfd *pollfds = NULL;
 static struct fd **fds = NULL;
 static struct timers timeouts;
@@ -79,9 +79,7 @@ bool add_listener(struct io_listener *l)
 
 static void adjust_counts(enum io_state state)
 {
-	if (state == IO_NEXT)
-		num_next++;
-	else if (state == IO_FINISHED)
+	if (state == IO_FINISHED)
 		num_finished++;
 }
 
@@ -122,6 +120,7 @@ bool add_duplex(struct io_conn *c)
 
 static void del_conn(struct io_conn *conn)
 {
+	assert(conn->plan.state == IO_FINISHED);
 	if (conn->finish)
 		conn->finish(conn, conn->finish_arg);
 	if (timeout_active(conn))
@@ -133,10 +132,7 @@ static void del_conn(struct io_conn *conn)
 		conn->duplex->duplex = NULL;
 	} else
 		del_fd(&conn->fd);
-	if (conn->plan.state == IO_FINISHED)
-		num_finished--;
-	else if (conn->plan.state == IO_NEXT)
-		num_next--;
+	num_finished--;
 }
 
 void del_listener(struct io_listener *l)
@@ -166,17 +162,16 @@ static void accept_conn(struct io_listener *l)
 }
 
 /* It's OK to miss some, as long as we make progress. */
-static void finish_and_next(bool finished_only)
+static void finish_conns(void)
 {
 	unsigned int i;
 
 	for (i = 0; !io_loop_return && i < num_fds; i++) {
 		struct io_conn *c, *duplex;
 
-		if (!num_finished) {
-			if (finished_only || num_next == 0)
-				break;
-		}
+		if (!num_finished)
+			break;
+
 		if (fds[i]->listener)
 			continue;
 		c = (void *)fds[i];
@@ -185,9 +180,6 @@ static void finish_and_next(bool finished_only)
 				del_conn(c);
 				free(c);
 				i--;
-			} else if (!finished_only && c->plan.state == IO_NEXT) {
-				backend_set_state(c, c->plan.next(c, c->plan.next_arg));
-				num_next--;
 			}
 		}
 	}
@@ -247,8 +239,8 @@ void *io_loop(void)
 			}
 		}
 
-		if (num_finished || num_next) {
-			finish_and_next(false);
+		if (num_finished) {
+			finish_conns();
 			/* Could have started/finished more. */
 			continue;
 		}
@@ -299,7 +291,7 @@ void *io_loop(void)
 	}
 
 	while (num_finished)
-		finish_and_next(true);
+		finish_conns();
 
 	ret = io_loop_return;
 	io_loop_return = NULL;
