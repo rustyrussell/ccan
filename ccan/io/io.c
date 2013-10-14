@@ -1,4 +1,4 @@
-/* Licensed under BSD-MIT - see LICENSE file for details */
+/* Licensed under LGPLv2.1+ - see LICENSE file for details */
 #include "io.h"
 #include "backend.h"
 #include <sys/types.h>
@@ -58,6 +58,7 @@ struct io_conn *io_new_conn_(int fd,
 	conn->fd.finish_arg = conn->fd.next_arg = arg;
 	conn->state = NEXT;
 	conn->duplex = NULL;
+	conn->timeout = NULL;
 	if (!add_conn(conn)) {
 		free(conn);
 		return NULL;
@@ -85,6 +86,7 @@ struct io_conn *io_duplex_(struct io_conn *old,
 	conn->fd.finish_arg = conn->fd.next_arg = arg;
 	conn->state = NEXT;
 	conn->duplex = old;
+	conn->timeout = NULL;
 	if (!add_duplex(conn)) {
 		free(conn);
 		return NULL;
@@ -117,6 +119,22 @@ struct io_next *io_next_(struct io_conn *conn,
 	conn->fd.next_arg = arg;
 
 	return to_ionext(conn);
+}
+
+bool io_timeout_(struct io_conn *conn, struct timespec ts,
+		 struct io_op *(*next)(struct io_conn *, void *), void *arg)
+{
+	if (!conn->timeout) {
+		conn->timeout = malloc(sizeof(*conn->timeout));
+		if (!conn->timeout)
+			return false;
+	} else
+		assert(!timeout_active(conn));
+
+	conn->timeout->next = next;
+	conn->timeout->next_arg = arg;
+	backend_add_timeout(conn, ts);
+	return true;
 }
 
 /* Queue some data to be written. */
@@ -175,6 +193,8 @@ void io_wake_(struct io_conn *conn,
 
 static struct io_op *do_next(struct io_conn *conn)
 {
+	if (timeout_active(conn))
+		backend_del_timeout(conn);
 	return conn->fd.next(conn, conn->fd.next_arg);
 }
 

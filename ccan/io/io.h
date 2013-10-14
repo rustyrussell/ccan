@@ -1,7 +1,8 @@
-/* Licensed under BSD-MIT - see LICENSE file for details */
+/* Licensed under LGPLv2.1+ - see LICENSE file for details */
 #ifndef CCAN_IO_H
 #define CCAN_IO_H
 #include <ccan/typesafe_cb/typesafe_cb.h>
+#include <ccan/time/time.h>
 #include <stdbool.h>
 #include <unistd.h>
 
@@ -150,6 +151,30 @@ struct io_op *io_write_partial(const void *data, size_t *len,
  * it will do that.
  */
 struct io_op *io_idle(struct io_conn *conn);
+
+/**
+ * io_timeout - set timeout function if the callback doesn't fire.
+ * @conn: the current connection.
+ * @ts: how long until the timeout should be called.
+ * @next: function to call.
+ * @arg: argument to @next.
+ *
+ * If the usual next callback is not called for this connection before @ts,
+ * this function will be called.  If next callback is called, the timeout
+ * is automatically removed.
+ *
+ * Returns false on allocation failure.  A connection can only have one
+ * timeout.
+ */
+#define io_timeout(conn, ts, next, arg) \
+	io_timeout_((conn), (ts),					\
+		    typesafe_cb_preargs(struct io_op *, void *,		\
+					(next), (arg),			\
+					struct io_conn *),		\
+		    (arg))
+
+bool io_timeout_(struct io_conn *conn, struct timespec ts,
+		 struct io_op *(*next)(struct io_conn *, void *), void *arg);
 
 /**
  * io_duplex - split an fd into two connections.

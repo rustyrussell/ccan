@@ -1,4 +1,4 @@
-/* Licensed under BSD-MIT - see LICENSE file for details */
+/* Licensed under LGPLv2.1+ - see LICENSE file for details */
 #include "io.h"
 #include "backend.h"
 #include <assert.h>
@@ -6,10 +6,12 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <limits.h>
 
 static size_t num_fds = 0, max_fds = 0, num_next = 0, num_finished = 0, num_waiting = 0;
 static struct pollfd *pollfds = NULL;
 static struct fd **fds = NULL;
+static struct timers timeouts;
 
 static bool add_fd(struct fd *fd, short events)
 {
@@ -90,6 +92,9 @@ static void del_conn(struct io_conn *conn)
 {
 	if (conn->fd.finish)
 		conn->fd.finish(conn, conn->fd.finish_arg);
+	if (timeout_active(conn))
+		backend_del_timeout(conn);
+	free(conn->timeout);
 	if (conn->duplex) {
 		/* In case fds[] pointed to the other one. */
 		fds[conn->fd.backend_info] = &conn->duplex->fd;
@@ -197,13 +202,54 @@ static void ready(struct io_conn *c)
 	backend_set_state(c, do_ready(c));
 }
 
+void backend_add_timeout(struct io_conn *conn, struct timespec duration)
+{
+	if (!timeouts.base)
+		timers_init(&timeouts, time_now());
+	timer_add(&timeouts, &conn->timeout->timer,
+		  time_add(time_now(), duration));
+	conn->timeout->conn = conn;
+}
+
+void backend_del_timeout(struct io_conn *conn)
+{
+	assert(conn->timeout->conn == conn);
+	timer_del(&timeouts, &conn->timeout->timer);
+	conn->timeout->conn = NULL;
+}
+
 /* This is the main loop. */
 void *io_loop(void)
 {
 	void *ret;
 
 	while (!io_loop_return) {
-		int i, r;
+		int i, r, timeout = INT_MAX;
+		struct timespec now;
+
+		if (timeouts.base) {
+			struct timespec first;
+			struct list_head expired;
+			struct io_timeout *t;
+
+			now = time_now();
+
+			/* Call functions for expired timers. */
+			timers_expire(&timeouts, now, &expired);
+			while ((t = list_pop(&expired, struct io_timeout, timer.list))) {
+				struct io_conn *conn = t->conn;
+				/* Clear, in case timer re-adds */
+				t->conn = NULL;
+				backend_set_state(conn, t->next(conn, t->next_arg));
+			}
+
+			/* Now figure out how long to wait for the next one. */
+			if (timer_earliest(&timeouts, &first)) {
+				uint64_t f = time_to_msec(time_sub(first, now));
+				if (f < INT_MAX)
+					timeout = f;
+			}
+		}
 
 		if (num_finished || num_next) {
 			finish_and_next(false);
@@ -217,7 +263,7 @@ void *io_loop(void)
 		/* You can't tell them all to go to sleep! */
 		assert(num_waiting);
 
-		r = poll(pollfds, num_fds, -1);
+		r = poll(pollfds, num_fds, timeout);
 		if (r < 0)
 			break;
 
@@ -225,10 +271,16 @@ void *io_loop(void)
 			struct io_conn *c = (void *)fds[i];
 			int events = pollfds[i].revents;
 
+			if (r == 0)
+				break;
+
 			if (fds[i]->listener) {
-				if (events & POLLIN)
+				if (events & POLLIN) {
 					accept_conn((void *)c);
+					r--;
+				}
 			} else if (events & (POLLIN|POLLOUT)) {
+				r--;
 				if (c->duplex) {
 					int mask = pollmask(c->duplex->state);
 					if (events & mask) {
@@ -240,13 +292,13 @@ void *io_loop(void)
 				}
 				ready(c);
 			} else if (events & POLLHUP) {
+				r--;
 				backend_set_state(c, io_close(c, NULL));
 				if (c->duplex)
 					backend_set_state(c->duplex,
 							  io_close(c->duplex,
 								   NULL));
 			}
-
 		}
 	}
 

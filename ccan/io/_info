@@ -159,7 +159,8 @@
  * 	return WIFEXITED(status) ? WEXITSTATUS(status) : 2;
  * }
  *
- * License: BSD-MIT
+ * License: LGPL (v2.1 or any later version)
+ * Author: Rusty Russell <rusty@rustcorp.com.au>
  */
 int main(int argc, char *argv[])
 {
@@ -167,6 +168,8 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/time\n");
+		printf("ccan/timer\n");
 		return 0;
 	}
 
