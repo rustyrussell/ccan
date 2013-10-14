@@ -6,6 +6,10 @@
 #include <sys/wait.h>
 #include <stdio.h>
 
+#ifndef PORT
+#define PORT "65001"
+#endif
+
 static void finish_ok(struct io_conn *conn, int *state)
 {
 	ok1(*state == 1);
@@ -62,7 +66,7 @@ int main(void)
 
 	/* This is how many tests you plan to run */
 	plan_tests(9);
-	fd = make_listen_fd("65001", &addrinfo);
+	fd = make_listen_fd(PORT, &addrinfo);
 	ok1(fd >= 0);
 	l = io_new_listener(fd, init_conn, &state);
 	ok1(l);

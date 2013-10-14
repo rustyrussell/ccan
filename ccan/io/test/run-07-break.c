@@ -6,6 +6,10 @@
 #include <sys/wait.h>
 #include <stdio.h>
 
+#ifndef PORT
+#define PORT "65007"
+#endif
+
 struct data {
 	int state;
 	char buf[4];
@@ -78,7 +82,7 @@ int main(void)
 	/* This is how many tests you plan to run */
 	plan_tests(13);
 	d->state = 0;
-	fd = make_listen_fd("65007", &addrinfo);
+	fd = make_listen_fd(PORT, &addrinfo);
 	ok1(fd >= 0);
 	l = io_new_listener(fd, init_conn, d);
 	ok1(l);

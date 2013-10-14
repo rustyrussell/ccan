@@ -9,6 +9,10 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#ifndef PORT
+#define PORT "65006"
+#endif
+
 static struct io_conn *idler;
 
 struct data {
@@ -98,7 +102,7 @@ int main(void)
 	/* This is how many tests you plan to run */
 	plan_tests(14);
 	d->state = 0;
-	fd = make_listen_fd("65006", &addrinfo);
+	fd = make_listen_fd(PORT, &addrinfo);
 	ok1(fd >= 0);
 	l = io_new_listener(fd, init_conn, d);
 	ok1(l);

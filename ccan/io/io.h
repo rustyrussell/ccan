@@ -8,6 +8,14 @@
 
 struct io_conn;
 
+#ifdef DEBUG
+extern bool io_plan_for_other;
+extern bool (*io_debug)(struct io_conn *conn);
+#define io_plan_other() ((io_plan_for_other = true))
+#else
+#define io_plan_other() (void)0
+#endif
+
 struct io_state_read {
 	char *buf;
 	size_t len;
@@ -63,10 +71,11 @@ struct io_plan {
  * Returns NULL on error (and sets errno).
  */
 #define io_new_conn(fd, plan, finish, arg)				\
-	io_new_conn_((fd), (plan),					\
-		     typesafe_cb_preargs(void, void *, (finish), (arg),	\
-					 struct io_conn *),		\
-		     (arg))
+	(io_plan_other(), io_new_conn_((fd), (plan),			\
+				       typesafe_cb_preargs(void, void *, \
+							   (finish), (arg), \
+							   struct io_conn *), \
+				       (arg)))
 struct io_conn *io_new_conn_(int fd,
 			     struct io_plan plan,
 			     void (*finish)(struct io_conn *, void *),
@@ -237,10 +246,11 @@ bool io_timeout_(struct io_conn *conn, struct timespec ts,
  * You must io_close() both of them to close the fd.
  */
 #define io_duplex(conn, plan, finish, arg)				\
-	io_duplex_((conn), (plan),					\
-		   typesafe_cb_preargs(void, void *, (finish), (arg),	\
-				       struct io_conn *),		\
-		   (arg))
+	(io_plan_other(), io_duplex_((conn), (plan),			\
+				     typesafe_cb_preargs(void, void *,	\
+							 (finish), (arg), \
+							 struct io_conn *), \
+				     (arg)))
 
 struct io_conn *io_duplex_(struct io_conn *conn,
 			   struct io_plan plan,
@@ -254,7 +264,8 @@ struct io_conn *io_duplex_(struct io_conn *conn,
  *
  * This makes @conn do I/O the next time around the io_loop().
  */
-void io_wake(struct io_conn *conn, struct io_plan plan);
+#define io_wake(conn, plan) (io_plan_other(), io_wake_((conn), (plan)))
+void io_wake_(struct io_conn *conn, struct io_plan plan);
 
 /**
  * io_break - return from io_loop()
@@ -267,7 +278,8 @@ void io_wake(struct io_conn *conn, struct io_plan plan);
  *
  * If io_loop() is called again, then @plan will be carried out.
  */
-struct io_plan io_break(void *ret, struct io_plan plan);
+#define io_break(ret, plan) (io_plan_other(), io_break_((ret), (plan)))
+struct io_plan io_break_(void *ret, struct io_plan plan);
 
 /* FIXME: io_recvfrom/io_sendto */
 

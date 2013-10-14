@@ -6,6 +6,10 @@
 #include <sys/wait.h>
 #include <stdio.h>
 
+#ifndef PORT
+#define PORT "65004"
+#endif
+
 struct data {
 	int state;
 	size_t bytes;
@@ -91,7 +95,7 @@ int main(void)
 	d->bytes = 1024*1024;
 	d->buf = malloc(d->bytes);
 	memset(d->buf, 'a', d->bytes);
-	fd = make_listen_fd("65004", &addrinfo);
+	fd = make_listen_fd(PORT, &addrinfo);
 	ok1(fd >= 0);
 	l = io_new_listener(fd, init_conn, d);
 	ok1(l);

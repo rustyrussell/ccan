@@ -12,6 +12,49 @@ static size_t num_fds = 0, max_fds = 0, num_closing = 0, num_waiting = 0;
 static struct pollfd *pollfds = NULL;
 static struct fd **fds = NULL;
 static struct timers timeouts;
+#ifdef DEBUG
+static unsigned int io_loop_level;
+static struct io_conn *free_later;
+static void io_loop_enter(void)
+{
+	io_loop_level++;
+}
+static void io_loop_exit(void)
+{
+	io_loop_level--;
+	if (io_loop_level == 0) {
+		/* Delayed free. */
+		while (free_later) {
+			struct io_conn *c = free_later;
+			free_later = c->finish_arg;
+			free(c);
+		}
+	}
+}
+static void free_conn(struct io_conn *conn)
+{
+	/* Only free on final exit: chain via finish. */
+	if (io_loop_level > 1) {
+		struct io_conn *c;
+		for (c = free_later; c; c = c->finish_arg)
+			assert(c != conn);
+		conn->finish_arg = free_later;
+		free_later = conn;
+	} else
+		free(conn);
+}
+#else
+static void io_loop_enter(void)
+{
+}
+static void io_loop_exit(void)
+{
+}
+static void free_conn(struct io_conn *conn)
+{
+	free(conn);
+}
+#endif
 
 static bool add_fd(struct fd *fd, short events)
 {
@@ -83,7 +126,13 @@ bool add_listener(struct io_listener *l)
 
 void backend_plan_changed(struct io_conn *conn)
 {
-	struct pollfd *pfd = &pollfds[conn->fd.backend_info];
+	struct pollfd *pfd;
+
+	/* This can happen with debugging and delayed free... */
+	if (conn->fd.backend_info == -1)
+		return;
+
+	pfd = &pollfds[conn->fd.backend_info];
 
 	if (pfd->events)
 		num_waiting--;
@@ -133,6 +182,7 @@ static void del_conn(struct io_conn *conn)
 		/* In case fds[] pointed to the other one. */
 		fds[conn->fd.backend_info] = &conn->duplex->fd;
 		conn->duplex->duplex = NULL;
+		conn->fd.backend_info = -1;
 	} else
 		del_fd(&conn->fd);
 	num_closing--;
@@ -176,7 +226,7 @@ static void finish_conns(void)
 		for (duplex = c->duplex; c; c = duplex, duplex = NULL) {
 			if (!c->plan.next) {
 				del_conn(c);
-				free(c);
+				free_conn(c);
 				i--;
 			}
 		}
@@ -204,9 +254,12 @@ void *io_loop(void)
 {
 	void *ret;
 
+	io_loop_enter();
+
 	while (!io_loop_return) {
 		int i, r, timeout = INT_MAX;
 		struct timespec now;
+		bool some_timeouts = false;
 
 		if (timeouts.base) {
 			struct timespec first;
@@ -221,7 +274,9 @@ void *io_loop(void)
 				struct io_conn *conn = t->conn;
 				/* Clear, in case timer re-adds */
 				t->conn = NULL;
+				set_current(conn);
 				set_plan(conn, t->next(conn, t->next_arg));
+				some_timeouts = true;
 			}
 
 			/* Now figure out how long to wait for the next one. */
@@ -237,6 +292,10 @@ void *io_loop(void)
 			/* Could have started/finished more. */
 			continue;
 		}
+
+		/* debug can recurse on io_loop; anything can change. */
+		if (doing_debug() && some_timeouts)
+			continue;
 
 		if (num_fds == 0)
 			break;
@@ -267,17 +326,27 @@ void *io_loop(void)
 					if (events & mask) {
 						io_ready(c->duplex);
 						events &= ~mask;
+						/* debug can recurse;
+						 * anything can change. */
+						if (doing_debug())
+							break;
 						if (!(events&(POLLIN|POLLOUT)))
 							continue;
 					}
 				}
 				io_ready(c);
+				/* debug can recurse; anything can change. */
+				if (doing_debug())
+					break;
 			} else if (events & POLLHUP) {
 				r--;
+				set_current(c);
 				set_plan(c, io_close(c, NULL));
-				if (c->duplex)
+				if (c->duplex) {
+					set_current(c->duplex);
 					set_plan(c->duplex,
 						 io_close(c->duplex, NULL));
+				}
 			}
 		}
 	}
@@ -287,5 +356,7 @@ void *io_loop(void)
 
 	ret = io_loop_return;
 	io_loop_return = NULL;
+
+	io_loop_exit();
 	return ret;
 }

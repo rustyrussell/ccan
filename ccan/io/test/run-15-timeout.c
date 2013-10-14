@@ -7,6 +7,10 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#ifndef PORT
+#define PORT "65015"
+#endif
+
 struct data {
 	int state;
 	int timeout_usec;
@@ -93,7 +97,7 @@ int main(void)
 	d->state = 0;
 	d->timed_out = false;
 	d->timeout_usec = 100000;
-	fd = make_listen_fd("65002", &addrinfo);
+	fd = make_listen_fd(PORT, &addrinfo);
 	ok1(fd >= 0);
 	l = io_new_listener(fd, init_conn, d);
 	ok1(l);

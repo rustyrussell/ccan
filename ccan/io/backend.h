@@ -47,6 +47,26 @@ static inline bool timeout_active(const struct io_conn *conn)
 
 extern void *io_loop_return;
 
+#ifdef DEBUG
+extern struct io_conn *current;
+static inline void set_current(struct io_conn *conn)
+{
+	current = conn;
+}
+static inline bool doing_debug(void)
+{
+	return io_debug != NULL;
+}
+#else
+static inline void set_current(struct io_conn *conn)
+{
+}
+static inline bool doing_debug(void)
+{
+	return false;
+}
+#endif
+
 bool add_listener(struct io_listener *l);
 bool add_conn(struct io_conn *c);
 bool add_duplex(struct io_conn *c);
