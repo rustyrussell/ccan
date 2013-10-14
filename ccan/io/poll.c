@@ -8,7 +8,7 @@
 #include <sys/socket.h>
 #include <limits.h>
 
-static size_t num_fds = 0, max_fds = 0, num_finished = 0, num_waiting = 0;
+static size_t num_fds = 0, max_fds = 0, num_closing = 0, num_waiting = 0;
 static struct pollfd *pollfds = NULL;
 static struct fd **fds = NULL;
 static struct timers timeouts;
@@ -77,12 +77,6 @@ bool add_listener(struct io_listener *l)
 	return true;
 }
 
-static void adjust_counts(enum io_state state)
-{
-	if (state == IO_FINISHED)
-		num_finished++;
-}
-
 static void update_pollevents(struct io_conn *conn)
 {
 	struct pollfd *pfd = &pollfds[conn->fd.backend_info];
@@ -100,14 +94,17 @@ static void update_pollevents(struct io_conn *conn)
 	if (pfd->events)
 		num_waiting++;
 
-	adjust_counts(conn->plan.state);
+	if (!conn->plan.next)
+		num_closing++;
 }
 
 bool add_conn(struct io_conn *c)
 {
 	if (!add_fd(&c->fd, c->plan.pollflag))
 		return false;
-	adjust_counts(c->plan.state);
+	/* Immediate close is allowed. */
+	if (!c->plan.next)
+		num_closing++;
 	return true;
 }
 
@@ -120,7 +117,6 @@ bool add_duplex(struct io_conn *c)
 
 static void del_conn(struct io_conn *conn)
 {
-	assert(conn->plan.state == IO_FINISHED);
 	if (conn->finish)
 		conn->finish(conn, conn->finish_arg);
 	if (timeout_active(conn))
@@ -132,7 +128,7 @@ static void del_conn(struct io_conn *conn)
 		conn->duplex->duplex = NULL;
 	} else
 		del_fd(&conn->fd);
-	num_finished--;
+	num_closing--;
 }
 
 void del_listener(struct io_listener *l)
@@ -169,14 +165,14 @@ static void finish_conns(void)
 	for (i = 0; !io_loop_return && i < num_fds; i++) {
 		struct io_conn *c, *duplex;
 
-		if (!num_finished)
+		if (!num_closing)
 			break;
 
 		if (fds[i]->listener)
 			continue;
 		c = (void *)fds[i];
 		for (duplex = c->duplex; c; c = duplex, duplex = NULL) {
-			if (c->plan.state == IO_FINISHED) {
+			if (!c->plan.next) {
 				del_conn(c);
 				free(c);
 				i--;
@@ -239,7 +235,7 @@ void *io_loop(void)
 			}
 		}
 
-		if (num_finished) {
+		if (num_closing) {
 			finish_conns();
 			/* Could have started/finished more. */
 			continue;
@@ -290,7 +286,7 @@ void *io_loop(void)
 		}
 	}
 
-	while (num_finished)
+	while (num_closing)
 		finish_conns();
 
 	ret = io_loop_return;

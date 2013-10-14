@@ -94,6 +94,8 @@ struct io_conn *io_duplex_(struct io_conn *old,
 bool io_timeout_(struct io_conn *conn, struct timespec ts,
 		 struct io_plan (*cb)(struct io_conn *, void *), void *arg)
 {
+	assert(cb);
+
 	if (!conn->timeout) {
 		conn->timeout = malloc(sizeof(*conn->timeout));
 		if (!conn->timeout)
@@ -128,13 +130,13 @@ struct io_plan io_write_(const void *data, size_t len,
 {
 	struct io_plan plan;
 
+	assert(cb);
 	plan.u.write.buf = data;
 	plan.u.write.len = len;
 	plan.io = do_write;
 	plan.next = cb;
 	plan.next_arg = arg;
 	plan.pollflag = POLLOUT;
-	plan.state = IO_IO;
 	return plan;
 }
 
@@ -159,13 +161,13 @@ struct io_plan io_read_(void *data, size_t len,
 {
 	struct io_plan plan;
 
+	assert(cb);
 	plan.u.read.buf = data;
 	plan.u.read.len = len;
 	plan.io = do_read;
 	plan.next = cb;
 	plan.next_arg = arg;
 	plan.pollflag = POLLIN;
-	plan.state = IO_IO;
 	return plan;
 }
 
@@ -186,13 +188,13 @@ struct io_plan io_read_partial_(void *data, size_t *len,
 {
 	struct io_plan plan;
 
+	assert(cb);
 	plan.u.readpart.buf = data;
 	plan.u.readpart.lenp = len;
 	plan.io = do_read_partial;
 	plan.next = cb;
 	plan.next_arg = arg;
 	plan.pollflag = POLLIN;
-	plan.state = IO_IO;
 
 	return plan;
 }
@@ -214,13 +216,13 @@ struct io_plan io_write_partial_(const void *data, size_t *len,
 {
 	struct io_plan plan;
 
+	assert(cb);
 	plan.u.writepart.buf = data;
 	plan.u.writepart.lenp = len;
 	plan.io = do_write_partial;
 	plan.next = cb;
 	plan.next_arg = arg;
 	plan.pollflag = POLLOUT;
-	plan.state = IO_IO;
 
 	return plan;
 }
@@ -230,8 +232,9 @@ struct io_plan io_idle(void)
 	struct io_plan plan;
 
 	plan.pollflag = 0;
-	plan.state = IO_IO;
 	plan.io = NULL;
+	/* Never called (overridded by io_wake), but NULL means closing */
+	plan.next = io_close;
 
 	return plan;
 }
@@ -239,9 +242,10 @@ struct io_plan io_idle(void)
 void io_wake(struct io_conn *conn, struct io_plan plan)
 
 {
-	/* It might have finished, but we haven't called its finish() yet. */
-	if (conn->plan.state == IO_FINISHED)
+	/* It might be closing, but we haven't called its finish() yet. */
+	if (!conn->plan.next)
 		return;
+	/* It was idle, right? */
 	assert(!conn->plan.io);
 	conn->plan = plan;
 	backend_wakeup(conn);
@@ -256,7 +260,6 @@ static struct io_plan do_next(struct io_conn *conn)
 
 struct io_plan do_ready(struct io_conn *conn)
 {
-	assert(conn->plan.state == IO_IO);
 	switch (conn->plan.io(conn)) {
 	case RESULT_CLOSE:
 		return io_close(conn, NULL);
@@ -275,8 +278,9 @@ struct io_plan io_close(struct io_conn *conn, void *arg)
 {
 	struct io_plan plan;
 
-	plan.state = IO_FINISHED;
 	plan.pollflag = 0;
+	/* This means we're closing. */
+	plan.next = NULL;
 
 	return plan;
 }
@@ -284,6 +288,7 @@ struct io_plan io_close(struct io_conn *conn, void *arg)
 /* Exit the loop, returning this (non-NULL) arg. */
 struct io_plan io_break(void *ret, struct io_plan plan)
 {
+	assert(ret);
 	io_loop_return = ret;
 
 	return plan;

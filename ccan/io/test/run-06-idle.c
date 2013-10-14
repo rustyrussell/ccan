@@ -37,6 +37,11 @@ static void finish_idle(struct io_conn *conn, struct data *d)
 	io_break(d, io_idle());
 }
 
+static struct io_plan never(struct io_conn *conn, void *arg)
+{
+	abort();
+}
+
 static void init_conn(int fd, struct data *d)
 {
 	int fd2;
@@ -48,7 +53,7 @@ static void init_conn(int fd, struct data *d)
 	/* This will wake us up, as read will fail. */
 	fd2 = open("/dev/null", O_RDONLY);
 	ok1(fd2 >= 0);
-	ok1(io_new_conn(fd2, io_read(idler, 1, NULL, NULL), finish_waker, d));
+	ok1(io_new_conn(fd2, io_read(idler, 1, never, NULL), finish_waker, d));
 }
 
 static int make_listen_fd(const char *port, struct addrinfo **info)

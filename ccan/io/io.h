@@ -34,11 +34,6 @@ enum io_result {
 	RESULT_CLOSE
 };
 
-enum io_state {
-	IO_IO,
-	IO_FINISHED
-};
-
 /**
  * struct io_plan - returned from a setup function.
  *
@@ -46,8 +41,9 @@ enum io_state {
  */
 struct io_plan {
 	int pollflag;
-	enum io_state state;
+	/* Only NULL if idle. */
 	enum io_result (*io)(struct io_conn *conn);
+	/* Only NULL if closing. */
 	struct io_plan (*next)(struct io_conn *, void *arg);
 	void *next_arg;
 
