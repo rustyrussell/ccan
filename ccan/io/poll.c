@@ -112,7 +112,7 @@ void del_listener(struct io_listener *l)
 	del_fd(&l->fd);
 }
 
-void backend_set_state(struct io_conn *conn, struct io_plan *plan)
+static void backend_set_state(struct io_conn *conn, struct io_plan *plan)
 {
 	enum io_state state = from_ioplan(plan);
 	struct pollfd *pfd = &pollfds[conn->fd.backend_info];
@@ -136,6 +136,11 @@ void backend_set_state(struct io_conn *conn, struct io_plan *plan)
 		num_finished++;
 
 	conn->state = state;
+}
+
+void backend_wakeup(struct io_conn *conn)
+{
+	num_next++;
 }
 
 static void accept_conn(struct io_listener *l)

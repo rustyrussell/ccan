@@ -239,7 +239,8 @@ void io_wake_(struct io_conn *conn,
 	assert(conn->state == IO_IDLE);
 	conn->next = fn;
 	conn->next_arg = arg;
-	backend_set_state(conn, to_ioplan(IO_NEXT));
+	conn->state = IO_NEXT;
+	backend_wakeup(conn);
 }
 
 static struct io_plan *do_next(struct io_conn *conn)
