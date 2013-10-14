@@ -7,7 +7,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
-static size_t num_fds = 0, max_fds = 0, num_next = 0, num_finished = 0;
+static size_t num_fds = 0, max_fds = 0, num_next = 0, num_finished = 0, num_waiting = 0;
 static struct pollfd *pollfds = NULL;
 static struct fd **fds = NULL;
 
@@ -65,7 +65,10 @@ static void del_fd(struct fd *fd)
 
 bool add_listener(struct io_listener *l)
 {
-	return add_fd(&l->fd, POLLIN);
+	if (!add_fd(&l->fd, POLLIN))
+		return false;
+	num_waiting++;
+	return true;
 }
 
 bool add_conn(struct io_conn *c)
@@ -123,6 +126,9 @@ void backend_set_state(struct io_conn *conn, struct io_op *op)
 	enum io_state state = from_ioop(op);
 	struct pollfd *pfd = &pollfds[conn->fd.backend_info];
 
+	if (pfd->events)
+		num_waiting--;
+
 	pfd->events = pollmask(state);
 	if (conn->duplex) {
 		int mask = pollmask(conn->duplex->state);
@@ -130,6 +136,8 @@ void backend_set_state(struct io_conn *conn, struct io_op *op)
 		assert(!mask || pfd->events != mask);
 		pfd->events |= mask;
 	}
+	if (pfd->events)
+		num_waiting++;
 
 	if (state == NEXT)
 		num_next++;
@@ -205,6 +213,9 @@ void *io_loop(void)
 
 		if (num_fds == 0)
 			break;
+
+		/* You can't tell them all to go to sleep! */
+		assert(num_waiting);
 
 		r = poll(pollfds, num_fds, -1);
 		if (r < 0)
