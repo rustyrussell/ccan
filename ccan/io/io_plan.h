@@ -81,6 +81,15 @@ extern bool (*io_debug_conn)(struct io_conn *conn);
 struct io_plan io_debug(struct io_plan plan);
 
 /**
+ * io_debug_io - return from function which actually does I/O.
+ *
+ * This determines if we are debugging the current connection: if so,
+ * it immediately sets the next function and calls into io_loop() to
+ * create a linear call chain.
+ */
+int io_debug_io(int ret);
+
+/**
  * io_plan_no_debug - mark the next plan not to be called immediately.
  *
  * Most routines which take a plan are about to apply it to the current
@@ -98,6 +107,10 @@ extern bool io_plan_nodebug;
 static inline struct io_plan io_debug(struct io_plan plan)
 {
 	return plan;
+}
+static inline int io_debug_io(int ret)
+{
+	return ret;
 }
 #define io_plan_no_debug() (void)0
 #endif

@@ -172,7 +172,7 @@ bool add_duplex(struct io_conn *c)
 	return true;
 }
 
-static void del_conn(struct io_conn *conn)
+void backend_del_conn(struct io_conn *conn)
 {
 	if (conn->finish) {
 		errno = conn->plan.u.close.saved_errno;
@@ -189,6 +189,7 @@ static void del_conn(struct io_conn *conn)
 	} else
 		del_fd(&conn->fd);
 	num_closing--;
+	free_conn(conn);
 }
 
 void del_listener(struct io_listener *l)
@@ -213,7 +214,7 @@ static void accept_conn(struct io_listener *l)
 }
 
 /* It's OK to miss some, as long as we make progress. */
-static void finish_conns(void)
+static bool finish_conns(struct io_conn **ready)
 {
 	unsigned int i;
 
@@ -228,12 +229,16 @@ static void finish_conns(void)
 		c = (void *)fds[i];
 		for (duplex = c->duplex; c; c = duplex, duplex = NULL) {
 			if (!c->plan.next) {
-				del_conn(c);
-				free_conn(c);
+				if (doing_debug_on(c) && ready) {
+					*ready = c;
+					return true;
+				}
+				backend_del_conn(c);
 				i--;
 			}
 		}
 	}
+	return false;
 }
 
 void backend_add_timeout(struct io_conn *conn, struct timespec duration)
@@ -253,7 +258,7 @@ void backend_del_timeout(struct io_conn *conn)
 }
 
 /* This is the main loop. */
-void *io_loop(void)
+void *do_io_loop(struct io_conn **ready)
 {
 	void *ret;
 
@@ -291,7 +296,9 @@ void *io_loop(void)
 		}
 
 		if (num_closing) {
-			finish_conns();
+			/* If this finishes a debugging con, return now. */
+			if (finish_conns(ready))
+				return NULL;
 			/* Could have started/finished more. */
 			continue;
 		}
@@ -327,6 +334,11 @@ void *io_loop(void)
 				if (c->duplex) {
 					int mask = c->duplex->plan.pollflag;
 					if (events & mask) {
+						if (doing_debug_on(c->duplex)
+							&& ready) {
+							*ready = c->duplex;
+							return NULL;
+						}
 						io_ready(c->duplex);
 						events &= ~mask;
 						/* debug can recurse;
@@ -336,6 +348,10 @@ void *io_loop(void)
 						if (!(events&(POLLIN|POLLOUT)))
 							continue;
 					}
+				}
+				if (doing_debug_on(c) && ready) {
+					*ready = c;
+					return NULL;
 				}
 				io_ready(c);
 				/* debug can recurse; anything can change. */
@@ -354,12 +370,19 @@ void *io_loop(void)
 		}
 	}
 
-	while (num_closing)
-		finish_conns();
+	while (num_closing && !io_loop_return) {
+		if (finish_conns(ready))
+			return NULL;
+	}
 
 	ret = io_loop_return;
 	io_loop_return = NULL;
 
 	io_loop_exit();
 	return ret;
+}
+
+void *io_loop(void)
+{
+	return do_io_loop(NULL);
 }

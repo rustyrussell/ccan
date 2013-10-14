@@ -24,24 +24,78 @@ bool io_debug_wakeup;
 
 struct io_plan io_debug(struct io_plan plan)
 {
+	struct io_conn *ready = NULL;
+
 	if (io_plan_nodebug) {
 		io_plan_nodebug = false;
 		return plan;
 	}
 
-	if (!io_debug_conn || !current)
-		return plan;
-
-	if (!io_debug_conn(current) && !io_debug_wakeup)
-		return plan;
+	if (!current || !doing_debug_on(current)) {
+		if (!io_debug_wakeup)
+			return plan;
+	}
 
 	io_debug_wakeup = false;
 	current->plan = plan;
 	backend_plan_changed(current);
 
 	/* Call back into the loop immediately. */
-	io_loop_return = io_loop();
-	return plan;
+	io_loop_return = do_io_loop(&ready);
+
+	if (ready) {
+		set_current(ready);
+		if (!ready->plan.next) {
+			/* Call finish function immediately. */
+			if (ready->finish) {
+				errno = ready->plan.u.close.saved_errno;
+				ready->finish(ready, ready->finish_arg);
+				ready->finish = NULL;
+			}
+			backend_del_conn(ready);
+		} else {
+			/* Calls back in itself, via io_debug_io(). */
+			if (ready->plan.io(ready->fd.fd, &ready->plan) != 2)
+				abort();
+		}
+		set_current(NULL);
+	}
+
+	/* Return a do-nothing plan, so backend_plan_changed in
+	 * io_ready doesn't do anything (it's already been called). */
+	return io_idle_();
+}
+
+int io_debug_io(int ret)
+{
+	/* Cache it for debugging; current changes. */
+	struct io_conn *conn = current;
+	int saved_errno = errno;
+
+	if (!doing_debug_on(conn))
+		return ret;
+
+	/* These will all go linearly through the io_debug() path above. */
+	switch (ret) {
+	case -1:
+		/* This will call io_debug above. */
+		errno = saved_errno;
+		io_close();
+		break;
+	case 0: /* Keep going with plan. */
+		io_debug(conn->plan);
+		break;
+	case 1: /* Done: get next plan. */
+		if (timeout_active(conn))
+			backend_del_timeout(conn);
+		conn->plan.next(conn, conn->plan.next_arg);
+		break;
+	default:
+		abort();
+	}
+
+	/* Normally-invalid value, used for sanity check. */
+	return 2;
 }
 
 static void debug_io_wake(struct io_conn *conn)
@@ -173,11 +227,11 @@ static int do_write(int fd, struct io_plan *plan)
 {
 	ssize_t ret = write(fd, plan->u.write.buf, plan->u.write.len);
 	if (ret < 0)
-		return -1;
+		return io_debug_io(-1);
 
 	plan->u.write.buf += ret;
 	plan->u.write.len -= ret;
-	return (plan->u.write.len == 0);
+	return io_debug_io(plan->u.write.len == 0);
 }
 
 /* Queue some data to be written. */
@@ -202,11 +256,11 @@ static int do_read(int fd, struct io_plan *plan)
 {
 	ssize_t ret = read(fd, plan->u.read.buf, plan->u.read.len);
 	if (ret <= 0)
-		return -1;
+		return io_debug_io(-1);
 
 	plan->u.read.buf += ret;
 	plan->u.read.len -= ret;
-	return (plan->u.read.len == 0);
+	return io_debug_io(plan->u.read.len == 0);
 }
 
 /* Queue a request to read into a buffer. */
@@ -231,10 +285,10 @@ static int do_read_partial(int fd, struct io_plan *plan)
 {
 	ssize_t ret = read(fd, plan->u.readpart.buf, *plan->u.readpart.lenp);
 	if (ret <= 0)
-		return -1;
+		return io_debug_io(-1);
 
 	*plan->u.readpart.lenp = ret;
-	return 1;
+	return io_debug_io(1);
 }
 
 /* Queue a partial request to read into a buffer. */
@@ -259,10 +313,10 @@ static int do_write_partial(int fd, struct io_plan *plan)
 {
 	ssize_t ret = write(fd, plan->u.writepart.buf, *plan->u.writepart.lenp);
 	if (ret < 0)
-		return -1;
+		return io_debug_io(-1);
 
 	*plan->u.writepart.lenp = ret;
-	return 1;
+	return io_debug_io(1);
 }
 
 /* Queue a partial write request. */
@@ -313,23 +367,21 @@ void io_wake_(struct io_conn *conn, struct io_plan plan)
 
 void io_ready(struct io_conn *conn)
 {
+	set_current(conn);
 	switch (conn->plan.io(conn->fd.fd, &conn->plan)) {
 	case -1: /* Failure means a new plan: close up. */
-		set_current(conn);
 		conn->plan = io_close();
 		backend_plan_changed(conn);
-		set_current(NULL);
 		break;
 	case 0: /* Keep going with plan. */
 		break;
 	case 1: /* Done: get next plan. */
-		set_current(conn);
 		if (timeout_active(conn))
 			backend_del_timeout(conn);
 		conn->plan = conn->plan.next(conn, conn->plan.next_arg);
 		backend_plan_changed(conn);
-		set_current(NULL);
 	}
+	set_current(NULL);
 }
 
 /* Close the connection, we're done. */

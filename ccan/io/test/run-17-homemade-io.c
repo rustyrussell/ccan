@@ -41,7 +41,7 @@ static int do_read_packet(int fd, struct io_plan *plan)
 		ok1(pkt->state == 2);
 		pkt->state++;
 		if (pkt->len == 0)
-			return 1;
+			return io_debug_io(1);
 		if (!pkt->contents && !(pkt->contents = malloc(pkt->len)))
 			goto fail;
 		else {
@@ -58,12 +58,12 @@ static int do_read_packet(int fd, struct io_plan *plan)
 	plan->u.ptr_len.len += ret;
 
 	/* Finished? */
-	return (plan->u.ptr_len.len >= sizeof(pkt->len)
-		&& plan->u.ptr_len.len == pkt->len + sizeof(pkt->len));
+	return io_debug_io(plan->u.ptr_len.len >= sizeof(pkt->len)
+			   && plan->u.ptr_len.len == pkt->len + sizeof(pkt->len));
 
 fail:
 	free(pkt->contents);
-	return -1;
+	return io_debug_io(-1);
 }
 
 static struct io_plan io_read_packet(struct packet *pkt,

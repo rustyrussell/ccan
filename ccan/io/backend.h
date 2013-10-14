@@ -53,13 +53,21 @@ static inline void set_current(struct io_conn *conn)
 {
 	current = conn;
 }
+static inline bool doing_debug_on(struct io_conn *conn)
+{
+	return io_debug_conn && io_debug_conn(conn);
+}
 static inline bool doing_debug(void)
 {
-	return io_debug_conn != NULL;
+	return io_debug_conn;
 }
 #else
 static inline void set_current(struct io_conn *conn)
 {
+}
+static inline bool doing_debug_on(struct io_conn *conn)
+{
+	return false;
 }
 static inline bool doing_debug(void)
 {
@@ -74,6 +82,8 @@ void del_listener(struct io_listener *l);
 void backend_plan_changed(struct io_conn *conn);
 void backend_add_timeout(struct io_conn *conn, struct timespec ts);
 void backend_del_timeout(struct io_conn *conn);
+void backend_del_conn(struct io_conn *conn);
 
 void io_ready(struct io_conn *conn);
+void *do_io_loop(struct io_conn **ready);
 #endif /* CCAN_IO_BACKEND_H */
