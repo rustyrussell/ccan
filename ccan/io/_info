@@ -1,0 +1,167 @@
+#include <stdio.h>
+#include <string.h>
+#include "config.h"
+
+/**
+ * io - simple library for asynchronous io handling.
+ *
+ * io provides a mechanism to write I/O servers with multiple
+ * connections.  Each callback indicates what I/O they plan next
+ * (eg. read, write).  It is also possible to write custom I/O
+ * plans.
+ *
+ * When compiled with DEBUG, control flow is changed so that rather
+ * than returning to the main io_loop(), plans are executed sequentially
+ * providing a backtrace showing what has occurred on that connection.
+ * Which connection(s) do this depends on the user-specified io_debug
+ * function.
+ *
+ * Example:
+ * // Given tr A-Z a-z outputs tr a-z a-z
+ * #include <ccan/io/io.h>
+ * #include <ccan/err/err.h>
+ * #include <assert.h>
+ * #include <stdlib.h>
+ * #include <signal.h>
+ * #include <sys/types.h>
+ * #include <sys/wait.h>
+ *
+ * struct buffer {
+ * 	size_t max, off, rlen;
+ * 	char *buf;
+ * };
+ *
+ * struct stdin_buffer {
+ * 	struct io_conn *reader, *writer;
+ * 	size_t len;
+ * 	char inbuf[4096];
+ * };
+ *
+ * // This reads from stdin.
+ * static struct io_plan wake_writer(struct io_conn *, struct stdin_buffer *);
+ * // This writes the stdin buffer to the child.
+ * static struct io_plan wake_reader(struct io_conn *, struct stdin_buffer *);
+ *
+ * static struct io_plan wake_writer(struct io_conn *c, struct stdin_buffer *b)
+ * {
+ * 	assert(c == b->reader);
+ * 	io_wake(b->writer, io_write(b->inbuf, b->len, wake_reader, b));
+ * 	return io_idle();
+ * }
+ *
+ * static void reader_exit(struct io_conn *c, struct stdin_buffer *b)
+ * {
+ * 	assert(c == b->reader);
+ * 	io_wake(b->writer, io_close());
+ * 	b->reader = NULL;
+ * }
+ *
+ * static struct io_plan wake_reader(struct io_conn *c, struct stdin_buffer *b)
+ * {
+ * 	assert(c == b->writer);
+ *	if (!b->reader)
+ *		return io_close();
+ *	b->len = sizeof(b->inbuf);
+ * 	io_wake(b->reader, io_read_partial(b->inbuf, &b->len, wake_writer, b));
+ * 	return io_idle();
+ * }
+ *
+ * static void fail_child_write(struct io_conn *conn, struct stdin_buffer *b)
+ * {
+ * 	if (b->reader)
+ * 		err(1, "Failed writing to child.");
+ * }
+ *
+ * // This reads from the child and saves it into buffer.
+ * static struct io_plan read_from_child(struct io_conn *conn,
+ *					 struct buffer *b)
+ * {
+ * 	b->off += b->rlen;
+ *
+ * 	if (b->off == b->max)
+ * 		b->buf = realloc(b->buf, b->max *= 2);
+ *
+ * 	b->rlen = b->max - b->off;
+ * 	return io_read_partial(b->buf + b->off, &b->rlen, read_from_child, b);
+ * }
+ *
+ * // Feed a program our stdin, gather its stdout, print that at end.
+ * int main(int argc, char *argv[])
+ * {
+ * 	int tochild[2], fromchild[2];
+ * 	struct buffer out;
+ * 	struct stdin_buffer sbuf;
+ * 	int status;
+ * 	size_t off;
+ * 	ssize_t ret;
+ *	struct io_conn *from_child;
+ *
+ * 	if (argc == 1)
+ * 		errx(1, "Usage: runner <cmdline>...");
+ *
+ * 	if (pipe(tochild) != 0 || pipe(fromchild) != 0)
+ * 		err(1, "Creating pipes");
+ *
+ * 	if (!fork()) {
+ * 		// Child runs command.
+ * 		close(tochild[1]);
+ * 		close(fromchild[0]);
+ *
+ * 		dup2(tochild[0], STDIN_FILENO);
+ * 		dup2(fromchild[1], STDOUT_FILENO);
+ * 		execvp(argv[1], argv + 1);
+ * 		exit(127);
+ * 	}
+ *
+ * 	close(tochild[0]);
+ * 	close(fromchild[1]);
+ * 	signal(SIGPIPE, SIG_IGN);
+ *
+ *	sbuf.len = sizeof(sbuf.inbuf);
+ * 	sbuf.reader = io_new_conn(STDIN_FILENO,
+ *				  io_read_partial(sbuf.inbuf, &sbuf.len,
+ *						  wake_writer, &sbuf));
+ * 	sbuf.writer = io_new_conn(tochild[1], io_idle());
+ *
+ *	out.max = 128;
+ *	out.off = 0;
+ *	out.rlen = 128;
+ *	out.buf = malloc(out.max);
+ *	from_child = io_new_conn(fromchild[0],
+ *				 io_read_partial(out.buf, &out.rlen,
+ *						 read_from_child, &out));
+ * 	if (!sbuf.reader || !sbuf.writer || !from_child)
+ * 		err(1, "Allocating connections");
+ *
+ *	io_set_finish(sbuf.reader, reader_exit, &sbuf);
+ *	io_set_finish(sbuf.writer, fail_child_write, &sbuf);
+ *
+ * 	io_loop();
+ * 	wait(&status);
+ *
+ * 	for (off = 0; off < out.off; off += ret) {
+ * 		ret = write(STDOUT_FILENO, out.buf+off, out.off-off);
+ * 		if (ret < 0)
+ * 			err(1, "Writing stdout");
+ * 	}
+ * 	free(out.buf);
+ *
+ * 	return WIFEXITED(status) ? WEXITSTATUS(status) : 2;
+ * }
+ *
+ * License: LGPL (v2.1 or any later version)
+ * Author: Rusty Russell <rusty@rustcorp.com.au>
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/time\n");
+		printf("ccan/timer\n");
+		return 0;
+	}
+
+	return 1;
+}
