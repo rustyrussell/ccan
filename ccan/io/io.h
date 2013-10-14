@@ -16,7 +16,7 @@ struct io_conn;
 struct io_plan {
 	int pollflag;
 	/* Only NULL if idle. */
-	bool (*io)(int fd, struct io_plan *plan);
+	int (*io)(int fd, struct io_plan *plan);
 	/* Only NULL if closing. */
 	struct io_plan (*next)(struct io_conn *, void *arg);
 	void *next_arg;

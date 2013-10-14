@@ -151,14 +151,11 @@ bool io_timeout_(struct io_conn *conn, struct timespec ts,
 }
 
 /* Returns true if we're finished. */
-static bool do_write(int fd, struct io_plan *plan)
+static int do_write(int fd, struct io_plan *plan)
 {
 	ssize_t ret = write(fd, plan->u.write.buf, plan->u.write.len);
-	if (ret < 0) {
-		/* Override next function to close us. */
-		plan->next = io_close;
-		return true;
-	}
+	if (ret < 0)
+		return -1;
 
 	plan->u.write.buf += ret;
 	plan->u.write.len -= ret;
@@ -184,14 +181,11 @@ struct io_plan io_write_(const void *data, size_t len,
 	return plan;
 }
 
-static bool do_read(int fd, struct io_plan *plan)
+static int do_read(int fd, struct io_plan *plan)
 {
 	ssize_t ret = read(fd, plan->u.read.buf, plan->u.read.len);
-	if (ret <= 0) {
-		/* Override next function to close us. */
-		plan->next = io_close;
-		return true;
-	}
+	if (ret <= 0)
+		return -1;
 
 	plan->u.read.buf += ret;
 	plan->u.read.len -= ret;
@@ -217,17 +211,14 @@ struct io_plan io_read_(void *data, size_t len,
 	return plan;
 }
 
-static bool do_read_partial(int fd, struct io_plan *plan)
+static int do_read_partial(int fd, struct io_plan *plan)
 {
 	ssize_t ret = read(fd, plan->u.readpart.buf, *plan->u.readpart.lenp);
-	if (ret <= 0) {
-		/* Override next function to close us. */
-		plan->next = io_close;
-		return true;
-	}
+	if (ret <= 0)
+		return -1;
 
 	*plan->u.readpart.lenp = ret;
-	return true;
+	return 1;
 }
 
 /* Queue a partial request to read into a buffer. */
@@ -249,17 +240,14 @@ struct io_plan io_read_partial_(void *data, size_t *len,
 	return plan;
 }
 
-static bool do_write_partial(int fd, struct io_plan *plan)
+static int do_write_partial(int fd, struct io_plan *plan)
 {
 	ssize_t ret = write(fd, plan->u.writepart.buf, *plan->u.writepart.lenp);
-	if (ret < 0) {
-		/* Override next function to close us. */
-		plan->next = io_close;
-		return true;
-	}
+	if (ret < 0)
+		return -1;
 
 	*plan->u.writepart.lenp = ret;
-	return true;
+	return 1;
 }
 
 /* Queue a partial write request. */
@@ -310,7 +298,16 @@ void io_wake_(struct io_conn *conn, struct io_plan plan)
 
 void io_ready(struct io_conn *conn)
 {
-	if (conn->plan.io(conn->fd.fd, &conn->plan)) {
+	switch (conn->plan.io(conn->fd.fd, &conn->plan)) {
+	case -1: /* Failure means a new plan: close up. */
+		set_current(conn);
+		conn->plan = io_close(NULL, NULL);
+		backend_plan_changed(conn);
+		set_current(NULL);
+		break;
+	case 0: /* Keep going with plan. */
+		break;
+	case 1: /* Done: get next plan. */
 		set_current(conn);
 		if (timeout_active(conn))
 			backend_del_timeout(conn);

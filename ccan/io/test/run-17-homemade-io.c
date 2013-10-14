@@ -23,7 +23,7 @@ static void finish_ok(struct io_conn *conn, struct packet *pkt)
 	io_break(pkt, io_idle());
 }
 
-static bool do_read_packet(int fd, struct io_plan *plan)
+static int do_read_packet(int fd, struct io_plan *plan)
 {
 	struct packet *pkt = plan->u.ptr_len.p;
 	char *dest;
@@ -41,7 +41,7 @@ static bool do_read_packet(int fd, struct io_plan *plan)
 		ok1(pkt->state == 2);
 		pkt->state++;
 		if (pkt->len == 0)
-			return true;
+			return 1;
 		if (!pkt->contents && !(pkt->contents = malloc(pkt->len)))
 			goto fail;
 		else {
@@ -63,9 +63,7 @@ static bool do_read_packet(int fd, struct io_plan *plan)
 
 fail:
 	free(pkt->contents);
-	/* Override next function to close us. */
-	plan->next = io_close;
-	return true;
+	return -1;
 }
 
 static struct io_plan io_read_packet(struct packet *pkt,
