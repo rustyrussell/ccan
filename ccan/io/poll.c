@@ -112,20 +112,6 @@ void del_listener(struct io_listener *l)
 	del_fd(&l->fd);
 }
 
-static int pollmask(enum io_state state)
-{
-	switch (state) {
-	case READ:
-	case READPART:
-		return POLLIN;
-	case WRITE:
-	case WRITEPART:
-		return POLLOUT;
-	default:
-		return 0;
-	}
-}
-
 void backend_set_state(struct io_conn *conn, struct io_plan *plan)
 {
 	enum io_state state = from_ioplan(plan);
@@ -134,9 +120,9 @@ void backend_set_state(struct io_conn *conn, struct io_plan *plan)
 	if (pfd->events)
 		num_waiting--;
 
-	pfd->events = pollmask(state);
+	pfd->events = conn->pollflag;
 	if (conn->duplex) {
-		int mask = pollmask(conn->duplex->state);
+		int mask = conn->duplex->pollflag;
 		/* You can't *both* read/write. */
 		assert(!mask || pfd->events != mask);
 		pfd->events |= mask;
@@ -282,7 +268,7 @@ void *io_loop(void)
 			} else if (events & (POLLIN|POLLOUT)) {
 				r--;
 				if (c->duplex) {
-					int mask = pollmask(c->duplex->state);
+					int mask = c->duplex->pollflag;
 					if (events & mask) {
 						ready(c->duplex);
 						events &= ~mask;

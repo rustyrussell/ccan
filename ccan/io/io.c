@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <poll.h>
 
 void *io_loop_return;
 
@@ -56,6 +57,7 @@ struct io_conn *io_new_conn_(int fd,
 	conn->fd.next = start;
 	conn->fd.finish = finish;
 	conn->fd.finish_arg = conn->fd.next_arg = arg;
+	conn->pollflag = 0;
 	conn->state = NEXT;
 	conn->duplex = NULL;
 	conn->timeout = NULL;
@@ -84,6 +86,7 @@ struct io_conn *io_duplex_(struct io_conn *old,
 	conn->fd.next = start;
 	conn->fd.finish = finish;
 	conn->fd.finish_arg = conn->fd.next_arg = arg;
+	conn->pollflag = 0;
 	conn->state = NEXT;
 	conn->duplex = old;
 	conn->timeout = NULL;
@@ -125,6 +128,7 @@ struct io_plan *io_write_(struct io_conn *conn, const void *data, size_t len,
 	conn->u.write.len = len;
 	conn->fd.next = cb;
 	conn->fd.next_arg = arg;
+	conn->pollflag = POLLOUT;
 	return to_ioplan(WRITE);
 }
 
@@ -137,6 +141,7 @@ struct io_plan *io_read_(struct io_conn *conn, void *data, size_t len,
 	conn->u.read.len = len;
 	conn->fd.next = cb;
 	conn->fd.next_arg = arg;
+	conn->pollflag = POLLIN;
 	return to_ioplan(READ);
 }
 
@@ -149,6 +154,7 @@ struct io_plan *io_read_partial_(struct io_conn *conn, void *data, size_t *len,
 	conn->u.readpart.lenp = len;
 	conn->fd.next = cb;
 	conn->fd.next_arg = arg;
+	conn->pollflag = POLLIN;
 	return to_ioplan(READPART);
 }
 
@@ -162,11 +168,13 @@ struct io_plan *io_write_partial_(struct io_conn *conn,
 	conn->u.writepart.lenp = len;
 	conn->fd.next = cb;
 	conn->fd.next_arg = arg;
+	conn->pollflag = POLLOUT;
 	return to_ioplan(WRITEPART);
 }
 
 struct io_plan *io_idle(struct io_conn *conn)
 {
+	conn->pollflag = 0;
 	return to_ioplan(IDLE);
 }
 

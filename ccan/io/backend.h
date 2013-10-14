@@ -77,6 +77,7 @@ struct io_conn {
 	struct io_conn *duplex;
 	struct io_timeout *timeout;
 
+	int pollflag; /* 0, POLLIN or POLLOUT */
 	enum io_state state;
 	union {
 		struct io_state_read read;
