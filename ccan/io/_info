@@ -1,0 +1,174 @@
+#include <stdio.h>
+#include <string.h>
+#include "config.h"
+
+/**
+ * io - simple library for stateful io handling.
+ *
+ * io provides a simple mechanism to write I/O servers with multiple
+ * connections.  Handling of connections is multiplexed, and function
+ * indicate what they want written or read, and what follow-on
+ * function to call on success (or failure).
+ *
+ * Example:
+ * // Given tr A-Z a-z outputs tr a-z a-z
+ * #include <ccan/io/io.h>
+ * #include <ccan/err/err.h>
+ * #include <assert.h>
+ * #include <stdlib.h>
+ * #include <signal.h>
+ * #include <sys/types.h>
+ * #include <sys/wait.h>
+ *
+ * struct buffer {
+ * 	size_t max, off, rlen;
+ * 	char *buf;
+ * };
+ *
+ * struct stdin_buffer {
+ * 	struct io_conn *reader, *writer;
+ * 	size_t len;
+ * 	char inbuf[4096];
+ * };
+ *
+ * // This reads from stdin.
+ * static struct io_op *wake_writer(struct io_conn *, struct stdin_buffer *);
+ * // This writes the stdin buffer to the child.
+ * static struct io_op *write_to_child(struct io_conn *c,
+ * 				       struct stdin_buffer *b);
+ * static struct io_op *read_stdin(struct io_conn *c, struct stdin_buffer *b)
+ * {
+ * 	assert(c == b->reader);
+ * 	b->len = sizeof(b->inbuf);
+ * 	return io_read_partial(b->inbuf, &b->len,
+ *			       io_next(c, wake_writer, b));
+ * }
+ *
+ * static struct io_op *wake_writer(struct io_conn *c, struct stdin_buffer *b)
+ * {
+ * 	assert(c == b->reader);
+ * 	io_wake(b->writer, write_to_child, b);
+ * 	return io_idle(c);
+ * }
+ *
+ * static void reader_exit(struct io_conn *c, struct stdin_buffer *b)
+ * {
+ * 	assert(c == b->reader);
+ * 	io_wake(b->writer, write_to_child, b);
+ * 	b->reader = NULL;
+ * }
+ *
+ * static struct io_op *wake_reader(struct io_conn *c, struct stdin_buffer *b)
+ * {
+ * 	assert(c == b->writer);
+ * 	io_wake(b->reader, read_stdin, b);
+ * 	return io_idle(c);
+ * }
+ *
+ * static struct io_op *write_to_child(struct io_conn *conn,
+ * 				      struct stdin_buffer *b)
+ * {
+ * 	assert(conn == b->writer);
+ * 	if (!b->reader)
+ * 		return io_close(conn, NULL);
+ * 	return io_write(b->inbuf, b->len, io_next(conn, wake_reader, b));
+ * }
+ *
+ * static struct io_op *start_writer(struct io_conn *conn,
+ * 				     struct stdin_buffer *b)
+ * {
+ * 	assert(conn == b->writer);
+ * 	return io_idle(conn);
+ * }
+ *
+ * static void fail_child_write(struct io_conn *conn, struct stdin_buffer *b)
+ * {
+ * 	if (b->reader)
+ * 		err(1, "Failed writing to child.");
+ * }
+ *
+ * // This reads from the child and saves it into buffer.
+ * static struct io_op *read_from_child(struct io_conn *conn,
+ * 				        struct buffer *b)
+ * {
+ * 	b->off += b->rlen;
+ *
+ * 	if (b->off == b->max) {
+ * 		if (b->max == 0)
+ * 			b->max = 128;
+ * 		else if (b->max >= 1024*1024)
+ * 			b->max += 1024*1024;
+ * 		else
+ * 			b->max *= 2;
+ * 		b->buf = realloc(b->buf, b->max);
+ * 	}
+ *
+ * 	b->rlen = b->max - b->off;
+ * 	return io_read_partial(b->buf + b->off, &b->rlen,
+ *			       io_next(conn, read_from_child, b));
+ * }
+ *
+ * // Feed a program our stdin, gather its stdout, print that at end.
+ * int main(int argc, char *argv[])
+ * {
+ * 	int tochild[2], fromchild[2];
+ * 	struct buffer out = { 0, 0, 0, NULL };
+ * 	struct stdin_buffer sbuf;
+ * 	int status;
+ * 	size_t off;
+ * 	ssize_t ret;
+ *
+ * 	if (argc == 1)
+ * 		errx(1, "Usage: runner <cmdline>...");
+ *
+ * 	if (pipe(tochild) != 0 || pipe(fromchild) != 0)
+ * 		err(1, "Creating pipes");
+ *
+ * 	if (!fork()) {
+ * 		// Child runs command.
+ * 		close(tochild[1]);
+ * 		close(fromchild[0]);
+ *
+ * 		dup2(tochild[0], STDIN_FILENO);
+ * 		dup2(fromchild[1], STDOUT_FILENO);
+ * 		execvp(argv[1], argv + 1);
+ * 		exit(127);
+ * 	}
+ *
+ * 	close(tochild[0]);
+ * 	close(fromchild[1]);
+ * 	signal(SIGPIPE, SIG_IGN);
+ *
+ * 	sbuf.reader = io_new_conn(STDIN_FILENO, read_stdin, reader_exit, &sbuf);
+ * 	sbuf.writer = io_new_conn(tochild[1], start_writer, fail_child_write,
+ * 				  &sbuf);
+ * 	if (!sbuf.reader || !sbuf.writer
+ * 	    || !io_new_conn(fromchild[0], read_from_child, NULL, &out))
+ * 		err(1, "Allocating connections");
+ *
+ * 	io_loop();
+ * 	wait(&status);
+ *
+ * 	for (off = 0; off < out.off; off += ret) {
+ * 		ret = write(STDOUT_FILENO, out.buf+off, out.off-off);
+ * 		if (ret < 0)
+ * 			err(1, "Writing stdout");
+ * 	}
+ * 	free(out.buf);
+ *
+ * 	return WIFEXITED(status) ? WEXITSTATUS(status) : 2;
+ * }
+ *
+ * License: BSD-MIT
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		return 0;
+	}
+
+	return 1;
+}
