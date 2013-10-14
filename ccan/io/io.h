@@ -8,34 +8,6 @@
 
 struct io_conn;
 
-#ifdef DEBUG
-extern bool io_plan_for_other;
-extern bool (*io_debug)(struct io_conn *conn);
-#define io_plan_other() ((io_plan_for_other = true))
-#else
-#define io_plan_other() (void)0
-#endif
-
-struct io_state_read {
-	char *buf;
-	size_t len;
-};
-
-struct io_state_write {
-	const char *buf;
-	size_t len;
-};
-
-struct io_state_readpart {
-	char *buf;
-	size_t *lenp;
-};
-
-struct io_state_writepart {
-	const char *buf;
-	size_t *lenp;
-};
-
 /**
  * struct io_plan - returned from a setup function.
  *
@@ -50,12 +22,46 @@ struct io_plan {
 	void *next_arg;
 
 	union {
-		struct io_state_read read;
-		struct io_state_write write;
-		struct io_state_readpart readpart;
-		struct io_state_writepart writepart;
+		struct {
+			char *buf;
+			size_t len;
+		} read;
+		struct {
+			const char *buf;
+			size_t len;
+		} write;
+		struct {
+			char *buf;
+			size_t *lenp;
+		} readpart;
+		struct {
+			const char *buf;
+			size_t *lenp;
+		} writepart;
+		struct {
+			void *p;
+			size_t len;
+		} ptr_len;
+		struct {
+			void *p1;
+			void *p2;
+		} ptr_ptr;
+		struct {
+			size_t len1;
+			size_t len2;
+		} len_len;
 	} u;
 };
+
+#ifdef DEBUG
+extern bool io_plan_for_other;
+extern bool (*io_debug)(struct io_conn *conn);
+#define io_plan_other() ((io_plan_for_other = true))
+void io_plan_debug(struct io_plan *plan);
+#else
+#define io_plan_other() (void)0
+static inline void io_plan_debug(struct io_plan *plan) { }
+#endif
 
 /**
  * io_new_conn - create a new connection.

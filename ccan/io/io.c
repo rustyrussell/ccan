@@ -18,7 +18,7 @@ struct io_conn *current;
 bool (*io_debug)(struct io_conn *conn);
 bool io_debug_wakeup;
 
-static void debug_io_plan(struct io_plan *plan)
+void io_plan_debug(struct io_plan *plan)
 {
 	if (io_plan_for_other) {
 		io_plan_for_other = false;
@@ -46,9 +46,6 @@ static void debug_io_wake(struct io_conn *conn)
 		io_debug_wakeup = true;
 }
 #else
-static void debug_io_plan(struct io_plan *plan)
-{
-}
 static void debug_io_wake(struct io_conn *conn)
 {
 }
@@ -181,7 +178,7 @@ struct io_plan io_write_(const void *data, size_t len,
 	plan.next_arg = arg;
 	plan.pollflag = POLLOUT;
 
-	debug_io_plan(&plan);
+	io_plan_debug(&plan);
 	return plan;
 }
 
@@ -214,7 +211,7 @@ struct io_plan io_read_(void *data, size_t len,
 	plan.next_arg = arg;
 	plan.pollflag = POLLIN;
 
-	debug_io_plan(&plan);
+	io_plan_debug(&plan);
 	return plan;
 }
 
@@ -246,7 +243,7 @@ struct io_plan io_read_partial_(void *data, size_t *len,
 	plan.next_arg = arg;
 	plan.pollflag = POLLIN;
 
-	debug_io_plan(&plan);
+	io_plan_debug(&plan);
 	return plan;
 }
 
@@ -278,7 +275,7 @@ struct io_plan io_write_partial_(const void *data, size_t *len,
 	plan.next_arg = arg;
 	plan.pollflag = POLLOUT;
 
-	debug_io_plan(&plan);
+	io_plan_debug(&plan);
 	return plan;
 }
 
@@ -291,7 +288,7 @@ struct io_plan io_idle(void)
 	/* Never called (overridded by io_wake), but NULL means closing */
 	plan.next = io_close;
 
-	debug_io_plan(&plan);
+	io_plan_debug(&plan);
 	return plan;
 }
 
@@ -331,7 +328,7 @@ struct io_plan io_close(struct io_conn *conn, void *arg)
 	/* This means we're closing. */
 	plan.next = NULL;
 
-	debug_io_plan(&plan);
+	io_plan_debug(&plan);
 	return plan;
 }
 
