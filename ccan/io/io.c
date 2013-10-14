@@ -57,10 +57,39 @@ struct io_conn *io_new_conn_(int fd,
 	conn->fd.finish = finish;
 	conn->fd.finish_arg = conn->fd.next_arg = arg;
 	conn->state = NEXT;
+	conn->duplex = NULL;
 	if (!add_conn(conn)) {
 		free(conn);
 		return NULL;
 	}
+	return conn;
+}
+
+struct io_conn *io_duplex_(struct io_conn *old,
+			     struct io_op *(*start)(struct io_conn *, void *),
+			     void (*finish)(struct io_conn *, void *),
+			     void *arg)
+{
+	struct io_conn *conn;
+
+	assert(!old->duplex);
+
+	conn = malloc(sizeof(*conn));
+	if (!conn)
+		return NULL;
+
+	conn->fd.listener = false;
+	conn->fd.fd = old->fd.fd;
+	conn->fd.next = start;
+	conn->fd.finish = finish;
+	conn->fd.finish_arg = conn->fd.next_arg = arg;
+	conn->state = NEXT;
+	conn->duplex = old;
+	if (!add_duplex(conn)) {
+		free(conn);
+		return NULL;
+	}
+	old->duplex = conn;
 	return conn;
 }
 
@@ -149,7 +178,7 @@ static struct io_op *do_next(struct io_conn *conn)
 	return conn->fd.next(conn, conn->fd.next_arg);
 }
 
-struct io_op *do_writeable(struct io_conn *conn)
+struct io_op *do_ready(struct io_conn *conn)
 {
 	ssize_t ret;
 	bool finished;
@@ -171,22 +200,6 @@ struct io_op *do_writeable(struct io_conn *conn)
 		*conn->u.writepart.lenp = ret;
 		finished = true;
 		break;
-	default:
-		/* Shouldn't happen. */
-		abort();
-	}
-
-	if (finished)
-		return do_next(conn);
-	return to_ioop(conn->state);
-}
-
-struct io_op *do_readable(struct io_conn *conn)
-{
-	ssize_t ret;
-	bool finished;
-
-	switch (conn->state) {
 	case READ:
 		ret = read(conn->fd.fd, conn->u.read.buf, conn->u.read.len);
 		if (ret <= 0)

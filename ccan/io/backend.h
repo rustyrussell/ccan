@@ -22,11 +22,15 @@ struct io_listener {
 };
 
 enum io_state {
-	NEXT, /* eg starting, woken from idle, return from io_break. */
+	/* These wait for something to input */
 	READ,
-	WRITE,
 	READPART,
+
+	/* These wait for room to output */
+	WRITE,
 	WRITEPART,
+
+	NEXT, /* eg starting, woken from idle, return from io_break. */
 	IDLE,
 	FINISHED,
 	PROCESSING /* We expect them to change this now. */
@@ -61,6 +65,8 @@ struct io_state_writepart {
 struct io_conn {
 	struct fd fd;
 
+	struct io_conn *duplex;
+
 	enum io_state state;
 	union {
 		struct io_state_read read;
@@ -74,9 +80,9 @@ extern void *io_loop_return;
 
 bool add_listener(struct io_listener *l);
 bool add_conn(struct io_conn *c);
+bool add_duplex(struct io_conn *c);
 void del_listener(struct io_listener *l);
 void backend_set_state(struct io_conn *conn, struct io_op *op);
 
-struct io_op *do_writeable(struct io_conn *conn);
-struct io_op *do_readable(struct io_conn *conn);
+struct io_op *do_ready(struct io_conn *conn);
 #endif /* CCAN_IO_BACKEND_H */

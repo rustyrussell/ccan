@@ -152,6 +152,33 @@ struct io_op *io_write_partial(const void *data, size_t *len,
 struct io_op *io_idle(struct io_conn *conn);
 
 /**
+ * io_duplex - split an fd into two connections.
+ * @conn: a connection.
+ * @start: the first function to call.
+ * @finish: the function to call when it's closed or fails.
+ * @arg: the argument to both @start and @finish.
+ *
+ * Sometimes you want to be able to simultaneously read and write on a
+ * single fd, but io forces a linear call sequence.  The solition is
+ * to have two connections for the same fd, and use one for read
+ * operations and one for write.
+ *
+ * You must io_close() both of them to close the fd.
+ */
+#define io_duplex(conn, start, finish, arg)				\
+	io_duplex_((conn),						\
+		   typesafe_cb_preargs(struct io_op *, void *,		\
+				       (start), (arg), struct io_conn *), \
+		   typesafe_cb_preargs(void, void *, (finish), (arg),	\
+				       struct io_conn *),		\
+		   (arg))
+
+struct io_conn *io_duplex_(struct io_conn *conn,
+			   struct io_op *(*start)(struct io_conn *, void *),
+			   void (*finish)(struct io_conn *, void *),
+			   void *arg);
+
+/**
  * io_wake - wake up and idle connection.
  * @conn: an idle connection.
  * @next: the next function to call once queued IO is complete.
