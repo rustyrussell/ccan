@@ -8,18 +8,17 @@ struct fd {
 	int fd;
 	bool listener;
 	size_t backend_info;
-
-	struct io_plan *(*next)(struct io_conn *, void *arg);
-	void *next_arg;
-
-	void (*finish)(struct io_conn *, void *arg);
-	void *finish_arg;
 };
 
 
 /* Listeners create connections. */
 struct io_listener {
 	struct fd fd;
+
+	/* These are for connections we create. */
+	struct io_plan *(*next)(struct io_conn *, void *arg);
+	void (*finish)(struct io_conn *, void *arg);
+	void *conn_arg;
 };
 
 enum io_state {
@@ -73,6 +72,12 @@ struct io_timeout {
 /* One connection per client. */
 struct io_conn {
 	struct fd fd;
+
+	struct io_plan *(*next)(struct io_conn *, void *arg);
+	void *next_arg;
+
+	void (*finish)(struct io_conn *, void *arg);
+	void *finish_arg;
 
 	struct io_conn *duplex;
 	struct io_timeout *timeout;

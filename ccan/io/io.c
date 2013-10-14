@@ -25,9 +25,9 @@ struct io_listener *io_new_listener_(int fd,
 
 	l->fd.listener = true;
 	l->fd.fd = fd;
-	l->fd.next = start;
-	l->fd.finish = finish;
-	l->fd.finish_arg = l->fd.next_arg = arg;
+	l->next = start;
+	l->finish = finish;
+	l->conn_arg = arg;
 	if (!add_listener(l)) {
 		free(l);
 		return NULL;
@@ -54,9 +54,9 @@ struct io_conn *io_new_conn_(int fd,
 
 	conn->fd.listener = false;
 	conn->fd.fd = fd;
-	conn->fd.next = start;
-	conn->fd.finish = finish;
-	conn->fd.finish_arg = conn->fd.next_arg = arg;
+	conn->next = start;
+	conn->finish = finish;
+	conn->finish_arg = conn->next_arg = arg;
 	conn->pollflag = 0;
 	conn->state = NEXT;
 	conn->duplex = NULL;
@@ -83,9 +83,9 @@ struct io_conn *io_duplex_(struct io_conn *old,
 
 	conn->fd.listener = false;
 	conn->fd.fd = old->fd.fd;
-	conn->fd.next = start;
-	conn->fd.finish = finish;
-	conn->fd.finish_arg = conn->fd.next_arg = arg;
+	conn->next = start;
+	conn->finish = finish;
+	conn->finish_arg = conn->next_arg = arg;
 	conn->pollflag = 0;
 	conn->state = NEXT;
 	conn->duplex = old;
@@ -126,8 +126,8 @@ struct io_plan *io_write_(struct io_conn *conn, const void *data, size_t len,
 {
 	conn->u.write.buf = data;
 	conn->u.write.len = len;
-	conn->fd.next = cb;
-	conn->fd.next_arg = arg;
+	conn->next = cb;
+	conn->next_arg = arg;
 	conn->pollflag = POLLOUT;
 	return to_ioplan(WRITE);
 }
@@ -139,8 +139,8 @@ struct io_plan *io_read_(struct io_conn *conn, void *data, size_t len,
 {
 	conn->u.read.buf = data;
 	conn->u.read.len = len;
-	conn->fd.next = cb;
-	conn->fd.next_arg = arg;
+	conn->next = cb;
+	conn->next_arg = arg;
 	conn->pollflag = POLLIN;
 	return to_ioplan(READ);
 }
@@ -152,8 +152,8 @@ struct io_plan *io_read_partial_(struct io_conn *conn, void *data, size_t *len,
 {
 	conn->u.readpart.buf = data;
 	conn->u.readpart.lenp = len;
-	conn->fd.next = cb;
-	conn->fd.next_arg = arg;
+	conn->next = cb;
+	conn->next_arg = arg;
 	conn->pollflag = POLLIN;
 	return to_ioplan(READPART);
 }
@@ -166,8 +166,8 @@ struct io_plan *io_write_partial_(struct io_conn *conn,
 {
 	conn->u.writepart.buf = data;
 	conn->u.writepart.lenp = len;
-	conn->fd.next = cb;
-	conn->fd.next_arg = arg;
+	conn->next = cb;
+	conn->next_arg = arg;
 	conn->pollflag = POLLOUT;
 	return to_ioplan(WRITEPART);
 }
@@ -186,8 +186,8 @@ void io_wake_(struct io_conn *conn,
 	if (conn->state == FINISHED)
 		return;
 	assert(conn->state == IDLE);
-	conn->fd.next = fn;
-	conn->fd.next_arg = arg;
+	conn->next = fn;
+	conn->next_arg = arg;
 	backend_set_state(conn, to_ioplan(NEXT));
 }
 
@@ -195,7 +195,7 @@ static struct io_plan *do_next(struct io_conn *conn)
 {
 	if (timeout_active(conn))
 		backend_del_timeout(conn);
-	return conn->fd.next(conn, conn->fd.next_arg);
+	return conn->next(conn, conn->next_arg);
 }
 
 struct io_plan *do_ready(struct io_conn *conn)
@@ -259,8 +259,8 @@ struct io_plan *io_break_(struct io_conn *conn, void *ret,
 			  void *arg)
 {
 	io_loop_return = ret;
-	conn->fd.next = fn;
-	conn->fd.next_arg = arg;
+	conn->next = fn;
+	conn->next_arg = arg;
 
 	return to_ioplan(NEXT);
 }

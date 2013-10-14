@@ -90,8 +90,8 @@ bool add_duplex(struct io_conn *c)
 
 static void del_conn(struct io_conn *conn)
 {
-	if (conn->fd.finish)
-		conn->fd.finish(conn, conn->fd.finish_arg);
+	if (conn->finish)
+		conn->finish(conn, conn->finish_arg);
 	if (timeout_active(conn))
 		backend_del_timeout(conn);
 	free(conn->timeout);
@@ -146,7 +146,7 @@ static void accept_conn(struct io_listener *l)
 	/* FIXME: What to do here? */
 	if (fd < 0)
 		return;
-	c = io_new_conn(fd, l->fd.next, l->fd.finish, l->fd.next_arg);
+	c = io_new_conn(fd, l->next, l->finish, l->conn_arg);
 	if (!c) {
 		close(fd);
 		return;
@@ -174,9 +174,7 @@ static void finish_and_next(bool finished_only)
 				free(c);
 				i--;
 			} else if (!finished_only && c->state == NEXT) {
-				backend_set_state(c,
-						  c->fd.next(c,
-							     c->fd.next_arg));
+				backend_set_state(c, c->next(c, c->next_arg));
 				num_next--;
 			}
 		}
