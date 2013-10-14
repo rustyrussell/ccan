@@ -31,8 +31,12 @@ static bool add_fd(struct fd *fd, short events)
 		max_fds = num;
 	}
 
-	pollfds[num_fds].fd = fd->fd;
 	pollfds[num_fds].events = events;
+	/* In case it's idle. */
+	if (!events)
+		pollfds[num_fds].fd = -fd->fd;
+	else
+		pollfds[num_fds].fd = fd->fd;
 	pollfds[num_fds].revents = 0; /* In case we're iterating now */
 	fds[num_fds] = fd;
 	fd->backend_info = num_fds;
@@ -91,8 +95,11 @@ void backend_plan_changed(struct io_conn *conn)
 		assert(!mask || pfd->events != mask);
 		pfd->events |= mask;
 	}
-	if (pfd->events)
+	if (pfd->events) {
 		num_waiting++;
+		pfd->fd = conn->fd.fd;
+	} else
+		pfd->fd = -conn->fd.fd;
 
 	if (!conn->plan.next)
 		num_closing++;
