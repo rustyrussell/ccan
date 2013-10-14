@@ -58,7 +58,7 @@ struct io_conn *io_new_conn_(int fd,
 	conn->finish = finish;
 	conn->finish_arg = conn->next_arg = arg;
 	conn->pollflag = 0;
-	conn->state = NEXT;
+	conn->state = IO_NEXT;
 	conn->duplex = NULL;
 	conn->timeout = NULL;
 	if (!add_conn(conn)) {
@@ -87,7 +87,7 @@ struct io_conn *io_duplex_(struct io_conn *old,
 	conn->finish = finish;
 	conn->finish_arg = conn->next_arg = arg;
 	conn->pollflag = 0;
-	conn->state = NEXT;
+	conn->state = IO_NEXT;
 	conn->duplex = old;
 	conn->timeout = NULL;
 	if (!add_duplex(conn)) {
@@ -144,7 +144,7 @@ struct io_plan *io_write_(struct io_conn *conn, const void *data, size_t len,
 	conn->next = cb;
 	conn->next_arg = arg;
 	conn->pollflag = POLLOUT;
-	return to_ioplan(IO);
+	return to_ioplan(IO_IO);
 }
 
 static enum io_result do_read(struct io_conn *conn)
@@ -171,7 +171,7 @@ struct io_plan *io_read_(struct io_conn *conn, void *data, size_t len,
 	conn->next = cb;
 	conn->next_arg = arg;
 	conn->pollflag = POLLIN;
-	return to_ioplan(IO);
+	return to_ioplan(IO_IO);
 }
 
 static enum io_result do_read_partial(struct io_conn *conn)
@@ -195,7 +195,7 @@ struct io_plan *io_read_partial_(struct io_conn *conn, void *data, size_t *len,
 	conn->next = cb;
 	conn->next_arg = arg;
 	conn->pollflag = POLLIN;
-	return to_ioplan(IO);
+	return to_ioplan(IO_IO);
 }
 
 static enum io_result do_write_partial(struct io_conn *conn)
@@ -220,13 +220,13 @@ struct io_plan *io_write_partial_(struct io_conn *conn,
 	conn->next = cb;
 	conn->next_arg = arg;
 	conn->pollflag = POLLOUT;
-	return to_ioplan(IO);
+	return to_ioplan(IO_IO);
 }
 
 struct io_plan *io_idle(struct io_conn *conn)
 {
 	conn->pollflag = 0;
-	return to_ioplan(IDLE);
+	return to_ioplan(IO_IDLE);
 }
 
 void io_wake_(struct io_conn *conn,
@@ -234,12 +234,12 @@ void io_wake_(struct io_conn *conn,
 
 {
 	/* It might have finished, but we haven't called its finish() yet. */
-	if (conn->state == FINISHED)
+	if (conn->state == IO_FINISHED)
 		return;
-	assert(conn->state == IDLE);
+	assert(conn->state == IO_IDLE);
 	conn->next = fn;
 	conn->next_arg = arg;
-	backend_set_state(conn, to_ioplan(NEXT));
+	backend_set_state(conn, to_ioplan(IO_NEXT));
 }
 
 static struct io_plan *do_next(struct io_conn *conn)
@@ -251,7 +251,7 @@ static struct io_plan *do_next(struct io_conn *conn)
 
 struct io_plan *do_ready(struct io_conn *conn)
 {
-	assert(conn->state == IO);
+	assert(conn->state == IO_IO);
 	switch (conn->io(conn)) {
 	case RESULT_CLOSE:
 		return io_close(conn, NULL);
@@ -268,7 +268,7 @@ struct io_plan *do_ready(struct io_conn *conn)
 /* Close the connection, we're done. */
 struct io_plan *io_close(struct io_conn *conn, void *arg)
 {
-	return to_ioplan(FINISHED);
+	return to_ioplan(IO_FINISHED);
 }
 
 /* Exit the loop, returning this (non-NULL) arg. */
@@ -280,5 +280,5 @@ struct io_plan *io_break_(struct io_conn *conn, void *ret,
 	conn->next = fn;
 	conn->next_arg = arg;
 
-	return to_ioplan(NEXT);
+	return to_ioplan(IO_NEXT);
 }

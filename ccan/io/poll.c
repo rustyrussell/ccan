@@ -101,9 +101,9 @@ static void del_conn(struct io_conn *conn)
 		conn->duplex->duplex = NULL;
 	} else
 		del_fd(&conn->fd);
-	if (conn->state == FINISHED)
+	if (conn->state == IO_FINISHED)
 		num_finished--;
-	else if (conn->state == NEXT)
+	else if (conn->state == IO_NEXT)
 		num_next--;
 }
 
@@ -130,9 +130,9 @@ void backend_set_state(struct io_conn *conn, struct io_plan *plan)
 	if (pfd->events)
 		num_waiting++;
 
-	if (state == NEXT)
+	if (state == IO_NEXT)
 		num_next++;
-	else if (state == FINISHED)
+	else if (state == IO_FINISHED)
 		num_finished++;
 
 	conn->state = state;
@@ -169,11 +169,11 @@ static void finish_and_next(bool finished_only)
 			continue;
 		c = (void *)fds[i];
 		for (duplex = c->duplex; c; c = duplex, duplex = NULL) {
-			if (c->state == FINISHED) {
+			if (c->state == IO_FINISHED) {
 				del_conn(c);
 				free(c);
 				i--;
-			} else if (!finished_only && c->state == NEXT) {
+			} else if (!finished_only && c->state == IO_NEXT) {
 				backend_set_state(c, c->next(c, c->next_arg));
 				num_next--;
 			}

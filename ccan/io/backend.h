@@ -28,11 +28,10 @@ enum io_result {
 };
 
 enum io_state {
-	IO,
-	NEXT, /* eg starting, woken from idle, return from io_break. */
-	IDLE,
-	FINISHED,
-	PROCESSING /* We expect them to change this now. */
+	IO_IO,
+	IO_NEXT, /* eg starting, woken from idle, return from io_break. */
+	IO_IDLE,
+	IO_FINISHED
 };
 
 static inline enum io_state from_ioplan(struct io_plan *op)
