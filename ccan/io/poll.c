@@ -338,7 +338,7 @@ void *io_loop(void)
 				/* debug can recurse; anything can change. */
 				if (doing_debug())
 					break;
-			} else if (events & POLLHUP) {
+			} else if (events & (POLLHUP|POLLNVAL|POLLERR)) {
 				r--;
 				set_current(c);
 				set_plan(c, io_close());
