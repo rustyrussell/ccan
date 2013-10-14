@@ -5,71 +5,12 @@
 #include <ccan/time/time.h>
 #include <stdbool.h>
 #include <unistd.h>
-
-struct io_conn;
-
-/**
- * struct io_plan - returned from a setup function.
- *
- * A plan of what IO to do, when.
- */
-struct io_plan {
-	int pollflag;
-	/* Only NULL if idle. */
-	int (*io)(int fd, struct io_plan *plan);
-	/* Only NULL if closing. */
-	struct io_plan (*next)(struct io_conn *, void *arg);
-	void *next_arg;
-
-	union {
-		struct {
-			char *buf;
-			size_t len;
-		} read;
-		struct {
-			const char *buf;
-			size_t len;
-		} write;
-		struct {
-			char *buf;
-			size_t *lenp;
-		} readpart;
-		struct {
-			const char *buf;
-			size_t *lenp;
-		} writepart;
-		struct {
-			int saved_errno;
-		} close;
-		struct {
-			void *p;
-			size_t len;
-		} ptr_len;
-		struct {
-			void *p1;
-			void *p2;
-		} ptr_ptr;
-		struct {
-			size_t len1;
-			size_t len2;
-		} len_len;
-	} u;
-};
-
-#ifdef DEBUG
-extern bool io_plan_for_other;
-extern bool (*io_debug)(struct io_conn *conn);
-#define io_plan_other() ((io_plan_for_other = true))
-void io_plan_debug(struct io_plan *plan);
-#else
-#define io_plan_other() (void)0
-static inline void io_plan_debug(struct io_plan *plan) { }
-#endif
+#include "io_plan.h"
 
 /**
  * io_new_conn - create a new connection.
  * @fd: the file descriptor.
- * @plan: the first I/O function.
+ * @plan: the first I/O to perform.
  *
  * This creates a connection which owns @fd.  @plan will be called on the
  * next io_loop().
@@ -129,13 +70,13 @@ struct io_listener *io_new_listener_(int fd,
 void io_close_listener(struct io_listener *listener);
 
 /**
- * io_write - queue data to be written.
+ * io_write - plan to write data.
  * @data: the data buffer.
  * @len: the length to write.
  * @cb: function to call once it's done.
  * @arg: @cb argument
  *
- * This will queue the data buffer for writing.  Once it's all
+ * This creates a plan write out a data buffer.  Once it's all
  * written, the @cb function will be called: on an error, the finish
  * function is called instead.
  *
@@ -151,15 +92,15 @@ struct io_plan io_write_(const void *data, size_t len,
 			 void *arg);
 
 /**
- * io_read - queue buffer to be read.
+ * io_read - plan to read data.
  * @data: the data buffer.
  * @len: the length to read.
  * @cb: function to call once it's done.
  * @arg: @cb argument
  *
- * This will queue the data buffer for reading.  Once it's all read,
- * the @cb function will be called: on an error, the finish function
- * is called instead.
+ * This creates a plan to read data into a buffer.  Once it's all
+ * read, the @cb function will be called: on an error, the finish
+ * function is called instead.
  *
  * Note that the I/O may actually be done immediately.
  */
@@ -174,13 +115,13 @@ struct io_plan io_read_(void *data, size_t len,
 
 
 /**
- * io_read_partial - queue buffer to be read (partial OK).
+ * io_read_partial - plan to read some data.
  * @data: the data buffer.
  * @len: the maximum length to read, set to the length actually read.
  * @cb: function to call once it's done.
  * @arg: @cb argument
  *
- * This will queue the data buffer for reading.  Once any data is
+ * This creates a plan to read data into a buffer.  Once any data is
  * read, @len is updated and the @cb function will be called: on an
  * error, the finish function is called instead.
  *
@@ -196,13 +137,13 @@ struct io_plan io_read_partial_(void *data, size_t *len,
 				void *arg);
 
 /**
- * io_write_partial - queue data to be written (partial OK).
+ * io_write_partial - plan to write some data.
  * @data: the data buffer.
  * @len: the maximum length to write, set to the length actually written.
  * @cb: function to call once it's done.
  * @arg: @cb argument
  *
- * This will queue the data buffer for writing.  Once any data is
+ * This creates a plan to write data from a buffer.   Once any data is
  * written, @len is updated and the @cb function will be called: on an
  * error, the finish function is called instead.
  *
@@ -217,21 +158,19 @@ struct io_plan io_write_partial_(const void *data, size_t *len,
 				 struct io_plan (*cb)(struct io_conn *, void*),
 				 void *arg);
 
-
 /**
- * io_idle - explicitly note that this connection will do nothing.
+ * io_idle - plan to do nothing.
  *
- * This indicates the connection is idle: some other function will
- * later call io_read/io_write etc. (or io_close) on it, in which case
- * it will do that.
+ * This indicates the connection is idle: io_wake() will be called later do
+ * give the connection a new plan.
  */
 struct io_plan io_idle(void);
 
 /**
- * io_timeout - set timeout function if the callback doesn't fire.
+ * io_timeout - set timeout function if the callback doesn't complete.
  * @conn: the current connection.
  * @ts: how long until the timeout should be called.
- * @cb to call.
+ * @cb: callback to call.
  * @arg: argument to @cb.
  *
  * If the usual next callback is not called for this connection before @ts,
@@ -256,7 +195,7 @@ bool io_timeout_(struct io_conn *conn, struct timespec ts,
  * @plan: the first I/O function to call.
  *
  * Sometimes you want to be able to simultaneously read and write on a
- * single fd, but io forces a linear call sequence.  The solition is
+ * single fd, but io forces a linear call sequence.  The solution is
  * to have two connections for the same fd, and use one for read
  * operations and one for write.
  *
@@ -264,15 +203,14 @@ bool io_timeout_(struct io_conn *conn, struct timespec ts,
  */
 #define io_duplex(conn, plan)				\
 	(io_plan_other(), io_duplex_((conn), (plan)))
-
 struct io_conn *io_duplex_(struct io_conn *conn, struct io_plan plan);
 
 /**
  * io_wake - wake up an idle connection.
  * @conn: an idle connection.
- * @plan: the next I/O function for @conn.
+ * @plan: the next I/O plan for @conn.
  *
- * This makes @conn do I/O the next time around the io_loop().
+ * This makes @conn ready to do I/O the next time around the io_loop().
  */
 #define io_wake(conn, plan) (io_plan_other(), io_wake_((conn), (plan)))
 void io_wake_(struct io_conn *conn, struct io_plan plan);

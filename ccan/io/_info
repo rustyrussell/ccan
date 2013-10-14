@@ -3,12 +3,18 @@
 #include "config.h"
 
 /**
- * io - simple library for stateful io handling.
+ * io - simple library for asynchronous io handling.
  *
- * io provides a simple mechanism to write I/O servers with multiple
- * connections.  Handling of connections is multiplexed, and function
- * indicate what they want written or read, and what follow-on
- * function to call on success (or failure).
+ * io provides a mechanism to write I/O servers with multiple
+ * connections.  Each callback indicates what I/O they plan next
+ * (eg. read, write).  It is also possible to write custom I/O
+ * plans.
+ *
+ * When compiled with DEBUG, control flow is changed so that rather
+ * than returning to the main io_loop(), plans are executed sequentially
+ * providing a backtrace showing what has occurred on that connection.
+ * Which connection(s) do this depends on the user-specified io_debug
+ * function.
  *
  * Example:
  * // Given tr A-Z a-z outputs tr a-z a-z
