@@ -109,18 +109,19 @@ bool io_timeout_(struct io_conn *conn, struct timespec ts,
 	return true;
 }
 
-static enum io_result do_write(struct io_conn *conn)
+/* Returns true if we're finished. */
+static bool do_write(int fd, struct io_plan *plan)
 {
-	ssize_t ret = write(conn->fd.fd, conn->plan.u.write.buf, conn->plan.u.write.len);
-	if (ret < 0)
-		return RESULT_CLOSE;
+	ssize_t ret = write(fd, plan->u.write.buf, plan->u.write.len);
+	if (ret < 0) {
+		/* Override next function to close us. */
+		plan->next = io_close;
+		return true;
+	}
 
-	conn->plan.u.write.buf += ret;
-	conn->plan.u.write.len -= ret;
-	if (conn->plan.u.write.len == 0)
-		return RESULT_FINISHED;
-	else
-		return RESULT_AGAIN;
+	plan->u.write.buf += ret;
+	plan->u.write.len -= ret;
+	return (plan->u.write.len == 0);
 }
 
 /* Queue some data to be written. */
@@ -140,18 +141,18 @@ struct io_plan io_write_(const void *data, size_t len,
 	return plan;
 }
 
-static enum io_result do_read(struct io_conn *conn)
+static bool do_read(int fd, struct io_plan *plan)
 {
-	ssize_t ret = read(conn->fd.fd, conn->plan.u.read.buf,
-			   conn->plan.u.read.len);
-	if (ret <= 0)
-		return RESULT_CLOSE;
-	conn->plan.u.read.buf += ret;
-	conn->plan.u.read.len -= ret;
-	if (conn->plan.u.read.len == 0)
-		return RESULT_FINISHED;
-	else
-		return RESULT_AGAIN;
+	ssize_t ret = read(fd, plan->u.read.buf, plan->u.read.len);
+	if (ret <= 0) {
+		/* Override next function to close us. */
+		plan->next = io_close;
+		return true;
+	}
+
+	plan->u.read.buf += ret;
+	plan->u.read.len -= ret;
+	return (plan->u.read.len == 0);
 }
 
 /* Queue a request to read into a buffer. */
@@ -171,14 +172,17 @@ struct io_plan io_read_(void *data, size_t len,
 	return plan;
 }
 
-static enum io_result do_read_partial(struct io_conn *conn)
+static bool do_read_partial(int fd, struct io_plan *plan)
 {
-	ssize_t ret = read(conn->fd.fd, conn->plan.u.readpart.buf,
-			   *conn->plan.u.readpart.lenp);
-	if (ret <= 0)
-		return RESULT_CLOSE;
-	*conn->plan.u.readpart.lenp = ret;
-	return RESULT_FINISHED;
+	ssize_t ret = read(fd, plan->u.readpart.buf, *plan->u.readpart.lenp);
+	if (ret <= 0) {
+		/* Override next function to close us. */
+		plan->next = io_close;
+		return true;
+	}
+
+	*plan->u.readpart.lenp = ret;
+	return true;
 }
 
 /* Queue a partial request to read into a buffer. */
@@ -199,14 +203,17 @@ struct io_plan io_read_partial_(void *data, size_t *len,
 	return plan;
 }
 
-static enum io_result do_write_partial(struct io_conn *conn)
+static bool do_write_partial(int fd, struct io_plan *plan)
 {
-	ssize_t ret = write(conn->fd.fd, conn->plan.u.writepart.buf,
-			    *conn->plan.u.writepart.lenp);
-	if (ret < 0)
-		return RESULT_CLOSE;
-	*conn->plan.u.writepart.lenp = ret;
-	return RESULT_FINISHED;
+	ssize_t ret = write(fd, plan->u.writepart.buf, *plan->u.writepart.lenp);
+	if (ret < 0) {
+		/* Override next function to close us. */
+		plan->next = io_close;
+		return true;
+	}
+
+	*plan->u.writepart.lenp = ret;
+	return true;
 }
 
 /* Queue a partial write request. */
@@ -260,16 +267,10 @@ static struct io_plan do_next(struct io_conn *conn)
 
 struct io_plan do_ready(struct io_conn *conn)
 {
-	switch (conn->plan.io(conn)) {
-	case RESULT_CLOSE:
-		return io_close(conn, NULL);
-	case RESULT_FINISHED:
+	if (conn->plan.io(conn->fd.fd, &conn->plan))
 		return do_next(conn);
-	case RESULT_AGAIN:
-		return conn->plan;
-	default:
-		abort();
-	}
+
+	return conn->plan;
 }
 
 /* Useful next functions. */

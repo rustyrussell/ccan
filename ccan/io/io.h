@@ -28,12 +28,6 @@ struct io_state_writepart {
 	size_t *lenp;
 };
 
-enum io_result {
-	RESULT_AGAIN,
-	RESULT_FINISHED,
-	RESULT_CLOSE
-};
-
 /**
  * struct io_plan - returned from a setup function.
  *
@@ -42,7 +36,7 @@ enum io_result {
 struct io_plan {
 	int pollflag;
 	/* Only NULL if idle. */
-	enum io_result (*io)(struct io_conn *conn);
+	bool (*io)(int fd, struct io_plan *plan);
 	/* Only NULL if closing. */
 	struct io_plan (*next)(struct io_conn *, void *arg);
 	void *next_arg;
