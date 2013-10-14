@@ -63,38 +63,43 @@ struct io_plan {
 
 #ifdef DEBUG
 /**
- * io_debug - routine to select connection(s) to debug.
+ * io_debug_conn - routine to select connection(s) to debug.
  *
  * If this is set, the routine should return true if the connection is a
  * debugging candidate.  If so, the callchain for I/O operations on this
  * connection will be linear, for easier use of a debugger.
  */
-extern bool (*io_debug)(struct io_conn *conn);
+extern bool (*io_debug_conn)(struct io_conn *conn);
 
 /**
- * io_plan_other - mark the next plan not being for the current connection
+ * io_debug - if we're debugging the current connection, call immediately.
+ *
+ * This determines if we are debugging the current connection: if so,
+ * it immediately applies the plan and calls back into io_loop() to
+ * create a linear call chain.
+ */
+struct io_plan io_debug(struct io_plan plan);
+
+/**
+ * io_plan_no_debug - mark the next plan not to be called immediately.
  *
  * Most routines which take a plan are about to apply it to the current
  * connection.  We (ab)use this pattern for debugging: as soon as such a
- * plan is created, it is called, to create a linear call chain.
+ * plan is created it is called, to create a linear call chain.
  *
- * Some routines, like io_break() and io_wake() take an io_plan, but they
- * must not be applied immediately to the current connection, so we call this
- * first.
+ * Some routines, like io_break(), io_duplex() and io_wake() take an
+ * io_plan, but they must not be applied immediately to the current
+ * connection, so we call this first.
  */
-#define io_plan_other() ((io_plan_for_other = true))
+#define io_plan_no_debug() ((io_plan_nodebug = true))
 
-/**
- * io_plan_debug - hook for debugging a plan.
- *
- * After constructing a plan, call this.  If the current connection is being
- * debugged, then it will be immediately serviced with this plan.
- */
-void io_plan_debug(struct io_plan *plan);
-extern bool io_plan_for_other;
+extern bool io_plan_nodebug;
 #else
-#define io_plan_other() (void)0
-static inline void io_plan_debug(struct io_plan *plan) { }
+static inline struct io_plan io_debug(struct io_plan plan)
+{
+	return plan;
+}
+#define io_plan_no_debug() (void)0
 #endif
 
 #endif /* CCAN_IO_PLAN_H */

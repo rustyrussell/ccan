@@ -13,40 +13,54 @@
 void *io_loop_return;
 
 #ifdef DEBUG
-bool io_plan_for_other;
+/* Set to skip the next plan. */
+bool io_plan_nodebug;
+/* The current connection to apply plan to. */
 struct io_conn *current;
-bool (*io_debug)(struct io_conn *conn);
+/* User-defined function to select which connection(s) to debug. */
+bool (*io_debug_conn)(struct io_conn *conn);
+/* Set when we wake up an connection we are debugging. */
 bool io_debug_wakeup;
 
-void io_plan_debug(struct io_plan *plan)
+struct io_plan io_debug(struct io_plan plan)
 {
-	if (io_plan_for_other) {
-		io_plan_for_other = false;
-		return;
+	if (io_plan_nodebug) {
+		io_plan_nodebug = false;
+		return plan;
 	}
 
-	if (!io_debug || !current)
-		return;
+	if (!io_debug_conn || !current)
+		return plan;
 
-	if (!io_debug(current) && !io_debug_wakeup)
-		return;
+	if (!io_debug_conn(current) && !io_debug_wakeup)
+		return plan;
 
 	io_debug_wakeup = false;
-	current->plan = *plan;
+	current->plan = plan;
 	backend_plan_changed(current);
 
 	/* Call back into the loop immediately. */
 	io_loop_return = io_loop();
+	return plan;
 }
 
 static void debug_io_wake(struct io_conn *conn)
 {
 	/* We want linear if we wake a debugged connection, too. */
-	if (io_debug && io_debug(conn))
+	if (io_debug_conn && io_debug_conn(conn))
 		io_debug_wakeup = true;
+}
+
+/* Counterpart to io_plan_no_debug(), called in macros in io.h */
+static void io_plan_debug_again(void)
+{
+	io_plan_nodebug = false;
 }
 #else
 static void debug_io_wake(struct io_conn *conn)
+{
+}
+static void io_plan_debug_again(void)
 {
 }
 #endif
@@ -82,6 +96,8 @@ struct io_conn *io_new_conn_(int fd, struct io_plan plan)
 {
 	struct io_conn *conn = malloc(sizeof(*conn));
 
+	io_plan_debug_again();
+
 	if (!conn)
 		return NULL;
 
@@ -110,6 +126,8 @@ void io_set_finish_(struct io_conn *conn,
 struct io_conn *io_duplex_(struct io_conn *old, struct io_plan plan)
 {
 	struct io_conn *conn;
+
+	io_plan_debug_again();
 
 	assert(!old->duplex);
 
@@ -177,7 +195,6 @@ struct io_plan io_write_(const void *data, size_t len,
 	plan.next_arg = arg;
 	plan.pollflag = POLLOUT;
 
-	io_plan_debug(&plan);
 	return plan;
 }
 
@@ -207,7 +224,6 @@ struct io_plan io_read_(void *data, size_t len,
 	plan.next_arg = arg;
 	plan.pollflag = POLLIN;
 
-	io_plan_debug(&plan);
 	return plan;
 }
 
@@ -236,7 +252,6 @@ struct io_plan io_read_partial_(void *data, size_t *len,
 	plan.next_arg = arg;
 	plan.pollflag = POLLIN;
 
-	io_plan_debug(&plan);
 	return plan;
 }
 
@@ -265,26 +280,26 @@ struct io_plan io_write_partial_(const void *data, size_t *len,
 	plan.next_arg = arg;
 	plan.pollflag = POLLOUT;
 
-	io_plan_debug(&plan);
 	return plan;
 }
 
-struct io_plan io_idle(void)
+struct io_plan io_idle_(void)
 {
 	struct io_plan plan;
 
 	plan.pollflag = 0;
 	plan.io = NULL;
 	/* Never called (overridden by io_wake), but NULL means closing */
-	plan.next = (void *)io_idle;
+	plan.next = (void *)io_idle_;
 
-	io_plan_debug(&plan);
 	return plan;
 }
 
 void io_wake_(struct io_conn *conn, struct io_plan plan)
 
 {
+	io_plan_debug_again();
+
 	/* It might be closing, but we haven't called its finish() yet. */
 	if (!conn->plan.next)
 		return;
@@ -318,7 +333,7 @@ void io_ready(struct io_conn *conn)
 }
 
 /* Close the connection, we're done. */
-struct io_plan io_close(void)
+struct io_plan io_close_(void)
 {
 	struct io_plan plan;
 
@@ -327,7 +342,6 @@ struct io_plan io_close(void)
 	plan.next = NULL;
 	plan.u.close.saved_errno = errno;
 
-	io_plan_debug(&plan);
 	return plan;
 }
 
@@ -339,6 +353,8 @@ struct io_plan io_close_cb(struct io_conn *conn, void *arg)
 /* Exit the loop, returning this (non-NULL) arg. */
 struct io_plan io_break_(void *ret, struct io_plan plan)
 {
+	io_plan_debug_again();
+
 	assert(ret);
 	io_loop_return = ret;
 

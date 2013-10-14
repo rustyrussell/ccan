@@ -18,7 +18,7 @@
  * Returns NULL on error (and sets errno).
  */
 #define io_new_conn(fd, plan)				\
-	(io_plan_other(), io_new_conn_((fd), (plan)))
+	(io_plan_no_debug(), io_new_conn_((fd), (plan)))
 struct io_conn *io_new_conn_(int fd, struct io_plan plan);
 
 /**
@@ -83,10 +83,10 @@ void io_close_listener(struct io_listener *listener);
  * Note that the I/O may actually be done immediately.
  */
 #define io_write(data, len, cb, arg)					\
-	io_write_((data), (len),					\
-		  typesafe_cb_preargs(struct io_plan, void *,		\
-				      (cb), (arg), struct io_conn *),	\
-		  (arg))
+	io_debug(io_write_((data), (len),				\
+			   typesafe_cb_preargs(struct io_plan, void *,	\
+					       (cb), (arg), struct io_conn *), \
+			   (arg)))
 struct io_plan io_write_(const void *data, size_t len,
 			 struct io_plan (*cb)(struct io_conn *, void *),
 			 void *arg);
@@ -105,10 +105,10 @@ struct io_plan io_write_(const void *data, size_t len,
  * Note that the I/O may actually be done immediately.
  */
 #define io_read(data, len, cb, arg)					\
-	io_read_((data), (len),						\
-		 typesafe_cb_preargs(struct io_plan, void *,		\
-				     (cb), (arg), struct io_conn *),	\
-		 (arg))
+	io_debug(io_read_((data), (len),				\
+			  typesafe_cb_preargs(struct io_plan, void *,	\
+					      (cb), (arg), struct io_conn *), \
+			  (arg)))
 struct io_plan io_read_(void *data, size_t len,
 			struct io_plan (*cb)(struct io_conn *, void *),
 			void *arg);
@@ -128,10 +128,11 @@ struct io_plan io_read_(void *data, size_t len,
  * Note that the I/O may actually be done immediately.
  */
 #define io_read_partial(data, len, cb, arg)				\
-	io_read_partial_((data), (len),					\
-			 typesafe_cb_preargs(struct io_plan, void *,	\
-					     (cb), (arg), struct io_conn *), \
-			 (arg))
+	io_debug(io_read_partial_((data), (len),			\
+				  typesafe_cb_preargs(struct io_plan, void *, \
+						      (cb), (arg),	\
+						      struct io_conn *), \
+				  (arg)))
 struct io_plan io_read_partial_(void *data, size_t *len,
 				struct io_plan (*cb)(struct io_conn *, void *),
 				void *arg);
@@ -150,10 +151,11 @@ struct io_plan io_read_partial_(void *data, size_t *len,
  * Note that the I/O may actually be done immediately.
  */
 #define io_write_partial(data, len, cb, arg)				\
-	io_write_partial_((data), (len),				\
-			  typesafe_cb_preargs(struct io_plan, void *,	\
-					      (cb), (arg), struct io_conn *), \
-			  (arg))
+	io_debug(io_write_partial_((data), (len),			\
+				   typesafe_cb_preargs(struct io_plan, void *, \
+						       (cb), (arg),	\
+						       struct io_conn *), \
+				   (arg)))
 struct io_plan io_write_partial_(const void *data, size_t *len,
 				 struct io_plan (*cb)(struct io_conn *, void*),
 				 void *arg);
@@ -164,7 +166,8 @@ struct io_plan io_write_partial_(const void *data, size_t *len,
  * This indicates the connection is idle: io_wake() will be called later do
  * give the connection a new plan.
  */
-struct io_plan io_idle(void);
+#define io_idle() io_debug(io_idle_())
+struct io_plan io_idle_(void);
 
 /**
  * io_timeout - set timeout function if the callback doesn't complete.
@@ -202,7 +205,7 @@ bool io_timeout_(struct io_conn *conn, struct timespec ts,
  * You must io_close() both of them to close the fd.
  */
 #define io_duplex(conn, plan)				\
-	(io_plan_other(), io_duplex_((conn), (plan)))
+	(io_plan_no_debug(), io_duplex_((conn), (plan)))
 struct io_conn *io_duplex_(struct io_conn *conn, struct io_plan plan);
 
 /**
@@ -212,7 +215,7 @@ struct io_conn *io_duplex_(struct io_conn *conn, struct io_plan plan);
  *
  * This makes @conn ready to do I/O the next time around the io_loop().
  */
-#define io_wake(conn, plan) (io_plan_other(), io_wake_((conn), (plan)))
+#define io_wake(conn, plan) (io_plan_no_debug(), io_wake_((conn), (plan)))
 void io_wake_(struct io_conn *conn, struct io_plan plan);
 
 /**
@@ -226,7 +229,7 @@ void io_wake_(struct io_conn *conn, struct io_plan plan);
  *
  * If io_loop() is called again, then @plan will be carried out.
  */
-#define io_break(ret, plan) (io_plan_other(), io_break_((ret), (plan)))
+#define io_break(ret, plan) (io_plan_no_debug(), io_break_((ret), (plan)))
 struct io_plan io_break_(void *ret, struct io_plan plan);
 
 /* FIXME: io_recvfrom/io_sendto */
@@ -236,7 +239,8 @@ struct io_plan io_break_(void *ret, struct io_plan plan);
  *
  * On return to io_loop, the connection will be closed.
  */
-struct io_plan io_close(void);
+#define io_close() io_debug(io_close_())
+struct io_plan io_close_(void);
 
 /**
  * io_close_cb - helper callback to close a connection.

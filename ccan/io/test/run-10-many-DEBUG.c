@@ -9,4 +9,4 @@ static bool debug_one(struct io_conn *conn)
 {
 	return conn == buf[1].reader;
 }
-int main(void) { io_debug = debug_one; return real_main(); }
+int main(void) { io_debug_conn = debug_one; return real_main(); }

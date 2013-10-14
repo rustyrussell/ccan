@@ -55,7 +55,7 @@ static inline void set_current(struct io_conn *conn)
 }
 static inline bool doing_debug(void)
 {
-	return io_debug != NULL;
+	return io_debug_conn != NULL;
 }
 #else
 static inline void set_current(struct io_conn *conn)

@@ -81,7 +81,6 @@ static struct io_plan io_read_packet(struct packet *pkt,
 	plan.next_arg = arg;
 	plan.pollflag = POLLIN;
 
-	io_plan_debug(&plan);
 	return plan;
 }
 
