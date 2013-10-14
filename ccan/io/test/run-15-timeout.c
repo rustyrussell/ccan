@@ -35,14 +35,14 @@ static struct io_plan *start_ok(struct io_conn *conn, struct data *d)
 	ok1(d->state == 0);
 	d->state++;
 	io_timeout(conn, time_from_usec(d->timeout_usec), timeout, d);
-	return io_read(d->buf, sizeof(d->buf), io_next(conn, no_timeout, d));
+	return io_read(conn, d->buf, sizeof(d->buf), no_timeout, d);
 }
 
 static void finish_ok(struct io_conn *conn, struct data *d)
 {
 	ok1(d->state == 2);
 	d->state++;
-	io_break(d, NULL);
+	io_break(conn, d, NULL, NULL);
 }
 
 static int make_listen_fd(const char *port, struct addrinfo **info)

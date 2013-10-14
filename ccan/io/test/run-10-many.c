@@ -22,16 +22,16 @@ static struct io_plan *do_read(struct io_conn *conn, struct buffer *buf)
 {
 	assert(conn == buf->reader);
 
-	return io_read(&buf->buf, sizeof(buf->buf),
-		       io_next(conn, poke_writer, buf));
+	return io_read(conn, &buf->buf, sizeof(buf->buf),
+		       poke_writer, buf);
 }
 
 static struct io_plan *do_write(struct io_conn *conn, struct buffer *buf)
 {
 	assert(conn == buf->writer);
 
-	return io_write(&buf->buf, sizeof(buf->buf),
-			io_next(conn, poke_reader, buf));
+	return io_write(conn, &buf->buf, sizeof(buf->buf),
+			poke_reader, buf);
 }
 
 static struct io_plan *poke_writer(struct io_conn *conn, struct buffer *buf)

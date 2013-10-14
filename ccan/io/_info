@@ -40,8 +40,7 @@
  * {
  * 	assert(c == b->reader);
  * 	b->len = sizeof(b->inbuf);
- * 	return io_read_partial(b->inbuf, &b->len,
- *			       io_next(c, wake_writer, b));
+ * 	return io_read_partial(c, b->inbuf, &b->len, wake_writer, b);
  * }
  *
  * static struct io_plan *wake_writer(struct io_conn *c, struct stdin_buffer *b)
@@ -71,7 +70,7 @@
  * 	assert(conn == b->writer);
  * 	if (!b->reader)
  * 		return io_close(conn, NULL);
- * 	return io_write(b->inbuf, b->len, io_next(conn, wake_reader, b));
+ * 	return io_write(conn, b->inbuf, b->len, wake_reader, b);
  * }
  *
  * static struct io_plan *start_writer(struct io_conn *conn,
@@ -104,8 +103,8 @@
  * 	}
  *
  * 	b->rlen = b->max - b->off;
- * 	return io_read_partial(b->buf + b->off, &b->rlen,
- *			       io_next(conn, read_from_child, b));
+ * 	return io_read_partial(conn, b->buf + b->off, &b->rlen,
+ *			       read_from_child, b);
  * }
  *
  * // Feed a program our stdin, gather its stdout, print that at end.

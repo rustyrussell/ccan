@@ -28,8 +28,8 @@ struct client {
 static struct io_plan *write_reply(struct io_conn *conn, struct client *client);
 static struct io_plan *read_request(struct io_conn *conn, struct client *client)
 {
-	return io_read(client->request_buffer, REQUEST_SIZE,
-		       io_next(conn, write_reply, client));
+	return io_read(conn, client->request_buffer, REQUEST_SIZE,
+		       write_reply, client);
 }
 
 /* once we're done, loop again. */
@@ -41,8 +41,8 @@ static struct io_plan *write_complete(struct io_conn *conn, struct client *clien
 
 static struct io_plan *write_reply(struct io_conn *conn, struct client *client)
 {
-	return io_write(client->reply_buffer, REPLY_SIZE,
-			io_next(conn, write_complete, client));
+	return io_write(conn, client->reply_buffer, REPLY_SIZE,
+			write_complete, client);
 }
 
 /* This runs in the child. */
@@ -108,12 +108,12 @@ static void sigalarm(int sig)
 
 static struct io_plan *do_timeout(struct io_conn *conn, char *buf)
 {
-	return io_break(conn, NULL);
+	return io_break(conn, buf, NULL, NULL);
 }
 
 static struct io_plan *do_timeout_read(struct io_conn *conn, char *buf)
 {
-	return io_read(buf, 1, io_next(conn, do_timeout, buf));
+	return io_read(conn, buf, 1, do_timeout, buf);
 }
 
 int main(int argc, char *argv[])

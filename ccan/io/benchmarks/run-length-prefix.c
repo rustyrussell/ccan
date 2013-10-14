@@ -29,14 +29,14 @@ static struct io_plan *write_reply(struct io_conn *conn, struct client *client);
 static struct io_plan *read_body(struct io_conn *conn, struct client *client)
 {
 	assert(client->len <= REQUEST_MAX);
-	return io_read(client->request_buffer, client->len,
-		       io_next(conn, write_reply, client));
+	return io_read(conn, client->request_buffer, client->len,
+		       write_reply, client);
 }
 
 static struct io_plan *read_header(struct io_conn *conn, struct client *client)
 {
-	return io_read(&client->len, sizeof(client->len),
-		       io_next(conn, read_body, client));
+	return io_read(conn, &client->len, sizeof(client->len),
+		       read_body, client);
 }
 
 /* once we're done, loop again. */
@@ -48,8 +48,8 @@ static struct io_plan *write_complete(struct io_conn *conn, struct client *clien
 
 static struct io_plan *write_reply(struct io_conn *conn, struct client *client)
 {
-	return io_write(&client->len, sizeof(client->len),
-			io_next(conn, write_complete, client));
+	return io_write(conn, &client->len, sizeof(client->len),
+			write_complete, client);
 }
 
 /* This runs in the child. */
@@ -114,12 +114,12 @@ static void sigalarm(int sig)
 
 static struct io_plan *do_timeout(struct io_conn *conn, char *buf)
 {
-	return io_break(conn, NULL);
+	return io_break(conn, buf, NULL, NULL);
 }
 
 static struct io_plan *do_timeout_read(struct io_conn *conn, char *buf)
 {
-	return io_read(buf, 1, io_next(conn, do_timeout, buf));
+	return io_read(conn, buf, 1, do_timeout, buf);
 }
 
 int main(int argc, char *argv[])

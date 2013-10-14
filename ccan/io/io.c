@@ -95,34 +95,13 @@ struct io_conn *io_duplex_(struct io_conn *old,
 	return conn;
 }
 
-/* Convenient token which only we can produce. */
-static inline struct io_next *to_ionext(struct io_conn *conn)
-{
-	return (struct io_next *)conn;
-}
-
 static inline struct io_plan *to_ioplan(enum io_state state)
 {
 	return (struct io_plan *)(long)state;
 }
 
-static inline struct io_conn *from_ionext(struct io_next *next)
-{
-	return (struct io_conn *)next;
-}
-
-struct io_next *io_next_(struct io_conn *conn,
-			 struct io_plan *(*next)(struct io_conn *, void *),
-			 void *arg)
-{
-	conn->fd.next = next;
-	conn->fd.next_arg = arg;
-
-	return to_ionext(conn);
-}
-
 bool io_timeout_(struct io_conn *conn, struct timespec ts,
-		 struct io_plan *(*next)(struct io_conn *, void *), void *arg)
+		 struct io_plan *(*cb)(struct io_conn *, void *), void *arg)
 {
 	if (!conn->timeout) {
 		conn->timeout = malloc(sizeof(*conn->timeout));
@@ -131,45 +110,58 @@ bool io_timeout_(struct io_conn *conn, struct timespec ts,
 	} else
 		assert(!timeout_active(conn));
 
-	conn->timeout->next = next;
+	conn->timeout->next = cb;
 	conn->timeout->next_arg = arg;
 	backend_add_timeout(conn, ts);
 	return true;
 }
 
 /* Queue some data to be written. */
-struct io_plan *io_write(const void *data, size_t len, struct io_next *next)
+struct io_plan *io_write_(struct io_conn *conn, const void *data, size_t len,
+			  struct io_plan *(*cb)(struct io_conn *, void *),
+			  void *arg)
 {
-	struct io_conn *conn = from_ionext(next);
 	conn->u.write.buf = data;
 	conn->u.write.len = len;
+	conn->fd.next = cb;
+	conn->fd.next_arg = arg;
 	return to_ioplan(WRITE);
 }
 
 /* Queue a request to read into a buffer. */
-struct io_plan *io_read(void *data, size_t len, struct io_next *next)
+struct io_plan *io_read_(struct io_conn *conn, void *data, size_t len,
+			 struct io_plan *(*cb)(struct io_conn *, void *),
+			 void *arg)
 {
-	struct io_conn *conn = from_ionext(next);
 	conn->u.read.buf = data;
 	conn->u.read.len = len;
+	conn->fd.next = cb;
+	conn->fd.next_arg = arg;
 	return to_ioplan(READ);
 }
 
 /* Queue a partial request to read into a buffer. */
-struct io_plan *io_read_partial(void *data, size_t *len, struct io_next *next)
+struct io_plan *io_read_partial_(struct io_conn *conn, void *data, size_t *len,
+				 struct io_plan *(*cb)(struct io_conn *, void *),
+				 void *arg)
 {
-	struct io_conn *conn = from_ionext(next);
 	conn->u.readpart.buf = data;
 	conn->u.readpart.lenp = len;
+	conn->fd.next = cb;
+	conn->fd.next_arg = arg;
 	return to_ioplan(READPART);
 }
 
 /* Queue a partial write request. */
-struct io_plan *io_write_partial(const void *data, size_t *len, struct io_next *next)
+struct io_plan *io_write_partial_(struct io_conn *conn,
+				  const void *data, size_t *len,
+				  struct io_plan *(*cb)(struct io_conn*, void *),
+				  void *arg)
 {
-	struct io_conn *conn = from_ionext(next);
 	conn->u.writepart.buf = data;
 	conn->u.writepart.lenp = len;
+	conn->fd.next = cb;
+	conn->fd.next_arg = arg;
 	return to_ioplan(WRITEPART);
 }
 
@@ -179,14 +171,14 @@ struct io_plan *io_idle(struct io_conn *conn)
 }
 
 void io_wake_(struct io_conn *conn,
-	      struct io_plan *(*next)(struct io_conn *, void *), void *arg)
+	      struct io_plan *(*fn)(struct io_conn *, void *), void *arg)
 
 {
 	/* It might have finished, but we haven't called its finish() yet. */
 	if (conn->state == FINISHED)
 		return;
 	assert(conn->state == IDLE);
-	conn->fd.next = next;
+	conn->fd.next = fn;
 	conn->fd.next_arg = arg;
 	backend_set_state(conn, to_ioplan(NEXT));
 }
@@ -254,9 +246,13 @@ struct io_plan *io_close(struct io_conn *conn, void *arg)
 }
 
 /* Exit the loop, returning this (non-NULL) arg. */
-struct io_plan *io_break(void *arg, struct io_next *next)
+struct io_plan *io_break_(struct io_conn *conn, void *ret,
+			  struct io_plan *(*fn)(struct io_conn *, void *),
+			  void *arg)
 {
-	io_loop_return = arg;
+	io_loop_return = ret;
+	conn->fd.next = fn;
+	conn->fd.next_arg = arg;
 
 	return to_ioplan(NEXT);
 }

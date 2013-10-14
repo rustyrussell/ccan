@@ -16,14 +16,14 @@ static struct io_plan *start_ok(struct io_conn *conn, struct data *d)
 {
 	ok1(d->state == 0);
 	d->state++;
-	return io_write(d->buf, d->bytes, io_next(conn, io_close, d));
+	return io_write(conn, d->buf, d->bytes, io_close, d);
 }
 
 static void finish_ok(struct io_conn *conn, struct data *d)
 {
 	ok1(d->state == 1);
 	d->state++;
-	io_break(d, NULL);
+	io_break(conn, d, NULL, NULL);
 }
 
 static int make_listen_fd(const char *port, struct addrinfo **info)

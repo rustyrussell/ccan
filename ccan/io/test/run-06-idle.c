@@ -20,7 +20,7 @@ static struct io_plan *do_read(struct io_conn *conn, struct data *d)
 {
 	ok1(d->state == 2 || d->state == 3);
 	d->state++;
-	return io_read(d->buf, sizeof(d->buf), io_next(conn, io_close, d));
+	return io_read(conn, d->buf, sizeof(d->buf), io_close, d);
 }
 
 static struct io_plan *start_waker(struct io_conn *conn, struct data *d)
@@ -58,7 +58,7 @@ static void finish_idle(struct io_conn *conn, struct data *d)
 {
 	ok1(d->state == 4);
 	d->state++;
-	io_break(d, NULL);
+	io_break(conn, d, NULL, NULL);
 }
 
 static int make_listen_fd(const char *port, struct addrinfo **info)
