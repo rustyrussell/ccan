@@ -25,21 +25,21 @@ struct client {
 	char reply_buffer[REPLY_SIZE];
 };
 
-static struct io_op *write_reply(struct io_conn *conn, struct client *client);
-static struct io_op *read_request(struct io_conn *conn, struct client *client)
+static struct io_plan *write_reply(struct io_conn *conn, struct client *client);
+static struct io_plan *read_request(struct io_conn *conn, struct client *client)
 {
 	return io_read(client->request_buffer, REQUEST_SIZE,
 		       io_next(conn, write_reply, client));
 }
 
 /* once we're done, loop again. */
-static struct io_op *write_complete(struct io_conn *conn, struct client *client)
+static struct io_plan *write_complete(struct io_conn *conn, struct client *client)
 {
 	completed++;
 	return read_request(conn, client);
 }
 
-static struct io_op *write_reply(struct io_conn *conn, struct client *client)
+static struct io_plan *write_reply(struct io_conn *conn, struct client *client)
 {
 	return io_write(client->reply_buffer, REPLY_SIZE,
 			io_next(conn, write_complete, client));
@@ -106,12 +106,12 @@ static void sigalarm(int sig)
 	write(timeout[1], "1", 1);
 }
 
-static struct io_op *do_timeout(struct io_conn *conn, char *buf)
+static struct io_plan *do_timeout(struct io_conn *conn, char *buf)
 {
 	return io_break(conn, NULL);
 }
 
-static struct io_op *do_timeout_read(struct io_conn *conn, char *buf)
+static struct io_plan *do_timeout_read(struct io_conn *conn, char *buf)
 {
 	return io_read(buf, 1, io_next(conn, do_timeout, buf));
 }

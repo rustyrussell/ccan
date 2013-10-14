@@ -9,7 +9,7 @@ struct fd {
 	bool listener;
 	size_t backend_info;
 
-	struct io_op *(*next)(struct io_conn *, void *arg);
+	struct io_plan *(*next)(struct io_conn *, void *arg);
 	void *next_arg;
 
 	void (*finish)(struct io_conn *, void *arg);
@@ -37,7 +37,7 @@ enum io_state {
 	PROCESSING /* We expect them to change this now. */
 };
 
-static inline enum io_state from_ioop(struct io_op *op)
+static inline enum io_state from_ioplan(struct io_plan *op)
 {
 	return (enum io_state)(long)op;
 }
@@ -66,7 +66,7 @@ struct io_timeout {
 	struct timer timer;
 	struct io_conn *conn;
 
-	struct io_op *(*next)(struct io_conn *, void *arg);
+	struct io_plan *(*next)(struct io_conn *, void *arg);
 	void *next_arg;
 };
 
@@ -97,9 +97,9 @@ bool add_listener(struct io_listener *l);
 bool add_conn(struct io_conn *c);
 bool add_duplex(struct io_conn *c);
 void del_listener(struct io_listener *l);
-void backend_set_state(struct io_conn *conn, struct io_op *op);
+void backend_set_state(struct io_conn *conn, struct io_plan *op);
 void backend_add_timeout(struct io_conn *conn, struct timespec ts);
 void backend_del_timeout(struct io_conn *conn);
 
-struct io_op *do_ready(struct io_conn *conn);
+struct io_plan *do_ready(struct io_conn *conn);
 #endif /* CCAN_IO_BACKEND_H */

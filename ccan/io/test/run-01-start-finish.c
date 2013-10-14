@@ -6,7 +6,7 @@
 #include <sys/wait.h>
 #include <stdio.h>
 
-static struct io_op *start_ok(struct io_conn *conn, int *state)
+static struct io_plan *start_ok(struct io_conn *conn, int *state)
 {
 	ok1(*state == 0);
 	(*state)++;

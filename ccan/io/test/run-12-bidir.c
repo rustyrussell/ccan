@@ -18,13 +18,13 @@ static void finish_ok(struct io_conn *conn, struct data *d)
 	d->state++;
 }
 
-static struct io_op *write_out(struct io_conn *conn, struct data *d)
+static struct io_plan *write_out(struct io_conn *conn, struct data *d)
 {
 	d->state++;
 	return io_write(d->wbuf, sizeof(d->wbuf), io_next(conn, io_close, d));
 }
 
-static struct io_op *start_ok(struct io_conn *conn, struct data *d)
+static struct io_plan *start_ok(struct io_conn *conn, struct data *d)
 {
 	ok1(d->state == 0);
 	d->state++;

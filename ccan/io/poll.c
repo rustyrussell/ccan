@@ -126,9 +126,9 @@ static int pollmask(enum io_state state)
 	}
 }
 
-void backend_set_state(struct io_conn *conn, struct io_op *op)
+void backend_set_state(struct io_conn *conn, struct io_plan *plan)
 {
-	enum io_state state = from_ioop(op);
+	enum io_state state = from_ioplan(plan);
 	struct pollfd *pfd = &pollfds[conn->fd.backend_info];
 
 	if (pfd->events)

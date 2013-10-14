@@ -7,12 +7,11 @@
 #include <unistd.h>
 
 /**
- * struct io_op - pointer to return from io functions.
+ * struct io_plan - pointer to return from a setup function.
  *
- * This undefined structure is just to help the compiler check that you
- * really do return the result of an io-queueing method.
+ * A plan of what IO to do, when.
  */
-struct io_op;
+struct io_plan;
 
 /**
  * struct io_next - pointer to what we're going to do next.
@@ -40,13 +39,13 @@ struct io_next;
  */
 #define io_new_conn(fd, start, finish, arg)				\
 	io_new_conn_((fd),						\
-		     typesafe_cb_preargs(struct io_op *, void *,	\
+		     typesafe_cb_preargs(struct io_plan *, void *,	\
 					 (start), (arg), struct io_conn *), \
 		     typesafe_cb_preargs(void, void *, (finish), (arg),	\
 					 struct io_conn *),		\
 		     (arg))
 struct io_conn *io_new_conn_(int fd,
-			     struct io_op *(*start)(struct io_conn *, void *),
+			     struct io_plan *(*start)(struct io_conn *, void *),
 			     void (*finish)(struct io_conn *, void *),
 			     void *arg);
 
@@ -64,15 +63,15 @@ struct io_conn *io_new_conn_(int fd,
  */
 #define io_new_listener(fd, start, finish, arg)				\
 	io_new_listener_((fd),						\
-			 typesafe_cb_preargs(struct io_op *, void *,	\
+			 typesafe_cb_preargs(struct io_plan *, void *,	\
 					     (start), (arg),		\
 					     struct io_conn *),		\
 			 typesafe_cb_preargs(void, void *, (finish),	\
 					     (arg), struct io_conn *),	\
 			 (arg))
 struct io_listener *io_new_listener_(int fd,
-				     struct io_op *(*start)(struct io_conn *,
-							    void *arg),
+				     struct io_plan *(*start)(struct io_conn *,
+							      void *arg),
 				     void (*finish)(struct io_conn *,
 						    void *arg),
 				     void *arg);
@@ -97,7 +96,7 @@ void io_close_listener(struct io_listener *listener);
  *
  * Note that the I/O may actually be done immediately.
  */
-struct io_op *io_write(const void *data, size_t len, struct io_next *next);
+struct io_plan *io_write(const void *data, size_t len, struct io_next *next);
 
 /**
  * io_read - queue buffer to be read.
@@ -111,7 +110,7 @@ struct io_op *io_write(const void *data, size_t len, struct io_next *next);
  *
  * Note that the I/O may actually be done immediately.
  */
-struct io_op *io_read(void *data, size_t len, struct io_next *next);
+struct io_plan *io_read(void *data, size_t len, struct io_next *next);
 
 /**
  * io_read_partial - queue buffer to be read (partial OK).
@@ -125,7 +124,7 @@ struct io_op *io_read(void *data, size_t len, struct io_next *next);
  *
  * Note that the I/O may actually be done immediately.
  */
-struct io_op *io_read_partial(void *data, size_t *len, struct io_next *next);
+struct io_plan *io_read_partial(void *data, size_t *len, struct io_next *next);
 
 /**
  * io_write_partial - queue data to be written (partial OK).
@@ -139,7 +138,7 @@ struct io_op *io_read_partial(void *data, size_t *len, struct io_next *next);
  *
  * Note that the I/O may actually be done immediately.
  */
-struct io_op *io_write_partial(const void *data, size_t *len,
+struct io_plan *io_write_partial(const void *data, size_t *len,
 			       struct io_next *next);
 
 /**
@@ -150,7 +149,7 @@ struct io_op *io_write_partial(const void *data, size_t *len,
  * later call io_read/io_write etc. (or io_close) on it, in which case
  * it will do that.
  */
-struct io_op *io_idle(struct io_conn *conn);
+struct io_plan *io_idle(struct io_conn *conn);
 
 /**
  * io_timeout - set timeout function if the callback doesn't fire.
@@ -168,13 +167,13 @@ struct io_op *io_idle(struct io_conn *conn);
  */
 #define io_timeout(conn, ts, next, arg) \
 	io_timeout_((conn), (ts),					\
-		    typesafe_cb_preargs(struct io_op *, void *,		\
+		    typesafe_cb_preargs(struct io_plan *, void *,	\
 					(next), (arg),			\
 					struct io_conn *),		\
 		    (arg))
 
 bool io_timeout_(struct io_conn *conn, struct timespec ts,
-		 struct io_op *(*next)(struct io_conn *, void *), void *arg);
+		 struct io_plan *(*next)(struct io_conn *, void *), void *arg);
 
 /**
  * io_duplex - split an fd into two connections.
@@ -192,14 +191,14 @@ bool io_timeout_(struct io_conn *conn, struct timespec ts,
  */
 #define io_duplex(conn, start, finish, arg)				\
 	io_duplex_((conn),						\
-		   typesafe_cb_preargs(struct io_op *, void *,		\
+		   typesafe_cb_preargs(struct io_plan *, void *,	\
 				       (start), (arg), struct io_conn *), \
 		   typesafe_cb_preargs(void, void *, (finish), (arg),	\
 				       struct io_conn *),		\
 		   (arg))
 
 struct io_conn *io_duplex_(struct io_conn *conn,
-			   struct io_op *(*start)(struct io_conn *, void *),
+			   struct io_plan *(*start)(struct io_conn *, void *),
 			   void (*finish)(struct io_conn *, void *),
 			   void *arg);
 
@@ -214,11 +213,11 @@ struct io_conn *io_duplex_(struct io_conn *conn,
  */
 #define io_wake(conn, next, arg)					\
 	io_wake_((conn),						\
-		 typesafe_cb_preargs(struct io_op *, void *,		\
+		 typesafe_cb_preargs(struct io_plan *, void *,		\
 				     (next), (arg), struct io_conn *),	\
 		 (arg))
 void io_wake_(struct io_conn *conn,
-	      struct io_op *(*next)(struct io_conn *, void *), void *arg);
+	      struct io_plan *(*next)(struct io_conn *, void *), void *arg);
 
 /**
  * io_break - return from io_loop()
@@ -231,7 +230,7 @@ void io_wake_(struct io_conn *conn,
  *
  * If io_loop() is called again, then @next will be called.
  */
-struct io_op *io_break(void *arg, struct io_next *next);
+struct io_plan *io_break(void *arg, struct io_next *next);
 
 /**
  * io_next - indicate what callback to call next.
@@ -249,11 +248,11 @@ struct io_op *io_break(void *arg, struct io_next *next);
  */
 #define io_next(conn, next, arg)					\
 	io_next_((conn),						\
-		 typesafe_cb_preargs(struct io_op *, void *,		\
+		 typesafe_cb_preargs(struct io_plan *, void *,		\
 				     (next), (arg), struct io_conn *),	\
 		 (arg))
 struct io_next *io_next_(struct io_conn *conn,
-			 struct io_op *(*next)(struct io_conn *, void *arg),
+			 struct io_plan *(*next)(struct io_conn *, void *arg),
 			 void *arg);
 
 /* FIXME: io_recvfrom/io_sendto */
@@ -269,7 +268,7 @@ struct io_next *io_next_(struct io_conn *conn,
  * It's common to 'return io_close(...)' from a @next function, but
  * io_close can also be used as an argument to io_next().
  */
-struct io_op *io_close(struct io_conn *, void *unused);
+struct io_plan *io_close(struct io_conn *, void *unused);
 
 /**
  * io_loop - process fds until all closed on io_break.

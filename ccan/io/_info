@@ -32,11 +32,11 @@
  * };
  *
  * // This reads from stdin.
- * static struct io_op *wake_writer(struct io_conn *, struct stdin_buffer *);
+ * static struct io_plan *wake_writer(struct io_conn *, struct stdin_buffer *);
  * // This writes the stdin buffer to the child.
- * static struct io_op *write_to_child(struct io_conn *c,
- * 				       struct stdin_buffer *b);
- * static struct io_op *read_stdin(struct io_conn *c, struct stdin_buffer *b)
+ * static struct io_plan *write_to_child(struct io_conn *c,
+ *					 struct stdin_buffer *b);
+ * static struct io_plan *read_stdin(struct io_conn *c, struct stdin_buffer *b)
  * {
  * 	assert(c == b->reader);
  * 	b->len = sizeof(b->inbuf);
@@ -44,7 +44,7 @@
  *			       io_next(c, wake_writer, b));
  * }
  *
- * static struct io_op *wake_writer(struct io_conn *c, struct stdin_buffer *b)
+ * static struct io_plan *wake_writer(struct io_conn *c, struct stdin_buffer *b)
  * {
  * 	assert(c == b->reader);
  * 	io_wake(b->writer, write_to_child, b);
@@ -58,15 +58,15 @@
  * 	b->reader = NULL;
  * }
  *
- * static struct io_op *wake_reader(struct io_conn *c, struct stdin_buffer *b)
+ * static struct io_plan *wake_reader(struct io_conn *c, struct stdin_buffer *b)
  * {
  * 	assert(c == b->writer);
  * 	io_wake(b->reader, read_stdin, b);
  * 	return io_idle(c);
  * }
  *
- * static struct io_op *write_to_child(struct io_conn *conn,
- * 				      struct stdin_buffer *b)
+ * static struct io_plan *write_to_child(struct io_conn *conn,
+ * 				        struct stdin_buffer *b)
  * {
  * 	assert(conn == b->writer);
  * 	if (!b->reader)
@@ -74,8 +74,8 @@
  * 	return io_write(b->inbuf, b->len, io_next(conn, wake_reader, b));
  * }
  *
- * static struct io_op *start_writer(struct io_conn *conn,
- * 				     struct stdin_buffer *b)
+ * static struct io_plan *start_writer(struct io_conn *conn,
+ * 				       struct stdin_buffer *b)
  * {
  * 	assert(conn == b->writer);
  * 	return io_idle(conn);
@@ -88,8 +88,8 @@
  * }
  *
  * // This reads from the child and saves it into buffer.
- * static struct io_op *read_from_child(struct io_conn *conn,
- * 				        struct buffer *b)
+ * static struct io_plan *read_from_child(struct io_conn *conn,
+ *					  struct buffer *b)
  * {
  * 	b->off += b->rlen;
  *

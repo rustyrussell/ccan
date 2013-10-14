@@ -12,8 +12,8 @@
 void *io_loop_return;
 
 struct io_listener *io_new_listener_(int fd,
-				     struct io_op *(*start)(struct io_conn *,
-							    void *arg),
+				     struct io_plan *(*start)(struct io_conn *,
+							      void *arg),
 				     void (*finish)(struct io_conn *, void *),
 				     void *arg)
 {
@@ -42,7 +42,7 @@ void io_close_listener(struct io_listener *l)
 }
 
 struct io_conn *io_new_conn_(int fd,
-			     struct io_op *(*start)(struct io_conn *, void *),
+			     struct io_plan *(*start)(struct io_conn *, void *),
 			     void (*finish)(struct io_conn *, void *),
 			     void *arg)
 {
@@ -67,7 +67,7 @@ struct io_conn *io_new_conn_(int fd,
 }
 
 struct io_conn *io_duplex_(struct io_conn *old,
-			     struct io_op *(*start)(struct io_conn *, void *),
+			     struct io_plan *(*start)(struct io_conn *, void *),
 			     void (*finish)(struct io_conn *, void *),
 			     void *arg)
 {
@@ -101,9 +101,9 @@ static inline struct io_next *to_ionext(struct io_conn *conn)
 	return (struct io_next *)conn;
 }
 
-static inline struct io_op *to_ioop(enum io_state state)
+static inline struct io_plan *to_ioplan(enum io_state state)
 {
-	return (struct io_op *)(long)state;
+	return (struct io_plan *)(long)state;
 }
 
 static inline struct io_conn *from_ionext(struct io_next *next)
@@ -112,7 +112,7 @@ static inline struct io_conn *from_ionext(struct io_next *next)
 }
 
 struct io_next *io_next_(struct io_conn *conn,
-			 struct io_op *(*next)(struct io_conn *, void *),
+			 struct io_plan *(*next)(struct io_conn *, void *),
 			 void *arg)
 {
 	conn->fd.next = next;
@@ -122,7 +122,7 @@ struct io_next *io_next_(struct io_conn *conn,
 }
 
 bool io_timeout_(struct io_conn *conn, struct timespec ts,
-		 struct io_op *(*next)(struct io_conn *, void *), void *arg)
+		 struct io_plan *(*next)(struct io_conn *, void *), void *arg)
 {
 	if (!conn->timeout) {
 		conn->timeout = malloc(sizeof(*conn->timeout));
@@ -138,48 +138,48 @@ bool io_timeout_(struct io_conn *conn, struct timespec ts,
 }
 
 /* Queue some data to be written. */
-struct io_op *io_write(const void *data, size_t len, struct io_next *next)
+struct io_plan *io_write(const void *data, size_t len, struct io_next *next)
 {
 	struct io_conn *conn = from_ionext(next);
 	conn->u.write.buf = data;
 	conn->u.write.len = len;
-	return to_ioop(WRITE);
+	return to_ioplan(WRITE);
 }
 
 /* Queue a request to read into a buffer. */
-struct io_op *io_read(void *data, size_t len, struct io_next *next)
+struct io_plan *io_read(void *data, size_t len, struct io_next *next)
 {
 	struct io_conn *conn = from_ionext(next);
 	conn->u.read.buf = data;
 	conn->u.read.len = len;
-	return to_ioop(READ);
+	return to_ioplan(READ);
 }
 
 /* Queue a partial request to read into a buffer. */
-struct io_op *io_read_partial(void *data, size_t *len, struct io_next *next)
+struct io_plan *io_read_partial(void *data, size_t *len, struct io_next *next)
 {
 	struct io_conn *conn = from_ionext(next);
 	conn->u.readpart.buf = data;
 	conn->u.readpart.lenp = len;
-	return to_ioop(READPART);
+	return to_ioplan(READPART);
 }
 
 /* Queue a partial write request. */
-struct io_op *io_write_partial(const void *data, size_t *len, struct io_next *next)
+struct io_plan *io_write_partial(const void *data, size_t *len, struct io_next *next)
 {
 	struct io_conn *conn = from_ionext(next);
 	conn->u.writepart.buf = data;
 	conn->u.writepart.lenp = len;
-	return to_ioop(WRITEPART);
+	return to_ioplan(WRITEPART);
 }
 
-struct io_op *io_idle(struct io_conn *conn)
+struct io_plan *io_idle(struct io_conn *conn)
 {
-	return to_ioop(IDLE);
+	return to_ioplan(IDLE);
 }
 
 void io_wake_(struct io_conn *conn,
-	      struct io_op *(*next)(struct io_conn *, void *), void *arg)
+	      struct io_plan *(*next)(struct io_conn *, void *), void *arg)
 
 {
 	/* It might have finished, but we haven't called its finish() yet. */
@@ -188,17 +188,17 @@ void io_wake_(struct io_conn *conn,
 	assert(conn->state == IDLE);
 	conn->fd.next = next;
 	conn->fd.next_arg = arg;
-	backend_set_state(conn, to_ioop(NEXT));
+	backend_set_state(conn, to_ioplan(NEXT));
 }
 
-static struct io_op *do_next(struct io_conn *conn)
+static struct io_plan *do_next(struct io_conn *conn)
 {
 	if (timeout_active(conn))
 		backend_del_timeout(conn);
 	return conn->fd.next(conn, conn->fd.next_arg);
 }
 
-struct io_op *do_ready(struct io_conn *conn)
+struct io_plan *do_ready(struct io_conn *conn)
 {
 	ssize_t ret;
 	bool finished;
@@ -243,20 +243,20 @@ struct io_op *do_ready(struct io_conn *conn)
 
 	if (finished)
 		return do_next(conn);
-	return to_ioop(conn->state);
+	return to_ioplan(conn->state);
 }
 
 /* Useful next functions. */
 /* Close the connection, we're done. */
-struct io_op *io_close(struct io_conn *conn, void *arg)
+struct io_plan *io_close(struct io_conn *conn, void *arg)
 {
-	return to_ioop(FINISHED);
+	return to_ioplan(FINISHED);
 }
 
 /* Exit the loop, returning this (non-NULL) arg. */
-struct io_op *io_break(void *arg, struct io_next *next)
+struct io_plan *io_break(void *arg, struct io_next *next)
 {
 	io_loop_return = arg;
 
-	return to_ioop(NEXT);
+	return to_ioplan(NEXT);
 }
