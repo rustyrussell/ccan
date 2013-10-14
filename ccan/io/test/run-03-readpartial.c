@@ -30,7 +30,7 @@ static void init_conn(int fd, struct data *d)
 	d->bytes = sizeof(d->buf);
 
 	io_set_finish(io_new_conn(fd,
-				  io_read_partial(d->buf, &d->bytes, io_close, d)),
+				  io_read_partial(d->buf, &d->bytes, io_close_cb, d)),
 		      finish_ok, d);
 }
 

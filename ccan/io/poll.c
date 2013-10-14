@@ -341,11 +341,10 @@ void *io_loop(void)
 			} else if (events & POLLHUP) {
 				r--;
 				set_current(c);
-				set_plan(c, io_close(c, NULL));
+				set_plan(c, io_close());
 				if (c->duplex) {
 					set_current(c->duplex);
-					set_plan(c->duplex,
-						 io_close(c->duplex, NULL));
+					set_plan(c->duplex, io_close());
 				}
 			}
 		}

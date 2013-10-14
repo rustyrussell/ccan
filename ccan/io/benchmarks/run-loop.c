@@ -23,7 +23,7 @@ static struct io_plan poke_writer(struct io_conn *conn, struct buffer *buf)
 	assert(conn == buf->reader);
 
 	if (buf->iters == NUM_ITERS)
-		return io_close(conn, NULL);
+		return io_close();
 
 	/* You write. */
 	io_wake(buf->writer,
@@ -41,7 +41,7 @@ static struct io_plan poke_reader(struct io_conn *conn, struct buffer *buf)
 		io_read(&buf->buf, sizeof(buf->buf), poke_writer, buf));
 
 	if (++buf->iters == NUM_ITERS)
-		return io_close(conn, NULL);
+		return io_close();
 
 	/* I'll wait until you tell me to write. */
 	return io_idle();

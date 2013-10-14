@@ -12,7 +12,7 @@ static struct io_plan timeout_wakeup(struct io_conn *conn, char *buf)
 {
 	/* This kills the dummy connection. */
 	close(fds2[1]);
-	return io_read(buf, 16, io_close, NULL);
+	return io_read(buf, 16, io_close_cb, NULL);
 }
 
 int main(void)
@@ -26,12 +26,13 @@ int main(void)
 	ok1(pipe(fds) == 0);
 
 	/* Write then close. */
-	io_new_conn(fds[1], io_write("hello there world", 16, io_close, NULL));
+	io_new_conn(fds[1], io_write("hello there world", 16,
+				     io_close_cb, NULL));
 	conn = io_new_conn(fds[0], io_idle());
 
 	/* To avoid assert(num_waiting) */
 	ok1(pipe(fds2) == 0);
-	io_new_conn(fds2[0], io_read(buf, 16, io_close, NULL));
+	io_new_conn(fds2[0], io_read(buf, 16, io_close_cb, NULL));
 
 	/* After half a second, it will read. */
 	io_timeout(conn, time_from_msec(500), timeout_wakeup, buf);

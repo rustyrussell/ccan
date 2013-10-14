@@ -25,7 +25,7 @@ static void finish_ok(struct io_conn *conn, struct data *d)
 static struct io_plan write_done(struct io_conn *conn, struct data *d)
 {
 	d->state++;
-	return io_close(conn, NULL);
+	return io_close();
 }
 
 static void init_conn(int fd, struct data *d)
@@ -39,7 +39,7 @@ static void init_conn(int fd, struct data *d)
 
 	memset(d->wbuf, 7, sizeof(d->wbuf));
 
-	conn = io_new_conn(fd, io_read(d->buf, sizeof(d->buf), io_close, d));
+	conn = io_new_conn(fd, io_read(d->buf, sizeof(d->buf), io_close_cb, d));
 	io_set_finish(conn, finish_ok, d);
 	conn = io_duplex(conn, io_write(d->wbuf, sizeof(d->wbuf), write_done, d));
 	ok1(conn);

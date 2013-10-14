@@ -24,7 +24,7 @@ static struct io_plan read_done(struct io_conn *conn, struct data *d)
 {
 	ok1(d->state == 2 || d->state == 3);
 	d->state++;
-	return io_close(conn, NULL);
+	return io_close();
 }
 
 static void finish_waker(struct io_conn *conn, struct data *d)

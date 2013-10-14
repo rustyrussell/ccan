@@ -290,17 +290,20 @@ struct io_plan io_break_(void *ret, struct io_plan plan);
 /* FIXME: io_recvfrom/io_sendto */
 
 /**
- * io_close - terminate a connection.
- * @conn: any connection.
+ * io_close - plan to close a connection.
  *
- * The schedules a connection to be closed.  It can be done on any
- * connection, whether it has I/O queued or not (though that I/O may
- * be performed first).
- *
- * It's common to 'return io_close(...)' from a @next function, but
- * io_close can also be used as an argument to io_next().
+ * On return to io_loop, the connection will be closed.
  */
-struct io_plan io_close(struct io_conn *, void *unused);
+struct io_plan io_close(void);
+
+/**
+ * io_close_cb - helper callback to close a connection.
+ * @conn: the connection.
+ *
+ * This schedules a connection to be closed; designed to be used as
+ * a callback function.
+ */
+struct io_plan io_close_cb(struct io_conn *, void *unused);
 
 /**
  * io_loop - process fds until all closed on io_break.

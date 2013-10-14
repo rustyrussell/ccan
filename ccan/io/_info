@@ -46,7 +46,7 @@
  * static void reader_exit(struct io_conn *c, struct stdin_buffer *b)
  * {
  * 	assert(c == b->reader);
- * 	io_wake(b->writer, io_close(b->writer, NULL));
+ * 	io_wake(b->writer, io_close());
  * 	b->reader = NULL;
  * }
  *
@@ -54,7 +54,7 @@
  * {
  * 	assert(c == b->writer);
  *	if (!b->reader)
- *		return io_close(c, NULL);
+ *		return io_close();
  *	b->len = sizeof(b->inbuf);
  * 	io_wake(b->reader, io_read_partial(b->inbuf, &b->len, wake_writer, b));
  * 	return io_idle();

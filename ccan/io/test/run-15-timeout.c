@@ -23,7 +23,7 @@ static struct io_plan no_timeout(struct io_conn *conn, struct data *d)
 {
 	ok1(d->state == 1);
 	d->state++;
-	return io_close(conn, d);
+	return io_close();
 }
 
 static struct io_plan timeout(struct io_conn *conn, struct data *d)
@@ -31,7 +31,7 @@ static struct io_plan timeout(struct io_conn *conn, struct data *d)
 	ok1(d->state == 1);
 	d->state++;
 	d->timed_out = true;
-	return io_close(conn, d);
+	return io_close();
 }
 
 static void finish_ok(struct io_conn *conn, struct data *d)

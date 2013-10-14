@@ -28,7 +28,7 @@ static void init_conn(int fd, struct data *d)
 	d->state++;
 
 	io_set_finish(io_new_conn(fd,
-				  io_read(d->buf, sizeof(d->buf), io_close, d)),
+				  io_read(d->buf, sizeof(d->buf), io_close_cb, d)),
 		      finish_ok, d);
 }
 

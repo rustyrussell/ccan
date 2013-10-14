@@ -19,7 +19,7 @@ static struct io_plan read_done(struct io_conn *conn, struct data *d)
 {
 	ok1(d->state == 1);
 	d->state++;
-	return io_close(conn, NULL);
+	return io_close();
 }
 
 static void finish_ok(struct io_conn *conn, struct data *d)

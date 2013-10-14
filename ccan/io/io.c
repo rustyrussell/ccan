@@ -275,8 +275,8 @@ struct io_plan io_idle(void)
 
 	plan.pollflag = 0;
 	plan.io = NULL;
-	/* Never called (overridded by io_wake), but NULL means closing */
-	plan.next = io_close;
+	/* Never called (overridden by io_wake), but NULL means closing */
+	plan.next = (void *)io_idle;
 
 	io_plan_debug(&plan);
 	return plan;
@@ -301,7 +301,7 @@ void io_ready(struct io_conn *conn)
 	switch (conn->plan.io(conn->fd.fd, &conn->plan)) {
 	case -1: /* Failure means a new plan: close up. */
 		set_current(conn);
-		conn->plan = io_close(NULL, NULL);
+		conn->plan = io_close();
 		backend_plan_changed(conn);
 		set_current(NULL);
 		break;
@@ -317,9 +317,8 @@ void io_ready(struct io_conn *conn)
 	}
 }
 
-/* Useful next functions. */
 /* Close the connection, we're done. */
-struct io_plan io_close(struct io_conn *conn, void *arg)
+struct io_plan io_close(void)
 {
 	struct io_plan plan;
 
@@ -329,6 +328,11 @@ struct io_plan io_close(struct io_conn *conn, void *arg)
 
 	io_plan_debug(&plan);
 	return plan;
+}
+
+struct io_plan io_close_cb(struct io_conn *conn, void *arg)
+{
+	return io_close();
 }
 
 /* Exit the loop, returning this (non-NULL) arg. */

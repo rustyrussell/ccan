@@ -11,8 +11,8 @@ static char inbuf[8];
 
 static struct io_plan wake_it(struct io_conn *conn, struct io_conn *reader)
 {
-	io_wake(reader, io_read(inbuf, 8, io_close, NULL));
-	return io_close(conn, NULL);
+	io_wake(reader, io_read(inbuf, 8, io_close_cb, NULL));
+	return io_close();
 }
 
 int main(void)

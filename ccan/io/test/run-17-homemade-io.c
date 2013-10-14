@@ -90,7 +90,7 @@ static void init_conn(int fd, struct packet *pkt)
 	ok1(pkt->state == 0);
 	pkt->state++;
 
-	io_set_finish(io_new_conn(fd, io_read_packet(pkt, io_close, pkt)),
+	io_set_finish(io_new_conn(fd, io_read_packet(pkt, io_close_cb, pkt)),
 		      finish_ok, pkt);
 }
 
