@@ -68,6 +68,17 @@ struct io_plan {
  * If this is set, the routine should return true if the connection is a
  * debugging candidate.  If so, the callchain for I/O operations on this
  * connection will be linear, for easier use of a debugger.
+ *
+ * You will also see calls to any callbacks which wake the connection
+ * which is being debugged.
+ *
+ * Example:
+ *	static bool debug_all(struct io_conn *conn)
+ *	{
+ *		return true();
+ *	}
+ *	...
+ *	io_debug_conn = debug_all;
  */
 extern bool (*io_debug_conn)(struct io_conn *conn);
 
@@ -77,6 +88,10 @@ extern bool (*io_debug_conn)(struct io_conn *conn);
  * This determines if we are debugging the current connection: if so,
  * it immediately applies the plan and calls back into io_loop() to
  * create a linear call chain.
+ *
+ * Example:
+ *	#define io_idle() io_debug(io_idle_())
+ *	struct io_plan io_idle_(void);
  */
 struct io_plan io_debug(struct io_plan plan);
 
@@ -86,6 +101,19 @@ struct io_plan io_debug(struct io_plan plan);
  * This determines if we are debugging the current connection: if so,
  * it immediately sets the next function and calls into io_loop() to
  * create a linear call chain.
+ *
+ * Example:
+ *
+ * static int do_write(int fd, struct io_plan *plan)
+ * {
+ *	ssize_t ret = write(fd, plan->u.write.buf, plan->u.write.len);
+ *	if (ret < 0)
+ *		return io_debug_io(-1);
+ *
+ *	plan->u.write.buf += ret;
+ *	plan->u.write.len -= ret;
+ *	return io_debug_io(plan->u.write.len == 0);
+ * }
  */
 int io_debug_io(int ret);
 
@@ -99,6 +127,10 @@ int io_debug_io(int ret);
  * Some routines, like io_break(), io_duplex() and io_wake() take an
  * io_plan, but they must not be applied immediately to the current
  * connection, so we call this first.
+ *
+ * Example:
+ * #define io_break(ret, plan) (io_plan_no_debug(), io_break_((ret), (plan)))
+ * struct io_plan io_break_(void *ret, struct io_plan plan);
  */
 #define io_plan_no_debug() ((io_plan_nodebug = true))
 
