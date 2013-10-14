@@ -9,7 +9,7 @@
 
 static struct io_plan start(struct io_conn *conn, void *unused)
 {
-	return io_idle(conn);
+	return io_idle();
 }
 
 int main(void)

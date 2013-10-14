@@ -21,7 +21,7 @@ static void finish_ok(struct io_conn *conn, struct data *d)
 static struct io_plan write_out(struct io_conn *conn, struct data *d)
 {
 	d->state++;
-	return io_write(conn, d->wbuf, sizeof(d->wbuf), io_close, d);
+	return io_write(d->wbuf, sizeof(d->wbuf), io_close, d);
 }
 
 static struct io_plan start_ok(struct io_conn *conn, struct data *d)
@@ -33,7 +33,7 @@ static struct io_plan start_ok(struct io_conn *conn, struct data *d)
 
 	memset(d->wbuf, 7, sizeof(d->wbuf));
 	ok1(io_duplex(conn, write_out, finish_ok, d));
-	return io_read(conn, d->buf, sizeof(d->buf), io_close, d);
+	return io_read(d->buf, sizeof(d->buf), io_close, d);
 }
 
 static int make_listen_fd(const char *port, struct addrinfo **info)

@@ -17,7 +17,7 @@ static void finish_ok(struct io_conn *conn, int *state)
 {
 	ok1(*state == 1);
 	(*state)++;
-	io_break(conn, state + 1, NULL, NULL);
+	io_break(state + 1, NULL, NULL);
 }
 
 static int make_listen_fd(const char *port, struct addrinfo **info)

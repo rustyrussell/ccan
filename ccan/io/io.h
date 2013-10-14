@@ -127,7 +127,6 @@ void io_close_listener(struct io_listener *listener);
 
 /**
  * io_write - queue data to be written.
- * @conn: the current connection.
  * @data: the data buffer.
  * @len: the length to write.
  * @cb: function to call once it's done.
@@ -139,18 +138,17 @@ void io_close_listener(struct io_listener *listener);
  *
  * Note that the I/O may actually be done immediately.
  */
-#define io_write(conn, data, len, cb, arg)				\
-	io_write_((conn), (data), (len),				\
+#define io_write(data, len, cb, arg)					\
+	io_write_((data), (len),					\
 		  typesafe_cb_preargs(struct io_plan, void *,		\
 				      (cb), (arg), struct io_conn *),	\
 		  (arg))
-struct io_plan io_write_(struct io_conn *conn, const void *data, size_t len,
+struct io_plan io_write_(const void *data, size_t len,
 			 struct io_plan (*cb)(struct io_conn *, void *),
 			 void *arg);
 
 /**
  * io_read - queue buffer to be read.
- * @conn: the current connection.
  * @data: the data buffer.
  * @len: the length to read.
  * @cb: function to call once it's done.
@@ -162,19 +160,18 @@ struct io_plan io_write_(struct io_conn *conn, const void *data, size_t len,
  *
  * Note that the I/O may actually be done immediately.
  */
-#define io_read(conn, data, len, cb, arg)				\
-	io_read_((conn), (data), (len),					\
+#define io_read(data, len, cb, arg)					\
+	io_read_((data), (len),						\
 		 typesafe_cb_preargs(struct io_plan, void *,		\
 				     (cb), (arg), struct io_conn *),	\
 		 (arg))
-struct io_plan io_read_(struct io_conn *conn, void *data, size_t len,
+struct io_plan io_read_(void *data, size_t len,
 			struct io_plan (*cb)(struct io_conn *, void *),
 			void *arg);
 
 
 /**
  * io_read_partial - queue buffer to be read (partial OK).
- * @conn: the current connection.
  * @data: the data buffer.
  * @len: the maximum length to read, set to the length actually read.
  * @cb: function to call once it's done.
@@ -186,18 +183,17 @@ struct io_plan io_read_(struct io_conn *conn, void *data, size_t len,
  *
  * Note that the I/O may actually be done immediately.
  */
-#define io_read_partial(conn, data, len, cb, arg)			\
-	io_read_partial_((conn), (data), (len),				\
+#define io_read_partial(data, len, cb, arg)				\
+	io_read_partial_((data), (len),					\
 			 typesafe_cb_preargs(struct io_plan, void *,	\
 					     (cb), (arg), struct io_conn *), \
 			 (arg))
-struct io_plan io_read_partial_(struct io_conn *conn, void *data, size_t *len,
+struct io_plan io_read_partial_(void *data, size_t *len,
 				struct io_plan (*cb)(struct io_conn *, void *),
 				void *arg);
 
 /**
  * io_write_partial - queue data to be written (partial OK).
- * @conn: the current connection.
  * @data: the data buffer.
  * @len: the maximum length to write, set to the length actually written.
  * @cb: function to call once it's done.
@@ -209,26 +205,24 @@ struct io_plan io_read_partial_(struct io_conn *conn, void *data, size_t *len,
  *
  * Note that the I/O may actually be done immediately.
  */
-#define io_write_partial(conn, data, len, cb, arg)			\
-	io_write_partial_((conn), (data), (len),			\
+#define io_write_partial(data, len, cb, arg)				\
+	io_write_partial_((data), (len),				\
 			  typesafe_cb_preargs(struct io_plan, void *,	\
 					      (cb), (arg), struct io_conn *), \
 			  (arg))
-struct io_plan io_write_partial_(struct io_conn *conn,
-				 const void *data, size_t *len,
+struct io_plan io_write_partial_(const void *data, size_t *len,
 				 struct io_plan (*cb)(struct io_conn *, void*),
 				 void *arg);
 
 
 /**
  * io_idle - explicitly note that this connection will do nothing.
- * @conn: the current connection.
  *
  * This indicates the connection is idle: some other function will
  * later call io_read/io_write etc. (or io_close) on it, in which case
  * it will do that.
  */
-struct io_plan io_idle(struct io_conn *conn);
+struct io_plan io_idle(void);
 
 /**
  * io_timeout - set timeout function if the callback doesn't fire.
@@ -299,7 +293,6 @@ void io_wake_(struct io_conn *conn,
 
 /**
  * io_break - return from io_loop()
- * @conn: the current connection.
  * @ret: non-NULL value to return from io_loop().
  * @cb: function to call once on return
  * @arg: @cb argument
@@ -310,12 +303,12 @@ void io_wake_(struct io_conn *conn,
  *
  * If io_loop() is called again, then @cb will be called.
  */
-#define io_break(conn, ret, fn, arg)					\
-	io_break_((conn), (ret),					\
+#define io_break(ret, fn, arg)						\
+	io_break_((ret),						\
 		  typesafe_cb_preargs(struct io_plan, void *,		\
 				      (fn), (arg), struct io_conn *),	\
 		  (arg))
-struct io_plan io_break_(struct io_conn *conn, void *ret,
+struct io_plan io_break_(void *ret,
 			 struct io_plan (*fn)(struct io_conn *, void *),
 			 void *arg);
 

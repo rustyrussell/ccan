@@ -129,7 +129,7 @@ static enum io_result do_write(struct io_conn *conn)
 }
 
 /* Queue some data to be written. */
-struct io_plan io_write_(struct io_conn *conn, const void *data, size_t len,
+struct io_plan io_write_(const void *data, size_t len,
 			 struct io_plan (*cb)(struct io_conn *, void *),
 			 void *arg)
 {
@@ -160,7 +160,7 @@ static enum io_result do_read(struct io_conn *conn)
 }
 
 /* Queue a request to read into a buffer. */
-struct io_plan io_read_(struct io_conn *conn, void *data, size_t len,
+struct io_plan io_read_(void *data, size_t len,
 			struct io_plan (*cb)(struct io_conn *, void *),
 			void *arg)
 {
@@ -187,7 +187,7 @@ static enum io_result do_read_partial(struct io_conn *conn)
 }
 
 /* Queue a partial request to read into a buffer. */
-struct io_plan io_read_partial_(struct io_conn *conn, void *data, size_t *len,
+struct io_plan io_read_partial_(void *data, size_t *len,
 				struct io_plan (*cb)(struct io_conn *, void *),
 				void *arg)
 {
@@ -215,8 +215,7 @@ static enum io_result do_write_partial(struct io_conn *conn)
 }
 
 /* Queue a partial write request. */
-struct io_plan io_write_partial_(struct io_conn *conn,
-				 const void *data, size_t *len,
+struct io_plan io_write_partial_(const void *data, size_t *len,
 				 struct io_plan (*cb)(struct io_conn*, void *),
 				 void *arg)
 {
@@ -233,7 +232,7 @@ struct io_plan io_write_partial_(struct io_conn *conn,
 	return plan;
 }
 
-struct io_plan io_idle(struct io_conn *conn)
+struct io_plan io_idle(void)
 {
 	struct io_plan plan;
 
@@ -293,7 +292,7 @@ struct io_plan io_close(struct io_conn *conn, void *arg)
 }
 
 /* Exit the loop, returning this (non-NULL) arg. */
-struct io_plan io_break_(struct io_conn *conn, void *ret,
+struct io_plan io_break_(void *ret,
 			 struct io_plan (*fn)(struct io_conn *, void *),
 			 void *arg)
 {

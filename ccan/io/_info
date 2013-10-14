@@ -40,14 +40,14 @@
  * {
  * 	assert(c == b->reader);
  * 	b->len = sizeof(b->inbuf);
- * 	return io_read_partial(c, b->inbuf, &b->len, wake_writer, b);
+ * 	return io_read_partial(b->inbuf, &b->len, wake_writer, b);
  * }
  *
  * static struct io_plan wake_writer(struct io_conn *c, struct stdin_buffer *b)
  * {
  * 	assert(c == b->reader);
  * 	io_wake(b->writer, write_to_child, b);
- * 	return io_idle(c);
+ * 	return io_idle();
  * }
  *
  * static void reader_exit(struct io_conn *c, struct stdin_buffer *b)
@@ -61,7 +61,7 @@
  * {
  * 	assert(c == b->writer);
  * 	io_wake(b->reader, read_stdin, b);
- * 	return io_idle(c);
+ * 	return io_idle();
  * }
  *
  * static struct io_plan write_to_child(struct io_conn *conn,
@@ -70,14 +70,14 @@
  * 	assert(conn == b->writer);
  * 	if (!b->reader)
  * 		return io_close(conn, NULL);
- * 	return io_write(conn, b->inbuf, b->len, wake_reader, b);
+ * 	return io_write(b->inbuf, b->len, wake_reader, b);
  * }
  *
  * static struct io_plan start_writer(struct io_conn *conn,
  * 				      struct stdin_buffer *b)
  * {
  * 	assert(conn == b->writer);
- * 	return io_idle(conn);
+ * 	return io_idle();
  * }
  *
  * static void fail_child_write(struct io_conn *conn, struct stdin_buffer *b)
@@ -103,8 +103,7 @@
  * 	}
  *
  * 	b->rlen = b->max - b->off;
- * 	return io_read_partial(conn, b->buf + b->off, &b->rlen,
- *			       read_from_child, b);
+ * 	return io_read_partial(b->buf + b->off, &b->rlen, read_from_child, b);
  * }
  *
  * // Feed a program our stdin, gather its stdout, print that at end.

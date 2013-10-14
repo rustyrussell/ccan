@@ -22,16 +22,14 @@ static struct io_plan plan_read(struct io_conn *conn, struct buffer *buf)
 {
 	assert(conn == buf->reader);
 
-	return io_read(conn, &buf->buf, sizeof(buf->buf),
-		       poke_writer, buf);
+	return io_read(&buf->buf, sizeof(buf->buf), poke_writer, buf);
 }
 
 static struct io_plan plan_write(struct io_conn *conn, struct buffer *buf)
 {
 	assert(conn == buf->writer);
 
-	return io_write(conn, &buf->buf, sizeof(buf->buf),
-			poke_reader, buf);
+	return io_write(&buf->buf, sizeof(buf->buf), poke_reader, buf);
 }
 
 static struct io_plan poke_writer(struct io_conn *conn, struct buffer *buf)
@@ -45,7 +43,7 @@ static struct io_plan poke_writer(struct io_conn *conn, struct buffer *buf)
 	io_wake(buf->writer, plan_write, buf);
 
 	/* I'll wait until you wake me. */
-	return io_idle(conn);
+	return io_idle();
 }
 
 static struct io_plan poke_reader(struct io_conn *conn, struct buffer *buf)
@@ -58,7 +56,7 @@ static struct io_plan poke_reader(struct io_conn *conn, struct buffer *buf)
 		return io_close(conn, NULL);
 
 	/* I'll wait until you tell me to write. */
-	return io_idle(conn);
+	return io_idle();
 }
 
 static struct io_plan reader(struct io_conn *conn, struct buffer *buf)
@@ -66,7 +64,7 @@ static struct io_plan reader(struct io_conn *conn, struct buffer *buf)
 	assert(conn == buf->reader);
 
 	/* Wait for writer to tell us to read. */
-	return io_idle(conn);
+	return io_idle();
 }
 
 static struct buffer buf[NUM];
