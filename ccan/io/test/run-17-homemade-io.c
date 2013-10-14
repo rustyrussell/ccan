@@ -92,8 +92,8 @@ static void init_conn(int fd, struct packet *pkt)
 	ok1(pkt->state == 0);
 	pkt->state++;
 
-	if (!io_new_conn(fd, io_read_packet(pkt, io_close, pkt), finish_ok, pkt))
-		abort();
+	io_set_finish(io_new_conn(fd, io_read_packet(pkt, io_close, pkt)),
+		      finish_ok, pkt);
 }
 
 static int make_listen_fd(const char *port, struct addrinfo **info)

@@ -33,11 +33,10 @@ static void init_conn(int fd, struct data *d)
 	ok1(d->state == 0);
 	d->state++;
 
-	if (!io_new_conn(fd,
-			 io_break(d,
-				  io_read(d->buf, sizeof(d->buf), read_done, d)),
-			 finish_ok, d))
-		abort();
+	io_set_finish(io_new_conn(fd,
+				  io_break(d,
+					   io_read(d->buf, sizeof(d->buf), read_done, d))),
+		      finish_ok, d);
 }
 
 static int make_listen_fd(const char *port, struct addrinfo **info)

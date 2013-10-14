@@ -48,8 +48,8 @@ static void init_conn(int fd, struct data *d)
 	ok1(d->state == 0);
 	d->state++;
 
-	conn = io_new_conn(fd, io_read(d->buf, sizeof(d->buf), no_timeout, d),
-			   finish_ok, d);
+	conn = io_new_conn(fd, io_read(d->buf, sizeof(d->buf), no_timeout, d));
+	io_set_finish(conn, finish_ok, d);
 	io_timeout(conn, time_from_usec(d->timeout_usec), timeout, d);
 }
 

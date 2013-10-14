@@ -27,9 +27,8 @@ static void init_conn(int fd, struct data *d)
 {
 	ok1(d->state == 0);
 	d->state++;
-	if (!io_new_conn(fd, io_write(d->buf, d->bytes, io_close, d),
-			 finish_ok, d))
-		abort();
+	io_set_finish(io_new_conn(fd, io_write(d->buf, d->bytes, io_close, d)),
+		      finish_ok, d);
 }
 
 static int make_listen_fd(const char *port, struct addrinfo **info)

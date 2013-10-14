@@ -23,9 +23,8 @@ int main(void)
 	plan_tests(3);
 
 	ok1(pipe(fds) == 0);
-	conn = io_new_conn(fds[0], io_idle(), NULL, NULL);
-	io_new_conn(fds[1], io_write("EASYTEST", 8, wake_it, conn),
-		    NULL, NULL);
+	conn = io_new_conn(fds[0], io_idle());
+	io_new_conn(fds[1], io_write("EASYTEST", 8, wake_it, conn));
 
 	ok1(io_loop() == NULL);
 	ok1(memcmp(inbuf, "EASYTEST", sizeof(inbuf)) == 0);

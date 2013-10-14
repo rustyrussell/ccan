@@ -17,7 +17,7 @@ int main(void)
 		int fds[2];
 
 		ok1(pipe(fds) == 0);
-		io_new_conn(fds[0], io_idle(), NULL, NULL);
+		io_new_conn(fds[0], io_idle());
 		io_loop();
 		exit(1);
 	}

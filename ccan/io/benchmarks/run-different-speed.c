@@ -152,12 +152,11 @@ int main(int argc, char *argv[])
 			/* For efficiency, we share client structure */
 			io_new_conn(ret,
 				    io_read(client.request_buffer, REQUEST_SIZE,
-					    write_reply, &client),
-				    NULL, NULL);
+					    write_reply, &client));
 		}
 	}
 
-	io_new_conn(timeout[0], io_read(&buf, 1, do_timeout, &buf), NULL, NULL);
+	io_new_conn(timeout[0], io_read(&buf, 1, do_timeout, &buf));
 
 	close(wake[0]);
 	for (i = 0; i < NUM_CHILDREN; i++)

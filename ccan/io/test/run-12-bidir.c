@@ -39,10 +39,11 @@ static void init_conn(int fd, struct data *d)
 
 	memset(d->wbuf, 7, sizeof(d->wbuf));
 
-	conn = io_new_conn(fd, io_read(d->buf, sizeof(d->buf), io_close, d),
-			   finish_ok, d);
-	ok1(io_duplex(conn, io_write(d->wbuf, sizeof(d->wbuf), write_done, d),
-		      finish_ok, d));
+	conn = io_new_conn(fd, io_read(d->buf, sizeof(d->buf), io_close, d));
+	io_set_finish(conn, finish_ok, d);
+	conn = io_duplex(conn, io_write(d->wbuf, sizeof(d->wbuf), write_done, d));
+	ok1(conn);
+	io_set_finish(conn, finish_ok, d);
 }
 
 static int make_listen_fd(const char *port, struct addrinfo **info)

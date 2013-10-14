@@ -26,13 +26,12 @@ int main(void)
 	ok1(pipe(fds) == 0);
 
 	/* Write then close. */
-	io_new_conn(fds[1], io_write("hello there world", 16, io_close, NULL),
-		    NULL, NULL);
-	conn = io_new_conn(fds[0], io_idle(), NULL, NULL);
+	io_new_conn(fds[1], io_write("hello there world", 16, io_close, NULL));
+	conn = io_new_conn(fds[0], io_idle());
 
 	/* To avoid assert(num_waiting) */
 	ok1(pipe(fds2) == 0);
-	io_new_conn(fds2[0], io_read(buf, 16, io_close, NULL), NULL, NULL);
+	io_new_conn(fds2[0], io_read(buf, 16, io_close, NULL));
 
 	/* After half a second, it will read. */
 	io_timeout(conn, time_from_msec(500), timeout_wakeup, buf);

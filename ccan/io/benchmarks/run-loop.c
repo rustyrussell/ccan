@@ -66,14 +66,13 @@ int main(void)
 		memset(buf[i].buf, i, sizeof(buf[i].buf));
 		sprintf(buf[i].buf, "%i-%i", i, i);
 
-		buf[i].reader = io_new_conn(last_read, io_idle(), NULL, NULL);
+		buf[i].reader = io_new_conn(last_read, io_idle());
 		if (!buf[i].reader)
 			err(1, "Creating reader %i", i);
 		buf[i].writer = io_new_conn(fds[1],
 					    io_write(&buf[i].buf,
 						     sizeof(buf[i].buf),
-						     poke_reader, &buf[i]),
-					    NULL, NULL);
+						     poke_reader, &buf[i]));
 		if (!buf[i].writer)
 			err(1, "Creating writer %i", i);
 		last_read = fds[0];
@@ -83,13 +82,12 @@ int main(void)
 	i = 0;
 	buf[i].iters = 0;
 	sprintf(buf[i].buf, "%i-%i", i, i);
-	buf[i].reader = io_new_conn(last_read, io_idle(), NULL, NULL);
+	buf[i].reader = io_new_conn(last_read, io_idle());
 	if (!buf[i].reader)
 		err(1, "Creating reader %i", i);
 	buf[i].writer = io_new_conn(last_write, io_write(&buf[i].buf,
 							 sizeof(buf[i].buf),
-							 poke_reader, &buf[i]),
-				    NULL, NULL);
+							 poke_reader, &buf[i]));
 	if (!buf[i].writer)
 		err(1, "Creating writer %i", i);
 

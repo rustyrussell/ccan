@@ -29,9 +29,9 @@ static void init_conn(int fd, struct data *d)
 	d->state++;
 	d->bytes = sizeof(d->buf);
 
-	if (!io_new_conn(fd, io_read_partial(d->buf, &d->bytes, io_close, d),
-			 finish_ok, d))
-		abort();
+	io_set_finish(io_new_conn(fd,
+				  io_read_partial(d->buf, &d->bytes, io_close, d)),
+		      finish_ok, d);
 }
 
 static int make_listen_fd(const char *port, struct addrinfo **info)

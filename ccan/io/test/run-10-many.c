@@ -66,14 +66,13 @@ int main(void)
 		sprintf(buf[i].buf, "%i-%i", i, i);
 
 		/* Wait for writer to tell us to read. */
-		buf[i].reader = io_new_conn(last_read, io_idle(), NULL, &buf[i]);
+		buf[i].reader = io_new_conn(last_read, io_idle());
 		if (!buf[i].reader)
 			break;
 		buf[i].writer = io_new_conn(fds[1],
 					    io_write(&buf[i].buf,
 						     sizeof(buf[i].buf),
-						     poke_reader, &buf[i]),
-					    NULL, &buf[i]);
+						     poke_reader, &buf[i]));
 		if (!buf[i].writer)
 			break;
 		last_read = fds[0];
@@ -84,12 +83,11 @@ int main(void)
 	/* Last one completes the cirle. */
 	i = 0;
 	sprintf(buf[i].buf, "%i-%i", i, i);
-	buf[i].reader = io_new_conn(last_read, io_idle(), NULL, NULL);
+	buf[i].reader = io_new_conn(last_read, io_idle());
 	ok1(buf[i].reader);
 	buf[i].writer = io_new_conn(last_write,
 				    io_write(&buf[i].buf, sizeof(buf[i].buf),
-					     poke_reader, &buf[i]),
-				    NULL, NULL);
+					     poke_reader, &buf[i]));
 	ok1(buf[i].writer);
 
 	/* They should eventually exit */

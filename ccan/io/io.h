@@ -67,25 +67,34 @@ static inline void io_plan_debug(struct io_plan *plan) { }
  * io_new_conn - create a new connection.
  * @fd: the file descriptor.
  * @plan: the first I/O function.
- * @finish: the function to call when it's closed or fails.
- * @arg: the argument to @finish.
  *
  * This creates a connection which owns @fd.  @plan will be called on the
- * next io_loop(), and @finish will be called when an I/O operation
- * fails, or you call io_close() on the connection.
+ * next io_loop().
  *
  * Returns NULL on error (and sets errno).
  */
-#define io_new_conn(fd, plan, finish, arg)				\
-	(io_plan_other(), io_new_conn_((fd), (plan),			\
-				       typesafe_cb_preargs(void, void *, \
-							   (finish), (arg), \
-							   struct io_conn *), \
-				       (arg)))
-struct io_conn *io_new_conn_(int fd,
-			     struct io_plan plan,
-			     void (*finish)(struct io_conn *, void *),
-			     void *arg);
+#define io_new_conn(fd, plan)				\
+	(io_plan_other(), io_new_conn_((fd), (plan)))
+struct io_conn *io_new_conn_(int fd, struct io_plan plan);
+
+/**
+ * io_set_finish - set finish function on a connection.
+ * @conn: the connection.
+ * @finish: the function to call when it's closed or fails.
+ * @arg: the argument to @finish.
+ *
+ * @finish will be called when an I/O operation fails, or you call
+ * io_close() on the connection.
+ */
+#define io_set_finish(conn, finish, arg)				\
+	io_set_finish_((conn),						\
+		       typesafe_cb_preargs(void, void *,		\
+					   (finish), (arg),		\
+					   struct io_conn *),		\
+		       (arg))
+void io_set_finish_(struct io_conn *conn,
+		    void (*finish)(struct io_conn *, void *),
+		    void *arg);
 
 /**
  * io_new_listener - create a new accepting listener.
@@ -241,8 +250,6 @@ bool io_timeout_(struct io_conn *conn, struct timespec ts,
  * io_duplex - split an fd into two connections.
  * @conn: a connection.
  * @plan: the first I/O function to call.
- * @finish: the function to call when it's closed or fails.
- * @arg: the argument to @finish.
  *
  * Sometimes you want to be able to simultaneously read and write on a
  * single fd, but io forces a linear call sequence.  The solition is
@@ -251,17 +258,10 @@ bool io_timeout_(struct io_conn *conn, struct timespec ts,
  *
  * You must io_close() both of them to close the fd.
  */
-#define io_duplex(conn, plan, finish, arg)				\
-	(io_plan_other(), io_duplex_((conn), (plan),			\
-				     typesafe_cb_preargs(void, void *,	\
-							 (finish), (arg), \
-							 struct io_conn *), \
-				     (arg)))
+#define io_duplex(conn, plan)				\
+	(io_plan_other(), io_duplex_((conn), (plan)))
 
-struct io_conn *io_duplex_(struct io_conn *conn,
-			   struct io_plan plan,
-			   void (*finish)(struct io_conn *, void *),
-			   void *arg);
+struct io_conn *io_duplex_(struct io_conn *conn, struct io_plan plan);
 
 /**
  * io_wake - wake up an idle connection.

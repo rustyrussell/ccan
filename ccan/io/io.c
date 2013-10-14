@@ -78,10 +78,7 @@ void io_close_listener(struct io_listener *l)
 	free(l);
 }
 
-struct io_conn *io_new_conn_(int fd,
-			     struct io_plan plan,
-			     void (*finish)(struct io_conn *, void *),
-			     void *arg)
+struct io_conn *io_new_conn_(int fd, struct io_plan plan)
 {
 	struct io_conn *conn = malloc(sizeof(*conn));
 
@@ -91,8 +88,8 @@ struct io_conn *io_new_conn_(int fd,
 	conn->fd.listener = false;
 	conn->fd.fd = fd;
 	conn->plan = plan;
-	conn->finish = finish;
-	conn->finish_arg = arg;
+	conn->finish = NULL;
+	conn->finish_arg = NULL;
 	conn->duplex = NULL;
 	conn->timeout = NULL;
 	if (!add_conn(conn)) {
@@ -102,10 +99,15 @@ struct io_conn *io_new_conn_(int fd,
 	return conn;
 }
 
-struct io_conn *io_duplex_(struct io_conn *old,
-			   struct io_plan plan,
-			   void (*finish)(struct io_conn *, void *),
-			   void *arg)
+void io_set_finish_(struct io_conn *conn,
+		    void (*finish)(struct io_conn *, void *),
+		    void *arg)
+{
+	conn->finish = finish;
+	conn->finish_arg = arg;
+}
+
+struct io_conn *io_duplex_(struct io_conn *old, struct io_plan plan)
 {
 	struct io_conn *conn;
 
@@ -119,8 +121,8 @@ struct io_conn *io_duplex_(struct io_conn *old,
 	conn->fd.fd = old->fd.fd;
 	conn->plan = plan;
 	conn->duplex = old;
-	conn->finish = finish;
-	conn->finish_arg = arg;
+	conn->finish = NULL;
+	conn->finish_arg = NULL;
 	conn->timeout = NULL;
 	if (!add_duplex(conn)) {
 		free(conn);

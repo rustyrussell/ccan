@@ -114,10 +114,8 @@
  *	sbuf.len = sizeof(sbuf.inbuf);
  * 	sbuf.reader = io_new_conn(STDIN_FILENO,
  *				  io_read_partial(sbuf.inbuf, &sbuf.len,
- *						  wake_writer, &sbuf),
- *				  reader_exit, &sbuf);
- * 	sbuf.writer = io_new_conn(tochild[1], io_idle(), fail_child_write,
- * 				  &sbuf);
+ *						  wake_writer, &sbuf));
+ * 	sbuf.writer = io_new_conn(tochild[1], io_idle());
  *
  *	out.max = 128;
  *	out.off = 0;
@@ -125,10 +123,12 @@
  *	out.buf = malloc(out.max);
  *	from_child = io_new_conn(fromchild[0],
  *				 io_read_partial(out.buf, &out.rlen,
- *						 read_from_child, &out),
- *				 NULL, NULL);
+ *						 read_from_child, &out));
  * 	if (!sbuf.reader || !sbuf.writer || !from_child)
  * 		err(1, "Allocating connections");
+ *
+ *	io_set_finish(sbuf.reader, reader_exit, &sbuf);
+ *	io_set_finish(sbuf.writer, fail_child_write, &sbuf);
  *
  * 	io_loop();
  * 	wait(&status);

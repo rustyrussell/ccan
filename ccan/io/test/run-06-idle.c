@@ -52,12 +52,14 @@ static void init_conn(int fd, struct data *d)
 
 	ok1(d->state == 0);
 	d->state++;
-	idler = io_new_conn(fd, io_idle(), finish_idle, d);
+	idler = io_new_conn(fd, io_idle());
+	io_set_finish(idler, finish_idle, d);
 
 	/* This will wake us up, as read will fail. */
 	fd2 = open("/dev/null", O_RDONLY);
 	ok1(fd2 >= 0);
-	ok1(io_new_conn(fd2, io_read(idler, 1, never, NULL), finish_waker, d));
+	io_set_finish(io_new_conn(fd2, io_read(idler, 1, never, NULL)),
+		      finish_waker, d);
 }
 
 static int make_listen_fd(const char *port, struct addrinfo **info)
@@ -100,7 +102,7 @@ int main(void)
 	int fd, status;
 
 	/* This is how many tests you plan to run */
-	plan_tests(14);
+	plan_tests(13);
 	d->state = 0;
 	fd = make_listen_fd(PORT, &addrinfo);
 	ok1(fd >= 0);

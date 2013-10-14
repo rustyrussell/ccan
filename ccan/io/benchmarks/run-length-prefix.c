@@ -157,11 +157,11 @@ int main(int argc, char *argv[])
 				err(1, "Accepting fd");
 			/* For efficiency, we share buffer */
 			client->request_buffer = buffer;
-			io_new_conn(ret, io_read_header(client), NULL, NULL);
+			io_new_conn(ret, io_read_header(client));
 		}
 	}
 
-	io_new_conn(timeout[0], io_read(&buf, 1, do_timeout, &buf), NULL, NULL);
+	io_new_conn(timeout[0], io_read(&buf, 1, do_timeout, &buf));
 
 	close(wake[0]);
 	for (i = 0; i < NUM_CHILDREN; i++)
