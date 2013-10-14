@@ -55,6 +55,7 @@ MODS_WITH_SRC := antithread \
 	htable \
 	idtree \
 	ilog \
+	io \
 	isaac \
 	iscsi \
 	jmap \
