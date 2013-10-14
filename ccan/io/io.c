@@ -325,6 +325,7 @@ struct io_plan io_close(void)
 	plan.pollflag = 0;
 	/* This means we're closing. */
 	plan.next = NULL;
+	plan.u.close.saved_errno = errno;
 
 	io_plan_debug(&plan);
 	return plan;

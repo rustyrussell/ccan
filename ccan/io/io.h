@@ -39,6 +39,9 @@ struct io_plan {
 			size_t *lenp;
 		} writepart;
 		struct {
+			int saved_errno;
+		} close;
+		struct {
 			void *p;
 			size_t len;
 		} ptr_len;
@@ -84,7 +87,8 @@ struct io_conn *io_new_conn_(int fd, struct io_plan plan);
  * @arg: the argument to @finish.
  *
  * @finish will be called when an I/O operation fails, or you call
- * io_close() on the connection.
+ * io_close() on the connection.  errno will be set to the value
+ * after the failed I/O, or at the call to io_close().
  */
 #define io_set_finish(conn, finish, arg)				\
 	io_set_finish_((conn),						\

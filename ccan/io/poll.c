@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <limits.h>
+#include <errno.h>
 
 static size_t num_fds = 0, max_fds = 0, num_closing = 0, num_waiting = 0;
 static struct pollfd *pollfds = NULL;
@@ -173,8 +174,10 @@ bool add_duplex(struct io_conn *c)
 
 static void del_conn(struct io_conn *conn)
 {
-	if (conn->finish)
+	if (conn->finish) {
+		errno = conn->plan.u.close.saved_errno;
 		conn->finish(conn, conn->finish_arg);
+	}
 	if (timeout_active(conn))
 		backend_del_timeout(conn);
 	free(conn->timeout);
@@ -341,6 +344,7 @@ void *io_loop(void)
 			} else if (events & (POLLHUP|POLLNVAL|POLLERR)) {
 				r--;
 				set_current(c);
+				errno = EBADF;
 				set_plan(c, io_close());
 				if (c->duplex) {
 					set_current(c->duplex);
