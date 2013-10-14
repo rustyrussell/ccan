@@ -18,7 +18,7 @@ struct buffer {
 static struct io_plan *poke_writer(struct io_conn *conn, struct buffer *buf);
 static struct io_plan *poke_reader(struct io_conn *conn, struct buffer *buf);
 
-static struct io_plan *do_read(struct io_conn *conn, struct buffer *buf)
+static struct io_plan *plan_read(struct io_conn *conn, struct buffer *buf)
 {
 	assert(conn == buf->reader);
 
@@ -26,7 +26,7 @@ static struct io_plan *do_read(struct io_conn *conn, struct buffer *buf)
 		       poke_writer, buf);
 }
 
-static struct io_plan *do_write(struct io_conn *conn, struct buffer *buf)
+static struct io_plan *plan_write(struct io_conn *conn, struct buffer *buf)
 {
 	assert(conn == buf->writer);
 
@@ -42,7 +42,7 @@ static struct io_plan *poke_writer(struct io_conn *conn, struct buffer *buf)
 		return io_close(conn, NULL);
 
 	/* You write. */
-	io_wake(buf->writer, do_write, buf);
+	io_wake(buf->writer, plan_write, buf);
 
 	/* I'll wait until you wake me. */
 	return io_idle(conn);
@@ -52,7 +52,7 @@ static struct io_plan *poke_reader(struct io_conn *conn, struct buffer *buf)
 {
 	assert(conn == buf->writer);
 	/* You read. */
-	io_wake(buf->reader, do_read, buf);
+	io_wake(buf->reader, plan_read, buf);
 
 	if (++buf->iters == NUM_ITERS)
 		return io_close(conn, NULL);
@@ -91,7 +91,7 @@ int main(void)
 		buf[i].reader = io_new_conn(last_read, reader, NULL, &buf[i]);
 		if (!buf[i].reader)
 			break;
-		buf[i].writer = io_new_conn(fds[1], do_write, NULL, &buf[i]);
+		buf[i].writer = io_new_conn(fds[1], plan_write, NULL, &buf[i]);
 		if (!buf[i].writer)
 			break;
 		last_read = fds[0];
@@ -104,7 +104,7 @@ int main(void)
 	sprintf(buf[i].buf, "%i-%i", i, i);
 	buf[i].reader = io_new_conn(last_read, reader, NULL, &buf[i]);
 	ok1(buf[i].reader);
-	buf[i].writer = io_new_conn(last_write, do_write, NULL, &buf[i]);
+	buf[i].writer = io_new_conn(last_write, plan_write, NULL, &buf[i]);
 	ok1(buf[i].writer);
 
 	/* They should eventually exit */

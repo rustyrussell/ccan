@@ -21,15 +21,14 @@ struct io_listener {
 	void *conn_arg;
 };
 
+enum io_result {
+	RESULT_AGAIN,
+	RESULT_FINISHED,
+	RESULT_CLOSE
+};
+
 enum io_state {
-	/* These wait for something to input */
-	READ,
-	READPART,
-
-	/* These wait for room to output */
-	WRITE,
-	WRITEPART,
-
+	IO,
 	NEXT, /* eg starting, woken from idle, return from io_break. */
 	IDLE,
 	FINISHED,
@@ -81,6 +80,8 @@ struct io_conn {
 
 	struct io_conn *duplex;
 	struct io_timeout *timeout;
+
+	enum io_result (*io)(struct io_conn *conn);
 
 	int pollflag; /* 0, POLLIN or POLLOUT */
 	enum io_state state;

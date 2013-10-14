@@ -119,6 +119,20 @@ bool io_timeout_(struct io_conn *conn, struct timespec ts,
 	return true;
 }
 
+static enum io_result do_write(struct io_conn *conn)
+{
+	ssize_t ret = write(conn->fd.fd, conn->u.write.buf, conn->u.write.len);
+	if (ret < 0)
+		return RESULT_CLOSE;
+
+	conn->u.write.buf += ret;
+	conn->u.write.len -= ret;
+	if (conn->u.write.len == 0)
+		return RESULT_FINISHED;
+	else
+		return RESULT_AGAIN;
+}
+
 /* Queue some data to be written. */
 struct io_plan *io_write_(struct io_conn *conn, const void *data, size_t len,
 			  struct io_plan *(*cb)(struct io_conn *, void *),
@@ -126,10 +140,24 @@ struct io_plan *io_write_(struct io_conn *conn, const void *data, size_t len,
 {
 	conn->u.write.buf = data;
 	conn->u.write.len = len;
+	conn->io = do_write;
 	conn->next = cb;
 	conn->next_arg = arg;
 	conn->pollflag = POLLOUT;
-	return to_ioplan(WRITE);
+	return to_ioplan(IO);
+}
+
+static enum io_result do_read(struct io_conn *conn)
+{
+	ssize_t ret = read(conn->fd.fd, conn->u.read.buf, conn->u.read.len);
+	if (ret <= 0)
+		return RESULT_CLOSE;
+	conn->u.read.buf += ret;
+	conn->u.read.len -= ret;
+	if (conn->u.read.len == 0)
+		return RESULT_FINISHED;
+	else
+		return RESULT_AGAIN;
 }
 
 /* Queue a request to read into a buffer. */
@@ -139,10 +167,21 @@ struct io_plan *io_read_(struct io_conn *conn, void *data, size_t len,
 {
 	conn->u.read.buf = data;
 	conn->u.read.len = len;
+	conn->io = do_read;
 	conn->next = cb;
 	conn->next_arg = arg;
 	conn->pollflag = POLLIN;
-	return to_ioplan(READ);
+	return to_ioplan(IO);
+}
+
+static enum io_result do_read_partial(struct io_conn *conn)
+{
+	ssize_t ret = read(conn->fd.fd, conn->u.readpart.buf,
+			   *conn->u.readpart.lenp);
+	if (ret <= 0)
+		return RESULT_CLOSE;
+	*conn->u.readpart.lenp = ret;
+	return RESULT_FINISHED;
 }
 
 /* Queue a partial request to read into a buffer. */
@@ -152,10 +191,21 @@ struct io_plan *io_read_partial_(struct io_conn *conn, void *data, size_t *len,
 {
 	conn->u.readpart.buf = data;
 	conn->u.readpart.lenp = len;
+	conn->io = do_read_partial;
 	conn->next = cb;
 	conn->next_arg = arg;
 	conn->pollflag = POLLIN;
-	return to_ioplan(READPART);
+	return to_ioplan(IO);
+}
+
+static enum io_result do_write_partial(struct io_conn *conn)
+{
+	ssize_t ret = write(conn->fd.fd, conn->u.writepart.buf,
+			    *conn->u.writepart.lenp);
+	if (ret < 0)
+		return RESULT_CLOSE;
+	*conn->u.writepart.lenp = ret;
+	return RESULT_FINISHED;
 }
 
 /* Queue a partial write request. */
@@ -166,10 +216,11 @@ struct io_plan *io_write_partial_(struct io_conn *conn,
 {
 	conn->u.writepart.buf = data;
 	conn->u.writepart.lenp = len;
+	conn->io = do_write_partial;
 	conn->next = cb;
 	conn->next_arg = arg;
 	conn->pollflag = POLLOUT;
-	return to_ioplan(WRITEPART);
+	return to_ioplan(IO);
 }
 
 struct io_plan *io_idle(struct io_conn *conn)
@@ -200,50 +251,17 @@ static struct io_plan *do_next(struct io_conn *conn)
 
 struct io_plan *do_ready(struct io_conn *conn)
 {
-	ssize_t ret;
-	bool finished;
-
-	switch (conn->state) {
-	case WRITE:
-		ret = write(conn->fd.fd, conn->u.write.buf, conn->u.write.len);
-		if (ret < 0)
-			return io_close(conn, NULL);
-		conn->u.write.buf += ret;
-		conn->u.write.len -= ret;
-		finished = (conn->u.write.len == 0);
-		break;
-	case WRITEPART:
-		ret = write(conn->fd.fd, conn->u.writepart.buf,
-			    *conn->u.writepart.lenp);
-		if (ret < 0)
-			return io_close(conn, NULL);
-		*conn->u.writepart.lenp = ret;
-		finished = true;
-		break;
-	case READ:
-		ret = read(conn->fd.fd, conn->u.read.buf, conn->u.read.len);
-		if (ret <= 0)
-			return io_close(conn, NULL);
-		conn->u.read.buf += ret;
-		conn->u.read.len -= ret;
-		finished = (conn->u.read.len == 0);
-		break;
-	case READPART:
-		ret = read(conn->fd.fd, conn->u.readpart.buf,
-			    *conn->u.readpart.lenp);
-		if (ret <= 0)
-			return io_close(conn, NULL);
-		*conn->u.readpart.lenp = ret;
-		finished = true;
-		break;
+	assert(conn->state == IO);
+	switch (conn->io(conn)) {
+	case RESULT_CLOSE:
+		return io_close(conn, NULL);
+	case RESULT_FINISHED:
+		return do_next(conn);
+	case RESULT_AGAIN:
+		return to_ioplan(conn->state);
 	default:
-		/* Shouldn't happen. */
 		abort();
 	}
-
-	if (finished)
-		return do_next(conn);
-	return to_ioplan(conn->state);
 }
 
 /* Useful next functions. */

@@ -11,7 +11,7 @@ struct data {
 	char buf[4];
 };
 
-static struct io_plan *do_read(struct io_conn *conn, struct data *d)
+static struct io_plan *plan_read(struct io_conn *conn, struct data *d)
 {
 	ok1(d->state == 1);
 	d->state++;
@@ -22,7 +22,7 @@ static struct io_plan *start_break(struct io_conn *conn, struct data *d)
 {
 	ok1(d->state == 0);
 	d->state++;
-	return io_break(conn, d, do_read, d);
+	return io_break(conn, d, plan_read, d);
 }
 
 static void finish_ok(struct io_conn *conn, struct data *d)
