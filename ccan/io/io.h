@@ -36,7 +36,6 @@ enum io_result {
 
 enum io_state {
 	IO_IO,
-	IO_IDLE,
 	IO_FINISHED
 };
 

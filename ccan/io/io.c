@@ -230,7 +230,8 @@ struct io_plan io_idle(void)
 	struct io_plan plan;
 
 	plan.pollflag = 0;
-	plan.state = IO_IDLE;
+	plan.state = IO_IO;
+	plan.io = NULL;
 
 	return plan;
 }
@@ -241,7 +242,7 @@ void io_wake(struct io_conn *conn, struct io_plan plan)
 	/* It might have finished, but we haven't called its finish() yet. */
 	if (conn->plan.state == IO_FINISHED)
 		return;
-	assert(conn->plan.state == IO_IDLE);
+	assert(!conn->plan.io);
 	conn->plan = plan;
 	backend_wakeup(conn);
 }
