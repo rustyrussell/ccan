@@ -175,7 +175,8 @@ bool add_duplex(struct io_conn *c)
 void backend_del_conn(struct io_conn *conn)
 {
 	if (conn->finish) {
-		errno = conn->plan.u.close.saved_errno;
+		/* Saved by io_close */
+		errno = conn->plan.u1.s;
 		conn->finish(conn, conn->finish_arg);
 	}
 	if (timeout_active(conn))

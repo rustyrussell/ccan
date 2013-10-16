@@ -50,7 +50,7 @@ struct io_plan io_debug(struct io_plan plan)
 		if (!ready->plan.next) {
 			/* Call finish function immediately. */
 			if (ready->finish) {
-				errno = ready->plan.u.close.saved_errno;
+				errno = ready->plan.u1.s;
 				ready->finish(ready, ready->finish_arg);
 				ready->finish = NULL;
 			}
@@ -227,13 +227,13 @@ bool io_timeout_(struct io_conn *conn, struct timespec ts,
 /* Returns true if we're finished. */
 static int do_write(int fd, struct io_plan *plan)
 {
-	ssize_t ret = write(fd, plan->u.write.buf, plan->u.write.len);
+	ssize_t ret = write(fd, plan->u1.cp, plan->u2.s);
 	if (ret < 0)
 		return io_debug_io(-1);
 
-	plan->u.write.buf += ret;
-	plan->u.write.len -= ret;
-	return io_debug_io(plan->u.write.len == 0);
+	plan->u1.cp += ret;
+	plan->u2.s -= ret;
+	return io_debug_io(plan->u2.s == 0);
 }
 
 /* Queue some data to be written. */
@@ -244,8 +244,8 @@ struct io_plan io_write_(const void *data, size_t len,
 	struct io_plan plan;
 
 	assert(cb);
-	plan.u.write.buf = data;
-	plan.u.write.len = len;
+	plan.u1.const_vp = data;
+	plan.u2.s = len;
 	plan.io = do_write;
 	plan.next = cb;
 	plan.next_arg = arg;
@@ -256,13 +256,13 @@ struct io_plan io_write_(const void *data, size_t len,
 
 static int do_read(int fd, struct io_plan *plan)
 {
-	ssize_t ret = read(fd, plan->u.read.buf, plan->u.read.len);
+	ssize_t ret = read(fd, plan->u1.cp, plan->u2.s);
 	if (ret <= 0)
 		return io_debug_io(-1);
 
-	plan->u.read.buf += ret;
-	plan->u.read.len -= ret;
-	return io_debug_io(plan->u.read.len == 0);
+	plan->u1.cp += ret;
+	plan->u2.s -= ret;
+	return io_debug_io(plan->u2.s == 0);
 }
 
 /* Queue a request to read into a buffer. */
@@ -273,8 +273,8 @@ struct io_plan io_read_(void *data, size_t len,
 	struct io_plan plan;
 
 	assert(cb);
-	plan.u.read.buf = data;
-	plan.u.read.len = len;
+	plan.u1.cp = data;
+	plan.u2.s = len;
 	plan.io = do_read;
 	plan.next = cb;
 	plan.next_arg = arg;
@@ -285,11 +285,11 @@ struct io_plan io_read_(void *data, size_t len,
 
 static int do_read_partial(int fd, struct io_plan *plan)
 {
-	ssize_t ret = read(fd, plan->u.readpart.buf, *plan->u.readpart.lenp);
+	ssize_t ret = read(fd, plan->u1.cp, *(size_t *)plan->u2.vp);
 	if (ret <= 0)
 		return io_debug_io(-1);
 
-	*plan->u.readpart.lenp = ret;
+	*(size_t *)plan->u2.vp = ret;
 	return io_debug_io(1);
 }
 
@@ -301,8 +301,8 @@ struct io_plan io_read_partial_(void *data, size_t *len,
 	struct io_plan plan;
 
 	assert(cb);
-	plan.u.readpart.buf = data;
-	plan.u.readpart.lenp = len;
+	plan.u1.cp = data;
+	plan.u2.vp = len;
 	plan.io = do_read_partial;
 	plan.next = cb;
 	plan.next_arg = arg;
@@ -313,11 +313,11 @@ struct io_plan io_read_partial_(void *data, size_t *len,
 
 static int do_write_partial(int fd, struct io_plan *plan)
 {
-	ssize_t ret = write(fd, plan->u.writepart.buf, *plan->u.writepart.lenp);
+	ssize_t ret = write(fd, plan->u1.cp, *(size_t *)plan->u2.vp);
 	if (ret < 0)
 		return io_debug_io(-1);
 
-	*plan->u.writepart.lenp = ret;
+	*(size_t *)plan->u2.vp = ret;
 	return io_debug_io(1);
 }
 
@@ -329,8 +329,8 @@ struct io_plan io_write_partial_(const void *data, size_t *len,
 	struct io_plan plan;
 
 	assert(cb);
-	plan.u.writepart.buf = data;
-	plan.u.writepart.lenp = len;
+	plan.u1.const_vp = data;
+	plan.u2.vp = len;
 	plan.io = do_write_partial;
 	plan.next = cb;
 	plan.next_arg = arg;
@@ -356,7 +356,7 @@ static int do_connect(int fd, struct io_plan *plan)
 
 	if (err == 0) {
 		/* Restore blocking if it was initially. */
-		fcntl(fd, F_SETFD, plan->u.len_len.len1);
+		fcntl(fd, F_SETFD, plan->u1.s);
 		return 1;
 	}
 	return 0;
@@ -374,8 +374,8 @@ struct io_plan io_connect_(int fd, const struct addrinfo *addr,
 	plan.next_arg = arg;
 
 	/* Save old flags, set nonblock if not already. */
-	plan.u.len_len.len1 = fcntl(fd, F_GETFD);
-	fcntl(fd, F_SETFD, plan.u.len_len.len1 | O_NONBLOCK);
+	plan.u1.s = fcntl(fd, F_GETFD);
+	fcntl(fd, F_SETFD, plan.u1.s | O_NONBLOCK);
 
 	/* Immediate connect can happen. */
 	if (connect(fd, addr->ai_addr, addr->ai_addrlen) == 0) {
@@ -447,7 +447,7 @@ struct io_plan io_close_(void)
 	plan.pollflag = 0;
 	/* This means we're closing. */
 	plan.next = NULL;
-	plan.u.close.saved_errno = errno;
+	plan.u1.s = errno;
 
 	return plan;
 }

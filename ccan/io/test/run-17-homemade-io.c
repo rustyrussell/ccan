@@ -25,17 +25,17 @@ static void finish_ok(struct io_conn *conn, struct packet *pkt)
 
 static int do_read_packet(int fd, struct io_plan *plan)
 {
-	struct packet *pkt = plan->u.ptr_len.p;
+	struct packet *pkt = plan->u1.vp;
 	char *dest;
 	ssize_t ret;
 	size_t off, totlen;
 
 	/* Reading len? */
-	if (plan->u.ptr_len.len < sizeof(size_t)) {
+	if (plan->u2.s < sizeof(size_t)) {
 		ok1(pkt->state == 1);
 		pkt->state++;
 		dest = (char *)&pkt->len;
-		off = plan->u.ptr_len.len;
+		off = plan->u2.s;
 		totlen = sizeof(pkt->len);
 	} else {
 		ok1(pkt->state == 2);
@@ -46,7 +46,7 @@ static int do_read_packet(int fd, struct io_plan *plan)
 			goto fail;
 		else {
 			dest = pkt->contents;
-			off = plan->u.ptr_len.len - sizeof(pkt->len);
+			off = plan->u2.s - sizeof(pkt->len);
 			totlen = pkt->len;
 		}
 	}
@@ -55,11 +55,11 @@ static int do_read_packet(int fd, struct io_plan *plan)
 	if (ret <= 0)
 		goto fail;
 
-	plan->u.ptr_len.len += ret;
+	plan->u2.s += ret;
 
 	/* Finished? */
-	return io_debug_io(plan->u.ptr_len.len >= sizeof(pkt->len)
-			   && plan->u.ptr_len.len == pkt->len + sizeof(pkt->len));
+	return io_debug_io(plan->u2.s >= sizeof(pkt->len)
+			   && plan->u2.s == pkt->len + sizeof(pkt->len));
 
 fail:
 	free(pkt->contents);
@@ -74,8 +74,8 @@ static struct io_plan io_read_packet(struct packet *pkt,
 
 	assert(cb);
 	pkt->contents = NULL;
-	plan.u.ptr_len.p = pkt;
-	plan.u.ptr_len.len = 0;
+	plan.u1.vp = pkt;
+	plan.u2.s = 0;
 	plan.io = do_read_packet;
 	plan.next = cb;
 	plan.next_arg = arg;

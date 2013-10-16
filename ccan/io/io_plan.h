@@ -9,7 +9,8 @@ struct io_conn;
  * @io: function to call when fd is available for @pollflag.
  * @next: function to call after @io returns true.
  * @next_arg: argument to @next.
- * @u: scratch area for I/O.
+ * @u1: scratch area for I/O.
+ * @u2: scratch area for I/O.
  *
  * When the fd is POLLIN or POLLOUT (according to @pollflag), @io is
  * called.  If it returns -1, io_close() becomed the new plan (and errno
@@ -27,38 +28,19 @@ struct io_plan {
 	void *next_arg;
 
 	union {
-		struct {
-			char *buf;
-			size_t len;
-		} read;
-		struct {
-			const char *buf;
-			size_t len;
-		} write;
-		struct {
-			char *buf;
-			size_t *lenp;
-		} readpart;
-		struct {
-			const char *buf;
-			size_t *lenp;
-		} writepart;
-		struct {
-			int saved_errno;
-		} close;
-		struct {
-			void *p;
-			size_t len;
-		} ptr_len;
-		struct {
-			void *p1;
-			void *p2;
-		} ptr_ptr;
-		struct {
-			size_t len1;
-			size_t len2;
-		} len_len;
-	} u;
+		char *cp;
+		void *vp;
+		const void *const_vp;
+		size_t s;
+		char c[sizeof(size_t)];
+	} u1;
+	union {
+		char *p;
+		void *vp;
+		const void *const_vp;
+		size_t s;
+		char c[sizeof(size_t)];
+	} u2;
 };
 
 #ifdef DEBUG
