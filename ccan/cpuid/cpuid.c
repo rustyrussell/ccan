@@ -115,13 +115,13 @@ bool cpuid_is_supported(void)
 #define ASM_POPF	"popfq\n\t"
 #define ASM_PUSHEAX 	"pushq %%rax\n\t"
 #define ASM_POPEAX 	"popq %%rax\n\t"
-#define ASM_PUSHECX 	"popq %%rcx\n\t"
+#define ASM_PUSHECX 	"pushq %%rcx\n\t"
 #elif UINTPTR_MAX == 0xffffffff
 #define ASM_PUSHF 	"pushfl\n\t"
 #define ASM_POPF	"popfl\n\t"
 #define ASM_PUSHEAX 	"pushl %%eax\n\t"
 #define ASM_POPEAX 	"popl %%eax\n\t"
-#define ASM_PUSHECX 	"popl %%ecx\n\t"
+#define ASM_PUSHECX 	"pushl %%ecx\n\t"
 #endif
 
 	int ret = 0;
