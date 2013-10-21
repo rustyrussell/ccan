@@ -205,8 +205,14 @@ uint32_t cpuid_highest_ext_func_supported(void);
  * For CPU_EXTENDED_PROC_INFO_FEATURE_BITS:
  * 	Returns them in buf[0] and buf[1].
  *
+ * For CPU_EXTENDED_L2_CACHE_FEATURES:
+ * 	buf[0]: Line size
+ * 	buf[1]: Associativity
+ * 	buf[2]: Cache size.
+ *
  * For CPU_VIRT_PHYS_ADDR_SIZES:
- * 	Returns it as an integer in *buf.
+ * 	buf[0]: Physical
+ * 	buf[1]: Virtual
  *
  * For CPU_PROC_BRAND_STRING:
  * 	Have a char array with at least 48 bytes assigned to it.

@@ -298,13 +298,16 @@ void cpuid(cpuid_t info, uint32_t *buf)
 			buf[3] = edx;
 			break;
 		case CPU_EXTENDED_L2_CACHE_FEATURES:
-			*buf = ecx;
+			buf[0] = ecx & 0xFF; 		/* Line size.  */
+			buf[1] = (ecx >> 12) & 0xFF; 	/* Associativity.  */
+			buf[2] = ecx >> 16; 		/* Cache size.  */
 			break;
 		case CPU_ADV_POWER_MGT_INFO:
 			*buf = edx;
 			break;
 		case CPU_VIRT_PHYS_ADDR_SIZES:
-			*buf = eax;
+			buf[0] = eax & 0xFF; 		/* physical.  */
+			buf[1] = (eax >> 8) & 0xFF; 	/* virtual.  */
 			break;
 		default:
 			*buf = 0xbaadf00d;
