@@ -28,7 +28,7 @@ static void io_loop_exit(void)
 		while (free_later) {
 			struct io_conn *c = free_later;
 			free_later = c->finish_arg;
-			free(c);
+			io_alloc.free(c);
 		}
 	}
 }
@@ -42,7 +42,7 @@ static void free_conn(struct io_conn *conn)
 		conn->finish_arg = free_later;
 		free_later = conn;
 	} else
-		free(conn);
+		io_alloc.free(conn);
 }
 #else
 static void io_loop_enter(void)
@@ -53,7 +53,7 @@ static void io_loop_exit(void)
 }
 static void free_conn(struct io_conn *conn)
 {
-	free(conn);
+	io_alloc.free(conn);
 }
 #endif
 
@@ -64,11 +64,11 @@ static bool add_fd(struct fd *fd, short events)
 		struct fd **newfds;
 		size_t num = max_fds ? max_fds * 2 : 8;
 
-		newpollfds = realloc(pollfds, sizeof(*newpollfds) * num);
+		newpollfds = io_alloc.realloc(pollfds, sizeof(*newpollfds)*num);
 		if (!newpollfds)
 			return false;
 		pollfds = newpollfds;
-		newfds = realloc(fds, sizeof(*newfds) * num);
+		newfds = io_alloc.realloc(fds, sizeof(*newfds) * num);
 		if (!newfds)
 			return false;
 		fds = newfds;
@@ -107,8 +107,8 @@ static void del_fd(struct fd *fd)
 		fds[n]->backend_info = n;
 	} else if (num_fds == 1) {
 		/* Free everything when no more fds. */
-		free(pollfds);
-		free(fds);
+		io_alloc.free(pollfds);
+		io_alloc.free(fds);
 		pollfds = NULL;
 		fds = NULL;
 		max_fds = 0;
@@ -181,7 +181,7 @@ void backend_del_conn(struct io_conn *conn)
 	}
 	if (timeout_active(conn))
 		backend_del_timeout(conn);
-	free(conn->timeout);
+	io_alloc.free(conn->timeout);
 	if (conn->duplex) {
 		/* In case fds[] pointed to the other one. */
 		fds[conn->fd.backend_info] = &conn->duplex->fd;

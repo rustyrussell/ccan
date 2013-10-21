@@ -490,4 +490,17 @@ struct io_plan io_close_cb(struct io_conn *, void *unused);
  *	io_loop();
  */
 void *io_loop(void);
+
+/**
+ * io_set_alloc - set alloc/realloc/free function for io to use.
+ * @allocfn: allocator function
+ * @reallocfn: reallocator function, ptr may be NULL, size never 0.
+ * @freefn: free function
+ *
+ * By default io uses malloc/realloc/free, and returns NULL if they fail.
+ * You can set your own variants here.
+ */
+void io_set_alloc(void *(*allocfn)(size_t size),
+		  void *(*reallocfn)(void *ptr, size_t size),
+		  void (*freefn)(void *ptr));
 #endif /* CCAN_IO_H */

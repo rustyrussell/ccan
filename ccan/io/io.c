@@ -14,6 +14,10 @@
 
 void *io_loop_return;
 
+struct io_alloc io_alloc = {
+	malloc, realloc, free
+};
+
 #ifdef DEBUG
 /* Set to skip the next plan. */
 bool io_plan_nodebug;
@@ -125,7 +129,7 @@ struct io_listener *io_new_listener_(int fd,
 				     void (*init)(int fd, void *arg),
 				     void *arg)
 {
-	struct io_listener *l = malloc(sizeof(*l));
+	struct io_listener *l = io_alloc.alloc(sizeof(*l));
 
 	if (!l)
 		return NULL;
@@ -135,7 +139,7 @@ struct io_listener *io_new_listener_(int fd,
 	l->init = init;
 	l->arg = arg;
 	if (!add_listener(l)) {
-		free(l);
+		io_alloc.free(l);
 		return NULL;
 	}
 	return l;
@@ -145,12 +149,12 @@ void io_close_listener(struct io_listener *l)
 {
 	close(l->fd.fd);
 	del_listener(l);
-	free(l);
+	io_alloc.free(l);
 }
 
 struct io_conn *io_new_conn_(int fd, struct io_plan plan)
 {
-	struct io_conn *conn = malloc(sizeof(*conn));
+	struct io_conn *conn = io_alloc.alloc(sizeof(*conn));
 
 	io_plan_debug_again();
 
@@ -165,7 +169,7 @@ struct io_conn *io_new_conn_(int fd, struct io_plan plan)
 	conn->duplex = NULL;
 	conn->timeout = NULL;
 	if (!add_conn(conn)) {
-		free(conn);
+		io_alloc.free(conn);
 		return NULL;
 	}
 	return conn;
@@ -187,7 +191,7 @@ struct io_conn *io_duplex_(struct io_conn *old, struct io_plan plan)
 
 	assert(!old->duplex);
 
-	conn = malloc(sizeof(*conn));
+	conn = io_alloc.alloc(sizeof(*conn));
 	if (!conn)
 		return NULL;
 
@@ -199,7 +203,7 @@ struct io_conn *io_duplex_(struct io_conn *old, struct io_plan plan)
 	conn->finish_arg = NULL;
 	conn->timeout = NULL;
 	if (!add_duplex(conn)) {
-		free(conn);
+		io_alloc.free(conn);
 		return NULL;
 	}
 	old->duplex = conn;
@@ -212,7 +216,7 @@ bool io_timeout_(struct io_conn *conn, struct timespec ts,
 	assert(cb);
 
 	if (!conn->timeout) {
-		conn->timeout = malloc(sizeof(*conn->timeout));
+		conn->timeout = io_alloc.alloc(sizeof(*conn->timeout));
 		if (!conn->timeout)
 			return false;
 	} else
@@ -466,4 +470,13 @@ struct io_plan io_break_(void *ret, struct io_plan plan)
 	io_loop_return = ret;
 
 	return plan;
+}
+
+void io_set_alloc(void *(*allocfn)(size_t size),
+		  void *(*reallocfn)(void *ptr, size_t size),
+		  void (*freefn)(void *ptr))
+{
+	io_alloc.alloc = allocfn;
+	io_alloc.realloc = reallocfn;
+	io_alloc.free = freefn;
 }

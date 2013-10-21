@@ -4,6 +4,13 @@
 #include <stdbool.h>
 #include <ccan/timer/timer.h>
 
+struct io_alloc {
+	void *(*alloc)(size_t size);
+	void *(*realloc)(void *ptr, size_t size);
+	void (*free)(void *ptr);
+};
+extern struct io_alloc io_alloc;
+
 struct fd {
 	int fd;
 	bool listener;
