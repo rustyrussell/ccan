@@ -492,6 +492,14 @@ struct io_plan io_close_cb(struct io_conn *, void *unused);
 void *io_loop(void);
 
 /**
+ * io_conn_fd - get the fd from a connection.
+ * @conn: the connection.
+ *
+ * Sometimes useful, eg for getsockname().
+ */
+int io_conn_fd(const struct io_conn *conn);
+
+/**
  * io_set_alloc - set alloc/realloc/free function for io to use.
  * @allocfn: allocator function
  * @reallocfn: reallocator function, ptr may be NULL, size never 0.

@@ -472,6 +472,11 @@ struct io_plan io_break_(void *ret, struct io_plan plan)
 	return plan;
 }
 
+int io_conn_fd(const struct io_conn *conn)
+{
+	return conn->fd.fd;
+}
+
 void io_set_alloc(void *(*allocfn)(size_t size),
 		  void *(*reallocfn)(void *ptr, size_t size),
 		  void (*freefn)(void *ptr))

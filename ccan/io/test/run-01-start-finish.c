@@ -9,10 +9,12 @@
 #ifndef PORT
 #define PORT "65001"
 #endif
+static int expected_fd;
 
 static void finish_ok(struct io_conn *conn, int *state)
 {
 	ok1(*state == 1);
+	ok1(io_conn_fd(conn) == expected_fd);
 	(*state)++;
 	io_break(state + 1, io_idle());
 }
@@ -21,6 +23,7 @@ static void init_conn(int fd, int *state)
 {
 	ok1(*state == 0);
 	(*state)++;
+	expected_fd = fd;
 	io_set_finish(io_new_conn(fd, io_close()), finish_ok, state);
 }
 
@@ -64,7 +67,7 @@ int main(void)
 	int fd;
 
 	/* This is how many tests you plan to run */
-	plan_tests(9);
+	plan_tests(10);
 	fd = make_listen_fd(PORT, &addrinfo);
 	ok1(fd >= 0);
 	l = io_new_listener(fd, init_conn, &state);
