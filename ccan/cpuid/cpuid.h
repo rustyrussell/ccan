@@ -26,7 +26,7 @@
 #include <stdint.h>
 
 /**
- * enum cpuid - stuff to get information on from the CPU.
+ * enum cpuid - stuff to get information about from the CPU.
  *
  * This is used as a parameter in cpuid().
  *
@@ -124,14 +124,17 @@ typedef enum cputype {
  *
  * See also: cpuid_get_cpu_type_string()
  */
+#define is_intel_cpu() 	cpuid_get_cpu_type() == CT_INTEL
+#define is_amd_cpu() 	cpuid_get_cpu_type() == CT_AMDK5 || cpuid_get_cpu_type() == CT_AMD
 cputype_t cpuid_get_cpu_type(void);
 
 /**
- * cpuid_get_cpu_type_string - Get CPU Type string
+ * cpuid_sprintf_cputype - Get CPU Type string
+ * @cputype: a char of atleast 12 bytes in it.
  *
- * Returns the CPU type string based off cputype_t.
+ * Returns true on success, false on failure
  */
-const char *cpuid_get_cpu_type_string(const cputype_t cputype);
+bool cpuid_sprintf_cputype(const cputype_t cputype, char *buf);
 
 /**
  * cpuid_is_supported - test if the CPUID instruction is supported
@@ -275,4 +278,3 @@ bool cpuid_has_feature(int feature, bool extended);
 
 #endif
 #endif
-

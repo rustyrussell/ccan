@@ -220,9 +220,14 @@ cputype_t cpuid_get_cpu_type(void)
 	return cputype;
 }
 
-const char *cpuid_get_cpu_type_string(const cputype_t cputype)
+bool cpuid_sprintf_cputype(const cputype_t cputype, char *buf)
 {
-	return cpuids[(int)cputype];
+	if (cputype == CT_NONE)
+		return false;
+
+	memcpy(buf, cpuids[(int)cputype], 12);
+	buf[12] = '\0';
+	return true;
 }
 
 uint32_t cpuid_highest_ext_func_supported(void)

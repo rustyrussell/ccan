@@ -10,7 +10,9 @@ int main(void)
 		return 1;
 	}
 
-	printf ("Vendor ID: %s\n", cpuid_get_cpu_type_string (cpuid_get_cpu_type ()));
+	char cputype[12];
+	if (cpuid_sprintf_cputype(cpuid_get_cpu_type(), cputype))
+		printf ("Vendor ID: %s\n", cputype);
 
 	char buf[48];
 	cpuid(CPU_PROC_BRAND_STRING, (uint32_t *)buf);
