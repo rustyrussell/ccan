@@ -92,6 +92,8 @@ static struct {
 
 bool cpuid_is_supported(void)
 {
+	int ret = 0;
+#if defined(__GNUC__) || defined(__clang__)
 	/* The following assembly code uses EAX as the return value,
 	 * but we store the value of EAX into ret since GCC uses EAX
 	 * as the return register for every C function.  That's a double
@@ -124,7 +126,6 @@ bool cpuid_is_supported(void)
 #define ASM_PUSHECX 	"pushl %%ecx\n\t"
 #endif
 
-	int ret = 0;
 	asm volatile(
 		ASM_PUSHF
 		ASM_POPEAX
@@ -147,7 +148,26 @@ bool cpuid_is_supported(void)
 #undef ASM_PUSHEAX
 #undef ASM_POPEAX
 #undef ASM_PUSHECX
+#elif defined _MSC_VER
+	__asm {
+		pushfd
+		pop eax
+		mov ecx, eax
+		xor eax, 0x200000
+		push eax
+		popfd
 
+		pushfd
+		pop eax
+		xor eax, ecx
+		shr eax, 0x21
+		and eax, 0x1
+		push ecx
+		popfd
+
+		mov eax, ret
+	};
+#endif
 	return !!ret;
 }
 
@@ -235,11 +255,19 @@ uint32_t cpuid_highest_ext_func_supported(void)
 	static uint32_t highest;
 
 	if (!highest) {
+#if defined(__GNUC__) || defined(__clang__)
 		asm volatile(
 			"cpuid\n\t"
 			: "=a" (highest)
 			: "a" (CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED)
 		);
+#elif defined _MSC_VER
+		__asm {
+			mov eax, CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED
+			cpuid
+			mov highest, eax
+		};
+#endif
 	}
 
 	return highest;
