@@ -211,6 +211,24 @@ struct timespec time_divide(struct timespec t, unsigned long div);
 struct timespec time_multiply(struct timespec t, unsigned long mult);
 
 /**
+ * time_to_sec - return number of seconds
+ * @t: a time
+ *
+ * It's often more convenient to deal with time values as seconds.
+ * Note that this will fit into an unsigned 32-bit variable if it's a
+ * time of less than about 136 years.
+ *
+ * Example:
+ *	...
+ *	printf("Forking time is %u sec\n",
+ *	       (unsigned)time_to_sec(forking_time()));
+ */
+static inline uint64_t time_to_sec(struct timespec t)
+{
+	return t.tv_sec;
+}
+
+/**
  * time_to_msec - return number of milliseconds
  * @t: a time
  *
@@ -273,6 +291,23 @@ static inline uint64_t time_to_nsec(struct timespec t)
 
 	nsec = TIME_CHECK(t).tv_nsec + (uint64_t)t.tv_sec * 1000000000;
 	return nsec;
+}
+
+/**
+ * time_from_sec - convert seconds to a timespec
+ * @msec: time in seconds
+ *
+ * Example:
+ *	// 1 minute timeout
+ *	#define TIMEOUT time_from_sec(60)
+ */
+static inline struct timespec time_from_sec(uint64_t sec)
+{
+	struct timespec t;
+
+	t.tv_nsec = 0;
+	t.tv_sec = sec;
+	return TIME_CHECK(t);
 }
 
 /**

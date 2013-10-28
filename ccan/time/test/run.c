@@ -6,7 +6,7 @@ int main(void)
 {
 	struct timespec t1, t2, t3, zero = { 0, 0 };
 
-	plan_tests(58);
+	plan_tests(61);
 
 	/* Test time_now */
 	t1 = time_now();
@@ -50,6 +50,12 @@ int main(void)
 	ok1(time_eq(t3, t2));
 	t3 = time_sub(t2, t2);
 	ok1(time_eq(t3, zero));
+
+	/* time_from_sec / time_to_sec */
+	t3 = time_from_sec(500);
+	ok1(t3.tv_sec == 500);
+	ok1(t3.tv_nsec == 0);
+	ok1(time_to_sec(t3) == 500);
 
 	/* time_from_msec / time_to_msec */
 	t3 = time_from_msec(500);
