@@ -10,7 +10,9 @@ int main(void)
 		return 1;
 	}
 
-	printf ("Vendor ID: %s\n", cpuid_get_cpu_type_string (cpuid_get_cpu_type ()));
+	char cputype[12];
+	if (cpuid_sprintf_cputype(cpuid_get_cpu_type(), cputype))
+		printf ("Vendor ID: %s\n", cputype);
 
 	char buf[48];
 	cpuid(CPU_PROC_BRAND_STRING, (uint32_t *)buf);
@@ -18,39 +20,21 @@ int main(void)
 
 	printf ("Highest extended function supported: %#010x\n", cpuid_highest_ext_func_supported());
 
-	union {
-		struct {
-			uint32_t phys_bits : 8;
-			uint32_t virt_bits : 8;
-			uint32_t reserved  : 16;
-		};
-		uint32_t w;
-	} s;
-	cpuid(CPU_VIRT_PHYS_ADDR_SIZES, &s.w);
-	printf ("Physical address size: %d\nVirtual address size: %d\n", s.phys_bits, s.virt_bits);
+	uint32_t phys_virt[2];
+	cpuid(CPU_VIRT_PHYS_ADDR_SIZES, phys_virt);
+	printf ("Physical address size: %d\nVirtual address size: %d\n", phys_virt[0], phys_virt[1]);
 
 	uint32_t extfeatures[2];
 	cpuid(CPU_EXTENDED_PROC_INFO_FEATURE_BITS, extfeatures);
 	printf ("Extended processor info and feature bits: %d %d\n", extfeatures[0], extfeatures[1]);
 
-	union {
-		struct {
-			uint32_t line_size : 8;
-			uint32_t reserved : 4;
-			uint32_t assoc : 4;
-			uint32_t cache_size : 16;
-		};
-
-		uint32_t w;
-	} l2c;
-
-	cpuid(CPU_EXTENDED_L2_CACHE_FEATURES, &l2c.w);
-	printf ("L2 Cache Size: %u KB\tLine Size: %u bytes\tAssociativity: %02xh\n",
-			l2c.cache_size, l2c.line_size, l2c.assoc);
+	uint32_t l2c[3];
+	cpuid(CPU_EXTENDED_L2_CACHE_FEATURES, l2c);
+	printf("L2 Line size: %u bytes\tAssociativity: %02xh\tCache Size: %u KB\n",
+		l2c[0], l2c[1], l2c[2]);
 
 	uint32_t invalid;
 	cpuid(0x0ffffffUL, &invalid);
 	printf ("Testing invalid: %#010x\n", invalid);
 	return 0;
 }
-

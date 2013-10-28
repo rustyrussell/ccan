@@ -92,6 +92,8 @@ static struct {
 
 bool cpuid_is_supported(void)
 {
+	int ret = 0;
+#if defined(__GNUC__) || defined(__clang__)
 	/* The following assembly code uses EAX as the return value,
 	 * but we store the value of EAX into ret since GCC uses EAX
 	 * as the return register for every C function.  That's a double
@@ -115,16 +117,15 @@ bool cpuid_is_supported(void)
 #define ASM_POPF	"popfq\n\t"
 #define ASM_PUSHEAX 	"pushq %%rax\n\t"
 #define ASM_POPEAX 	"popq %%rax\n\t"
-#define ASM_PUSHECX 	"popq %%rcx\n\t"
+#define ASM_PUSHECX 	"pushq %%rcx\n\t"
 #elif UINTPTR_MAX == 0xffffffff
 #define ASM_PUSHF 	"pushfl\n\t"
 #define ASM_POPF	"popfl\n\t"
 #define ASM_PUSHEAX 	"pushl %%eax\n\t"
 #define ASM_POPEAX 	"popl %%eax\n\t"
-#define ASM_PUSHECX 	"popl %%ecx\n\t"
+#define ASM_PUSHECX 	"pushl %%ecx\n\t"
 #endif
 
-	int ret = 0;
 	asm volatile(
 		ASM_PUSHF
 		ASM_POPEAX
@@ -147,7 +148,26 @@ bool cpuid_is_supported(void)
 #undef ASM_PUSHEAX
 #undef ASM_POPEAX
 #undef ASM_PUSHECX
+#elif defined _MSC_VER
+	__asm {
+		pushfd
+		pop eax
+		mov ecx, eax
+		xor eax, 0x200000
+		push eax
+		popfd
 
+		pushfd
+		pop eax
+		xor eax, ecx
+		shr eax, 0x21
+		and eax, 0x1
+		push ecx
+		popfd
+
+		mov eax, ret
+	};
+#endif
 	return !!ret;
 }
 
@@ -220,9 +240,14 @@ cputype_t cpuid_get_cpu_type(void)
 	return cputype;
 }
 
-const char *cpuid_get_cpu_type_string(const cputype_t cputype)
+bool cpuid_sprintf_cputype(const cputype_t cputype, char *buf)
 {
-	return cpuids[(int)cputype];
+	if (cputype == CT_NONE)
+		return false;
+
+	memcpy(buf, cpuids[(int)cputype], 12);
+	buf[12] = '\0';
+	return true;
 }
 
 uint32_t cpuid_highest_ext_func_supported(void)
@@ -230,11 +255,19 @@ uint32_t cpuid_highest_ext_func_supported(void)
 	static uint32_t highest;
 
 	if (!highest) {
+#if defined(__GNUC__) || defined(__clang__)
 		asm volatile(
 			"cpuid\n\t"
 			: "=a" (highest)
 			: "a" (CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED)
 		);
+#elif defined _MSC_VER
+		__asm {
+			mov eax, CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED
+			cpuid
+			mov highest, eax
+		};
+#endif
 	}
 
 	return highest;
@@ -298,13 +331,16 @@ void cpuid(cpuid_t info, uint32_t *buf)
 			buf[3] = edx;
 			break;
 		case CPU_EXTENDED_L2_CACHE_FEATURES:
-			*buf = ecx;
+			buf[0] = ecx & 0xFF; 		/* Line size.  */
+			buf[1] = (ecx >> 12) & 0xFF; 	/* Associativity.  */
+			buf[2] = ecx >> 16; 		/* Cache size.  */
 			break;
 		case CPU_ADV_POWER_MGT_INFO:
 			*buf = edx;
 			break;
 		case CPU_VIRT_PHYS_ADDR_SIZES:
-			*buf = eax;
+			buf[0] = eax & 0xFF; 		/* physical.  */
+			buf[1] = (eax >> 8) & 0xFF; 	/* virtual.  */
 			break;
 		default:
 			*buf = 0xbaadf00d;
