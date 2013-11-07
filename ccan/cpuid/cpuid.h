@@ -173,16 +173,14 @@ uint32_t cpuid_highest_ext_func_supported(void);
  * 	Returns a string into buf.
  *
  * For CPU_PROCINFO_AND_FEATUREBITS:
- * 	buf[0]:
- * 		- 3:0 - Stepping
- * 		- 7:4 - Model
- * 		- 11:8 - Family
- * 		- 13:12 - Processor Type
- * 		- 19:16 - Extended Model
- * 		- 27:20 - Extended family
- * 	buf[1] and buf[2]:
+ * 	buf[0]: Stepping
+ * 	buf[1]: Model
+ * 	buf[2]: Family
+ * 	buf[3]: Extended Model
+ * 	buf[4]: Extended Family
+ * 	buf[5] and buf[6]:
  * 		Feature flags
- * 	buf[3]:
+ * 	buf[7]:
  * 		Additional feature information.
  *
  * For CPU_L1_CACHE_AND_TLB_IDS:

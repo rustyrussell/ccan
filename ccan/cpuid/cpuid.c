@@ -29,6 +29,7 @@
 #include "cpuid.h"
 
 #include <string.h>
+#include <stdio.h>
 
 enum {
 	CPU_PROC_BRAND_STRING_INTERNAL0  		= 0x80000003,
@@ -309,10 +310,15 @@ void cpuid(cpuid_t info, uint32_t *buf)
 			buf[2] = ecx;
 			break;
 		case CPU_PROCINFO_AND_FEATUREBITS:
-			buf[0] = eax; 	/* The so called "signature" of the CPU.  */
-			buf[1] = edx; 	/* Feature flags #1.  */
-			buf[2] = ecx; 	/* Feature flags #2.  */
-			buf[3] = ebx; 	/* Additional feature information.  */
+			buf[0] = (eax & 0x0F);		/* Stepping  */
+			buf[1] = (eax >> 4)  & 0x0F; 	/* Model  */
+			buf[2] = (eax >> 8)  & 0x0F; 	/* Family  */
+			buf[3] = (eax >> 16) & 0x0F; 	/* Extended Model.  */
+			buf[4] = (eax >> 24) & 0x0F; 	/* Extended Family.  */
+
+			buf[5] = edx; 			/* Feature flags #1.  */
+			buf[6] = ecx; 			/* Feature flags #2.  */
+			buf[7] = ebx; 			/* Additional feature information.  */
 			break;
 		case CPU_CACHE_AND_TLBD_INFO:
 			buf[0] = eax;
