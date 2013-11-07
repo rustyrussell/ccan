@@ -18,10 +18,12 @@ int main(void)
 	cpuid(CPU_PROC_BRAND_STRING, (uint32_t *)buf);
 	printf ("Processor Brand: %s\n", buf);
 
-	uint32_t procinfo[8];
+	uint32_t procinfo[11];
 	cpuid(CPU_PROCINFO_AND_FEATUREBITS, procinfo);
 	printf("Stepping: %d Model: 0x%X Family: %d extended model: %d extended family: %d\n",
 		procinfo[0], procinfo[1], procinfo[2], procinfo[3], procinfo[4]);
+	printf("Brand Index: %d CL Flush Line Size: %d Logical Processors: %d Initial APICID: %d\n",
+		procinfo[7], procinfo[8], procinfo[9], procinfo[10]);
 
 	printf ("Highest extended function supported: %#010x\n", cpuid_highest_ext_func_supported());
 

@@ -180,8 +180,10 @@ uint32_t cpuid_highest_ext_func_supported(void);
  * 	buf[4]: Extended Family
  * 	buf[5] and buf[6]:
  * 		Feature flags
- * 	buf[7]:
- * 		Additional feature information.
+ * 	buf[7]: Brand Index
+ * 	buf[8]: CL Flush Line Size
+ * 	buf[9]: Logical Processors
+ * 	buf[10]: Initial APICID
  *
  * For CPU_L1_CACHE_AND_TLB_IDS:
  * 	buf[0]: (eax):
