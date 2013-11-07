@@ -61,35 +61,6 @@ static void ___cpuid(cpuid_t info, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, 
 }
 #endif
 
-static struct {
-	uint32_t feature;
-	uint32_t mask;
-	bool use_edx; 		/* ecx will be used if false.  */
-} features[] = {
-	{ CF_MMX, 		1 << 23, 	true },
-	{ CF_SSE, 		1 << 25, 	true },
-	{ CF_SSE2, 		1 << 26, 	true },
-	{ CF_SSE3, 		1 << 9,  	false },
-	{ CF_FPU, 		1 << 0,  	true },
-
-	{ CF_TSC, 		1 << 4,  	true },
-	{ CF_MSR, 		1 << 5,  	true },
-
-	{ CF_SSSE3,     	1 << 9,  	false },
-	{ CF_AVX, 		1 << 28, 	false },
-
-	/* Extended ones.  */
-	{ CEF_x64, 		1 << 30, 	true },
-	{ CEF_FPU, 		1 << 0,  	true },
-	{ CEF_DE, 		1 << 2,  	true },
-	{ CEF_SYSCALLRET, 	1 << 11, 	true },
-	{ CEF_CMOV, 		1 << 15, 	true },
-
-	{ CEF_SSE4a, 		1 << 6, 	false },
-	{ CEF_FMA4, 		1 << 16, 	false },
-	{ CEF_XOP, 		1 << 11, 	false }
-};
-
 bool cpuid_is_supported(void)
 {
 	int ret = 0;
@@ -179,24 +150,48 @@ bool cpuid_test_feature(cpuid_t feature)
 	return (feature <= cpuid_highest_ext_func_supported());
 }
 
-bool cpuid_has_feature(int feature, bool extended)
+bool cpuid_has_ecxfeature(int feature)
 {
-	uint32_t eax, ebx, ecx, edx, i;
-
-	if (!extended)
-		___cpuid(CPU_PROCINFO_AND_FEATUREBITS, &eax, &ebx, &ecx, &edx);
-	else
-		___cpuid(CPU_EXTENDED_PROC_INFO_FEATURE_BITS, &eax, &ebx, &ecx, &edx);
-
-	for (i = 0; i < sizeof(features) / sizeof(features[0]); ++i) {
-		if (features[i].feature == feature) {
-			if (features[i].use_edx)
-				return (edx & features[i].mask);
-			else
-				return (ecx & features[i].mask);
-		}
+	static uint32_t _ecx;
+	if (_ecx == 0) {
+#if defined(__GNUC__) || defined(__clang__)
+		asm volatile(
+			"cpuid\n\t"
+			: "=c" (_ecx)
+			: "a" (CPU_PROCINFO_AND_FEATUREBITS)
+		);
+#elif defined _MSC_VER
+		__asm {
+			mov eax, CPU_PROCINFO_AND_FEATUREBITS
+			cpuid
+			mov _ecx, ecx
+		};
+#endif
 	}
-	return false;
+
+	return (_ecx & feature) == feature;
+}
+
+bool cpuid_has_edxfeature(int feature)
+{
+	static uint32_t _edx;
+	if (_edx == 0) {
+#if defined(__GNUC__) || defined(__clang__)
+		asm volatile(
+			"cpuid\n\t"
+			: "=d" (_edx)
+			: "a" (CPU_PROCINFO_AND_FEATUREBITS)
+		);
+#elif defined _MSC_VER
+		__asm {
+			mov eax, CPU_PROCINFO_AND_FEATUREBITS
+			cpuid
+			mov _edx, edx
+		};
+#endif
+	}
+
+	return (_edx & feature) == feature;
 }
 
 static const char *const cpuids[] = {
