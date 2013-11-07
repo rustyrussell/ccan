@@ -160,8 +160,8 @@ bool cpuid_is_supported(void)
 		pushfd
 		pop eax
 		xor eax, ecx
-		shr eax, 0x21
-		and eax, 0x1
+		shr eax, 21
+		and eax, 1
 		push ecx
 		popfd
 
