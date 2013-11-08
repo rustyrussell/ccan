@@ -31,8 +31,8 @@
 #include <string.h>
 
 enum {
-	CPU_PROC_BRAND_STRING_INTERNAL0  		= 0x80000003,
-	CPU_PROC_BRAND_STRING_INTERNAL1 		= 0x80000004
+	CPUID_PROC_BRAND_STRING_INTERNAL0  		= 0x80000003,
+	CPUID_PROC_BRAND_STRING_INTERNAL1 		= 0x80000004
 };
 
 #ifndef _MSC_VER
@@ -144,7 +144,7 @@ bool cpuid_is_supported(void)
 
 bool cpuid_test_feature(cpuid_t feature)
 {
-	if (feature > CPU_VIRT_PHYS_ADDR_SIZES || feature < CPU_EXTENDED_PROC_INFO_FEATURE_BITS)
+	if (feature > CPUID_VIRT_PHYS_ADDR_SIZES || feature < CPUID_EXTENDED_PROC_INFO_FEATURE_BITS)
 		return false;
 
 	return (feature <= cpuid_highest_ext_func_supported());
@@ -158,11 +158,11 @@ bool cpuid_has_ecxfeature(int feature)
 		asm volatile(
 			"cpuid\n\t"
 			: "=c" (_ecx)
-			: "a" (CPU_PROCINFO_AND_FEATUREBITS)
+			: "a" (CPUID_PROCINFO_AND_FEATUREBITS)
 		);
 #elif defined _MSC_VER
 		__asm {
-			mov eax, CPU_PROCINFO_AND_FEATUREBITS
+			mov eax, CPUID_PROCINFO_AND_FEATUREBITS
 			cpuid
 			mov _ecx, ecx
 		};
@@ -180,11 +180,11 @@ bool cpuid_has_edxfeature(int feature)
 		asm volatile(
 			"cpuid\n\t"
 			: "=d" (_edx)
-			: "a" (CPU_PROCINFO_AND_FEATUREBITS)
+			: "a" (CPUID_PROCINFO_AND_FEATUREBITS)
 		);
 #elif defined _MSC_VER
 		__asm {
-			mov eax, CPU_PROCINFO_AND_FEATUREBITS
+			mov eax, CPUID_PROCINFO_AND_FEATUREBITS
 			cpuid
 			mov _edx, edx
 		};
@@ -223,7 +223,7 @@ cputype_t cpuid_get_cpu_type(void)
 		} u;
 		uint32_t i;
 
-		___cpuid(CPU_VENDORID, &i, &u.bufu32[0], &u.bufu32[2], &u.bufu32[1]);
+		___cpuid(CPUID_VENDORID, &i, &u.bufu32[0], &u.bufu32[2], &u.bufu32[1]);
 		for (i = 0; i < sizeof(cpuids) / sizeof(cpuids[0]); ++i) {
 			if (strncmp(cpuids[i], u.buf, 12) == 0) {
 				cputype = (cputype_t)i;
@@ -254,11 +254,11 @@ uint32_t cpuid_highest_ext_func_supported(void)
 		asm volatile(
 			"cpuid\n\t"
 			: "=a" (highest)
-			: "a" (CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED)
+			: "a" (CPUID_HIGHEST_EXTENDED_FUNCTION_SUPPORTED)
 		);
 #elif defined _MSC_VER
 		__asm {
-			mov eax, CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED
+			mov eax, CPUID_HIGHEST_EXTENDED_FUNCTION_SUPPORTED
 			cpuid
 			mov highest, eax
 		};
@@ -273,23 +273,23 @@ void cpuid(cpuid_t info, uint32_t *buf)
 	/* Sanity checks, make sure we're not trying to do something
 	 * invalid or we are trying to get information that isn't supported
 	 * by the CPU.  */
-	if (info > CPU_VIRT_PHYS_ADDR_SIZES || (info > CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED
+	if (info > CPUID_VIRT_PHYS_ADDR_SIZES || (info > CPUID_HIGHEST_EXTENDED_FUNCTION_SUPPORTED
 		&& !cpuid_test_feature(info)))
 		return;
 
-	if (info == CPU_PROC_BRAND_STRING) {
+	if (info == CPUID_PROC_BRAND_STRING) {
 		static char cached[48] = { 0 };
 		if (cached[0] == '\0') {
-			___cpuid(CPU_PROC_BRAND_STRING,		  &buf[0], &buf[1], &buf[2],  &buf[3]);
-			___cpuid(CPU_PROC_BRAND_STRING_INTERNAL0, &buf[4], &buf[5], &buf[6],  &buf[7]);
-			___cpuid(CPU_PROC_BRAND_STRING_INTERNAL1, &buf[8], &buf[9], &buf[10], &buf[11]);
+			___cpuid(CPUID_PROC_BRAND_STRING,		  &buf[0], &buf[1], &buf[2],  &buf[3]);
+			___cpuid(CPUID_PROC_BRAND_STRING_INTERNAL0, &buf[4], &buf[5], &buf[6],  &buf[7]);
+			___cpuid(CPUID_PROC_BRAND_STRING_INTERNAL1, &buf[8], &buf[9], &buf[10], &buf[11]);
 
 			memcpy(cached, buf, sizeof cached);
 		} else
 			buf = (uint32_t *)cached;
 
 		return;
-	} else if (info == CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED) {
+	} else if (info == CPUID_HIGHEST_EXTENDED_FUNCTION_SUPPORTED) {
 		*buf = cpuid_highest_ext_func_supported();
 		return;
 	}
@@ -298,12 +298,12 @@ void cpuid(cpuid_t info, uint32_t *buf)
 	___cpuid(info, &eax, &ebx, &ecx, &edx);
 
 	switch (info) {
-		case CPU_VENDORID:
+		case CPUID_VENDORID:
 			buf[0] = ebx;
 			buf[1] = edx;
 			buf[2] = ecx;
 			break;
-		case CPU_PROCINFO_AND_FEATUREBITS:
+		case CPUID_PROCINFO_AND_FEATUREBITS:
 			buf[0] = (eax & 0x0F);		/* Stepping  */
 			buf[1] = (eax >> 4)  & 0x0F; 	/* Model  */
 			buf[2] = (eax >> 8)  & 0x0F; 	/* Family  */
@@ -319,31 +319,31 @@ void cpuid(cpuid_t info, uint32_t *buf)
 			buf[9] = (ebx >> 16) & 0xFF;
 			buf[10] = (ebx >> 24) & 0xFF;
 			break;
-		case CPU_CACHE_AND_TLBD_INFO:
+		case CPUID_CACHE_AND_TLBD_INFO:
 			buf[0] = eax;
 			buf[1] = ebx;
 			buf[2] = ecx;
 			buf[3] = edx;
 			break;
-		case CPU_EXTENDED_PROC_INFO_FEATURE_BITS:
+		case CPUID_EXTENDED_PROC_INFO_FEATURE_BITS:
 			buf[0] = edx;
 			buf[1] = ecx;
 			break;
-		case CPU_L1_CACHE_AND_TLB_IDS:
+		case CPUID_L1_CACHE_AND_TLB_IDS:
 			buf[0] = eax;
 			buf[1] = ebx;
 			buf[2] = ecx;
 			buf[3] = edx;
 			break;
-		case CPU_EXTENDED_L2_CACHE_FEATURES:
+		case CPUID_EXTENDED_L2_CACHE_FEATURES:
 			buf[0] = ecx & 0xFF; 		/* Line size.  */
 			buf[1] = (ecx >> 12) & 0xFF; 	/* Associativity.  */
 			buf[2] = ecx >> 16; 		/* Cache size.  */
 			break;
-		case CPU_ADV_POWER_MGT_INFO:
+		case CPUID_ADV_POWER_MGT_INFO:
 			*buf = edx;
 			break;
-		case CPU_VIRT_PHYS_ADDR_SIZES:
+		case CPUID_VIRT_PHYS_ADDR_SIZES:
 			buf[0] = eax & 0xFF; 		/* physical.  */
 			buf[1] = (eax >> 8) & 0xFF; 	/* virtual.  */
 			break;

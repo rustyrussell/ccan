@@ -30,50 +30,50 @@
  *
  * This is used as a parameter in cpuid().
  *
- * CPU_VENDORID:
+ * CPUID_VENDORID:
  * 	The CPU's Vendor ID.
  *
- * CPU_PROCINFO_AND_FEATUREBITS:
+ * CPUID_PROCINFO_AND_FEATUREBITS:
  * 	Processor information and feature bits (SSE, etc.).
  *
- * CPU_CACHE_AND_TLBD_INFO
+ * CPUID_CACHE_AND_TLBD_INFO
  * 	Cache and TLBD Information.
  *
- * CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED:
+ * CPUID_HIGHEST_EXTENDED_FUNCTION_SUPPORTED:
  * 	Highest extended function supported address.
  * 	Can be like 0x80000008.
  *
- * CPU_EXTENDED_PROC_INFO_FEATURE_BITS:
+ * CPUID_EXTENDED_PROC_INFO_FEATURE_BITS:
  * 	Extended processor information and feature bits (64bit etc.)
  *
- * CPU_PROC_BRAND_STRING:
+ * CPUID_PROC_BRAND_STRING:
  * 	The Processor's brand string.
  *
- * CPU_L1_CACHE_AND_TLB_IDS:
+ * CPUID_L1_CACHE_AND_TLB_IDS:
  * 	L1 Cache and TLB Identifications.
  *
- * CPU_EXTENDED_L2_CACHE_FEATURES:
+ * CPUID_EXTENDED_L2_CACHE_FEATURES:
  * 	Extended L2 Cache features.
  *
- * CPU_ADV_POWER_MGT_INFO:
+ * CPUID_ADV_POWER_MGT_INFO:
  * 	Advaned power management information.
  *
- * CPU_VIRT_PHYS_ADDR_SIZES:
+ * CPUID_VIRT_PHYS_ADDR_SIZES:
  * 	Virtual and physical address sizes.
  */
 
 typedef enum cpuid {
-	CPU_VENDORID 					= 0,
-	CPU_PROCINFO_AND_FEATUREBITS 			= 1,
-	CPU_CACHE_AND_TLBD_INFO 			= 2,
+	CPUID_VENDORID 					= 0,
+	CPUID_PROCINFO_AND_FEATUREBITS 			= 1,
+	CPUID_CACHE_AND_TLBD_INFO 			= 2,
 
-	CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED 	= 0x80000000,
-	CPU_EXTENDED_PROC_INFO_FEATURE_BITS 		= 0x80000001,
-	CPU_PROC_BRAND_STRING 				= 0x80000002,
-	CPU_L1_CACHE_AND_TLB_IDS 			= 0x80000005,
-	CPU_EXTENDED_L2_CACHE_FEATURES 			= 0x80000006,
-	CPU_ADV_POWER_MGT_INFO 				= 0x80000007,
-	CPU_VIRT_PHYS_ADDR_SIZES 			= 0x80000008
+	CPUID_HIGHEST_EXTENDED_FUNCTION_SUPPORTED 	= 0x80000000,
+	CPUID_EXTENDED_PROC_INFO_FEATURE_BITS 		= 0x80000001,
+	CPUID_PROC_BRAND_STRING 				= 0x80000002,
+	CPUID_L1_CACHE_AND_TLB_IDS 			= 0x80000005,
+	CPUID_EXTENDED_L2_CACHE_FEATURES 			= 0x80000006,
+	CPUID_ADV_POWER_MGT_INFO 				= 0x80000007,
+	CPUID_VIRT_PHYS_ADDR_SIZES 			= 0x80000008
 } cpuid_t;
 
 enum {
@@ -193,7 +193,7 @@ bool cpuid_is_supported(void);
  * Returns the highest extended function supported.
  *
  * This is the same as calling:
- * 	cpuid(CPU_HIGHEST_EEXTENDED_FUNCTION_SUPPORTED, &highest);
+ * 	cpuid(CPUID_HIGHEST_EEXTENDED_FUNCTION_SUPPORTED, &highest);
  *
  * This is made visible to the linker because it's easier to call it
  * instead of calling cpuid with less type-checking.  cpuid calls this.
@@ -208,10 +208,10 @@ uint32_t cpuid_highest_ext_func_supported(void);
  * This function expects buf to be a valid pointer to a string/int/...
  * depending on the requested information.
  *
- * For CPU_VENDOR_ID:
+ * For CPUID_VENDOR_ID:
  * 	Returns a string into buf.
  *
- * For CPU_PROCINFO_AND_FEATUREBITS:
+ * For CPUID_PROCINFO_AND_FEATUREBITS:
  * 	buf[0]: Stepping
  * 	buf[1]: Model
  * 	buf[2]: Family
@@ -224,7 +224,7 @@ uint32_t cpuid_highest_ext_func_supported(void);
  * 	buf[9]: Logical Processors
  * 	buf[10]: Initial APICID
  *
- * For CPU_L1_CACHE_AND_TLB_IDS:
+ * For CPUID_L1_CACHE_AND_TLB_IDS:
  * 	buf[0]: (eax):
  * 		- 7..0 	Number of times to exec cpuid to get all descriptors.
  * 		- 15..8 Instruction TLB: 4K Pages, 4-way set associtive, 128 entries.
@@ -241,22 +241,22 @@ uint32_t cpuid_highest_ext_func_supported(void);
  * 		- 16..23 Data TLB: 4M Pages, 4-way set associtive, 8 entires.
  * 		- 24..31 1st-level data cache: 32K, 8-way set associtive, 64 byte line size
  *
- * For CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED:
+ * For CPUID_HIGHEST_EXTENDED_FUNCTION_SUPPORTED:
  * 	Returns the highest supported function in *buf (expects an integer ofc)
  *
- * For CPU_EXTENDED_PROC_INFO_FEATURE_BITS:
+ * For CPUID_EXTENDED_PROC_INFO_FEATURE_BITS:
  * 	Returns them in buf[0] and buf[1].
  *
- * For CPU_EXTENDED_L2_CACHE_FEATURES:
+ * For CPUID_EXTENDED_L2_CACHE_FEATURES:
  * 	buf[0]: Line size
  * 	buf[1]: Associativity
  * 	buf[2]: Cache size.
  *
- * For CPU_VIRT_PHYS_ADDR_SIZES:
+ * For CPUID_VIRT_PHYS_ADDR_SIZES:
  * 	buf[0]: Physical
  * 	buf[1]: Virtual
  *
- * For CPU_PROC_BRAND_STRING:
+ * For CPUID_PROC_BRAND_STRING:
  * 	Have a char array with at least 48 bytes assigned to it.
  *
  * Here's a page which will help you parse the data provided by this function.
@@ -271,8 +271,8 @@ void cpuid(cpuid_t info, uint32_t *buf);
  *
  * Returns true if feature is supported, false otherwise.
  *
- * The feature parameter must be >= CPU_EXTENDED_PROC_INFO_FEATURE_BITS
- *  and <= CPU_VIRT_PHYS_ADDR_SIZES.
+ * The feature parameter must be >= CPUID_EXTENDED_PROC_INFO_FEATURE_BITS
+ *  and <= CPUID_VIRT_PHYS_ADDR_SIZES.
  */
 bool cpuid_test_feature(cpuid_t feature);
 
