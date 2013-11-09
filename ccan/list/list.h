@@ -604,8 +604,8 @@ static inline struct list_node *list_node_from_off_(void *ptr, size_t off)
 #endif
 
 /* Returns member, or NULL if at end of list. */
-static inline void *list_entry_or_null(struct list_head *h,
-				       struct list_node *n,
+static inline void *list_entry_or_null(const struct list_head *h,
+				       const struct list_node *n,
 				       size_t off)
 {
 	if (n == &h->n)

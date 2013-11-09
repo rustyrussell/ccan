@@ -18,8 +18,10 @@ int main(int argc, char *argv[])
 {
 	struct parent parent;
 	struct child c1, c2, c3;
+	const struct parent *p;
+	const struct child *c;
 
-	plan_tests(12);
+	plan_tests(20);
 	parent.num_children = 0;
 	list_head_init(&parent.children);
 
@@ -46,5 +48,18 @@ int main(int argc, char *argv[])
 	ok1(list_prev(&parent.children, &c2, list) == &c1);
 	ok1(list_next(&parent.children, &c3, list) == NULL);
 	ok1(list_prev(&parent.children, &c3, list) == &c2);
+
+	/* Const variants */
+	p = &parent;
+	c = &c2;
+	ok1(list_next(&p->children, &c1, list) == &c2);
+	ok1(list_prev(&p->children, &c1, list) == NULL);
+	ok1(list_next(&p->children, c, list) == &c3);
+	ok1(list_prev(&p->children, c, list) == &c1);
+	ok1(list_next(&parent.children, c, list) == &c3);
+	ok1(list_prev(&parent.children, c, list) == &c1);
+	ok1(list_next(&p->children, &c3, list) == NULL);
+	ok1(list_prev(&p->children, &c3, list) == &c2);
+
 	return exit_status();
 }
