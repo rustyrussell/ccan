@@ -30,71 +30,110 @@
  *
  * This is used as a parameter in cpuid().
  *
- * CPU_VENDORID:
+ * CPUID_VENDORID:
  * 	The CPU's Vendor ID.
  *
- * CPU_PROCINFO_AND_FEATUREBITS:
+ * CPUID_PROCINFO_AND_FEATUREBITS:
  * 	Processor information and feature bits (SSE, etc.).
  *
- * CPU_CACHE_AND_TLBD_INFO
+ * CPUID_CACHE_AND_TLBD_INFO
  * 	Cache and TLBD Information.
  *
- * CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED:
+ * CPUID_HIGHEST_EXTENDED_FUNCTION_SUPPORTED:
  * 	Highest extended function supported address.
  * 	Can be like 0x80000008.
  *
- * CPU_EXTENDED_PROC_INFO_FEATURE_BITS:
+ * CPUID_EXTENDED_PROC_INFO_FEATURE_BITS:
  * 	Extended processor information and feature bits (64bit etc.)
  *
- * CPU_PROC_BRAND_STRING:
+ * CPUID_PROC_BRAND_STRING:
  * 	The Processor's brand string.
  *
- * CPU_L1_CACHE_AND_TLB_IDS:
+ * CPUID_L1_CACHE_AND_TLB_IDS:
  * 	L1 Cache and TLB Identifications.
  *
- * CPU_EXTENDED_L2_CACHE_FEATURES:
+ * CPUID_EXTENDED_L2_CACHE_FEATURES:
  * 	Extended L2 Cache features.
  *
- * CPU_ADV_POWER_MGT_INFO:
+ * CPUID_ADV_POWER_MGT_INFO:
  * 	Advaned power management information.
  *
- * CPU_VIRT_PHYS_ADDR_SIZES:
+ * CPUID_VIRT_PHYS_ADDR_SIZES:
  * 	Virtual and physical address sizes.
  */
 
 typedef enum cpuid {
-	CPU_VENDORID 					= 0,
-	CPU_PROCINFO_AND_FEATUREBITS 			= 1,
-	CPU_CACHE_AND_TLBD_INFO 			= 2,
+	CPUID_VENDORID 					= 0,
+	CPUID_PROCINFO_AND_FEATUREBITS 			= 1,
+	CPUID_CACHE_AND_TLBD_INFO 			= 2,
 
-	CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED 	= 0x80000000,
-	CPU_EXTENDED_PROC_INFO_FEATURE_BITS 		= 0x80000001,
-	CPU_PROC_BRAND_STRING 				= 0x80000002,
-	CPU_L1_CACHE_AND_TLB_IDS 			= 0x80000005,
-	CPU_EXTENDED_L2_CACHE_FEATURES 			= 0x80000006,
-	CPU_ADV_POWER_MGT_INFO 				= 0x80000007,
-	CPU_VIRT_PHYS_ADDR_SIZES 			= 0x80000008
+	CPUID_HIGHEST_EXTENDED_FUNCTION_SUPPORTED 	= 0x80000000,
+	CPUID_EXTENDED_PROC_INFO_FEATURE_BITS 		= 0x80000001,
+	CPUID_PROC_BRAND_STRING 				= 0x80000002,
+	CPUID_L1_CACHE_AND_TLB_IDS 			= 0x80000005,
+	CPUID_EXTENDED_L2_CACHE_FEATURES 			= 0x80000006,
+	CPUID_ADV_POWER_MGT_INFO 				= 0x80000007,
+	CPUID_VIRT_PHYS_ADDR_SIZES 			= 0x80000008
 } cpuid_t;
 
-#define CF_MMX 		0
-#define CF_SSE 		1
-#define CF_SSE2 	2
-#define CF_SSE3 	3
-#define CF_FPU 		4
-#define CF_TSC 		5
-#define CF_MSR 		6
-#define CF_SSSE3 	7
-#define CF_AVX 		8
-#define CF_FMA 		9
+enum {
+	CPUID_FEAT_ECX_SSE3         = 1 << 0, 
+	CPUID_FEAT_ECX_PCLMUL       = 1 << 1,
+	CPUID_FEAT_ECX_DTES64       = 1 << 2,
+	CPUID_FEAT_ECX_MONITOR      = 1 << 3,  
+	CPUID_FEAT_ECX_DS_CPL       = 1 << 4,  
+	CPUID_FEAT_ECX_VMX          = 1 << 5,  
+	CPUID_FEAT_ECX_SMX          = 1 << 6,  
+	CPUID_FEAT_ECX_EST          = 1 << 7,  
+	CPUID_FEAT_ECX_TM2          = 1 << 8,  
+	CPUID_FEAT_ECX_SSSE3        = 1 << 9,  
+	CPUID_FEAT_ECX_CID          = 1 << 10,
+	CPUID_FEAT_ECX_FMA          = 1 << 12,
+	CPUID_FEAT_ECX_CX16         = 1 << 13, 
+	CPUID_FEAT_ECX_ETPRD        = 1 << 14, 
+	CPUID_FEAT_ECX_PDCM         = 1 << 15, 
+	CPUID_FEAT_ECX_DCA          = 1 << 18, 
+	CPUID_FEAT_ECX_SSE4_1       = 1 << 19, 
+	CPUID_FEAT_ECX_SSE4_2       = 1 << 20, 
+	CPUID_FEAT_ECX_x2APIC       = 1 << 21, 
+	CPUID_FEAT_ECX_MOVBE        = 1 << 22, 
+	CPUID_FEAT_ECX_POPCNT       = 1 << 23, 
+	CPUID_FEAT_ECX_AES          = 1 << 25, 
+	CPUID_FEAT_ECX_XSAVE        = 1 << 26, 
+	CPUID_FEAT_ECX_OSXSAVE      = 1 << 27, 
+	CPUID_FEAT_ECX_AVX          = 1 << 28,
 
-#define CEF_x64 	10
-#define CEF_FPU 	11
-#define CEF_DE 		12
-#define CEF_SYSCALLRET 	13
-#define CEF_CMOV 	14
-#define CEF_SSE4a 	15
-#define CEF_FMA4 	16
-#define CEF_XOP 	17
+	CPUID_FEAT_EDX_FPU          = 1 << 0,  
+	CPUID_FEAT_EDX_VME          = 1 << 1,  
+	CPUID_FEAT_EDX_DE           = 1 << 2,  
+	CPUID_FEAT_EDX_PSE          = 1 << 3,  
+	CPUID_FEAT_EDX_TSC          = 1 << 4,  
+	CPUID_FEAT_EDX_MSR          = 1 << 5,  
+	CPUID_FEAT_EDX_PAE          = 1 << 6,  
+	CPUID_FEAT_EDX_MCE          = 1 << 7,  
+	CPUID_FEAT_EDX_CX8          = 1 << 8,  
+	CPUID_FEAT_EDX_APIC         = 1 << 9,  
+	CPUID_FEAT_EDX_SEP          = 1 << 11, 
+	CPUID_FEAT_EDX_MTRR         = 1 << 12, 
+	CPUID_FEAT_EDX_PGE          = 1 << 13, 
+	CPUID_FEAT_EDX_MCA          = 1 << 14, 
+	CPUID_FEAT_EDX_CMOV         = 1 << 15, 
+	CPUID_FEAT_EDX_PAT          = 1 << 16, 
+	CPUID_FEAT_EDX_PSE36        = 1 << 17, 
+	CPUID_FEAT_EDX_PSN          = 1 << 18, 
+	CPUID_FEAT_EDX_CLF          = 1 << 19, 
+	CPUID_FEAT_EDX_DTES         = 1 << 21, 
+	CPUID_FEAT_EDX_ACPI         = 1 << 22, 
+	CPUID_FEAT_EDX_MMX          = 1 << 23, 
+	CPUID_FEAT_EDX_FXSR         = 1 << 24, 
+	CPUID_FEAT_EDX_SSE          = 1 << 25, 
+	CPUID_FEAT_EDX_SSE2         = 1 << 26, 
+	CPUID_FEAT_EDX_SS           = 1 << 27, 
+	CPUID_FEAT_EDX_HTT          = 1 << 28, 
+	CPUID_FEAT_EDX_TM1          = 1 << 29, 
+	CPUID_FEAT_EDX_IA64         = 1 << 30,
+	CPUID_FEAT_EDX_PBE          = 1 << 31
+};
 
 typedef enum cputype {
 	CT_NONE,
@@ -154,7 +193,7 @@ bool cpuid_is_supported(void);
  * Returns the highest extended function supported.
  *
  * This is the same as calling:
- * 	cpuid(CPU_HIGHEST_EEXTENDED_FUNCTION_SUPPORTED, &highest);
+ * 	cpuid(CPUID_HIGHEST_EEXTENDED_FUNCTION_SUPPORTED, &highest);
  *
  * This is made visible to the linker because it's easier to call it
  * instead of calling cpuid with less type-checking.  cpuid calls this.
@@ -169,23 +208,23 @@ uint32_t cpuid_highest_ext_func_supported(void);
  * This function expects buf to be a valid pointer to a string/int/...
  * depending on the requested information.
  *
- * For CPU_VENDOR_ID:
+ * For CPUID_VENDOR_ID:
  * 	Returns a string into buf.
  *
- * For CPU_PROCINFO_AND_FEATUREBITS:
- * 	buf[0]:
- * 		- 3:0 - Stepping
- * 		- 7:4 - Model
- * 		- 11:8 - Family
- * 		- 13:12 - Processor Type
- * 		- 19:16 - Extended Model
- * 		- 27:20 - Extended family
- * 	buf[1] and buf[2]:
+ * For CPUID_PROCINFO_AND_FEATUREBITS:
+ * 	buf[0]: Stepping
+ * 	buf[1]: Model
+ * 	buf[2]: Family
+ * 	buf[3]: Extended Model
+ * 	buf[4]: Extended Family
+ * 	buf[5] and buf[6]:
  * 		Feature flags
- * 	buf[3]:
- * 		Additional feature information.
+ * 	buf[7]: Brand Index
+ * 	buf[8]: CL Flush Line Size
+ * 	buf[9]: Logical Processors
+ * 	buf[10]: Initial APICID
  *
- * For CPU_L1_CACHE_AND_TLB_IDS:
+ * For CPUID_L1_CACHE_AND_TLB_IDS:
  * 	buf[0]: (eax):
  * 		- 7..0 	Number of times to exec cpuid to get all descriptors.
  * 		- 15..8 Instruction TLB: 4K Pages, 4-way set associtive, 128 entries.
@@ -202,22 +241,22 @@ uint32_t cpuid_highest_ext_func_supported(void);
  * 		- 16..23 Data TLB: 4M Pages, 4-way set associtive, 8 entires.
  * 		- 24..31 1st-level data cache: 32K, 8-way set associtive, 64 byte line size
  *
- * For CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED:
+ * For CPUID_HIGHEST_EXTENDED_FUNCTION_SUPPORTED:
  * 	Returns the highest supported function in *buf (expects an integer ofc)
  *
- * For CPU_EXTENDED_PROC_INFO_FEATURE_BITS:
+ * For CPUID_EXTENDED_PROC_INFO_FEATURE_BITS:
  * 	Returns them in buf[0] and buf[1].
  *
- * For CPU_EXTENDED_L2_CACHE_FEATURES:
+ * For CPUID_EXTENDED_L2_CACHE_FEATURES:
  * 	buf[0]: Line size
  * 	buf[1]: Associativity
  * 	buf[2]: Cache size.
  *
- * For CPU_VIRT_PHYS_ADDR_SIZES:
+ * For CPUID_VIRT_PHYS_ADDR_SIZES:
  * 	buf[0]: Physical
  * 	buf[1]: Virtual
  *
- * For CPU_PROC_BRAND_STRING:
+ * For CPUID_PROC_BRAND_STRING:
  * 	Have a char array with at least 48 bytes assigned to it.
  *
  * Here's a page which will help you parse the data provided by this function.
@@ -232,8 +271,8 @@ void cpuid(cpuid_t info, uint32_t *buf);
  *
  * Returns true if feature is supported, false otherwise.
  *
- * The feature parameter must be >= CPU_EXTENDED_PROC_INFO_FEATURE_BITS
- *  and <= CPU_VIRT_PHYS_ADDR_SIZES.
+ * The feature parameter must be >= CPUID_EXTENDED_PROC_INFO_FEATURE_BITS
+ *  and <= CPUID_VIRT_PHYS_ADDR_SIZES.
  */
 bool cpuid_test_feature(cpuid_t feature);
 
@@ -241,27 +280,13 @@ bool cpuid_test_feature(cpuid_t feature);
  * cpuid_has_feature - Test if @feature is supported
  *
  * Test if the CPU supports MMX/SSE* etc.
- * For the extended parameter, usually you want to pass it as
- * false if you're not passing CEF_*.
- *
- * For more information about the CPU extended features, have a look
- * at:
- * 	http://en.wikipedia.org/wiki/CPUID
+ * Use cpuid_has_ecxfeature() for *_ECX* features and
+ * cpuid_has_edxfeature() for *_EDX* features.
  *
  * Returns true if the feature is available, false otherwise.
  */
-#define cpuid_has_mmx() 	cpuid_has_feature(CF_MMX, 	false)
-#define cpuid_has_sse() 	cpuid_has_feature(CF_SSE, 	false)
-#define cpuid_has_sse2() 	cpuid_has_feature(CF_SSE2, 	false)
-#define cpuid_has_sse3() 	cpuid_has_feature(CF_SSE3, 	false)
-#define cpuid_has_ssse3() 	cpuid_has_feature(CF_SSSE3, 	false)
-#define cpuid_has_avx() 	cpuid_has_feature(CF_AVX, 	false)
-#define cpuid_has_fma() 	cpuid_has_feature(CF_FMA, 	false)
-#define cpuid_has_x64() 	cpuid_has_feature(CEF_x64, 	true)
-#define cpuid_has_sse4a() 	cpuid_has_feature(CEF_SSE4a, 	true)
-#define cpuid_has_fma4() 	cpuid_has_feature(CEF_FMA4, 	true)
-#define cpuid_has_xop() 	cpuid_has_feature(CEF_XOP, 	true)
-bool cpuid_has_feature(int feature, bool extended);
+bool cpuid_has_ecxfeature(int feature);
+bool cpuid_has_edxfeature(int feature);
 
 #else
 #include <ccan/build_assert/build_assert.h>
