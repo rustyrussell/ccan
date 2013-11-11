@@ -69,10 +69,10 @@ typedef enum cpuid {
 
 	CPUID_HIGHEST_EXTENDED_FUNCTION_SUPPORTED 	= 0x80000000,
 	CPUID_EXTENDED_PROC_INFO_FEATURE_BITS 		= 0x80000001,
-	CPUID_PROC_BRAND_STRING 				= 0x80000002,
+	CPUID_PROC_BRAND_STRING 			= 0x80000002,
 	CPUID_L1_CACHE_AND_TLB_IDS 			= 0x80000005,
-	CPUID_EXTENDED_L2_CACHE_FEATURES 			= 0x80000006,
-	CPUID_ADV_POWER_MGT_INFO 				= 0x80000007,
+	CPUID_EXTENDED_L2_CACHE_FEATURES 		= 0x80000006,
+	CPUID_ADV_POWER_MGT_INFO 			= 0x80000007,
 	CPUID_VIRT_PHYS_ADDR_SIZES 			= 0x80000008
 } cpuid_t;
 
@@ -259,9 +259,6 @@ uint32_t cpuid_highest_ext_func_supported(void);
  * For CPUID_PROC_BRAND_STRING:
  * 	Have a char array with at least 48 bytes assigned to it.
  *
- * Here's a page which will help you parse the data provided by this function.
- * 	http://www.flounder.com/cpuid_explorer2.htm
- *
  * If an invalid flag has been passed a 0xbaadf00d is returned in *buf.
  */
 void cpuid(cpuid_t info, uint32_t *buf);
@@ -299,7 +296,8 @@ bool cpuid_has_edxfeature(int feature);
 
 #define cpuid_highest_ext_func_supported() 	BUILD_ASSERT_OR_ZERO(0)
 #define cpuid_test_feature(feature) 		BUILD_ASSERT_OR_ZERO(0)
-#define cpuid_has_feature(feature, ext) 	BUILD_ASSERT_OR_ZERO(0)
+#define cpuid_has_ecxfeature(feature) 		BUILD_ASSERT_OR_ZERO(0)
+#define cpuid_has_edxfeature(feature) 		BUILD_ASSERT_OR_ZERO(0)
 
 #endif
 #endif
