@@ -25,7 +25,7 @@ static void finish_ok(struct io_conn *conn, struct data *d)
 static struct io_plan write_done(struct io_conn *conn, struct data *d)
 {
 	d->state++;
-	return io_close();
+	return io_idle();
 }
 
 static void init_conn(int fd, struct data *d)
