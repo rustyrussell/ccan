@@ -38,6 +38,7 @@
  *
  * CPUID_CACHE_AND_TLBD_INFO
  * 	Cache and TLBD Information.
+ * 	For AMD: Use CPUID_EXTENDED_L2_CACHE_FEATURES
  *
  * CPUID_HIGHEST_EXTENDED_FUNCTION_SUPPORTED:
  * 	Highest extended function supported address.
@@ -51,6 +52,7 @@
  *
  * CPUID_L1_CACHE_AND_TLB_IDS:
  * 	L1 Cache and TLB Identifications.
+ *	AMD Only.
  *
  * CPUID_EXTENDED_L2_CACHE_FEATURES:
  * 	Extended L2 Cache features.
@@ -69,10 +71,10 @@ typedef enum cpuid {
 
 	CPUID_HIGHEST_EXTENDED_FUNCTION_SUPPORTED 	= 0x80000000,
 	CPUID_EXTENDED_PROC_INFO_FEATURE_BITS 		= 0x80000001,
-	CPUID_PROC_BRAND_STRING 				= 0x80000002,
+	CPUID_PROC_BRAND_STRING 			= 0x80000002,
 	CPUID_L1_CACHE_AND_TLB_IDS 			= 0x80000005,
-	CPUID_EXTENDED_L2_CACHE_FEATURES 			= 0x80000006,
-	CPUID_ADV_POWER_MGT_INFO 				= 0x80000007,
+	CPUID_EXTENDED_L2_CACHE_FEATURES 		= 0x80000006,
+	CPUID_ADV_POWER_MGT_INFO 			= 0x80000007,
 	CPUID_VIRT_PHYS_ADDR_SIZES 			= 0x80000008
 } cpuid_t;
 
@@ -217,29 +219,32 @@ uint32_t cpuid_highest_ext_func_supported(void);
  * 	buf[2]: Family
  * 	buf[3]: Extended Model
  * 	buf[4]: Extended Family
- * 	buf[5] and buf[6]:
- * 		Feature flags
- * 	buf[7]: Brand Index
- * 	buf[8]: CL Flush Line Size
- * 	buf[9]: Logical Processors
- * 	buf[10]: Initial APICID
+ * 	buf[5]: Brand Index
+ * 	buf[6]: CL Flush Line Size
+ * 	buf[7]: Logical Processors
+ * 	buf[8]: Initial APICID
  *
  * For CPUID_L1_CACHE_AND_TLB_IDS:
- * 	buf[0]: (eax):
- * 		- 7..0 	Number of times to exec cpuid to get all descriptors.
- * 		- 15..8 Instruction TLB: 4K Pages, 4-way set associtive, 128 entries.
- * 		- 23..16 Data TLB: 4k Pages, 4-way set associtive, 128 entries.
- * 		- 24..31 Instruction TLB: 4K Pages, 4-way set associtive, 2 entries.
- * 	buf[1]: (ebx):
- * 		- 7..0 64-byte prefetching
- * 		- 8..31 Null descriptor
- * 	buf[2]: (ecx):
- * 		- 0..31 Null descriptor
- * 	buf[3]: (edx):
- * 		- 7..0 2nd-level cache, 2M, 8-way set associtive, 64-byte line size
- * 		- 15..8 1st-level instruction cache: 32K, 8-way set associtive, 64 byte line size
- * 		- 16..23 Data TLB: 4M Pages, 4-way set associtive, 8 entires.
- * 		- 24..31 1st-level data cache: 32K, 8-way set associtive, 64 byte line size
+ *	buf[0] to buf[3]: 2M+4M page TLB info
+ * 		0: Inst count
+ * 		1: Inst Assoc
+ * 		2: Data Count
+ * 		3: Data Assoc
+ * 	buf[4] to buf[7]: 4k page TLB info
+ * 		0: Inst count
+ * 		1: Inst Assoc
+ * 		2: Data Count
+ * 		3: Data Assoc
+ * 	buf[8] to buf[11]: L1 data cache information
+ *		0: Line Size
+ * 		1: LinesPerTag
+ * 		2: Associativity
+ * 		3: CacheSize
+ * 	buf[12] to buf[15]: L1 instruction cache info
+ * 		0: Line Size
+ * 		1: LinesPerTag
+ * 		2: Associativity
+ * 		3: CacheSize
  *
  * For CPUID_HIGHEST_EXTENDED_FUNCTION_SUPPORTED:
  * 	Returns the highest supported function in *buf (expects an integer ofc)
@@ -258,9 +263,6 @@ uint32_t cpuid_highest_ext_func_supported(void);
  *
  * For CPUID_PROC_BRAND_STRING:
  * 	Have a char array with at least 48 bytes assigned to it.
- *
- * Here's a page which will help you parse the data provided by this function.
- * 	http://www.flounder.com/cpuid_explorer2.htm
  *
  * If an invalid flag has been passed a 0xbaadf00d is returned in *buf.
  */
@@ -299,7 +301,8 @@ bool cpuid_has_edxfeature(int feature);
 
 #define cpuid_highest_ext_func_supported() 	BUILD_ASSERT_OR_ZERO(0)
 #define cpuid_test_feature(feature) 		BUILD_ASSERT_OR_ZERO(0)
-#define cpuid_has_feature(feature, ext) 	BUILD_ASSERT_OR_ZERO(0)
+#define cpuid_has_ecxfeature(feature) 		BUILD_ASSERT_OR_ZERO(0)
+#define cpuid_has_edxfeature(feature) 		BUILD_ASSERT_OR_ZERO(0)
 
 #endif
 #endif
