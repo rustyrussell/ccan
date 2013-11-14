@@ -346,7 +346,11 @@ void *do_io_loop(struct io_conn **ready)
 						 * anything can change. */
 						if (doing_debug())
 							break;
-						if (!(events&(POLLIN|POLLOUT)))
+
+						/* If no events, or it closed
+						 * the duplex, continue. */
+						if (!(events&(POLLIN|POLLOUT))
+						    || !c->plan.next)
 							continue;
 					}
 				}

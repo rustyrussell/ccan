@@ -100,6 +100,10 @@ int io_debug_io(int ret)
 	case 1: /* Done: get next plan. */
 		if (timeout_active(conn))
 			backend_del_timeout(conn);
+		/* In case they call io_duplex, clear our poll flags so
+		 * both sides don't seem to be both doing read or write
+		 * (See	assert(!mask || pfd->events != mask) in poll.c) */
+		conn->plan.pollflag = 0;
 		conn->plan.next(conn, conn->plan.next_arg);
 		break;
 	default:
@@ -443,13 +447,17 @@ void io_ready(struct io_conn *conn)
 	case 1: /* Done: get next plan. */
 		if (timeout_active(conn))
 			backend_del_timeout(conn);
+		/* In case they call io_duplex, clear our poll flags so
+		 * both sides don't seem to be both doing read or write
+		 * (See	assert(!mask || pfd->events != mask) in poll.c) */
+		conn->plan.pollflag = 0;
 		conn->plan = conn->plan.next(conn, conn->plan.next_arg);
 		backend_plan_changed(conn);
 	}
 	set_current(NULL);
 
-	/* If it closed, close duplex. */
-	if (!conn->plan.next && conn->duplex) {
+	/* If it closed, close duplex if not already */
+	if (!conn->plan.next && conn->duplex && conn->duplex->plan.next) {
 		set_current(conn->duplex);
 		conn->duplex->plan = io_close();
 		backend_plan_changed(conn->duplex);
