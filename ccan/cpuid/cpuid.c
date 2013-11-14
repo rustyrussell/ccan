@@ -314,7 +314,7 @@ void cpuid(cpuid_t info, uint32_t *buf)
 			buf[5] = ebx & 0xFF;
 			buf[6] = (ebx >> 8) & 0xFF;
 			buf[7] = (ebx >> 16) & 0xFF;
-			buf[8] = (ebx >> 24) & 0xFF;
+			buf[8] = ebx >> 24;
 			break;
 		case CPUID_CACHE_AND_TLBD_INFO:
 			buf[0] = eax;
@@ -330,22 +330,22 @@ void cpuid(cpuid_t info, uint32_t *buf)
 			buf[0] = eax & 0xFF;
 			buf[1] = (eax >> 8) & 0xFF;
 			buf[2] = (eax >> 16) & 0xFF;
-			buf[3] = (eax >> 24) & 0xFF;
+			buf[3] = eax >> 24;
 
 			buf[4] = ebx & 0xFF;
 			buf[5] = (ebx >> 8) & 0xFF;
 			buf[6] = (ebx >> 16) & 0xFF;
-			buf[7] = (ebx >> 24) & 0xFF;
+			buf[7] = ebx >> 24;
 
 			buf[8] = ecx & 0xFF;
 			buf[9] = (ecx >> 8) & 0xFF;
 			buf[10] = (ecx >> 16) & 0xFF;
-			buf[11] = (ecx >> 24) & 0xFF;
+			buf[11] = ecx >> 24;
 
 			buf[12] = edx & 0xFF;
 			buf[13] = (edx >> 8) & 0xFF;
 			buf[14] = (edx >> 16) & 0xFF;
-			buf[15] = (edx >> 24) & 0xFF;
+			buf[15] = edx >> 24;
 			break;
 		case CPUID_EXTENDED_L2_CACHE_FEATURES:
 			buf[0] = ecx & 0xFF; 		/* Line size.  */
