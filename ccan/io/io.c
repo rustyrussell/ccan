@@ -418,6 +418,11 @@ struct io_plan io_idle_(void)
 	return plan;
 }
 
+bool io_is_idle(const struct io_conn *conn)
+{
+	return conn->plan.io == NULL;
+}
+
 void io_wake_(struct io_conn *conn, struct io_plan plan)
 
 {

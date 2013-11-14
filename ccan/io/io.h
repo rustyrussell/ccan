@@ -432,6 +432,21 @@ struct io_conn *io_duplex_(struct io_conn *conn, struct io_plan plan);
 void io_wake_(struct io_conn *conn, struct io_plan plan);
 
 /**
+ * io_is_idle - is a connection idle?
+ *
+ * This can be useful for complex protocols, eg. where you want a connection
+ * to send something, so you queue it and wake it if it's idle.
+ *
+ * Example:
+ *	struct io_conn *sleeper;
+ *	sleeper = io_new_conn(open("/dev/null", O_RDONLY), io_idle());
+ *
+ *	assert(io_is_idle(sleeper));
+ *	io_wake(sleeper, io_write("junk", 4, io_close_cb, NULL));
+ */
+bool io_is_idle(const struct io_conn *conn);
+
+/**
  * io_break - return from io_loop()
  * @ret: non-NULL value to return from io_loop().
  * @plan: I/O to perform on return (if any)

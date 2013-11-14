@@ -29,6 +29,7 @@ static struct io_plan read_done(struct io_conn *conn, struct data *d)
 
 static void finish_waker(struct io_conn *conn, struct data *d)
 {
+	ok1(io_is_idle(idler));
 	io_wake(idler, io_read(d->buf, sizeof(d->buf), read_done, d));
 	ok1(d->state == 1);
 	d->state++;
@@ -102,7 +103,7 @@ int main(void)
 	int fd, status;
 
 	/* This is how many tests you plan to run */
-	plan_tests(13);
+	plan_tests(14);
 	d->state = 0;
 	fd = make_listen_fd(PORT, &addrinfo);
 	ok1(fd >= 0);

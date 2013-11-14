@@ -12,8 +12,6 @@
 #define PORT "65014"
 #endif
 
-#define is_idle(conn) ((conn)->plan.io == NULL)
-
 struct data {
 	struct io_listener *l;
 	int state;
@@ -32,11 +30,11 @@ static struct io_plan end(struct io_conn *conn, struct data *d)
 	d->state++;
 
 	/* last one out closes. */
-	if (conn == d->c1 && is_idle(d->c2))
+	if (conn == d->c1 && io_is_idle(d->c2))
 		return io_close();
 
 	/* last one out closes. */
-	if (conn == d->c2 && is_idle(d->c1))
+	if (conn == d->c2 && io_is_idle(d->c1))
 		return io_close();
 
 	return io_idle();
