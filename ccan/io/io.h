@@ -394,7 +394,7 @@ bool io_timeout_(struct io_conn *conn, struct timespec ts,
  * to have two connections for the same fd, and use one for read
  * operations and one for write.
  *
- * Returning io_close() on one will close both fds!
+ * You must io_close() both of them to close the fd.
  *
  * Example:
  *	static void setup_read_write(int fd,

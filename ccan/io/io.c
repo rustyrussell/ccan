@@ -46,12 +46,6 @@ struct io_plan io_debug(struct io_plan plan)
 	current->plan = plan;
 	backend_plan_changed(current);
 
-	/* If it closed, close duplex. */
-	if (!current->plan.next && current->duplex) {
-		current->duplex->plan = io_close_();
-		backend_plan_changed(current->duplex);
-	}
-
 	/* Call back into the loop immediately. */
 	io_loop_return = do_io_loop(&ready);
 
@@ -460,14 +454,6 @@ void io_ready(struct io_conn *conn)
 		backend_plan_changed(conn);
 	}
 	set_current(NULL);
-
-	/* If it closed, close duplex if not already */
-	if (!conn->plan.next && conn->duplex && conn->duplex->plan.next) {
-		set_current(conn->duplex);
-		conn->duplex->plan = io_close();
-		backend_plan_changed(conn->duplex);
-		set_current(NULL);
-	}
 }
 
 /* Close the connection, we're done. */

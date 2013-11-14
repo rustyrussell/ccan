@@ -28,16 +28,7 @@ static void finish_ok(struct io_conn *conn, struct data *d)
 static struct io_plan end(struct io_conn *conn, struct data *d)
 {
 	d->state++;
-
-	/* last one out closes. */
-	if (conn == d->c1 && io_is_idle(d->c2))
-		return io_close();
-
-	/* last one out closes. */
-	if (conn == d->c2 && io_is_idle(d->c1))
-		return io_close();
-
-	return io_idle();
+	return io_close();
 }
 
 static struct io_plan make_duplex(struct io_conn *conn, struct data *d)
