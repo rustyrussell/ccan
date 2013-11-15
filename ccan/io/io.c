@@ -435,6 +435,10 @@ void io_wake_(struct io_conn *conn, struct io_plan plan)
 
 void io_ready(struct io_conn *conn)
 {
+	/* Beware io_close_other! */
+	if (!conn->plan.next)
+		return;
+
 	set_current(conn);
 	switch (conn->plan.io(conn->fd.fd, &conn->plan)) {
 	case -1: /* Failure means a new plan: close up. */
@@ -472,6 +476,12 @@ struct io_plan io_close_(void)
 struct io_plan io_close_cb(struct io_conn *conn, void *arg)
 {
 	return io_close();
+}
+
+void io_close_other(struct io_conn *conn)
+{
+	conn->plan = io_close_();
+	backend_plan_changed(conn);
 }
 
 /* Exit the loop, returning this (non-NULL) arg. */

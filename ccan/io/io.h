@@ -496,6 +496,24 @@ struct io_plan io_close_(void);
 struct io_plan io_close_cb(struct io_conn *, void *unused);
 
 /**
+ * io_close_other - close different connection next time around the I/O loop.
+ * @conn: the connection to close.
+ *
+ * This is used to force a different connection to close: no more I/O will
+ * happen on @conn, even if it's pending.
+ *
+ * It's a bug to use this on the current connection!
+ *
+ * Example:
+ * static void stop_connection(struct io_conn *conn)
+ * {
+ *	printf("forcing stop on connection\n");
+ *	io_close_other(conn);
+ * }
+ */
+void io_close_other(struct io_conn *conn);
+
+/**
  * io_loop - process fds until all closed on io_break.
  *
  * This is the core loop; it exits with the io_break() arg, or NULL if
