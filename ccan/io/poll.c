@@ -105,6 +105,14 @@ static void del_fd(struct fd *fd)
 		fds[n] = fds[num_fds-1];
 		assert(fds[n]->backend_info == num_fds-1);
 		fds[n]->backend_info = n;
+		/* If that happens to be a duplex, move that too. */
+		if (!fds[n]->listener) {
+			struct io_conn *c = (void *)fds[n];
+			if (c->duplex) {
+				assert(c->duplex->fd.backend_info == num_fds-1);
+				c->duplex->fd.backend_info = n;
+			}
+		}
 	} else if (num_fds == 1) {
 		/* Free everything when no more fds. */
 		io_alloc.free(pollfds);
@@ -184,6 +192,7 @@ void backend_del_conn(struct io_conn *conn)
 	io_alloc.free(conn->timeout);
 	if (conn->duplex) {
 		/* In case fds[] pointed to the other one. */
+		assert(conn->duplex->fd.backend_info == conn->fd.backend_info);
 		fds[conn->fd.backend_info] = &conn->duplex->fd;
 		conn->duplex->duplex = NULL;
 		conn->fd.backend_info = -1;
