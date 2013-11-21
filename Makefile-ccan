@@ -8,6 +8,7 @@ CFLAGS = $(CCAN_CFLAGS) -I. $(DEPGEN)
 
 # Modules which are just a header:
 MODS_NO_SRC := alignof \
+	argcheck \
 	array_size \
 	asearch \
 	bitmap \

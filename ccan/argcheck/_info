@@ -1,0 +1,73 @@
+#include "config.h"
+
+/**
+ * argcheck - macros to check arguments at runtime
+ *
+ * This code provides some macros to check arguments for valid value ranges.
+ * Consider this a mild version of assert(3), because all it does is to log
+ * a message and continue.
+ *
+ * These macros don't replace error handling, but they are useful in
+ * situations where an error is unexpected but not common, i.e.
+ * "this shouldn't happen but if it does let me know".
+ *
+ * argcheck's error messages can be disabled by defining
+ * ARGCHECK_DISABLE_LOGGING before including the header file. The conditions
+ * will continue to evaluate but no error messages will be generated. It is thus
+ * safe to use argcheck macros inside if conditions.
+ *
+ * By default, argcheck prints to fprintf(stderr). That can be changed by
+ * defining argcheck_log to a custom log function. See argcheck_log_() for the
+ * function signature. If ARGCHECK_DISABLE_LOGGING is defined, the custom log
+ * function is not called.
+ *
+ * Example:
+ *	#include <stdio.h>
+ *	#include <ccan/argcheck/argcheck.h>
+ *
+ *	enum state { S1, S2, S3 };
+ *
+ *	static int some_state_machine(enum state s) {
+ *	    int b;
+ *
+ *	    argcheck_int_range(s, S1, S3);
+ *
+ *	    switch(s) {
+ *		case S1: b = 8; break;
+ *		case S2: b = 9; break;
+ *		case S3: b = 88; break;
+ *	 	default:
+ *			break;
+ *	    }
+ *
+ *	    return b;
+ *      }
+ *
+ *	int main(int argc, char *argv[]) {
+ *	    int a = S1;
+ *
+ * 	    if (!argcheck_int_gt(argc, 1))
+ *		return 1;
+ *
+ *	    return some_state_machine(a);
+ *      }
+ *
+ * Author: Peter Hutterer <peter.hutterer@who-t.net>
+ * Maintainer: Peter Hutterer <peter.hutterer@who-t.net>
+ * License: BSD-MIT
+ */
+
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/likely\n");
+		printf("ccan/compiler\n");
+		return 0;
+	}
+
+	return 1;
+}
