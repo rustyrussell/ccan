@@ -30,37 +30,37 @@
  *
  * This is used as a parameter in cpuid().
  *
- * CPUID_VENDORID:
+ * %CPUID_VENDORID:
  * 	The CPU's Vendor ID.
  *
- * CPUID_PROCINFO_AND_FEATUREBITS:
+ * %CPUID_PROCINFO_AND_FEATUREBITS:
  * 	Processor information and feature bits (SSE, etc.).
  *
- * CPUID_CACHE_AND_TLBD_INFO
+ * %CPUID_CACHE_AND_TLBD_INFO
  * 	Cache and TLBD Information.
  * 	For AMD: Use CPUID_EXTENDED_L2_CACHE_FEATURES
  *
- * CPUID_HIGHEST_EXTENDED_FUNCTION_SUPPORTED:
+ * %CPUID_HIGHEST_EXTENDED_FUNCTION_SUPPORTED:
  * 	Highest extended function supported address.
  * 	Can be like 0x80000008.
  *
- * CPUID_EXTENDED_PROC_INFO_FEATURE_BITS:
+ * %CPUID_EXTENDED_PROC_INFO_FEATURE_BITS:
  * 	Extended processor information and feature bits (64bit etc.)
  *
- * CPUID_PROC_BRAND_STRING:
+ * %CPUID_PROC_BRAND_STRING:
  * 	The Processor's brand string.
  *
- * CPUID_L1_CACHE_AND_TLB_IDS:
+ * %CPUID_L1_CACHE_AND_TLB_IDS:
  * 	L1 Cache and TLB Identifications.
  *	AMD Only.
  *
- * CPUID_EXTENDED_L2_CACHE_FEATURES:
+ * %CPUID_EXTENDED_L2_CACHE_FEATURES:
  * 	Extended L2 Cache features.
  *
- * CPUID_ADV_POWER_MGT_INFO:
+ * %CPUID_ADV_POWER_MGT_INFO:
  * 	Advaned power management information.
  *
- * CPUID_VIRT_PHYS_ADDR_SIZES:
+ * %CPUID_VIRT_PHYS_ADDR_SIZES:
  * 	Virtual and physical address sizes.
  */
 
