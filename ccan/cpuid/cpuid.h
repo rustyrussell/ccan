@@ -105,6 +105,16 @@ enum {
 	CPUID_FEAT_ECX_OSXSAVE      = 1 << 27, 
 	CPUID_FEAT_ECX_AVX          = 1 << 28,
 
+	CPUID_FEAT_ECX_ALL 	    = CPUID_FEAT_ECX_SSE3 | CPUID_FEAT_ECX_PCLMUL | CPUID_FEAT_ECX_DTES64
+					| CPUID_FEAT_ECX_MONITOR | CPUID_FEAT_ECX_DS_CPL | CPUID_FEAT_ECX_VMX
+					| CPUID_FEAT_ECX_SMX | CPUID_FEAT_ECX_EST | CPUID_FEAT_ECX_TM2
+					| CPUID_FEAT_ECX_SSSE3 | CPUID_FEAT_ECX_CID | CPUID_FEAT_ECX_FMA
+					| CPUID_FEAT_ECX_CX16 | CPUID_FEAT_ECX_ETPRD | CPUID_FEAT_ECX_PDCM
+					| CPUID_FEAT_ECX_DCA | CPUID_FEAT_ECX_SSE4_1 | CPUID_FEAT_ECX_SSE4_2
+					| CPUID_FEAT_ECX_x2APIC | CPUID_FEAT_ECX_MOVBE | CPUID_FEAT_ECX_POPCNT
+					| CPUID_FEAT_ECX_AES | CPUID_FEAT_ECX_XSAVE | CPUID_FEAT_ECX_OSXSAVE
+					| CPUID_FEAT_ECX_AVX,
+
 	CPUID_FEAT_EDX_FPU          = 1 << 0,  
 	CPUID_FEAT_EDX_VME          = 1 << 1,  
 	CPUID_FEAT_EDX_DE           = 1 << 2,  
@@ -134,7 +144,18 @@ enum {
 	CPUID_FEAT_EDX_HTT          = 1 << 28, 
 	CPUID_FEAT_EDX_TM1          = 1 << 29, 
 	CPUID_FEAT_EDX_IA64         = 1 << 30,
-	CPUID_FEAT_EDX_PBE          = 1 << 31
+	CPUID_FEAT_EDX_PBE          = 1 << 31,
+
+	CPUID_FEAT_EDX_ALL 	    = CPUID_FEAT_EDX_FPU | CPUID_FEAT_EDX_VME | CPUID_FEAT_EDX_DE
+					| CPUID_FEAT_EDX_PSE | CPUID_FEAT_EDX_TSC | CPUID_FEAT_EDX_MSR
+					| CPUID_FEAT_EDX_PAE | CPUID_FEAT_EDX_MCE | CPUID_FEAT_EDX_CX8
+					| CPUID_FEAT_EDX_APIC | CPUID_FEAT_EDX_SEP | CPUID_FEAT_EDX_MTRR
+					| CPUID_FEAT_EDX_PGE | CPUID_FEAT_EDX_MCA | CPUID_FEAT_EDX_CMOV
+					| CPUID_FEAT_EDX_PAT | CPUID_FEAT_EDX_PSE36 | CPUID_FEAT_EDX_PSN
+					| CPUID_FEAT_EDX_CLF | CPUID_FEAT_EDX_DTES | CPUID_FEAT_EDX_ACPI
+					| CPUID_FEAT_EDX_MMX | CPUID_FEAT_EDX_FXSR | CPUID_FEAT_EDX_SSE
+					| CPUID_FEAT_EDX_SSE2 | CPUID_FEAT_EDX_SS | CPUID_FEAT_EDX_HTT
+					| CPUID_FEAT_EDX_TM1 | CPUID_FEAT_EDX_IA64 | CPUID_FEAT_EDX_PBE
 };
 
 typedef enum cputype {
@@ -269,6 +290,25 @@ uint32_t cpuid_highest_ext_func_supported(void);
 void cpuid(cpuid_t info, uint32_t *buf);
 
 /**
+ * cpuid_write_info - Write specified CPU information to a file.
+ * @info: Bit set of information to write.
+ * @featureset: Bit set of features to write.
+ * @outfile: Output filename (Max 256).
+ *
+ * If @outfile is NULL, a name is choosen in the following format:
+ * 	CPUVENDOR_PROCESSORBRAND.cpuid
+ *
+ * Returns true on success, false otherwise.
+ *
+ * Example usage:
+ * 	if (!cpuid_write_info(CPUID_VENDORID | CPUID_PROC_BRAND_STRING,
+ * 				CPUID_FEAT_ECX_SSE3 | CPUID_FEAT_EDX_FPU,
+ * 				"cpuinfo.cpuid"))
+ * 		... error ...
+ */
+bool cpuid_write_info(uint32_t info, uint32_t featureset, const char *outfile);
+
+/**
  * cpuid_test_feature - Test if @feature is available
  *
  * Returns true if feature is supported, false otherwise.
@@ -293,16 +333,17 @@ bool cpuid_has_edxfeature(int feature);
 #else
 #include <ccan/build_assert/build_assert.h>
 
-#define cpuid_get_cpu_type() 			BUILD_ASSERT_OR_ZERO(0)
-#define cpuid_get_cpu_type_string() 		BUILD_ASSERT_OR_ZERO(0)
+#define cpuid_get_cpu_type() 				BUILD_ASSERT_OR_ZERO(0)
+#define cpuid_get_cpu_type_string() 			BUILD_ASSERT_OR_ZERO(0)
 
-#define cpuid_is_supported() 			BUILD_ASSERT_OR_ZERO(0)
-#define cpuid(info, buf) 			BUILD_ASSERT_OR_ZERO(0)
+#define cpuid_is_supported() 				BUILD_ASSERT_OR_ZERO(0)
+#define cpuid(info, buf) 				BUILD_ASSERT_OR_ZERO(0)
+#define cpuid_write_info(info, featureset, outfile)	BUILD_ASSERT_OR_ZERO(0)
 
-#define cpuid_highest_ext_func_supported() 	BUILD_ASSERT_OR_ZERO(0)
-#define cpuid_test_feature(feature) 		BUILD_ASSERT_OR_ZERO(0)
-#define cpuid_has_ecxfeature(feature) 		BUILD_ASSERT_OR_ZERO(0)
-#define cpuid_has_edxfeature(feature) 		BUILD_ASSERT_OR_ZERO(0)
+#define cpuid_highest_ext_func_supported() 		BUILD_ASSERT_OR_ZERO(0)
+#define cpuid_test_feature(feature) 			BUILD_ASSERT_OR_ZERO(0)
+#define cpuid_has_ecxfeature(feature) 			BUILD_ASSERT_OR_ZERO(0)
+#define cpuid_has_edxfeature(feature) 			BUILD_ASSERT_OR_ZERO(0)
 
 #endif
 #endif

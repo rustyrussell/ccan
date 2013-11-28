@@ -29,6 +29,7 @@
 #include "cpuid.h"
 
 #include <string.h>
+#include <stdio.h>
 
 enum {
 	CPUID_PROC_BRAND_STRING_INTERNAL0  		= 0x80000003,
@@ -280,8 +281,8 @@ void cpuid(cpuid_t info, uint32_t *buf)
 	if (info == CPUID_PROC_BRAND_STRING) {
 		static char cached[48] = { 0 };
 		if (cached[0] == '\0') {
-			___cpuid(CPUID_PROC_BRAND_STRING,		  &buf[0], &buf[1], &buf[2],  &buf[3]);
-			___cpuid(CPUID_PROC_BRAND_STRING_INTERNAL0, &buf[4], &buf[5], &buf[6],  &buf[7]);
+			___cpuid(CPUID_PROC_BRAND_STRING,	    &buf[0], &buf[1], &buf[2],  &buf[3] );
+			___cpuid(CPUID_PROC_BRAND_STRING_INTERNAL0, &buf[4], &buf[5], &buf[6],  &buf[7] );
 			___cpuid(CPUID_PROC_BRAND_STRING_INTERNAL1, &buf[8], &buf[9], &buf[10], &buf[11]);
 
 			memcpy(cached, buf, sizeof cached);
@@ -363,6 +364,317 @@ void cpuid(cpuid_t info, uint32_t *buf)
 			*buf = 0xbaadf00d;
 			break;
 	}
+}
+
+bool cpuid_write_info(uint32_t info, uint32_t featureset, const char *outfile)
+{
+	FILE *file;
+	char filename[256];
+	char cpu_information[64];
+
+	if (!cpuid_sprintf_cputype(cpuid_get_cpu_type(), cpu_information))
+		return false;
+
+	char brand[48];
+	cpuid(CPUID_PROC_BRAND_STRING, (uint32_t *)brand);
+
+	cpu_information[12] = '_';
+	memcpy(&cpu_information[13], brand, sizeof brand);
+
+	if (!outfile)
+		strncpy(filename, cpu_information, sizeof cpu_information);
+	else
+		strncpy(filename, outfile, sizeof filename);
+
+	file = fopen(filename, "w");
+	if (!file)
+		return false;
+
+	fprintf(file, "-- CPU Information for CPU: %s --\n\n", cpu_information);
+
+	if (info & CPUID_HIGHEST_EXTENDED_FUNCTION_SUPPORTED)
+		fprintf(file, "Highest extended function supported: %#010x\n\n", cpuid_highest_ext_func_supported());
+
+	if (info & CPUID_EXTENDED_L2_CACHE_FEATURES) {
+		uint32_t l2c[3];
+		cpuid(CPUID_EXTENDED_L2_CACHE_FEATURES, l2c);
+
+		fprintf(file, "-- Extended L2 Cache features --\nL2 Line size: %u bytes\nAssociativity: %02xh\nCache Size: %u KB\n\n",
+			l2c[0], l2c[1], l2c[2]);
+	}
+
+	if (info & CPUID_VIRT_PHYS_ADDR_SIZES) {
+		uint32_t phys_virt[2];
+		cpuid(CPUID_VIRT_PHYS_ADDR_SIZES, phys_virt);
+
+		fprintf(file, "-- Virtual and Physical address sizes --\n"
+				"Physical address size: %d\nVirtual address size: %d\n\n", phys_virt[0], phys_virt[1]);
+	}
+
+	if (info & CPUID_PROCINFO_AND_FEATUREBITS) {
+		uint32_t procinfo[9];
+		cpuid(CPUID_PROCINFO_AND_FEATUREBITS, procinfo);
+
+		fputs("-- Processor information and feature bits --\n", file	);
+		fprintf(file, "Stepping: %d\nModel: 0x%X\nFamily: %d\nExtended model: %d\nExtended family: %d\n",
+			procinfo[0], procinfo[1], procinfo[2], procinfo[3], procinfo[4]);
+		fprintf(file, "\nBrand Index: %d\nCL Flush Line Size: %d\nLogical Processors: %d\nInitial APICID: %d\n\n",
+			procinfo[5], procinfo[6], procinfo[7], procinfo[8]);
+	}
+
+	if (featureset != 0)
+		fputs("-- CPU FEATURES --\n\n", file);
+
+	bool
+		sse3    = cpuid_has_ecxfeature(CPUID_FEAT_ECX_SSE3),
+		pclmul  = cpuid_has_ecxfeature(CPUID_FEAT_ECX_PCLMUL),
+		dtes64  = cpuid_has_ecxfeature(CPUID_FEAT_ECX_DTES64),
+		monitor = cpuid_has_ecxfeature(CPUID_FEAT_ECX_MONITOR),
+		ds_cpl  = cpuid_has_ecxfeature(CPUID_FEAT_ECX_DS_CPL),
+		vmx     = cpuid_has_ecxfeature(CPUID_FEAT_ECX_VMX),
+		smx     = cpuid_has_ecxfeature(CPUID_FEAT_ECX_SMX),
+		est     = cpuid_has_ecxfeature(CPUID_FEAT_ECX_EST),
+		tm2     = cpuid_has_ecxfeature(CPUID_FEAT_ECX_TM2),
+		ssse3   = cpuid_has_ecxfeature(CPUID_FEAT_ECX_SSSE3),
+		cid     = cpuid_has_ecxfeature(CPUID_FEAT_ECX_CID),
+		fma     = cpuid_has_ecxfeature(CPUID_FEAT_ECX_FMA),
+		cx16    = cpuid_has_ecxfeature(CPUID_FEAT_ECX_CX16),
+		etprd   = cpuid_has_ecxfeature(CPUID_FEAT_ECX_ETPRD),
+		pdcm    = cpuid_has_ecxfeature(CPUID_FEAT_ECX_PDCM),
+		dca     = cpuid_has_ecxfeature(CPUID_FEAT_ECX_DCA),
+		sse4_1  = cpuid_has_ecxfeature(CPUID_FEAT_ECX_SSE4_1),
+		sse4_2  = cpuid_has_ecxfeature(CPUID_FEAT_ECX_SSE4_2),
+		x2_apic = cpuid_has_ecxfeature(CPUID_FEAT_ECX_x2APIC),
+		movbe   = cpuid_has_ecxfeature(CPUID_FEAT_ECX_MOVBE),
+		popcnt  = cpuid_has_ecxfeature(CPUID_FEAT_ECX_POPCNT),
+		aes     = cpuid_has_ecxfeature(CPUID_FEAT_ECX_AES),
+		xsave   = cpuid_has_ecxfeature(CPUID_FEAT_ECX_XSAVE),
+		osxsave = cpuid_has_ecxfeature(CPUID_FEAT_ECX_OSXSAVE),
+		avx     = cpuid_has_ecxfeature(CPUID_FEAT_ECX_AVX);
+
+#define YON(v)	(v) ? "Yes" : "No"
+	if (featureset & CPUID_FEAT_ECX_ALL) {
+		fputs("-- ECX Features --\n", file);
+		fprintf(file, "SSE3:    %s\n"
+			      "PCMUL:   %s\n"
+			      "DTES64:  %s\n"
+			      "MONITOR: %s\n"
+			      "DS_CPL:  %s\n"
+			      "VMX:     %s\n"
+			      "SMX:     %s\n"
+			      "EST:     %s\n"
+			      "TM2:     %s\n"
+			      "SSSE3:   %s\n"
+			      "CID:     %s\n"
+			      "FMA:     %s\n"
+			      "CX16:    %s\n"
+			      "ETPRD:   %s\n"
+			      "PDCM:    %s\n"
+			      "DCA:     %s\n"
+			      "SSE4_1:  %s\n"
+			      "SSE$_2:  %s\n"
+			      "X2_APIC: %s\n"
+			      "MOVBE:   %s\n"
+			      "POPCNT:  %s\n"
+			      "AES:     %s\n"
+			      "XSAVE:   %s\n"
+			      "OSXSAVE: %s\n"
+			      "AVS:     %s\n\n",
+			YON(sse3), YON(pclmul), YON(dtes64), YON(monitor), YON(ds_cpl),
+			YON(vmx), YON(smx), YON(est), YON(tm2), YON(ssse3), YON(cid),
+			YON(fma), YON(cx16), YON(etprd), YON(pdcm), YON(dca), YON(sse4_1),
+			YON(sse4_2), YON(x2_apic), YON(movbe), YON(popcnt), YON(aes),
+			YON(xsave), YON(osxsave), YON(avx)
+		);
+	} else {
+		if (featureset & CPUID_FEAT_ECX_SSE3)
+			fprintf(file, "SSE3:    %s\n", YON(sse3));
+		if (featureset & CPUID_FEAT_ECX_PCLMUL)
+			fprintf(file, "PCLMUL:    %s\n", YON(pclmul));
+		if (featureset & CPUID_FEAT_ECX_DTES64)
+			fprintf(file, "DTES64:    %s\n", YON(dtes64));
+		if (featureset & CPUID_FEAT_ECX_MONITOR)
+			fprintf(file, "Monitor:    %s\n", YON(monitor));
+		if (featureset & CPUID_FEAT_ECX_DS_CPL)
+			fprintf(file, "DS CPL:    %s\n", YON(ds_cpl));
+		if (featureset & CPUID_FEAT_ECX_VMX)
+			fprintf(file, "VMX:    %s\n", YON(vmx));
+		if (featureset & CPUID_FEAT_ECX_SMX)
+			fprintf(file, "SMX:    %s\n", YON(smx));
+		if (featureset & CPUID_FEAT_ECX_EST)
+			fprintf(file, "EST:    %s\n", YON(est));
+		if (featureset & CPUID_FEAT_ECX_TM2)
+			fprintf(file, "TM2:    %s\n", YON(tm2));
+		if (featureset & CPUID_FEAT_ECX_SSSE3)
+			fprintf(file, "SSSE3:    %s\n", YON(ssse3));
+		if (featureset & CPUID_FEAT_ECX_CID)
+			fprintf(file, "CID:    %s\n", YON(cid));
+		if (featureset & CPUID_FEAT_ECX_FMA)
+			fprintf(file, "FMA:    %s\n", YON(fma));
+		if (featureset & CPUID_FEAT_ECX_CX16)
+			fprintf(file, "CX16:    %s\n", YON(cx16));
+		if (featureset & CPUID_FEAT_ECX_ETPRD)
+			fprintf(file, "ETPRD:    %s\n", YON(etprd));
+		if (featureset & CPUID_FEAT_ECX_PDCM)
+			fprintf(file, "PDCM:    %s\n", YON(pdcm));
+		if (featureset & CPUID_FEAT_ECX_DCA)
+			fprintf(file, "DCA:    %s\n", YON(dca));
+		if (featureset & CPUID_FEAT_ECX_SSE4_1)
+			fprintf(file, "SSE4_1:    %s\n", YON(sse4_1));
+		if (featureset & CPUID_FEAT_ECX_SSE4_2)
+			fprintf(file, "SSE4_2:    %s\n", YON(sse4_2));
+		if (featureset & CPUID_FEAT_ECX_x2APIC)
+			fprintf(file, "x2APIC:    %s\n", YON(x2_apic));
+		if (featureset & CPUID_FEAT_ECX_MOVBE)
+			fprintf(file, "MOVBE:    %s\n", YON(movbe));
+		if (featureset & CPUID_FEAT_ECX_POPCNT)
+			fprintf(file, "POPCNT:    %s\n", YON(popcnt));
+		if (featureset & CPUID_FEAT_ECX_AES)
+			fprintf(file, "AES:    %s\n", YON(aes));
+		if (featureset & CPUID_FEAT_ECX_XSAVE)
+			fprintf(file, "XSAVE:    %s\n", YON(xsave));
+		if (featureset & CPUID_FEAT_ECX_OSXSAVE)
+			fprintf(file, "OSXSAVE:    %s\n", YON(osxsave));
+		if (featureset & CPUID_FEAT_ECX_AVX)
+			fprintf(file, "AVX:    %s\n", YON(avx));
+	}
+
+	bool
+		fpu = cpuid_has_edxfeature(CPUID_FEAT_EDX_FPU),
+		vme   = cpuid_has_edxfeature(CPUID_FEAT_EDX_VME),
+		de    = cpuid_has_edxfeature(CPUID_FEAT_EDX_DE),
+		pse   = cpuid_has_edxfeature(CPUID_FEAT_EDX_PSE),
+		tsc   = cpuid_has_edxfeature(CPUID_FEAT_EDX_TSC),
+		msr   = cpuid_has_edxfeature(CPUID_FEAT_EDX_MSR),
+		pae   = cpuid_has_edxfeature(CPUID_FEAT_EDX_PAE),
+		mce   = cpuid_has_edxfeature(CPUID_FEAT_EDX_MCE),
+		cx8   = cpuid_has_edxfeature(CPUID_FEAT_EDX_CX8),
+		apic  = cpuid_has_edxfeature(CPUID_FEAT_EDX_APIC),
+		sep   = cpuid_has_edxfeature(CPUID_FEAT_EDX_SEP),
+		mtrr  = cpuid_has_edxfeature(CPUID_FEAT_EDX_MTRR),
+		pge   = cpuid_has_edxfeature(CPUID_FEAT_EDX_PGE),
+		mca   = cpuid_has_edxfeature(CPUID_FEAT_EDX_MCA),
+		cmov  = cpuid_has_edxfeature(CPUID_FEAT_EDX_CMOV),
+		pat   = cpuid_has_edxfeature(CPUID_FEAT_EDX_PAT),
+		pse36 = cpuid_has_edxfeature(CPUID_FEAT_EDX_PSE36),
+		psn   = cpuid_has_edxfeature(CPUID_FEAT_EDX_PSN),
+		clf   = cpuid_has_edxfeature(CPUID_FEAT_EDX_CLF),
+		dtes  = cpuid_has_edxfeature(CPUID_FEAT_EDX_DTES),
+		acpi  = cpuid_has_edxfeature(CPUID_FEAT_EDX_ACPI),
+		mmx   = cpuid_has_edxfeature(CPUID_FEAT_EDX_MMX),
+		fxsr  = cpuid_has_edxfeature(CPUID_FEAT_EDX_FXSR),
+		sse   = cpuid_has_edxfeature(CPUID_FEAT_EDX_SSE),
+		sse2  = cpuid_has_edxfeature(CPUID_FEAT_EDX_SSE2),
+		ss    = cpuid_has_edxfeature(CPUID_FEAT_EDX_SS),
+		htt   = cpuid_has_edxfeature(CPUID_FEAT_EDX_HTT),
+		tm1   = cpuid_has_edxfeature(CPUID_FEAT_EDX_TM1),
+		ia64  = cpuid_has_edxfeature(CPUID_FEAT_EDX_IA64),
+		pbe   = cpuid_has_edxfeature(CPUID_FEAT_EDX_PBE);
+
+	if (featureset & CPUID_FEAT_EDX_ALL) {
+		fputs("-- EDX FEATURES --\n", file);
+		fprintf(file, "FPU:   %s\n"
+			      "VME:   %s\n"
+			      "DE:    %s\n"
+			      "PSE:   %s\n"
+			      "TSC:   %s\n"
+			      "MSR:   %s\n"
+			      "PAE:   %s\n"
+			      "MCE:   %s\n"
+			      "CX8:   %s\n"
+			      "APIC:  %s\n"
+			      "SEP:   %s\n"
+			      "MTRR:  %s\n"
+			      "PGE:   %s\n"
+			      "MCA:   %s\n"
+			      "CMOV:  %s\n"
+			      "PAT:   %s\n"
+			      "PSE36: %s\n"
+			      "PSN:   %s\n"
+			      "CLF:   %s\n"
+			      "DTES:  %s\n"
+			      "ACPI:  %s\n"
+			      "MMX:   %s\n"
+			      "FXSR:  %s\n"
+			      "SSE:   %s\n"
+			      "SSE2:  %s\n"
+			      "SS:    %s\n"
+			      "HTT:   %s\n"
+			      "TM1:   %s\n"
+			      "IA64:  %s\n"
+			      "PBE:   %s\n\n",
+			YON(fpu), YON(vme), YON(de), YON(pse), YON(tsc), YON(msr),
+			YON(pae), YON(mce), YON(cx8), YON(apic), YON(sep), YON(mtrr),
+			YON(pge), YON(mca), YON(cmov), YON(pat), YON(pse36), YON(psn),
+			YON(clf), YON(dtes), YON(acpi), YON(mmx), YON(fxsr), YON(sse),
+			YON(sse2), YON(ss), YON(htt), YON(tm1), YON(ia64), YON(pbe)
+		);
+	} else {
+		if (featureset & CPUID_FEAT_EDX_FPU)
+			fprintf(file, "FPU:   %s\n", YON(fpu));
+		if (featureset & CPUID_FEAT_EDX_VME)
+			fprintf(file, "VME:   %s\n", YON(vme));
+		if (featureset & CPUID_FEAT_EDX_DE)
+			fprintf(file, "DE: %s\n", YON(de));
+		if (featureset & CPUID_FEAT_EDX_PSE)
+			fprintf(file, "PSE:   %s\n", YON(pse));
+		if (featureset & CPUID_FEAT_EDX_TSC)
+			fprintf(file, "TSC:   %s\n", YON(tsc));
+		if (featureset & CPUID_FEAT_EDX_MSR)
+			fprintf(file, "MSR:   %s\n", YON(msr));
+		if (featureset & CPUID_FEAT_EDX_PAE)
+			fprintf(file, "PAE:   %s\n", YON(pae));
+		if (featureset & CPUID_FEAT_EDX_MCE)
+			fprintf(file, "MCE:   %s\n", YON(mce));
+		if (featureset & CPUID_FEAT_EDX_CX8)
+			fprintf(file, "CX8:   %s\n", YON(cx8));
+		if (featureset & CPUID_FEAT_EDX_APIC)
+			fprintf(file, "APIC: %s\n", YON(apic));
+		if (featureset & CPUID_FEAT_EDX_SEP)
+			fprintf(file, "SEP:   %s\n", YON(sep));
+		if (featureset & CPUID_FEAT_EDX_MTRR)
+			fprintf(file, "MTRR: %s\n", YON(mtrr));
+		if (featureset & CPUID_FEAT_EDX_PGE)
+			fprintf(file, "PGE:   %s\n", YON(pge));
+		if (featureset & CPUID_FEAT_EDX_MCA)
+			fprintf(file, "MCA:   %s\n", YON(mca));
+		if (featureset & CPUID_FEAT_EDX_CMOV)
+			fprintf(file, "CMOV: %s\n", YON(cmov));
+		if (featureset & CPUID_FEAT_EDX_PAT)
+			fprintf(file, "PAT:   %s\n", YON(pat));
+		if (featureset & CPUID_FEAT_EDX_PSE36)
+			fprintf(file, "PSE36: %s\n", YON(pse36));
+		if (featureset & CPUID_FEAT_EDX_PSN)
+			fprintf(file, "PSN:   %s\n", YON(psn));
+		if (featureset & CPUID_FEAT_EDX_CLF)
+			fprintf(file, "CLF:   %s\n", YON(clf));
+		if (featureset & CPUID_FEAT_EDX_DTES)
+			fprintf(file, "DTES:%s\n", YON(dtes));
+		if (featureset & CPUID_FEAT_EDX_ACPI)
+			fprintf(file, "ACPI: %s\n", YON(acpi));
+		if (featureset & CPUID_FEAT_EDX_MMX)
+			fprintf(file, "MMX:   %s\n", YON(mmx));
+		if (featureset & CPUID_FEAT_EDX_FXSR)
+			fprintf(file, "FXSR: %s\n", YON(fxsr));
+		if (featureset & CPUID_FEAT_EDX_SSE)
+			fprintf(file, "SSE:   %s\n", YON(sse));
+		if (featureset & CPUID_FEAT_EDX_SSE2)
+			fprintf(file, "SSE2: %s\n", YON(sse2));
+		if (featureset & CPUID_FEAT_EDX_SS)
+			fprintf(file, "SS: %s\n", YON(ss));
+		if (featureset & CPUID_FEAT_EDX_HTT)
+			fprintf(file, "HTT:   %s\n", YON(htt));
+		if (featureset & CPUID_FEAT_EDX_TM1)
+			fprintf(file, "TM1:   %s\n", YON(tm1));
+		if (featureset & CPUID_FEAT_EDX_IA64)
+			fprintf(file, "IA64: %s\n", YON(ia64));
+		if (featureset & CPUID_FEAT_EDX_PBE)
+			fprintf(file, "PBE:   %s\n", YON(pbe));
+	}
+#undef YON
+
+	fclose(file);
+	return true;
 }
 
 #endif
