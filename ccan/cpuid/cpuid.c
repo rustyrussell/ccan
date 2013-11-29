@@ -151,49 +151,80 @@ bool cpuid_test_feature(cpuid_t feature)
 	return (feature <= cpuid_highest_ext_func_supported());
 }
 
-bool cpuid_has_ecxfeature(int feature)
+#if defined(__GNUC__) || defined(__clang__)
+static uint32_t fetch_ecx(uint32_t what)
+{
+	static uint32_t ecx;
+	if (ecx == 0) {
+		asm volatile(
+			"cpuid\n\t"
+			: "=c" (ecx)
+			: "a" (what)
+		);
+	}
+
+	return ecx;
+}
+
+static uint32_t fetch_edx(uint32_t what)
+{
+	static uint32_t edx;
+	if (edx == 0) {
+		asm volatile(
+			"cpuid\n\t"
+			: "=d" (edx)
+			: "a" (what)
+		);
+	}
+
+	return edx;
+}
+#elif defined(_MSC_VER)
+static uint32_t fetch_ecx(uint32_t what)
 {
 	static uint32_t _ecx;
 	if (_ecx == 0) {
-#if defined(__GNUC__) || defined(__clang__)
-		asm volatile(
-			"cpuid\n\t"
-			: "=c" (_ecx)
-			: "a" (CPUID_PROCINFO_AND_FEATUREBITS)
-		);
-#elif defined _MSC_VER
 		__asm {
-			mov eax, CPUID_PROCINFO_AND_FEATUREBITS
+			mov eax, what
 			cpuid
 			mov _ecx, ecx
 		};
-#endif
 	}
 
-	return (_ecx & feature) == feature;
+	return _ecx;
 }
 
-bool cpuid_has_edxfeature(int feature)
+static uint32_t fetch_edx(uint32_t what)
 {
 	static uint32_t _edx;
 	if (_edx == 0) {
-#if defined(__GNUC__) || defined(__clang__)
-		asm volatile(
-			"cpuid\n\t"
-			: "=d" (_edx)
-			: "a" (CPUID_PROCINFO_AND_FEATUREBITS)
-		);
-#elif defined _MSC_VER
 		__asm {
-			mov eax, CPUID_PROCINFO_AND_FEATUREBITS
+			mov eax, what
 			cpuid
 			mov _edx, edx
 		};
-#endif
 	}
 
-	return (_edx & feature) == feature;
+	return _edx;
 }
+#endif
+
+#define DEFINE_FEATURE_FUNC(NAME, REGISTER, TYPE) \
+	bool cpuid_has_##NAME(int feature) \
+	{ \
+		static uint32_t REGISTER; \
+		if (REGISTER == 0) \
+			REGISTER = fetch_##REGISTER(TYPE); \
+		return (REGISTER & feature) == feature; \
+	}
+
+DEFINE_FEATURE_FUNC(ecxfeature, ecx, CPUID_PROCINFO_AND_FEATUREBITS)
+DEFINE_FEATURE_FUNC(edxfeature, edx, CPUID_PROCINFO_AND_FEATUREBITS)
+
+DEFINE_FEATURE_FUNC(ecxfeature_ext, ecx, CPUID_EXTENDED_PROC_INFO_FEATURE_BITS)
+DEFINE_FEATURE_FUNC(edxfeature_ext, edx, CPUID_EXTENDED_PROC_INFO_FEATURE_BITS)
+
+#undef DEFINE_FEATURE_FUNC
 
 static const char *const cpuids[] = {
 	"Nooooooooone",

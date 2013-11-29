@@ -158,6 +158,60 @@ enum {
 					| CPUID_FEAT_EDX_TM1 | CPUID_FEAT_EDX_IA64 | CPUID_FEAT_EDX_PBE
 };
 
+enum {
+	CPUID_EXTFEAT_ECX_LAHF_LM 		= 1 << 0,
+	CPUID_EXTFEAT_ECX_CMP_LEGACY 		= 1 << 1,
+	CPUID_EXTFEAT_ECX_SVM 			= 1 << 2,
+	CPUID_EXTFEAT_ECX_EXTAPIC 		= 1 << 3,
+	CPUID_EXTFEAT_ECX_CR8_LEGACY 		= 1 << 4,
+	CPUID_EXTFEAT_ECX_ABM 			= 1 << 5,
+	CPUID_EXTFEAT_ECX_SSE4A 		= 1 << 6,
+	CPUID_EXTFEAT_ECX_MISALIGNSSE 		= 1 << 7,
+	CPUID_EXTFEAT_ECX_3DNOWPREFETCH 	= 1 << 8,
+	CPUID_EXTFEAT_ECX_OSVW 			= 1 << 9,
+	CPUID_EXTFEAT_ECX_IBS 			= 1 << 10,
+	CPUID_EXTFEAT_ECX_XOP			= 1 << 11,
+	CPUID_EXTFEAT_ECX_SKINIT 		= 1 << 12,
+	CPUID_EXTFEAT_ECX_WDT 			= 1 << 13,
+	CPUID_EXTFEAT_ECX_LWP 			= 1 << 15,
+	CPUID_EXTFEAT_ECX_FMA4 			= 1 << 16,
+	CPUID_EXTFEAT_ECX_TCE 			= 1 << 17,
+	CPUID_EXTFEAT_ECX_NODEIDE_MSR 		= 1 << 19,
+	CPUID_EXTFEAT_ECX_TBM 			= 1 << 21,
+	CPUID_EXTFEAT_ECX_TOPOEXT 		= 1 << 22,
+	CPUID_EXTFEAT_ECX_PERFXTR_CORE 		= 1 << 23,
+	CPUID_EXTFEAT_ECX_PERFCTR_NB 		= 1 << 24,
+
+	CPUID_EXTFEAT_EDX_FPU 			= 1 << 0,
+	CPUID_EXTFEAT_EDX_VME 			= 1 << 1,
+	CPUID_EXTFEAT_EDX_DE 			= 1 << 2,
+	CPUID_EXTFEAT_EDX_PSE 			= 1 << 3,
+	CPUID_EXTFEAT_EDX_TSC 			= 1 << 4,
+	CPUID_EXTFEAT_EDX_MSR 			= 1 << 5,
+	CPUID_EXTFEAT_EDX_PAE 			= 1 << 6,
+	CPUID_EXTFEAT_EDX_MCE 			= 1 << 7,
+	CPUID_EXTFEAT_EDX_CX8 			= 1 << 8,
+	CPUID_EXTFEAT_EDX_APIC 			= 1 << 9,
+	CPUID_EXTFEAT_EDX_SYSCALL 		= 1 << 11,
+	CPUID_EXTFEAT_EDX_MTRR 			= 1 << 12,
+	CPUID_EXTFEAT_EDX_PGE 			= 1 << 13,
+	CPUID_EXTFEAT_EDX_MCA 			= 1 << 14,
+	CPUID_EXTFEAT_EDX_CMOV 			= 1 << 15,
+	CPUID_EXTFEAT_EDX_PAT 			= 1 << 16,
+	CPUID_EXTFEAT_EDX_PSE36 		= 1 << 17,
+	CPUID_EXTFEAT_EDX_MP 			= 1 << 19,
+	CPUID_EXTFEAT_EDX_NX 			= 1 << 20,
+	CPUID_EXTFEAT_EDX_MMXEXT 		= 1 << 22,
+	CPUID_EXTFEAT_EDX_MMX 			= 1 << 23,
+	CPUID_EXTFEAT_EDX_FXSR 			= 1 << 24,
+	CPUID_EXTFEAT_EDX_FXSR_OPT 		= 1 << 25,
+	CPUID_EXTFEAT_EDX_PDPE1GB 		= 1 << 26,
+	CPUID_EXTFEAT_EDX_RDTSCP		= 1 << 27,
+	CPUID_EXTFEAT_EDX_LM 			= 1 << 29,
+	CPUID_EXTFEAT_EDX_3DNOWEXT 		= 1 << 30,
+	CPUID_EXTFEAT_EDX_3DNOW 		= 1 << 31
+};
+
 typedef enum cputype {
 	CT_NONE,
 	CT_AMDK5,
@@ -322,13 +376,31 @@ bool cpuid_test_feature(cpuid_t feature);
  * cpuid_has_feature - Test if @feature is supported
  *
  * Test if the CPU supports MMX/SSE* etc.
- * Use cpuid_has_ecxfeature() for *_ECX* features and
- * cpuid_has_edxfeature() for *_EDX* features.
+ * This is split into two parts:
+ * 	cpuid_has_ecxfeature and
+ * 	cpuid_has_edxfeature.
+ * See the enum for more information.
+ *
  *
  * Returns true if the feature is available, false otherwise.
  */
 bool cpuid_has_ecxfeature(int feature);
 bool cpuid_has_edxfeature(int feature);
+
+/**
+ * cpuid_has_extfeature - Test if @extfeature is supported
+ * @extfeature: the extended feature to test.
+ *
+ * This is split into two parts:
+ * 	cpuid_has_ecxfeature_ext and
+ * 	cpuid_has_edxfeature_ext.
+ * See the enum for more information.
+ *
+ * Test if the CPU supports this feature.
+ * Returns true on success, false otherwise.
+ */
+bool cpuid_has_ecxfeature_ext(int extfeature);
+bool cpuid_has_edxfeature_ext(int extfeature);
 
 #else
 #include <ccan/build_assert/build_assert.h>
