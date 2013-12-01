@@ -13,8 +13,8 @@
  * int main(void)
  * {
  * 	uint32_t highest;
- * 	cpuid(CPU_HIGHEST_EXTENDED_FUNCTION_SUPPORTED, &highest);
- * 	printf ("Highest extended function supported: %d\n", highest);
+ * 	cpuid(CPUID_HIGHEST_EXTENDED_FUNCTION_SUPPORTED, &highest);
+ * 	printf("Highest extended function supported: %d\n", highest);
  *
  *      return 0;
  * }
