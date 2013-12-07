@@ -10,6 +10,7 @@
 #include <errno.h>
 
 static size_t num_fds = 0, max_fds = 0, num_closing = 0, num_waiting = 0;
+static bool some_always = false;
 static struct pollfd *pollfds = NULL;
 static struct fd **fds = NULL;
 static struct timers timeouts;
@@ -146,9 +147,9 @@ void backend_plan_changed(struct io_conn *conn)
 	if (pfd->events)
 		num_waiting--;
 
-	pfd->events = conn->plan.pollflag;
+	pfd->events = conn->plan.pollflag & (POLLIN|POLLOUT);
 	if (conn->duplex) {
-		int mask = conn->duplex->plan.pollflag;
+		int mask = conn->duplex->plan.pollflag & (POLLIN|POLLOUT);
 		/* You can't *both* read/write. */
 		assert(!mask || pfd->events != mask);
 		pfd->events |= mask;
@@ -161,15 +162,20 @@ void backend_plan_changed(struct io_conn *conn)
 
 	if (!conn->plan.next)
 		num_closing++;
+
+	if (conn->plan.pollflag == POLLALWAYS)
+		some_always = true;
 }
 
 bool add_conn(struct io_conn *c)
 {
-	if (!add_fd(&c->fd, c->plan.pollflag))
+	if (!add_fd(&c->fd, c->plan.pollflag & (POLLIN|POLLOUT)))
 		return false;
 	/* Immediate close is allowed. */
 	if (!c->plan.next)
 		num_closing++;
+	if (c->plan.pollflag == POLLALWAYS)
+		some_always = true;
 	return true;
 }
 
@@ -267,6 +273,26 @@ void backend_del_timeout(struct io_conn *conn)
 	conn->timeout->conn = NULL;
 }
 
+static void handle_always(void)
+{
+	int i;
+
+	some_always = false;
+
+	for (i = 0; i < num_fds && !io_loop_return; i++) {
+		struct io_conn *c = (void *)fds[i];
+
+		if (fds[i]->listener)
+			continue;
+
+		if (c->plan.pollflag == POLLALWAYS)
+			io_ready(c);
+
+		if (c->duplex && c->duplex->plan.pollflag == POLLALWAYS)
+			io_ready(c->duplex);
+	}
+}
+
 /* This is the main loop. */
 void *do_io_loop(struct io_conn **ready)
 {
@@ -316,6 +342,11 @@ void *do_io_loop(struct io_conn **ready)
 		/* debug can recurse on io_loop; anything can change. */
 		if (doing_debug() && some_timeouts)
 			continue;
+
+		if (some_always) {
+			handle_always();
+			continue;
+		}
 
 		if (num_fds == 0)
 			break;

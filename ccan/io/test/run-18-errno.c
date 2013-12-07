@@ -36,7 +36,7 @@ static void init_conn(int fd, int *state)
 		(*state)++;
 		close(fd);
 		errno = 0;
-		io_set_finish(io_new_conn(fd, io_read(state, 0,
+		io_set_finish(io_new_conn(fd, io_read(state, 1,
 						      io_close_cb, NULL)),
 			      finish_EBADF, state);
 	}

@@ -3,6 +3,10 @@
 #define CCAN_IO_BACKEND_H
 #include <stdbool.h>
 #include <ccan/timer/timer.h>
+#include <poll.h>
+
+/* A setting for actions to always run (eg. zero-length reads). */
+#define POLLALWAYS (((POLLIN|POLLOUT) + 1) & ~((POLLIN|POLLOUT)))
 
 struct io_alloc {
 	void *(*alloc)(size_t size);

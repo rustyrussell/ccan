@@ -8,7 +8,6 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <poll.h>
 #include <unistd.h>
 #include <fcntl.h>
 
@@ -232,6 +231,26 @@ bool io_timeout_(struct io_conn *conn, struct timespec ts,
 	return true;
 }
 
+/* Always done: call the next thing. */
+static int do_always(int fd, struct io_plan *plan)
+{
+	return 1;
+}
+
+struct io_plan io_always_(struct io_plan (*cb)(struct io_conn *, void *),
+			  void *arg)
+{
+	struct io_plan plan;
+
+	assert(cb);
+	plan.io = do_always;
+	plan.next = cb;
+	plan.next_arg = arg;
+	plan.pollflag = POLLALWAYS;
+
+	return plan;
+}
+
 /* Returns true if we're finished. */
 static int do_write(int fd, struct io_plan *plan)
 {
@@ -252,6 +271,10 @@ struct io_plan io_write_(const void *data, size_t len,
 	struct io_plan plan;
 
 	assert(cb);
+
+	if (len == 0)
+		return io_always_(cb, arg);
+
 	plan.u1.const_vp = data;
 	plan.u2.s = len;
 	plan.io = do_write;
@@ -281,11 +304,16 @@ struct io_plan io_read_(void *data, size_t len,
 	struct io_plan plan;
 
 	assert(cb);
+
+	if (len == 0)
+		return io_always_(cb, arg);
+
 	plan.u1.cp = data;
 	plan.u2.s = len;
 	plan.io = do_read;
 	plan.next = cb;
 	plan.next_arg = arg;
+
 	plan.pollflag = POLLIN;
 
 	return plan;
@@ -309,6 +337,10 @@ struct io_plan io_read_partial_(void *data, size_t *len,
 	struct io_plan plan;
 
 	assert(cb);
+
+	if (*len == 0)
+		return io_always_(cb, arg);
+
 	plan.u1.cp = data;
 	plan.u2.vp = len;
 	plan.io = do_read_partial;
@@ -337,6 +369,10 @@ struct io_plan io_write_partial_(const void *data, size_t *len,
 	struct io_plan plan;
 
 	assert(cb);
+
+	if (*len == 0)
+		return io_always_(cb, arg);
+
 	plan.u1.const_vp = data;
 	plan.u2.vp = len;
 	plan.io = do_write_partial;

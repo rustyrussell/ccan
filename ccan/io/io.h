@@ -291,6 +291,29 @@ struct io_plan io_write_partial_(const void *data, size_t *len,
 				 void *arg);
 
 /**
+ * io_always - plan to immediately call next callback.
+ * @cb: function to call.
+ * @arg: @cb argument
+ *
+ * Sometimes it's neater to plan a callback rather than call it directly;
+ * for example, if you only need to read data for one path and not another.
+ *
+ * Example:
+ * static void start_conn_with_nothing(int fd)
+ * {
+ *	// Silly example: close on next time around loop.
+ *	io_new_conn(fd, io_always(io_close_cb, NULL));
+ * }
+ */
+#define io_always(cb, arg)						\
+	io_debug(io_always_(typesafe_cb_preargs(struct io_plan, void *,	\
+						(cb), (arg),		\
+						struct io_conn *),	\
+			    (arg)))
+struct io_plan io_always_(struct io_plan (*cb)(struct io_conn *, void *),
+			  void *arg);
+
+/**
  * io_connect - plan to connect to a listening socket.
  * @fd: file descriptor.
  * @addr: where to connect.
