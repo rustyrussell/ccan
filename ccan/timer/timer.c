@@ -306,7 +306,8 @@ static bool timer_list_check(const struct list_head *l,
 			if (abortstr) {
 				fprintf(stderr,
 					"%s: timer %p %llu not %llu-%llu\n",
-					abortstr, t, t->time, min, max);
+					abortstr, t, (long long)t->time,
+					(long long)min, (long long)max);
 				abort();
 			}
 			return false;
@@ -315,7 +316,8 @@ static bool timer_list_check(const struct list_head *l,
 			if (abortstr) {
 				fprintf(stderr,
 					"%s: timer %p %llu < minimum %llu\n",
-					abortstr, t, t->time, first);
+					abortstr, t, (long long)t->time,
+					(long long)first);
 				abort();
 			}
 			return false;
