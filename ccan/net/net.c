@@ -148,6 +148,17 @@ int net_connect_complete(struct pollfd pfds[2])
 
 		if (pfds[i].fd == -1)
 			continue;
+		if (pfds[i].revents & POLLHUP) {
+			/* Linux gives this if connecting to local
+			 * non-listening port */
+			close(pfds[i].fd);
+			pfds[i].fd = -1;
+			if (pfds[!i].fd == -1) {
+				errno = ECONNREFUSED;
+				return -1;
+			}
+			continue;
+		}
 		if (getsockopt(pfds[i].fd, SOL_SOCKET, SO_ERROR, &err,
 			       &errlen) != 0) {
 			net_connect_abort(pfds);
