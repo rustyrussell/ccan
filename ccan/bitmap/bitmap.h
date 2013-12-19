@@ -38,9 +38,9 @@ static inline bitmap *bitmap_alloc(int nbits)
 static inline bitmap_word bitmap_bswap(bitmap_word w)
 {
 	if (BITMAP_WORD_BITS == 32)
-		return cpu_to_be32(w);
+		return (ENDIAN_CAST bitmap_word)cpu_to_be32(w);
 	else if (BITMAP_WORD_BITS == 64)
-		return cpu_to_be64(w);
+		return (ENDIAN_CAST bitmap_word)cpu_to_be64(w);
 }
 
 #define BITMAP_WORD(_bm, _n)	((_bm)[(_n) / BITMAP_WORD_BITS].w)
