@@ -116,7 +116,7 @@ int net_connect_async(const struct addrinfo *addrinfo, struct pollfd pfds[2])
 				close_noerr(pfds[i].fd);
 				return -1;
 			}
-			return pfds[0].fd;
+			return pfds[i].fd;
 		}
 	}
 
