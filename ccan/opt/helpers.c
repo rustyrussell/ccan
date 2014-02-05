@@ -1,7 +1,9 @@
 /* Licensed under GPLv3+ - see LICENSE file for details */
 #include <ccan/opt/opt.h>
 #include <ccan/cast/cast.h>
+#include <inttypes.h>
 #include <string.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <stdio.h>
@@ -401,9 +403,9 @@ static void show_llong_with_suffix(char buf[OPT_SHOW_LEN], long long ll,
 		ll = tmp;
 	}
 	if (i == 0)
-		snprintf(buf, OPT_SHOW_LEN, "%lld", ll);
+		snprintf(buf, OPT_SHOW_LEN, "%"PRId64, (int64_t)ll);
 	else
-		snprintf(buf, OPT_SHOW_LEN, "%lld%c", ll, suffixes[i - 1]);
+		snprintf(buf, OPT_SHOW_LEN, "%"PRId64"%c", (int64_t)ll, suffixes[i - 1]);
 }
 
 static void show_ullong_with_suffix(char buf[OPT_SHOW_LEN], unsigned long long ull,
@@ -423,9 +425,9 @@ static void show_ullong_with_suffix(char buf[OPT_SHOW_LEN], unsigned long long u
 		ull = tmp;
 	}
 	if (i == 0)
-		snprintf(buf, OPT_SHOW_LEN, "%llu", ull);
+		snprintf(buf, OPT_SHOW_LEN, "%"PRIu64, (uint64_t)ull);
 	else
-		snprintf(buf, OPT_SHOW_LEN, "%llu%c", ull, suffixes[i - 1]);
+		snprintf(buf, OPT_SHOW_LEN, "%"PRIu64"%c", (uint64_t)ull, suffixes[i - 1]);
 }
 
 /* _bi, signed */
