@@ -1,7 +1,9 @@
 /* Licensed under GPLv3+ - see LICENSE file for details */
 #include <ccan/opt/opt.h>
+#ifdef HAVE_SYS_TERMIOS_H
 #include <sys/ioctl.h>
 #include <sys/termios.h> /* Required on Solaris for struct winsize */
+#endif
 #include <sys/unistd.h> /* Required on Solaris for ioctl */
 #include <string.h>
 #include <stdlib.h>
@@ -17,19 +19,23 @@ const char opt_hidden[1];
 
 static unsigned int get_columns(void)
 {
-	struct winsize w;
+	int ws_col = 0;
 	const char *env = getenv("COLUMNS");
 
-	w.ws_col = 0;
 	if (env)
-		w.ws_col = atoi(env);
-	if (!w.ws_col)
-		if (ioctl(0, TIOCGWINSZ, &w) == -1)
-			w.ws_col = 0;
-	if (!w.ws_col)
-		w.ws_col = 80;
+		ws_col = atoi(env);
+#ifdef HAVE_SYS_TERMIOS_H
+	if (!ws_col)
+	{
+		struct winsize w;
+		if (ioctl(0, TIOCGWINSZ, &w) != -1)
+			ws_col = w.ws_col;
+	}
+#endif
+	if (!ws_col)
+		ws_col = 80;
 
-	return w.ws_col;
+	return ws_col;
 }
 
 /* Return number of chars of words to put on this line.
