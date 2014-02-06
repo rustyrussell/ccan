@@ -1,6 +1,6 @@
 /* Licensed under GPLv3+ - see LICENSE file for details */
 #include <ccan/opt/opt.h>
-#ifdef HAVE_SYS_TERMIOS_H
+#if HAVE_SYS_TERMIOS_H
 #include <sys/ioctl.h>
 #include <sys/termios.h> /* Required on Solaris for struct winsize */
 #endif
@@ -24,7 +24,8 @@ static unsigned int get_columns(void)
 
 	if (env)
 		ws_col = atoi(env);
-#ifdef HAVE_SYS_TERMIOS_H
+
+#ifdef TIOCGWINSZ
 	if (!ws_col)
 	{
 		struct winsize w;
