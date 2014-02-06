@@ -7,7 +7,7 @@
 /* Test consume_words helper. */
 int main(int argc, char *argv[])
 {
-	unsigned int start, len;
+	size_t start, len;
 
 	plan_tests(13);
 
