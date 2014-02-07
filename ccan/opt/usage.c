@@ -47,7 +47,7 @@ static size_t consume_words(const char *words, size_t maxlen, size_t *prefix)
 	size_t oldlen, len;
 
 	/* Swallow leading whitespace. */
-	*prefix = strspn(words, " ");
+	*prefix = strspn(words, " \n");
 	words += *prefix;
 
 	/* Use at least one word, even if it takes us over maxlen. */
@@ -55,7 +55,9 @@ static size_t consume_words(const char *words, size_t maxlen, size_t *prefix)
 	while (len <= maxlen) {
 		oldlen = len;
 		len += strspn(words+len, " ");
-		len += strcspn(words+len, " ");
+		if (words[len] == '\n')
+			break;
+		len += strcspn(words+len, " \n");
 		if (len == oldlen)
 			break;
 	}
