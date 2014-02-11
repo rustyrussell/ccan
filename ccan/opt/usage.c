@@ -41,27 +41,35 @@ static unsigned int get_columns(void)
 
 /* Return number of chars of words to put on this line.
  * Prefix is set to number to skip at start, maxlen is max width, returns
- * length (after prefix) to put on this line. */
-static size_t consume_words(const char *words, size_t maxlen, size_t *prefix)
+ * length (after prefix) to put on this line.
+ * start is set if we start a new line in the source description. */
+static size_t consume_words(const char *words, size_t maxlen, size_t *prefix,
+			    bool *start)
 {
 	size_t oldlen, len;
 
-	/* Swallow leading whitespace. */
+	/* Always swollow leading whitespace. */
 	*prefix = strspn(words, " \n");
 	words += *prefix;
 
-	/* Use at least one word, even if it takes us over maxlen. */
-	oldlen = len = strcspn(words, " ");
-	while (len <= maxlen) {
-		oldlen = len;
-		len += strspn(words+len, " ");
-		if (words[len] == '\n')
-			break;
-		len += strcspn(words+len, " \n");
-		if (len == oldlen)
-			break;
+	/* Leading whitespace at start of line means literal. */
+	if (*start && *prefix) {
+		oldlen = strcspn(words, "\n");
+	} else {
+		/* Use at least one word, even if it takes us over maxlen. */
+		oldlen = len = strcspn(words, " ");
+		while (len <= maxlen) {
+			oldlen = len;
+			len += strspn(words+len, " ");
+			if (words[len] == '\n')
+				break;
+			len += strcspn(words+len, " \n");
+			if (len == oldlen)
+				break;
+		}
 	}
 
+	*start = (words[oldlen - 1] == '\n');
 	return oldlen;
 }
 
@@ -95,7 +103,7 @@ static char *add_desc(char *base, size_t *len, size_t *max,
 {
 	size_t off, prefix, l;
 	const char *p;
-	bool same_line = false;
+	bool same_line = false, start = true;
 
 	base = add_str(base, len, max, opt->names);
 	off = strlen(opt->names);
@@ -118,7 +126,7 @@ static char *add_desc(char *base, size_t *len, size_t *max,
 
 	/* Indent description. */
 	p = opt->desc;
-	while ((l = consume_words(p, width - indent, &prefix)) != 0) {
+	while ((l = consume_words(p, width - indent, &prefix, &start)) != 0) {
 		if (!same_line)
 			base = add_indent(base, len, max, indent);
 		p += prefix;

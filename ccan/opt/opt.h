@@ -350,11 +350,25 @@ char *opt_invalid_argument(const char *arg);
  * and a table of all the options with their descriptions.  If an option has
  * description opt_hidden, it is not shown here.
  *
+ * The table of options is formatted such that descriptions are
+ * wrapped on space boundaries.  If a description has a "\n" that is
+ * left intact, and the following characters indented appropriately.
+ * If the description begins with one or more space/tab (or has a
+ * space or tab following a "\n") that line is output without wrapping.
+ *
  * If "extra" is NULL, then the extra information is taken from any
  * registered option which calls opt_usage_and_exit().  This avoids duplicating
  * that string in the common case.
  *
  * The result should be passed to free().
+ *
+ * See Also:
+ *	opt_usage_and_exit()
+ *
+ * Example:
+ *	opt_register_arg("--explode|--boom", explode, NULL, NULL,
+ *			 "This line will be wrapped by opt_usage\n"
+ *			 "  But this won't because it's indented.");
  */
 char *opt_usage(const char *argv0, const char *extra);
 
