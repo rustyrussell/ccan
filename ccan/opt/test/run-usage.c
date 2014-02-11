@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
 	char *longname = strdup("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
 	char *shortname = strdup("shortname");
 
-	plan_tests(48);
+	plan_tests(50);
 	opt_register_table(subtables, NULL);
 	opt_register_noarg("--kkk|-k", my_cb, NULL, "magic kkk option");
 	opt_register_noarg("-?", opt_usage_and_exit, "<MyArgs>...",
@@ -106,6 +106,17 @@ int main(int argc, char *argv[])
 	ok1(strstr(output, "Usage: onearg \n"));
 	ok1(strstr(output, "--aaa"));
 	ok1(strstr(output, "AAAAll"));
+	free(output);
+
+	reset_options();
+	/* Valgrind nails this to 100 anyway :( */
+	setenv("COLUMNS", "100", 1);
+	opt_register_noarg("--long", my_cb, NULL, "Extremely long option which requires more than one line for its full description to be shown in the usage message.");
+	output = opt_usage("longarg", NULL);
+	diag("%s", output);
+	ok1(strstr(output, "Usage: longarg \n"));
+	ok1(strstr(output, "\n--long  Extremely long option which requires more than one line for its full description to be shown\n"
+		   "        in the usage message.\n"));
 	free(output);
 
 	free(shortname);
