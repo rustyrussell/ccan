@@ -3,21 +3,23 @@
 #include <stdlib.h>
 #include "list.h"
 
-static void *corrupt(const char *abortstr,
+static void *corrupt(const char *listop,
+		     const char *abortstr,
 		     const struct list_node *head,
 		     const struct list_node *node,
 		     unsigned int count)
 {
 	if (abortstr) {
 		fprintf(stderr,
-			"%s: prev corrupt in node %p (%u) of %p\n",
-			abortstr, node, count, head);
+			"%s: prev corrupt in node %p (%u) of %p, %s\n",
+			listop, node, count, head, abortstr);
 		abort();
 	}
 	return NULL;
 }
 
-struct list_node *list_check_node(const struct list_node *node,
+struct list_node *list_check_node_(const struct list_node *node,
+				  const char *listop,
 				  const char *abortstr)
 {
 	const struct list_node *p, *n;
@@ -26,18 +28,18 @@ struct list_node *list_check_node(const struct list_node *node,
 	for (p = node, n = node->next; n != node; p = n, n = n->next) {
 		count++;
 		if (n->prev != p)
-			return corrupt(abortstr, node, n, count);
+			return corrupt(listop, abortstr, node, n, count);
 	}
 	/* Check prev on head node. */
 	if (node->prev != p)
-		return corrupt(abortstr, node, node, 0);
+		return corrupt(listop, abortstr, node, node, 0);
 
 	return (struct list_node *)node;
 }
 
-struct list_head *list_check(const struct list_head *h, const char *abortstr)
+struct list_head *list_check_(const struct list_head *h, const char *listop, const char*abortstr)
 {
-	if (!list_check_node(&h->n, abortstr))
+	if (!list_check_node_(&h->n, listop, abortstr))
 		return NULL;
 	return (struct list_head *)h;
 }
