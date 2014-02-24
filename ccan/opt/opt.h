@@ -409,6 +409,12 @@ void opt_show_longval(char buf[OPT_SHOW_LEN], const long *l);
 char *opt_set_ulongval(const char *arg, unsigned long *ul);
 void opt_show_ulongval(char buf[OPT_SHOW_LEN], const unsigned long *ul);
 
+/* Set an floating point value, various forms. */
+char *opt_set_floatval(const char *arg, float *f);
+void opt_show_floatval(char buf[OPT_SHOW_LEN], const float *f);
+char *opt_set_doubleval(const char *arg, double *d);
+void opt_show_doubleval(char buf[OPT_SHOW_LEN], const double *d);
+
 /* the following setting functions accept k, M, G, T, P, or E suffixes, which
    multiplies the numeric value by the corresponding power of 1000 or 1024
    (for the _si and _bi versions, respectively).

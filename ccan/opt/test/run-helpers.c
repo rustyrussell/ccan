@@ -77,7 +77,7 @@ static void set_args(int *argc, char ***argv, ...)
 /* Test helpers. */
 int main(int argc, char *argv[])
 {
-	plan_tests(454);
+	plan_tests(476);
 
 	/* opt_set_bool */
 	{
@@ -205,6 +205,32 @@ int main(int argc, char *argv[])
 			ok1(!parse_args(&argc, &argv, "-a", "18446744073709551616", NULL));
 		else
 			fail("FIXME: Handle other long sizes");
+	}
+	/* opt_set_floatval */
+	{
+		float arg = 1000;
+		reset_options();
+		opt_register_arg("-a", opt_set_floatval, NULL, &arg, "All");
+		ok1(parse_args(&argc, &argv, "-a", "9999", NULL));
+		ok1(arg == 9999);
+		ok1(parse_args(&argc, &argv, "-a", "-9999", NULL));
+		ok1(arg == -9999);
+		ok1(parse_args(&argc, &argv, "-a", "0", NULL));
+		ok1(arg == 0);
+		ok1(!parse_args(&argc, &argv, "-a", "100crap", NULL));
+	}
+	/* opt_set_doubleval */
+	{
+		double arg = 1000;
+		reset_options();
+		opt_register_arg("-a", opt_set_doubleval, NULL, &arg, "All");
+		ok1(parse_args(&argc, &argv, "-a", "9999", NULL));
+		ok1(arg == 9999);
+		ok1(parse_args(&argc, &argv, "-a", "-9999", NULL));
+		ok1(arg == -9999);
+		ok1(parse_args(&argc, &argv, "-a", "0", NULL));
+		ok1(arg == 0);
+		ok1(!parse_args(&argc, &argv, "-a", "100crap", NULL));
 	}
 
 	{
@@ -1137,6 +1163,40 @@ int main(int argc, char *argv[])
 		ul = 4294967295UL;
 		opt_show_ulongval(buf, &ul);
 		ok1(strcmp(buf, "4294967295") == 0);
+		ok1(buf[OPT_SHOW_LEN] == '!');
+	}
+
+	/* opt_show_floatval */
+	{
+		float f;
+		char buf[OPT_SHOW_LEN+2] = { 0 };
+		buf[OPT_SHOW_LEN] = '!';
+
+		f = -77.5;
+		opt_show_floatval(buf, &f);
+		ok1(strcmp(buf, "-77.500000") == 0);
+		ok1(buf[OPT_SHOW_LEN] == '!');
+
+		f = 77.5;
+		opt_show_floatval(buf, &f);
+		ok1(strcmp(buf, "77.500000") == 0);
+		ok1(buf[OPT_SHOW_LEN] == '!');
+	}
+
+	/* opt_show_doubleval */
+	{
+		double d;
+		char buf[OPT_SHOW_LEN+2] = { 0 };
+		buf[OPT_SHOW_LEN] = '!';
+
+		d = -77;
+		opt_show_doubleval(buf, &d);
+		ok1(strcmp(buf, "-77.000000") == 0);
+		ok1(buf[OPT_SHOW_LEN] == '!');
+
+		d = 77;
+		opt_show_doubleval(buf, &d);
+		ok1(strcmp(buf, "77.000000") == 0);
 		ok1(buf[OPT_SHOW_LEN] == '!');
 	}
 
