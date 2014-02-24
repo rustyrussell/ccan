@@ -1,4 +1,4 @@
-/* Licensed under GPLv3+ - see LICENSE file for details */
+/* Licensed under GPLv2+ - see LICENSE file for details */
 #include <ccan/opt/opt.h>
 #if HAVE_SYS_TERMIOS_H
 #include <sys/ioctl.h>
