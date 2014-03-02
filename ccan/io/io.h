@@ -39,7 +39,8 @@ struct io_conn *io_new_conn_(int fd, struct io_plan plan);
  *
  * @finish will be called when an I/O operation fails, or you call
  * io_close() on the connection.  errno will be set to the value
- * after the failed I/O, or at the call to io_close().
+ * after the failed I/O, or at the call to io_close().  The fd
+ * will be closed (unless a duplex) before @finish is called.
  *
  * Example:
  * static void finish(struct io_conn *conn, void *unused)

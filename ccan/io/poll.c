@@ -188,11 +188,6 @@ bool add_duplex(struct io_conn *c)
 
 void backend_del_conn(struct io_conn *conn)
 {
-	if (conn->finish) {
-		/* Saved by io_close */
-		errno = conn->plan.u1.s;
-		conn->finish(conn, conn->finish_arg);
-	}
 	if (timeout_active(conn))
 		backend_del_timeout(conn);
 	io_alloc.free(conn->timeout);
@@ -205,6 +200,11 @@ void backend_del_conn(struct io_conn *conn)
 	} else
 		del_fd(&conn->fd);
 	num_closing--;
+	if (conn->finish) {
+		/* Saved by io_close */
+		errno = conn->plan.u1.s;
+		conn->finish(conn, conn->finish_arg);
+	}
 	free_conn(conn);
 }
 
