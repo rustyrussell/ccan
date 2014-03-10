@@ -100,7 +100,7 @@ static inline void bitmap_copy(bitmap *dst, bitmap *src, int nbits)
 	static inline void bitmap_##_name(bitmap *dst, bitmap *src1, bitmap *src2, \
 					 int nbits) \
 	{ \
-		int i = 0; \
+		unsigned int i = 0; \
 		for (i = 0; i < BITMAP_NWORDS(nbits); i++) { \
 			dst[i].w = src1[i].w _op src2[i].w; \
 		} \
@@ -115,7 +115,7 @@ BITMAP_DEF_BINOP(andnot, & ~)
 
 static inline void bitmap_complement(bitmap *dst, bitmap *src, int nbits)
 {
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < BITMAP_NWORDS(nbits); i++)
 		dst[i].w = ~src[i].w;
@@ -130,7 +130,7 @@ static inline bool bitmap_equal(bitmap *src1, bitmap *src2, int nbits)
 
 static inline bool bitmap_intersects(bitmap *src1, bitmap *src2, int nbits)
 {
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < BITMAP_HEADWORDS(nbits); i++) {
 		if (src1[i].w & src2[i].w)
@@ -144,7 +144,7 @@ static inline bool bitmap_intersects(bitmap *src1, bitmap *src2, int nbits)
 
 static inline bool bitmap_subset(bitmap *src1, bitmap *src2, int nbits)
 {
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < BITMAP_HEADWORDS(nbits); i++) {
 		if (src1[i].w  & ~src2[i].w)
@@ -158,7 +158,7 @@ static inline bool bitmap_subset(bitmap *src1, bitmap *src2, int nbits)
 
 static inline bool bitmap_full(bitmap *bitmap, int nbits)
 {
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < BITMAP_HEADWORDS(nbits); i++) {
 		if (bitmap[i].w != -1UL)
@@ -173,7 +173,7 @@ static inline bool bitmap_full(bitmap *bitmap, int nbits)
 
 static inline bool bitmap_empty(bitmap *bitmap, int nbits)
 {
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < BITMAP_HEADWORDS(nbits); i++) {
 		if (bitmap[i].w != 0)
