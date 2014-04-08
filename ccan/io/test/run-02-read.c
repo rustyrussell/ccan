@@ -19,7 +19,7 @@ static void finish_ok(struct io_conn *conn, struct data *d)
 {
 	ok1(d->state == 1);
 	d->state++;
-	io_break(d, io_idle());
+	io_break(d, io_never());
 }
 
 static void init_conn(int fd, struct data *d)

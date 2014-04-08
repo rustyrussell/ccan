@@ -490,6 +490,21 @@ bool io_is_idle(const struct io_conn *conn);
 #define io_break(ret, plan) (io_plan_no_debug(), io_break_((ret), (plan)))
 struct io_plan io_break_(void *ret, struct io_plan plan);
 
+/**
+ * io_never - assert if callback is called.
+ *
+ * Sometimes you want to make it clear that a callback should never happen
+ * (eg. for io_break).  This will assert() if called.
+ *
+ * Example:
+ * static struct io_plan break_out(struct io_conn *conn, void *unused)
+ * {
+ *	// We won't ever return from io_break
+ *	return io_break(conn, io_never());
+ * }
+ */
+struct io_plan io_never(void);
+
 /* FIXME: io_recvfrom/io_sendto */
 
 /**

@@ -39,7 +39,7 @@ static void finish_idle(struct io_conn *conn, struct data *d)
 {
 	ok1(d->state == 3);
 	d->state++;
-	io_break(d, io_idle());
+	io_break(d, io_never());
 }
 
 static struct io_plan never(struct io_conn *conn, void *arg)

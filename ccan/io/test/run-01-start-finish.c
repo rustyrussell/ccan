@@ -16,7 +16,7 @@ static void finish_ok(struct io_conn *conn, int *state)
 	ok1(*state == 1);
 	ok1(io_conn_fd(conn) == expected_fd);
 	(*state)++;
-	io_break(state + 1, io_idle());
+	io_break(state + 1, io_never());
 }
 
 static void init_conn(int fd, int *state)

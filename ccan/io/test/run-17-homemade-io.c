@@ -20,7 +20,7 @@ static void finish_ok(struct io_conn *conn, struct packet *pkt)
 {
 	ok1(pkt->state == 3);
 	pkt->state++;
-	io_break(pkt, io_idle());
+	io_break(pkt, io_never());
 }
 
 static int do_read_packet(int fd, struct io_plan *plan)

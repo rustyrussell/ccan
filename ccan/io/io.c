@@ -531,6 +531,16 @@ struct io_plan io_break_(void *ret, struct io_plan plan)
 	return plan;
 }
 
+static struct io_plan io_never_called(struct io_conn *conn, void *arg)
+{
+	abort();
+}
+
+struct io_plan io_never(void)
+{
+	return io_always_(io_never_called, NULL);
+}
+
 int io_conn_fd(const struct io_conn *conn)
 {
 	return conn->fd.fd;

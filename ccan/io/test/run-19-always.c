@@ -20,7 +20,7 @@ static void finish_ok(struct io_conn *conn, struct data *d)
 {
 	ok1(d->state == 1);
 	d->state++;
-	io_break(d, io_idle());
+	io_break(d, io_never());
 }
 
 static struct io_plan write_buf(struct io_conn *conn, struct data *d)
