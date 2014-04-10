@@ -91,6 +91,7 @@ bool add_conn(struct io_conn *c);
 bool add_duplex(struct io_conn *c);
 void del_listener(struct io_listener *l);
 void backend_plan_changed(struct io_conn *conn);
+void backend_wait_changed(const void *wait);
 void backend_add_timeout(struct io_conn *conn, struct timespec ts);
 void backend_del_timeout(struct io_conn *conn);
 void backend_del_conn(struct io_conn *conn);

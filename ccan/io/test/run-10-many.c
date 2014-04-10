@@ -16,6 +16,12 @@ struct buffer {
 };
 
 static struct io_plan poke_reader(struct io_conn *conn, struct buffer *buf);
+static struct io_plan poke_writer(struct io_conn *conn, struct buffer *buf);
+
+static struct io_plan read_buf(struct io_conn *conn, struct buffer *buf)
+{
+	return io_read(&buf->buf, sizeof(buf->buf), poke_writer, buf);
+}
 
 static struct io_plan poke_writer(struct io_conn *conn, struct buffer *buf)
 {
@@ -25,25 +31,28 @@ static struct io_plan poke_writer(struct io_conn *conn, struct buffer *buf)
 		return io_close();
 
 	/* You write. */
-	io_wake(buf->writer,
-		io_write(&buf->buf, sizeof(buf->buf), poke_reader, buf));
+	io_wake(&buf->writer);
 
 	/* I'll wait until you wake me. */
-	return io_idle();
+	return io_wait(&buf->reader, read_buf, buf);
+}
+
+static struct io_plan write_buf(struct io_conn *conn, struct buffer *buf)
+{
+	return io_write(&buf->buf, sizeof(buf->buf), poke_reader, buf);
 }
 
 static struct io_plan poke_reader(struct io_conn *conn, struct buffer *buf)
 {
 	assert(conn == buf->writer);
 	/* You read. */
-	io_wake(buf->reader,
-		io_read(&buf->buf, sizeof(buf->buf), poke_writer, buf));
+	io_wake(&buf->reader);
 
 	if (++buf->iters == NUM_ITERS)
 		return io_close();
 
 	/* I'll wait until you tell me to write. */
-	return io_idle();
+	return io_wait(&buf->writer, write_buf, buf);
 }
 
 static struct buffer buf[NUM];
@@ -66,13 +75,12 @@ int main(void)
 		sprintf(buf[i].buf, "%i-%i", i, i);
 
 		/* Wait for writer to tell us to read. */
-		buf[i].reader = io_new_conn(last_read, io_idle());
+		buf[i].reader = io_new_conn(last_read,
+					    io_wait(&buf[i].reader, read_buf,
+						    &buf[i]));
 		if (!buf[i].reader)
 			break;
-		buf[i].writer = io_new_conn(fds[1],
-					    io_write(&buf[i].buf,
-						     sizeof(buf[i].buf),
-						     poke_reader, &buf[i]));
+		buf[i].writer = io_new_conn(fds[1], write_buf(NULL, &buf[i]));
 		if (!buf[i].writer)
 			break;
 		last_read = fds[0];
@@ -83,11 +91,10 @@ int main(void)
 	/* Last one completes the cirle. */
 	i = 0;
 	sprintf(buf[i].buf, "%i-%i", i, i);
-	buf[i].reader = io_new_conn(last_read, io_idle());
+	buf[i].reader = io_new_conn(last_read,
+				    io_wait(&buf[i].reader, read_buf, &buf[i]));
 	ok1(buf[i].reader);
-	buf[i].writer = io_new_conn(last_write,
-				    io_write(&buf[i].buf, sizeof(buf[i].buf),
-					     poke_reader, &buf[i]));
+	buf[i].writer = io_new_conn(last_write, write_buf(NULL, &buf[i]));
 	ok1(buf[i].writer);
 
 	/* They should eventually exit */

@@ -25,76 +25,74 @@
  * #include <signal.h>
  * #include <sys/types.h>
  * #include <sys/wait.h>
+ * #include <string.h>
  *
  * struct buffer {
- * 	size_t max, off, rlen;
- * 	char *buf;
+ * 	bool finished;
+ * 	size_t start, end, rlen, wlen;
+ * 	char buf[4096];
  * };
  *
- * struct stdin_buffer {
- * 	struct io_conn *reader, *writer;
- * 	size_t len;
- * 	char inbuf[4096];
- * };
- *
- * // This reads from stdin.
- * static struct io_plan wake_writer(struct io_conn *, struct stdin_buffer *);
- * // This writes the stdin buffer to the child.
- * static struct io_plan wake_reader(struct io_conn *, struct stdin_buffer *);
- *
- * static struct io_plan wake_writer(struct io_conn *c, struct stdin_buffer *b)
+ * static void finish(struct io_conn *c, struct buffer *b)
  * {
- * 	assert(c == b->reader);
- * 	io_wake(b->writer, io_write(b->inbuf, b->len, wake_reader, b));
- * 	return io_idle();
+ * 	// Mark us finished.
+ * 	b->finished = true;
+ * 	// Wake writer just in case it's asleep.
+ * 	io_wake(b);
  * }
  *
- * static void reader_exit(struct io_conn *c, struct stdin_buffer *b)
+ * static struct io_plan read_in(struct io_conn *c, struct buffer *b)
  * {
- * 	assert(c == b->reader);
- * 	io_wake(b->writer, io_close());
- * 	b->reader = NULL;
+ * 	// Add what we just read.
+ * 	b->end += b->rlen;
+ * 	assert(b->end <= sizeof(b->buf));
+ *
+ * 	// If we just read something, wake writer.
+ * 	if (b->rlen != 0)
+ * 		io_wake(b);
+ *
+ * 	// If buffer is empty, return to start.
+ * 	if (b->start == b->end)
+ * 		b->start = b->end = 0;
+ *
+ * 	// Read in some of the rest.
+ * 	b->rlen = sizeof(b->buf) - b->end;
+ *
+ * 	// No room?  Wait for writer
+ * 	if (b->rlen == 0)
+ * 		return io_wait(b, read_in, b);
+ *
+ * 	return io_read_partial(b->buf + b->end, &b->rlen, read_in, b);
  * }
  *
- * static struct io_plan wake_reader(struct io_conn *c, struct stdin_buffer *b)
+ * static struct io_plan write_out(struct io_conn *c, struct buffer *b)
  * {
- * 	assert(c == b->writer);
- *	if (!b->reader)
- *		return io_close();
- *	b->len = sizeof(b->inbuf);
- * 	io_wake(b->reader, io_read_partial(b->inbuf, &b->len, wake_writer, b));
- * 	return io_idle();
- * }
+ * 	// Remove what we just wrote.
+ * 	b->start += b->wlen;
+ * 	assert(b->start <= sizeof(b->buf));
  *
- * static void fail_child_write(struct io_conn *conn, struct stdin_buffer *b)
- * {
- * 	if (b->reader)
- * 		err(1, "Failed writing to child.");
- * }
+ * 	// If we wrote somthing, wake writer.
+ * 	if (b->wlen != 0)
+ * 		io_wake(b);
  *
- * // This reads from the child and saves it into buffer.
- * static struct io_plan read_from_child(struct io_conn *conn,
- *					 struct buffer *b)
- * {
- * 	b->off += b->rlen;
+ * 	b->wlen = b->end - b->start;
+ * 	// Nothing to write?  Wait for reader.
+ * 	if (b->wlen == 0) {
+ * 		if (b->finished)
+ * 			return io_close();
+ * 		return io_wait(b, write_out, b);
+ * 	}
  *
- * 	if (b->off == b->max)
- * 		b->buf = realloc(b->buf, b->max *= 2);
- *
- * 	b->rlen = b->max - b->off;
- * 	return io_read_partial(b->buf + b->off, &b->rlen, read_from_child, b);
+ * 	return io_write_partial(b->buf + b->start, &b->wlen, write_out, b);
  * }
  *
  * // Feed a program our stdin, gather its stdout, print that at end.
  * int main(int argc, char *argv[])
  * {
  * 	int tochild[2], fromchild[2];
- * 	struct buffer out;
- * 	struct stdin_buffer sbuf;
+ * 	struct buffer to, from;
  * 	int status;
- * 	size_t off;
- * 	ssize_t ret;
- *	struct io_conn *from_child;
+ * 	struct io_conn *reader;
  *
  * 	if (argc == 1)
  * 		errx(1, "Usage: runner <cmdline>...");
@@ -117,34 +115,19 @@
  * 	close(fromchild[1]);
  * 	signal(SIGPIPE, SIG_IGN);
  *
- *	sbuf.len = sizeof(sbuf.inbuf);
- * 	sbuf.reader = io_new_conn(STDIN_FILENO,
- *				  io_read_partial(sbuf.inbuf, &sbuf.len,
- *						  wake_writer, &sbuf));
- * 	sbuf.writer = io_new_conn(tochild[1], io_idle());
+ * 	// Read from stdin, write to child.
+ * 	memset(&to, 0, sizeof(to));
+ * 	reader = io_new_conn(STDIN_FILENO, read_in(NULL, &to));
+ * 	io_set_finish(reader, finish, &to);
+ * 	io_new_conn(tochild[1], write_out(NULL, &to));
  *
- *	out.max = 128;
- *	out.off = 0;
- *	out.rlen = 128;
- *	out.buf = malloc(out.max);
- *	from_child = io_new_conn(fromchild[0],
- *				 io_read_partial(out.buf, &out.rlen,
- *						 read_from_child, &out));
- * 	if (!sbuf.reader || !sbuf.writer || !from_child)
- * 		err(1, "Allocating connections");
- *
- *	io_set_finish(sbuf.reader, reader_exit, &sbuf);
- *	io_set_finish(sbuf.writer, fail_child_write, &sbuf);
+ * 	// Read from child, write to stdout.
+ * 	reader = io_new_conn(fromchild[0], read_in(NULL, &from));
+ * 	io_set_finish(reader, finish, &from);
+ * 	io_new_conn(STDOUT_FILENO, write_out(NULL, &from));
  *
  * 	io_loop();
  * 	wait(&status);
- *
- * 	for (off = 0; off < out.off; off += ret) {
- * 		ret = write(STDOUT_FILENO, out.buf+off, out.off-off);
- * 		if (ret < 0)
- * 			err(1, "Writing stdout");
- * 	}
- * 	free(out.buf);
  *
  * 	return WIFEXITED(status) ? WEXITSTATUS(status) : 2;
  * }

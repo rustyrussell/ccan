@@ -28,7 +28,7 @@ static void finish_ok(struct io_conn *conn, struct data *d)
 static struct io_plan write_done(struct io_conn *conn, struct data *d)
 {
 	d->state++;
-	return io_idle();
+	return io_wait(d, io_close_cb, NULL);
 }
 
 static struct io_plan read_done(struct io_conn *conn, struct data *d)

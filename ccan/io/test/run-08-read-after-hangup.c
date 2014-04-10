@@ -11,8 +11,13 @@ static char inbuf[8];
 
 static struct io_plan wake_it(struct io_conn *conn, struct io_conn *reader)
 {
-	io_wake(reader, io_read(inbuf, 8, io_close_cb, NULL));
+	io_wake(inbuf);
 	return io_close();
+}
+
+static struct io_plan read_buf(struct io_conn *conn, void *unused)
+{
+	return io_read(inbuf, 8, io_close_cb, NULL);
 }
 
 int main(void)
@@ -23,7 +28,7 @@ int main(void)
 	plan_tests(3);
 
 	ok1(pipe(fds) == 0);
-	conn = io_new_conn(fds[0], io_idle());
+	conn = io_new_conn(fds[0], io_wait(inbuf, read_buf, NULL));
 	io_new_conn(fds[1], io_write("EASYTEST", 8, wake_it, conn));
 
 	ok1(io_loop() == NULL);

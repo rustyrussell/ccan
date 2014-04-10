@@ -167,6 +167,34 @@ void backend_plan_changed(struct io_conn *conn)
 		some_always = true;
 }
 
+void backend_wait_changed(const void *wait)
+{
+	unsigned int i;
+
+	for (i = 0; i < num_fds; i++) {
+		struct io_conn *c, *duplex;
+
+		/* Ignore listeners */
+		if (fds[i]->listener)
+			continue;
+		c = (void *)fds[i];
+		for (duplex = c->duplex; c; c = duplex, duplex = NULL) {
+			/* Ignore closing. */
+			if (!c->plan.next)
+				continue;
+			/* Not idle? */
+			if (c->plan.io)
+				continue;
+			/* Waiting on something else? */
+			if (c->plan.u1.const_vp != wait)
+				continue;
+			/* Make it do the next thing. */
+			c->plan = io_always_(c->plan.next, c->plan.next_arg);
+			backend_plan_changed(c);
+		}
+	}
+}
+
 bool add_conn(struct io_conn *c)
 {
 	if (!add_fd(&c->fd, c->plan.pollflag & (POLLIN|POLLOUT)))

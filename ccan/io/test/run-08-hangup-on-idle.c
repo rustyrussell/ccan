@@ -15,6 +15,11 @@ static struct io_plan timeout_wakeup(struct io_conn *conn, char *buf)
 	return io_read(buf, 16, io_close_cb, NULL);
 }
 
+static struct io_plan never(struct io_conn *conn, void *unused)
+{
+	abort();
+}
+
 int main(void)
 {
 	int fds[2];
@@ -28,7 +33,7 @@ int main(void)
 	/* Write then close. */
 	io_new_conn(fds[1], io_write("hello there world", 16,
 				     io_close_cb, NULL));
-	conn = io_new_conn(fds[0], io_idle());
+	conn = io_new_conn(fds[0], io_wait(buf, never, NULL));
 
 	/* To avoid assert(num_waiting) */
 	ok1(pipe(fds2) == 0);

@@ -24,8 +24,6 @@ bool io_plan_nodebug;
 struct io_conn *current;
 /* User-defined function to select which connection(s) to debug. */
 bool (*io_debug_conn)(struct io_conn *conn);
-/* Set when we wake up an connection we are debugging. */
-bool io_debug_wakeup;
 
 struct io_plan io_debug(struct io_plan plan)
 {
@@ -36,12 +34,9 @@ struct io_plan io_debug(struct io_plan plan)
 		return plan;
 	}
 
-	if (!current || !doing_debug_on(current)) {
-		if (!io_debug_wakeup)
-			return plan;
-	}
+	if (!current || !doing_debug_on(current))
+		return plan;
 
-	io_debug_wakeup = false;
 	current->plan = plan;
 	backend_plan_changed(current);
 
@@ -68,7 +63,7 @@ struct io_plan io_debug(struct io_plan plan)
 
 	/* Return a do-nothing plan, so backend_plan_changed in
 	 * io_ready doesn't do anything (it's already been called). */
-	return io_idle_();
+	return io_wait_(NULL, (void *)1, NULL);
 }
 
 int io_debug_io(int ret)
@@ -107,22 +102,12 @@ int io_debug_io(int ret)
 	return 2;
 }
 
-static void debug_io_wake(struct io_conn *conn)
-{
-	/* We want linear if we wake a debugged connection, too. */
-	if (io_debug_conn && io_debug_conn(conn))
-		io_debug_wakeup = true;
-}
-
 /* Counterpart to io_plan_no_debug(), called in macros in io.h */
 static void io_plan_debug_again(void)
 {
 	io_plan_nodebug = false;
 }
 #else
-static void debug_io_wake(struct io_conn *conn)
-{
-}
 static void io_plan_debug_again(void)
 {
 }
@@ -436,37 +421,26 @@ struct io_plan io_connect_(int fd, const struct addrinfo *addr,
 	return plan;
 }
 
-struct io_plan io_idle_(void)
+struct io_plan io_wait_(const void *wait,
+			struct io_plan (*cb)(struct io_conn *, void*),
+			void *arg)
 {
 	struct io_plan plan;
 
+	assert(cb);
 	plan.pollflag = 0;
 	plan.io = NULL;
-	/* Never called (overridden by io_wake), but NULL means closing */
-	plan.next = (void *)io_idle_;
+	plan.next = cb;
+	plan.next_arg = arg;
+
+	plan.u1.const_vp = wait;
 
 	return plan;
 }
 
-bool io_is_idle(const struct io_conn *conn)
+void io_wake(const void *wait)
 {
-	return conn->plan.io == NULL;
-}
-
-void io_wake_(struct io_conn *conn, struct io_plan plan)
-
-{
-	io_plan_debug_again();
-
-	/* It might be closing, but we haven't called its finish() yet. */
-	if (!conn->plan.next)
-		return;
-	/* It was idle, right? */
-	assert(!conn->plan.io);
-	conn->plan = plan;
-	backend_plan_changed(conn);
-
-	debug_io_wake(conn);
+	backend_wait_changed(wait);
 }
 
 void io_ready(struct io_conn *conn)

@@ -29,8 +29,7 @@ static struct io_plan read_done(struct io_conn *conn, struct data *d)
 
 static void finish_waker(struct io_conn *conn, struct data *d)
 {
-	ok1(io_is_idle(idler));
-	io_wake(idler, io_read(d->buf, sizeof(d->buf), read_done, d));
+	io_wake(d);
 	ok1(d->state == 1);
 	d->state++;
 }
@@ -47,13 +46,18 @@ static struct io_plan never(struct io_conn *conn, void *arg)
 	abort();
 }
 
+static struct io_plan read_buf(struct io_conn *conn, struct data *d)
+{
+	return io_read(d->buf, sizeof(d->buf), read_done, d);
+}
+
 static void init_conn(int fd, struct data *d)
 {
 	int fd2;
 
 	ok1(d->state == 0);
 	d->state++;
-	idler = io_new_conn(fd, io_idle());
+	idler = io_new_conn(fd, io_wait(d, read_buf, d));
 	io_set_finish(idler, finish_idle, d);
 
 	/* This will wake us up, as read will fail. */
@@ -103,7 +107,7 @@ int main(void)
 	int fd, status;
 
 	/* This is how many tests you plan to run */
-	plan_tests(14);
+	plan_tests(13);
 	d->state = 0;
 	fd = make_listen_fd(PORT, &addrinfo);
 	ok1(fd >= 0);

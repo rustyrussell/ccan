@@ -314,6 +314,7 @@ struct io_plan io_write_partial_(const void *data, size_t *len,
 struct io_plan io_always_(struct io_plan (*cb)(struct io_conn *, void *),
 			  void *arg);
 
+
 /**
  * io_connect - plan to connect to a listening socket.
  * @fd: file descriptor.
@@ -360,19 +361,32 @@ struct io_plan io_connect_(int fd, const struct addrinfo *addr,
 			   void *arg);
 
 /**
- * io_idle - plan to do nothing.
+ * io_wait - plan to wait for something.
+ * @wait: the address to wait on.
+ * @cb: function to call after waiting.
+ * @arg: @cb argument
  *
- * This indicates the connection is idle: io_wake() will be called later do
- * give the connection a new plan.
+ * This indicates the connection is idle: io_wake() will be called later to
+ * restart the connection.
  *
  * Example:
  *	struct io_conn *sleeper;
- *	sleeper = io_new_conn(open("/dev/null", O_RDONLY), io_idle());
+ *	unsigned int counter = 0;
+ *	sleeper = io_new_conn(open("/dev/null", O_RDONLY),
+ *			      io_wait(&counter, io_close_cb, NULL));
  *	if (!sleeper)
  *		exit(1);
  */
-#define io_idle() io_debug(io_idle_())
-struct io_plan io_idle_(void);
+#define io_wait(wait, cb, arg)						\
+	io_debug(io_wait_(wait,						\
+			  typesafe_cb_preargs(struct io_plan, void *,	\
+					      (cb), (arg),		\
+					      struct io_conn *),	\
+			  (arg)))
+
+struct io_plan io_wait_(const void *wait,
+			struct io_plan (*cb)(struct io_conn *, void *),
+			void *arg);
 
 /**
  * io_timeout - set timeout function if the callback doesn't complete.
@@ -440,35 +454,18 @@ bool io_timeout_(struct io_conn *conn, struct timespec ts,
 struct io_conn *io_duplex_(struct io_conn *conn, struct io_plan plan);
 
 /**
- * io_wake - wake up an idle connection.
- * @conn: an idle connection.
- * @plan: the next I/O plan for @conn.
- *
- * This makes @conn ready to do I/O the next time around the io_loop().
+ * io_wake - wake up any connections waiting on @wait
+ * @wait: the address to trigger.
  *
  * Example:
- *	struct io_conn *sleeper;
- *	sleeper = io_new_conn(open("/dev/null", O_RDONLY), io_idle());
+ *	unsigned int wait;
  *
- *	io_wake(sleeper, io_write("junk", 4, io_close_cb, NULL));
+ *	io_new_conn(open("/dev/null", O_RDONLY),
+ *		   io_wait(&wait, io_close_cb, NULL));
+ *
+ *	io_wake(&wait);
  */
-#define io_wake(conn, plan) (io_plan_no_debug(), io_wake_((conn), (plan)))
-void io_wake_(struct io_conn *conn, struct io_plan plan);
-
-/**
- * io_is_idle - is a connection idle?
- *
- * This can be useful for complex protocols, eg. where you want a connection
- * to send something, so you queue it and wake it if it's idle.
- *
- * Example:
- *	struct io_conn *sleeper;
- *	sleeper = io_new_conn(open("/dev/null", O_RDONLY), io_idle());
- *
- *	assert(io_is_idle(sleeper));
- *	io_wake(sleeper, io_write("junk", 4, io_close_cb, NULL));
- */
-bool io_is_idle(const struct io_conn *conn);
+void io_wake(const void *wait);
 
 /**
  * io_break - return from io_loop()
