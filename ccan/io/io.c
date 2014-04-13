@@ -490,8 +490,11 @@ struct io_plan io_close_cb(struct io_conn *conn, void *arg)
 
 void io_close_other(struct io_conn *conn)
 {
-	conn->plan = io_close_();
-	backend_plan_changed(conn);
+	/* Don't close if already closing! */
+	if (conn->plan.next) {
+		conn->plan = io_close_();
+		backend_plan_changed(conn);
+	}
 }
 
 /* Exit the loop, returning this (non-NULL) arg. */
