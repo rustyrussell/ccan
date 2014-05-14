@@ -75,7 +75,7 @@ static inline void bitmap_change_bit(bitmap *bitmap, int n)
 	BITMAP_WORD(bitmap, n) ^= BITMAP_WORDBIT(n);
 }
 
-static inline bool bitmap_test_bit(bitmap *bitmap, int n)
+static inline bool bitmap_test_bit(const bitmap *bitmap, int n)
 {
 	return !!(BITMAP_WORD(bitmap, n) & BITMAP_WORDBIT(n));
 }
