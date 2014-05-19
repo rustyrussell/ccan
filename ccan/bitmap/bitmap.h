@@ -91,7 +91,7 @@ static inline void bitmap_fill(bitmap *bitmap, int nbits)
 	memset(bitmap, 0xff, bitmap_sizeof(nbits));
 }
 
-static inline void bitmap_copy(bitmap *dst, bitmap *src, int nbits)
+static inline void bitmap_copy(bitmap *dst, const bitmap *src, int nbits)
 {
 	memcpy(dst, src, bitmap_sizeof(nbits));
 }
@@ -113,7 +113,7 @@ BITMAP_DEF_BINOP(andnot, & ~)
 
 #undef BITMAP_DEF_BINOP
 
-static inline void bitmap_complement(bitmap *dst, bitmap *src, int nbits)
+static inline void bitmap_complement(bitmap *dst, const bitmap *src, int nbits)
 {
 	unsigned int i;
 
@@ -121,14 +121,16 @@ static inline void bitmap_complement(bitmap *dst, bitmap *src, int nbits)
 		dst[i].w = ~src[i].w;
 }
 
-static inline bool bitmap_equal(bitmap *src1, bitmap *src2, int nbits)
+static inline bool bitmap_equal(const bitmap *src1, const bitmap *src2,
+				int nbits)
 {
 	return (memcmp(src1, src2, BITMAP_HEADBYTES(nbits)) == 0)
 		&& (!BITMAP_HASTAIL(nbits)
 		    || (BITMAP_TAIL(src1, nbits) == BITMAP_TAIL(src2, nbits)));
 }
 
-static inline bool bitmap_intersects(bitmap *src1, bitmap *src2, int nbits)
+static inline bool bitmap_intersects(const bitmap *src1, const bitmap *src2,
+				     int nbits)
 {
 	unsigned int i;
 
@@ -142,7 +144,8 @@ static inline bool bitmap_intersects(bitmap *src1, bitmap *src2, int nbits)
 	return false;
 }
 
-static inline bool bitmap_subset(bitmap *src1, bitmap *src2, int nbits)
+static inline bool bitmap_subset(const bitmap *src1, const bitmap *src2,
+				 int nbits)
 {
 	unsigned int i;
 
@@ -156,7 +159,7 @@ static inline bool bitmap_subset(bitmap *src1, bitmap *src2, int nbits)
 	return true;
 }
 
-static inline bool bitmap_full(bitmap *bitmap, int nbits)
+static inline bool bitmap_full(const bitmap *bitmap, int nbits)
 {
 	unsigned int i;
 
@@ -171,7 +174,7 @@ static inline bool bitmap_full(bitmap *bitmap, int nbits)
 	return true;
 }
 
-static inline bool bitmap_empty(bitmap *bitmap, int nbits)
+static inline bool bitmap_empty(const bitmap *bitmap, int nbits)
 {
 	unsigned int i;
 
