@@ -679,7 +679,7 @@ int main(int argc, char *argv[])
 	if (argc == 1)
 		dir = cwd;
 	else
-		dir = path_join(NULL, cwd, argv[1]);
+		dir = path_simplify(NULL, take(path_join(NULL, cwd, argv[1])));
 
 	ccan_dir = find_ccan_dir(dir);
 	if (!ccan_dir)
