@@ -125,9 +125,10 @@ static void check_idem(struct ccan_file *f, struct score *score)
 	if (!f->lines[i])
 		return;
 
-	/* We expect a condition on this line. */
+	/* We expect a condition around this line. */
 	if (!line_info[i].cond) {
-		score_file_error(score, f, i+1, "Expected #ifndef");
+		score_file_error(score, f, first_preproc_line+1,
+				 "Expected #ifndef");
 		return;
 	}
 
@@ -136,7 +137,8 @@ static void check_idem(struct ccan_file *f, struct score *score)
 	/* We expect the condition to be ! IFDEF <symbol>. */
 	if (line_info[i].cond->type != PP_COND_IFDEF
 	    || !line_info[i].cond->inverse) {
-		score_file_error(score, f, i+1, "Expected #ifndef");
+		score_file_error(score, f, first_preproc_line+1,
+				 "Expected #ifndef");
 		return;
 	}
 
@@ -156,6 +158,9 @@ static void check_idem(struct ccan_file *f, struct score *score)
 				 line_info[i].cond->symbol);
 		return;
 	}
+
+	/* Record this for use in depends_accurate */
+	f->idempotent_cond = line_info[i].cond;
 
 	/* Rest of code should all be covered by that conditional. */
 	for (i++; f->lines[i]; i++) {

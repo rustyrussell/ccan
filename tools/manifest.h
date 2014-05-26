@@ -80,6 +80,9 @@ struct ccan_file {
 
 	/* Simplified stream (lowercase letters and single spaces) */
 	char *simplified;
+
+	/* Condition for idempotent wrapper (filled by headers_idempotent) */
+	struct pp_conditions *idempotent_cond;
 };
 
 /* A new ccan_file, with the given dir and name (either can be take()). */

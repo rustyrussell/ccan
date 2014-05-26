@@ -78,6 +78,8 @@ struct ccan_file *new_ccan_file(const void *ctx, const char *dir,
 	f->fullname = path_join(f, dir, f->name);
 	f->contents = NULL;
 	f->simplified = NULL;
+	f->idempotent_cond = NULL;
+
 	return f;
 }
 

@@ -53,10 +53,9 @@ static bool check_dep_includes(struct manifest *m,
 		if (has_dep(m, deps, used, mod))
 			continue;
 
-		/* FIXME: we can't be sure about
-		 * conditional includes, so don't
-		 * complain. */
-		if (!li[i].cond) {
+		/* FIXME: we can't be sure about conditional includes,
+		 * so don't complain (handle common case of idempotent wrap) */
+		if (!li[i].cond || li[i].cond == f->idempotent_cond) {
 			score_file_error(score, f, i+1,
 					 "%s not listed in _info", mod);
 			ok = false;
@@ -138,7 +137,7 @@ struct ccanlint depends_accurate = {
 	.key = "depends_accurate",
 	.name = "Module's CCAN dependencies are the only CCAN files #included",
 	.check = check_depends_accurate,
-	.needs = "depends_exist test_depends_exist"
+	.needs = "depends_exist test_depends_exist headers_idempotent"
 };
 
 REGISTER_TEST(depends_accurate);
