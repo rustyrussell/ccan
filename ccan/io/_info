@@ -141,6 +141,7 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/typesafe_cb\n");
 		printf("ccan/time\n");
 		printf("ccan/timer\n");
 		return 0;
