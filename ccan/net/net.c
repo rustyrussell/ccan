@@ -159,6 +159,9 @@ int net_connect_complete(struct pollfd pfds[2])
 			}
 			continue;
 		}
+		if (!(pfds[i].revents & POLLOUT))
+			continue;
+
 		if (getsockopt(pfds[i].fd, SOL_SOCKET, SO_ERROR, &err,
 			       &errlen) != 0) {
 			net_connect_abort(pfds);
