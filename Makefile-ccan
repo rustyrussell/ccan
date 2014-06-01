@@ -60,6 +60,7 @@ MODS_WITH_SRC := antithread \
 	io \
 	isaac \
 	iscsi \
+	jacobson_karels \
 	jmap \
 	json \
 	jset \
