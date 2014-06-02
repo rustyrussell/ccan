@@ -20,6 +20,7 @@ MODS_NO_SRC := alignof \
 	container_of \
 	darray \
 	endian \
+	minmax \
 	objset \
 	short_types \
 	tcon \
