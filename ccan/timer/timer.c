@@ -12,23 +12,23 @@ struct timer_level {
 	struct list_head list[PER_LEVEL];
 };
 
-static uint64_t time_to_grains(struct timespec ts)
+static uint64_t time_to_grains(struct timeabs t)
 {
-	return ts.tv_sec * ((uint64_t)1000000000 / TIMER_GRANULARITY)
-		+ (ts.tv_nsec / TIMER_GRANULARITY);
+	return t.ts.tv_sec * ((uint64_t)1000000000 / TIMER_GRANULARITY)
+		+ (t.ts.tv_nsec / TIMER_GRANULARITY);
 }
 
-static struct timespec grains_to_time(uint64_t grains)
+static struct timeabs grains_to_time(uint64_t grains)
 {
-	struct timespec ts;
+	struct timeabs t;
 
-	ts.tv_sec = grains / (1000000000 / TIMER_GRANULARITY);
-	ts.tv_nsec = (grains % (1000000000 / TIMER_GRANULARITY))
+	t.ts.tv_sec = grains / (1000000000 / TIMER_GRANULARITY);
+	t.ts.tv_nsec = (grains % (1000000000 / TIMER_GRANULARITY))
 		* TIMER_GRANULARITY;
-	return ts;
+	return t;
 }
 
-void timers_init(struct timers *timers, struct timespec start)
+void timers_init(struct timers *timers, struct timeabs start)
 {
 	unsigned int i;
 
@@ -63,7 +63,7 @@ static void timer_add_raw(struct timers *timers, struct timer *t)
 	list_add_tail(l, &t->list);
 }
 
-void timer_add(struct timers *timers, struct timer *t, struct timespec when)
+void timer_add(struct timers *timers, struct timer *t, struct timeabs when)
 {
 	t->time = time_to_grains(when);
 
@@ -203,7 +203,7 @@ static bool update_first(struct timers *timers)
 	return true;
 }
 
-bool timer_earliest(struct timers *timers, struct timespec *first)
+bool timer_earliest(struct timers *timers, struct timeabs *first)
 {
 	if (!update_first(timers))
 		return false;
@@ -261,7 +261,7 @@ static void timer_fast_forward(struct timers *timers, uint64_t time)
 
 /* Fills list of expired timers. */
 void timers_expire(struct timers *timers,
-		   struct timespec expire,
+		   struct timeabs expire,
 		   struct list_head *list)
 {
 	uint64_t now = time_to_grains(expire);

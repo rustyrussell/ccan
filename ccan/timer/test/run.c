@@ -3,34 +3,41 @@
 #include <ccan/timer/timer.c>
 #include <ccan/tap/tap.h>
 
+static struct timeabs timeabs_from_nsec(unsigned long long nsec)
+{
+	struct timeabs epoch = { { 0, 0 } };
+	return timeabs_add(epoch, time_from_nsec(nsec));
+}
+
 int main(void)
 {
 	struct timers timers;
 	struct timer t[64];
 	struct list_head expired;
-	struct timespec earliest;
+	struct timeabs earliest;
 	uint64_t i;
+	struct timeabs epoch = { { 0, 0 } };
 
 	/* This is how many tests you plan to run */
 	plan_tests(488);
 
-	timers_init(&timers, time_from_nsec(0));
+	timers_init(&timers, epoch);
 	ok1(timers_check(&timers, NULL));
 	ok1(!timer_earliest(&timers, &earliest));
 
-	timer_add(&timers, &t[0], time_from_nsec(1));
+	timer_add(&timers, &t[0], timeabs_from_nsec(1));
 	ok1(timers_check(&timers, NULL));
 	ok1(timer_earliest(&timers, &earliest));
-	ok1(time_eq(earliest, grains_to_time(t[0].time)));
+	ok1(timeabs_eq(earliest, grains_to_time(t[0].time)));
 	timer_del(&timers, &t[0]);
 	ok1(timers_check(&timers, NULL));
 	ok1(!timer_earliest(&timers, &earliest));
 
 	/* Check timer ordering. */
 	for (i = 0; i < 32; i++) {
-		timer_add(&timers, &t[i*2], time_from_nsec(1ULL << i));
+		timer_add(&timers, &t[i*2], timeabs_from_nsec(1ULL << i));
 		ok1(timers_check(&timers, NULL));
-		timer_add(&timers, &t[i*2+1], time_from_nsec((1ULL << i) + 1));
+		timer_add(&timers, &t[i*2+1], timeabs_from_nsec((1ULL << i) + 1));
 		ok1(timers_check(&timers, NULL));
 	}
 
@@ -52,9 +59,9 @@ int main(void)
 	for (i = 0; i < 32; i++) {
 		uint64_t exp = (uint64_t)TIMER_GRANULARITY << i;
 
-		timer_add(&timers, &t[i*2], time_from_nsec(exp));
+		timer_add(&timers, &t[i*2], timeabs_from_nsec(exp));
 		ok1(timers_check(&timers, NULL));
-		timer_add(&timers, &t[i*2+1], time_from_nsec(exp + 1));
+		timer_add(&timers, &t[i*2+1], timeabs_from_nsec(exp + 1));
 		ok1(timers_check(&timers, NULL));
 	}
 

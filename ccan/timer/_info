@@ -37,14 +37,14 @@
  *			s = malloc(sizeof(*s));
  *			s->string = argv[1];
  *			timer_add(&timers, &s->timer,
- *				  time_add(time_now(),
- *					   time_from_msec(atol(argv[2]))));
+ *				  timeabs_add(time_now(),
+ *					      time_from_msec(atol(argv[2]))));
  *			list_add_tail(&strings, &s->node);
  *			argv += 2;
  *		}
  *
  *		while (!list_empty(&strings)) {
- *			struct timespec now = time_now();
+ *			struct timeabs now = time_now();
  *			list_for_each(&strings, s, node)
  *				printf("%s", s->string);
  *			timers_expire(&timers, now, &expired);

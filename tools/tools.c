@@ -39,7 +39,7 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 	int p[2];
 	struct rbuf in;
 	int status, ms;
-	struct timespec start;
+	struct timeabs start;
 
 	*ok = false;
 	if (pipe(p) != 0)
@@ -71,7 +71,7 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 
 		signal(SIGALRM, killme);
 		itim.it_interval.tv_sec = itim.it_interval.tv_usec = 0;
-		itim.it_value = timespec_to_timeval(time_from_msec(*timeout_ms));
+		itim.it_value = timespec_to_timeval(time_from_msec(*timeout_ms).ts);
 		setitimer(ITIMER_REAL, &itim, NULL);
 
 		status = system(cmd);
@@ -90,7 +90,7 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 	if (waitpid(pid, &status, 0) != pid)
 		err(1, "Failed to wait for child");
 
-	ms = time_to_msec(time_sub(time_now(), start));
+	ms = time_to_msec(time_between(time_now(), start));
 	if (ms > *timeout_ms)
 		*timeout_ms = 0;
 	else

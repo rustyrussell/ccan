@@ -391,7 +391,7 @@ struct io_plan io_wait_(const void *wait,
 /**
  * io_timeout - set timeout function if the callback doesn't complete.
  * @conn: the current connection.
- * @ts: how long until the timeout should be called.
+ * @t: how long until the timeout should be called.
  * @cb: callback to call.
  * @arg: argument to @cb.
  *
@@ -419,7 +419,7 @@ struct io_plan io_wait_(const void *wait,
 					(fn), (arg),			\
 					struct io_conn *),		\
 		    (arg))
-bool io_timeout_(struct io_conn *conn, struct timespec ts,
+bool io_timeout_(struct io_conn *conn, struct timerel t,
 		 struct io_plan (*fn)(struct io_conn *, void *), void *arg);
 
 /**

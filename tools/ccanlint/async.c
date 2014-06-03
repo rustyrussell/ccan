@@ -68,7 +68,7 @@ static void run_more(void)
 
 			signal(SIGALRM, killme);
 			itim.it_interval.tv_sec = itim.it_interval.tv_usec = 0;
-			itim.it_value = timespec_to_timeval(time_from_msec(c->time_ms));
+			itim.it_value = timespec_to_timeval(time_from_msec(c->time_ms).ts);
 			setitimer(ITIMER_REAL, &itim, NULL);
 
 			c->status = system(c->command);

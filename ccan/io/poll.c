@@ -285,12 +285,12 @@ static bool finish_conns(struct io_conn **ready)
 	return false;
 }
 
-void backend_add_timeout(struct io_conn *conn, struct timespec duration)
+void backend_add_timeout(struct io_conn *conn, struct timerel duration)
 {
 	if (!timeouts.base)
 		timers_init(&timeouts, time_now());
 	timer_add(&timeouts, &conn->timeout->timer,
-		  time_add(time_now(), duration));
+		  timeabs_add(time_now(), duration));
 	conn->timeout->conn = conn;
 }
 
@@ -330,11 +330,11 @@ void *do_io_loop(struct io_conn **ready)
 
 	while (!io_loop_return) {
 		int i, r, timeout = INT_MAX;
-		struct timespec now;
+		struct timeabs now;
 		bool some_timeouts = false;
 
 		if (timeouts.base) {
-			struct timespec first;
+			struct timeabs first;
 			struct list_head expired;
 			struct io_timeout *t;
 
@@ -353,7 +353,7 @@ void *do_io_loop(struct io_conn **ready)
 
 			/* Now figure out how long to wait for the next one. */
 			if (timer_earliest(&timeouts, &first)) {
-				uint64_t f = time_to_msec(time_sub(first, now));
+				uint64_t f = time_to_msec(time_between(first, now));
 				if (f < INT_MAX)
 					timeout = f;
 			}

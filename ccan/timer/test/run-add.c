@@ -20,11 +20,12 @@ int main(void)
 	struct timer t;
 	uint64_t diff;
 	unsigned int i;
+	struct timeabs epoch = { { 0, 0 } };
 
 	/* This is how many tests you plan to run */
 	plan_tests(2 + (18 + (MAX_ORD - 4) * 3) * (18 + (MAX_ORD - 4) * 3));
 
-	timers_init(&timers, time_from_nsec(0));
+	timers_init(&timers, epoch);
 	ok1(timers_check(&timers, NULL));
 
 	for (i = 0; i < 4; i++)

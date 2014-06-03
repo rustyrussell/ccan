@@ -198,7 +198,7 @@ struct io_conn *io_duplex_(struct io_conn *old, struct io_plan plan)
 	return conn;
 }
 
-bool io_timeout_(struct io_conn *conn, struct timespec ts,
+bool io_timeout_(struct io_conn *conn, struct timerel t,
 		 struct io_plan (*cb)(struct io_conn *, void *), void *arg)
 {
 	assert(cb);
@@ -212,7 +212,7 @@ bool io_timeout_(struct io_conn *conn, struct timespec ts,
 
 	conn->timeout->next = cb;
 	conn->timeout->next_arg = arg;
-	backend_add_timeout(conn, ts);
+	backend_add_timeout(conn, t);
 	return true;
 }
 

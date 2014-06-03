@@ -31,7 +31,7 @@ struct timer;
  *
  *	timers_init(&timeouts, time_now());
  */
-void timers_init(struct timers *timers, struct timespec start);
+void timers_init(struct timers *timers, struct timeabs start);
 
 /**
  * timers_cleanup - free allocations within timers struct.
@@ -57,10 +57,9 @@ void timers_cleanup(struct timers *timers);
  *	struct timer t;
  *
  *	// Timeout in 100ms.
- *	timer_add(&timeouts, &t, time_add(time_now(), time_from_msec(100)));
+ *	timer_add(&timeouts, &t, timeabs_add(time_now(), time_from_msec(100)));
  */
-void timer_add(struct timers *timers, struct timer *timer,
-	       struct timespec when);
+void timer_add(struct timers *timers, struct timer *timer, struct timeabs when);
 
 /**
  * timer_del - remove an unexpired timer.
@@ -77,17 +76,17 @@ void timer_del(struct timers *timers, struct timer *timer);
 /**
  * timer_earliest - find out the first time when a timer will expire
  * @timers: the struct timers
- * @first: the time, only set if there is a timer.
+ * @first: the expiry time, only set if there is a timer.
  *
  * This returns false, and doesn't alter @first if there are no
  * timers.  Otherwise, it sets @first to the expiry time of the first
  * timer (rounded to TIMER_GRANULARITY nanoseconds), and returns true.
  *
  * Example:
- *	struct timespec next = { (time_t)-1ULL, -1UL };
+ *	struct timeabs next = { { (time_t)-1ULL, -1UL } };
  *	timer_earliest(&timeouts, &next);
  */
-bool timer_earliest(struct timers *timers, struct timespec *first);
+bool timer_earliest(struct timers *timers, struct timeabs *first);
 
 /**
  * timers_expire - update timers structure and remove expired timers.
@@ -114,7 +113,7 @@ bool timer_earliest(struct timers *timers, struct timespec *first);
  *		printf("Timer expired!\n");
  */
 void timers_expire(struct timers *timers,
-		   struct timespec expire,
+		   struct timeabs expire,
 		   struct list_head *list);
 
 /**
