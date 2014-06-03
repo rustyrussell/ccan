@@ -6,33 +6,33 @@
 #if !HAVE_CLOCK_GETTIME && !HAVE_CLOCK_GETTIME_IN_LIBRT
 #include <sys/time.h>
 
-struct timespec time_now(void)
+struct timeabs time_now(void)
 {
 	struct timeval now;
-	struct timespec ret;
+	struct timeabs ret;
 	gettimeofday(&now, NULL);
-	ret.tv_sec = now.tv_sec;
-	ret.tv_nsec = now.tv_usec * 1000;
-	return TIME_CHECK(ret);
+	ret.ts.tv_sec = now.tv_sec;
+	ret.ts.tv_nsec = now.tv_usec * 1000;
+	return TIMEABS_CHECK(ret);
 }
 #else
 #include <time.h>
-struct timespec time_now(void)
+struct timeabs time_now(void)
 {
-	struct timespec ret;
-	clock_gettime(CLOCK_REALTIME, &ret);
-	return TIME_CHECK(ret);
+	struct timeabs ret;
+	clock_gettime(CLOCK_REALTIME, &ret.ts);
+	return TIMEABS_CHECK(ret);
 }
 #endif /* HAVE_CLOCK_GETTIME || HAVE_CLOCK_GETTIME_IN_LIBRT */
 
-struct timespec time_divide(struct timespec t, unsigned long div)
+struct timerel time_divide(struct timerel t, unsigned long div)
 {
-	struct timespec res;
+	struct timerel res;
 	uint64_t rem, ns;
 
 	/* Dividing seconds is simple. */
-	res.tv_sec = TIME_CHECK(t).tv_sec / div;
-	rem = t.tv_sec % div;
+	res.ts.tv_sec = TIMEREL_CHECK(t).ts.tv_sec / div;
+	rem = t.ts.tv_sec % div;
 
 	/* If we can't fit remainder * 1,000,000,000 in 64 bits? */
 #if 0 /* ilog is great, but we use fp for multiply anyway. */
@@ -45,37 +45,37 @@ struct timespec time_divide(struct timespec t, unsigned long div)
 #endif
 	if (rem & ~(((uint64_t)1 << 30) - 1)) {
 		/* FIXME: fp is cheating! */
-		double nsec = rem * 1000000000.0 + t.tv_nsec;
-		res.tv_nsec = nsec / div;
+		double nsec = rem * 1000000000.0 + t.ts.tv_nsec;
+		res.ts.tv_nsec = nsec / div;
 	} else {
-		ns = rem * 1000000000 + t.tv_nsec;
-		res.tv_nsec = ns / div;
+		ns = rem * 1000000000 + t.ts.tv_nsec;
+		res.ts.tv_nsec = ns / div;
 	}
-	return TIME_CHECK(res);
+	return TIMEREL_CHECK(res);
 }
 
-struct timespec time_multiply(struct timespec t, unsigned long mult)
+struct timerel time_multiply(struct timerel t, unsigned long mult)
 {
-	struct timespec res;
+	struct timerel res;
 
 	/* Are we going to overflow if we multiply nsec? */
 	if (mult & ~((1UL << 30) - 1)) {
 		/* FIXME: fp is cheating! */
-		double nsec = (double)t.tv_nsec * mult;
+		double nsec = (double)t.ts.tv_nsec * mult;
 
-		res.tv_sec = nsec / 1000000000.0;
-		res.tv_nsec = nsec - (res.tv_sec * 1000000000.0);
+		res.ts.tv_sec = nsec / 1000000000.0;
+		res.ts.tv_nsec = nsec - (res.ts.tv_sec * 1000000000.0);
 	} else {
-		uint64_t nsec = t.tv_nsec * mult;
+		uint64_t nsec = t.ts.tv_nsec * mult;
 
-		res.tv_nsec = nsec % 1000000000;
-		res.tv_sec = nsec / 1000000000;
+		res.ts.tv_nsec = nsec % 1000000000;
+		res.ts.tv_sec = nsec / 1000000000;
 	}
-	res.tv_sec += TIME_CHECK(t).tv_sec * mult;
-	return TIME_CHECK(res);
+	res.ts.tv_sec += TIMEREL_CHECK(t).ts.tv_sec * mult;
+	return TIMEREL_CHECK(res);
 }
 
-struct timespec time_check(struct timespec t, const char *abortstr)
+struct timespec time_check_(struct timespec t, const char *abortstr)
 {
 	if (t.tv_sec < 0 || t.tv_nsec >= 1000000000) {
 		if (abortstr) {
@@ -100,4 +100,20 @@ struct timespec time_check(struct timespec t, const char *abortstr)
 		}
 	}
 	return t;
+}
+
+struct timerel timerel_check(struct timerel t, const char *abortstr)
+{
+	struct timerel ret;
+
+	ret.ts = time_check_(t.ts, abortstr);
+	return ret;
+}
+
+struct timeabs timeabs_check(struct timeabs t, const char *abortstr)
+{
+	struct timeabs ret;
+
+	ret.ts = time_check_(t.ts, abortstr);
+	return ret;
 }
