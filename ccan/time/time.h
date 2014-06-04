@@ -48,6 +48,28 @@ struct timeabs {
 	struct timespec ts;
 };
 
+/**
+ * struct timemono - a monotonic time.
+ * @ts: the actual timespec value.
+ *
+ * This comes from the monotonic clock (if available), so it's useful
+ * for measuring intervals as it won't change even if the system clock
+ * is moved for some reason.
+ */
+struct timemono {
+	struct timespec ts;
+};
+
+/**
+ * TIME_HAVE_MONOTONIC - defined if we really have a monotonic clock.
+ *
+ * Otherwise time_mono() just refers to time_now().  Your code might
+ * test this if you really need a monotonic clock.
+ */
+#if (HAVE_CLOCK_GETTIME || HAVE_CLOCK_GETTIME_IN_LIBRT) && defined(CLOCK_MONOTONIC)
+#define TIME_HAVE_MONOTONIC 1
+#endif
+
 struct timespec time_check_(struct timespec in, const char *abortstr);
 
 /**
@@ -98,6 +120,16 @@ struct timeabs timeabs_check(struct timeabs in, const char *abortstr);
  *	printf("Now is %lu seconds since epoch\n", (long)time_now().ts.tv_sec);
  */
 struct timeabs time_now(void);
+
+/**
+ * time_mono - return the current monotonic time
+ *
+ * This value is only really useful for measuring time intervals.
+ *
+ * See also:
+ *	time_since()
+ */
+struct timemono time_mono(void);
 
 static inline bool time_greater_(struct timespec a, struct timespec b)
 {
@@ -265,6 +297,22 @@ static inline struct timerel time_sub(struct timerel a, struct timerel b)
  * This returns a well formed struct timerel of @a - @b.
  */
 static inline struct timerel time_between(struct timeabs recent, struct timeabs old)
+{
+	struct timerel t;
+
+	t.ts = time_sub_(recent.ts, old.ts);
+	return t;
+}
+
+/**
+ * timemono_between - time between two monotonic times
+ * @recent: the larger time.
+ * @old: the smaller time.
+ *
+ * This returns a well formed struct timerel of @recent - @old.
+ */
+static inline struct timerel timemono_between(struct timemono recent,
+					      struct timemono old)
 {
 	struct timerel t;
 

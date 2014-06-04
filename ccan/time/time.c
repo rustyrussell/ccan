@@ -25,6 +25,17 @@ struct timeabs time_now(void)
 }
 #endif /* HAVE_CLOCK_GETTIME || HAVE_CLOCK_GETTIME_IN_LIBRT */
 
+struct timemono time_mono(void)
+{
+	struct timemono ret;
+#ifdef TIME_HAVE_MONOTONIC
+	clock_gettime(CLOCK_MONOTONIC, &ret.ts);
+#else /* Best we can do */
+	ret.ts = time_now().ts;
+#endif /* !HAVE_TIME_MONOTONIC */
+	return ret;
+}
+
 struct timerel time_divide(struct timerel t, unsigned long div)
 {
 	struct timerel res;
