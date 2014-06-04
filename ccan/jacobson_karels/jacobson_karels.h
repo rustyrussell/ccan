@@ -10,13 +10,13 @@
 	struct _name##_state { \
 		_type rtt, variance; \
 	}; \
-	static void _name##_init(struct _name##_state *s, \
+	static inline void _name##_init(struct _name##_state *s, \
 				 _type rtt0, _type var0)  \
 	{ \
 		s->rtt = rtt0; \
 		s->variance = var0; \
 	} \
-	static void _name##_update(struct _name##_state *s, _type sample) \
+	static inline void _name##_update(struct _name##_state *s, _type sample) \
 	{ \
 		_type diff = sample - s->rtt; \
 		s->rtt += (_a2) * diff / ((_a1) + (_a2)); \
@@ -24,7 +24,7 @@
 		s->variance = ((_b1)*s->variance + (_b2) * diff) \
 			/ ((_b1) + (_b2));			 \
 	} \
-	static _type _name##_timeout(struct _name##_state *s, \
+	static inline _type _name##_timeout(struct _name##_state *s, \
 				     _type tmin, _type tmax)  \
 	{ \
 		return clamp((_g) * s->rtt + (_k)*s->variance, tmin, tmax); \
