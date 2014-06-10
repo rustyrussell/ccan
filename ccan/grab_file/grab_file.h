@@ -15,20 +15,18 @@
  * byte after the end of the content will always be NUL.
  *
  * Example:
- *	#include <ccan/str_talloc/str_talloc.h>
- *	#include <ccan/talloc/talloc.h>
- *	...
- *	// Return all of standard input, as lines.
- *	static char **read_stdin_as_lines(void)
+ *	// Return the first line.
+ *	static char *read_stdin_firstline(void)
  *	{
- *		char **lines, *all;
+ *		char *all, *nl;
  *
  *		all = grab_fd(NULL, 0, NULL);
  *		if (!all)
  *			return NULL;
- *		lines = strsplit(NULL, all, "\n");
- *		talloc_free(all);
- *		return lines;
+ *		nl = strchr(all, '\n');
+ *		if (nl)
+ *			*nl = '\0';
+ *		return all;
  *	}
  */
 void *grab_fd(const void *ctx, int fd, size_t *size);
@@ -45,17 +43,17 @@ void *grab_fd(const void *ctx, int fd, size_t *size);
  * after the end of the content will always be NUL.
  *
  * Example:
- *	// Return all of a given file, as lines.
- *	static char **read_file_as_lines(const char *filename)
+ *	static char *read_file_firstline(const char *filename)
  *	{
- *		char **lines, *all;
+ *		char *nl, *all;
  *
  *		all = grab_file(NULL, filename, NULL);
  *		if (!all)
  *			return NULL;
- *		lines = strsplit(NULL, all, "\n");
- *		talloc_free(all);
- *		return lines;
+ *		nl = strchr(all, '\n');
+ *		if (nl)
+ *			*nl = '\0';
+ *		return all;
  *	}
  */
 void *grab_file(const void *ctx, const char *filename, size_t *size);
