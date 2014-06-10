@@ -1,13 +1,18 @@
 #! /usr/bin/make
-MODULES=../../jmap.o ../../time.o
+CCANDIR=../../..
 
-CFLAGS=-I../../.. -g #-O2
-LDFLAGS=-lJudy
+CCAN_OBJS:=ccan-jmap.o ccan-time.o
 
-lbalance: lbalance.c $(MODULES)
+CFLAGS=-I$(CCANDIR) -Wall -g #-O2
+LDLIBS=-lJudy
 
-$(MODULES):
-	make -C ../../.. $(patsubst ../../%.o, ccan/%.o, $@) EXCLUDE=
+lbalance: lbalance.c $(CCAN_OBJS)
 
 clean:
-	rm -f lbalance $(MODULES)
+	rm -f lbalance $(CCAN_OBJS)
+
+ccan-jmap.o: $(CCANDIR)/ccan/jmap/jmap.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+ccan-time.o: $(CCANDIR)/ccan/time/time.c
+	$(CC) $(CFLAGS) -c -o $@ $<
