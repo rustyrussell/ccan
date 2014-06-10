@@ -355,13 +355,16 @@ void tal_cleanup(void);
 
 
 /**
- * tal_check - set the allocation or error functions to use
+ * tal_check - sanity check a tal context and its children.
  * @ctx: a tal context, or NULL.
  * @errorstr: a string to prepend calls to error_fn, or NULL.
  *
  * This sanity-checks a tal tree (unless NDEBUG is defined, in which case
  * it simply returns true).  If errorstr is not null, error_fn is called
  * when a problem is found, otherwise it is not.
+ *
+ * See also:
+ *	tal_set_backend()
  */
 bool tal_check(const tal_t *ctx, const char *errorstr);
 
