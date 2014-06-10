@@ -84,7 +84,6 @@ MODS_WITH_SRC := antithread \
 	stringmap \
 	strmap \
 	strset \
-	str_talloc \
 	take \
 	tal \
 	tal/grab_file \
