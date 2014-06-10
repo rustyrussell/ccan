@@ -1,9 +1,9 @@
 /* Simple speed tests for a hash of strings using hsearch */
 #include <ccan/htable/htable_type.h>
 #include <ccan/htable/htable.c>
-#include <ccan/str_talloc/str_talloc.h>
-#include <ccan/grab_file/grab_file.h>
-#include <ccan/talloc/talloc.h>
+#include <ccan/tal/str/str.h>
+#include <ccan/tal/grab_file/grab_file.h>
+#include <ccan/tal/tal.h>
 #include <ccan/hash/hash.h>
 #include <ccan/time/time.h>
 #include <stdio.h>
@@ -15,51 +15,43 @@
 #include <search.h>
 
 /* Nanoseconds per operation */
-static size_t normalize(const struct timeval *start,
-			const struct timeval *stop,
+static size_t normalize(const struct timespec *start,
+			const struct timespec *stop,
 			unsigned int num)
 {
-	struct timeval diff;
-
-	timersub(stop, start, &diff);
-
-	/* Floating point is more accurate here. */
-	return (double)(diff.tv_sec * 1000000 + diff.tv_usec)
-		/ num * 1000;
+	return time_to_nsec(time_divide(time_sub(*stop, *start), num));
 }
 
 int main(int argc, char *argv[])
 {
 	size_t i, j, num;
-	struct timeval start, stop;
+	struct timespec start, stop;
 	char **w;
 	ENTRY *words, *misswords;
 
-	w = strsplit(NULL, grab_file(NULL,
-				     argv[1] ? argv[1] : "/usr/share/dict/words",
-				     NULL), "\n");
-	num = talloc_array_length(w) - 1;
+	w = tal_strsplit(NULL, grab_file(NULL,
+					 argv[1] ? argv[1] : "/usr/share/dict/words"), "\n", STR_NO_EMPTY);
+	num = tal_count(w) - 1;
 	printf("%zu words\n", num);
 
 	hcreate(num+num/3);
 
-	words = talloc_array(w, ENTRY, num);
+	words = tal_arr(w, ENTRY, num);
 	for (i = 0; i < num; i++) {
 		words[i].key = w[i];
 		words[i].data = words[i].key;
 	}
 
 	/* Append and prepend last char for miss testing. */
-	misswords = talloc_array(w, ENTRY, num);
+	misswords = tal_arr(w, ENTRY, num);
 	for (i = 0; i < num; i++) {
 		char lastc;
 		if (strlen(w[i]))
 			lastc = w[i][strlen(w[i])-1];
 		else
 			lastc = 'z';
-		misswords[i].key = talloc_asprintf(misswords, "%c%s%c%c",
-						   lastc, w[i],
-						   lastc, lastc);
+		misswords[i].key = tal_fmt(misswords, "%c%s%c%c",
+					   lastc, w[i], lastc, lastc);
 	}
 
 	printf("#01: Initial insert: ");
