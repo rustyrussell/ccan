@@ -12,7 +12,8 @@
  *	// Calculate checksums of file (3-arg mode)
  *	// Or print differences between file and checksums (4+ arg mode)
  *	#include <ccan/crcsync/crcsync.h>
- *	#include <ccan/grab_file/grab_file.h>
+ *	#include <ccan/tal/grab_file/grab_file.h>
+ *	#include <ccan/tal/tal.h>
  *	#include <stdio.h>
  *	#include <stdlib.h>
  *	#include <err.h>
@@ -37,10 +38,11 @@
  *			errx(1, "Usage: %s <blocksize> <file> <crc>...\n"
  *			     "OR: %s <blocksize> <file>", argv[0], argv[0]);
  *	
- *		file = grab_file(NULL, argv[2], &len);
+ *		file = grab_file(NULL, argv[2]);
  *		if (!file)
  *			err(1, "Opening file %s", argv[2]);
- *	
+ *		len = tal_count(file) - 1;
+ *
  *		if (argc == 3) {
  *			// Short form prints CRCs of file for use in long form.
  *			used = (len + blocksize - 1) / blocksize;
