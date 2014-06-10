@@ -92,7 +92,6 @@ MODS_WITH_SRC := antithread \
 	tal/str \
 	tal/talloc \
 	talloc \
-	talloc_link \
 	tally \
 	tap \
 	time \
