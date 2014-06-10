@@ -94,11 +94,11 @@ static size_t count_deleted(const struct htable *ht)
 }
 
 /* Nanoseconds per operation */
-static size_t normalize(const struct timespec *start,
-			const struct timespec *stop,
+static size_t normalize(const struct timeabs *start,
+			const struct timeabs *stop,
 			unsigned int num)
 {
-	return time_to_nsec(time_divide(time_sub(*stop, *start), num));
+	return time_to_nsec(time_divide(time_between(*stop, *start), num));
 }
 
 static size_t worst_run(struct htable *ht, size_t *deleted)
@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
 {
 	struct object *objs;
 	size_t i, j, num, deleted;
-	struct timespec start, stop;
+	struct timeabs start, stop;
 	struct htable_obj ht;
 	bool make_dumb = false;
 
