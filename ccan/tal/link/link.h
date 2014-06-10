@@ -8,8 +8,8 @@
  * tal_linkable - set up a tal object to be linkable.
  * @newobj - the newly allocated object (with a NULL parent)
  *
- * The object will be freed when @newobj is freed or the last talloc_link()
- * is talloc_delink'ed.
+ * The object will be freed when @newobj is freed or the last tal_link()
+ * is tal_delink'ed.
  *
  * Returns @newobj or NULL (if an allocation fails).
  *
@@ -25,7 +25,7 @@
 /**
  * tal_link - add a(nother) link to a linkable object.
  * @ctx - the context to link to (parent of the resulting link)
- * @obj - the object previously made linkable with talloc_linked().
+ * @obj - the object previously made linkable with tal_linked().
  *
  * If @ctx is non-NULL, the link will be a child of @ctx, and this freed
  * when @ctx is.
@@ -49,7 +49,7 @@
 /**
  * tal_delink - explicitly remove a link from a linkable object.
  * @ctx - the context to link to (parent of the resulting link)
- * @obj - the object previously made linkable with talloc_linked().
+ * @obj - the object previously made linkable with tal_linked().
  *
  * Explicitly remove a link: normally it is implied by freeing @ctx.
  * Removing the last link frees the object.  If @obj is NULL, nothing
