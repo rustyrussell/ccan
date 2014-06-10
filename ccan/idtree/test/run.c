@@ -4,6 +4,16 @@
 
 #define ALLOC_MAX (2 * IDTREE_SIZE)
 
+static bool check_tal_parent(const tal_t *parent, const tal_t *ctx)
+{
+	while (ctx) {
+		if (ctx == parent)
+			return true;
+		ctx = tal_parent(ctx);
+	}
+	return false;
+}
+
 int main(int argc, char *argv[])
 {
 	unsigned int i;
@@ -12,9 +22,9 @@ int main(int argc, char *argv[])
 	void *ctx;
 
 	plan_tests(ALLOC_MAX * 5 + 2);
-	ctx = talloc_named_const(NULL, 1, "test root");
+	ctx = tal(NULL, char);
 	idtree = idtree_new(ctx);
-	ok1(talloc_find_parent_byname(idtree, "test root") == ctx);
+	ok1(check_tal_parent(ctx, idtree));
 
 	for (i = 0; i < ALLOC_MAX; i++) {
 		int id = idtree_add(idtree, &allocated[i], ALLOC_MAX-1);
@@ -42,6 +52,6 @@ int main(int argc, char *argv[])
 	for (i = 0; i < ALLOC_MAX; i++) {
 		ok1(idtree_lookup(idtree, i) == &allocated[i]);
 	}
-	talloc_free(ctx);
+	tal_free(ctx);
 	exit(exit_status());
 }

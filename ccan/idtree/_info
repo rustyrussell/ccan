@@ -14,7 +14,7 @@
  *
  * Example:
  *	#include <ccan/idtree/idtree.h>
- *	#include <ccan/talloc/talloc.h>
+ *	#include <ccan/tal/tal.h>
  *	#include <stdlib.h>
  *	#include <stdio.h>
  *
@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
-		printf("ccan/talloc\n");
+		printf("ccan/tal\n");
 		return 0;
 	}
 

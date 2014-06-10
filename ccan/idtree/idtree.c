@@ -25,7 +25,7 @@
 */
 
 #include <ccan/idtree/idtree.h>
-#include <ccan/talloc/talloc.h>
+#include <ccan/tal/tal.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -87,7 +87,7 @@ static void free_layer(struct idtree *idp, struct idtree_layer *p)
 static int idtree_pre_get(struct idtree *idp)
 {
 	while (idp->id_free_cnt < IDTREE_FREE_MAX) {
-		struct idtree_layer *pn = talloc_zero(idp, struct idtree_layer);
+		struct idtree_layer *pn = talz(idp, struct idtree_layer);
 		if(pn == NULL)
 			return (0);
 		free_layer(idp, pn);
@@ -313,14 +313,14 @@ bool idtree_remove(struct idtree *idp, int id)
 	}
 	while (idp->id_free_cnt >= IDTREE_FREE_MAX) {
 		p = alloc_layer(idp);
-		talloc_free(p);
+		tal_free(p);
 	}
 	return true;
 }
 
 struct idtree *idtree_new(void *mem_ctx)
 {
-	return talloc_zero(mem_ctx, struct idtree);
+	return talz(mem_ctx, struct idtree);
 }
 
 int idtree_add(struct idtree *idp, const void *ptr, int limit)

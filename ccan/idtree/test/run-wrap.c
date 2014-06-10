@@ -17,6 +17,6 @@ int main(int argc, char *argv[])
 	ok1(idtree_remove(idtree, INT_MAX-1) == true);
 	ok1(idtree_add_above(idtree, &i, INT_MAX-1, INT_MAX) == INT_MAX-1);
 	ok1(idtree_add_above(idtree, &i, INT_MAX-1, INT_MAX) == -1);
-	talloc_free(idtree);
+	tal_free(idtree);
 	exit(exit_status());
 }
