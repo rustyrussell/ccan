@@ -141,6 +141,13 @@ bool tal_talloc_resize_(tal_t **ctxp, size_t size, size_t count)
 		*ctxp = newp;
 		return true;
 	}
+
+	/* count is unsigned, not size_t, so check for overflow here! */
+	if ((unsigned)count != count) {
+		call_error("Resize overflos");
+		return false;
+	}
+
 	newp = _talloc_realloc_array(NULL, *ctxp, size, count, NULL);
 	if (!newp) {
 		call_error("Resize failure");
