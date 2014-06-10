@@ -32,23 +32,17 @@
 #include <sys/time.h>
 
 /* Nanoseconds per operation */
-static size_t normalize(const struct timeval *start,
-			const struct timeval *stop,
+static size_t normalize(const struct timespec *start,
+			const struct timespec *stop,
 			unsigned int num)
 {
-	struct timeval diff;
-
-	timersub(stop, start, &diff);
-
-	/* Floating point is more accurate here. */
-	return (double)(diff.tv_sec * 1000000 + diff.tv_usec)
-		/ num * 1000;
+	return time_to_nsec(time_divide(time_sub(*stop, *start), num));
 }
 
 int main(int argc, char *argv[])
 {
 	size_t i, j, num;
-	struct timeval start, stop;
+	struct timespec start, stop;
 	struct strset set;
 	char **words, **misswords;
 
