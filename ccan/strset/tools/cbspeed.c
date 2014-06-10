@@ -381,17 +381,17 @@ return allprefixed_traverse(top,handle,arg);
 /* end critbit */
 
 /* Nanoseconds per operation */
-static size_t normalize(const struct timespec *start,
-			const struct timespec *stop,
+static size_t normalize(const struct timeabs *start,
+			const struct timeabs *stop,
 			unsigned int num)
 {
-	return time_to_nsec(time_divide(time_sub(*stop, *start), num));
+	return time_to_nsec(time_divide(time_between(*stop, *start), num));
 }
 
 int main(int argc, char *argv[])
 {
 	size_t i, j, num;
-	struct timespec start, stop;
+	struct timeabs start, stop;
 	critbit0_tree ct;
 	char **words, **misswords;
 
