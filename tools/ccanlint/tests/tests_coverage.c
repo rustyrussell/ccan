@@ -2,6 +2,7 @@
 #include <tools/tools.h>
 #include <ccan/str/str.h>
 #include <ccan/tal/path/path.h>
+#include <ccan/tal/grab_file/grab_file.h>
 #include <ccan/foreach/foreach.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -99,7 +100,7 @@ static void analyze_coverage(struct manifest *m, bool full_gcov,
 			apostrophe = strchr(filename, '\'');
 			*apostrophe = '\0';
 			if (lines_matter) {
-				file = tal_grab_file(score, filename, NULL);
+				file = grab_file(score, filename);
 				if (!file) {
 					score->error = tal_fmt(score,
 							       "Reading %s",

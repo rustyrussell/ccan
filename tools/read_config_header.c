@@ -1,6 +1,7 @@
 #include <ccan/err/err.h>
 #include <ccan/str/str.h>
 #include <ccan/tal/path/path.h>
+#include <ccan/tal/grab_file/grab_file.h>
 #include "read_config_header.h"
 #include "tools.h"
 #include <string.h>
@@ -94,7 +95,7 @@ char *read_config_header(const char *ccan_dir, bool verbose)
 	unsigned int i;
 	char *config_header;
 
-	config_header = tal_grab_file(NULL, fname, NULL);
+	config_header = grab_file(NULL, fname);
 	tal_free(fname);
 
 	if (!config_header)

@@ -2,6 +2,7 @@
 #include <ccan/read_write_all/read_write_all.h>
 #include <ccan/rbuf/rbuf.h>
 #include <ccan/tal/path/path.h>
+#include <ccan/tal/grab_file/grab_file.h>
 #include <ccan/compiler/compiler.h>
 #include <ccan/err/err.h>
 #include "tools.h"
@@ -42,11 +43,10 @@ lines_from_cmd(const void *ctx, const char *format, ...)
 char *compile_info(const void *ctx, const char *dir)
 {
 	char *info_c_file, *info, *compiled, *output;
-	size_t len;
 	int fd;
 
 	/* Copy it to a file with proper .c suffix. */
-	info = tal_grab_file(ctx, tal_fmt(ctx, "%s/_info", dir), &len);
+	info = grab_file(ctx, tal_fmt(ctx, "%s/_info", dir));
 	if (!info)
 		return NULL;
 
@@ -54,7 +54,7 @@ char *compile_info(const void *ctx, const char *dir)
 	fd = open(info_c_file, O_WRONLY|O_CREAT|O_EXCL, 0600);
 	if (fd < 0)
 		return NULL;
-	if (!write_all(fd, info, len))
+	if (!write_all(fd, info, tal_count(info)-1))
 		return NULL;
 
 	if (close(fd) != 0)
@@ -126,7 +126,7 @@ static char **get_one_safe_deps(const void *ctx,
 	bool correct_style = false;
 
 	fname = path_join(ctx, dir, "_info");
-	raw = tal_grab_file(fname, fname, NULL);
+	raw = grab_file(fname, fname);
 	if (!raw)
 		errx(1, "Could not open %s", fname);
 

@@ -13,6 +13,7 @@
 #include "ccan/take/take.h"
 #include "ccan/rbuf/rbuf.h"
 #include "ccan/tal/path/path.h"
+#include "ccan/tal/grab_file/grab_file.h"
 #include "ccan/err/err.h"
 #include "tools.h"
 
@@ -259,7 +260,7 @@ static void analyze_headers(const char *dir, struct replace **repl)
 	hdr = tal_fmt(dir, "%s.h",
 		      path_join(NULL, dir, take(path_basename(NULL, dir))));
 
-	contents = tal_grab_file(dir, hdr, NULL);
+	contents = grab_file(dir, hdr);
 	if (!contents)
 		err(1, "Reading %s", hdr);
 
@@ -334,7 +335,7 @@ static const char *rewrite_file(const char *filename,
 	int fd;
 
 	verbose("Rewriting %s\n", filename);
-	file = tal_grab_file(filename, filename, NULL);
+	file = grab_file(filename, filename);
 	if (!file)
 		err(1, "Reading file %s", filename);
 
@@ -431,7 +432,7 @@ static struct replace *read_replacement_file(const char *depdir)
 	char *replname = path_join(depdir, depdir, ".namespacize");
 	char *file, **line;
 
-	file = tal_grab_file(replname, replname, NULL);
+	file = grab_file(replname, replname);
 	if (!file) {
 		if (errno != ENOENT)
 			err(1, "Opening %s", replname);

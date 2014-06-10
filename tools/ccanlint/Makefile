@@ -23,6 +23,7 @@ CORE_OBJS := \
 	ccan/strmap/strmap.o \
 	ccan/take/take.o \
 	ccan/tal/tal.o \
+	ccan/tal/grab_file/grab_file.o \
 	ccan/tal/link/link.o \
 	ccan/tal/path/path.o \
 	ccan/tal/str/str.o \

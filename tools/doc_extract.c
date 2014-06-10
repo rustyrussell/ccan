@@ -1,6 +1,7 @@
 /* This merely extracts, doesn't do XML or anything. */
 #include <ccan/str/str.h>
 #include <ccan/err/err.h>
+#include <ccan/tal/grab_file/grab_file.h>
 #include "tools.h"
 #include <string.h>
 #include <stdio.h>
@@ -45,7 +46,7 @@ int main(int argc, char *argv[])
 		struct list_head *list;
 		struct doc_section *d;
 
-		file = tal_grab_file(NULL, argv[i], NULL);
+		file = grab_file(NULL, argv[i]);
 		if (!file)
 			err(1, "Reading file %s", argv[i]);
 		lines = tal_strsplit(file, file, "\n", STR_EMPTY_OK);

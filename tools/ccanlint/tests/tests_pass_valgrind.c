@@ -3,6 +3,7 @@
 #include <ccan/str/str.h>
 #include <ccan/take/take.h>
 #include <ccan/foreach/foreach.h>
+#include <ccan/tal/grab_file/grab_file.h>
 #include "tests_pass.h"
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -180,7 +181,7 @@ static void do_run_tests_vg(struct manifest *m,
 				continue;
 			}
 
-			output = tal_grab_file(i, i->valgrind_log, NULL);
+			output = grab_file(i, i->valgrind_log);
 			/* No valgrind errors? */
 			if (!output || output[0] == '\0') {
 				err = NULL;

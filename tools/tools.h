@@ -57,7 +57,6 @@ void keep_temp_dir(void);
 bool move_file(const char *oldname, const char *newname);
 
 void *do_tal_realloc(void *p, size_t size);
-void *tal_grab_file(const void *ctx, const char *filename, size_t *size);
 
 /* Freed on exit: a good parent for auto cleanup. */
 tal_t *autofree(void);

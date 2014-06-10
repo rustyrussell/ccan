@@ -6,6 +6,7 @@
 #include <ccan/noerr/noerr.h>
 #include <ccan/time/time.h>
 #include <ccan/tal/path/path.h>
+#include <ccan/tal/grab_file/grab_file.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/time.h>
@@ -218,7 +219,6 @@ char *temp_file(const void *ctx, const char *extension, const char *srcname)
 bool move_file(const char *oldname, const char *newname)
 {
 	char *contents;
-	size_t size;
 	int fd;
 	bool ret;
 
@@ -233,7 +233,7 @@ bool move_file(const char *oldname, const char *newname)
 	}
 
 	/* Try copy and delete: not atomic! */
-	contents = tal_grab_file(NULL, oldname, &size);
+	contents = grab_file(NULL, oldname);
 	if (!contents) {
 		if (tools_verbose)
 			printf("read failed: %s\n", strerror(errno));
@@ -248,7 +248,7 @@ bool move_file(const char *oldname, const char *newname)
 		goto free;
 	}
 
-	ret = write_all(fd, contents, size);
+	ret = write_all(fd, contents, tal_count(contents)-1);
 	if (close(fd) != 0)
 		ret = false;
 
@@ -271,24 +271,4 @@ void *do_tal_realloc(void *p, size_t size)
 {
 	tal_resize((char **)&p, size);
 	return p;
-}
-
-void *tal_grab_file(const void *ctx, const char *filename, size_t *size)
-{
-	struct rbuf rbuf;
-	char *buf = tal_arr(ctx, char, 0);
-
-	if (!rbuf_open(&rbuf, filename, buf, 0))
-		return tal_free(buf);
-
-	if (!rbuf_fill_all(&rbuf, do_tal_realloc) && errno)
-		rbuf.buf = tal_free(rbuf.buf);
-	else {
-		rbuf.buf[rbuf.len] = '\0';
-		if (size)
-			*size = rbuf.len;
-	}
-	close(rbuf.fd);
-
-	return rbuf.buf;
 }
