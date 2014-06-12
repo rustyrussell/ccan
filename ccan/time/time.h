@@ -249,7 +249,7 @@ static inline bool timeabs_eq(struct timeabs a, struct timeabs b)
  *			exit(0);
  *		}
  *		wait(NULL);
- *		diff = time_between(start, time_now());
+ *		diff = time_between(time_now(), start);
  *		return timerel_eq(diff, zero);
  *	}
  */
