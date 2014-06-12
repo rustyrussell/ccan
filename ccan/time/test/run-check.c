@@ -48,20 +48,20 @@ int main(void)
 	t3.ts.tv_nsec = 1;
 	t2 = timeabs_add(t2, t3);
 
-	/* Test time_before and time_after. */
+	/* Test time_is_before and time_is_after. */
 	ok1(!timeabs_eq(t1, t2));
-	ok1(!time_after(t1, t2));
-	ok1(time_before(t1, t2));
-	ok1(time_after(t2, t1));
-	ok1(!time_before(t2, t1));
+	ok1(!time_is_after(t1, t2));
+	ok1(time_is_before(t1, t2));
+	ok1(time_is_after(t2, t1));
+	ok1(!time_is_before(t2, t1));
 	t3.ts.tv_sec = 0;
 	t3.ts.tv_nsec = 999999999;
 	t2 = timeabs_add(t2, t3);
 	ok1(!timeabs_eq(t1, t2));
-	ok1(!time_after(t1, t2));
-	ok1(time_before(t1, t2));
-	ok1(time_after(t2, t1));
-	ok1(!time_before(t2, t1));
+	ok1(!time_is_after(t1, t2));
+	ok1(time_is_before(t1, t2));
+	ok1(time_is_after(t2, t1));
+	ok1(!time_is_before(t2, t1));
 
 	t3 = time_between(t2, epoch);
 	ok1(t2.ts.tv_sec == t3.ts.tv_sec && t2.ts.tv_nsec == t3.ts.tv_nsec);

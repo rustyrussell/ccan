@@ -13,6 +13,7 @@ struct timespec {
 #endif
 #include <stdint.h>
 #include <stdbool.h>
+#include <ccan/build_assert/build_assert.h>
 
 #ifdef DEBUG
 #include <ccan/str/str.h>
@@ -26,6 +27,15 @@ struct timespec {
 #define TIME_CHECK(t) (t)
 #define TIMEREL_CHECK(t) (t)
 #define TIMEABS_CHECK(t) (t)
+#endif
+
+#if HAVE_BUILTIN_TYPES_COMPATIBLE_P && HAVE_TYPEOF
+#define TIME_BOTH_ABS_OR_MONO(a, b)					\
+	(__builtin_types_compatible_p(typeof(a), typeof(b)) &&		\
+	 (__builtin_types_compatible_p(typeof(a), struct timeabs) ||	\
+	  __builtin_types_compatible_p(typeof(a), struct timemono)))
+#else
+#define TIME_BOTH_ABS_OR_MONO(a, b) 1
 #endif
 
 /**
@@ -142,21 +152,20 @@ static inline bool time_greater_(struct timespec a, struct timespec b)
 }
 
 /**
- * time_after - is a after b?
- * @a: one abstime.
- * @b: another abstime.
+ * time_is_after - is a after b?
+ * @a: one absolute or monotonic time.
+ * @b: another time of same type as @a.
  *
  * Example:
  *	static bool timed_out(const struct timeabs *start)
  *	{
  *	#define TIMEOUT time_from_msec(1000)
- *		return time_after(time_now(), timeabs_add(*start, TIMEOUT));
+ *		return time_is_after(time_now(), timeabs_add(*start, TIMEOUT));
  *	}
  */
-static inline bool time_after(struct timeabs a, struct timeabs b)
-{
-	return time_greater_(a.ts, b.ts);
-}
+#define time_is_after(a, b)					\
+	(BUILD_ASSERT_OR_ZERO(TIME_BOTH_ABS_OR_MONO((a), (b)))	\
+	 || time_greater_((a).ts, (b).ts))
 
 /**
  * time_greater - is a greater than b?
@@ -179,21 +188,20 @@ static inline bool time_less_(struct timespec a, struct timespec b)
 }
 
 /**
- * time_before - is a before b?
- * @a: one absolute time.
- * @b: another absolute time.
+ * time_is_before - is a before b?
+ * @a: one absolute or monotonic time.
+ * @b: another time of same type as @a.
  *
  * Example:
  *	static bool still_valid(const struct timeabs *start)
  *	{
  *	#define TIMEOUT time_from_msec(1000)
- *		return time_before(time_now(), timeabs_add(*start, TIMEOUT));
+ *		return time_is_before(time_now(), timeabs_add(*start, TIMEOUT));
  *	}
  */
-static inline bool time_before(struct timeabs a, struct timeabs b)
-{
-	return time_less_(a.ts, b.ts);
-}
+#define time_is_before(a, b)					\
+	(BUILD_ASSERT_OR_ZERO(TIME_BOTH_ABS_OR_MONO((a), (b)))	\
+	 || time_less_((a).ts, (b).ts))
 
 /**
  * time_less - is a before b?

@@ -32,20 +32,20 @@ int main(void)
 	/* Make sure t2 > t1. */
 	t2 = timeabs_add(t2, t3);
 
-	/* Test time_after and time_before. */
+	/* Test time_is_after and time_is_before. */
 	ok1(!timeabs_eq(t1, t2));
-	ok1(!time_after(t1, t2));
-	ok1(time_before(t1, t2));
-	ok1(time_after(t2, t1));
-	ok1(!time_before(t2, t1));
+	ok1(!time_is_after(t1, t2));
+	ok1(time_is_before(t1, t2));
+	ok1(time_is_after(t2, t1));
+	ok1(!time_is_before(t2, t1));
 	t3.ts.tv_sec = 0;
 	t3.ts.tv_nsec = 999999999;
 	t2 = timeabs_add(t2, t3);
 	ok1(!timeabs_eq(t1, t2));
-	ok1(!time_after(t1, t2));
-	ok1(time_before(t1, t2));
-	ok1(time_after(t2, t1));
-	ok1(!time_before(t2, t1));
+	ok1(!time_is_after(t1, t2));
+	ok1(time_is_before(t1, t2));
+	ok1(time_is_after(t2, t1));
+	ok1(!time_is_before(t2, t1));
 
 	/* Test time_less and time_greater. */
 	ok1(time_less(zero, t3));

@@ -7,13 +7,15 @@ int main(void)
 	struct timemono t1, t2;
 	struct timerel t3;
 
-	plan_tests(2);
+	plan_tests(3);
 
 	/* Test time_mono */
 	t1 = time_mono();
 	t2 = time_mono();
 
-	ok1(!time_less_(t2.ts, t1.ts));
+	ok1(!time_is_before(t2, t1));
+	t2.ts = time_add_(t1.ts, time_from_nsec(1).ts);
+	ok1(time_is_after(t2, t1));
 
 	t3.ts.tv_sec = 1;
 	t3.ts.tv_nsec = 0;

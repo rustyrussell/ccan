@@ -20,8 +20,8 @@ static void calibrate_burn_cpu(void)
 {
 	struct timeabs start = time_now();
 
-	while (time_before(time_now(),
-			   timeabs_add(start, time_from_msec(1000))))
+	while (time_is_before(time_now(),
+			      timeabs_add(start, time_from_msec(1000))))
 		burn_count++;
 	printf("Burn count = %lu\n", burn_count);
 }
@@ -33,8 +33,9 @@ static void burn_cpu(void)
 
 	/* We do a loop similar to the calibrate_burn_cpu loop. */ 
 	for (i = 0; i < burn_count; i++) {
-		after += time_before(time_now(),
-				     timeabs_add(start, time_from_msec(1000)));
+		after += time_is_before(time_now(),
+					timeabs_add(start,
+						    time_from_msec(1000)));
 	}
 	/* We use the result so the compiler can't discard it. */
 	exit(after);
