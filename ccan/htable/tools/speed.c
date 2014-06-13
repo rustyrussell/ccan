@@ -127,7 +127,8 @@ static size_t worst_run(struct htable *ht, size_t *deleted)
 int main(int argc, char *argv[])
 {
 	struct object *objs;
-	size_t i, j, num, deleted;
+	unsigned int i, j;
+	size_t num, deleted;
 	struct timeabs start, stop;
 	struct htable_obj ht;
 	bool make_dumb = false;
@@ -305,7 +306,7 @@ int main(int argc, char *argv[])
 	printf("Details: delete markers %zu, perfect %.0f%%\n",
 	       count_deleted(&ht.raw), perfect(&ht.raw) * 100.0 / ht.raw.elems);
 	i = worst_run(&ht.raw, &deleted);
-	printf("Details: worst run %zu (%zu deleted)\n", i, deleted);
+	printf("Details: worst run %u (%zu deleted)\n", i, deleted);
 
 	printf("Lookup after churn & spread (match): ");
 	fflush(stdout);
