@@ -28,7 +28,7 @@ int main(void)
 	timer_add(&timers, &t[0], timeabs_from_nsec(1));
 	ok1(timers_check(&timers, NULL));
 	ok1(timer_earliest(&timers, &earliest));
-	ok1(timeabs_eq(earliest, grains_to_time(t[0].time)));
+	ok1(time_eq(earliest, grains_to_time(t[0].time)));
 	timer_del(&timers, &t[0]);
 	ok1(timers_check(&timers, NULL));
 	ok1(!timer_earliest(&timers, &earliest));
