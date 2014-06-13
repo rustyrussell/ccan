@@ -761,7 +761,7 @@ static bool should_fail(struct failtest_call *call)
 	if (child == 0) {
 		traceindent++;
 		if (tracef) {
-			struct timerel diff;
+			struct timelen diff;
 			const char *p;
 			char *failpath;
 			struct failtest_call *c;
