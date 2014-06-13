@@ -442,8 +442,8 @@ struct timerel time_divide(struct timerel t, unsigned long div);
 struct timerel time_multiply(struct timerel t, unsigned long mult);
 
 /**
- * time_to_sec - return number of seconds
- * @t: a time
+ * time_sec - return number of seconds
+ * @t: a time (absolute, relative or monotonic)
  *
  * It's often more convenient to deal with time values as seconds.
  * Note that this will fit into an unsigned 32-bit variable if it's a
@@ -452,12 +452,23 @@ struct timerel time_multiply(struct timerel t, unsigned long mult);
  * Example:
  *	...
  *	printf("Forking time is %u sec\n",
- *	       (unsigned)time_to_sec(forking_time()));
+ *	       (unsigned)time_sec(forking_time()));
  */
-static inline uint64_t time_to_sec(struct timerel t)
-{
-	return t.ts.tv_sec;
-}
+#define time_sec(t) ((t).ts.tv_sec)
+
+/**
+ * time_nsec - return number of nanoseconds
+ * @t: a time (absolute, relative or monotonic)
+ *
+ * This returns the nsec part of a time.
+ *
+ * Example:
+ *	...
+ *	printf("Forking time is %u.%09u sec\n",
+ *	       (unsigned)time_sec(forking_time()),
+ *	       (unsigned)time_nsec(forking_time()));
+ */
+#define time_nsec(t) ((t).ts.tv_nsec)
 
 /**
  * time_to_msec - return number of milliseconds

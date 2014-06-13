@@ -7,7 +7,7 @@ int main(void)
 	struct timeabs t1, t2;
 	struct timerel t3, t4, zero = { { 0, 0 } };
 
-	plan_tests(66);
+	plan_tests(67);
 
 	/* Test time_now */
 	t1 = time_now();
@@ -66,11 +66,12 @@ int main(void)
 	t3 = time_between(t1, t2);
 	ok1(t3.ts.tv_sec == 0 && t3.ts.tv_nsec == 999999999);
 
-	/* time_from_sec / time_to_sec */
+	/* time_from_sec / time_sec */
 	t3 = time_from_sec(500);
 	ok1(t3.ts.tv_sec == 500);
 	ok1(t3.ts.tv_nsec == 0);
-	ok1(time_to_sec(t3) == 500);
+	ok1(time_sec(t3) == 500);
+	ok1(time_nsec(t3) == 0);
 
 	/* time_from_msec / time_to_msec */
 	t3 = time_from_msec(500);
