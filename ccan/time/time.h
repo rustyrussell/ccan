@@ -34,8 +34,11 @@ struct timespec {
 	(__builtin_types_compatible_p(typeof(a), typeof(b)) &&		\
 	 (__builtin_types_compatible_p(typeof(a), struct timeabs) ||	\
 	  __builtin_types_compatible_p(typeof(a), struct timemono)))
+#define TIME_BOTH_SAME(a, b)					\
+	(__builtin_types_compatible_p(typeof(a), typeof(b)))
 #else
 #define TIME_BOTH_ABS_OR_MONO(a, b) 1
+#define TIME_BOTH_SAME(a, b) 1
 #endif
 
 /**
@@ -214,9 +217,9 @@ static inline bool time_less(struct timelen a, struct timelen b)
 }
 
 /**
- * timeabs_eq - is a equal to b?
- * @a: one absolute time.
- * @b: another absolute time.
+ * time_eq - is a equal to b?
+ * @a: one absolute, monotonic or interval time.
+ * @b: another time of same type as @a.
  *
  * Example:
  *	#include <sys/types.h>
@@ -230,41 +233,17 @@ static inline bool time_less(struct timelen a, struct timelen b)
  *			exit(0);
  *		}
  *		wait(NULL);
- *		return timeabs_eq(start, time_now());
+ *		return time_eq(start, time_now());
  *	}
  */
-static inline bool timeabs_eq(struct timeabs a, struct timeabs b)
-{
-	return TIMEABS_CHECK(a).ts.tv_sec == TIMEABS_CHECK(b).ts.tv_sec
-		&& a.ts.tv_nsec == b.ts.tv_nsec;
-}
+#define time_eq(a, b)					\
+	(BUILD_ASSERT_OR_ZERO(TIME_BOTH_SAME((a), (b)))	\
+	 || time_eq_((a).ts, (b).ts))
 
-/**
- * timelen_eq - is a equal to b?
- * @a: one time interval
- * @b: another time interval.
- *
- * Example:
- *	#include <sys/types.h>
- *	#include <sys/wait.h>
- *
- *	// Can we fork in under a nanosecond?
- *	static bool fast_fork(void)
- *	{
- *		struct timeabs start = time_now();
- *		struct timelen diff, zero = { .ts = { 0, 0 } };
- *		if (fork() != 0) {
- *			exit(0);
- *		}
- *		wait(NULL);
- *		diff = time_between(time_now(), start);
- *		return timelen_eq(diff, zero);
- *	}
- */
-static inline bool timelen_eq(struct timelen a, struct timelen b)
+static inline bool time_eq_(struct timespec a, struct timespec b)
 {
-	return TIMELEN_CHECK(a).ts.tv_sec == TIMELEN_CHECK(b).ts.tv_sec
-		&& a.ts.tv_nsec == b.ts.tv_nsec;
+	return TIME_CHECK(a).tv_sec == TIME_CHECK(b).tv_sec
+		&& a.tv_nsec == b.tv_nsec;
 }
 
 static inline struct timespec time_sub_(struct timespec recent,
