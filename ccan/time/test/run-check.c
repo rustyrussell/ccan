@@ -17,7 +17,7 @@ void abort(void)
 int main(void)
 {
 	struct timeabs t1, t2, epoch = { { 0, 0 } };
-	struct timerel t3, t4, zero = { { 0, 0 } };
+	struct timelen t3, t4, zero = { { 0, 0 } };
 	int fds[2];
 
 	plan_tests(64);
@@ -34,14 +34,14 @@ int main(void)
 	t3 = time_between(t1, t1);
 	ok1(t3.ts.tv_sec == 0 && t3.ts.tv_nsec == 0);
 
-	/* Test timeabs_eq / timerel_eq */
+	/* Test timeabs_eq / timelen_eq */
 	ok1(timeabs_eq(t1, t1));
 	ok1(timeabs_eq(t2, t2));
 	ok1(!timeabs_eq(t1, epoch));
 	ok1(!timeabs_eq(t2, epoch));
 	t3.ts.tv_sec = 1;
-	ok1(timerel_eq(t3, t3));
-	ok1(!timerel_eq(t3, zero));
+	ok1(timelen_eq(t3, t3));
+	ok1(!timelen_eq(t3, zero));
 
 	/* Make sure t2 > t1. */
 	t3.ts.tv_sec = 0;
@@ -66,7 +66,7 @@ int main(void)
 	t3 = time_between(t2, epoch);
 	ok1(t2.ts.tv_sec == t3.ts.tv_sec && t2.ts.tv_nsec == t3.ts.tv_nsec);
 	t3 = time_between(t2, t2);
-	ok1(timerel_eq(t3, zero));
+	ok1(timelen_eq(t3, zero));
 
 	/* time_from_msec / time_to_msec */
 	t3 = time_from_msec(500);
@@ -135,7 +135,7 @@ int main(void)
 	ok1(t3.ts.tv_nsec == 1);
 
 	t3 = time_multiply(t3, 100);
-	ok1(timerel_eq(t3, t4));
+	ok1(timelen_eq(t3, t4));
 
 	t3 = time_divide(t4, 200);
 	ok1(t3.ts.tv_sec == 0);

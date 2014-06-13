@@ -5,7 +5,7 @@
 int main(void)
 {
 	struct timemono t1, t2;
-	struct timerel t3;
+	struct timelen t3;
 
 	plan_tests(3);
 

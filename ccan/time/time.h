@@ -19,13 +19,13 @@ struct timespec {
 #include <ccan/str/str.h>
 #define TIME_CHECK(t) \
 	time_check_((t), __FILE__ ":" stringify(__LINE__) " (" stringify(t) ") ")
-#define TIMEREL_CHECK(t) \
-	timerel_check((t), __FILE__ ":" stringify(__LINE__) " (" stringify(t) ") ")
+#define TIMELEN_CHECK(t) \
+	timelen_check((t), __FILE__ ":" stringify(__LINE__) " (" stringify(t) ") ")
 #define TIMEABS_CHECK(t) \
 	timeabs_check((t), __FILE__ ":" stringify(__LINE__) " (" stringify(t) ") ")
 #else
 #define TIME_CHECK(t) (t)
-#define TIMEREL_CHECK(t) (t)
+#define TIMELEN_CHECK(t) (t)
 #define TIMEABS_CHECK(t) (t)
 #endif
 
@@ -39,12 +39,12 @@ struct timespec {
 #endif
 
 /**
- * struct timerel - a relative time.
+ * struct timelen - a relative time.
  * @ts: the actual timespec value.
  *
  * For example, 1 second: ts.tv_sec = 1, ts.tv_nsec = 0
  */
-struct timerel {
+struct timelen {
 	struct timespec ts;
 };
 
@@ -83,14 +83,14 @@ struct timemono {
 struct timespec time_check_(struct timespec in, const char *abortstr);
 
 /**
- * timerel_check - check if a relative time is malformed.
+ * timelen_check - check if a relative time is malformed.
  * @in: the relative time to check (returned)
  * @abortstr: the string to print to stderr before aborting (if set).
  *
  * This can be used to make sure a time isn't negative and doesn't
  * have a tv_nsec >= 1000000000.  If it is, and @abortstr is non-NULL,
  * that will be printed and abort() is called.  Otherwise, if
- * @abortstr is NULL then the returned timerel will be normalized and
+ * @abortstr is NULL then the returned timelen will be normalized and
  * tv_sec set to 0 if it was negative.
  *
  * Note that if ccan/time is compiled with DEBUG, then it will call this
@@ -98,10 +98,10 @@ struct timespec time_check_(struct timespec in, const char *abortstr);
  *
  * Example:
  *	printf("Time to calc this was %lu nanoseconds\n",
- *		(long)timerel_check(time_between(time_now(), time_now()),
+ *		(long)timelen_check(time_between(time_now(), time_now()),
  *				    "time_now() failed?").ts.tv_nsec);
  */
-struct timerel timerel_check(struct timerel in, const char *abortstr);
+struct timelen timelen_check(struct timelen in, const char *abortstr);
 
 /**
  * timeabs_check - check if an absolute time is malformed.
@@ -172,7 +172,7 @@ static inline bool time_greater_(struct timespec a, struct timespec b)
  * @a: one reltime.
  * @b: another reltime.
  */
-static inline bool time_greater(struct timerel a, struct timerel b)
+static inline bool time_greater(struct timelen a, struct timelen b)
 {
 	return time_greater_(a.ts, b.ts);
 }
@@ -208,7 +208,7 @@ static inline bool time_less_(struct timespec a, struct timespec b)
  * @a: one relative time.
  * @b: another relative time.
  */
-static inline bool time_less(struct timerel a, struct timerel b)
+static inline bool time_less(struct timelen a, struct timelen b)
 {
 	return time_less_(a.ts, b.ts);
 }
@@ -240,7 +240,7 @@ static inline bool timeabs_eq(struct timeabs a, struct timeabs b)
 }
 
 /**
- * timerel_eq - is a equal to b?
+ * timelen_eq - is a equal to b?
  * @a: one relative time.
  * @b: another relative time.
  *
@@ -252,18 +252,18 @@ static inline bool timeabs_eq(struct timeabs a, struct timeabs b)
  *	static bool fast_fork(void)
  *	{
  *		struct timeabs start = time_now();
- *		struct timerel diff, zero = { .ts = { 0, 0 } };
+ *		struct timelen diff, zero = { .ts = { 0, 0 } };
  *		if (fork() != 0) {
  *			exit(0);
  *		}
  *		wait(NULL);
  *		diff = time_between(time_now(), start);
- *		return timerel_eq(diff, zero);
+ *		return timelen_eq(diff, zero);
  *	}
  */
-static inline bool timerel_eq(struct timerel a, struct timerel b)
+static inline bool timelen_eq(struct timelen a, struct timelen b)
 {
-	return TIMEREL_CHECK(a).ts.tv_sec == TIMEREL_CHECK(b).ts.tv_sec
+	return TIMELEN_CHECK(a).ts.tv_sec == TIMELEN_CHECK(b).ts.tv_sec
 		&& a.ts.tv_nsec == b.ts.tv_nsec;
 }
 
@@ -287,11 +287,11 @@ static inline struct timespec time_sub_(struct timespec recent,
  * @a: the larger time.
  * @b: the smaller time.
  *
- * This returns a well formed struct timerel of @a - @b.
+ * This returns a well formed struct timelen of @a - @b.
  */
-static inline struct timerel time_sub(struct timerel a, struct timerel b)
+static inline struct timelen time_sub(struct timelen a, struct timelen b)
 {
-	struct timerel t;
+	struct timelen t;
 
 	t.ts = time_sub_(a.ts, b.ts);
 	return t;
@@ -302,11 +302,11 @@ static inline struct timerel time_sub(struct timerel a, struct timerel b)
  * @recent: the larger time.
  * @old: the smaller time.
  *
- * This returns a well formed struct timerel of @a - @b.
+ * This returns a well formed struct timelen of @a - @b.
  */
-static inline struct timerel time_between(struct timeabs recent, struct timeabs old)
+static inline struct timelen time_between(struct timeabs recent, struct timeabs old)
 {
-	struct timerel t;
+	struct timelen t;
 
 	t.ts = time_sub_(recent.ts, old.ts);
 	return t;
@@ -317,12 +317,12 @@ static inline struct timerel time_between(struct timeabs recent, struct timeabs 
  * @recent: the larger time.
  * @old: the smaller time.
  *
- * This returns a well formed struct timerel of @recent - @old.
+ * This returns a well formed struct timelen of @recent - @old.
  */
-static inline struct timerel timemono_between(struct timemono recent,
+static inline struct timelen timemono_between(struct timemono recent,
 					      struct timemono old)
 {
-	struct timerel t;
+	struct timelen t;
 
 	t.ts = time_sub_(recent.ts, old.ts);
 	return t;
@@ -342,7 +342,7 @@ static inline struct timerel timemono_between(struct timemono recent,
  *		return timeabs_sub(time_now(), time_from_msec(1000));
  *	}
  */
-static inline struct timeabs timeabs_sub(struct timeabs abs, struct timerel rel)
+static inline struct timeabs timeabs_sub(struct timeabs abs, struct timelen rel)
 {
 	struct timeabs t;
 
@@ -377,7 +377,7 @@ static inline struct timespec time_add_(struct timespec a, struct timespec b)
  *		return timeabs_add(time_now(), time_from_msec(1000));
  *	}
  */
-static inline struct timeabs timeabs_add(struct timeabs a, struct timerel b)
+static inline struct timeabs timeabs_add(struct timeabs a, struct timelen b)
 {
 	struct timeabs t;
 
@@ -386,21 +386,21 @@ static inline struct timeabs timeabs_add(struct timeabs a, struct timerel b)
 }
 
 /**
- * timerel_add - add two relative times
+ * timelen_add - add two relative times
  * @a: one relative time.
  * @b: another relative time.
  *
  * The times must not overflow, or the results are undefined.
  *
  * Example:
- *	static struct timerel double_time(struct timerel a)
+ *	static struct timelen double_time(struct timelen a)
  *	{
- *		return timerel_add(a, a);
+ *		return timelen_add(a, a);
  *	}
  */
-static inline struct timerel timerel_add(struct timerel a, struct timerel b)
+static inline struct timelen timelen_add(struct timelen a, struct timelen b)
 {
-	struct timerel t;
+	struct timelen t;
 
 	t.ts = time_add_(a.ts, b.ts);
 	return t;
@@ -413,7 +413,7 @@ static inline struct timerel timerel_add(struct timerel a, struct timerel b)
  *
  * Example:
  *	// How long does it take to do a fork?
- *	static struct timerel forking_time(void)
+ *	static struct timelen forking_time(void)
  *	{
  *		struct timeabs start = time_now();
  *		unsigned int i;
@@ -427,7 +427,7 @@ static inline struct timerel timerel_add(struct timerel a, struct timerel b)
  *		return time_divide(time_between(time_now(), start), i);
  *	}
  */
-struct timerel time_divide(struct timerel t, unsigned long div);
+struct timelen time_divide(struct timelen t, unsigned long div);
 
 /**
  * time_multiply - multiply a time by a value.
@@ -439,7 +439,7 @@ struct timerel time_divide(struct timerel t, unsigned long div);
  *	printf("Time to do 100000 forks would be %u sec\n",
  *	       (unsigned)time_multiply(forking_time(), 1000000).ts.tv_sec);
  */
-struct timerel time_multiply(struct timerel t, unsigned long mult);
+struct timelen time_multiply(struct timelen t, unsigned long mult);
 
 /**
  * time_sec - return number of seconds
@@ -483,11 +483,11 @@ struct timerel time_multiply(struct timerel t, unsigned long mult);
  *	printf("Forking time is %u msec\n",
  *	       (unsigned)time_to_msec(forking_time()));
  */
-static inline uint64_t time_to_msec(struct timerel t)
+static inline uint64_t time_to_msec(struct timelen t)
 {
 	uint64_t msec;
 
-	msec = TIMEREL_CHECK(t).ts.tv_nsec/1000000 + (uint64_t)t.ts.tv_sec*1000;
+	msec = TIMELEN_CHECK(t).ts.tv_nsec/1000000 + (uint64_t)t.ts.tv_sec*1000;
 	return msec;
 }
 
@@ -505,11 +505,11 @@ static inline uint64_t time_to_msec(struct timerel t)
  *	       (unsigned)time_to_usec(forking_time()));
  *
  */
-static inline uint64_t time_to_usec(struct timerel t)
+static inline uint64_t time_to_usec(struct timelen t)
 {
 	uint64_t usec;
 
-	usec = TIMEREL_CHECK(t).ts.tv_nsec/1000 + (uint64_t)t.ts.tv_sec*1000000;
+	usec = TIMELEN_CHECK(t).ts.tv_nsec/1000 + (uint64_t)t.ts.tv_sec*1000000;
 	return usec;
 }
 
@@ -527,11 +527,11 @@ static inline uint64_t time_to_usec(struct timerel t)
  *	       (unsigned)time_to_nsec(forking_time()));
  *
  */
-static inline uint64_t time_to_nsec(struct timerel t)
+static inline uint64_t time_to_nsec(struct timelen t)
 {
 	uint64_t nsec;
 
-	nsec = TIMEREL_CHECK(t).ts.tv_nsec + (uint64_t)t.ts.tv_sec * 1000000000;
+	nsec = TIMELEN_CHECK(t).ts.tv_nsec + (uint64_t)t.ts.tv_sec * 1000000000;
 	return nsec;
 }
 
@@ -543,13 +543,13 @@ static inline uint64_t time_to_nsec(struct timerel t)
  *	// 1 minute timeout
  *	#define TIMEOUT time_from_sec(60)
  */
-static inline struct timerel time_from_sec(uint64_t sec)
+static inline struct timelen time_from_sec(uint64_t sec)
 {
-	struct timerel t;
+	struct timelen t;
 
 	t.ts.tv_nsec = 0;
 	t.ts.tv_sec = sec;
-	return TIMEREL_CHECK(t);
+	return TIMELEN_CHECK(t);
 }
 
 /**
@@ -560,13 +560,13 @@ static inline struct timerel time_from_sec(uint64_t sec)
  *	// 1/2 second timeout
  *	#define TIMEOUT time_from_msec(500)
  */
-static inline struct timerel time_from_msec(uint64_t msec)
+static inline struct timelen time_from_msec(uint64_t msec)
 {
-	struct timerel t;
+	struct timelen t;
 
 	t.ts.tv_nsec = (msec % 1000) * 1000000;
 	t.ts.tv_sec = msec / 1000;
-	return TIMEREL_CHECK(t);
+	return TIMELEN_CHECK(t);
 }
 
 /**
@@ -577,13 +577,13 @@ static inline struct timerel time_from_msec(uint64_t msec)
  *	// 1/2 second timeout
  *	#define TIMEOUT time_from_usec(500000)
  */
-static inline struct timerel time_from_usec(uint64_t usec)
+static inline struct timelen time_from_usec(uint64_t usec)
 {
-	struct timerel t;
+	struct timelen t;
 
 	t.ts.tv_nsec = (usec % 1000000) * 1000;
 	t.ts.tv_sec = usec / 1000000;
-	return TIMEREL_CHECK(t);
+	return TIMELEN_CHECK(t);
 }
 
 /**
@@ -594,13 +594,13 @@ static inline struct timerel time_from_usec(uint64_t usec)
  *	// 1/2 second timeout
  *	#define TIMEOUT time_from_nsec(500000000)
  */
-static inline struct timerel time_from_nsec(uint64_t nsec)
+static inline struct timelen time_from_nsec(uint64_t nsec)
 {
-	struct timerel t;
+	struct timelen t;
 
 	t.ts.tv_nsec = nsec % 1000000000;
 	t.ts.tv_sec = nsec / 1000000000;
-	return TIMEREL_CHECK(t);
+	return TIMELEN_CHECK(t);
 }
 
 static inline struct timeval timespec_to_timeval(struct timespec ts)
@@ -612,17 +612,17 @@ static inline struct timeval timespec_to_timeval(struct timespec ts)
 }
 
 /**
- * timerel_to_timeval - convert a relative time to a timeval.
+ * timelen_to_timeval - convert a relative time to a timeval.
  * @t: a relative time.
  *
  * Example:
- *	struct timerel t = { { 100, 0 } }; // 100 seconds
+ *	struct timelen t = { { 100, 0 } }; // 100 seconds
  *	struct timeval tv;
  *
- *	tv = timerel_to_timeval(t);
+ *	tv = timelen_to_timeval(t);
  *	printf("time = %lu.%06u\n", (long)tv.tv_sec, (int)tv.tv_usec);
  */
-static inline struct timeval timerel_to_timeval(struct timerel t)
+static inline struct timeval timelen_to_timeval(struct timelen t)
 {
 	return timespec_to_timeval(t.ts);
 }
@@ -651,21 +651,21 @@ static inline struct timespec timeval_to_timespec(struct timeval tv)
 }
 
 /**
- * timeval_to_timerel - convert a timeval to a relative time.
+ * timeval_to_timelen - convert a timeval to a relative time.
  * @tv: a timeval.
  *
  * Example:
  *	struct timeval tv = { 0, 500 };
- *	struct timerel t;
+ *	struct timelen t;
  *
- *	t = timeval_to_timerel(tv);
- *	printf("timerel = %lu.%09lu\n", (long)t.ts.tv_sec, (long)t.ts.tv_nsec);
+ *	t = timeval_to_timelen(tv);
+ *	printf("timelen = %lu.%09lu\n", (long)t.ts.tv_sec, (long)t.ts.tv_nsec);
  */
-static inline struct timerel timeval_to_timerel(struct timeval tv)
+static inline struct timelen timeval_to_timelen(struct timeval tv)
 {
-	struct timerel t;
+	struct timelen t;
 	t.ts = timeval_to_timespec(tv);
-	return TIMEREL_CHECK(t);
+	return TIMELEN_CHECK(t);
 }
 
 /**

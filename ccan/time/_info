@@ -5,7 +5,7 @@
  * time - routines for dealing with time
  *
  * This code provides convenient functions for working with time, in the
- * form of 'struct timerel' for durations and 'struct timeabs' for timestamps
+ * form of 'struct timelen' for durations and 'struct timeabs' for timestamps
  * which are light wrappers around struct timespec.
  *
  * Author: Rusty Russell <rusty@rustcorp.com.au>

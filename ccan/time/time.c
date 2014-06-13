@@ -36,13 +36,13 @@ struct timemono time_mono(void)
 	return ret;
 }
 
-struct timerel time_divide(struct timerel t, unsigned long div)
+struct timelen time_divide(struct timelen t, unsigned long div)
 {
-	struct timerel res;
+	struct timelen res;
 	uint64_t rem, ns;
 
 	/* Dividing seconds is simple. */
-	res.ts.tv_sec = TIMEREL_CHECK(t).ts.tv_sec / div;
+	res.ts.tv_sec = TIMELEN_CHECK(t).ts.tv_sec / div;
 	rem = t.ts.tv_sec % div;
 
 	/* If we can't fit remainder * 1,000,000,000 in 64 bits? */
@@ -62,12 +62,12 @@ struct timerel time_divide(struct timerel t, unsigned long div)
 		ns = rem * 1000000000 + t.ts.tv_nsec;
 		res.ts.tv_nsec = ns / div;
 	}
-	return TIMEREL_CHECK(res);
+	return TIMELEN_CHECK(res);
 }
 
-struct timerel time_multiply(struct timerel t, unsigned long mult)
+struct timelen time_multiply(struct timelen t, unsigned long mult)
 {
-	struct timerel res;
+	struct timelen res;
 
 	/* Are we going to overflow if we multiply nsec? */
 	if (mult & ~((1UL << 30) - 1)) {
@@ -82,8 +82,8 @@ struct timerel time_multiply(struct timerel t, unsigned long mult)
 		res.ts.tv_nsec = nsec % 1000000000;
 		res.ts.tv_sec = nsec / 1000000000;
 	}
-	res.ts.tv_sec += TIMEREL_CHECK(t).ts.tv_sec * mult;
-	return TIMEREL_CHECK(res);
+	res.ts.tv_sec += TIMELEN_CHECK(t).ts.tv_sec * mult;
+	return TIMELEN_CHECK(res);
 }
 
 struct timespec time_check_(struct timespec t, const char *abortstr)
@@ -113,9 +113,9 @@ struct timespec time_check_(struct timespec t, const char *abortstr)
 	return t;
 }
 
-struct timerel timerel_check(struct timerel t, const char *abortstr)
+struct timelen timelen_check(struct timelen t, const char *abortstr)
 {
-	struct timerel ret;
+	struct timelen ret;
 
 	ret.ts = time_check_(t.ts, abortstr);
 	return ret;

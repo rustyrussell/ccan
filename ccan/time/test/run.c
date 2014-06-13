@@ -5,7 +5,7 @@
 int main(void)
 {
 	struct timeabs t1, t2;
-	struct timerel t3, t4, zero = { { 0, 0 } };
+	struct timelen t3, t4, zero = { { 0, 0 } };
 
 	plan_tests(67);
 
@@ -21,13 +21,13 @@ int main(void)
 	t3 = time_between(t1, t1);
 	ok1(t3.ts.tv_sec == 0 && t3.ts.tv_nsec == 0);
 
-	/* Test timeabs_eq / timerel_eq */
+	/* Test timeabs_eq / timelen_eq */
 	ok1(timeabs_eq(t1, t1));
 	ok1(timeabs_eq(t2, t2));
 	t3.ts.tv_sec = 0;
 	t3.ts.tv_nsec = 1;
-	ok1(!timerel_eq(t3, zero));
-	ok1(!timerel_eq(t3, zero));
+	ok1(!timelen_eq(t3, zero));
+	ok1(!timelen_eq(t3, zero));
 
 	/* Make sure t2 > t1. */
 	t2 = timeabs_add(t2, t3);
@@ -55,11 +55,11 @@ int main(void)
 
 	/* Test time_sub */
 	t3 = time_sub(t3, t3);
-	ok1(timerel_eq(t3, zero));
+	ok1(timelen_eq(t3, zero));
 
 	/* Test time_between */
 	t3 = time_between(t2, t2);
-	ok1(timerel_eq(t3, zero));
+	ok1(timelen_eq(t3, zero));
 	t3.ts.tv_sec = 0;
 	t3.ts.tv_nsec = 999999999;
 	t1 = timeabs_add(t2, t3);
@@ -139,7 +139,7 @@ int main(void)
 	ok1(t3.ts.tv_nsec == 1);
 
 	t3 = time_multiply(t3, 100);
-	ok1(timerel_eq(t3, t4));
+	ok1(timelen_eq(t3, t4));
 
 	t3 = time_divide(t4, 200);
 	ok1(t3.ts.tv_sec == 0);
