@@ -419,7 +419,7 @@ struct io_plan io_wait_(const void *wait,
 					(fn), (arg),			\
 					struct io_conn *),		\
 		    (arg))
-bool io_timeout_(struct io_conn *conn, struct timerel t,
+bool io_timeout_(struct io_conn *conn, struct timelen t,
 		 struct io_plan (*fn)(struct io_conn *, void *), void *arg);
 
 /**

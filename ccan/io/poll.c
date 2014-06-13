@@ -285,7 +285,7 @@ static bool finish_conns(struct io_conn **ready)
 	return false;
 }
 
-void backend_add_timeout(struct io_conn *conn, struct timerel duration)
+void backend_add_timeout(struct io_conn *conn, struct timelen duration)
 {
 	if (!timeouts.base)
 		timers_init(&timeouts, time_now());
