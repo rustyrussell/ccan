@@ -39,7 +39,7 @@ struct timespec {
 #endif
 
 /**
- * struct timelen - a relative time.
+ * struct timelen - a time interval.
  * @ts: the actual timespec value.
  *
  * For example, 1 second: ts.tv_sec = 1, ts.tv_nsec = 0
@@ -83,8 +83,8 @@ struct timemono {
 struct timespec time_check_(struct timespec in, const char *abortstr);
 
 /**
- * timelen_check - check if a relative time is malformed.
- * @in: the relative time to check (returned)
+ * timelen_check - check if a time interval is malformed.
+ * @in: the timelen to check (returned)
  * @abortstr: the string to print to stderr before aborting (if set).
  *
  * This can be used to make sure a time isn't negative and doesn't
@@ -105,7 +105,7 @@ struct timelen timelen_check(struct timelen in, const char *abortstr);
 
 /**
  * timeabs_check - check if an absolute time is malformed.
- * @in: the relative time to check (returned)
+ * @in: the absolute time to check (returned)
  * @abortstr: the string to print to stderr before aborting (if set).
  *
  * This can be used to make sure a time isn't negative and doesn't
@@ -169,8 +169,8 @@ static inline bool time_greater_(struct timespec a, struct timespec b)
 
 /**
  * time_greater - is a greater than b?
- * @a: one reltime.
- * @b: another reltime.
+ * @a: one time interval.
+ * @b: another time interval.
  */
 static inline bool time_greater(struct timelen a, struct timelen b)
 {
@@ -205,8 +205,8 @@ static inline bool time_less_(struct timespec a, struct timespec b)
 
 /**
  * time_less - is a before b?
- * @a: one relative time.
- * @b: another relative time.
+ * @a: one time interval.
+ * @b: another time interval.
  */
 static inline bool time_less(struct timelen a, struct timelen b)
 {
@@ -241,8 +241,8 @@ static inline bool timeabs_eq(struct timeabs a, struct timeabs b)
 
 /**
  * timelen_eq - is a equal to b?
- * @a: one relative time.
- * @b: another relative time.
+ * @a: one time interval
+ * @b: another time interval.
  *
  * Example:
  *	#include <sys/types.h>
@@ -283,7 +283,7 @@ static inline struct timespec time_sub_(struct timespec recent,
 }
 
 /**
- * time_sub - subtract two relative times
+ * time_sub - subtract two time intervals
  * @a: the larger time.
  * @b: the smaller time.
  *
@@ -329,9 +329,9 @@ static inline struct timelen timemono_between(struct timemono recent,
 }
 
 /**
- * timeabs_sub - subtract a relative time from an absolute time
+ * timeabs_sub - subtract a time interval from an absolute time
  * @abs: the absolute time.
- * @rel: the relative time.
+ * @len: the time interval.
  *
  * This returns a well formed struct timeabs of @a - @b.
  *
@@ -342,11 +342,11 @@ static inline struct timelen timemono_between(struct timemono recent,
  *		return timeabs_sub(time_now(), time_from_msec(1000));
  *	}
  */
-static inline struct timeabs timeabs_sub(struct timeabs abs, struct timelen rel)
+static inline struct timeabs timeabs_sub(struct timeabs abs, struct timelen len)
 {
 	struct timeabs t;
 
-	t.ts = time_sub_(abs.ts, rel.ts);
+	t.ts = time_sub_(abs.ts, len.ts);
 	return t;
 }
 
@@ -364,9 +364,9 @@ static inline struct timespec time_add_(struct timespec a, struct timespec b)
 }
 
 /**
- * timeabs_add - add a relative to an absolute time
+ * timeabs_add - add an interval to an absolute time
  * @a: the absolute time.
- * @b: a relative time.
+ * @b: a time interval.
  *
  * The times must not overflow, or the results are undefined.
  *
@@ -386,9 +386,9 @@ static inline struct timeabs timeabs_add(struct timeabs a, struct timelen b)
 }
 
 /**
- * timelen_add - add two relative times
- * @a: one relative time.
- * @b: another relative time.
+ * timelen_add - add two times intervals
+ * @a: one time interval.
+ * @b: another time interval.
  *
  * The times must not overflow, or the results are undefined.
  *
@@ -431,7 +431,7 @@ struct timelen time_divide(struct timelen t, unsigned long div);
 
 /**
  * time_multiply - multiply a time by a value.
- * @t: a relative time.
+ * @t: a time interval.
  * @mult: number to multiply it by.
  *
  * Example:
@@ -443,7 +443,7 @@ struct timelen time_multiply(struct timelen t, unsigned long mult);
 
 /**
  * time_sec - return number of seconds
- * @t: a time (absolute, relative or monotonic)
+ * @t: a time (absolute, interval or monotonic)
  *
  * It's often more convenient to deal with time values as seconds.
  * Note that this will fit into an unsigned 32-bit variable if it's a
@@ -458,7 +458,7 @@ struct timelen time_multiply(struct timelen t, unsigned long mult);
 
 /**
  * time_nsec - return number of nanoseconds
- * @t: a time (absolute, relative or monotonic)
+ * @t: a time (absolute, interval or monotonic)
  *
  * This returns the nsec part of a time.
  *
@@ -472,11 +472,11 @@ struct timelen time_multiply(struct timelen t, unsigned long mult);
 
 /**
  * time_to_msec - return number of milliseconds
- * @t: a relative time
+ * @t: a time interval
  *
  * It's often more convenient to deal with time values as
  * milliseconds.  Note that this will fit into a 32-bit variable if
- * it's a time difference of less than ~7 weeks.
+ * it's an interval of less than ~7 weeks.
  *
  * Example:
  *	...
@@ -493,7 +493,7 @@ static inline uint64_t time_to_msec(struct timelen t)
 
 /**
  * time_to_usec - return number of microseconds
- * @t: a relative time
+ * @t: a time interval
  *
  * It's often more convenient to deal with time values as
  * microseconds.  Note that this will fit into a 32-bit variable if
@@ -515,7 +515,7 @@ static inline uint64_t time_to_usec(struct timelen t)
 
 /**
  * time_to_nsec - return number of nanoseconds
- * @t: a relative time
+ * @t: a time interval
  *
  * It's sometimes more convenient to deal with time values as
  * nanoseconds.  Note that this will fit into a 32-bit variable if
@@ -536,7 +536,7 @@ static inline uint64_t time_to_nsec(struct timelen t)
 }
 
 /**
- * time_from_sec - convert seconds to a relative time
+ * time_from_sec - convert seconds to a time interval
  * @msec: time in seconds
  *
  * Example:
@@ -553,7 +553,7 @@ static inline struct timelen time_from_sec(uint64_t sec)
 }
 
 /**
- * time_from_msec - convert milliseconds to a relative time
+ * time_from_msec - convert milliseconds to a time interval
  * @msec: time in milliseconds
  *
  * Example:
@@ -570,7 +570,7 @@ static inline struct timelen time_from_msec(uint64_t msec)
 }
 
 /**
- * time_from_usec - convert microseconds to a relative time
+ * time_from_usec - convert microseconds to a time interval
  * @usec: time in microseconds
  *
  * Example:
@@ -587,7 +587,7 @@ static inline struct timelen time_from_usec(uint64_t usec)
 }
 
 /**
- * time_from_nsec - convert nanoseconds to a relative time
+ * time_from_nsec - convert nanoseconds to a time interval
  * @nsec: time in nanoseconds
  *
  * Example:
@@ -612,8 +612,8 @@ static inline struct timeval timespec_to_timeval(struct timespec ts)
 }
 
 /**
- * timelen_to_timeval - convert a relative time to a timeval.
- * @t: a relative time.
+ * timelen_to_timeval - convert a time interval to a timeval.
+ * @t: a time interval.
  *
  * Example:
  *	struct timelen t = { { 100, 0 } }; // 100 seconds
@@ -651,7 +651,7 @@ static inline struct timespec timeval_to_timespec(struct timeval tv)
 }
 
 /**
- * timeval_to_timelen - convert a timeval to a relative time.
+ * timeval_to_timelen - convert a timeval to a time interval.
  * @tv: a timeval.
  *
  * Example:
