@@ -8,30 +8,13 @@
 #include <ccan/list/list.h>
 #include <stdio.h>
 
+#include <ccan/memmem/memmem.h>
 #include <ccan/rfc822/rfc822.h>
 
 #ifdef TAL_USE_TALLOC
 #include <ccan/tal/talloc/talloc.h>
 #else
 #include <ccan/tal/tal.h>
-#endif
-
-#if !HAVE_MEMMEM
-void *memmem(const void *haystack, size_t haystacklen,
-	     const void *needle, size_t needlelen)
-{
-	const char *p, *last;
-
-	p = haystack;
-	last = p + haystacklen - needlelen;
-
-	do {
-		if (memcmp(p, needle, needlelen) == 0)
-			return (void *)p;
-	} while (p++ <= last);
-
-	return NULL;
-}
 #endif
 
 static void (*allocation_failure_hook)(const char *);
