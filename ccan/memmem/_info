@@ -1,0 +1,28 @@
+#include <string.h>
+#include "config.h"
+
+/**
+ * memmem - Trivial module providing a memmem() implementation
+ *
+ * This code implements memmem() if it's not alreayd available in the
+ * C library.
+ *
+ * License: CC0
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		return 0;
+	}
+
+	if (strcmp(argv[1], "testdepends") == 0) {
+		printf("ccan/array_size");
+		return 0;
+	}
+
+	return 1;
+}
