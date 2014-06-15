@@ -1,5 +1,7 @@
 /* CC0 (Public domain) - see LICENSE file for details */
 
+#include "config.h"
+
 #include <string.h>
 #include <ccan/memmem/memmem.h>
 
@@ -15,7 +17,7 @@ void *memmem(const void *haystack, size_t haystacklen,
 	p = haystack;
 
 	for (p = haystack;
-	     (p + needlelen) <= (haystack + haystacklen);
+	     (p + needlelen) <= ((const char *)haystack + haystacklen);
 	     p++)
 		if (memcmp(p, needle, needlelen) == 0)
 			return (void *)p;
