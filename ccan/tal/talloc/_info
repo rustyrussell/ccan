@@ -1,6 +1,6 @@
+#include "config.h"
 #include <stdio.h>
 #include <string.h>
-#include "config.h"
 
 /**
  * tal/talloc - an implementation of the tal interface in terms of talloc.

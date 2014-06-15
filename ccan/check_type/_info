@@ -1,6 +1,6 @@
+#include "config.h"
 #include <stdio.h>
 #include <string.h>
-#include "config.h"
 
 /**
  * check_type - routines for compile time type checking

@@ -1,5 +1,6 @@
-#include <string.h>
 #include "config.h"
+#include <stdio.h>
+#include <string.h>
 
 /**
  * avl - Key-value dictionary based on AVL trees

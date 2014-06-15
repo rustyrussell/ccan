@@ -1,6 +1,6 @@
+#include "config.h"
 #include <string.h>
 #include <stdio.h>
-#include "config.h"
 
 /**
  * likely - macros for annotating likely/unlikely branches in the code

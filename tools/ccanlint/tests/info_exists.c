@@ -31,8 +31,9 @@ static void check_has_info(struct manifest *m,
 }
 
 static const char template[] =
-	"#include <string.h>\n"
 	"#include \"config.h\"\n"
+	"#include <stdio.h>\n"
+	"#include <string.h>\n"
 	"\n"
 	"/**\n"
 	" * %s - YOUR-ONE-LINE-DESCRIPTION-HERE\n"

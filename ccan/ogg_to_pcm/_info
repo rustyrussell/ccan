@@ -1,6 +1,6 @@
+#include "config.h"
 #include <stdio.h>
 #include <string.h>
-#include "config.h"
 
 /**
  * ogg_to_pcm - decode ogg vorbis audio files to PCM data using libvorbis 

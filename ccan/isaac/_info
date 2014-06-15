@@ -104,9 +104,9 @@
  *	// We actually depend on the LGPL ilog routines, so not PD :(
  *	license_depends_compat FAIL
  */
+#include "config.h"
 #include <string.h>
 #include <stdio.h>
-#include "config.h"
 
 int main(int _argc,const char *_argv[]){
   /*Expect exactly one argument.*/

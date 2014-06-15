@@ -1,6 +1,6 @@
+#include "config.h"
 #include <stdio.h>
 #include <string.h>
-#include "config.h"
 
 /**
  * wwviaudio - realtime playback and mixing of 16 bit signed PCM audio data.

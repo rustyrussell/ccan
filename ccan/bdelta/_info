@@ -1,5 +1,6 @@
-#include <string.h>
 #include "config.h"
+#include <stdio.h>
+#include <string.h>
 
 /**
  * bdelta - Generate and apply binary deltas

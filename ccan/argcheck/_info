@@ -1,4 +1,6 @@
 #include "config.h"
+#include <stdio.h>
+#include <string.h>
 
 /**
  * argcheck - macros to check arguments at runtime

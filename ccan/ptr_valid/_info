@@ -1,5 +1,6 @@
-#include <string.h>
 #include "config.h"
+#include <stdio.h>
+#include <string.h>
 
 /**
  * ptr_valid - test whether a pointer is safe to dereference.

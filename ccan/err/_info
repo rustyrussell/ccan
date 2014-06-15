@@ -1,6 +1,6 @@
+#include "config.h"
 #include <stdio.h>
 #include <string.h>
-#include "config.h"
 
 /**
  * err - err(), errx(), warn() and warnx(), as per BSD's err.h.

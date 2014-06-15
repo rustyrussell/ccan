@@ -1,6 +1,6 @@
+#include "config.h"
 #include <stdio.h>
 #include <string.h>
-#include "config.h"
 
 /**
  * block_pool - An efficient allocator for blocks that don't need to be resized or freed.

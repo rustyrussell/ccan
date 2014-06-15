@@ -1,6 +1,6 @@
+#include "config.h"
 #include <string.h>
 #include <stdio.h>
-#include "config.h"
 
 /**
  * compiler - macros for common compiler extensions

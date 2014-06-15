@@ -35,9 +35,9 @@
  * License: CC0 (Public domain)
  * Author: Timothy B. Terriberry <tterribe@xiph.org>
  */
+#include "config.h"
 #include <string.h>
 #include <stdio.h>
-#include "config.h"
 
 int main(int _argc,const char *_argv[]){
   /*Expect exactly one argument.*/

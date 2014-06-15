@@ -1,6 +1,6 @@
+#include "config.h"
 #include <string.h>
 #include <stdio.h>
-#include "config.h"
 
 /**
  * ccan_tokenizer - A full-text lexer for C source files

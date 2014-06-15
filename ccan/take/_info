@@ -1,5 +1,6 @@
-#include <string.h>
 #include "config.h"
+#include <stdio.h>
+#include <string.h>
 
 /**
  * take - routines to mark pointers to be consumed by called functions.

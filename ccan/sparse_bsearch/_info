@@ -1,6 +1,6 @@
+#include "config.h"
 #include <string.h>
 #include <stdio.h>
-#include "config.h"
 
 /**
  * sparse_bsearch - search a sorted array with some invalid entries

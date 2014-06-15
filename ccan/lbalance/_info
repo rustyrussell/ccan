@@ -1,5 +1,6 @@
 /* Licensed under GPLv3+ - see LICENSE file for details */
 #include "config.h"
+#include <stdio.h>
 #include <string.h>
 
 /**

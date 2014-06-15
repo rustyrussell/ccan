@@ -1,6 +1,6 @@
+#include "config.h"
 #include <stdio.h>
 #include <string.h>
-#include "config.h"
 
 /**
  * daemon_with_notify - daemonize a process, can wait for child to signal readiness

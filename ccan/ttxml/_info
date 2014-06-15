@@ -1,5 +1,6 @@
-#include <string.h>
 #include "config.h"
+#include <stdio.h>
+#include <string.h>
 
 /**
  * ttxml - tiny XML library for parsing (trusted!) XML documents.
