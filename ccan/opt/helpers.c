@@ -238,9 +238,10 @@ static char *set_llong_with_suffix(const char *arg, long long *ll,
 				   const long long base)
 {
 	char *endp;
-	if (!arg[0])
+	if (!arg[0]){
+		*ll = 0;
 		return arg_bad("'%s' (an empty string) is not a number", arg);
-
+	}
 	errno = 0;
 	*ll = strtoll(arg, &endp, 0);
 	if (errno)
