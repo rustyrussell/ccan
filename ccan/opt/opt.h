@@ -450,8 +450,9 @@ void opt_show_ulonglongval_si(char buf[OPT_SHOW_LEN], const unsigned long long *
 
 
 
-/* Increment. */
+/* Increment and decrement. */
 char *opt_inc_intval(int *i);
+char *opt_dec_intval(int *i);
 
 /* Display version string to stdout, exit(0). */
 char *opt_version_and_exit(const char *version);

@@ -165,6 +165,12 @@ char *opt_inc_intval(int *i)
 	return NULL;
 }
 
+char *opt_dec_intval(int *i)
+{
+	(*i)--;
+	return NULL;
+}
+
 /* Display version string. */
 char *opt_version_and_exit(const char *version)
 {
