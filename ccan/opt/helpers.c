@@ -202,14 +202,19 @@ void opt_show_invbool(char buf[OPT_SHOW_LEN], const bool *b)
 
 void opt_show_charp(char buf[OPT_SHOW_LEN], char *const *p)
 {
-	size_t len = strlen(*p);
-	buf[0] = '"';
-	if (len > OPT_SHOW_LEN - 2)
-		len = OPT_SHOW_LEN - 2;
-	strncpy(buf+1, *p, len);
-	buf[1+len] = '"';
-	if (len < OPT_SHOW_LEN - 2)
-		buf[2+len] = '\0';
+	if (*p){
+		size_t len = strlen(*p);
+		buf[0] = '"';
+		if (len > OPT_SHOW_LEN - 2)
+			len = OPT_SHOW_LEN - 2;
+		strncpy(buf+1, *p, len);
+		buf[1+len] = '"';
+		if (len < OPT_SHOW_LEN - 2)
+			buf[2+len] = '\0';
+	}
+	else {
+		strncpy(buf, "(nil)", OPT_SHOW_LEN);
+	}
 }
 
 /* Show an integer value, various forms. */
