@@ -59,7 +59,8 @@
  * Example:
  *	static void print_embedded_names(void)
  *	{
- *		unsigned int i, num;
+ *		unsigned int i;
+ *		size_t num;
  *		char **n = autodata_get(names, &num);
  *
  *		for (i = 0; i < num; i++)
