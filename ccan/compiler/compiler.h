@@ -17,7 +17,7 @@
  *	fprintf(stderr, "Error: %s (%s)\n", reason, strerror(errno));
  * }
  */
-#define COLD __attribute__((cold))
+#define COLD __attribute__((__cold__))
 #else
 #define COLD
 #endif
@@ -37,7 +37,7 @@
  *	exit(1);
  * }
  */
-#define NORETURN __attribute__((noreturn))
+#define NORETURN __attribute__((__noreturn__))
 #else
 #define NORETURN
 #endif
@@ -71,7 +71,7 @@
  * same value for the exact same arguments.  This implies that the function
  * must not use global variables, or dereference pointer arguments.
  */
-#define CONST_FUNCTION __attribute__((const))
+#define CONST_FUNCTION __attribute__((__const__))
 #else
 #define CONST_FUNCTION
 #endif
@@ -109,7 +109,7 @@
  *	counter += add;
  * }
  */
-#define UNNEEDED __attribute__((unused))
+#define UNNEEDED __attribute__((__unused__))
 #endif
 
 #ifndef NEEDED
@@ -128,10 +128,10 @@
  *		printf("Counter is %i\n", counter);
  *	}
  */
-#define NEEDED __attribute__((used))
+#define NEEDED __attribute__((__used__))
 #else
 /* Before used, unused functions and vars were always emitted. */
-#define NEEDED __attribute__((unused))
+#define NEEDED __attribute__((__unused__))
 #endif
 #endif
 
@@ -150,7 +150,7 @@
  *		return 0;
  *	}
  */
-#define UNUSED __attribute__((unused))
+#define UNUSED __attribute__((__unused__))
 #endif
 #else
 #ifndef UNNEEDED
@@ -223,7 +223,7 @@
  *	return realloc(buf, (*size) *= 2);
  * }
  */
-#define WARN_UNUSED_RESULT __attribute__((warn_unused_result))
+#define WARN_UNUSED_RESULT __attribute__((__warn_unused_result__))
 #else
 #define WARN_UNUSED_RESULT
 #endif
