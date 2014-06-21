@@ -79,6 +79,8 @@ static struct test tests[] = {
 	  "static int __attribute__((cold)) func(int x) { return x; }" },
 	{ "HAVE_ATTRIBUTE_CONST", DEFINES_FUNC, NULL, NULL,
 	  "static int __attribute__((const)) func(int x) { return x; }" },
+	{ "HAVE_ATTRIBUTE_PURE", DEFINES_FUNC, NULL, NULL,
+	  "static int __attribute__((pure)) func(int x) { return x; }" },
 	{ "HAVE_ATTRIBUTE_MAY_ALIAS", OUTSIDE_MAIN, NULL, NULL,
 	  "typedef short __attribute__((__may_alias__)) short_a;" },
 	{ "HAVE_ATTRIBUTE_NORETURN", DEFINES_FUNC, NULL, NULL,

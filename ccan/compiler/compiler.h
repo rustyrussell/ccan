@@ -75,6 +75,20 @@
 #else
 #define CONST_FUNCTION
 #endif
+
+#ifndef PURE_FUNCTION
+#if HAVE_ATTRIBUTE_PURE
+/**
+ * PURE_FUNCTION - a function is pure
+ *
+ * A pure function is one that has no side effects other than it's return value
+ * and uses no inputs other than it's arguments and global variables.
+ */
+#define PURE_FUNCTION __attribute__((__pure__))
+#else
+#define PURE_FUNCTION
+#endif
+#endif
 #endif
 
 #if HAVE_ATTRIBUTE_UNUSED
