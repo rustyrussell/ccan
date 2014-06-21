@@ -55,6 +55,7 @@ struct test {
 	const char *depends;
 	const char *link;
 	const char *fragment;
+	const char *overrides; /* On success, force this to '1' */
 	bool done;
 	bool answer;
 };
@@ -144,7 +145,9 @@ static struct test tests[] = {
 	  "	struct timespec ts;\n"
 	  "	clock_gettime(CLOCK_REALTIME, &ts);\n"
 	  "	return ts;\n"
-	  "}\n" },
+	  "}\n",
+	  /* This means HAVE_CLOCK_GETTIME, too */
+	  "HAVE_CLOCK_GETTIME" },
 	{ "HAVE_COMPOUND_LITERALS", INSIDE_MAIN, NULL, NULL,
 	  "int *foo = (int[]) { 1, 2, 3, 4 };\n"
 	  "return foo[0] ? 0 : 1;" },
@@ -479,6 +482,12 @@ static bool run_test(const char *cmd, struct test *test)
 		test->answer = (status == 0);
 	}
 	test->done = true;
+
+	if (test->answer && test->overrides) {
+		struct test *override = find_test(test->overrides);
+		override->done = true;
+		override->answer = true;
+	}
 	return test->answer;
 }
 
