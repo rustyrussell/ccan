@@ -66,7 +66,7 @@ struct timemono {
  * Otherwise time_mono() just refers to time_now().  Your code might
  * test this if you really need a monotonic clock.
  */
-#if (HAVE_CLOCK_GETTIME || HAVE_CLOCK_GETTIME_IN_LIBRT) && defined(CLOCK_MONOTONIC)
+#if HAVE_CLOCK_GETTIME && defined(CLOCK_MONOTONIC)
 #define TIME_HAVE_MONOTONIC 1
 #endif
 

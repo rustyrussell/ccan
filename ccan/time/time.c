@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#if !HAVE_CLOCK_GETTIME && !HAVE_CLOCK_GETTIME_IN_LIBRT
+#if !HAVE_CLOCK_GETTIME
 #include <sys/time.h>
 
 struct timeabs time_now(void)
@@ -23,7 +23,7 @@ struct timeabs time_now(void)
 	clock_gettime(CLOCK_REALTIME, &ret.ts);
 	return TIMEABS_CHECK(ret);
 }
-#endif /* HAVE_CLOCK_GETTIME || HAVE_CLOCK_GETTIME_IN_LIBRT */
+#endif /* HAVE_CLOCK_GETTIME */
 
 struct timemono time_mono(void)
 {
