@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
 	/* If it accesses this, it will crash. */
 	char **invalid = (char **)1L;
 
-	plan_tests(40);
+	plan_tests(41);
 	/* Simple matching. */
 	ok1(tal_strreg(ctx, "hello world!", "hello") == true);
 	ok1(tal_strreg(ctx, "hello world!", "hi") == false);
@@ -115,6 +115,10 @@ int main(int argc, char *argv[])
 		       take(a), &b, invalid) == false);
 	ok1(no_children(ctx));
 	tal_free(ctx);
+
+	/* Don't get fooled by \(! */
+	ok1(tal_strreg(ctx, "(hello) (world)!", "\\([a-z]*\\) \\([a-z]+\\)",
+		       invalid) == true);
 
 	return exit_status();
 }

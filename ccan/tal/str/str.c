@@ -236,9 +236,31 @@ fail:
 	goto out;
 }
 
+static size_t count_open_braces(const char *string)
+{
+#if 1
+	size_t num = 0, esc = 0;
+
+	while (*string) {
+		if (*string == '\\')
+			esc++;
+		else {
+			/* An odd number of \ means it's escaped. */
+			if (*string == '(' && (esc & 1) == 0)
+				num++;
+			esc = 0;
+		}
+		string++;
+	}
+	return num;
+#else
+	return strcount(string, "(");
+#endif
+}
+
 bool tal_strreg(const tal_t *ctx, const char *string, const char *regex, ...)
 {
-	size_t nmatch = 1 + strcount(regex, "(");
+	size_t nmatch = 1 + count_open_braces(regex);
 	regmatch_t matches[nmatch];
 	regex_t r;
 	bool ret = false;
