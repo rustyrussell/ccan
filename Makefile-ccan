@@ -23,6 +23,7 @@ MODS_NO_SRC := alignof \
 	minmax \
 	objset \
 	short_types \
+	structeq \
 	tcon \
 	tlist \
 	typesafe_cb \
