@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include "utils.h"
+#include <math.h>
 
 /* We don't actually want it to exit... */
 static jmp_buf exited;
@@ -77,7 +78,7 @@ static void set_args(int *argc, char ***argv, ...)
 /* Test helpers. */
 int main(int argc, char *argv[])
 {
-	plan_tests(476);
+	plan_tests(500);
 
 	/* opt_set_bool */
 	{
@@ -215,9 +216,25 @@ int main(int argc, char *argv[])
 		ok1(arg == 9999);
 		ok1(parse_args(&argc, &argv, "-a", "-9999", NULL));
 		ok1(arg == -9999);
+		ok1(parse_args(&argc, &argv, "-a", "1e33", NULL));
+		ok1(arg == 1e33f);
+		/*overflows should fail */
+		ok1(!parse_args(&argc, &argv, "-a", "1e39", NULL));
+		ok1(!parse_args(&argc, &argv, "-a", "-1e40", NULL));
+		/*low numbers lose precision but work */
+		ok1(parse_args(&argc, &argv, "-a", "1e-39", NULL));
+		ok1(arg == 1e-39f);
+		ok1(parse_args(&argc, &argv, "-a", "-1e-45", NULL));
+		ok1(arg == -1e-45f);
+		ok1(!parse_args(&argc, &argv, "-a", "1e-99", NULL));
 		ok1(parse_args(&argc, &argv, "-a", "0", NULL));
 		ok1(arg == 0);
+		ok1(parse_args(&argc, &argv, "-a", "1.111111111111", NULL));
+		ok1(arg == 1.1111112f);
+		ok1(parse_args(&argc, &argv, "-a", "INF", NULL));
+		ok1(isinf(arg));
 		ok1(!parse_args(&argc, &argv, "-a", "100crap", NULL));
+		ok1(!parse_args(&argc, &argv, "-a", "1e7crap", NULL));
 	}
 	/* opt_set_doubleval */
 	{
@@ -228,9 +245,19 @@ int main(int argc, char *argv[])
 		ok1(arg == 9999);
 		ok1(parse_args(&argc, &argv, "-a", "-9999", NULL));
 		ok1(arg == -9999);
+		ok1(parse_args(&argc, &argv, "-a", "1e-299", NULL));
+		ok1(arg == 1e-299);
+		ok1(parse_args(&argc, &argv, "-a", "-1e-305", NULL));
+		ok1(arg == -1e-305);
+		ok1(!parse_args(&argc, &argv, "-a", "1e-499", NULL));
 		ok1(parse_args(&argc, &argv, "-a", "0", NULL));
 		ok1(arg == 0);
+		ok1(parse_args(&argc, &argv, "-a", "1.1111111111111111111", NULL));
+		ok1(arg == 1.1111111111111112);
+		ok1(parse_args(&argc, &argv, "-a", "INF", NULL));
+		ok1(isinf(arg));
 		ok1(!parse_args(&argc, &argv, "-a", "100crap", NULL));
+		ok1(!parse_args(&argc, &argv, "-a", "1e7crap", NULL));
 	}
 
 	{

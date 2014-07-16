@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <limits.h>
 #include "private.h"
+#include <float.h>
 
 /* Upper bound to sprintf this simple type?  Each 3 bits < 1 digit. */
 #define CHAR_SIZE(type) (((sizeof(type)*CHAR_BIT + 2) / 3) + 1)
@@ -126,8 +127,14 @@ char *opt_set_floatval(const char *arg, float *f)
 		return err;
 
 	*f = d;
-	if (*f != d)
-		return arg_bad("'%s' is out of range", arg);
+
+	/*allow true infinity via --foo=INF, while avoiding isinf() from math.h
+	  because it wasn't standard 25 years ago.*/
+	double inf = 1e300 * 1e300; /*direct 1e600 annoys -Woverflow*/
+	if ((d > FLT_MAX || d < -FLT_MAX) && d != inf && d != -inf)
+		return arg_bad("'%s' is out of range for a 32 bit float", arg);
+	if (d != 0 && *f == 0)
+		return arg_bad("'%s' is out of range (truncated to zero)", arg);
 
 	return NULL;
 }
