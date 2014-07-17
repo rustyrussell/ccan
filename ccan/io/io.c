@@ -403,8 +403,8 @@ struct io_plan io_connect_(int fd, const struct addrinfo *addr,
 	plan.next_arg = arg;
 
 	/* Save old flags, set nonblock if not already. */
-	plan.u1.s = fcntl(fd, F_GETFD);
-	fcntl(fd, F_SETFD, plan.u1.s | O_NONBLOCK);
+	plan.u1.s = fcntl(fd, F_GETFL);
+	fcntl(fd, F_SETFL, plan.u1.s | O_NONBLOCK);
 
 	/* Immediate connect can happen. */
 	if (connect(fd, addr->ai_addr, addr->ai_addrlen) == 0) {
