@@ -1,6 +1,9 @@
 /* Licensed under BSD-MIT - see LICENSE file for details */
 #ifndef CCAN_NET_H
 #define CCAN_NET_H
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 #include <stdbool.h>
 
 struct pollfd;
@@ -16,10 +19,7 @@ struct pollfd;
  * of results, or NULL on error.  You should use freeaddrinfo() to free it.
  *
  * Example:
- *	#include <sys/types.h>
- *	#include <sys/socket.h>
  *	#include <stdio.h>
- *	#include <netdb.h>
  *	#include <poll.h>
  *	#include <err.h>
  *	...
@@ -124,10 +124,7 @@ void net_connect_abort(struct pollfd *pfds);
  * of results, or NULL on error.  You should use freeaddrinfo() to free it.
  *
  * Example:
- *	#include <sys/types.h>
- *	#include <sys/socket.h>
  *	#include <stdio.h>
- *	#include <netdb.h>
  *	#include <err.h>
  *	...
  *	struct addrinfo *addr;

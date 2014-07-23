@@ -15,8 +15,6 @@
  *
  * Example:
  *	#include <ccan/net/net.h>
- *	#include <sys/types.h>
- *	#include <sys/socket.h>
  *	#include <netinet/in.h>
  *	#include <stdio.h>
  *	#include <err.h>
@@ -49,6 +47,7 @@
  *		fd = net_connect(addr);
  *		if (fd < 0)
  *			err(1, "Failed to connect to %s", dest);
+ *		freeaddrinfo(addr);
  *	
  *		if (getsockname(fd, &u.s, &slen) == 0)
  *			printf("Connected via %s\n",
