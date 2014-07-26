@@ -181,4 +181,23 @@ static inline const char *bytestring_rindex(struct bytestring haystack,
 	return memrchr(haystack.ptr, needle, haystack.len);
 }
 
+/*
+ * bytestring_bytestring - search for a bytestring in another bytestring
+ * @haystack, @needle: bytestrings
+ *
+ * Returns a bytestring corresponding to the first occurrence of
+ * @needle in @haystack, or bytestring_NULL if @needle is not found
+ * within @haystack.
+ */
+static inline struct bytestring bytestring_bytestring(struct bytestring haystack,
+						      struct bytestring needle)
+{
+	const char *p = memmem(haystack.ptr, haystack.len,
+			       needle.ptr, needle.len);
+	if (p)
+		return bytestring(p, needle.len);
+	else
+		return bytestring_NULL;
+}
+
 #endif /* CCAN_BYTESTRING_H_ */

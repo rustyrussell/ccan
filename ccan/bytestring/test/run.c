@@ -11,10 +11,10 @@ const char *str2 = TEST_STRING;
 
 int main(void)
 {
-	struct bytestring bs, bs1, bs2, bs3, bs4, bs5;
+	struct bytestring bs, bs1, bs2, bs3, bs4, bs5, bs6;
 
 	/* This is how many tests you plan to run */
-	plan_tests(42);
+	plan_tests(47);
 
 	bs = bytestring(str1, sizeof(str1) - 1);
 	ok1(bs.ptr == str1);
@@ -74,6 +74,19 @@ int main(void)
 	ok1(bytestring_rindex(bs2, 0) == (bs2.ptr + 3));
 	ok1(bytestring_rindex(bs2, 'f') == (bs2.ptr + 6));
 	ok1(bytestring_rindex(bs2, 'q') == NULL);
+
+	bs6 = BYTESTRING("string");
+	ok1(bytestring_eq(bytestring_bytestring(bs1, bs6),
+			  bytestring(bs1.ptr + 5, 6)));
+	bs6 = BYTESTRING("c\0d");
+	ok1(bytestring_eq(bytestring_bytestring(bs2, bs6),
+			  bytestring(bs2.ptr + 2, 3)));
+	bs6 = BYTESTRING("c\0e");
+	ok1(bytestring_bytestring(bs2, bs6).ptr == NULL);
+	ok1(bytestring_eq(bytestring_bytestring(bs1, bytestring_NULL),
+			  bytestring(bs1.ptr, 0)));
+	ok1(bytestring_eq(bytestring_bytestring(bs2, bytestring_NULL),
+			  bytestring(bs2.ptr, 0)));
 
 	/* This exits depending on whether all tests passed */
 	return exit_status();
