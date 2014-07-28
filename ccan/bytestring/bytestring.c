@@ -66,3 +66,41 @@ struct bytestring bytestring_splitchr_next(struct bytestring whole,
 
 	return _splitchr(whole, delim, (prev.ptr - whole.ptr) + prev.len + 1);
 }
+
+static struct bytestring _splitchrs(struct bytestring whole,
+				    struct bytestring delim, size_t start)
+{
+	struct bytestring remainder;
+	size_t n;
+
+	assert(start <= whole.len);
+
+	remainder = bytestring_slice(whole, start, whole.len);
+	n = bytestring_cspn(remainder, delim);
+	return bytestring_slice(whole, start, start + n);
+}
+
+struct bytestring bytestring_splitchrs_first(struct bytestring whole,
+					     struct bytestring delim)
+{
+	if (whole.len == 0)
+		return bytestring_NULL;
+
+	return _splitchrs(whole, delim, 0);
+}
+
+struct bytestring bytestring_splitchrs_next(struct bytestring whole,
+					    struct bytestring delim,
+					    struct bytestring prev)
+{
+	if (!prev.ptr)
+		return bytestring_NULL;
+
+	/* prev has to be a substring of whole */
+	assert(prev.ptr >= whole.ptr);
+
+	if ((prev.ptr + prev.len) == (whole.ptr + whole.len))
+		return bytestring_NULL;
+
+	return _splitchrs(whole, delim, (prev.ptr - whole.ptr) + prev.len + 1);
+}

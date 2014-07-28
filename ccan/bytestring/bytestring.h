@@ -246,4 +246,34 @@ struct bytestring bytestring_splitchr_next(struct bytestring whole,
 	     (_s).ptr;					       \
 	     (_s) = bytestring_splitchr_next((_w), (_delim), (_s)))
 
+/**
+ * bytestring_splitchrs_first - split a bytestring on a set of delimiter
+ *                              characters
+ * @whole: a bytestring
+ * @delim: delimiter characters
+ *
+ * Returns the first substring of @whole delimited by any character in
+ * @delim.
+ */
+struct bytestring bytestring_splitchrs_first(struct bytestring whole,
+					     struct bytestring delim);
+
+/**
+ * bytestring_splitchr_next - split a bytestring on a set of delimiter
+ *                            characters
+ * @whole: a bytestring
+ * @delim: delimiter character
+ * @prev: last substring
+ *
+ * Returns the next @delim delimited substring of @whole after @prev.
+ */
+struct bytestring bytestring_splitchrs_next(struct bytestring whole,
+					    struct bytestring delim,
+					    struct bytestring prev);
+
+#define bytestring_foreach_splitchrs(_s, _w, _delim) \
+	for ((_s) = bytestring_splitchrs_first((_w), (_delim)); \
+	     (_s).ptr;					       \
+	     (_s) = bytestring_splitchrs_next((_w), (_delim), (_s)))
+
 #endif /* CCAN_BYTESTRING_H_ */
