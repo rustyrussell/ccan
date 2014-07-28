@@ -17,7 +17,7 @@ int main(void)
 	int n;
 
 	/* This is how many tests you plan to run */
-	plan_tests(109);
+	plan_tests(126);
 
 	bs = bytestring(str1, sizeof(str1) - 1);
 	ok1(bs.ptr == str1);
@@ -198,6 +198,39 @@ int main(void)
 	}
 	ok1(n == 6);
 
+	bs7 = bytestring_splitstr_first(bs, BYTESTRING("t "));
+	ok1(bs7.ptr == bs.ptr);
+	ok1(bytestring_eq(bs7, BYTESTRING("tes")));
+	bs7 = bytestring_splitstr_next(bs, BYTESTRING("t "), bs7);
+	ok1(bs7.ptr == bs.ptr + 5);
+	ok1(bytestring_eq(bs7, BYTESTRING("string")));
+	bs7 = bytestring_splitstr_next(bs, BYTESTRING("t "), bs7);
+	ok1(!bs7.ptr);
+	bs7 = bytestring_splitstr_next(bs, BYTESTRING("t "), bs7);
+	ok1(!bs7.ptr);
+
+	bs7 = bytestring_splitstr_first(bs2, BYTESTRING("abc"));
+	ok1(bs7.ptr == bs2.ptr);
+	ok1(bs7.len == 0);
+	bs7 = bytestring_splitstr_next(bs2, BYTESTRING("abc"), bs7);
+	ok1(bs7.ptr == bs2.ptr + 3);
+	ok1(bytestring_eq(bs7, BYTESTRING("\0def")));
+	bs7 = bytestring_splitstr_next(bs2, BYTESTRING("t "), bs7);
+	ok1(!bs7.ptr);
+	bs7 = bytestring_splitstr_next(bs2, BYTESTRING("t "), bs7);
+	ok1(!bs7.ptr);
+
+	bs7 = bytestring_splitstr_first(BYTESTRING(""), BYTESTRING(""));
+	ok1(!bs7.ptr);
+
+	n = 0;
+	bytestring_foreach_splitstr(bs7, BYTESTRING("foofoo"),
+				     BYTESTRING("foo")) {
+		n++;
+		ok1(bs7.ptr && !bs7.len);
+	}
+	ok1(n == 3);
+	
 	/* This exits depending on whether all tests passed */
 	return exit_status();
 }
