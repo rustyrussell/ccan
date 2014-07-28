@@ -13,10 +13,11 @@ const char *str2 = TEST_STRING;
 
 int main(void)
 {
-	struct bytestring bs, bs1, bs2, bs3, bs4, bs5, bs6;
+	struct bytestring bs, bs1, bs2, bs3, bs4, bs5, bs6, bs7;
+	int n;
 
 	/* This is how many tests you plan to run */
-	plan_tests(53);
+	plan_tests(89);
 
 	bs = bytestring(str1, sizeof(str1) - 1);
 	ok1(bs.ptr == str1);
@@ -99,6 +100,70 @@ int main(void)
 
 	ok1(bytestring_spn(bs1, BYTESTRING("eginrst ")) == bs1.len);
 	ok1(bytestring_cspn(bs2, BYTESTRING("z")) == bs2.len);
+
+	bs7 = bytestring_splitchr_first(bs, ' ');
+	ok1(bs7.ptr == bs.ptr);
+	ok1(bytestring_eq(bs7, BYTESTRING("test")));
+	bs7 = bytestring_splitchr_next(bs, ' ', bs7);
+	ok1(bs7.ptr == bs.ptr + 5);
+	ok1(bytestring_eq(bs7, BYTESTRING("string")));
+	bs7 = bytestring_splitchr_next(bs, ' ', bs7);
+	ok1(!bs7.ptr);
+	bs7 = bytestring_splitchr_next(bs, ' ', bs7);
+	ok1(!bs7.ptr);
+
+	bs7 = bytestring_splitchr_first(bs2, '\0');
+	ok1(bs7.ptr = bs2.ptr);
+	ok1(bytestring_eq(bs7, BYTESTRING("abc")));
+	bs7 = bytestring_splitchr_next(bs2, '\0', bs7);
+	ok1(bs7.ptr == bs2.ptr + 4);
+	ok1(bytestring_eq(bs7, BYTESTRING("def")));
+	bs7 = bytestring_splitchr_next(bs2, '\0', bs7);
+	ok1(!bs7.ptr);
+	bs7 = bytestring_splitchr_next(bs2, ' ', bs7);
+	ok1(!bs7.ptr);
+
+	bs7 = bytestring_splitchr_first(bs, 's');
+	ok1(bs7.ptr == bs.ptr);
+	ok1(bytestring_eq(bs7, BYTESTRING("te")));
+	bs7 = bytestring_splitchr_next(bs, 's', bs7);
+	ok1(bs7.ptr == bs.ptr + 3);
+	ok1(bytestring_eq(bs7, BYTESTRING("t ")));
+	bs7 = bytestring_splitchr_next(bs, 's', bs7);
+	ok1(bs7.ptr == bs.ptr + 6);
+	ok1(bytestring_eq(bs7, BYTESTRING("tring")));
+	bs7 = bytestring_splitchr_next(bs, 's', bs7);
+	ok1(!bs7.ptr);
+	bs7 = bytestring_splitchr_next(bs, ' ', bs7);
+	ok1(!bs7.ptr);
+
+	bs7 = bytestring_splitchr_first(bs2, 'f');
+	ok1(bs7.ptr = bs2.ptr);
+	ok1(bytestring_eq(bs7, BYTESTRING("abc\0de")));
+	bs7 = bytestring_splitchr_next(bs2, 'f', bs7);
+	ok1(bs7.ptr == bs2.ptr + 7);
+	ok1(bs7.len == 0);
+	bs7 = bytestring_splitchr_next(bs2, 'f', bs7);
+	ok1(!bs7.ptr);
+	bs7 = bytestring_splitchr_next(bs2, 'f', bs7);
+	ok1(!bs7.ptr);
+
+	bs7 = bytestring_splitchr_first(BYTESTRING(""), 'q');
+	ok1(!bs7.ptr);
+
+	n = 0;
+	bytestring_foreach_splitchr(bs7, BYTESTRING("  "), ' ') {
+		n++;
+		ok1(bs7.ptr && !bs7.len);
+	}
+	ok1(n == 3);
+
+	n = 0;
+	bytestring_foreach_splitchr(bs7, BYTESTRING("\0\0\0"), '\0') {
+		n++;
+		ok1(bs7.ptr && !bs7.len);
+	}
+	ok1(n == 4);
 
 	/* This exits depending on whether all tests passed */
 	return exit_status();

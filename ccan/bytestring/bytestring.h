@@ -220,4 +220,30 @@ size_t bytestring_spn(struct bytestring s, struct bytestring accept);
  */
 size_t bytestring_cspn(struct bytestring s, struct bytestring reject);
 
+/**
+ * bytestring_splitchr_first - split a bytestring on a single character delimiter
+ * @whole: a bytestring
+ * @delim: delimiter character
+ *
+ * Returns the first @delim delimited substring of @whole.
+ */
+struct bytestring bytestring_splitchr_first(struct bytestring whole,
+					    char delim);
+
+/**
+ * bytestring_splitchr_next - split a bytestring on a single character delimiter
+ * @whole: a bytestring
+ * @delim: delimiter character
+ * @prev: last substring
+ *
+ * Returns the next @delim delimited substring of @whole after @prev.
+ */
+struct bytestring bytestring_splitchr_next(struct bytestring whole,
+					   char delim, struct bytestring prev);
+
+#define bytestring_foreach_splitchr(_s, _w, _delim) \
+	for ((_s) = bytestring_splitchr_first((_w), (_delim)); \
+	     (_s).ptr;					       \
+	     (_s) = bytestring_splitchr_next((_w), (_delim), (_s)))
+
 #endif /* CCAN_BYTESTRING_H_ */
