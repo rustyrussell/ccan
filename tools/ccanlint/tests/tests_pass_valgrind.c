@@ -251,10 +251,10 @@ static void run_under_debugger_vg(struct manifest *m, struct score *score)
 		return;
 
 	first = list_top(&score->per_file_errors, struct file_error, list);
-	command = tal_fmt(m, "valgrind --leak-check=full --db-attach=yes%s %s",
+	command = tal_fmt(m, "valgrind --leak-check=full --db-attach=yes%s %s %s",
 			  concat(score, per_file_options(&tests_pass_valgrind,
 							 first->file)),
-			  first->file->compiled[COMPILE_NORMAL]);
+			  valgrind_suppress, first->file->compiled[COMPILE_NORMAL]);
 	if (system(command))
 		doesnt_matter();
 }

@@ -3,6 +3,7 @@
 #include <ccan/take/take.h>
 #include <ccan/str/str.h>
 #include <ccan/foreach/foreach.h>
+#include <ccan/tal/path/path.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -17,6 +18,7 @@
 #include "tests_pass.h"
 
 bool do_valgrind = false;
+const char *valgrind_suppress = "";
 
 static const char *can_run(struct manifest *m)
 {
@@ -27,8 +29,17 @@ static const char *can_run(struct manifest *m)
 
 	if (!is_excluded("tests_pass_valgrind")
 	    && run_command(m, &timeleft, &output,
-			   "valgrind -q true"))
+			   "valgrind -q true")) {
+		const char *sfile;
+
 		do_valgrind = true;
+
+		/* Check for suppressions file for all of CCAN. */
+		sfile = path_join(m, ccan_dir, ".valgrind_suppressions");
+		if (path_is_file(sfile))
+			valgrind_suppress = tal_fmt(m, "--suppressions=%s",
+						    sfile);
+	}
 
 	return NULL;
 }
@@ -67,9 +78,9 @@ static void run_test(void *ctx,
 			run_command_async(i, *timeleft,
 					  "valgrind -q"
 					  " --leak-check=full"
-					  " --log-fd=3 %s %s"
+					  " --log-fd=3 %s %s %s"
 					  " 3> %s",
-					  options,
+					  valgrind_suppress, options,
 					  i->compiled[COMPILE_NORMAL],
 					  i->valgrind_log);
 			return;

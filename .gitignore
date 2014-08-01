@@ -1,5 +1,6 @@
 TAGS
 .depends
+.valgrind_suppressions
 *.d
 *.o
 libccan.a
