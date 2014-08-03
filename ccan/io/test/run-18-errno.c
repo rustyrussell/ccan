@@ -22,23 +22,24 @@ static void finish_EBADF(struct io_conn *conn, int *state)
 	ok1(errno == EBADF);
 	ok1(*state == 3);
 	(*state)++;
-	io_break(state + 1, io_close());
+	io_break(state + 1);
 }
 
-static void init_conn(int fd, int *state)
+static struct io_plan *init_conn(struct io_conn *conn, int *state)
 {
 	if (*state == 0) {
 		(*state)++;
 		errno = 100;
-		io_set_finish(io_new_conn(fd, io_close()), finish_100, state);
+		io_set_finish(conn, finish_100, state);
+		return io_close(conn);
 	} else {
 		ok1(*state == 2);
 		(*state)++;
-		close(fd);
+		close(io_conn_fd(conn));
 		errno = 0;
-		io_set_finish(io_new_conn(fd, io_read(state, 1,
-						      io_close_cb, NULL)),
-			      finish_EBADF, state);
+		io_set_finish(conn, finish_EBADF, state);
+
+		return io_read(conn, state, 1, io_close_cb, NULL);
 	}
 }
 
@@ -85,7 +86,7 @@ int main(void)
 	plan_tests(12);
 	fd = make_listen_fd(PORT, &addrinfo);
 	ok1(fd >= 0);
-	l = io_new_listener(fd, init_conn, &state);
+	l = io_new_listener(NULL, fd, init_conn, &state);
 	ok1(l);
 	fflush(stdout);
 	if (!fork()) {

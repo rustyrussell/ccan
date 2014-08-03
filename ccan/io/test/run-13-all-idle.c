@@ -7,6 +7,11 @@
 #include <stdio.h>
 #include <signal.h>
 
+static struct io_plan *setup_waiter(struct io_conn *conn, int *status)
+{
+	return io_wait(conn, status, IO_IN, io_close_cb, NULL);
+}
+
 int main(void)
 {
 	int status;
@@ -17,7 +22,7 @@ int main(void)
 		int fds[2];
 
 		ok1(pipe(fds) == 0);
-		io_new_conn(fds[0], io_wait(&status, io_close_cb, NULL));
+		io_new_conn(NULL, fds[0], setup_waiter, &status);
 		io_loop();
 		exit(1);
 	}

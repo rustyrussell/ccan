@@ -9,15 +9,25 @@
 
 static char inbuf[8];
 
-static struct io_plan wake_it(struct io_conn *conn, struct io_conn *reader)
+static struct io_plan *wake_it(struct io_conn *conn, struct io_conn *reader)
 {
 	io_wake(inbuf);
-	return io_close();
+	return io_close(conn);
 }
 
-static struct io_plan read_buf(struct io_conn *conn, void *unused)
+static struct io_plan *read_buf(struct io_conn *conn, void *unused)
 {
-	return io_read(inbuf, 8, io_close_cb, NULL);
+	return io_read(conn, inbuf, 8, io_close_cb, NULL);
+}
+
+static struct io_plan *init_writer(struct io_conn *conn, struct io_conn *wakeme)
+{
+	return io_write(conn, "EASYTEST", 8, wake_it, wakeme);
+}
+
+static struct io_plan *init_waiter(struct io_conn *conn, void *unused)
+{
+	return io_wait(conn, inbuf, IO_IN, read_buf, NULL);
 }
 
 int main(void)
@@ -28,8 +38,8 @@ int main(void)
 	plan_tests(3);
 
 	ok1(pipe(fds) == 0);
-	conn = io_new_conn(fds[0], io_wait(inbuf, read_buf, NULL));
-	io_new_conn(fds[1], io_write("EASYTEST", 8, wake_it, conn));
+	conn = io_new_conn(NULL, fds[0], init_waiter, NULL);
+	io_new_conn(conn, fds[1], init_writer, conn);
 
 	ok1(io_loop() == NULL);
 	ok1(memcmp(inbuf, "EASYTEST", sizeof(inbuf)) == 0);

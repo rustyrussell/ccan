@@ -1,35 +1,69 @@
 /* Licensed under LGPLv2.1+ - see LICENSE file for details */
 #ifndef CCAN_IO_H
 #define CCAN_IO_H
+#include <ccan/tal/tal.h>
 #include <ccan/typesafe_cb/typesafe_cb.h>
-#include <ccan/time/time.h>
 #include <stdbool.h>
 #include <unistd.h>
-#include "io_plan.h"
+
+enum io_direction {
+	IO_IN,
+	IO_OUT
+};
+
+/**
+ * struct io_plan - a plan for input or output.
+ *
+ * Each io_conn has zero to two of these active at any time.
+ */
+struct io_plan;
+
+/**
+ * struct io_conn - a connection associated with an fd.
+ */
+struct io_conn;
 
 /**
  * io_new_conn - create a new connection.
+ * @ctx: the context to tal from (or NULL)
  * @fd: the file descriptor.
- * @plan: the first I/O to perform.
+ * @init: the function to call for a new connection
+ * @arg: the argument to @init.
  *
- * This creates a connection which owns @fd.  @plan will be called on the
- * next io_loop().
+ * This creates a connection which owns @fd, it then calls
+ * @init to initialize the connection, which sets up an io_plan.
  *
  * Returns NULL on error (and sets errno).
  *
  * Example:
+ * // Dumb init function to print string and tell conn to close.
+ * static struct io_plan *conn_init(struct io_conn *conn, const char *msg)
+ * {
+ *	printf("Created conn %p: %s", conn, msg);
+ *	return io_close(conn);
+ * }
+ *
+ * static void create_self_closing_pipe(void)
+ * {
  *	int fd[2];
  *	struct io_conn *conn;
  *
  *	pipe(fd);
- *	// Plan is to close the fd immediately.
- *	conn = io_new_conn(fd[0], io_close());
+ *	conn = io_new_conn(NULL, fd[0], conn_init, (const char *)"hi!");
  *	if (!conn)
  *		exit(1);
+ * }
  */
-#define io_new_conn(fd, plan)				\
-	(io_plan_no_debug(), io_new_conn_((fd), (plan)))
-struct io_conn *io_new_conn_(int fd, struct io_plan plan);
+#define io_new_conn(ctx, fd, init, arg)					\
+	io_new_conn_((ctx), (fd),					\
+		     typesafe_cb_preargs(struct io_plan *, void *,	\
+					 (init), (arg),			\
+					 struct io_conn *conn),		\
+		     (void *)(arg))
+
+struct io_conn *io_new_conn_(const tal_t *ctx, int fd,
+			     struct io_plan *(*init)(struct io_conn *, void *),
+			     void *arg);
 
 /**
  * io_set_finish - set finish function on a connection.
@@ -40,34 +74,42 @@ struct io_conn *io_new_conn_(int fd, struct io_plan plan);
  * @finish will be called when an I/O operation fails, or you call
  * io_close() on the connection.  errno will be set to the value
  * after the failed I/O, or at the call to io_close().  The fd
- * will be closed (unless a duplex) before @finish is called.
+ * will be closed before @finish is called.
  *
  * Example:
- * static void finish(struct io_conn *conn, void *unused)
+ * static void finish(struct io_conn *conn, const char *msg)
  * {
  *	// errno is not 0 after success, so this is a bit useless.
- *	printf("Conn %p closed with errno %i\n", conn, errno);
+ *	printf("Conn %p closed with errno %i (%s)\n", conn, errno, msg);
  * }
- * ...
- *	io_set_finish(conn, finish, NULL);
+ *
+ * // Dumb init function to print string and tell conn to close.
+ * static struct io_plan *conn_init(struct io_conn *conn, const char *msg)
+ * {
+ *	io_set_finish(conn, finish, msg);
+ *	return io_close(conn);
+ * }
  */
 #define io_set_finish(conn, finish, arg)				\
 	io_set_finish_((conn),						\
 		       typesafe_cb_preargs(void, void *,		\
 					   (finish), (arg),		\
 					   struct io_conn *),		\
-		       (arg))
+		       (void *)(arg))
 void io_set_finish_(struct io_conn *conn,
 		    void (*finish)(struct io_conn *, void *),
 		    void *arg);
 
+
 /**
  * io_new_listener - create a new accepting listener.
+ * @ctx: the context to tal from (or NULL)
  * @fd: the file descriptor.
  * @init: the function to call for a new connection
  * @arg: the argument to @init.
  *
- * When @fd becomes readable, we accept() and pass that fd to init().
+ * When @fd becomes readable, we accept(), create a new connection,
+ * (tal'ocated off @ctx) and pass that to init().
  *
  * Returns NULL on error (and sets errno).
  *
@@ -76,11 +118,7 @@ void io_set_finish_(struct io_conn *conn,
  * #include <sys/socket.h>
  * #include <netdb.h>
  *
- * static void start_conn(int fd, char *msg)
- * {
- *	printf("%s fd %i\n", msg, fd);
- *	close(fd);
- * }
+ * ...
  *
  * // Set up a listening socket, return it.
  * static struct io_listener *do_listen(const char *port)
@@ -112,17 +150,18 @@ void io_set_finish_(struct io_conn *conn,
  *		close(fd);
  *		return NULL;
  *	}
- *	return io_new_listener(fd, start_conn, (char *)"Got one!");
+ *	return io_new_listener(NULL, fd, conn_init, (const char *)"listened!");
  * }
  */
-#define io_new_listener(fd, init, arg)					\
-	io_new_listener_((fd),						\
-			 typesafe_cb_preargs(void, void *,		\
+#define io_new_listener(ctx, fd, init, arg)				\
+	io_new_listener_((ctx), (fd),					\
+			 typesafe_cb_preargs(struct io_plan *, void *,	\
 					     (init), (arg),		\
-					     int fd),			\
-			 (arg))
-struct io_listener *io_new_listener_(int fd,
-				     void (*init)(int fd, void *arg),
+					     struct io_conn *conn),	\
+			 (void *)(arg))
+struct io_listener *io_new_listener_(const tal_t *ctx, int fd,
+				     struct io_plan *(*init)(struct io_conn *,
+							     void *),
 				     void *arg);
 
 /**
@@ -142,73 +181,79 @@ struct io_listener *io_new_listener_(int fd,
 void io_close_listener(struct io_listener *listener);
 
 /**
- * io_write - plan to write data.
+ * io_write - output plan to write data.
+ * @conn: the connection that plan is for.
  * @data: the data buffer.
  * @len: the length to write.
- * @cb: function to call once it's done.
- * @arg: @cb argument
+ * @next: function to call output is done.
+ * @arg: @next argument
  *
- * This creates a plan write out a data buffer.  Once it's all
- * written, the @cb function will be called: on an error, the finish
+ * This updates the output plan, to write out a data buffer.  Once it's all
+ * written, the @next function will be called: on an error, the finish
  * function is called instead.
  *
  * Note that the I/O may actually be done immediately.
  *
  * Example:
- * static void start_conn_with_write(int fd, const char *msg)
+ * static struct io_plan *write_to_conn(struct io_conn *conn, const char *msg)
  * {
  *	// Write message, then close.
- *	io_new_conn(fd, io_write(msg, strlen(msg), io_close_cb, NULL));
+ *	return io_write(conn, msg, strlen(msg), io_close_cb, NULL);
  * }
  */
-#define io_write(data, len, cb, arg)					\
-	io_debug(io_write_((data), (len),				\
-			   typesafe_cb_preargs(struct io_plan, void *,	\
-					       (cb), (arg), struct io_conn *), \
-			   (arg)))
-struct io_plan io_write_(const void *data, size_t len,
-			 struct io_plan (*cb)(struct io_conn *, void *),
-			 void *arg);
+#define io_write(conn, data, len, next, arg)				\
+	io_write_((conn), (data), (len),				\
+		  typesafe_cb_preargs(struct io_plan *, void *,		\
+				      (next), (arg), struct io_conn *),	\
+		  (arg))
+struct io_plan *io_write_(struct io_conn *conn,
+			  const void *data, size_t len,
+			  struct io_plan *(*next)(struct io_conn *, void *),
+			  void *arg);
 
 /**
- * io_read - plan to read data.
+ * io_read - input plan to read data.
+ * @conn: the connection that plan is for.
  * @data: the data buffer.
  * @len: the length to read.
- * @cb: function to call once it's done.
- * @arg: @cb argument
+ * @next: function to call once input is done.
+ * @arg: @next argument
  *
  * This creates a plan to read data into a buffer.  Once it's all
- * read, the @cb function will be called: on an error, the finish
+ * read, the @next function will be called: on an error, the finish
  * function is called instead.
  *
  * Note that the I/O may actually be done immediately.
  *
  * Example:
- * static void start_conn_with_read(int fd, char msg[12])
+ * static struct io_plan *read_from_conn(struct io_conn *conn, char *buf)
  * {
  *	// Read message, then close.
- *	io_new_conn(fd, io_read(msg, 12, io_close_cb, NULL));
+ *	return io_read(conn, buf, 12, io_close_cb, NULL);
  * }
  */
-#define io_read(data, len, cb, arg)					\
-	io_debug(io_read_((data), (len),				\
-			  typesafe_cb_preargs(struct io_plan, void *,	\
-					      (cb), (arg), struct io_conn *), \
-			  (arg)))
-struct io_plan io_read_(void *data, size_t len,
-			struct io_plan (*cb)(struct io_conn *, void *),
-			void *arg);
+#define io_read(conn, data, len, next, arg)				\
+	io_read_((conn), (data), (len),					\
+		 typesafe_cb_preargs(struct io_plan *, void *,		\
+				     (next), (arg), struct io_conn *),	\
+		 (arg))
+struct io_plan *io_read_(struct io_conn *conn,
+			 void *data, size_t len,
+			 struct io_plan *(*next)(struct io_conn *, void *),
+			 void *arg);
 
 
 /**
- * io_read_partial - plan to read some data.
+ * io_read_partial - input plan to read some data.
+ * @conn: the connection that plan is for.
  * @data: the data buffer.
- * @len: the maximum length to read, set to the length actually read.
- * @cb: function to call once it's done.
- * @arg: @cb argument
+ * @maxlen: the maximum length to read
+ * @lenp: set to the length actually read.
+ * @next: function to call once input is done.
+ * @arg: @next argument
  *
  * This creates a plan to read data into a buffer.  Once any data is
- * read, @len is updated and the @cb function will be called: on an
+ * read, @len is updated and the @next function will be called: on an
  * error, the finish function is called instead.
  *
  * Note that the I/O may actually be done immediately.
@@ -219,41 +264,42 @@ struct io_plan io_read_(void *data, size_t len,
  *	char buf[12];
  * };
  *
- * static struct io_plan dump_and_close(struct io_conn *conn, struct buf *b)
+ * static struct io_plan *dump(struct io_conn *conn, struct buf *b)
  * {
  *	printf("Partial read: '%*s'\n", (int)b->len, b->buf);
  *	free(b);
- *	return io_close();
+ *	return io_close(conn);
  * }
  *
- * static void start_conn_with_part_read(int fd, void *unused)
+ * static struct io_plan *read_part(struct io_conn *conn, struct buf *b)
  * {
- *	struct buf *b = malloc(sizeof(*b));
- *
  *	// Read message, then dump and close.
- *	b->len = sizeof(b->buf);
- *	io_new_conn(fd, io_read_partial(b->buf, &b->len, dump_and_close, b));
+ *	return io_read_partial(conn, b->buf, sizeof(b->buf), &b->len, dump, b);
  * }
  */
-#define io_read_partial(data, len, cb, arg)				\
-	io_debug(io_read_partial_((data), (len),			\
-				  typesafe_cb_preargs(struct io_plan, void *, \
-						      (cb), (arg),	\
-						      struct io_conn *), \
-				  (arg)))
-struct io_plan io_read_partial_(void *data, size_t *len,
-				struct io_plan (*cb)(struct io_conn *, void *),
-				void *arg);
+#define io_read_partial(conn, data, maxlen, lenp, next, arg)		\
+	io_read_partial_((conn), (data), (maxlen), (lenp),		\
+			 typesafe_cb_preargs(struct io_plan *, void *,	\
+					     (next), (arg),		\
+					     struct io_conn *),		\
+			 (arg))
+struct io_plan *io_read_partial_(struct io_conn *conn,
+				 void *data, size_t maxlen, size_t *lenp,
+				 struct io_plan *(*next)(struct io_conn *,
+							 void *),
+				 void *arg);
 
 /**
- * io_write_partial - plan to write some data.
+ * io_write_partial - output plan to write some data.
+ * @conn: the connection that plan is for.
  * @data: the data buffer.
- * @len: the maximum length to write, set to the length actually written.
- * @cb: function to call once it's done.
- * @arg: @cb argument
+ * @maxlen: the maximum length to write
+ * @lenp: set to the length actually written.
+ * @next: function to call once output is done.
+ * @arg: @next argument
  *
  * This creates a plan to write data from a buffer.   Once any data is
- * written, @len is updated and the @cb function will be called: on an
+ * written, @len is updated and the @next function will be called: on an
  * error, the finish function is called instead.
  *
  * Note that the I/O may actually be done immediately.
@@ -264,70 +310,71 @@ struct io_plan io_read_partial_(void *data, size_t *len,
  *	char buf[12];
  * };
  *
- * static struct io_plan show_remainder(struct io_conn *conn, struct buf *b)
+ * static struct io_plan *show_partial(struct io_conn *conn, struct buf *b)
  * {
  *	printf("Only wrote: '%*s'\n", (int)b->len, b->buf);
  *	free(b);
- *	return io_close();
+ *	return io_close(conn);
  * }
  *
- * static void start_conn_with_part_read(int fd, void *unused)
+ * static struct io_plan *write_part(struct io_conn *conn, struct buf *b)
  * {
- *	struct buf *b = malloc(sizeof(*b));
- *
  *	// Write message, then dump and close.
- *	b->len = sizeof(b->buf);
  *	strcpy(b->buf, "Hello world");
- *	io_new_conn(fd, io_write_partial(b->buf, &b->len, show_remainder, b));
+ *	return io_write_partial(conn, b->buf, strlen(b->buf),
+ *				&b->len, show_partial, b);
  * }
  */
-#define io_write_partial(data, len, cb, arg)				\
-	io_debug(io_write_partial_((data), (len),			\
-				   typesafe_cb_preargs(struct io_plan, void *, \
-						       (cb), (arg),	\
-						       struct io_conn *), \
-				   (arg)))
-struct io_plan io_write_partial_(const void *data, size_t *len,
-				 struct io_plan (*cb)(struct io_conn *, void*),
-				 void *arg);
+#define io_write_partial(conn, data, maxlen, lenp, next, arg)		\
+	io_write_partial_((conn), (data), (maxlen), (lenp),		\
+			  typesafe_cb_preargs(struct io_plan *, void *,	\
+					      (next), (arg),		\
+					      struct io_conn *),	\
+			  (arg))
+struct io_plan *io_write_partial_(struct io_conn *conn,
+				  const void *data, size_t maxlen, size_t *lenp,
+				  struct io_plan *(*next)(struct io_conn *,
+							  void*),
+				  void *arg);
 
 /**
- * io_always - plan to immediately call next callback.
- * @cb: function to call.
- * @arg: @cb argument
+ * io_always - plan to immediately call next callback
+ * @conn: the connection that plan is for.
+ * @dir: IO_IN or IO_OUT
+ * @next: function to call.
+ * @arg: @next argument
  *
  * Sometimes it's neater to plan a callback rather than call it directly;
  * for example, if you only need to read data for one path and not another.
  *
  * Example:
- * static void start_conn_with_nothing(int fd)
+ * static struct io_plan *init_conn_with_nothing(struct io_conn *conn,
+ *						 void *unused)
  * {
  *	// Silly example: close on next time around loop.
- *	io_new_conn(fd, io_always(io_close_cb, NULL));
+ *	return io_always(conn, IO_IN, io_close_cb, NULL);
  * }
  */
-#define io_always(cb, arg)						\
-	io_debug(io_always_(typesafe_cb_preargs(struct io_plan, void *,	\
-						(cb), (arg),		\
-						struct io_conn *),	\
-			    (arg)))
-struct io_plan io_always_(struct io_plan (*cb)(struct io_conn *, void *),
-			  void *arg);
+#define io_always(conn, dir, next, arg)					\
+	io_always_((conn), dir, typesafe_cb_preargs(struct io_plan *, void *, \
+						    (next), (arg),	\
+						    struct io_conn *),	\
+		   (arg))
 
+struct io_plan *io_always_(struct io_conn *conn, enum io_direction dir,
+			   struct io_plan *(*next)(struct io_conn *, void *),
+			   void *arg);
 
 /**
- * io_connect - plan to connect to a listening socket.
- * @fd: file descriptor.
+ * io_connect - create an asynchronous connection to a listening socket.
+ * @conn: the connection that plan is for.
  * @addr: where to connect.
- * @cb: function to call once it's done.
- * @arg: @cb argument
+ * @init: function to call once it's connected
+ * @arg: @init argument
  *
  * This initiates a connection, and creates a plan for
- * (asynchronously).  completing it.  Once complete, @len is updated
- * and the @cb function will be called: on an error, the finish
- * function is called instead.
- *
- * Note that the connect may actually be done immediately.
+ * (asynchronously) completing it.  Once complete, the @init function
+ * will be called.
  *
  * Example:
  * #include <sys/types.h>
@@ -335,9 +382,10 @@ struct io_plan io_always_(struct io_plan (*cb)(struct io_conn *, void *),
  * #include <netdb.h>
  *
  * // Write, then close socket.
- * static struct io_plan start_write(struct io_conn *conn, void *unused)
+ * static struct io_plan *init_connect(struct io_conn *conn,
+ *				       struct addrinfo *addrinfo)
  * {
- *	return io_write("hello", 5, io_close_cb, NULL);
+ *	return io_connect(conn, addrinfo, io_close_cb, NULL);
  * }
  *
  * ...
@@ -347,177 +395,123 @@ struct io_plan io_always_(struct io_plan (*cb)(struct io_conn *, void *),
  *
  *	fd = socket(AF_INET, SOCK_STREAM, 0);
  *	getaddrinfo("localhost", "8111", NULL, &addrinfo);
- *	io_new_conn(fd, io_connect(fd, addrinfo, start_write, NULL));
+ *	io_new_conn(NULL, fd, init_connect, addrinfo);
  */
 struct addrinfo;
-#define io_connect(fd, addr, cb, arg)					\
-	io_debug(io_connect_((fd), (addr),				\
-			     typesafe_cb_preargs(struct io_plan, void *, \
-						 (cb), (arg),		\
-						 struct io_conn *),	\
-			     (arg)))
-struct io_plan io_connect_(int fd, const struct addrinfo *addr,
-			   struct io_plan (*cb)(struct io_conn *, void*),
-			   void *arg);
-
-/**
- * io_wait - plan to wait for something.
- * @wait: the address to wait on.
- * @cb: function to call after waiting.
- * @arg: @cb argument
- *
- * This indicates the connection is idle: io_wake() will be called later to
- * restart the connection.
- *
- * Example:
- *	struct io_conn *sleeper;
- *	unsigned int counter = 0;
- *	sleeper = io_new_conn(open("/dev/null", O_RDONLY),
- *			      io_wait(&counter, io_close_cb, NULL));
- *	if (!sleeper)
- *		exit(1);
- */
-#define io_wait(wait, cb, arg)						\
-	io_debug(io_wait_(wait,						\
-			  typesafe_cb_preargs(struct io_plan, void *,	\
-					      (cb), (arg),		\
-					      struct io_conn *),	\
-			  (arg)))
-
-struct io_plan io_wait_(const void *wait,
-			struct io_plan (*cb)(struct io_conn *, void *),
-			void *arg);
-
-/**
- * io_timeout - set timeout function if the callback doesn't complete.
- * @conn: the current connection.
- * @t: how long until the timeout should be called.
- * @cb: callback to call.
- * @arg: argument to @cb.
- *
- * If the usual next callback is not called for this connection before @ts,
- * this function will be called.  If next callback is called, the timeout
- * is automatically removed.
- *
- * Returns false on allocation failure.  A connection can only have one
- * timeout.
- *
- * Example:
- *	static struct io_plan close_on_timeout(struct io_conn *conn, char *msg)
- *	{
- *		printf("%s\n", msg);
- *		return io_close();
- *	}
- *
- *	...
- *	io_timeout(sleeper, time_from_msec(100),
- *		   close_on_timeout, (char *)"Bye!");
- */
-#define io_timeout(conn, ts, fn, arg)					\
-	io_timeout_((conn), (ts),					\
-		    typesafe_cb_preargs(struct io_plan, void *,		\
-					(fn), (arg),			\
+#define io_connect(conn, addr, next, arg)				\
+	io_connect_((conn), (addr),					\
+		    typesafe_cb_preargs(struct io_plan *, void *,	\
+					(next), (arg),			\
 					struct io_conn *),		\
 		    (arg))
-bool io_timeout_(struct io_conn *conn, struct timerel t,
-		 struct io_plan (*fn)(struct io_conn *, void *), void *arg);
+
+struct io_plan *io_connect_(struct io_conn *conn, const struct addrinfo *addr,
+			    struct io_plan *(*next)(struct io_conn *, void *),
+			    void *arg);
 
 /**
- * io_duplex - split an fd into two connections.
- * @conn: a connection.
- * @plan: the first I/O function to call.
+ * io_wait - leave a plan idle until something wakes us.
+ * @conn: the connection that plan is for.
+ * @waitaddr: the address to wait on.
+ * @dir: IO_IN or IO_OUT
+ * @next: function to call after waiting.
+ * @arg: @next argument
  *
- * Sometimes you want to be able to simultaneously read and write on a
- * single fd, but io forces a linear call sequence.  The solution is
- * to have two connections for the same fd, and use one for read
- * operations and one for write.
- *
- * You must io_close() both of them to close the fd.
+ * This leaves the input or output idle: io_wake(@waitaddr) will be
+ * called later to restart the connection.
  *
  * Example:
- *	static void setup_read_write(int fd,
- *				     char greet_in[5], const char greet_out[5])
- *	{
- *		struct io_conn *writer, *reader;
- *
- *		// Read their greeting and send ours at the same time.
- *		writer = io_new_conn(fd,
- *				     io_write(greet_out, 5, io_close_cb, NULL));
- *		reader = io_duplex(writer,
- *				     io_read(greet_in, 5, io_close_cb, NULL));
- *		if (!reader || !writer)
- *			exit(1);
- *	}
+ * // Silly example to wait then close.
+ * static struct io_plan *wait(struct io_conn *conn, void *b)
+ * {
+ *	return io_wait(conn, b, IO_IN, io_close_cb, NULL);
+ * }
  */
-#define io_duplex(conn, plan)				\
-	(io_plan_no_debug(), io_duplex_((conn), (plan)))
-struct io_conn *io_duplex_(struct io_conn *conn, struct io_plan plan);
+#define io_wait(conn, waitaddr, dir, next, arg)				\
+	io_wait_((conn), (waitaddr), (dir),				\
+		 typesafe_cb_preargs(struct io_plan *, void *,		\
+				     (next), (arg),			\
+				     struct io_conn *),			\
+		 (arg))
+
+struct io_plan *io_wait_(struct io_conn *conn,
+			 const void *wait, enum io_direction dir,
+			 struct io_plan *(*next)(struct io_conn *, void *),
+			 void *arg);
+
 
 /**
  * io_wake - wake up any connections waiting on @wait
- * @wait: the address to trigger.
+ * @waitaddr: the address to trigger.
+ *
+ * All io_conns who have returned io_wait() on @waitaddr will move on
+ * to their next callback.
  *
  * Example:
- *	unsigned int wait;
- *
- *	io_new_conn(open("/dev/null", O_RDONLY),
- *		   io_wait(&wait, io_close_cb, NULL));
- *
- *	io_wake(&wait);
+ * static struct io_plan *wake_it(struct io_conn *conn, void *b)
+ * {
+ *	io_wake(b);
+ *	return io_close(conn);
+ * }
  */
 void io_wake(const void *wait);
 
 /**
  * io_break - return from io_loop()
  * @ret: non-NULL value to return from io_loop().
- * @plan: I/O to perform on return (if any)
  *
- * This breaks out of the io_loop.  As soon as the current @next
- * function returns, any io_closed()'d connections will have their
- * finish callbacks called, then io_loop() with return with @ret.
+ * This breaks out of the io_loop.  As soon as the current function
+ * returns, any io_close()'d connections will have their finish
+ * callbacks called, then io_loop() with return with @ret.
  *
  * If io_loop() is called again, then @plan will be carried out.
  *
  * Example:
- *	static struct io_plan fail_on_timeout(struct io_conn *conn, char *msg)
+ *	static struct io_plan *fail_on_timeout(struct io_conn *conn, char *msg)
  *	{
- *		return io_break(msg, io_close());
+ *		io_break(msg);
+ *		return io_close(conn);
  *	}
  */
-#define io_break(ret, plan) (io_plan_no_debug(), io_break_((ret), (plan)))
-struct io_plan io_break_(void *ret, struct io_plan plan);
+void io_break(const void *ret);
 
 /**
  * io_never - assert if callback is called.
+ * @conn: the connection that plan is for.
  *
  * Sometimes you want to make it clear that a callback should never happen
  * (eg. for io_break).  This will assert() if called.
  *
  * Example:
- * static struct io_plan break_out(struct io_conn *conn, void *unused)
+ * static struct io_plan *break_out(struct io_conn *conn, void *unused)
  * {
+ *	io_break(conn);
  *	// We won't ever return from io_break
- *	return io_break(conn, io_never());
+ *	return io_never(conn);
  * }
  */
-struct io_plan io_never(void);
+struct io_plan *io_never(struct io_conn *conn);
 
 /* FIXME: io_recvfrom/io_sendto */
 
 /**
  * io_close - plan to close a connection.
+ * @conn: the connection to close.
  *
- * On return to io_loop, the connection will be closed.
+ * On return to io_loop, the connection will be closed.  It doesn't have
+ * to be the current connection and it doesn't need to be idle.  No more
+ * IO or callbacks will occur.
+ *
+ * You can close a connection twice without harmful effects.
  *
  * Example:
- * static struct io_plan close_on_timeout(struct io_conn *conn, const char *msg)
+ * static struct io_plan *close_on_timeout(struct io_conn *conn, const char *msg)
  * {
  *	printf("closing: %s\n", msg);
- *	return io_close();
+ *	return io_close(conn);
  * }
  */
-#define io_close() io_debug(io_close_())
-struct io_plan io_close_(void);
+struct io_plan *io_close(struct io_conn *conn);
 
 /**
  * io_close_cb - helper callback to close a connection.
@@ -529,25 +523,7 @@ struct io_plan io_close_(void);
  * Example:
  *	#define close_on_timeout io_close_cb
  */
-struct io_plan io_close_cb(struct io_conn *, void *unused);
-
-/**
- * io_close_other - close different connection next time around the I/O loop.
- * @conn: the connection to close.
- *
- * This is used to force a different connection to close: no more I/O will
- * happen on @conn, even if it's pending.
- *
- * It's a bug to use this on the current connection!
- *
- * Example:
- * static void stop_connection(struct io_conn *conn)
- * {
- *	printf("forcing stop on connection\n");
- *	io_close_other(conn);
- * }
- */
-void io_close_other(struct io_conn *conn);
+struct io_plan *io_close_cb(struct io_conn *, void *unused);
 
 /**
  * io_loop - process fds until all closed on io_break.
@@ -567,17 +543,4 @@ void *io_loop(void);
  * Sometimes useful, eg for getsockname().
  */
 int io_conn_fd(const struct io_conn *conn);
-
-/**
- * io_set_alloc - set alloc/realloc/free function for io to use.
- * @allocfn: allocator function
- * @reallocfn: reallocator function, ptr may be NULL, size never 0.
- * @freefn: free function
- *
- * By default io uses malloc/realloc/free, and returns NULL if they fail.
- * You can set your own variants here.
- */
-void io_set_alloc(void *(*allocfn)(size_t size),
-		  void *(*reallocfn)(void *ptr, size_t size),
-		  void (*freefn)(void *ptr));
 #endif /* CCAN_IO_H */

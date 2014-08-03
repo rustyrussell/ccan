@@ -20,7 +20,7 @@ static void finish_ok(struct io_conn *conn, struct packet *pkt)
 {
 	ok1(pkt->state == 3);
 	pkt->state++;
-	io_break(pkt, io_never());
+	io_break(pkt);
 }
 
 static int do_read_packet(int fd, struct io_plan *plan)
@@ -41,7 +41,7 @@ static int do_read_packet(int fd, struct io_plan *plan)
 		ok1(pkt->state == 2);
 		pkt->state++;
 		if (pkt->len == 0)
-			return io_debug_io(1);
+			return 1;
 		if (!pkt->contents && !(pkt->contents = malloc(pkt->len)))
 			goto fail;
 		else {
@@ -58,39 +58,39 @@ static int do_read_packet(int fd, struct io_plan *plan)
 	plan->u2.s += ret;
 
 	/* Finished? */
-	return io_debug_io(plan->u2.s >= sizeof(pkt->len)
-			   && plan->u2.s == pkt->len + sizeof(pkt->len));
+	return plan->u2.s >= sizeof(pkt->len)
+		&& plan->u2.s == pkt->len + sizeof(pkt->len);
 
 fail:
 	free(pkt->contents);
-	return io_debug_io(-1);
+	return -1;
 }
 
-static struct io_plan io_read_packet(struct packet *pkt,
-				     struct io_plan (*cb)(struct io_conn *, void *),
-				     void *arg)
+static struct io_plan *io_read_packet(struct io_conn *conn,
+				      struct packet *pkt,
+				      struct io_plan *(*cb)(struct io_conn *, void *),
+				      void *arg)
 {
-	struct io_plan plan;
+	struct io_plan *plan = io_get_plan(conn, IO_IN);
 
 	assert(cb);
 	pkt->contents = NULL;
-	plan.u1.vp = pkt;
-	plan.u2.s = 0;
-	plan.io = do_read_packet;
-	plan.next = cb;
-	plan.next_arg = arg;
-	plan.pollflag = POLLIN;
+	plan->u1.vp = pkt;
+	plan->u2.s = 0;
+	plan->io = do_read_packet;
+	plan->next = cb;
+	plan->next_arg = arg;
 
 	return plan;
 }
 
-static void init_conn(int fd, struct packet *pkt)
+static struct io_plan *init_conn(struct io_conn *conn, struct packet *pkt)
 {
 	ok1(pkt->state == 0);
 	pkt->state++;
 
-	io_set_finish(io_new_conn(fd, io_read_packet(pkt, io_close_cb, pkt)),
-		      finish_ok, pkt);
+	io_set_finish(conn, finish_ok, pkt);
+	return io_read_packet(conn, pkt, io_close_cb, pkt);
 }
 
 static int make_listen_fd(const char *port, struct addrinfo **info)
@@ -137,7 +137,7 @@ int main(void)
 	pkt->state = 0;
 	fd = make_listen_fd(PORT, &addrinfo);
 	ok1(fd >= 0);
-	l = io_new_listener(fd, init_conn, pkt);
+	l = io_new_listener(NULL, fd, init_conn, pkt);
 	ok1(l);
 	fflush(stdout);
 	if (!fork()) {

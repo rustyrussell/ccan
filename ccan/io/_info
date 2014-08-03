@@ -10,12 +10,6 @@
  * (eg. read, write).  It is also possible to write custom I/O
  * plans.
  *
- * When compiled with DEBUG, control flow is changed so that rather
- * than returning to the main io_loop(), plans are executed sequentially
- * providing a backtrace showing what has occurred on that connection.
- * Which connection(s) do this depends on the user-specified io_debug
- * function.
- *
  * Example:
  * // Given tr A-Z a-z outputs tr a-z a-z
  * #include <ccan/io/io.h>
@@ -41,7 +35,7 @@
  * 	io_wake(b);
  * }
  *
- * static struct io_plan read_in(struct io_conn *c, struct buffer *b)
+ * static struct io_plan *read_in(struct io_conn *c, struct buffer *b)
  * {
  * 	// Add what we just read.
  * 	b->end += b->rlen;
@@ -55,35 +49,33 @@
  * 	if (b->start == b->end)
  * 		b->start = b->end = 0;
  *
- * 	// Read in some of the rest.
- * 	b->rlen = sizeof(b->buf) - b->end;
- *
  * 	// No room?  Wait for writer
- * 	if (b->rlen == 0)
- * 		return io_wait(b, read_in, b);
+ * 	if (b->end == sizeof(b->buf))
+ * 		return io_wait(c, b, IO_IN, read_in, b);
  *
- * 	return io_read_partial(b->buf + b->end, &b->rlen, read_in, b);
+ * 	return io_read_partial(c, b->buf + b->end, sizeof(b->buf) - b->end,
+ *			       &b->rlen, read_in, b);
  * }
  *
- * static struct io_plan write_out(struct io_conn *c, struct buffer *b)
+ * static struct io_plan *write_out(struct io_conn *c, struct buffer *b)
  * {
  * 	// Remove what we just wrote.
  * 	b->start += b->wlen;
  * 	assert(b->start <= sizeof(b->buf));
  *
- * 	// If we wrote somthing, wake writer.
+ * 	// If we wrote something, wake writer.
  * 	if (b->wlen != 0)
  * 		io_wake(b);
  *
- * 	b->wlen = b->end - b->start;
  * 	// Nothing to write?  Wait for reader.
- * 	if (b->wlen == 0) {
+ * 	if (b->end == b->start) {
  * 		if (b->finished)
- * 			return io_close();
- * 		return io_wait(b, write_out, b);
+ * 			return io_close(c);
+ * 		return io_wait(c, b, IO_OUT, write_out, b);
  * 	}
  *
- * 	return io_write_partial(b->buf + b->start, &b->wlen, write_out, b);
+ * 	return io_write_partial(c, b->buf + b->start, b->end - b->start,
+ *				&b->wlen, write_out, b);
  * }
  *
  * // Feed a program our stdin, gather its stdout, print that at end.
@@ -117,14 +109,14 @@
  *
  * 	// Read from stdin, write to child.
  * 	memset(&to, 0, sizeof(to));
- * 	reader = io_new_conn(STDIN_FILENO, read_in(NULL, &to));
+ * 	reader = io_new_conn(NULL, STDIN_FILENO, read_in, &to);
  * 	io_set_finish(reader, finish, &to);
- * 	io_new_conn(tochild[1], write_out(NULL, &to));
+ * 	io_new_conn(NULL, tochild[1], write_out, &to);
  *
  * 	// Read from child, write to stdout.
- * 	reader = io_new_conn(fromchild[0], read_in(NULL, &from));
+ * 	reader = io_new_conn(NULL, fromchild[0], read_in, &from);
  * 	io_set_finish(reader, finish, &from);
- * 	io_new_conn(STDOUT_FILENO, write_out(NULL, &from));
+ * 	io_new_conn(NULL, STDOUT_FILENO, write_out, &from);
  *
  * 	io_loop();
  * 	wait(&status);
@@ -141,9 +133,8 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/tal\n");
 		printf("ccan/typesafe_cb\n");
-		printf("ccan/time\n");
-		printf("ccan/timer\n");
 		return 0;
 	}
 

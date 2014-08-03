@@ -20,11 +20,11 @@ struct data {
 	char buf[4];
 };
 
-static struct io_plan read_done(struct io_conn *conn, struct data *d)
+static struct io_plan *read_done(struct io_conn *conn, struct data *d)
 {
 	ok1(d->state == 2 || d->state == 3);
 	d->state++;
-	return io_close();
+	return io_close(conn);
 }
 
 static void finish_waker(struct io_conn *conn, struct data *d)
@@ -38,33 +38,40 @@ static void finish_idle(struct io_conn *conn, struct data *d)
 {
 	ok1(d->state == 3);
 	d->state++;
-	io_break(d, io_never());
+	io_break(d);
 }
 
-static struct io_plan never(struct io_conn *conn, void *arg)
+static struct io_plan *never(struct io_conn *conn, void *arg)
 {
 	abort();
 }
 
-static struct io_plan read_buf(struct io_conn *conn, struct data *d)
+static struct io_plan *read_buf(struct io_conn *conn, struct data *d)
 {
-	return io_read(d->buf, sizeof(d->buf), read_done, d);
+	return io_read(conn, d->buf, sizeof(d->buf), read_done, d);
 }
 
-static void init_conn(int fd, struct data *d)
+static struct io_plan *init_waker(struct io_conn *conn, void *unused)
+{
+	/* This is /dev/null, so will never succeed. */
+	return io_read(conn, unused, 1, never, NULL);
+}
+
+static struct io_plan *init_idle(struct io_conn *conn, struct data *d)
 {
 	int fd2;
 
 	ok1(d->state == 0);
 	d->state++;
-	idler = io_new_conn(fd, io_wait(d, read_buf, d));
-	io_set_finish(idler, finish_idle, d);
+	idler = conn;
+	io_set_finish(conn, finish_idle, d);
 
 	/* This will wake us up, as read will fail. */
 	fd2 = open("/dev/null", O_RDONLY);
 	ok1(fd2 >= 0);
-	io_set_finish(io_new_conn(fd2, io_read(idler, 1, never, NULL)),
-		      finish_waker, d);
+	io_set_finish(io_new_conn(NULL, fd2, init_waker, d), finish_waker, d);
+
+	return io_wait(conn, d, IO_IN, read_buf, d);
 }
 
 static int make_listen_fd(const char *port, struct addrinfo **info)
@@ -111,7 +118,7 @@ int main(void)
 	d->state = 0;
 	fd = make_listen_fd(PORT, &addrinfo);
 	ok1(fd >= 0);
-	l = io_new_listener(fd, init_conn, d);
+	l = io_new_listener(NULL, fd, init_idle, d);
 	ok1(l);
 	fflush(stdout);
 	if (!fork()) {
