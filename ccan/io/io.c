@@ -385,10 +385,13 @@ static int do_connect(int fd, struct io_plan *plan)
 
 	if (err == 0) {
 		/* Restore blocking if it was initially. */
-		fcntl(fd, F_SETFD, plan->u1.s);
+		fcntl(fd, F_SETFL, plan->u1.s);
 		return 1;
-	}
-	return 0;
+	} else if (err == EINPROGRESS)
+		return 0;
+
+	errno = err;
+	return -1;
 }
 
 struct io_plan io_connect_(int fd, const struct addrinfo *addr,
