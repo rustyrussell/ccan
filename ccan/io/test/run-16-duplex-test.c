@@ -29,9 +29,7 @@ static void finish_ok(struct io_conn *conn, struct data *d)
 static struct io_plan *io_done(struct io_conn *conn, struct data *d)
 {
 	d->state++;
-	if (d->state == 3)
-		return io_close(conn);
-	return io_wait(conn, d, io_close_cb, NULL);
+	return io_halfclose(conn);
 }
 
 static struct io_plan *init_conn(struct io_conn *conn, struct data *d)

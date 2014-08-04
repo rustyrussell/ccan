@@ -29,10 +29,11 @@ static void finish_ok(struct io_conn *conn, struct data *d)
 static struct io_plan *end(struct io_conn *conn, struct data *d)
 {
 	d->state++;
+	/* Close on top of halfclose should work. */
 	if (d->state == 4)
 		return io_close(conn);
 	else
-		return io_wait(conn, NULL, io_never, NULL);
+		return io_halfclose(conn);
 }
 
 static struct io_plan *make_duplex(struct io_conn *conn, struct data *d)

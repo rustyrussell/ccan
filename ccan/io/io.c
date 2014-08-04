@@ -437,6 +437,24 @@ struct io_plan *io_duplex_(struct io_plan *in_plan, struct io_plan *out_plan)
 	return out_plan + 1;
 }
 
+struct io_plan *io_halfclose(struct io_conn *conn)
+{
+	/* Already closing?  Don't close twice. */
+	if (conn->plan[IO_IN].status == IO_CLOSING)
+		return &conn->plan[IO_IN];
+
+	/* Both unset?  OK. */
+	if (conn->plan[IO_IN].status == IO_UNSET
+	    && conn->plan[IO_OUT].status == IO_UNSET)
+		return io_close(conn);
+
+	/* We leave this unset then. */
+	if (conn->plan[IO_IN].status == IO_UNSET)
+		return &conn->plan[IO_IN];
+	else
+		return &conn->plan[IO_OUT];
+}
+
 struct io_plan *io_set_plan(struct io_conn *conn, enum io_direction dir,
 			    int (*io)(int fd, struct io_plan_arg *arg),
 			    struct io_plan *(*next)(struct io_conn *, void *),

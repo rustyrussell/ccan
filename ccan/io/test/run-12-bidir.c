@@ -15,7 +15,6 @@
 struct data {
 	struct io_listener *l;
 	int state;
-	int done;
 	char buf[4];
 	char wbuf[32];
 };
@@ -28,10 +27,7 @@ static void finish_ok(struct io_conn *conn, struct data *d)
 static struct io_plan *rw_done(struct io_conn *conn, struct data *d)
 {
 	d->state++;
-	d->done++;
-	if (d->done == 2)
-		return io_close(conn);
-	return io_wait(conn, NULL, io_never, NULL);
+	return io_halfclose(conn);
 }
 
 static struct io_plan *init_conn(struct io_conn *conn, struct data *d)
@@ -91,9 +87,8 @@ int main(void)
 	int fd, status;
 
 	/* This is how many tests you plan to run */
-	plan_tests(10);
+	plan_tests(9);
 	d->state = 0;
-	d->done = 0;
 	fd = make_listen_fd(PORT, &addrinfo);
 	ok1(fd >= 0);
 	d->l = io_new_listener(NULL, fd, init_conn, d);
@@ -127,7 +122,6 @@ int main(void)
 	freeaddrinfo(addrinfo);
 	ok1(io_loop(NULL, NULL) == NULL);
 	ok1(d->state == 4);
-	ok1(d->done == 2);
 	ok1(memcmp(d->buf, "hellothere", sizeof(d->buf)) == 0);
 	free(d);
 

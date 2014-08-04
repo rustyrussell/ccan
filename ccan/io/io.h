@@ -444,6 +444,34 @@ struct io_plan *io_duplex_(struct io_plan *in_plan, struct io_plan *out_plan);
 void io_duplex_prepare(struct io_conn *conn);
 
 /**
+ * io_halfclose - close half of an io_duplex connection.
+ * @conn: the connection that plan is for.
+ *
+ * It's common to want to close a duplex connection after both input and
+ * output plans have completed.  If either calls io_close() the connection
+ * closes immediately.  Instead, io_halfclose() needs to be called twice.
+ *
+ * Example:
+ * struct buf {
+ *	char in[100];
+ *	char out[100];
+ * };
+ *
+ * static struct io_plan *finish(struct io_conn *conn, struct buf *b)
+ * {
+ *	return io_halfclose(conn);
+ * }
+ *
+ * static struct io_plan *read_and_write(struct io_conn *conn, struct buf *b)
+ * {
+ *	return io_duplex(conn,
+ *			 io_read(conn, b->in, sizeof(b->in), finish, b),
+ *			 io_write(conn, b->out, sizeof(b->out), finish, b));
+ * }
+ */
+struct io_plan *io_halfclose(struct io_conn *conn);
+
+/**
  * io_wait - leave a plan idle until something wakes us.
  * @conn: the connection that plan is for.
  * @waitaddr: the address to wait on.
