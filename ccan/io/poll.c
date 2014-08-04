@@ -151,11 +151,11 @@ void backend_wake(const void *wait)
 
 		c = (void *)fds[i];
 		if (c->plan[IO_IN].status == IO_WAITING
-		    && c->plan[IO_IN].u1.const_vp == wait)
+		    && c->plan[IO_IN].arg.u1.const_vp == wait)
 			io_do_wakeup(c, &c->plan[IO_IN]);
 
 		if (c->plan[IO_OUT].status == IO_WAITING
-		    && c->plan[IO_OUT].u1.const_vp == wait)
+		    && c->plan[IO_OUT].arg.u1.const_vp == wait)
 			io_do_wakeup(c, &c->plan[IO_OUT]);
 	}
 }
@@ -170,7 +170,7 @@ static void del_conn(struct io_conn *conn)
 	del_fd(&conn->fd);
 	if (conn->finish) {
 		/* Saved by io_close */
-		errno = conn->plan[IO_IN].u1.s;
+		errno = conn->plan[IO_IN].arg.u1.s;
 		conn->finish(conn, conn->finish_arg);
 	}
 	tal_free(conn);

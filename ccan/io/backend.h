@@ -22,6 +22,39 @@ struct io_listener {
 	void *arg;
 };
 
+enum io_plan_status {
+	/* As before calling next function. */
+	IO_UNSET,
+	/* Normal. */
+	IO_POLLING,
+	/* Waiting for io_wake */
+	IO_WAITING,
+	/* Always do this. */
+	IO_ALWAYS,
+	/* Closing (both plans will be the same). */
+	IO_CLOSING
+};
+
+/**
+ * struct io_plan - one half of I/O to do
+ * @status: the status of this plan.
+ * @io: function to call when fd becomes read/writable, returns 0 to be
+ *      called again, 1 if it's finished, and -1 on error (fd will be closed)
+ * @next: the next function which is called if io returns 1.
+ * @next_arg: the argument to @next
+ * @u1, @u2: scratch space for @io.
+ */
+struct io_plan {
+	enum io_plan_status status;
+
+	int (*io)(int fd, struct io_plan_arg *arg);
+
+	struct io_plan *(*next)(struct io_conn *, void *next_arg);
+	void *next_arg;
+
+	struct io_plan_arg arg;
+};
+
 /* One connection per client. */
 struct io_conn {
 	struct fd fd;

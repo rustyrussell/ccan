@@ -104,106 +104,101 @@ void io_set_finish_(struct io_conn *conn,
 	conn->finish_arg = arg;
 }
 
-struct io_plan *io_get_plan(struct io_conn *conn, enum io_direction dir)
+struct io_plan_arg *io_plan_arg(struct io_conn *conn, enum io_direction dir)
 {
 	assert(conn->plan[dir].status == IO_UNSET);
 
 	conn->plan[dir].status = IO_POLLING;
-	return &conn->plan[dir];
+	return &conn->plan[dir].arg;
 }
 
 static struct io_plan *set_always(struct io_conn *conn,
-				  struct io_plan *plan,
+				  enum io_direction dir,
 				  struct io_plan *(*next)(struct io_conn *,
 							  void *),
 				  void *arg)
 {
+	struct io_plan *plan = &conn->plan[dir];
+
 	plan->status = IO_ALWAYS;
 	backend_new_always(conn);
-	return io_set_plan(conn, plan, NULL, next, arg);
+	return io_set_plan(conn, dir, NULL, next, arg);
 }
 
 struct io_plan *io_always_(struct io_conn *conn,
 			   struct io_plan *(*next)(struct io_conn *, void *),
 			   void *arg)
 {
-	struct io_plan *plan;
-
 	/* If we're duplex, we want this on the current plan.  Otherwise,
 	 * doesn't matter. */
 	if (conn->plan[IO_IN].status == IO_UNSET)
-		plan = io_get_plan(conn, IO_IN);
+		return set_always(conn, IO_IN, next, arg);
 	else
-		plan = io_get_plan(conn, IO_OUT);
-
-	assert(next);
-	return set_always(conn, plan, next, arg);
+		return set_always(conn, IO_OUT, next, arg);
 }
 
-static int do_write(int fd, struct io_plan *plan)
+static int do_write(int fd, struct io_plan_arg *arg)
 {
-	ssize_t ret = write(fd, plan->u1.cp, plan->u2.s);
+	ssize_t ret = write(fd, arg->u1.cp, arg->u2.s);
 	if (ret < 0)
 		return -1;
 
-	plan->u1.cp += ret;
-	plan->u2.s -= ret;
-	return plan->u2.s == 0;
+	arg->u1.cp += ret;
+	arg->u2.s -= ret;
+	return arg->u2.s == 0;
 }
 
 /* Queue some data to be written. */
 struct io_plan *io_write_(struct io_conn *conn, const void *data, size_t len,
 			  struct io_plan *(*next)(struct io_conn *, void *),
-			  void *arg)
+			  void *next_arg)
 {
-	struct io_plan *plan = io_get_plan(conn, IO_OUT);
+	struct io_plan_arg *arg = io_plan_arg(conn, IO_OUT);
 
 	if (len == 0)
-		return set_always(conn, plan, next, arg);
+		return set_always(conn, IO_OUT, next, next_arg);
 
-	plan->u1.const_vp = data;
-	plan->u2.s = len;
+	arg->u1.const_vp = data;
+	arg->u2.s = len;
 
-	return io_set_plan(conn, plan, do_write, next, arg);
+	return io_set_plan(conn, IO_OUT, do_write, next, next_arg);
 }
 
-static int do_read(int fd, struct io_plan *plan)
+static int do_read(int fd, struct io_plan_arg *arg)
 {
-	ssize_t ret = read(fd, plan->u1.cp, plan->u2.s);
+	ssize_t ret = read(fd, arg->u1.cp, arg->u2.s);
 	if (ret <= 0)
 		return -1;
 
-	plan->u1.cp += ret;
-	plan->u2.s -= ret;
-	return plan->u2.s == 0;
+	arg->u1.cp += ret;
+	arg->u2.s -= ret;
+	return arg->u2.s == 0;
 }
 
 /* Queue a request to read into a buffer. */
 struct io_plan *io_read_(struct io_conn *conn,
 			 void *data, size_t len,
 			 struct io_plan *(*next)(struct io_conn *, void *),
-			 void *arg)
+			 void *next_arg)
 {
-	struct io_plan *plan = io_get_plan(conn, IO_IN);
-
-	assert(next);
+	struct io_plan_arg *arg = io_plan_arg(conn, IO_IN);
 
 	if (len == 0)
-		return set_always(conn, plan, next, arg);
+		return set_always(conn, IO_IN, next, next_arg);
 
-	plan->u1.cp = data;
-	plan->u2.s = len;
+	arg->u1.cp = data;
+	arg->u2.s = len;
 
-	return io_set_plan(conn, plan, do_read, next, arg);
+	return io_set_plan(conn, IO_IN, do_read, next, next_arg);
 }
 
-static int do_read_partial(int fd, struct io_plan *plan)
+static int do_read_partial(int fd, struct io_plan_arg *arg)
 {
-	ssize_t ret = read(fd, plan->u1.cp, *(size_t *)plan->u2.vp);
+	ssize_t ret = read(fd, arg->u1.cp, *(size_t *)arg->u2.vp);
 	if (ret <= 0)
 		return -1;
 
-	*(size_t *)plan->u2.vp = ret;
+	*(size_t *)arg->u2.vp = ret;
 	return 1;
 }
 
@@ -212,28 +207,28 @@ struct io_plan *io_read_partial_(struct io_conn *conn,
 				 void *data, size_t maxlen, size_t *len,
 				 struct io_plan *(*next)(struct io_conn *,
 							 void *),
-				 void *arg)
+				 void *next_arg)
 {
-	struct io_plan *plan = io_get_plan(conn, IO_IN);
+	struct io_plan_arg *arg = io_plan_arg(conn, IO_IN);
 
 	if (maxlen == 0)
-		return set_always(conn, plan, next, arg);
+		return set_always(conn, IO_IN, next, next_arg);
 
-	plan->u1.cp = data;
+	arg->u1.cp = data;
 	/* We store the max len in here temporarily. */
 	*len = maxlen;
-	plan->u2.vp = len;
+	arg->u2.vp = len;
 
-	return io_set_plan(conn, plan, do_read_partial, next, arg);
+	return io_set_plan(conn, IO_IN, do_read_partial, next, next_arg);
 }
 
-static int do_write_partial(int fd, struct io_plan *plan)
+static int do_write_partial(int fd, struct io_plan_arg *arg)
 {
-	ssize_t ret = write(fd, plan->u1.cp, *(size_t *)plan->u2.vp);
+	ssize_t ret = write(fd, arg->u1.cp, *(size_t *)arg->u2.vp);
 	if (ret < 0)
 		return -1;
 
-	*(size_t *)plan->u2.vp = ret;
+	*(size_t *)arg->u2.vp = ret;
 	return 1;
 }
 
@@ -242,22 +237,22 @@ struct io_plan *io_write_partial_(struct io_conn *conn,
 				  const void *data, size_t maxlen, size_t *len,
 				  struct io_plan *(*next)(struct io_conn *,
 							  void*),
-				  void *arg)
+				  void *next_arg)
 {
-	struct io_plan *plan = io_get_plan(conn, IO_OUT);
+	struct io_plan_arg *arg = io_plan_arg(conn, IO_OUT);
 
 	if (maxlen == 0)
-		return set_always(conn, plan, next, arg);
+		return set_always(conn, IO_OUT, next, next_arg);
 
-	plan->u1.const_vp = data;
+	arg->u1.const_vp = data;
 	/* We store the max len in here temporarily. */
 	*len = maxlen;
-	plan->u2.vp = len;
+	arg->u2.vp = len;
 
-	return io_set_plan(conn, plan, do_write_partial, next, arg);
+	return io_set_plan(conn, IO_OUT, do_write_partial, next, next_arg);
 }
 
-static int do_connect(int fd, struct io_plan *plan)
+static int do_connect(int fd, struct io_plan_arg *arg)
 {
 	int err, ret;
 	socklen_t len = sizeof(err);
@@ -269,7 +264,7 @@ static int do_connect(int fd, struct io_plan *plan)
 
 	if (err == 0) {
 		/* Restore blocking if it was initially. */
-		fcntl(fd, F_SETFL, plan->u1.s);
+		fcntl(fd, F_SETFL, arg->u1.s);
 		return 1;
 	} else if (err == EINPROGRESS)
 		return 0;
@@ -280,45 +275,46 @@ static int do_connect(int fd, struct io_plan *plan)
 
 struct io_plan *io_connect_(struct io_conn *conn, const struct addrinfo *addr,
 			    struct io_plan *(*next)(struct io_conn *, void *),
-			    void *arg)
+			    void *next_arg)
 {
-	struct io_plan *plan = io_get_plan(conn, IO_IN);
+	struct io_plan_arg *arg = io_plan_arg(conn, IO_IN);
 	int fd = io_conn_fd(conn);
 
-	assert(next);
-
 	/* Save old flags, set nonblock if not already. */
-	plan->u1.s = fcntl(fd, F_GETFL);
-	fcntl(fd, F_SETFL, plan->u1.s | O_NONBLOCK);
+	arg->u1.s = fcntl(fd, F_GETFL);
+	fcntl(fd, F_SETFL, arg->u1.s | O_NONBLOCK);
 
 	/* Immediate connect can happen. */
 	if (connect(fd, addr->ai_addr, addr->ai_addrlen) == 0)
-		return set_always(conn, plan, next, arg);
+		return set_always(conn, IO_IN, next, next_arg);
 
 	if (errno != EINPROGRESS)
 		return io_close(conn);
 
-	return io_set_plan(conn, plan, do_connect, next, arg);
+	return io_set_plan(conn, IO_IN, do_connect, next, next_arg);
 }
 
 struct io_plan *io_wait_(struct io_conn *conn,
 			 const void *wait,
 			 struct io_plan *(*next)(struct io_conn *, void *),
-			 void *arg)
+			 void *next_arg)
 {
-	struct io_plan *plan;
+	enum io_direction dir;
+	struct io_plan_arg *arg;
 
 	/* If we're duplex, we want this on the current plan.  Otherwise,
 	 * doesn't matter. */
 	if (conn->plan[IO_IN].status == IO_UNSET)
-		plan = io_get_plan(conn, IO_IN);
+		dir = IO_IN;
 	else
-		plan = io_get_plan(conn, IO_OUT);
+		dir = IO_OUT;
 
-	plan->status = IO_WAITING;
-	plan->u1.const_vp = wait;
+	arg = io_plan_arg(conn, dir);
+	arg->u1.const_vp = wait;
 
-	return io_set_plan(conn, plan, NULL, next, arg);
+	conn->plan[dir].status = IO_WAITING;
+
+	return io_set_plan(conn, dir, NULL, next, next_arg);
 }
 
 void io_wake(const void *wait)
@@ -335,7 +331,7 @@ static int do_plan(struct io_conn *conn, struct io_plan *plan)
 	/* We shouldn't have polled for this event if this wasn't true! */
 	assert(plan->status == IO_POLLING);
 
-	switch (plan->io(conn->fd.fd, plan)) {
+	switch (plan->io(conn->fd.fd, &plan->arg)) {
 	case -1:
 		io_close(conn);
 		return -1;
@@ -382,13 +378,13 @@ struct io_plan *io_close(struct io_conn *conn)
 		return &conn->plan[IO_IN];
 
 	conn->plan[IO_IN].status = conn->plan[IO_OUT].status = IO_CLOSING;
-	conn->plan[IO_IN].u1.s = errno;
+	conn->plan[IO_IN].arg.u1.s = errno;
 	backend_new_closing(conn);
 
-	return io_set_plan(conn, &conn->plan[IO_IN], NULL, NULL, NULL);
+	return io_set_plan(conn, IO_IN, NULL, NULL, NULL);
 }
 
-struct io_plan *io_close_cb(struct io_conn *conn, void *arg)
+struct io_plan *io_close_cb(struct io_conn *conn, void *next_arg)
 {
 	return io_close(conn);
 }
@@ -415,6 +411,8 @@ void io_duplex_prepare(struct io_conn *conn)
 	assert(conn->plan[IO_IN].status == IO_UNSET);
 	assert(conn->plan[IO_OUT].status == IO_UNSET);
 
+	/* We can't sync debug until we've set both: io_wait() and io_always
+	 * can't handle it. */
 	conn->debug_saved = conn->debug;
 	conn->debug = false;
 }
@@ -431,20 +429,20 @@ struct io_plan *io_duplex_(struct io_plan *in_plan, struct io_plan *out_plan)
 	conn->debug = conn->debug_saved;
 
 	/* Now set the plans again, to invoke sync debug. */
-	io_set_plan(conn,
-		    out_plan, out_plan->io, out_plan->next, out_plan->next_arg);
-	io_set_plan(conn,
-		    in_plan, in_plan->io, in_plan->next, in_plan->next_arg);
+	io_set_plan(conn, IO_OUT,
+		    out_plan->io, out_plan->next, out_plan->next_arg);
+	io_set_plan(conn, IO_IN,
+		    in_plan->io, in_plan->next, in_plan->next_arg);
 
 	return out_plan + 1;
 }
 
-struct io_plan *io_set_plan(struct io_conn *conn, struct io_plan *plan,
-			    int (*io)(int fd, struct io_plan *plan),
+struct io_plan *io_set_plan(struct io_conn *conn, enum io_direction dir,
+			    int (*io)(int fd, struct io_plan_arg *arg),
 			    struct io_plan *(*next)(struct io_conn *, void *),
 			    void *next_arg)
 {
-	struct io_plan *other;
+	struct io_plan *plan = &conn->plan[dir];
 
 	plan->io = io;
 	plan->next = next;
@@ -468,11 +466,7 @@ struct io_plan *io_set_plan(struct io_conn *conn, struct io_plan *plan,
 		abort();
 	case IO_ALWAYS:
 		/* If other one is ALWAYS, leave in list! */
-		if (plan == &conn->plan[IO_IN])
-			other = &conn->plan[IO_OUT];
-		else
-			other = &conn->plan[IO_IN];
-		if (other->status != IO_ALWAYS)
+		if (conn->plan[!dir].status != IO_ALWAYS)
 			remove_from_always(conn);
 		next_plan(conn, plan);
 		break;

@@ -25,19 +25,19 @@ static void finish_ok(struct io_conn *conn, struct packet *pkt)
 	io_break(pkt);
 }
 
-static int do_read_packet(int fd, struct io_plan *plan)
+static int do_read_packet(int fd, struct io_plan_arg *arg)
 {
-	struct packet *pkt = plan->u1.vp;
+	struct packet *pkt = arg->u1.vp;
 	char *dest;
 	ssize_t ret;
 	size_t off, totlen;
 
 	/* Reading len? */
-	if (plan->u2.s < sizeof(size_t)) {
+	if (arg->u2.s < sizeof(size_t)) {
 		ok1(pkt->state == 1);
 		pkt->state++;
 		dest = (char *)&pkt->len;
-		off = plan->u2.s;
+		off = arg->u2.s;
 		totlen = sizeof(pkt->len);
 	} else {
 		ok1(pkt->state == 2);
@@ -48,7 +48,7 @@ static int do_read_packet(int fd, struct io_plan *plan)
 			goto fail;
 		else {
 			dest = pkt->contents;
-			off = plan->u2.s - sizeof(pkt->len);
+			off = arg->u2.s - sizeof(pkt->len);
 			totlen = pkt->len;
 		}
 	}
@@ -57,11 +57,11 @@ static int do_read_packet(int fd, struct io_plan *plan)
 	if (ret <= 0)
 		goto fail;
 
-	plan->u2.s += ret;
+	arg->u2.s += ret;
 
 	/* Finished? */
-	return plan->u2.s >= sizeof(pkt->len)
-		&& plan->u2.s == pkt->len + sizeof(pkt->len);
+	return arg->u2.s >= sizeof(pkt->len)
+		&& arg->u2.s == pkt->len + sizeof(pkt->len);
 
 fail:
 	free(pkt->contents);
@@ -70,17 +70,17 @@ fail:
 
 static struct io_plan *io_read_packet(struct io_conn *conn,
 				      struct packet *pkt,
-				      struct io_plan *(*cb)(struct io_conn *, void *),
-				      void *arg)
+				      struct io_plan *(*cb)(struct io_conn *,
+							    void *),
+				      void *cb_arg)
 {
-	struct io_plan *plan = io_get_plan(conn, IO_IN);
+	struct io_plan_arg *arg = io_plan_arg(conn, IO_IN);
 
-	assert(cb);
 	pkt->contents = NULL;
-	plan->u1.vp = pkt;
-	plan->u2.s = 0;
+	arg->u1.vp = pkt;
+	arg->u2.s = 0;
 
-	return io_set_plan(conn, plan, do_read_packet, cb, arg);
+	return io_set_plan(conn, IO_IN, do_read_packet, cb, cb_arg);
 }
 
 static struct io_plan *init_conn(struct io_conn *conn, struct packet *pkt)
