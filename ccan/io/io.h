@@ -404,6 +404,38 @@ struct io_plan *io_connect_(struct io_conn *conn, const struct addrinfo *addr,
 			    void *arg);
 
 /**
+ * io_duplex - set plans for both input and output.
+ * @conn: the connection that plan is for.
+ * @in: the input plan
+ * @out: the output plan
+ *
+ * Most plans are either for input or output; io_duplex creates a plan
+ * which does both.  This is often used in the init function to create
+ * two independent streams, though it can be used once on any connection.
+ *
+ * Note that if either plan closes the connection, it will be closed.
+ *
+ * Note that if one plan is io_wait or io_always, that causes a problem:
+ * they look at the input and output plan slots to figure out which to
+ * use, but if the other plan hasn't been evaluated yet, that will fail.
+ * In this case, you'll need to ensure the other plan is evaluated first,
+ * eg. "struct io_plan *r = io_read(...); return io_duplex(r, io_always(...))"
+ *
+ * Example:
+ * struct buf {
+ *	char in[100];
+ *	char out[100];
+ * };
+ *
+ * static struct io_plan *read_and_write(struct io_conn *conn, struct buf *b)
+ * {
+ *	return io_duplex(io_read(conn, b->in, sizeof(b->in), io_close_cb, b),
+ *			 io_write(conn, b->out, sizeof(b->out), io_close_cb, b));
+ * }
+ */
+struct io_plan *io_duplex(struct io_plan *in_plan, struct io_plan *out_plan);
+
+/**
  * io_wait - leave a plan idle until something wakes us.
  * @conn: the connection that plan is for.
  * @waitaddr: the address to wait on.
@@ -471,6 +503,7 @@ void io_break(const void *ret);
 /**
  * io_never - assert if callback is called.
  * @conn: the connection that plan is for.
+ * @unused: an unused parameter to make this suitable for use as a callback.
  *
  * Sometimes you want to make it clear that a callback should never happen
  * (eg. for io_break).  This will assert() if called.
@@ -480,10 +513,10 @@ void io_break(const void *ret);
  * {
  *	io_break(conn);
  *	// We won't ever return from io_break
- *	return io_never(conn);
+ *	return io_never(conn, NULL);
  * }
  */
-struct io_plan *io_never(struct io_conn *conn);
+struct io_plan *io_never(struct io_conn *conn, void *unused);
 
 /* FIXME: io_recvfrom/io_sendto */
 

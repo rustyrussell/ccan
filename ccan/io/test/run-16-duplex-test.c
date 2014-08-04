@@ -8,14 +8,12 @@
 #include <sys/wait.h>
 #include <stdio.h>
 
-#if 0
 #ifndef PORT
 #define PORT "65016"
 #endif
 
 struct data {
 	struct io_listener *l;
-	struct io_conn *writer;
 	int state;
 	char buf[4];
 	char wbuf[32];
@@ -26,35 +24,27 @@ static void finish_ok(struct io_conn *conn, struct data *d)
 	d->state++;
 }
 
-static struct io_plan write_done(struct io_conn *conn, struct data *d)
+static struct io_plan *io_done(struct io_conn *conn, struct data *d)
 {
 	d->state++;
-	return io_wait(d, io_close_cb, NULL);
+	if (d->state == 3)
+		return io_close(conn);
+	return io_wait(conn, d, io_close_cb, NULL);
 }
 
-static struct io_plan read_done(struct io_conn *conn, struct data *d)
+static struct io_plan *init_conn(struct io_conn *conn, struct data *d)
 {
-	d->state++;
-	io_close_other(d->writer);
-	return io_close();
-}
-
-static void init_conn(int fd, struct data *d)
-{
-	struct io_conn *conn;
-
 	ok1(d->state == 0);
 	d->state++;
 
 	memset(d->wbuf, 7, sizeof(d->wbuf));
 
-	conn = io_new_conn(fd, io_read(d->buf, sizeof(d->buf), read_done, d));
 	io_set_finish(conn, finish_ok, d);
-	d->writer = io_duplex(conn, io_write(d->wbuf, sizeof(d->wbuf), write_done, d));
-	ok1(d->writer);
-	io_set_finish(d->writer, finish_ok, d);
 
 	io_close_listener(d->l);
+
+	return io_duplex(io_read(conn, d->buf, sizeof(d->buf), io_done, d),
+			 io_write(conn, d->wbuf, sizeof(d->wbuf), io_done, d));
 }
 
 static int make_listen_fd(const char *port, struct addrinfo **info)
@@ -96,11 +86,11 @@ int main(void)
 	int fd, status;
 
 	/* This is how many tests you plan to run */
-	plan_tests(10);
+	plan_tests(9);
 	d->state = 0;
 	fd = make_listen_fd(PORT, &addrinfo);
 	ok1(fd >= 0);
-	d->l = io_new_listener(fd, init_conn, d);
+	d->l = io_new_listener(NULL, fd, init_conn, d);
 	ok1(d->l);
 	fflush(stdout);
 	if (!fork()) {
@@ -130,7 +120,7 @@ int main(void)
 	}
 	freeaddrinfo(addrinfo);
 	ok1(io_loop() == NULL);
-	ok1(d->state == 5);
+	ok1(d->state == 4);
 	ok1(memcmp(d->buf, "hellothere", sizeof(d->buf)) == 0);
 	free(d);
 
@@ -141,9 +131,3 @@ int main(void)
 	/* This exits depending on whether all tests passed */
 	return exit_status();
 }
-#else
-int main(void)
-{
-	return 0;
-}
-#endif

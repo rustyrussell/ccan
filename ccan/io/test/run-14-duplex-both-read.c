@@ -8,7 +8,6 @@
 #include <sys/wait.h>
 #include <stdio.h>
 
-#if 0
 #ifndef PORT
 #define PORT "65014"
 #endif
@@ -16,7 +15,6 @@
 struct data {
 	struct io_listener *l;
 	int state;
-	struct io_conn *c1, *c2;
 	char buf[4];
 	char wbuf[32];
 };
@@ -26,23 +24,24 @@ static void finish_ok(struct io_conn *conn, struct data *d)
 	d->state++;
 }
 
-static struct io_plan end(struct io_conn *conn, struct data *d)
+static struct io_plan *end(struct io_conn *conn, struct data *d)
 {
 	d->state++;
-	return io_close();
+	if (d->state == 4)
+		return io_close(conn);
+	else
+		return io_wait(conn, NULL, io_never, NULL);
 }
 
-static struct io_plan make_duplex(struct io_conn *conn, struct data *d)
+static struct io_plan *make_duplex(struct io_conn *conn, struct data *d)
 {
+	d->state++;
 	/* Have duplex read the rest of the buffer. */
-	d->c2 = io_duplex(conn, io_read(d->buf+1, sizeof(d->buf)-1, end, d));
-	ok1(d->c2);
-	io_set_finish(d->c2, finish_ok, d);
-
-	return io_write(d->wbuf, sizeof(d->wbuf), end, d);
+	return io_duplex(io_read(conn, d->buf+1, sizeof(d->buf)-1, end, d),
+			 io_write(conn, d->wbuf, sizeof(d->wbuf), end, d));
 }
 
-static void init_conn(int fd, struct data *d)
+static struct io_plan *init_conn(struct io_conn *conn, struct data *d)
 {
 	ok1(d->state == 0);
 	d->state++;
@@ -50,9 +49,8 @@ static void init_conn(int fd, struct data *d)
 	io_close_listener(d->l);
 
 	memset(d->wbuf, 7, sizeof(d->wbuf));
-
-	d->c1 = io_new_conn(fd, io_read(d->buf, 1, make_duplex, d));
-	io_set_finish(d->c1, finish_ok, d);
+	io_set_finish(conn, finish_ok, d);
+	return io_read(conn, d->buf, 1, make_duplex, d);
 }
 
 static int make_listen_fd(const char *port, struct addrinfo **info)
@@ -94,11 +92,11 @@ int main(void)
 	int fd, status;
 
 	/* This is how many tests you plan to run */
-	plan_tests(10);
+	plan_tests(9);
 	d->state = 0;
 	fd = make_listen_fd(PORT, &addrinfo);
 	ok1(fd >= 0);
-	d->l = io_new_listener(fd, init_conn, d);
+	d->l = io_new_listener(NULL, fd, init_conn, d);
 	ok1(d->l);
 	fflush(stdout);
 	if (!fork()) {
@@ -139,9 +137,3 @@ int main(void)
 	/* This exits depending on whether all tests passed */
 	return exit_status();
 }
-#else
-int main(void)
-{
-	return 0;
-}
-#endif

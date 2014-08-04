@@ -56,9 +56,10 @@ static void next_plan(struct io_conn *conn, struct io_plan *plan)
 
 	plan = next(conn, plan->next_arg);
 
-	/* It should have set a plan inside this conn. */
+	/* It should have set a plan inside this conn (or duplex) */
 	assert(plan == &conn->plan[IO_IN]
-	       || plan == &conn->plan[IO_OUT]);
+	       || plan == &conn->plan[IO_OUT]
+	       || plan == &conn->plan[2]);
 	assert(conn->plan[IO_IN].status != IO_UNSET
 	       || conn->plan[IO_OUT].status != IO_UNSET);
 
@@ -428,7 +429,7 @@ void io_break(const void *ret)
 	io_loop_return = (void *)ret;
 }
 
-struct io_plan *io_never(struct io_conn *conn)
+struct io_plan *io_never(struct io_conn *conn, void *unused)
 {
 	return io_always(conn, io_never_called, NULL);
 }
@@ -436,4 +437,12 @@ struct io_plan *io_never(struct io_conn *conn)
 int io_conn_fd(const struct io_conn *conn)
 {
 	return conn->fd.fd;
+}
+
+struct io_plan *io_duplex(struct io_plan *in_plan, struct io_plan *out_plan)
+{
+	/* in_plan must be conn->plan[IO_IN], out_plan must be [IO_OUT] */
+	assert(out_plan == in_plan + 1);
+
+	return out_plan + 1;
 }
