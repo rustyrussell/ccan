@@ -124,11 +124,17 @@ static struct io_plan *set_always(struct io_conn *conn,
 }
 
 struct io_plan *io_always_(struct io_conn *conn,
-			   enum io_direction dir,
 			   struct io_plan *(*next)(struct io_conn *, void *),
 			   void *arg)
 {
-	struct io_plan *plan = io_get_plan(conn, dir);
+	struct io_plan *plan;
+
+	/* If we're duplex, we want this on the current plan.  Otherwise,
+	 * doesn't matter. */
+	if (conn->plan[IO_IN].status == IO_UNSET)
+		plan = io_get_plan(conn, IO_IN);
+	else
+		plan = io_get_plan(conn, IO_OUT);
 
 	assert(next);
 	set_always(conn, plan, next, arg);
@@ -320,11 +326,18 @@ struct io_plan *io_connect_(struct io_conn *conn, const struct addrinfo *addr,
 }
 
 struct io_plan *io_wait_(struct io_conn *conn,
-			 const void *wait, enum io_direction dir,
+			 const void *wait,
 			 struct io_plan *(*next)(struct io_conn *, void *),
 			 void *arg)
 {
-	struct io_plan *plan = io_get_plan(conn, dir);
+	struct io_plan *plan;
+
+	/* If we're duplex, we want this on the current plan.  Otherwise,
+	 * doesn't matter. */
+	if (conn->plan[IO_IN].status == IO_UNSET)
+		plan = io_get_plan(conn, IO_IN);
+	else
+		plan = io_get_plan(conn, IO_OUT);
 
 	assert(next);
 
@@ -417,7 +430,7 @@ void io_break(const void *ret)
 
 struct io_plan *io_never(struct io_conn *conn)
 {
-	return io_always(conn, IO_IN, io_never_called, NULL);
+	return io_always(conn, io_never_called, NULL);
 }
 
 int io_conn_fd(const struct io_conn *conn)

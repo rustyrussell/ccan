@@ -71,7 +71,7 @@ static struct io_plan *init_idle(struct io_conn *conn, struct data *d)
 	ok1(fd2 >= 0);
 	io_set_finish(io_new_conn(NULL, fd2, init_waker, d), finish_waker, d);
 
-	return io_wait(conn, d, IO_IN, read_buf, d);
+	return io_wait(conn, d, read_buf, d);
 }
 
 static int make_listen_fd(const char *port, struct addrinfo **info)

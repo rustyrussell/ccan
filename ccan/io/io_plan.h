@@ -27,6 +27,11 @@ enum io_plan_status {
 	IO_CLOSING
 };
 
+enum io_direction {
+	IO_IN,
+	IO_OUT
+};
+
 /**
  * struct io_plan - one half of I/O to do
  * @status: the status of this plan.

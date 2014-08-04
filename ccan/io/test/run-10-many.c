@@ -34,7 +34,7 @@ static struct io_plan *poke_writer(struct io_conn *conn, struct buffer *buf)
 	io_wake(&buf->writer);
 
 	/* I'll wait until you wake me. */
-	return io_wait(conn, &buf->reader, IO_IN, read_buf, buf);
+	return io_wait(conn, &buf->reader, read_buf, buf);
 }
 
 static struct io_plan *write_buf(struct io_conn *conn, struct buffer *buf)
@@ -52,12 +52,12 @@ static struct io_plan *poke_reader(struct io_conn *conn, struct buffer *buf)
 		return io_close(conn);
 
 	/* I'll wait until you tell me to write. */
-	return io_wait(conn, &buf->writer, IO_OUT, write_buf, buf);
+	return io_wait(conn, &buf->writer, write_buf, buf);
 }
 
 static struct io_plan *setup_reader(struct io_conn *conn, struct buffer *buf)
 {
-	return io_wait(conn, &buf->reader, IO_IN, read_buf, buf);
+	return io_wait(conn, &buf->reader, read_buf, buf);
 }
 
 static struct buffer buf[NUM];

@@ -27,7 +27,7 @@ static struct io_plan *init_writer(struct io_conn *conn, struct io_conn *wakeme)
 
 static struct io_plan *init_waiter(struct io_conn *conn, void *unused)
 {
-	return io_wait(conn, inbuf, IO_IN, read_buf, NULL);
+	return io_wait(conn, inbuf, read_buf, NULL);
 }
 
 int main(void)

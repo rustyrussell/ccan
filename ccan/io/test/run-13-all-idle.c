@@ -9,7 +9,7 @@
 
 static struct io_plan *setup_waiter(struct io_conn *conn, int *status)
 {
-	return io_wait(conn, status, IO_IN, io_close_cb, NULL);
+	return io_wait(conn, status, io_close_cb, NULL);
 }
 
 int main(void)

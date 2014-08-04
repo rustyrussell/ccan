@@ -51,7 +51,7 @@
  *
  * 	// No room?  Wait for writer
  * 	if (b->end == sizeof(b->buf))
- * 		return io_wait(c, b, IO_IN, read_in, b);
+ * 		return io_wait(c, b, read_in, b);
  *
  * 	return io_read_partial(c, b->buf + b->end, sizeof(b->buf) - b->end,
  *			       &b->rlen, read_in, b);
@@ -71,7 +71,7 @@
  * 	if (b->end == b->start) {
  * 		if (b->finished)
  * 			return io_close(c);
- * 		return io_wait(c, b, IO_OUT, write_out, b);
+ * 		return io_wait(c, b, write_out, b);
  * 	}
  *
  * 	return io_write_partial(c, b->buf + b->start, b->end - b->start,

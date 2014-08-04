@@ -6,11 +6,6 @@
 #include <stdbool.h>
 #include <unistd.h>
 
-enum io_direction {
-	IO_IN,
-	IO_OUT
-};
-
 /**
  * struct io_plan - a plan for input or output.
  *
@@ -340,7 +335,6 @@ struct io_plan *io_write_partial_(struct io_conn *conn,
 /**
  * io_always - plan to immediately call next callback
  * @conn: the connection that plan is for.
- * @dir: IO_IN or IO_OUT
  * @next: function to call.
  * @arg: @next argument
  *
@@ -352,16 +346,16 @@ struct io_plan *io_write_partial_(struct io_conn *conn,
  *						 void *unused)
  * {
  *	// Silly example: close on next time around loop.
- *	return io_always(conn, IO_IN, io_close_cb, NULL);
+ *	return io_always(conn, io_close_cb, NULL);
  * }
  */
-#define io_always(conn, dir, next, arg)					\
-	io_always_((conn), dir, typesafe_cb_preargs(struct io_plan *, void *, \
-						    (next), (arg),	\
-						    struct io_conn *),	\
+#define io_always(conn, next, arg)					\
+	io_always_((conn), typesafe_cb_preargs(struct io_plan *, void *, \
+					       (next), (arg),		\
+					       struct io_conn *),	\
 		   (arg))
 
-struct io_plan *io_always_(struct io_conn *conn, enum io_direction dir,
+struct io_plan *io_always_(struct io_conn *conn,
 			   struct io_plan *(*next)(struct io_conn *, void *),
 			   void *arg);
 
@@ -413,7 +407,6 @@ struct io_plan *io_connect_(struct io_conn *conn, const struct addrinfo *addr,
  * io_wait - leave a plan idle until something wakes us.
  * @conn: the connection that plan is for.
  * @waitaddr: the address to wait on.
- * @dir: IO_IN or IO_OUT
  * @next: function to call after waiting.
  * @arg: @next argument
  *
@@ -424,18 +417,18 @@ struct io_plan *io_connect_(struct io_conn *conn, const struct addrinfo *addr,
  * // Silly example to wait then close.
  * static struct io_plan *wait(struct io_conn *conn, void *b)
  * {
- *	return io_wait(conn, b, IO_IN, io_close_cb, NULL);
+ *	return io_wait(conn, b, io_close_cb, NULL);
  * }
  */
-#define io_wait(conn, waitaddr, dir, next, arg)				\
-	io_wait_((conn), (waitaddr), (dir),				\
+#define io_wait(conn, waitaddr, next, arg)				\
+	io_wait_((conn), (waitaddr),					\
 		 typesafe_cb_preargs(struct io_plan *, void *,		\
 				     (next), (arg),			\
 				     struct io_conn *),			\
 		 (arg))
 
 struct io_plan *io_wait_(struct io_conn *conn,
-			 const void *wait, enum io_direction dir,
+			 const void *wait,
 			 struct io_plan *(*next)(struct io_conn *, void *),
 			 void *arg);
 

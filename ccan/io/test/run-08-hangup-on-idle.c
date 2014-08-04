@@ -15,7 +15,7 @@ static struct io_plan *read_in(struct io_conn *conn, char *buf)
 
 static struct io_plan *setup_waiter(struct io_conn *conn, char *buf)
 {
-	return io_wait(conn, buf, IO_IN, read_in, buf);
+	return io_wait(conn, buf, read_in, buf);
 }
 
 static struct io_plan *wake_and_close(struct io_conn *conn, char *buf)
