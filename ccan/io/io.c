@@ -125,16 +125,28 @@ static struct io_plan *set_always(struct io_conn *conn,
 	return io_set_plan(conn, dir, NULL, next, arg);
 }
 
+static struct io_plan *io_always_dir(struct io_conn *conn,
+				     enum io_direction dir,
+				     struct io_plan *(*next)(struct io_conn *,
+							     void *),
+				     void *arg)
+{
+	return set_always(conn, dir, next, arg);
+}
+
 struct io_plan *io_always_(struct io_conn *conn,
 			   struct io_plan *(*next)(struct io_conn *, void *),
 			   void *arg)
 {
-	/* If we're duplex, we want this on the current plan.  Otherwise,
-	 * doesn't matter. */
-	if (conn->plan[IO_IN].status == IO_UNSET)
-		return set_always(conn, IO_IN, next, arg);
-	else
-		return set_always(conn, IO_OUT, next, arg);
+	return io_always_dir(conn, IO_IN, next, arg);
+}
+
+struct io_plan *io_out_always_(struct io_conn *conn,
+			       struct io_plan *(*next)(struct io_conn *,
+						       void *),
+			       void *arg)
+{
+	return io_always_dir(conn, IO_OUT, next, arg);
 }
 
 static int do_write(int fd, struct io_plan_arg *arg)
@@ -294,27 +306,35 @@ struct io_plan *io_connect_(struct io_conn *conn, const struct addrinfo *addr,
 	return io_set_plan(conn, IO_IN, do_connect, next, next_arg);
 }
 
-struct io_plan *io_wait_(struct io_conn *conn,
-			 const void *wait,
-			 struct io_plan *(*next)(struct io_conn *, void *),
-			 void *next_arg)
+static struct io_plan *io_wait_dir(struct io_conn *conn,
+				   const void *wait,
+				   enum io_direction dir,
+				   struct io_plan *(*next)(struct io_conn *,
+							   void *),
+				   void *next_arg)
 {
-	enum io_direction dir;
-	struct io_plan_arg *arg;
-
-	/* If we're duplex, we want this on the current plan.  Otherwise,
-	 * doesn't matter. */
-	if (conn->plan[IO_IN].status == IO_UNSET)
-		dir = IO_IN;
-	else
-		dir = IO_OUT;
-
-	arg = io_plan_arg(conn, dir);
+	struct io_plan_arg *arg = io_plan_arg(conn, dir);
 	arg->u1.const_vp = wait;
 
 	conn->plan[dir].status = IO_WAITING;
 
 	return io_set_plan(conn, dir, NULL, next, next_arg);
+}
+
+struct io_plan *io_wait_(struct io_conn *conn,
+			 const void *wait,
+			 struct io_plan *(*next)(struct io_conn *, void *),
+			 void *next_arg)
+{
+	return io_wait_dir(conn, wait, IO_IN, next, next_arg);
+}
+
+struct io_plan *io_out_wait_(struct io_conn *conn,
+			     const void *wait,
+			     struct io_plan *(*next)(struct io_conn *, void *),
+			     void *next_arg)
+{
+	return io_wait_dir(conn, wait, IO_OUT, next, next_arg);
 }
 
 void io_wake(const void *wait)

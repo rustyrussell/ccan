@@ -24,10 +24,20 @@ static void finish_ok(struct io_conn *conn, struct data *d)
 	d->state++;
 }
 
-static struct io_plan *rw_done(struct io_conn *conn, struct data *d)
+static struct io_plan *r_done(struct io_conn *conn, struct data *d)
 {
 	d->state++;
-	return io_halfclose(conn);
+	if (d->state == 3)
+		return io_close(conn);
+	return io_wait(conn, NULL, io_never, NULL);
+}
+
+static struct io_plan *w_done(struct io_conn *conn, struct data *d)
+{
+	d->state++;
+	if (d->state == 3)
+		return io_close(conn);
+	return io_out_wait(conn, NULL, io_never, NULL);
 }
 
 static struct io_plan *init_conn(struct io_conn *conn, struct data *d)
@@ -44,8 +54,8 @@ static struct io_plan *init_conn(struct io_conn *conn, struct data *d)
 	io_set_finish(conn, finish_ok, d);
 
 	return io_duplex(conn,
-			 io_read(conn, d->buf, sizeof(d->buf), rw_done, d),
-			 io_write(conn, d->wbuf, sizeof(d->wbuf), rw_done, d));
+			 io_read(conn, d->buf, sizeof(d->buf), r_done, d),
+			 io_write(conn, d->wbuf, sizeof(d->wbuf), w_done, d));
 }
 
 static int make_listen_fd(const char *port, struct addrinfo **info)

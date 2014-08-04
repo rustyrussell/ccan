@@ -363,6 +363,27 @@ struct io_plan *io_always_(struct io_conn *conn,
 			   void *arg);
 
 /**
+ * io_out_always - output plan to immediately call next callback
+ * @conn: the connection that plan is for.
+ * @next: function to call.
+ * @arg: @next argument
+ *
+ * This is a variant of io_always() which uses the output plan; it only
+ * matters if you are using io_duplex, and thus have two plans running at
+ * once.
+ */
+#define io_out_always(conn, next, arg)					\
+	io_out_always_((conn), typesafe_cb_preargs(struct io_plan *, void *, \
+						   (next), (arg),	\
+						   struct io_conn *),	\
+		       (arg))
+
+struct io_plan *io_out_always_(struct io_conn *conn,
+			       struct io_plan *(*next)(struct io_conn *,
+						       void *),
+			       void *arg);
+
+/**
  * io_connect - create an asynchronous connection to a listening socket.
  * @conn: the connection that plan is for.
  * @addr: where to connect.
@@ -417,12 +438,6 @@ struct io_plan *io_connect_(struct io_conn *conn, const struct addrinfo *addr,
  * two independent streams, though it can be used once on any connection.
  *
  * Note that if either plan closes the connection, it will be closed.
- *
- * Note that if one plan is io_wait or io_always, that causes a problem:
- * they look at the input and output plan slots to figure out which to
- * use, but if the other plan hasn't been evaluated yet, that will fail.
- * In this case, you'll need to ensure the other plan is evaluated first,
- * eg. "struct io_plan *r = io_read(...); return io_duplex(r, io_always(...))"
  *
  * Example:
  * struct buf {
@@ -500,6 +515,30 @@ struct io_plan *io_wait_(struct io_conn *conn,
 			 struct io_plan *(*next)(struct io_conn *, void *),
 			 void *arg);
 
+
+/**
+ * io_out_wait - leave the output plan idle until something wakes us.
+ * @conn: the connection that plan is for.
+ * @waitaddr: the address to wait on.
+ * @next: function to call after waiting.
+ * @arg: @next argument
+ *
+ * io_wait() makes the input plan idle: if you're not using io_duplex it
+ * doesn't matter which plan is waiting.  Otherwise, you may need to use
+ * io_out_wait() instead, to specify explicitly that the output plan is
+ * waiting.
+ */
+#define io_out_wait(conn, waitaddr, next, arg)				\
+	io_out_wait_((conn), (waitaddr),				\
+		     typesafe_cb_preargs(struct io_plan *, void *,	\
+					 (next), (arg),			\
+					 struct io_conn *),		\
+		     (arg))
+
+struct io_plan *io_out_wait_(struct io_conn *conn,
+			     const void *wait,
+			     struct io_plan *(*next)(struct io_conn *, void *),
+			     void *arg);
 
 /**
  * io_wake - wake up any connections waiting on @wait
