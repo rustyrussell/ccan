@@ -23,7 +23,7 @@ int main(void)
 
 		ok1(pipe(fds) == 0);
 		io_new_conn(NULL, fds[0], setup_waiter, &status);
-		io_loop();
+		io_loop(NULL, NULL);
 		exit(1);
 	}
 

@@ -3,55 +3,49 @@
 #include <ccan/io/poll.c>
 #include <ccan/io/io.c>
 #include <ccan/tap/tap.h>
+#include <ccan/time/time.h>
 #include <sys/wait.h>
 #include <stdio.h>
 #include <unistd.h>
 
-#if 0
 #ifndef PORT
 #define PORT "65015"
 #endif
 
 struct data {
+	struct timers timers;
 	int state;
+	struct io_conn *conn;
+	struct timer timer;
 	int timeout_usec;
-	bool timed_out;
 	char buf[4];
 };
 
-
-static struct io_plan no_timeout(struct io_conn *conn, struct data *d)
-{
-	ok1(d->state == 1);
-	d->state++;
-	return io_close();
-}
-
-static struct io_plan timeout(struct io_conn *conn, struct data *d)
-{
-	ok1(d->state == 1);
-	d->state++;
-	d->timed_out = true;
-	return io_close();
-}
-
 static void finish_ok(struct io_conn *conn, struct data *d)
 {
-	ok1(d->state == 2);
 	d->state++;
 	io_break(d);
 }
 
-static void init_conn(int fd, struct data *d)
+static struct io_plan *no_timeout(struct io_conn *conn, struct data *d)
 {
-	struct io_conn *conn;
+	ok1(d->state == 1);
+	d->state++;
+	return io_close(conn);
+}
 
+static struct io_plan *init_conn(struct io_conn *conn, struct data *d)
+{
 	ok1(d->state == 0);
 	d->state++;
 
-	conn = io_new_conn(fd, io_read(d->buf, sizeof(d->buf), no_timeout, d));
+	d->conn = conn;
 	io_set_finish(conn, finish_ok, d);
-	io_timeout(conn, time_from_usec(d->timeout_usec), timeout, d);
+
+	timer_add(&d->timers, &d->timer,
+		  timeabs_add(time_now(), time_from_usec(d->timeout_usec)));
+
+	return io_read(conn, d->buf, sizeof(d->buf), no_timeout, d);
 }
 
 static int make_listen_fd(const char *port, struct addrinfo **info)
@@ -91,16 +85,17 @@ int main(void)
 	struct data *d = malloc(sizeof(*d));
 	struct addrinfo *addrinfo;
 	struct io_listener *l;
+	struct list_head expired;
 	int fd, status;
 
 	/* This is how many tests you plan to run */
-	plan_tests(20);
+	plan_tests(21);
 	d->state = 0;
-	d->timed_out = false;
 	d->timeout_usec = 100000;
+	timers_init(&d->timers, time_now());
 	fd = make_listen_fd(PORT, &addrinfo);
 	ok1(fd >= 0);
-	l = io_new_listener(fd, init_conn, d);
+	l = io_new_listener(NULL, fd, init_conn, d);
 	ok1(l);
 	fflush(stdout);
 
@@ -122,19 +117,31 @@ int main(void)
 		}
 		close(fd);
 		freeaddrinfo(addrinfo);
+		timers_cleanup(&d->timers);
 		free(d);
 		exit(i);
 	}
-	ok1(io_loop() == d);
-	ok1(d->state == 3);
-	ok1(d->timed_out == true);
+	ok1(io_loop(&d->timers, &expired) == NULL);
+
+	/* One element, d->timer. */
+	ok1(list_pop(&expired, struct timer, list) == &d->timer);
+	ok1(list_empty(&expired));
+	ok1(d->state == 1);
+
+	io_close(d->conn);
+
+	/* Finished will be called, d will be returned */
+	ok1(io_loop(&d->timers, &expired) == d);
+	ok1(list_empty(&expired));
+	ok1(d->state == 2);
+
+	/* It should have died. */
 	ok1(wait(&status));
 	ok1(WIFEXITED(status));
 	ok1(WEXITSTATUS(status) < sizeof(d->buf));
 
 	/* This one shouldn't time out. */
 	d->state = 0;
-	d->timed_out = false;
 	d->timeout_usec = 500000;
 	fflush(stdout);
 
@@ -156,26 +163,22 @@ int main(void)
 		}
 		close(fd);
 		freeaddrinfo(addrinfo);
+		timers_cleanup(&d->timers);
 		free(d);
 		exit(i);
 	}
-	ok1(io_loop() == d);
+	ok1(io_loop(&d->timers, &expired) == d);
 	ok1(d->state == 3);
-	ok1(d->timed_out == false);
+	ok1(list_empty(&expired));
 	ok1(wait(&status));
 	ok1(WIFEXITED(status));
 	ok1(WEXITSTATUS(status) >= sizeof(d->buf));
 
 	io_close_listener(l);
 	freeaddrinfo(addrinfo);
+	timers_cleanup(&d->timers);
 	free(d);
 
 	/* This exits depending on whether all tests passed */
 	return exit_status();
 }
-#else
-int main(void)
-{
-	return 0;
-}
-#endif

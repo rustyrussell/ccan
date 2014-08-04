@@ -166,7 +166,7 @@ int main(void)
 		exit(0);
 	}
 	freeaddrinfo(addrinfo);
-	ok1(io_loop() == pkt);
+	ok1(io_loop(NULL, NULL) == pkt);
 	ok1(pkt->state == 4);
 	ok1(pkt->len == 8);
 	ok1(memcmp(pkt->contents, "hithere!", 8) == 0);

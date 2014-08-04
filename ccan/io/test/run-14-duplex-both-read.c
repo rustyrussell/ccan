@@ -125,7 +125,7 @@ int main(void)
 		exit(0);
 	}
 	freeaddrinfo(addrinfo);
-	ok1(io_loop() == NULL);
+	ok1(io_loop(NULL, NULL) == NULL);
 	ok1(d->state == 5);
 	ok1(memcmp(d->buf, "hellothere", sizeof(d->buf)) == 0);
 	free(d);

@@ -143,7 +143,7 @@ int main(void)
 	}
 	freeaddrinfo(addrinfo);
 
-	ok1(io_loop() == d);
+	ok1(io_loop(NULL, NULL) == d);
 	ok1(d->state == 4);
 	ok1(memcmp(d->buf, "hellothere", sizeof(d->buf)) == 0);
 	free(d);

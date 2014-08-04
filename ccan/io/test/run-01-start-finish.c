@@ -88,7 +88,7 @@ int main(void)
 		exit(0);
 	}
 	freeaddrinfo(addrinfo);
-	ok1(io_loop() == &state + 1);
+	ok1(io_loop(NULL, NULL) == &state + 1);
 	ok1(state == 2);
 	io_close_listener(l);
 	ok1(wait(&state));

@@ -118,7 +118,7 @@
  * 	io_set_finish(reader, finish, &from);
  * 	io_new_conn(NULL, STDOUT_FILENO, write_out, &from);
  *
- * 	io_loop();
+ * 	io_loop(NULL, NULL);
  * 	wait(&status);
  *
  * 	return WIFEXITED(status) ? WEXITSTATUS(status) : 2;
@@ -133,7 +133,10 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/list\n");
 		printf("ccan/tal\n");
+		printf("ccan/time\n");
+		printf("ccan/timer\n");
 		printf("ccan/typesafe_cb\n");
 		return 0;
 	}

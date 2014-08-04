@@ -101,7 +101,7 @@ int main(void)
 	ok1(buf[i].writer);
 
 	/* They should eventually exit */
-	ok1(io_loop() == NULL);
+	ok1(io_loop(NULL, NULL) == NULL);
 
 	for (i = 0; i < NUM; i++) {
 		char b[sizeof(buf[0].buf)];

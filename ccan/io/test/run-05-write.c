@@ -110,7 +110,7 @@ int main(void)
 		free(d);
 		exit(0);
 	}
-	ok1(io_loop() == d);
+	ok1(io_loop(NULL, NULL) == d);
 	ok1(d->state == 2);
 
 	ok1(wait(&status));

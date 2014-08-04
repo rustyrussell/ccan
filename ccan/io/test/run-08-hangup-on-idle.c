@@ -52,7 +52,7 @@ int main(void)
 		exit(0);
 	}
 
-	ok1(io_loop() == NULL);
+	ok1(io_loop(NULL, NULL) == NULL);
 	ok1(memcmp(buf, "hello there world", 16) == 0);
 
 	/* This exits depending on whether all tests passed */

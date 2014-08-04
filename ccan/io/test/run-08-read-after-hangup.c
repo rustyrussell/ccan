@@ -41,7 +41,7 @@ int main(void)
 	conn = io_new_conn(NULL, fds[0], init_waiter, NULL);
 	io_new_conn(conn, fds[1], init_writer, conn);
 
-	ok1(io_loop() == NULL);
+	ok1(io_loop(NULL, NULL) == NULL);
 	ok1(memcmp(inbuf, "EASYTEST", sizeof(inbuf)) == 0);
 
 	/* This exits depending on whether all tests passed */

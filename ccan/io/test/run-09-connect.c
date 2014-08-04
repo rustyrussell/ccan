@@ -99,7 +99,7 @@ int main(void)
 		    addrinfo->ai_protocol);
 	ok1(io_new_conn(NULL, fd, setup_connect, addrinfo));
 
-	ok1(io_loop() == NULL);
+	ok1(io_loop(NULL, NULL) == NULL);
 	ok1(d->state == 2);
 	ok1(d2->state == 2);
 

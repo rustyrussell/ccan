@@ -8,6 +8,9 @@
 #include <sys/socket.h>
 #include <limits.h>
 #include <errno.h>
+#include <ccan/list/list.h>
+#include <ccan/time/time.h>
+#include <ccan/timer/timer.h>
 
 static size_t num_fds = 0, max_fds = 0, num_waiting = 0;
 static struct pollfd *pollfds = NULL;
@@ -223,12 +226,19 @@ static bool handle_always(void)
 }
 
 /* This is the main loop. */
-void *io_loop(void)
+void *io_loop(struct timers *timers, struct list_head *expired)
 {
 	void *ret;
 
+	/* if timers is NULL, expired must be.  If not, not. */
+	assert(!timers == !expired);
+
+	/* Make sure this is empty if we exit for some other reason. */
+	if (expired)
+		list_head_init(expired);
+
 	while (!io_loop_return) {
-		int i, r;
+		int i, r, ms_timeout = -1;
 
 		if (close_conns()) {
 			/* Could have started/finished more. */
@@ -247,7 +257,28 @@ void *io_loop(void)
 		/* You can't tell them all to go to sleep! */
 		assert(num_waiting);
 
-		r = poll(pollfds, num_fds, -1);
+		if (timers) {
+			struct timeabs now, first;
+
+			now = time_now();
+
+			/* Call functions for expired timers. */
+			timers_expire(timers, now, expired);
+			if (!list_empty(expired))
+				break;
+
+			/* Now figure out how long to wait for the next one. */
+			if (timer_earliest(timers, &first)) {
+				uint64_t next;
+				next = time_to_msec(time_between(first, now));
+				if (next < INT_MAX)
+					ms_timeout = next;
+				else
+					ms_timeout = INT_MAX;
+			}
+		}
+
+		r = poll(pollfds, num_fds, ms_timeout);
 		if (r < 0)
 			break;
 
