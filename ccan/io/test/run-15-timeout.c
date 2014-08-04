@@ -8,7 +8,9 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#ifndef PORT
+#ifdef DEBUG_CONN
+#define PORT "64015"
+#else
 #define PORT "65015"
 #endif
 
@@ -36,6 +38,9 @@ static struct io_plan *no_timeout(struct io_conn *conn, struct data *d)
 
 static struct io_plan *init_conn(struct io_conn *conn, struct data *d)
 {
+#ifdef DEBUG_CONN
+	io_set_debug(conn, true);
+#endif
 	ok1(d->state == 0);
 	d->state++;
 

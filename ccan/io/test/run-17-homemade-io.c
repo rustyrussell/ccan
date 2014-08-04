@@ -6,7 +6,9 @@
 #include <sys/wait.h>
 #include <stdio.h>
 
-#ifndef PORT
+#ifdef DEBUG_CONN
+#define PORT "64017"
+#else
 #define PORT "65017"
 #endif
 
@@ -77,15 +79,15 @@ static struct io_plan *io_read_packet(struct io_conn *conn,
 	pkt->contents = NULL;
 	plan->u1.vp = pkt;
 	plan->u2.s = 0;
-	plan->io = do_read_packet;
-	plan->next = cb;
-	plan->next_arg = arg;
 
-	return plan;
+	return io_set_plan(conn, plan, do_read_packet, cb, arg);
 }
 
 static struct io_plan *init_conn(struct io_conn *conn, struct packet *pkt)
 {
+#ifdef DEBUG_CONN
+	io_set_debug(conn, true);
+#endif
 	ok1(pkt->state == 0);
 	pkt->state++;
 

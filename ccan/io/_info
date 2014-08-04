@@ -133,6 +133,7 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/container_of\n");
 		printf("ccan/list\n");
 		printf("ccan/tal\n");
 		printf("ccan/time\n");

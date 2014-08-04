@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <ccan/container_of/container_of.h>
 
 void *io_loop_return;
 
@@ -80,6 +81,7 @@ struct io_conn *io_new_conn_(const tal_t *ctx, int fd,
 	conn->finish = NULL;
 	conn->finish_arg = NULL;
 	conn->list = NULL;
+	conn->debug = false;
 
 	if (!add_conn(conn))
 		return tal_free(conn);
@@ -116,12 +118,9 @@ static struct io_plan *set_always(struct io_conn *conn,
 							  void *),
 				  void *arg)
 {
-	plan->next = next;
-	plan->next_arg = arg;
 	plan->status = IO_ALWAYS;
-
 	backend_new_always(conn);
-	return plan;
+	return io_set_plan(conn, plan, NULL, next, arg);
 }
 
 struct io_plan *io_always_(struct io_conn *conn,
@@ -138,9 +137,7 @@ struct io_plan *io_always_(struct io_conn *conn,
 		plan = io_get_plan(conn, IO_OUT);
 
 	assert(next);
-	set_always(conn, plan, next, arg);
-
-	return plan;
+	return set_always(conn, plan, next, arg);
 }
 
 static int do_write(int fd, struct io_plan *plan)
@@ -161,18 +158,13 @@ struct io_plan *io_write_(struct io_conn *conn, const void *data, size_t len,
 {
 	struct io_plan *plan = io_get_plan(conn, IO_OUT);
 
-	assert(next);
-
 	if (len == 0)
 		return set_always(conn, plan, next, arg);
 
 	plan->u1.const_vp = data;
 	plan->u2.s = len;
-	plan->io = do_write;
-	plan->next = next;
-	plan->next_arg = arg;
 
-	return plan;
+	return io_set_plan(conn, plan, do_write, next, arg);
 }
 
 static int do_read(int fd, struct io_plan *plan)
@@ -201,11 +193,8 @@ struct io_plan *io_read_(struct io_conn *conn,
 
 	plan->u1.cp = data;
 	plan->u2.s = len;
-	plan->io = do_read;
-	plan->next = next;
-	plan->next_arg = arg;
 
-	return plan;
+	return io_set_plan(conn, plan, do_read, next, arg);
 }
 
 static int do_read_partial(int fd, struct io_plan *plan)
@@ -227,8 +216,6 @@ struct io_plan *io_read_partial_(struct io_conn *conn,
 {
 	struct io_plan *plan = io_get_plan(conn, IO_IN);
 
-	assert(next);
-
 	if (maxlen == 0)
 		return set_always(conn, plan, next, arg);
 
@@ -236,11 +223,8 @@ struct io_plan *io_read_partial_(struct io_conn *conn,
 	/* We store the max len in here temporarily. */
 	*len = maxlen;
 	plan->u2.vp = len;
-	plan->io = do_read_partial;
-	plan->next = next;
-	plan->next_arg = arg;
 
-	return plan;
+	return io_set_plan(conn, plan, do_read_partial, next, arg);
 }
 
 static int do_write_partial(int fd, struct io_plan *plan)
@@ -262,8 +246,6 @@ struct io_plan *io_write_partial_(struct io_conn *conn,
 {
 	struct io_plan *plan = io_get_plan(conn, IO_OUT);
 
-	assert(next);
-
 	if (maxlen == 0)
 		return set_always(conn, plan, next, arg);
 
@@ -271,11 +253,8 @@ struct io_plan *io_write_partial_(struct io_conn *conn,
 	/* We store the max len in here temporarily. */
 	*len = maxlen;
 	plan->u2.vp = len;
-	plan->io = do_write_partial;
-	plan->next = next;
-	plan->next_arg = arg;
 
-	return plan;
+	return io_set_plan(conn, plan, do_write_partial, next, arg);
 }
 
 static int do_connect(int fd, struct io_plan *plan)
@@ -319,11 +298,7 @@ struct io_plan *io_connect_(struct io_conn *conn, const struct addrinfo *addr,
 	if (errno != EINPROGRESS)
 		return io_close(conn);
 
-	plan->next = next;
-	plan->next_arg = arg;
-	plan->io = do_connect;
-
-	return plan;
+	return io_set_plan(conn, plan, do_connect, next, arg);
 }
 
 struct io_plan *io_wait_(struct io_conn *conn,
@@ -340,14 +315,10 @@ struct io_plan *io_wait_(struct io_conn *conn,
 	else
 		plan = io_get_plan(conn, IO_OUT);
 
-	assert(next);
-
-	plan->next = next;
-	plan->next_arg = arg;
-	plan->u1.const_vp = wait;
 	plan->status = IO_WAITING;
+	plan->u1.const_vp = wait;
 
-	return plan;
+	return io_set_plan(conn, plan, NULL, next, arg);
 }
 
 void io_wake(const void *wait)
@@ -355,11 +326,11 @@ void io_wake(const void *wait)
 	backend_wake(wait);
 }
 
-static void do_plan(struct io_conn *conn, struct io_plan *plan)
+static int do_plan(struct io_conn *conn, struct io_plan *plan)
 {
 	/* Someone else might have called io_close() on us. */
 	if (plan->status == IO_CLOSING)
-		return;
+		return -1;
 
 	/* We shouldn't have polled for this event if this wasn't true! */
 	assert(plan->status == IO_POLLING);
@@ -367,12 +338,12 @@ static void do_plan(struct io_conn *conn, struct io_plan *plan)
 	switch (plan->io(conn->fd.fd, plan)) {
 	case -1:
 		io_close(conn);
-		break;
+		return -1;
 	case 0:
-		break;
+		return 0;
 	case 1:
 		next_plan(conn, plan);
-		break;
+		return 1;
 	default:
 		/* IO should only return -1, 0 or 1 */
 		abort();
@@ -414,7 +385,7 @@ struct io_plan *io_close(struct io_conn *conn)
 	conn->plan[IO_IN].u1.s = errno;
 	backend_new_closing(conn);
 
-	return &conn->plan[IO_IN];
+	return io_set_plan(conn, &conn->plan[IO_IN], NULL, NULL, NULL);
 }
 
 struct io_plan *io_close_cb(struct io_conn *conn, void *arg)
@@ -439,10 +410,85 @@ int io_conn_fd(const struct io_conn *conn)
 	return conn->fd.fd;
 }
 
-struct io_plan *io_duplex(struct io_plan *in_plan, struct io_plan *out_plan)
+void io_duplex_prepare(struct io_conn *conn)
 {
+	assert(conn->plan[IO_IN].status == IO_UNSET);
+	assert(conn->plan[IO_OUT].status == IO_UNSET);
+
+	conn->debug_saved = conn->debug;
+	conn->debug = false;
+}
+
+struct io_plan *io_duplex_(struct io_plan *in_plan, struct io_plan *out_plan)
+{
+	struct io_conn *conn;
+
 	/* in_plan must be conn->plan[IO_IN], out_plan must be [IO_OUT] */
 	assert(out_plan == in_plan + 1);
 
+	/* Restore debug. */
+	conn = container_of(in_plan, struct io_conn, plan[IO_IN]);
+	conn->debug = conn->debug_saved;
+
+	/* Now set the plans again, to invoke sync debug. */
+	io_set_plan(conn,
+		    out_plan, out_plan->io, out_plan->next, out_plan->next_arg);
+	io_set_plan(conn,
+		    in_plan, in_plan->io, in_plan->next, in_plan->next_arg);
+
 	return out_plan + 1;
+}
+
+struct io_plan *io_set_plan(struct io_conn *conn, struct io_plan *plan,
+			    int (*io)(int fd, struct io_plan *plan),
+			    struct io_plan *(*next)(struct io_conn *, void *),
+			    void *next_arg)
+{
+	struct io_plan *other;
+
+	plan->io = io;
+	plan->next = next;
+	plan->next_arg = next_arg;
+	assert(plan->status == IO_CLOSING || next != NULL);
+
+	if (!conn->debug)
+		return plan;
+
+	if (io_loop_return) {
+		io_debug_complete(conn);
+		return plan;
+	}
+
+	switch (plan->status) {
+	case IO_POLLING:
+		while (do_plan(conn, plan) == 0);
+		break;
+	/* Shouldn't happen, since you said you did plan! */
+	case IO_UNSET:
+		abort();
+	case IO_ALWAYS:
+		/* If other one is ALWAYS, leave in list! */
+		if (plan == &conn->plan[IO_IN])
+			other = &conn->plan[IO_OUT];
+		else
+			other = &conn->plan[IO_IN];
+		if (other->status != IO_ALWAYS)
+			remove_from_always(conn);
+		next_plan(conn, plan);
+		break;
+	case IO_WAITING:
+	case IO_CLOSING:
+		io_debug_complete(conn);
+	}
+
+	return plan;
+}
+
+void io_set_debug(struct io_conn *conn, bool debug)
+{
+	conn->debug = debug;
+}
+
+void io_debug_complete(struct io_conn *conn)
+{
 }

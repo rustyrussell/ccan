@@ -432,11 +432,16 @@ struct io_plan *io_connect_(struct io_conn *conn, const struct addrinfo *addr,
  *
  * static struct io_plan *read_and_write(struct io_conn *conn, struct buf *b)
  * {
- *	return io_duplex(io_read(conn, b->in, sizeof(b->in), io_close_cb, b),
- *			 io_write(conn, b->out, sizeof(b->out), io_close_cb, b));
+ *	return io_duplex(conn,
+ *			 io_read(conn, b->in, sizeof(b->in), io_close_cb, b),
+ *			 io_write(conn, b->out, sizeof(b->out), io_close_cb,b));
  * }
  */
-struct io_plan *io_duplex(struct io_plan *in_plan, struct io_plan *out_plan);
+#define io_duplex(conn, in_plan, out_plan) \
+	(io_duplex_prepare(conn), io_duplex_(in_plan, out_plan))
+
+struct io_plan *io_duplex_(struct io_plan *in_plan, struct io_plan *out_plan);
+void io_duplex_prepare(struct io_conn *conn);
 
 /**
  * io_wait - leave a plan idle until something wakes us.
@@ -575,4 +580,38 @@ void *io_loop(struct timers *timers, struct list_head *expired);
  * Sometimes useful, eg for getsockname().
  */
 int io_conn_fd(const struct io_conn *conn);
+
+/**
+ * io_set_debug - set synchronous mode on a connection.
+ * @conn: the connection.
+ * @debug: whether to enable or disable debug.
+ *
+ * Once @debug is true on a connection, all I/O is done synchronously
+ * as soon as it is set, until it is unset or @conn is closed.  This
+ * makes it easy to debug what's happening with a connection, but note
+ * that other connections are starved while this is being done.
+ *
+ * See also: io_debug_complete()
+ *
+ * Example:
+ * // Dumb init function to set debug and tell conn to close.
+ * static struct io_plan *conn_init(struct io_conn *conn, const char *msg)
+ * {
+ *	io_set_debug(conn, true);
+ *	return io_close(conn);
+ * }
+ */
+void io_set_debug(struct io_conn *conn, bool debug);
+
+/**
+ * io_debug_complete - empty function called when conn is closing/waiting.
+ * @conn: the connection.
+ *
+ * This is for putting a breakpoint onto, when debugging.  It is called
+ * when a conn with io_set_debug() true can no longer be synchronous:
+ * 1) It is io_close()'d
+ * 2) It enters io_wait() (sychronous debug will resume after io_wake())
+ * 3) io_break() is called (sychronous debug will resume after io_loop())
+ */
+void io_debug_complete(struct io_conn *conn);
 #endif /* CCAN_IO_H */

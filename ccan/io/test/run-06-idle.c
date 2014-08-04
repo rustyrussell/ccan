@@ -9,7 +9,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#ifndef PORT
+#ifdef DEBUG_CONN
+#define PORT "64006"
+#else
 #define PORT "65006"
 #endif
 

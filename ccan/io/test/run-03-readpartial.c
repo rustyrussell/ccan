@@ -6,7 +6,9 @@
 #include <sys/wait.h>
 #include <stdio.h>
 
-#ifndef PORT
+#ifdef DEBUG_CONN
+#define PORT "64003"
+#else
 #define PORT "65003"
 #endif
 
@@ -25,6 +27,9 @@ static void finish_ok(struct io_conn *conn, struct data *d)
 
 static struct io_plan *init_conn(struct io_conn *conn, struct data *d)
 {
+#ifdef DEBUG_CONN
+	io_set_debug(conn, true);
+#endif
 	ok1(d->state == 0);
 	d->state++;
 

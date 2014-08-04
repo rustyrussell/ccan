@@ -25,6 +25,9 @@ struct io_listener {
 /* One connection per client. */
 struct io_conn {
 	struct fd fd;
+	bool debug;
+	/* For duplex to save. */
+	bool debug_saved;
 
 	/* always or closing list. */
 	struct io_conn *list;
@@ -44,7 +47,7 @@ void del_listener(struct io_listener *l);
 void backend_new_closing(struct io_conn *conn);
 void backend_new_always(struct io_conn *conn);
 void backend_new_plan(struct io_conn *conn);
-
+void remove_from_always(struct io_conn *conn);
 void backend_plan_done(struct io_conn *conn);
 
 void backend_wake(const void *wait);

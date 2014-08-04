@@ -6,7 +6,9 @@
 #include <sys/wait.h>
 #include <stdio.h>
 
-#ifndef PORT
+#ifdef DEBUG_CONN
+#define PORT "64012"
+#else
 #define PORT "65012"
 #endif
 
@@ -34,6 +36,9 @@ static struct io_plan *rw_done(struct io_conn *conn, struct data *d)
 
 static struct io_plan *init_conn(struct io_conn *conn, struct data *d)
 {
+#ifdef DEBUG_CONN
+	io_set_debug(conn, true);
+#endif
 	ok1(d->state == 0);
 	d->state++;
 
@@ -42,7 +47,8 @@ static struct io_plan *init_conn(struct io_conn *conn, struct data *d)
 	memset(d->wbuf, 7, sizeof(d->wbuf));
 	io_set_finish(conn, finish_ok, d);
 
-	return io_duplex(io_read(conn, d->buf, sizeof(d->buf), rw_done, d),
+	return io_duplex(conn,
+			 io_read(conn, d->buf, sizeof(d->buf), rw_done, d),
 			 io_write(conn, d->wbuf, sizeof(d->wbuf), rw_done, d));
 }
 

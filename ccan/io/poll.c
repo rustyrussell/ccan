@@ -88,17 +88,21 @@ bool add_listener(struct io_listener *l)
 	return true;
 }
 
+void remove_from_always(struct io_conn *conn)
+{
+	struct io_conn **p = &always;
+
+	while (*p != conn)
+		p = &(*p)->list;
+
+	*p = conn->list;
+}
+
 void backend_new_closing(struct io_conn *conn)
 {
 	/* Already on always list?  Remove it. */
-	if (conn->list) {
-		struct io_conn **p = &always;
-
-		while (*p != conn)
-			p = &(*p)->list;
-
-		*p = conn->list;
-	}
+	if (conn->list)
+		remove_from_always(conn);
 
 	conn->list = closing;
 	closing = conn;
