@@ -78,6 +78,12 @@ static void del_fd(struct fd *fd)
 	}
 	num_fds--;
 	fd->backend_info = -1;
+
+	/* Closing a local socket doesn't wake poll() because other end
+	 * has them open.  See 2.6.  When should I use shutdown()?
+	 * in http://www.faqs.org/faqs/unix-faq/socket/ */
+	shutdown(fd->fd, SHUT_RDWR);
+
 	close(fd->fd);
 }
 
