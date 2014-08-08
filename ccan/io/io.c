@@ -67,6 +67,18 @@ static void next_plan(struct io_conn *conn, struct io_plan *plan)
 	backend_new_plan(conn);
 }
 
+static void set_blocking(int fd, bool block)
+{
+	int flags = fcntl(fd, F_GETFL);
+
+	if (block)
+		flags &= ~O_NONBLOCK;
+	else
+		flags |= O_NONBLOCK;
+
+	fcntl(fd, F_SETFL, flags);
+}
+
 struct io_conn *io_new_conn_(const tal_t *ctx, int fd,
 			     struct io_plan *(*init)(struct io_conn *, void *),
 			     void *arg)
@@ -85,6 +97,9 @@ struct io_conn *io_new_conn_(const tal_t *ctx, int fd,
 
 	if (!add_conn(conn))
 		return tal_free(conn);
+
+	/* Keep our I/O async. */
+	set_blocking(fd, false);
 
 	/* We start with out doing nothing, and in doing our init. */
 	conn->plan[IO_OUT].status = IO_UNSET;
@@ -275,8 +290,6 @@ static int do_connect(int fd, struct io_plan_arg *arg)
 		return -1;
 
 	if (err == 0) {
-		/* Restore blocking if it was initially. */
-		fcntl(fd, F_SETFL, arg->u1.s);
 		return 1;
 	} else if (err == EINPROGRESS)
 		return 0;
@@ -289,21 +302,21 @@ struct io_plan *io_connect_(struct io_conn *conn, const struct addrinfo *addr,
 			    struct io_plan *(*next)(struct io_conn *, void *),
 			    void *next_arg)
 {
-	struct io_plan_arg *arg = io_plan_arg(conn, IO_IN);
 	int fd = io_conn_fd(conn);
 
-	/* Save old flags, set nonblock if not already. */
-	arg->u1.s = fcntl(fd, F_GETFL);
-	fcntl(fd, F_SETFL, arg->u1.s | O_NONBLOCK);
+	/* We don't actually need the arg, but we need it polling. */
+	io_plan_arg(conn, IO_OUT);
+
+	/* Note that io_new_conn() will make fd O_NONBLOCK */
 
 	/* Immediate connect can happen. */
 	if (connect(fd, addr->ai_addr, addr->ai_addrlen) == 0)
-		return set_always(conn, IO_IN, next, next_arg);
+		return set_always(conn, IO_OUT, next, next_arg);
 
 	if (errno != EINPROGRESS)
 		return io_close(conn);
 
-	return io_set_plan(conn, IO_IN, do_connect, next, next_arg);
+	return io_set_plan(conn, IO_OUT, do_connect, next, next_arg);
 }
 
 static struct io_plan *io_wait_dir(struct io_conn *conn,
@@ -437,7 +450,7 @@ void io_duplex_prepare(struct io_conn *conn)
 	/* We can't sync debug until we've set both: io_wait() and io_always
 	 * can't handle it. */
 	conn->debug_saved = conn->debug;
-	conn->debug = false;
+	io_set_debug(conn, false);
 }
 
 struct io_plan *io_duplex_(struct io_plan *in_plan, struct io_plan *out_plan)
@@ -449,7 +462,7 @@ struct io_plan *io_duplex_(struct io_plan *in_plan, struct io_plan *out_plan)
 
 	/* Restore debug. */
 	conn = container_of(in_plan, struct io_conn, plan[IO_IN]);
-	conn->debug = conn->debug_saved;
+	io_set_debug(conn, conn->debug_saved);
 
 	/* Now set the plans again, to invoke sync debug. */
 	io_set_plan(conn, IO_OUT,
@@ -522,6 +535,9 @@ struct io_plan *io_set_plan(struct io_conn *conn, enum io_direction dir,
 void io_set_debug(struct io_conn *conn, bool debug)
 {
 	conn->debug = debug;
+
+	/* Debugging means fds must block. */
+	set_blocking(io_conn_fd(conn), debug);
 }
 
 void io_debug_complete(struct io_conn *conn)
