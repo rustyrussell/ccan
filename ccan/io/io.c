@@ -384,10 +384,13 @@ void io_do_always(struct io_conn *conn)
 		next_plan(conn, &conn->plan[IO_OUT]);
 }
 
-void io_do_wakeup(struct io_conn *conn, struct io_plan *plan)
+void io_do_wakeup(struct io_conn *conn, enum io_direction dir)
 {
+	struct io_plan *plan = &conn->plan[dir];
+
 	assert(plan->status == IO_WAITING);
-	next_plan(conn, plan);
+
+	set_always(conn, dir, plan->next, plan->next_arg);
 }
 
 /* Close the connection, we're done. */

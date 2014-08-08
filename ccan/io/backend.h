@@ -88,6 +88,6 @@ void backend_del_conn(struct io_conn *conn);
 
 void io_ready(struct io_conn *conn, int pollflags);
 void io_do_always(struct io_conn *conn);
-void io_do_wakeup(struct io_conn *conn, struct io_plan *plan);
+void io_do_wakeup(struct io_conn *conn, enum io_direction dir);
 void *do_io_loop(struct io_conn **ready);
 #endif /* CCAN_IO_BACKEND_H */

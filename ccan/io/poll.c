@@ -158,11 +158,11 @@ void backend_wake(const void *wait)
 		c = (void *)fds[i];
 		if (c->plan[IO_IN].status == IO_WAITING
 		    && c->plan[IO_IN].arg.u1.const_vp == wait)
-			io_do_wakeup(c, &c->plan[IO_IN]);
+			io_do_wakeup(c, IO_IN);
 
 		if (c->plan[IO_OUT].status == IO_WAITING
 		    && c->plan[IO_OUT].arg.u1.const_vp == wait)
-			io_do_wakeup(c, &c->plan[IO_OUT]);
+			io_do_wakeup(c, IO_OUT);
 	}
 }
 
