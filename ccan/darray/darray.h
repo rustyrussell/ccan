@@ -74,6 +74,7 @@
  *
  *     T      darray_pop(darray(T) arr | darray_size(arr) != 0);
  *     T*     darray_pop_check(darray(T*) arr);
+ *     void   darray_remove(darray(T) arr, size_t index);
  *
  * Replacement:
  *
@@ -106,7 +107,7 @@
  *     darray_foreach(T *&i, darray(T) arr) {...}
  *     darray_foreach_reverse(T *&i, darray(T) arr) {...}
  *
- * Except for darray_foreach and darray_foreach_reverse,
+ * Except for darray_foreach, darray_foreach_reverse, and darray_remove,
  * all macros evaluate their non-darray arguments only once.
  */
 
@@ -221,6 +222,12 @@ typedef darray(unsigned long)  darray_ulong;
 /* Warning: Do not call darray_pop on an empty darray. */
 #define darray_pop(arr) ((arr).item[--(arr).size])
 #define darray_pop_check(arr) ((arr).size ? darray_pop(arr) : NULL)
+/* Warning, slow: Requires copying all elements after removed item. */
+#define darray_remove(arr, index) do { \
+	if (index < arr.size-1)    \
+		memmove(&(arr).item[index], &(arr).item[index+1], ((arr).size-1-i)*sizeof(*(arr).item)); \
+	(arr).size--;  \
+	} while(0)
 
 
 /*** Replacement ***/
