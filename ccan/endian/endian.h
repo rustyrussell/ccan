@@ -16,8 +16,8 @@
  *	};
  */
 #define BSWAP_16(val)				\
-	((((uint16_t)val & 0x00ff) << 8)	\
-	 | (((uint16_t)val & 0xff00) >> 8))
+	((((uint16_t)(val) & 0x00ff) << 8)	\
+	 | (((uint16_t)(val) & 0xff00) >> 8))
 
 /**
  * BSWAP_32 - reverse bytes in a constant uint32_t value.
@@ -31,10 +31,10 @@
  *	};
  */
 #define BSWAP_32(val)					\
-	((((uint32_t)val & 0x000000ff) << 24)		\
-	 | (((uint32_t)val & 0x0000ff00) << 8)		\
-	 | (((uint32_t)val & 0x00ff0000) >> 8)		\
-	 | (((uint32_t)val & 0xff000000) >> 24))
+	((((uint32_t)(val) & 0x000000ff) << 24)		\
+	 | (((uint32_t)(val) & 0x0000ff00) << 8)		\
+	 | (((uint32_t)(val) & 0x00ff0000) >> 8)		\
+	 | (((uint32_t)(val) & 0xff000000) >> 24))
 
 /**
  * BSWAP_64 - reverse bytes in a constant uint64_t value.
@@ -48,14 +48,14 @@
  *	};
  */
 #define BSWAP_64(val)						\
-	((((uint64_t)val & 0x00000000000000ffULL) << 56)	\
-	 | (((uint64_t)val & 0x000000000000ff00ULL) << 40)	\
-	 | (((uint64_t)val & 0x0000000000ff0000ULL) << 24)	\
-	 | (((uint64_t)val & 0x00000000ff000000ULL) << 8)	\
-	 | (((uint64_t)val & 0x000000ff00000000ULL) >> 8)	\
-	 | (((uint64_t)val & 0x0000ff0000000000ULL) >> 24)	\
-	 | (((uint64_t)val & 0x00ff000000000000ULL) >> 40)	\
-	 | (((uint64_t)val & 0xff00000000000000ULL) >> 56))
+	((((uint64_t)(val) & 0x00000000000000ffULL) << 56)	\
+	 | (((uint64_t)(val) & 0x000000000000ff00ULL) << 40)	\
+	 | (((uint64_t)(val) & 0x0000000000ff0000ULL) << 24)	\
+	 | (((uint64_t)(val) & 0x00000000ff000000ULL) << 8)	\
+	 | (((uint64_t)(val) & 0x000000ff00000000ULL) >> 8)	\
+	 | (((uint64_t)(val) & 0x0000ff0000000000ULL) >> 24)	\
+	 | (((uint64_t)(val) & 0x00ff000000000000ULL) >> 40)	\
+	 | (((uint64_t)(val) & 0xff00000000000000ULL) >> 56))
 
 #if HAVE_BYTESWAP_H
 #include <byteswap.h>
