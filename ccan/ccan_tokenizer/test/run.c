@@ -896,14 +896,14 @@ struct tokenizer_test {
 };
 
 #define T(txt, ...) {txt, sizeof(txt)-1, array_count_pair(struct token, __VA_ARGS__)}
-#define string(txt) {.string=(darray_char[1]){{.item = (txt), .size = sizeof(txt)-1}}}
+#define string(txt) {.string=(darray_char[1]){{.item = (char *)(txt), .size = sizeof(txt)-1}}}
 #define opkw(v) {.opkw = (v)}
 #define txt(t) .txt = (t), .txt_size = sizeof(t)-1
 #define integer(...) {.integer={__VA_ARGS__}}
 #define floating(...) {.floating={__VA_ARGS__}}
 #define space {.type = TOK_WHITE, .txt = " ", .txt_size = 1}
 #define startline {.type = TOK_STARTLINE}
-#define include(str) {.include = (str)}
+#define include(str) {.include = (char *)(str)}
 
 struct tokenizer_msg_test {
 	struct tokenizer_test test;
