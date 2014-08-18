@@ -14,8 +14,8 @@
  *	#include <stdlib.h>
  *	#include <string.h>
  *	#include <ccan/charset/charset.h>
- *	#include <ccan/grab_file/grab_file.h>
- *	#include <ccan/talloc/talloc.h>
+ *	#include <ccan/tal/grab_file/grab_file.h>
+ *	#include <ccan/tal/tal.h>
  *	
  *	static void print_json_string(const char *s);
  *	static bool parse_hex16(const char **sp, unsigned int *out);
@@ -24,23 +24,22 @@
  *	int main(void)
  *	{
  *		char *input;
- *		size_t length;
  *	
- *		input = grab_file(NULL, NULL, &length);
+ *		input = grab_file(NULL, NULL);
  *		if (!input)
  *			err(1, "Error reading input");
- *		if (!utf8_validate(input, length)) {
+ *		if (!utf8_validate(input, tal_count(input)-1)) {
  *			fprintf(stderr, "Input contains invalid UTF-8\n");
  *			return 1;
  *		}
- *		if (strlen(input) != length) {
+ *		if (strlen(input) != tal_count(input)-1) {
  *			fprintf(stderr, "Input contains null characters\n");
  *			return 1;
  *		}
  *		
  *		print_json_string(input);
  *		
- *		talloc_free(input);
+ *		tal_free(input);
  *		return 0;
  *	}
  *	
