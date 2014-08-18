@@ -11,7 +11,7 @@
  *
  * Example:
  *	#include <ccan/tal/str/str.h>
- *	#include <ccan/grab_file/grab_file.h>
+ *	#include <ccan/tal/grab_file/grab_file.h>
  *	#include <err.h>
  *
  *	// Dumb demo program to double-linespace a file.
@@ -21,7 +21,7 @@
  *		char **lines;
  *
  *		// Grab lines in file.
- *		textfile = grab_file(NULL, argv[1], NULL);
+ *		textfile = grab_file(NULL, argv[1]);
  *		if (!textfile)
  *			err(1, "Failed reading %s", argv[1]);
  *		lines = tal_strsplit(textfile, textfile, "\n", STR_EMPTY_OK);
