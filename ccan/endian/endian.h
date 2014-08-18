@@ -279,7 +279,6 @@ static inline uint16_t le16_to_cpu(leint16_t le_val)
  */
 static inline beint64_t cpu_to_be64(uint64_t native)
 {
-	return ((ENDIAN_CAST beint64_t)BSWAP_64(native));
 	return CPU_TO_BE64(native);
 }
 
