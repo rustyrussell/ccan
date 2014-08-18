@@ -11,7 +11,7 @@
  * Example:
  *
  * #include <ccan/ccan_tokenizer/ccan_tokenizer.h>
- * #include <ccan/grab_file/grab_file.h>
+ * #include <ccan/tal/grab_file/grab_file.h>
  * #include <err.h>
  *
  * static void token_list_stats(const struct token_list *tl) {
@@ -48,7 +48,6 @@
  * }
  *
  * int main(int argc, char *argv[]) {
- * 	size_t len;
  * 	char *file;
  * 	struct token_list *tl;
  * 	tok_message_queue mq;
@@ -59,12 +58,12 @@
  * 		fprintf(stderr, "Usage: %s source_file\n", argv[0]);
  * 		return 1;
  * 	}
- * 	file = grab_file(NULL, argv[1], &len);
+ * 	file = grab_file(NULL, argv[1]);
  * 	if (!file)
  * 		err(1, "Could not read file %s", argv[1]);
  *
  * 	//tokenize the contents
- * 	tl = tokenize(file, file, len, &mq);
+ * 	tl = tokenize(file, file, strlen(file), &mq);
  *
  * 	//print warnings, errors, etc.
  * 	while (queue_count(mq)) {
