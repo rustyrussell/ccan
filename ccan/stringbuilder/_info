@@ -1,0 +1,59 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * stringbuilder - join lists of strings
+ *
+ * This is a small set of functions for building up strings from a list.
+ * The destination buffer is bounds-checked, the functions return failure
+ * if the concatenated strings overflow the buffer.
+ *
+ * Example:
+ *	#include <stdio.h>
+ *	#include <string.h>
+ *	#include <errno.h>
+ *	#include <ccan/stringbuilder/stringbuilder.h>
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		char mystring[128];
+ *		int res;
+ *
+ *		res = stringbuilder_array(mystring, 128, "', '",
+ *			argc, (const char**)argv);
+ *		if (!res)
+ *			printf("My arguments: '%s'\n", mystring);
+ *		else
+ *			printf("Failed to join arguments: %s\n",
+ *				strerror(res));
+ *		if (!res) {
+ *			res = stringbuilder(mystring, 128, ", ",
+ *				"This", "Is", "A", "Test");
+ *			if (!res)
+ *				printf("My string: '%s'\n", mystring);
+ *			else
+ *				printf("Failed to join strings: %s\n",
+ *					strerror(res));
+ *		}
+ *		return 0;
+ *	}
+ *
+ * License: CC0 (Public domain)
+ * Author: Stuart Longland <stuartl@longlandclan.yi.org>
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		/*
+		 * This triggers a circular dependency!
+		 * printf("ccan/str\n");
+		 */
+		return 0;
+	}
+
+	return 1;
+}

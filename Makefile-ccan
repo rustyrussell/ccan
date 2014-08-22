@@ -90,6 +90,7 @@ MODS_WITH_SRC := antithread \
 	siphash \
 	sparse_bsearch \
 	str \
+	stringbuilder \
 	stringmap \
 	strmap \
 	strset \
