@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
 	opaque_t *q, *nq;
 	struct list_head opaque_list = LIST_HEAD_INIT(opaque_list);
 
-	plan_tests(68);
+	plan_tests(70);
 	/* Test LIST_HEAD, LIST_HEAD_INIT, list_empty and check_list */
 	ok1(list_empty(&static_list));
 	ok1(list_check(&static_list, NULL));
@@ -154,6 +154,19 @@ int main(int argc, char *argv[])
 	}
 	ok1(i == 3);
 	ok1(list_empty(&parent.children));
+
+	/* Test list_node_init: safe to list_del after this. */
+	list_node_init(&c->list);
+	list_del(&c->list);
+
+	/* Test list_del_init */
+	list_add(&parent.children, &c->list);
+	ok1(!list_empty(&parent.children));
+	list_del_init(&c->list);
+	ok1(list_empty(&parent.children));
+	/* We can call this as many times as we like. */
+	list_del_init(&c->list);
+	list_del_init(&c->list);
 
 	/* Test list_for_each_off. */
 	list_add_tail(&opaque_list,
