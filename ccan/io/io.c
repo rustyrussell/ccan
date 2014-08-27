@@ -92,7 +92,8 @@ struct io_conn *io_new_conn_(const tal_t *ctx, int fd,
 	conn->fd.fd = fd;
 	conn->finish = NULL;
 	conn->finish_arg = NULL;
-	conn->list = NULL;
+	list_node_init(&conn->always);
+	list_node_init(&conn->closing);
 	conn->debug = false;
 
 	if (!add_conn(conn))

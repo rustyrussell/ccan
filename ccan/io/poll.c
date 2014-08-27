@@ -8,14 +8,14 @@
 #include <sys/socket.h>
 #include <limits.h>
 #include <errno.h>
-#include <ccan/list/list.h>
 #include <ccan/time/time.h>
 #include <ccan/timer/timer.h>
 
 static size_t num_fds = 0, max_fds = 0, num_waiting = 0;
 static struct pollfd *pollfds = NULL;
 static struct fd **fds = NULL;
-static struct io_conn *closing = NULL, *always = NULL;
+static LIST_HEAD(closing);
+static LIST_HEAD(always);
 
 static bool add_fd(struct fd *fd, short events)
 {
@@ -96,31 +96,21 @@ bool add_listener(struct io_listener *l)
 
 void remove_from_always(struct io_conn *conn)
 {
-	struct io_conn **p = &always;
-
-	while (*p != conn)
-		p = &(*p)->list;
-
-	*p = conn->list;
+	list_del_init(&conn->always);
 }
 
 void backend_new_closing(struct io_conn *conn)
 {
-	/* Already on always list?  Remove it. */
-	if (conn->list)
-		remove_from_always(conn);
-
-	conn->list = closing;
-	closing = conn;
+	/* In case it's on always list, remove it. */
+	list_del_init(&conn->always);
+	list_add_tail(&closing, &conn->closing);
 }
 
 void backend_new_always(struct io_conn *conn)
 {
-	/* May already be in always list (other plan), or closing. */
-	if (!conn->list) {
-		conn->list = always;
-		always = conn;
-	}
+	/* In case it's already in always list. */
+	list_del(&conn->always);
+	list_add_tail(&always, &conn->always);
 }
 
 void backend_new_plan(struct io_conn *conn)
@@ -202,14 +192,12 @@ static void accept_conn(struct io_listener *l)
 static bool close_conns(void)
 {
 	bool ret = false;
+	struct io_conn *conn;
 
-	while (closing) {
-		struct io_conn *conn = closing;
-
+	while ((conn = list_pop(&closing, struct io_conn, closing)) != NULL) {
 		assert(conn->plan[IO_IN].status == IO_CLOSING);
 		assert(conn->plan[IO_OUT].status == IO_CLOSING);
 
-		closing = closing->list;
 		del_conn(conn);
 		ret = true;
 	}
@@ -219,16 +207,14 @@ static bool close_conns(void)
 static bool handle_always(void)
 {
 	bool ret = false;
+	struct io_conn *conn;
 
-	while (always) {
-		struct io_conn *conn = always;
-
+	while ((conn = list_pop(&always, struct io_conn, always)) != NULL) {
 		assert(conn->plan[IO_IN].status == IO_ALWAYS
 		       || conn->plan[IO_OUT].status == IO_ALWAYS);
 
-		/* Remove from list, and mark it so it knows that. */
-		always = always->list;
-		conn->list = NULL;
+		/* Re-initialize, for next time. */
+		list_node_init(&conn->always);
 		io_do_always(conn);
 		ret = true;
 	}

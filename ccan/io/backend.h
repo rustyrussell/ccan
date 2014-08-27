@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <poll.h>
 #include "io_plan.h"
+#include <ccan/list/list.h>
 
 struct fd {
 	int fd;
@@ -62,8 +63,8 @@ struct io_conn {
 	/* For duplex to save. */
 	bool debug_saved;
 
-	/* always or closing list. */
-	struct io_conn *list;
+	/* always and closing lists. */
+	struct list_node always, closing;
 
 	void (*finish)(struct io_conn *, void *arg);
 	void *finish_arg;
