@@ -1,0 +1,57 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * lstack - Simple, singly-linked-list stack implementation
+ *
+ * This code provides a simple implementation of the Stack abstract
+ * data type in terms of a singly linked list.
+ *
+ * License: BSD-MIT
+ * Author: David Gibson <david@gibson.dropbear.id.au>
+ *
+ * Example:
+ *	#include <ccan/lstack/lstack.h>
+ *
+ *	struct arg {
+ *		const char *arg;
+ *		struct lstack_link sl;
+ *	};
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		int i;
+ *		struct arg *a;
+ *		LSTACK(argstack);
+ *
+ *		for (i = 0; i < argc; i++) {
+ *			a = malloc(sizeof(*a));
+ *			a->arg = argv[i];
+ *			lstack_push(&argstack, a, sl);
+ *		}
+ *
+ *		printf("Command line arguments in reverse:\n");
+ *
+ *		while (!lstack_empty(&argstack)) {
+ *			a = lstack_pop(&argstack, struct arg, sl);
+ *			printf("Argument: %s\n", a->arg);
+ *			free(a);
+ *		}
+ *
+ *		return 0;
+ *	}
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/container_of\n");
+		return 0;
+	}
+
+	return 1;
+}

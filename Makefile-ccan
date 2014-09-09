@@ -69,6 +69,7 @@ MODS_WITH_SRC := antithread \
 	likely \
 	list \
 	lqueue \
+	lstack \
 	md4 \
 	memmem \
 	net \
