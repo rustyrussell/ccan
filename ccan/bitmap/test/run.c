@@ -3,6 +3,8 @@
 #include <ccan/array_size/array_size.h>
 #include <ccan/foreach/foreach.h>
 
+#include <ccan/bitmap/bitmap.c>
+
 int bitmap_sizes[] = {
 	1, 2, 3, 4, 5, 6, 7, 8,
 	16, 17, 24, 32, 33,

@@ -80,6 +80,8 @@ static inline bool bitmap_test_bit(const bitmap *bitmap, unsigned long n)
 	return !!(BITMAP_WORD(bitmap, n) & BITMAP_WORDBIT(n));
 }
 
+void bitmap_zero_range(bitmap *bitmap, unsigned long n, unsigned long m);
+void bitmap_fill_range(bitmap *bitmap, unsigned long n, unsigned long m);
 
 static inline void bitmap_zero(bitmap *bitmap, unsigned long nbits)
 {
