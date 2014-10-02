@@ -25,12 +25,12 @@ typedef struct {
 #define BITMAP_DECLARE(_name, _nbits) \
 	bitmap (_name)[BITMAP_NWORDS(_nbits)]
 
-static inline size_t bitmap_sizeof(int nbits)
+static inline size_t bitmap_sizeof(unsigned long nbits)
 {
 	return BITMAP_NWORDS(nbits) * sizeof(bitmap_word);
 }
 
-static inline bitmap *bitmap_alloc(int nbits)
+static inline bitmap *bitmap_alloc(unsigned long nbits)
 {
 	return malloc(bitmap_sizeof(nbits));
 }
@@ -60,47 +60,48 @@ static inline bitmap_word bitmap_bswap(bitmap_word w)
 #define BITMAP_TAIL(_bm, _nbits) \
 	(BITMAP_TAILWORD(_bm, _nbits) & BITMAP_TAILBITS(_nbits))
 
-static inline void bitmap_set_bit(bitmap *bitmap, int n)
+static inline void bitmap_set_bit(bitmap *bitmap, unsigned long n)
 {
 	BITMAP_WORD(bitmap, n) |= BITMAP_WORDBIT(n);
 }
 
-static inline void bitmap_clear_bit(bitmap *bitmap, int n)
+static inline void bitmap_clear_bit(bitmap *bitmap, unsigned long n)
 {
 	BITMAP_WORD(bitmap, n) &= ~BITMAP_WORDBIT(n);
 }
 
-static inline void bitmap_change_bit(bitmap *bitmap, int n)
+static inline void bitmap_change_bit(bitmap *bitmap, unsigned long n)
 {
 	BITMAP_WORD(bitmap, n) ^= BITMAP_WORDBIT(n);
 }
 
-static inline bool bitmap_test_bit(const bitmap *bitmap, int n)
+static inline bool bitmap_test_bit(const bitmap *bitmap, unsigned long n)
 {
 	return !!(BITMAP_WORD(bitmap, n) & BITMAP_WORDBIT(n));
 }
 
 
-static inline void bitmap_zero(bitmap *bitmap, int nbits)
+static inline void bitmap_zero(bitmap *bitmap, unsigned long nbits)
 {
 	memset(bitmap, 0, bitmap_sizeof(nbits));
 }
 
-static inline void bitmap_fill(bitmap *bitmap, int nbits)
+static inline void bitmap_fill(bitmap *bitmap, unsigned long nbits)
 {
 	memset(bitmap, 0xff, bitmap_sizeof(nbits));
 }
 
-static inline void bitmap_copy(bitmap *dst, const bitmap *src, int nbits)
+static inline void bitmap_copy(bitmap *dst, const bitmap *src,
+			       unsigned long nbits)
 {
 	memcpy(dst, src, bitmap_sizeof(nbits));
 }
 
 #define BITMAP_DEF_BINOP(_name, _op) \
 	static inline void bitmap_##_name(bitmap *dst, bitmap *src1, bitmap *src2, \
-					 int nbits) \
+					  unsigned long nbits)		\
 	{ \
-		unsigned int i = 0; \
+		unsigned long i = 0; \
 		for (i = 0; i < BITMAP_NWORDS(nbits); i++) { \
 			dst[i].w = src1[i].w _op src2[i].w; \
 		} \
@@ -113,16 +114,17 @@ BITMAP_DEF_BINOP(andnot, & ~)
 
 #undef BITMAP_DEF_BINOP
 
-static inline void bitmap_complement(bitmap *dst, const bitmap *src, int nbits)
+static inline void bitmap_complement(bitmap *dst, const bitmap *src,
+				     unsigned long nbits)
 {
-	unsigned int i;
+	unsigned long i;
 
 	for (i = 0; i < BITMAP_NWORDS(nbits); i++)
 		dst[i].w = ~src[i].w;
 }
 
 static inline bool bitmap_equal(const bitmap *src1, const bitmap *src2,
-				int nbits)
+				unsigned long nbits)
 {
 	return (memcmp(src1, src2, BITMAP_HEADBYTES(nbits)) == 0)
 		&& (!BITMAP_HASTAIL(nbits)
@@ -130,9 +132,9 @@ static inline bool bitmap_equal(const bitmap *src1, const bitmap *src2,
 }
 
 static inline bool bitmap_intersects(const bitmap *src1, const bitmap *src2,
-				     int nbits)
+				     unsigned long nbits)
 {
-	unsigned int i;
+	unsigned long i;
 
 	for (i = 0; i < BITMAP_HEADWORDS(nbits); i++) {
 		if (src1[i].w & src2[i].w)
@@ -145,9 +147,9 @@ static inline bool bitmap_intersects(const bitmap *src1, const bitmap *src2,
 }
 
 static inline bool bitmap_subset(const bitmap *src1, const bitmap *src2,
-				 int nbits)
+				 unsigned long nbits)
 {
-	unsigned int i;
+	unsigned long i;
 
 	for (i = 0; i < BITMAP_HEADWORDS(nbits); i++) {
 		if (src1[i].w  & ~src2[i].w)
@@ -159,9 +161,9 @@ static inline bool bitmap_subset(const bitmap *src1, const bitmap *src2,
 	return true;
 }
 
-static inline bool bitmap_full(const bitmap *bitmap, int nbits)
+static inline bool bitmap_full(const bitmap *bitmap, unsigned long nbits)
 {
-	unsigned int i;
+	unsigned long i;
 
 	for (i = 0; i < BITMAP_HEADWORDS(nbits); i++) {
 		if (bitmap[i].w != -1UL)
@@ -174,9 +176,9 @@ static inline bool bitmap_full(const bitmap *bitmap, int nbits)
 	return true;
 }
 
-static inline bool bitmap_empty(const bitmap *bitmap, int nbits)
+static inline bool bitmap_empty(const bitmap *bitmap, unsigned long nbits)
 {
-	unsigned int i;
+	unsigned long i;
 
 	for (i = 0; i < BITMAP_HEADWORDS(nbits); i++) {
 		if (bitmap[i].w != 0)
