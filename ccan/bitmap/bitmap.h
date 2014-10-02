@@ -30,11 +30,6 @@ static inline size_t bitmap_sizeof(unsigned long nbits)
 	return BITMAP_NWORDS(nbits) * sizeof(bitmap_word);
 }
 
-static inline bitmap *bitmap_alloc(unsigned long nbits)
-{
-	return malloc(bitmap_sizeof(nbits));
-}
-
 static inline bitmap_word bitmap_bswap(bitmap_word w)
 {
 	if (BITMAP_WORD_BITS == 32)
@@ -190,6 +185,54 @@ static inline bool bitmap_empty(const bitmap *bitmap, unsigned long nbits)
 		return false;
 
 	return true;
+}
+
+/*
+ * Allocation functions
+ */
+static inline bitmap *bitmap_alloc(unsigned long nbits)
+{
+	return malloc(bitmap_sizeof(nbits));
+}
+
+static inline bitmap *bitmap_alloc0(unsigned long nbits)
+{
+	bitmap *bitmap;
+
+	bitmap = bitmap_alloc(nbits);
+	bitmap_zero(bitmap, nbits);
+	return bitmap;
+}
+
+static inline bitmap *bitmap_alloc1(unsigned long nbits)
+{
+	bitmap *bitmap;
+
+	bitmap = bitmap_alloc(nbits);
+	bitmap_fill(bitmap, nbits);
+	return bitmap;
+}
+
+static inline bitmap *bitmap_realloc0(bitmap *bitmap,
+				      unsigned long obits, unsigned long nbits)
+{
+	bitmap = realloc(bitmap, bitmap_sizeof(nbits));
+
+	if (nbits > obits)
+		bitmap_zero_range(bitmap, obits, nbits);
+
+	return bitmap;
+}
+
+static inline bitmap *bitmap_realloc1(bitmap *bitmap,
+				      unsigned long obits, unsigned long nbits)
+{
+	bitmap = realloc(bitmap, bitmap_sizeof(nbits));
+
+	if (nbits > obits)
+		bitmap_fill_range(bitmap, obits, nbits);
+
+	return bitmap;
 }
 
 #endif /* CCAN_BITMAP_H_ */
