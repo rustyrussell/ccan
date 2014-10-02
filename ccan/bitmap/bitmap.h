@@ -187,6 +187,9 @@ static inline bool bitmap_empty(const bitmap *bitmap, unsigned long nbits)
 	return true;
 }
 
+unsigned long bitmap_ffs(const bitmap *bitmap,
+			 unsigned long n, unsigned long m);
+
 /*
  * Allocation functions
  */
