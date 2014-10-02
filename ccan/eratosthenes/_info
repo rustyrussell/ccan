@@ -1,0 +1,45 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * eratosthenes - Sieve of Eratosthenes
+ *
+ * This code implements Eratosthenes' Sieve for efficiently finding
+ * small prime numbers (in this context anything less than several
+ * billion is "small").
+ *
+ * Example:
+ *	#include <ccan/eratosthenes/eratosthenes.h>
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		struct eratosthenes s;
+ *		unsigned long p;
+ *
+ *		eratosthenes_init(&s);
+ *		eratosthenes_sieve(&s, atol(argv[1]));
+ *
+ *		while ((p = eratosthenes_nextprime(&s, p)) != 0) {
+ *			printf("%ld\n", p);
+ *		}
+ *
+ *		return 0;
+ *	}
+ *
+ * License: LGPL (v2.1 or any later version)
+ * Author: David Gibson <david@gibsond.dropbear.id.au>
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/bitmap\n");
+		return 0;
+	}
+
+	return 1;
+}
