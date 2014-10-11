@@ -55,6 +55,18 @@ bytestring(const char *p, size_t l)
  */
 #define BYTESTRING(s) (bytestring((s), ARRAY_SIZE(s) - 1))
 
+/**
+ * BYTESTRING_INIT - bytestring initializer
+ * @s: string literal
+ *
+ * Produces an initializer for a bytestring from a literal string.
+ * The resulting bytestring will not include the terminating \0, but
+ * will include any internal \0s.
+ *
+ * Example:
+ *	static const struct bytestring CONSTANT = BYTESTRING_INIT("CONSTANT");
+ */
+#define BYTESTRING_INIT(s) { .ptr = (s), .len = ARRAY_SIZE(s) - 1}
 
 /**
  * bytestring_from_string - construct a bytestring from a NUL terminated string
