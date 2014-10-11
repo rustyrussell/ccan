@@ -11,6 +11,7 @@
 
 #include <ccan/array_size/array_size.h>
 #include <ccan/mem/mem.h>
+#include <ccan/compiler/compiler.h>
 
 struct bytestring {
 	const char *ptr;
@@ -29,7 +30,8 @@ struct bytestring {
  *	struct bytestring bs = bytestring(x, 5);
  *	assert(bs.len == 5);
  */
-static inline struct bytestring bytestring(const char *p, size_t l)
+static inline CONST_FUNCTION struct bytestring
+bytestring(const char *p, size_t l)
 {
 	struct bytestring bs = {
 		.ptr = p,
