@@ -49,6 +49,7 @@ MODS_WITH_SRC := antithread \
 	daemonize \
 	daemon_with_notify \
 	dgraph \
+	eratosthenes \
 	err \
 	failtest \
 	foreach \
