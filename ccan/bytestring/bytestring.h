@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <assert.h>
 
 #include <ccan/array_size/array_size.h>
 
@@ -78,6 +79,20 @@ static inline bool bytestring_eq(struct bytestring a, struct bytestring b)
 {
 	return (a.len == b.len)
 		&& (memcmp(a.ptr, b.ptr, a.len) == 0);
+}
+
+/**
+ * bytestring_byte - get a byte from a bytestring
+ * @s: bytestring
+ * @n: index
+ *
+ * Return the @n-th byte from @s.  Aborts (via assert) if @n is out of
+ * range for the length of @s.
+ */
+static inline char bytestring_byte(struct bytestring s, size_t n)
+{
+	assert(n < s.len);
+	return s.ptr[n];
 }
 
 #endif /* CCAN_BYTESTRING_H_ */

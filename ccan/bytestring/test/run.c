@@ -12,7 +12,7 @@ int main(void)
 	struct bytestring bs, bs1, bs2, bs3, bs4, bs5;
 
 	/* This is how many tests you plan to run */
-	plan_tests(9);
+	plan_tests(16);
 
 	bs = bytestring(str1, sizeof(str1) - 1);
 	ok1(bs.ptr == str1);
@@ -35,6 +35,14 @@ int main(void)
 	ok1(bs5.ptr == NULL);
 	ok1(bytestring_eq(bs5, bytestring_NULL));
 
+	ok1(bytestring_byte(bs2, 0) == 'a');
+	ok1(bytestring_byte(bs2, 1) == 'b');
+	ok1(bytestring_byte(bs2, 2) == 'c');
+	ok1(bytestring_byte(bs2, 3) == '\0');
+	ok1(bytestring_byte(bs2, 4) == 'd');
+	ok1(bytestring_byte(bs2, 5) == 'e');
+	ok1(bytestring_byte(bs2, 6) == 'f');
+	
 	/* This exits depending on whether all tests passed */
 	return exit_status();
 }
