@@ -95,4 +95,31 @@ static inline char bytestring_byte(struct bytestring s, size_t n)
 	return s.ptr[n];
 }
 
+/**
+ * bytestring_slice - extract a substring from a bytestring
+ * @s: bytestring
+ * @start, @end: indexes
+ *
+ * Return a sub-bytestring of @s, starting at byte index @start, and
+ * running to, but not including byte @end.  If @end is before start,
+ * returns a zero-length bytestring.  If @start is out of range,
+ * return a zero length bytestring at the end of @s.
+ *
+ * Note that this doesn't copy or allocate anything - the returned
+ * bytestring occupies (some of) the same memory as the given
+ * bytestring.
+ */
+static inline struct bytestring bytestring_slice(struct bytestring s,
+						 size_t start, size_t end)
+{
+	if (start > s.len)
+		start = s.len;
+	if (end > s.len)
+		end = s.len;
+	if (end < start)
+		end = start;
+
+	return bytestring(s.ptr + start, end - start);
+}
+
 #endif /* CCAN_BYTESTRING_H_ */
