@@ -122,4 +122,32 @@ static inline struct bytestring bytestring_slice(struct bytestring s,
 	return bytestring(s.ptr + start, end - start);
 }
 
+/**
+ * bytestring_starts - test if the start of one bytestring matches another
+ * @s, @prefix: bytestrings
+ *
+ * Returns true if @prefix appears as a substring at the beginning of
+ * @s, false otherwise.
+ */
+static inline bool bytestring_starts(struct bytestring s,
+				     struct bytestring prefix)
+{
+	return (s.len >= prefix.len) && (memcmp(s.ptr,
+						prefix.ptr, prefix.len) == 0);
+}
+
+/**
+ * bytestring_ends - test if the end of one bytestring matches another
+ * @s, @suffix: bytestrings
+ *
+ * Returns true if @suffix appears as a substring at the end of @s,
+ * false otherwise.
+ */
+static inline bool bytestring_ends(struct bytestring s,
+				   struct bytestring suffix)
+{
+	return (s.len >= suffix.len) && (memcmp(s.ptr + s.len - suffix.len,
+						suffix.ptr, suffix.len) == 0);
+}
+
 #endif /* CCAN_BYTESTRING_H_ */
