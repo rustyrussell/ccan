@@ -2,12 +2,15 @@
 #ifndef CCAN_BYTESTRING_H_
 #define CCAN_BYTESTRING_H_
 
+#include "config.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
 #include <assert.h>
 
 #include <ccan/array_size/array_size.h>
+#include <ccan/mem/mem.h>
 
 struct bytestring {
 	const char *ptr;
@@ -148,6 +151,34 @@ static inline bool bytestring_ends(struct bytestring s,
 {
 	return (s.len >= suffix.len) && (memcmp(s.ptr + s.len - suffix.len,
 						suffix.ptr, suffix.len) == 0);
+}
+
+/**
+ * bytestring_index - locate character in bytestring
+ * @haystack: a bytestring
+ * @needle: a character or byte value
+ *
+ * Returns a pointer to the first occurrence of @needle within
+ * @haystack, or NULL if @needle does not appear in @haystack.
+ */
+static inline const char *bytestring_index(struct bytestring haystack,
+					   char needle)
+{
+	return memchr(haystack.ptr, needle, haystack.len);
+}
+
+/**
+ * bytestring_rindex - locate character in bytestring
+ * @haystack: a bytestring
+ * @needle: a character or byte value
+ *
+ * Returns a pointer to the last occurrence of @needle within
+ * @haystack, or NULL if @needle does not appear in @haystack.
+ */
+static inline const char *bytestring_rindex(struct bytestring haystack,
+					   char needle)
+{
+	return memrchr(haystack.ptr, needle, haystack.len);
 }
 
 #endif /* CCAN_BYTESTRING_H_ */

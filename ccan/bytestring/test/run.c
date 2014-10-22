@@ -1,3 +1,5 @@
+#include "config.h"
+
 #include <ccan/bytestring/bytestring.h>
 #include <ccan/tap/tap.h>
 
@@ -12,7 +14,7 @@ int main(void)
 	struct bytestring bs, bs1, bs2, bs3, bs4, bs5;
 
 	/* This is how many tests you plan to run */
-	plan_tests(30);
+	plan_tests(42);
 
 	bs = bytestring(str1, sizeof(str1) - 1);
 	ok1(bs.ptr == str1);
@@ -58,6 +60,20 @@ int main(void)
 	ok1(bytestring_ends(bs2, BYTESTRING("\0def")));
 	ok1(!bytestring_starts(bs2, BYTESTRING("def")));
 	ok1(!bytestring_ends(bs2, BYTESTRING("abc")));
+
+	ok1(bytestring_index(bs1, ' ') == (bs1.ptr + 4));
+	ok1(bytestring_index(bs1, 't') == (bs1.ptr + 0));
+	ok1(bytestring_index(bs1, 0) == NULL);
+	ok1(bytestring_index(bs2, 0) == (bs2.ptr + 3));
+	ok1(bytestring_index(bs2, 'f') == (bs2.ptr + 6));
+	ok1(bytestring_index(bs2, 'q') == NULL);
+
+	ok1(bytestring_rindex(bs1, ' ') == (bs1.ptr + 4));
+	ok1(bytestring_rindex(bs1, 't') == (bs1.ptr + 6));
+	ok1(bytestring_rindex(bs1, 0) == NULL);
+	ok1(bytestring_rindex(bs2, 0) == (bs2.ptr + 3));
+	ok1(bytestring_rindex(bs2, 'f') == (bs2.ptr + 6));
+	ok1(bytestring_rindex(bs2, 'q') == NULL);
 
 	/* This exits depending on whether all tests passed */
 	return exit_status();
