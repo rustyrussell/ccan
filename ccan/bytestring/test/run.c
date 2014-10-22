@@ -3,6 +3,8 @@
 #include <ccan/bytestring/bytestring.h>
 #include <ccan/tap/tap.h>
 
+#include <ccan/bytestring/bytestring.c>
+
 #define TEST_STRING	"test string"
 #define TEST_STRING_2	"abc\0def"
 
@@ -14,7 +16,7 @@ int main(void)
 	struct bytestring bs, bs1, bs2, bs3, bs4, bs5, bs6;
 
 	/* This is how many tests you plan to run */
-	plan_tests(47);
+	plan_tests(53);
 
 	bs = bytestring(str1, sizeof(str1) - 1);
 	ok1(bs.ptr == str1);
@@ -87,6 +89,16 @@ int main(void)
 			  bytestring(bs1.ptr, 0)));
 	ok1(bytestring_eq(bytestring_bytestring(bs2, bytestring_NULL),
 			  bytestring(bs2.ptr, 0)));
+
+
+	ok1(bytestring_spn(bs1, BYTESTRING("est")) == 4);
+	ok1(bytestring_cspn(bs1, BYTESTRING(" ")) == 4);
+
+	ok1(bytestring_spn(bs2, BYTESTRING("z")) == 0);
+	ok1(bytestring_cspn(bs2, BYTESTRING("\0")) == 3);
+
+	ok1(bytestring_spn(bs1, BYTESTRING("eginrst ")) == bs1.len);
+	ok1(bytestring_cspn(bs2, BYTESTRING("z")) == bs2.len);
 
 	/* This exits depending on whether all tests passed */
 	return exit_status();

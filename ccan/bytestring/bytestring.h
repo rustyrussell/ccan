@@ -200,4 +200,24 @@ static inline struct bytestring bytestring_bytestring(struct bytestring haystack
 		return bytestring_NULL;
 }
 
+/**
+ * bytestring_spn - search a bytestring for a set of bytes
+ * @s: a bytestring
+ * @accept: a bytestring containing a set of bytes to accept
+ *
+ * Returns the length, in bytes, of the initial segment of @s which
+ * consists entirely of characters in @accept.
+ */
+size_t bytestring_spn(struct bytestring s, struct bytestring accept);
+
+/**
+ * bytestring_cspn - search a bytestring for a set of bytes (complemented)
+ * @s: a bytestring
+ * @reject: a bytestring containing a set of bytes to reject
+ *
+ * Returns the length, in bytes, of the initial segment of @s which
+ * consists entirely of characters not in @reject.
+ */
+size_t bytestring_cspn(struct bytestring s, struct bytestring reject);
+
 #endif /* CCAN_BYTESTRING_H_ */
