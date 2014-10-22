@@ -6,7 +6,7 @@ include('static-configuration');
 
 $tarballsize=round((filesize($argv[3]."/ccan.tar.bz2") + 1023) / 1024);
 ?>
-
+<div class='content'>
 <h1> List of all CCAN modules: </h1>
 
 <p>
@@ -70,5 +70,5 @@ foreach ($dirs as $dir) {
 $d->close();
 ?>
 </table>
-<hr>
+</div>
 </body></html>

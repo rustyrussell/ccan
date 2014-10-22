@@ -77,6 +77,7 @@ ccan/%/info: ccan/%/_info
 	$(CC) $(CCAN_CFLAGS) -o $@ -x c $<
 
 clean: tools-clean
+	$(RM) /tmp/ccan
 	$(RM) `find * -name '*.o'` `find * -name '.depends'` `find * -name '*.a'`  `find * -name info` `find * -name '*.d'`
 	$(RM) inter-depends lib-depends test-depends ccan/*-Makefile
 

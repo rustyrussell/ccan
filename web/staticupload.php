@@ -5,7 +5,7 @@ include('logo.html');
 include('menulist.html');
 include('static-configuration');
 ?>
-<html>
+<div class='content'>
 <h3 align="center"> Upload Code</h3>
 
 <table width="70%" align="center">
@@ -50,5 +50,5 @@ people can browse and download it.
 </tr>
 </table>
 </form>
-<hr>
+</div>
 </html>
