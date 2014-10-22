@@ -1,5 +1,5 @@
 #include <ccan/array_size/array_size.h>
-#include <ccan/memmem/memmem.h>
+#include <ccan/mem/mem.h>
 #include <ccan/tap/tap.h>
 
 int main(void)

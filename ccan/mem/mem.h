@@ -1,6 +1,6 @@
 /* CC0 (Public domain) - see LICENSE file for details */
-#ifndef CCAN_MEMMEM_H
-#define CCAN_MEMMEM_H
+#ifndef CCAN_MEM_H
+#define CCAN_MEM_H
 
 #include "config.h"
 
@@ -11,4 +11,4 @@ void *memmem(const void *haystack, size_t haystacklen,
 	     const void *needle, size_t needlelen);
 #endif
 
-#endif /* CCAN_MEMMEM_H */
+#endif /* CCAN_MEM_H */

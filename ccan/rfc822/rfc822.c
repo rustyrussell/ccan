@@ -8,7 +8,7 @@
 #include <ccan/list/list.h>
 #include <stdio.h>
 
-#include <ccan/memmem/memmem.h>
+#include <ccan/mem/mem.h>
 #include <ccan/rfc822/rfc822.h>
 
 #ifdef TAL_USE_TALLOC

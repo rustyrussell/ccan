@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 		printf("ccan/list\n");
 		printf("ccan/str\n");
 		printf("ccan/bytestring\n");
-		printf("ccan/memmem\n");
+		printf("ccan/mem\n");
 		return 0;
 	}
 

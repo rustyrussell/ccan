@@ -3,7 +3,7 @@
 #include "config.h"
 
 #include <string.h>
-#include <ccan/memmem/memmem.h>
+#include <ccan/mem/mem.h>
 
 #if !HAVE_MEMMEM
 void *memmem(const void *haystack, size_t haystacklen,

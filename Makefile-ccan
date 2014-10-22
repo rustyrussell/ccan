@@ -72,7 +72,7 @@ MODS_WITH_SRC := antithread \
 	lqueue \
 	lstack \
 	md4 \
-	memmem \
+	mem \
 	net \
 	nfs \
 	noerr \

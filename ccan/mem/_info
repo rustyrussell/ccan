@@ -3,10 +3,11 @@
 #include <string.h>
 
 /**
- * memmem - Trivial module providing a memmem() implementation
+ * mem - Provide mem*() functions if missing from C library
  *
- * This code implements memmem() if it's not alreayd available in the
- * C library.
+ * This code implements some string.h mem*() functions if they're not
+ * already available in the C library.  Functions included are:
+ *	memmem()
  *
  * License: CC0
  */
