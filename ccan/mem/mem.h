@@ -11,4 +11,8 @@ void *memmem(const void *haystack, size_t haystacklen,
 	     const void *needle, size_t needlelen);
 #endif
 
+#if !HAVE_MEMRCHR
+void *memrchr(const void *s, int c, size_t n);
+#endif
+
 #endif /* CCAN_MEM_H */

@@ -214,6 +214,12 @@ static struct test tests[] = {
 	  "static void *func(void *h, size_t hl, void *n, size_t nl) {\n"
 	  "return memmem(h, hl, n, nl);"
 	  "}\n", },
+	{ "HAVE_MEMRCHR", DEFINES_FUNC, NULL, NULL,
+	  "#define _GNU_SOURCE\n"
+	  "#include <string.h>\n"
+	  "static void *func(void *s, int c, size_t n) {\n"
+	  "return memrchr(s, c, n);"
+	  "}\n", },
 	{ "HAVE_MMAP", DEFINES_FUNC, NULL, NULL,
 	  "#include <sys/mman.h>\n"
 	  "static void *func(int fd) {\n"

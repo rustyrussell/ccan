@@ -25,3 +25,18 @@ void *memmem(const void *haystack, size_t haystacklen,
 	return NULL;
 }
 #endif
+
+#if !HAVE_MEMRCHR
+void *memrchr(const void *s, int c, size_t n)
+{
+	unsigned char *p = (unsigned char *)s;
+
+	while (n) {
+		if (p[n-1] == c)
+			return p + n - 1;
+		n--;
+	}
+
+	return NULL;
+}
+#endif
