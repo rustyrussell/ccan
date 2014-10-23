@@ -1,0 +1,177 @@
+* {
+}
+
+html {
+    border: 0px;
+    margin: 0px;  
+    padding: 0px;
+}
+
+body {
+    background-color: transparent;
+    margin-left: auto;
+    margin-right: auto;
+    color: #333333;
+}
+
+.menulist {
+    border-radius: 5px;
+    margin-left: auto;
+    margin-right: auto;
+    background-image: url(ccan-bg.png);
+    background-position: initial initial;
+    background-repeat: initial initial;
+    font-family: FreeSans, Arial;
+}
+
+.menulist-inner {
+    max-width: 950px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+}
+
+ul.menu {
+    float: left;
+    margin-top: 0.75em;
+    margin-left: 0;
+    padding-left: 0;
+}
+
+.menu li {
+    list-style-type: none;
+    margin-left: auto;
+    display: inline-block !important;
+}
+
+/* On phones the menu should display stacked */
+@media screen and (max-width:420px) {
+    .menu li {
+        display: block !important;	
+        padding: 0.5em;
+    }
+    ul.menu {
+        float: none;
+    }
+    .search {
+        text-align: center !important;
+    }
+}
+
+.menu a {
+    font-weight: bold;
+    text-decoration: none;
+    color: darkblue !important;
+    margin-left: 0.5em;
+    margin-right: 0.5em;
+}
+
+.menu a:hover {
+	color: #222222 !important;
+}
+
+.search {
+    text-align: right;
+    padding-top: 0.5em;
+    padding-right: 0.5em;
+}
+
+.search input {
+    margin-bottom: 1em;
+}
+
+table {
+    background: none;
+}
+
+table a {
+}
+
+table a:hover {
+}
+
+table a:visited {
+}
+
+tbody {
+}
+
+tr {
+}
+
+td {
+}
+
+th {
+}
+
+hr {
+	display: none;
+}
+
+a {
+}
+
+a:hover {
+    color: #222222;
+}
+
+a:visited {
+    color: #0044aa;
+}
+
+p {
+    margin-left: 1em;
+}
+
+h1 {
+}
+
+h2 {
+}
+
+input {
+    padding: 0.25em;
+    border-radius: 2px;
+    border: 1px solid #555555;
+    padding-left: 1em;
+    padding-right: 1em;
+    font-weight: bold;
+    font-family: FreeSans, Arial;
+}
+
+img {
+}
+
+.content {
+    padding: 1em;
+    max-width: 950px;
+    margin-left: auto;
+    margin-right: auto;
+    font-family: FreeSans, Arial;
+}
+
+.logo {
+    padding: 1em;
+    padding-top: 0.5em;
+    margin-bottom: 1em;
+    padding-bottom: 1em;
+    background-color: white;
+    min-height: 63px;
+    font-family: 'Raleway', sans-serif;
+}
+
+.logo img {
+    width: 250px;
+    float: left;
+    margin-bottom: 1em;
+    margin-right: 1em;
+}
+
+.logo h1 {
+    font-size: 1.5em;
+    font-weight: 300;
+    width: 100%;
+    text-align: right;
+    margin-top: 0;
+}
