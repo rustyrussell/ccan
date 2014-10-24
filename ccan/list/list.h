@@ -522,9 +522,7 @@ static inline const void *list_tail_(const struct list_head *h, size_t off)
  *		printf("Name: %s\n", child->name);
  */
 #define list_for_each_rev(h, i, member)					\
-	for (i = container_of_var(list_debug(h,	LIST_LOC)->n.prev, i, member); \
-	     &i->member != &(h)->n;					\
-	     i = container_of_var(i->member.prev, i, member))
+	list_for_each_rev_off(h, i, list_off_var_(i, member))
 
 /**
  * list_for_each_safe - iterate through a list, maybe during deletion
@@ -702,6 +700,17 @@ static inline void list_prepend_list_(struct list_head *to,
  */
 #define list_for_each_off(h, i, off)                                    \
 	list_for_each_off_dir_((h),(i),(off),next)
+
+/**
+ * list_for_each_rev_off - iterate through a list of memory regions backwards
+ * @h: the list_head
+ * @i: the pointer to a memory region wich contains list node data.
+ * @off: offset(relative to @i) at which list node data resides.
+ *
+ * See list_for_each_off for details
+ */
+#define list_for_each_rev_off(h, i, off)                                    \
+	list_for_each_off_dir_((h),(i),(off),prev)
 
 /**
  * list_for_each_safe_off - iterate through a list of memory regions, maybe
