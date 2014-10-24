@@ -158,6 +158,36 @@ static inline void list_node_init(struct list_node *n)
 }
 
 /**
+ * list_add_after - add an entry after an existing node in a linked list
+ * @h: the list_head to add the node to (for debugging)
+ * @p: the existing list_node to add the node after
+ * @n: the new list_node to add to the list.
+ *
+ * The existing list_node must already be a member of the list.
+ * The new list_node does not need to be initialized; it will be overwritten.
+ *
+ * Example:
+ *	struct child c1, c2, c3;
+ *	LIST_HEAD(h);
+ *
+ *	list_add_tail(&h, &c1.list);
+ *	list_add_tail(&h, &c3.list);
+ *	list_add_after(&h, &c1.list, &c2.list);
+ */
+#define list_add_after(h, p, n) list_add_after_(h, p, n, LIST_LOC)
+static inline void list_add_after_(struct list_head *h,
+				   struct list_node *p,
+				   struct list_node *n,
+				   const char *abortstr)
+{
+	n->next = p->next;
+	n->prev = p;
+	p->next->prev = n;
+	p->next = n;
+	(void)list_debug(h, abortstr);
+}
+
+/**
  * list_add - add an entry at the start of a linked list.
  * @h: the list_head to add the node to
  * @n: the list_node to add to the list.
@@ -175,10 +205,34 @@ static inline void list_add_(struct list_head *h,
 			     struct list_node *n,
 			     const char *abortstr)
 {
-	n->next = h->n.next;
-	n->prev = &h->n;
-	h->n.next->prev = n;
-	h->n.next = n;
+	list_add_after_(h, &h->n, n, abortstr);
+}
+
+/**
+ * list_add_before - add an entry before an existing node in a linked list
+ * @h: the list_head to add the node to (for debugging)
+ * @p: the existing list_node to add the node before
+ * @n: the new list_node to add to the list.
+ *
+ * The existing list_node must already be a member of the list.
+ * The new list_node does not need to be initialized; it will be overwritten.
+ *
+ * Example:
+ *	list_head_init(&h);
+ *	list_add_tail(&h, &c1.list);
+ *	list_add_tail(&h, &c3.list);
+ *	list_add_before(&h, &c3.list, &c2.list);
+ */
+#define list_add_before(h, p, n) list_add_before_(h, p, n, LIST_LOC)
+static inline void list_add_before_(struct list_head *h,
+				    struct list_node *p,
+				    struct list_node *n,
+				    const char *abortstr)
+{
+	n->next = p;
+	n->prev = p->prev;
+	p->prev->next = n;
+	p->prev = n;
 	(void)list_debug(h, abortstr);
 }
 
@@ -197,11 +251,7 @@ static inline void list_add_tail_(struct list_head *h,
 				  struct list_node *n,
 				  const char *abortstr)
 {
-	n->next = &h->n;
-	n->prev = h->n.prev;
-	h->n.prev->next = n;
-	h->n.prev = n;
-	(void)list_debug(h, abortstr);
+	list_add_before_(h, &h->n, n, abortstr);
 }
 
 /**

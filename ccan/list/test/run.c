@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
 	opaque_t *q, *nq;
 	struct list_head opaque_list = LIST_HEAD_INIT(opaque_list);
 
-	plan_tests(70);
+	plan_tests(79);
 	/* Test LIST_HEAD, LIST_HEAD_INIT, list_empty and check_list */
 	ok1(list_empty(&static_list));
 	ok1(list_check(&static_list, NULL));
@@ -215,5 +215,43 @@ int main(int argc, char *argv[])
 	ok1(list_top(&parent.children, struct child, list) == NULL);
 	ok1(list_tail(&parent.children, struct child, list) == NULL);
 	ok1(list_pop(&parent.children, struct child, list) == NULL);
+
+	/* Test list_add_before and list_add_after */
+	list_add(&parent.children, &c1.list);
+	list_add_after(&parent.children, &c1.list, &c2.list);
+	ok1(list_check(&parent.children, "list_add_after"));
+
+	i = 0;
+	list_for_each(&parent.children, c, list) {
+		switch (i++) {
+		case 0:
+			ok1(c == &c1);
+			break;
+		case 1:
+			ok1(c == &c2);
+			break;
+		}
+	}
+	ok1(i == 2);
+
+	list_add_before(&parent.children, &c2.list, &c3.list);
+	ok1(list_check(&parent.children, "list_add_before"));
+
+	i = 0;
+	list_for_each(&parent.children, c, list) {
+		switch (i++) {
+		case 0:
+			ok1(c == &c1);
+			break;
+		case 1:
+			ok1(c == &c3);
+			break;
+		case 2:
+			ok1(c == &c2);
+			break;
+		}
+	}
+	ok1(i == 3);
+
 	return exit_status();
 }
