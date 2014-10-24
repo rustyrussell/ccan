@@ -525,6 +525,28 @@ static inline const void *list_tail_(const struct list_head *h, size_t off)
 	list_for_each_rev_off(h, i, list_off_var_(i, member))
 
 /**
+ * list_for_each_rev_safe - iterate through a list backwards,
+ * maybe during deletion
+ * @h: the list_head
+ * @i: the structure containing the list_node
+ * @nxt: the structure containing the list_node
+ * @member: the list_node member of the structure
+ *
+ * This is a convenient wrapper to iterate @i over the entire list backwards.
+ * It's a for loop, so you can break and continue as normal.  The extra
+ * variable * @nxt is used to hold the next element, so you can delete @i
+ * from the list.
+ *
+ * Example:
+ *	struct child *next;
+ *	list_for_each_rev_safe(&parent->children, child, next, list) {
+ *		printf("Name: %s\n", child->name);
+ *	}
+ */
+#define list_for_each_rev_safe(h, i, nxt, member)			\
+	list_for_each_rev_safe_off(h, i, nxt, list_off_var_(i, member))
+
+/**
  * list_for_each_safe - iterate through a list, maybe during deletion
  * @h: the list_head
  * @i: the structure containing the list_node
@@ -536,7 +558,6 @@ static inline const void *list_tail_(const struct list_head *h, size_t off)
  * @nxt is used to hold the next element, so you can delete @i from the list.
  *
  * Example:
- *	struct child *next;
  *	list_for_each_safe(&parent->children, child, next, list) {
  *		list_del(&child->list);
  *		parent->num_children--;
@@ -730,6 +751,25 @@ static inline void list_prepend_list_(struct list_head *to,
  */
 #define list_for_each_safe_off(h, i, nxt, off)                          \
 	list_for_each_safe_off_dir_((h),(i),(nxt),(off),next)
+
+/**
+ * list_for_each_rev_safe_off - iterate backwards through a list of
+ * memory regions, maybe during deletion
+ * @h: the list_head
+ * @i: the pointer to a memory region wich contains list node data.
+ * @nxt: the structure containing the list_node
+ * @off: offset(relative to @i) at which list node data resides.
+ *
+ * For details see `list_for_each_rev_off' and `list_for_each_rev_safe'
+ * descriptions.
+ *
+ * Example:
+ *	list_for_each_rev_safe_off(&parent->children, child,
+ *		next, offsetof(struct child, list))
+ *		printf("Name: %s\n", child->name);
+ */
+#define list_for_each_rev_safe_off(h, i, nxt, off)                      \
+	list_for_each_safe_off_dir_((h),(i),(nxt),(off),prev)
 
 /* Other -off variants. */
 #define list_entry_off(n, type, off)		\

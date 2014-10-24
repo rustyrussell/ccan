@@ -24,8 +24,9 @@ int main(int argc, char *argv[])
 	struct list_head list = LIST_HEAD_INIT(list);
 	opaque_t *q, *nq;
 	struct list_head opaque_list = LIST_HEAD_INIT(opaque_list);
+	LIST_HEAD(rev);
 
-	plan_tests(84);
+	plan_tests(92);
 	/* Test LIST_HEAD, LIST_HEAD_INIT, list_empty and check_list */
 	ok1(list_empty(&static_list));
 	ok1(list_check(&static_list, NULL));
@@ -148,12 +149,40 @@ int main(int argc, char *argv[])
 			list_del_from(&parent.children, &c->list);
 			break;
 		}
+
+		/* prepare for list_for_each_rev_safe test */
+		list_add(&rev, &c->list);
+
 		ok1(list_check(&parent.children, NULL));
 		if (i > 2)
 			break;
 	}
 	ok1(i == 3);
 	ok1(list_empty(&parent.children));
+
+	/* Test list_for_each_rev_safe, list_del and list_del_from. */
+	i = 0;
+	list_for_each_rev_safe(&rev, c, n, list) {
+		switch (i++) {
+		case 0:
+			ok1(c == &c1);
+			list_del(&c->list);
+			break;
+		case 1:
+			ok1(c == &c2);
+			list_del_from(&rev, &c->list);
+			break;
+		case 2:
+			ok1(c == &c3);
+			list_del_from(&rev, &c->list);
+			break;
+		}
+		ok1(list_check(&rev, NULL));
+		if (i > 2)
+			break;
+	}
+	ok1(i == 3);
+	ok1(list_empty(&rev));
 
 	/* Test list_node_init: safe to list_del after this. */
 	list_node_init(&c->list);
