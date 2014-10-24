@@ -19,13 +19,13 @@ static LIST_HEAD(static_list);
 int main(int argc, char *argv[])
 {
 	struct parent parent;
-	struct child c1, c2, c3, *c, *n;
+	struct child c1, c2, c3, x1, *c, *n;
 	unsigned int i;
 	struct list_head list = LIST_HEAD_INIT(list);
 	opaque_t *q, *nq;
 	struct list_head opaque_list = LIST_HEAD_INIT(opaque_list);
 
-	plan_tests(79);
+	plan_tests(84);
 	/* Test LIST_HEAD, LIST_HEAD_INIT, list_empty and check_list */
 	ok1(list_empty(&static_list));
 	ok1(list_check(&static_list, NULL));
@@ -245,6 +245,25 @@ int main(int argc, char *argv[])
 			break;
 		case 1:
 			ok1(c == &c3);
+			break;
+		case 2:
+			ok1(c == &c2);
+			break;
+		}
+	}
+	ok1(i == 3);
+
+	/* test list_swap */
+	list_swap(&c3.list, &x1.list);
+	ok1(list_check(&parent.children, "list_swap"));
+	i = 0;
+	list_for_each(&parent.children, c, list) {
+		switch (i++) {
+		case 0:
+			ok1(c == &c1);
+			break;
+		case 1:
+			ok1(c == &x1);
 			break;
 		case 2:
 			ok1(c == &c2);

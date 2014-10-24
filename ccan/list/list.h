@@ -369,6 +369,39 @@ static inline void list_del_from(struct list_head *h, struct list_node *n)
 }
 
 /**
+ * list_swap - swap out an entry from an (unknown) linked list for a new one.
+ * @o: the list_node to replace from the list.
+ * @n: the list_node to insert in place of the old one.
+ *
+ * Note that this leaves @o in an undefined state; it can be added to
+ * another list, but not deleted/swapped again.
+ *
+ * See also:
+ *	list_del()
+ *
+ * Example:
+ *	struct child x1, x2;
+ *	LIST_HEAD(xh);
+ *
+ *	list_add(&xh, &x1.list);
+ *	list_swap(&x1.list, &x2.list);
+ */
+#define list_swap(o, n) list_swap_(o, n, LIST_LOC)
+static inline void list_swap_(struct list_node *o,
+			      struct list_node *n,
+			      const char* abortstr)
+{
+	(void)list_debug_node(o, abortstr);
+	*n = *o;
+	n->next->prev = n;
+	n->prev->next = n;
+#ifdef CCAN_LIST_DEBUG
+	/* Catch use-after-del. */
+	o->next = o->prev = NULL;
+#endif
+}
+
+/**
  * list_entry - convert a list_node back into the structure containing it.
  * @n: the list_node
  * @type: the type of the entry
