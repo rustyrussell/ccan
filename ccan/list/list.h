@@ -653,6 +653,24 @@ static inline void list_prepend_list_(struct list_head *to,
 	list_head_init(from);
 }
 
+/* internal macros, do not use directly */
+#define list_for_each_off_dir_(h, i, off, dir)				\
+	for (i = list_node_to_off_(list_debug(h, LIST_LOC)->n.dir,	\
+				   (off));				\
+	list_node_from_off_((void *)i, (off)) != &(h)->n;		\
+	i = list_node_to_off_(list_node_from_off_((void *)i, (off))->dir, \
+			      (off)))
+
+#define list_for_each_safe_off_dir_(h, i, nxt, off, dir)		\
+	for (i = list_node_to_off_(list_debug(h, LIST_LOC)->n.dir,	\
+				   (off)),				\
+	nxt = list_node_to_off_(list_node_from_off_(i, (off))->dir,	\
+				(off));					\
+	list_node_from_off_(i, (off)) != &(h)->n;			\
+	i = nxt,							\
+	nxt = list_node_to_off_(list_node_from_off_(i, (off))->dir,	\
+				(off)))
+
 /**
  * list_for_each_off - iterate through a list of memory regions.
  * @h: the list_head
@@ -683,11 +701,7 @@ static inline void list_prepend_list_(struct list_head *to,
  *		printf("Name: %s\n", child->name);
  */
 #define list_for_each_off(h, i, off)                                    \
-	for (i = list_node_to_off_(list_debug(h, LIST_LOC)->n.next,	\
-				   (off));				\
-       list_node_from_off_((void *)i, (off)) != &(h)->n;                \
-       i = list_node_to_off_(list_node_from_off_((void *)i, (off))->next, \
-                             (off)))
+	list_for_each_off_dir_((h),(i),(off),next)
 
 /**
  * list_for_each_safe_off - iterate through a list of memory regions, maybe
@@ -706,15 +720,7 @@ static inline void list_prepend_list_(struct list_head *to,
  *		printf("Name: %s\n", child->name);
  */
 #define list_for_each_safe_off(h, i, nxt, off)                          \
-	for (i = list_node_to_off_(list_debug(h, LIST_LOC)->n.next,	\
-				   (off)),				\
-         nxt = list_node_to_off_(list_node_from_off_(i, (off))->next,   \
-                                 (off));                                \
-       list_node_from_off_(i, (off)) != &(h)->n;                        \
-       i = nxt,                                                         \
-         nxt = list_node_to_off_(list_node_from_off_(i, (off))->next,   \
-                                 (off)))
-
+	list_for_each_safe_off_dir_((h),(i),(nxt),(off),next)
 
 /* Other -off variants. */
 #define list_entry_off(n, type, off)		\
