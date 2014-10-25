@@ -18,7 +18,7 @@ modcheck:
 	@FOUND=$$(echo $$(find ccan -name _info | sed 's,ccan/\(.*\)/_info,\1,' | sort) ); LISTED=$$(echo $$(echo $(MODS) | tr ' ' '\012' | sort) ); if [ "$$FOUND" = "$$LISTED" ]; then exit 0; fi; while true; do a="$${FOUND%% *}"; b="$${LISTED%% *}"; if [ "$$a" != "$$b" ]; then echo "$$a found but $$b in MOD" >&2; exit 1; fi; FOUND="$${FOUND#* }"; LISTED="$${LISTED#* }"; done
 
 clean-tree:
-	! git status --porcelain | grep .
+	[ "$(WEBDEV)" ] || ! git status --porcelain | grep .
 
 webpages: modcheck clean-tree $(WEB_SUBDIRS) $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.jpg $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan $(ALL_PAGES) junkpages
 
