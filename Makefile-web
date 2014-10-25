@@ -31,7 +31,7 @@ $(WEBDIR)/junkcode/%.tar.bz2: junkcode/% $(WEBDIR)/junkcode
 
 $(WEBDIR)/junkcode/%.html: $(WEBDIR)/junkcode/%.tar.bz2
 	cd $(WEBDIR) && tar xfj junkcode/$*.tar.bz2
-	php5 web/staticjunkcode.php junkcode/$* $* > $@
+	URLPREFIX=../ php5 web/staticjunkcode.php junkcode/$* $* > $@
 
 # We want tarball to contain ccan/; we put junkcode in, but don't depend on it.
 $(WEBDIR)/ccan.tar.bz2: config.h Makefile Makefile-ccan $(shell git ls-files ccan tools licenses)
