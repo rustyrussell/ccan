@@ -19,7 +19,7 @@ download.
 Or you can just download the <a href="ccan.tar.bz2">tarball of everything including CCAN tools (<?=$tarballsize?>K)</a>.
 </p>
 
-<table align="center" width="80%" border="0" cellpadding="3" cellspacing="1">
+<table align="center" cellpadding="3" cellspacing="1">
 <th align="left">Name</th>
 <th align="left">Summary / Link to details</th>
 <th align="right">Download</th>
@@ -50,7 +50,7 @@ foreach ($modules as $module) {
 
 (This is contributed code which was dumped here: these gems may need some polishing.)
 
-<table align="center" width="80%" border="0" cellpadding="3" cellspacing="1">
+<table align="center" cellpadding="3" cellspacing="1">
 
 <?php
 $d = dir($argv[2]);

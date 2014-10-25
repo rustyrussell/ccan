@@ -17,7 +17,7 @@ main repository.  Otherwise, it'll go into our "junkcode" area where
 people can browse and download it.
 </p>
 
-<table width="80%" align="center">
+<table align="center">
 <tr>
 <th>
 <p>

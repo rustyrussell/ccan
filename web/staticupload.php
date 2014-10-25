@@ -8,9 +8,6 @@ include('static-configuration');
 <div class='content'>
 <h3 align="center"> Upload Code</h3>
 
-<table width="70%" align="center">
-<tr>
-<td>
 <p>
 Got C code sitting around which might help someone?  Put it to work
 by uploading here; .tar.gz, .zip or even single C files.
@@ -20,11 +17,8 @@ by uploading here; .tar.gz, .zip or even single C files.
 main repository.  Otherwise, it'll go into our "junkcode" area where
 people can browse and download it.
 </p>
-</td>
-</tr>
-</table>
 
-<table width="70%" align="center">
+<table align="center">
 <tr>
 <p>
 <form enctype="multipart/form-data" action="<?=$uploadscript?>" method="POST">

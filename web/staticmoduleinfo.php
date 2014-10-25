@@ -17,116 +17,95 @@ $licence=extract_field('licence',$module_path);
 $license=extract_field('license',$module_path);
 $url_prefix = getenv("URLPREFIX");
 ?>
-<div class='content'>
-<table align="center" width="70%" border="0" cellpadding="3" cellspacing="1">
-<tr align="center">
-<td>
-<a href="<?=$repo_base.$module?>">Browse Source</a>
-</td>
-<td>
-<a href="<?=$url_prefix?><?=$tar_dir?>/with-deps/<?=$module?>.tar.bz2">Download</a>
-<a href="<?=$url_prefix?><?=$tar_dir?>/<?=$module?>.tar.bz2">(without any required ccan dependencies)</a>
-</tr>
-</table>
+<div class='content moduleinfo'>
 
-<p>
-</p>
+<p><a href="<?=$repo_base.$module?>">Browse Source</a> <a href="<?=$url_prefix?><?=$tar_dir?>/with-deps/<?=$module?>.tar.bz2">Download</a> <a href="<?=$url_prefix?><?=$tar_dir?>/<?=$module?>.tar.bz2">(without any required ccan dependencies)</a></p>
 
-<table align="center" width="70%" border="0" cellpadding="8" cellspacing="1">
-<tr align="left">
-<td><h3>Module: </h3> <?=$module?> </td>
-</tr>
+<h3>Module:</h3>
+<p><?=$module?></p>
 
-<tr align="left">
-<td><h3>Summary: </h3> <?=$summary?></td>
-</tr>
+<h3>Summary:</h3>
+<p><?=$summary?></p>
 
 <?php
 if ($maintainer) {
 ?>
-<tr align="left"> 
-<td><h3>Maintainer: </h3> <?=$maintainer?></td>
-</tr>
+<h3>Maintainer:</h3>
+<p><?=$maintainer?></p>
 <?php
 }
 
 if ($author) {
 ?>
-<tr align="left"> 
-<td><h3>Author: </h3> <?=$author?></td>
-</tr>
+<h3>Author:</h3>
+<p><?=$author?></p>
 <?php
 }
 
 if ($dependencies) {
 ?>
-<tr align="left">
-<td><h3>Dependencies: </h3> <pre> <?php
+<h3>Dependencies:</h3>
+<ul class='dependencies'>
+<?php
 	foreach (preg_split("/\s+/", $dependencies) as $dep) {
-		echo '<a href="'.substr($dep, 5).'.html">'.$dep.'</a> ';
+		if ($dep) {
+			echo '<li><a href="'.substr($dep, 5).'.html">'.$dep.'</a></li>';
+		}
         }
-?></pre></td>
-</tr>
+?>
+</ul>
+
 <?php 
 }
 
 if ($extdepends) {
 ?>
-<tr align="left">
-<td><h3>External dependencies: </h3> <?php
+<h3>External dependencies:</h3>
+<ul class='external-dependencies'>
+<?php
 	foreach (split("\n", $extdepends) as $dep) {
 		$fields=preg_split("/\s+/", $dep);
-		echo $fields[0].' ';
+		echo "<li>" . $fields[0].' ';
 		if (count($fields) > 1)
 			echo '(version '.$fields[1].') ';
-		echo '<br>';
+		echo '</li>';
         }
-?></td>
-</tr>
+?>
+</ul>
 <?php 
 }
 ?>
-<tr align="left">
-<td><h3>Description: </h3> <?=$description;?> </td>
-</tr>
+
+<h3>Description:</h3>
+<p><?=$description;?></p>
 
 <?php 
 if ($see_also) {
 ?>
-<tr align="left">
-<td><h3>See Also: </h3> <pre> <?php
+<h3>See Also:</h3>
+<ul class='see-also'>
+<?php
 	foreach (preg_split("/[\s,]+/", trim($see_also)) as $see) {
-		echo '<a href="'.substr($see, 5).'.html">'.$see.'</a> ';
+		echo '<li><a href="'.substr($see, 5).'.html">'.$see.'</a></li>';
         }
-?></pre></td>
-</tr>
+?>
+</ul>
 <?php
 }
 
 if ($example) {
 ?>
-<tr align="left"> 
-<td><h3>Example: </h3> <pre><?=$example?></pre></td>
-</tr>
-<?php
-}
-
-if ($licence) {
-?>
-<tr align="left"> 
-<td><h3>License: </h3> <?=$licence?></td>
-</tr>
+<h3>Example:</h3>
+<pre class="lang-c prettyprint prettyprinted"><?=$example?></pre>
 <?php
 }
 
 if ($license) {
 ?>
-<tr align="left"> 
-<td><h3>License: </h3> <?=$license?></td>
-</tr>
+<h3>License:</h3>
+<p><?=$license?></p>
 <?php
 }
 ?>
-</table>
 </div>
 </body></html>
