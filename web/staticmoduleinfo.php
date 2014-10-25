@@ -96,7 +96,9 @@ if ($see_also) {
 if ($example) {
 ?>
 <h3>Example:</h3>
-<pre class="lang-c prettyprint prettyprinted"><?=$example?></pre>
+<pre class="prettyprint">
+<code class="language-c"><?=$example?></code>
+</pre>
 <?php
 }
 

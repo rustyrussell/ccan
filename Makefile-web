@@ -8,6 +8,7 @@ WEB_SUBDIRS=$(WEBDIR)/tarballs $(WEBDIR)/junkcode $(WEBDIR)/tarballs/with-deps $
 JUNKDIRS=$(wildcard junkcode/*)
 JUNKPAGES=$(JUNKDIRS:%=$(WEBDIR)/%.html)
 JUNKBALLS=$(JUNKDIRS:%=$(WEBDIR)/%.tar.bz2)
+PRETTIFY=$(WEBDIR)/prettify/src/run_prettify.js $(WEBDIR)/prettify/src/prettify.css
 
 upload: fastcheck modcheck
 	git push origin HEAD:master
@@ -20,11 +21,14 @@ modcheck:
 clean-tree:
 	[ "$(WEBDEV)" ] || ! git status --porcelain | grep .
 
-webpages: modcheck clean-tree $(WEB_SUBDIRS) $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.png $(WEBDIR)/ccan-bg.png $(WEBDIR)/ccan.css $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan $(ALL_PAGES) junkpages
+webpages: modcheck clean-tree $(WEB_SUBDIRS) $(PRETTIFY) $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.png $(WEBDIR)/ccan-bg.png $(WEBDIR)/ccan.css $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan $(ALL_PAGES) junkpages
 
 junkpages: $(WEBDIR)/list.html $(WEBDIR)/junkcode $(JUNKPAGES) $(JUNKBALLS)
 $(WEB_SUBDIRS): $(WEBDIR)
 	mkdir -p $@
+
+$(PRETTIFY):
+	svn checkout http://google-code-prettify.googlecode.com/svn/trunk/ $(WEBDIR)/prettify
 
 $(WEBDIR)/junkcode/%.tar.bz2: junkcode/% $(WEBDIR)/junkcode
 	git ls-files -z $< | xargs -0 -x tar cvfj $@ 

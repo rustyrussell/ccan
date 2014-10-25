@@ -180,3 +180,11 @@ img {
     text-align: right;
     margin-top: 0;
 }
+
+pre {
+    max-width: 95%;
+    overflow: auto;
+    *overflow: scroll;
+    border: 0px !important;
+}
+
