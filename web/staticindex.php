@@ -4,7 +4,7 @@ include('logo.html');
 include('menulist.html');
 include('static-configuration');
 ?>
-
+<div class='content'>
 <h2>The Idea</h2>
 
 <p>
@@ -68,5 +68,5 @@ We also have an IRC channel: #ccan on <a href="http://freenode.net">Freenode</a>
 <p>
 We also have a <a href="http://github.com/rustyrussell/ccan/wiki/">wiki</a>; feel free to enhance it.
 </p>
-<hr>
+</div>
 </body></html>

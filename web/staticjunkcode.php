@@ -4,7 +4,7 @@ include('logo.html');
 include('menulist.html');
 include('static-configuration');
 ?>
-
+<div class='content'>
 <h1> Contents of CCAN <?=$argv[1]?> </h1>
 <p>
 
@@ -30,5 +30,5 @@ foreach ($files as $file) {
 }
 ?>
 </table>
-<hr>
+</div>
 </body></html>

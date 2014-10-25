@@ -20,7 +20,7 @@ modcheck:
 clean-tree:
 	[ "$(WEBDEV)" ] || ! git status --porcelain | grep .
 
-webpages: modcheck clean-tree $(WEB_SUBDIRS) $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.jpg $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan $(ALL_PAGES) junkpages
+webpages: modcheck clean-tree $(WEB_SUBDIRS) $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.png $(WEBDIR)/ccan-bg.png $(WEBDIR)/ccan.css $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan $(ALL_PAGES) junkpages
 
 junkpages: $(WEBDIR)/list.html $(WEBDIR)/junkcode $(JUNKPAGES) $(JUNKBALLS)
 $(WEB_SUBDIRS): $(WEBDIR)
@@ -58,7 +58,13 @@ $(WEBDIR)/example-config.h: config.h
 $(WEBDIR)/Makefile-ccan: Makefile-ccan
 	cp $< $@
 
-$(WEBDIR)/ccan.jpg: web/ccan.jpg
+$(WEBDIR)/ccan.png: web/ccan.png
+	cp $< $@
+
+$(WEBDIR)/ccan-bg.png: web/ccan-bg.png
+	cp $< $@
+
+$(WEBDIR)/ccan.css: web/ccan.css
 	cp $< $@
 
 $(WEBDIR)/info/%.html: $(WEBDIR)/tarballs/%.tar.bz2 $(WEBDIR)/tarballs/with-deps/%.tar.bz2
