@@ -63,8 +63,20 @@ static void timer_add_raw(struct timers *timers, struct timer *t)
 	list_add_tail(l, &t->list);
 }
 
+void timer_init(struct timer *t)
+{
+	list_node_init(&t->list);
+}
+
+static bool list_node_initted(const struct list_node *n)
+{
+	return n->prev == n;
+}
+
 void timer_add(struct timers *timers, struct timer *t, struct timeabs when)
 {
+	assert(list_node_initted(&t->list));
+
 	t->time = time_to_grains(when);
 
 	/* Added in the past?  Treat it as imminent. */
@@ -79,7 +91,7 @@ void timer_add(struct timers *timers, struct timer *t, struct timeabs when)
 /* FIXME: inline */
 void timer_del(struct timers *timers, struct timer *t)
 {
-	list_del(&t->list);
+	list_del_init(&t->list);
 }
 
 static void timers_far_get(struct timers *timers,
@@ -285,6 +297,8 @@ struct timer *timers_expire(struct timers *timers, struct timeabs expire)
 
 		/* This *may* be NULL, if we deleted the first timer */
 		t = list_pop(&timers->level[0]->list[off], struct timer, list);
+		if (t)
+			list_node_init(&t->list);
 	} while (!t && update_first(timers));
 
 	return t;

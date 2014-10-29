@@ -32,6 +32,7 @@ int main(void)
 		add_level(&timers, i);
 
 	i = 0;
+	timer_init(&t);
 	for (diff = 0; diff < (1ULL << MAX_ORD)+2; diff = next(diff)) {
 		i++;
 		for (timers.base = 0;

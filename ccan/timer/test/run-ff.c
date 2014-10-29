@@ -18,6 +18,7 @@ int main(void)
 	plan_tests(3);
 
 	timers_init(&timers, timeabs_from_usec(1364726722653919ULL));
+	timer_init(&t);
 	timer_add(&timers, &t, timeabs_from_usec(1364726722703919ULL));
 	ok1(!timers_expire(&timers, timeabs_from_usec(1364726722653920ULL)));
 	expired = timers_expire(&timers, timeabs_from_usec(1364726725454187ULL));

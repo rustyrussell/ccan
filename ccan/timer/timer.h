@@ -45,28 +45,39 @@ void timers_init(struct timers *timers, struct timeabs start);
 void timers_cleanup(struct timers *timers);
 
 /**
+ * timer_init - initialize a timer.
+ * @timer: the timer to initialize
+ *
+ * Example:
+ *	struct timer t;
+ *
+ *	timer_init(&t);
+ */
+void timer_init(struct timer *t);
+
+/**
  * timer_add - insert a timer.
  * @timers: the struct timers
- * @timer: the (uninitialized) timer to add
+ * @timer: the (initialized or timer_del'd) timer to add
  * @when: when @timer expires.
  *
  * This efficiently adds @timer to @timers, to expire @when (rounded to
  * TIMER_GRANULARITY nanoseconds).
  *
  * Example:
- *	struct timer t;
- *
  *	// Timeout in 100ms.
  *	timer_add(&timeouts, &t, timeabs_add(time_now(), time_from_msec(100)));
  */
 void timer_add(struct timers *timers, struct timer *timer, struct timeabs when);
 
 /**
- * timer_del - remove an unexpired timer.
+ * timer_del - remove a timer.
  * @timers: the struct timers
- * @timer: the timer previously added with timer_add()
+ * @timer: the timer
  *
- * This efficiently removes @timer from @timers.
+ * This efficiently removes @timer from @timers, if timer_add() was
+ * called.  It can be called multiple times without bad effect, and
+ * can be called any time after timer_init().
  *
  * Example:
  *	timer_del(&timeouts, &t);

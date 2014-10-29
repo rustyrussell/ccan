@@ -13,6 +13,7 @@ int main(void)
 
 	timers_init(&timers, grains_to_time(1364984760903400ULL));
 	ok1(timers.base == 1364984760903400ULL);
+	timer_init(&t);
 	timer_add(&timers, &t, grains_to_time(1364984761003398ULL));
 	ok1(t.time == 1364984761003398ULL);
 	ok1(timers.first == 1364984761003398ULL);

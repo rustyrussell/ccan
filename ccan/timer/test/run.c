@@ -24,6 +24,10 @@ int main(void)
 	ok1(timers_check(&timers, NULL));
 	ok1(!timer_earliest(&timers, &earliest));
 
+	timer_init(&t[0]);
+	/* timer_del can be called immediately after init. */
+	timer_del(&timers, &t[0]);
+
 	timer_add(&timers, &t[0], timeabs_from_nsec(1));
 	ok1(timers_check(&timers, NULL));
 	ok1(timer_earliest(&timers, &earliest));
@@ -32,10 +36,15 @@ int main(void)
 	ok1(timers_check(&timers, NULL));
 	ok1(!timer_earliest(&timers, &earliest));
 
+	/* timer_del can be called twice, no problems. */
+	timer_del(&timers, &t[0]);
+
 	/* Check timer ordering. */
 	for (i = 0; i < 32; i++) {
+		timer_init(&t[i*2]);
 		timer_add(&timers, &t[i*2], timeabs_from_nsec(1ULL << i));
 		ok1(timers_check(&timers, NULL));
+		timer_init(&t[i*2+1]);
 		timer_add(&timers, &t[i*2+1], timeabs_from_nsec((1ULL << i) + 1));
 		ok1(timers_check(&timers, NULL));
 	}
