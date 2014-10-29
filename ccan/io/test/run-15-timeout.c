@@ -90,7 +90,7 @@ int main(void)
 	struct data *d = malloc(sizeof(*d));
 	struct addrinfo *addrinfo;
 	struct io_listener *l;
-	struct list_head expired;
+	struct timer *expired;
 	int fd, status;
 
 	/* This is how many tests you plan to run */
@@ -98,6 +98,7 @@ int main(void)
 	d->state = 0;
 	d->timeout_usec = 100000;
 	timers_init(&d->timers, time_now());
+	timer_init(&d->timer);
 	fd = make_listen_fd(PORT, &addrinfo);
 	ok1(fd >= 0);
 	l = io_new_listener(NULL, fd, init_conn, d);
@@ -129,15 +130,15 @@ int main(void)
 	ok1(io_loop(&d->timers, &expired) == NULL);
 
 	/* One element, d->timer. */
-	ok1(list_pop(&expired, struct timer, list) == &d->timer);
-	ok1(list_empty(&expired));
+	ok1(expired == &d->timer);
+	ok1(!timers_expire(&d->timers, time_now()));
 	ok1(d->state == 1);
 
 	io_close(d->conn);
 
 	/* Finished will be called, d will be returned */
 	ok1(io_loop(&d->timers, &expired) == d);
-	ok1(list_empty(&expired));
+	ok1(expired == NULL);
 	ok1(d->state == 2);
 
 	/* It should have died. */
@@ -174,7 +175,7 @@ int main(void)
 	}
 	ok1(io_loop(&d->timers, &expired) == d);
 	ok1(d->state == 3);
-	ok1(list_empty(&expired));
+	ok1(expired == NULL);
 	ok1(wait(&status));
 	ok1(WIFEXITED(status));
 	ok1(WEXITSTATUS(status) >= sizeof(d->buf));

@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 struct timers;
+struct timer;
 struct list_head;
 
 /**
@@ -629,16 +630,16 @@ struct io_plan *io_close_cb(struct io_conn *, void *unused);
 /**
  * io_loop - process fds until all closed on io_break.
  * @timers - timers which are waiting to go off (or NULL for none)
- * @expired - a list filled with expired timers (can be NULL if @timers is)
+ * @expired - an expired timer (can be NULL if @timers is)
  *
  * This is the core loop; it exits with the io_break() arg, or NULL if
- * all connections and listeners are closed, or with @expired set to a
- * list of expired timers (if @timers isn't NULL).
+ * all connections and listeners are closed, or with @expired set to an
+ * expired timer (if @timers isn't NULL).
  *
  * Example:
  *	io_loop(NULL, NULL);
  */
-void *io_loop(struct timers *timers, struct list_head *expired);
+void *io_loop(struct timers *timers, struct timer **expired);
 
 /**
  * io_conn_fd - get the fd from a connection.

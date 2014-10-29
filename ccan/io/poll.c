@@ -222,16 +222,16 @@ static bool handle_always(void)
 }
 
 /* This is the main loop. */
-void *io_loop(struct timers *timers, struct list_head *expired)
+void *io_loop(struct timers *timers, struct timer **expired)
 {
 	void *ret;
 
 	/* if timers is NULL, expired must be.  If not, not. */
 	assert(!timers == !expired);
 
-	/* Make sure this is empty if we exit for some other reason. */
+	/* Make sure this is NULL if we exit for some other reason. */
 	if (expired)
-		list_head_init(expired);
+		*expired = NULL;
 
 	while (!io_loop_return) {
 		int i, r, ms_timeout = -1;
@@ -259,8 +259,8 @@ void *io_loop(struct timers *timers, struct list_head *expired)
 			now = time_now();
 
 			/* Call functions for expired timers. */
-			timers_expire(timers, now, expired);
-			if (!list_empty(expired))
+			*expired = timers_expire(timers, now);
+			if (*expired)
 				break;
 
 			/* Now figure out how long to wait for the next one. */
