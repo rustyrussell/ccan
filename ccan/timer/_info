@@ -28,7 +28,7 @@
  *	{
  *		struct timers timers;
  *		struct list_head strings;
- *		struct list_head expired;
+ *		struct timer *t;
  *		struct timed_string *s;
  *
  *		timers_init(&timers, time_now());
@@ -48,9 +48,8 @@
  *			struct timeabs now = time_now();
  *			list_for_each(&strings, s, node)
  *				printf("%s", s->string);
- *			timers_expire(&timers, now, &expired);
- *			while ((s = list_pop(&expired, struct timed_string,
- *					     timer.list)) != NULL) {
+ *			while ((t = timers_expire(&timers, now)) != NULL) {
+ *				s = container_of(t, struct timed_string, timer);
  *				list_del_from(&strings, &s->node);
  *				free(s);
  *			}

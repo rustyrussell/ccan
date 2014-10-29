@@ -259,37 +259,35 @@ static void timer_fast_forward(struct timers *timers, uint64_t time)
 		timer_add_raw(timers, i);
 }
 
-/* Fills list of expired timers. */
-void timers_expire(struct timers *timers,
-		   struct timeabs expire,
-		   struct list_head *list)
+/* Returns an expired timer. */
+struct timer *timers_expire(struct timers *timers, struct timeabs expire)
 {
 	uint64_t now = time_to_grains(expire);
 	unsigned int off;
+	struct timer *t;
 
 	assert(now >= timers->base);
 
-	list_head_init(list);
-
 	if (!timers->level[0]) {
 		if (list_empty(&timers->far))
-			return;
+			return NULL;
 		add_level(timers, 0);
 	}
 
 	do {
 		if (timers->first > now) {
 			timer_fast_forward(timers, now);
-			break;
+			return NULL;
 		}
 
 		timer_fast_forward(timers, timers->first);
 		off = timers->base % PER_LEVEL;
 
-		list_append_list(list, &timers->level[0]->list[off]);
-		if (timers->base == now)
-			break;
-	} while (update_first(timers));
+		/* This *may* be NULL, if we deleted the first timer */
+		t = list_pop(&timers->level[0]->list[off], struct timer, list);
+	} while (!t && update_first(timers));
+
+	return t;
 }
 
 static bool timer_list_check(const struct list_head *l,

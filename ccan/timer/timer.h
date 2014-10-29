@@ -89,32 +89,29 @@ void timer_del(struct timers *timers, struct timer *timer);
 bool timer_earliest(struct timers *timers, struct timeabs *first);
 
 /**
- * timers_expire - update timers structure and remove expired timers.
+ * timers_expire - update timers structure and remove one expire timer.
  * @timers: the struct timers
  * @expire: the current time
- * @list: the list for expired timers.
  *
- * @list will be initialized to the empty list, then all timers added
- * with a @when arg less than or equal to @expire will be added to it in
- * expiry order (within TIMER_GRANULARITY nanosecond precision).
+ * A timers added with a @when arg less than or equal to @expire will be
+ * returned (within TIMER_GRANULARITY nanosecond precision).  If
+ * there are no timers due to expire, NULL is returned.
  *
- * After this, @expire is considered the current time, and adding any
- * timers with @when before this value will be silently changed to
- * adding them with immediate expiration.
+ * After this returns NULL, @expire is considered the current time,
+ * and adding any timers with @when before this value will be silently
+ * changed to adding them with immediate expiration.
  *
  * You should not move @expire backwards, though it need not move
  * forwards.
  *
  * Example:
- *	struct list_head expired;
+ *	struct timer *expired;
  *
- *	timers_expire(&timeouts, time_now(), &expired);
- *	if (!list_empty(&expired))
+ *	while ((expired = timers_expire(&timeouts, time_now())) != NULL)
  *		printf("Timer expired!\n");
+ *
  */
-void timers_expire(struct timers *timers,
-		   struct timeabs expire,
-		   struct list_head *list);
+struct timer *timers_expire(struct timers *timers, struct timeabs expire);
 
 /**
  * timers_check - check timer structure for consistency

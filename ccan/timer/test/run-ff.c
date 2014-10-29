@@ -12,20 +12,17 @@ static struct timeabs timeabs_from_usec(unsigned long long usec)
 int main(void)
 {
 	struct timers timers;
-	struct timer t;
-	struct list_head expired;
+	struct timer t, *expired;
 
 	/* This is how many tests you plan to run */
 	plan_tests(3);
 
 	timers_init(&timers, timeabs_from_usec(1364726722653919ULL));
 	timer_add(&timers, &t, timeabs_from_usec(1364726722703919ULL));
-	timers_expire(&timers, timeabs_from_usec(1364726722653920ULL), &expired);
-	ok1(list_empty(&expired));
-	timers_expire(&timers, timeabs_from_usec(1364726725454187ULL), &expired);
-	ok1(!list_empty(&expired));
-	ok1(list_top(&expired, struct timer, list) == &t);
-
+	ok1(!timers_expire(&timers, timeabs_from_usec(1364726722653920ULL)));
+	expired = timers_expire(&timers, timeabs_from_usec(1364726725454187ULL));
+	ok1(expired == &t);
+	ok1(!timers_expire(&timers, timeabs_from_usec(1364726725454187ULL)));
 	timers_cleanup(&timers);
 
 	/* This exits depending on whether all tests passed */

@@ -34,10 +34,10 @@ int main(int argc, char *argv[])
 		curr = time_add(curr, time_from_msec(1));
 		if (check)
 			timers_check(&timers, NULL);
-		timers_expire(&timers, curr, &expired);
+		if (timers_expire(&timers, curr))
+			abort();
 		if (check)
 			timers_check(&timers, NULL);
-		assert(list_empty(&expired));
 
 		if (i >= PER_CONN_TIME) {
 			timer_del(&timers, &t[i%PER_CONN_TIME]);
