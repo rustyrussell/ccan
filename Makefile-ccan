@@ -13,7 +13,6 @@ MODS_NO_SRC := alignof \
 	asearch \
 	bitmap \
 	build_assert \
-	bytestring \
 	cast \
 	check_type \
 	compiler \
@@ -40,6 +39,7 @@ MODS_WITH_SRC := antithread \
 	block_pool \
 	breakpoint \
 	btree \
+	bytestring \
 	ccan_tokenizer \
 	charset \
 	ciniparser \
