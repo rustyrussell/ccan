@@ -1,0 +1,66 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * invbloom - implementation of invertible bloom lookup tables.
+ *
+ * This code implements a subset of invertible bloom lookup tables
+ * as described in[1].
+ *
+ * [1] Goodrich, Michael T., and Michael Mitzenmacher. "Invertible bloom
+ *     lookup tables." Communication, Control, and Computing (Allerton), 2011
+ *     49th Annual Allerton Conference on. IEEE, 2011.
+ *      http://arxiv.org/pdf/1101.2245
+ *
+ * License: BSD-MIT
+ *
+ * Example:
+ *	#include <ccan/invbloom/invbloom.h>
+ *	#include <stdio.h>
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		unsigned int i, n;
+ *		struct invbloom *ib = invbloom_new(NULL, char *, 16, 0);
+ *
+ *		for (i = 1; i < argc; i++)
+ *			invbloom_insert(ib, &argv[i]);
+ *
+ *		n = 0;
+ *		for (i = 1; i < argc; i++)
+ *			n += invbloom_get(ib, &argv[i]);
+ *
+ *		printf("%u out of %u are found\n", n, argc);
+ *
+ *		n = 0;
+ *		for (i = 1; i < argc; i++) {
+ *			unsigned int j;
+ *			char **p = invbloom_extract(NULL, ib);
+ *
+ *			for (j = 1; j < argc; j++) {
+ *				if (p == &argv[j])
+ *					n++;
+ *			}
+ *			tal_free(p);
+ *		}
+ *		printf("%u out of %u were extracted\n", n, argc);
+ *		return 0;
+ *	}
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/endian\n");
+		printf("ccan/hash\n");
+		printf("ccan/short_types\n");
+		printf("ccan/tal\n");
+		return 0;
+	}
+
+	return 1;
+}

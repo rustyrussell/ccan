@@ -59,6 +59,7 @@ MODS_WITH_SRC := antithread \
 	htable \
 	idtree \
 	ilog \
+	invbloom \
 	io \
 	isaac \
 	iscsi \
