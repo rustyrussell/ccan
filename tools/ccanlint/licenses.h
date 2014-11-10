@@ -1,6 +1,7 @@
 #ifndef CCANLINT_LICENSES_H
 #define CCANLINT_LICENSES_H
 #include <stdbool.h>
+#include <ccan/tal/tal.h>
 
 enum license {
 	LICENSE_LGPLv2_PLUS,
@@ -23,6 +24,7 @@ enum license {
 struct license_info {
 	const char *name;
 	const char *shortname;
+	const char *describe;
 	/* Edit distance is expensive, and this works quite well. */
 	const char *clause[NUM_CLAUSES];
 };
@@ -40,5 +42,7 @@ enum license which_license(struct doc_section *d);
 
 struct manifest;
 struct doc_section *find_license_tag(const struct manifest *m);
+
+const char *get_license_oneliner(const tal_t *ctx, enum license license);
 
 #endif /* CCANLINT_LICENSES_H */

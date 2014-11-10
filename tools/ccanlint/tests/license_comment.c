@@ -57,10 +57,49 @@ static void check_license_comment(struct manifest *m,
 	}
 }
 
+static void add_license_comment(struct manifest *m, struct score *score)
+{
+	struct file_error *e;
+	const char *license_desc = get_license_oneliner(score, m->license);
+	char *files = tal_strdup(score, ""), *q;
+
+	list_for_each(&score->per_file_errors, e, list)
+		tal_append_fmt(&files, "  %s\n", e->file->name);
+
+	q = tal_fmt(score, "The following files don't have a comment:\n%s\n"
+		    "Should I prepend '%s'?", files, license_desc);
+	if (!ask(q))
+		return;
+
+	list_for_each(&score->per_file_errors, e, list) {
+		char *tmpname;
+		FILE *out;
+		unsigned int i;
+
+		tmpname = temp_file(score, ".licensed", e->file->name);
+		out = fopen(tmpname, "w");
+		if (!out)
+			err(1, "Opening %s", tmpname);
+		if (fprintf(out, "%s\n", license_desc) < 0)
+			err(1, "Writing %s", tmpname);
+
+		for (i = 0; e->file->lines[i]; i++)
+			if (fprintf(out, "%s\n", e->file->lines[i]) < 0)
+				err(1, "Writing %s", tmpname);
+
+		if (fclose(out) != 0)
+			err(1, "Closing %s", tmpname);
+
+		if (!move_file(tmpname, e->file->fullname))
+			err(1, "Moving %s to %s", tmpname, e->file->fullname);
+	}
+}
+
 struct ccanlint license_comment = {
 	.key = "license_comment",
 	.name = "Source and header files refer to LICENSE",
 	.check = check_license_comment,
+	.handle = add_license_comment,
 	.needs = "license_exists"
 };
 REGISTER_TEST(license_comment);
