@@ -79,13 +79,12 @@ static void extract_examples(struct manifest *m,
 		}
 	}
 
-	/* Check main header. */
+	/* Check all headers for examples. */
 	list_for_each(&m->h_files, f, list) {
-		if (!strstarts(f->name, m->basename)
-		    || strlen(f->name) != strlen(m->basename) + 2)
-			continue;
+		if (strstarts(f->name, m->basename)
+		    && strlen(f->name) == strlen(m->basename) + 2)
+			mainh = f;
 
-		mainh = f;
 		list_for_each(get_ccan_file_docs(f), d, list) {
 			if (streq(d->type, "example")) {
 				score->error = add_example(m, f, d);
@@ -115,7 +114,7 @@ struct ccanlint examples_exist = {
 	.key = "examples_exist",
 	.name = "_info and main header file have Example: sections",
 	.check = extract_examples,
-	.needs = "info_exists"
+	.needs = "info_exists main_header_exists"
 };
 
 REGISTER_TEST(examples_exist);
