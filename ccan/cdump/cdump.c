@@ -428,6 +428,10 @@ static bool tok_take_enum(struct parse_state *ps)
 	do {
 		struct cdump_enum_val *v;
 
+		/* GCC extension: comma and end of enum */
+		if (tok_is(&ps->toks, "}"))
+			break;
+
 		tal_resize(&e->u.enum_vals, n+1);
 		v = &e->u.enum_vals[n++];
 
