@@ -35,22 +35,24 @@ enum io_direction {
  * io_set_plan() when you've initialized it.
  *
  * Example:
+ * #include <ccan/io/io_plan.h>
+ *
  * // Simple helper to read a single char.
  * static int do_readchar(int fd, struct io_plan_arg *arg)
  * {
  *	return read(fd, arg->u1.cp, 1) <= 0 ? -1 : 1;
  * }
  *
- * struct io_plan *io_read_char_(struct io_conn *conn, char *in,
+ * static struct io_plan *io_read_char_(struct io_conn *conn, char *in,
  *				 struct io_plan *(*next)(struct io_conn*,void*),
- *				 void *arg)
+ *				 void *next_arg)
  * {
- *	struct io_plan_arg *arg = io_get_plan_arg(conn, IO_IN);
+ *	struct io_plan_arg *arg = io_plan_arg(conn, IO_IN);
  *
  *	// Store information we need in the plan unions u1 and u2.
  *	arg->u1.cp = in;
  *
- *	return io_set_plan(conn, IO_IN, do_readchar, next, arg);
+ *	return io_set_plan(conn, IO_IN, do_readchar, next, next_arg);
  * }
  */
 struct io_plan_arg *io_plan_arg(struct io_conn *conn, enum io_direction dir);
