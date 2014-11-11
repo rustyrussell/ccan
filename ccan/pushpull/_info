@@ -1,0 +1,76 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * pushpull - simple marshalling/unmarshalling routines
+ *
+ * This code lets you clearly add simple types into a buffer (the push
+ * functions) and remove them (the pull functions).  The buffer stores
+ * the values as little-endian for machine portability.  The pull functions
+ * don't need to be checked on every call, but error state is kept so you
+ * can check if there was an error at the end.
+ *
+ * The normal way to use this is to create your own higher-level marshal
+ * and unmarshal functions in terms of these.
+ *
+ * Author: Rusty Russell <rusty@rustcorp.com.au>
+ * License: CC0 (Public domain)
+ *
+ * Example:
+ *	#include <ccan/pushpull/push.h>
+ *	#include <ccan/pushpull/pull.h>
+ *	#include <ccan/err/err.h>
+ *	#include <string.h>
+ *	#include <stdio.h>
+ *	#include <unistd.h>
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		if (argv[1] && !strcmp(argv[1], "push")) {
+ *			int i;
+ *			char *buf = malloc(1);
+ *			size_t len = 0;
+ *
+ *			// We ignore allocation failure!
+ *			for (i = 2; i < argc; i++)
+ *				push_u32(&buf, &len, atol(argv[i]));
+ *
+ *			write(STDOUT_FILENO, buf, len);
+ *		} else if (argc == 2 && !strcmp(argv[1], "pull")) {
+ *			int r, max = 32;
+ *			size_t len = 0;
+ *			char *buf = malloc(max);
+ *			const char *p;
+ *			uint32_t val;
+ *
+ *			while ((r = read(STDIN_FILENO, buf+len, max-len)) > 0) {
+ *				len += r;
+ *				if (len == max) {
+ *					max *= 2;
+ *					// We crash on allocation failure
+ *					buf = realloc(buf, max);
+ *				}
+ *			}
+ *
+ *			p = buf;
+ *			while (pull_u32(&p, &len, &val))
+ *				printf("%u ", val);
+ *		} else
+ *			errx(1, "Usage: %s [push|pull] [<number>...]", argv[0]);
+ *		return 0;
+ *	}
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/endian\n");
+		return 0;
+	}
+
+	return 1;
+}
