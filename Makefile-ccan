@@ -41,6 +41,7 @@ MODS_WITH_SRC := antithread \
 	btree \
 	bytestring \
 	ccan_tokenizer \
+	cdump \
 	charset \
 	ciniparser \
 	crc \
