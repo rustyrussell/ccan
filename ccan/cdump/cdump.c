@@ -84,25 +84,31 @@ struct parse_state {
 	char *complaints;
 };
 
-static bool tok_is(const struct token **toks, const char *target)
-{
-	return (*toks)->p && (*toks)->len == strlen(target)
-		&& memcmp((*toks)->p, target, (*toks)->len) == 0;
-}
-
 static const struct token *tok_peek(const struct token **toks)
 {
-	if (toks[0]->p)
-		return toks[0];
-	return NULL;
+	/* Ignore removed tokens (eg. comments) */
+	while (toks[0]->len == 0) {
+		if (!toks[0]->p)
+			return NULL;
+		(*toks)++;
+	}
+	return toks[0];
+}
+
+static bool tok_is(const struct token **toks, const char *target)
+{
+	const struct token *t = tok_peek(toks);
+	return (t && t->len == strlen(target)
+		&& memcmp(t->p, target, t->len) == 0);
 }
 
 static const struct token *tok_take(const struct token **toks)
 {
-	if (!toks[0]->p)
-		return NULL;
+	const struct token *t = tok_peek(toks);
+	if (t)
+		(*toks)++;
 
-	return (*toks)++;
+	return t;
 }
 
 static const struct token *tok_take_if(const struct token **toks,
@@ -133,8 +139,27 @@ static char *string_of_toks(const tal_t *ctx,
 			    const struct token *first,
 			    const struct token *until)
 {
-	const struct token *end = until - 1;
-	return tal_strndup(ctx, first->p, end->p - first->p + end->len);
+	char *str, *p;
+
+	/* Careful to skip erased tokens (eg. comments) */
+	str = p = tal_arr(ctx, char, until->p - first->p + 1);
+	while (first != until) {
+		const struct token *next = first + 1;
+
+		if (first->len) {
+			memcpy(p, first->p, first->len);
+			p += first->len;
+			/* Insert space if they weren't adjacent, unless last */
+			if (next != until) {
+				if (first->p + first->len != next->p)
+					*(p++) = ' ';
+			}
+		}
+		first = next;
+	}
+	*p = '\0';
+
+	return str;
 }
 
 static char *tok_take_until(const tal_t *ctx,
@@ -240,23 +265,37 @@ static void tok_take_unknown_statement(struct parse_state *ps)
 	tok_take_if(&ps->toks, ";");
 }
 
+static bool tok_take_expr(struct parse_state *ps, const char *term)
+{
+	while (!tok_is(&ps->toks, term)) {
+		if (tok_take_if(&ps->toks, "(")) {
+			if (!tok_take_expr(ps, ")"))
+				return false;
+		} else if (tok_take_if(&ps->toks, "[")) {
+			if (!tok_take_expr(ps, "]"))
+				return false;
+		} else if (!tok_take(&ps->toks))
+			return false;
+	}
+	return tok_take(&ps->toks);
+}
+
 /* [ ... */
 static bool tok_take_array(struct parse_state *ps, struct cdump_type **type)
 {
 	/* This will be some arbitrary expression! */
 	struct cdump_type *arr = get_type(ps->defs, CDUMP_ARRAY, NULL);
+	const struct token *start = tok_peek(&ps->toks);
 
-	arr->u.arr.size = tok_take_until(arr, &ps->toks, "]");
-	if (!arr->u.arr.size) {
+	if (!tok_take_expr(ps, "]")) {
 		complain(ps, "Could not find closing array size ]");
 		return false;
 	}
 
+	arr->u.arr.size = string_of_toks(arr, start, ps->toks - 1);
 	arr->u.arr.type = *type;
 	*type = arr;
 
-	/* Swallow ] */
-	tok_take(&ps->toks);
 	return true;
 }
 
