@@ -280,19 +280,30 @@ static bool tok_take_expr(struct parse_state *ps, const char *term)
 	return tok_take(&ps->toks);
 }
 
+static char *tok_take_expr_str(const tal_t *ctx,
+			       struct parse_state *ps,
+			       const char *term)
+{
+	const struct token *start = tok_peek(&ps->toks);
+
+	if (!tok_take_expr(ps, term))
+		return NULL;
+
+	return string_of_toks(ctx, start, ps->toks - 1);
+}
+
 /* [ ... */
 static bool tok_take_array(struct parse_state *ps, struct cdump_type **type)
 {
 	/* This will be some arbitrary expression! */
 	struct cdump_type *arr = get_type(ps->defs, CDUMP_ARRAY, NULL);
-	const struct token *start = tok_peek(&ps->toks);
 
-	if (!tok_take_expr(ps, "]")) {
+	arr->u.arr.size = tok_take_expr_str(arr, ps, "]");
+	if (!arr->u.arr.size) {
 		complain(ps, "Could not find closing array size ]");
 		return false;
 	}
 
-	arr->u.arr.size = string_of_toks(arr, start, ps->toks - 1);
 	arr->u.arr.type = *type;
 	*type = arr;
 
@@ -350,6 +361,25 @@ static bool tok_take_type(struct parse_state *ps, struct cdump_type **type)
 	return true;
 }
 
+/* CDUMP */
+static bool tok_maybe_take_cdump_note(const tal_t *ctx,
+				      struct parse_state *ps, const char **note)
+{
+	*note = NULL;
+	if (tok_take_if(&ps->toks, "CDUMP")) {
+		if (!tok_take_if(&ps->toks, "(")) {
+			complain(ps, "Expected ( after CDUMP");
+			return false;
+		}
+		*note = tok_take_expr_str(ctx, ps, ")");
+		if (!*note) {
+			complain(ps, "Expected ) after CDUMP(");
+			return false;
+		}
+	}
+	return true;
+}
+
 /* struct|union ... */
 static bool tok_take_conglom(struct parse_state *ps,
 			     enum cdump_type_kind conglom_kind)
@@ -371,6 +401,9 @@ static bool tok_take_conglom(struct parse_state *ps,
 		complain(ps, "Type already defined");
 		return false;
 	}
+
+	if (!tok_maybe_take_cdump_note(e, ps, &e->note))
+		return false;
 
 	if (!tok_take_if(&ps->toks, "{")) {
 		complain(ps, "Expected { for struct/union");
@@ -423,6 +456,11 @@ static bool tok_take_conglom(struct parse_state *ps,
 				if (!tok_take_array(ps, &m->type))
 					return false;
 			}
+
+			/* CDUMP() */
+			if (!tok_maybe_take_cdump_note(e->u.members,
+						       ps, &m->note))
+				return false;
 		} while (tok_take_if(&ps->toks, ","));
 
 		if (!tok_take_if(&ps->toks, ";")) {
@@ -458,6 +496,10 @@ static bool tok_take_enum(struct parse_state *ps)
 		return false;
 	}
 
+	/* CDUMP() */
+	if (!tok_maybe_take_cdump_note(e, ps, &e->note))
+		return false;
+
 	if (!tok_take_if(&ps->toks, "{")) {
 		complain(ps, "Expected { after enum name");
 		return false;
@@ -479,6 +521,11 @@ static bool tok_take_enum(struct parse_state *ps)
 			complain(ps, "Expected enum value name");
 			return false;
 		}
+
+		/* CDUMP() */
+		if (!tok_maybe_take_cdump_note(e->u.enum_vals, ps, &v->note))
+			return false;
+
 		if (tok_take_if(&ps->toks, "=")) {
 			v->value = tok_take_until(e, &ps->toks, ",}");
 			if (!v->value) {

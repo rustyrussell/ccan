@@ -15,6 +15,7 @@ enum cdump_type_kind {
 
 struct cdump_member {
 	const char *name;
+	const char *note;
 	/* const, volatile */
 	const char *qualifiers;
 	struct cdump_type *type;
@@ -22,6 +23,7 @@ struct cdump_member {
 
 struct cdump_enum_val {
 	const char *name;
+	const char *note;
 	/* Either NULL, or whatever follows '=' sign */
 	const char *value;
 };
@@ -34,6 +36,7 @@ struct cdump_array {
 struct cdump_type {
 	enum cdump_type_kind kind;
 	const char *name;
+	const char *note;
 	union {
 		/* CDUMP_STRUCT / CDUMP_UNION: array */
 		struct cdump_member *members;
@@ -67,6 +70,11 @@ struct cdump_definitions {
  * into the return.  If there is a parse error, it will return NULL and
  * allocate a problem string for human consumption.
  *
+ * Annotations can be attached to structures, unions, enums, members
+ * and enum values using CDUMP().  This comes after the name (or
+ * after [] for array member declarations) and usually is removed from
+ * C compilation using "#define CDUMP(x)".
+ *
  * Example:
  *	// Returns name of first field of 'struct @name' in @code.
  *	static const char *first_field_of_struct(const char *code,
@@ -88,6 +96,8 @@ struct cdump_definitions {
  *			return NULL;
  *		}
  *		assert(t->kind == CDUMP_STRUCT);
+ *		if (t->note)
+ *			printf("Note on struct %s: %s\n", name, t->note);
  *		return t->u.members[0].name;
  *	}
  */
