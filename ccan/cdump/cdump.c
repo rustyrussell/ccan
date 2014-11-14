@@ -16,6 +16,16 @@ static void add_token(struct token **toks, const char *p, size_t len)
 	(*toks)[n].len = len;
 }
 
+static size_t to_eol(const char *p)
+{
+	size_t len = strcspn(p, "\n");
+
+	/* And any \ continuations. */
+	while (p[len] && p[len-1] == '\\')
+		len += strcspn(p+len+1, "\n") + 1;
+	return len;
+}
+
 /* Simplified tokenizer: comments and preproc directives removed,
    identifiers are a token, others are single char tokens. */
 static struct token *tokenize(const void *ctx, const char *code)
@@ -27,10 +37,10 @@ static struct token *tokenize(const void *ctx, const char *code)
 	for (i = 0; code[i]; i += len) {
 		if (code[i] == '#' && start_of_line) {
 			/* Preprocessor line. */
-			len = strcspn(code+i, "\n");
+			len = to_eol(code + i);
 		} else if (code[i] == '/' && code[i+1] == '/') {
 			/* One line comment. */
-			len = strcspn(code+i, "\n");
+			len = to_eol(code + i);
 			if (tok_start != -1U) {
 				add_token(&toks, code+tok_start, i - tok_start);
 				tok_start = -1U;
