@@ -390,6 +390,28 @@ static bool tok_maybe_take_cdump_note(const tal_t *ctx,
 	return true;
 }
 
+/* __attribute__((...)) */
+static bool tok_ignore_attribute(struct parse_state *ps)
+{
+	if (!tok_take_if(&ps->toks, "__attribute__"))
+		return true;
+
+	if (!tok_take_if(&ps->toks, "(") || !tok_take_if(&ps->toks, "(")) {
+		complain(ps, "Expected (( after __attribute__");
+		return false;
+	}
+
+	if (!tok_take_expr(ps, ")")) {
+		complain(ps, "Expected expression after __attribute__((");
+		return false;
+	}
+	if (!tok_take_if(&ps->toks, ")")) {
+		complain(ps, "Expected )) __attribute__((");
+		return false;
+	}
+	return true;
+}
+
 /* struct|union ... */
 static bool tok_take_conglom(struct parse_state *ps,
 			     enum cdump_type_kind conglom_kind)
@@ -415,6 +437,9 @@ static bool tok_take_conglom(struct parse_state *ps,
 	if (!tok_maybe_take_cdump_note(e, ps, &e->note))
 		return false;
 
+	if (!tok_ignore_attribute(ps))
+		return false;
+
 	if (!tok_take_if(&ps->toks, "{")) {
 		complain(ps, "Expected { for struct/union");
 		return false;
@@ -425,6 +450,9 @@ static bool tok_take_conglom(struct parse_state *ps,
 		struct cdump_type *basetype;
 		const struct token *quals;
 		unsigned int num_quals = 0;
+
+		if (!tok_ignore_attribute(ps))
+			return false;
 
 		/* Anything can have these prepended. */
 		quals = ps->toks;
@@ -455,6 +483,9 @@ static bool tok_take_conglom(struct parse_state *ps,
 			while (tok_take_if(&ps->toks, "*"))
 				m->type = ptr_of(ps, m->type);
 
+			if (!tok_ignore_attribute(ps))
+				return false;
+
 			m->name = tok_take_ident(e, &ps->toks);
 			if (!m->name) {
 				complain(ps, "Expected name for member");
@@ -471,6 +502,9 @@ static bool tok_take_conglom(struct parse_state *ps,
 			if (!tok_maybe_take_cdump_note(e->u.members,
 						       ps, &m->note))
 				return false;
+
+			if (!tok_ignore_attribute(ps))
+				return false;
 		} while (tok_take_if(&ps->toks, ","));
 
 		if (!tok_take_if(&ps->toks, ";")) {
@@ -479,10 +513,19 @@ static bool tok_take_conglom(struct parse_state *ps,
 		}
 	}
 
-	if (tok_take_if(&ps->toks, "}") && tok_take_if(&ps->toks, ";"))
-		return true;
-	complain(ps, "Expected }; at end of struct/union");
-	return false;
+	if (!tok_take_if(&ps->toks, "}")) {
+		complain(ps, "Expected } at end of struct/union");
+		return false;
+	}
+
+	if (!tok_ignore_attribute(ps))
+		return false;
+
+	if (!tok_take_if(&ps->toks, ";")) {
+		complain(ps, "Expected ; at end of struct/union");
+		return false;
+	}
+	return true;
 }
 
 /* enum ... */
@@ -508,6 +551,9 @@ static bool tok_take_enum(struct parse_state *ps)
 
 	/* CDUMP() */
 	if (!tok_maybe_take_cdump_note(e, ps, &e->note))
+		return false;
+
+	if (!tok_ignore_attribute(ps))
 		return false;
 
 	if (!tok_take_if(&ps->toks, "{")) {
@@ -546,11 +592,19 @@ static bool tok_take_enum(struct parse_state *ps)
 			v->value = NULL;
 	} while (tok_take_if(&ps->toks, ","));
 
-	if (tok_take_if(&ps->toks, "}") && tok_take_if(&ps->toks, ";"))
-		return true;
+	if (!tok_take_if(&ps->toks, "}")) {
+		complain(ps, "Expected } at end of enum");
+		return false;
+	}
 
-	complain(ps, "Expected }; at end of enum");
-	return false;
+	if (!tok_ignore_attribute(ps))
+		return false;
+
+	if (!tok_take_if(&ps->toks, ";")) {
+		complain(ps, "Expected ; at end of enum");
+		return false;
+	}
+	return true;
 }
 
 static bool gather_undefines(const char *name,
@@ -608,6 +662,8 @@ struct cdump_definitions *cdump_extract(const tal_t *ctx, const char *code,
 
 	toks = ps.toks = tokenize(ps.defs, code);
 	while (tok_peek(&ps.toks)) {
+		if (!tok_ignore_attribute(&ps))
+			goto fail;
 		if (tok_take_if(&ps.toks, "struct")) {
 			if (!tok_take_conglom(&ps, CDUMP_STRUCT))
 				goto fail;
