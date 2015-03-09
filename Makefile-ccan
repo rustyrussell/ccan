@@ -35,6 +35,7 @@ MODS_WITH_SRC := antithread \
 	asprintf \
 	autodata \
 	avl \
+	base64 \
 	bdelta \
 	block_pool \
 	breakpoint \
