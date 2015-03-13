@@ -1,0 +1,483 @@
+Interface differences between TDB and NTDB.
+
+- ntdb shares 'struct TDB_DATA' with tdb, but TDB defines the TDB_DATA
+  typedef, whereas ntdb defines NTDB_DATA (ie. both are compatible).
+  If you include both ntdb.h and tdb.h, #include tdb.h first,
+  otherwise you'll get a compile error when tdb.h re-defined struct
+  TDB_DATA.
+
+  Example:
+	#include <tdb.h>
+	#include <ntdb.h>
+
+- ntdb functions return NTDB_SUCCESS (ie 0) on success, and a negative
+  error on failure, whereas tdb functions returned 0 on success, and
+  -1 on failure.  tdb then used tdb_error() to determine the error;
+  this API is nasty if we ever want to support threads, so is not supported.
+
+  Example:
+	#include <tdb.h>
+	#include <ntdb.h>
+
+	void tdb_example(struct tdb_context *tdb, TDB_DATA key, TDB_DATA d)
+	{
+		if (tdb_store(tdb, key, d) == -1) {
+			printf("store failed: %s\n", tdb_errorstr(tdb));
+		}
+	}
+
+	void ntdb_example(struct ntdb_context *ntdb, NTDB_DATA key, NTDB_DATA d)
+	{
+		enum NTDB_ERROR e;
+
+		e = ntdb_store(ntdb, key, d);
+		if (e) {
+			printf("store failed: %s\n", ntdb_errorstr(e));
+		}
+	}
+
+- ntdb's ntdb_fetch() returns an error, tdb's returned the data directly
+  (or tdb_null, and you were supposed to check tdb_error() to find out why).
+
+  Example:
+	#include <tdb.h>
+	#include <ntdb.h>
+
+	void tdb_example(struct tdb_context *tdb, TDB_DATA key)
+	{
+		TDB_DATA data;
+
+		data = tdb_fetch(tdb, key);
+		if (!data.dptr) {
+			printf("fetch failed: %s\n", tdb_errorstr(tdb));
+		}
+	}
+
+	void ntdb_example(struct ntdb_context *ntdb, NTDB_DATA key)
+	{
+		NTDB_DATA data;
+		enum NTDB_ERROR e;
+
+		e = ntdb_fetch(ntdb, key, &data);
+		if (e) {
+			printf("fetch failed: %s\n", ntdb_errorstr(e));
+		}
+	}
+
+- ntdb's ntdb_nextkey() frees the old key's dptr, in tdb you needed to do
+  this manually.
+
+  Example:
+	#include <tdb.h>
+	#include <ntdb.h>
+
+	void tdb_example(struct tdb_context *tdb)
+	{
+		TDB_DATA key, next, data;
+
+		for (key = tdb_firstkey(tdb); key.dptr; key = next) {
+			printf("Got key!\n");
+			next = tdb_nextkey(tdb, key);
+			free(key.dptr);
+		}
+	}
+
+
+	void ntdb_example(struct ntdb_context *ntdb)
+	{
+		NTDB_DATA k, data;
+		enum NTDB_ERROR e;
+
+		for (e = ntdb_firstkey(ntdb,&k); !e; e = ntdb_nextkey(ntdb,&k))
+			printf("Got key!\n");
+	}
+
+- Unlike tdb_open/tdb_open_ex, ntdb_open does not allow NULL names,
+  even for NTDB_INTERNAL dbs, and thus ntdb_name() never returns NULL.
+
+  Example:
+	#include <tdb.h>
+	#include <ntdb.h>
+
+	struct tdb_context *tdb_example(void)
+	{
+		return tdb_open(NULL, 0, TDB_INTERNAL, O_RDWR, 0);
+	}
+
+	struct ntdb_context *ntdb_example(void)
+	{
+		return ntdb_open("example", NTDB_INTERNAL, O_RDWR, 0);
+	}
+
+- ntdb uses a linked list of attribute structures to implement logging and
+  alternate hashes.  tdb used tdb_open_ex, which was not extensible.
+
+  Example:
+	#include <tdb.h>
+	#include <ntdb.h>
+
+	/* Custom hash function */
+	static unsigned int my_tdb_hash_func(TDB_DATA *key)
+	{
+		return key->dsize;
+	}
+
+	struct tdb_context *tdb_example(void)
+	{
+		return tdb_open_ex("example.tdb", 0, TDB_DEFAULT,
+		                   O_CREAT|O_RDWR, 0600, NULL, my_hash_func);
+	}
+
+	/* Custom hash function */
+	static unsigned int my_ntdb_hash_func(const void *key, size_t len,
+					      uint32_t seed, void *data)
+	{
+		return len;
+	}
+
+	struct ntdb_context *ntdb_example(void)
+	{
+		union ntdb_attribute hash;
+
+		hash.base.attr = NTDB_ATTRIBUTE_HASH;
+		hash.base.next = NULL;
+		hash.hash.fn = my_ntdb_hash_func;
+		return ntdb_open("example.ntdb", NTDB_DEFAULT,
+		                   O_CREAT|O_RDWR, 0600, &hash);
+	}
+
+- tdb's tdb_open/tdb_open_ex took an explicit hash size, defaulting to
+  131.  ntdb's uses an attribute for this, defaulting to 8192.
+
+  Example:
+	#include <tdb.h>
+	#include <ntdb.h>
+
+	struct tdb_context *tdb_example(void)
+	{
+		return tdb_open("example.tdb", 10007, TDB_DEFAULT,
+		                O_CREAT|O_RDWR, 0600);
+	}
+
+	struct ntdb_context *ntdb_example(void)
+	{
+		union ntdb_attribute hashsize;
+
+		hashsize.base.attr = NTDB_ATTRIBUTE_HASHSIZE;
+		hashsize.base.next = NULL;
+		hashsize.hashsize.size = 16384;
+		return ntdb_open("example.ntdb", NTDB_DEFAULT,
+		                   O_CREAT|O_RDWR, 0600, &hashsize);
+	}
+
+- ntdb's log function is simpler than tdb's log function.  The string
+  is already formatted, is not terminated by a '\n', and it takes an
+  enum ntdb_log_level not a tdb_debug_level, and which has only three
+  values: NTDB_LOG_ERROR, NTDB_LOG_USE_ERROR and NTDB_LOG_WARNING.
+
+	#include <tdb.h>
+	#include <ntdb.h>
+
+	static void tdb_log(struct tdb_context *tdb,
+	                    enum tdb_debug_level level, const char *fmt, ...)
+	{
+		va_list ap;
+		const char *name;
+
+		switch (level) {
+		case TDB_DEBUG_FATAL:
+			fprintf(stderr, "FATAL: ");
+			break;
+		case TDB_DEBUG_ERROR:
+			fprintf(stderr, "ERROR: ");
+			break;
+		case TDB_DEBUG_WARNING:
+			fprintf(stderr, "WARNING: ");
+			break;
+		case TDB_DEBUG_TRACE:
+			/* Don't print out tracing. */
+			return;
+		}
+
+		name = tdb_name(tdb);
+		if (!name) {
+			name = "unnamed";
+		}
+
+		fprintf(stderr, "tdb(%s):", name);
+
+		va_start(ap, fmt);
+		vfprintf(stderr, fmt, ap);
+		va_end(ap);
+	}
+
+	struct tdb_context *tdb_example(void)
+	{
+		struct tdb_logging_context lctx;
+
+		lctx.log_fn = tdb_log;
+		return tdb_open_ex("example.tdb", 0, TDB_DEFAULT,
+		                   O_CREAT|O_RDWR, 0600, &lctx, NULL);
+	}
+
+	static void ntdb_log(struct ntdb_context *ntdb,
+			     enum ntdb_log_level level,
+			     enum NTDB_ERROR ecode,
+			     const char *message,
+			     void *data)
+	{
+		switch (level) {
+		case NTDB_LOG_ERROR:
+			fprintf(stderr, "ERROR: ");
+			break;
+		case NTDB_LOG_USE_ERROR:
+			/* We made a mistake, so abort. */
+			abort();
+			break;
+		case NTDB_LOG_WARNING:
+			fprintf(stderr, "WARNING: ");
+			break;
+		}
+
+		fprintf(stderr, "ntdb(%s):%s:%s\n",
+			ntdb_name(ntdb), ntdb_errorstr(ecode), message);
+	}
+
+	struct ntdb_context *ntdb_example(void)
+	{
+		union ntdb_attribute log;
+
+		log.base.attr = NTDB_ATTRIBUTE_LOG;
+		log.base.next = NULL;
+		log.log.fn = ntdb_log;
+		return ntdb_open("example.ntdb", NTDB_DEFAULT,
+		                 O_CREAT|O_RDWR, 0600, &log);
+	}
+
+- ntdb provides ntdb_deq() for comparing two NTDB_DATA, and ntdb_mkdata() for
+  creating an NTDB_DATA.
+
+	#include <tdb.h>
+	#include <ntdb.h>
+
+	void tdb_example(struct tdb_context *tdb)
+	{
+		TDB_DATA data, key;
+
+		key.dsize = strlen("hello");
+		key.dptr = "hello";
+		data = tdb_fetch(tdb, key);
+		if (data.dsize == key.dsize
+		    && !memcmp(data.dptr, key.dptr, key.dsize))
+			printf("key is same as data\n");
+		}
+		free(data.dptr);
+	}
+
+	void ntdb_example(struct ntdb_context *ntdb)
+	{
+		NTDB_DATA data, key;
+
+		key = ntdb_mkdata("hello", strlen("hello"));
+		if (ntdb_fetch(ntdb, key, &data) == NTDB_SUCCESS) {
+			if (ntdb_deq(key, data)) {
+				printf("key is same as data\n");
+			}
+			free(data.dptr);
+		}
+	}
+
+- ntdb's ntdb_parse_record() takes a type-checked callback data
+  pointer, not a void * (though a void * pointer still works).  The
+  callback function is allowed to do read operations on the database,
+  or write operations if you first call ntdb_lockall().  TDB's
+  tdb_parse_record() did not allow any database access within the
+  callback, could crash if you tried.
+
+  Example:
+	#include <tdb.h>
+	#include <ntdb.h>
+
+	static int tdb_parser(TDB_DATA key, TDB_DATA data, void *private_data)
+	{
+		TDB_DATA *expect = private_data;
+
+		return data.dsize == expect->dsize
+			&& !memcmp(data.dptr, expect->dptr, data.dsize);
+	}
+
+	void tdb_example(struct tdb_context *tdb, TDB_DATA key, NTDB_DATA d)
+	{
+		switch (tdb_parse_record(tdb, key, tdb_parser, &d)) {
+		case -1:
+			printf("parse failed: %s\n", tdb_errorstr(tdb));
+			break;
+		case 0:
+			printf("data was different!\n");
+			break;
+		case 1:
+			printf("data was same!\n");
+			break;
+		}
+	}
+
+	static int ntdb_parser(TDB_DATA key, TDB_DATA data, TDB_DATA *expect)
+	{
+		return ntdb_deq(data, *expect);
+	}
+
+	void ntdb_example(struct ntdb_context *ntdb, NTDB_DATA key, NTDB_DATA d)
+	{
+		enum NTDB_ERROR e;
+
+		e = tdb_parse_record(tdb, key, tdb_parser, &d);
+		switch (e) {
+		case 0:
+			printf("data was different!\n");
+			break;
+		case 1:
+			printf("data was same!\n");
+			break;
+		default:
+			printf("parse failed: %s\n", ntdb_errorstr(e));
+			break;
+		}
+	}
+
+- ntdb does locking on read-only databases (ie. O_RDONLY passed to ntdb_open).
+  tdb did not: use the NTDB_NOLOCK flag if you want to suppress locking.
+
+  Example:
+	#include <tdb.h>
+	#include <ntdb.h>
+
+	struct tdb_context *tdb_example(void)
+	{
+		return tdb_open("example.tdb", 0, TDB_DEFAULT, O_RDONLY, 0);
+	}
+
+	struct ntdb_context *ntdb_example(void)
+	{
+		return ntdb_open("example.ntdb", NTDB_NOLOCK, O_RDONLY, NULL);
+	}
+
+- Failure inside a transaction (such as a lock function failing) does
+  not implicitly cancel the transaction; you still need to call
+  ntdb_transaction_cancel().
+
+	#include <tdb.h>
+	#include <ntdb.h>
+
+	void tdb_example(struct tdb_context *tdb, TDB_DATA key, TDB_DATA d)
+	{
+		if (tdb_transaction_start(tdb) == -1) {
+			printf("transaction failed: %s\n", tdb_errorstr(tdb));
+			return;
+		}
+
+		if (tdb_store(tdb, key, d) == -1) {
+			printf("store failed: %s\n", tdb_errorstr(tdb));
+			return;
+		}
+		if (tdb_transaction_commit(tdb) == -1) {
+			printf("commit failed: %s\n", tdb_errorstr(tdb));
+		}
+	}
+
+	void ntdb_example(struct ntdb_context *ntdb, NTDB_DATA key, NTDB_DATA d)
+	{
+		enum NTDB_ERROR e;
+
+		e = ntdb_transaction_start(ntdb);
+		if (e) {
+			printf("transaction failed: %s\n", ntdb_errorstr(e));
+			return;
+		}
+
+		e = ntdb_store(ntdb, key, d);
+		if (e) {
+			printf("store failed: %s\n", ntdb_errorstr(e));
+			ntdb_transaction_cancel(ntdb);
+		}
+
+		e = ntdb_transaction_commit(ntdb);
+		if (e) {
+			printf("commit failed: %s\n", ntdb_errorstr(e));
+		}
+	}
+
+- There is no NTDB_CLEAR_IF_FIRST flag; it has severe scalability and
+  API problems.  If necessary, you can emulate this by using the open
+  hook and placing a 1-byte lock at offset 4.  If your program forks
+  and exits, you will need to place this lock again in the child before
+  the parent exits.
+
+  Example:
+
+	#include <tdb.h>
+	#include <ntdb.h>
+
+	struct tdb_context *tdb_example(void)
+	{
+		return tdb_open("example.tdb", 0, TDB_CLEAR_IF_FIRST,
+		                   O_CREAT|O_RDWR, 0600);
+	}
+
+	static enum NTDB_ERROR clear_if_first(int fd, void *unused)
+	{
+		/* We hold a lock offset 4 always, so we can tell if
+		 * anyone else is. */
+		struct flock fl;
+
+		fl.l_type = F_WRLCK;
+		fl.l_whence = SEEK_SET;
+		fl.l_start = 4; /* ACTIVE_LOCK */
+		fl.l_len = 1;
+
+		if (fcntl(fd, F_SETLK, &fl) == 0) {
+			/* We must be first ones to open it!  Clear it. */
+			if (ftruncate(fd, 0) != 0) {
+				return NTDB_ERR_IO;
+			}
+		}
+		fl.l_type = F_RDLCK;
+		if (fcntl(fd, F_SETLKW, &fl) != 0) {
+			return NTDB_ERR_IO;
+		}
+		return NTDB_SUCCESS;
+	}
+
+	struct ntdb_context *ntdb_example(void)
+	{
+		union ntdb_attribute open_attr;
+
+		open_attr.openhook.base.attr = NTDB_ATTRIBUTE_OPENHOOK;
+		open_attr.openhook.base.next = NULL;
+		open_attr.openhook.fn = clear_if_first;
+
+		return ntdb_open("example.ntdb", NTDB_DEFAULT,
+		                 O_CREAT|O_RDWR, 0600, &open_attr);
+	}
+
+- ntdb traversals are not reliable if the database is changed during
+  the traversal, ie your traversal may not cover all elements, or may
+  cover elements multiple times.  As a special exception, deleting the
+  current record within ntdb_traverse() is reliable.
+
+- There is no ntdb_traverse_read, since ntdb_traverse does not hold
+  a lock across the entire traversal anyway.  If you want to make sure
+  that your traversal function does not write to the database, you can
+  set and clear the NTDB_RDONLY flag around the traversal.
+
+- ntdb does not need tdb_reopen() or tdb_reopen_all().  If you call
+  fork() after during certain operations the child should close the
+  ntdb, or complete the operations before continuing to use the tdb:
+
+	ntdb_transaction_start(): child must ntdb_transaction_cancel()
+	ntdb_lockall(): child must call ntdb_unlockall()
+	ntdb_lockall_read(): child must call ntdb_unlockall_read()
+	ntdb_chainlock(): child must call ntdb_chainunlock()
+	ntdb_parse() callback: child must return from ntdb_parse()
+
+- ntdb will not open a non-ntdb file, even if O_CREAT is specified.  tdb
+  will overwrite an unknown file in that case.

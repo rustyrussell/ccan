@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN" "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+<refentry id="ntdbrestore.8">
+
+<refmeta>
+	<refentrytitle>ntdbrestore</refentrytitle>
+	<manvolnum>8</manvolnum>
+	<refmiscinfo class="source">Samba</refmiscinfo>
+	<refmiscinfo class="manual">System Administration tools</refmiscinfo>
+	<refmiscinfo class="version">4.1</refmiscinfo>
+</refmeta>
+
+
+<refnamediv>
+	<refname>ntdbrestore</refname>
+	<refpurpose>tool for creating a NTDB file out of a ntdbdump output</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+	<cmdsynopsis>
+		<command>ntdbrestore</command>
+		<arg choice="req">ntdbfilename</arg>
+	</cmdsynopsis>
+</refsynopsisdiv>
+
+<refsect1>
+	<title>DESCRIPTION</title>
+
+	<para>This tool is part of the <citerefentry><refentrytitle>samba</refentrytitle>
+	<manvolnum>1</manvolnum></citerefentry> suite.</para>
+
+	<para><command>ntdbrestore</command> is a very simple utility that 'restores' the
+		contents of dump file into NTDB (New Trivial DataBase) file. The dump file is obtained from the ntdbdump or tdbdump
+		commands.
+	</para>
+
+	<para>This tool wait on the standard input for the content of the dump and will write the ntdb in the ntdbfilename
+  parameter.
+	</para>
+	<para>This tool can be used to translate between ntdb and tdb files by dumping and restoring.
+	</para>
+</refsect1>
+
+
+<refsect1>
+	<title>VERSION</title>
+
+	<para>This man page is correct for version 4 of the Samba suite.</para>
+</refsect1>
+
+<refsect1>
+	<title>SEE ALSO</title>
+
+    <para>
+      ntdbdump(8), tdbrestore(8)
+    </para>
+</refsect1>
+
+<refsect1>
+	<title>AUTHOR</title>
+
+	<para>
+	The original Samba software and related utilities were created by Andrew Tridgell.
+	Samba is now developed by the Samba Team as an Open Source project similar to the way
+	the Linux kernel is developed.
+
+        ntdbrestore was written by Rusty Russell based on tdbrestore, which was initially written by Volker Lendecke based on an
+        idea by Simon McVittie.
+	</para>
+
+	<para>The ntdbrestore man page was written by Rusty Russell, based on the tdbrestore man page by Matthieu Patou.</para>
+</refsect1>
+
+</refentry>
