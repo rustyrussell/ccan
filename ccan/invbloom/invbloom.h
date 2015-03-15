@@ -7,7 +7,6 @@
 struct invbloom {
 	size_t n_elems;
 	size_t id_size;
-	u32 hashsum_bytes; /* 0 - 4. */
 	u32 salt;
 	s32 *count; /* [n_elems] */
 	u8 *idsum; /* [n_elems][id_size] */
