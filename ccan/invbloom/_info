@@ -59,6 +59,7 @@ int main(int argc, char *argv[])
 		printf("ccan/hash\n");
 		printf("ccan/short_types\n");
 		printf("ccan/tal\n");
+		printf("ccan/typesafe_cb\n");
 		return 0;
 	}
 
