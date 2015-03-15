@@ -10,7 +10,7 @@
 
 	Eppstein, David, et al. "What's the difference?: efficient set reconciliation without prior context." ACM SIGCOMM Computer Communication Review. Vol. 41. No. 4. ACM, 2011. http://conferences.sigcomm.org/sigcomm/2011/papers/sigcomm/p218.pdf
 */
-#define NUM_HASHES 4
+#define NUM_HASHES 3
 
 struct invbloom *invbloom_new_(const tal_t *ctx,
 			       size_t id_size,
