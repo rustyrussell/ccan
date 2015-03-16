@@ -11,7 +11,7 @@ struct invbloom {
 	u32 salt;
 	s32 *count; /* [n_elems] */
 	u8 *idsum; /* [n_elems][id_size] */
-	void (*singleton)(struct invbloom *ib, size_t elem, void *);
+	void (*singleton)(struct invbloom *ib, size_t elem, bool, void *);
 	void *singleton_data;
 };
 
@@ -31,7 +31,7 @@ struct invbloom *invbloom_new_(const tal_t *ctx,
 			       size_t n_elems, u32 salt);
 
 /**
- * invbloom_singleton_cb - set callback for when a singleton is found.
+ * invbloom_singleton_cb - set callback for a singleton created/destroyed.
  * @ib: the invertable bloom lookup table.
  * @cb: the function to call (or NULL for none)
  * @data: the data to hand to the function.
@@ -40,15 +40,21 @@ struct invbloom *invbloom_new_(const tal_t *ctx,
  * possibly multiple times for a single call.  The particular
  * @ib bucket will be consistent, but the rest of the table may
  * not be.
+ *
+ * @cb is of form "void @cb(struct invbloom *ib, size_t bucket, bool
+ * before, data)".  @before is true if the call is done before the
+ * singleton in @bucket is removed (ie. ib->counts[bucket] is -1 or 1,
+ * but is about to change).  @before is false if the call is done
+ * after the operation, and the bucket is now a singleton.
  */
 #define invbloom_singleton_cb(ib, cb, data)			\
 	invbloom_singleton_cb_((ib),				\
 	       typesafe_cb_preargs(void, void *, (cb), (data),  \
-				   struct invbloom *, size_t), (data))
+				   struct invbloom *, size_t, bool), (data))
 
 void invbloom_singleton_cb_(struct invbloom *ib,
 			    void (*cb)(struct invbloom *,
-				       size_t bucket, void *),
+				       size_t bucket, bool before, void *),
 			    void *data);
 
 /**

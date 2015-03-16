@@ -34,7 +34,7 @@ struct invbloom *invbloom_new_(const tal_t *ctx,
 
 void invbloom_singleton_cb_(struct invbloom *ib,
 			    void (*cb)(struct invbloom *,
-				       size_t bucket, void *),
+				       size_t bucket, bool, void *),
 			    void *data)
 {
 	ib->singleton = cb;
@@ -51,7 +51,7 @@ static u8 *idsum_ptr(const struct invbloom *ib, size_t bucket)
 	return (u8 *)ib->idsum + bucket * ib->id_size;
 }
 
-static void check_for_singleton(struct invbloom *ib, size_t bucket)
+static void check_for_singleton(struct invbloom *ib, size_t bucket, bool before)
 {
 	if (!ib->singleton)
 		return;
@@ -59,7 +59,7 @@ static void check_for_singleton(struct invbloom *ib, size_t bucket)
 	if (ib->count[bucket] != 1 && ib->count[bucket] != -1)
 		return;
 
-	ib->singleton(ib, bucket, ib->singleton_data);
+	ib->singleton(ib, bucket, before, ib->singleton_data);
 }
 
 static void add_to_bucket(struct invbloom *ib, size_t n, const u8 *id)
@@ -67,12 +67,14 @@ static void add_to_bucket(struct invbloom *ib, size_t n, const u8 *id)
 	size_t i;
 	u8 *idsum = idsum_ptr(ib, n);
 	
+	check_for_singleton(ib, n, true);
+
 	ib->count[n]++;
 
 	for (i = 0; i < ib->id_size; i++)
 		idsum[i] ^= id[i];
 
-	check_for_singleton(ib, n);
+	check_for_singleton(ib, n, false);
 }
 
 static void remove_from_bucket(struct invbloom *ib, size_t n, const u8 *id)
@@ -80,11 +82,13 @@ static void remove_from_bucket(struct invbloom *ib, size_t n, const u8 *id)
 	size_t i;
 	u8 *idsum = idsum_ptr(ib, n);
 
+	check_for_singleton(ib, n, true);
+
 	ib->count[n]--;
 	for (i = 0; i < ib->id_size; i++)
 		idsum[i] ^= id[i];
 
-	check_for_singleton(ib, n);
+	check_for_singleton(ib, n, false);
 }
 
 void invbloom_insert(struct invbloom *ib, const void *id)
@@ -175,12 +179,15 @@ void invbloom_subtract(struct invbloom *ib1, const struct invbloom *ib2)
 	assert(ib1->id_size == ib2->id_size);
 	assert(ib1->salt == ib2->salt);
 
+	for (i = 0; i < ib1->n_elems; i++)
+		check_for_singleton(ib1, i, true);
+
 	for (i = 0; i < ib1->n_elems * ib1->id_size; i++)
 		ib1->idsum[i] ^= ib2->idsum[i];
 
 	for (i = 0; i < ib1->n_elems; i++) {
 		ib1->count[i] -= ib2->count[i];
-		check_for_singleton(ib1, i);
+		check_for_singleton(ib1, i, false);
 	}
 }
 
