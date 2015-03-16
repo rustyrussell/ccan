@@ -1,67 +1,80 @@
-# simple makefile wrapper to run waf
+CC=gcc
+CFLAGS=-g -O0 -Wall -W -I../../ -I./
+LIBS=
 
-WAF=WAF_MAKE=1 PATH=buildtools/bin:../../buildtools/bin:$$PATH waf
+LIBNTDB_OBJ = ccan_hash.o ccan_tally.o check.o free.o hash.o io.o lock.o open.o summary.o ntdb.o transaction.o traverse.o
 
-all:
-	$(WAF) build
+all: ntdbtorture ntdbtool ntdbdump ntdbrestore ntdbbackup
 
-install:
-	$(WAF) install
+ntdbtorture: tools/ntdbtorture.c libntdb.a
+	$(CC) $(CFLAGS) -o tools/$@ tools/$@.c libntdb.a $(LIBS)
 
-uninstall:
-	$(WAF) uninstall
+ntdbtool: tools/ntdbtool.c libntdb.a
+	$(CC) $(CFLAGS) -o tools/$@ tools/$@.c libntdb.a $(LIBS)
 
-test: FORCE
-	$(WAF) test $(TEST_OPTIONS)
+ntdbdump: tools/ntdbdump.c libntdb.a
+	$(CC) $(CFLAGS) -o tools/$@ tools/$@.c libntdb.a $(LIBS)
 
-testenv:
-	$(WAF) test --testenv $(TEST_OPTIONS)
+ntdbrestore: tools/ntdbrestore.c libntdb.a
+	$(CC) $(CFLAGS) -o tools/$@ tools/$@.c libntdb.a $(LIBS)
 
-quicktest:
-	$(WAF) test --quick $(TEST_OPTIONS)
+ntdbbackup: tools/ntdbbackup.c libntdb.a
+	$(CC) $(CFLAGS) -o tools/$@ tools/$@.c libntdb.a $(LIBS)
 
-dist:
-	touch .tmplock
-	WAFLOCK=.tmplock $(WAF) dist
+libntdb.a: $(LIBNTDB_OBJ)
+	@echo Creating library $@
+	ar r libntdb.a $(LIBNTDB_OBJ)
+	ranlib libntdb.a
 
-distcheck:
-	touch .tmplock
-	WAFLOCK=.tmplock $(WAF) distcheck
+check.o: check.c
+	@echo Compiling $@
+	$(CC) $(CFLAGS) -c check.c -o $@
+
+free.o: free.c
+	@echo Compiling $@
+	$(CC) $(CFLAGS) -c free.c -o $@
+
+hash.o: hash.c
+	@echo Compiling $@
+	$(CC) $(CFLAGS) -c hash.c -o $@
+
+io.o: io.c
+	@echo Compiling $@
+	$(CC) $(CFLAGS) -c io.c -o $@
+
+lock.o: lock.c
+	@echo Compiling $@
+	$(CC) $(CFLAGS) -c lock.c -o $@
+
+open.o: open.c
+	@echo Compiling $@
+	$(CC) $(CFLAGS) -c open.c -o $@
+
+summary.o: summary.c
+	@echo Compiling $@
+	$(CC) $(CFLAGS) -c summary.c -o $@
+
+ntdb.o: ntdb.c
+	@echo Compiling $@
+	$(CC) $(CFLAGS) -c ntdb.c -o $@
+
+transaction.o: transaction.c
+	@echo Compiling $@
+	$(CC) $(CFLAGS) -c transaction.c -o $@
+
+traverse.o: traverse.c
+	@echo Compiling $@
+	$(CC) $(CFLAGS) -c traverse.c -o $@
+
+ccan_hash.o: ../hash/hash.c
+	@echo Compiling $@
+	$(CC) $(CFLAGS) -c ../hash/hash.c -o $@
+
+ccan_tally.o: ../tally/tally.c
+	@echo Compiling $@
+	$(CC) $(CFLAGS) -c ../tally/tally.c -o $@
 
 clean:
-	$(WAF) clean
-
-distclean:
-	$(WAF) distclean
-
-reconfigure: configure
-	$(WAF) reconfigure
-
-show_waf_options:
-	$(WAF) --help
-
-# some compatibility make targets
-everything: all
-
-testsuite: all
-
-.PHONY: check
-check: test
-
-torture: all
-
-# this should do an install as well, once install is finished
-installcheck: test
-
-etags:
-	$(WAF) etags
-
-ctags:
-	$(WAF) ctags
-
-pydoctor:
-	$(WAF) pydoctor
-
-bin/%:: FORCE
-	$(WAF) --targets=`basename $@`
-FORCE:
+	rm -f *.o
+	rm -f *.a
+	rm -f tools/ntdbtorture tools/ntdbtool tools/ntdbdump tools/ntdbrestore tools/ntdbbackup
