@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN" "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+<refentry id="ntdbbackup.8">
+
+<refmeta>
+	<refentrytitle>ntdbbackup</refentrytitle>
+	<manvolnum>8</manvolnum>
+	<refmiscinfo class="source">Samba</refmiscinfo>
+	<refmiscinfo class="manual">System Administration tools</refmiscinfo>
+	<refmiscinfo class="version">4.1</refmiscinfo>
+</refmeta>
+
+
+<refnamediv>
+	<refname>ntdbbackup</refname>
+	<refpurpose>tool for backing up and for validating the integrity of samba .ntdb files</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+	<cmdsynopsis>
+		<command>ntdbbackup</command>
+		<arg choice="opt">-s suffix</arg>
+		<arg choice="opt">-v</arg>
+		<arg choice="opt">-h</arg>
+	</cmdsynopsis>
+</refsynopsisdiv>
+
+<refsect1>
+	<title>DESCRIPTION</title>
+
+	<para>This tool is part of the <citerefentry><refentrytitle>samba</refentrytitle>
+	<manvolnum>1</manvolnum></citerefentry> suite.</para>
+
+	<para><command>ntdbbackup</command> is a tool that may be used to backup samba .ntdb
+	files. This tool may also be used to verify the integrity of the .ntdb files prior
+	to samba startup or during normal operation. If it finds file damage and it finds
+	a prior backup the backup file will be restored.
+	</para>
+</refsect1>
+
+
+<refsect1>
+	<title>OPTIONS</title>
+
+	<variablelist>
+
+		<varlistentry>
+		<term>-h</term>
+		<listitem><para>
+		Get help information.
+		</para></listitem>
+		</varlistentry>
+
+		<varlistentry>
+		<term>-s suffix</term>
+		<listitem><para>
+		The <command>-s</command> option allows the administrator to specify a file
+		backup extension. This way it is possible to keep a history of ntdb backup
+		files by using a new suffix for each backup.
+		</para> </listitem>
+		</varlistentry>
+
+		<varlistentry>
+		<term>-v</term>
+		<listitem><para>
+		The <command>-v</command> will check the database for damages (corrupt data)
+		which if detected causes the backup to be restored.
+		</para></listitem>
+		</varlistentry>
+
+	</variablelist>
+</refsect1>
+
+
+<refsect1>
+	<title>COMMANDS</title>
+
+	<para><emphasis>GENERAL INFORMATION</emphasis></para>
+
+	<para>
+	The <command>ntdbbackup</command> utility can safely be run at any time. It was designed so
+	that it can be used at any time to validate the integrity of ntdb files, even during Samba
+	operation. Typical usage for the command will be:
+	</para>
+
+	<para>ntdbbackup [-s suffix] *.ntdb</para>
+
+	<para>
+	Before restarting samba the following command may be run to validate .ntdb files:
+	</para>
+
+	<para>ntdbbackup -v [-s suffix] *.ntdb</para>
+
+	<para>
+	Note that Samba 4 can use .tdb files instead, so you should
+	use <command>tdbbackup</command> on those files.
+	</para>
+
+	<para>
+	Samba .tdb and .ntdb files are stored in various locations, be sure to run backup all
+	.(n)tdb files on the system. Important files includes:
+	</para>
+
+	<itemizedlist>
+		<listitem><para>
+		<command>secrets.(n)tdb</command> - usual location is in the /usr/local/samba/private
+		directory, or on some systems in /etc/samba.
+		</para></listitem>
+
+		<listitem><para>
+		<command>passdb.(n)tdb</command> - usual location is in the /usr/local/samba/private
+		directory, or on some systems in /etc/samba.
+		</para></listitem>
+
+		<listitem><para>
+		<command>*.tdb</command> and <command>*.ntdb</command> located in the /usr/local/samba/var directory or on some
+		systems in the /var/cache or /var/lib/samba directories.
+		</para></listitem>
+	</itemizedlist>
+
+</refsect1>
+
+<refsect1>
+	<title>VERSION</title>
+
+	<para>This man page is correct for version 4 of the Samba suite.</para>
+</refsect1>
+
+<refsect1>
+	<title>SEE ALSO</title>
+
+    <para>
+      tdbbackup(8), ntdbrestore(8)
+    </para>
+</refsect1>
+
+<refsect1>
+	<title>AUTHOR</title>
+
+	<para>
+	The original Samba software and related utilities were created by Andrew Tridgell.
+	Samba is now developed by the Samba Team as an Open Source project similar to the way
+	the Linux kernel is developed.
+	</para>
+
+	<para>The ntdbbackup man page was written by Rusty Russell,
+	based on the tdbbackup man page by John H Terpstra.</para>
+</refsect1>
+
+</refentry>

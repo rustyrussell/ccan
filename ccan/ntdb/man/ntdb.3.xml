@@ -1,0 +1,132 @@
+<?xml version="1.0"?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN" "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+<refentry>
+  <refmeta>
+    <refentrytitle>ntdb</refentrytitle>
+    <manvolnum>3</manvolnum>
+    <refmiscinfo class="source">Samba</refmiscinfo>
+    <refmiscinfo class="manual">System Administration tools</refmiscinfo>
+    <refmiscinfo class="version">4.1</refmiscinfo>
+  </refmeta>
+  <refnamediv>
+    <refname>ntdb</refname>
+<refpurpose>A not-so trivial keyword/data database system</refpurpose>
+  </refnamediv>
+  <refsynopsisdiv>
+<synopsis>#include &lt;ntdb.h&gt;</synopsis>
+  </refsynopsisdiv>
+  <refsect1><title>DESCRIPTION</title>
+    <para>
+      If you have previously used the tdb library from Samba, much of
+      this will seem familiar, but there are some API changes which a
+      compiler will warn you about if you simply replace 'tdb' with
+      'ntdb' in your code!  The on-disk format for ntdb is
+      incompatible with tdb.
+    </para>
+    <para>
+      tdb's API was based on gdbm, and ntdb continues this tradition,
+      with enhancements.  A differences guide is available in the text
+      file <filename>lib/ntdb/doc/TDB_porting.txt</filename> in the
+      SAMBA source tree.
+    </para>
+  </refsect1>
+  <refsect1><title>NTDB API OVERVIEW</title>
+    <para>
+      The complete API is documented in the ntdb.h header, which is
+      kept up-to-date and recommended reading.
+    </para>
+    <para>
+      Normal usage is to call ntdb_open() to create or open an ntdb
+      file.  ntdb_store() is used to add records, ntdb_fetch() is used
+      to fetch them.  Traversals are supported via callback
+      (ntdb_traverse()) or iteration (ntdb_firstkey() and
+      ntdb_nextkey()).  Transactions are supported for batching
+      updates or reads atomically, using ntdb_transaction_start() and
+      ntdb_transaction_commit().
+    </para>
+    <refsect2><title>Use With Talloc</title>
+      <para>
+	ntdb_open() takes an optional linked list of attributes:
+	in particular you can specify an alternate allocator (such as
+	talloc):
+      </para>
+      <programlisting>
+#include &lt;talloc.h&gt;
+#include &lt;ntdb.h&gt;
+
+static void *my_alloc(const void *owner, size_t len, void *priv)
+{
+    return talloc_size(owner, len);
+}
+
+static void *my_expand(void *old, size_t newlen, void *priv)
+{
+    return talloc_realloc_size(NULL, old, newlen);
+}
+
+static void my_free(void *old, void *priv)
+{
+    talloc_free(old);
+}
+
+/* This opens an ntdb file as a talloc object with given parent. */
+struct ntdb_context *ntdb_open_talloc(const void *parent,
+                                      const char *filename)
+{
+     struct ntdb_context *ntdb;
+     union ntdb_attribute alloc;
+
+     alloc.base.attr = NTDB_ATTRIBUTE_ALLOCATOR;
+     alloc.base.next = NULL;
+     alloc.alloc.alloc = my_alloc;
+     alloc.alloc.expand = my_expand;
+     alloc.alloc.free = my_free;
+
+     ntdb = ntdb_open(filename, NTDB_DEFAULT, O_RDWR|O_CREAT, 0600,
+                      &amp;alloc);
+     if (ntdb) {
+         talloc_steal(parent, ntdb);
+         talloc_set_name(ntdb, "%s", filename);
+     }
+     return ntdb;
+}
+</programlisting>
+    </refsect2>
+  </refsect1>
+  <refsect1><title>SEE ALSO</title>
+    <para>
+      <ulink url="http://tdb.samba.org/"/>
+    </para>
+  </refsect1>
+
+  <refsect1><title>AUTHOR</title>
+    <para> The original tdb software was created by Andrew Tridgell, and
+    is now developed by the
+      Samba Team as an Open Source project similar to the way the
+      Linux kernel is developed.  ntdb was derived from tdb, but mostly
+      rewritten by Rusty Russell.
+    </para>
+  </refsect1>
+
+  <refsect1><title>COPYRIGHT/LICENSE</title>
+    <para>
+      Copyright (C) Rusty Russell 2013, IBM Corporation
+    </para>
+    <para>
+      This program is free software; you can redistribute it and/or modify
+      it under the terms of the GNU Lesser General Public License as
+      published by the Free Software Foundation; either version 3 of the
+      License, or (at your option) any later version.
+    </para>
+    <para>
+      This program is distributed in the hope that it will be useful, but
+      WITHOUT ANY WARRANTY; without even the implied warranty of
+      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+      General Public License for more details.
+    </para>
+    <para>
+      You should have received a copy of the GNU General Public License
+      along with this program; if not, see http://www.gnu.org/licenses/.
+    </para>
+  </refsect1>
+</refentry>

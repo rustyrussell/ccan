@@ -1,0 +1,287 @@
+#!/usr/bin/env python
+
+APPNAME = 'ntdb'
+VERSION = '1.0'
+
+blddir = 'bin'
+
+import sys, os
+
+# find the buildtools directory
+srcdir = '.'
+while not os.path.exists(srcdir+'/buildtools') and len(srcdir.split('/')) < 5:
+    srcdir = srcdir + '/..'
+sys.path.insert(0, srcdir + '/buildtools/wafsamba')
+
+import wafsamba, samba_dist, Options, Logs, glob
+
+samba_dist.DIST_DIRS('lib/ntdb:. lib/replace:lib/replace lib/ccan:lib/ccan buildtools:buildtools')
+
+def set_options(opt):
+    opt.BUILTIN_DEFAULT('replace,ccan')
+    opt.PRIVATE_EXTENSION_DEFAULT('ntdb', noextension='ntdb')
+    opt.RECURSE('lib/replace')
+    opt.add_option('--valgrind',
+                   help=("use valgrind on tests programs"),
+                   action="store_true", dest='VALGRIND', default=False)
+    opt.add_option('--valgrind-log',
+                   help=("where to put the valgrind log"),
+                   action="store", dest='VALGRINDLOG', default=None)
+
+    if opt.IN_LAUNCH_DIR():
+        opt.add_option('--disable-python',
+                       help=("disable the pyntdb module"),
+                       action="store_true", dest='disable_python', default=False)
+
+def configure(conf):
+    conf.RECURSE('lib/replace')
+    conf.RECURSE('lib/ccan')
+
+    conf.env.NTDB_TEST_RUN_SRC=['test/run-001-encode.c',
+                                'test/run-001-fls.c',
+                                'test/run-01-new_database.c',
+                                'test/run-02-expand.c',
+                                'test/run-03-coalesce.c',
+                                'test/run-04-basichash.c',
+                                'test/run-05-readonly-open.c',
+                                'test/run-10-simple-store.c',
+                                'test/run-11-simple-fetch.c',
+                                'test/run-12-check.c',
+                                'test/run-15-append.c',
+                                'test/run-25-hashoverload.c',
+                                'test/run-30-exhaust-before-expand.c',
+                                'test/run-35-convert.c',
+                                'test/run-50-multiple-freelists.c',
+                                'test/run-56-open-during-transaction.c',
+                                'test/run-57-die-during-transaction.c',
+                                'test/run-64-bit-tdb.c',
+                                'test/run-90-get-set-attributes.c',
+                                'test/run-capabilities.c',
+                                'test/run-expand-in-transaction.c',
+                                'test/run-features.c',
+                                'test/run-lockall.c',
+                                'test/run-remap-in-read_traverse.c',
+                                'test/run-seed.c',
+                                'test/run-tdb_errorstr.c',
+                                'test/run-tdb_foreach.c',
+                                'test/run-traverse.c']
+    conf.env.NTDB_TEST_API_SRC=['test/api-12-store.c',
+                                'test/api-13-delete.c',
+                                'test/api-14-exists.c',
+                                'test/api-16-wipe_all.c',
+                                'test/api-20-alloc-attr.c',
+                                'test/api-21-parse_record.c',
+                                'test/api-55-transaction.c',
+                                'test/api-60-noop-transaction.c',
+                                'test/api-80-tdb_fd.c',
+                                'test/api-81-seqnum.c',
+                                'test/api-82-lockattr.c',
+                                'test/api-83-openhook.c',
+                                'test/api-91-get-stats.c',
+                                'test/api-92-get-set-readonly.c',
+                                'test/api-93-repack.c',
+                                'test/api-94-expand-during-parse.c',
+                                'test/api-95-read-only-during-parse.c',
+                                'test/api-add-remove-flags.c',
+                                'test/api-check-callback.c',
+                                'test/api-firstkey-nextkey.c',
+                                'test/api-fork-test.c',
+                                'test/api-locktimeout.c',
+                                'test/api-missing-entries.c',
+                                'test/api-open-multiple-times.c',
+                                'test/api-record-expand.c',
+                                'test/api-simple-delete.c',
+                                'test/api-summary.c']
+    conf.env.NTDB_TEST_API_PY=['test/python-api.py']
+    conf.env.NTDB_TEST_API_HELPER_SRC=['test/helpapi-external-agent.c']
+    conf.env.NTDB_TEST_RUN_HELPER_SRC=['test/helprun-external-agent.c',
+                                       'test/helprun-layout.c']
+    conf.env.NTDB_TEST_HELPER_SRC=['test/external-agent.c',
+                                   'test/failtest_helper.c',
+                                   'test/lock-tracking.c',
+                                   'test/logging.c',
+                                   'test/tap-interface.c']
+
+    conf.env.standalone_ntdb = conf.IN_LAUNCH_DIR()
+    conf.env.disable_python = getattr(Options.options, 'disable_python', False)
+
+    if not conf.env.standalone_ntdb:
+        if conf.CHECK_BUNDLED_SYSTEM('ntdb', minversion=VERSION,
+                                         implied_deps='replace'):
+            conf.define('USING_SYSTEM_NTDB', 1)
+            if conf.CHECK_BUNDLED_SYSTEM_PYTHON('pyntdb', 'ntdb', minversion=VERSION):
+                conf.define('USING_SYSTEM_PYNTDB', 1)
+
+    if not conf.env.disable_python:
+        # also disable if we don't have the python libs installed
+        conf.find_program('python', var='PYTHON')
+        conf.check_tool('python')
+        conf.check_python_version((2,4,2))
+        conf.SAMBA_CHECK_PYTHON_HEADERS(mandatory=False)
+        if not conf.env.HAVE_PYTHON_H:
+            Logs.warn('Disabling pyntdb as python devel libs not found')
+            conf.env.disable_python = True
+
+    conf.CHECK_XSLTPROC_MANPAGES()
+
+    # This make #include <ccan/...> work.
+    conf.ADD_EXTRA_INCLUDES('''#lib''')
+
+    conf.SAMBA_CONFIG_H()
+
+def build(bld):
+    bld.RECURSE('lib/replace')
+    bld.RECURSE('lib/ccan')
+
+    if bld.env.standalone_ntdb:
+        bld.env.PKGCONFIGDIR = '${LIBDIR}/pkgconfig'
+        private_library = False
+    else:
+        private_library = True
+
+    SRC = '''check.c free.c hash.c io.c lock.c open.c
+                 summary.c ntdb.c transaction.c traverse.c'''
+
+    if not bld.CONFIG_SET('USING_SYSTEM_NTDB'):
+        NTDB_CCAN='ccan-likely ccan-ilog ccan-hash ccan-tally'
+        bld.SAMBA_LIBRARY('ntdb',
+                          SRC,
+                          deps='replace ' + NTDB_CCAN ,
+                          includes='.',
+                          abi_directory='ABI',
+                          abi_match='ntdb_*',
+                          hide_symbols=True,
+                          vnum=VERSION,
+                          public_headers='ntdb.h',
+                          public_headers_install=not private_library,
+                          pc_files='ntdb.pc',
+                          private_library=private_library,
+                          manpages='man/ntdb.3')
+
+        bld.SAMBA_BINARY('ntdbtorture',
+                         'tools/ntdbtorture.c',
+                         deps='ntdb ccan-err',
+                         install=False)
+
+        bld.SAMBA_BINARY('ntdbtool',
+                         'tools/ntdbtool.c',
+                         deps='ntdb', manpages='man/ntdbtool.8')
+
+        bld.SAMBA_BINARY('ntdbdump',
+                         'tools/ntdbdump.c',
+                         deps='ntdb', manpages='man/ntdbdump.8')
+
+        bld.SAMBA_BINARY('ntdbrestore',
+                         'tools/ntdbrestore.c',
+                         deps='ntdb', manpages='man/ntdbrestore.8')
+
+        bld.SAMBA_BINARY('ntdbbackup',
+                         'tools/ntdbbackup.c',
+                         deps='ntdb', manpages='man/ntdbbackup.8')
+
+        if bld.env.DEVELOPER_MODE:
+            # FIXME: We need CCAN for some API tests, but waf thinks it's
+            # already available via ntdb.  It is, but not publicly.
+            # Workaround is to build a private, non-hiding version.
+            bld.SAMBA_SUBSYSTEM('ntdb-testing',
+                                SRC,
+                                deps='replace ' + NTDB_CCAN,
+                                includes='.')
+
+            bld.SAMBA_SUBSYSTEM('ntdb-test-helpers',
+                                bld.env.NTDB_TEST_HELPER_SRC,
+                                deps='replace',
+                                allow_warnings=True)
+            bld.SAMBA_SUBSYSTEM('ntdb-run-helpers',
+                                bld.env.NTDB_TEST_RUN_HELPER_SRC,
+                                deps='replace')
+            bld.SAMBA_SUBSYSTEM('ntdb-api-helpers',
+                                bld.env.NTDB_TEST_API_HELPER_SRC,
+                                deps='replace')
+
+            for f in bld.env.NTDB_TEST_RUN_SRC:
+                base = os.path.splitext(os.path.basename(f))[0]
+                bld.SAMBA_BINARY('ntdb-' + base, f,
+                                 deps=NTDB_CCAN + ' ccan-failtest ntdb-test-helpers ntdb-run-helpers',
+                                 install=False)
+
+            for f in bld.env.NTDB_TEST_API_SRC:
+                base = os.path.splitext(os.path.basename(f))[0]
+                bld.SAMBA_BINARY('ntdb-' + base, f,
+                                 deps='ntdb-test-helpers ntdb-api-helpers ntdb-testing',
+                                 install=False)
+
+    if not bld.CONFIG_SET('USING_SYSTEM_PYNTDB'):
+        bld.SAMBA_PYTHON('pyntdb',
+                         source='pyntdb.c',
+                         deps='ntdb',
+                         enabled=not bld.env.disable_python,
+                         realname='ntdb.so',
+                         cflags='-DPACKAGE_VERSION=\"%s\"' % VERSION)
+
+def testonly(ctx):
+    '''run ntdb testsuite'''
+    import Utils, samba_utils, shutil
+    ecode = 0;
+
+    env = samba_utils.LOAD_ENVIRONMENT()
+
+    if env.standalone_ntdb:
+        # FIXME: This is horrible :(
+        test_prefix = "%s/st" % (Utils.g_module.blddir)
+        shutil.rmtree(test_prefix, ignore_errors=True)
+        os.makedirs(test_prefix)
+
+        # Create scratch directory for tests.
+        testdir = os.path.join(test_prefix, 'ntdb-tests')
+        samba_utils.mkdir_p(testdir)
+        # Symlink back to source dir so it can find tests in test/
+        link = os.path.join(testdir, 'test')
+        if not os.path.exists(link):
+            os.symlink(os.path.abspath(os.path.join(env.cwd, 'test')), link)
+
+        if env.options['VALGRIND']:
+            os.environ['VALGRIND'] = 'valgrind -q --num-callers=30 --error-exitcode=11'
+        if env.options['VALGRINDLOG']:
+            os.environ['VALGRIND'] += ' --log-file=%s' % Options.options.VALGRINDLOG
+
+        for f in env.NTDB_TEST_RUN_SRC + env.NTDB_TEST_API_SRC:
+            name = "ntdb-" + os.path.splitext(os.path.basename(f))[0]
+            cmd = "cd " + testdir + " && $VALGRIND " + os.path.abspath(os.path.join(Utils.g_module.blddir, name)) + " > test-output 2>&1"
+            print("..." + f)
+            ret = samba_utils.RUN_COMMAND(cmd)
+            if ret != 0:
+                print("%s (%s) failed:" % (name, f))
+                samba_utils.RUN_COMMAND("cat " + os.path.join(testdir, 'test-output'))
+                ecode = ret;
+                break;
+        if not env.disable_python:
+            for f in env.NTDB_TEST_API_PY:
+                print("..." + f)
+                cmd = "cd " + testdir + " && PYTHONPATH=%s %s %s > test-output 2>&1" % (
+                    os.path.abspath(os.path.join(Utils.g_module.blddir, "python")),
+                        env["PYTHON"], os.path.abspath(f))
+                ret = samba_utils.RUN_COMMAND(cmd)
+                if ret != 0:
+                    print("%s (%s) failed:" % (name, f))
+                    samba_utils.RUN_COMMAND("cat " + os.path.join(testdir, 'test-output'))
+                    ecode = ret
+                    break
+
+    sys.exit(ecode)
+
+# WAF doesn't build the unit tests for this, maybe because they don't link with ntdb?
+# This forces it
+def test(ctx):
+    import Scripting
+    Scripting.commands.append('build')
+    Scripting.commands.append('testonly')
+
+def dist():
+    '''makes a tarball for distribution'''
+    samba_dist.dist()
+
+def reconfigure(ctx):
+    '''reconfigure if config scripts have changed'''
+    import samba_utils
+    samba_utils.reconfigure(ctx)

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE refentry PUBLIC "-//OASIS//DTD DocBook XML V4.2//EN" "http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+<refentry id="ntdbdump.8">
+
+<refmeta>
+	<refentrytitle>ntdbdump</refentrytitle>
+	<manvolnum>8</manvolnum>
+	<refmiscinfo class="source">Samba</refmiscinfo>
+	<refmiscinfo class="manual">System Administration tools</refmiscinfo>
+	<refmiscinfo class="version">4.1</refmiscinfo>
+</refmeta>
+
+
+<refnamediv>
+	<refname>ntdbdump</refname>
+	<refpurpose>tool for printing the contents of an NTDB file</refpurpose>
+</refnamediv>
+
+<refsynopsisdiv>
+	<cmdsynopsis>
+		<command>ntdbdump</command>
+		<arg choice="opt">-k <replaceable>keyname</replaceable></arg>
+		<arg choice="opt">-e</arg>
+		<arg choice="opt">-h</arg>
+		<arg choice="req">filename</arg>
+	</cmdsynopsis>
+</refsynopsisdiv>
+
+<refsect1>
+	<title>DESCRIPTION</title>
+
+	<para>This tool is part of the <citerefentry><refentrytitle>samba</refentrytitle>
+	<manvolnum>1</manvolnum></citerefentry> suite.</para>
+
+	<para><command>ntdbdump</command> is a very simple utility that 'dumps' the
+		contents of a NTDB (New Trivial DataBase) file to standard output in a
+		human-readable format.
+	</para>
+
+	<para>This tool can be used when debugging problems with NTDB files. It is
+		intended for those who are somewhat familiar with Samba internals.
+	</para>
+</refsect1>
+
+<refsect1>
+	<title>OPTIONS</title>
+
+	<variablelist>
+
+		<varlistentry>
+		<term>-h</term>
+		<listitem><para>
+		Get help information.
+		</para></listitem>
+		</varlistentry>
+
+		<varlistentry>
+		<term>-k <replaceable>keyname</replaceable></term>
+		<listitem><para>
+		The <command>-k</command> option restricts dumping to a single key, if found.
+		</para> </listitem>
+		</varlistentry>
+
+	</variablelist>
+</refsect1>
+
+<refsect1>
+	<title>SEE ALSO</title>
+
+    <para>
+      tdbdump(8), ntdbtool(8)
+    </para>
+</refsect1>
+
+<refsect1>
+	<title>VERSION</title>
+
+	<para>This man page is correct for version 4 of the Samba suite.</para>
+</refsect1>
+
+<refsect1>
+	<title>AUTHOR</title>
+
+	<para>
+	The original Samba software and related utilities were created by Andrew Tridgell.
+	Samba is now developed by the Samba Team as an Open Source project similar to the way
+	the Linux kernel is developed.
+	</para>
+
+	<para>The ntdbdump man page was written by Rusty Russell, base on the tdbdump man page by Jelmer Vernooij.</para>
+</refsect1>
+
+</refentry>
