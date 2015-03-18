@@ -5,15 +5,20 @@
 /**
  * ntdb - Next Generation Trivial Database
  *
+ * This package provides an experimental persistent keyword/data store.
+ * Its main advantage over tdb is that it's 64-bit.
+ *
  * Example:
  *	#include <stdio.h>
  *      #include <err.h>
- *      #include "ntdb.h"
+ *      #include <unistd.h>
+ *      #include <ccan/ntdb/ntdb.h>
  *
  *	int main(int argc, char *argv[])
  *	{
  *		NTDB_DATA key = ntdb_mkdata("key", 3);
  *		NTDB_DATA val = ntdb_mkdata("val", 3);
+ *		struct ntdb_context *ntdb;
  *
  *		ntdb = ntdb_open("example.ntdb", NTDB_DEFAULT,
  *				 O_RDWR | O_CREAT | O_TRUNC, 0600, NULL);
@@ -36,14 +41,32 @@
  *          Andrew Esh
  *          Simon McVittie
  *          Tim Potter
+ * Maintainer: Rusty Russell <rusty@rustcorp.com.au>
  */
 int main(int argc, char *argv[])
 {
 	if (argc != 2)
 		return 1;
 
-	if (strcmp(argv[1], "depends") == 0)
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/asearch\n");	
+		printf("ccan/build_assert\n");	
+		printf("ccan/cast\n");	
+		printf("ccan/compiler\n");	
+		printf("ccan/endian\n");	
+		printf("ccan/hash\n");	
+		printf("ccan/ilog\n");	
+		printf("ccan/likely\n");	
+		printf("ccan/tally\n");	
+		printf("ccan/typesafe_cb\n");	
 		return 0;
+	}
+
+	if (strcmp(argv[1], "testdepends") == 0) {
+		printf("ccan/failtest\n");	
+		printf("ccan/err\n");	
+		return 0;
+	}
 
 	return 1;
 }
