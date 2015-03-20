@@ -1,6 +1,7 @@
 #include "ntdb-source.h"
 #include "tap-interface.h"
 #include "logging.h"
+#include "helprun-external-agent.h"
 
 /* We rig the hash so all records clash. */
 static uint32_t clash(const void *key, size_t len, uint32_t seed, void *priv)

@@ -1,9 +1,10 @@
 /* We use direct access to hand to the parse function: what if db expands? */
 #include "config.h"
-#include "ntdb.h"
+#include "../ntdb.h"
 #include "tap-interface.h"
 #include "logging.h"
 #include "../private.h" /* To establish size, esp. for NTDB_INTERNAL dbs */
+#include "helpapi-external-agent.h"
 
 static struct ntdb_context *ntdb;
 

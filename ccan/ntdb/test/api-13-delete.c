@@ -1,8 +1,9 @@
-#include "private.h" // For NTDB_TOPLEVEL_HASH_BITS
+#include "../private.h" // For NTDB_TOPLEVEL_HASH_BITS
 #include <ccan/hash/hash.h>
-#include "ntdb.h"
+#include "../ntdb.h"
 #include "tap-interface.h"
 #include "logging.h"
+#include "helpapi-external-agent.h"
 
 /* We rig the hash so adjacent-numbered records always clash. */
 static uint32_t clash(const void *key, size_t len, uint32_t seed, void *priv)

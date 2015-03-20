@@ -5,6 +5,7 @@
 #include "layout.h"
 #include "failtest_helper.h"
 #include <stdarg.h>
+#include "helprun-external-agent.h"
 
 static size_t len_of(bool breaks_check, bool breaks_write, bool breaks_open)
 {

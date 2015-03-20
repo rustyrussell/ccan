@@ -1,6 +1,7 @@
 #include "ntdb-source.h"
 #include "tap-interface.h"
 #include "logging.h"
+#include "helprun-external-agent.h"
 
 int main(int argc, char *argv[])
 {

@@ -5,15 +5,6 @@
 
 bool failtest_suppress = false;
 
-/* FIXME: From ccan/str */
-static inline bool strends(const char *str, const char *postfix)
-{
-	if (strlen(str) < strlen(postfix))
-		return false;
-
-	return !strcmp(str + strlen(str) - strlen(postfix), postfix);
-}
-
 bool failmatch(const struct failtest_call *call,
 	       const char *file, int line, enum failtest_call_type type)
 {

@@ -1,9 +1,10 @@
 /* Make sure write operations fail during ntdb_parse(). */
 #include "config.h"
-#include "ntdb.h"
-#include "private.h"
+#include "../ntdb.h"
+#include "../private.h"
 #include "tap-interface.h"
 #include "logging.h"
+#include "helpapi-external-agent.h"
 
 static struct ntdb_context *ntdb;
 

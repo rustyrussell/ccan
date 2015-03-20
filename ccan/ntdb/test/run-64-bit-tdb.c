@@ -1,6 +1,7 @@
 #include "ntdb-source.h"
 #include "tap-interface.h"
 #include "logging.h"
+#include "helprun-external-agent.h"
 
 /* The largest 32-bit value which is still a multiple of NTDB_PGSIZE */
 #define ALMOST_4G ((uint32_t)-NTDB_PGSIZE)

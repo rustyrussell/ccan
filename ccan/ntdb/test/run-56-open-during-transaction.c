@@ -1,4 +1,4 @@
-#include "private.h"
+#include "../private.h"
 #include <unistd.h>
 #include "lock-tracking.h"
 
@@ -18,6 +18,7 @@ static int ftruncate_check(int fd, off_t length);
 #include <stdarg.h>
 #include "external-agent.h"
 #include "logging.h"
+#include "helprun-external-agent.h"
 
 static struct agent *agent;
 static bool opened;

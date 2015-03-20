@@ -1,10 +1,11 @@
 /* Another test revealed that we lost an entry.  This reproduces it. */
 #include "config.h"
-#include "ntdb.h"
-#include "private.h"
+#include "../ntdb.h"
+#include "../private.h"
 #include <ccan/hash/hash.h>
 #include "tap-interface.h"
 #include "logging.h"
+#include "helpapi-external-agent.h"
 
 #define NUM_RECORDS 1189
 

@@ -1,11 +1,12 @@
 #include "config.h"
-#include "ntdb.h"
-#include "private.h"
+#include "../ntdb.h"
+#include "../private.h"
 #include "tap-interface.h"
 #include <ccan/hash/hash.h>
 #include <assert.h>
 
 #include "logging.h"
+#include "helpapi-external-agent.h"
 
 static const struct ntdb_context *curr_ntdb;
 static const struct ntdb_file *curr_file;

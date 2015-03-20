@@ -1,6 +1,6 @@
 #ifndef NTDB_TEST_LOGGING_H
 #define NTDB_TEST_LOGGING_H
-#include "ntdb.h"
+#include "../ntdb.h"
 #include <stdbool.h>
 #include <string.h>
 

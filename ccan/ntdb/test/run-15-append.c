@@ -2,6 +2,7 @@
 #include "tap-interface.h"
 #include <ccan/ilog/ilog.h>
 #include "logging.h"
+#include "helprun-external-agent.h"
 
 #define MAX_SIZE 13100
 #define SIZE_STEP 131

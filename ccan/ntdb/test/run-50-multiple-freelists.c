@@ -2,6 +2,7 @@
 #include "tap-interface.h"
 #include "logging.h"
 #include "layout.h"
+#include "helprun-external-agent.h"
 
 int main(int argc, char *argv[])
 {

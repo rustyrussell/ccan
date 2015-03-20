@@ -1,6 +1,6 @@
 #ifndef NTDB_TEST_LAYOUT_H
 #define NTDB_TEST_LAYOUT_H
-#include "private.h"
+#include "../private.h"
 
 struct ntdb_layout *new_ntdb_layout(void);
 void ntdb_layout_add_freetable(struct ntdb_layout *layout);
@@ -76,4 +76,6 @@ struct ntdb_layout {
 	unsigned int num_elems;
 	union ntdb_layout_elem *elem;
 };
+
+#include "helprun-layout.h"
 #endif /* NTDB_TEST_LAYOUT_H */

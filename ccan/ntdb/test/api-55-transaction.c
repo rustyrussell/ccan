@@ -1,8 +1,9 @@
-#include "private.h" // struct ntdb_context
-#include "ntdb.h"
+#include "../private.h" // struct ntdb_context
+#include "../ntdb.h"
 #include "tap-interface.h"
 #include <stdlib.h>
 #include "logging.h"
+#include "helpapi-external-agent.h"
 
 int main(int argc, char *argv[])
 {

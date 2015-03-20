@@ -1,6 +1,7 @@
 #include "ntdb-source.h"
 #include "tap-interface.h"
 #include "logging.h"
+#include "helprun-external-agent.h"
 
 #define OVERLOAD 100
 

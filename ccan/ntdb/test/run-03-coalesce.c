@@ -2,6 +2,7 @@
 #include "tap-interface.h"
 #include "logging.h"
 #include "layout.h"
+#include "helprun-external-agent.h"
 
 static ntdb_len_t free_record_length(struct ntdb_context *ntdb, ntdb_off_t off)
 {

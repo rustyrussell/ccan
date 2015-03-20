@@ -4,6 +4,7 @@
 #include "tap-interface.h"
 #include "external-agent.h"
 #include "logging.h"
+#include "helprun-external-agent.h"
 
 static bool file_larger(int fd, ntdb_len_t size)
 {

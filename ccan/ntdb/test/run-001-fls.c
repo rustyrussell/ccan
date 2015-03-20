@@ -1,5 +1,6 @@
 #include "ntdb-source.h"
 #include "tap-interface.h"
+#include "helprun-external-agent.h"
 
 static unsigned int dumb_fls(uint64_t num)
 {

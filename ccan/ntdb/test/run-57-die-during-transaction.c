@@ -1,4 +1,4 @@
-#include "private.h"
+#include "../private.h"
 #include <unistd.h>
 #include "lock-tracking.h"
 #include "tap-interface.h"
@@ -97,6 +97,7 @@ static void free_all(void)
 #include <setjmp.h>
 #include "external-agent.h"
 #include "logging.h"
+#include "helprun-external-agent.h"
 
 static bool in_transaction;
 static int target, current;

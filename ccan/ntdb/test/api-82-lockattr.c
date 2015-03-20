@@ -1,8 +1,9 @@
-#include "private.h" // for ntdb_fcntl_unlock
-#include "ntdb.h"
+#include "../private.h" // for ntdb_fcntl_unlock
+#include "../ntdb.h"
 #include "tap-interface.h"
 #include <errno.h>
 #include "logging.h"
+#include "helpapi-external-agent.h"
 
 static int mylock(int fd, int rw, off_t off, off_t len, bool waitflag,
 		  void *_err)

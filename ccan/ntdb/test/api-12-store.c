@@ -1,10 +1,10 @@
 #include "config.h"
-#include "ntdb.h"
-#include "private.h"
+#include "../ntdb.h"
+#include "../private.h"
 #include "tap-interface.h"
 #include <ccan/hash/hash.h>
-
 #include "logging.h"
+#include "helpapi-external-agent.h"
 
 /* We use the same seed which we saw a failure on. */
 static uint32_t fixedhash(const void *key, size_t len, uint32_t seed, void *p)

@@ -1,4 +1,4 @@
-#include "private.h"
+#include "../private.h"
 #include <unistd.h>
 #include "lock-tracking.h"
 
@@ -11,6 +11,7 @@
 #include <stdarg.h>
 #include "external-agent.h"
 #include "logging.h"
+#include "helprun-external-agent.h"
 
 #define TEST_DBNAME "run-lockall.ntdb"
 #define KEY_STR "key"

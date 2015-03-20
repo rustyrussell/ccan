@@ -1,6 +1,7 @@
 #include "ntdb-source.h"
 #include "tap-interface.h"
 #include "logging.h"
+#include "helprun-external-agent.h"
 
 static int mylock(int fd, int rw, off_t off, off_t len, bool waitflag,
 		  void *unused)

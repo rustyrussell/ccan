@@ -1,10 +1,11 @@
-#include "private.h"
+#include "../private.h"
 #include <ccan/failtest/failtest_override.h>
 #include "ntdb-source.h"
 #include "tap-interface.h"
 #include <ccan/failtest/failtest.h>
 #include "logging.h"
 #include "failtest_helper.h"
+#include "helprun-external-agent.h"
 
 int main(int argc, char *argv[])
 {

@@ -1,9 +1,10 @@
 #include "config.h"
-#include "ntdb.h"
+#include "../ntdb.h"
 #include "tap-interface.h"
 #include <stdlib.h>
 #include "logging.h"
 #include "../private.h"
+#include "helpapi-external-agent.h"
 
 int main(int argc, char *argv[])
 {

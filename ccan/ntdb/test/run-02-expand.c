@@ -4,6 +4,7 @@
 #include <ccan/failtest/failtest.h>
 #include "logging.h"
 #include "failtest_helper.h"
+#include "helprun-external-agent.h"
 
 int main(int argc, char *argv[])
 {

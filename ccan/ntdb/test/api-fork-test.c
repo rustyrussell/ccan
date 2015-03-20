@@ -11,10 +11,11 @@
  * that doesn't matter.
  */
 #include "config.h"
-#include "ntdb.h"
-#include "private.h"
+#include "../ntdb.h"
+#include "../private.h"
 #include "tap-interface.h"
 #include "logging.h"
+#include "helpapi-external-agent.h"
 
 static bool am_child = false;
 

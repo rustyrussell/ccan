@@ -1,9 +1,10 @@
 #include "config.h"
-#include "ntdb.h"
-#include "private.h"
+#include "../ntdb.h"
+#include "../private.h"
 #include "tap-interface.h"
 #include "external-agent.h"
 #include "logging.h"
+#include "helpapi-external-agent.h"
 
 #define KEY_STR "key"
 

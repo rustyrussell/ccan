@@ -178,28 +178,7 @@ static void add_to_freetable(struct ntdb_context *ntdb,
 			NTDB_LOCK_WAIT, false);
 }
 
-/* Get bits from a value. */
-static uint32_t bits(uint64_t val, unsigned start, unsigned num)
-{
-	assert(num <= 32);
-	return (val >> start) & ((1U << num) - 1);
-}
-
-static ntdb_off_t encode_offset(const struct ntdb_context *ntdb,
-				ntdb_off_t new_off, uint32_t hash)
-{
-	ntdb_off_t extra;
-
-	assert((new_off & (1ULL << NTDB_OFF_CHAIN_BIT)) == 0);
-	assert((new_off >> (64 - NTDB_OFF_UPPER_STEAL)) == 0);
-	/* We pack extra hash bits into the upper bits of the offset. */
-	extra = bits(hash, ntdb->hash_bits, NTDB_OFF_UPPER_STEAL);
-	extra <<= (64 - NTDB_OFF_UPPER_STEAL);
-
-	return new_off | extra;
-}
-
-static ntdb_off_t hbucket_off(ntdb_len_t idx)
+static ntdb_off_t hbucket_offset(ntdb_len_t idx)
 {
 	return sizeof(struct ntdb_header) + sizeof(struct ntdb_used_record)
 		+ idx * sizeof(ntdb_off_t);
@@ -213,7 +192,7 @@ static void add_to_hashtable(struct ntdb_context *ntdb,
 	ntdb_off_t b_off;
 	uint32_t h = ntdb_hash(ntdb, key.dptr, key.dsize);
 
-	b_off = hbucket_off(h & ((1 << ntdb->hash_bits)-1));
+	b_off = hbucket_offset(h & ((1 << ntdb->hash_bits)-1));
 	if (ntdb_read_off(ntdb, b_off) != 0)
 		abort();
 
