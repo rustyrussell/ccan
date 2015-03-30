@@ -1,15 +1,9 @@
 #include <ccan/stringbuilder/stringbuilder.h>
 #include <ccan/stringbuilder/stringbuilder.c>
+#include <ccan/str/str.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
-/*
- * This triggers a circular dependency
- * #include <ccan/str/str.h>
- *
- * We only want the following macro:
- */
-#define streq(s1,s2) (!strcmp(s1,s2))
 
 #include <ccan/tap/tap.h>
 

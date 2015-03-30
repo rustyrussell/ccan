@@ -48,10 +48,11 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
-		/*
-		 * This triggers a circular dependency!
-		 * printf("ccan/str\n");
-		 */
+		return 0;
+	}
+
+	if (strcmp(argv[1], "testdepends") == 0) {
+		printf("ccan/str\n");
 		return 0;
 	}
 
