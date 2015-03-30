@@ -78,6 +78,7 @@ MODS_WITH_SRC := antithread \
 	net \
 	nfs \
 	noerr \
+	ntdb \
 	ogg_to_pcm \
 	opt \
 	ptr_valid \
