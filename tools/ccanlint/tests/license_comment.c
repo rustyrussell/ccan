@@ -10,15 +10,7 @@
 #include <stdio.h>
 #include <err.h>
 #include <ccan/str/str.h>
-
-static char *xstrdup(const char *s) {
-	char * ret = strdup(s);
-	if (ret == NULL) {
-		perror("strdup");
-		abort();
-	}
-	return ret;
-}
+#include <ccan/tal/str/str.h>
 
 /**
  * line_has_license_flavour - returns true if line contains a <flavour> license
@@ -27,21 +19,19 @@ static char *xstrdup(const char *s) {
  * @note ("LGPLv2.0","LGPL") returns true
  * @note ("LGPLv2.0","GPL") returns false
  */
-static bool line_has_license_flavour(const char *line, const char *flavour) {
-	char *strtok_line, *strtok_tmp, *token;
+static bool line_has_license_flavour(const char *line, const char *shortname)
+{
+	char **toks = tal_strsplit(NULL, line, " \t-:", STR_NO_EMPTY);
+	size_t i;
 	bool ret = false;
-	const size_t flavour_len = strlen(flavour);
 
-	strtok_line = strtok_tmp = xstrdup(line);
-	while((token = strtok(strtok_tmp, " \t-:")) != NULL) {
-		if (!strncmp(token, flavour, flavour_len)) {
+	for (i = 0; toks[i] != NULL; i++) {
+		if (strstarts(toks[i], shortname)) {
 			ret = true;
 			break;
 		}
-		strtok_tmp = NULL;
 	}
-	free(strtok_line);
-
+	tal_free(toks);
 	return ret;
 }
 
