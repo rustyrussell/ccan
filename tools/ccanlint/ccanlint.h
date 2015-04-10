@@ -152,6 +152,10 @@ char **per_file_options(const struct ccanlint *test, struct ccan_file *f);
 void score_file_error(struct score *, struct ccan_file *f, unsigned line,
 		      const char *errorfmt, ...);
 
+/* Append message to the score->error */
+void score_error(struct score *score, const char * source,
+		 const char *errorfmt, ...);
+
 /* Start a command in the background. */
 void run_command_async(const void *ctx, unsigned int time_ms,
 		       const char *fmt, ...);

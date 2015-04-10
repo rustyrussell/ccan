@@ -57,7 +57,7 @@ static void do_build(struct manifest *m,
 	m->compiled[COMPILE_NORMAL]
 		= build_module(m, COMPILE_NORMAL, &errstr);
 	if (!m->compiled[COMPILE_NORMAL]) {
-		score_file_error(score, NULL, 0, "%s", errstr);
+		score_error(score, m->modname,"%s", errstr);
 		return;
 	}
 

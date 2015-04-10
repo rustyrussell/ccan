@@ -360,15 +360,9 @@ enum line_compiled get_ccan_line_pp(struct pp_conditions *cond,
 	return ret;
 }
 
-void score_file_error(struct score *score, struct ccan_file *f, unsigned line,
-		      const char *errorfmt, ...)
+static void score_error_vfmt(struct score *score, const char *source,
+			     const char *errorfmt, va_list ap)
 {
-	va_list ap;
-
-	struct file_error *fe = tal(score, struct file_error);
-	fe->file = f;
-	fe->line = line;
-	list_add_tail(&score->per_file_errors, &fe->list);
 
 	if (!score->error)
 		score->error = tal_strdup(score, "");
@@ -384,16 +378,44 @@ void score_file_error(struct score *score, struct ccan_file *f, unsigned line,
 		return;
 	}
 
-	if (line)
-		tal_append_fmt(&score->error, "%s:%u:", f->fullname, line);
-	else
-		tal_append_fmt(&score->error, "%s:", f->fullname);
+	tal_append_fmt(&score->error, "%s:", source);
+	tal_append_vfmt(&score->error, errorfmt, ap);
+	score->error = tal_strcat(score, take(score->error), "\n");
+}
+
+
+
+void score_error(struct score *score, const char *source,
+		 const char *errorfmt, ...)
+{
+	va_list ap;
 
 	va_start(ap, errorfmt);
-	tal_append_vfmt(&score->error, errorfmt, ap);
+	score_error_vfmt(score, source, errorfmt, ap);
 	va_end(ap);
-	score->error = tal_strcat(score, take(score->error),"\n");
 }
+
+void score_file_error(struct score *score, struct ccan_file *f, unsigned line,
+		      const char *errorfmt, ...)
+{
+	va_list ap;
+	char *source;
+
+	struct file_error *fe = tal(score, struct file_error);
+	fe->file = f;
+	fe->line = line;
+	list_add_tail(&score->per_file_errors, &fe->list);
+
+	if (line)
+		source = tal_fmt(score, "%s:%u", f->fullname, line);
+	else
+		source = tal_fmt(score, "%s", f->fullname);
+
+	va_start(ap, errorfmt);
+	score_error_vfmt(score, source, errorfmt, ap);
+	va_end(ap);
+}
+
 
 char *get_or_compile_info(const void *ctx, const char *dir)
 {
