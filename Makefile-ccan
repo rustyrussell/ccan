@@ -100,6 +100,7 @@ MODS_WITH_SRC := antithread \
 	tal/grab_file \
 	tal/link \
 	tal/path \
+	tal/stack \
 	tal/str \
 	tal/talloc \
 	talloc \
