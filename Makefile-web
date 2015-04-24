@@ -1,5 +1,5 @@
 # This can be overridden on cmdline to generate pages elsewhere.
-WEBDIR=/home/rusty/www/html/ccan
+WEBDIR=/srv/www/ccodearchive.net
 
 ALL_PAGES=$(patsubst %, $(WEBDIR)/info/%.html, $(MODS))
 DIRECT_TARBALLS=$(patsubst %, $(WEBDIR)/tarballs/%.tar.bz2, $(MODS))
@@ -21,7 +21,9 @@ modcheck:
 clean-tree:
 	[ "$(WEBDEV)" ] || ! git status --porcelain | grep .
 
-webpages: modcheck clean-tree $(WEB_SUBDIRS) $(PRETTIFY) $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.png $(WEBDIR)/ccan-bg.png $(WEBDIR)/ccan.css $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan $(ALL_PAGES) junkpages
+webpages: modcheck clean-tree webpages-unchecked
+
+webpages-unchecked: $(WEB_SUBDIRS) $(PRETTIFY) $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.png $(WEBDIR)/ccan-bg.png $(WEBDIR)/ccan.css $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan $(ALL_PAGES) junkpages
 
 junkpages: $(WEBDIR)/list.html $(WEBDIR)/junkcode $(JUNKPAGES) $(JUNKBALLS)
 $(WEB_SUBDIRS): $(WEBDIR)
