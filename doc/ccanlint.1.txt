@@ -19,7 +19,7 @@ No encoder? No need to *ccanlint*. You programmer?  Excited to *ccanlint*!
 
 CCAN module is small code of the song. *ccanlint* full CCAN testing
 tool. Each test spray bit of wisdom. Also score. Good score good.
-Bad bad score.
+Bad score bad.
 
 *ccanlint* expect the source code in this directory, or command line can be
 more than one. Exit 0 happy if all modules all tests happy.
