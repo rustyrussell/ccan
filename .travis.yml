@@ -1,0 +1,14 @@
+language: c
+
+install:
+        - sudo apt-get update -qq
+        # jset, jmap
+        - sudo apt-get install libjudy-dev
+        # wwviaudio
+        - sudo apt-get install libvorbis-dev libportaudio-dev
+        # tal
+        - sudo apt-get install libtalloc-dev
+
+script:
+        - make
+        - make check
