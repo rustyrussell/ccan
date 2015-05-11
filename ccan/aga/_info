@@ -40,6 +40,10 @@ int main(int argc, char *argv[])
 		printf("ccan/container_of\n");
 		printf("ccan/ptrint\n");
 		printf("ccan/array_size\n");
+		printf("ccan/tal\n");
+		printf("ccan/tal/str\n");
+		printf("ccan/tal/grab_file\n");
+		printf("ccan/take\n");
 		return 0;
 	}
 
