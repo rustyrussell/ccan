@@ -52,6 +52,21 @@ void htable_init(struct htable *ht,
 		 size_t (*rehash)(const void *elem, void *priv), void *priv);
 
 /**
+ * htable_init_sized - initialize an empty hash table of given size.
+ * @ht: the hash table to initialize
+ * @rehash: hash function to use for rehashing.
+ * @priv: private argument to @rehash function.
+ * @size: the number of element.
+ *
+ * If this returns false, @ht is still usable, but may need to do reallocation
+ * upon an add.  If this returns true, it will not need to reallocate within
+ * @size htable_adds.
+ */
+bool htable_init_sized(struct htable *ht,
+		       size_t (*rehash)(const void *elem, void *priv),
+		       void *priv, size_t size);
+
+/**
  * htable_clear - empty a hash table.
  * @ht: the hash table to clear
  *

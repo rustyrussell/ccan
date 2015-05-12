@@ -52,6 +52,29 @@ void htable_init(struct htable *ht,
 	ht->table = &ht->perfect_bit;
 }
 
+bool htable_init_sized(struct htable *ht,
+		       size_t (*rehash)(const void *, void *),
+		       void *priv, size_t expect)
+{
+	htable_init(ht, rehash, priv);
+
+	/* Don't go insane with sizing. */
+	for (ht->bits = 1; ((size_t)3 << ht->bits) / 4 < expect; ht->bits++) {
+		if (ht->bits == 30)
+			break;
+	}
+
+	ht->table = calloc(1 << ht->bits, sizeof(size_t));
+	if (!ht->table) {
+		ht->table = &ht->perfect_bit;
+		return false;
+	}
+	ht->max = ((size_t)3 << ht->bits) / 4;
+	ht->max_with_deleted = ((size_t)9 << ht->bits) / 10;
+
+	return true;
+}
+	
 void htable_clear(struct htable *ht)
 {
 	if (ht->table != &ht->perfect_bit)

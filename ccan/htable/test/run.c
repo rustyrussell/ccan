@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
 	void *p;
 	struct htable_iter iter;
 
-	plan_tests(29);
+	plan_tests(35);
 	for (i = 0; i < NUM_VALS; i++)
 		val[i] = i;
 	dne = i;
@@ -191,5 +191,17 @@ int main(int argc, char *argv[])
 	ok1(ht.perfect_bit != 0);
 	htable_clear(&ht);
 
+	ok1(htable_init_sized(&ht, hash, NULL, 1024));
+	ok1(ht.max >= 1024);
+	htable_clear(&ht);
+
+	ok1(htable_init_sized(&ht, hash, NULL, 1023));
+	ok1(ht.max >= 1023);
+	htable_clear(&ht);
+
+	ok1(htable_init_sized(&ht, hash, NULL, 1025));
+	ok1(ht.max >= 1025);
+	htable_clear(&ht);
+	
 	return exit_status();
 }

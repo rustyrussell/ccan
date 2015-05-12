@@ -20,6 +20,7 @@
  *
  * It also defines initialization and freeing functions:
  *	void <name>_init(struct <name> *);
+ *	void <name>_init_sized(struct <name> *, size_t);
  *	void <name>_clear(struct <name> *);
  *
  * Add function only fails if we run out of memory:
@@ -52,6 +53,10 @@
 	static inline void name##_init(struct name *ht)			\
 	{								\
 		htable_init(&ht->raw, name##_hash, NULL);		\
+	}								\
+	static inline void name##_init_sized(struct name *ht, size_t s)	\
+	{								\
+		htable_init_sized(&ht->raw, name##_hash, NULL, s);	\
 	}								\
 	static inline void name##_clear(struct name *ht)		\
 	{								\
