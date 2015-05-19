@@ -389,50 +389,84 @@ past_levels:
 }
 
 #ifdef CCAN_TIMER_DEBUG
-void timers_dump(const struct timers *timers, FILE *fp)
+static void dump_bucket_stats(FILE *fp, const struct list_head *h)
 {
-	unsigned int l, i;
-	uint64_t min, max, num;
+	unsigned long long min, max, num;
 	struct timer *t;
 
-	if (!fp)
-		fp = stderr;
-
-	fprintf(fp, "Base: %llu\n", timers->base);
-
-	for (l = 0; timers->level[l] && l < ARRAY_SIZE(timers->level); l++) {
-		fprintf(fp, "Level %i (+%llu):\n",
-			l, (uint64_t)1 << (TIMER_LEVEL_BITS * l));
-		for (i = 0; i < (1 << TIMER_LEVEL_BITS); i++) {
-
-			if (list_empty(&timers->level[l]->list[i]))
-				continue;
-			min = -1ULL;
-			max = 0;
-			num = 0;
-			list_for_each(&timers->level[l]->list[i], t, list) {
-				if (t->time < min)
-					min = t->time;
-				if (t->time > max)
-					max = t->time;
-				num++;
-			}
-			fprintf(stderr, "  %llu (+%llu-+%llu)\n",
-				num, min - timers->base, max - timers->base);
-		}
+	if (list_empty(h)) {
+		printf("\n");
+		return;
 	}
 
 	min = -1ULL;
 	max = 0;
 	num = 0;
-	list_for_each(&timers->far, t, list) {
+	list_for_each(h, t, list) {
 		if (t->time < min)
 			min = t->time;
 		if (t->time > max)
 			max = t->time;
 		num++;
 	}
-	fprintf(stderr, "Far: %llu (%llu-%llu)\n", num, min, max);
+	fprintf(fp, " %llu (%llu-%llu)\n",
+		num, min, max);
+}
+
+void timers_dump(const struct timers *timers, FILE *fp)
+{
+	unsigned int l, i, off;
+	unsigned long long base;
+
+	if (!fp)
+		fp = stderr;
+
+	fprintf(fp, "Base: %llu\n", (unsigned long long)timers->base);
+
+	if (!timers->level[0])
+		goto past_levels;
+
+	fprintf(fp, "Level 0:\n");
+
+	/* First level is simple. */
+	off = timers->base % PER_LEVEL;
+	for (i = 0; i < PER_LEVEL; i++) {
+		const struct list_head *h;
+
+		fprintf(fp, "  Bucket %llu (%lu):",
+			(i+off) % PER_LEVEL, timers->base + i);
+		h = &timers->level[0]->list[(i+off) % PER_LEVEL];
+		dump_bucket_stats(fp, h);
+	}
+
+	/* For other levels, "current" bucket has been emptied, and may contain
+	 * entries for the current + level_size bucket. */
+	for (l = 1; l < ARRAY_SIZE(timers->level) && timers->level[l]; l++) {
+		uint64_t per_bucket = 1ULL << (TIMER_LEVEL_BITS * l);
+
+		off = ((timers->base >> (l*TIMER_LEVEL_BITS)) % PER_LEVEL);
+		/* We start at *next* bucket. */
+		base = (timers->base & ~(per_bucket - 1)) + per_bucket;
+
+		fprintf(fp, "Level %u:\n", l);
+		for (i = 1; i <= PER_LEVEL; i++) {
+			const struct list_head *h;
+
+			fprintf(fp, "  Bucket %llu (%llu - %llu):",
+				(i+off) % PER_LEVEL,
+				base, base + per_bucket - 1);
+
+			h = &timers->level[l]->list[(i+off) % PER_LEVEL];
+			dump_bucket_stats(fp, h);
+			base += per_bucket;
+		}
+	}
+
+past_levels:
+	if (!list_empty(&timers->far)) {
+		fprintf(fp, "Far timers:");
+		dump_bucket_stats(fp, &timers->far);
+	}
 }
 #endif
 
