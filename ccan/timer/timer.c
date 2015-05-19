@@ -180,6 +180,10 @@ next:
 	if (i == PER_LEVEL) {
 		level++;
 		base >>= TIMER_LEVEL_BITS;
+		if (off != 0)
+			/* We need *next* bucket: we've started reusing the
+			 * one above */
+			base++;
 		goto next;
 	}
 
@@ -189,14 +193,23 @@ next:
 	else
 		found = find_first(h, NULL);
 
-	if (need_next) {
+	while (need_next) {
+		need_next = false;
 		if (!timers->level[level+1]) {
 			found = find_first(&timers->far, found);
 		} else {
+			/* Current upper bucket has emptied into this
+			 * bucket; we want *next* one. */
 			base >>= TIMER_LEVEL_BITS;
+			base++;
 			off = base % PER_LEVEL;
-			h = &timers->level[level+1]->list[off];
-			found = find_first(h, found);
+
+			if (off == 0) {
+				need_next = true;
+			} else {
+				h = &timers->level[level+1]->list[off];
+				found = find_first(h, found);
+			}
 		}
 	}
 	return found;
