@@ -131,7 +131,10 @@ static void add_level(struct timers *timers, unsigned int level)
 		timer_add_raw(timers, t);
 }
 
+/* We don't need to search past the first at level 0, since the
+ * bucket range is 1; they're all the same. */
 static const struct timer *find_first(const struct list_head *list,
+				      unsigned int level,
 				      const struct timer *prev)
 {
 	struct timer *t;
@@ -139,6 +142,8 @@ static const struct timer *find_first(const struct list_head *list,
 	list_for_each(list, t, list) {
 		if (!prev || t->time < prev->time)
 			prev = t;
+		if (level == 0)
+			break;
 	}
 	return prev;
 }
@@ -162,7 +167,7 @@ static const struct timer *get_first(const struct timers *timers)
 
 next:
 	if (!timers->level[level])
-		return find_first(&timers->far, NULL);
+		return find_first(&timers->far, -1U, NULL);
 
 	need_next = false;
 	off = base % PER_LEVEL;
@@ -188,15 +193,12 @@ next:
 	}
 
 	/* Level 0 is exact, so they're all the same. */
-	if (level == 0)
-		found = list_top(h, struct timer, list);
-	else
-		found = find_first(h, NULL);
+	found = find_first(h, level, NULL);
 
 	while (need_next) {
 		need_next = false;
 		if (!timers->level[level+1]) {
-			found = find_first(&timers->far, found);
+			found = find_first(&timers->far, -1U, found);
 		} else {
 			/* Current upper bucket has emptied into this
 			 * bucket; we want *next* one. */
@@ -208,7 +210,7 @@ next:
 				need_next = true;
 			} else {
 				h = &timers->level[level+1]->list[off];
-				found = find_first(h, found);
+				found = find_first(h, level+1, found);
 			}
 		}
 	}
