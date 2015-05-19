@@ -360,7 +360,7 @@ struct timers *timers_check(const struct timers *timers, const char *abortstr)
 
 	/* For other levels, "current" bucket has been emptied, and may contain
 	 * entries for the current + level_size bucket. */
-	for (l = 1; timers->level[l] && l < PER_LEVEL; l++) {
+	for (l = 1; l < ARRAY_SIZE(timers->level) && timers->level[l]; l++) {
 		uint64_t per_bucket = 1ULL << (TIMER_LEVEL_BITS * l);
 
 		off = ((timers->base >> (l*TIMER_LEVEL_BITS)) % PER_LEVEL);
