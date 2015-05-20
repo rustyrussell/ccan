@@ -1,3 +1,4 @@
+#define CCAN_TIMER_DEBUG
 #include <ccan/timer/timer.h>
 /* Include the C files directly. */
 #include <ccan/timer/timer.c>

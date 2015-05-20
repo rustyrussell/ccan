@@ -148,73 +148,50 @@ static const struct timer *find_first(const struct list_head *list,
 	return prev;
 }
 
+/* FIXME: Suboptimal */
+static const struct timer *brute_force_first(const struct timers *timers)
+{
+	unsigned int l, i;
+	const struct timer *found = NULL;
+
+	for (l = 0; l < ARRAY_SIZE(timers->level) && timers->level[l]; l++) {
+		for (i = 0; i < PER_LEVEL; i++)
+			found = find_first(&timers->level[l]->list[i], l,
+					   found);
+	}
+
+	found = find_first(&timers->far, -1U, found);
+	return found;
+}
+			
 static const struct timer *get_first(const struct timers *timers)
 {
-	unsigned int level, i, off;
-	bool need_next;
-	uint64_t base;
-	const struct timer *found = NULL;
-	struct list_head *h;
+	uint64_t time;
+	
+	/* Where can we start from? */
+	if (timers->first < timers->base)
+		time = timers->base;
+	else
+		time = timers->first;
 
-	if (timers->first < timers->base) {
-		base = timers->base;
-		level = 0;
-	} else {
-		/* May not be accurate, due to timer_del / expiry. */
-		level = level_of(timers, timers->first);
-		base = timers->first >> (TIMER_LEVEL_BITS * level);
-	}
+	/* We can have just far timers, for example. */
+	if (timers->level[0]) {
+		/* First search rest of lower buckets; we've already spilled
+		 * so if we find one there we don't need to search further. */
+		unsigned int i, off = time % PER_LEVEL;
 
-next:
-	if (!timers->level[level])
-		return find_first(&timers->far, -1U, NULL);
-
-	need_next = false;
-	off = base % PER_LEVEL;
-	for (i = 0; i < PER_LEVEL; i++) {
-		h = &timers->level[level]->list[(i+off) % PER_LEVEL];
-
-		if (!list_empty(h))
-			break;
-
-		/* We haven't cascaded yet, so if we wrap, we'll need to
-		 * check next level, too. */
-		if (i + off == PER_LEVEL)
-			need_next = true;
-	}
-	if (i == PER_LEVEL) {
-		level++;
-		base >>= TIMER_LEVEL_BITS;
-		if (off != 0)
-			/* We need *next* bucket: we've started reusing the
-			 * one above */
-			base++;
-		goto next;
-	}
-
-	/* Level 0 is exact, so they're all the same. */
-	found = find_first(h, level, NULL);
-
-	while (need_next) {
-		need_next = false;
-		if (!timers->level[level+1]) {
-			found = find_first(&timers->far, -1U, found);
-		} else {
-			/* Current upper bucket has emptied into this
-			 * bucket; we want *next* one. */
-			base >>= TIMER_LEVEL_BITS;
-			base++;
-			off = base % PER_LEVEL;
-
-			if (off == 0) {
-				need_next = true;
-			} else {
-				h = &timers->level[level+1]->list[off];
-				found = find_first(h, level+1, found);
-			}
+		for (i = off; i < PER_LEVEL; i++) {
+			struct list_head *h = &timers->level[0]->list[i];
+			if (!list_empty(h))
+				return find_first(h, 0, NULL);
 		}
 	}
-	return found;
+
+	/* From here on, we're searching non-normalized parts of the
+	 * data structure, which is much subtler.
+	 *
+	 * So we brute force. */
+	return brute_force_first(timers);
 }
 
 static bool update_first(struct timers *timers)
