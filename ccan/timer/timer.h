@@ -165,8 +165,12 @@ void timers_dump(const struct timers *timers, FILE *fp);
 struct timers {
 	/* Far in the future. */
 	struct list_head far;
+	/* Current time. */
 	uint64_t base;
+	/* Overall first value. */
 	uint64_t first;
+	/* First value in each level (plus 1 for far list) */
+	uint64_t firsts[(64 + TIMER_LEVEL_BITS-1) / TIMER_LEVEL_BITS + 1];
 
 	struct timer_level *level[(64 + TIMER_LEVEL_BITS-1) / TIMER_LEVEL_BITS];
 };
