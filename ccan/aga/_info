@@ -36,6 +36,7 @@ int main(int argc, char *argv[])
 
 	if (strcmp(argv[1], "testdepends") == 0) {
 		printf("ccan/container_of\n");
+		printf("ccan/ptrint\n");
 		return 0;
 	}
 
