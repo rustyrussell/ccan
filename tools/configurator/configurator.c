@@ -277,6 +277,13 @@ static struct test tests[] = {
 	  "#include <sys/termios.h>\n" },
 	{ "HAVE_TYPEOF", INSIDE_MAIN, NULL, NULL,
 	  "__typeof__(argc) i; i = argc; return i == argc ? 0 : 1;" },
+	{ "HAVE_UNALIGNED_ACCESS", DEFINES_EVERYTHING|EXECUTE, NULL, NULL,
+	  "#include <string.h>\n"
+	  "int main(int argc, char *argv[]) {\n"
+	  "     char pad[sizeof(int *) * 1];\n"
+	  "	strncpy(pad, argv[0], sizeof(pad));\n"
+	  "	return *(int *)(pad) == *(int *)(pad + 1);\n"
+	  "}\n" },
 	{ "HAVE_UTIME", DEFINES_FUNC, NULL, NULL,
 	  "#include <sys/types.h>\n"
 	  "#include <utime.h>\n"
