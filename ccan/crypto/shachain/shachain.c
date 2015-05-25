@@ -49,7 +49,7 @@ void shachain_init(struct shachain *shachain)
 	shachain->num_valid = 0;
 }
 
-void shachain_add_hash(struct shachain *chain,
+bool shachain_add_hash(struct shachain *chain,
 		       shachain_index_t index, const struct sha256 *hash)
 {
 	int i;
@@ -57,8 +57,16 @@ void shachain_add_hash(struct shachain *chain,
 	for (i = 0; i < chain->num_valid; i++) {
 		/* If we could derive this value, we don't need it,
 		 * not any others (since they're in order). */
-		if (can_derive(index, chain->known[i].index))
+		if (can_derive(index, chain->known[i].index)) {
+			struct sha256 expect;
+
+			/* Make sure the others derive as expected! */
+			derive(index, chain->known[i].index, hash, &expect);
+			if (memcmp(&expect, &chain->known[i].hash,
+				   sizeof(expect)) != 0)
+				return false;
 			break;
+		}
 	}
 
 	/* This can happen if you skip indices! */
@@ -66,6 +74,7 @@ void shachain_add_hash(struct shachain *chain,
 	chain->known[i].index = index;
 	chain->known[i].hash = *hash;
 	chain->num_valid = i+1;
+	return true;
 }
 
 bool shachain_get_hash(const struct shachain *chain,

@@ -24,7 +24,7 @@ struct shachain {
 
 void shachain_init(struct shachain *shachain);
 
-void shachain_add_hash(struct shachain *shachain,
+bool shachain_add_hash(struct shachain *shachain,
 		       shachain_index_t index, const struct sha256 *hash);
 
 bool shachain_get_hash(const struct shachain *shachain,
