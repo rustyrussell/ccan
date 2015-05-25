@@ -15,6 +15,7 @@ void shachain_from_seed(const struct sha256 *seed, shachain_index_t index,
 			struct sha256 *hash);
 
 struct shachain {
+	shachain_index_t max_index;
 	unsigned int num_valid;
 	struct {
 		shachain_index_t index;

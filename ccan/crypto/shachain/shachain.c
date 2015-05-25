@@ -44,9 +44,10 @@ void shachain_from_seed(const struct sha256 *seed, shachain_index_t index,
 	derive((shachain_index_t)-1ULL, index, seed, hash);
 }
 
-void shachain_init(struct shachain *shachain)
+void shachain_init(struct shachain *chain)
 {
-	shachain->num_valid = 0;
+	chain->num_valid = 0;
+	chain->max_index = 0;
 }
 
 bool shachain_add_hash(struct shachain *chain,
@@ -54,6 +55,10 @@ bool shachain_add_hash(struct shachain *chain,
 {
 	int i;
 
+	/* You have to insert them in order! */
+	assert(index == chain->max_index + 1 ||
+	       (index == 0 && chain->num_valid == 0));
+	
 	for (i = 0; i < chain->num_valid; i++) {
 		/* If we could derive this value, we don't need it,
 		 * not any others (since they're in order). */
@@ -74,6 +79,7 @@ bool shachain_add_hash(struct shachain *chain,
 	chain->known[i].index = index;
 	chain->known[i].hash = *hash;
 	chain->num_valid = i+1;
+	chain->max_index = index;
 	return true;
 }
 
