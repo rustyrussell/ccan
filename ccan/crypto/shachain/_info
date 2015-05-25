@@ -1,0 +1,29 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * crypto/shachain - compactly-representable chain of 256-bit numbers.
+ *
+ * This code produces a practically infinite (2^64) chain of 256-bit numbers
+ * from a single number, such that you can't derive element N from any element
+ * less than N, but can efficiently derive element N from a limited number
+ * of elements >= N.
+ *
+ * License: BSD-MIT
+ * Author: Rusty Russell <rusty@rustcorp.com.au>
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/ilog\n");
+		printf("ccan/crypto/sha256\n");
+		return 0;
+	}
+
+	return 1;
+}
