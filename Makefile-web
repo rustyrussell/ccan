@@ -11,8 +11,7 @@ JUNKBALLS=$(JUNKDIRS:%=$(WEBDIR)/%.tar.bz2)
 PRETTIFY=$(WEBDIR)/prettify/src/run_prettify.js $(WEBDIR)/prettify/src/prettify.css
 
 upload: fastcheck modcheck
-	git push origin HEAD:master
-	git push github HEAD:master
+	git push HEAD:master
 
 # Check MODS list in Makefile-ccan matches modules we find.
 modcheck:
