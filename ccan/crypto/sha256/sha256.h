@@ -29,15 +29,15 @@ struct sha256 {
 };
 
 /**
- * sha256 - return sha256 of an array of bytes.
+ * sha256 - return sha256 of an object.
  * @sha256: the sha256 to fill in
- * @p: array or pointer to first element
- * @num: the number of elements to hash
+ * @p: pointer to memory,
+ * @size: the number of bytes pointed to by @p
  *
- * The bytes pointed to by @p is SHA256 hashes into @sha256.  This is
+ * The bytes pointed to by @p is SHA256 hashed into @sha256.  This is
  * equivalent to sha256_init(), sha256_update() then sha256_done().
  */
-#define sha256(sha256, p, num) sha256_arr((sha256), (p), (num), sizeof(*(p)))
+void sha256(struct sha256 *sha, const void *p, size_t size);
 
 /**
  * struct sha256_ctx - structure to store running context for sha256
@@ -110,16 +110,15 @@ void sha256_init(struct sha256_ctx *ctx);
 #endif
 
 /**
- * sha256_update - include an array of data in the hash.
+ * sha256_update - include some memory in the hash.
  * @ctx: the sha256_ctx to use
- * @p: array or pointer to first element
- * @num: the number of elements to hash
+ * @p: pointer to memory,
+ * @size: the number of bytes pointed to by @p
  *
  * You can call this multiple times to hash more data, before calling
  * sha256_done().
  */
-#define sha256_update(ctx, p, num) \
-	sha256_update_arr((ctx), (p), (num), sizeof(*(p)))
+void sha256_update(struct sha256_ctx *ctx, const void *p, size_t size);
 
 /**
  * sha256_done - finish SHA256 and return the hash
@@ -146,8 +145,4 @@ void sha256_le64(struct sha256_ctx *ctx, uint64_t v);
 void sha256_be16(struct sha256_ctx *ctx, uint16_t v);
 void sha256_be32(struct sha256_ctx *ctx, uint32_t v);
 void sha256_be64(struct sha256_ctx *ctx, uint64_t v);
-
-void sha256_update_arr(struct sha256_ctx *ctx, const void *p,
-		       size_t num, size_t size);
-void sha256_arr(struct sha256 *sha, const void *p, size_t num, size_t size);
 #endif /* CCAN_CRYPTO_SHA256_H */

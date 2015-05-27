@@ -33,7 +33,7 @@ static void derive(shachain_index_t from, shachain_index_t to,
 	for (i = ilog64(branches) - 1; i >= 0; i--) {
 		if (((branches >> i) & 1)) {
 			change_bit(hash->u.u8, i);
-			sha256(hash, hash, 1);
+			sha256(hash, hash, sizeof(*hash));
 		}
 	}
 }

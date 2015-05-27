@@ -36,15 +36,10 @@ void sha256_init(struct sha256_ctx *ctx)
 	SHA256_Init(&ctx->c);
 }
 
-void sha256_update_arr(struct sha256_ctx *ctx, const void *p,
-		       size_t num, size_t size)
+void sha256_update_bytes(struct sha256_ctx *ctx, const void *p, size_t size)
 {
-	size_t total = num * size;
-
-	/* Don't overflow. */
-	assert(size == 0 || total / size == num);
 	check_sha256(ctx);
-	SHA256_Update(&ctx->c, p, total);
+	SHA256_Update(&ctx->c, p, size);
 }
 
 void sha256_done(struct sha256_ctx *ctx, struct sha256 *res)
@@ -221,15 +216,10 @@ void sha256_init(struct sha256_ctx *ctx)
 	*ctx = init;
 }
 
-void sha256_update_arr(struct sha256_ctx *ctx, const void *p,
-		       size_t num, size_t size)
+void sha256_update(struct sha256_ctx *ctx, const void *p, size_t size)
 {
-	size_t total = num * size;
-
-	/* Don't overflow. */
-	assert(size == 0 || total / size == num);
 	check_sha256(ctx);
-	add(ctx, p, total);
+	add(ctx, p, size);
 }
 
 void sha256_done(struct sha256_ctx *ctx, struct sha256 *res)
@@ -249,69 +239,69 @@ void sha256_done(struct sha256_ctx *ctx, struct sha256 *res)
 }
 #endif
 
-void sha256_arr(struct sha256 *sha, const void *p, size_t num, size_t size)
+void sha256(struct sha256 *sha, const void *p, size_t size)
 {
 	struct sha256_ctx ctx;
 
 	sha256_init(&ctx);
-	sha256_update_arr(&ctx, p, num, size);
+	sha256_update(&ctx, p, size);
 	sha256_done(&ctx, sha);
 }
 	
 void sha256_u8(struct sha256_ctx *ctx, uint8_t v)
 {
-	sha256_update_arr(ctx, &v, sizeof(v), 1);
+	sha256_update(ctx, &v, sizeof(v));
 }
 
 void sha256_u16(struct sha256_ctx *ctx, uint16_t v)
 {
-	sha256_update_arr(ctx, &v, sizeof(v), 1);
+	sha256_update(ctx, &v, sizeof(v));
 }
 
 void sha256_u32(struct sha256_ctx *ctx, uint32_t v)
 {
-	sha256_update_arr(ctx, &v, sizeof(v), 1);
+	sha256_update(ctx, &v, sizeof(v));
 }
 
 void sha256_u64(struct sha256_ctx *ctx, uint64_t v)
 {
-	sha256_update_arr(ctx, &v, sizeof(v), 1);
+	sha256_update(ctx, &v, sizeof(v));
 }
 
 /* Add as little-endian */
 void sha256_le16(struct sha256_ctx *ctx, uint16_t v)
 {
 	leint16_t lev = cpu_to_le16(v);
-	sha256_update_arr(ctx, &lev, sizeof(lev), 1);
+	sha256_update(ctx, &lev, sizeof(lev));
 }
 	
 void sha256_le32(struct sha256_ctx *ctx, uint32_t v)
 {
 	leint32_t lev = cpu_to_le32(v);
-	sha256_update_arr(ctx, &lev, sizeof(lev), 1);
+	sha256_update(ctx, &lev, sizeof(lev));
 }
 	
 void sha256_le64(struct sha256_ctx *ctx, uint64_t v)
 {
 	leint64_t lev = cpu_to_le64(v);
-	sha256_update_arr(ctx, &lev, sizeof(lev), 1);
+	sha256_update(ctx, &lev, sizeof(lev));
 }
 
 /* Add as big-endian */
 void sha256_be16(struct sha256_ctx *ctx, uint16_t v)
 {
 	beint16_t bev = cpu_to_be16(v);
-	sha256_update_arr(ctx, &bev, sizeof(bev), 1);
+	sha256_update(ctx, &bev, sizeof(bev));
 }
 	
 void sha256_be32(struct sha256_ctx *ctx, uint32_t v)
 {
 	beint32_t bev = cpu_to_be32(v);
-	sha256_update_arr(ctx, &bev, sizeof(bev), 1);
+	sha256_update(ctx, &bev, sizeof(bev));
 }
 	
 void sha256_be64(struct sha256_ctx *ctx, uint64_t v)
 {
 	beint64_t bev = cpu_to_be64(v);
-	sha256_update_arr(ctx, &bev, sizeof(bev), 1);
+	sha256_update(ctx, &bev, sizeof(bev));
 }
