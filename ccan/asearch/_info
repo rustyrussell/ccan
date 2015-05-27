@@ -18,7 +18,7 @@
  *	#include <stdio.h>
  *	#include <string.h>
  *	
- *	static int cmp(const char *key, char *const *elem)
+ *	static int cmp(const char *key, char *const *elem, void *ctx)
  *	{
  *		return strcmp(key, *elem);
  *	}
@@ -34,7 +34,7 @@
  *			exit(1);
  *		}
  *	
- *		p = asearch(argv[1], &argv[2], argc-2, cmp);
+ *		p = asearch(argv[1], &argv[2], argc-2, cmp, NULL);
  *		if (!p) {
  *			printf("Not found!\n");
  *			return 1;

@@ -1,6 +1,8 @@
 #include <ccan/asearch/asearch.h>
 
-static int cmp(const char *key, char *const *elem)
+#include <ccan/asearch/asearch.c>
+
+static int cmp(const char *key, char *const *elem, void *ctx)
 {
 	return 0;
 }
@@ -17,6 +19,6 @@ int main(int argc, char **argv)
 #else
 	char **p;
 #endif
-	p = asearch(key, argv+1, argc-1, cmp);
+	p = asearch(key, argv+1, argc-1, cmp, NULL);
 	return p ? 0 : 1;
 }

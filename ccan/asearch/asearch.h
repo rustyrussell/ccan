@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <ccan/typesafe_cb/typesafe_cb.h>
 
+typedef int (*asearch_cmp)(const void *, const void *, void *);
+
 /**
  * asearch - search an array of elements
  * @key: pointer to item being searched for
@@ -22,17 +24,22 @@
  * the same comparison function for both sort() and asearch().
  */
 #if HAVE_TYPEOF
-#define asearch(key, base, num, cmp)					\
-	((__typeof__(*(base))*)(bsearch((key), (base), (num), sizeof(*(base)), \
-		typesafe_cb_cast(int (*)(const void *, const void *),	\
+#define asearch(key, base, num, cmp, ctx)				\
+	((__typeof__(*(base))*)(_asearch((key), (base), (num), sizeof(*(base)), \
+		typesafe_cb_cast(asearch_cmp,				\
 				 int (*)(const __typeof__(*(key)) *,	\
-					 const __typeof__(*(base)) *),	\
-				 (cmp)))))
+					 const __typeof__(*(base)) *,	\
+					 __typeof__(*(ctx)) *),		\
+				 (cmp)), (ctx))))
 
 #else
-#define asearch(key, base, num, cmp)				\
-	(bsearch((key), (base), (num), sizeof(*(base)),		\
-		 (int (*)(const void *, const void *))(cmp)))
+#define asearch(key, base, num, cmp, ctx)				\
+	(_asearch((key), (base), (num), sizeof(*(base)),		\
+		  (int (*)(const void *, const void *, void *))(cmp), (ctx)))
 #endif
+
+void *_asearch(const void *key, const void *base,
+	       size_t nmemb, size_t size,
+	       asearch_cmp compar, void *ctx);
 
 #endif /* CCAN_ASEARCH_H */

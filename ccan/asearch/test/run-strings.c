@@ -3,7 +3,9 @@
 #include <ccan/tap/tap.h>
 #include <stdlib.h>
 
-static int cmp(const int *key, const char *const *elem)
+#include <ccan/asearch/asearch.c>
+
+static int cmp(const int *key, const char *const *elem, void *ctx)
 {
 	return *key - atoi(*elem);
 }
@@ -15,7 +17,7 @@ int main(void)
 	const char **p;
 
 	plan_tests(1);
-	p = asearch(&key, args, ARRAY_SIZE(args), cmp);
+	p = asearch(&key, args, ARRAY_SIZE(args), cmp, NULL);
 	ok1(p == &args[2]);
 
 	return exit_status();

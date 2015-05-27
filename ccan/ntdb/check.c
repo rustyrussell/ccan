@@ -114,7 +114,7 @@ static enum NTDB_ERROR check_header(struct ntdb_context *ntdb,
 	return NTDB_SUCCESS;
 }
 
-static int off_cmp(const ntdb_off_t *a, const ntdb_off_t *b)
+static int off_cmp(const ntdb_off_t *a, const ntdb_off_t *b, void *ctx)
 {
 	/* Can overflow an int. */
 	return *a > *b ? 1
@@ -153,7 +153,7 @@ static enum NTDB_ERROR check_entry(struct ntdb_context *ntdb,
 				   " %llu", (long long)off_and_hash);
 	}
 
-	p = asearch(&off, used, num_used, off_cmp);
+	p = asearch(&off, used, num_used, off_cmp, NULL);
 	if (!p) {
 		return ntdb_logerr(ntdb, NTDB_ERR_CORRUPT, NTDB_LOG_ERROR,
 				   "ntdb_check: Invalid offset"
@@ -430,7 +430,7 @@ static enum NTDB_ERROR check_free_table(struct ntdb_context *ntdb,
 			}
 
 			/* FIXME: Check hash bits */
-			p = asearch(&off, fr, num_free, off_cmp);
+			p = asearch(&off, fr, num_free, off_cmp, NULL);
 			if (!p) {
 				return ntdb_logerr(ntdb, NTDB_ERR_CORRUPT,
 						  NTDB_LOG_ERROR,

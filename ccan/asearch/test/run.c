@@ -3,7 +3,9 @@
 #include <ccan/tap/tap.h>
 #include <limits.h>
 
-static int test_cmp(const int *key, const int *elt)
+#include <ccan/asearch/asearch.c>
+
+static int test_cmp(const int *key, const int *elt, void *ctx)
 {
 	if (*key < *elt)
 		return -1;
@@ -23,12 +25,14 @@ int main(void)
 	for (start = 0; start < ARRAY_SIZE(arr); start++) {
 		for (num = 0; num < ARRAY_SIZE(arr) - start; num++) {
 			key = 7;
-			ok1(asearch(&key, &arr[start], num, test_cmp) == NULL);
+			ok1(asearch(&key, &arr[start], num, test_cmp,
+				    NULL) == NULL);
 			total++;
 			for (i = start; i < start+num; i++) {
 				const int *ret;
 				key = arr[i];
-				ret = asearch(&key, &arr[start], num, test_cmp);
+				ret = asearch(&key, &arr[start], num,
+					      test_cmp, NULL);
 				ok1(ret);
 				ok1(ret && *ret == key);
 				total++;

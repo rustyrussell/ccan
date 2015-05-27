@@ -2,7 +2,9 @@
 #include <ccan/array_size/array_size.h>
 #include <string.h>
 
-static int cmp(const char *key, const char *const *elem)
+#include <ccan/asearch/asearch.c>
+
+static int cmp(const char *key, const char *const *elem, void *ctx)
 {
 	return strcmp(key, *elem);
 }
@@ -20,6 +22,6 @@ int main(void)
 #else
 	const char **p;
 #endif
-	p = asearch(key, elems, ARRAY_SIZE(elems), cmp);
+	p = asearch(key, elems, ARRAY_SIZE(elems), cmp, NULL);
 	return p ? 0 : 1;
 }
