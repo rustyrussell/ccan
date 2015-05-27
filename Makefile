@@ -73,6 +73,18 @@ summary-check-tal/%: tools/ccanlint/ccanlint $(OBJFILES)
 summary-fastcheck-tal/%: tools/ccanlint/ccanlint $(OBJFILES)
 	$(CCANLINT_FAST) -s ccan/tal/$*
 
+summary-check-str/%: tools/ccanlint/ccanlint $(OBJFILES)
+	$(CCANLINT) -s ccan/str/$*
+
+summary-fastcheck-str/%: tools/ccanlint/ccanlint $(OBJFILES)
+	$(CCANLINT_FAST) -s ccan/str/$*
+
+summary-check-crypto/%: tools/ccanlint/ccanlint $(OBJFILES)
+	$(CCANLINT) -s ccan/crypto/$*
+
+summary-fastcheck-crypto/%: tools/ccanlint/ccanlint $(OBJFILES)
+	$(CCANLINT_FAST) -s ccan/crypto/$*
+
 ccan/%/info: ccan/%/_info
 	$(CC) $(CCAN_CFLAGS) -o $@ -x c $<
 
