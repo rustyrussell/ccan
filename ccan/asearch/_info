@@ -10,7 +10,7 @@
  *
  * This version uses macros to be typesafe on platforms which support it.
  *
- * License: LGPL
+ * License: LGPL (v2.1 or any later version)
  * Author: Rusty Russell <rusty@rustcorp.com.au>
  *
  * Example:
