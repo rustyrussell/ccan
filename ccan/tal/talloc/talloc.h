@@ -185,14 +185,25 @@ typedef TALLOC_CTX tal_t;
 #define tal_parent(ctx) talloc_parent(ctx)
 
 /**
- * tal_dup - duplicate an array.
+ * tal_dup - duplicate an object.
+ * @ctx: The tal allocated object to be parent of the result (may be NULL).
+ * @type: the type (should match type of @p!)
+ * @p: the object to copy (or reparented if take())
+ */
+#define tal_dup(ctx, type, p)						\
+	((type *)tal_talloc_dup_((ctx), tal_talloc_typechk_(p, type *),	\
+				 sizeof(type), 1, 0,			\
+				 TAL_LABEL(type, "")))
+
+/**
+ * tal_dup_arr - duplicate an array.
  * @ctx: The tal allocated object to be parent of the result (may be NULL).
  * @type: the type (should match type of @p!)
  * @p: the array to copy (or resized & reparented if take())
  * @n: the number of sizeof(type) entries to copy.
  * @extra: the number of extra sizeof(type) entries to allocate.
  */
-#define tal_dup(ctx, type, p, n, extra)					\
+#define tal_dup_arr(ctx, type, p, n, extra)					\
 	((type *)tal_talloc_dup_((ctx), tal_talloc_typechk_(p, type *),	\
 				 sizeof(type), (n), (extra),		\
 				 TAL_LABEL(type, "[]")))

@@ -33,19 +33,19 @@ int main(void)
 	origpi = tal_arr(NULL, int, 100);
 	ok1(origpi);
 	ok1(error_count == 0);
-	pi = tal_dup(NULL, int, origpi, (size_t)-1, 0);
+	pi = tal_dup_arr(NULL, int, origpi, (size_t)-1, 0);
 	ok1(!pi);
 	ok1(error_count == 1);
-	pi = tal_dup(NULL, int, origpi, 0, (size_t)-1);
+	pi = tal_dup_arr(NULL, int, origpi, 0, (size_t)-1);
 	ok1(!pi);
 	ok1(error_count == 2);
 
-	pi = tal_dup(NULL, int, origpi, (size_t)-1UL / sizeof(int),
+	pi = tal_dup_arr(NULL, int, origpi, (size_t)-1UL / sizeof(int),
 		     (size_t)-1UL / sizeof(int));
 	ok1(!pi);
 	ok1(error_count == 3);
 	/* This will still overflow when tal_hdr is added. */
-	pi = tal_dup(NULL, int, origpi, (size_t)-1UL / sizeof(int) / 2,
+	pi = tal_dup_arr(NULL, int, origpi, (size_t)-1UL / sizeof(int) / 2,
 		     (size_t)-1UL / sizeof(int) / 2);
 	ok1(!pi);
 	ok1(error_count == 4);
@@ -55,20 +55,20 @@ int main(void)
 	/* Now, check that with taltk() we free old one on failure. */
 	origpi = tal_arr(NULL, int, 100);
 	error_count = 0;
-	pi = tal_dup(NULL, int, take(origpi), (size_t)-1, 0);
+	pi = tal_dup_arr(NULL, int, take(origpi), (size_t)-1, 0);
 	ok1(!pi);
 	ok1(error_count == 1);
 
 	origpi = tal_arr(NULL, int, 100);
 	error_count = 0;
-	pi = tal_dup(NULL, int, take(origpi), 0, (size_t)-1);
+	pi = tal_dup_arr(NULL, int, take(origpi), 0, (size_t)-1);
 	ok1(!pi);
 	ok1(error_count == 1);
 	ok1(talloc_total_blocks(NULL) == 1);
 
 	origpi = tal_arr(NULL, int, 100);
 	error_count = 0;
-	pi = tal_dup(NULL, int, take(origpi), (size_t)-1UL / sizeof(int),
+	pi = tal_dup_arr(NULL, int, take(origpi), (size_t)-1UL / sizeof(int),
 		     (size_t)-1UL / sizeof(int));
 	ok1(!pi);
 	ok1(error_count == 1);
@@ -77,7 +77,7 @@ int main(void)
 	origpi = tal_arr(NULL, int, 100);
 	error_count = 0;
 	/* This will still overflow when tal_hdr is added. */
-	pi = tal_dup(NULL, int, take(origpi), (size_t)-1UL / sizeof(int) / 2,
+	pi = tal_dup_arr(NULL, int, take(origpi), (size_t)-1UL / sizeof(int) / 2,
 		     (size_t)-1UL / sizeof(int) / 2);
 	ok1(!pi);
 	ok1(error_count == 1);

@@ -27,14 +27,14 @@ int main(void)
 #else
 	c = tal_typechk_(parent, char *);
 #endif
-	c = tal_dup(parent, char, "hello", 6, 0);
+	c = tal_dup_arr(parent, char, "hello", 6, 0);
 	ok1(strcmp(c, "hello") == 0);
 	ok1(strcmp(tal_name(c), "char[]") == 0);
 	ok1(tal_parent(c) == parent);
 	tal_free(c);
 
 	/* Now with an extra byte. */
-	c = tal_dup(parent, char, "hello", 6, 1);
+	c = tal_dup_arr(parent, char, "hello", 6, 1);
 	ok1(strcmp(c, "hello") == 0);
 	ok1(strcmp(tal_name(c), "char[]") == 0);
 	ok1(tal_parent(c) == parent);

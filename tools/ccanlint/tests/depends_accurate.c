@@ -104,7 +104,7 @@ static void check_depends_accurate(struct manifest *m,
 	}
 
 	/* Now remove NUL and append test dependencies to deps. */
-	deps = tal_dup(m, char *, take(deps), core_deps, test_deps + 2);
+	deps = tal_dup_arr(m, char *, take(deps), core_deps, test_deps + 2);
 	memcpy(deps + core_deps, tdeps, sizeof(tdeps[0]) * test_deps);
 	/* ccan/tap is given a free pass. */
 	deps[core_deps + test_deps] = (char *)"ccan/tap";

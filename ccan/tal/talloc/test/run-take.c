@@ -26,17 +26,17 @@ int main(void)
 
 	c = tal(parent, char);
 	*c = 'h';
-	c = tal_dup(parent, char, take(c), 1, 0);
+	c = tal_dup(parent, char, take(c));
 	ok1(c[0] == 'h');
 	ok1(tal_parent(c) == parent);
 
-	c = tal_dup(parent, char, take(c), 1, 2);
+	c = tal_dup_arr(parent, char, take(c), 1, 2);
 	ok1(c[0] == 'h');
 	strcpy(c, "hi");
 	ok1(tal_parent(c) == parent);
 
 	/* dup must reparent child. */
-	c = tal_dup(NULL, char, take(c), 1, 0);
+	c = tal_dup(NULL, char, take(c));
 	ok1(c[0] == 'h');
 	ok1(tal_parent(c) == NULL);
 
@@ -49,7 +49,7 @@ int main(void)
 
 	/* NULL pass-through. */
 	c = NULL;
-	ok1(tal_dup(NULL, char, take(c), 5, 5) == NULL);
+	ok1(tal_dup_arr(NULL, char, take(c), 5, 5) == NULL);
 	ok1(!taken_any());
 
 	return exit_status();

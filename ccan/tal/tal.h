@@ -289,14 +289,25 @@ tal_t *tal_next(const tal_t *root, const tal_t *prev);
 tal_t *tal_parent(const tal_t *ctx);
 
 /**
- * tal_dup - duplicate an array.
+ * tal_dup - duplicate an object.
+ * @ctx: The tal allocated object to be parent of the result (may be NULL).
+ * @type: the type (should match type of @p!)
+ * @p: the object to copy (or reparented if take())
+ */
+#define tal_dup(ctx, type, p)			\
+	((type *)tal_dup_((ctx), tal_typechk_(p, type *),	\
+			  sizeof(type), 1, 0,			\
+			  false, TAL_LABEL(type, "")))
+
+/**
+ * tal_dup_arr - duplicate an array.
  * @ctx: The tal allocated object to be parent of the result (may be NULL).
  * @type: the type (should match type of @p!)
  * @p: the array to copy (or resized & reparented if take())
  * @n: the number of sizeof(type) entries to copy.
  * @extra: the number of extra sizeof(type) entries to allocate.
  */
-#define tal_dup(ctx, type, p, n, extra)				\
+#define tal_dup_arr(ctx, type, p, n, extra)			\
 	((type *)tal_dup_((ctx), tal_typechk_(p, type *),	\
 			  sizeof(type), (n), (extra),		\
 			  true, TAL_LABEL(type, "[]")))

@@ -145,7 +145,7 @@ static void *extract(const tal_t *ctx, struct invbloom *ib, int count)
 		if (ib->count[i] != count)
 			continue;
 
-		id = tal_dup(ctx, u8, idsum_ptr(ib, i), ib->id_size, 0);
+		id = tal_dup_arr(ctx, u8, idsum_ptr(ib, i), ib->id_size, 0);
 		return id;
 	}
 	return NULL;

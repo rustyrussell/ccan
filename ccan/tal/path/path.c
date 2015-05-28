@@ -50,7 +50,7 @@ char *path_join(const tal_t *ctx, const char *base, const char *a)
 		goto out;
 
 	len = strlen(base);
-	ret = tal_dup(ctx, char, base, len, 1 + strlen(a) + 1);
+	ret = tal_dup_arr(ctx, char, base, len, 1 + strlen(a) + 1);
 	if (!ret)
 		goto out;
 	if (ret[len-1] != PATH_SEP)
@@ -465,7 +465,7 @@ char *path_basename(const tal_t *ctx, const char *path)
 static char *fixed_string(const tal_t *ctx,
 			  const char *str, const char *path)
 {
-	char *ret = tal_dup(ctx, char, path, 0, strlen(str)+1);
+	char *ret = tal_dup_arr(ctx, char, path, 0, strlen(str)+1);
 	if (ret)
 		strcpy(ret, str);
 	return ret;
