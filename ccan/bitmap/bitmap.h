@@ -203,7 +203,8 @@ static inline bitmap *bitmap_alloc0(unsigned long nbits)
 	bitmap *bitmap;
 
 	bitmap = bitmap_alloc(nbits);
-	bitmap_zero(bitmap, nbits);
+	if (bitmap)
+		bitmap_zero(bitmap, nbits);
 	return bitmap;
 }
 
@@ -212,7 +213,8 @@ static inline bitmap *bitmap_alloc1(unsigned long nbits)
 	bitmap *bitmap;
 
 	bitmap = bitmap_alloc(nbits);
-	bitmap_fill(bitmap, nbits);
+	if (bitmap)
+		bitmap_fill(bitmap, nbits);
 	return bitmap;
 }
 
@@ -221,7 +223,7 @@ static inline bitmap *bitmap_realloc0(bitmap *bitmap,
 {
 	bitmap = realloc(bitmap, bitmap_sizeof(nbits));
 
-	if (nbits > obits)
+	if ((nbits > obits) && bitmap)
 		bitmap_zero_range(bitmap, obits, nbits);
 
 	return bitmap;
@@ -232,7 +234,7 @@ static inline bitmap *bitmap_realloc1(bitmap *bitmap,
 {
 	bitmap = realloc(bitmap, bitmap_sizeof(nbits));
 
-	if (nbits > obits)
+	if ((nbits > obits) && bitmap)
 		bitmap_fill_range(bitmap, obits, nbits);
 
 	return bitmap;
