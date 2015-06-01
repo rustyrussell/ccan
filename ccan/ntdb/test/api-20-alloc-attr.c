@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 	for (i = 0; i < sizeof(flags) / sizeof(flags[0]); i++) {
 		curr_ntdb = NULL;
 		curr_file = NULL;
-		ntdb = ntdb_open("run-12-store.ntdb", flags[i]|MAYBE_NOSYNC,
+		ntdb = ntdb_open("run-20-alloc-attr.ntdb", flags[i]|MAYBE_NOSYNC,
 			       O_RDWR|O_CREAT|O_TRUNC, 0600, &alloc_attr);
 		ok1(ntdb);
 		if (!ntdb)
