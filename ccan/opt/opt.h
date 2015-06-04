@@ -373,6 +373,22 @@ char *opt_invalid_argument(const char *arg);
 char *opt_usage(const char *argv0, const char *extra);
 
 /**
+ * opt_usage_exit_fail - complain about bad usage to stderr, exit with status 1.
+ * @msg...: printf-style message to output.
+ *
+ * This prints argv[0] (if opt_parse has been called), a colon, then
+ * the message to stderr (just like errx()).  Then it prints out the
+ * usage message, taken from any registered option which uses
+ * opt_usage_and_exit() as described in opt_usage(argv0, NULL) above.
+ * Then it exits with status 1.
+ *
+ * Example:
+ *	if (argc != 5)
+ *		opt_usage_exit_fail("Need 5 arguments, only got %u", argc);
+ */
+void opt_usage_exit_fail(const char *msg, ...) NORETURN;
+
+/**
  * opt_hidden - string for undocumented options.
  *
  * This can be used as the desc parameter if you want an option not to be

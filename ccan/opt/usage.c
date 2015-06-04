@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdarg.h>
 #include "private.h"
 
 /* We only use this for pointer comparisons. */
@@ -226,4 +227,18 @@ char *opt_usage(const char *argv0, const char *extra)
 	}
 	ret[len] = '\0';
 	return ret;
+}
+
+void opt_usage_exit_fail(const char *msg, ...)
+{
+	va_list ap;
+
+	if (opt_argv0)
+		fprintf(stderr, "%s: ", opt_argv0);
+	va_start(ap, msg);
+	vfprintf(stderr, msg, ap);
+	va_end(ap);
+	fprintf(stderr, "\n%s",
+		opt_usage(opt_argv0 ? opt_argv0 : "<program>", NULL));
+	exit(1);
 }
