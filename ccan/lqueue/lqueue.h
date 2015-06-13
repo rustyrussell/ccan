@@ -51,6 +51,33 @@ struct lqueue {
 	struct lqueue name = { NULL, }
 
 /**
+ * lqueue_init_from_back - initialize a queue with a specific back element
+ * @s: the lqueue to initialize
+ * @e: pointer to the back element of the new queue
+ * @member: member of the element containing the lqueue_link
+ *
+ * USE WITH CAUTION: This is for handling unusual cases where you have
+ * a pointer to an element in a previously constructed queue but can't
+ * conveniently pass around a normal struct lqueue.  Usually you
+ * should use lqueue_init().
+ *
+ * Example:
+ *	LQUEUE(queue1);
+ *	struct lqueue queue2;
+ *	struct element {
+ *		int value;
+ *		struct lqueue_link link;
+ *	} el;
+ *
+ *	lqueue_enqueue(&queue1, &el, link);
+ *
+ *	lqueue_init_from_back(&queue2,
+ *	                      lqueue_back(&queue1, struct element, link), link);
+ */
+#define lqueue_init_from_back(s, e, member) \
+	(lqueue_init_((s), &(e)->member))
+
+/**
  * lqueue_init - initialize a queue
  * @h: the lqueue to set to an empty queue
  *
@@ -58,9 +85,11 @@ struct lqueue {
  *	struct lqueue *qp = malloc(sizeof(*qp));
  *	lqueue_init(qp);
  */
-static inline void lqueue_init(struct lqueue *q)
+#define lqueue_init(s) \
+	(lqueue_init_((s), NULL))
+static inline void lqueue_init_(struct lqueue *q, struct lqueue_link *back)
 {
-	q->back = NULL;
+	q->back = back;
 }
 
 /**
