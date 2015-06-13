@@ -51,6 +51,33 @@ struct lstack {
 	struct lstack name = { NULL, }
 
 /**
+ * lstack_init_from_top - initialize a stack with a given top element
+ * @s: the lstack to initialize
+ * @e: pointer to the top element of the new stack
+ * @member: member of the element containing the lstack_link
+ *
+ * USE WITH CAUTION: This is for handling unusual cases where you have
+ * a pointer to an element in a previously constructed stack but can't
+ * conveniently pass around a normal struct lstack.  Usually you
+ * should use lstack_init().
+ *
+ * Example:
+ *	LSTACK(stack1);
+ *	struct lstack stack2;
+ *	struct element {
+ *		int value;
+ *		struct lstack_link link;
+ *	} el;
+ *
+ *	lstack_push(&stack1, &el, link);
+ *
+ *	lstack_init_from_top(&stack2,
+ *	                     lstack_top(&stack1, struct element, link), link);
+ */
+#define lstack_init_from_top(s, e, member) \
+	(lstack_init_((s), &(e)->member))
+
+/**
  * lstack_init - initialize a stack
  * @h: the lstack to set to an empty stack
  *
@@ -58,9 +85,11 @@ struct lstack {
  *	struct lstack *sp = malloc(sizeof(*sp));
  *	lstack_init(sp);
  */
-static inline void lstack_init(struct lstack *s)
+#define lstack_init(s) \
+	(lstack_init_((s), NULL))
+static inline void lstack_init_(struct lstack *s, struct lstack_link *top)
 {
-	s->top = NULL;
+	s->top = top;
 }
 
 /**
