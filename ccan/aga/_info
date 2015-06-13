@@ -32,6 +32,7 @@ int main(int argc, char *argv[])
 		printf("ccan/build_assert\n");
 		printf("ccan/check_type\n");
 		printf("ccan/lstack\n");
+		printf("ccan/lqueue\n");
 		return 0;
 	}
 

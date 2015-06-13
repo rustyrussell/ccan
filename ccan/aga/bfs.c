@@ -1,0 +1,94 @@
+/* Licensed under LGPLv2+ - see LICENSE file for details */
+#include "config.h"
+
+#include <stdbool.h>
+#include <stdlib.h>
+#include <assert.h>
+
+#include <ccan/aga/aga.h>
+#include "private.h"
+
+/*
+ * Breadth first search
+ */
+
+static bool bfs_enqueue(struct aga_graph *g, struct lqueue *queue,
+			struct aga_node *n)
+{
+	if (!aga_update_node(g, n))
+		return false;
+
+	lqueue_enqueue(queue, n, u.bfs.next);
+	n->u.bfs.edge = aga_first_edge(g, n);
+	return true;
+}
+
+static struct aga_node *bfs_front(struct lqueue *queue)
+{
+	return lqueue_front(queue, struct aga_node, u.bfs.next);
+}
+
+static void bfs_dequeue(struct lqueue *queue)
+{
+	lqueue_dequeue(queue, struct aga_node, u.bfs.next);
+}
+
+int aga_bfs_start(struct aga_graph *g)
+{
+	int rc;
+
+	rc = aga_start(g);
+	if (rc < 0)
+		return rc;
+
+	return 0;
+}
+
+struct aga_node *aga_bfs_explore(struct aga_graph *g, struct aga_node *n)
+{
+	LQUEUE(queue);
+
+	if (!aga_check_state(g))
+		return NULL;
+
+	if (!n)
+		return NULL;
+ 
+	if (bfs_enqueue(g, &queue, n))
+		return n;
+
+	lqueue_init_from_back(&queue, n, u.bfs.next);
+
+	while ((n = bfs_front(&queue))) {
+		const void *e = n->u.bfs.edge;
+		int err;
+		struct aga_edge_info ei;
+
+		if (!e) {
+			/* out of edges, back up */
+			bfs_dequeue(&queue);
+			continue;
+		}
+
+		n->u.bfs.edge = aga_next_edge(g, n, e);
+
+		err = aga_edge_info(g, n, e, &ei);
+		if (err < 0) {
+			aga_fail(g, err);
+			return NULL;
+		}
+		if (!ei.to) {
+			/* missing edge */
+			continue;
+		}
+
+		if (!bfs_enqueue(g, &queue, ei.to)) {
+			/* already visited node */
+			continue;
+		}
+
+		return ei.to;
+	}
+	
+	return NULL;
+}

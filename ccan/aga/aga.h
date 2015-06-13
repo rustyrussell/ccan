@@ -107,13 +107,13 @@
  *
  * - Errors are cleared on aga_finish().
  */
-
 #include "config.h"
 #include <string.h>
 
 #include <ccan/build_assert/build_assert.h>
 #include <ccan/check_type/check_type.h>
 #include <ccan/lstack/lstack.h>
+#include <ccan/lqueue/lqueue.h>
 
 struct aga_graph;
 struct aga_node;
@@ -145,6 +145,10 @@ struct aga_node {
 			struct lstack_link parent;
 			const void *edge;
 		} dfs;
+		struct {
+			struct lqueue_link next;
+			const void *edge;
+		} bfs;
 	} u;
 };
 
@@ -215,5 +219,16 @@ struct aga_node *aga_dfs_explore(struct aga_graph *g, struct aga_node *n);
 
 #define aga_dfs(_n, _g, _start)					\
 	for ((_n) = (_start); ((_n) = aga_dfs_explore((_g), (_n))) != NULL; )
+
+
+/*
+ * Breadth first search
+ */
+
+int aga_bfs_start(struct aga_graph *g);
+struct aga_node *aga_bfs_explore(struct aga_graph *g, struct aga_node *n);
+
+#define aga_bfs(_n, _g, _start)					\
+	for ((_n) = (_start) ; ((_n) = aga_bfs_explore((_g), (_n))) != NULL; )
 
 #endif /* CCAN_AGA_H */
