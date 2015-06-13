@@ -113,6 +113,7 @@
 
 #include <ccan/build_assert/build_assert.h>
 #include <ccan/check_type/check_type.h>
+#include <ccan/lstack/lstack.h>
 
 struct aga_graph;
 struct aga_node;
@@ -140,7 +141,10 @@ typedef int (*aga_edge_info_fn)(const struct aga_graph *g,
 struct aga_node {
 	int sequence;
 	union {
-		/* Per-algorithm state here */
+		struct {
+			struct lstack_link parent;
+			const void *edge;
+		} dfs;
 	} u;
 };
 
@@ -201,5 +205,15 @@ int aga_edge_info(const struct aga_graph *g, const struct aga_node *n,
 	     (_e) && ((((_err) = aga_edge_info((_g), (_n), (_e), &(_ei)))) == 0); \
 	     (_e) = aga_next_edge((_g), (_n), (_e)))			\
 		if ((_ei).to)
+
+/*
+ * Depth first search
+ */
+
+int aga_dfs_start(struct aga_graph *g);
+struct aga_node *aga_dfs_explore(struct aga_graph *g, struct aga_node *n);
+
+#define aga_dfs(_n, _g, _start)					\
+	for ((_n) = (_start); ((_n) = aga_dfs_explore((_g), (_n))) != NULL; )
 
 #endif /* CCAN_AGA_H */
