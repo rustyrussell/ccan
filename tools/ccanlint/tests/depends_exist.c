@@ -103,8 +103,11 @@ static void check_test_depends_exist(struct manifest *m,
 		if (!strstarts(deps[i], "ccan/"))
 			continue;
 
-		/* Don't add dependency twice: we can only be on one list! */
+		/* Don't add dependency twice: we can only be on one list!
+		 * Also, it's possible to have circular test depends, so drop
+		 * self-refs. */
 		if (!have_dep(m, deps[i])
+		    && !streq(deps[i] + strlen("ccan/"), m->modname)
 		    && !add_dep(m, &m->test_deps, deps[i], score))
 			return;
 
