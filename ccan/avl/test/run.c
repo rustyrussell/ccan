@@ -132,18 +132,6 @@ struct test_item {
 	size_t   insert_id; /* needed because qsort is not a stable sort */
 };
 
-static int compare_uint32_t(const void *ap, const void *bp)
-{
-	uint32_t a = *(const uint32_t *)ap;
-	uint32_t b = *(const uint32_t *)bp;
-	
-	if (a < b)
-		return -1;
-	if (a > b)
-		return 1;
-	return 0;
-}
-
 static int compare_test_item(const void *ap, const void *bp)
 {
 	const struct test_item *a = *(void**)ap, *b = *(void**)bp;
@@ -266,7 +254,7 @@ static void benchmark(size_t max_per_trial, size_t round_count, bool random_coun
 		}
 		scramble(test_item, count, sizeof(*test_item));
 		
-		avl = avl_new(compare_uint32_t);
+		avl = avl_new(order_u32_noctx);
 		
 		clear_stats();
 		printf("   Inserting %zu items...\n", count);

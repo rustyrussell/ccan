@@ -62,7 +62,7 @@ static int sign(int cmp)
 	return 1;
 }
 
-AVL *avl_new(AvlCompare compare)
+AVL *avl_new(total_order_noctx_cb compare)
 {
 	AVL *avl = malloc(sizeof(*avl));
 	

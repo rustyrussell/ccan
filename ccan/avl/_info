@@ -33,7 +33,7 @@
  * 
  * int main(void)
  * {
- * 	AVL          *avl = avl_new((AvlCompare) strcmp);
+ * 	AVL          *avl = avl_new((total_order_noctx_cb) strcmp);
  * 	AvlIter       i;
  * 	struct tally *tally;
  * 	char          line[256];
@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
-		/* Nothing */
+		printf("ccan/order\n");
 		return 0;
 	}
 
