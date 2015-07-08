@@ -48,6 +48,7 @@ MODS_WITH_SRC := antithread \
 	crc \
 	crcsync \
 	cpuid \
+	crypto/ripemd160 \
 	crypto/sha256 \
 	crypto/shachain \
 	daemonize \
