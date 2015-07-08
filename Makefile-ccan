@@ -85,6 +85,7 @@ MODS_WITH_SRC := antithread \
 	ntdb \
 	ogg_to_pcm \
 	opt \
+	order \
 	ptrint \
 	ptr_valid \
 	pushpull \
