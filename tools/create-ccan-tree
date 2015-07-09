@@ -15,7 +15,6 @@ EOF
 }
 
 # parse options, setting the following flags
-copy_all=
 build_type=
 
 opts=$(getopt -o ab: --long copy-all,build-type: -n $progname -- "$@")
@@ -27,12 +26,13 @@ then
 fi
 
 eval set -- "$opts"
+MODFILES_ARGS="--no-tests --no-other"
 
 while :
 do
 	case "$1" in
 		-a|--copy-all)
-			copy_all=1
+			MODFILES_ARGS=""
 			shift
 			;;
 		-b|--build-type)
@@ -85,11 +85,13 @@ tmpdir="$(mktemp -d)"
 # We'll need the ccan_depends tool, but also a clean source tree. Build
 # tools/ccan_depends, and store it in $tmpdir for later use
 
-echo "Building ccan_depends"
+echo "Building ccan_depends, modfiles"
 ccan_depends="$tmpdir/ccan_depends"
-make -s -C "$srcdir" tools/ccan_depends
+modfiles="$tmpdir/modfiles"
+make -s -C "$srcdir" tools/ccan_depends tools/modfiles
 [ $? -eq 0 ] || exit 1
 cp "$srcdir/tools/ccan_depends" "$ccan_depends"
+cp "$srcdir/tools/modfiles" "$modfiles"
 
 echo "Cleaning source tree"
 make -s -C "$srcdir" clean
@@ -103,18 +105,14 @@ copy_ccan_module() {
 	module_srcdir="$srcdir/$module_dir"
 	module_destdir="$tmpdir/$module_dir"
 
-	if [ -n "$copy_all" ]
-	then
-		# bulk copy
-		mkdir -p "$(dirname "$module_destdir")"
-		cp -a "$module_srcdir" "$module_destdir"
-	else
-		mkdir -p "$module_destdir"
-		# only copy sources & license
-		license="$module_srcdir/LICENSE"
-		cp -a "$module_srcdir"/*.[ch] "$module_destdir"
-		[ -e "$license" ] && cp -a "$license" "$module_destdir"
-	fi
+	mkdir -p "$module_destdir"
+	# Copy license
+	license="$module_srcdir/LICENSE"
+	[ -e "$license" ] && cp -a "$license" "$module_destdir"
+	for f in $("$modfiles" $MODULES_ARGS --no-license --git-only "$module_dir"); do
+	    mkdir -p $(dirname "$module_destdir"/"$f")
+	    cp "$module_srcdir"/$f "$module_destdir"/$f
+	done
 }
 
 # generate list of directories to copy
