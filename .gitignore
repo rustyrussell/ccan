@@ -12,6 +12,7 @@ tools/namespacize
 tools/run_tests
 tools/ccanlint/ccanlint
 tools/ccanlint/generated-testlist
+tools/modfiles
 inter-depends
 test-depends
 lib-depends

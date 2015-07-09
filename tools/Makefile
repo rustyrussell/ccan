@@ -1,9 +1,15 @@
-ALL_TOOLS = tools/configurator/configurator tools/ccan_depends tools/doc_extract tools/namespacize tools/ccanlint/ccanlint
+ALL_TOOLS = tools/configurator/configurator tools/ccan_depends tools/doc_extract tools/namespacize tools/ccanlint/ccanlint tools/modfiles
 LDLIBS = -lrt
 DEP_OBJS = ccan/err/err.o \
 	ccan/foreach/foreach.o \
+	ccan/hash/hash.o \
+	ccan/htable/htable.o \
 	ccan/list/list.o \
 	ccan/noerr/noerr.o \
+	ccan/opt/opt.o \
+	ccan/opt/helpers.o \
+	ccan/opt/parse.o \
+	ccan/opt/usage.o \
 	ccan/rbuf/rbuf.o \
 	ccan/read_write_all/read_write_all.o \
 	ccan/str/debug.o \
@@ -35,6 +41,8 @@ tools/namespacize: tools/namespacize.o $(DEP_OBJS)
 tools/namespacize.o tools/depends.o: tools/tools.h
 
 tools/configurator/configurator: tools/configurator/configurator.c
+
+tools/modfiles: tools/modfiles.o tools/manifest.o $(DEP_OBJS)
 
 tools-clean: ccanlint-clean
 	$(RM) $(ALL_TOOLS)
