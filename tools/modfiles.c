@@ -24,6 +24,7 @@ int main(int argc, char *argv[])
 	bool license = true;
 	bool tests = true;
 	bool other = true;
+	bool info = true;
 	bool gitonly = false;
 	bool nul_term = false;
 	bool fullpath = false;
@@ -33,6 +34,8 @@ int main(int argc, char *argv[])
 			   "Don't list .c and .h files");
 	opt_register_noarg("--no-license", opt_set_invbool, &license,
 			   "Don't list license file");
+	opt_register_noarg("--no-info", opt_set_invbool, &info,
+			   "Don't list _info file");
 	opt_register_noarg("--no-tests", opt_set_invbool, &tests,
 			   "Don't list test files");
 	opt_register_noarg("--no-other", opt_set_invbool, &other,
@@ -55,6 +58,10 @@ int main(int argc, char *argv[])
 		struct manifest *m = get_manifest(NULL, argv[i]);
 		struct list_head *list;
 		struct ccan_file *f;
+
+		if (info)
+			add_file(m->info_file, fullpath, nul_term, gitonly);
+
 		if (code) {
 			foreach_ptr(list, &m->c_files, &m->h_files) {
 				list_for_each(list, f, list)
