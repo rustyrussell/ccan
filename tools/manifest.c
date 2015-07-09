@@ -169,8 +169,15 @@ static void add_files(struct manifest *m, const char *base, const char *subdir)
 		    && list_empty(&m->h_files))
 			errx(1, "No _info, C or H files found here!");
 
-		for (i = 0; i < tal_count(subs); i++)
-			add_files(m, base, subs[i]);
+		/* Don't enter subdirs with _info: they're separate modules. */
+		for (i = 0; i < tal_count(subs); i++) {
+			struct stat st;
+			char *subinfo = path_join(subs, base,
+						  path_join(subs, subs[i],
+							    "_info"));
+			if (lstat(subinfo, &st) != 0)
+				add_files(m, base, subs[i]);
+		}
 	}
 	tal_free(subs);
 }
