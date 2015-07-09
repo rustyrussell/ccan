@@ -142,7 +142,7 @@ done
 
 # we're done with the dependency-tracking, remove the tool from our
 # temporary directory
-rm "$ccan_depends"
+rm "$ccan_depends" "$modfiles"
 
 echo "Adding licenses"
 license_dir="$tmpdir/licenses"
