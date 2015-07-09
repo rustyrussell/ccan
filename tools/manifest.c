@@ -112,8 +112,8 @@ static void add_files(struct manifest *m, const char *base, const char *subdir)
 		f = new_ccan_file(m, m->dir,
 				  subdir ? path_join(m, subdir, ent->d_name)
 				  : ent->d_name);
-		if (lstat(f->fullname, &st) != 0)
-			err(1, "lstat %s", f->fullname);
+		if (stat(f->fullname, &st) != 0)
+			err(1, "stat %s", f->fullname);
 
 		if (S_ISDIR(st.st_mode)) {
 			size_t len = tal_count(subs);
