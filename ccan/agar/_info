@@ -1,0 +1,48 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * agar - Re-entrant Abstract Graph Algorithms
+ *
+ * This modules contains re-entrant versions of the graph algorithms
+ * in the aga module.
+ *
+ * The versions in the aga module require some node-local storage.
+ * This means that the calling code:
+ *   a) Needs to actually allocate memory per node.  That may or may
+ *      not be natural depending on its internal representation.
+ *   b) Multiple algorithms can't run at once (easily), since they all
+ *      need to use the aga_node structures.
+ *
+ * This module provides versions without those restrictions, by
+ * allocating per-node storage itself for each run, and associating
+ * those with the caller's representation of nodes via a hash table.
+ *
+ * License: LGPL (v2.1 or any later version)
+ * Author: David Gibson <david@gibson.dropbear.id.au>
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/aga\n");
+		printf("ccan/container_of\n");
+		printf("ccan/hash\n");
+		printf("ccan/htable\n");
+		printf("ccan/tal");
+		return 0;
+	}
+
+	if (strcmp(argv[1], "testdepends") == 0) {
+		printf("ccan/array_size\n");
+		printf("ccan/container_of\n");
+		printf("ccan/ptrint\n");
+		return 0;
+	}
+
+	return 1;
+}
