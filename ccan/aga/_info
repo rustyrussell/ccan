@@ -1,0 +1,43 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * aga - Abstract Graph Algorithms
+ *
+ * This modules contains several standard graph algorithms,
+ * implemented so that they don't rely on a specific representation of
+ * the graph structure.  Instead, user supplied callbacks can compute
+ * the graph's edges as required.  Graph nodes can even be constructed
+ * on the fly as they're discovered by edge traversal.
+ *
+ * The algorithms do require a certain amount of persistent data
+ * per-node.  The module doesn't allocate, so the callbacks are
+ * required to include an aga_node field inside new nodes when they're
+ * discovered.  Because this relies on a structure embedded within the
+ * caller's representation of the graph nodes/states, it's not
+ * re-entrant - only one aga algorithm can be running at a time (per
+ * aga_node instance).
+ *
+ * License: LGPL (v2.1 or any later version)
+ * Author: David Gibson <david@gibson.dropbear.id.au>
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/build_assert\n");
+		printf("ccan/check_type\n");
+		return 0;
+	}
+
+	if (strcmp(argv[1], "testdepends") == 0) {
+		printf("ccan/container_of\n");
+		return 0;
+	}
+
+	return 1;
+}
