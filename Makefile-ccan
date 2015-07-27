@@ -38,6 +38,7 @@ MODS_WITH_SRC := antithread \
 	base64 \
 	bdelta \
 	block_pool \
+	bottom_up_heapsort \
 	breakpoint \
 	btree \
 	bytestring \
