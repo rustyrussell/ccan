@@ -32,7 +32,8 @@ bool daemonize(void)
 	close(0);
 
 	/* Session leader so ^C doesn't whack us. */
-	setsid();
+	if (setsid() == (pid_t)-1)
+	        return false;
 	/* Move off any mount points we might be in. */
 	if (chdir("/") != 0)
 		return false;
