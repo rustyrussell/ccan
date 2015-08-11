@@ -37,7 +37,7 @@ enum {
 };
 
 #ifndef _MSC_VER
-static void ___cpuid(cpuid_t info, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx)
+static void get_cpuid(cpuid_t info, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx)
 {
 	__asm__(
 		"xchg %%ebx, %%edi\n\t" 	/* 32bit PIC: Don't clobber ebx.  */
@@ -50,7 +50,7 @@ static void ___cpuid(cpuid_t info, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, 
 #else
 #include <intrin.h>
 
-static void ___cpuid(cpuid_t info, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx)
+static void get_cpuid(cpuid_t info, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx)
 {
 	uint32_t registers[4];
 	__cpuid(registers, info);
@@ -236,7 +236,7 @@ cputype_t cpuid_get_cpu_type(void)
 		} u;
 		uint32_t i;
 
-		___cpuid(CPUID_VENDORID, &i, &u.bufu32[0], &u.bufu32[2], &u.bufu32[1]);
+		get_cpuid(CPUID_VENDORID, &i, &u.bufu32[0], &u.bufu32[2], &u.bufu32[1]);
 		for (i = 0; i < sizeof(c_cpunames) / sizeof(c_cpunames); ++i) {
 			if (strncmp(c_cpunames[i], u.buf, sizeof(c_cpunames[0])) == 0) {
 				cputype = (cputype_t)i;
@@ -283,9 +283,9 @@ void cpuid(cpuid_t request, uint32_t *buf)
 	if (request == CPUID_PROC_BRAND_STRING) {
 		static char cached[48] = { 0 };
 		if (cached[0] == '\0') {
-			___cpuid(CPUID_PROC_BRAND_STRING,	    &buf[0], &buf[1], &buf[2],  &buf[3] );
-			___cpuid(CPUID_PROC_BRAND_STRING_INTERNAL0, &buf[4], &buf[5], &buf[6],  &buf[7] );
-			___cpuid(CPUID_PROC_BRAND_STRING_INTERNAL1, &buf[8], &buf[9], &buf[10], &buf[11]);
+			get_cpuid(CPUID_PROC_BRAND_STRING,	    &buf[0], &buf[1], &buf[2],  &buf[3] );
+			get_cpuid(CPUID_PROC_BRAND_STRING_INTERNAL0, &buf[4], &buf[5], &buf[6],  &buf[7] );
+			get_cpuid(CPUID_PROC_BRAND_STRING_INTERNAL1, &buf[8], &buf[9], &buf[10], &buf[11]);
 
 			memcpy(cached, buf, sizeof cached);
 		} else
@@ -298,7 +298,7 @@ void cpuid(cpuid_t request, uint32_t *buf)
 	}
 
 	uint32_t eax, ebx, ecx, edx;
-	___cpuid(request, &eax, &ebx, &ecx, &edx);
+	get_cpuid(request, &eax, &ebx, &ecx, &edx);
 
 	switch (request) {
 		case CPUID_VENDORID:
