@@ -368,32 +368,12 @@ void cpuid(cpuid_t request, uint32_t *buf)
 	}
 }
 
-bool cpuid_write_info(uint32_t info, uint32_t featureset, const char *outfile)
+bool cpuid_write_info(uint32_t info, uint32_t featureset, FILE *file)
 {
-	FILE *file;
-	char filename[256];
-	char cpu_information[64];
-
-	if (!cpuid_sprintf_cputype(cpuid_get_cpu_type(), cpu_information))
-		return false;
-
 	char brand[48];
 	cpuid(CPUID_PROC_BRAND_STRING, (uint32_t *)brand);
 
-	cpu_information[12] = '_';
-	memcpy(&cpu_information[13], brand, sizeof brand);
-
-	if (!outfile)
-		strncpy(filename, cpu_information, sizeof cpu_information);
-	else
-		strncpy(filename, outfile, sizeof filename);
-
-	file = fopen(filename, "w");
-	if (!file)
-		return false;
-
-	fprintf(file, "-- CPU Information for CPU: %s --\n\n", cpu_information);
-
+	fprintf(file, "-- CPU Information for: %s_%s --\n\n", cpuid_get_name(), brand);
 	if (info & CPUID_HIGHEST_EXTENDED_FUNCTION_SUPPORTED)
 		fprintf(file, "Highest extended function supported: %#010x\n\n", cpuid_highest_ext_func_supported());
 
@@ -675,7 +655,6 @@ bool cpuid_write_info(uint32_t info, uint32_t featureset, const char *outfile)
 	}
 #undef YON
 
-	fclose(file);
 	return true;
 }
 

@@ -24,6 +24,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 
 /**
  * enum cpuid - stuff to get information about from the CPU.
@@ -371,20 +372,17 @@ void cpuid(cpuid_t request, uint32_t *buf);
  * cpuid_write_info - Write specified CPU information to a file.
  * @info: Bit set of information to write.
  * @featureset: Bit set of features to write.
- * @outfile: Output filename (Max 256).
- *
- * If @outfile is NULL, a name is choosen in the following format:
- * 	CPUVENDOR_PROCESSORBRAND.cpuid
+ * @outfile: Output file pointer
  *
  * Returns true on success, false otherwise.
  *
  * Example usage:
  * 	if (!cpuid_write_info(CPUID_VENDORID | CPUID_PROC_BRAND_STRING,
  * 				CPUID_FEAT_ECX_SSE3 | CPUID_FEAT_EDX_FPU,
- * 				"cpuinfo.cpuid"))
+ * 				fp))
  * 		... error ...
  */
-bool cpuid_write_info(uint32_t info, uint32_t featureset, const char *outfile);
+bool cpuid_write_info(uint32_t info, uint32_t featureset, FILE *outfile);
 
 /**
  * cpuid_test_feature - Test if @feature is available
