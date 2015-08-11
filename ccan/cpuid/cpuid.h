@@ -262,12 +262,12 @@ static char const *const c_cpunames[] = {
  */
 cputype_t cpuid_get_cpu_type(void);
 
-static inline bool is_intel_cpu(void)
+static inline bool cpuid_is_intel(void)
 {
 	return cpuid_get_cpu_type() == CT_INTEL;
 }
 
-static inline bool is_amd_cpu(void)
+static inline bool cpuid_is_amd(void)
 {
 	return cpuid_get_cpu_type() == CT_AMDK5 || cpuid_get_cpu_type() == CT_AMD;
 }
@@ -364,7 +364,7 @@ uint32_t cpuid_highest_ext_func_supported(void);
  * For CPUID_PROC_BRAND_STRING:
  * 	Have a char array with at least 48 bytes assigned to it.
  *
- * If an invalid flag has been passed a 0xbaadf00d is returned in *buf.
+ * If an invalid request has been passed a 0xbaadf00d is returned in *buf.
  */
 void cpuid(cpuid_t request, uint32_t *buf);
 
@@ -428,10 +428,12 @@ bool cpuid_has_edxfeature_ext(int extfeature);
 #include <ccan/build_assert/build_assert.h>
 
 #define cpuid_get_cpu_type() 				BUILD_ASSERT_OR_ZERO(0)
-#define cpuid_get_cpu_type_string() 			BUILD_ASSERT_OR_ZERO(0)
+#define cpuid_is_intel()				BUILD_ASSERT_OR_ZERO(0)
+#define cpuid_is_amd()					BUILD_ASSERT_OR_ZERO(0)
+#define cpuid_get_name()				BUILD_ASSERT_OR_ZERO(0)
 
 #define cpuid_is_supported() 				BUILD_ASSERT_OR_ZERO(0)
-#define cpuid(info, buf) 				BUILD_ASSERT_OR_ZERO(0)
+#define cpuid(request, buf) 				BUILD_ASSERT_OR_ZERO(0)
 #define cpuid_write_info(info, featureset, outfile)	BUILD_ASSERT_OR_ZERO(0)
 
 #define cpuid_highest_ext_func_supported() 		BUILD_ASSERT_OR_ZERO(0)
