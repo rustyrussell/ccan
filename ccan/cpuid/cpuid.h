@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013 Ahmed Samy  <f.fallen45@gmail.com>
+ * Copyright (c) 2013, 2015 Ahmed Samy  <f.fallen45@gmail.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -230,6 +230,25 @@ typedef enum cputype {
 	CT_KVM
 } cputype_t;
 
+static char const *const c_cpunames[] = {
+	"Nooooooooone",
+	"AMDisbetter!",
+	"AuthenticAMD",
+	"CentaurHauls",
+	"CyrixInstead",
+	"GenuineIntel",
+	"TransmetaCPU",
+	"GeniuneTMx86",
+	"Geode by NSC",
+	"NexGenDriven",
+	"RiseRiseRise",
+	"SiS SiS SiS ",
+	"UMC UMC UMC ",
+	"VIA VIA VIA ",
+	"Vortex86 SoC",
+	"KVMKVMKVMKVM"
+};
+
 #if defined(__i386__) || defined(__i386) || defined(__x86_64) \
 	|| defined(_M_AMD64) || defined(__M_X64)
 
@@ -240,17 +259,22 @@ typedef enum cputype {
  *
  * See also: cpuid_get_cpu_type_string()
  */
-#define is_intel_cpu() 	cpuid_get_cpu_type() == CT_INTEL
-#define is_amd_cpu() 	cpuid_get_cpu_type() == CT_AMDK5 || cpuid_get_cpu_type() == CT_AMD
 cputype_t cpuid_get_cpu_type(void);
 
-/**
- * cpuid_sprintf_cputype - Get CPU Type string
- * @cputype: a char of atleast 12 bytes in it.
- *
- * Returns true on success, false on failure
- */
-bool cpuid_sprintf_cputype(const cputype_t cputype, char *buf);
+static inline bool is_intel_cpu(void)
+{
+	return cpuid_get_cpu_type() == CT_INTEL;
+}
+
+static inline bool is_amd_cpu(void)
+{
+	return cpuid_get_cpu_type() == CT_AMDK5 || cpuid_get_cpu_type() == CT_AMD;
+}
+
+static inline const char *cpuid_get_name(void)
+{
+	return c_cpunames[(int)cpuid_get_cpu_type()];
+}
 
 /**
  * cpuid_is_supported - test if the CPUID instruction is supported
@@ -341,7 +365,7 @@ uint32_t cpuid_highest_ext_func_supported(void);
  *
  * If an invalid flag has been passed a 0xbaadf00d is returned in *buf.
  */
-void cpuid(cpuid_t info, uint32_t *buf);
+void cpuid(cpuid_t request, uint32_t *buf);
 
 /**
  * cpuid_write_info - Write specified CPU information to a file.
