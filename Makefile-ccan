@@ -29,7 +29,9 @@ MODS_NO_SRC := alignof \
 	version
 
 # No external dependencies, with C code:
-MODS_WITH_SRC := antithread \
+MODS_WITH_SRC := aga \
+	agar \
+	antithread \
 	antithread/alloc \
 	asort \
 	asprintf \
