@@ -21,3 +21,4 @@ int main(void)
 	printf("Wrote CPU information\n");
 	return 0;
 }
+

@@ -258,7 +258,7 @@ static char const *const c_cpunames[] = {
  *
  * Returns the CPU Type as cputype_t.
  *
- * See also: cpuid_get_cpu_type_string()
+ * See also: cpuid_get_name()
  */
 cputype_t cpuid_get_cpu_type(void);
 
@@ -306,6 +306,8 @@ uint32_t cpuid_highest_ext_func_supported(void);
 
 /**
  * cpuid - Get Some information from the CPU.
+ * @request: a cpuid_t
+ * @buf: output
  *
  * This function expects buf to be a valid pointer to a string/int/...
  * depending on the requested information.
@@ -403,7 +405,6 @@ bool cpuid_test_feature(cpuid_t feature);
  * 	cpuid_has_edxfeature.
  * See the enum for more information.
  *
- *
  * Returns true if the feature is available, false otherwise.
  */
 bool cpuid_has_ecxfeature(int feature);
@@ -418,7 +419,7 @@ bool cpuid_has_edxfeature(int feature);
  * 	cpuid_has_edxfeature_ext.
  * See the enum for more information.
  *
- * Test if the CPU supports this feature.
+ * Test if the CPU supports this extfeature.
  * Returns true on success, false otherwise.
  */
 bool cpuid_has_ecxfeature_ext(int extfeature);
