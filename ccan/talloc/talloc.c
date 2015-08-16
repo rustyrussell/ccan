@@ -810,7 +810,7 @@ void *_talloc(const void *context, size_t size)
 
 static int talloc_destroy_pointer(void ***pptr)
 {
-	if ((uintptr_t)**pptr < getpagesize())
+	if ((uintptr_t)**pptr < (uintptr_t)sysconf(_SC_PAGESIZE))
 		TALLOC_ABORT("Double free or invalid talloc_set?");
 	/* Invalidate pointer so it can't be used again. */
 	**pptr = (void *)1;
