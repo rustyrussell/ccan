@@ -69,7 +69,9 @@ static struct test tests[] = {
 	{ "HAVE_ALIGNOF", INSIDE_MAIN, NULL, NULL,
 	  "return __alignof__(double) > 0 ? 0 : 1;" },
 	{ "HAVE_ASPRINTF", DEFINES_FUNC, NULL, NULL,
+	  "#ifndef _GNU_SOURCE\n"
 	  "#define _GNU_SOURCE\n"
+	  "#endif\n"
 	  "#include <stdio.h>\n"
 	  "static char *func(int x) {"
 	  "	char *p;\n"
@@ -201,7 +203,9 @@ static struct test tests[] = {
 	  "#include <unistd.h>\n"
 	  "static int func(void) { return getpagesize(); }" },
 	{ "HAVE_ISBLANK", DEFINES_FUNC, NULL, NULL,
+	  "#ifndef _GNU_SOURCE\n"
 	  "#define _GNU_SOURCE\n"
+	  "#endif\n"
 	  "#include <ctype.h>\n"
 	  "static int func(void) { return isblank(' '); }" },
 	{ "HAVE_LITTLE_ENDIAN", INSIDE_MAIN|EXECUTE, NULL, NULL,
@@ -209,13 +213,17 @@ static struct test tests[] = {
 	  "u.i = 0x01020304;\n"
 	  "return u.c[0] == 0x04 && u.c[1] == 0x03 && u.c[2] == 0x02 && u.c[3] == 0x01 ? 0 : 1;" },
 	{ "HAVE_MEMMEM", DEFINES_FUNC, NULL, NULL,
+	  "#ifndef _GNU_SOURCE\n"
 	  "#define _GNU_SOURCE\n"
+	  "#endif\n"
 	  "#include <string.h>\n"
 	  "static void *func(void *h, size_t hl, void *n, size_t nl) {\n"
 	  "return memmem(h, hl, n, nl);"
 	  "}\n", },
 	{ "HAVE_MEMRCHR", DEFINES_FUNC, NULL, NULL,
+	  "#ifndef _GNU_SOURCE\n"
 	  "#define _GNU_SOURCE\n"
+	  "#endif\n"
 	  "#include <string.h>\n"
 	  "static void *func(void *s, int c, size_t n) {\n"
 	  "return memrchr(s, c, n);"
@@ -234,7 +242,9 @@ static struct test tests[] = {
 	  "}\n" },
 	{ "HAVE_QSORT_R_PRIVATE_LAST",
 	  DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE, NULL, NULL,
-	  "#define _GNU_SOURCE 1\n"
+	  "#ifndef _GNU_SOURCE\n"
+	  "#define _GNU_SOURCE\n"
+	  "#endif\n"
 	  "#include <stdlib.h>\n"
 	  "static int cmp(const void *lp, const void *rp, void *priv) {\n"
 	  " *(unsigned int *)priv = 1;\n"
