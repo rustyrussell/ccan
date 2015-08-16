@@ -430,6 +430,9 @@ static bool run_test(const char *cmd, struct test *test)
 				test->done = true;
 				return test->answer;
 			}
+			if (deps[len])
+				free(dep);
+
 			deps += len;
 			deps += strspn(deps, " ");
 		}
@@ -549,6 +552,7 @@ int main(int argc, const char *argv[])
 	cmd = connect_args(argv, " -o " OUTPUT_FILE " " INPUT_FILE);
 	for (i = 0; i < sizeof(tests)/sizeof(tests[0]); i++)
 		run_test(cmd, &tests[i]);
+	free(cmd);
 
 	unlink(OUTPUT_FILE);
 	unlink(INPUT_FILE);
@@ -560,7 +564,9 @@ int main(int argc, const char *argv[])
 	printf("#define _GNU_SOURCE /* Always use GNU extensions. */\n");
 	printf("#endif\n");
 	printf("#define CCAN_COMPILER \"%s\"\n", argv[1]);
-	printf("#define CCAN_CFLAGS \"%s\"\n\n", connect_args(argv+1, ""));
+	cmd = connect_args(argv+1, "");
+	printf("#define CCAN_CFLAGS \"%s\"\n\n", cmd);
+	free(cmd);
 	/* This one implies "#include <ccan/..." works, eg. for tdb2.h */
 	printf("#define HAVE_CCAN 1\n");
 	for (i = 0; i < sizeof(tests)/sizeof(tests[0]); i++)
