@@ -88,6 +88,7 @@ MODS_WITH_SRC := aga \
 	ogg_to_pcm \
 	opt \
 	order \
+	pr_log \
 	ptrint \
 	ptr_valid \
 	pushpull \

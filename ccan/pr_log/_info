@@ -1,0 +1,40 @@
+#include <string.h>
+#include "config.h"
+
+/**
+ * pr_log - print things with varying levels of importance
+ *
+ * pr_log is a "logger" styled similarly to Linux's printk() and pr_*() macros.
+ * The amount of debug output is controlled by the value of the `DEBUG`
+ * environment variable.
+ *
+ * It provides work-alikes for Linux's pr_devel, pr_debug, pr_info, etc macros.
+ *
+ * Example:
+ *	#include <ccan/pr_log/pr_log.h>
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		pr_debug("It's working\n");
+ *		pr_info("Really, it works\n");
+ *		pr_emerg("I'm serious %d\n", argc);
+ *		return 0;
+ *	}
+ *
+ * License: LGPL (v2.1 or any later version)
+ * Author: Cody P Schafer <dev@codyps.com>
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/compiler\n");
+		printf("ccan/str\n");
+		return 0;
+	}
+
+	return 1;
+}
