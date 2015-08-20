@@ -1,0 +1,107 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * strgrp - group/cluster similar strings.
+ *
+ * strgrp uses the Longest Common Subsequence (LCS) algorithm[1] to cluster
+ * similar strings. It is governed by a threshold which is compared against
+ * the computed normalised LCS length for all known groups.
+ *
+ * As a coarse and not entirely accurate summary, strgrp takes the following
+ * steps:
+ *
+ * 1. For all known strings, calculate the normalised LCS value against the
+ *    input string
+ * 2. Find the maximum normalised LCS value and associated group
+ * 3. If the calculated normalised LCS value exceeds the configured threshold,
+ *    add the input string to the group, otherwise create a new group
+ *
+ * The clustering operation is expensive; LCS on its own is computationally
+ * O(mn) on its two input strings and optimally requires O(min(m,n)) memory. In
+ * general each input string should be compared against all known strings,
+ * giving O(n^2) behaviour of the clustering algorithm on top of the O(mn) LCS
+ * similarity measurement.
+ *
+ * strgrp tries to battle this complexity on several fronts:
+ *
+ * 1. Coarse reduction of the required comparisons
+ * 1a. Each group has a 'key', which is the string that triggered the creation
+ *     of the group
+ * 1b. Input strings are only compared against group keys rather than all known
+ *     strings, reducing the complexity to the current number of groups rather
+ *     than all known strings. Note due the pathological case where the number
+ *     of groups is equal to the number of known strings the algorithm still
+ *     has O(n^2) computational complexity
+ *
+ * 2. Elimination of LCS computations that will never breach the configured
+ *    threshold
+ * 2a. This can be measured from the length of the compared strings
+ * 2b. This avoids invoking the O(mn) behaviour of LCS
+ *
+ * 3. Caching of input strings and their associated group
+ * 3a. By incurring the cost of a map's string hash function we may eliminate
+ *     all calls to the LCS function for exact matches, potentially reducing
+ *     the insertion to a constant-time operation.
+ *
+ * 4. Whilst the data dependencies of LCS prevent internally parallel
+ *    implementations, LCS as a function can be applied in parallel. The code
+ *    uses OpenMP to automatically and concurrently distribute scoring of the
+ *    input string against group keys across threads.
+ *
+ * [1] https://en.wikipedia.org/wiki/Longest_common_subsequence_problem
+ *
+ * License: LGPL
+ * Author: Andrew Jeffery <andrew@aj.id.au>
+ *
+ * Example:
+ *     #define BUF_SIZE 512
+ *     FILE *const f = fdopen(0, "r");
+ *     char *buf = malloc(BUF_SIZE);
+ *     struct strgrp *ctx = strgrp_new(0.85);
+ *     while(fgets(buf, BUF_SIZE, f)) {
+ *         buf[strcspn(buf, "\r\n")] = '\0';
+ *         if (!strgrp_add(ctx, buf, NULL)) {
+ *             printf("Failed to classify %s\n", buf);
+ *         }
+ *     }
+ *
+ *     // Re-implement something similar to strgrp_print() via API as an
+ *     // example
+ *     struct strgrp_iter *iter = strgrp_iter_new(ctx);
+ *     const struct strgrp_grp *grp;
+ *     while(NULL != (grp = strgrp_iter_next(iter))) {
+ *         printf("%s\n", strgrp_grp_key(grp));
+ *         struct strgrp_grp_iter *grp_iter = strgrp_grp_iter_new(grp);
+ *         const struct strgrp_item *item;
+ *         while(NULL != (item = strgrp_grp_iter_next(grp_iter))) {
+ *              printf("\t%s\n", strgrp_item_key(item));
+ *         }
+ *         strgrp_grp_iter_free(grp_iter);
+ *     }
+ *     strgrp_iter_free(iter);
+ *     strgrp_free(ctx);
+ *     free(buf);
+ *     fclose(f);
+ */
+int main(int argc, char *argv[]) {
+    if (argc != 2) {
+        return 1;
+    }
+
+    if (strcmp(argv[1], "depends") == 0) {
+        printf("ccan/darray\n");
+        printf("ccan/stringmap\n");
+        printf("ccan/tal\n");
+        printf("ccan/tal/str\n");
+        return 0;
+    }
+
+    if (strcmp(argv[1], "testdepends") == 0) {
+        printf("ccan/str\n");
+        return 0;
+    }
+
+    return 1;
+}

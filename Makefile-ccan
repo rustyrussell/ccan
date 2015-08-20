@@ -102,6 +102,7 @@ MODS_WITH_SRC := aga \
 	str/hex \
 	stringbuilder \
 	stringmap \
+	strgrp \
 	strmap \
 	strset \
 	take \
