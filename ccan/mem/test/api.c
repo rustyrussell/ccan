@@ -1,4 +1,3 @@
-#include <ccan/array_size/array_size.h>
 #include <ccan/mem/mem.h>
 #include <ccan/tap/tap.h>
 
