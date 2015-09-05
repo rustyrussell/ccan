@@ -41,6 +41,17 @@ static char *obj_list(const struct manifest *m)
 	return list;
 }
 
+static char *cflags_list(const struct manifest *m)
+{
+	unsigned int i;
+	char *ret = tal_strdup(m, cflags);
+
+	char **flags = get_cflags(m, m->dir, get_or_compile_info);
+	for (i = 0; flags[i]; i++)
+		tal_append_fmt(&ret, " %s", flags[i]);
+	return ret;
+}
+
 static char *lib_list(const struct manifest *m)
 {
 	unsigned int i;
@@ -59,6 +70,7 @@ static void check_use_build(struct manifest *m,
 	char *contents;
 	char *tmpfile, *cmdout;
 	int fd;
+	char *flags;
 
 	tmpfile = temp_file(m, ".c", "example.c");
 
@@ -77,8 +89,10 @@ static void check_use_build(struct manifest *m,
 		err(1, "Failure writing to temporary file %s", tmpfile);
 	close(fd);
 
+	flags = cflags_list(m);
+
 	if (compile_and_link(score, tmpfile, ccan_dir, obj_list(m),
-			     compiler, cflags, lib_list(m),
+			     compiler, flags, lib_list(m),
 			     temp_file(m, "", tmpfile),
 			     &cmdout)) {
 		score->pass = true;

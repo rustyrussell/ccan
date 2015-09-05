@@ -66,6 +66,17 @@ char *test_lib_list(const struct manifest *m, enum compile_type ctype)
 	return ret;
 }
 
+static char *cflags_list(const struct manifest *m, const char *iflags)
+{
+	unsigned int i;
+	char *ret = tal_strdup(m, iflags);
+
+	char **flags = get_cflags(m, m->dir, get_or_compile_info);
+	for (i = 0; flags[i]; i++)
+		tal_append_fmt(&ret, " %s", flags[i]);
+	return ret;
+}
+
 static bool compile(const void *ctx,
 		    struct manifest *m,
 		    struct ccan_file *file,
@@ -81,6 +92,7 @@ static bool compile(const void *ctx,
 			cflags,
 			ctype == COMPILE_NOFEAT
 			? " "REDUCE_FEATURES_FLAGS : "");
+	flags = cflags_list(m, flags);
 
 	fname = temp_file(ctx, "", file->fullname);
 	if (!compile_and_link(ctx, file->fullname, ccan_dir,
@@ -110,6 +122,7 @@ static void compile_async(const void *ctx,
 			cflags,
 			ctype == COMPILE_NOFEAT
 			? " "REDUCE_FEATURES_FLAGS : "");
+	flags = cflags_list(m, flags);
 
 	compile_and_link_async(file, time_ms, file->fullname, ccan_dir,
 			       test_obj_list(m, link_with_module, ctype, ctype),

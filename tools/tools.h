@@ -43,6 +43,9 @@ char **get_safe_ccan_deps(const void *ctx, const char *dir, const char *style,
 char **get_libs(const void *ctx, const char *dir, const char *style,
 		char *(*get_info)(const void *ctx, const char *dir));
 
+char **get_cflags(const void *ctx, const char *dir,
+		char *(*get_info)(const void *ctx, const char *dir));
+
 /* From tools.c */
 /* If set, print all commands run, all output they give and exit status. */
 extern bool tools_verbose;

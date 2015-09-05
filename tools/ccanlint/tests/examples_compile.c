@@ -126,6 +126,17 @@ static char *example_lib_list(const void *ctx, struct manifest **deps)
 	return list;
 }
 
+static char *cflags_list(const struct manifest *m)
+{
+	unsigned int i;
+	char *ret = tal_strdup(m, cflags);
+
+	char **flags = get_cflags(m, m->dir, get_or_compile_info);
+	for (i = 0; flags[i]; i++)
+		tal_append_fmt(&ret, " %s", flags[i]);
+	return ret;
+}
+
 /* FIXME: Test with reduced features! */
 static bool compile(const void *ctx,
 		    struct manifest *m,
@@ -133,11 +144,12 @@ static bool compile(const void *ctx,
 		    char **output)
 {
 	struct manifest **deps = get_example_deps(m, file);
+	const char *flags = cflags_list(m);
 
 	file->compiled[COMPILE_NORMAL] = temp_file(ctx, "", file->fullname);
 	if (!compile_and_link(ctx, file->fullname, ccan_dir,
 			      example_obj_list(file, deps),
-			      compiler, cflags,
+			      compiler, flags,
 			      example_lib_list(file, deps),
 			      file->compiled[COMPILE_NORMAL],
 			      output)) {

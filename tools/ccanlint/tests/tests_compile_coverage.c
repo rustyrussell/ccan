@@ -31,6 +31,27 @@ static const char *can_run_coverage(struct manifest *m)
 #endif
 }
 
+static char *cflags_list(const struct manifest *m)
+{
+	unsigned int i;
+	char *ret = tal_strdup(m, cflags);
+
+	char **flags = get_cflags(m, m->dir, get_or_compile_info);
+	for (i = 0; flags[i]; i++)
+		tal_append_fmt(&ret, " %s", flags[i]);
+	return ret;
+}
+
+static char *cflags_list_append(const struct manifest *m, char *iflags)
+{
+	unsigned int i;
+
+	char **flags = get_cflags(m, m->dir, get_or_compile_info);
+	for (i = 0; flags[i]; i++)
+		tal_append_fmt(&iflags, " %s", flags[i]);
+	return iflags;
+}
+
 static void cov_compile(const void *ctx,
 			unsigned int time_ms,
 			struct manifest *m,
@@ -38,6 +59,7 @@ static void cov_compile(const void *ctx,
 			bool link_with_module)
 {
 	char *flags = tal_fmt(ctx, "%s %s", cflags, COVERAGE_CFLAGS);
+	flags = cflags_list_append(m, flags);
 
 	file->compiled[COMPILE_COVERAGE] = temp_file(ctx, "", file->fullname);
 	compile_and_link_async(file, time_ms, file->fullname, ccan_dir,
@@ -58,7 +80,8 @@ static void do_compile_coverage_tests(struct manifest *m,
 	struct ccan_file *i;
 	struct list_head *h;
 	bool ok;
-	char *f = tal_fmt(score, "%s %s", cflags, COVERAGE_CFLAGS);
+	char *f = cflags_list(m);
+	tal_append_fmt(&f, " %s", COVERAGE_CFLAGS);
 
 	/* For API tests, we need coverage version of module. */
 	if (!list_empty(&m->api_tests)) {

@@ -228,17 +228,29 @@ get_all_deps(const void *ctx, const char *dir, const char *style,
 }
 
 /* Can return NULL: _info may not support 'libs'. */
-static char **get_one_libs(const void *ctx, const char *dir,
+static char **get_one_prop(const void *ctx, const char *dir, const char *prop,
 			   char *(*get_info)(const void *ctx, const char *dir))
 {
 	char *cmd, **lines;
 
-	cmd = tal_fmt(ctx, "%s libs", get_info(ctx, dir));
+	cmd = tal_fmt(ctx, "%s %s", get_info(ctx, dir), prop);
 	lines = lines_from_cmd(cmd, "%s", cmd);
 	/* Strip final NULL. */
 	if (lines)
 		tal_resize(&lines, tal_count(lines)-1);
 	return lines;
+}
+
+static char **get_one_libs(const void *ctx, const char *dir,
+			   char *(*get_info)(const void *ctx, const char *dir))
+{
+	return get_one_prop(ctx, dir, "libs", get_info);
+}
+
+static char **get_one_cflags(const void *ctx, const char *dir,
+			   char *(*get_info)(const void *ctx, const char *dir))
+{
+	return get_one_prop(ctx, dir, "cflags", get_info);
 }
 
 /* O(n^2) but n is small. */
@@ -256,6 +268,18 @@ static char **add_deps(char **deps1, char **deps2)
 		deps1[len++] = NULL;
 	}
 	return deps1;
+}
+
+char **get_cflags(const void *ctx, const char *dir,
+        char *(*get_info)(const void *ctx, const char *dir))
+{
+	char **flags;
+	unsigned int len;
+	flags = get_one_cflags(ctx, dir, get_info);
+	len = tal_count(flags);
+	tal_resize(&flags, len + 1);
+	flags[len] = NULL;
+	return flags;
 }
 
 char **get_libs(const void *ctx, const char *dir, const char *style,

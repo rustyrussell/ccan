@@ -22,6 +22,17 @@ static const char *can_build(struct manifest *m)
 	return NULL;
 }
 
+static char *cflags_list(const struct manifest *m)
+{
+	unsigned int i;
+	char *ret = tal_strdup(m, cflags);
+
+	char **flags = get_cflags(m, m->dir, get_or_compile_info);
+	for (i = 0; flags[i]; i++)
+		tal_append_fmt(&ret, " %s", flags[i]);
+	return ret;
+}
+
 void build_objects(struct manifest *m,
 		   struct score *score, const char *flags,
 		   enum compile_type ctype)
@@ -65,7 +76,10 @@ void build_objects(struct manifest *m,
 static void check_objs_build(struct manifest *m,
 			     unsigned int *timeleft, struct score *score)
 {
-	build_objects(m, score, cflags, COMPILE_NORMAL);
+	const char *flags;
+
+	flags = cflags_list(m);
+	build_objects(m, score, flags, COMPILE_NORMAL);
 }
 
 struct ccanlint objects_build = {
