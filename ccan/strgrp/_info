@@ -103,5 +103,12 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
+#if HAVE_OPENMP
+    if (strcmp(argv[1], "cflags") == 0) {
+        printf("-fopenmp\n");
+        return 0;
+    }
+#endif
+
     return 1;
 }

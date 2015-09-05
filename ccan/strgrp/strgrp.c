@@ -25,6 +25,7 @@
 #include "ccan/tal/tal.h"
 #include "ccan/tal/str/str.h"
 #include "strgrp.h"
+#include "config.h"
 
 typedef darray(struct strgrp_grp *) darray_grp;
 typedef darray(struct strgrp_item *) darray_item;
@@ -224,7 +225,10 @@ grp_for(struct strgrp *const ctx, const char *const str) {
         }
     }
     int i;
+// Keep ccanlint happy in reduced feature mode
+#if HAVE_OPENMP
     #pragma omp parallel for schedule(dynamic)
+#endif
     for (i = 0; i < ctx->n_grps; i++) {
         ctx->scores[i].grp = darray_item(ctx->grps, i);
         const bool ss = should_grp_score(ctx, ctx->scores[i].grp, str);
