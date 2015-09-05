@@ -55,6 +55,7 @@ struct test {
 	const char *depends;
 	const char *link;
 	const char *fragment;
+	const char *flags;
 	const char *overrides; /* On success, force this to '1' */
 	bool done;
 	bool answer;
@@ -310,6 +311,12 @@ static struct test tests[] = {
 	  "static __attribute__((warn_unused_result)) int func(int i) {\n"
 	  "	return i + 1;\n"
 	  "}" },
+	{ "HAVE_OPENMP", INSIDE_MAIN, NULL, NULL,
+	  "int i;\n"
+	  "#pragma omp parallel for\n"
+	  "for(i = 0; i < 0; i++) {};\n"
+	  "return 0;\n",
+	  "-Werror -fopenmp" },
 };
 
 static char *grab_fd(int fd)
@@ -415,7 +422,7 @@ static struct test *find_test(const char *name)
 
 static bool run_test(const char *cmd, struct test *test)
 {
-	char *output;
+	char *output, *newcmd;
 	FILE *outf;
 	int status;
 
@@ -490,17 +497,30 @@ static bool run_test(const char *cmd, struct test *test)
 	if (verbose > 1)
 		if (system("cat " INPUT_FILE) == -1);
 
-	if (test->link) {
-		char *newcmd;
-		newcmd = malloc(strlen(cmd) + strlen(" ")
-				+ strlen(test->link) + 1);
-		sprintf(newcmd, "%s %s", cmd, test->link);
+	newcmd = strdup(cmd);
+
+	if (test->flags) {
+		newcmd = realloc(newcmd, strlen(newcmd) + strlen(" ")
+				+ strlen(test->flags) + 1);
+		strcat(newcmd, " ");
+		strcat(newcmd, test->flags);
 		if (verbose > 1)
-			printf("Extra link line: %s", newcmd);
-		cmd = newcmd;
+			printf("Extra flags line: %s", newcmd);
 	}
 
-	output = run(cmd, &status);
+	if (test->link) {
+		newcmd = realloc(newcmd, strlen(newcmd) + strlen(" ")
+				+ strlen(test->link) + 1);
+		strcat(newcmd, " ");
+		strcat(newcmd, test->link);
+		if (verbose > 1)
+			printf("Extra link line: %s", newcmd);
+	}
+
+	output = run(newcmd, &status);
+
+	free(newcmd);
+
 	if (status != 0 || strstr(output, "warning")) {
 		if (verbose)
 			printf("Compile %s for %s, status %i: %s\n",
