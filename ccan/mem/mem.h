@@ -3,16 +3,19 @@
 #define CCAN_MEM_H
 
 #include "config.h"
+#include <ccan/compiler/compiler.h>
 
 #include <string.h>
 #include <stdbool.h>
 
 #if !HAVE_MEMMEM
+PURE_FUNCTION
 void *memmem(const void *haystack, size_t haystacklen,
 	     const void *needle, size_t needlelen);
 #endif
 
 #if !HAVE_MEMRCHR
+PURE_FUNCTION
 void *memrchr(const void *s, int c, size_t n);
 #endif
 
@@ -37,6 +40,7 @@ void *memrchr(const void *s, int c, size_t n);
  *	}
  *
  */
+PURE_FUNCTION
 void *mempbrkm(const void *data, size_t len, const void *accept, size_t accept_len);
 
 /**
@@ -57,6 +61,7 @@ void *mempbrkm(const void *data, size_t len, const void *accept, size_t accept_l
  *		printf("Nada\n");
  *	}
  */
+PURE_FUNCTION
 static inline char *mempbrk(const void *data, size_t len, const char *accept)
 {
 	return mempbrkm(data, len, accept, strlen(accept));
@@ -81,6 +86,7 @@ static inline char *mempbrk(const void *data, size_t len, const char *accept)
  *		printf("Found %c after trimming spaces\n", *r);
  *	}
  */
+PURE_FUNCTION
 void *memcchr(void const *data, int c, size_t data_len);
 
 /**
@@ -95,6 +101,7 @@ void *memcchr(void const *data, int c, size_t data_len);
  *		printf("memory blocks are the same!\n");
  *	}
  */
+PURE_FUNCTION
 static inline bool memeq(const void *a, size_t al, const void *b, size_t bl)
 {
 	return al == bl && !memcmp(a, b, bl);
@@ -114,6 +121,7 @@ static inline bool memeq(const void *a, size_t al, const void *b, size_t bl)
  *		printf("somebytes starts with otherbytes!\n");
  *	}
  */
+PURE_FUNCTION
 static inline bool memstarts(void const *data, size_t data_len,
 		void const *prefix, size_t prefix_len)
 {
@@ -135,6 +143,7 @@ static inline bool memstarts(void const *data, size_t data_len,
  *		printf("somebytes == 'foo'!\n");
  *	}
  */
+PURE_FUNCTION
 static inline bool memeqstr(const void *data, size_t length, const char *string)
 {
 	return memeq(data, length, string, strlen(string));
@@ -151,6 +160,7 @@ static inline bool memeqstr(const void *data, size_t length, const char *string)
  *		printf("somebytes starts with 'It'\n");
  *	}
  */
+PURE_FUNCTION
 static inline bool memstarts_str(const void *a, size_t al, const char *s)
 {
 	return memstarts(a, al, s, strlen(s));
@@ -166,6 +176,7 @@ static inline bool memstarts_str(const void *a, size_t al, const char *s)
  * Returns true if @suffix appears as a substring at the end of @s,
  * false otherwise.
  */
+PURE_FUNCTION
 static inline bool memends(const void *s, size_t s_len, const void *suffix, size_t suffix_len)
 {
 	return (s_len >= suffix_len) && (memcmp((const char *)s + s_len - suffix_len,
