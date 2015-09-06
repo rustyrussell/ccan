@@ -94,8 +94,7 @@ static inline struct bytestring bytestring_from_string(const char *s)
  */
 static inline bool bytestring_eq(struct bytestring a, struct bytestring b)
 {
-	return (a.len == b.len)
-		&& (memcmp(a.ptr, b.ptr, a.len) == 0);
+	return memeq(a.ptr, a.len, b.ptr, b.len);
 }
 
 /**
@@ -149,8 +148,7 @@ static inline struct bytestring bytestring_slice(struct bytestring s,
 static inline bool bytestring_starts(struct bytestring s,
 				     struct bytestring prefix)
 {
-	return (s.len >= prefix.len) && (memcmp(s.ptr,
-						prefix.ptr, prefix.len) == 0);
+	return memstarts(s.ptr, s.len, prefix.ptr, prefix.len);
 }
 
 /**
@@ -163,8 +161,7 @@ static inline bool bytestring_starts(struct bytestring s,
 static inline bool bytestring_ends(struct bytestring s,
 				   struct bytestring suffix)
 {
-	return (s.len >= suffix.len) && (memcmp(s.ptr + s.len - suffix.len,
-						suffix.ptr, suffix.len) == 0);
+	return memends(s.ptr, s.len, suffix.ptr, suffix.len);
 }
 
 /**
