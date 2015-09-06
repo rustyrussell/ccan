@@ -12,7 +12,7 @@ int main(void)
 	char scan2[] = "\0\0\0b";
 
 	/* This is how many tests you plan to run */
-	plan_tests(42);
+	plan_tests(46);
 
 	ok1(memmem(haystack1, sizeof(haystack1), needle1, 2) == haystack1);
 	ok1(memmem(haystack1, sizeof(haystack1), needle1, 3) == NULL);
@@ -71,6 +71,10 @@ int main(void)
 	ok1(!memends(S("a\0bcdef"), S("a\0b")));
 	ok1(memends(S("a\0bcdef"), S("ef")));
 
+	ok1(memends_str(S("abcdef"), "abcdef"));
+	ok1(!memends_str(S("abcde\0f"), "d\0f"));
+	ok1(!memends_str(S("a\0bcdef"), "a"));
+	ok1(memends_str(S("a\0bcdef"), "ef"));
 
 	/* This exits depending on whether all tests passed */
 	return exit_status();

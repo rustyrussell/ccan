@@ -183,4 +183,21 @@ static inline bool memends(const void *s, size_t s_len, const void *suffix, size
 						suffix, suffix_len) == 0);
 }
 
+/**
+ * memends_str - Does this byte array end with a string suffix?
+ * @a: byte array
+ * @al: length in bytes
+ * @s: string suffix
+ *
+ * Example:
+ *	if (memends_str(somebytes, bytes_len, "It")) {
+ *		printf("somebytes ends with with 'It'\n");
+ *	}
+ */
+PURE_FUNCTION
+static inline bool memends_str(const void *a, size_t al, const char *s)
+{
+	return memends(a, al, s, strlen(s));
+}
+
 #endif /* CCAN_MEM_H */
