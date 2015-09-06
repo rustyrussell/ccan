@@ -40,3 +40,27 @@ void *memrchr(const void *s, int c, size_t n)
 	return NULL;
 }
 #endif
+
+void *mempbrkm(const void *data_, size_t len, const void *accept_, size_t accept_len)
+{
+	const char *data = data_, *accept = accept_;
+	size_t i, j;
+
+	for (i = 0; i < len; i++)
+		for (j = 0; j < accept_len; j++)
+			if (accept[j] == data[i])
+				return (void *)&data[i];
+	return NULL;
+}
+
+void *memcchr(void const *data, int c, size_t data_len)
+{
+	char const *p = data;
+	size_t i;
+
+	for (i = 0; i < data_len; i++)
+		if (p[i] != c)
+			return (void *)&p[i];
+
+	return NULL;
+}

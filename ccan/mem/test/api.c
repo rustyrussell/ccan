@@ -8,9 +8,11 @@ int main(void)
 	char haystack2[] = "ab\0ab\0ab\0ab";
 	char needle1[] = "ab";
 	char needle2[] = "d\0e";
+	char scan1[] = "aaaab";
+	char scan2[] = "\0\0\0b";
 
 	/* This is how many tests you plan to run */
-	plan_tests(19);
+	plan_tests(42);
 
 	ok1(memmem(haystack1, sizeof(haystack1), needle1, 2) == haystack1);
 	ok1(memmem(haystack1, sizeof(haystack1), needle1, 3) == NULL);
@@ -36,6 +38,39 @@ int main(void)
 	ok1(memrchr(haystack2, '\0', sizeof(haystack2)) == haystack2 + 11);
 
 	ok1(memrchr(needle1, '\0', 2) == NULL);
+
+#define S(x) (x), sizeof(x) - 1
+	ok1(mempbrkm(S(haystack1), S("\0efgh")) == haystack1 + 4);
+	ok1(mempbrkm(S(haystack1), S("jklmn")) == NULL);
+	ok1(mempbrkm(S(haystack1), S("sd\0a")) == haystack1 + 0);
+
+	ok1(mempbrk(haystack1, sizeof(haystack1), "bcd\0a") == haystack1 + 1);
+	ok1(mempbrk(haystack1, sizeof(haystack1), "\0") == NULL);
+
+	ok1(memcchr(scan1, 'a', sizeof(scan1)) == scan1 + 4);
+	ok1(memcchr(scan1, 'b', sizeof(scan1)) == scan1);
+	ok1(memcchr(scan2, '\0', sizeof(scan2)) == scan2 + 3);
+	ok1(memcchr(scan2, '\0', sizeof(scan2) - 2) == NULL);
+
+	ok1(memeq(haystack1, sizeof(haystack1), haystack1, sizeof(haystack1)));
+	ok1(!memeq(haystack1, sizeof(haystack1), haystack2, sizeof(haystack2)));
+
+	ok1(memeqstr(scan1, sizeof(scan1) - 1, scan1));
+	ok1(!memeqstr(scan1, sizeof(scan1), scan1));
+	ok1(!memeqstr(scan1, sizeof(scan1), "aaaa"));
+
+	ok1(memstarts(S("a\0bcdef"), S("a\0bc")));
+	ok1(!memstarts(S("a\0bcdef"), S("a\0bcG")));
+	ok1(!memstarts(S("a\0bcdef"), S("a\0bcdefg")));
+
+	ok1(memstarts_str(scan1, sizeof(scan1), scan1));
+	ok1(!memstarts_str(scan1, sizeof(scan1), "ab"));
+
+	ok1(memends(S("abcdef"), S("abcdef")));
+	ok1(!memends(S("abcdef"), S("abcdefg")));
+	ok1(!memends(S("a\0bcdef"), S("a\0b")));
+	ok1(memends(S("a\0bcdef"), S("ef")));
+
 
 	/* This exits depending on whether all tests passed */
 	return exit_status();
