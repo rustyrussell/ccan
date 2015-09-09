@@ -1,5 +1,11 @@
+#include "config.h"
+
+#include <assert.h>
+
 #include <ccan/mem/mem.h>
 #include <ccan/tap/tap.h>
+
+#define SWAPSIZE	12
 
 int main(void)
 {
@@ -9,9 +15,10 @@ int main(void)
 	char needle2[] = "d\0e";
 	char scan1[] = "aaaab";
 	char scan2[] = "\0\0\0b";
+	char tmp1[SWAPSIZE], tmp2[SWAPSIZE];
 
 	/* This is how many tests you plan to run */
-	plan_tests(60);
+	plan_tests(62);
 
 	ok1(memmem(haystack1, sizeof(haystack1), needle1, 2) == haystack1);
 	ok1(memmem(haystack1, sizeof(haystack1), needle1, 3) == NULL);
@@ -95,6 +102,16 @@ int main(void)
 	ok1(!memoverlaps(haystack1, 5, haystack1 + 5, 6));
 	ok1(memoverlaps(haystack1 + 4, 7, haystack1, 5));
 	ok1(!memoverlaps(haystack1 + 5, 6, haystack1, 5));
+
+	assert(sizeof(haystack1) <= SWAPSIZE);
+	assert(sizeof(haystack2) <= SWAPSIZE);
+	memset(tmp1, 0, sizeof(tmp1));
+	memset(tmp2, 0, sizeof(tmp2));
+	memcpy(tmp1, haystack1, sizeof(haystack1));
+	memcpy(tmp2, haystack2, sizeof(haystack2));
+	memswap(tmp1, tmp2, SWAPSIZE);
+	ok1(memcmp(tmp1, haystack2, sizeof(haystack2)) == 0);
+	ok1(memcmp(tmp2, haystack1, sizeof(haystack1)) == 0);
 
 	/* This exits depending on whether all tests passed */
 	return exit_status();

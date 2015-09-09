@@ -2,6 +2,7 @@
 
 #include "config.h"
 
+#include <assert.h>
 #include <string.h>
 #include <ccan/mem/mem.h>
 
@@ -63,4 +64,27 @@ void *memcchr(void const *data, int c, size_t data_len)
 			return (void *)&p[i];
 
 	return NULL;
+}
+
+#define MEMSWAP_TMP_SIZE	256
+
+void memswap(void *a, void *b, size_t n)
+{
+	char *ap = a;
+	char *bp = b;
+	char tmp[MEMSWAP_TMP_SIZE];
+
+	assert(!memoverlaps(a, n, b, n));
+
+	while (n) {
+		size_t m = n > MEMSWAP_TMP_SIZE ? MEMSWAP_TMP_SIZE : n;
+
+		memcpy(tmp, bp, m);
+		memcpy(bp, ap, m);
+		memcpy(ap, tmp, m);
+
+		ap += m;
+		bp += m;
+		n -= m;
+	}
 }

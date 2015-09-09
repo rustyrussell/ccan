@@ -217,4 +217,14 @@ static inline bool memoverlaps(const void *a_, size_t al,
 	return (a < (b + bl)) && (b < (a + al));
 }
 
+/*
+ * memswap - Exchange two memory regions
+ * @a: first region
+ * @b: second region
+ * @n: length of the regions
+ *
+ * Undefined results if the two memory regions overlap.
+ */
+void memswap(void *a, void *b, size_t n);
+
 #endif /* CCAN_MEM_H */
