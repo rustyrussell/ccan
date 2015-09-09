@@ -11,7 +11,7 @@ int main(void)
 	char scan2[] = "\0\0\0b";
 
 	/* This is how many tests you plan to run */
-	plan_tests(46);
+	plan_tests(60);
 
 	ok1(memmem(haystack1, sizeof(haystack1), needle1, 2) == haystack1);
 	ok1(memmem(haystack1, sizeof(haystack1), needle1, 3) == NULL);
@@ -74,6 +74,27 @@ int main(void)
 	ok1(!memends_str(S("abcde\0f"), "d\0f"));
 	ok1(!memends_str(S("a\0bcdef"), "a"));
 	ok1(memends_str(S("a\0bcdef"), "ef"));
+
+	ok1(!memoverlaps(haystack1, sizeof(haystack1),
+			 haystack2, sizeof(haystack2)));
+	ok1(!memoverlaps(haystack2, sizeof(haystack2),
+			 haystack1, sizeof(haystack1)));
+	ok1(memoverlaps(haystack1, sizeof(haystack1), haystack1, 1));
+	ok1(memoverlaps(haystack1, 1, haystack1, sizeof(haystack1)));
+	ok1(memoverlaps(haystack1, sizeof(haystack1),
+			haystack1 + sizeof(haystack1) - 1, 1));
+	ok1(memoverlaps(haystack1 + sizeof(haystack1) - 1, 1,
+			haystack1, sizeof(haystack1)));
+	ok1(!memoverlaps(haystack1, sizeof(haystack1),
+			 haystack1 + sizeof(haystack1), 1));
+	ok1(!memoverlaps(haystack1 + sizeof(haystack1), 1,
+			 haystack1, sizeof(haystack1)));
+	ok1(!memoverlaps(haystack1, sizeof(haystack1), haystack1 - 1, 1));
+	ok1(!memoverlaps(haystack1 - 1, 1, haystack1, sizeof(haystack1)));
+	ok1(memoverlaps(haystack1, 5, haystack1 + 4, 7));
+	ok1(!memoverlaps(haystack1, 5, haystack1 + 5, 6));
+	ok1(memoverlaps(haystack1 + 4, 7, haystack1, 5));
+	ok1(!memoverlaps(haystack1 + 5, 6, haystack1, 5));
 
 	/* This exits depending on whether all tests passed */
 	return exit_status();

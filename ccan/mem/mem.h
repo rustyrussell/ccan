@@ -200,4 +200,21 @@ static inline bool memends_str(const void *a, size_t al, const char *s)
 	return memends(a, al, s, strlen(s));
 }
 
+/**
+ * memoverlaps - Do two memory ranges overlap?
+ * @a: pointer to first memory range
+ * @al: length of first memory range
+ * @b: pointer to second memory range
+ * @al: length of second memory range
+ */
+CONST_FUNCTION
+static inline bool memoverlaps(const void *a_, size_t al,
+			       const void *b_, size_t bl)
+{
+	const char *a = a_;
+	const char *b = b_;
+
+	return (a < (b + bl)) && (b < (a + al));
+}
+
 #endif /* CCAN_MEM_H */
