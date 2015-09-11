@@ -13,10 +13,12 @@
  * steps:
  *
  * 1. For all known strings, calculate the normalised LCS value against the
- *    input string
+ * input string
+ *
  * 2. Find the maximum normalised LCS value and associated group
- * 3. If the calculated normalised LCS value exceeds the configured threshold,
- *    add the input string to the group, otherwise create a new group
+ *
+ * 3. If the calculated maximum normalised LCS value exceeds the configured
+ * threshold add the input string to the group, otherwise create a new group
  *
  * The clustering operation is expensive; LCS on its own is computationally
  * O(mn) on its two input strings and optimally requires O(min(m,n)) memory. In
@@ -26,29 +28,27 @@
  *
  * strgrp tries to battle this complexity on several fronts:
  *
- * 1. Coarse reduction of the required comparisons
- * 1a. Each group has a 'key', which is the string that triggered the creation
- *     of the group
- * 1b. Input strings are only compared against group keys rather than all known
- *     strings, reducing the complexity to the current number of groups rather
- *     than all known strings. Note due the pathological case where the number
- *     of groups is equal to the number of known strings the algorithm still
- *     has O(n^2) computational complexity
+ * 1. Coarse reduction of the required comparisons. Each group has a 'key',
+ * which is the string that triggered the creation of the group. Input strings
+ * are only compared against group keys rather than all known strings, reducing
+ * the complexity to the current number of groups rather than all known
+ * strings. Note due the pathological case where the number of groups is equal
+ * to the number of known strings the algorithm still  has O(n^2) computational
+ * complexity
  *
  * 2. Elimination of LCS computations that will never breach the configured
- *    threshold
- * 2a. This can be measured from the length of the compared strings
- * 2b. This avoids invoking the O(mn) behaviour of LCS
+ * threshold. This property can be measured from the length of the input
+ * strings, and a negative result avoids invoking the O(mn) behaviour of LCS
  *
- * 3. Caching of input strings and their associated group
- * 3a. By incurring the cost of a map's string hash function we may eliminate
- *     all calls to the LCS function for exact matches, potentially reducing
- *     the insertion to a constant-time operation.
+ * 3. Caching of input strings and their associated group. By incurring the
+ * cost of a map's string hash function we may eliminate all calls to the LCS
+ * function for exact matches, potentially reducing the insertion to a
+ * constant-time operation.
  *
  * 4. Whilst the data dependencies of LCS prevent internally parallel
- *    implementations, LCS as a function can be applied in parallel. The code
- *    uses OpenMP to automatically and concurrently distribute scoring of the
- *    input string against group keys across threads.
+ * implementations, LCS as a function can be applied in parallel. The code
+ * uses OpenMP to automatically distribute scoring of the input string
+ * against group keys across a number of threads.
  *
  * [1] https://en.wikipedia.org/wiki/Longest_common_subsequence_problem
  *
@@ -56,10 +56,18 @@
  * Author: Andrew Jeffery <andrew@aj.id.au>
  *
  * Example:
+ *     FILE *const f;
+ *     char *buf;
+ *     struct strgrp *ctx;
+ *     struct strgrp_iter *iter;
+ *     const struct strgrp_grp *grp;
+ *     struct strgrp_grp_iter *grp_iter;
+ *     const struct strgrp_item *item;
+ *
+ *     f = fdopen(0, "r");
  *     #define BUF_SIZE 512
- *     FILE *const f = fdopen(0, "r");
- *     char *buf = malloc(BUF_SIZE);
- *     struct strgrp *ctx = strgrp_new(0.85);
+ *     buf = malloc(BUF_SIZE);
+ *     ctx = strgrp_new(0.85);
  *     while(fgets(buf, BUF_SIZE, f)) {
  *         buf[strcspn(buf, "\r\n")] = '\0';
  *         if (!strgrp_add(ctx, buf, NULL)) {
@@ -69,17 +77,16 @@
  *
  *     // Re-implement something similar to strgrp_print() via API as an
  *     // example
- *     struct strgrp_iter *iter = strgrp_iter_new(ctx);
- *     const struct strgrp_grp *grp;
+ *     *iter = strgrp_iter_new(ctx);
  *     while(NULL != (grp = strgrp_iter_next(iter))) {
  *         printf("%s\n", strgrp_grp_key(grp));
- *         struct strgrp_grp_iter *grp_iter = strgrp_grp_iter_new(grp);
- *         const struct strgrp_item *item;
+ *         *grp_iter = strgrp_grp_iter_new(grp);
  *         while(NULL != (item = strgrp_grp_iter_next(grp_iter))) {
  *              printf("\t%s\n", strgrp_item_key(item));
  *         }
  *         strgrp_grp_iter_free(grp_iter);
  *     }
+ *
  *     strgrp_iter_free(iter);
  *     strgrp_free(ctx);
  *     free(buf);
