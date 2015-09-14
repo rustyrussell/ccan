@@ -56,7 +56,7 @@
  * Author: Andrew Jeffery <andrew@aj.id.au>
  *
  * Example:
- *     FILE *const f;
+ *     FILE *f;
  *     char *buf;
  *     struct strgrp *ctx;
  *     struct strgrp_iter *iter;
@@ -77,10 +77,10 @@
  *
  *     // Re-implement something similar to strgrp_print() via API as an
  *     // example
- *     *iter = strgrp_iter_new(ctx);
+ *     iter = strgrp_iter_new(ctx);
  *     while(NULL != (grp = strgrp_iter_next(iter))) {
  *         printf("%s\n", strgrp_grp_key(grp));
- *         *grp_iter = strgrp_grp_iter_new(grp);
+ *         grp_iter = strgrp_grp_iter_new(grp);
  *         while(NULL != (item = strgrp_grp_iter_next(grp_iter))) {
  *              printf("\t%s\n", strgrp_item_key(item));
  *         }
