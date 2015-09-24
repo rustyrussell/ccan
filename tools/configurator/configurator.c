@@ -317,6 +317,8 @@ static struct test tests[] = {
 	  "for(i = 0; i < 0; i++) {};\n"
 	  "return 0;\n",
 	  "-Werror -fopenmp" },
+	{ "HAVE_VALGRIND_MEMCHECK_H", OUTSIDE_MAIN, NULL, NULL,
+	  "#include <valgrind/memcheck.h>\n" },
 };
 
 static char *grab_fd(int fd)
