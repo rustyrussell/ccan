@@ -5,14 +5,15 @@
 /**
  * strgrp - group/cluster similar strings.
  *
- * strgrp uses the Longest Common Subsequence (LCS) algorithm[1] to cluster
- * similar strings. It is governed by a threshold which is compared against
- * the computed normalised LCS length for all known groups.
+ * strgrp clusters similar strings using the Longest Common Subsequence (LCS)
+ * algorithm[1]. Clustering is governed by a threshold value, which is compared
+ * with the normalised LCS scores calculated from the input string and each
+ * existing group.
  *
  * As a coarse and not entirely accurate summary, strgrp takes the following
  * steps:
  *
- * 1. For all known strings, calculate the normalised LCS value against the
+ * 1. For all known groups, calculate the normalised LCS value against the
  * input string
  *
  * 2. Find the maximum normalised LCS value and associated group
@@ -21,36 +22,54 @@
  * threshold add the input string to the group, otherwise create a new group
  *
  * The clustering operation is expensive; LCS on its own is computationally
- * O(mn) on its two input strings and optimally requires O(min(m,n)) memory. In
- * general each input string should be compared against all known strings,
- * giving O(n^2) behaviour of the clustering algorithm on top of the O(mn) LCS
- * similarity measurement.
+ * O(m * n) on its two input strings and optimally requires O(min(m, n))
+ * memory. In general each input string should be compared against all known
+ * strings, giving O(n^2) behaviour of the clustering algorithm on top of the
+ * O(m * n) LCS similarity measurement.
  *
  * strgrp tries to battle this complexity on several fronts:
  *
- * 1. Coarse reduction of the required comparisons. Each group has a 'key',
+ * 1. Caching of input strings and their associated group. By incurring the
+ * cost of a map's string hash function we may eliminate all further search
+ * costs for exact matches, potentially reducing the insertion to a
+ * constant-time operation.
+ *
+ * 2. Coarse reduction of the required comparisons. Each group has a 'key',
  * which is the string that triggered the creation of the group. Input strings
  * are only compared against group keys rather than all known strings, reducing
  * the complexity to the current number of groups rather than all known
  * strings. Note due the pathological case where the number of groups is equal
- * to the number of known strings the algorithm still  has O(n^2) computational
+ * to the number of known strings the algorithm still has O(n^2) computational
  * complexity
  *
- * 2. Elimination of LCS computations that will never breach the configured
- * threshold. This property can be measured from the length of the input
- * strings, and a negative result avoids invoking the O(mn) behaviour of LCS
- *
- * 3. Caching of input strings and their associated group. By incurring the
- * cost of a map's string hash function we may eliminate all calls to the LCS
- * function for exact matches, potentially reducing the insertion to a
- * constant-time operation.
- *
- * 4. Whilst the data dependencies of LCS prevent internally parallel
- * implementations, LCS as a function can be applied in parallel. The code
+ * 3. Whilst the data dependencies of LCS prevent internally parallel
+ * implementations, LCS and other filters can be applied in parallel. The code
  * uses OpenMP to automatically distribute scoring of the input string
  * against group keys across a number of threads.
  *
+ * 4. Elimination of LCS computations that will never breach the configured
+ * threshold. Two measurements are used as rejecting filters (i.e. a failure to
+ * exceed the threshold prevents further measurements being made):
+ *
+ * 4a. Comparsion of string lengths: String lengths must be within given bounds
+ * to satisfy the user-supplied similarity constraint. A negative result avoids
+ * invoking the O(m * n) behaviour of LCS at the cost of O(m + n) in the two
+ * strlen() invocations.
+ *
+ * 4b. Comparison of character distribution: Cosine similarity[2] is used to
+ * measure unordered character similarity between the input strings. The
+ * implementation is again O(m + n), and avoids the O(m * n) behaviour of LCS.
+ *
+ * Performance will vary not only with the number of input strings but
+ * with their lengths and relative similarities. A large number of long input
+ * strings that are relatively similar will give the worst performance.
+ * However to provide some context, strgrp can cluster a real-world test set of
+ * 3500 strings distributed in length between 20 and 100 characters to 85%
+ * similarity on a 4-core 2010-era amd64 laptop in approximately 750ms.
+ *
  * [1] https://en.wikipedia.org/wiki/Longest_common_subsequence_problem
+ *
+ * [2] https://en.wikipedia.org/wiki/Cosine_similarity
  *
  * License: LGPL
  * Author: Andrew Jeffery <andrew@aj.id.au>
@@ -110,12 +129,18 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-#if HAVE_OPENMP
     if (strcmp(argv[1], "cflags") == 0) {
+#if HAVE_OPENMP
         printf("-fopenmp\n");
+#endif
+        printf("-O2\n");
         return 0;
     }
-#endif
+
+    if (strcmp(argv[1], "libs") == 0) {
+        printf("m\n");
+        return 0;
+    }
 
     return 1;
 }

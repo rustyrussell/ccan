@@ -16,8 +16,11 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include <assert.h>
+#include <limits.h>
+#include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "ccan/darray/darray.h"
@@ -26,6 +29,15 @@
 #include "ccan/tal/str/str.h"
 #include "strgrp.h"
 #include "config.h"
+
+#if HAVE_OPENMP
+#include <omp.h>
+#else
+#define omp_get_max_threads() 1
+#define omp_get_thread_num() 0
+#endif
+
+#define CHAR_N_VALUES (1 << CHAR_BIT)
 
 typedef darray(struct strgrp_grp *) darray_grp;
 typedef darray(struct strgrp_item *) darray_item;
@@ -37,6 +49,11 @@ struct grp_score {
     double score;
 };
 
+struct cosvec {
+    const char *str;
+    int16_t pop[CHAR_N_VALUES];
+};
+
 typedef darray(struct grp_score *) darray_score;
 
 struct strgrp {
@@ -45,6 +62,8 @@ struct strgrp {
     unsigned int n_grps;
     darray_grp grps;
     struct grp_score *scores;
+    int32_t n_cosvecs;
+    struct cosvec *cosvecs;
 };
 
 struct strgrp_iter {
@@ -69,6 +88,62 @@ struct strgrp_item {
     void *value;
 };
 
+
+/* String vector cosine similarity[1]
+ *
+ * [1] http://blog.nishtahir.com/2015/09/19/fuzzy-string-matching-using-cosine-similarity/
+ */
+
+static inline void
+strpopcnt(struct cosvec *ctx) {
+    const char *c;
+    memset(ctx->pop, 0, CHAR_N_VALUES * sizeof(int16_t));
+    for(c = ctx->str; *c; c++) {
+        assert(*c >= 0);
+        ctx->pop[(unsigned char)*c]++;
+    }
+}
+
+static inline double
+strcossim(struct cosvec *avec, struct cosvec *bvec) {
+    strpopcnt(avec);
+    strpopcnt(bvec);
+    int32_t saibi = 0;
+    int32_t sai2 = 0;
+    int32_t sbi2 = 0;
+    size_t i;
+    for (i = 0; i < CHAR_N_VALUES; i++) {
+        saibi += avec->pop[i] * bvec->pop[i];
+        sai2 += avec->pop[i] * avec->pop[i];
+        sbi2 += bvec->pop[i] * bvec->pop[i];
+    }
+    return saibi / (sqrt(sai2) * sqrt(sbi2));
+}
+
+/* Low-cost filter functions */
+
+static inline bool
+should_grp_score_cos(const struct strgrp *const ctx, struct cosvec *const avec,
+        struct cosvec *const bvec) {
+    return ctx->threshold <= strcossim(avec, bvec);
+}
+
+static inline bool
+should_grp_score_len(const struct strgrp *const ctx,
+        const struct strgrp_grp *const grp, const char *const str) {
+    const size_t strl = strlen(str);
+    const size_t keyl = grp->key_len;
+    double sr =  strl / keyl;
+    if (1 < sr) {
+        sr = 1 / sr;
+    }
+    return ctx->threshold <= sr;
+}
+
+/* Scoring - Longest Common Subsequence[2]
+ *
+ * [2] https://en.wikipedia.org/wiki/Longest_common_subsequence_problem
+ */
 #define ROWS 2
 
 static inline int cmi(int i, int j) {
@@ -114,22 +189,12 @@ nlcs(const char *const a, const char *const b) {
     return 2 * lcss / (strlen(a) + strlen(b));
 }
 
-static bool
-should_grp_score(const struct strgrp *const ctx,
-        const struct strgrp_grp *const grp, const char *const str) {
-    const size_t strl = strlen(str);
-    const size_t keyl = grp->key_len;
-    double sr =  strl / keyl;
-    if (1 < sr) {
-        sr = 1 / sr;
-    }
-    return ctx->threshold <= sr;
-}
-
 static inline double
 grp_score(const struct strgrp_grp *const grp, const char *const str) {
     return nlcs(grp->key, str);
 }
+
+/* Structure management */
 
 static struct strgrp_item *
 new_item(tal_t *const tctx, const char *const str, void *const data) {
@@ -203,6 +268,9 @@ strgrp_new(const double threshold) {
     struct strgrp *ctx = talz(NULL, struct strgrp);
     ctx->threshold = threshold;
     stringmap_init(ctx->known, NULL);
+    // n threads compare strings
+    ctx->n_cosvecs = 2 * omp_get_max_threads();
+    ctx->cosvecs = tal_arrz(ctx, struct cosvec, ctx->n_cosvecs);
     darray_init(ctx->grps);
     return ctx;
 }
@@ -211,6 +279,16 @@ static inline void
 cache(struct strgrp *const ctx, struct strgrp_grp *const grp,
         const char *const str) {
     *(stringmap_enter(ctx->known, str)) = grp;
+}
+
+static inline struct cosvec *
+tl_avec(struct strgrp *ctx) {
+    return &ctx->cosvecs[omp_get_thread_num()];
+}
+
+static inline struct cosvec *
+tl_bvec(struct strgrp *ctx) {
+    return &ctx->cosvecs[omp_get_thread_num() + 1];
 }
 
 static struct strgrp_grp *
@@ -231,8 +309,17 @@ grp_for(struct strgrp *const ctx, const char *const str) {
 #endif
     for (i = 0; i < ctx->n_grps; i++) {
         ctx->scores[i].grp = darray_item(ctx->grps, i);
-        const bool ss = should_grp_score(ctx, ctx->scores[i].grp, str);
-        ctx->scores[i].score = ss ? grp_score(ctx->scores[i].grp, str) : 0;
+        if (should_grp_score_len(ctx, ctx->scores[i].grp, str)) {
+            tl_avec(ctx)->str = ctx->scores[i].grp->key;
+            tl_bvec(ctx)->str = str;
+            if (should_grp_score_cos(ctx, tl_avec(ctx), tl_bvec(ctx))) {
+                ctx->scores[i].score = grp_score(ctx->scores[i].grp, str);
+            } else {
+                ctx->scores[i].score = 0;
+            }
+        } else {
+            ctx->scores[i].score = 0;
+        }
     }
     struct grp_score *max = NULL;
     for (i = 0; i < ctx->n_grps; i++) {
@@ -343,8 +430,6 @@ strgrp_free_cb(struct strgrp *const ctx, void (*cb)(void *data)) {
     }
     strgrp_free(ctx);
 }
-
-#include <stdio.h>
 
 static void
 print_item(const struct strgrp_item *item) {
