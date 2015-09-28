@@ -11,7 +11,7 @@
  * plans.
  *
  * Example:
- * // Given tr A-Z a-z outputs tr a-z a-z
+ * // Given "tr A-Z a-z" outputs tr a-z a-z
  * #include <ccan/io/io.h>
  * #include <ccan/err/err.h>
  * #include <assert.h>

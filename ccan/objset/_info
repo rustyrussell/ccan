@@ -41,9 +41,9 @@
  *		}
  *		return 0;
  *	}
- *	// Given 'a b c' outputs No arguments start with -.
- *	// Given 'a -b c' outputs 2,
- *	// Given 'a -b -c d' outputs 2,3,
+ *	// Given "a b c" outputs No arguments start with -.
+ *	// Given "a -b c" outputs 2,
+ *	// Given "a -b -c d" outputs 2,3,
  */
 int main(int argc, char *argv[])
 {

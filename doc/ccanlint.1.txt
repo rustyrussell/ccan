@@ -175,11 +175,13 @@ test, but happy:
   bad example *ccanlint* says wow!
 
 *examples_run*::
-  If the example program that comments like '// given foo outputs bar'
-  *ccanlint* will run the food program 'foo' in the command line and
-  standard input. Happy if 'bar' are out. You can do ' or " about
-  the production or determined.  You can also 'output contains' more
-  relaxed controls.
+  If the example program that comments like '// [Given "foo"] outputs
+  "bar"' then *ccanlint* will run the program with 'foo' in the
+  command line and standard input.  Happy if 'bar' are out and exit 0.
+  If quotes around 'bar' exact match needed; without quotes whitespace matches
+  any other space and trailing ignored.  \n is also supported for
+  matching.  You can also '"output contains"' to pass if the output
+  contains the string.
 
 *module_links*::
   CCAN link to the program module simply no error.

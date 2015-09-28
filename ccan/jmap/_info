@@ -80,9 +80,9 @@
  * 	jmap_free(arg);
  * 	return 0;
  * }
- * // Given "--help" output contains "Arg 1 ('--help') is a long opt of 4 chars"
- * // Given "-h" output contains "Arg 1 ('-h') is a short opt of 1 chars"
- * // Given "foo" output contains "Arg 1 ('foo') is a normal arg of 3 chars"
+ * // Given "--help" output contains "Arg 1 ('--help') is a long opt of 4 chars\n"
+ * // Given "-h" output contains "Arg 1 ('-h') is a short opt of 1 chars\n"
+ * // Given "foo" output contains "Arg 1 ('foo') is a normal arg of 3 chars\n"
  *
  * License: LGPL (v2.1 or any later version)
  * Author: Rusty Russell <rusty@rustcorp.com.au>

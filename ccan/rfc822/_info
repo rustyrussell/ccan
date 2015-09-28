@@ -25,9 +25,9 @@
  * it too).
  *
  * Example:
- *	// Given '' outputs 'body'
- *	// Given 'From' outputs ' <from@example.com>'
- *	// Given 'To' outputs ' <to@example.com>'
+ *	// Outputs "body\n"
+ *	// Given "From" outputs <from@example.com>
+ *	// Given "To" outputs <to@example.com>
  *	char buf[] = "From: <from@example.com>\n"
  *		     "To: <to@example.com>\n\n"
  *                   "body\n";
@@ -35,7 +35,7 @@
  *	struct bytestring out;
  *
  *	msg = rfc822_start(NULL, buf, sizeof(buf));
- *	if (!argv[1] || !argv[1][0])
+ *	if (!argv[1])
  *		out = rfc822_body(msg);
  *	else {
  *		struct rfc822_header *hdr;

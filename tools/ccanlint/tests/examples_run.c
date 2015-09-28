@@ -2,6 +2,7 @@
 #include <tools/tools.h>
 #include <ccan/foreach/foreach.h>
 #include <ccan/str/str.h>
+#include <ccan/tal/str/str.h>
 #include <ccan/cast/cast.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -81,146 +82,108 @@ static bool scan_for(const void *ctx, const char *input, const char *fmt, ...)
 }
 
 static char *find_expect(struct ccan_file *file,
-			 char **lines, char **input, bool *exact,
+			 char **lines, char **input,
+			 bool *contains, bool *whitespace, bool *error,
 			 unsigned *line)
 {
-	char *expect;
-	const char *fmt;
+	char *rest, *expect;
 
+	*error = false;
 	for (; lines[*line]; (*line)++) {
 		char *p = lines[*line] + strspn(lines[*line], " \t");
 		if (!strstarts(p, "//"))
 			continue;
 		p += strspn(p, "/ ");
-		foreach_ptr(fmt,
-			    "given '%s', outputs '%s'",
-			    "given '%s' outputs '%s'",
-			    "given \"%s\", outputs \"%s\"",
-			    "given \"%s\" outputs \"%s\"") {
-			if (scan_for(file, p, fmt, input, &expect)) {
-				*exact = true;
-				return expect;
+
+		/* With or without input? */
+		if (strncasecmp(p, "given", strlen("given")) == 0) {
+			/* Must be of form <given "X"> */
+			if (!scan_for(file, p, "given \"%s\" %s", input, &p)) {
+				*error = true;
+				return p;
 			}
+		} else {
+			*input = NULL;
 		}
 
-		foreach_ptr(fmt,
-			    "given '%s', output contains '%s'",
-			    "given '%s' output contains '%s'",
-			    "given \"%s\", output contains \"%s\"",
-			    "given \"%s\" output contains \"%s\"") {
-			if (scan_for(file, p, fmt, input, &expect)) {
-				*exact = false;
-				return expect;
-			}
+		if (scan_for(file, p, "outputs \"%s\"", &expect)) {
+			*whitespace = true;
+			*contains = false;
+			return expect;
 		}
 
-		foreach_ptr(fmt, "outputs '%s'", "outputs \"%s\"") {
-			if (scan_for(file, p, fmt, &expect)) {
-				*input = cast_const(char *, "");
-				*exact = true;
-				return expect;
-			}
+		if (scan_for(file, p, "output contains \"%s\"", &expect)) {
+			*whitespace = true;
+			*contains = true;
+			return expect;
 		}
 
-		foreach_ptr(fmt,
-			    "given '%s', output contains '%s'",
-			    "given '%s' output contains '%s'",
-			    "given \"%s\", output contains \"%s\"",
-			    "given \"%s\" output contains \"%s\"") {
-			if (scan_for(file, p, fmt, input, &expect)) {
-				*exact = false;
-				return expect;
-			}
+		/* Whitespace-ignoring versions. */
+		if (scan_for(file, p, "outputs %s", &expect)) {
+			*whitespace = false;
+			*contains = false;
+			return expect;
 		}
 
-		/* Unquoted versions... we can get this wrong! */
-		foreach_ptr(fmt,
-			    "given %s, outputs '%s'",
-			    "given '%s', outputs %s",
-			    "given %s, outputs \"%s\"",
-			    "given \"%s\", outputs %s",
-			    "given %s, outputs %s",
-			    "given %s outputs '%s'",
-			    "given '%s' outputs %s",
-			    "given %s outputs \"%s\"",
-			    "given \"%s\" outputs %s",
-			    "given %s outputs %s") {
-			if (scan_for(file, p, fmt, input, &expect)) {
-				*exact = true;
-				return expect;
-			}
+		if (scan_for(file, p, "output contains %s", &expect)) {
+			*whitespace = false;
+			*contains = true;
+			return expect;
 		}
 
-		foreach_ptr(fmt,
-			    "given %s, output contains '%s'",
-			    "given '%s', output contains %s",
-			    "given %s, output contains \"%s\"",
-			    "given \"%s\", output contains %s",
-			    "given %s, output contains %s",
-			    "given %s output contains '%s'",
-			    "given '%s' output contains %s",
-			    "given %s output contains \"%s\"",
-			    "given \"%s\" output contains %s",
-			    "given %s output contains %s") {
-			if (scan_for(file, p, fmt, input, &expect)) {
-				*exact = false;
-				return expect;
-			}
+		/* Other malformed line? */
+		if (*input || !strncasecmp(p, "output", strlen("output"))) {
+			*error = true;
+			return p;
 		}
-
-		foreach_ptr(fmt,
-			    "outputs '%s'",
-			    "outputs \"%s\"",
-			    "outputs %s") {
-			if (scan_for(file, p, fmt, &expect)) {
-				*input = cast_const(char *, "");
-				*exact = true;
-				return expect;
-			}
-		}
-
-		foreach_ptr(fmt,
-			    "output contains '%s'",
-			    "output contains \"%s\"",
-			    "output contains %s") {
-			if (scan_for(file, p, fmt, &expect)) {
-				*input = cast_const(char *, "");
-				*exact = false;
-				return expect;
-			}
-		}
-	}		
+	}
 	return NULL;
 }
 
-static char *trim(char *string)
-{
-	while (strends(string, "\n"))
-	       string[strlen(string)-1] = '\0';
-	return string;
-}
-
 static char *unexpected(struct ccan_file *i, const char *input,
-			const char *expect, bool exact)
+			const char *expect, bool contains, bool whitespace)
 {
 	char *output, *cmd;
+	const char *p;
 	bool ok;
 	unsigned int default_time = default_timeout_ms;
 
-	cmd = tal_fmt(i, "echo '%s' | %s %s",
-		      input, i->compiled[COMPILE_NORMAL], input);
+	if (input)
+		cmd = tal_fmt(i, "echo '%s' | %s %s",
+			      input, i->compiled[COMPILE_NORMAL], input);
+	else
+		cmd = tal_fmt(i, "%s", i->compiled[COMPILE_NORMAL]);
 
 	output = run_with_timeout(i, cmd, &ok, &default_time);
 	if (!ok)
 		return tal_fmt(i, "Exited with non-zero status\n");
 
-	if (exact) {
-		if (streq(output, expect) || streq(trim(output), expect))
-			return NULL;
-	} else {
+	/* Substitute \n */
+	while ((p = strstr(expect, "\\n")) != NULL) {
+		expect = tal_fmt(cmd, "%.*s\n%s", (int)(p - expect), expect,
+				 p+2);
+	}
+
+	if (!whitespace) {
+		/* Normalize to spaces. */
+		expect = tal_strjoin(cmd,
+				     tal_strsplit(cmd, expect, " \n\t",
+						  STR_NO_EMPTY),
+				     " ", STR_NO_TRAIL);
+		output = tal_strjoin(cmd,
+				     tal_strsplit(cmd, output, " \n\t",
+						  STR_NO_EMPTY),
+				     " ", STR_NO_TRAIL);
+	}
+
+	if (contains) {
 		if (strstr(output, expect))
 			return NULL;
+	} else {
+		if (streq(output, expect))
+			return NULL;
 	}
+
 	return output;
 }
 
@@ -237,21 +200,32 @@ static void run_examples(struct manifest *m,
 		list_for_each(list, i, list) {
 			char **lines, *expect, *input, *output;
 			unsigned int linenum = 0;
-			bool exact;
+			bool contains, whitespace, error;
 
 			lines = get_ccan_file_lines(i);
 
-			for (expect = find_expect(i, lines, &input, &exact,
+			for (expect = find_expect(i, lines, &input,
+						  &contains, &whitespace, &error,
 						  &linenum);
 			     expect;
 			     linenum++,
 				     expect = find_expect(i, lines, &input,
-							  &exact, &linenum)) {
+							  &contains, &whitespace,
+							  &error, &linenum)) {
+				if (error) {
+					score_file_error(score, i, linenum+1,
+						 "Unparsable test line '%s'",
+							 lines[linenum]);
+					score->pass = false;
+					break;
+				}
+
 				if (i->compiled[COMPILE_NORMAL] == NULL)
 					continue;
 
 				score->total++;
-				output = unexpected(i, input, expect, exact);
+				output = unexpected(i, input, expect,
+						    contains, whitespace);
 				if (!output) {
 					score->score++;
 					continue;
@@ -259,7 +233,7 @@ static void run_examples(struct manifest *m,
 				score_file_error(score, i, linenum+1,
 						 "output '%s' didn't %s '%s'\n",
 						 output,
-						 exact ? "match" : "contain",
+						 contains ? "contain" : "match",
 						 expect);
 				score->pass = false;
 			}

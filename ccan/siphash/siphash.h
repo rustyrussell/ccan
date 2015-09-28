@@ -28,7 +28,7 @@
  * Returns one 64-bit word as the hash function result.
  *
  * Example:
- *	// Outputs "cf2794e0277187b7"
+ *	// Outputs cf2794e0277187b7
  *	#include <stdio.h>
  *	#include <ccan/siphash/siphash.h>
  *

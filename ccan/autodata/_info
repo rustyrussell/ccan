@@ -92,8 +92,8 @@
  *		printf("verbose mode on\n");
  *	return 0;
  * }
- * // Given -v outputs 'verbose mode on'
- * // Given -v -C / outputs 'chdir to /. verbose mode on'
+ * // Given "-v" outputs "verbose mode on\n"
+ * // Given "-v -C /" outputs "chdir to /. verbose mode on\n"
  */
 int main(int argc, char *argv[])
 {

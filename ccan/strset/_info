@@ -45,8 +45,8 @@
  *		printf("\n");
  *		return 0;
  *	}
- *	// Given "foo bar" outputs "bar foo "
- *	// Given "foo foo bar" outputs "bar foo "
+ *	// Given "foo bar" outputs "bar foo \n"
+ *	// Given "foo foo bar" outputs "bar foo \n"
  *
  * License: CC0 (but some dependencies are LGPL!)
  * Author: Rusty Russell <rusty@rustcorp.com.au>

@@ -1,13 +1,13 @@
 '\" t
 .\"     Title: ccanlint
 .\"    Author: [see the "AUTHOR" section]
-.\" Generator: DocBook XSL Stylesheets v1.75.2 <http://docbook.sf.net/>
-.\"      Date: 12/05/2011
+.\" Generator: DocBook XSL Stylesheets v1.78.1 <http://docbook.sf.net/>
+.\"      Date: 09/28/2015
 .\"    Manual: \ \&
 .\"    Source: \ \&
 .\"  Language: English
 .\"
-.TH "CCANLINT" "1" "12/05/2011" "\ \&" "\ \&"
+.TH "CCANLINT" "1" "09/28/2015" "\ \&" "\ \&"
 .\" -----------------------------------------------------------------
 .\" * Define some portability stuff
 .\" -----------------------------------------------------------------
@@ -36,7 +36,7 @@ ccanlint \- Make CCAN code modules, and the brightness up\&.
 .sp
 No encoder? No need to \fBccanlint\fR\&. You programmer? Excited to \fBccanlint\fR!
 .sp
-CCAN module is small code of the song\&. \fBccanlint\fR full CCAN testing tool\&. Each test spray bit of wisdom\&. Also score\&. Good score good\&. Bad bad score\&.
+CCAN module is small code of the song\&. \fBccanlint\fR full CCAN testing tool\&. Each test spray bit of wisdom\&. Also score\&. Good score good\&. Bad score bad\&.
 .sp
 \fBccanlint\fR expect the source code in this directory, or command line can be more than one\&. Exit 0 happy if all modules all tests happy\&.
 .SH "OPTIONS"
@@ -73,14 +73,12 @@ Graphviz, then die happy\&.
 .PP
 \fB\-k, \-\-keep\fR
 .RS 4
-
 \fBccanlint\fR
 normally make mess temporary directory, but now it later in forensic\&.
 .RE
 .PP
 \fB\-s, \-\-summary\fR
 .RS 4
-
 \fBccanlint\fR
 just realized there is no message unless you die horrible\&.
 .RE
@@ -107,7 +105,6 @@ Do not run all tests\&. Run this test, and the proof you need\&. Used many times
 .PP
 \fB\-\-compiler\fR=\fICOMPILER\fR
 .RS 4
-
 \fBccanlint\fR
 read config\&.h about finding
 \fICCAN_COMPILER\fR\&. Otherwise use the default when it was built\&. The change, to use this compiler\&.
@@ -148,7 +145,6 @@ question may help to write one\&.
 .PP
 \fBdepends_exist\fR
 .RS 4
-
 \fI_info\fR
 file CCAN other module without saying, must find\&. It is not score 0\&.
 .RE
@@ -197,8 +193,7 @@ unhappy\&.
 \fBhash_if\fR
 .RS 4
 Module wants
-\fBccanlint\fR
-\fIconfig\&.h\fR
+\fBccanlint\fR\fIconfig\&.h\fR
 "#define HAVE_FEATURE" for all feature\&. Function test "#if HAVE_FEATURE" no "#ifdef HAVE_FEATURE" because user might not know about the role at all\&. Intelligent GCC flag
 \fI\-Wundef\fR
 say HAVE_FEATURE not 0, not 1! but only if the use of
@@ -207,7 +202,6 @@ say HAVE_FEATURE not 0, not 1! but only if the use of
 .PP
 \fBinfo_documentation_exists\fR
 .RS 4
-
 \fI_info\fR
 file format is pretty comments\&. Copying someone\&. It is not difficult write documentation!
 .RE
@@ -250,7 +244,6 @@ Hostile to BSD license module, but requires another module of the GPL\&. Perhaps
 .PP
 \fBmain_header_exists\fR
 .RS 4
-
 \fBccanlint\fR
 know the module name directory name\&. Expect the same name for header\&.
 .RE
@@ -283,7 +276,6 @@ Linux kernel programmers more, solve the problem for the space of the final ban 
 .PP
 \fBexamples_compile\fR
 .RS 4
-
 \fBccanlint\fR
 very smart! Take
 \fIExample:\fR
@@ -302,15 +294,16 @@ says wow!
 \fBexamples_run\fR
 .RS 4
 If the example program that comments like
-\fI// given foo outputs bar\fR
-\fBccanlint\fR
-will run the food program
+\fI// Given "foo" outputs "bar"\fR\fBccanlint\fR
+will run the program with
 \fIfoo\fR
 in the command line and standard input\&. Happy if
 \fIbar\fR
-are out\&. You can do \*(Aq or " about the production or determined\&. You can also
-\fIoutput contains\fR
-more relaxed controls\&.
+are out\&. If quotes around
+\fIbar\fR
+exact match needed; without quotes whitespace matches any other space and trailing ignored\&. \en is also supported for matching\&. You can also
+\fI"output contains"\fR
+to pass if the output contains the string\&.
 .RE
 .PP
 \fBmodule_links\fR
@@ -364,7 +357,6 @@ Other files
 .PP
 \fBtests_pass\fR
 .RS 4
-
 \fIrun\fR
 and
 \fIapi\fR
@@ -373,7 +365,6 @@ test happy departure\&. If not happy, offer debugger\&.
 .PP
 \fBtests_pass_valgrind\fR
 .RS 4
-
 \fBvalgrind\fR
 the tool of all
 \fIrun\fR
@@ -390,7 +381,6 @@ section, make "tests_pass_valgrind test/TESTNAME:FAIL"\&. If required valgrind a
 .PP
 \fBtests_pass_valgrind_noleaks\fR
 .RS 4
-
 \fBvalgrind\fR
 complain if the memory leak test\&.
 \fI_info\fR
