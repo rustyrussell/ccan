@@ -88,3 +88,16 @@ void memswap(void *a, void *b, size_t n)
 		n -= m;
 	}
 }
+
+bool memeqzero(const void *data, size_t length)
+{
+	const unsigned char *p = data;
+
+	while (length) {
+		if (*p)
+			return false;
+		p++;
+		length--;
+	}
+	return true;
+}

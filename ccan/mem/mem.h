@@ -144,6 +144,19 @@ static inline bool memstarts(void const *data, size_t data_len,
  *	}
  */
 PURE_FUNCTION
+bool memeqzero(const void *data, size_t length);
+
+/**
+ * memeqzero - Is a byte array all zeroes?
+ * @data: byte array
+ * @length: length of @data in bytes
+ *
+ * Example:
+ *	if (memeqzero(somebytes, bytes_len)) {
+ *		printf("somebytes == 0!\n");
+ *	}
+ */
+PURE_FUNCTION
 static inline bool memeqstr(const void *data, size_t length, const char *string)
 {
 	return memeq(data, length, string, strlen(string));
