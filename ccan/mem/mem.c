@@ -92,13 +92,18 @@ void memswap(void *a, void *b, size_t n)
 bool memeqzero(const void *data, size_t length)
 {
 	const unsigned char *p = data;
-	static unsigned long zeroes[16];
+	size_t len;
 
-	while (length > sizeof(zeroes)) {
-		if (memcmp(zeroes, p, sizeof(zeroes)))
+	/* Check first 16 bytes manually */
+	for (len = 0; len < 16; len++) {
+		if (!length)
+			return true;
+		if (*p)
 			return false;
-		p += sizeof(zeroes);
-		length -= sizeof(zeroes);
+		p++;
+		length--;
 	}
-	return memcmp(zeroes, p, length) == 0;
+
+	/* Now we know that's zero, memcmp with self. */
+	return memcmp(data, p, length) == 0;
 }
