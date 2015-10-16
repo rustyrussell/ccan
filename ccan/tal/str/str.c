@@ -26,11 +26,9 @@ char *tal_strndup(const tal_t *ctx, const char *p, size_t n)
 	char *ret;
 
 	/* We have to let through NULL for take(). */
-	if (likely(p)) {
-		len = strlen(p);
-		if (len > n)
-			len = n;
-	} else
+	if (likely(p))
+		len = strnlen(p, n);
+	else
 		len = n;
 
 	ret = tal_dup_(ctx, p, 1, len, 1, false, TAL_LABEL(char, "[]"));
