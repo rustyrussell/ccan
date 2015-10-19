@@ -160,6 +160,13 @@
 #endif
 
 /**
+ * tcon_sizeof - the size of type within a container
+ * @x: the structure containing the TCON.
+ * @canary: which canary to check against.
+ */
+#define tcon_sizeof(x, canary) sizeof((x)->_tcon[0].canary)
+
+/**
  * tcon_ptr_type - pointer to the type within a container (or void *)
  * @x: the structure containing the TCON.
  * @canary: which canary to check against.
