@@ -3,6 +3,8 @@
 #define CCAN_TCON_H
 #include "config.h"
 
+#include <stddef.h>
+
 /**
  * TCON - declare a _tcon type containing canary variables.
  * @decls: the semi-colon separated list of type canaries.
@@ -211,5 +213,155 @@
  */
 #define tcon_cast(x, canary, expr) ((tcon_type((x), canary))(expr))
 #define tcon_cast_ptr(x, canary, expr) ((tcon_ptr_type((x), canary))(expr))
+
+/**
+ * TCON_CONTAINER - encode information on a specific member of a
+ *                  containing structure into a "type" canary
+ * @canary: name of the container canary
+ * @container: type of the container structure
+ * @member: name of the member
+ *
+ * Used in the declarations in TCON() or TCON_WRAP(), encode a
+ * "container canary".  This encodes the type of @container, the type
+ * of @member within it (with sufficient compiler support) and the
+ * offset of @member within @container.
+ */
+#if HAVE_TYPEOF
+#define TCON_CONTAINER(canary, container, member)			\
+	container _container_##canary;					\
+	typeof(((container *)0)->member) _member_##canary;		\
+	TCON_VALUE(_offset_##canary, offsetof(container, member))
+#else
+#define TCON_CONTAINER(canary, container, member)			\
+	container _container_##canary;					\
+	TCON_VALUE(_offset_##canary, offsetof(container, member))
+#endif
+
+/**
+ * tcon_container_check
+ * tcon_container_check_ptr
+ * tcon_container_type
+ * tcon_container_ptr_type
+ * tcon_container_sizeof
+ * tcon_container_cast
+ * tcon_container_cast_ptr
+ * @x: the structure containing the TCON.
+ * @canary: which container canary to check against.
+ *
+ * As tcon_check / tcon_check_ptr / tcon_type / tcon_ptr_type /
+ * tcon_sizeof / tcon_cast / tcon_cast_ptr, but use the type of the
+ * "container" type declared with TCON_CONTAINER, instead of a simple
+ * canary.
+ */
+#define tcon_container_check(x, canary, expr)		\
+	tcon_check(x, _container_##canary, expr)
+#define tcon_container_check_ptr(x, canary, expr)	\
+	tcon_check_ptr(x, _container_##canary, expr)
+#define tcon_container_type(x, canary)		\
+	tcon_type(x, _container_##canary)
+#define tcon_container_ptr_type(x, canary)	\
+	tcon_ptr_type(x, _container_##canary)
+#define tcon_container_sizeof(x, canary)	\
+	tcon_sizeof(x, _container_##canary)
+#define tcon_container_cast(x, canary, expr)	\
+	tcon_cast(x, _container_##canary, expr)
+#define tcon_container_cast_ptr(x, canary, expr)	\
+	tcon_cast_ptr(x, _container_##canary, expr)
+
+/**
+ * tcon_member_check
+ * tcon_member_check_ptr
+ * tcon_member_type
+ * tcon_member_ptr_type
+ * tcon_member_sizeof
+ * tcon_member_cast
+ * tcon_member_cast_ptr
+ * @x: the structure containing the TCON.
+ * @canary: which container canary to check against.
+ *
+ * As tcon_check / tcon_check_ptr / tcon_type / tcon_ptr_type /
+ * tcon_sizeof / tcon_cast / tcon_cast_ptr, but use the type of the
+ * "member" type declared with TCON_CONTAINER, instead of a simple
+ * canary.
+ */
+#define tcon_member_check(x, canary, expr)	\
+	tcon_check(x, _member_##canary, expr)
+#define tcon_member_check_ptr(x, canary, expr)		\
+	tcon_check_ptr(x, _member_##canary, expr)
+#define tcon_member_type(x, canary)		\
+	tcon_type(x, _member_##canary)
+#define tcon_member_ptr_type(x, canary)	\
+	tcon_ptr_type(x, _member_##canary)
+#define tcon_member_sizeof(x, canary)	\
+	tcon_sizeof(x, _member_##canary)
+#define tcon_member_cast(x, canary, expr)	\
+	tcon_cast(x, _member_##canary, expr)
+#define tcon_member_cast_ptr(x, canary, expr)	\
+	tcon_cast_ptr(x, _member_##canary, expr)
+
+/**
+ * tcon_offset - the offset of a member within a container, as
+ *               declared with TCON_CONTAINER
+ * @x: the structure containing the TCON.
+ * @canary: which container canary to check against.
+ */
+#define tcon_offset(x, canary)			\
+	tcon_value((x), _offset_##canary)
+
+/**
+ * tcon_container_of - get pointer to enclosing structure based on a
+ *                     container canary
+ * @x: the structure containing the TCON
+ * @canary: the name of the container canary
+ * @member_ptr: pointer to a member of the container
+ *
+ * @member_ptr must be a pointer to the member of a container
+ * structure previously recorded in @canary with TCON_CONTAINER.
+ *
+ * tcon_container_of() evaluates to a pointer to the container
+ * structure.  With sufficient compiler support, the pointer will be
+ * correctly typed, and the type of @member_ptr will be verified.
+ *
+ * Returns NULL if @member_ptr is NULL.
+ */
+#define tcon_container_of(x, canary, member_ptr)			\
+	tcon_container_cast_ptr(					\
+		tcon_member_check_ptr((x), canary, (member_ptr)),	\
+		canary, tcon_container_of_((member_ptr),		\
+					   tcon_offset((x), canary)))
+
+static inline void *tcon_container_of_(void *member_ptr, size_t offset)
+{
+	return member_ptr ? (char *)member_ptr - offset : NULL;
+}
+
+
+/**
+ * tcon_member_of - get pointer to enclosed member structure based on a
+ *                  container canary
+ * @x: the structure containing the TCON
+ * @canary: the name of the container canary
+ * @container_ptr: pointer to a container
+ *
+ * @container_ptr must be a pointer to a container structure
+ * previously recorded in @canary with TCON_CONTAINER.
+ *
+ * tcon_member_of() evaluates to a pointer to the member of the
+ * container recorded in @canary. With sufficient compiler support,
+ * the pointer will be correctly typed, and the type of @container_ptr
+ * will be verified.
+ *
+ * Returns NULL if @container_ptr is NULL.
+ */
+#define tcon_member_of(x, canary, container_ptr)			\
+	tcon_member_cast_ptr(						\
+		tcon_container_check_ptr((x), canary, (container_ptr)),	\
+		canary, tcon_member_of_((container_ptr),		\
+					tcon_offset((x), canary)))
+static inline void *tcon_member_of_(void *container_ptr, size_t offset)
+{
+	return container_ptr ? (char *)container_ptr + offset : NULL;
+}
+
 
 #endif /* CCAN_TCON_H */
