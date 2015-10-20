@@ -144,7 +144,10 @@ static inline bool memstarts(void const *data, size_t data_len,
  *	}
  */
 PURE_FUNCTION
-bool memeqzero(const void *data, size_t length);
+static inline bool memeqstr(const void *data, size_t length, const char *string)
+{
+	return memeq(data, length, string, strlen(string));
+}
 
 /**
  * memeqzero - Is a byte array all zeroes?
@@ -157,10 +160,7 @@ bool memeqzero(const void *data, size_t length);
  *	}
  */
 PURE_FUNCTION
-static inline bool memeqstr(const void *data, size_t length, const char *string)
-{
-	return memeq(data, length, string, strlen(string));
-}
+bool memeqzero(const void *data, size_t length);
 
 /**
  * memstarts_str - Does this byte array start with a string prefix?
