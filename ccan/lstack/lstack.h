@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include <ccan/container_of/container_of.h>
+#include <ccan/tcon/tcon.h>
 
 /**
  * struct lstack_link - a stack link
@@ -25,36 +25,75 @@ struct lstack_link {
 };
 
 /**
- * struct lstack - a stack
+ * struct lstack_ - a stack (internal type)
  * @b: the top of the stack (NULL if empty)
  */
-struct lstack {
+struct lstack_ {
 	struct lstack_link *top;
 };
 
 /**
- * LSTACK - define and initialize an empty stack
- * @name: the name of the lstack.
+ * LSTACK - declare a stack
+ * @type: the type of elements in the stack
+ * @link: the field containing the lstack_link in @type
  *
- * The LSTACK macro defines an lstack and initializes it to an empty
- * stack.  It can be prepended by "static" to define a static lstack.
+ * The LSTACK macro declares an lstack.  It can be prepended by
+ * "static" to define a static lstack.  The stack begins in undefined
+ * state, you must either initialize with LSTACK_INIT, or call
+ * lstack_init() before using it.
  *
  * See also:
  *	lstack_init()
  *
  * Example:
- *	LSTACK(my_stack);
+ *	struct element {
+ *		int value;
+ *		struct lstack_link link;
+ *	};
+ *	LSTACK(struct element, link) my_stack;
+ */
+#define LSTACK(etype, link)						\
+	TCON_WRAP(struct lstack_,					\
+		  TCON_CONTAINER(canary, etype, link))
+
+/**
+ * LSTACK_INIT - initializer for an empty stack
+ *
+ * The LSTACK_INIT macro returns a suitable initializer for a stack
+ * defined with LSTACK.
+ *
+ * Example:
+ *	struct element {
+ *		int value;
+ *		struct lstack_link link;
+ *	};
+ *	LSTACK(struct element, link) my_stack = LSTACK_INIT;
  *
  *	assert(lstack_empty(&my_stack));
  */
-#define LSTACK(name) \
-	struct lstack name = { NULL, }
+#define LSTACK_INIT				\
+	TCON_WRAP_INIT({ NULL, })
+
+/**
+ * lstack_entry - convert an lstack_link back into the structure containing it.
+ * @s: the stack
+ * @l: the lstack_link
+ *
+ * Example:
+ *	struct element {
+ *		int value;
+ *		struct lstack_link link;
+ *	} e;
+ *	LSTACK(struct element, link) my_stack;
+ *	assert(lstack_entry(&my_stack, &e.link) == &e);
+ */
+#define lstack_entry(s_, l_) tcon_container_of((s_), canary, (l_))
+
 
 /**
  * lstack_init_from_top - initialize a stack with a given top element
  * @s: the lstack to initialize
  * @e: pointer to the top element of the new stack
- * @member: member of the element containing the lstack_link
  *
  * USE WITH CAUTION: This is for handling unusual cases where you have
  * a pointer to an element in a previously constructed stack but can't
@@ -62,32 +101,35 @@ struct lstack {
  * should use lstack_init().
  *
  * Example:
- *	LSTACK(stack1);
- *	struct lstack stack2;
  *	struct element {
  *		int value;
  *		struct lstack_link link;
- *	} el;
+ *	} e;
+ *	LSTACK(struct element, link) stack1 = LSTACK_INIT;
+ *	LSTACK(struct element, link) stack2;
  *
- *	lstack_push(&stack1, &el, link);
+ *	lstack_push(&stack1, &e);
  *
- *	lstack_init_from_top(&stack2,
- *	                     lstack_top(&stack1, struct element, link), link);
+ *	lstack_init_from_top(&stack2, lstack_top(&stack1));
  */
-#define lstack_init_from_top(s, e, member) \
-	(lstack_init_((s), &(e)->member))
+#define lstack_init_from_top(s_, e_)	\
+	(lstack_init_(tcon_unwrap(s_), tcon_member_of((s_), canary, (e_))))
 
 /**
  * lstack_init - initialize a stack
  * @h: the lstack to set to an empty stack
  *
  * Example:
- *	struct lstack *sp = malloc(sizeof(*sp));
+ *	struct element {
+ *		int value;
+ *		struct lstack_link link;
+ *	};
+ *	LSTACK(struct element, link) *sp = malloc(sizeof(*sp));
  *	lstack_init(sp);
  */
-#define lstack_init(s) \
-	(lstack_init_((s), NULL))
-static inline void lstack_init_(struct lstack *s, struct lstack_link *top)
+#define lstack_init(s_) \
+	(lstack_init_(tcon_unwrap(s_), NULL))
+static inline void lstack_init_(struct lstack_ *s, struct lstack_link *top)
 {
 	s->top = top;
 }
@@ -97,47 +139,29 @@ static inline void lstack_init_(struct lstack *s, struct lstack_link *top)
  * @s: the stack
  *
  * If the stack is empty, returns true.
- *
- * Example:
- *	assert(lstack_empty(sp));
  */
-static inline bool lstack_empty(const struct lstack *s)
+#define lstack_empty(s_) \
+	lstack_empty_(tcon_unwrap(s_))
+static inline bool lstack_empty_(const struct lstack_ *s)
 {
 	return (s->top == NULL);
 }
 
 /**
- * lstack_entry - convert an lstack_link back into the structure containing it.
- * @e: the lstack_link
- * @type: the type of the entry
- * @member: the lstack_link member of the type
- *
- * Example:
- *	struct stacker {
- *		char *name;
- *		struct lstack_link sl;
- *	} st;
- *	assert(lstack_entry(&st.sl, struct stacker, sl) == &st);
- */
-#define lstack_entry(n, type, member) container_of_or_null(n, type, member)
-
-/**
  * lstack_top - get top entry in a stack
  * @s: the stack
- * @type: the type of stack entries
- * @member: the lstack_link entry
  *
  * If the stack is empty, returns NULL.
  *
  * Example:
- *	struct stacker *t;
+ *	struct element *t;
  *
- *	t = lstack_top(sp, struct stacker, sl);
- *	assert(lstack_pop(sp, struct stacker, sl) == t);
+ *	t = lstack_top(sp);
+ *	assert(lstack_pop(sp) == t);
  */
-#define lstack_top(s, type, member) \
-	lstack_entry(lstack_top_((s)), type, member)
-static inline struct lstack_link *lstack_top_(const struct lstack *s)
+#define lstack_top(s_) \
+	lstack_entry((s_), lstack_top_(tcon_unwrap(s_)))
+static inline struct lstack_link *lstack_top_(const struct lstack_ *s)
 {
 	return s->top;
 }
@@ -146,13 +170,12 @@ static inline struct lstack_link *lstack_top_(const struct lstack *s)
  * lstack_push - add an entry to the top of the stack
  * @s: the stack to add the node to
  * @e: the item to push
- * @member: the lstack_link field of *e
  *
  * The lstack_link does not need to be initialized; it will be overwritten.
  */
-#define lstack_push(s, e, member) \
-	lstack_push_((s), &((e)->member))
-static inline void lstack_push_(struct lstack *s, struct lstack_link *e)
+#define lstack_push(s_, e_) \
+	lstack_push_(tcon_unwrap(s_), tcon_member_of((s_), canary, (e_)))
+static inline void lstack_push_(struct lstack_ *s, struct lstack_link *e)
 {
 	e->down = lstack_top_(s);
 	s->top = e;
@@ -161,19 +184,17 @@ static inline void lstack_push_(struct lstack *s, struct lstack_link *e)
 /**
  * lstack_pop - remove and return the entry from the top of the stack
  * @s: the stack
- * @type: the type of stack entries
- * @member: the lstack_link field of @type
  *
  * Note that this leaves the returned entry's link in an undefined
  * state; it can be added to another stack, but not deleted again.
  */
-#define lstack_pop(s, type, member) \
-	lstack_entry(lstack_pop_((s)), type, member)
-static inline struct lstack_link *lstack_pop_(struct lstack *s)
+#define lstack_pop(s_)					\
+	lstack_entry((s_), lstack_pop_(tcon_unwrap((s_))))
+static inline struct lstack_link *lstack_pop_(struct lstack_ *s)
 {
 	struct lstack_link *top;
 
-	if (lstack_empty(s))
+	if (lstack_empty_(s))
 		return NULL;
 
 	top = lstack_top_(s);

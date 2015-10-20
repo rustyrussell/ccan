@@ -23,18 +23,18 @@
  *	{
  *		int i;
  *		struct arg *a;
- *		LSTACK(argstack);
+ *		LSTACK(struct arg, sl) argstack;
  *
  *		for (i = 0; i < argc; i++) {
  *			a = malloc(sizeof(*a));
  *			a->arg = argv[i];
- *			lstack_push(&argstack, a, sl);
+ *			lstack_push(&argstack, a);
  *		}
  *
  *		printf("Command line arguments in reverse:\n");
  *
  *		while (!lstack_empty(&argstack)) {
- *			a = lstack_pop(&argstack, struct arg, sl);
+ *			a = lstack_pop(&argstack);
  *			printf("Argument: %s\n", a->arg);
  *			free(a);
  *		}
@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
-		printf("ccan/container_of\n");
+		printf("ccan/tcon\n");
 		return 0;
 	}
 

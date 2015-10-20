@@ -10,7 +10,7 @@ struct stacker {
 
 int main(void)
 {
-	LSTACK(s);
+	LSTACK(struct stacker, sl) s = LSTACK_INIT;
 	struct stacker a = { "Alice" };
 	struct stacker b = { "Bob" };
 	struct stacker c = { "Carol" };
@@ -20,42 +20,43 @@ int main(void)
 	plan_tests(18);
 
 	ok1(lstack_empty(&s));
-	ok1(lstack_top(&s, struct stacker, sl) == NULL);
+	diag("top = %p\n", lstack_top(&s));
+	ok1(lstack_top(&s) == NULL);
 
-	lstack_push(&s, &a, sl);
-
-	ok1(!lstack_empty(&s));
-	ok1(lstack_top(&s, struct stacker, sl) == &a);
-
-	lstack_push(&s, &b, sl);
+	lstack_push(&s, &a);
 
 	ok1(!lstack_empty(&s));
-	ok1(lstack_top(&s, struct stacker, sl) == &b);
+	ok1(lstack_top(&s) == &a);
 
-	lstack_push(&s, &c, sl);
+	lstack_push(&s, &b);
 
 	ok1(!lstack_empty(&s));
-	ok1(lstack_top(&s, struct stacker, sl) == &c);
+	ok1(lstack_top(&s) == &b);
 
-	stacker = lstack_pop(&s, struct stacker, sl);
+	lstack_push(&s, &c);
+
+	ok1(!lstack_empty(&s));
+	ok1(lstack_top(&s) == &c);
+
+	stacker = lstack_pop(&s);
 	ok1(stacker == &c);
 
 	ok1(!lstack_empty(&s));
-	ok1(lstack_top(&s, struct stacker, sl) == &b);
+	ok1(lstack_top(&s) == &b);
 
-	stacker = lstack_pop(&s, struct stacker, sl);
+	stacker = lstack_pop(&s);
 	ok1(stacker == &b);
 
 	ok1(!lstack_empty(&s));
-	ok1(lstack_top(&s, struct stacker, sl) == &a);
+	ok1(lstack_top(&s) == &a);
 
-	stacker = lstack_pop(&s, struct stacker, sl);
+	stacker = lstack_pop(&s);
 	ok1(stacker == &a);
 
 	ok1(lstack_empty(&s));
-	ok1(lstack_top(&s, struct stacker, sl) == NULL);
+	ok1(lstack_top(&s) == NULL);
 
-	ok1(lstack_pop(&s, struct stacker, sl) == NULL);
+	ok1(lstack_pop(&s) == NULL);
 
 	/* This exits depending on whether all tests passed */
 	return exit_status();

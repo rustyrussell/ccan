@@ -12,25 +12,27 @@
  * Depth first search
  */
 
-static bool dfs_push(struct aga_graph *g, struct lstack *stack,
+typedef LSTACK(struct aga_node, u.dfs.parent) dfs_stack;
+
+static bool dfs_push(struct aga_graph *g, dfs_stack *stack,
 		     struct aga_node *n)
 {
 	if (!aga_update_node(g, n))
 		return false;
 
-	lstack_push(stack, n, u.dfs.parent);
+	lstack_push(stack, n);
 	n->u.dfs.edge = aga_first_edge(g, n);
 	return true;
 }
 
-static void dfs_pop(struct lstack *stack)
+static void dfs_pop(dfs_stack *stack)
 {
-	lstack_pop(stack, struct aga_node, u.dfs.parent);
+	lstack_pop(stack);
 }
 
-static struct aga_node *dfs_top(struct lstack *stack)
+static struct aga_node *dfs_top(dfs_stack *stack)
 {
-	return lstack_top(stack, struct aga_node, u.dfs.parent);
+	return lstack_top(stack);
 }
 
 int aga_dfs_start(struct aga_graph *g)
@@ -46,7 +48,7 @@ int aga_dfs_start(struct aga_graph *g)
 
 struct aga_node *aga_dfs_explore(struct aga_graph *g, struct aga_node *n)
 {
-	LSTACK(stack);
+	dfs_stack stack = LSTACK_INIT;
 
 	if (!aga_check_state(g))
 		return NULL;
@@ -57,7 +59,7 @@ struct aga_node *aga_dfs_explore(struct aga_graph *g, struct aga_node *n)
 	if (dfs_push(g, &stack, n))
 		return n;
 
-	lstack_init_from_top(&stack, n, u.dfs.parent);
+	lstack_init_from_top(&stack, n);
 
 	while ((n = dfs_top(&stack))) {
 		const void *e = n->u.dfs.edge;
