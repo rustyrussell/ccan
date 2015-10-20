@@ -12,25 +12,27 @@
  * Breadth first search
  */
 
-static bool bfs_enqueue(struct aga_graph *g, struct lqueue *queue,
+typedef LQUEUE(struct aga_node, u.bfs.next) bfs_queue;
+
+static bool bfs_enqueue(struct aga_graph *g, bfs_queue *queue,
 			struct aga_node *n)
 {
 	if (!aga_update_node(g, n))
 		return false;
 
-	lqueue_enqueue(queue, n, u.bfs.next);
+	lqueue_enqueue(queue, n);
 	n->u.bfs.edge = aga_first_edge(g, n);
 	return true;
 }
 
-static struct aga_node *bfs_front(struct lqueue *queue)
+static struct aga_node *bfs_front(bfs_queue *queue)
 {
-	return lqueue_front(queue, struct aga_node, u.bfs.next);
+	return lqueue_front(queue);
 }
 
-static void bfs_dequeue(struct lqueue *queue)
+static void bfs_dequeue(bfs_queue *queue)
 {
-	lqueue_dequeue(queue, struct aga_node, u.bfs.next);
+	lqueue_dequeue(queue);
 }
 
 int aga_bfs_start(struct aga_graph *g)
@@ -46,7 +48,7 @@ int aga_bfs_start(struct aga_graph *g)
 
 struct aga_node *aga_bfs_explore(struct aga_graph *g, struct aga_node *n)
 {
-	LQUEUE(queue);
+	bfs_queue queue = LQUEUE_INIT;
 
 	if (!aga_check_state(g))
 		return NULL;
@@ -57,7 +59,7 @@ struct aga_node *aga_bfs_explore(struct aga_graph *g, struct aga_node *n)
 	if (bfs_enqueue(g, &queue, n))
 		return n;
 
-	lqueue_init_from_back(&queue, n, u.bfs.next);
+	lqueue_init_from_back(&queue, n);
 
 	while ((n = bfs_front(&queue))) {
 		const void *e = n->u.bfs.edge;

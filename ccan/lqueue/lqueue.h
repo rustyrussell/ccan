@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include <ccan/container_of/container_of.h>
+#include <ccan/tcon/tcon.h>
 
 /**
  * struct lqueue_link - a queue link
@@ -25,36 +25,74 @@ struct lqueue_link {
 };
 
 /**
- * struct lqueue - the head of a queue
+ * struct lqueue_ - a queue (internal type)
  * @b: the back of the queue (NULL if empty)
  */
-struct lqueue {
+struct lqueue_ {
 	struct lqueue_link *back;
 };
 
 /**
- * LQUEUE - define and initialize an empty queue
- * @name: the name of the lqueue.
+ * LQUEUE - declare a queue
+ * @type: the type of elements in the queue
+ * @link: the field containing the lqueue_link in @type
  *
- * The LQUEUE macro defines an lqueue and initializes it to an empty
- * queue.  It can be prepended by "static" to define a static lqueue.
+ * The LQUEUE macro declares an lqueue.  It can be prepended by
+ * "static" to define a static lqueue.  The queue begins in undefined
+ * state, you must either initialize with LQUEUE_INIT, or call
+ * lqueue_init() before using it.
  *
  * See also:
  *	lqueue_init()
  *
  * Example:
- *	LQUEUE(my_queue);
+ *	struct element {
+ *		int value;
+ *		struct lqueue_link link;
+ *	};
+ *	LQUEUE(struct element, link) my_queue;
+ */
+#define LQUEUE(etype, link)						\
+	TCON_WRAP(struct lqueue_,					\
+		  TCON_CONTAINER(canary, etype, link))
+
+/**
+ * LQUEUE_INIT - initializer for an empty queue
+ *
+ * The LQUEUE_INIT macro returns a suitable initializer for a queue
+ * defined with LQUEUE.
+ *
+ * Example:
+ *	struct element {
+ *		int value;
+ *		struct lqueue_link link;
+ *	};
+ *	LQUEUE(struct element, link) my_queue = LQUEUE_INIT;
  *
  *	assert(lqueue_empty(&my_queue));
  */
-#define LQUEUE(name) \
-	struct lqueue name = { NULL, }
+#define LQUEUE_INIT				\
+	TCON_WRAP_INIT({ NULL, })
+
+/**
+ * lqueue_entry - convert an lqueue_link back into the structure containing it.
+ * @q: the queue
+ * @l: the lqueue_link
+ *
+ * Example:
+ *	struct waiter {
+ *		char *name;
+ *		struct lqueue_link ql;
+ *	} w;
+ *	LQUEUE(struct waiter, ql) my_queue;
+ *	assert(lqueue_entry(&my_queue, &w.ql) == &w);
+ */
+#define lqueue_entry(q_, l_) tcon_container_of((q_), canary, (l_))
 
 /**
  * lqueue_init_from_back - initialize a queue with a specific back element
  * @s: the lqueue to initialize
  * @e: pointer to the back element of the new queue
- * @member: member of the element containing the lqueue_link
  *
  * USE WITH CAUTION: This is for handling unusual cases where you have
  * a pointer to an element in a previously constructed queue but can't
@@ -62,32 +100,35 @@ struct lqueue {
  * should use lqueue_init().
  *
  * Example:
- *	LQUEUE(queue1);
- *	struct lqueue queue2;
  *	struct element {
  *		int value;
  *		struct lqueue_link link;
  *	} el;
+ *	LQUEUE(struct element, link) queue1;
+ *	LQUEUE(struct element, link) queue2;
  *
- *	lqueue_enqueue(&queue1, &el, link);
+ *	lqueue_enqueue(&queue1, &el);
  *
- *	lqueue_init_from_back(&queue2,
- *	                      lqueue_back(&queue1, struct element, link), link);
+ *	lqueue_init_from_back(&queue2, lqueue_back(&queue1));
  */
-#define lqueue_init_from_back(s, e, member) \
-	(lqueue_init_((s), &(e)->member))
+#define lqueue_init_from_back(q_, e_)					\
+	(lqueue_init_(tcon_unwrap(q_), tcon_member_of((q_), canary, (e_))))
 
 /**
  * lqueue_init - initialize a queue
  * @h: the lqueue to set to an empty queue
  *
  * Example:
- *	struct lqueue *qp = malloc(sizeof(*qp));
+ *	struct element {
+ *		int value;
+ *		struct lqueue_link link;
+ *	};
+ *	LQUEUE(struct element, link) *qp = malloc(sizeof(*qp));
  *	lqueue_init(qp);
  */
-#define lqueue_init(s) \
-	(lqueue_init_((s), NULL))
-static inline void lqueue_init_(struct lqueue *q, struct lqueue_link *back)
+#define lqueue_init(q_) \
+	(lqueue_init_(tcon_unwrap(q_), NULL))
+static inline void lqueue_init_(struct lqueue_ *q, struct lqueue_link *back)
 {
 	q->back = back;
 }
@@ -97,47 +138,29 @@ static inline void lqueue_init_(struct lqueue *q, struct lqueue_link *back)
  * @q: the queue
  *
  * If the queue is empty, returns true.
- *
- * Example:
- *	assert(lqueue_empty(qp));
  */
-static inline bool lqueue_empty(const struct lqueue *q)
+#define lqueue_empty(q_) \
+	lqueue_empty_(tcon_unwrap(q_))
+static inline bool lqueue_empty_(const struct lqueue_ *q)
 {
 	return (q->back == NULL);
 }
 
 /**
- * lqueue_entry - convert an lqueue_link back into the structure containing it.
- * @e: the lqueue_link
- * @type: the type of the entry
- * @member: the lqueue_link member of the type
- *
- * Example:
- *	struct waiter {
- *		char *name;
- *		struct lqueue_link ql;
- *	} w;
- *	assert(lqueue_entry(&w.ql, struct waiter, ql) == &w);
- */
-#define lqueue_entry(n, type, member) container_of_or_null(n, type, member)
-
-/**
  * lqueue_front - get front entry in a queue
  * @q: the queue
- * @type: the type of queue entries
- * @member: the lqueue_link entry
  *
  * If the queue is empty, returns NULL.
  *
  * Example:
- *	struct waiter *f;
+ *	struct element *f;
  *
- *	f = lqueue_front(qp, struct waiter, ql);
- *	assert(lqueue_dequeue(qp, struct waiter, ql) == f);
+ *	f = lqueue_front(qp);
+ *	assert(lqueue_dequeue(qp) == f);
  */
-#define lqueue_front(q, type, member) \
-	lqueue_entry(lqueue_front_((q)), type, member)
-static inline struct lqueue_link *lqueue_front_(const struct lqueue *q)
+#define lqueue_front(q_) \
+	lqueue_entry((q_), lqueue_front_(tcon_unwrap(q_)))
+static inline struct lqueue_link *lqueue_front_(const struct lqueue_ *q)
 {
 	if (!q->back)
 		return NULL;
@@ -148,20 +171,18 @@ static inline struct lqueue_link *lqueue_front_(const struct lqueue *q)
 /**
  * lqueue_back - get back entry in a queue
  * @q: the queue
- * @type: the type of queue entries
- * @member: the lqueue_link entry
  *
  * If the queue is empty, returns NULL.
  *
  * Example:
- *	struct waiter b;
+ *	struct element b;
  *
- *	lqueue_enqueue(qp, &b, ql);
- *	assert(lqueue_back(qp, struct waiter, ql) == &b);
+ *	lqueue_enqueue(qp, &b);
+ *	assert(lqueue_back(qp) == &b);
  */
-#define lqueue_back(q, type, member) \
-	lqueue_entry(lqueue_back_((q)), type, member)
-static inline struct lqueue_link *lqueue_back_(const struct lqueue *q)
+#define lqueue_back(q_) \
+	lqueue_entry((q_), lqueue_back_(tcon_unwrap(q_)))
+static inline struct lqueue_link *lqueue_back_(const struct lqueue_ *q)
 {
 	return q->back;
 }
@@ -170,15 +191,14 @@ static inline struct lqueue_link *lqueue_back_(const struct lqueue *q)
  * lqueue_enqueue - add an entry to the back of a queue
  * @q: the queue to add the node to
  * @e: the item to enqueue
- * @member: the lqueue_link field of *e
  *
  * The lqueue_link does not need to be initialized; it will be overwritten.
  */
-#define lqueue_enqueue(q, e, member) \
-	lqueue_enqueue_((q), &((e)->member))
-static inline void lqueue_enqueue_(struct lqueue *q, struct lqueue_link *e)
+#define lqueue_enqueue(q_, e_)			\
+	lqueue_enqueue_(tcon_unwrap(q_), tcon_member_of((q_), canary, (e_)))
+static inline void lqueue_enqueue_(struct lqueue_ *q, struct lqueue_link *e)
 {
-	if (lqueue_empty(q)) {
+	if (lqueue_empty_(q)) {
 		/* New entry will be both front and back of queue */
 		e->next = e;
 		q->back = e;
@@ -192,19 +212,17 @@ static inline void lqueue_enqueue_(struct lqueue *q, struct lqueue_link *e)
 /**
  * lqueue_dequeue - remove and return the entry from the front of the queue
  * @q: the queue
- * @type: the type of queue entries
- * @member: the lqueue_link field of @type
  *
  * Note that this leaves the returned entry's link in an undefined
  * state; it can be added to another queue, but not deleted again.
  */
-#define lqueue_dequeue(q, type, member) \
-	lqueue_entry(lqueue_dequeue_((q)), type, member)
-static inline struct lqueue_link *lqueue_dequeue_(struct lqueue *q)
+#define lqueue_dequeue(q_) \
+	lqueue_entry((q_), lqueue_dequeue_(tcon_unwrap(q_)))
+static inline struct lqueue_link *lqueue_dequeue_(struct lqueue_ *q)
 {
 	struct lqueue_link *front;
 
-	if (lqueue_empty(q))
+	if (lqueue_empty_(q))
 		return NULL;
 
 	front = lqueue_front_(q);

@@ -23,18 +23,18 @@
  *	{
  *		int i;
  *		struct arg *a;
- *		LQUEUE(argq);
+ *		LQUEUE(struct arg, ql) argq = LQUEUE_INIT;
  *
  *		for (i = 0; i < argc; i++) {
  *			a = malloc(sizeof(*a));
  *			a->arg = argv[i];
- *			lqueue_enqueue(&argq, a, ql);
+ *			lqueue_enqueue(&argq, a);
  *		}
  *
  *		printf("Command line arguments in order:\n");
  *
  *		while (!lqueue_empty(&argq)) {
- *			a = lqueue_dequeue(&argq, struct arg, ql);
+ *			a = lqueue_dequeue(&argq);
  *			printf("Argument: %s\n", a->arg);
  *			free(a);
  *		}
@@ -49,7 +49,7 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
-		printf("ccan/container_of\n");
+		printf("ccan/tcon\n");
 		return 0;
 	}
 

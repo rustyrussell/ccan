@@ -10,7 +10,7 @@ struct waiter {
 
 int main(void)
 {
-	LQUEUE(q);
+	LQUEUE(struct waiter, ql) q = LQUEUE_INIT;
 	struct waiter a = { "Alice" };
 	struct waiter b = { "Bob" };
 	struct waiter c = { "Carol" };
@@ -20,49 +20,49 @@ int main(void)
 	plan_tests(25);
 
 	ok1(lqueue_empty(&q));
-	ok1(lqueue_front(&q, struct waiter, ql) == NULL);
-	ok1(lqueue_back(&q, struct waiter, ql) == NULL);
+	ok1(lqueue_front(&q) == NULL);
+	ok1(lqueue_back(&q) == NULL);
 
-	lqueue_enqueue(&q, &a, ql);
-
-	ok1(!lqueue_empty(&q));
-	ok1(lqueue_front(&q, struct waiter, ql) == &a);
-	ok1(lqueue_back(&q, struct waiter, ql) == &a);
-
-	lqueue_enqueue(&q, &b, ql);
+	lqueue_enqueue(&q, &a);
 
 	ok1(!lqueue_empty(&q));
-	ok1(lqueue_front(&q, struct waiter, ql) == &a);
-	ok1(lqueue_back(&q, struct waiter, ql) == &b);
+	ok1(lqueue_front(&q) == &a);
+	ok1(lqueue_back(&q) == &a);
 
-	lqueue_enqueue(&q, &c, ql);
+	lqueue_enqueue(&q, &b);
 
 	ok1(!lqueue_empty(&q));
-	ok1(lqueue_front(&q, struct waiter, ql) == &a);
-	ok1(lqueue_back(&q, struct waiter, ql) == &c);
+	ok1(lqueue_front(&q) == &a);
+	ok1(lqueue_back(&q) == &b);
 
-	waiter = lqueue_dequeue(&q, struct waiter, ql);
+	lqueue_enqueue(&q, &c);
+
+	ok1(!lqueue_empty(&q));
+	ok1(lqueue_front(&q) == &a);
+	ok1(lqueue_back(&q) == &c);
+
+	waiter = lqueue_dequeue(&q);
 	ok1(waiter == &a);
 
 	ok1(!lqueue_empty(&q));
-	ok1(lqueue_front(&q, struct waiter, ql) == &b);
-	ok1(lqueue_back(&q, struct waiter, ql) == &c);
+	ok1(lqueue_front(&q) == &b);
+	ok1(lqueue_back(&q) == &c);
 
-	waiter = lqueue_dequeue(&q, struct waiter, ql);
+	waiter = lqueue_dequeue(&q);
 	ok1(waiter == &b);
 
 	ok1(!lqueue_empty(&q));
-	ok1(lqueue_front(&q, struct waiter, ql) == &c);
-	ok1(lqueue_back(&q, struct waiter, ql) == &c);
+	ok1(lqueue_front(&q) == &c);
+	ok1(lqueue_back(&q) == &c);
 
-	waiter = lqueue_dequeue(&q, struct waiter, ql);
+	waiter = lqueue_dequeue(&q);
 	ok1(waiter == &c);
 
 	ok1(lqueue_empty(&q));
-	ok1(lqueue_front(&q, struct waiter, ql) == NULL);
-	ok1(lqueue_back(&q, struct waiter, ql) == NULL);
+	ok1(lqueue_front(&q) == NULL);
+	ok1(lqueue_back(&q) == NULL);
 
-	ok1(lqueue_dequeue(&q, struct waiter, ql) == NULL);
+	ok1(lqueue_dequeue(&q) == NULL);
 
 	/* This exits depending on whether all tests passed */
 	return exit_status();
