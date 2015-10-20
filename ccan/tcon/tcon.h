@@ -43,6 +43,77 @@
 #endif
 
 /**
+ * TCON_WRAP - declare a wrapper type containing a base type and type canaries
+ * @basetype: the base type to wrap
+ * @decls: the semi-colon separated list of type canaries.
+ *
+ * This expands to a new type which includes the given base type, and
+ * also type canaries, similar to those created with TCON.
+ *
+ * The embedded base type value can be accessed using tcon_unwrap().
+ *
+ * Differences from using TCON()
+ * - The wrapper type will take either the size of the base type, or
+ *   the size of a single pointer, whichever is greater (regardless of
+ *   compiler)
+ * - A TCON_WRAP type may be included in another structure, and need
+ *   not be the last element.
+ *
+ * A type of "void *" will allow tcon_check() to pass on any (pointer) type.
+ *
+ * Example:
+ *	// Simply typesafe linked list.
+ *	struct list_head {
+ *		struct list_head *prev, *next;
+ *	};
+ *
+ *	typedef TCON_WRAP(struct list_head, char *canary) string_list_t;
+ *
+ *	// More complex: mapping from one type to another.
+ *	struct map {
+ *		void *contents;
+ *	};
+ *
+ *	typedef TCON_WRAP(struct map, char *charp_canary; int int_canary)
+ *		int_to_string_map_t;
+ */
+#define TCON_WRAP(basetype, decls) \
+	union {			   \
+		basetype _base;	   \
+		struct {	   \
+			decls;	   \
+		} *_tcon;	   \
+	}
+
+/**
+ * TCON_WRAP_INIT - an initializer for a variable declared with TCON_WRAP
+ * @...: Initializer for the base type (treated as variadic so commas
+ *       can be included)
+ *
+ * Converts converts an initializer suitable for a base type into one
+ * suitable for that type wrapped with TCON_WRAP.
+ *
+ * Example:
+ *	TCON_WRAP(int, char *canary) canaried_int = TCON_WRAP_INIT(17);
+ */
+#define TCON_WRAP_INIT(...)			\
+	{ ._base = __VA_ARGS__, }
+
+/**
+ * tcon_unwrap - Access the base type of a TCON_WRAP
+ * @ptr: pointer to an object declared with TCON_WRAP
+ *
+ * tcon_unwrap() returns a pointer to the base type of the TCON_WRAP()
+ * object pointer to by @ptr.
+ *
+ * Example:
+ *	TCON_WRAP(int, char *canary) canaried_int;
+ *
+ *	*tcon_unwrap(&canaried_int) = 17;
+ */
+#define tcon_unwrap(ptr) (&((ptr)->_base))
+
+/**
  * tcon_check - typecheck a typed container
  * @x: the structure containing the TCON.
  * @canary: which canary to check against.
