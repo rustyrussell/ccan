@@ -167,6 +167,28 @@
 #define tcon_sizeof(x, canary) sizeof((x)->_tcon[0].canary)
 
 /**
+ * TCON_VALUE - encode an integer value in a type canary
+ * @canary: name of the value canary
+ * @val: positive integer compile time constant value
+ *
+ * This macro can be included inside the declarations in a TCON() or
+ * TCON_WRAP(), constructing a special "type" canary which encodes the
+ * integer value @val (which must be a compile time constant, and a
+ * positive integer in the range of size_t).
+ */
+#define TCON_VALUE(canary, val)	char _value_##canary[val]
+
+/**
+ * tcon_value - retrieve the value of a TCON_VALUE canary
+ * @x: the structure containing the TCON
+ * @canary: name of the value canary
+ *
+ * This macros expands to the value previously encoded into a TCON
+ * using TCON_VALUE().
+ */
+#define tcon_value(x, canary)	tcon_sizeof(x, _value_##canary)
+
+/**
  * tcon_ptr_type - pointer to the type within a container (or void *)
  * @x: the structure containing the TCON.
  * @canary: which canary to check against.
