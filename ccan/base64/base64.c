@@ -254,9 +254,9 @@ static const base64_maps_t base64_maps_rfc4648 = {
 };
 
 /**
- * base64url_maps_rfc4648 - rfc4648 'base64url' map with -_ rather than +/
+ * base64_maps_rfc4648_urlsafe - rfc4648 'base64url' map with -_ rather than +/
  */
-static const base64_maps_t base64_maps_rfc4648 = {
+static const base64_maps_t base64_maps_rfc4648_urlsafe = {
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_",
 
   "\xff\xff\xff\xff\xff" /* 0 */					\
