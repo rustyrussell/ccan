@@ -19,6 +19,8 @@ MODS_NO_SRC := alignof \
 	container_of \
 	darray \
 	endian \
+	lqueue \
+	lstack \
 	minmax \
 	objset \
 	short_types \
@@ -77,8 +79,6 @@ MODS_WITH_SRC := aga \
 	lbalance \
 	likely \
 	list \
-	lqueue \
-	lstack \
 	md4 \
 	mem \
 	net \
