@@ -1,0 +1,40 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * lpq - Simple, slow priority queue implementation
+ *
+ * This code implements a priority queue.  This is a trivial linked
+ * list implementation, which is simple and generally slow.
+ *
+ * init:	O(1)
+ * enqueue:	O(1)
+ * front:	O(n)
+ * dequeue:	O(n)
+ * reorder:     O(1)
+ *
+ * Author: David Gibson <david@gibson.dropbear.id.au>
+ * License: LGPL (v2.1 or any later version)
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/tcon\n");
+		printf("ccan/order\n");
+		printf("ccan/cast\n");
+		return 0;
+	}
+
+	if (strcmp(argv[1], "testdepends") == 0) {
+		printf("ccan/permutation\n");
+		printf("ccan/array_size\n");
+		return 0;
+	}
+
+	return 1;
+}

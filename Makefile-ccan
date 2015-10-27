@@ -79,6 +79,7 @@ MODS_WITH_SRC := aga \
 	lbalance \
 	likely \
 	list \
+	lpq \
 	md4 \
 	mem \
 	net \
