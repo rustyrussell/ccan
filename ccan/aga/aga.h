@@ -165,6 +165,16 @@ struct aga_graph {
  * Core functions
  */
 
+/**
+ * aga_init_graph - Initialize a new abstract graph
+ * @g: graph structure to initialize
+ * @first_edge: first edge callback
+ * @next_edge: next edge callback
+ * @edge_into: edge info callback
+ *
+ * Initialize @g to represent an abstract graph defined by the
+ * supplied edge callbacks
+ */
 void aga_init_graph_(struct aga_graph *g,
 		     aga_first_edge_fn first_edge,
 		     aga_next_edge_fn next_edge,
@@ -185,13 +195,37 @@ void aga_init_graph_(struct aga_graph *g,
 				(aga_edge_info_fn)(eifn_));		\
 	} while (0)
 
+/**
+ * aga_error - Determine error state of a graph
+ * @g: the graph
+ *
+ * Returns 0 if the graph is not in an error state, negative values
+ * for error states reported by one of the edge callbacks and
+ * postitive values for errors detected by aga itself.
+ */
 int aga_error(const struct aga_graph *g);
 
+/**
+ * aga_node_init - Initialize a graph node
+ * @node: a graph node
+ *
+ * Initialize @node as a new graph node.  This must be called before
+ * @node is passed to any aga function, or returned from an edge_info
+ * callback (in the ei->to field)
+ */
 static inline void aga_node_init(struct aga_node *node)
 {
 	memset(node, 0, sizeof(*node));
 }
 
+/**
+ * aga_finish - Finish an aga algorithm
+ * @g: graph
+ *
+ * Wraps up the aga algorithm currently running on @g.  This will
+ * clear any error conditions.  After this is called it is an error to
+ * call aga functions on @g apart from aga_*_start() and aga_error.
+ */
 void aga_finish(struct aga_graph *g);
 
 const void *aga_first_edge(const struct aga_graph *g, const struct aga_node *n);
@@ -214,9 +248,37 @@ int aga_edge_info(const struct aga_graph *g, const struct aga_node *n,
  * Depth first search
  */
 
+/**
+ * aga_dfs_start - Start a depth-first search
+ * @g: graph to search
+ *
+ * Begins the depth-first search algorithm on @g
+ */
 int aga_dfs_start(struct aga_graph *g);
+
+/**
+ * aga_dfs_explore - One step of depth-first search
+ * @g: graph to search
+ * @n: node to start exploration from
+ *
+ * If @n has not yet been explored since aga_dfs_start(), returns @n.
+ * Otherwise returns the next node after @n in depth-first search
+ * order.  Marks the returned node as explored.
+ */
 struct aga_node *aga_dfs_explore(struct aga_graph *g, struct aga_node *n);
 
+/**
+ * aga_dfs - Depth-first search
+ * @_n: pointer to current node (output)
+ * @_g: graph to search
+ * @_start: node to start from
+ *
+ * Performs a depth first search.  The block following this macro is
+ * executed with @_n set first to @_start, then to each node reachable
+ * from @_start in depth first search order.
+ *
+ * aga_dfs_start() must be called before this macro is used.
+ */
 #define aga_dfs(_n, _g, _start)					\
 	for ((_n) = (_start); ((_n) = aga_dfs_explore((_g), (_n))) != NULL; )
 
@@ -225,9 +287,37 @@ struct aga_node *aga_dfs_explore(struct aga_graph *g, struct aga_node *n);
  * Breadth first search
  */
 
+/**
+ * aga_bfs_start - Start a breadth-first search
+ * @g: graph to search
+ *
+ * Begins the breadth-first search algorithm on @g
+ */
 int aga_bfs_start(struct aga_graph *g);
+
+/**
+ * aga_bfs_explore - One step of breadth-first search
+ * @g: graph to search
+ * @n: node to start exploration from
+ *
+ * If @n has not yet been explored since aga_bfs_start(), returns @n.
+ * Otherwise returns the next node after @n in breadth-first search
+ * order.  Marks the returned node as explored.
+ */
 struct aga_node *aga_bfs_explore(struct aga_graph *g, struct aga_node *n);
 
+/**
+ * aga_bfs - Breadth-first search
+ * @_n: pointer to current node (output)
+ * @_g: graph to search
+ * @_start: node to start from
+ *
+ * Performs a breadth first search.  The block following this macro is
+ * executed with @_n set first to @_start, then to each node reachable
+ * from @_start in depth first search order.
+ *
+ * aga_bfs_start() must be called before this macro is used.
+ */
 #define aga_bfs(_n, _g, _start)					\
 	for ((_n) = (_start) ; ((_n) = aga_bfs_explore((_g), (_n))) != NULL; )
 
