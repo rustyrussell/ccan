@@ -15,7 +15,7 @@ void aga_init_graph_(struct aga_graph *g,
 		     aga_edge_info_fn edge_info)
 {
 	g->sequence = 0;
-	g->error = 0;
+	g->error = AGA_ERR_NONE;
 
 	g->first_edge = first_edge;
 	g->next_edge = next_edge;
@@ -54,7 +54,7 @@ bool aga_check_state(const struct aga_graph *g)
 void aga_finish(struct aga_graph *g)
 {
 	assert(g->sequence & 1);
-	g->error = 0;
+	g->error = AGA_ERR_NONE;
 	g->sequence++;
 }
 

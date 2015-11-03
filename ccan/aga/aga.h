@@ -196,6 +196,18 @@ void aga_init_graph_(struct aga_graph *g,
 	} while (0)
 
 /**
+ * enum aga_error - Error codes for aga routines
+ *
+ * These error codes are returned by aga_error() for errors detected
+ * within aga itself (rather than errors reported by supplied
+ * callbacks, which should be negative
+ */
+enum aga_error {
+	/* No error */
+	AGA_ERR_NONE = 0,
+};
+
+/**
  * aga_error - Determine error state of a graph
  * @g: the graph
  *
