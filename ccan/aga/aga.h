@@ -239,7 +239,7 @@ int aga_edge_info(const struct aga_graph *g, const struct aga_node *n,
 	     (_e) = aga_next_edge((_g), (_n), (_e)))
 
 #define aga_for_each_edge_info(_e, _ei, _err, _g, _n)			\
-	for ((_e) = aga_first_edge((_g), (_n));				\
+	for ((_err) = 0, (_e) = aga_first_edge((_g), (_n));		\
 	     (_e) && ((((_err) = aga_edge_info((_g), (_n), (_e), &(_ei)))) == 0); \
 	     (_e) = aga_next_edge((_g), (_n), (_e)))			\
 		if ((_ei).to)

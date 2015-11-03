@@ -20,7 +20,7 @@ static void test_adjacency(const char *name,
 		struct aga_edge_info ei;
 		int j = 0;
 		const struct aga_node *from;
-		int err;
+		int err = 0xdeadbeef;
 
 		assert(i < MAX_NODES);
 
@@ -42,6 +42,8 @@ static void test_adjacency(const char *name,
 			ok(err == at[i].to[j], "%s: %p #%d -> ERROR %d",
 			   name, e, at[i].from, at[i].to[j]);
 			continue; /* Move onto next node on errors */
+		} else {
+			ok1(err == 0);
 		}
 		assert(j < MAX_EDGES);
 		ok(at[i].to[j] == 0,
@@ -60,7 +62,7 @@ int main(void)
 	struct error_graph eg;
 	struct traversal1_graph t1g;
 
-	plan_tests(1 + 5 + 30 + 22 + 21 + 33 + 6 + 21);
+	plan_tests(2 + 7 + 35 + 30 + 30 + 42 + 9 + 30);
 
 	trivial_graph_init(&tg);
 	test_adjacency("trivial", &tg.sg, trivial_adjacency);
