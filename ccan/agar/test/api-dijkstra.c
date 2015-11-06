@@ -238,12 +238,25 @@ static void test_shortcut1(void)
 	tal_free(sr);
 }
 
+static void test_shortcut2(void)
+{
+	struct shortcut2_graphr s2gr;
+	struct agar_state *sr;
+
+	shortcut2_graphr_init(&s2gr);
+
+	ok1(sr = agar_dijkstra_new(NULL, &s2gr.gr, int2ptr(1)));
+	agar_dijkstra_all_paths(sr);
+	ok1(agar_error(sr) == AGA_ERR_NEGATIVE_COST);
+	tal_free(sr);
+}
+
 int main(void)
 {
 	plan_tests(6 + 23
 		   + FULL_LEN * (FULL_LEN*4 - 1)
 		   + CHAIN_LEN * (1 + CHAIN_LEN*2)
-		   + 12 + 32 + 7);
+		   + 12 + 32 + 7 + 2);
 
 	test_trivial();
 	test_parallel();
@@ -252,6 +265,7 @@ int main(void)
 	test_error();
 	test_traversal1();
 	test_shortcut1();
+	test_shortcut2();
 	
 	return exit_status();
 }

@@ -235,4 +235,25 @@ static const struct adjacency_list shortcut1_adjacency[] = {
 	{},
 };
 
+/* Shortcut-2 graph
+ *
+ *   A ---- (2) -----> C
+ *    \             /
+ *     (2)-> B  --(-1)
+ *
+ * This provides an example of a graph with a negative edge cost, but
+ * no negative cost cycles (and so still with well defined shortest
+ * paths).
+ */
+struct shortcut2_graph {
+	struct simple_graph sg;
+};
+void shortcut2_graph_init(struct shortcut2_graph *s2g);
+static const struct adjacency_list shortcut2_adjacency[] = {
+	{1, {3, 2}},
+	{2, {3}},
+	{3, {}},
+	{},
+};
+
 #endif /* _TEST_GRAPHS_H */

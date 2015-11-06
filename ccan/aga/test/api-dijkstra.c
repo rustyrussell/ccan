@@ -234,12 +234,24 @@ static void test_shortcut1(void)
 	aga_finish(&s1g.sg.g);
 }
 
+static void test_shortcut2(void)
+{
+	struct shortcut2_graph s2g;
+
+	shortcut2_graph_init(&s2g);
+
+	ok1(aga_dijkstra_start(&s2g.sg.g, &s2g.sg.nodes[1]) == 0);
+	aga_dijkstra_all_paths(&s2g.sg.g);
+	ok1(aga_error(&s2g.sg.g) == AGA_ERR_NEGATIVE_COST);
+	aga_finish(&s2g.sg.g);
+}
+
 int main(void)
 {
 	plan_tests(7 + 20
 		   + FULL_LEN * (1 + FULL_LEN*4)
 		   + CHAIN_LEN * (1 + CHAIN_LEN*2)
-		   + 12 + 32 + 7);
+		   + 12 + 32 + 7 + 2);
 
 	test_trivial();
 	test_parallel();
@@ -248,6 +260,7 @@ int main(void)
 	test_error();
 	test_traversal1();
 	test_shortcut1();
+	test_shortcut2();
 	
 	return exit_status();
 }
