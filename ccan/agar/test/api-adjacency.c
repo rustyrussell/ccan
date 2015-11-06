@@ -55,8 +55,9 @@ int main(void)
 	struct chain_graphr cgr;
 	struct grid_graphr ggr1, ggr2;
 	struct error_graphr egr;
+	struct shortcut1_graphr s1gr;
 
-	plan_tests(1 + 5 + 30 + 22 + 21 + 33 + 6);
+	plan_tests(1 + 5 + 30 + 22 + 21 + 33 + 6 + 6);
 
 	trivial_graphr_init(&tgr);
 	test_adjacency("trivial", &tgr.gr, trivial_adjacencyr);
@@ -81,6 +82,9 @@ int main(void)
 
 	error_graphr_init(&egr);
 	test_adjacency("error graph", &egr.gr, error_adjacencyr);
+
+	shortcut1_graphr_init(&s1gr);
+	test_adjacency("shortcut1 graph", &s1gr.gr, shortcut1_adjacencyr);
 
 	return exit_status();
 }

@@ -199,4 +199,24 @@ static const struct adjacency_listr traversal1_adjacency[] = {
 	{},
 };
 
+/* Shortcut-1 graph
+ *
+ *   A ---- (3) -----> C
+ *    \             /
+ *     (1)-> B  --(1)
+ *
+ * This provides an example of a graph where the lowest cost path from
+ * (A) to (C) is not the path with the smallest number od edges.
+ */
+struct shortcut1_graphr {
+	struct agar_graph gr;
+};
+void shortcut1_graphr_init(struct shortcut1_graphr *s1gr);
+static const struct adjacency_listr shortcut1_adjacencyr[] = {
+	{1, {3, 2}},
+	{2, {3}},
+	{3, {}},
+	{},
+};
+
 #endif /* _SIMPLE_GRAPHR_H */

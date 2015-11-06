@@ -61,8 +61,9 @@ int main(void)
 	struct grid_graph gg1, gg2;
 	struct error_graph eg;
 	struct traversal1_graph t1g;
+	struct shortcut1_graph s1g;
 
-	plan_tests(2 + 7 + 35 + 30 + 30 + 42 + 9 + 30);
+	plan_tests(2 + 7 + 35 + 30 + 30 + 42 + 9 + 30 + 9);
 
 	trivial_graph_init(&tg);
 	test_adjacency("trivial", &tg.sg, trivial_adjacency);
@@ -90,6 +91,9 @@ int main(void)
 
 	traversal1_graph_init(&t1g);
 	test_adjacency("traversal1 graph", &t1g.sg, traversal1_adjacency);
+
+	shortcut1_graph_init(&s1g);
+	test_adjacency("shortcut1 graph", &s1g.sg, shortcut1_adjacency);
 
 	return exit_status();
 }

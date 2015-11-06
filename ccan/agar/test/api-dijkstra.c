@@ -219,12 +219,31 @@ static void test_traversal1(void)
 	tal_free(sr);
 }
 
+static void test_shortcut1(void)
+{
+	struct shortcut1_graphr s1gr;
+	struct agar_state *sr;
+	aga_icost_t cost;
+	const void *node;
+
+	shortcut1_graphr_init(&s1gr);
+
+	ok1(sr = agar_dijkstra_new(NULL, &s1gr.gr, int2ptr(1)));
+	ok1(agar_dijkstra_path(sr, int2ptr(3), &cost, &node, NULL));
+	ok1(cost == 2);
+	ok1(node == int2ptr(2));
+	ok1(agar_dijkstra_path(sr, int2ptr(2), &cost, &node, NULL));
+	ok1(cost == 1);
+	ok1(node == int2ptr(1));
+	tal_free(sr);
+}
+
 int main(void)
 {
 	plan_tests(6 + 23
 		   + FULL_LEN * (FULL_LEN*4 - 1)
 		   + CHAIN_LEN * (1 + CHAIN_LEN*2)
-		   + 12 + 32);
+		   + 12 + 32 + 7);
 
 	test_trivial();
 	test_parallel();
@@ -232,6 +251,7 @@ int main(void)
 	test_chain();
 	test_error();
 	test_traversal1();
+	test_shortcut1();
 	
 	return exit_status();
 }
