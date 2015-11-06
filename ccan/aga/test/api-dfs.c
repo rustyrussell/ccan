@@ -49,7 +49,7 @@ int main(void)
 	trivial_graph_init(&tg);
 	test_dfs(&tg.sg, 1, 1);
 
-	parallel_graph_init(&pg, 3);
+	parallel_graph_init(&pg, 3, 0);
 	test_dfs(&pg.sg, 1, 1, 2);
 
 	full_graph_init(&fg, 5);

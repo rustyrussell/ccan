@@ -35,9 +35,9 @@ static void test_parallel(void)
 	struct parallel_graphr pgr;
 	struct agar_state *sr;
 	aga_icost_t cost;
-	const void *node;
+	const void *node, *edge;
 
-	parallel_graphr_init(&pgr, 3);
+	parallel_graphr_init(&pgr, 3, 0);
 
 	ok1(sr = agar_dijkstra_new(NULL, &pgr.gr, int2ptr(1)));
 	ok1(agar_dijkstra_step(sr, &node));
@@ -48,7 +48,7 @@ static void test_parallel(void)
 	ok1(agar_dijkstra_path(sr, int2ptr(1), &cost, NULL, NULL));
 	ok1(cost == 0);
 	ok1(agar_dijkstra_path(sr, int2ptr(2), &cost, &node, NULL));
-	ok1(cost == 1);
+	ok1(cost == 2);
 	ok1(node == int2ptr(1));
 	tal_free(sr);
 
@@ -59,6 +59,14 @@ static void test_parallel(void)
 	ok1(agar_dijkstra_path(sr, int2ptr(2), &cost, NULL, NULL));
 	ok1(cost == 0);
 	ok1(!agar_dijkstra_path(sr, int2ptr(1), NULL, NULL, NULL));
+	tal_free(sr);
+
+	parallel_graphr_init(&pgr, 3, 2);
+	ok1(sr = agar_dijkstra_new(NULL, &pgr.gr, int2ptr(1)));
+	ok1(agar_dijkstra_path(sr, int2ptr(2), &cost, &node, &edge));
+	ok1(cost == 1);
+	ok1(ptr2int(node) == 1);
+	ok1(ptr2int(edge) == 2);
 	tal_free(sr);
 }
 
@@ -213,7 +221,7 @@ static void test_traversal1(void)
 
 int main(void)
 {
-	plan_tests(6 + 18
+	plan_tests(6 + 23
 		   + FULL_LEN * (FULL_LEN*4 - 1)
 		   + CHAIN_LEN * (1 + CHAIN_LEN*2)
 		   + 12 + 32);

@@ -37,9 +37,11 @@ static const struct adjacency_listr trivial_adjacencyr[] = {
  */
 struct parallel_graphr {
 	int nlinks;
+	int cheaplink;
 	struct agar_graph gr;
 };
-void parallel_graphr_init(struct parallel_graphr *pgr, int nlinks);
+void parallel_graphr_init(struct parallel_graphr *pgr, int nlinks,
+			  int cheaplink);
 static const struct adjacency_listr parallel_adjacencyr_nlinks3[] = {
 	{1, {2, 2, 2}},
 	{2, {}},

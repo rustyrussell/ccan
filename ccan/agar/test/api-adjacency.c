@@ -61,7 +61,7 @@ int main(void)
 	trivial_graphr_init(&tgr);
 	test_adjacency("trivial", &tgr.gr, trivial_adjacencyr);
 
-	parallel_graphr_init(&pgr, 3);
+	parallel_graphr_init(&pgr, 3, 0);
 	test_adjacency("parallel nlinks 3", &pgr.gr,
 		       parallel_adjacencyr_nlinks3);
 

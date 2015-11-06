@@ -50,12 +50,17 @@ static int parallel_edge_info(const struct aga_graph *g, const struct aga_node *
 	assert(n == &pg->sg.nodes[1]);
 
 	ei->to = &pg->sg.nodes[2];
+	if (ptr2int(edge) == pg->cheaplink)
+		ei->icost = 1;
+	else
+		ei->icost = 2;
 	return 0;
 }
 
-void parallel_graph_init(struct parallel_graph *pg, int nlinks)
+void parallel_graph_init(struct parallel_graph *pg, int nlinks, int cheaplink)
 {
 	pg->nlinks = nlinks;
+	pg->cheaplink = cheaplink;
 
 	simple_graph_init(&pg->sg, parallel_first_edge, parallel_next_edge,
 			  parallel_edge_info);

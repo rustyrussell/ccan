@@ -35,8 +35,9 @@ static void test_parallel(void)
 	struct parallel_graph pg;
 	aga_icost_t cost;
 	struct aga_node *node;
+	const void *edge;
 
-	parallel_graph_init(&pg, 3);
+	parallel_graph_init(&pg, 3, 0);
 
 	ok1(aga_dijkstra_start(&pg.sg.g, &pg.sg.nodes[1]) == 0);
 	ok1(aga_dijkstra_step(&pg.sg.g) == &pg.sg.nodes[1]);
@@ -45,7 +46,7 @@ static void test_parallel(void)
 	ok1(aga_dijkstra_path(&pg.sg.g, &pg.sg.nodes[1], &cost, NULL, NULL));
 	ok1(cost == 0);
 	ok1(aga_dijkstra_path(&pg.sg.g, &pg.sg.nodes[2], &cost, &node, NULL));
-	ok1(cost == 1);
+	ok1(cost == 2);
 	ok1(node == &pg.sg.nodes[1]);
 	aga_finish(&pg.sg.g);
 
@@ -55,6 +56,15 @@ static void test_parallel(void)
 	ok1(aga_dijkstra_path(&pg.sg.g, &pg.sg.nodes[2], &cost, NULL, NULL));
 	ok1(cost == 0);
 	ok1(!aga_dijkstra_path(&pg.sg.g, &pg.sg.nodes[1], NULL, NULL, NULL));
+	aga_finish(&pg.sg.g);
+
+
+	parallel_graph_init(&pg, 3, 2);
+	ok1(aga_dijkstra_start(&pg.sg.g, &pg.sg.nodes[1]) == 0);
+	ok1(aga_dijkstra_path(&pg.sg.g, &pg.sg.nodes[2], &cost, &node, &edge));
+	ok1(cost == 1);
+	ok1(node == &pg.sg.nodes[1]);
+	ok1(ptr2int(edge) == 2);
 	aga_finish(&pg.sg.g);
 }
 
@@ -206,7 +216,7 @@ static void test_traversal1(void)
 
 int main(void)
 {
-	plan_tests(7 + 15
+	plan_tests(7 + 20
 		   + FULL_LEN * (1 + FULL_LEN*4)
 		   + CHAIN_LEN * (1 + CHAIN_LEN*2)
 		   + 12 + 32);

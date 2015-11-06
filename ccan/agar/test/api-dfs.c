@@ -53,7 +53,7 @@ int main(void)
 	trivial_graphr_init(&tgr);
 	test_dfs(&tgr.gr, 1, 1);
 
-	parallel_graphr_init(&pgr, 3);
+	parallel_graphr_init(&pgr, 3, 0);
 	test_dfs(&pgr.gr, 1, 1, 2);
 
 	full_graphr_init(&fgr, 5);

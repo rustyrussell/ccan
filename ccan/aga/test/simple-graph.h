@@ -52,9 +52,10 @@ static const struct adjacency_list trivial_adjacency[] = {
  */
 struct parallel_graph {
 	int nlinks;
+	int cheaplink;
 	struct simple_graph sg;
 };
-void parallel_graph_init(struct parallel_graph *pg, int nlinks);
+void parallel_graph_init(struct parallel_graph *pg, int nlinks, int cheaplink);
 static const struct adjacency_list parallel_adjacency_nlinks3[] = {
 	{1, {2, 2, 2}},
 	{2, {}},
