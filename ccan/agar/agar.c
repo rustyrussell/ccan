@@ -234,3 +234,60 @@ bool agar_bfs_explore(struct agar_state *sr, const void *nr,
 	*nextr = n_to_nr(sr, next);
 	return true;
 }
+
+/*
+ * Dijkstra's algorithm
+ */
+
+struct agar_state *agar_dijkstra_new(void *ctx, struct agar_graph *gr,
+				     const void *nr)
+{
+	struct agar_state *sr = agar_new(ctx, gr);
+
+	if (aga_dijkstra_start(&sr->g, nr_to_n(sr, nr)) < 0) {
+		tal_free(sr);
+		return NULL;
+	}
+
+	return sr;
+}
+
+bool agar_dijkstra_step(struct agar_state *sr, const void **nextr)
+{
+	struct aga_node *next = aga_dijkstra_step(&sr->g);
+
+	if (!next)
+		return false;
+
+	*nextr = n_to_nr(sr, next);
+	return true;
+}
+
+bool agar_dijkstra_path(struct agar_state *sr, const void *destr,
+			aga_icost_t *total_cost,
+			const void **prevr, const void **prevedge)
+{
+	struct aga_node *dest = nr_to_n(sr, destr);
+	struct aga_node *prev;
+
+	if (!aga_dijkstra_path(&sr->g, dest, total_cost, &prev, prevedge))
+		return false;
+
+	/*
+	 * When destr is the same as the source node, there obviously
+	 * isn't a previous node or edge.  In that case aga, sets them
+	 * to NULL.  But for agar, NULL could be a valid node
+	 * references (particularly if using ptrint).  So we don't
+	 * have much choice here but to leave *prevr as undefined when
+	 * destr is the source node. */
+	if (prevr && prev)
+		*prevr = n_to_nr(sr, prev);
+
+	return true;
+}
+
+void agar_dijkstra_all_paths(struct agar_state *sr)
+{
+	aga_dijkstra_all_paths(&sr->g);
+}
+

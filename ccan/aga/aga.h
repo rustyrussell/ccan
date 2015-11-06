@@ -118,6 +118,7 @@
 #include <ccan/check_type/check_type.h>
 #include <ccan/lstack/lstack.h>
 #include <ccan/lqueue/lqueue.h>
+#include <ccan/lpq/lpq.h>
 
 struct aga_graph;
 struct aga_node;
@@ -157,6 +158,13 @@ struct aga_node {
 			struct lqueue_link next;
 			const void *edge;
 		} bfs;
+		struct {
+			aga_icost_t distance;
+			struct aga_node *prev;
+			const void *prevedge;
+			bool complete;
+			struct lpq_link pqlink;
+		} dijkstra;
 	} u;
 };
 
@@ -167,6 +175,9 @@ struct aga_graph {
 	aga_first_edge_fn first_edge;
 	aga_next_edge_fn next_edge;
 	aga_edge_info_fn edge_info;
+	union {
+		LPQ(struct aga_node, u.dijkstra.pqlink) dijkstra;
+	} state;
 };
 
 /*
@@ -213,6 +224,8 @@ void aga_init_graph_(struct aga_graph *g,
 enum aga_error {
 	/* No error */
 	AGA_ERR_NONE = 0,
+	/* Negative edge cost (in a context where it's not valid) */
+	AGA_ERR_NEGATIVE_COST = 1,
 };
 
 /**
@@ -340,5 +353,78 @@ struct aga_node *aga_bfs_explore(struct aga_graph *g, struct aga_node *n);
  */
 #define aga_bfs(_n, _g, _start)					\
 	for ((_n) = (_start) ; ((_n) = aga_bfs_explore((_g), (_n))) != NULL; )
+
+/*
+ * Dijkstra's algorithm
+ */
+
+/**
+ * aga_dijkstra_start - Start Dijkstra's algorithm
+ * @g: graph
+ * @source: source node
+ *
+ * Start's Dijkstra's algorithm on @g to find shortest paths from node
+ * @source, to other nodes in @g.
+ */
+int aga_dijkstra_start(struct aga_graph *g, struct aga_node *source);
+
+
+/**
+ * aga_dijkstra_step - Find the node with the next shortest path
+ * @g: graph
+ *
+ * The first call to this function returns the source node specified
+ * in aga_dijkstra_start().  Subsequent calls return the next closest
+ * node to source by shortest path cost.  Returns NULL if no further
+ * nodes are reachable from source.
+ */
+struct aga_node *aga_dijkstra_step(struct aga_graph *g);
+
+/**
+ * aga_dijkstra_path - Find the shortest path to a node
+ * @g: graph
+ * @dest: destination node
+ * @prev: Second last node in the path *output)
+ * @prevedge: Last edge in the path
+ *
+ * Finds the shortest path from the source node (specified in
+ * aga_dijkstra_start() to @dest using Dijkstra's algorithm.
+ *
+ * If no path exists, return false.
+ *
+ * If a path does exist, returns true.  Additionally if @total_cost is
+ * non-NULL, store the total cost of the path in *@total_cost, if
+ * @prev is non-NULL, store the node in the path immediately before
+ * @dest in *@prev and if @prevedge is non-NULL stores the edge which
+ * leads from *@prev to @dest in *@prevedge.
+ *
+ * If @dest is the same as source, 0 will be stored in @cost, and NULL
+ * will be stored in *@prev and *@prevedge.
+ *
+ * The full path from source to @dest can be determined by repeatedly
+ * calling aga_dijkstra_path() on *@prev.
+ *
+ * NOTE: Dijkstra's algorithm will not work correctly on a graph which
+ * has negative costs on some edges.  If aga detects this case, it
+ * will set aga_error() to AGA_ERR_NEGATIVE_COST.  However,
+ * aga_dijkstra_path() may produce incorrect results without detecting
+ * this situation.  aga_dijkstra_all_paths() *is* guaranteed to
+ * discover any negative cost edge reachable from the starting node.
+ */
+bool aga_dijkstra_path(struct aga_graph *g, struct aga_node *dest,
+		       aga_icost_t *total_cost,
+		       struct aga_node **prev, const void **prevedge);
+
+/**
+ * aga_dijkstra_all_paths - Find shortest paths to all reachable nodes
+ * @g: graph
+ *
+ * Finds shortest paths from the source node (specified in
+ * aga_dijkstra_start()) to all other reachable nodes in @g.  No
+ * results are returned directly, but between calling
+ * aga_dijkstra_all_paths() and aga_finish, aga_dijkstra_path() is
+ * guaranteed to complete in O(1) time for all destinations.
+ */
+void aga_dijkstra_all_paths(struct aga_graph *g);
 
 #endif /* CCAN_AGA_H */

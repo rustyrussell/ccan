@@ -71,4 +71,16 @@ bool agar_bfs_explore(struct agar_state *sr, const void *nr,
 #define agar_bfs(_nr, _sr, _startr)					\
 	for ((_nr) = (_startr); agar_bfs_explore((_sr), (_nr), &(_nr)); )
 
+/*
+ * Dijkstra's algorithm
+ */
+
+struct agar_state *agar_dijkstra_new(void *ctx, struct agar_graph *gr,
+				     const void *nr);
+bool agar_dijkstra_step(struct agar_state *sr, const void **nextr);
+bool agar_dijkstra_path(struct agar_state *sr, const void *destr,
+			aga_icost_t *total_cost,
+			const void **prevr, const void **prevedge);
+void agar_dijkstra_all_paths(struct agar_state *sr);
+
 #endif /* CCAN_AGAR_H */
