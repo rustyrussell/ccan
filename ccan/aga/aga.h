@@ -72,6 +72,10 @@
  *   reference to that node by the edge callback for *any* node and
  *   index MUST use the same pointer.
  *
+ * - The ei->icost field MAY be set by the edge_info callback to
+ *   indicate the edge's cost / length represented as an integer (of
+ *   type aga_icost_t),  Otherwise the cost defaults to 1.
+ *
  * Concurrency
  * ===========
  *
@@ -127,9 +131,13 @@ typedef const void *(*aga_next_edge_fn)(const struct aga_graph *g,
 					const struct aga_node *n,
 					const void *e);
 
+typedef long aga_icost_t;
+
 struct aga_edge_info {
 	struct aga_node *to;
+	aga_icost_t icost; /* integer edge cost */
 };
+
 typedef int (*aga_edge_info_fn)(const struct aga_graph *g,
 				const struct aga_node *n,
 				const void *e, struct aga_edge_info *ei);

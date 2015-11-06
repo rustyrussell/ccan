@@ -9,6 +9,7 @@
 
 struct agar_edge_info {
 	const void *to;
+	aga_icost_t icost; /* integer edge cost */
 };
 
 struct agar_graph;

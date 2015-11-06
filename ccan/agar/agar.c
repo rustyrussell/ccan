@@ -79,6 +79,7 @@ static int convert_edge_info(const struct aga_graph *g,
 	int rc;
 
 	eir.to = NULL;
+	eir.icost = ei->icost; /* Inherit the default from aga */
 
 	rc = sr->gr->edge_info(sr->gr, nr, e, &eir);
 
@@ -86,6 +87,8 @@ static int convert_edge_info(const struct aga_graph *g,
 		ei->to = nr_to_n(sr, eir.to);
 	else
 		ei->to = NULL;
+
+	ei->icost = eir.icost;
 
 	return rc;
 }
@@ -164,6 +167,7 @@ int agar_edge_info(const struct agar_graph *gr, const void *nr, const void *e,
 	int rc;
 
 	eir->to = NULL;
+	eir->icost = 1;
 	rc = gr->edge_info(gr, nr, e, eir);
 	assert(rc <= 0);
 	return rc;

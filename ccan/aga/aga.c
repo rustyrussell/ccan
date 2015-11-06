@@ -93,6 +93,7 @@ int aga_edge_info(const struct aga_graph *g, const struct aga_node *n,
 	int rc;
 
 	ei->to = NULL;
+	ei->icost = 1;
 	rc = g->edge_info(g, n, e, ei);
 	assert(rc <= 0);
 	return rc;
