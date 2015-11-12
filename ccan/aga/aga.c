@@ -58,9 +58,15 @@ void aga_finish(struct aga_graph *g)
 	g->sequence++;
 }
 
+bool aga_node_needs_update(const struct aga_graph *g,
+			   const struct aga_node *node)
+{
+	return (node->sequence != g->sequence);
+}
+
 bool aga_update_node(const struct aga_graph *g, struct aga_node *node)
 {
-	if (node->sequence == g->sequence)
+	if (!aga_node_needs_update(g, node))
 		return false;
 
 	node->sequence = g->sequence;
