@@ -283,12 +283,12 @@ cache(struct strgrp *const ctx, struct strgrp_grp *const grp,
 
 static inline struct cosvec *
 tl_avec(struct strgrp *ctx) {
-    return &ctx->cosvecs[omp_get_thread_num()];
+    return &ctx->cosvecs[2 * omp_get_thread_num()];
 }
 
 static inline struct cosvec *
 tl_bvec(struct strgrp *ctx) {
-    return &ctx->cosvecs[omp_get_thread_num() + 1];
+    return &ctx->cosvecs[2 * omp_get_thread_num() + 1];
 }
 
 static struct strgrp_grp *
