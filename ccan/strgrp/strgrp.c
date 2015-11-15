@@ -30,13 +30,6 @@
 #include "strgrp.h"
 #include "config.h"
 
-#if HAVE_OPENMP
-#include <omp.h>
-#else
-#define omp_get_max_threads() 1
-#define omp_get_thread_num() 0
-#endif
-
 #define CHAR_N_VALUES (1 << CHAR_BIT)
 
 typedef darray(struct strgrp_grp *) darray_grp;
@@ -49,11 +42,6 @@ struct grp_score {
     double score;
 };
 
-struct cosvec {
-    const char *str;
-    int16_t pop[CHAR_N_VALUES];
-};
-
 typedef darray(struct grp_score *) darray_score;
 
 struct strgrp {
@@ -62,8 +50,7 @@ struct strgrp {
     unsigned int n_grps;
     darray_grp grps;
     struct grp_score *scores;
-    int32_t n_cosvecs;
-    struct cosvec *cosvecs;
+    int16_t pop[CHAR_N_VALUES];
 };
 
 struct strgrp_iter {
@@ -76,6 +63,7 @@ struct strgrp_grp {
     size_t key_len;
     darray_item items;
     int32_t n_items;
+    int16_t pop[CHAR_N_VALUES];
 };
 
 struct strgrp_grp_iter {
@@ -95,27 +83,25 @@ struct strgrp_item {
  */
 
 static inline void
-strpopcnt(struct cosvec *ctx) {
+strpopcnt(const char *const str, int16_t pop[CHAR_N_VALUES]) {
     const char *c;
-    memset(ctx->pop, 0, CHAR_N_VALUES * sizeof(int16_t));
-    for(c = ctx->str; *c; c++) {
+    memset(pop, 0, CHAR_N_VALUES * sizeof(*pop));
+    for(c = str; *c; c++) {
         assert(*c >= 0);
-        ctx->pop[(unsigned char)*c]++;
+        pop[(unsigned char)*c]++;
     }
 }
 
 static inline double
-strcossim(struct cosvec *avec, struct cosvec *bvec) {
-    strpopcnt(avec);
-    strpopcnt(bvec);
+strcossim(const int16_t ref[CHAR_N_VALUES], const int16_t key[CHAR_N_VALUES]) {
     int32_t saibi = 0;
     int32_t sai2 = 0;
     int32_t sbi2 = 0;
     size_t i;
     for (i = 0; i < CHAR_N_VALUES; i++) {
-        saibi += avec->pop[i] * bvec->pop[i];
-        sai2 += avec->pop[i] * avec->pop[i];
-        sbi2 += bvec->pop[i] * bvec->pop[i];
+        saibi += ref[i] * key[i];
+        sai2 += ref[i] * ref[i];
+        sbi2 += key[i] * key[i];
     }
     return saibi / (sqrt(sai2) * sqrt(sbi2));
 }
@@ -123,9 +109,9 @@ strcossim(struct cosvec *avec, struct cosvec *bvec) {
 /* Low-cost filter functions */
 
 static inline bool
-should_grp_score_cos(const struct strgrp *const ctx, struct cosvec *const avec,
-        struct cosvec *const bvec) {
-    return ctx->threshold <= strcossim(avec, bvec);
+should_grp_score_cos(const struct strgrp *const ctx,
+        struct strgrp_grp *const grp, const char *const str) {
+    return ctx->threshold <= strcossim(ctx->pop, grp->pop);
 }
 
 static inline bool
@@ -248,6 +234,7 @@ add_grp(struct strgrp *const ctx, const char *const str,
     if (!b) {
         return NULL;
     }
+    memcpy(b->pop, ctx->pop, sizeof(ctx->pop));
     darray_push(ctx->grps, b);
     ctx->n_grps++;
     if (ctx->scores) {
@@ -269,8 +256,6 @@ strgrp_new(const double threshold) {
     ctx->threshold = threshold;
     stringmap_init(ctx->known, NULL);
     // n threads compare strings
-    ctx->n_cosvecs = 2 * omp_get_max_threads();
-    ctx->cosvecs = tal_arrz(ctx, struct cosvec, ctx->n_cosvecs);
     darray_init(ctx->grps);
     return ctx;
 }
@@ -281,18 +266,12 @@ cache(struct strgrp *const ctx, struct strgrp_grp *const grp,
     *(stringmap_enter(ctx->known, str)) = grp;
 }
 
-static inline struct cosvec *
-tl_avec(struct strgrp *ctx) {
-    return &ctx->cosvecs[2 * omp_get_thread_num()];
-}
-
-static inline struct cosvec *
-tl_bvec(struct strgrp *ctx) {
-    return &ctx->cosvecs[2 * omp_get_thread_num() + 1];
-}
-
 static struct strgrp_grp *
 grp_for(struct strgrp *const ctx, const char *const str) {
+    // Ensure ctx->pop is always populated. Returning null here indicates a new
+    // group should be created, at which point add_grp() copies ctx->pop into
+    // the new group's struct.
+    strpopcnt(str, ctx->pop);
     if (!ctx->n_grps) {
         return NULL;
     }
@@ -308,17 +287,13 @@ grp_for(struct strgrp *const ctx, const char *const str) {
     #pragma omp parallel for schedule(dynamic)
 #endif
     for (i = 0; i < ctx->n_grps; i++) {
-        ctx->scores[i].grp = darray_item(ctx->grps, i);
-        if (should_grp_score_len(ctx, ctx->scores[i].grp, str)) {
-            tl_avec(ctx)->str = ctx->scores[i].grp->key;
-            tl_bvec(ctx)->str = str;
-            if (should_grp_score_cos(ctx, tl_avec(ctx), tl_bvec(ctx))) {
-                ctx->scores[i].score = grp_score(ctx->scores[i].grp, str);
-            } else {
-                ctx->scores[i].score = 0;
+        struct strgrp_grp *grp = darray_item(ctx->grps, i);
+        ctx->scores[i].grp = grp;
+        ctx->scores[i].score = 0;
+        if (should_grp_score_len(ctx, grp, str)) {
+            if (should_grp_score_cos(ctx, grp, str)) {
+                ctx->scores[i].score = grp_score(grp, str);
             }
-        } else {
-            ctx->scores[i].score = 0;
         }
     }
     struct grp_score *max = NULL;
@@ -339,6 +314,9 @@ const struct strgrp_grp *
 strgrp_add(struct strgrp *const ctx, const char *const str,
         void *const data) {
     bool inserted = false;
+    // grp_for() populates the ctx->pop memory. add_grp() copies this memory
+    // into the strgrp_grp that it creates. It's assumed the ctx->pop memory
+    // has not been modified between the grp_for() and add_grp() calls.
     struct strgrp_grp *pick = grp_for(ctx, str);
     if (pick) {
         inserted = add_item(pick, str, data);
