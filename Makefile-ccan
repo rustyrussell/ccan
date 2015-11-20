@@ -90,6 +90,7 @@ MODS_WITH_SRC := aga \
 	opt \
 	order \
 	permutation \
+	pipecmd \
 	pr_log \
 	ptrint \
 	ptr_valid \
