@@ -27,4 +27,12 @@ pid_t pipecmd(int *infd, int *outfd, const char *cmd, ...);
  * @ap: argument list for arguments.
  */
 pid_t pipecmdv(int *infd, int *outfd, const char *cmd, va_list ap);
+
+/**
+ * pipecmdarr - run a command, optionally connect pipes (char arry version)
+ * @infd: input fd to write to child (if non-NULL)
+ * @outfd: output fd to read from child (if non-NULL)
+ * @arr: NULL-terminated array for arguments (first is program to run).
+ */
+pid_t pipecmdarr(int *infd, int *outfd, char *const *arr);
 #endif /* CCAN_PIPECMD_H */

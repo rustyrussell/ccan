@@ -25,6 +25,20 @@ static char **gather_args(const char *arg0, va_list ap)
 
 pid_t pipecmdv(int *fd_fromchild, int *fd_tochild, const char *cmd, va_list ap)
 {
+	char **arr = gather_args(cmd, ap);
+	pid_t ret;
+
+	if (!arr) {
+		errno = ENOMEM;
+		return -1;
+	}
+	ret = pipecmdarr(fd_fromchild, fd_tochild, arr);
+	free_noerr(arr);
+	return ret;
+}
+
+pid_t pipecmdarr(int *fd_fromchild, int *fd_tochild, char *const *arr)
+{
 	int tochild[2], fromchild[2], execfail[2];
 	pid_t childpid;
 	int err;
@@ -57,8 +71,6 @@ pid_t pipecmdv(int *fd_fromchild, int *fd_tochild, const char *cmd, va_list ap)
 		goto close_execfail_fail;
 
 	if (childpid == 0) {
-		char **args = gather_args(cmd, ap);
-
 		if (fd_tochild)
 			close(tochild[1]);
 		if (fd_fromchild)
@@ -66,23 +78,20 @@ pid_t pipecmdv(int *fd_fromchild, int *fd_tochild, const char *cmd, va_list ap)
 		close(execfail[0]);
 
 		// Child runs command.
-		if (!args)
-			err = ENOMEM;
-		else {
-			if (tochild[0] != STDIN_FILENO) {
-				if (dup2(tochild[0], STDIN_FILENO) == -1)
-					goto child_errno_fail;
-				close(tochild[0]);
-			}
-			if (fromchild[1] != STDOUT_FILENO) {
-				if (dup2(fromchild[1], STDOUT_FILENO) == -1)
-					goto child_errno_fail;
-				close(fromchild[1]);
-			}
-			execvp(cmd, args);
-		child_errno_fail:
-			err = errno;
+		if (tochild[0] != STDIN_FILENO) {
+			if (dup2(tochild[0], STDIN_FILENO) == -1)
+				goto child_errno_fail;
+			close(tochild[0]);
 		}
+		if (fromchild[1] != STDOUT_FILENO) {
+			if (dup2(fromchild[1], STDOUT_FILENO) == -1)
+				goto child_errno_fail;
+			close(fromchild[1]);
+		}
+		execvp(arr[0], arr);
+
+	child_errno_fail:
+		err = errno;
 		write(execfail[1], &err, sizeof(err));
 		exit(127);
 	}
