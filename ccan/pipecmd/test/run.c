@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* This is how many tests you plan to run */
-	plan_tests(26);
+	plan_tests(28);
 	child = pipecmd(&outfd, &infd, argv[0], "inout", NULL);
 	if (!ok1(child > 0))
 		exit(1);
@@ -78,6 +78,11 @@ int main(int argc, char *argv[])
 	ok1(waitpid(child, &status, 0) == child);
 	ok1(WIFEXITED(status));
 	ok1(WEXITSTATUS(status) == 1);
+
+	// Can't run non-existent file, but errno set correctly.
+	child = pipecmd(NULL, NULL, "/doesnotexist", "in", NULL);
+	ok1(errno == ENOENT);
+	ok1(child < 0);
 
 	/* This exits depending on whether all tests passed */
 	return exit_status();
