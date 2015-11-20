@@ -1,0 +1,30 @@
+/* CC0 license (public domain) - see LICENSE file for details */
+#ifndef CCAN_PIPECMD_H
+#define CCAN_PIPECMD_H
+#include "config.h"
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <stdarg.h>
+
+/**
+ * pipecmd - run a command, optionally connect pipes.
+ * @infd: input fd to write to child (if non-NULL)
+ * @outfd: output fd to read from child (if non-NULL)
+ * @cmd...: NULL-terminate list of command and arguments.
+ *
+ * If @infd is NULL, the child's input is (read-only) /dev/null.
+ * If @outfd is NULL, the child's output is (write-only) /dev/null.
+ *
+ * The return value is the pid of the child, or -1.
+ */
+pid_t pipecmd(int *infd, int *outfd, const char *cmd, ...);
+
+/**
+ * pipecmdv - run a command, optionally connect pipes (stdarg version)
+ * @infd: input fd to write to child (if non-NULL)
+ * @outfd: output fd to read from child (if non-NULL)
+ * @cmd: command to run.
+ * @ap: argument list for arguments.
+ */
+pid_t pipecmdv(int *infd, int *outfd, const char *cmd, va_list ap);
+#endif /* CCAN_PIPECMD_H */
