@@ -231,7 +231,7 @@ static bool should_listen(const struct addrinfo *addrinfo)
 
 static int make_listen_fd(const struct addrinfo *addrinfo)
 {
-	int saved_errno, fd, on = 1;
+	int fd, on = 1;
 
 	fd = socket(addrinfo->ai_family, addrinfo->ai_socktype,
 		    addrinfo->ai_protocol);
@@ -247,9 +247,7 @@ static int make_listen_fd(const struct addrinfo *addrinfo)
 	return fd;
 
 fail:
-	saved_errno = errno;
-	close(fd);
-	errno = saved_errno;
+	close_noerr(fd);
 	return -1;
 }
 
