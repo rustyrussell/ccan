@@ -15,6 +15,7 @@
 #include "ccan/tal/path/path.h"
 #include "ccan/tal/grab_file/grab_file.h"
 #include "ccan/err/err.h"
+#include "ccan/noerr/noerr.h"
 #include "tools.h"
 
 static bool verbose = false;
@@ -28,15 +29,6 @@ static int indent = 0;
 	} while(0)
 #define verbose_indent() (indent += 2)
 #define verbose_unindent() (indent -= 2)
-
-static int unlink_no_errno(const char *filename)
-{
-	int ret = 0, serrno = errno;
-	if (unlink(filename) < 0)
-		ret = errno;
-	errno = serrno;
-	return ret;
-}
 
 static char **get_dir(const char *dir)
 {
@@ -292,7 +284,7 @@ static void write_replacement_file(const char *dir, struct replace **repl)
 	for (r = *repl; r; r = r->next) {
 		if (write(fd,r->string,strlen(r->string)) != strlen(r->string)
 		    || write(fd, "\n", 1) != 1) {
-			unlink_no_errno(replname);
+			unlink_noerr(replname);
 			if (errno == 0)
 				errx(1, "Short write to %s: disk full?",
 				     replname);
