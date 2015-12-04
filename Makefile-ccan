@@ -49,6 +49,7 @@ MODS_WITH_SRC := aga \
 	cdump \
 	charset \
 	ciniparser \
+	cnt \
 	crc \
 	crcsync \
 	cpuid \
