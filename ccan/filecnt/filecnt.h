@@ -4,38 +4,38 @@
 #include <sys/types.h>
 
 /**
- * struct cnth - counter handle
+ * struct filecnt - counter handle
  * @nm: counter file name
  * @tmp: temporary file name,
  *       used when remaking counter as sparse file
  * @fd: file descriptor
  * @cnt: the count
  */
-typedef struct cnth {
+typedef struct filecnt {
 	char *nm, *tmp;
 	int fd;
 	off_t cnt;
-} cnth;
+} filecnt;
 
 /**
- * cnt_new() - calloc a new handle
+ * filecnt_new() - calloc a new handle
  *
  * init fd to -1
  *
- * Return: ptr to new cnth
+ * Return: ptr to new filecnt
  */
-cnth *cnt_new(void);
+filecnt *filecnt_new(void);
 
 /**
- * cnt_free() - free a handle made with cnt_new()
+ * filecnt_free() - free a handle made with filecnt_new()
  * @h: handle
  *
- * returns result of cnt_close()
+ * returns result of filecnt_close()
  */
-int cnt_free(cnth *h);
+int filecnt_free(filecnt *h);
 
 /**
- * cnt_open() - open a counter file on disk
+ * filecnt_open() - open a counter file on disk
  * @h: handle
  * @path: file to open
  *
@@ -46,42 +46,42 @@ int cnt_free(cnth *h);
  *
  * Return: -1 on error, h->cnt on success
  */
-off_t cnt_open(cnth *h, const char *path);
+off_t filecnt_open(filecnt *h, const char *path);
 
 /**
- * cnt_close() - close file and free file names
+ * filecnt_close() - close file and free file names
  * @h: handle
  *
- * handle is "zeroed" and can be reused with cnt_open()
+ * handle is "zeroed" and can be reused with filecnt_open()
  *
  * Return: -1 if close(2) error, 0 otherwise
  */
-int cnt_close(cnth *);
+int filecnt_close(filecnt *);
 
 /**
- * cnt_zero() - set counter and file to zero
+ * filecnt_zero() - set counter and file to zero
  * @h: handle
  *
  * Return: -1 on error, 0 on success
  */
-int cnt_zero(cnth *);
+int filecnt_zero(filecnt *);
 
 /**
- * cnt_sync() - initialize h->cnt with file size
+ * filecnt_sync() - initialize h->cnt with file size
  * @h: handle
  *
  * Return: -1 on error, h->cnt on success
  */
-off_t cnt_sync(cnth *);
+off_t filecnt_sync(filecnt *);
 
 /**
- * cnt_inc() - increment counter
+ * filecnt_inc() - increment counter
  * @h: handle
  *
  * increment counter and make file sparse on 4 KiB boundaries
  *
  * Return: -1 on error, 0 on success
  */
-int cnt_inc(cnth *);
+int filecnt_inc(filecnt *);
 
 #endif

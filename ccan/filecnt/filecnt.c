@@ -1,4 +1,4 @@
-#include "cnt.h"
+#include "filecnt.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -10,19 +10,19 @@
 #define _XOPEN_SOURCE 700
 #include <unistd.h>
 
-cnth *cnt_new(void)
+filecnt *filecnt_new(void)
 {
-	cnth *h = calloc(1, sizeof(cnth));
+	filecnt *h = calloc(1, sizeof(filecnt));
 	if (h) h->fd = -1;
 	return h;
 }
 
-int cnt_free(cnth *h)
+int filecnt_free(filecnt *h)
 {
 	int ret;
 
 	assert(h);
-	ret = cnt_close(h);
+	ret = filecnt_close(h);
 	free(h);
 	return ret;
 }
@@ -41,7 +41,7 @@ static int isreg(const char *path)
 	return -1;
 }
 
-off_t cnt_open(cnth *h, const char *path)
+off_t filecnt_open(filecnt *h, const char *path)
 {
 	int len, i;
 
@@ -71,14 +71,14 @@ off_t cnt_open(cnth *h, const char *path)
 	if ((h->fd = open(h->nm, O_WRONLY|O_CREAT|O_APPEND, S_IRUSR|S_IWUSR)) == -1)
 		goto err;
 
-	return cnt_sync(h);
+	return filecnt_sync(h);
 
 err:
-	cnt_close(h);
+	filecnt_close(h);
 	return -1;
 }
 
-int cnt_close(cnth *h)
+int filecnt_close(filecnt *h)
 {
 	assert(h);
 
@@ -96,7 +96,7 @@ int cnt_close(cnth *h)
 	return 0;
 }
 
-static int cnt_swap(cnth *h)
+static int filecnt_swap(filecnt *h)
 {
 	int fd;
 
@@ -119,7 +119,7 @@ static int cnt_swap(cnth *h)
 	return 0;
 }
 
-off_t cnt_sync(cnth *h)
+off_t filecnt_sync(filecnt *h)
 {
 	off_t ret;
 
@@ -131,7 +131,7 @@ off_t cnt_sync(cnth *h)
 	return h->cnt = ret;
 }
 
-int cnt_zero(cnth *h)
+int filecnt_zero(filecnt *h)
 {
 	assert(h);
 
@@ -141,7 +141,7 @@ int cnt_zero(cnth *h)
 	return h->cnt = 0;
 }
 
-int cnt_inc(cnth *h) {
+int filecnt_inc(filecnt *h) {
 
 	assert(h);
 
@@ -150,10 +150,10 @@ int cnt_inc(cnth *h) {
 		return -1;
 	}
 
-	if (h->cnt + 1 < 0 && cnt_zero(h) == -1)
+	if (h->cnt + 1 < 0 && filecnt_zero(h) == -1)
 		return -1;
 
-	if (h->cnt > 0 && h->cnt % 4096 == 0 && cnt_swap(h) == -1)
+	if (h->cnt > 0 && h->cnt % 4096 == 0 && filecnt_swap(h) == -1)
 		return -1;
 
 	if (write(h->fd, "", 1) == -1)

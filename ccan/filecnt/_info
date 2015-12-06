@@ -3,9 +3,9 @@
 #include <string.h>
 
 /**
- * cnt - durable counters using sparse files
+ * filecnt - durable counters using sparse files
  *
- * The cnt module keeps count by incrementing the size of a file.
+ * The filecnt module keeps count by incrementing the size of a file.
  * These counters are easy to read using lseek(2), stat(2), or ls(1).
  * To keep the files small, they are replaced with sparse files at multiples of 4 KiB.
  *
@@ -18,12 +18,12 @@
  * Example:
  *	#include <err.h>
  *	#include <stdio.h>
- *	#include <ccan/cnt/cnt.h>
+ *	#include <ccan/filecnt/filecnt.h>
  *
  *	int main(int argc, char *argv[])
  *	{
  *		FILE *f;
- *		cnth *h;
+ *		filecnt *h;
  *		off_t n, i;
  *		char buf[BUFSIZ];
  *		int ret;
@@ -32,11 +32,11 @@
  *		f = fopen(argv[1], "r");
  *		if (!f) err(1, "fopen");
  *
- *		h = cnt_new();
- *		if (!h) err(1, "cnt_new");
+ *		h = filecnt_new();
+ *		if (!h) err(1, "filecnt_new");
  *
- *		n = cnt_open(h, "counter");
- *		if (n == -1) err(1, "cnt_open");
+ *		n = filecnt_open(h, "counter");
+ *		if (n == -1) err(1, "filecnt_open");
  *
  *		for (i = 0; i < n && !feof(f); i++) {
  *			// skip lines output last run
@@ -51,11 +51,11 @@
  *
  *			fputs(buf, stdout);
  *
- *			ret = cnt_inc(h);
- *			if (ret == -1) err(1, "cnt_inc");
+ *			ret = filecnt_inc(h);
+ *			if (ret == -1) err(1, "filecnt_inc");
  *		}
  *
- *		cnt_free(h);
+ *		filecnt_free(h);
  *		return 0;
  *	}
  *
