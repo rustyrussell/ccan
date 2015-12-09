@@ -29,7 +29,7 @@ $(WEB_SUBDIRS): $(WEBDIR)
 	mkdir -p $@
 
 $(PRETTIFY):
-	svn checkout http://google-code-prettify.googlecode.com/svn/trunk/ $(WEBDIR)/prettify
+	git clone --depth=1 https://github.com/google/code-prettify.git $(WEBDIR)/prettify
 
 $(WEBDIR)/junkcode/%.tar.bz2: junkcode/% $(WEBDIR)/junkcode
 	git ls-files -z $< | xargs -0 -x tar cvfj $@ 
