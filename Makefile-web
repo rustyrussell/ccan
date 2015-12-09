@@ -15,7 +15,7 @@ upload: fastcheck modcheck
 
 # Check MODS list in Makefile-ccan matches modules we find.
 modcheck:
-	@FOUND=$$(echo $$(find ccan -name _info | sed 's,ccan/\(.*\)/_info,\1,' | sort) ); LISTED=$$(echo $$(echo $(MODS) | tr ' ' '\012' | sort) ); if [ "$$FOUND" = "$$LISTED" ]; then exit 0; fi; while true; do a="$${FOUND%% *}"; b="$${LISTED%% *}"; if [ "$$a" != "$$b" ]; then echo "$$a found but $$b in MOD" >&2; exit 1; fi; FOUND="$${FOUND#* }"; LISTED="$${LISTED#* }"; done
+	@FOUND=$$(echo $$(find ccan -name _info | sed 's,ccan/\(.*\)/_info,\1,' | sort) ); LISTED=$$(echo $$(echo $(MODS) | tr ' ' '\012' | sort) ); if [ "$$FOUND" = "$$LISTED" ]; then exit 0; fi; while true; do a="$${FOUND%% *}"; b="$${LISTED%% *}"; if [ "$$a" != "$$b" ]; then echo "'$$a' found but '$$b' in MOD" >&2; exit 1; fi; FOUND="$${FOUND#* }"; LISTED="$${LISTED#* }"; done
 
 clean-tree:
 	[ "$(WEBDEV)" ] || ! git status --porcelain | grep .
