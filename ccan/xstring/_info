@@ -1,0 +1,102 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * xstring - bounded string builder with three valued comparator
+ *
+ * xstring handles string concatenation to a buffer, flagging truncation.
+ * Additions can be transactional, where the addition wholly succeeds or the buffer is reterminated at its prior length.
+ * Once flagged, no further additions are allowed.
+ * Clearing reuses the buffer from the beginning.
+ *
+ * When comparing two xstrings, the truncation state is taken into account.
+ * If either is truncated, an equality test returns unknown (-1).
+ * Testing if x contains y returns unknown (-1) if y is truncated.
+ * If x is whole, the test returns true (1) or false (0) appropriately.
+ * If x is truncated, the test returns true (1) if the known portion of x contains y, and unknown (-1) otherwise.
+ *
+ * The structure members are intended for direct access.
+ *
+ * Example:
+ *	// demo - break long lines
+ *	#include <string.h>
+ *	#include <stdio.h>
+ *	#include <unistd.h>
+ *	#include <err.h>
+ *	#include <fcntl.h>
+ *	#include <sys/types.h>
+ *	#include <sys/stat.h>
+ *	#include <sys/mman.h>
+ *
+ *	#include "ccan/xstring/xstring.h"
+ *
+ *	#define MAXLEN 80
+ *	#define MARGIN 10
+ *	int main(int argc, char *argv[])
+ *	{
+ *		char buf[BUFSIZ];
+ *		xstring _x, *x = &_x;
+ *		struct stat sb;
+ *		int fd, span, lnlen;
+ *		char *map, *p, *q;
+ *
+ *		xstrInit(x, buf, sizeof(buf), 0);
+ *		assert(sizeof(buf) > MAXLEN);
+ *
+ *		if (argc != 2) return 1;
+ *
+ *		if ((fd = open(argv[1], O_RDONLY)) == -1)
+ *			err(1, "open");
+ *		if (fstat(fd, &sb) == -1)
+ *			err(1, "stat");
+ *		if ((map = mmap(NULL, sb.st_size + 1, PROT_READ|PROT_WRITE, MAP_PRIVATE, fd, 0)) == MAP_FAILED)
+ *			err(1, "mmap");
+ *		map[sb.st_size] = '\n';
+ *
+ *		for (p = map, lnlen = 0; p < map + sb.st_size; ) {
+ *			span = strcspn(p, " \t\n") + 1;
+ *
+ *			if (lnlen + span > MAXLEN) {
+ *				span = MAXLEN - lnlen;
+ *				xstrAddSubsT(x, p, span, "\n", 1, NULL);
+ *			}
+ *			else
+ *				xstrAddSubT(x, p, span);
+ *
+ *			if (x->truncated) {
+ *				fputs(x->str, stdout);
+ *				xstrClear(x);
+ *				continue; // p unchanged
+ *			}
+ *
+ *			q = x->str + x->len - 1;
+ *			if (lnlen + MARGIN > MAXLEN)
+ *				*q = '\n';
+ *
+ *			lnlen = *q == '\n' ? 0 : lnlen + span;
+ *			p += span;
+ *		}
+ *
+ *		if (x->len)
+ *			fputs(x->str, stdout);
+ *
+ *		return 0;
+ *	}
+ *
+ * License: APACHE-2
+ * Author: Dan Good <dan@dancancode.com>
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/failtest\n");
+		return 0;
+	}
+
+	return 1;
+}

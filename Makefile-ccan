@@ -122,7 +122,8 @@ MODS_WITH_SRC := aga \
 	time \
 	timer \
 	ttxml \
-	wwviaudio
+	wwviaudio \
+	xstring
 
 MODS:=$(MODS_WITH_SRC) $(MODS_NO_SRC)
 
