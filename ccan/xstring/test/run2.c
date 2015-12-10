@@ -7,7 +7,7 @@
 
 unsigned last_fail_line;
 
-enum failtest_result once_only(struct tlist_calls *history)
+static enum failtest_result once_only(struct tlist_calls *history)
 {
 	const struct failtest_call *tail = tlist_tail(history, list);
 
