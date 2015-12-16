@@ -61,7 +61,7 @@ MODS_WITH_SRC := aga \
 	eratosthenes \
 	err \
 	failtest \
-	filecnt \
+	filesize_counter \
 	foreach \
 	grab_file \
 	hash \

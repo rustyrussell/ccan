@@ -1,4 +1,4 @@
-#include "filecnt.h"
+#include "filesize_counter.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -10,19 +10,19 @@
 #define _XOPEN_SOURCE 700
 #include <unistd.h>
 
-filecnt *filecnt_new(void)
+szcnt *szcnt_new(void)
 {
-	filecnt *h = calloc(1, sizeof(filecnt));
+	szcnt *h = calloc(1, sizeof(szcnt));
 	if (h) h->fd = -1;
 	return h;
 }
 
-int filecnt_free(filecnt *h)
+int szcnt_free(szcnt *h)
 {
 	int ret;
 
 	assert(h);
-	ret = filecnt_close(h);
+	ret = szcnt_close(h);
 	free(h);
 	return ret;
 }
@@ -41,9 +41,9 @@ static int isreg(const char *path)
 	return -1;
 }
 
-off_t filecnt_open(filecnt *h, const char *path)
+off_t szcnt_open(szcnt *h, const char *path)
 {
-	int len, i;
+	int len, i, ret;
 
 	assert(h && path);
 
@@ -71,14 +71,17 @@ off_t filecnt_open(filecnt *h, const char *path)
 	if ((h->fd = open(h->nm, O_WRONLY|O_CREAT|O_APPEND, S_IRUSR|S_IWUSR)) == -1)
 		goto err;
 
-	return filecnt_sync(h);
+	if ((ret = szcnt_sync(h)) == -1)
+		goto err;
+
+	return ret;
 
 err:
-	filecnt_close(h);
+	szcnt_close(h);
 	return -1;
 }
 
-int filecnt_close(filecnt *h)
+int szcnt_close(szcnt *h)
 {
 	assert(h);
 
@@ -96,7 +99,7 @@ int filecnt_close(filecnt *h)
 	return 0;
 }
 
-static int filecnt_swap(filecnt *h)
+static int szcnt_swap(szcnt *h)
 {
 	int fd;
 
@@ -119,7 +122,7 @@ static int filecnt_swap(filecnt *h)
 	return 0;
 }
 
-off_t filecnt_sync(filecnt *h)
+off_t szcnt_sync(szcnt *h)
 {
 	off_t ret;
 
@@ -131,7 +134,7 @@ off_t filecnt_sync(filecnt *h)
 	return h->cnt = ret;
 }
 
-int filecnt_zero(filecnt *h)
+int szcnt_zero(szcnt *h)
 {
 	assert(h);
 
@@ -141,7 +144,7 @@ int filecnt_zero(filecnt *h)
 	return h->cnt = 0;
 }
 
-int filecnt_inc(filecnt *h) {
+int szcnt_inc(szcnt *h) {
 
 	assert(h);
 
@@ -150,10 +153,10 @@ int filecnt_inc(filecnt *h) {
 		return -1;
 	}
 
-	if (h->cnt + 1 < 0 && filecnt_zero(h) == -1)
+	if (h->cnt + 1 < 0 && szcnt_zero(h) == -1)
 		return -1;
 
-	if (h->cnt > 0 && h->cnt % 4096 == 0 && filecnt_swap(h) == -1)
+	if (h->cnt > 0 && h->cnt % 4096 == 0 && szcnt_swap(h) == -1)
 		return -1;
 
 	if (write(h->fd, "", 1) == -1)

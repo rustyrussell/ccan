@@ -4,38 +4,38 @@
 #include <sys/types.h>
 
 /**
- * struct filecnt - counter handle
+ * struct szcnt - counter handle
  * @nm: counter file name
  * @tmp: temporary file name,
  *       used when remaking counter as sparse file
  * @fd: file descriptor
  * @cnt: the count
  */
-typedef struct filecnt {
+typedef struct szcnt {
 	char *nm, *tmp;
 	int fd;
 	off_t cnt;
-} filecnt;
+} szcnt;
 
 /**
- * filecnt_new() - calloc a new handle
+ * szcnt_new() - calloc a new handle
  *
  * init fd to -1
  *
- * Return: ptr to new filecnt
+ * Return: ptr to new szcnt
  */
-filecnt *filecnt_new(void);
+szcnt *szcnt_new(void);
 
 /**
- * filecnt_free() - free a handle made with filecnt_new()
+ * szcnt_free() - free a handle made with szcnt_new()
  * @h: handle
  *
- * returns result of filecnt_close()
+ * returns result of szcnt_close()
  */
-int filecnt_free(filecnt *h);
+int szcnt_free(szcnt *h);
 
 /**
- * filecnt_open() - open a counter file on disk
+ * szcnt_open() - open a counter file on disk
  * @h: handle
  * @path: file to open
  *
@@ -46,42 +46,42 @@ int filecnt_free(filecnt *h);
  *
  * Return: -1 on error, h->cnt on success
  */
-off_t filecnt_open(filecnt *h, const char *path);
+off_t szcnt_open(szcnt *h, const char *path);
 
 /**
- * filecnt_close() - close file and free file names
+ * szcnt_close() - close file and free file names
  * @h: handle
  *
- * handle is "zeroed" and can be reused with filecnt_open()
+ * handle is "zeroed" and can be reused with szcnt_open()
  *
  * Return: -1 if close(2) error, 0 otherwise
  */
-int filecnt_close(filecnt *);
+int szcnt_close(szcnt *);
 
 /**
- * filecnt_zero() - set counter and file to zero
+ * szcnt_zero() - set counter and file to zero
  * @h: handle
  *
  * Return: -1 on error, 0 on success
  */
-int filecnt_zero(filecnt *);
+int szcnt_zero(szcnt *);
 
 /**
- * filecnt_sync() - initialize h->cnt with file size
+ * szcnt_sync() - initialize h->cnt with file size
  * @h: handle
  *
  * Return: -1 on error, h->cnt on success
  */
-off_t filecnt_sync(filecnt *);
+off_t szcnt_sync(szcnt *);
 
 /**
- * filecnt_inc() - increment counter
+ * szcnt_inc() - increment counter
  * @h: handle
  *
  * increment counter and make file sparse on 4 KiB boundaries
  *
  * Return: -1 on error, 0 on success
  */
-int filecnt_inc(filecnt *);
+int szcnt_inc(szcnt *);
 
 #endif
