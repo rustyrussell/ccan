@@ -25,7 +25,7 @@ int fail_calloc = 1, fail_malloc = 1, fail_ftruncate = 1, fail_rename = 1, fail_
 
 int main(int argc, char *argv[])
 {
-	szcnt *h;
+	struct szcnt *h;
 
 	plan_no_plan();
 

@@ -11,20 +11,20 @@
  * @fd: file descriptor
  * @cnt: the count
  */
-typedef struct szcnt {
+struct szcnt {
 	char *nm, *tmp;
 	int fd;
 	off_t cnt;
-} szcnt;
+};
 
 /**
  * szcnt_new() - calloc a new handle
  *
  * init fd to -1
  *
- * Return: ptr to new szcnt
+ * Return: ptr to new struct szcnt
  */
-szcnt *szcnt_new(void);
+struct szcnt *szcnt_new(void);
 
 /**
  * szcnt_free() - free a handle made with szcnt_new()
@@ -32,7 +32,7 @@ szcnt *szcnt_new(void);
  *
  * returns result of szcnt_close()
  */
-int szcnt_free(szcnt *h);
+int szcnt_free(struct szcnt *h);
 
 /**
  * szcnt_open() - open a counter file on disk
@@ -46,7 +46,7 @@ int szcnt_free(szcnt *h);
  *
  * Return: -1 on error, h->cnt on success
  */
-off_t szcnt_open(szcnt *h, const char *path);
+off_t szcnt_open(struct szcnt *h, const char *path);
 
 /**
  * szcnt_close() - close file and free file names
@@ -56,7 +56,7 @@ off_t szcnt_open(szcnt *h, const char *path);
  *
  * Return: -1 if close(2) error, 0 otherwise
  */
-int szcnt_close(szcnt *);
+int szcnt_close(struct szcnt *);
 
 /**
  * szcnt_zero() - set counter and file to zero
@@ -64,7 +64,7 @@ int szcnt_close(szcnt *);
  *
  * Return: -1 on error, 0 on success
  */
-int szcnt_zero(szcnt *);
+int szcnt_zero(struct szcnt *);
 
 /**
  * szcnt_sync() - initialize h->cnt with file size
@@ -72,7 +72,7 @@ int szcnt_zero(szcnt *);
  *
  * Return: -1 on error, h->cnt on success
  */
-off_t szcnt_sync(szcnt *);
+off_t szcnt_sync(struct szcnt *);
 
 /**
  * szcnt_inc() - increment counter
@@ -82,6 +82,6 @@ off_t szcnt_sync(szcnt *);
  *
  * Return: -1 on error, 0 on success
  */
-int szcnt_inc(szcnt *);
+int szcnt_inc(struct szcnt *);
 
 #endif

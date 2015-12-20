@@ -10,14 +10,14 @@
 #define _XOPEN_SOURCE 700
 #include <unistd.h>
 
-szcnt *szcnt_new(void)
+struct szcnt *szcnt_new(void)
 {
-	szcnt *h = calloc(1, sizeof(szcnt));
+	struct szcnt *h = calloc(1, sizeof(struct szcnt));
 	if (h) h->fd = -1;
 	return h;
 }
 
-int szcnt_free(szcnt *h)
+int szcnt_free(struct szcnt *h)
 {
 	int ret;
 
@@ -41,7 +41,7 @@ static int isreg(const char *path)
 	return -1;
 }
 
-off_t szcnt_open(szcnt *h, const char *path)
+off_t szcnt_open(struct szcnt *h, const char *path)
 {
 	int len, i, ret;
 
@@ -81,7 +81,7 @@ err:
 	return -1;
 }
 
-int szcnt_close(szcnt *h)
+int szcnt_close(struct szcnt *h)
 {
 	assert(h);
 
@@ -99,7 +99,7 @@ int szcnt_close(szcnt *h)
 	return 0;
 }
 
-static int szcnt_swap(szcnt *h)
+static int szcnt_swap(struct szcnt *h)
 {
 	int fd;
 
@@ -122,7 +122,7 @@ static int szcnt_swap(szcnt *h)
 	return 0;
 }
 
-off_t szcnt_sync(szcnt *h)
+off_t szcnt_sync(struct szcnt *h)
 {
 	off_t ret;
 
@@ -134,7 +134,7 @@ off_t szcnt_sync(szcnt *h)
 	return h->cnt = ret;
 }
 
-int szcnt_zero(szcnt *h)
+int szcnt_zero(struct szcnt *h)
 {
 	assert(h);
 
@@ -144,7 +144,7 @@ int szcnt_zero(szcnt *h)
 	return h->cnt = 0;
 }
 
-int szcnt_inc(szcnt *h) {
+int szcnt_inc(struct szcnt *h) {
 
 	assert(h);
 

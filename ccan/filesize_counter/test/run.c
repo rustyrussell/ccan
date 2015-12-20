@@ -8,7 +8,7 @@
 int main(void)
 {
 	int i;
-	szcnt *h;
+	struct szcnt *h;
 	struct stat s;
 
 	/* This is how many tests you plan to run */
