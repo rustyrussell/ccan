@@ -57,6 +57,7 @@ MODS_WITH_SRC := aga \
 	crypto/shachain \
 	daemonize \
 	daemon_with_notify \
+	deque \
 	dgraph \
 	eratosthenes \
 	err \

@@ -1,0 +1,140 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * deque - type-preserving resizing circular deque
+ *
+ * This is a deque (double-ended queue, pronounced deck) implementation using
+ * a resizing circular buffer.  At steady state, deque operations can proceed
+ * perpetually without mallocing.  The initial capacity must be specified and
+ * is a lower bound when shrinking.  Buffer capacity is doubled at enqueue
+ * to a full deque.  Shrink behavior choices are never shrink, shrink to
+ * minimum when the queue is empty, or shrink by half when the queue is at 20%
+ * of capacity.  Operation names are in the Perl/Ruby style.
+ *
+ * Example:
+ *	// Evaluates arithmetic expressions using Dijkstra's two-stack algorithm.
+ *	// Original: http://algs4.cs.princeton.edu/13stacks/EvaluateDeluxe.java.html
+ *	#define _XOPEN_SOURCE 700
+ *	#include <stdio.h>
+ *	#include <stdlib.h>
+ *	#include <ctype.h>
+ *	#include <err.h>
+ *	#include <ccan/deque/deque.h>
+ *
+ *	static double eval(char op, double a, double b)
+ *	{
+ *		switch (op) {
+ *		case '+': return a + b;
+ *		case '-': return a - b;
+ *		case '/': return a / b;
+ *		case '*': return a * b;
+ *		}
+ *		errx(1, "bad op: %c", op);
+ *	}
+ *
+ *	char opchr[] = { '(', ')', '+', '-', '*', '/' };
+ *	int  opprc[] = {  0 ,  0 ,  1 ,  1 ,  2 ,  2  };
+ *
+ *	static int precedence(char op)
+ *	{
+ *		int i;
+ *		for (i = 0; i < sizeof(opchr); i++)
+ *			if (opchr[i] == op)
+ *				return opprc[i];
+ *		return -1;
+ *	}
+ *
+ *	#define ok(x) ({ int n = (x); if (n == -1) err(1, "%s", #x); n; })
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		DEQ_WRAP(char) *ops;
+ *		DEQ_WRAP(double) *vals;
+ *		char *ln = NULL, *p, op;
+ *		size_t lnsz = 0;
+ *		double a, b;
+ *		int n;
+ *
+ *		ok(deq_new(ops,  8, DEQ_NO_SHRINK));
+ *		ok(deq_new(vals, 8, DEQ_NO_SHRINK));
+ *
+ *		while (getline(&ln, &lnsz, stdin) > 0) {
+ *
+ *			for (p = ln; *p; p++) {
+ *				if (isspace(*p))
+ *					continue;
+ *
+ *				if (precedence(*p) == -1) {
+ *					if (sscanf(p, "%lf%n", &a, &n) != 1)
+ *						errx(1, "parse fail: %s", p);
+ *					ok(deq_push(vals, a));
+ *					p += n - 1;
+ *					continue;
+ *				}
+ *
+ *				while (1) {
+ *					if (*p == '(' || deq_last(ops, &op) == 0 || (precedence(*p) > precedence(op))) {
+ *						ok(deq_push(ops, *p));
+ *						break;
+ *					}
+ *
+ *					ok(deq_pop(ops, &op));
+ *
+ *					if (op == '(') {
+ *						assert(*p == ')');
+ *						break;
+ *					}
+ *					else {
+ *						if (deq_len(vals) < 2)
+ *							errx(1, "out of values");
+ *						ok(deq_pop(vals, &b));
+ *						ok(deq_pop(vals, &a));
+ *						ok(deq_push(vals, eval(op, a, b)));
+ *					}
+ *				}
+ *			}
+ *
+ *			while (ok(deq_pop(ops, &op)) == 1) {
+ *				if (deq_len(vals) < 2)
+ *					errx(1, "out of values");
+ *				ok(deq_pop(vals, &b));
+ *				ok(deq_pop(vals, &a));
+ *				ok(deq_push(vals, eval(op, a, b)));
+ *			}
+ *
+ *			if ((n = deq_len(vals)) != 1)
+ *				errx(1, "wrong number of values: %d", n);
+ *
+ *			ok(deq_pop(vals, &a));
+ *			printf("%.lf\n", a);
+ *		}
+ *
+ *		if (ferror(stdin))
+ *			err(1, "getline");
+ *
+ *		deq_free(ops);
+ *		deq_free(vals);
+ *		free(ln);
+ *		exit(0);
+ *	}
+ *
+ * License: APACHE-2
+ * Author: Dan Good <dan@dancancode.com>
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0)
+		return 0;
+	if (strcmp(argv[1], "testdepends") == 0) {
+		printf("ccan/failtest\n");
+		return 0;
+	}
+
+	return 1;
+}
