@@ -1,7 +1,13 @@
-#ifndef _DEQUE_H
-#define _DEQUE_H
-
+/* Licensed under Apache License v2.0 - see LICENSE file for details */
+#ifndef CCAN_DEQUE_H
+#define CCAN_DEQUE_H
+#include "config.h"
+#if !HAVE_STATEMENT_EXPR
+#error "This code needs compiler support for statement expressions. Try using gcc or clang."
+#endif
 #include <assert.h>
+#include <stdlib.h>
+#include <string.h>
 
 /**
  * struct deq - deque metadata
@@ -87,7 +93,7 @@ int deq_resize_(struct deq *q, unsigned n);
  *	//later
  *	deq_free(z);
  *
- * Returns: pointer on success, NULL on error
+ * Returns: 0 on success, -1 on error
  */
 #define deq_new(w, min, shrink) ({			\
 	w = malloc(sizeof(*w));				\

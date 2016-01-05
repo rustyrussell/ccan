@@ -16,7 +16,7 @@
  * Example:
  *	// Evaluates arithmetic expressions using Dijkstra's two-stack algorithm.
  *	// Original: http://algs4.cs.princeton.edu/13stacks/EvaluateDeluxe.java.html
- *	#define _XOPEN_SOURCE 700
+ *	#define _XOPEN_SOURCE 700 // only for getline(3) in this demo
  *	#include <stdio.h>
  *	#include <stdlib.h>
  *	#include <ctype.h>
@@ -122,6 +122,12 @@
  *
  * License: APACHE-2
  * Author: Dan Good <dan@dancancode.com>
+ *
+ * Ccanlint:
+ *	// uses statement expressions
+ *	// supported by gcc, clang, icc, and some others, but not msvc
+ *	// (see https://gcc.gnu.org/onlinedocs/gcc/Statement-Exprs.html)
+ *	objects_build_without_features FAIL
  */
 int main(int argc, char *argv[])
 {

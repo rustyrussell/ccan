@@ -1,6 +1,4 @@
 #include <ccan/deque/deque.h>
-/* Include the C files directly. */
-#include <ccan/deque/deque.c>
 #include <ccan/tap/tap.h>
 
 int main(void)

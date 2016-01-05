@@ -12,7 +12,7 @@ int main(void)
 	struct quad { int w, x, y, z; } p, q, r, s, *save;
 	assert(sizeof(struct quad) == sizeof(int) * 4);
 
-	plan_tests(19);
+	plan_tests(20);
 
 	typedef DEQ_WRAP(struct quad) qd_t;
 	qd_t a_, *a = &a_;
@@ -52,6 +52,9 @@ int main(void)
 	deq_push(a, q);
 	ok1(a->v != save && a->deq.head == 0 && a->deq.tail == 5 && a->deq.len == 5 && a->deq.cap == 8);
 	ok1(malloc_sz == sizeof(struct quad) * 8);
+	save = a->v;
+	deq_unshift(a, r);
+	ok1(a->v == save && a->deq.head == 7 && a->deq.tail == 5 && a->deq.len == 6 && a->deq.cap == 8);
 
 	deq_reset(a);
 
