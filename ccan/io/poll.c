@@ -16,6 +16,14 @@ static struct pollfd *pollfds = NULL;
 static struct fd **fds = NULL;
 static LIST_HEAD(closing);
 static LIST_HEAD(always);
+static struct timeabs (*nowfn)(void) = time_now;
+
+struct timeabs (*io_time_override(struct timeabs (*now)(void)))(void)
+{
+	struct timeabs (*old)(void) = nowfn;
+	nowfn = now;
+	return old;
+}
 
 static bool add_fd(struct fd *fd, short events)
 {
@@ -256,7 +264,7 @@ void *io_loop(struct timers *timers, struct timer **expired)
 		if (timers) {
 			struct timeabs now, first;
 
-			now = time_now();
+			now = nowfn();
 
 			/* Call functions for expired timers. */
 			*expired = timers_expire(timers, now);
