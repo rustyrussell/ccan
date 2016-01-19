@@ -1,0 +1,96 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * rszshm - resizable pointer-safe shared memory
+ *
+ * If two separate processes have shared mappings of the same file at the
+ * same address, then pointers to addresses within the region can be shared
+ * between the processes and safely dereferenced.
+ *
+ * Mapping to the same address in unrelated processes is nontrivial.  One can
+ * request a specific address, but mmap will return another in case of an
+ * overlap.  One can require a specific address, but mmap will unmap anything
+ * overlapped.  On Linux boxes it can be seen that the used addresses clump
+ * at either end of the address range.  rszshm tries to mmap in the middle
+ * of the address range, and checks if the requested address matches the
+ * returned address.  If not, additional addresses are tried.  Once mapped,
+ * the address is recorded to a header in the file.  Another process reads the
+ * header and requests the saved address from mmap.  If the returned address
+ * matches, work proceeds.  While the defaults provide a propitious search,
+ * all the search parameters may be specified.
+ *
+ * To accommodate resizing, rszshm first maps a large, private, noreserve map.
+ * This serves to claim a span of addresses.  The shared file mapping then
+ * overlays the beginning of the span.  Later calls to extend the mapping
+ * overlay more of the span.  Attempts to extend beyond the end of the span
+ * return an error.
+ *
+ * Example:
+ * 	// fork x times, grow and fill shared memory cooperatively
+ * 	#include <assert.h>
+ * 	#include <err.h>
+ * 	#include <signal.h>
+ * 	#include <stdio.h>
+ * 	#include <unistd.h>
+ * 	#include <ccan/rszshm/rszshm.h>
+ *
+ * 	#define ok(x) ({ int n = (x); if (n == -1) err(1, "%s", #x); n; })
+ *
+ * 	int main(int argc, char *argv[]) {
+ * 		int pidcnt, stopval, n, i;
+ * 		struct rszshm *r;
+ * 		char *m;
+ *
+ * 		assert(argc == 3);
+ * 		pidcnt  = atoi(argv[1]);
+ * 		stopval = atoi(argv[2]);
+ * 		assert(pidcnt > 0 && stopval > 0);
+ *
+ * 		if (!rszshm_mkm(r, 4096, NULL))
+ * 			err(1, "rszshm_mkm");
+ *
+ * 		printf("%s\n", r->fname);
+ *
+ * 		for (n = 0; n < pidcnt - 1; n++)
+ * 			if (ok(fork()) == 0)
+ * 				break;
+ *
+ * 		m = (char *) r->dat + sizeof(int);
+ * 		#define next() (__sync_fetch_and_add((int *) r->dat, 1))
+ *
+ * 		for(i = next(); i < stopval; i = next()) {
+ * 			if (i >= r->cap - sizeof(int))
+ * 				ok(rszshm_grow(r));
+ * 			assert(m[i] == '\0');
+ * 			m[i] = 'A' + n;
+ * 			kill(0, 0); // busy work
+ * 		}
+ *
+ * 		rszshm_free(r);
+ * 		return 0;
+ * 	}
+ * 	// $ ./foo 8 $((4*1024*1024-28))
+ * 	// /dev/shm/rszshm_LAsEvt/0
+ * 	// $ tail -c +29 /dev/shm/rszshm_LAsEvt/0 | sed 's/./&\n/g' | sort | uniq -c | tr '\n' '\t'; echo
+ * 	//  515532 A   527251 B    512930 C    513062 D    544326 E    545876 F    512936 G    522363 H
+ *
+ * License: APACHE-2
+ * Author: Dan Good <dan@dancancode.com>
+ *
+ * Ccanlint:
+ *	// tests use optional macros containing statement expressions
+ *	tests_compile_without_features FAIL
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0)
+		return 0;
+
+	return 1;
+}

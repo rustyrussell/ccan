@@ -100,6 +100,7 @@ MODS_WITH_SRC := aga \
 	rbuf \
 	read_write_all \
 	rfc822 \
+	rszshm \
 	siphash \
 	sparse_bsearch \
 	str \
