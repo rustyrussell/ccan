@@ -101,10 +101,12 @@ pid_t pipecmdarr(int *fd_fromchild, int *fd_tochild, char *const *arr)
 	close(execfail[1]);
 	/* Child will close this without writing on successful exec. */
 	if (read(execfail[0], &err, sizeof(err)) == sizeof(err)) {
+		close(execfail[0]);
 		waitpid(childpid, NULL, 0);
 		errno = err;
 		return -1;
 	}
+	close(execfail[0]);
 	if (fd_tochild)
 		*fd_tochild = tochild[1];
 	if (fd_fromchild)
