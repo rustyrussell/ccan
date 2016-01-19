@@ -52,7 +52,7 @@ char *tal_fmt(const tal_t *ctx, const char *fmt, ...)
 static bool do_vfmt(char **buf, size_t off, const char *fmt, va_list ap)
 {
 	/* A decent guess to start. */
-	size_t max = strlen(fmt) * 2;
+	size_t max = strlen(fmt) * 2 + 1;
 	bool ok;
 
 	for (;;) {
