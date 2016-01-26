@@ -39,4 +39,49 @@
  */
 #define CPPMAGIC_2ND(a_, b_, ...)	b_
 
+/**
+ * CPPMAGIC_ISZERO - is argument '0'
+ *
+ * CPPMAGIC_ISZERO(@a)
+ *	expands to '1' if @a is '0', otherwise expands to '0'.
+ */
+#define _CPPMAGIC_ISPROBE(...)		CPPMAGIC_2ND(__VA_ARGS__, 0)
+#define _CPPMAGIC_PROBE()		$, 1
+#define _CPPMAGIC_ISZERO_0		_CPPMAGIC_PROBE()
+#define CPPMAGIC_ISZERO(a_)		\
+	_CPPMAGIC_ISPROBE(CPPMAGIC_GLUE2(_CPPMAGIC_ISZERO_, a_))
+
+/**
+ * CPPMAGIC_NONZERO - is argument not '0'
+ *
+ * CPPMAGIC_NONZERO(@a)
+ *	expands to '0' if @a is '0', otherwise expands to '1'.
+ */
+#define CPPMAGIC_NONZERO(a_)		CPPMAGIC_ISZERO(CPPMAGIC_ISZERO(a_))
+
+/**
+ * CPPMAGIC_NONEMPTY - does the macro have any arguments?
+ *
+ * CPPMAGIC_NONEMPTY()
+ * 	expands to '0'
+ * CPPMAGIC_NONEMPTY(@a)
+ * CPPMAGIC_NONEMPTY(@a, ...)
+ * 	expand to '1'
+ */
+#define _CPPMAGIC_EOA()			0
+#define CPPMAGIC_NONEMPTY(...)		\
+	CPPMAGIC_NONZERO(CPPMAGIC_1ST(_CPPMAGIC_EOA __VA_ARGS__)())
+
+/**
+ * CPPMAGIC_ISEMPTY - does the macro have no arguments?
+ *
+ * CPPMAGIC_ISEMPTY()
+ * 	expands to '1'
+ * CPPMAGIC_ISEMPTY(@a)
+ * CPPMAGIC_ISEMPTY(@a, ...)
+ * 	expand to '0'
+ */
+#define CPPMAGIC_ISEMPTY(...)		\
+	CPPMAGIC_ISZERO(CPPMAGIC_NONEMPTY(__VA_ARGS__))
+
 #endif /* CCAN_CPPMAGIC_H */

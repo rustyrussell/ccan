@@ -17,7 +17,7 @@ static inline void check1(const char *orig, const char *expand,
 
 int main(void)
 {
-	plan_tests(7);
+	plan_tests(21);
 
 	CHECK1(CPPMAGIC_NOTHING(), "");
 	CHECK1(CPPMAGIC_GLUE2(a, b), "ab");
@@ -29,6 +29,24 @@ int main(void)
 	CHECK1(CPPMAGIC_2ND(a, b), "b");
 	CHECK1(CPPMAGIC_2ND(a, b, c), "b");
 
+	CHECK1(CPPMAGIC_ISZERO(0), "1");
+	CHECK1(CPPMAGIC_ISZERO(1), "0");
+	CHECK1(CPPMAGIC_ISZERO(123), "0");
+	CHECK1(CPPMAGIC_ISZERO(abc), "0");
+
+	CHECK1(CPPMAGIC_NONZERO(0), "0");
+	CHECK1(CPPMAGIC_NONZERO(1), "1");
+	CHECK1(CPPMAGIC_NONZERO(123), "1");
+	CHECK1(CPPMAGIC_NONZERO(abc), "1");
+
+	CHECK1(CPPMAGIC_NONEMPTY(), "0");
+	CHECK1(CPPMAGIC_NONEMPTY(0), "1");
+	CHECK1(CPPMAGIC_NONEMPTY(a, b, c), "1");
+
+	CHECK1(CPPMAGIC_ISEMPTY(), "1");
+	CHECK1(CPPMAGIC_ISEMPTY(0), "0");
+	CHECK1(CPPMAGIC_ISEMPTY(a, b, c), "0");
+	
 	/* This exits depending on whether all tests passed */
 	return exit_status();
 }
