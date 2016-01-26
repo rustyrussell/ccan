@@ -1,0 +1,125 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ *
+ * altstack - run a function with a dedicated stack, and then release the memory
+ *
+ * C99 introduced variable length arrays to make the language easier to use
+ * and more efficient. Many regard VLA's with distrust due to fear of stack
+ * overflow. The same fear causes many to shy away from recursion.
+ *
+ * altstack seeks to liberate us from this fear. altstack creates a dedicated stack,
+ * limited to a specified maximum size, runs a given function using this stack, and
+ * afterwards releases the memory back to the system.
+ *
+ * altstack provides a way to obtain current stack usage and a way to fail gracefully.
+ *
+ * altstack is implemented for x86-64 only.
+ *
+ * Example:
+ *	// allocate a VLA on a dedicated stack and show memory usage
+ *	#include <assert.h>
+ *	#include <err.h>
+ *	#include <stdio.h>
+ *	#include <stdlib.h>
+ *	#include <string.h>
+ *	#include <unistd.h>
+ *	#include <ccan/altstack/altstack.h>
+ *
+ *	#define ok(x) ({ int __r = (x); if (__r == -1) err(1, #x); __r; })
+ *
+ *	char maps[128], rss[128];
+ *
+ *	static void stack_used(void) {
+ *		fprintf(stderr, "stack used: %ld\n", altstack_used());
+ *	}
+ *
+ *	static void *fn(void *arg)
+ *	{
+ *		ok(system(maps));
+ *
+ *		stack_used();
+ *		ok(system(rss));
+ *
+ *		char p[(long) arg];
+ *
+ *		stack_used();
+ *		ok(system(rss));
+ *
+ *		memset(p, 0, sizeof(p));
+ *
+ *		stack_used();
+ *		ok(system(rss));
+ *
+ *		return (void *) 0xaced;
+ *	}
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		long stk_max, vla_sz;
+ *		int ret;
+ *		void *out;
+ *
+ *		assert(argc == 3);
+ *		stk_max = strtol(argv[1], 0, 0) * 1024 * 1024;
+ *		vla_sz  = strtol(argv[2], 0, 0) * 1024 * 1024;
+ *		assert(stk_max > 0 && vla_sz > 0);
+ *
+ *		snprintf(maps, sizeof(maps), "egrep '\\[stack' /proc/%d/maps", getpid());
+ *		snprintf(rss,  sizeof(rss),  "egrep '^VmRSS' /proc/%d/status", getpid());
+ *
+ *		ok(system(maps));
+ *		ok(system(rss));
+ *
+ *		ret = altstack(stk_max, fn, (void *) vla_sz, &out);
+ *
+ *		ok(system(maps));
+ *		ok(system(rss));
+ *
+ *		if (ret)
+ *			altstack_perror();
+ *		fprintf(stderr, "altstack return: %d, fn return: %p\n", ret, out);
+ *
+ *		return 0;
+ *	}
+ *	// $ ./foo 1024 512
+ *	// 7ffeb59a9000-7ffeb59ca000 rw-p 00000000 00:00 0                          [stack]
+ *	// VmRSS:       760 kB
+ *	// 7f9cb6005000-7f9cf6004000 rw-p 00000000 00:00 0                          [stack:25891]
+ *	// stack used: 56
+ *	// VmRSS:       760 kB
+ *	// stack used: 536870968
+ *	// VmRSS:       760 kB
+ *	// stack used: 536870968
+ *	// VmRSS:    525500 kB
+ *	// 7ffeb59a9000-7ffeb59ca000 rw-p 00000000 00:00 0                          [stack]
+ *	// VmRSS:      1332 kB
+ *	// altstack return: 0, fn return: 0xaced
+ *	//
+ *	// $ ./foo 512 1024
+ *	// 7ffd62bd0000-7ffd62bf1000 rw-p 00000000 00:00 0                          [stack]
+ *	// VmRSS:       700 kB
+ *	// 7f0d3bef6000-7f0d5bef5000 rw-p 00000000 00:00 0                          [stack:25900]
+ *	// stack used: 56
+ *	// VmRSS:       700 kB
+ *	// 7ffd62bd0000-7ffd62bf1000 rw-p 00000000 00:00 0                          [stack]
+ *	// VmRSS:      1336 kB
+ *	// (altstack@103) SIGSEGV caught
+ *	// altstack return: -1, fn return: (nil)
+ *
+ * License: APACHE-2
+ * Author: Dan Good <dan@dancancode.com>
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0)
+		return 0;
+
+	return 1;
+}

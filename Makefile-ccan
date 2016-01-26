@@ -33,6 +33,7 @@ MODS_NO_SRC := alignof \
 # No external dependencies, with C code:
 MODS_WITH_SRC := aga \
 	agar \
+	altstack \
 	antithread \
 	antithread/alloc \
 	asort \
