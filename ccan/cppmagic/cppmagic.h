@@ -133,4 +133,59 @@
 #define CPPMAGIC_DEFER1(a_)	a_ CPPMAGIC_NOTHING()
 #define CPPMAGIC_DEFER2(a_)	a_ CPPMAGIC_NOTHING CPPMAGIC_NOTHING()()
 
+/**
+ * CPPMAGIC_MAP - iterate another macro across arguments
+ * @m: name of a one argument macro
+ *
+ * CPPMAGIC_MAP(@m, @a1, @a2, ... @an)
+ *	expands to the expansion of @m(@a1) , @m(@a2) , ... , @m(@an)
+ */
+#define _CPPMAGIC_MAP_()		_CPPMAGIC_MAP
+#define _CPPMAGIC_MAP(m_, a_, ...)					\
+	m_(a_)								\
+	CPPMAGIC_IFELSE(CPPMAGIC_NONEMPTY(__VA_ARGS__))			\
+		(, CPPMAGIC_DEFER2(_CPPMAGIC_MAP_)()(m_, __VA_ARGS__))	\
+		()
+#define CPPMAGIC_MAP(m_, ...)						\
+	CPPMAGIC_IFELSE(CPPMAGIC_NONEMPTY(__VA_ARGS__))			\
+		(CPPMAGIC_EVAL(_CPPMAGIC_MAP(m_, __VA_ARGS__)))		\
+		()
+
+/**
+ * CPPMAGIC_2MAP - iterate another macro across pairs of arguments
+ * @m: name of a two argument macro
+ *
+ * CPPMAGIC_2MAP(@m, @a1, @b1, @a2, @b2, ..., @an, @bn)
+ *	expands to the expansion of
+ *		 @m(@a1, @b1) , @m(@a2, @b2) , ... , @m(@an, @bn)
+ */
+#define _CPPMAGIC_2MAP_()		_CPPMAGIC_2MAP
+#define _CPPMAGIC_2MAP(m_, a_, b_, ...)				\
+	m_(a_, b_)							\
+	CPPMAGIC_IFELSE(CPPMAGIC_NONEMPTY(__VA_ARGS__))			\
+		(, CPPMAGIC_DEFER2(_CPPMAGIC_2MAP_)()(m_, __VA_ARGS__)) \
+		()
+#define CPPMAGIC_2MAP(m_, ...)					\
+	CPPMAGIC_IFELSE(CPPMAGIC_NONEMPTY(__VA_ARGS__))			\
+		(CPPMAGIC_EVAL(_CPPMAGIC_2MAP(m_, __VA_ARGS__)))	\
+		()
+
+/**
+ * CPPMAGIC_JOIN - separate arguments with given delimiter
+ * @d: delimiter
+ *
+ * CPPMAGIC_JOIN(@d, @a1, @a2, ..., @an)
+ *	expands to the expansion of @a1 @d @a2 @d ... @d @an
+ */
+#define _CPPMAGIC_JOIN_()		_CPPMAGIC_JOIN
+#define _CPPMAGIC_JOIN(d_, a_, ...)					\
+	a_								\
+	CPPMAGIC_IFELSE(CPPMAGIC_NONEMPTY(__VA_ARGS__))			\
+		(d_ CPPMAGIC_DEFER2(_CPPMAGIC_JOIN_)()(d_, __VA_ARGS__)) \
+		()
+#define CPPMAGIC_JOIN(d_, ...)					\
+	CPPMAGIC_IFELSE(CPPMAGIC_NONEMPTY(__VA_ARGS__))			\
+		(CPPMAGIC_EVAL(_CPPMAGIC_JOIN(d_, __VA_ARGS__)))	\
+		()
+
 #endif /* CCAN_CPPMAGIC_H */
