@@ -1,6 +1,10 @@
 language: c
 sudo: false
 
+compiler:
+  - gcc
+  - clang
+
 addons:
     apt:
         packages:
