@@ -84,4 +84,18 @@
 #define CPPMAGIC_ISEMPTY(...)		\
 	CPPMAGIC_ISZERO(CPPMAGIC_NONEMPTY(__VA_ARGS__))
 
+/*
+ * CPPMAGIC_IFELSE - preprocessor conditional
+ *
+ * CPPMAGIC_IFELSE(@cond)(@if)(@else)
+ *	expands to @else if @cond is '0', otherwise expands to @if
+ */
+#define _CPPMAGIC_IF_0(...)		_CPPMAGIC_IF_0_ELSE
+#define _CPPMAGIC_IF_1(...)		__VA_ARGS__ _CPPMAGIC_IF_1_ELSE
+#define _CPPMAGIC_IF_0_ELSE(...)	__VA_ARGS__
+#define _CPPMAGIC_IF_1_ELSE(...)
+#define _CPPMAGIC_IFELSE(cond_)		CPPMAGIC_GLUE2(_CPPMAGIC_IF_, cond_)
+#define CPPMAGIC_IFELSE(cond_)		\
+	_CPPMAGIC_IFELSE(CPPMAGIC_NONZERO(cond_))
+
 #endif /* CCAN_CPPMAGIC_H */
