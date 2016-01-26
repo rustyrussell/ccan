@@ -15,9 +15,12 @@ static inline void check1(const char *orig, const char *expand,
 #define CHECK1(orig, match) \
 	check1(#orig, CPPMAGIC_STRINGIFY(orig), match)
 
+#define TESTRECURSE()	R CPPMAGIC_DEFER1(_TESTRECURSE)()()
+#define _TESTRECURSE()	TESTRECURSE
+
 int main(void)
 {
-	plan_tests(24);
+	plan_tests(27);
 
 	CHECK1(CPPMAGIC_NOTHING(), "");
 	CHECK1(CPPMAGIC_GLUE2(a, b), "ab");
@@ -50,6 +53,10 @@ int main(void)
 	CHECK1(CPPMAGIC_IFELSE(0)(abc)(def), "def");
 	CHECK1(CPPMAGIC_IFELSE(1)(abc)(def), "abc");
 	CHECK1(CPPMAGIC_IFELSE(not zero)(abc)(def), "abc");
+
+	CHECK1(TESTRECURSE(), "R R _TESTRECURSE ()()");
+	CHECK1(CPPMAGIC_EVAL1(TESTRECURSE()), "R R R _TESTRECURSE ()()");
+	CHECK1(CPPMAGIC_EVAL2(TESTRECURSE()), "R R R R R _TESTRECURSE ()()");
 
 	/* This exits depending on whether all tests passed */
 	return exit_status();
