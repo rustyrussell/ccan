@@ -32,7 +32,7 @@ static struct aga_node *bfs_front(bfs_queue *queue)
 
 static void bfs_dequeue(bfs_queue *queue)
 {
-	lqueue_dequeue(queue);
+	(void) lqueue_dequeue(queue);
 }
 
 int aga_bfs_start(struct aga_graph *g)

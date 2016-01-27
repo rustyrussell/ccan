@@ -27,7 +27,7 @@ static bool dfs_push(struct aga_graph *g, dfs_stack *stack,
 
 static void dfs_pop(dfs_stack *stack)
 {
-	lstack_pop(stack);
+	(void) lstack_pop(stack);
 }
 
 static struct aga_node *dfs_top(dfs_stack *stack)
