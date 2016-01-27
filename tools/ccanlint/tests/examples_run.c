@@ -86,7 +86,7 @@ static char *find_expect(struct ccan_file *file,
 			 bool *contains, bool *whitespace, bool *error,
 			 unsigned *line)
 {
-	char *rest, *expect;
+	char *expect;
 
 	*error = false;
 	for (; lines[*line]; (*line)++) {
