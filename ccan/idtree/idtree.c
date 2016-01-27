@@ -100,7 +100,8 @@ static int sub_alloc(struct idtree *idp, const void *ptr, int *starting_id)
 	int n, m, sh;
 	struct idtree_layer *p, *pn;
 	struct idtree_layer *pa[MAX_LEVEL+1];
-	unsigned int l, id, oid;
+	unsigned int l;
+	int id, oid;
 	uint32_t bm;
 
 	memset(pa, 0, sizeof(pa));
