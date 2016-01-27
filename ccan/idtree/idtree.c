@@ -278,7 +278,7 @@ void *idtree_lookup(const struct idtree *idp, int id)
 	 * present.  If so, tain't one of ours!
 	 */
 	if (n + IDTREE_BITS < 31 &&
-	    (id & ~(~0 << MAX_ID_SHIFT)) >> (n + IDTREE_BITS))
+	    (id & ~(~0U << MAX_ID_SHIFT)) >> (n + IDTREE_BITS))
 	     return NULL;
 
 	/* Mask off upper bits we don't use for the search. */
