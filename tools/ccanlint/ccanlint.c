@@ -35,12 +35,10 @@
 #include <ccan/tal/path/path.h>
 #include <ccan/strmap/strmap.h>
 
-struct ccanlint_map {
-	STRMAP_MEMBERS(struct ccanlint *);
-};
+typedef STRMAP(struct ccanlint *) ccanlint_map_t;
 
 int verbose = 0;
-static struct ccanlint_map tests;
+static ccanlint_map_t tests;
 bool safe_mode = false;
 bool keep_results = false;
 bool non_ccan_deps = false;
@@ -273,7 +271,7 @@ static bool init_deps(const char *member, struct ccanlint *c, void *unused)
 }
 
 static bool check_names(const char *member, struct ccanlint *c,
-			struct ccanlint_map *names)
+			ccanlint_map_t *names)
 {
 	if (!strmap_add(names, c->name, c))
 		err(1, "Duplicate name %s", c->name);
@@ -282,7 +280,7 @@ static bool check_names(const char *member, struct ccanlint *c,
 
 static void init_tests(void)
 {
-	struct ccanlint_map names;
+	ccanlint_map_t names;
 	struct ccanlint **table;
 	size_t i, num;
 
