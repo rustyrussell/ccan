@@ -135,7 +135,7 @@ restart:
 			 */
 			sh = IDTREE_BITS * (l + 1);
 			if (oid >> sh == id >> sh)
-			continue;
+				continue;
 			else
 				goto restart;
 		}
