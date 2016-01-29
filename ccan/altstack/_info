@@ -109,6 +109,7 @@
  *	// (altstack@103) SIGSEGV caught
  *	// altstack return: -1, fn return: (nil)
  *
+ * Ccanlint: tests_pass_valgrind FAIL
  * License: APACHE-2
  * Author: Dan Good <dan@dancancode.com>
  */
