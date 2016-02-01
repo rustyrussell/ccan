@@ -577,6 +577,8 @@ static bool run_tests(struct dgraph_node *all,
 	if (deps_fail_ignore && non_ccan_deps && build_failed) {
 		comment = " (missing non-ccan dependencies?)";
 		run.pass = true;
+	} else if (!run.pass) {
+		comment = " FAIL!";
 	}
 	printf("%sTotal score: %u/%u%s\n",
 	       prefix, run.score, run.total, comment);
