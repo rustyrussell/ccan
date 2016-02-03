@@ -90,7 +90,7 @@ ccan/%/info: ccan/%/_info
 
 clean: tools-clean
 	$(RM) `find * -name '*.o'` `find * -name '.depends'` `find * -name '*.a'`  `find * -name info` `find * -name '*.d'`
-	$(RM) inter-depends lib-depends test-depends ccan/*-Makefile
+	$(RM) inter-depends lib-depends test-depends
 
 # Creates a dependency from the tests to the object files which it needs.
 inter-depends: $(ALL_DEPENDS) Makefile

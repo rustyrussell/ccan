@@ -145,6 +145,12 @@ DIRS=$(patsubst %/, %, $(sort $(foreach m, $(filter-out $(MODS_EXCLUDE), $(MODS_
 ccan/%-Makefile:
 	@echo $@: $(wildcard ccan/$*/*.[ch]) ccan/$*/_info > $@
 	@echo ccan/$*.o: $(patsubst %.c, %.o, $(wildcard ccan/$*/*.c)) >> $@
+	@echo $(patsubst %.c, %.o, $(wildcard ccan/$*/*.c)): config.h >> $@
+
+clean: clean-ccan
+
+clean-ccan:
+	$(RM) $(foreach dir, $(DIRS), $(dir)-Makefile)
 
 # We compile all the ccan/foo/*.o files together into ccan/foo.o
 OBJFILES=$(DIRS:=.o)
