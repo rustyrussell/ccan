@@ -123,7 +123,7 @@ int main(int argc, char *argv[])
 		return 0;
 
 	if (strcmp(argv[1], "ported") == 0) {
-#if __x86_64__
+#ifdef __x86_64__
 		printf("1\n");
 #else
 		printf("0\n");
