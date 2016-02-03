@@ -76,6 +76,7 @@
  * 	// $ tail -c +29 /dev/shm/rszshm_LAsEvt/0 | sed 's/./&\n/g' | sort | uniq -c | tr '\n' '\t'; echo
  * 	//  515532 A   527251 B    512930 C    513062 D    544326 E    545876 F    512936 G    522363 H
  *
+ * Ccanlint: tests_pass_valgrind FAIL
  * License: APACHE-2
  * Author: Dan Good <dan@dancancode.com>
  *
