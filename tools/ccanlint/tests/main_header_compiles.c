@@ -70,7 +70,7 @@ struct ccanlint main_header_compiles = {
 	.name = "Modules main header compiles",
 	.check = check_includes_build,
 	.can_run = can_build,
-	.needs = "depends_exist main_header_exists"
+	.needs = "depends_exist main_header_exists info_ported"
 };
 
 REGISTER_TEST(main_header_compiles);

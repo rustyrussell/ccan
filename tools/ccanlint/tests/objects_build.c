@@ -88,7 +88,7 @@ struct ccanlint objects_build = {
 	.compulsory = true,
 	.check = check_objs_build,
 	.can_run = can_build,
-	.needs = "depends_exist"
+	.needs = "depends_exist info_ported"
 };
 
 REGISTER_TEST(objects_build);

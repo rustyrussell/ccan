@@ -108,7 +108,7 @@ struct ccanlint depends_build = {
 	.name = "Module's CCAN dependencies can be found or built",
 	.check = check_depends_built,
 	.can_run = can_build,
-	.needs = "depends_exist test_depends_exist"
+	.needs = "depends_exist test_depends_exist info_ported"
 };
 
 REGISTER_TEST(depends_build);
