@@ -87,6 +87,10 @@ test, but happy:
   CCAN module must have '_info' file describing. No this score is 0.
   However, *ccanlint* question may help to write one.
 
+*info_ported*::
+  CCAN module '_info' can say 'ported' arg; if says '0' not ported, few tests
+  run.
+
 *depends_exist*::
   '_info' file CCAN other module without saying, must find. It is not score 0.
 
