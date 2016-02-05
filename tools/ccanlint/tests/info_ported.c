@@ -15,13 +15,16 @@
 
 static const char *can_build(struct manifest *m)
 {
+	char *msg;
+
 	/* FIXME: In safe mode, we'd need complex guesstiparsing. */
 	if (safe_mode)
 		return NULL;
 
-	if (get_ported(m, m->dir, true, get_or_compile_info))
+	msg = get_ported(m, m->dir, true, get_or_compile_info);
+	if (!msg)
 		return NULL;
-	return "'_info ported' says not supported";
+	return tal_fmt(m, "'_info ported' says '%s'", msg);
 }
 
 static void check_info_ported(struct manifest *m,

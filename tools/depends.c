@@ -282,31 +282,33 @@ char **get_cflags(const void *ctx, const char *dir,
 	return flags;
 }
 
-static bool get_one_ported(const void *ctx, const char *dir,
-			   char *(*get_info)(const void *ctx, const char *dir))
+static char *get_one_ported(const void *ctx, const char *dir,
+			    char *(*get_info)(const void *ctx, const char *dir))
 {
 	char **ported = get_one_prop(ctx, dir, "ported", get_info);
 
 	/* No news is good news. */
 	if (!ported || tal_count(ported) == 0)
-		return true;
+		return NULL;
 
 	if (tal_count(ported) != 1)
 		errx(1, "%s/_info ported gave %zu lines, not one",
 		     dir, tal_count(ported));
-		
-	if (streq(ported[0], "1"))
-		return true;
-	else if (streq(ported[0], "0"))
-		return false;
-	errx(1, "%s/_info ported gave invalid output '%s'", dir, ported[0]);
+
+	if (streq(ported[0], ""))
+		return NULL;
+	else
+		return ported[0];
 }
 
-bool get_ported(const void *ctx, const char *dir, bool recurse,
+char *get_ported(const void *ctx, const char *dir, bool recurse,
 		char *(*get_info)(const void *ctx, const char *dir))
 {
-	if (!get_one_ported(ctx, dir, get_info))
-		return false;
+	char *msg;
+
+	msg = get_one_ported(ctx, dir, get_info);
+	if (msg)
+		return msg;
 
 	if (recurse) {
 		size_t i;
@@ -317,11 +319,12 @@ bool get_ported(const void *ctx, const char *dir, bool recurse,
 				continue;
 
 			subdir = path_join(ctx, find_ccan_dir(dir), deps[i]);
-			if (!get_one_ported(ctx, subdir, get_info))
-				return false;
+			msg = get_one_ported(ctx, subdir, get_info);
+			if (msg)
+				return msg;
 		}
 	}
-	return true;
+	return NULL;
 }
 
 char **get_libs(const void *ctx, const char *dir, const char *style,
