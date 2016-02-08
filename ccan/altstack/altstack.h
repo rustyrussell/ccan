@@ -104,6 +104,20 @@ char *altstack_geterr(void);
 ptrdiff_t altstack_used(void);
 
 /**
+ * altstack_max - return usable stack size
+ *
+ * Returns: max value from altstack() call
+ */
+rlim_t altstack_max(void);
+
+/**
+ * altstack_remn - return amount of stack remaining
+ *
+ * Returns: altstack_max() minus altstack_used()
+ */
+#define altstack_remn() (altstack_max() - altstack_used())
+
+/**
  * altstack_rsp_save - set initial rsp value
  *
  * Capture the current value of rsp for future altstack_used()

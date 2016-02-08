@@ -8,6 +8,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 #include <sys/mman.h>
 
 static __thread char ebuf[ALTSTACK_ERR_MAXLEN];
@@ -37,6 +38,11 @@ static void segvjmp(int signum)
 }
 
 static __thread void *rsp_save_[2];
+static __thread rlim_t max_;
+
+rlim_t altstack_max(void) {
+	return max_;
+}
 
 static ptrdiff_t rsp_save(unsigned i) {
 	assert(i < 2);
@@ -57,6 +63,7 @@ static __thread void *arg_, *out_;
 
 int altstack(rlim_t max, void *(*fn)(void *), void *arg, void **out)
 {
+	long pgsz = sysconf(_SC_PAGESIZE);
 	int ret = -1, undo = 0;
 	char *m;
 	struct rlimit rl_save;
@@ -69,11 +76,16 @@ int altstack(rlim_t max, void *(*fn)(void *), void *arg, void **out)
 	fn_  = fn;
 	arg_ = arg;
 	out_ = 0;
+	max_ = max;
 	ebuf[elen = 0] = '\0';
 	if (out) *out = 0;
 
+	// if the first page below the mapping is in use, we get max-pgsz usable bytes
+	// add pgsz to max to guarantee at least max usable bytes
+	max += pgsz;
+
 	ok(getrlimit(RLIMIT_STACK, &rl_save), 1);
-	ok(setrlimit(RLIMIT_STACK, &(struct rlimit) { max, rl_save.rlim_max }), 1);
+	ok(setrlimit(RLIMIT_STACK, &(struct rlimit) { max_, rl_save.rlim_max }), 1);
 	undo++;
 
 	ok(m = mmap(0, max, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_GROWSDOWN|MAP_NORESERVE, -1, 0), 1);
@@ -91,8 +103,12 @@ int altstack(rlim_t max, void *(*fn)(void *), void *arg, void **out)
 		ok(sigaction(SIGSEGV, &sa, &sa_save), 1);
 		undo++;
 
-		asm volatile ("movq %%rsp, %%r10\nmov %0, %%rsp\npush %%r10" : : "g" (m + max) : "r10");
-		rsp_save(0);
+		asm volatile (
+			"mov %%rsp, %%r10\n\t"
+			"mov %1, %%rsp\n\t"
+			"sub $8, %%rsp\n\t"
+			"push %%r10"
+			: "=r" (rsp_save_[0]) : "0" (m + max) : "r10");
 		out_ = fn_(arg_);
 		asm volatile ("pop %rsp");
 		ret = 0;
