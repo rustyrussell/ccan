@@ -23,6 +23,7 @@
 #include <ccan/ptrint/ptrint.h>
 #include <ccan/build_assert/build_assert.h>
 #include <ccan/cppmagic/cppmagic.h>
+#include <ccan/compiler/compiler.h>
 
 /*
  * Internals - included just for the use of inlines and macros
@@ -38,6 +39,11 @@ struct generator_ {
 static inline struct generator_ *generator_state_(const void *ret)
 {
 	return (struct generator_ *)ret - 1;
+}
+
+static inline void *generator_argp_(const void *ret)
+{
+	return generator_state_(ret)->base;
 }
 
 struct generator_incomplete_;
@@ -77,8 +83,8 @@ void generator_free_(void *ret);
  * Example:
  *	generator_declare(count_to_3, int);
  */
-#define generator_declare(name_, rtype_)	\
-	generator_t(rtype_) name_(void)
+#define generator_declare(name_, rtype_, ...)	\
+	generator_t(rtype_) name_(generator_parms_outer_(__VA_ARGS__))
 
 /**
  * generator_def - define a generator function
@@ -97,11 +103,35 @@ void generator_free_(void *ret);
  *		generator_yield(3);
  *	}
  */
-#define generator_def_(name_, rtype_, storage_)				\
-	static void name_##_generator_(rtype_ *ret_);			\
+#define generator_parm_(t_, n_)			t_ n_
+#define generator_parms_(...)						\
+	CPPMAGIC_2MAP(generator_parm_, __VA_ARGS__)
+#define generator_parms_inner_(...)					\
+	CPPMAGIC_IFELSE(CPPMAGIC_NONEMPTY(__VA_ARGS__))			\
+		(, generator_parms_(__VA_ARGS__))()
+#define generator_parms_outer_(...)					\
+	CPPMAGIC_IFELSE(CPPMAGIC_NONEMPTY(__VA_ARGS__))	\
+		(generator_parms_(__VA_ARGS__))(void)
+#define generator_argfield_(t_, n_)		t_ n_;
+#define generator_argstruct_(...)					\
+	struct {							\
+		CPPMAGIC_JOIN(, CPPMAGIC_2MAP(generator_argfield_,	\
+					      __VA_ARGS__))		\
+	}
+#define generator_arg_unpack_(t_, n_)		args->n_
+#define generator_args_unpack_(...)		\
+	CPPMAGIC_IFELSE(CPPMAGIC_NONEMPTY(__VA_ARGS__))			\
+		(, CPPMAGIC_2MAP(generator_arg_unpack_, __VA_ARGS__))()
+#define generator_arg_pack_(t_, n_)		args->n_ = n_
+#define generator_args_pack_(...)					\
+	CPPMAGIC_JOIN(;, CPPMAGIC_2MAP(generator_arg_pack_, __VA_ARGS__))
+#define generator_def_(name_, rtype_, storage_, ...)			\
+	static void name_##_generator_(rtype_ *ret_			\
+				       generator_parms_inner_(__VA_ARGS__)); \
 	static void name_##_generator__(generator_wrapper_args_())	\
 	{								\
 		struct generator_ *gen;					\
+		UNNEEDED generator_argstruct_(__VA_ARGS__) *args;	\
 		CPPMAGIC_IFELSE(HAVE_POINTER_SAFE_MAKECONTEXT)		\
 			()						\
 			(ptrdiff_t hilo = ((ptrdiff_t)hi << (8*sizeof(int))) \
@@ -110,19 +140,26 @@ void generator_free_(void *ret);
 			BUILD_ASSERT(sizeof(struct generator_ *)	\
 				     <= 2*sizeof(int));)		\
 		gen = generator_state_(ret);				\
-		name_##_generator_(ret);				\
+		args = generator_argp_(ret);				\
+		name_##_generator_(ret generator_args_unpack_(__VA_ARGS__)); \
 		gen->complete = true;					\
 		setcontext(&gen->caller);				\
 		assert(0);						\
 	}								\
-	storage_ generator_t(rtype_) name_(void)			\
+	storage_ generator_t(rtype_)					\
+	name_(generator_parms_outer_(__VA_ARGS__))			\
 	{								\
-		return generator_new_(name_##_generator__,		\
-				      sizeof(rtype_));			\
+		generator_t(rtype_) gen = generator_new_(name_##_generator__, \
+							 sizeof(rtype_)); \
+		UNNEEDED generator_argstruct_(__VA_ARGS__) *args =	\
+			generator_argp_(gen);				\
+		generator_args_pack_(__VA_ARGS__);			\
+		return gen;						\
 	}								\
-	static void name_##_generator_(rtype_ *ret_)
-#define generator_def(name_, rtype_)		\
-	generator_def_(name_, rtype_, )
+	static void name_##_generator_(rtype_ *ret_			\
+				       generator_parms_inner_(__VA_ARGS__))
+#define generator_def(name_, rtype_, ...)	\
+	generator_def_(name_, rtype_, , __VA_ARGS__)
 
 /**
  * generator_def_static - define a private / local generator function
@@ -132,8 +169,8 @@ void generator_free_(void *ret);
  * As generator_def, but the resulting generator function will be
  * local to this module.
  */
-#define generator_def_static(name_, rtype_)	\
-	generator_def_(name_, rtype_, static)
+#define generator_def_static(name_, rtype_, ...)	\
+	generator_def_(name_, rtype_, static, __VA_ARGS__)
 
 /**
  * generator_yield - yield (return) a value from a generator

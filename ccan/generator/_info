@@ -59,6 +59,7 @@ int main(int argc, char *argv[])
 		printf("ccan/ptrint\n");
 		printf("ccan/alignof\n");
 		printf("ccan/cppmagic\n");
+		printf("ccan/compiler\n");
 		return 0;
 	}
 

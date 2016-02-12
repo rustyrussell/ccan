@@ -32,6 +32,40 @@ static void test1(void)
 	generator_free(state1);
 }
 
+static void test2(void)
+{
+	generator_t(int) state2 = gen2(100);
+	int *ret;
+
+	ok1((ret = generator_next(state2)) != NULL);
+	ok1(*ret == 101);
+	ok1((ret = generator_next(state2)) != NULL);
+	ok1(*ret == 103);
+	ok1((ret = generator_next(state2)) != NULL);
+	ok1(*ret == 117);
+	ok1((ret = generator_next(state2)) == NULL);
+
+	generator_free(state2);
+}
+
+static void test3(void)
+{
+	int i;
+
+	for (i = 0; i < 4; i++) {
+		generator_t(const char *) state3 = gen3("test", i);
+		const char *s;
+		int j;
+
+		for (j = 0; j < i; j++) {
+			ok1(generator_next_val(s, state3));
+			ok1(streq(s, "test"));
+		}
+		ok1(!generator_next_val(s, state3));
+		generator_free(state3);
+	}
+}
+
 static void testx(void)
 {
 	generator_t(const char *) statex = genx();
@@ -52,9 +86,11 @@ static void testx(void)
 int main(void)
 {
 	/* This is how many tests you plan to run */
-	plan_tests(8 + 9);
+	plan_tests(8 + 7 + 16 + 9);
 
 	test1();
+	test2();
+	test3();
 	testx();
 
 	/* This exits depending on whether all tests passed */
