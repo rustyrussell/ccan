@@ -57,14 +57,34 @@ static void *wrap(void *i)
 	return wrap;
 }
 
+#define chkfail(x, y, z, c1, c2)					\
+	do {								\
+		call1 = 0;						\
+		call2 = 0;						\
+		errno = 0;						\
+		ok1((fail = x) && (y));					\
+		ok1(errno == (z));					\
+		ok1(call1 == (c1));					\
+		ok1(call2 == (c2));					\
+	} while (0);
+
+#define chkok(y, z, c1, c2)						\
+	do {								\
+		call1 = 0;						\
+		call2 = 0;						\
+		errno = 0;						\
+		fail = 0;						\
+		ok1((y));						\
+		ok1(errno == (z));					\
+		ok1(call1 == (c1));					\
+		ok1(call2 == (c2));					\
+	} while (0)
+
 int main(void)
 {
 	long pgsz = sysconf(_SC_PAGESIZE);
 
-	plan_tests(17);
-
-#define chkfail(x, y, z, c1, c2) (call1 = 0, call2 = 0, errno = 0, ok1((fail = x) && (y) && errno == (z) && call1 == (c1) && call2 == (c2)));
-#define   chkok(   y, z, c1, c2) (call1 = 0, call2 = 0, errno = 0, fail = 0,     ok1((y) && errno == (z) && call1 == (c1) && call2 == (c2)));
+	plan_tests(50);
 
 	chkfail(getrlimit_,	altstack(8*MiB, wrap, 0, 0) == -1, e(getrlimit_),
 		0,
