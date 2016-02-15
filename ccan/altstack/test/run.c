@@ -1,3 +1,4 @@
+#include "config.h"
 #include <assert.h>
 #include <err.h>
 #include <errno.h>
@@ -8,7 +9,6 @@
 #include <sys/mman.h>
 #include <ccan/tap/tap.h>
 #include <ccan/altstack/altstack.h>
-#define _XOPEN_SOURCE 700
 #include <stdio.h>
 
 enum {
