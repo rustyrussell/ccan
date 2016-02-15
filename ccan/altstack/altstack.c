@@ -108,9 +108,10 @@ int altstack(rlim_t max, void *(*fn)(void *), void *arg, void **out)
 			"mov %1, %%rsp\n\t"
 			"sub $8, %%rsp\n\t"
 			"push %%r10"
-			: "=r" (rsp_save_[0]) : "0" (m + max) : "r10");
+			: "=r" (rsp_save_[0]) : "0" (m + max) : "r10", "memory");
 		out_ = fn_(arg_);
-		asm volatile ("pop %rsp");
+		asm volatile ("pop %%rsp"
+			      : : : "memory");
 		ret = 0;
 		if (out) *out = out_;
 	}
