@@ -92,7 +92,7 @@ int altstack(rlim_t max, void *(*fn)(void *), void *arg, void **out)
 	undo++;
 
 	if (setjmp(jmp) == 0) {
-		unsigned char sigstk[MINSIGSTKSZ];
+		unsigned char sigstk[SIGSTKSZ];
 		stack_t ss = { .ss_sp = sigstk, .ss_size = sizeof(sigstk) };
 		struct sigaction sa = { .sa_handler = segvjmp, .sa_flags = SA_NODEFER|SA_RESETHAND|SA_ONSTACK };
 
