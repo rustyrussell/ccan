@@ -135,7 +135,7 @@ MODS:=$(MODS_WITH_SRC) $(MODS_NO_SRC)
 default: libccan.a
 
 # Automatic dependency generation: makes ccan/*/*.d files.
-DEPGEN=-MD
+DEPGEN=-MMD
 -include ccan/*/*.d
 
 # Anything with C files needs building; dir leaves / on, sort uniquifies
