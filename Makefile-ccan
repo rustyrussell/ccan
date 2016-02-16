@@ -136,7 +136,7 @@ default: libccan.a
 
 # Automatic dependency generation: makes ccan/*/*.d files.
 DEPGEN=-MMD
--include ccan/*/*.d
+-include $(foreach m, $(MODS), ccan/$(m)/*.d)
 
 # Anything with C files needs building; dir leaves / on, sort uniquifies
 DIRS=$(patsubst %/, %, $(sort $(foreach m, $(filter-out $(MODS_EXCLUDE), $(MODS_WITH_SRC)), $(dir $(wildcard ccan/$m/*.c)))))
