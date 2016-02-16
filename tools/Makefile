@@ -45,6 +45,6 @@ tools/configurator/configurator: tools/configurator/configurator.c
 tools/modfiles: tools/modfiles.o tools/manifest.o $(DEP_OBJS)
 
 tools-clean: ccanlint-clean
-	$(RM) $(ALL_TOOLS)
+	rm -f $(ALL_TOOLS)
 
 include tools/ccanlint/Makefile

@@ -64,9 +64,9 @@ ccan/%/info: ccan/%/_info
 	$(CC) $(CCAN_CFLAGS) -o $@ -x c $<
 
 clean: tools-clean
-	$(RM) `find * -name '*.o'` `find * -name '.depends'` `find * -name '*.a'`  `find * -name info` `find * -name '*.d'` `find ccan -name '*-Makefile'`
-	$(RM) config.h
-	$(RM) inter-depends lib-depends test-depends
+	rm -f `find * -name '*.o'` `find * -name '.depends'` `find * -name '*.a'`  `find * -name info` `find * -name '*.d'` `find ccan -name '*-Makefile'`
+	rm -f config.h
+	rm -f inter-depends lib-depends test-depends
 
 # Creates a dependency from the tests to the object files which it needs.
 inter-depends: $(ALL_DEPENDS) Makefile

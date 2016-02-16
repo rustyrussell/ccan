@@ -47,4 +47,4 @@ $(CORE_OBJS): config.h
 tools/ccanlint/ccanlint: $(OBJS)
 
 ccanlint-clean:
-	$(RM) tools/ccanlint/ccanlint
+	rm -f tools/ccanlint/ccanlint
