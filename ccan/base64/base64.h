@@ -122,7 +122,7 @@ int base64_decode_tail_using_maps(const base64_maps_t *maps, char *dest,
 
 /* the rfc4648 functions: */
 
-static const base64_maps_t base64_maps_rfc4648;
+extern const base64_maps_t base64_maps_rfc4648;
 
 /**
  * base64_encode - Encode a buffer into base64 according to rfc4648

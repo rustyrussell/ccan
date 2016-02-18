@@ -209,7 +209,7 @@ ssize_t base64_decode_using_maps(const base64_maps_t *maps,
 /**
  * base64_maps_rfc4648 - pregenerated maps struct for rfc4648
  */
-static const base64_maps_t base64_maps_rfc4648 = {
+const base64_maps_t base64_maps_rfc4648 = {
   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/",
 
   "\xff\xff\xff\xff\xff" /* 0 */					\
