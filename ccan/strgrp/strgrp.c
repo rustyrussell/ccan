@@ -103,7 +103,7 @@ strcossim(const int16_t ref[CHAR_N_VALUES], const int16_t key[CHAR_N_VALUES]) {
         sai2 += ref[i] * ref[i];
         sbi2 += key[i] * key[i];
     }
-    return saibi / (sqrt(sai2) * sqrt(sbi2));
+    return 1.0 - (2 * acos(saibi / sqrt(sai2 * sbi2)) / M_PI);
 }
 
 /* Low-cost filter functions */
