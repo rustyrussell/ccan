@@ -74,10 +74,6 @@
  * License: LGPL
  * Author: Andrew Jeffery <andrew@aj.id.au>
  *
- * Ccanlint:
- *    tests_pass FAIL
- *    tests_pass_without_features FAIL
- *
  * Example:
  *     FILE *f;
  *     char *buf;

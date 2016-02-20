@@ -108,10 +108,18 @@ strcossim(const int16_t ref[CHAR_N_VALUES], const int16_t key[CHAR_N_VALUES]) {
 
 /* Low-cost filter functions */
 
+static inline double
+cossim_correction(const double s)
+{
+    return -((s - 0.5) * (s - 0.5)) + 0.33;
+}
+
 static inline bool
 should_grp_score_cos(const struct strgrp *const ctx,
         struct strgrp_grp *const grp, const char *const str) {
-    return ctx->threshold <= strcossim(ctx->pop, grp->pop);
+    const double s1 = strcossim(ctx->pop, grp->pop);
+    const double s2 = s1 + cossim_correction(s1);
+    return ctx->threshold <= s2;
 }
 
 static inline bool
