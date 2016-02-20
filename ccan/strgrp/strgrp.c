@@ -147,9 +147,9 @@ lcs(const char *const a, const char *const b) {
     int ia, ib;
     for (ia = (strlen(a) - 1); ia >= 0; ia--) {
         const char iav = a[ia];
+        const int ial = (ia + 1) & 1; // ia last
         for (ib = lb - 1; ib >= 0; ib--) {
             const char ibv = b[ib];
-            const int ial = (ia + 1) & 1; // ia last
             const int iac = ia & 1; // ia current
             const int ibl = ib + 1; // ib last
             // don't need separate "ib current" as it's just ib
