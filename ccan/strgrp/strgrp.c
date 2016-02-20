@@ -117,13 +117,11 @@ should_grp_score_cos(const struct strgrp *const ctx,
 static inline bool
 should_grp_score_len(const struct strgrp *const ctx,
         const struct strgrp_grp *const grp, const char *const str) {
-    const size_t strl = strlen(str);
-    const size_t keyl = grp->key_len;
-    double sr =  strl / keyl;
-    if (1 < sr) {
-        sr = 1 / sr;
-    }
-    return ctx->threshold <= sr;
+    const double lstr = (double) strlen(str);
+    const double lkey = (double) grp->key_len;
+    const double lmin = (lstr > lkey) ? lkey : lstr;
+    const double s = sqrt((2 * lmin * lmin) / (1.0 * lstr * lstr + lkey * lkey));
+    return ctx->threshold <= s;
 }
 
 /* Scoring - Longest Common Subsequence[2]
@@ -172,7 +170,10 @@ lcs(const char *const a, const char *const b) {
 static inline double
 nlcs(const char *const a, const char *const b) {
     const double lcss = lcs(a, b);
-    return 2 * lcss / (strlen(a) + strlen(b));
+    const double la = (double) strlen(a);
+    const double lb = (double) strlen(b);
+    const double s = sqrt((2 * lcss * lcss) / (la * la + lb * lb));
+    return s;
 }
 
 static inline double
