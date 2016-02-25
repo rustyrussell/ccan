@@ -1,0 +1,71 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * generator - generators for C
+ *
+ * Generators are a limited form of coroutines, which provide a useful
+ * way of expressing certain problems, while being much simpler to
+ * understand than general coroutines.
+ *
+ * Instead of returning a single value, a generator can "yield" a
+ * value at various points during its execution.  Whenever it yields,
+ * the "calling" function resumes and obtains the newly yielded value
+ * to work with.  When the caller asks for the next value from the
+ * generator, the generator resumes execution from the last yield and
+ * continues onto the next.
+ *
+ * Example:
+ *	#include <stdio.h>
+ *	#include <ccan/generator/generator.h>
+ *
+ *	generator_def_static(simple_gen, int)
+ *	{
+ *      	generator_yield(1);
+ *		generator_yield(3);
+ *		generator_yield(17);
+ *	}
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		generator_t(int) gen = simple_gen();
+ *		int *ret;
+ *
+ *		while ((ret = generator_next(gen)) != NULL) {
+ *			printf("Generator returned %d\n", *ret);
+ *		}
+ *
+ *		return 0;
+ *	}
+ *
+ * Author: David Gibson <david@gibson.dropbear.id.au>
+ * License: LGPL (v2.1 or any later version)
+ *
+ * Ccanlint:
+ *      // We need several gcc extensions
+ *	objects_build_without_features FAIL
+ *      tests_compile_without_features FAIL
+ *	tests_helpers_compile_without_features FAIL
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/build_assert\n");
+		printf("ccan/ptrint\n");
+		printf("ccan/alignof\n");
+		printf("ccan/cppmagic\n");
+		return 0;
+	}
+
+	if (strcmp(argv[1], "testdepends") == 0) {
+		printf("ccan/str\n");
+		return 0;
+	}
+
+	return 1;
+}

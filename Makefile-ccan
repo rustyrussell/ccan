@@ -64,6 +64,7 @@ MODS_WITH_SRC := aga \
 	err \
 	failtest \
 	foreach \
+	generator \
 	grab_file \
 	hash \
 	heap \
