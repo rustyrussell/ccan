@@ -8,6 +8,7 @@
  */
 #include <ccan/crypto/sha256/sha256.h>
 #include <ccan/endian/endian.h>
+#include <ccan/compiler/compiler.h>
 #include <stdbool.h>
 #include <assert.h>
 #include <string.h>
@@ -21,7 +22,7 @@ static void invalidate_sha256(struct sha256_ctx *ctx)
 #endif
 }
 
-static void check_sha256(struct sha256_ctx *ctx)
+static void check_sha256(struct sha256_ctx *ctx UNUSED)
 {
 #ifdef CCAN_CRYPTO_SHA256_USE_OPENSSL
 	assert(ctx->c.md_len != 0);
@@ -166,7 +167,7 @@ static void Transform(uint32_t *s, const uint32_t *chunk)
 	s[7] += h;
 }
 
-static bool alignment_ok(const void *p, size_t n)
+static bool alignment_ok(const void *p UNUSED, size_t n UNUSED)
 {
 #if HAVE_UNALIGNED_ACCESS
 	return true;
