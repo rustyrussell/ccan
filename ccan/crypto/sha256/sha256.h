@@ -21,10 +21,8 @@
  */
 struct sha256 {
 	union {
-		/* Array of chars */
-		unsigned char u8[32];
-		/* Array of uint32_t */
 		uint32_t u32[8];
+		unsigned char u8[32];
 	} u;
 };
 
