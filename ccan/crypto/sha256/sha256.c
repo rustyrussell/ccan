@@ -18,7 +18,7 @@ static void invalidate_sha256(struct sha256_ctx *ctx)
 #ifdef CCAN_CRYPTO_SHA256_USE_OPENSSL
 	ctx->c.md_len = 0;
 #else
-	ctx->bytes = -1ULL;
+	ctx->bytes = (size_t)-1;
 #endif
 }
 
@@ -27,7 +27,7 @@ static void check_sha256(struct sha256_ctx *ctx UNUSED)
 #ifdef CCAN_CRYPTO_SHA256_USE_OPENSSL
 	assert(ctx->c.md_len != 0);
 #else
-	assert(ctx->bytes != -1ULL);
+	assert(ctx->bytes != (size_t)-1);
 #endif
 }
 
@@ -229,7 +229,7 @@ void sha256_done(struct sha256_ctx *ctx, struct sha256 *res)
 	uint64_t sizedesc;
 	size_t i;
 
-	sizedesc = cpu_to_be64(ctx->bytes << 3);
+	sizedesc = cpu_to_be64((uint64_t)ctx->bytes << 3);
 	/* Add '1' bit to terminate, then all 0 bits, up to next block - 8. */
 	add(ctx, pad, 1 + ((119 - (ctx->bytes % 64)) % 64));
 	/* Add number of bits of data (big endian) */

@@ -45,11 +45,11 @@ struct sha256_ctx {
 	SHA256_CTX c;
 #else
 	uint32_t s[8];
-	uint64_t bytes;
 	union {
 		uint32_t u32[16];
 		unsigned char u8[64];
 	} buf;
+	size_t bytes;
 #endif
 };
 
@@ -104,7 +104,8 @@ void sha256_init(struct sha256_ctx *ctx);
 #else
 #define SHA256_INIT							\
 	{ { 0x6a09e667ul, 0xbb67ae85ul, 0x3c6ef372ul, 0xa54ff53aul,	\
-	    0x510e527ful, 0x9b05688cul, 0x1f83d9abul, 0x5be0cd19ul }, 0 }
+	    0x510e527ful, 0x9b05688cul, 0x1f83d9abul, 0x5be0cd19ul },	\
+	  { { 0 } }, 0 }
 #endif
 
 /**
