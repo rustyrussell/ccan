@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 /* Uncomment this to use openssl's RIPEMD160 routines (and link with -lcrypto) */
-//#define CCAN_CRYPTO_RIPEMD160_USE_OPENSSL 1
+/*#define CCAN_CRYPTO_RIPEMD160_USE_OPENSSL 1*/
 
 #ifdef CCAN_CRYPTO_RIPEMD160_USE_OPENSSL
 #include <openssl/ripemd.h>

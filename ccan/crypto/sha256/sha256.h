@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 /* Uncomment this to use openssl's SHA256 routines (and link with -lcrypto) */
-//#define CCAN_CRYPTO_SHA256_USE_OPENSSL 1
+/*#define CCAN_CRYPTO_SHA256_USE_OPENSSL 1*/
 
 #ifdef CCAN_CRYPTO_SHA256_USE_OPENSSL
 #include <openssl/sha.h>
