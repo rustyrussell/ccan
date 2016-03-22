@@ -8,6 +8,7 @@
  */
 #include <ccan/crypto/ripemd160/ripemd160.h>
 #include <ccan/endian/endian.h>
+#include <ccan/compiler/compiler.h>
 #include <stdbool.h>
 #include <assert.h>
 #include <string.h>
@@ -21,7 +22,7 @@ static void invalidate_ripemd160(struct ripemd160_ctx *ctx)
 #endif
 }
 
-static void check_ripemd160(struct ripemd160_ctx *ctx)
+static void check_ripemd160(struct ripemd160_ctx *ctx UNUSED)
 {
 #ifdef CCAN_CRYPTO_RIPEMD160_USE_OPENSSL
 	assert(ctx->c.num != -1U);
@@ -66,7 +67,7 @@ static void inline Initialize(uint32_t* s)
 
 static uint32_t inline rol(uint32_t x, int i) { return (x << i) | (x >> (32 - i)); }
 
-static void inline Round(uint32_t *a, uint32_t b, uint32_t *c, uint32_t d, uint32_t e, uint32_t f, uint32_t x, uint32_t k, int r)
+static void inline Round(uint32_t *a, uint32_t b UNUSED, uint32_t *c, uint32_t d UNUSED, uint32_t e, uint32_t f, uint32_t x, uint32_t k, int r)
 {
     *a = rol(*a + f + x + k, r) + e;
     *c = rol(*c, 10);
@@ -267,7 +268,7 @@ static void Transform(uint32_t *s, const uint32_t *chunk)
     s[4] = t + b1 + c2;
 }
 
-static bool alignment_ok(const void *p, size_t n)
+static bool alignment_ok(const void *p UNUSED, size_t n UNUSED)
 {
 #if HAVE_UNALIGNED_ACCESS
 	return true;
