@@ -231,7 +231,7 @@ void sha256_done(struct sha256_ctx *ctx, struct sha256 *res)
 
 	sizedesc = cpu_to_be64((uint64_t)ctx->bytes << 3);
 	/* Add '1' bit to terminate, then all 0 bits, up to next block - 8. */
-	add(ctx, pad, 1 + ((119 - (ctx->bytes % 64)) % 64));
+	add(ctx, pad, 1 + ((128 - 8 - (ctx->bytes % 64) - 1) % 64));
 	/* Add number of bits of data (big endian) */
 	add(ctx, &sizedesc, 8);
 	for (i = 0; i < sizeof(ctx->s) / sizeof(ctx->s[0]); i++)
