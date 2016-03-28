@@ -341,13 +341,13 @@ void ripemd160_done(struct ripemd160_ctx *ctx, struct ripemd160 *res)
 }
 #endif
 
-void ripemd160(struct ripemd160 *sha, const void *p, size_t size)
+void ripemd160(struct ripemd160 *ripemd, const void *p, size_t size)
 {
 	struct ripemd160_ctx ctx;
 
 	ripemd160_init(&ctx);
 	ripemd160_update(&ctx, p, size);
-	ripemd160_done(&ctx, sha);
+	ripemd160_done(&ctx, ripemd);
 }
 	
 void ripemd160_u8(struct ripemd160_ctx *ctx, uint8_t v)
