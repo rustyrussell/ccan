@@ -17,6 +17,7 @@ MODS_NO_SRC := alignof \
 	check_type \
 	compiler \
 	container_of \
+	cppmagic \
 	darray \
 	endian \
 	lqueue \
