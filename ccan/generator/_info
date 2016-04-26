@@ -63,6 +63,14 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
+	if (strcmp(argv[1], "ported") == 0) {
+#if HAVE_UCONTEXT
+		printf("\n");
+#else
+		printf("Needs ucontext support\n");
+#endif
+	}
+
 	if (strcmp(argv[1], "testdepends") == 0) {
 		printf("ccan/str\n");
 		return 0;
