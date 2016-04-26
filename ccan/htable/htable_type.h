@@ -31,8 +31,14 @@
  *	bool <name>_del(struct <name> *ht, const <type> *e);
  *	bool <name>_delkey(struct <name> *ht, const <keytype> *k);
  *
- * Find function return the matching element, or NULL:
+ * Find and return the (first) matching element, or NULL:
  *	type *<name>_get(const struct @name *ht, const <keytype> *k);
+ *
+ * Find and return all matching elements, or NULL:
+ *	type *<name>_getfirst(const struct @name *ht, const <keytype> *k,
+ *			      struct <name>_iter *i);
+ *	type *<name>_getnext(const struct @name *ht, const <keytype> *k,
+ *			     struct <name>_iter *i);
  *
  * Iteration over hashtable is also supported:
  *	type *<name>_first(const struct <name> *ht, struct <name>_iter *i);
@@ -83,6 +89,35 @@
 				  hashfn(k),				\
 				  (bool (*)(const void *, void *))(eqfn), \
 				  k);					\
+	}								\
+	static inline UNNEEDED type *name##_getmatch_(const struct name *ht, \
+				         const HTABLE_KTYPE(keyof) k,   \
+				         size_t h,			\
+				         type *v,			\
+					 struct name##_iter *iter)	\
+	{								\
+		while (v) {						\
+			if (eqfn(v, k))					\
+				break;					\
+			v = htable_nextval(&ht->raw, &iter->i, h);	\
+		}							\
+		return v;						\
+	}								\
+	static inline UNNEEDED type *name##_getfirst(const struct name *ht, \
+				         const HTABLE_KTYPE(keyof) k,   \
+					 struct name##_iter *iter)	\
+	{								\
+		size_t h = hashfn(k);					\
+		type *v = htable_firstval(&ht->raw, &iter->i, h);	\
+		return name##_getmatch_(ht, k, h, v, iter);			\
+	}								\
+	static inline UNNEEDED type *name##_getnext(const struct name *ht, \
+				         const HTABLE_KTYPE(keyof) k,   \
+					 struct name##_iter *iter)	\
+	{								\
+		size_t h = hashfn(k);					\
+		type *v = htable_nextval(&ht->raw, &iter->i, h);	\
+		return name##_getmatch_(ht, k, h, v, iter);		\
 	}								\
 	static inline UNNEEDED bool name##_delkey(struct name *ht,	\
 					 const HTABLE_KTYPE(keyof) k)	\
