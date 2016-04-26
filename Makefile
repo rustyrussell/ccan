@@ -19,8 +19,8 @@ default: libccan.a
 
 ALL_DEPENDS=$(patsubst %, ccan/%/.depends, $(MODS))
 
-# By default, we skip modules with external deps.
-MODS_EXCLUDE:=jmap jset nfs ogg_to_pcm tal/talloc wwviaudio
+# By default, we skip modules with external deps (or plaform specific)
+MODS_EXCLUDE:=altstack generator jmap jset nfs ogg_to_pcm tal/talloc wwviaudio
 
 include Makefile-ccan
 
