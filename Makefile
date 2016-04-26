@@ -24,9 +24,9 @@ MODS_EXCLUDE:=jmap jset nfs ogg_to_pcm tal/talloc wwviaudio
 
 include Makefile-ccan
 
-fastcheck: $(MODS:%=summary-fastcheck-%)
+fastcheck: $(MODS:%=summary-fastcheck/%)
 
-check: $(MODS:%=summary-check-%)
+check: $(MODS:%=summary-check/%)
 
 distclean: clean
 	rm -f $(ALL_DEPENDS)
@@ -47,43 +47,18 @@ $(ALL_DEPENDS): %/.depends: %/_info tools/ccan_depends
 	tools/ccan_depends $* > $@ || ( rm -f $@; exit 1 )
 
 # Actual dependencies are created in inter-depends
-check-%: tools/ccanlint/ccanlint
+check/%: tools/ccanlint/ccanlint
 	$(CCANLINT) ccan/$*
 
-fastcheck-%: tools/ccanlint/ccanlint
+fastcheck/%: tools/ccanlint/ccanlint
 	$(CCANLINT_FAST) ccan/$*
 
 # Doesn't test dependencies, doesn't print verbose fail results.
-summary-check-%: tools/ccanlint/ccanlint $(OBJFILES)
+summary-check/%: tools/ccanlint/ccanlint $(OBJFILES)
 	$(CCANLINT) -s ccan/$*
 
-summary-fastcheck-%: tools/ccanlint/ccanlint $(OBJFILES)
+summary-fastcheck/%: tools/ccanlint/ccanlint $(OBJFILES)
 	$(CCANLINT_FAST) -s ccan/$*
-
-# FIXME: Horrible hacks because % doesn't match /
-summary-check-antithread/%: tools/ccanlint/ccanlint $(OBJFILES)
-	$(CCANLINT) -s ccan/antithread/$*
-
-summary-fastcheck-antithread/%: tools/ccanlint/ccanlint $(OBJFILES)
-	$(CCANLINT_FAST) -s ccan/antithread/$*
-
-summary-check-tal/%: tools/ccanlint/ccanlint $(OBJFILES)
-	$(CCANLINT) -s ccan/tal/$*
-
-summary-fastcheck-tal/%: tools/ccanlint/ccanlint $(OBJFILES)
-	$(CCANLINT_FAST) -s ccan/tal/$*
-
-summary-check-str/%: tools/ccanlint/ccanlint $(OBJFILES)
-	$(CCANLINT) -s ccan/str/$*
-
-summary-fastcheck-str/%: tools/ccanlint/ccanlint $(OBJFILES)
-	$(CCANLINT_FAST) -s ccan/str/$*
-
-summary-check-crypto/%: tools/ccanlint/ccanlint $(OBJFILES)
-	$(CCANLINT) -s ccan/crypto/$*
-
-summary-fastcheck-crypto/%: tools/ccanlint/ccanlint $(OBJFILES)
-	$(CCANLINT_FAST) -s ccan/crypto/$*
 
 ccan/%/info: ccan/%/_info
 	$(CC) $(CCAN_CFLAGS) -o $@ -x c $<
@@ -99,7 +74,7 @@ inter-depends: $(ALL_DEPENDS) Makefile
 # Creates dependencies between tests, so if foo depends on bar, bar is tested
 # first 
 test-depends: $(ALL_DEPENDS) Makefile
-	for f in $(ALL_DEPENDS); do echo check-`basename \`dirname $$f\``: `sed -n 's,ccan/\(.*\),check-\1,p' < $$f`; done > $@
+	for f in $(ALL_DEPENDS); do echo check/`basename \`dirname $$f\``: `sed -n 's,ccan/\(.*\),check/\1,p' < $$f`; done > $@
 
 TAGS: FORCE
 	find * -name '*.[ch]' | xargs etags
