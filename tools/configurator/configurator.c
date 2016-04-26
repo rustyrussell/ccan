@@ -323,7 +323,7 @@ static struct test tests[] = {
 	  NULL, NULL,
 	  "#include <ucontext.h>\n"
 	  "static int x = 0;\n"
-	  "static char stack[1024];\n"
+	  "static char stack[2048];\n"
 	  "static ucontext_t a, b;\n"
 	  "static void fn(void) {\n"
 	  "	x |= 2;\n"
