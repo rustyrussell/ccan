@@ -32,7 +32,8 @@ MODS_NO_SRC := alignof \
 	version
 
 # No external dependencies, with C code:
-MODS_WITH_SRC := aga \
+MODS_WITH_SRC := a_star \
+	aga \
 	agar \
 	altstack \
 	antithread \
