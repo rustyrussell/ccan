@@ -6,62 +6,49 @@
 CCAN_CFLAGS=-g3 -ggdb -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Wpointer-arith -Wwrite-strings -Wundef -DCCAN_STR_DEBUG=1
 CFLAGS = $(CCAN_CFLAGS) -I. $(DEPGEN)
 
-# Modules which are just a header:
-MODS_NO_SRC := alignof \
-	argcheck \
-	array_size \
-	asearch \
-	bitmap \
-	build_assert \
-	cast \
-	check_type \
-	compiler \
-	container_of \
-	cppmagic \
-	darray \
-	endian \
-	lqueue \
-	lstack \
-	minmax \
-	objset \
-	short_types \
-	structeq \
-	tcon \
-	tlist \
-	typesafe_cb \
-	version
-
-# No external dependencies, with C code:
-MODS_WITH_SRC := a_star \
+MODS := a_star \
 	aga \
 	agar \
+	alignof \
 	altstack \
 	antithread \
 	antithread/alloc \
+	argcheck \
+	array_size \
+	asearch \
 	asort \
 	asprintf \
 	autodata \
 	avl \
 	base64 \
 	bdelta \
+	bitmap \
 	block_pool \
 	breakpoint \
 	btree \
+	build_assert \
 	bytestring \
+	cast \
 	ccan_tokenizer \
 	cdump \
 	charset \
+	check_type \
 	ciniparser \
+	compiler \
+	container_of \
+	cppmagic \
+	cpuid \
 	crc \
 	crcsync \
-	cpuid \
 	crypto/ripemd160 \
 	crypto/sha256 \
 	crypto/shachain \
 	daemonize \
 	daemon_with_notify \
+	darray \
 	deque \
 	dgraph \
+	endian \
 	eratosthenes \
 	err \
 	failtest \
@@ -79,18 +66,22 @@ MODS_WITH_SRC := a_star \
 	iscsi \
 	jacobson_karels \
 	jmap \
-	json \
 	jset \
+	json \
 	lbalance \
 	likely \
 	list \
 	lpq \
+	lqueue \
+	lstack \
 	md4 \
 	mem \
+	minmax \
 	net \
 	nfs \
 	noerr \
 	ntdb \
+	objset \
 	ogg_to_pcm \
 	opt \
 	order \
@@ -105,15 +96,17 @@ MODS_WITH_SRC := a_star \
 	read_write_all \
 	rfc822 \
 	rszshm \
+	short_types \
 	siphash \
 	sparse_bsearch \
 	str \
 	str/hex \
+	strgrp \
 	stringbuilder \
 	stringmap \
-	strgrp \
 	strmap \
 	strset \
+	structeq \
 	take \
 	tal \
 	tal/grab_file \
@@ -125,13 +118,18 @@ MODS_WITH_SRC := a_star \
 	talloc \
 	tally \
 	tap \
+	tcon \
 	time \
 	timer \
+	tlist \
 	ttxml \
+	typesafe_cb \
+	version \
 	wwviaudio \
 	xstring
 
-MODS:=$(MODS_WITH_SRC) $(MODS_NO_SRC)
+# Anything with C files needs building; dir leaves / on, sort uniquifies
+MODS_WITH_SRC = $(patsubst ccan/%/, %, $(sort $(foreach m, $(MODS), $(dir $(wildcard ccan/$m/*.c)))))
 
 default: libccan.a
 
@@ -139,8 +137,7 @@ default: libccan.a
 DEPGEN=-MMD
 -include $(foreach m, $(MODS), ccan/$(m)/*.d)
 
-# Anything with C files needs building; dir leaves / on, sort uniquifies
-DIRS=$(patsubst %/, %, $(sort $(foreach m, $(filter-out $(MODS_EXCLUDE), $(MODS_WITH_SRC)), $(dir $(wildcard ccan/$m/*.c)))))
+DIRS=$(patsubst %, ccan/%, $(filter-out $(MODS_EXCLUDE), $(MODS_WITH_SRC)))
 
 # Generate everyone's separate Makefiles.
 -include $(foreach dir, $(DIRS), $(dir)-Makefile)
