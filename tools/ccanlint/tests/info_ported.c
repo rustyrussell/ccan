@@ -39,7 +39,7 @@ struct ccanlint info_ported = {
 	.can_run = can_build,
 	.name = "_info indicates support for this platform",
 	.check = check_info_ported,
-	.needs = "info_exists"
+	.needs = "info_compiles"
 };
 
 REGISTER_TEST(info_ported);

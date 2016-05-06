@@ -130,7 +130,7 @@ struct ccanlint depends_exist = {
 	.name = "Module's CCAN dependencies can be found",
 	.compulsory = true,
 	.check = check_depends_exist,
-	.needs = "info_exists"
+	.needs = "info_compiles"
 };
 
 REGISTER_TEST(depends_exist);

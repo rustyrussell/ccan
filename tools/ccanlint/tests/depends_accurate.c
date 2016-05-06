@@ -137,7 +137,7 @@ struct ccanlint depends_accurate = {
 	.key = "depends_accurate",
 	.name = "Module's CCAN dependencies are the only CCAN files #included",
 	.check = check_depends_accurate,
-	.needs = "depends_exist test_depends_exist headers_idempotent"
+	.needs = "depends_exist info_compiles test_depends_exist headers_idempotent"
 };
 
 REGISTER_TEST(depends_accurate);
