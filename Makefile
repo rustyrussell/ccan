@@ -15,7 +15,7 @@ SCOREDIR=scores/$(shell whoami)/$(shell uname -s)-$(shell uname -m)-$(CC)-$(shel
 CCANLINT=tools/ccanlint/ccanlint --deps-fail-ignore
 CCANLINT_FAST=$(CCANLINT) -x tests_pass_valgrind -x tests_compile_coverage
 
-default: libccan.a
+default: all_info libccan.a
 
 ALL_DEPENDS=$(patsubst %, ccan/%/.depends, $(MODS))
 
@@ -63,8 +63,10 @@ summary-check/%: tools/ccanlint/ccanlint $(OBJFILES)
 summary-fastcheck/%: tools/ccanlint/ccanlint $(OBJFILES)
 	$(CCANLINT_FAST) -s ccan/$*
 
-ccan/%/info: ccan/%/_info
-	$(CC) $(CCAN_CFLAGS) -o $@ -x c $<
+ccan/%/info: ccan/%/_info config.h
+	$(CC) $(CCAN_CFLAGS) -I. -o $@ -x c $<
+
+all_info: $(MODS:%=ccan/%/info)
 
 clean: tools-clean
 	rm -f `find * -name '*.o'` `find * -name '.depends'` `find * -name '*.a'`  `find * -name info` `find * -name '*.d'` `find ccan -name '*-Makefile'`
