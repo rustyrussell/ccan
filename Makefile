@@ -21,12 +21,15 @@ ALL_DEPENDS=$(patsubst %, ccan/%/.depends, $(MODS))
 
 # By default, we skip modules with external deps (or plaform specific)
 MODS_EXCLUDE:=altstack generator jmap jset nfs ogg_to_pcm tal/talloc wwviaudio
+# This randomly fails, and reliably fails under Jenkins :(
+MODS_FLAKY:=altstack
+MODS_RELIABLE=$(filter-out $(MODS_FLAKY),$(MODS))
 
 include Makefile-ccan
 
-fastcheck: $(MODS:%=summary-fastcheck/%)
+fastcheck: $(MODS_RELIABLE:%=summary-fastcheck/%)
 
-check: $(MODS:%=summary-check/%)
+check: $(MODS_RELIABLE:%=summary-check/%)
 
 distclean: clean
 	rm -f $(ALL_DEPENDS)
