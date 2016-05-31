@@ -103,6 +103,18 @@ static inline struct bytestring bytestring_from_string_nul(const char *s)
 	return bytestring(s, strlen(s) + 1);
 }
 
+/*
+ * bytestring_dup - duplicate a bytestring into malloc()ed memory
+ * @b: an existing bytestring
+ *
+ * Example:
+ *      assert(bytestring_dup(bytestring_from_string("abc")).len == 3);
+ */
+static inline struct bytestring bytestring_dup(struct bytestring b)
+{
+	return bytestring(memdup(b.ptr, b.len), b.len);
+}
+
 /**
  * bytestring_eq - test if bytestrings have identical content
  * @a, @b: bytestrings
