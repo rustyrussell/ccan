@@ -81,7 +81,7 @@
 		return htable_del(&ht->raw, hashfn(keyof(elem)), elem);	\
 	}								\
 	static inline UNNEEDED type *name##_get(const struct name *ht,	\
-				       const HTABLE_KTYPE(keyof) k)	\
+				       const HTABLE_KTYPE(keyof, type) k) \
 	{								\
 		/* Typecheck for eqfn */				\
 		(void)sizeof(eqfn((const type *)NULL,			\
@@ -92,7 +92,7 @@
 				  k);					\
 	}								\
 	static inline UNNEEDED type *name##_getmatch_(const struct name *ht, \
-				         const HTABLE_KTYPE(keyof) k,   \
+				         const HTABLE_KTYPE(keyof, type) k, \
 				         size_t h,			\
 				         type *v,			\
 					 struct name##_iter *iter)	\
@@ -105,7 +105,7 @@
 		return v;						\
 	}								\
 	static inline UNNEEDED type *name##_getfirst(const struct name *ht, \
-				         const HTABLE_KTYPE(keyof) k,   \
+				         const HTABLE_KTYPE(keyof, type) k, \
 					 struct name##_iter *iter)	\
 	{								\
 		size_t h = hashfn(k);					\
@@ -113,7 +113,7 @@
 		return name##_getmatch_(ht, k, h, v, iter);			\
 	}								\
 	static inline UNNEEDED type *name##_getnext(const struct name *ht, \
-				         const HTABLE_KTYPE(keyof) k,   \
+				         const HTABLE_KTYPE(keyof, type) k, \
 					 struct name##_iter *iter)	\
 	{								\
 		size_t h = hashfn(k);					\
@@ -121,7 +121,7 @@
 		return name##_getmatch_(ht, k, h, v, iter);		\
 	}								\
 	static inline UNNEEDED bool name##_delkey(struct name *ht,	\
-					 const HTABLE_KTYPE(keyof) k)	\
+					 const HTABLE_KTYPE(keyof, type) k) \
 	{								\
 		type *elem = name##_get(ht, k);				\
 		if (elem)						\
@@ -140,8 +140,8 @@
 	}
 
 #if HAVE_TYPEOF
-#define HTABLE_KTYPE(keyof) typeof(keyof(NULL))
+#define HTABLE_KTYPE(keyof, type) typeof(keyof((const type *)NULL))
 #else
-#define HTABLE_KTYPE(keyof) void *
+#define HTABLE_KTYPE(keyof, type) void *
 #endif
 #endif /* CCAN_HTABLE_TYPE_H */
