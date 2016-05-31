@@ -17,12 +17,6 @@
  * Dijkstra's algorithm
  */
 
-/* Node states */
-#define STATE_INFINITE	0
-#define STATE_FINITE	1
-#define STATE_COMPLETE	2
-
-
 static void candidate_path(struct aga_graph *g, struct aga_node *node,
 			   aga_icost_t distance,
 			   struct aga_node *prev, const void *prevedge)
