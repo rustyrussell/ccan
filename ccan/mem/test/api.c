@@ -18,7 +18,7 @@ int main(void)
 	char tmp1[SWAPSIZE], tmp2[SWAPSIZE];
 
 	/* This is how many tests you plan to run */
-	plan_tests(65);
+	plan_tests(67);
 
 	ok1(memmem(haystack1, sizeof(haystack1), needle1, 2) == haystack1);
 	ok1(memmem(haystack1, sizeof(haystack1), needle1, 3) == NULL);
@@ -117,6 +117,9 @@ int main(void)
 	ok1(memeqzero(scan2, 3));
 	ok1(!memeqzero(scan2, 4));
 
+	char *new = memdup(scan1, sizeof(scan1));
+	ok1(new);
+	ok1(memeq(new, sizeof(scan1), scan1, sizeof(scan1)));
 	/* This exits depending on whether all tests passed */
 	return exit_status();
 }
