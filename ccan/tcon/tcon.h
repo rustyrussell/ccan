@@ -330,7 +330,7 @@
 		canary, tcon_container_of_((member_ptr),		\
 					   tcon_offset((x), canary)))
 
-static inline void *tcon_container_of_(void *member_ptr, size_t offset)
+static inline void *tcon_container_of_(const void *member_ptr, size_t offset)
 {
 	return member_ptr ? (char *)member_ptr - offset : NULL;
 }

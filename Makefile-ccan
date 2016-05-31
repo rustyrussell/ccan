@@ -123,6 +123,7 @@ MODS := a_star \
 	time \
 	timer \
 	tlist \
+	tlist2 \
 	ttxml \
 	typesafe_cb \
 	version \
