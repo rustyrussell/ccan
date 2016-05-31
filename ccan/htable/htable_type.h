@@ -55,6 +55,7 @@
 	struct name##_iter { struct htable_iter i; };			\
 	static inline size_t name##_hash(const void *elem, void *priv)	\
 	{								\
+		(void)priv;						\
 		return hashfn(keyof((const type *)elem));		\
 	}								\
 	static inline UNNEEDED void name##_init(struct name *ht)	\
