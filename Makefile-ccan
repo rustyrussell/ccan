@@ -43,6 +43,7 @@ MODS := a_star \
 	crypto/ripemd160 \
 	crypto/sha256 \
 	crypto/shachain \
+	crypto/siphash24 \
 	daemonize \
 	daemon_with_notify \
 	darray \
