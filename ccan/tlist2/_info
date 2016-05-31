@@ -1,0 +1,78 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * tlist2 - typesafe double linked list routines, alternative form
+ *
+ * The list header contains routines for manipulating double linked lists;
+ * this extends it so you can create list head types which only accomodate
+ * a specific entry type.
+ *
+ * Compared to 'tlist', this:
+ *
+ *  - does not allow (or require) declaring an extra struct (uses anonymous
+ *    structs)
+ *  - encodes the member offset into the type (and as a result doesn't need the
+ *    member name, but requires the source list)
+ *
+ * Based on tlist by: Rusty Russell <rusty@rustcorp.com.au>
+ *
+ * Example:
+ *	#include <err.h>
+ *	#include <stdio.h>
+ *	#include <stdlib.h>
+ *	#include <ccan/tlist2/tlist2.h>
+ *
+ *	struct child {
+ *		const char *name;
+ *		struct list_node list;
+ *	};
+ *
+ *	struct parent {
+ *		const char *name;
+ *		TLIST2(struct child, list) children;
+ *		unsigned int num_children;
+ *	};
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		struct parent p;
+ *		struct child *c;
+ *		unsigned int i;
+ *
+ *		if (argc < 2)
+ *			errx(1, "Usage: %s parent children...", argv[0]);
+ *
+ *		p.name = argv[1];
+ *		tlist2_init(&p.children);
+ *		for (i = 2; i < argc; i++) {
+ *			c = malloc(sizeof(*c));
+ *			c->name = argv[i];
+ *			tlist2_add(&p.children, c);
+ *			p.num_children++;
+ *		}
+ *
+ *		printf("%s has %u children:", p.name, p.num_children);
+ *		tlist2_for_each(&p.children, c)
+ *			printf("%s ", c->name);
+ *		printf("\n");
+ *		return 0;
+ *	}
+ *
+ * License: LGPL
+ * Author: Cody P Schafer <dev@codyps.com>
+ */
+int main(int argc, char *argv[])
+{
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/list\n");
+		printf("ccan/tcon\n");
+		return 0;
+	}
+
+	return 1;
+}
