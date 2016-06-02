@@ -321,6 +321,8 @@
  * tcon_container_of() evaluates to a pointer to the container
  * structure.  With sufficient compiler support, the pointer will be
  * correctly typed, and the type of @member_ptr will be verified.
+ * Note that const is discarded; a const @member_ptr still yields a
+ * non-const container (unless @canary is const).
  *
  * Returns NULL if @member_ptr is NULL.
  */
