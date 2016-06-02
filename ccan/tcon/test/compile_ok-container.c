@@ -19,13 +19,13 @@ struct info_base {
 
 struct info_tcon {
 	struct info_base base;
-	TCON(TCON_CONTAINER(concan, struct outer, inner));
+	TCON(TCON_CONTAINER(fi, struct outer, inner));
 };
 
 int main(int argc, char *argv[])
 {
 	/* Const should work! */
-	const struct outer *ovar;
+	const struct outer *ovar = NULL;
 	struct outer *o;
 	struct info_tcon info;
 
