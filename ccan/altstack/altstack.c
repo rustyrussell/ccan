@@ -71,6 +71,7 @@ int altstack(rlim_t max, void *(*fn)(void *), void *arg, void **out)
 	struct rlimit rl_save;
 	struct sigaction sa_save;
 	int errno_save;
+	stack_t ss_save;
 
 	assert(max > 0 && fn);
 	#define ok(x, y) ({ long __r = (long) (x); if (__r == -1) { bang(#x); if (y) goto out; } __r; })
@@ -98,7 +99,7 @@ int altstack(rlim_t max, void *(*fn)(void *), void *arg, void **out)
 		stack_t ss = { .ss_sp = sigstk, .ss_size = sizeof(sigstk) };
 		struct sigaction sa = { .sa_handler = segvjmp, .sa_flags = SA_NODEFER|SA_RESETHAND|SA_ONSTACK };
 
-		ok(sigaltstack(&ss, 0), 1);
+		ok(sigaltstack(&ss, &ss_save), 1);
 		undo++;
 
 		sigemptyset(&sa.sa_mask);
@@ -131,7 +132,7 @@ out:
 	case 4:
 		ok(sigaction(SIGSEGV, &sa_save, 0), 0);
 	case 3:
-		ok(sigaltstack(&(stack_t) { .ss_flags = SS_DISABLE }, 0), 0);
+		ok(sigaltstack(&ss_save, 0), 0);
 	case 2:
 		ok(munmap(m, max), 0);
 	case 1:
