@@ -63,8 +63,8 @@
  *		void *out;
  *
  *		assert(argc == 3);
- *		stk_max = strtol(argv[1], 0, 0) * 1024 * 1024;
- *		vla_sz  = strtol(argv[2], 0, 0) * 1024 * 1024;
+ *		stk_max = strtol(argv[1], NULL, 0) * 1024 * 1024;
+ *		vla_sz  = strtol(argv[2], NULL, 0) * 1024 * 1024;
  *		assert(stk_max > 0 && vla_sz > 0);
  *
  *		snprintf(maps, sizeof(maps), "egrep '\\[stack' /proc/%d/maps", getpid());

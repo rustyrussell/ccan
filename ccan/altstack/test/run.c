@@ -87,43 +87,43 @@ int main(void)
 
 	plan_tests(50);
 
-	chkfail(getrlimit_,	altstack(8*MiB, wrap, int2ptr(0), 0) == -1, e(getrlimit_),
+	chkfail(getrlimit_,	altstack(8*MiB, wrap, int2ptr(0), NULL) == -1, e(getrlimit_),
 		0,
 		0);
 
-	chkfail(setrlimit_,	altstack(8*MiB, wrap, int2ptr(0), 0) == -1, e(setrlimit_),
+	chkfail(setrlimit_,	altstack(8*MiB, wrap, int2ptr(0), NULL) == -1, e(setrlimit_),
 		getrlimit_,
 		0);
 
-	chkfail(mmap_,		altstack(8*MiB, wrap, int2ptr(0), 0) == -1, e(mmap_),
+	chkfail(mmap_,		altstack(8*MiB, wrap, int2ptr(0), NULL) == -1, e(mmap_),
 		getrlimit_|setrlimit_,
 		setrlimit_);
 
-	chkfail(sigaltstack_,	altstack(8*MiB, wrap, int2ptr(0), 0) == -1, e(sigaltstack_),
+	chkfail(sigaltstack_,	altstack(8*MiB, wrap, int2ptr(0), NULL) == -1, e(sigaltstack_),
 		getrlimit_|setrlimit_|mmap_,
 		setrlimit_|munmap_);
 
-	chkfail(sigaction_,	altstack(8*MiB, wrap, int2ptr(0), 0) == -1, e(sigaction_),
+	chkfail(sigaction_,	altstack(8*MiB, wrap, int2ptr(0), NULL) == -1, e(sigaction_),
 		getrlimit_|setrlimit_|mmap_|sigaltstack_,
 		setrlimit_|munmap_|sigaltstack_);
 
-	chkfail(munmap_,	altstack(8*MiB, wrap, int2ptr(0), 0) ==  1, e(munmap_),
+	chkfail(munmap_,	altstack(8*MiB, wrap, int2ptr(0), NULL) ==  1, e(munmap_),
 		getrlimit_|setrlimit_|mmap_|sigaltstack_|sigaction_,
 		setrlimit_|sigaltstack_|sigaction_);
 	if (fail = 0, munmap(m_, msz_) == -1)
 		err(1, "munmap");
 
-	chkok(			altstack(1*MiB, wrap, int2ptr(1000000), 0) == -1, EOVERFLOW,
+	chkok(			altstack(1*MiB, wrap, int2ptr(1000000), NULL) == -1, EOVERFLOW,
 		getrlimit_|setrlimit_|mmap_|sigaltstack_|sigaction_,
 		setrlimit_|munmap_|sigaltstack_|sigaction_);
 
 	// be sure segv catch is repeatable (SA_NODEFER)
-	chkok(			altstack(1*MiB, wrap, int2ptr(1000000), 0) == -1, EOVERFLOW,
+	chkok(			altstack(1*MiB, wrap, int2ptr(1000000), NULL) == -1, EOVERFLOW,
 		getrlimit_|setrlimit_|mmap_|sigaltstack_|sigaction_,
 		setrlimit_|munmap_|sigaltstack_|sigaction_);
 
 	used = 1;
-	chkfail(munmap_,	altstack(1*MiB, wrap, int2ptr(1000000), 0) == -1, EOVERFLOW,
+	chkfail(munmap_,	altstack(1*MiB, wrap, int2ptr(1000000), NULL) == -1, EOVERFLOW,
 		getrlimit_|setrlimit_|mmap_|sigaltstack_|sigaction_,
 		setrlimit_|sigaltstack_|sigaction_);
 	if (fail = 0, munmap(m_, msz_) == -1)
@@ -150,7 +150,7 @@ int main(void)
 	ok1(strcmp(buf, estr "\n") == 0);
 
 	used = 1;
-	chkok(			altstack(8*MiB, wrap, int2ptr(1000000), 0) == -1, EOVERFLOW,
+	chkok(			altstack(8*MiB, wrap, int2ptr(1000000), NULL) == -1, EOVERFLOW,
 		getrlimit_|setrlimit_|mmap_|sigaltstack_|sigaction_,
 		setrlimit_|munmap_|sigaltstack_|sigaction_);
 
@@ -158,7 +158,7 @@ int main(void)
 	ok1(used >= 8*MiB - pgsz && used <= 8*MiB + pgsz);
 
 	used = 0;
-	chkok(			altstack(8*MiB, wrap, int2ptr(100000), 0) == 0, 0,
+	chkok(			altstack(8*MiB, wrap, int2ptr(100000), NULL) == 0, 0,
 		getrlimit_|setrlimit_|mmap_|sigaltstack_|sigaction_|munmap_,
 		setrlimit_|munmap_|sigaltstack_|sigaction_);
 

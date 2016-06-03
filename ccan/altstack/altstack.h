@@ -52,7 +52,7 @@
  *	static void *wrap(void *i)
  *	{
  *		dn((unsigned long) i);
- *		return 0;
+ *		return NULL;
  *	}
  *
  *	#define MiB (1024UL*1024UL)
@@ -60,9 +60,9 @@
  *	{
  *		unsigned long n;
  *		assert(argc == 2);
- *		n = strtoul(argv[1], 0, 0);
+ *		n = strtoul(argv[1], NULL, 0);
  *
- *		if (altstack(32*MiB, wrap, (void *) n, 0) != 0)
+ *		if (altstack(32*MiB, wrap, (void *) n, NULL) != 0)
  *			altstack_perror();
  *
  *		printf("%d\n", depth);

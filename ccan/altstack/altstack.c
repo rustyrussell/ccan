@@ -78,10 +78,10 @@ int altstack(rlim_t max, void *(*fn)(void *), void *arg, void **out)
 
 	state.fn  = fn;
 	state.arg = arg;
-	state.out = 0;
+	state.out = NULL;
 	state.max = max;
 	state.ebuf[state.elen = 0] = '\0';
-	if (out) *out = 0;
+	if (out) *out = NULL;
 
 	// if the first page below the mapping is in use, we get max-pgsz usable bytes
 	// add pgsz to max to guarantee at least max usable bytes
@@ -91,7 +91,7 @@ int altstack(rlim_t max, void *(*fn)(void *), void *arg, void **out)
 	ok(setrlimit(RLIMIT_STACK, &(struct rlimit) { state.max, rl_save.rlim_max }), 1);
 	undo++;
 
-	ok(m = mmap(0, max, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_GROWSDOWN|MAP_NORESERVE, -1, 0), 1);
+	ok(m = mmap(NULL, max, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_GROWSDOWN|MAP_NORESERVE, -1, 0), 1);
 	undo++;
 
 	if (setjmp(state.jmp) == 0) {
@@ -130,9 +130,9 @@ out:
 
 	switch (undo) {
 	case 4:
-		ok(sigaction(SIGSEGV, &sa_save, 0), 0);
+		ok(sigaction(SIGSEGV, &sa_save, NULL), 0);
 	case 3:
-		ok(sigaltstack(&ss_save, 0), 0);
+		ok(sigaltstack(&ss_save, NULL), 0);
 	case 2:
 		ok(munmap(m, max), 0);
 	case 1:
