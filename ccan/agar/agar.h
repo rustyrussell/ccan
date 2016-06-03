@@ -31,6 +31,9 @@ struct agar_graph {
 	agar_next_edge_fn next_edge;
 };
 
+#define AGAR_INIT_GRAPH(fe, ne, ei) \
+	{ (ei), (fe), (ne), }
+
 void agar_init_graph(struct agar_graph *gr,
 		     agar_first_edge_fn first_edge,
 		     agar_next_edge_fn next_edge,

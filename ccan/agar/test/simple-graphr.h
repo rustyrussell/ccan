@@ -19,7 +19,7 @@ struct adjacency_listr {
 struct trivial_graphr {
 	struct agar_graph gr;
 };
-void trivial_graphr_init(struct trivial_graphr *tgr);
+extern struct trivial_graphr trivial_graphr;
 static const struct adjacency_listr trivial_adjacencyr[] = {
 	{1, {}},
 	{},
@@ -156,7 +156,7 @@ static const struct adjacency_listr grid_adjacencyr_3x3_all[] = {
 struct error_graphr {
 	struct agar_graph gr;
 };
-void error_graphr_init(struct error_graphr *eg);
+extern struct error_graphr error_graphr;
 static const struct adjacency_listr error_adjacencyr[] = {
 	{1, {2}},
 	{2, {}},
@@ -185,7 +185,7 @@ static const struct adjacency_listr error_adjacencyr[] = {
 struct traversal1_graphr {
 	struct agar_graph gr;
 };
-void traversal1_graphr_init(struct traversal1_graphr *t1gr);
+extern struct traversal1_graphr traversal1_graphr;
 static const struct adjacency_listr traversal1_adjacency[] = {
 	{1, {2, 3}},
 	{2, {4, 5}},
@@ -211,7 +211,7 @@ static const struct adjacency_listr traversal1_adjacency[] = {
 struct shortcut1_graphr {
 	struct agar_graph gr;
 };
-void shortcut1_graphr_init(struct shortcut1_graphr *s1gr);
+extern struct shortcut1_graphr shortcut1_graphr;
 static const struct adjacency_listr shortcut1_adjacencyr[] = {
 	{1, {3, 2}},
 	{2, {3}},
@@ -232,7 +232,7 @@ static const struct adjacency_listr shortcut1_adjacencyr[] = {
 struct shortcut2_graphr {
 	struct agar_graph gr;
 };
-void shortcut2_graphr_init(struct shortcut2_graphr *s2gr);
+extern struct shortcut2_graphr shortcut2_graphr;
 static const struct adjacency_listr shortcut2_adjacencyr[] = {
 	{1, {3, 2}},
 	{2, {3}},

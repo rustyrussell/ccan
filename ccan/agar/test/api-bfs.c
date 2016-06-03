@@ -38,20 +38,16 @@
 
 int main(void)
 {
-	struct trivial_graphr tgr;
 	struct parallel_graphr pgr;
 	struct full_graphr fgr;
 	struct chain_graphr cgr;
 	struct grid_graphr ggr1, ggr2;
-	struct error_graphr egr;
-	struct traversal1_graphr t1gr;
 	struct agar_state *sr;
 	const void *nr;
 	
 	plan_tests(2 * 13 + 12 + 10);
 
-	trivial_graphr_init(&tgr);
-	test_bfs(&tgr.gr, 1, 1);
+	test_bfs(&trivial_graphr.gr, 1, 1);
 
 	parallel_graphr_init(&pgr, 3, 0);
 	test_bfs(&pgr.gr, 1, 1, 2);
@@ -75,9 +71,9 @@ int main(void)
 	test_bfs(&ggr2.gr, 5, 5, 6, 8, 4, 2, 9, 3, 7, 1);
 	test_bfs(&ggr2.gr, 9, 9, 8, 6, 7, 5, 3, 4, 2, 1);
 
-	error_graphr_init(&egr);
-	test_bfs(&egr.gr, 1, 1, 2);
-	ok((sr = agar_bfs_new(NULL, &egr.gr)), "started error traversal");
+	test_bfs(&error_graphr.gr, 1, 1, 2);
+	ok((sr = agar_bfs_new(NULL, &error_graphr.gr)),
+	   "started error traversal");
 	ok1(agar_bfs_explore(sr, int2ptr(3), &nr));
 	ok(ptr2int(nr) == 3, "Expected node #3, actually #%ld", ptr2int(nr));
 	ok1(agar_bfs_explore(sr, nr, &nr));
@@ -86,18 +82,17 @@ int main(void)
 	ok1(agar_error(sr) == -1);
 	ok1(!agar_bfs_explore(sr, nr, &nr));
 	tal_free(sr);
-	test_bfs(&egr.gr, 1, 1, 2);
+	test_bfs(&error_graphr.gr, 1, 1, 2);
 
-	traversal1_graphr_init(&t1gr);
-	test_bfs(&t1gr.gr, 1, 1, 2, 3, 4, 5, 6);
-	test_bfs(&t1gr.gr, 9, 9, 8, 7, 6, 5, 4);
+	test_bfs(&traversal1_graphr.gr, 1, 1, 2, 3, 4, 5, 6);
+	test_bfs(&traversal1_graphr.gr, 9, 9, 8, 7, 6, 5, 4);
 
-	ok1((sr = agar_bfs_new(NULL, &t1gr.gr)));
+	ok1((sr = agar_bfs_new(NULL, &traversal1_graphr.gr)));
 	test_bfs_partial(sr, 1, 1, 2, 3, 4, 5, 6);
 	test_bfs_partial(sr, 9, 9, 8, 7);
 	tal_free(sr);
 
-	ok1((sr = agar_bfs_new(NULL, &t1gr.gr)));
+	ok1((sr = agar_bfs_new(NULL, &traversal1_graphr.gr)));
 	test_bfs_partial(sr, 9, 9, 8, 7, 6, 5, 4);
 	test_bfs_partial(sr, 1, 1, 2, 3);
 	tal_free(sr);

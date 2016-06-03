@@ -106,9 +106,7 @@ static int traversal1_edge_info_r(const struct agar_graph *gr,
 	return 0;
 }
 
-void traversal1_graphr_init(struct traversal1_graphr *t1gr)
-{
-	agar_init_graph(&t1gr->gr,
-			traversal1_first_edge_r, traversal1_next_edge_r,
-			traversal1_edge_info_r);
-}
+struct traversal1_graphr traversal1_graphr = {
+	AGAR_INIT_GRAPH(traversal1_first_edge_r, traversal1_next_edge_r,
+			traversal1_edge_info_r),
+};

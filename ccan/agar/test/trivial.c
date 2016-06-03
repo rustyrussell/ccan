@@ -29,8 +29,7 @@ static int trivial_edge_info_r(const struct agar_graph *gr,
 	assert(0);
 }
 
-void trivial_graphr_init(struct trivial_graphr *tgr)
-{
-	agar_init_graph(&tgr->gr, trivial_first_edge_r, trivial_next_edge_r,
-			trivial_edge_info_r);
-}
+struct trivial_graphr trivial_graphr = {
+	AGAR_INIT_GRAPH(trivial_first_edge_r, trivial_next_edge_r,
+			trivial_edge_info_r),
+};

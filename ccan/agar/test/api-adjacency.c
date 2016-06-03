@@ -49,19 +49,14 @@ static void test_adjacency(const char *name,
 
 int main(void)
 {
-	struct trivial_graphr tgr;
 	struct parallel_graphr pgr;
 	struct full_graphr fgr;
 	struct chain_graphr cgr;
 	struct grid_graphr ggr1, ggr2;
-	struct error_graphr egr;
-	struct shortcut1_graphr s1gr;
-	struct shortcut2_graphr s2gr;
 
 	plan_tests(1 + 5 + 30 + 22 + 21 + 33 + 6 + 6 + 6);
 
-	trivial_graphr_init(&tgr);
-	test_adjacency("trivial", &tgr.gr, trivial_adjacencyr);
+	test_adjacency("trivial", &trivial_graphr.gr, trivial_adjacencyr);
 
 	parallel_graphr_init(&pgr, 3, 0);
 	test_adjacency("parallel nlinks 3", &pgr.gr,
@@ -81,14 +76,13 @@ int main(void)
 	test_adjacency("grid 3x3 all", &ggr2.gr,
 		       grid_adjacencyr_3x3_all);
 
-	error_graphr_init(&egr);
-	test_adjacency("error graph", &egr.gr, error_adjacencyr);
+	test_adjacency("error graph", &error_graphr.gr, error_adjacencyr);
 
-	shortcut1_graphr_init(&s1gr);
-	test_adjacency("shortcut1 graph", &s1gr.gr, shortcut1_adjacencyr);
+	test_adjacency("shortcut1 graph", &shortcut1_graphr.gr,
+		       shortcut1_adjacencyr);
 
-	shortcut2_graphr_init(&s2gr);
-	test_adjacency("shortcut2 graph", &s2gr.gr, shortcut2_adjacencyr);
+	test_adjacency("shortcut2 graph", &shortcut2_graphr.gr,
+		       shortcut2_adjacencyr);
 	
 	return exit_status();
 }

@@ -48,8 +48,7 @@ static int error_edge_info_r(const struct agar_graph *gr,
 	return 0;
 }
 
-void error_graphr_init(struct error_graphr *egr)
-{
-	agar_init_graph(&egr->gr, error_first_edge_r, error_next_edge_r,
-			error_edge_info_r);
-}
+struct error_graphr error_graphr = {
+	AGAR_INIT_GRAPH(error_first_edge_r, error_next_edge_r,
+			error_edge_info_r),
+};

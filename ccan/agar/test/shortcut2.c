@@ -79,9 +79,8 @@ static int shortcut2_edge_info_r(const struct agar_graph *gr,
 	return 0;
 }
 
-void shortcut2_graphr_init(struct shortcut2_graphr *s1gr)
-{
-	agar_init_graph(&s1gr->gr, shortcut2_first_edge_r,
+struct shortcut2_graphr shortcut2_graphr = {
+	AGAR_INIT_GRAPH(shortcut2_first_edge_r,
 			shortcut2_next_edge_r,
-			shortcut2_edge_info_r);
-}
+			shortcut2_edge_info_r),
+};

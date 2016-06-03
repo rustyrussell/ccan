@@ -14,14 +14,11 @@
 
 static void test_trivial(void)
 {
-	struct trivial_graphr tgr;
 	struct agar_state *sr;
 	aga_icost_t cost;
 	const void *node;
 
-	trivial_graphr_init(&tgr);
-
-	ok1(sr = agar_dijkstra_new(NULL, &tgr.gr, int2ptr(1)));
+	ok1(sr = agar_dijkstra_new(NULL, &trivial_graphr.gr, int2ptr(1)));
 	ok1(agar_dijkstra_step(sr, &node));
 	ok1(ptr2int(node) == 1);
 	ok1(!agar_dijkstra_step(sr, &node));
@@ -131,13 +128,10 @@ static void test_chain(void)
 
 static void test_error(void)
 {
-	struct error_graphr egr;
 	struct agar_state *sr;
 	aga_icost_t cost;
 
-	error_graphr_init(&egr);
-
-	ok1(sr = agar_dijkstra_new(NULL, &egr.gr, int2ptr(1)));
+	ok1(sr = agar_dijkstra_new(NULL, &error_graphr.gr, int2ptr(1)));
 	ok1(agar_dijkstra_path(sr, int2ptr(1), &cost, NULL, NULL));
 	ok1(cost == 0);
 	ok1(agar_dijkstra_path(sr, int2ptr(2), &cost, NULL, NULL));
@@ -146,7 +140,7 @@ static void test_error(void)
 	ok1(!agar_dijkstra_path(sr, int2ptr(4), &cost, NULL, NULL));
 	tal_free(sr);
 
-	ok1(sr = agar_dijkstra_new(NULL, &egr.gr, int2ptr(3)));
+	ok1(sr = agar_dijkstra_new(NULL, &error_graphr.gr, int2ptr(3)));
 	ok1(agar_dijkstra_path(sr, int2ptr(3), &cost, NULL, NULL));
 	ok1(cost == 0);
 	ok1(!agar_dijkstra_path(sr, int2ptr(4), &cost, NULL, NULL));
@@ -156,15 +150,12 @@ static void test_error(void)
 
 static void test_traversal1(void)
 {
-	struct traversal1_graphr t1gr;
 	struct agar_state *sr;
 	aga_icost_t cost;
 
 	/* This is mostly about testing we correctly handle
 	 * non-reachable nodes */
-	traversal1_graphr_init(&t1gr);
-
-	ok1(sr = agar_dijkstra_new(NULL, &t1gr.gr, int2ptr(1)));
+	ok1(sr = agar_dijkstra_new(NULL, &traversal1_graphr.gr, int2ptr(1)));
 	ok1(agar_dijkstra_path(sr, int2ptr(1),
 			      &cost, NULL, NULL));
 	ok1(cost == 0);
@@ -191,7 +182,7 @@ static void test_traversal1(void)
 			       NULL, NULL, NULL));
 	tal_free(sr);
 
-	ok1(sr = agar_dijkstra_new(NULL, &t1gr.gr, int2ptr(9)));
+	ok1(sr = agar_dijkstra_new(NULL, &traversal1_graphr.gr, int2ptr(9)));
 	ok1(agar_dijkstra_path(sr, int2ptr(9),
 			      &cost, NULL, NULL));
 	ok1(cost == 0);
@@ -221,14 +212,11 @@ static void test_traversal1(void)
 
 static void test_shortcut1(void)
 {
-	struct shortcut1_graphr s1gr;
 	struct agar_state *sr;
 	aga_icost_t cost;
 	const void *node;
 
-	shortcut1_graphr_init(&s1gr);
-
-	ok1(sr = agar_dijkstra_new(NULL, &s1gr.gr, int2ptr(1)));
+	ok1(sr = agar_dijkstra_new(NULL, &shortcut1_graphr.gr, int2ptr(1)));
 	ok1(agar_dijkstra_path(sr, int2ptr(3), &cost, &node, NULL));
 	ok1(cost == 2);
 	ok1(node == int2ptr(2));
@@ -240,12 +228,9 @@ static void test_shortcut1(void)
 
 static void test_shortcut2(void)
 {
-	struct shortcut2_graphr s2gr;
 	struct agar_state *sr;
 
-	shortcut2_graphr_init(&s2gr);
-
-	ok1(sr = agar_dijkstra_new(NULL, &s2gr.gr, int2ptr(1)));
+	ok1(sr = agar_dijkstra_new(NULL, &shortcut2_graphr.gr, int2ptr(1)));
 	agar_dijkstra_all_paths(sr);
 	ok1(agar_error(sr) == AGA_ERR_NEGATIVE_COST);
 	tal_free(sr);
