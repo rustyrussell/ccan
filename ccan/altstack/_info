@@ -122,6 +122,11 @@ int main(int argc, char *argv[])
 	if (strcmp(argv[1], "depends") == 0)
 		return 0;
 
+	if (strcmp(argv[1], "testdepends") == 0) {
+		printf("ccan/ptrint\n");
+		return 0;
+	}
+
 	if (strcmp(argv[1], "ported") == 0) {
 #ifdef __x86_64__
 		printf("\n");
