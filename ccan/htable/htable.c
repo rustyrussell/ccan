@@ -135,6 +135,17 @@ void *htable_next(const struct htable *ht, struct htable_iter *i)
 	return NULL;
 }
 
+void *htable_prev(const struct htable *ht, struct htable_iter *i)
+{
+	for (;;) {
+		if (!i->off)
+			return NULL;
+		i->off --;
+		if (entry_is_valid(ht->table[i->off]))
+			return get_raw_ptr(ht, ht->table[i->off]);
+	}
+}
+
 /* This does not expand the hash table, that's up to caller. */
 static void ht_add(struct htable *ht, const void *new, size_t h)
 {

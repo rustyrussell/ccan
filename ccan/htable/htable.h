@@ -179,6 +179,21 @@ void *htable_first(const struct htable *htable, struct htable_iter *i);
 void *htable_next(const struct htable *htable, struct htable_iter *i);
 
 /**
+ * htable_prev - find the previous entry in the hash table
+ * @ht: the hashtable
+ * @i: the struct htable_iter to use
+ *
+ * Get previous entry in the hashtable; NULL if all done.
+ *
+ * "previous" here only means the item that would have been returned by
+ * htable_next() before the item it returned most recently.
+ *
+ * This is usually used in the middle of (or after) a htable_next iteration and
+ * to "unwind" actions taken.
+ */
+void *htable_prev(const struct htable *htable, struct htable_iter *i);
+
+/**
  * htable_delval - remove an iterated pointer from a hash table
  * @ht: the htable
  * @i: the htable_iter

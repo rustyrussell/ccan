@@ -116,7 +116,7 @@ int main(int argc, char *argv[])
 	void *p;
 	struct htable_obj_iter iter;
 
-	plan_tests(26);
+	plan_tests(27);
 	for (i = 0; i < NUM_VALS; i++)
 		val[i].key = i;
 	dne = i;
@@ -145,6 +145,10 @@ int main(int argc, char *argv[])
 	/* Walk once, should get them all. */
 	i = 0;
 	for (p = htable_obj_first(&ht,&iter); p; p = htable_obj_next(&ht, &iter))
+		i++;
+	ok1(i == NUM_VALS);
+	i = 0;
+	for (p = htable_obj_prev(&ht,&iter); p; p = htable_obj_prev(&ht, &iter))
 		i++;
 	ok1(i == NUM_VALS);
 

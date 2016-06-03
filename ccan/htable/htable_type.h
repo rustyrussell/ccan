@@ -43,6 +43,7 @@
  * Iteration over hashtable is also supported:
  *	type *<name>_first(const struct <name> *ht, struct <name>_iter *i);
  *	type *<name>_next(const struct <name> *ht, struct <name>_iter *i);
+ *	type *<name>_prev(const struct <name> *ht, struct <name>_iter *i);
  *
  * It's currently safe to iterate over a changing hashtable, but you might
  * miss an element.  Iteration isn't very efficient, either.
@@ -137,6 +138,11 @@
 					struct name##_iter *iter)	\
 	{								\
 		return htable_next(&ht->raw, &iter->i);			\
+	}								\
+	static inline UNNEEDED type *name##_prev(const struct name *ht,	\
+					struct name##_iter *iter)	\
+	{								\
+		return htable_prev(&ht->raw, &iter->i);			\
 	}
 
 #if HAVE_TYPEOF
