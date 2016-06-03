@@ -11,43 +11,48 @@
 #include <unistd.h>
 #include <sys/mman.h>
 
-static __thread char ebuf[ALTSTACK_ERR_MAXLEN];
-static __thread unsigned elen;
+static __thread struct altstack_state {
+	char ebuf[ALTSTACK_ERR_MAXLEN];
+	unsigned elen;
+	jmp_buf jmp;
+	void *rsp_save[2];
+	rlim_t max;
+	void *(*fn)(void *);
+	void *arg, *out;
+} state;
 
-#define bang(x)							\
-	(elen += snprintf(ebuf + elen, sizeof(ebuf) - elen,	\
-		 "%s(altstack@%d) %s%s%s",			\
-		 elen  ? "; " : "", __LINE__, (x),		\
-		 errno ? ": " : "", errno ? strerror(errno) : ""))
+#define bang(x)								\
+	(state.elen += snprintf(state.ebuf + state.elen,		\
+				sizeof(state.ebuf) - state.elen,	\
+				"%s(altstack@%d) %s%s%s",		\
+				state.elen  ? "; " : "", __LINE__, (x),	\
+				errno ? ": " : "",			\
+				errno ? strerror(errno) : ""))
 
 void altstack_perror(void)
 {
-	fprintf(stderr, "%s\n", ebuf);
+	fprintf(stderr, "%s\n", state.ebuf);
 }
 
 char *altstack_geterr(void)
 {
-	return ebuf;
+	return state.ebuf;
 }
-
-static __thread jmp_buf jmp;
 
 static void segvjmp(int signum)
 {
-	longjmp(jmp, 1);
+	longjmp(state.jmp, 1);
 }
 
-static __thread void *rsp_save_[2];
-static __thread rlim_t max_;
 
 rlim_t altstack_max(void) {
-	return max_;
+	return state.max;
 }
 
 static ptrdiff_t rsp_save(unsigned i) {
 	assert(i < 2);
-	asm volatile ("movq %%rsp, %0" : "=g" (rsp_save_[i]));
-	return (char *) rsp_save_[0] - (char *) rsp_save_[i];
+	asm volatile ("movq %%rsp, %0" : "=g" (state.rsp_save[i]));
+	return (char *) state.rsp_save[0] - (char *) state.rsp_save[i];
 }
 
 void altstack_rsp_save(void) {
@@ -57,9 +62,6 @@ void altstack_rsp_save(void) {
 ptrdiff_t altstack_used(void) {
 	return rsp_save(1);
 }
-
-static __thread void *(*fn_)(void *);
-static __thread void *arg_, *out_;
 
 int altstack(rlim_t max, void *(*fn)(void *), void *arg, void **out)
 {
@@ -73,11 +75,11 @@ int altstack(rlim_t max, void *(*fn)(void *), void *arg, void **out)
 	assert(max > 0 && fn);
 	#define ok(x, y) ({ long __r = (long) (x); if (__r == -1) { bang(#x); if (y) goto out; } __r; })
 
-	fn_  = fn;
-	arg_ = arg;
-	out_ = 0;
-	max_ = max;
-	ebuf[elen = 0] = '\0';
+	state.fn  = fn;
+	state.arg = arg;
+	state.out = 0;
+	state.max = max;
+	state.ebuf[state.elen = 0] = '\0';
 	if (out) *out = 0;
 
 	// if the first page below the mapping is in use, we get max-pgsz usable bytes
@@ -85,13 +87,13 @@ int altstack(rlim_t max, void *(*fn)(void *), void *arg, void **out)
 	max += pgsz;
 
 	ok(getrlimit(RLIMIT_STACK, &rl_save), 1);
-	ok(setrlimit(RLIMIT_STACK, &(struct rlimit) { max_, rl_save.rlim_max }), 1);
+	ok(setrlimit(RLIMIT_STACK, &(struct rlimit) { state.max, rl_save.rlim_max }), 1);
 	undo++;
 
 	ok(m = mmap(0, max, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS|MAP_GROWSDOWN|MAP_NORESERVE, -1, 0), 1);
 	undo++;
 
-	if (setjmp(jmp) == 0) {
+	if (setjmp(state.jmp) == 0) {
 		unsigned char sigstk[SIGSTKSZ];
 		stack_t ss = { .ss_sp = sigstk, .ss_size = sizeof(sigstk) };
 		struct sigaction sa = { .sa_handler = segvjmp, .sa_flags = SA_NODEFER|SA_RESETHAND|SA_ONSTACK };
@@ -108,12 +110,13 @@ int altstack(rlim_t max, void *(*fn)(void *), void *arg, void **out)
 			"mov %1, %%rsp\n\t"
 			"sub $8, %%rsp\n\t"
 			"push %%r10"
-			: "=r" (rsp_save_[0]) : "0" (m + max) : "r10", "memory");
-		out_ = fn_(arg_);
+			: "=r" (state.rsp_save[0])
+			: "0" (m + max) : "r10", "memory");
+		state.out = state.fn(state.arg);
 		asm volatile ("pop %%rsp"
 			      : : : "memory");
 		ret = 0;
-		if (out) *out = out_;
+		if (out) *out = state.out;
 	}
 	else {
 		errno = 0;
@@ -137,5 +140,5 @@ out:
 
 	if (errno_save)
 		errno = errno_save;
-	return !ret && elen ? 1 : ret;
+	return !ret && state.elen ? 1 : ret;
 }

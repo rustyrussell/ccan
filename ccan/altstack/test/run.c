@@ -24,7 +24,7 @@ char *m_;
 rlim_t msz_;
 #define e(x) (900+(x))
 #define seterr(x) (errno = e(x))
-#define setcall(x) ((call1 |= !errno ? (x) : 0), (call2 |= errno || out_ ? (x) : 0))
+#define setcall(x) ((call1 |= !errno ? (x) : 0), (call2 |= errno || state.out ? (x) : 0))
 #define getrlimit(...)		(fail&getrlimit_	? (seterr(getrlimit_),		-1) : (setcall(getrlimit_),	getrlimit(__VA_ARGS__)))
 #define mmap(...)		(fail&mmap_		? (seterr(mmap_),	(void *)-1) : (setcall(mmap_),		mmap(__VA_ARGS__)))
 #define munmap(a, b)		(fail&munmap_		? (seterr(munmap_),		-1) : (setcall(munmap_),	munmap(m_=(a), msz_=(b))))
