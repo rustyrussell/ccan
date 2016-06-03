@@ -20,18 +20,17 @@ enum {
 	sigaction_	= 1<<4,
 	munmap_		= 1<<5,
 };
-int fail, call1, call2;
+int fail;
 char *m_;
 rlim_t msz_;
 #define e(x) (900+(x))
 #define seterr(x) (errno = e(x))
-#define setcall(x) ((call1 |= !errno ? (x) : 0), (call2 |= errno || state.out ? (x) : 0))
-#define getrlimit(...)		(fail&getrlimit_	? (seterr(getrlimit_),		-1) : (setcall(getrlimit_),	getrlimit(__VA_ARGS__)))
-#define mmap(...)		(fail&mmap_		? (seterr(mmap_),	(void *)-1) : (setcall(mmap_),		mmap(__VA_ARGS__)))
-#define munmap(a, b)		(fail&munmap_		? (seterr(munmap_),		-1) : (setcall(munmap_),	munmap(m_=(a), msz_=(b))))
-#define setrlimit(...)		(fail&setrlimit_	? (seterr(setrlimit_),		-1) : (setcall(setrlimit_),	setrlimit(__VA_ARGS__)))
-#define sigaltstack(...)	(fail&sigaltstack_	? (seterr(sigaltstack_),	-1) : (setcall(sigaltstack_),	sigaltstack(__VA_ARGS__)))
-#define sigaction(...)		(fail&sigaction_	? (seterr(sigaction_),		-1) : (setcall(sigaction_),	sigaction(__VA_ARGS__)))
+#define getrlimit(...)		(fail&getrlimit_	? (seterr(getrlimit_),		-1) : getrlimit(__VA_ARGS__))
+#define mmap(...)		(fail&mmap_		? (seterr(mmap_),	(void *)-1) : mmap(__VA_ARGS__))
+#define munmap(a, b)		(fail&munmap_		? (seterr(munmap_),		-1) : munmap(m_=(a), msz_=(b)))
+#define setrlimit(...)		(fail&setrlimit_	? (seterr(setrlimit_),		-1) : setrlimit(__VA_ARGS__))
+#define sigaltstack(...)	(fail&sigaltstack_	? (seterr(sigaltstack_),	-1) : sigaltstack(__VA_ARGS__))
+#define sigaction(...)		(fail&sigaction_	? (seterr(sigaction_),		-1) : sigaction(__VA_ARGS__))
 
 #define KiB (1024UL)
 #define MiB (KiB*KiB)
@@ -58,74 +57,48 @@ static void *wrap(void *i)
 	return wrap;
 }
 
-#define chkfail(x, y, z, c1, c2)					\
+#define chkfail(x, y, z)						\
 	do {								\
-		call1 = 0;						\
-		call2 = 0;						\
 		errno = 0;						\
 		ok1((fail = x) && (y));					\
 		ok1(errno == (z));					\
-		ok1(call1 == (c1));					\
-		ok1(call2 == (c2));					\
 	} while (0);
 
-#define chkok(y, z, c1, c2)						\
+#define chkok(y, z)							\
 	do {								\
-		call1 = 0;						\
-		call2 = 0;						\
 		errno = 0;						\
 		fail = 0;						\
 		ok1((y));						\
 		ok1(errno == (z));					\
-		ok1(call1 == (c1));					\
-		ok1(call2 == (c2));					\
 	} while (0)
 
 int main(void)
 {
 	long pgsz = sysconf(_SC_PAGESIZE);
 
-	plan_tests(50);
+	plan_tests(28);
 
-	chkfail(getrlimit_,	altstack(8*MiB, wrap, int2ptr(0), NULL) == -1, e(getrlimit_),
-		0,
-		0);
+	chkfail(getrlimit_,	altstack(8*MiB, wrap, int2ptr(0), NULL) == -1, e(getrlimit_));
 
-	chkfail(setrlimit_,	altstack(8*MiB, wrap, int2ptr(0), NULL) == -1, e(setrlimit_),
-		getrlimit_,
-		0);
+	chkfail(setrlimit_,	altstack(8*MiB, wrap, int2ptr(0), NULL) == -1, e(setrlimit_));
 
-	chkfail(mmap_,		altstack(8*MiB, wrap, int2ptr(0), NULL) == -1, e(mmap_),
-		getrlimit_|setrlimit_,
-		setrlimit_);
+	chkfail(mmap_,		altstack(8*MiB, wrap, int2ptr(0), NULL) == -1, e(mmap_));
 
-	chkfail(sigaltstack_,	altstack(8*MiB, wrap, int2ptr(0), NULL) == -1, e(sigaltstack_),
-		getrlimit_|setrlimit_|mmap_,
-		setrlimit_|munmap_);
+	chkfail(sigaltstack_,	altstack(8*MiB, wrap, int2ptr(0), NULL) == -1, e(sigaltstack_));
 
-	chkfail(sigaction_,	altstack(8*MiB, wrap, int2ptr(0), NULL) == -1, e(sigaction_),
-		getrlimit_|setrlimit_|mmap_|sigaltstack_,
-		setrlimit_|munmap_|sigaltstack_);
+	chkfail(sigaction_,	altstack(8*MiB, wrap, int2ptr(0), NULL) == -1, e(sigaction_));
 
-	chkfail(munmap_,	altstack(8*MiB, wrap, int2ptr(0), NULL) ==  1, e(munmap_),
-		getrlimit_|setrlimit_|mmap_|sigaltstack_|sigaction_,
-		setrlimit_|sigaltstack_|sigaction_);
+	chkfail(munmap_,	altstack(8*MiB, wrap, int2ptr(0), NULL) ==  1, e(munmap_));
 	if (fail = 0, munmap(m_, msz_) == -1)
 		err(1, "munmap");
 
-	chkok(			altstack(1*MiB, wrap, int2ptr(1000000), NULL) == -1, EOVERFLOW,
-		getrlimit_|setrlimit_|mmap_|sigaltstack_|sigaction_,
-		setrlimit_|munmap_|sigaltstack_|sigaction_);
+	chkok(			altstack(1*MiB, wrap, int2ptr(1000000), NULL) == -1, EOVERFLOW);
 
 	// be sure segv catch is repeatable (SA_NODEFER)
-	chkok(			altstack(1*MiB, wrap, int2ptr(1000000), NULL) == -1, EOVERFLOW,
-		getrlimit_|setrlimit_|mmap_|sigaltstack_|sigaction_,
-		setrlimit_|munmap_|sigaltstack_|sigaction_);
+	chkok(			altstack(1*MiB, wrap, int2ptr(1000000), NULL) == -1, EOVERFLOW);
 
 	used = 1;
-	chkfail(munmap_,	altstack(1*MiB, wrap, int2ptr(1000000), NULL) == -1, EOVERFLOW,
-		getrlimit_|setrlimit_|mmap_|sigaltstack_|sigaction_,
-		setrlimit_|sigaltstack_|sigaction_);
+	chkfail(munmap_,	altstack(1*MiB, wrap, int2ptr(1000000), NULL) == -1, EOVERFLOW);
 	if (fail = 0, munmap(m_, msz_) == -1)
 		err(1, "munmap");
 
@@ -150,17 +123,13 @@ int main(void)
 	ok1(strcmp(buf, estr "\n") == 0);
 
 	used = 1;
-	chkok(			altstack(8*MiB, wrap, int2ptr(1000000), NULL) == -1, EOVERFLOW,
-		getrlimit_|setrlimit_|mmap_|sigaltstack_|sigaction_,
-		setrlimit_|munmap_|sigaltstack_|sigaction_);
+	chkok(			altstack(8*MiB, wrap, int2ptr(1000000), NULL) == -1, EOVERFLOW);
 
 	diag("used: %lu", used);
 	ok1(used >= 8*MiB - pgsz && used <= 8*MiB + pgsz);
 
 	used = 0;
-	chkok(			altstack(8*MiB, wrap, int2ptr(100000), NULL) == 0, 0,
-		getrlimit_|setrlimit_|mmap_|sigaltstack_|sigaction_|munmap_,
-		setrlimit_|munmap_|sigaltstack_|sigaction_);
+	chkok(			altstack(8*MiB, wrap, int2ptr(100000), NULL) == 0, 0);
 
 	used = 1;
 	altstack_rsp_save();
