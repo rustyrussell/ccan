@@ -214,6 +214,30 @@
 		    (char *)((h)->_tcon[0].canary)))
 
 /**
+ * tlist_next - get the next entry in a list
+ * @h: the tlist
+ * @n: the list element
+ * @member: the list_node member of the type
+ *
+ * Returns the element of list @h immediately after @n, or NULL, if @n
+ * is the last element in the list.
+ */
+#define tlist_next(h, n, member)					\
+	list_next(tlist_raw((h), (n)), (n), member)
+
+/**
+ * tlist_prev - get the previous entry in a list
+ * @h: the tlist
+ * @n: the list element
+ * @member: the list_node member of the type
+ *
+ * Returns the element of list @h immediately before @n, or NULL, if
+ * @n is the first element in the list.
+ */
+#define tlist_prev(h, n, member)					\
+	list_prev(tlist_raw((h), (n)), (n), member)
+
+/**
  * tlist_for_each - iterate through a list.
  * @h: the tlist
  * @i: an iterator of suitable type for this list.

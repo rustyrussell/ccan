@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
 	unsigned int i;
 	struct tlist_children tlist = TLIST_INIT(tlist);
 
-	plan_tests(48);
+	plan_tests(60);
 	/* Test TLIST_INIT, and tlist_empty */
 	ok1(tlist_empty(&tlist));
 	ok1(tlist_check(&tlist, NULL));
@@ -41,6 +41,8 @@ int main(int argc, char *argv[])
 	ok1(c2.list.prev == &parent.children.raw.n);
 	ok1(parent.children.raw.n.next == &c2.list);
 	ok1(parent.children.raw.n.prev == &c2.list);
+	ok1(tlist_next(&parent.children, &c2, list) == NULL);
+	ok1(tlist_prev(&parent.children, &c2, list) == NULL);
 	/* Test tlist_check */
 	ok1(tlist_check(&parent.children, NULL));
 
@@ -54,6 +56,10 @@ int main(int argc, char *argv[])
 	ok1(parent.children.raw.n.prev == &c2.list);
 	ok1(c1.list.next == &c2.list);
 	ok1(c1.list.prev == &parent.children.raw.n);
+	ok1(tlist_next(&parent.children, &c1, list) == &c2);
+	ok1(tlist_next(&parent.children, &c2, list) == NULL);
+	ok1(tlist_prev(&parent.children, &c2, list) == &c1);
+	ok1(tlist_prev(&parent.children, &c1, list) == NULL);
 	/* Test tlist_check */
 	ok1(tlist_check(&parent.children, NULL));
 
@@ -69,6 +75,12 @@ int main(int argc, char *argv[])
 	ok1(c2.list.prev == &c1.list);
 	ok1(c3.list.next == &parent.children.raw.n);
 	ok1(c3.list.prev == &c2.list);
+	ok1(tlist_next(&parent.children, &c1, list) == &c2);
+	ok1(tlist_next(&parent.children, &c2, list) == &c3);
+	ok1(tlist_next(&parent.children, &c3, list) == NULL);
+	ok1(tlist_prev(&parent.children, &c3, list) == &c2);
+	ok1(tlist_prev(&parent.children, &c2, list) == &c1);
+	ok1(tlist_prev(&parent.children, &c1, list) == NULL);
 	/* Test tlist_check */
 	ok1(tlist_check(&parent.children, NULL));
 
