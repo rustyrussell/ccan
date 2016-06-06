@@ -90,13 +90,17 @@
 	static inline UNNEEDED type *name##_get(const struct name *ht,	\
 				       const HTABLE_KTYPE(keyof, type) k) \
 	{								\
-		/* Typecheck for eqfn */				\
-		(void)sizeof(eqfn((const type *)NULL,			\
-				  keyof((const type *)NULL)));		\
-		return htable_get(&ht->raw,				\
-				  hashfn(k),				\
-				  (bool (*)(const void *, void *))(eqfn), \
-				  k);					\
+		struct htable_iter i;					\
+		size_t h = hashfn(k);					\
+		void *c;						\
+									\
+		for (c = htable_firstval(&ht->raw,&i,h);		\
+		     c;							\
+		     c = htable_nextval(&ht->raw,&i,h)) {		\
+			if (eqfn(c, k))					\
+				return c;				\
+		}							\
+		return NULL;						\
 	}								\
 	static inline UNNEEDED type *name##_getmatch_(const struct name *ht, \
 				         const HTABLE_KTYPE(keyof, type) k, \
@@ -154,6 +158,9 @@
 #if HAVE_TYPEOF
 #define HTABLE_KTYPE(keyof, type) typeof(keyof((const type *)NULL))
 #else
+/* Assumes keys are a pointer: if not, override. */
+#ifndef HTABLE_KTYPE
 #define HTABLE_KTYPE(keyof, type) void *
+#endif
 #endif
 #endif /* CCAN_HTABLE_TYPE_H */
