@@ -5,6 +5,7 @@
 #include <limits.h>
 #include <stdbool.h>
 #include <assert.h>
+#include <string.h>
 
 /* We use 0x1 as deleted marker. */
 #define HTABLE_DELETED (0x1)
@@ -52,6 +53,13 @@ void htable_init(struct htable *ht,
 	ht->table = &ht->perfect_bit;
 }
 
+/* We've changed ht->bits, update ht->max and ht->max_with_deleted */
+static void htable_adjust_capacity(struct htable *ht)
+{
+	ht->max = ((size_t)3 << ht->bits) / 4;
+	ht->max_with_deleted = ((size_t)9 << ht->bits) / 10;
+}
+
 bool htable_init_sized(struct htable *ht,
 		       size_t (*rehash)(const void *, void *),
 		       void *priv, size_t expect)
@@ -69,9 +77,7 @@ bool htable_init_sized(struct htable *ht,
 		ht->table = &ht->perfect_bit;
 		return false;
 	}
-	ht->max = ((size_t)3 << ht->bits) / 4;
-	ht->max_with_deleted = ((size_t)9 << ht->bits) / 10;
-
+	htable_adjust_capacity(ht);
 	return true;
 }
 	
@@ -80,6 +86,19 @@ void htable_clear(struct htable *ht)
 	if (ht->table != &ht->perfect_bit)
 		free((void *)ht->table);
 	htable_init(ht, ht->rehash, ht->priv);
+}
+
+bool htable_copy(struct htable *dst, const struct htable *src)
+{
+	uintptr_t *htable = malloc(sizeof(size_t) << src->bits);
+
+	if (!htable)
+		return false;
+
+	*dst = *src;
+	dst->table = htable;
+	memcpy(dst->table, src->table, sizeof(size_t) << src->bits);
+	return true;
 }
 
 static size_t hash_bucket(const struct htable *ht, size_t h)
@@ -174,8 +193,7 @@ static COLD bool double_table(struct htable *ht)
 		return false;
 	}
 	ht->bits++;
-	ht->max = ((size_t)3 << ht->bits) / 4;
-	ht->max_with_deleted = ((size_t)9 << ht->bits) / 10;
+	htable_adjust_capacity(ht);
 
 	/* If we lost our "perfect bit", get it back now. */
 	if (!ht->perfect_bit && ht->common_mask) {

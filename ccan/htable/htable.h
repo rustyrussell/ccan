@@ -75,6 +75,25 @@ bool htable_init_sized(struct htable *ht,
 void htable_clear(struct htable *ht);
 
 /**
+ * htable_copy - duplicate a hash table.
+ * @dst: the hash table to overwrite
+ * @src: the hash table to copy
+ *
+ * Only fails on out-of-memory.
+ *
+ * Equivalent to (but faster than):
+ *    if (!htable_init_sized(dst, src->rehash, src->priv, 1U << src->bits))
+ *	   return false;
+ *    v = htable_first(src, &i);
+ *    while (v) {
+ *		htable_add(dst, v);
+ *		v = htable_next(src, i);
+ *    }
+ *    return true;
+ */
+bool htable_copy(struct htable *dst, const struct htable *src);
+
+/**
  * htable_rehash - use a hashtree's rehash function
  * @elem: the argument to rehash()
  *
