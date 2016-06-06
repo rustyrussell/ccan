@@ -21,8 +21,9 @@
  *
  * It also defines initialization and freeing functions:
  *	void <name>_init(struct <name> *);
- *	void <name>_init_sized(struct <name> *, size_t);
+ *	bool <name>_init_sized(struct <name> *, size_t);
  *	void <name>_clear(struct <name> *);
+ *	bool <name>_copy(struct <name> *dst, const struct <name> *src);
  *
  * Add function only fails if we run out of memory:
  *	bool <name>_add(struct <name> *ht, const <type> *e);
@@ -63,14 +64,19 @@
 	{								\
 		htable_init(&ht->raw, name##_hash, NULL);		\
 	}								\
-	static inline UNNEEDED void name##_init_sized(struct name *ht,	\
+	static inline UNNEEDED bool name##_init_sized(struct name *ht,	\
 						      size_t s)		\
 	{								\
-		htable_init_sized(&ht->raw, name##_hash, NULL, s);	\
+		return htable_init_sized(&ht->raw, name##_hash, NULL, s); \
 	}								\
 	static inline UNNEEDED void name##_clear(struct name *ht)	\
 	{								\
 		htable_clear(&ht->raw);					\
+	}								\
+	static inline UNNEEDED bool name##_copy(struct name *dst,	\
+						const struct name *src)	\
+	{								\
+		return htable_copy(&dst->raw, &src->raw);		\
 	}								\
 	static inline bool name##_add(struct name *ht, const type *elem) \
 	{								\

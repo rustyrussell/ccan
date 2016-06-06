@@ -110,13 +110,13 @@ static bool check_mask(struct htable *ht, const struct obj val[], unsigned num)
 int main(int argc, char *argv[])
 {
 	unsigned int i;
-	struct htable_obj ht;
+	struct htable_obj ht, ht2;
 	struct obj val[NUM_VALS], *result;
 	unsigned int dne;
 	void *p;
 	struct htable_obj_iter iter;
 
-	plan_tests(27);
+	plan_tests(29);
 	for (i = 0; i < NUM_VALS; i++)
 		val[i].key = i;
 	dne = i;
@@ -171,8 +171,12 @@ int main(int argc, char *argv[])
 	find_vals(&ht, val, NUM_VALS);
 	ok1(!htable_obj_get(&ht, &dne));
 
+	/* Check copy. */
+	ok1(htable_obj_copy(&ht2, &ht));
+
 	/* Delete them all by key. */
 	del_vals_bykey(&ht, val, NUM_VALS);
+	del_vals_bykey(&ht2, val, NUM_VALS);
 
 	/* Write two of the same value. */
 	val[1] = val[0];
@@ -201,5 +205,6 @@ int main(int argc, char *argv[])
 	}
 
 	htable_obj_clear(&ht);
+	htable_obj_clear(&ht2);
 	return exit_status();
 }
