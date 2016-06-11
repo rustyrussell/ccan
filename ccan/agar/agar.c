@@ -286,8 +286,8 @@ bool agar_dijkstra_path(struct agar_state *sr, const void *destr,
 	return true;
 }
 
-void agar_dijkstra_all_paths(struct agar_state *sr)
+void agar_dijkstra_complete(struct agar_state *sr)
 {
-	aga_dijkstra_all_paths(&sr->g);
+	aga_dijkstra_complete(&sr->g);
 }
 

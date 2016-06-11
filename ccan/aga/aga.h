@@ -416,15 +416,15 @@ bool aga_dijkstra_path(struct aga_graph *g, struct aga_node *dest,
 		       struct aga_node **prev, const void **prevedge);
 
 /**
- * aga_dijkstra_all_paths - Find shortest paths to all reachable nodes
+ * aga_dijkstra_complete - Find shortest paths to all reachable nodes
  * @g: graph
  *
  * Finds shortest paths from the source node (specified in
  * aga_dijkstra_start()) to all other reachable nodes in @g.  No
  * results are returned directly, but between calling
- * aga_dijkstra_all_paths() and aga_finish, aga_dijkstra_path() is
+ * aga_dijkstra_all_paths() and aga_finish(), aga_dijkstra_path() is
  * guaranteed to complete in O(1) time for all destinations.
  */
-void aga_dijkstra_all_paths(struct aga_graph *g);
+void aga_dijkstra_complete(struct aga_graph *g);
 
 #endif /* CCAN_AGA_H */

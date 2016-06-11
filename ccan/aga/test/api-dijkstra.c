@@ -241,7 +241,7 @@ static void test_shortcut2(void)
 	shortcut2_graph_init(&s2g);
 
 	ok1(aga_dijkstra_start(&s2g.sg.g, &s2g.sg.nodes[1]) == 0);
-	aga_dijkstra_all_paths(&s2g.sg.g);
+	aga_dijkstra_complete(&s2g.sg.g);
 	ok1(aga_error(&s2g.sg.g) == AGA_ERR_NEGATIVE_COST);
 	aga_finish(&s2g.sg.g);
 }

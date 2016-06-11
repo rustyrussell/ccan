@@ -231,7 +231,7 @@ static void test_shortcut2(void)
 	struct agar_state *sr;
 
 	ok1(sr = agar_dijkstra_new(NULL, &shortcut2_graphr.gr, int2ptr(1)));
-	agar_dijkstra_all_paths(sr);
+	agar_dijkstra_complete(sr);
 	ok1(agar_error(sr) == AGA_ERR_NEGATIVE_COST);
 	tal_free(sr);
 }

@@ -84,6 +84,6 @@ bool agar_dijkstra_step(struct agar_state *sr, const void **nextr);
 bool agar_dijkstra_path(struct agar_state *sr, const void *destr,
 			aga_icost_t *total_cost,
 			const void **prevr, const void **prevedge);
-void agar_dijkstra_all_paths(struct agar_state *sr);
+void agar_dijkstra_complete(struct agar_state *sr);
 
 #endif /* CCAN_AGAR_H */
