@@ -1,0 +1,44 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * coroutine - Co-routines
+ *
+ * This code has helper functions for implementing co-routines, that
+ * is, explicit co-operative context switching.  It's intended to
+ * provide similar functionality to ucontext, but with a cleaner
+ * interface.  At the moment this is implemented in terms of ucontext,
+ * but the hope is to add other implementations for platforms that
+ * don't have ucontext in future.
+ *
+ * Author: David Gibson <david@gibson.dropbear.id.au>
+ * License: LGPL (v2.1 or any later version)
+ *
+ * Ccanlint:
+ *	// Context switching really confuses valgrind
+ *	tests_pass_valgrind FAIL
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/ptrint\n");
+		printf("ccan/compiler\n");
+		printf("ccan/build_assert\n");
+		printf("ccan/typesafe_cb\n");
+		return 0;
+	}
+
+	if (strcmp(argv[1], "ported") == 0) {
+#if !HAVE_UCONTEXT
+		printf("Requires working ucontext.h\n");
+#endif
+		return 0;
+	}
+
+	return 1;
+}
