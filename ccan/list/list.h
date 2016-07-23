@@ -292,6 +292,21 @@ static inline bool list_empty_nodebug(const struct list_head *h)
 #endif
 
 /**
+ * list_empty_nocheck - is a list empty?
+ * @h: the list_head
+ *
+ * If the list is empty, returns true. This doesn't perform any
+ * debug check for list consistency, so it can be called without
+ * locks, racing with the list being modified. This is ok for
+ * checks where an incorrect result is not an issue (optimized
+ * bail out path for example).
+ */
+static inline bool list_empty_nocheck(const struct list_head *h)
+{
+	return h->n.next == &h->n;
+}
+
+/**
  * list_del - delete an entry from an (unknown) linked list.
  * @n: the list_node to delete from the list.
  *
