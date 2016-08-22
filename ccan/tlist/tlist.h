@@ -11,15 +11,16 @@
  *
  * This declares a structure "struct tlist_@suffix" to use for
  * lists containing this type.  The actual list can be accessed using
- * ".raw" or tlist_raw().
+ * ".raw" or tlist_raw().  For maximum portability, place tlists
+ * embedded in structures as the last member.
  *
  * Example:
  *	// Defines struct tlist_children
  *	TLIST_TYPE(children, struct child);
  *	struct parent {
  *		const char *name;
- *		struct tlist_children children;
  *		unsigned int num_children;
+ *		struct tlist_children children;
  *	};
  *
  *	struct child {

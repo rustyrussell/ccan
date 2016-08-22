@@ -6,8 +6,8 @@ TLIST_TYPE(children, struct child);
 
 struct parent {
 	const char *name;
-	struct tlist_children children;
 	unsigned int num_children;
+	struct tlist_children children;
 };
 
 struct child {
