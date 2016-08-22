@@ -55,16 +55,6 @@ static uint32_t inline f3(uint32_t x, uint32_t y, uint32_t z) { return (x | ~y) 
 static uint32_t inline f4(uint32_t x, uint32_t y, uint32_t z) { return (x & z) | (y & ~z); }
 static uint32_t inline f5(uint32_t x, uint32_t y, uint32_t z) { return x ^ (y | ~z); }
 
-/** Initialize RIPEMD-160 state. */
-static void inline Initialize(uint32_t* s)
-{
-    s[0] = 0x67452301ul;
-    s[1] = 0xEFCDAB89ul;
-    s[2] = 0x98BADCFEul;
-    s[3] = 0x10325476ul;
-    s[4] = 0xC3D2E1F0ul;
-}
-
 static uint32_t inline rol(uint32_t x, int i) { return (x << i) | (x >> (32 - i)); }
 
 static void inline Round(uint32_t *a, uint32_t b UNUSED, uint32_t *c, uint32_t d UNUSED, uint32_t e, uint32_t f, uint32_t x, uint32_t k, int r)
