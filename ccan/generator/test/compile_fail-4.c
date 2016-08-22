@@ -16,8 +16,8 @@ int main(int argc, char *argv[])
 	int val;
 #endif
 
-	generator_next_val(val, g);
-	printf("%d", val);
+	if (generator_next_val(val, g))
+		printf("%d", val);
 
 	exit(0);
 }
