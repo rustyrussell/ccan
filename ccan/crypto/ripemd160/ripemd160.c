@@ -94,6 +94,7 @@ static void Transform(uint32_t *s, const uint32_t *chunk)
     uint32_t w4 = le32_to_cpu(chunk[4]), w5 = le32_to_cpu(chunk[5]), w6 = le32_to_cpu(chunk[6]), w7 = le32_to_cpu(chunk[7]);
     uint32_t w8 = le32_to_cpu(chunk[8]), w9 = le32_to_cpu(chunk[9]), w10 = le32_to_cpu(chunk[10]), w11 = le32_to_cpu(chunk[11]);
     uint32_t w12 = le32_to_cpu(chunk[12]), w13 = le32_to_cpu(chunk[13]), w14 = le32_to_cpu(chunk[14]), w15 = le32_to_cpu(chunk[15]);
+    uint32_t t;
 
     R11(&a1, b1, &c1, d1, e1, w0, 11);
     R12(&a2, b2, &c2, d2, e2, w5, 8);
@@ -260,7 +261,7 @@ static void Transform(uint32_t *s, const uint32_t *chunk)
     R51(&b1, c1, &d1, e1, a1, w13, 6);
     R52(&b2, c2, &d2, e2, a2, w11, 11);
 
-    uint32_t t = s[0];
+    t = s[0];
     s[0] = s[1] + c1 + d2;
     s[1] = s[2] + d1 + e2;
     s[2] = s[3] + e1 + a2;
