@@ -37,7 +37,7 @@ struct ripemd160 {
  * The bytes pointed to by @p is RIPEMD160 hashed into @ripemd160.  This is
  * equivalent to ripemd160_init(), ripemd160_update() then ripemd160_done().
  */
-void ripemd160(struct ripemd160 *sha, const void *p, size_t size);
+void ripemd160(struct ripemd160 *ripemd, const void *p, size_t size);
 
 /**
  * struct ripemd160_ctx - structure to store running context for ripemd160
