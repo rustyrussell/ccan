@@ -46,8 +46,9 @@ int main(int argc, char *argv[])
 	else
 		deps = get_safe_ccan_deps(NULL, argv[1], style, recurse);
 
-	for (i = 0; deps[i]; i++)
-		if (strstarts(deps[i], "ccan/") == ccan)
-			printf("%s\n", deps[i]);
+	if (deps)
+		for (i = 0; deps[i]; i++)
+			if (strstarts(deps[i], "ccan/") == ccan)
+				printf("%s\n", deps[i]);
 	return 0;
 }
