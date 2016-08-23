@@ -181,7 +181,7 @@ static void add(struct sha256_ctx *ctx, const void *p, size_t len)
 	size_t bufsize = ctx->bytes % 64;
 
 	if (bufsize + len >= 64) {
-		// Fill the buffer, and process it.
+		/* Fill the buffer, and process it. */
 		memcpy(ctx->buf.u8 + bufsize, data, 64 - bufsize);
 		ctx->bytes += 64 - bufsize;
 		data += 64 - bufsize;
@@ -191,7 +191,7 @@ static void add(struct sha256_ctx *ctx, const void *p, size_t len)
 	}
 
 	while (len >= 64) {
-		// Process full chunks directly from the source.
+		/* Process full chunks directly from the source. */
 		if (alignment_ok(data, sizeof(uint32_t)))
 			Transform(ctx->s, (const uint32_t *)data);
 		else {
@@ -204,7 +204,7 @@ static void add(struct sha256_ctx *ctx, const void *p, size_t len)
 	}
 	    
 	if (len) {
-		// Fill the buffer with what remains.
+		/* Fill the buffer with what remains. */
 		memcpy(ctx->buf.u8 + bufsize, data, len);
 		ctx->bytes += len;
 	}

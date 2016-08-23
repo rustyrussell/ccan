@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 /* Uncomment this to use openssl's SHA256 routines (and link with -lcrypto) */
-//#define CCAN_CRYPTO_SHA256_USE_OPENSSL 1
+/*#define CCAN_CRYPTO_SHA256_USE_OPENSSL 1*/
 
 #ifdef CCAN_CRYPTO_SHA256_USE_OPENSSL
 #include <openssl/sha.h>
@@ -82,7 +82,7 @@ void sha256_init(struct sha256_ctx *ctx);
 /**
  * SHA256_INIT - initializer for an SHA256 context.
  *
- * This can be used to staticly initialize an SHA256 context (instead
+ * This can be used to statically initialize an SHA256 context (instead
  * of sha256_init()).
  *
  * Example:
