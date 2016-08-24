@@ -14,7 +14,6 @@
  */
 static char sixbit_to_b64(const base64_maps_t *maps, const uint8_t sixbit)
 {
-	assert(sixbit >= 0);
 	assert(sixbit <= 63);
 
 	return maps->encode_map[(unsigned char)sixbit];
