@@ -167,7 +167,7 @@ static void add_files(struct manifest *m, const char *base, const char *subdir)
 		if (!m->info_file
 		    && list_empty(&m->c_files)
 		    && list_empty(&m->h_files))
-			errx(1, "No _info, C or H files found here!");
+			errx(1, "No _info, C or H files found in %s", thisdir);
 
 		/* Don't enter subdirs with _info: they're separate modules. */
 		for (i = 0; i < tal_count(subs); i++) {
