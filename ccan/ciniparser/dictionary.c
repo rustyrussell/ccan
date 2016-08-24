@@ -72,7 +72,7 @@ static void *mem_double(void *ptr, int size)
 
 /* The remaining exposed functions are documented in dictionary.h */
 
-unsigned dictionary_hash(char *key)
+unsigned dictionary_hash(const char *key)
 {
 	int len;
 	unsigned hash;
@@ -126,7 +126,7 @@ void dictionary_del(dictionary *d)
 	return;
 }
 
-char *dictionary_get(dictionary *d, char *key, char *def)
+char *dictionary_get(dictionary *d, const char *key, char *def)
 {
 	unsigned hash;
 	int i;
@@ -146,7 +146,7 @@ char *dictionary_get(dictionary *d, char *key, char *def)
 	return def;
 }
 
-int dictionary_set(dictionary *d, char *key, char *val)
+int dictionary_set(dictionary *d, const char *key, char *val)
 {
 	int i;
 	unsigned hash;
@@ -206,7 +206,7 @@ int dictionary_set(dictionary *d, char *key, char *val)
 	return 0;
 }
 
-void dictionary_unset(dictionary *d, char *key)
+void dictionary_unset(dictionary *d, const char *key)
 {
 	unsigned hash;
 	int i;

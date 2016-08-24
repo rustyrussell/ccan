@@ -316,7 +316,7 @@ int ciniparser_getint(dictionary *d, const char *key, int notfound)
 	return (int) strtol(str, NULL, 10);
 }
 
-double ciniparser_getdouble(dictionary *d, char *key, double notfound)
+double ciniparser_getdouble(dictionary *d, const char *key, double notfound)
 {
 	char *str;
 

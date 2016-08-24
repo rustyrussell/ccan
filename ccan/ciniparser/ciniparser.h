@@ -151,7 +151,7 @@ int ciniparser_getint(dictionary *d, const char *key, int notfound);
  * ini file is given as "section:key". If the key cannot be found,
  * the notfound value is returned.
  */
-double ciniparser_getdouble(dictionary *d, char *key, double notfound);
+double ciniparser_getdouble(dictionary *d, const char *key, double notfound);
 
 /**
  * @brief    Get the string associated to a key, convert to a boolean
