@@ -45,15 +45,13 @@ static struct test tests[] = {
 #endif
 };
 
-static bool do_test(const struct test *t, bool single)
+static bool do_test(const struct test *t)
 {
 	struct sha256 h;
 
-	if (single) {
-		if (t->repetitions != 1)
-			return true;
+	if (t->repetitions == 1)
 		sha256(&h, t->test, strlen(t->test));
-	} else {
+	else {
 		struct sha256_ctx ctx = SHA256_INIT;
 		size_t i;
 
@@ -62,7 +60,7 @@ static bool do_test(const struct test *t, bool single)
 		sha256_done(&ctx, &h);
 	}
 
-	return memcmp(&h.u, t->result, sizeof(t->result)) == 0;
+	return memcmp(&h, t->result, sizeof(h)) == 0;
 }
 
 int main(void)
@@ -70,13 +68,10 @@ int main(void)
 	size_t i;
 
 	/* This is how many tests you plan to run */
-	plan_tests(sizeof(tests) / sizeof(struct test) * 2);
+	plan_tests(sizeof(tests) / sizeof(tests[0]));
 
-	for (i = 0; i < sizeof(tests) / sizeof(struct test); i++)
-		ok1(do_test(&tests[i], false));
-
-	for (i = 0; i < sizeof(tests) / sizeof(struct test); i++)
-		ok1(do_test(&tests[i], true));
+	for (i = 0; i < sizeof(tests) / sizeof(tests[0]); i++)
+		ok1(do_test(&tests[i]));
 
 	/* This exits depending on whether all tests passed */
 	return exit_status();
