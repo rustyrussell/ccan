@@ -42,6 +42,7 @@ MODS := a_star \
 	crcsync \
 	crypto/ripemd160 \
 	crypto/sha256 \
+	crypto/sha512 \
 	crypto/shachain \
 	crypto/siphash24 \
 	daemonize \
