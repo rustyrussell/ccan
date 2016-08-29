@@ -11,5 +11,6 @@ addons:
             - libjudy-dev libvorbis-dev libportaudio-dev libtalloc-dev
 
 script:
+        - make config.h
         - make -j2
         - make -j2 -k check
