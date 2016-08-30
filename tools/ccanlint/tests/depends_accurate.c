@@ -21,8 +21,13 @@ static bool has_dep(struct manifest *m, char **deps, bool *used,
 	unsigned int i;
 
 	/* We can include ourselves, of course. */
-	if (streq(depname + strlen("ccan/"), m->modname))
-		return true;
+	if (strstarts(depname + strlen("ccan/"), m->modname)) {
+		const char *p = depname + strlen("ccan/") + strlen(m->modname);
+		/* And our own tests! */
+		if (streq(p, "/test") || streq(p, ""))
+			return true;
+		/* But not any submodules; they need an explicit dep */
+	}
 
 	for (i = 0; deps[i]; i++) {
 		if (streq(deps[i], depname)) {
