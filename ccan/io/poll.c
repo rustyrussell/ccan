@@ -68,7 +68,7 @@ static void del_fd(struct fd *fd)
 {
 	size_t n = fd->backend_info;
 
-	assert(n != -1);
+	assert(n != -1U);
 	assert(n < num_fds);
 	if (pollfds[n].events)
 		num_waiting--;
@@ -85,7 +85,7 @@ static void del_fd(struct fd *fd)
 		max_fds = 0;
 	}
 	num_fds--;
-	fd->backend_info = -1;
+	fd->backend_info = -1U;
 
 	/* Closing a local socket doesn't wake poll() because other end
 	 * has them open.  See 2.6.  When should I use shutdown()?
@@ -242,7 +242,8 @@ void *io_loop(struct timers *timers, struct timer **expired)
 		*expired = NULL;
 
 	while (!io_loop_return) {
-		int i, r, ms_timeout = -1;
+		int r, ms_timeout = -1;
+		unsigned int i;
 
 		if (close_conns()) {
 			/* Could have started/finished more. */

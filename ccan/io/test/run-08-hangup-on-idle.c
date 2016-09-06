@@ -43,12 +43,14 @@ int main(void)
 	io_new_conn(NULL, fds2[0], setup_waker, buf);
 
 	if (fork() == 0) {
-		write(fds[1], "hello there world", 16);
+		if (write(fds[1], "hello there world", 16) != 16)
+			abort();
 		close(fds[1]);
 
 		/* Now wake it. */
 		sleep(1);
-		write(fds2[1], "", 1);
+		if (write(fds2[1], "", 1) != 1)
+			abort();
 		exit(0);
 	}
 

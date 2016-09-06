@@ -21,7 +21,7 @@ struct data {
 	char wbuf[32];
 };
 
-static void finish_ok(struct io_conn *conn, struct data *d)
+static void finish_ok(struct io_conn *conn UNNEEDED, struct data *d)
 {
 	d->state++;
 }
@@ -86,7 +86,7 @@ static int make_listen_fd(const char *port, struct addrinfo **info)
 int main(void)
 {
 	struct data *d = malloc(sizeof(*d));
-	struct addrinfo *addrinfo;
+	struct addrinfo *addrinfo = NULL;
 	int fd, status;
 
 	/* This is how many tests you plan to run */
@@ -98,7 +98,7 @@ int main(void)
 	ok1(d->l);
 	fflush(stdout);
 	if (!fork()) {
-		int i;
+		size_t i;
 		char buf[32];
 
 		io_close_listener(d->l);

@@ -23,7 +23,7 @@ struct data {
 	char buf[4];
 };
 
-static void finish_ok(struct io_conn *conn, struct data *d)
+static void finish_ok(struct io_conn *conn UNNEEDED, struct data *d)
 {
 	d->state++;
 	io_break(d);
@@ -88,7 +88,7 @@ static int make_listen_fd(const char *port, struct addrinfo **info)
 int main(void)
 {
 	struct data *d = malloc(sizeof(*d));
-	struct addrinfo *addrinfo;
+	struct addrinfo *addrinfo = NULL;
 	struct io_listener *l;
 	struct timer *expired;
 	int fd, status;
@@ -106,7 +106,7 @@ int main(void)
 	fflush(stdout);
 
 	if (!fork()) {
-		int i;
+		size_t i;
 
 		io_close_listener(l);
 		fd = socket(addrinfo->ai_family, addrinfo->ai_socktype,
@@ -144,7 +144,7 @@ int main(void)
 	/* It should have died. */
 	ok1(wait(&status));
 	ok1(WIFEXITED(status));
-	ok1(WEXITSTATUS(status) < sizeof(d->buf));
+	ok1(WEXITSTATUS(status) < (int)sizeof(d->buf));
 
 	/* This one shouldn't time out. */
 	d->state = 0;
@@ -152,7 +152,7 @@ int main(void)
 	fflush(stdout);
 
 	if (!fork()) {
-		int i;
+		size_t i;
 
 		io_close_listener(l);
 		fd = socket(addrinfo->ai_family, addrinfo->ai_socktype,
@@ -178,7 +178,7 @@ int main(void)
 	ok1(expired == NULL);
 	ok1(wait(&status));
 	ok1(WIFEXITED(status));
-	ok1(WEXITSTATUS(status) >= sizeof(d->buf));
+	ok1(WEXITSTATUS(status) >= (int)sizeof(d->buf));
 
 	io_close_listener(l);
 	freeaddrinfo(addrinfo);

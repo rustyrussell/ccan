@@ -18,7 +18,7 @@ struct packet {
 	void *contents;
 };
 
-static void finish_ok(struct io_conn *conn, struct packet *pkt)
+static void finish_ok(struct io_conn *conn UNNEEDED, struct packet *pkt)
 {
 	ok1(pkt->state == 3);
 	pkt->state++;
@@ -130,7 +130,7 @@ static int make_listen_fd(const char *port, struct addrinfo **info)
 int main(void)
 {
 	struct packet *pkt = malloc(sizeof(*pkt));
-	struct addrinfo *addrinfo;
+	struct addrinfo *addrinfo = NULL;
 	struct io_listener *l;
 	int fd, status;
 

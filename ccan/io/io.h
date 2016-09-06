@@ -47,7 +47,8 @@ struct io_conn;
  *	int fd[2];
  *	struct io_conn *conn;
  *
- *	pipe(fd);
+ *	if (pipe(fd) != 0)
+ *		exit(1);
  *	conn = io_new_conn(NULL, fd[0], conn_init, (const char *)"hi!");
  *	if (!conn)
  *		exit(1);
@@ -347,7 +348,7 @@ struct io_plan *io_write_partial_(struct io_conn *conn,
  *
  * Example:
  * static struct io_plan *init_conn_with_nothing(struct io_conn *conn,
- *						 void *unused)
+ *						 void *unused UNNEEDED)
  * {
  *	// Silly example: close on next time around loop.
  *	return io_always(conn, io_close_cb, NULL);
@@ -473,7 +474,7 @@ void io_duplex_prepare(struct io_conn *conn);
  *	char out[100];
  * };
  *
- * static struct io_plan *finish(struct io_conn *conn, struct buf *b)
+ * static struct io_plan *finish(struct io_conn *conn, struct buf *b UNNEEDED)
  * {
  *	return io_halfclose(conn);
  * }
@@ -589,7 +590,7 @@ void io_break(const void *ret);
  * {
  *	io_break(conn);
  *	// We won't ever return from io_break
- *	return io_never(conn, NULL);
+ *	return io_never(conn, unused);
  * }
  */
 struct io_plan *io_never(struct io_conn *conn, void *unused);
@@ -673,7 +674,7 @@ struct timeabs (*io_time_override(struct timeabs (*now)(void)))(void);
  *
  * Example:
  * // Dumb init function to set debug and tell conn to close.
- * static struct io_plan *conn_init(struct io_conn *conn, const char *msg)
+ * static struct io_plan *conn_init(struct io_conn *conn, const char *msg UNNEEDED)
  * {
  *	io_set_debug(conn, true);
  *	return io_close(conn);

@@ -29,21 +29,21 @@ static struct io_plan *read_done(struct io_conn *conn, struct data *d)
 	return io_close(conn);
 }
 
-static void finish_waker(struct io_conn *conn, struct data *d)
+static void finish_waker(struct io_conn *conn UNNEEDED, struct data *d)
 {
 	io_wake(d);
 	ok1(d->state == 1);
 	d->state++;
 }
 
-static void finish_idle(struct io_conn *conn, struct data *d)
+static void finish_idle(struct io_conn *conn UNNEEDED, struct data *d)
 {
 	ok1(d->state == 3);
 	d->state++;
 	io_break(d);
 }
 
-static struct io_plan *never(struct io_conn *conn, void *arg)
+static struct io_plan *never(struct io_conn *conn UNNEEDED, void *arg UNNEEDED)
 {
 	abort();
 }
@@ -111,7 +111,7 @@ static int make_listen_fd(const char *port, struct addrinfo **info)
 int main(void)
 {
 	struct data *d = malloc(sizeof(*d));
-	struct addrinfo *addrinfo;
+	struct addrinfo *addrinfo = NULL;
 	struct io_listener *l;
 	int fd, status;
 
@@ -124,7 +124,7 @@ int main(void)
 	ok1(l);
 	fflush(stdout);
 	if (!fork()) {
-		int i;
+		size_t i;
 
 		io_close_listener(l);
 		fd = socket(addrinfo->ai_family, addrinfo->ai_socktype,

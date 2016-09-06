@@ -12,14 +12,14 @@
 #define PORT "65018"
 #endif
 
-static void finish_100(struct io_conn *conn, int *state)
+static void finish_100(struct io_conn *conn UNNEEDED, int *state)
 {
 	ok1(errno == 100);
 	ok1(*state == 1);
 	(*state)++;
 }
 
-static void finish_EBADF(struct io_conn *conn, int *state)
+static void finish_EBADF(struct io_conn *conn UNNEEDED, int *state)
 {
 	ok1(errno == EBADF);
 	ok1(*state == 3);
@@ -83,7 +83,7 @@ static int make_listen_fd(const char *port, struct addrinfo **info)
 int main(void)
 {
 	int state = 0;
-	struct addrinfo *addrinfo;
+	struct addrinfo *addrinfo = NULL;
 	struct io_listener *l;
 	int fd;
 

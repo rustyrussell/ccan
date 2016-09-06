@@ -27,7 +27,7 @@
  * 	char buf[4096];
  * };
  *
- * static void finish(struct io_conn *c, struct buffer *b)
+ * static void finish(struct io_conn *c UNNEEDED, struct buffer *b)
  * {
  * 	// Mark us finished.
  * 	b->finished = true;
@@ -134,6 +134,7 @@ int main(int argc, char *argv[])
 
 	if (strcmp(argv[1], "depends") == 0) {
 		printf("ccan/container_of\n");
+		printf("ccan/compiler\n");
 		printf("ccan/list\n");
 		printf("ccan/tal\n");
 		printf("ccan/time\n");

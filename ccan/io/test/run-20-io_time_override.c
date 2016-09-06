@@ -8,7 +8,7 @@
 
 #define PORT "65020"
 
-static struct io_plan *init_conn(struct io_conn *conn, void *unused)
+static struct io_plan *init_conn(struct io_conn *conn, void *unused UNNEEDED)
 {
 	return io_close(conn);
 }
@@ -58,7 +58,7 @@ int main(void)
 	int fd;
 	struct timers timers;
 	struct timer timer, *expired;
-	struct addrinfo *addrinfo;
+	struct addrinfo *addrinfo = NULL;
 
 	/* This is how many tests you plan to run */
 	plan_tests(7);

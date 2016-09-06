@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <ccan/compiler/compiler.h>
 #include <ccan/container_of/container_of.h>
 
 void *io_loop_return;
@@ -40,7 +41,8 @@ void io_close_listener(struct io_listener *l)
 	tal_free(l);
 }
 
-static struct io_plan *io_never_called(struct io_conn *conn, void *arg)
+static struct io_plan *io_never_called(struct io_conn *conn UNNEEDED,
+				       void *arg UNNEEDED)
 {
 	abort();
 }
@@ -280,7 +282,7 @@ struct io_plan *io_write_partial_(struct io_conn *conn,
 	return io_set_plan(conn, IO_OUT, do_write_partial, next, next_arg);
 }
 
-static int do_connect(int fd, struct io_plan_arg *arg)
+static int do_connect(int fd, struct io_plan_arg *arg UNNEEDED)
 {
 	int err, ret;
 	socklen_t len = sizeof(err);
@@ -421,7 +423,7 @@ struct io_plan *io_close(struct io_conn *conn)
 	return io_set_plan(conn, IO_IN, NULL, NULL, NULL);
 }
 
-struct io_plan *io_close_cb(struct io_conn *conn, void *next_arg)
+struct io_plan *io_close_cb(struct io_conn *conn, void *next_arg UNNEEDED)
 {
 	return io_close(conn);
 }
@@ -433,7 +435,7 @@ void io_break(const void *ret)
 	io_loop_return = (void *)ret;
 }
 
-struct io_plan *io_never(struct io_conn *conn, void *unused)
+struct io_plan *io_never(struct io_conn *conn, void *unused UNNEEDED)
 {
 	return io_always(conn, io_never_called, NULL);
 }
@@ -541,6 +543,6 @@ void io_set_debug(struct io_conn *conn, bool debug)
 	set_blocking(io_conn_fd(conn), debug);
 }
 
-void io_debug_complete(struct io_conn *conn)
+void io_debug_complete(struct io_conn *conn UNNEEDED)
 {
 }

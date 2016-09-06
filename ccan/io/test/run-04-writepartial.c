@@ -18,7 +18,7 @@ struct data {
 	char *buf;
 };
 
-static void finish_ok(struct io_conn *conn, struct data *d)
+static void finish_ok(struct io_conn *conn UNNEEDED, struct data *d)
 {
 	ok1(d->state == 1);
 	d->state++;
@@ -81,7 +81,7 @@ static void read_from_socket(const char *str, const struct addrinfo *addrinfo)
 		exit(1);
 	if (connect(fd, addrinfo->ai_addr, addrinfo->ai_addrlen) != 0)
 		exit(2);
-	if (read(fd, buf, strlen(str)) != strlen(str))
+	if (read(fd, buf, strlen(str)) != (int)strlen(str))
 		exit(3);
 	if (memcmp(buf, str, strlen(str)) != 0)
 		exit(4);
@@ -91,7 +91,7 @@ static void read_from_socket(const char *str, const struct addrinfo *addrinfo)
 int main(void)
 {
 	struct data *d = malloc(sizeof(*d));
-	struct addrinfo *addrinfo;
+	struct addrinfo *addrinfo = NULL;
 	struct io_listener *l;
 	int fd, status;
 

@@ -9,13 +9,14 @@
 
 static char inbuf[8];
 
-static struct io_plan *wake_it(struct io_conn *conn, struct io_conn *reader)
+static struct io_plan *wake_it(struct io_conn *conn,
+			       struct io_conn *reader UNNEEDED)
 {
 	io_wake(inbuf);
 	return io_close(conn);
 }
 
-static struct io_plan *read_buf(struct io_conn *conn, void *unused)
+static struct io_plan *read_buf(struct io_conn *conn, void *unused UNNEEDED)
 {
 	return io_read(conn, inbuf, 8, io_close_cb, NULL);
 }
@@ -25,7 +26,7 @@ static struct io_plan *init_writer(struct io_conn *conn, struct io_conn *wakeme)
 	return io_write(conn, "EASYTEST", 8, wake_it, wakeme);
 }
 
-static struct io_plan *init_waiter(struct io_conn *conn, void *unused)
+static struct io_plan *init_waiter(struct io_conn *conn, void *unused UNNEEDED)
 {
 	return io_wait(conn, inbuf, read_buf, NULL);
 }

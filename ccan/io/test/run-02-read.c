@@ -17,7 +17,7 @@ struct data {
 	char buf[4];
 };
 
-static void finish_ok(struct io_conn *conn, struct data *d)
+static void finish_ok(struct io_conn *conn UNNEEDED, struct data *d)
 {
 	ok1(d->state == 1);
 	d->state++;
@@ -71,7 +71,7 @@ static int make_listen_fd(const char *port, struct addrinfo **info)
 int main(void)
 {
 	struct data *d = malloc(sizeof(*d));
-	struct addrinfo *addrinfo;
+	struct addrinfo *addrinfo = NULL;
 	struct io_listener *l;
 	int fd, status;
 
@@ -84,7 +84,7 @@ int main(void)
 	ok1(l);
 	fflush(stdout);
 	if (!fork()) {
-		int i;
+		size_t i;
 
 		io_close_listener(l);
 		fd = socket(addrinfo->ai_family, addrinfo->ai_socktype,

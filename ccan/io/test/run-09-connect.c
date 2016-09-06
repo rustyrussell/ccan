@@ -88,7 +88,7 @@ static struct io_plan *setup_connect(struct io_conn *conn,
 int main(void)
 {
 	struct data *d = malloc(sizeof(*d));
-	struct addrinfo *addrinfo;
+	struct addrinfo *addrinfo = NULL;
 	int fd;
 
 	/* This is how many tests you plan to run */
