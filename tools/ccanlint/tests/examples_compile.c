@@ -442,7 +442,7 @@ static char *mangle(struct manifest *m, char **lines)
 	if (!has_main) {
 		ret = tal_strcat(m, take(ret),
 			     "/* Need a main to link successfully. */\n"
-			     "int main(void)\n{\n");
+			     "int main(int argc, char *argv[])\n{\n");
 		fake_function = true;
 	}
 
@@ -461,7 +461,9 @@ static char *mangle(struct manifest *m, char **lines)
 	}
 
 	if (fake_function)
-		ret = tal_strcat(m, take(ret), "return 0;\n}\n");
+		ret = tal_strcat(m, take(ret),
+				 "(void)argc; (void)argv;\n"
+				 "return 0;\n}\n");
 	return ret;
 }
 
