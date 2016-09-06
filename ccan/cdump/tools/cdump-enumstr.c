@@ -2,7 +2,7 @@
 #include <ccan/tal/grab_file/grab_file.h>
 #include <ccan/err/err.h>
 
-static bool dump_map(const char *name, struct cdump_type *t, void *unused)
+static bool dump_map(const char *name, struct cdump_type *t, void *unused UNNEEDED)
 {
 	size_t i;
 
@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
 	if (argc == 2)
 		strmap_iterate(&defs->enums, dump_map, NULL);
 	else {
-		unsigned int i;
+		int i;
 		struct cdump_type *t;
 
 		for (i = 2; i < argc; i++) {
