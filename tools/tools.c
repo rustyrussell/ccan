@@ -27,7 +27,7 @@ bool tools_verbose = false;
 /* Ten minutes. */
 const unsigned int default_timeout_ms = 10 * 60 * 1000;
 
-static void killme(int sig)
+static void killme(int sig UNNEEDED)
 {
 	kill(-getpid(), SIGKILL);
 }
@@ -38,7 +38,8 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 	pid_t pid;
 	int p[2];
 	struct rbuf in;
-	int status, ms;
+	int status;
+	unsigned int ms;
 	struct timeabs start;
 
 	*ok = false;

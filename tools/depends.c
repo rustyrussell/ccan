@@ -119,7 +119,8 @@ static char *replace(const void *ctx, const char *src,
 static char **get_one_safe_deps(const void *ctx,
 				const char *dir,
 				const char *style,
-				char *(*unused)(const void *, const char *))
+				char *(*unused)(const void *, const char *)
+					UNNEEDED)
 {
 	char **deps, **lines, *raw, *fname;
 	unsigned int i, n;
