@@ -18,7 +18,7 @@ struct obj {
 	unsigned int key;
 };
 
-static const unsigned int objkey(const struct obj *obj)
+static unsigned int objkey(const struct obj *obj)
 {
 	return obj->key;
 }
