@@ -140,7 +140,7 @@ int main(void)
 
 	/* Mask should be set. */
 	ok1(ht.common_mask != 0);
-	ok1(ht.common_mask != -1);
+	ok1(ht.common_mask != -1U);
 	ok1(check_mask(&ht, val, 2));
 
 	/* Now do the rest. */

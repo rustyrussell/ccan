@@ -87,7 +87,7 @@
  *
  *	int main(int argc, char *argv[])
  *	{
- *		unsigned int i;
+ *		int i;
  *		const char **values;
  *
  *		// Initialize cache.

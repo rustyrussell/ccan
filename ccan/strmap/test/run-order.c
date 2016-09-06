@@ -9,7 +9,7 @@ static bool in_order(const char *member, char *value, unsigned int *count)
 {
 	int i = atoi(member);
 	ok1(i == atoi(value));
-	ok1(*count == i);
+	ok1((int)*count == i);
 	(*count)++;
 	return true;
 }
@@ -18,7 +18,7 @@ static bool in_order_by_2(const char *member, char *value, unsigned int *count)
 {
 	int i = atoi(member);
 	ok1(i == atoi(value));
-	ok1(*count == i);
+	ok1((int)*count == i);
 	(*count) += 2;
 	return true;
 }

@@ -93,7 +93,7 @@ int main(void)
 	struct siphash_seed seed;
 	leint64_t v;
 	uint8_t in[MAXLEN];
-	int i;
+	size_t i;
 
 	/* This is how many tests you plan to run */
 	plan_tests(1 + MAXLEN * 2);

@@ -5,14 +5,14 @@
 int main(void)
 {
 	char *parent, *c;
-	int i;
+	size_t i;
 
 	plan_tests(1 + 3 * 100 + 98);
 
 	parent = tal(NULL, char);
 	ok1(parent);
 
-	for (i = 0; i < 100; i++) {
+	for (i = 0; i < 100U; i++) {
 		c = tal_arr(parent, char, 1);
 		ok1(tal_resizez(&c, i));
 		ok1(tal_count(c) == i);

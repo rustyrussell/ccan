@@ -35,7 +35,7 @@ struct opaque *create_opaque_blob(void)
 bool if_blobs_know_the_secret(struct opaque *blob)
 {
   bool answer = true;
-  int i;
+  size_t i;
   for (i = 0; i < sizeof(blob->secret_drawer) /
                sizeof(blob->secret_drawer[0]); i++)
           if (i != blob->secret_offset)

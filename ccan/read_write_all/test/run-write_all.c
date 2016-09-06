@@ -35,7 +35,7 @@ static ssize_t test_write(int fd, const void *buf, size_t count)
 		return -1;
 	}
 
-	if (write_return < count)
+	if (write_return < (ssize_t)count)
 		return write_return;
 	return count;
 }

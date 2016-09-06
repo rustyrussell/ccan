@@ -10,7 +10,7 @@ static bool in_order(const char *index, char *value, unsigned int *count)
 {
 	int i = atoi(index);
 	ok1(i == atoi(value));
-	ok1(*count == i);
+	ok1((int)*count == i);
 	(*count)++;
 	return true;
 }

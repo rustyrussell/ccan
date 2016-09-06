@@ -11,7 +11,7 @@ static ptrdiff_t testvals[] = {
 
 int main(void)
 {
-	int i;
+	unsigned int i;
 
 	/* This is how many tests you plan to run */
 	plan_tests(2 * ARRAY_SIZE(testvals));

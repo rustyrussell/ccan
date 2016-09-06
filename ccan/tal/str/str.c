@@ -68,7 +68,7 @@ static bool do_vfmt(char **buf, size_t off, const char *fmt, va_list ap)
 		ret = vsnprintf(*buf + off, max, fmt, ap2);
 		va_end(ap2);
 
-		if (ret < max) {
+		if (ret < (ssize_t)max) {
 			ok = true;
 			break;
 		}
