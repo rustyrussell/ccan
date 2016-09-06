@@ -5,6 +5,8 @@
 
 static void _register_callback(void (*cb)(const void *arg), const void *arg)
 {
+	(void)cb;
+	(void)arg;
 }
 
 #define register_callback(cb, arg)				\

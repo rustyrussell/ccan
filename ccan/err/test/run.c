@@ -15,6 +15,7 @@ int main(int argc, char *argv[])
 	int pfd[2];
 	const char *base;
 
+	(void)argc;
 	plan_tests(24);
 
 	err_set_progname(argv[0]);

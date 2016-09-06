@@ -23,6 +23,7 @@ struct other {
 
 static void take_any(struct any *any)
 {
+	(void)any;
 }
 
 int main(void)

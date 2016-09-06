@@ -34,7 +34,7 @@
  *	};
  *
  *	// Wrapper for rehash function pointer.
- *	static size_t rehash(const void *e, void *unused)
+ *	static size_t rehash(const void *e, void *unused UNNEEDED)
  *	{
  *		return hash_string(((struct name_to_digit *)e)->name);
  *	}

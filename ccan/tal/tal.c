@@ -323,7 +323,7 @@ static struct name *add_name_property(struct tal_hdr *t, const char *name)
 }
 
 static struct children *add_child_property(struct tal_hdr *parent,
-					   struct tal_hdr *child)
+					   struct tal_hdr *child UNNEEDED)
 {
 	struct children *prop = allocate(sizeof(*prop));
 	if (prop) {

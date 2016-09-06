@@ -33,7 +33,7 @@ struct htable {
  *
  * Example:
  *	// For simplicity's sake, say hash value is contents of elem.
- *	static size_t rehash(const void *elem, void *unused)
+ *	static size_t rehash(const void *elem, void *unused UNNEEDED)
  *	{
  *		return *(size_t *)elem;
  *	}

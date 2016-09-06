@@ -95,7 +95,7 @@ void timer_add(struct timers *timers, struct timer *t, struct timeabs when)
 }
 
 /* FIXME: inline */
-void timer_del(struct timers *timers, struct timer *t)
+void timer_del(struct timers *timers UNNEEDED, struct timer *t)
 {
 	list_del_init(&t->list);
 }

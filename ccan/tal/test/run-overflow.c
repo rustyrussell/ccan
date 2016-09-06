@@ -4,7 +4,7 @@
 
 static int error_count;
 
-static void my_error(const char *msg)
+static void my_error(const char *msg UNNEEDED)
 {
 	error_count++;
 }
