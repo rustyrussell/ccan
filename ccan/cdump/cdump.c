@@ -1,6 +1,7 @@
 /* MIT (BSD) license - see LICENSE file for details */
 #include "cdump.h"
 #include <ccan/tal/str/str.h>
+#include <ccan/compiler/compiler.h>
 #include <assert.h>
 
 struct token {
@@ -230,6 +231,9 @@ static struct cdump_type *get_type(struct cdump_definitions *defs,
 	case CDUMP_ARRAY:
 	case CDUMP_POINTER:
 		m = NULL;
+		break;
+	default:
+		abort();
 	}
 
 	/* Do we already have it? */
@@ -617,7 +621,7 @@ static bool gather_undefines(const char *name,
 }
 
 static bool remove_from_map(const char *name,
-			    struct cdump_type *t,
+			    struct cdump_type *t UNNEEDED,
 			    cdump_map_t *map)
 {
 	strmap_del(map, name, NULL);
