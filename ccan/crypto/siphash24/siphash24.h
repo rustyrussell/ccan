@@ -99,7 +99,7 @@ void siphash24_init(struct siphash24_ctx *ctx, const struct siphash_seed *seed);
 	{ { 0x736f6d6570736575ULL ^ (seed1),	\
 	    0x646f72616e646f6dULL ^ (seed2),	\
 	    0x6c7967656e657261ULL ^ (seed1),	\
-	    0x7465646279746573ULL ^ (seed2) } }
+	    0x7465646279746573ULL ^ (seed2) }, 0, { 0 } }
 
 /**
  * siphash24_update - include some memory in the hash.
