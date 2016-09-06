@@ -156,7 +156,8 @@ int main(void)
 	ok1(t3.ts.tv_sec == 2);
 	ok1(t3.ts.tv_nsec == 147483648);
 
-	pipe(fds);
+	if (pipe(fds) != 0)
+		abort();
 
 	fflush(stdout);
 	switch (fork()) {

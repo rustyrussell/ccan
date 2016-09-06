@@ -246,9 +246,13 @@ static bool check_with_child(struct ptr_valid_batch *batch,
 			return false;
 	}
 
-	write(batch->to_child, &p, sizeof(p));
-	write(batch->to_child, &size, sizeof(size));
-	write(batch->to_child, &is_write, sizeof(is_write));
+	if (write(batch->to_child, &p, sizeof(p)) != sizeof(p)
+	    || write(batch->to_child, &size, sizeof(size)) != sizeof(size)
+	    || write(batch->to_child, &is_write, sizeof(is_write)) != sizeof(is_write)) {
+		finish_child(batch);
+		errno = EBADF;
+		return false;
+	}
 
 	if (read(batch->from_child, &ret, sizeof(ret)) != sizeof(ret)) {
 		finish_child(batch);

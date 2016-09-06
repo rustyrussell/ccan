@@ -24,11 +24,13 @@
  * int main(int argc, char **argv)
  * {
  *	pid_t child;
- *	int outputfd, i, status;
+ *	int outputfd, status;
+ *	size_t i;
  *	char input[12];
  *
  *	if (argc == 2) {
- *		write(STDOUT_FILENO, "hello world\n", 12);
+ *		if (write(STDOUT_FILENO, "hello world\n", 12) != 12)
+ *			abort();
  *		exit(0);
  *	}
  *	child = pipecmd(&outputfd, NULL, NULL, argv[0], "ignoredarg", NULL);
