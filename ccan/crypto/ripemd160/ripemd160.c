@@ -49,31 +49,31 @@ void ripemd160_done(struct ripemd160_ctx *ctx, struct ripemd160 *res)
 	invalidate_ripemd160(ctx);
 }
 #else
-static uint32_t inline f1(uint32_t x, uint32_t y, uint32_t z) { return x ^ y ^ z; }
-static uint32_t inline f2(uint32_t x, uint32_t y, uint32_t z) { return (x & y) | (~x & z); }
-static uint32_t inline f3(uint32_t x, uint32_t y, uint32_t z) { return (x | ~y) ^ z; }
-static uint32_t inline f4(uint32_t x, uint32_t y, uint32_t z) { return (x & z) | (y & ~z); }
-static uint32_t inline f5(uint32_t x, uint32_t y, uint32_t z) { return x ^ (y | ~z); }
+static inline uint32_t f1(uint32_t x, uint32_t y, uint32_t z) { return x ^ y ^ z; }
+static inline uint32_t f2(uint32_t x, uint32_t y, uint32_t z) { return (x & y) | (~x & z); }
+static inline uint32_t f3(uint32_t x, uint32_t y, uint32_t z) { return (x | ~y) ^ z; }
+static inline uint32_t f4(uint32_t x, uint32_t y, uint32_t z) { return (x & z) | (y & ~z); }
+static inline uint32_t f5(uint32_t x, uint32_t y, uint32_t z) { return x ^ (y | ~z); }
 
-static uint32_t inline rol(uint32_t x, int i) { return (x << i) | (x >> (32 - i)); }
+static inline uint32_t rol(uint32_t x, int i) { return (x << i) | (x >> (32 - i)); }
 
-static void inline Round(uint32_t *a, uint32_t b UNUSED, uint32_t *c, uint32_t d UNUSED, uint32_t e, uint32_t f, uint32_t x, uint32_t k, int r)
+static inline void Round(uint32_t *a, uint32_t b UNUSED, uint32_t *c, uint32_t d UNUSED, uint32_t e, uint32_t f, uint32_t x, uint32_t k, int r)
 {
     *a = rol(*a + f + x + k, r) + e;
     *c = rol(*c, 10);
 }
 
-static void inline R11(uint32_t *a, uint32_t b, uint32_t *c, uint32_t d, uint32_t e, uint32_t x, int r) { Round(a, b, c, d, e, f1(b, *c, d), x, 0, r); }
-static void inline R21(uint32_t *a, uint32_t b, uint32_t *c, uint32_t d, uint32_t e, uint32_t x, int r) { Round(a, b, c, d, e, f2(b, *c, d), x, 0x5A827999ul, r); }
-static void inline R31(uint32_t *a, uint32_t b, uint32_t *c, uint32_t d, uint32_t e, uint32_t x, int r) { Round(a, b, c, d, e, f3(b, *c, d), x, 0x6ED9EBA1ul, r); }
-static void inline R41(uint32_t *a, uint32_t b, uint32_t *c, uint32_t d, uint32_t e, uint32_t x, int r) { Round(a, b, c, d, e, f4(b, *c, d), x, 0x8F1BBCDCul, r); }
-static void inline R51(uint32_t *a, uint32_t b, uint32_t *c, uint32_t d, uint32_t e, uint32_t x, int r) { Round(a, b, c, d, e, f5(b, *c, d), x, 0xA953FD4Eul, r); }
+static inline void R11(uint32_t *a, uint32_t b, uint32_t *c, uint32_t d, uint32_t e, uint32_t x, int r) { Round(a, b, c, d, e, f1(b, *c, d), x, 0, r); }
+static inline void R21(uint32_t *a, uint32_t b, uint32_t *c, uint32_t d, uint32_t e, uint32_t x, int r) { Round(a, b, c, d, e, f2(b, *c, d), x, 0x5A827999ul, r); }
+static inline void R31(uint32_t *a, uint32_t b, uint32_t *c, uint32_t d, uint32_t e, uint32_t x, int r) { Round(a, b, c, d, e, f3(b, *c, d), x, 0x6ED9EBA1ul, r); }
+static inline void R41(uint32_t *a, uint32_t b, uint32_t *c, uint32_t d, uint32_t e, uint32_t x, int r) { Round(a, b, c, d, e, f4(b, *c, d), x, 0x8F1BBCDCul, r); }
+static inline void R51(uint32_t *a, uint32_t b, uint32_t *c, uint32_t d, uint32_t e, uint32_t x, int r) { Round(a, b, c, d, e, f5(b, *c, d), x, 0xA953FD4Eul, r); }
 
-static void inline R12(uint32_t *a, uint32_t b, uint32_t *c, uint32_t d, uint32_t e, uint32_t x, int r) { Round(a, b, c, d, e, f5(b, *c, d), x, 0x50A28BE6ul, r); }
-static void inline R22(uint32_t *a, uint32_t b, uint32_t *c, uint32_t d, uint32_t e, uint32_t x, int r) { Round(a, b, c, d, e, f4(b, *c, d), x, 0x5C4DD124ul, r); }
-static void inline R32(uint32_t *a, uint32_t b, uint32_t *c, uint32_t d, uint32_t e, uint32_t x, int r) { Round(a, b, c, d, e, f3(b, *c, d), x, 0x6D703EF3ul, r); }
-static void inline R42(uint32_t *a, uint32_t b, uint32_t *c, uint32_t d, uint32_t e, uint32_t x, int r) { Round(a, b, c, d, e, f2(b, *c, d), x, 0x7A6D76E9ul, r); }
-static void inline R52(uint32_t *a, uint32_t b, uint32_t *c, uint32_t d, uint32_t e, uint32_t x, int r) { Round(a, b, c, d, e, f1(b, *c, d), x, 0, r); }
+static inline void R12(uint32_t *a, uint32_t b, uint32_t *c, uint32_t d, uint32_t e, uint32_t x, int r) { Round(a, b, c, d, e, f5(b, *c, d), x, 0x50A28BE6ul, r); }
+static inline void R22(uint32_t *a, uint32_t b, uint32_t *c, uint32_t d, uint32_t e, uint32_t x, int r) { Round(a, b, c, d, e, f4(b, *c, d), x, 0x5C4DD124ul, r); }
+static inline void R32(uint32_t *a, uint32_t b, uint32_t *c, uint32_t d, uint32_t e, uint32_t x, int r) { Round(a, b, c, d, e, f3(b, *c, d), x, 0x6D703EF3ul, r); }
+static inline void R42(uint32_t *a, uint32_t b, uint32_t *c, uint32_t d, uint32_t e, uint32_t x, int r) { Round(a, b, c, d, e, f2(b, *c, d), x, 0x7A6D76E9ul, r); }
+static inline void R52(uint32_t *a, uint32_t b, uint32_t *c, uint32_t d, uint32_t e, uint32_t x, int r) { Round(a, b, c, d, e, f1(b, *c, d), x, 0, r); }
 
 /** Perform a RIPEMD-160 transformation, processing a 64-byte chunk. */
 static void Transform(uint32_t *s, const uint32_t *chunk)

@@ -106,7 +106,8 @@ void ripemd160_init(struct ripemd160_ctx *ctx);
 #else
 #define RIPEMD160_INIT							\
 	{ { 0x67452301ul, 0xEFCDAB89ul, 0x98BADCFEul, 0x10325476ul,	\
-	    0xC3D2E1F0ul }, 0 }
+				0xC3D2E1F0ul }, 0,			\
+	  { { 0, 0, 0, 0, 0, 0, 0, 0 } } }
 #endif
 
 /**
