@@ -485,7 +485,7 @@ static struct ccan_file *mangle_example(struct manifest *m,
 		return NULL;
 
 	contents = mangle(m, lines);
-	if (write(fd, contents, strlen(contents)) != strlen(contents)) {
+	if (write(fd, contents, strlen(contents)) != (int)strlen(contents)) {
 		close(fd);
 		return NULL;
 	}
@@ -550,7 +550,7 @@ static unsigned int try_compiling(struct manifest *m,
 }
 
 static void build_examples(struct manifest *m,
-			   unsigned int *timeleft, struct score *score)
+			   unsigned int *timeleft UNNEEDED, struct score *score)
 {
 	struct ccan_file *i;
 	char **prev = NULL;

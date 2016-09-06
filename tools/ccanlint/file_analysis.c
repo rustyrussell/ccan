@@ -417,7 +417,7 @@ void score_file_error(struct score *score, struct ccan_file *f, unsigned line,
 }
 
 
-char *get_or_compile_info(const void *ctx, const char *dir)
+char *get_or_compile_info(const void *ctx UNNEEDED, const char *dir)
 {
 	struct manifest *m = get_manifest(NULL, dir);
 

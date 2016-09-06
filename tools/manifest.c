@@ -183,7 +183,7 @@ static void add_files(struct manifest *m, const char *base, const char *subdir)
 }
 
 static int cmp_names(struct ccan_file *const *a, struct ccan_file *const *b,
-		     void *unused)
+		     void *unused UNNEEDED)
 {
 	return strcmp((*a)->name, (*b)->name);
 }
