@@ -95,7 +95,7 @@ static bool check_mask(struct htable *ht, uint64_t val[], unsigned num)
 	return true;
 }
 
-int main(int argc, char *argv[])
+int main(void)
 {
 	unsigned int i, weight;
 	uintptr_t perfect_bit;

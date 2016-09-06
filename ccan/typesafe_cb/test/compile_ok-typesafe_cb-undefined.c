@@ -38,7 +38,7 @@ static void my_callback_post(struct undefined *undef, int x)
 {
 }
 
-int main(int argc, char *argv[])
+int main(void)
 {
 	struct undefined *handle = NULL;
 

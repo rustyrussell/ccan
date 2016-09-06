@@ -17,7 +17,7 @@ void my_callback(int something)
 {
 }
 
-int main(int argc, char *argv[])
+int main(void)
 {
 #ifdef FAIL
 	/* This fails due to arg, not due to cast. */

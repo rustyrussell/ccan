@@ -39,7 +39,7 @@ static ssize_t test_write(int fd, const void *buf, size_t count)
 
 #define BUFSZ 1024
 
-int main(int argc, char *argv[])
+int main(void)
 {
 	char *buffer;
 

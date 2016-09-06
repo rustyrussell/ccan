@@ -38,7 +38,7 @@
  *		return retval;
  *	}
  *
- *	int main(int argc, char *argv[])
+ *	int main(void)
  *	{
  *		tal_t *tmp_ctx = tal_newframe();
  *		int *val = do_work();
