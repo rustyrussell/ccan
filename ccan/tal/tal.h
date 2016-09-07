@@ -262,7 +262,7 @@ const char *tal_name(const tal_t *ptr);
 size_t tal_count(const tal_t *ptr);
 
 /**
- * tal_first - get the first tal object child.
+ * tal_first - get the first immediate tal object child.
  * @root: The tal allocated object to start with, or NULL.
  *
  * Returns NULL if there are no children.
@@ -270,15 +270,13 @@ size_t tal_count(const tal_t *ptr);
 tal_t *tal_first(const tal_t *root);
 
 /**
- * tal_next - get the next tal object child.
- * @root: The tal allocated object to start with, or NULL.
+ * tal_next - get the next immediate tal object child.
  * @prev: The return value from tal_first or tal_next.
  *
- * Returns NULL if there are no more children.  This should be safe to
- * call on an altering tree unless @prev is no longer a descendent of
- * @root.
+ * Returns NULL if there are no more immediate children.  This should be safe to
+ * call on an altering tree unless @prev is no longer valid.
  */
-tal_t *tal_next(const tal_t *root, const tal_t *prev);
+tal_t *tal_next(const const tal_t *prev);
 
 /**
  * tal_parent - get the parent of a tal object.

@@ -630,31 +630,16 @@ tal_t *tal_first(const tal_t *root)
 	return from_tal_hdr(c);
 }
 
-tal_t *tal_next(const tal_t *root, const tal_t *prev)
+tal_t *tal_next(const tal_t *prev)
 {
-        struct tal_hdr *c, *t = debug_tal(to_tal_hdr(prev)), *top;
+        struct tal_hdr *next, *prevhdr = debug_tal(to_tal_hdr(prev));
+	struct list_head *head;
 
-        /* Children? */
-	c = first_child(t);
-	if (c)
-		return from_tal_hdr(c);
-
-        top = to_tal_hdr_or_null(root);
-        do {
-		struct tal_hdr *next;
-		struct list_node *end;
-
-		end = &ignore_destroying_bit(t->parent_child)->children.n;
-
-		next = list_entry(t->list.next, struct tal_hdr, list);
-		if (&next->list != end)
-			return from_tal_hdr(next);
-
-                /* OK, go back to parent. */
-                t = ignore_destroying_bit(t->parent_child)->parent;
-        } while (t != top);
-
-        return NULL;
+	head = &ignore_destroying_bit(prevhdr->parent_child)->children;
+	next = list_next(head, prevhdr, list);
+	if (!next)
+		return NULL;
+	return from_tal_hdr(next);
 }
 
 tal_t *tal_parent(const tal_t *ctx)
