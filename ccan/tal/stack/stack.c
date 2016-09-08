@@ -12,7 +12,7 @@ static void _free_frame(tal_t *o)
 
 tal_t *tal_newframe_(const char *label)
 {
-	h = tal_alloc_(h, 0, false, label);
+	h = tal_alloc_(h, 0, false, false, label);
 	assert(h != NULL);
 	tal_add_destructor(h, _free_frame);
 	return h;
