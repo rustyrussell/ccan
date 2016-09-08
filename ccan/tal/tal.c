@@ -906,7 +906,6 @@ static bool check_node(struct children *parent_child,
 			if (name)
 				return check_err(t, errorstr,
 						 "has extra literal");
-			name = (struct name *)p;
 			break;
 		}
 		if (!in_bounds(p))
