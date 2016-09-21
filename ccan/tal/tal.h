@@ -285,7 +285,7 @@ tal_t *tal_first(const tal_t *root);
  * Returns NULL if there are no more immediate children.  This should be safe to
  * call on an altering tree unless @prev is no longer valid.
  */
-tal_t *tal_next(const const tal_t *prev);
+tal_t *tal_next(const tal_t *prev);
 
 /**
  * tal_parent - get the parent of a tal object.
