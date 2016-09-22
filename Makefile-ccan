@@ -54,6 +54,7 @@ MODS := a_star \
 	eratosthenes \
 	err \
 	failtest \
+	filesize_counter \
 	foreach \
 	generator \
 	grab_file \

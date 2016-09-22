@@ -1,0 +1,103 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * filesize_counter - durable counters using sparse files
+ *
+ * The filesize_counter (szcnt) module keeps count by incrementing the size of
+ * a file.  These counters are easy to read using lseek(2), stat(2), or ls(1).
+ * To keep the files small, they are replaced with sparse files at multiples
+ * of 4 KiB.
+ *
+ * The range of the counter is that of off_t.  Compile with _FILE_OFFSET_BITS
+ * set to 64 to count beyond 2 GiB.
+ *
+ * Tests suggest this approach performs on par with writing a raw uint every
+ * time and is 4 to 5 times faster than using ftruncate only.
+ *
+ * This is a novel approach, so why do it this way?  These counters are simple
+ * and unambiguous.  Picture a large organization, where disparate groups are
+ * responsible for quality assurance, operations, and health monitoring of
+ * production systems.  Add to that documentation inconsistencies, the need
+ * to maintain multiple software versions, and a regular influx of new staff,
+ * or staff turnover.
+ *
+ * Consider a counter implemented as a number stored in a file.  If an
+ * operator cats the file and sees 123, is that a decimal number or a hex
+ * number?  If the output appears binary, is it encoded?  Is it a raw integer?
+ * Signed or unsigned?  Big or little-endian?  If the file is empty, is that
+ * the same as zero, or is that a bug?
+ *
+ * File size, by contrast, is readily understood, and a file always has a
+ * non-negative size.
+ *
+ * A counter implementation can be abstracted behind an API or tool.  This way
+ * may increase the burdens of documentation, deployment, and testing, but
+ * probably worse is the additional dependency to be tracked and factored
+ * into release planning.
+ *
+ * File size, by contrast, is accessible through standard system calls
+ * and tools.  The intrepid operator can even set the counter at need with
+ * truncate(1), dd(1), etc.
+ *
+ * Example:
+ *	#include <err.h>
+ *	#include <stdio.h>
+ *	#include <ccan/filesize_counter/filesize_counter.h>
+ *
+ *	int main(int argc, char *argv[])
+ *	{
+ *		FILE *f;
+ *		struct szcnt *h;
+ *		off_t n, i;
+ *		char buf[BUFSIZ];
+ *		int ret;
+ *
+ *		if (argc != 2) return 1;
+ *		f = fopen(argv[1], "r");
+ *		if (!f) err(1, "fopen");
+ *
+ *		h = szcnt_new();
+ *		if (!h) err(1, "szcnt_new");
+ *
+ *		n = szcnt_open(h, "counter");
+ *		if (n == -1) err(1, "szcnt_open");
+ *
+ *		for (i = 0; i < n && !feof(f); i++) {
+ *			// skip lines output last run
+ *			fgets(buf, sizeof(buf), f);
+ *			if (ferror(f)) err(1, "fgets");
+ *		}
+ *
+ *		for (;;) {
+ *			fgets(buf, sizeof(buf), f);
+ *			if (ferror(f)) err(1, "fgets");
+ *			if (feof(f)) break;
+ *
+ *			fputs(buf, stdout);
+ *
+ *			ret = szcnt_inc(h);
+ *			if (ret == -1) err(1, "szcnt_inc");
+ *		}
+ *
+ *		szcnt_free(h);
+ *		return 0;
+ *	}
+ *
+ * License: APACHE-2
+ * Author: Dan Good <dan@dancancode.com>
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		/* none */
+		return 0;
+	}
+
+	return 1;
+}
