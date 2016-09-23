@@ -68,7 +68,7 @@ struct test {
 };
 
 static struct test tests[] = {
-	{ "HAVE_32BIT_OFF_T", DEFINES_EVERYTHING|EXECUTE, NULL, NULL,
+	{ "HAVE_32BIT_OFF_T", DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE, NULL, NULL,
 	  "#include <sys/types.h>\n"
 	  "int main(void) {\n"
 	  "	return sizeof(off_t) == 4 ? 0 : 1;\n"
@@ -173,7 +173,7 @@ static struct test tests[] = {
 	{ "HAVE_COMPOUND_LITERALS", INSIDE_MAIN, NULL, NULL,
 	  "int *foo = (int[]) { 1, 2, 3, 4 };\n"
 	  "return foo[0] ? 0 : 1;" },
-	{ "HAVE_FCHDIR", DEFINES_EVERYTHING|EXECUTE, NULL, NULL,
+	{ "HAVE_FCHDIR", DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE, NULL, NULL,
 	  "#include <sys/types.h>\n"
 	  "#include <sys/stat.h>\n"
 	  "#include <fcntl.h>\n"
@@ -194,7 +194,7 @@ static struct test tests[] = {
 	  "	if (arg == 4)\n"
 	  "		warnx(\"warn %u\", arg);\n"
 	  "}\n" },
-	{ "HAVE_FILE_OFFSET_BITS", DEFINES_EVERYTHING|EXECUTE,
+	{ "HAVE_FILE_OFFSET_BITS", DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE,
 	  "HAVE_32BIT_OFF_T", NULL,
 	  "#define _FILE_OFFSET_BITS 64\n"
 	  "#include <sys/types.h>\n"
@@ -240,7 +240,7 @@ static struct test tests[] = {
 	  "static void *func(int fd) {\n"
 	  "	return mmap(0, 65536, PROT_READ, MAP_SHARED, fd, 0);\n"
 	  "}" },
-	{ "HAVE_PROC_SELF_MAPS", DEFINES_EVERYTHING|EXECUTE, NULL, NULL,
+	{ "HAVE_PROC_SELF_MAPS", DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE, NULL, NULL,
 	  "#include <sys/types.h>\n"
 	  "#include <sys/stat.h>\n"
 	  "#include <fcntl.h>\n"
@@ -325,7 +325,7 @@ static struct test tests[] = {
 	  "-Werror -fopenmp" },
 	{ "HAVE_VALGRIND_MEMCHECK_H", OUTSIDE_MAIN, NULL, NULL,
 	  "#include <valgrind/memcheck.h>\n" },
-	{ "HAVE_UCONTEXT", DEFINES_EVERYTHING|EXECUTE,
+	{ "HAVE_UCONTEXT", DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE,
 	  NULL, NULL,
 	  "#include <ucontext.h>\n"
 	  "static int x = 0;\n"
@@ -346,7 +346,7 @@ static struct test tests[] = {
 	  "	return (x == 3) ? 0 : 1;\n"
 	  "}\n"
 	},
-	{ "HAVE_POINTER_SAFE_MAKECONTEXT", DEFINES_EVERYTHING|EXECUTE,
+	{ "HAVE_POINTER_SAFE_MAKECONTEXT", DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE,
 	  "HAVE_UCONTEXT", NULL,
 	  "#include <stddef.h>\n"
 	  "#include <ucontext.h>\n"
