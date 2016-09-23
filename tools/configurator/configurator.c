@@ -202,8 +202,9 @@ static struct test tests[] = {
 	  "	return sizeof(off_t) == 8 ? 0 : 1;\n"
 	  "}\n" },
 	{ "HAVE_FOR_LOOP_DECLARATION", INSIDE_MAIN, NULL, NULL,
-	  "for (int i = 0; i < argc; i++) { return 0; };\n"
-	  "return 1;" },
+	  "int ret = 1;\n"
+	  "for (int i = 0; i < argc; i++) { ret = 0; };\n"
+	  "return ret;" },
 	{ "HAVE_FLEXIBLE_ARRAY_MEMBER", OUTSIDE_MAIN, NULL, NULL,
 	  "struct foo { unsigned int x; int arr[]; };" },
 	{ "HAVE_GETPAGESIZE", DEFINES_FUNC, NULL, NULL,
