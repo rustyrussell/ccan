@@ -489,7 +489,7 @@ static bool run_test(const char *cmd, struct test *test)
 		char *dep;
 
 		/* Space-separated dependencies, could be ! for inverse. */
-		while ((len = strcspn(deps, " "))) {
+		while ((len = strcspn(deps, " ")) != 0) {
 			bool positive = true;
 			if (deps[len]) {
 				dep = strdup(deps);
