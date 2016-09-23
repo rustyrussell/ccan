@@ -278,7 +278,8 @@ static struct test tests[] = {
 	  "	return __stop_mysec - __start_mysec;\n"
 	  "}\n" },
 	{ "HAVE_STACK_GROWS_UPWARDS", DEFINES_EVERYTHING|EXECUTE, NULL, NULL,
-	  "static long nest(const void *base, unsigned int i)\n"
+	  "#include <stddef.h>\n"
+	  "static ptrdiff_t nest(const void *base, unsigned int i)\n"
 	  "{\n"
 	  "	if (i == 0)\n"
 	  "		return (const char *)&i - (const char *)base;\n"
