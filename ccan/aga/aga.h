@@ -347,7 +347,7 @@ struct aga_node *aga_bfs_explore(struct aga_graph *g, struct aga_node *n);
  *
  * Performs a breadth first search.  The block following this macro is
  * executed with @_n set first to @_start, then to each node reachable
- * from @_start in depth first search order.
+ * from @_start in breadth-first search order.
  *
  * aga_bfs_start() must be called before this macro is used.
  */
