@@ -127,7 +127,7 @@ struct timeabs time_now(void);
  * This value is only really useful for measuring time intervals.
  *
  * See also:
- *	time_since()
+ *	timemono_since()
  */
 struct timemono time_mono(void);
 
@@ -318,6 +318,17 @@ static inline struct timerel timemono_between(struct timemono recent,
 
 	t.ts = time_sub_(recent.ts, old.ts);
 	return t;
+}
+
+/**
+ * timemono_since - elapsed monotonic time since @old
+ * @old: a monotonic time from the past.
+ */
+static inline struct timerel timemono_since(struct timemono old)
+{
+	struct timemono now = time_mono();
+
+	return timemono_between(now, old);
 }
 
 /**

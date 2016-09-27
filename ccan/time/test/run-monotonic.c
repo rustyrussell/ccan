@@ -7,7 +7,7 @@ int main(void)
 	struct timemono t1, t2;
 	struct timerel t3;
 
-	plan_tests(2);
+	plan_tests(3);
 
 	/* Test time_mono */
 	t1 = time_mono();
@@ -19,6 +19,7 @@ int main(void)
 	t3.ts.tv_nsec = 0;
 
 	ok1(time_less(timemono_between(t1, t2), t3));
+	ok1(time_less(timemono_since(t1), t3));
 
 	return exit_status();
 }
