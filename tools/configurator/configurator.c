@@ -407,6 +407,22 @@ static void c12r_errx(int eval, const char *fmt, ...)
 	exit(eval);
 }
 
+static size_t fcopy(FILE *fsrc, FILE *fdst)
+{
+	char buffer[BUFSIZ];
+	size_t rsize, wsize;
+	size_t copied = 0;
+
+	while ((rsize = fread(buffer, 1, BUFSIZ, fsrc)) > 0) {
+		wsize = fwrite(buffer, 1, rsize, fdst);
+		copied += wsize;
+		if (wsize != rsize)
+			break;
+	}
+
+	return copied;
+}
+
 static char *grab_stream(FILE *file)
 {
 	size_t max, ret, size = 0;
@@ -530,7 +546,7 @@ static bool run_test(const char *cmd, struct test *test)
 		}
 	}
 
-	outf = fopen(INPUT_FILE, "w");
+	outf = fopen(INPUT_FILE, verbose > 1 ? "w+" : "w");
 	if (!outf)
 		c12r_err(1, "creating %s", INPUT_FILE);
 
@@ -561,11 +577,13 @@ static bool run_test(const char *cmd, struct test *test)
 		abort();
 
 	}
-	fclose(outf);
 
-	if (verbose > 1)
-		if (system("cat " INPUT_FILE) == -1)
-			;
+	if (verbose > 1) {
+		fseek(outf, 0, SEEK_SET);
+		fcopy(outf, stdout);
+	}
+
+	fclose(outf);
 
 	newcmd = strdup(cmd);
 
