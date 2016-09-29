@@ -7,8 +7,12 @@
 #ifndef CCAN_CFLAGS
 #define CCAN_CFLAGS DEFAULT_CCAN_CFLAGS
 #endif
+#ifndef CCAN_OUTPUT_EXE_CFLAG
+#define CCAN_OUTPUT_EXE_CFLAG DEFAULT_CCAN_OUTPUT_EXE_CFLAG
+#endif
 const char *compiler = CCAN_COMPILER;
 const char *cflags = CCAN_CFLAGS;
+const char *outexecflag = CCAN_OUTPUT_EXE_CFLAG;
 
 bool compile_verbose = false;
 
@@ -37,8 +41,9 @@ bool compile_object(const void *ctx, const char *cfile, const char *ccandir,
 	if (compile_verbose)
 		printf("Compiling %s\n", outfile);
 	return run_command(ctx, NULL, output,
-			   "%s %s -I%s -c -o %s %s",
-			   compiler, cflags, ccandir, outfile, cfile);
+			   "%s %s -I%s -c %s%s %s",
+			   compiler, cflags, ccandir,
+			   outexecflag, outfile, cfile);
 }
 
 /* Compile and link single C file, with object files.
@@ -51,7 +56,7 @@ bool compile_and_link(const void *ctx, const char *cfile, const char *ccandir,
 	if (compile_verbose)
 		printf("Compiling and linking %s\n", outfile);
 	return run_command(ctx, NULL, output,
-			   "%s %s -I%s -o %s %s %s %s",
-			   compiler, cflags,
-			   ccandir, outfile, cfile, objs, libs);
+			   "%s %s -I%s %s%s %s %s %s",
+			   compiler, cflags, ccandir,
+			   outexecflag, outfile, cfile, objs, libs);
 }

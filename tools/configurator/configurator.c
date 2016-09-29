@@ -40,6 +40,7 @@
 
 #define DEFAULT_COMPILER "cc"
 #define DEFAULT_FLAGS "-g3 -ggdb -Wall -Wundef -Wmissing-prototypes -Wmissing-declarations -Wstrict-prototypes -Wold-style-definition"
+#define DEFAULT_OUTPUT_EXE_FLAG "-o"
 
 #define OUTPUT_FILE "configurator.out"
 #define INPUT_FILE "configuratortest.c"
@@ -465,10 +466,12 @@ static char *run(const char *cmd, int *exitstatus)
 	return ret;
 }
 
-static char *connect_args(const char *argv[], const char *extra)
+static char *connect_args(const char *argv[], const char *outflag,
+		const char *files)
 {
-	unsigned int i, len = strlen(extra) + 1;
+	unsigned int i;
 	char *ret;
+	size_t len = strlen(outflag) + strlen(files) + 1;
 
 	for (i = 1; argv[i]; i++)
 		len += 1 + strlen(argv[i]);
@@ -478,10 +481,12 @@ static char *connect_args(const char *argv[], const char *extra)
 	for (i = 1; argv[i]; i++) {
 		strcpy(ret + len, argv[i]);
 		len += strlen(argv[i]);
-		if (argv[i+1])
+		if (argv[i+1] || *outflag)
 			ret[len++] = ' ';
 	}
-	strcpy(ret + len, extra);
+	strcpy(ret + len, outflag);
+	len += strlen(outflag);
+	strcpy(ret + len, files);
 	return ret;
 }
 
@@ -650,33 +655,47 @@ int main(int argc, const char *argv[])
 	unsigned int i;
 	const char *default_args[]
 		= { "", DEFAULT_COMPILER, DEFAULT_FLAGS, NULL };
+	const char *outflag = DEFAULT_OUTPUT_EXE_FLAG;
 
 	if (argc > 0)
 		progname = argv[0];
 
-	if (argc > 1) {
+	while (argc > 1) {
 		if (strcmp(argv[1], "--help") == 0) {
-			printf("Usage: configurator [-v] [<compiler> <flags>...]\n"
-			       "  <compiler> <flags> will have \"-o <outfile> <infile.c>\" appended\n"
-			       "Default: %s %s\n",
-			       DEFAULT_COMPILER, DEFAULT_FLAGS);
+			printf("Usage: configurator [-v] [-O<outflag>] [<compiler> <flags>...]\n"
+			       "  <compiler> <flags> will have \"<outflag> <outfile> <infile.c>\" appended\n"
+			       "Default: %s %s %s\n",
+			       DEFAULT_COMPILER, DEFAULT_FLAGS,
+			       DEFAULT_OUTPUT_EXE_FLAG);
 			exit(0);
 		}
-		if (strcmp(argv[1], "-v") == 0) {
+		if (strncmp(argv[1], "-O", 2) == 0) {
 			argc--;
 			argv++;
-			verbose = 1;
+			outflag = argv[1] + 2;
+			if (!*outflag) {
+				fprintf(stderr,
+					"%s: option requires an argument -- O\n",
+					argv[0]);
+				exit(1);
+			}
+		} else if (strcmp(argv[1], "-v") == 0) {
+			argc--;
+			argv++;
+			verbose++;
 		} else if (strcmp(argv[1], "-vv") == 0) {
 			argc--;
 			argv++;
-			verbose = 2;
+			verbose += 2;
+		} else {
+			break;
 		}
 	}
 
 	if (argc == 1)
 		argv = default_args;
 
-	cmd = connect_args(argv, " -o " OUTPUT_FILE " " INPUT_FILE);
+	cmd = connect_args(argv, outflag, OUTPUT_FILE " " INPUT_FILE);
 	for (i = 0; i < sizeof(tests)/sizeof(tests[0]); i++)
 		run_test(cmd, &tests[i]);
 	free(cmd);
@@ -691,9 +710,10 @@ int main(int argc, const char *argv[])
 	printf("#define _GNU_SOURCE /* Always use GNU extensions. */\n");
 	printf("#endif\n");
 	printf("#define CCAN_COMPILER \"%s\"\n", argv[1]);
-	cmd = connect_args(argv+1, "");
-	printf("#define CCAN_CFLAGS \"%s\"\n\n", cmd);
+	cmd = connect_args(argv + 1, "", "");
+	printf("#define CCAN_CFLAGS \"%s\"\n", cmd);
 	free(cmd);
+	printf("#define CCAN_OUTPUT_EXE_CFLAG \"%s\"\n\n", outflag);
 	/* This one implies "#include <ccan/..." works, eg. for tdb2.h */
 	printf("#define HAVE_CCAN 1\n");
 	for (i = 0; i < sizeof(tests)/sizeof(tests[0]); i++)
