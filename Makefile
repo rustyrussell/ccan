@@ -64,7 +64,7 @@ summary-fastcheck/%: tools/ccanlint/ccanlint $(OBJFILES)
 	$(CCANLINT_FAST) -s ccan/$*
 
 ccan/%/info: ccan/%/_info config.h
-	$(CC) $(CCAN_CFLAGS) -I. -o $@ -x c $<
+	$(CC) $(CCAN_CFLAGS) -I. -o $@ $(CFLAGS_FORCE_C_SOURCE) $<
 
 all_info: $(MODS:%=ccan/%/info)
 

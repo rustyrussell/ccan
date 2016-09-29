@@ -5,6 +5,7 @@
 #CCAN_CFLAGS=-g -O3 -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Wpointer-arith -Wwrite-strings -Wundef -DCCAN_STR_DEBUG=1
 CCAN_CFLAGS=-g3 -ggdb -Wall -Wstrict-prototypes -Wold-style-definition -Wmissing-prototypes -Wmissing-declarations -Wpointer-arith -Wwrite-strings -Wundef -DCCAN_STR_DEBUG=1
 CFLAGS = $(CCAN_CFLAGS) -I. $(DEPGEN)
+CFLAGS_FORCE_C_SOURCE = -x c
 
 MODS := a_star \
 	aga \
