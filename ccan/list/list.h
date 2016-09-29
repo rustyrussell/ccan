@@ -716,12 +716,12 @@ static inline void list_prepend_list_(struct list_head *to,
  * so you can break and continue as normal.
  *
  * WARNING! Being the low-level macro that it is, this wrapper doesn't know
- * nor care about the type of @i. The only assumtion made is that @i points
+ * nor care about the type of @i. The only assumption made is that @i points
  * to a chunk of memory that at some @offset, relative to @i, contains a
- * properly filled `struct node_list' which in turn contains pointers to
- * memory chunks and it's turtles all the way down. Whith all that in mind
+ * properly filled `struct list_node' which in turn contains pointers to
+ * memory chunks and it's turtles all the way down. With all that in mind
  * remember that given the wrong pointer/offset couple this macro will
- * happilly churn all you memory untill SEGFAULT stops it, in other words
+ * happily churn all you memory until SEGFAULT stops it, in other words
  * caveat emptor.
  *
  * It is worth mentioning that one of legitimate use-cases for that wrapper
