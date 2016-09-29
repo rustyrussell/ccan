@@ -3,6 +3,9 @@
  *
  * Copyright 2011 Rusty Russell <rusty@rustcorp.com.au>.  MIT license.
  *
+ * c12r_err, c12r_errx functions copied from ccan/err/err.c
+ * Copyright Rusty Russell <rusty@rustcorp.com.au>. CC0 (Public domain) License.
+ *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
  * in the Software without restriction, including without limitation the rights
@@ -23,10 +26,11 @@
  */
 #define _POSIX_C_SOURCE 200809L                /* For pclose, popen, strdup */
 
+#include <errno.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdlib.h>
-#include <err.h>
 #include <string.h>
 
 #ifdef _MSC_VER
@@ -46,6 +50,7 @@
 #define DIR_SEP   "/"
 #endif
 
+static const char *progname = "";
 static int verbose;
 
 enum test_style {
@@ -377,6 +382,31 @@ static struct test tests[] = {
 	},
 };
 
+static void c12r_err(int eval, const char *fmt, ...)
+{
+	int err_errno = errno;
+	va_list ap;
+
+	fprintf(stderr, "%s: ", progname);
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	fprintf(stderr, ": %s\n", strerror(err_errno));
+	exit(eval);
+}
+
+static void c12r_errx(int eval, const char *fmt, ...)
+{
+	va_list ap;
+
+	fprintf(stderr, "%s: ", progname);
+	va_start(ap, fmt);
+	vfprintf(stderr, fmt, ap);
+	va_end(ap);
+	fprintf(stderr, "\n");
+	exit(eval);
+}
+
 static char *grab_stream(FILE *file)
 {
 	size_t max, ret, size = 0;
@@ -390,7 +420,7 @@ static char *grab_stream(FILE *file)
 	}
 	size += ret;
 	if (ferror(file))
-		err(1, "reading from command");
+		c12r_err(1, "reading from command");
 	buffer[size] = '\0';
 	return buffer;
 }
@@ -410,7 +440,7 @@ static char *run(const char *cmd, int *exitstatus)
 
 	cmdout = popen(cmdredir, "r");
 	if (!cmdout)
-		err(1, "popen \"%s\"", cmdredir);
+		c12r_err(1, "popen \"%s\"", cmdredir);
 
 	free(cmdredir);
 
@@ -502,7 +532,7 @@ static bool run_test(const char *cmd, struct test *test)
 
 	outf = fopen(INPUT_FILE, "w");
 	if (!outf)
-		err(1, "creating %s", INPUT_FILE);
+		c12r_err(1, "creating %s", INPUT_FILE);
 
 	fprintf(outf, "%s", PRE_BOILERPLATE);
 	switch (test->style & ~(EXECUTE|MAY_NOT_COMPILE)) {
@@ -567,8 +597,8 @@ static bool run_test(const char *cmd, struct test *test)
 			       status ? "fail" : "warning",
 			       test->name, status, output);
 		if ((test->style & EXECUTE) && !(test->style & MAY_NOT_COMPILE))
-			errx(1, "Test for %s did not compile:\n%s",
-			     test->name, output);
+			c12r_errx(1, "Test for %s did not compile:\n%s",
+				  test->name, output);
 		test->answer = false;
 		free(output);
 	} else {
@@ -578,8 +608,8 @@ static bool run_test(const char *cmd, struct test *test)
 		if ((test->style & EXECUTE) || (test->style & INSIDE_MAIN)) {
 			output = run("." DIR_SEP OUTPUT_FILE, &status);
 			if (!(test->style & EXECUTE) && status != 0)
-				errx(1, "Test for %s failed with %i:\n%s",
-				     test->name, status, output);
+				c12r_errx(1, "Test for %s failed with %i:\n%s",
+					  test->name, status, output);
 			if (verbose && status)
 				printf("%s exited %i\n", test->name, status);
 			free(output);
@@ -602,6 +632,9 @@ int main(int argc, const char *argv[])
 	unsigned int i;
 	const char *default_args[]
 		= { "", DEFAULT_COMPILER, DEFAULT_FLAGS, NULL };
+
+	if (argc > 0)
+		progname = argv[0];
 
 	if (argc > 1) {
 		if (strcmp(argv[1], "--help") == 0) {
