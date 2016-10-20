@@ -25,6 +25,7 @@ MODS := a_star \
 	bdelta \
 	bitmap \
 	block_pool \
+	bottom_up_heapsort \
 	breakpoint \
 	btree \
 	build_assert \
