@@ -47,7 +47,8 @@ struct io_conn;
  *	int fd[2];
  *	struct io_conn *conn;
  *
- *	pipe(fd);
+ *	if (pipe(fd) != 0)
+ *		exit(1);
  *	conn = io_new_conn(NULL, fd[0], conn_init, (const char *)"hi!");
  *	if (!conn)
  *		exit(1);
