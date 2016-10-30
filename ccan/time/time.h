@@ -389,6 +389,28 @@ static inline struct timeabs timeabs_add(struct timeabs a, struct timerel b)
 }
 
 /**
+ * timemono_add - add a relative to a monotonic time
+ * @a: the monotonic time.
+ * @b: a relative time.
+ *
+ * The times must not overflow, or the results are undefined.
+ *
+ * Example:
+ *	// We do one every second.
+ *	static struct timemono next_timem(void)
+ *	{
+ *		return timemono_add(time_mono(), time_from_msec(1000));
+ *	}
+ */
+static inline struct timemono timemono_add(struct timemono a, struct timerel b)
+{
+	struct timemono t;
+
+	t.ts = time_add_(a.ts, b.ts);
+	return t;
+}
+
+/**
  * timerel_add - add two relative times
  * @a: one relative time.
  * @b: another relative time.
