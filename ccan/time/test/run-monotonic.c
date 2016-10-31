@@ -18,7 +18,7 @@ int main(void)
 	t3.ts.tv_sec = 1;
 	t3.ts.tv_nsec = 0;
 
-	ok1(time_less(timemono_between(t1, t2), t3));
+	ok1(time_less(timemono_between(t2, t1), t3));
 	ok1(time_less(timemono_since(t1), t3));
 
 	ok1(timemono_add(t1, t3).ts.tv_sec == t1.ts.tv_sec + 1);
