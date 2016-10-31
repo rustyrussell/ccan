@@ -22,10 +22,13 @@ struct timespec {
 	timerel_check((t), __FILE__ ":" stringify(__LINE__) " (" stringify(t) ") ")
 #define TIMEABS_CHECK(t) \
 	timeabs_check((t), __FILE__ ":" stringify(__LINE__) " (" stringify(t) ") ")
+#define TIMEMONO_CHECK(t) \
+	timemono_check((t), __FILE__ ":" stringify(__LINE__) " (" stringify(t) ") ")
 #else
 #define TIME_CHECK(t) (t)
 #define TIMEREL_CHECK(t) (t)
 #define TIMEABS_CHECK(t) (t)
+#define TIMEMONO_CHECK(t) (t)
 #endif
 
 /**
@@ -95,7 +98,7 @@ struct timerel timerel_check(struct timerel in, const char *abortstr);
 
 /**
  * timeabs_check - check if an absolute time is malformed.
- * @in: the relative time to check (returned)
+ * @in: the absolute time to check (returned)
  * @abortstr: the string to print to stderr before aborting (if set).
  *
  * This can be used to make sure a time isn't negative and doesn't
@@ -112,6 +115,26 @@ struct timerel timerel_check(struct timerel in, const char *abortstr);
  *		(long)timeabs_check(time_now(), "time_now failed?").ts.tv_sec);
  */
 struct timeabs timeabs_check(struct timeabs in, const char *abortstr);
+
+/**
+ * timemono_check - check if a monotonic time is malformed.
+ * @in: the monotonic time to check (returned)
+ * @abortstr: the string to print to stderr before aborting (if set).
+ *
+ * This can be used to make sure a time isn't negative and doesn't
+ * have a tv_nsec >= 1000000000.  If it is, and @abortstr is non-NULL,
+ * that will be printed and abort() is called.  Otherwise, if
+ * @abortstr is NULL then the returned timemono will be normalized and
+ * tv_sec set to 0 if it was negative.
+ *
+ * Note that if ccan/time is compiled with DEBUG, then it will call this
+ * for all passed and returned times.
+ *
+ * Example:
+ *	printf("Now is %lu seconds since mono start\n",
+ *		(long)timemono_check(time_mono(), "time_mono failed?").ts.tv_sec);
+ */
+struct timemono timemono_check(struct timemono in, const char *abortstr);
 
 /**
  * time_now - return the current time
@@ -232,6 +255,32 @@ static inline bool timeabs_eq(struct timeabs a, struct timeabs b)
 }
 
 /**
+ * timemono_eq - is a equal to b?
+ * @a: one monotonic time.
+ * @b: another monotonic time.
+ *
+ * Example:
+ *	#include <sys/types.h>
+ *	#include <sys/wait.h>
+ *
+ *	// Can we fork in under a nanosecond?
+ *	static bool fast_fork(void)
+ *	{
+ *		struct timemono start = time_mono();
+ *		if (fork() != 0) {
+ *			exit(0);
+ *		}
+ *		wait(NULL);
+ *		return timemono_eq(start, time_mono());
+ *	}
+ */
+static inline bool timemono_eq(struct timemono a, struct timemono b)
+{
+	return TIMEMONO_CHECK(a).ts.tv_sec == TIMEMONO_CHECK(b).ts.tv_sec
+		&& a.ts.tv_nsec == b.ts.tv_nsec;
+}
+
+/**
  * timerel_eq - is a equal to b?
  * @a: one relative time.
  * @b: another relative time.
@@ -328,7 +377,7 @@ static inline struct timerel timemono_since(struct timemono old)
 {
 	struct timemono now = time_mono();
 
-	return timemono_between(now, old);
+	return timemono_between(now, TIMEMONO_CHECK(old));
 }
 
 /**
