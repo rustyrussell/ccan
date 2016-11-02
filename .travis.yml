@@ -16,4 +16,4 @@ addons:
 script:
         - make config.h
         - make -j2
-        - make -j2 -k check
+        - make -k check
