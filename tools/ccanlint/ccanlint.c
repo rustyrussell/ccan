@@ -98,7 +98,7 @@ static bool cannot_run(struct dgraph_node *node, void *all UNNEEDED)
 }
 
 struct run_info {
-	bool quiet;
+	bool noninteractive;
 	unsigned int score, total;
 	struct manifest *m;
 	const char *prefix;
@@ -165,7 +165,7 @@ static bool run_test(struct dgraph_node *n, struct run_info *run)
 	}
 
 	assert(score->score <= score->total);
-	if ((!score->pass && !run->quiet)
+	if (!score->pass
 	    || (score->score < score->total && verbose)
 	    || verbose > 1) {
 		printf("%s%s (%s): %s",
@@ -176,13 +176,13 @@ static bool run_test(struct dgraph_node *n, struct run_info *run)
 		printf("\n");
 	}
 
-	if ((!run->quiet && !score->pass) || verbose) {
+	if (!score->pass || verbose) {
 		if (score->error) {
 			printf("%s%s", score->error,
 			       strends(score->error, "\n") ? "" : "\n");
 		}
 	}
-	if (!run->quiet && score->score < score->total && i->handle)
+	if (!run->noninteractive && score->score < score->total && i->handle)
 		i->handle(run->m, score);
 
 	if (!score->pass) {
@@ -567,7 +567,7 @@ static bool run_tests(struct dgraph_node *all,
 	struct run_info run;
 	const char *comment = "";
 
-	run.quiet = summary;
+	run.noninteractive = summary;
 	run.m = m;
 	run.prefix = prefix;
 	run.score = run.total = 0;
@@ -638,7 +638,7 @@ int main(int argc, char *argv[])
 	opt_register_noarg("-k|--keep", keep_tests, NULL,
 			 "do not delete ccanlint working files");
 	opt_register_noarg("--summary|-s", opt_set_bool, &summary,
-			   "simply give one line summary");
+			   "give results only, no interactive correction");
 	opt_register_arg("-x|--exclude <testname>", exclude_test, NULL, NULL,
 			 "exclude <testname> (can be used multiple times)");
 	opt_register_arg("--timeout <milleseconds>", opt_set_uintval,
