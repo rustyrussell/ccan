@@ -8,7 +8,10 @@ compiler:
 addons:
     apt:
         packages:
-            - libjudy-dev libvorbis-dev libportaudio-dev libtalloc-dev
+            - libjudy-dev
+            - libvorbis-dev
+            - libportaudio-dev
+            - libtalloc-dev
 
 script:
         - make config.h
