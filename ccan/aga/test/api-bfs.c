@@ -42,9 +42,10 @@ int main(void)
 	struct grid_graph gg1, gg2;
 	struct error_graph eg;
 	struct traversal1_graph t1g;
+	struct negacycle_graph ng;
 	struct aga_node *node;
 	
-	plan_tests(2 * 13 + 10 + 10);
+	plan_tests(2 * 13 + 10 + 10 + 6);
 
 	trivial_graph_init(&tg);
 	test_bfs(&tg.sg, 1, 1);
@@ -100,5 +101,10 @@ int main(void)
 	test_bfs_partial(&t1g.sg, 1, 1, 2, 3);
 	aga_finish(&t1g.sg.g);
 
+	negacycle_graph_init(&ng);
+	test_bfs(&ng.sg, 1, 1, 2, 3);
+	test_bfs(&ng.sg, 2, 2, 3, 1);
+	test_bfs(&ng.sg, 3, 3, 1, 2);
+	
 	return exit_status();
 }

@@ -229,12 +229,22 @@ static void test_shortcut2(void)
 	tal_free(sr);	
 }
 
+static void test_negacycle(void)
+{
+	struct agar_state *sr;
+
+	ok1(sr = agar_bellman_ford_new(NULL, &negacycle_graphr.gr, int2ptr(1)));
+	agar_bellman_ford_complete(sr);
+	ok1(agar_error(sr) == AGA_ERR_NEGATIVE_COST);
+	tal_free(sr);
+}
+
 int main(void)
 {
 	plan_tests(3 + 15
 		   + FULL_LEN * (FULL_LEN*4 - 1)
 		   + CHAIN_LEN * (1 + CHAIN_LEN*2)
-		   + 10 + 32 + 7 + 7);
+		   + 10 + 32 + 7 + 7 + 2);
 
 	test_trivial();
 	test_parallel();
@@ -244,6 +254,7 @@ int main(void)
 	test_traversal1();
 	test_shortcut1();
 	test_shortcut2();
+	test_negacycle();
 	
 	return exit_status();
 }

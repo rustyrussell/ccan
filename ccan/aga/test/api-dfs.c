@@ -42,9 +42,10 @@ int main(void)
 	struct grid_graph gg1, gg2;
 	struct error_graph eg;
 	struct traversal1_graph t1g;
+	struct negacycle_graph ng;
 	struct aga_node *node;
 	
-	plan_tests(2 * 13 + 10 + 10);
+	plan_tests(2 * 13 + 10 + 10 + 6);
 
 	trivial_graph_init(&tg);
 	test_dfs(&tg.sg, 1, 1);
@@ -99,6 +100,11 @@ int main(void)
 	test_dfs_partial(&t1g.sg, 9, 9, 8, 6, 5, 7, 4);
 	test_dfs_partial(&t1g.sg, 1, 1, 2, 3);
 	aga_finish(&t1g.sg.g);
+
+	negacycle_graph_init(&ng);
+	test_dfs(&ng.sg, 1, 1, 2, 3);
+	test_dfs(&ng.sg, 2, 2, 3, 1);
+	test_dfs(&ng.sg, 3, 3, 1, 2);
 
 	return exit_status();
 }

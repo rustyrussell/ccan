@@ -45,7 +45,7 @@ int main(void)
 	struct agar_state *sr;
 	const void *nr;
 	
-	plan_tests(2 * 13 + 12 + 10);
+	plan_tests(2 * 13 + 12 + 10 + 6);
 
 	test_dfs(&trivial_graphr.gr, 1, 1);
 
@@ -96,6 +96,10 @@ int main(void)
 	test_dfs_partial(sr, 9, 9, 8, 6, 5, 7, 4);
 	test_dfs_partial(sr, 1, 1, 2, 3);
 	tal_free(sr);
+
+	test_dfs(&negacycle_graphr.gr, 1, 1, 2, 3);
+	test_dfs(&negacycle_graphr.gr, 2, 2, 3, 1);
+	test_dfs(&negacycle_graphr.gr, 3, 3, 1, 2);
 
 	return exit_status();
 }
