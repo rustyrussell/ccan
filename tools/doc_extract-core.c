@@ -46,7 +46,7 @@ static char **grab_doc(char **lines, unsigned int **linemap,
 					warnx("%s:%u:"
 					      " Expected ' *' in comment.",
 					      file, i+1);
-					warned++;
+					warned = true;
 				}
 				ret[num++] = tal_strdup(ret, lines[i]);
 				if (strstr(lines[i], "*/"))
