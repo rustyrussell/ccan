@@ -34,7 +34,7 @@ struct command {
 	const void *ctx;
 };
 
-static void killme(int sig)
+static void killme(int sig UNNEEDED)
 {
 	kill(-getpid(), SIGKILL);
 }
