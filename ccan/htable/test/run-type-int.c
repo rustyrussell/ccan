@@ -112,7 +112,7 @@ static bool check_mask(struct htable *ht, const struct obj val[], unsigned num)
 	return true;
 }
 
-int main(int argc, char *argv[])
+int main(void)
 {
 	unsigned int i;
 	struct htable_obj ht, ht2;

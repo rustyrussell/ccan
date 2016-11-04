@@ -14,7 +14,7 @@ static size_t hash(const void *elem, void *unused)
 	return h;
 }
 
-int main(int argc, char *argv[])
+int main(void)
 {
 	struct htable ht;
 	uint64_t val[NUM_VALS];

@@ -24,7 +24,7 @@ static void got_signal(int sig)
 /* < PIPE_BUF *will* be atomic.  But > PIPE_BUF only *might* be non-atomic. */
 #define BUFSZ (1024*1024)
 
-int main(int argc, char *argv[])
+int main(void)
 {
 	char *buffer;
 	char c = 0;

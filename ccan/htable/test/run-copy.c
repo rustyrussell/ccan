@@ -17,7 +17,7 @@ static bool cmp(const void *candidate, void *ptr)
 	return *(const uint64_t *)candidate == *(const uint64_t *)ptr;
 }
 
-int main(int argc, char *argv[])
+int main(void)
 {
 	struct htable ht, ht2;
 	uint64_t val[NUM_VALS], i;

@@ -28,7 +28,7 @@ static int my_fprintf(FILE *stream, const char *format, ...)
 #include <ccan/tap/tap.h>
 #include <ccan/list/list.c>
 
-int main(int argc, char *argv[])
+int main(void)
 {
 	struct list_head list;
 	struct list_node n1;

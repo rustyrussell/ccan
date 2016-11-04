@@ -16,7 +16,7 @@ static void show_max(char buf[OPT_SHOW_LEN], const void *arg)
 }
 
 /* Test add_desc helper. */
-int main(int argc, char *argv[])
+int main(void)
 {
 	struct opt_table opt;
 	char *ret;

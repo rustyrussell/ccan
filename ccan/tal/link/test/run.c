@@ -9,7 +9,7 @@ static void destroy_obj(void *obj)
 	destroy_count++;
 }
 
-int main(int argc, char *argv[])
+int main(void)
 {
 	char *linkable, *p1, *p2, *p3;
 	void **voidpp;

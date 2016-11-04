@@ -5,7 +5,7 @@
 #include <ccan/tap/tap.h>
 
 /* This is the original pre-cut-down dump. */
-int main(int argc, char *argv[])
+int main(void)
 {
 	struct timemono when;
 	struct timers timers;

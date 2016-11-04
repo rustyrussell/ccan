@@ -23,7 +23,7 @@ static void update_and_expire(struct timers *timers)
 	free(timers_expire(timers, when));
 }
 
-int main(int argc, char *argv[])
+int main(void)
 {
 	struct timemono when;
 	struct timers timers;

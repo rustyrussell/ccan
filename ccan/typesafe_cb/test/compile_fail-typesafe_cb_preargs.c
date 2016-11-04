@@ -12,7 +12,7 @@ static void my_callback(int x, char *p)
 {
 }
 
-int main(int argc, char *argv[])
+int main(void)
 {
 #ifdef FAIL
 	int *p;
