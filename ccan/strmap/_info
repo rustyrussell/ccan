@@ -33,7 +33,7 @@
  * 	STRMAP(size_t) map;
  *
  * 	strmap_init(&map);
- * 	for (i = 1; i < argc; i++)
+ * 	for (i = 1; i < (size_t)argc; i++)
  *		// This only adds the first time for this arg.
  * 		strmap_add(&map, argv[i], i);
  *
