@@ -83,7 +83,7 @@ static void del_vals(struct htable_obj *ht,
 }
 
 static void del_vals_bykey(struct htable_obj *ht,
-			   const struct obj val[], unsigned int num)
+			   const struct obj val[] UNNEEDED, unsigned int num)
 {
 	unsigned int i;
 
