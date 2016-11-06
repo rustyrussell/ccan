@@ -4,13 +4,13 @@
 #include <ccan/opt/helpers.c>
 #include <ccan/opt/parse.c>
 
-static void show_10(char buf[OPT_SHOW_LEN], const void *arg)
+static void show_10(char buf[OPT_SHOW_LEN], const void *arg UNNEEDED)
 {
 	memset(buf, 'X', 10);
 	buf[10] = '\0';
 }
 
-static void show_max(char buf[OPT_SHOW_LEN], const void *arg)
+static void show_max(char buf[OPT_SHOW_LEN], const void *arg UNNEEDED)
 {
 	memset(buf, 'X', OPT_SHOW_LEN);
 }

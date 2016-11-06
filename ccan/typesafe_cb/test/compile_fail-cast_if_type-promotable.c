@@ -3,6 +3,7 @@
 
 static void _set_some_value(void *val)
 {
+	(void)val;
 }
 
 #define set_some_value(expr)						\

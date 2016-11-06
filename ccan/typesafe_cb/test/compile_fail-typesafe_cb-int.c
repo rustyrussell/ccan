@@ -15,6 +15,7 @@ void _callback(void (*fn)(void *arg), void *arg)
 void my_callback(int something);
 void my_callback(int something)
 {
+	(void)something;
 }
 
 int main(void)

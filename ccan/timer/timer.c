@@ -114,7 +114,7 @@ void timer_addmono(struct timers *timers, struct timer *t, struct timemono when)
 }
 
 /* FIXME: inline */
-void timer_del(struct timers *timers, struct timer *t)
+void timer_del(struct timers *timers UNNEEDED, struct timer *t)
 {
 	list_del_init(&t->list);
 }

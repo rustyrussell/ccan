@@ -17,6 +17,7 @@ static int p2c[2], c2p[2];
 static void got_signal(int sig)
 {
 	char c = 0;
+	(void)sig;
 	if (write(p2c[1], &c, 1) == 1)
 		sigcount++;
 }

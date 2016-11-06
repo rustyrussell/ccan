@@ -31,6 +31,7 @@
  *		struct timer *t;
  *		struct timed_string *s;
  *
+ *		(void)argc;
  *		timers_init(&timers, time_mono());
  *		list_head_init(&strings);
  *

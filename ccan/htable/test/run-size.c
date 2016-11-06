@@ -8,7 +8,7 @@
 
 /* We use the number divided by two as the hash (for lots of
    collisions). */
-static size_t hash(const void *elem, void *unused)
+static size_t hash(const void *elem, void *unused UNNEEDED)
 {
 	size_t h = *(uint64_t *)elem / 2;
 	return h;

@@ -11,7 +11,7 @@ void *autodata_get_section(void *start, void *stop, size_t *nump)
 	return start;
 }
 
-void autodata_free(void *table)
+void autodata_free(void *table UNNEEDED)
 {
 }
 #else
