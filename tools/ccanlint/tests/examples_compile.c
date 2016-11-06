@@ -359,7 +359,8 @@ static char *strip_comment(const void *ctx, const char *orig_line)
 static char *mangle(struct manifest *m, char **lines)
 {
 	char *ret, *use_funcs = NULL, *why;
-	bool in_function = false, fake_function = false, has_main = false;
+	bool in_function = false, fake_function = false, has_main = false,
+		fake_main = false;
 	unsigned int i;
 
 	ret = tal_fmt(m,
@@ -393,6 +394,7 @@ static char *mangle(struct manifest *m, char **lines)
 		fake_function = true;
 		in_function = true;
 		has_main = true;
+		fake_main = true;
 	} else
 		tal_append_fmt(&ret,
 			     "/* The example %s, so didn't wrap in main() */\n",
@@ -429,6 +431,7 @@ static char *mangle(struct manifest *m, char **lines)
 				/* This implies we start a function here. */
 				start_main(&ret, why);
 				has_main = true;
+				fake_main = true;
 				fake_function = true;
 				in_function = true;
 			}
@@ -444,6 +447,7 @@ static char *mangle(struct manifest *m, char **lines)
 			     "/* Need a main to link successfully. */\n"
 			     "int main(int argc, char *argv[])\n{\n");
 		fake_function = true;
+		fake_main = true;
 	}
 
 	if (use_funcs) {
@@ -460,7 +464,7 @@ static char *mangle(struct manifest *m, char **lines)
 		tal_append_fmt(&ret, "	%s\n", use_funcs);
 	}
 
-	if (!has_main)
+	if (fake_main)
 		ret = tal_strcat(m, take(ret),
 				 "(void)argc; (void)argv;\n");
 	
