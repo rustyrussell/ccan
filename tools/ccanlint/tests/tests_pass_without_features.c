@@ -56,8 +56,9 @@ static void run_under_debugger(struct manifest *m, struct score *score)
 
 	command = tal_fmt(m, "gdb -ex 'break tap.c:139' -ex 'run' %s",
 			  first->file->compiled[COMPILE_NOFEAT]);
-	if (system(command))
+	if (system(command)) {
 		doesnt_matter();
+	}
 }
 
 struct ccanlint tests_pass_without_features = {

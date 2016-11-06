@@ -255,8 +255,9 @@ static void run_under_debugger_vg(struct manifest *m, struct score *score)
 			  concat(score, per_file_options(&tests_pass_valgrind,
 							 first->file)),
 			  valgrind_suppress, first->file->compiled[COMPILE_NORMAL]);
-	if (system(command))
+	if (system(command)) {
 		doesnt_matter();
+	}
 }
 
 struct ccanlint tests_pass_valgrind = {
