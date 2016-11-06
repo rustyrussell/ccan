@@ -45,7 +45,10 @@ static char *add_example(struct manifest *m, struct ccan_file *source,
 	/* Add #line to demark where we are from, so errors are correct! */
 	linemarker = tal_fmt(f, "#line %i \"%s\"\n",
 			     example->srcline+2, source->fullname);
-	write(fd, linemarker, strlen(linemarker));
+	if (write(fd, linemarker, strlen(linemarker)) != (int)strlen(linemarker)) {
+		close(fd);
+		return cast_const(char *, "Failure writing to temporary file");
+	}
 
 	for (i = 0; i < example->num_lines; i++) {
 		if (write(fd, example->lines[i], strlen(example->lines[i]))
