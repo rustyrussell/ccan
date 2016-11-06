@@ -12,7 +12,7 @@
 #include <ccan/str/str.h>
 
 static void check_license_file_compat(struct manifest *m,
-				      unsigned int *timeleft,
+				      unsigned int *timeleft UNNEEDED,
 				      struct score *score)
 {
 	struct list_head *list;

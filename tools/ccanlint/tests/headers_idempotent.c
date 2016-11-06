@@ -178,7 +178,8 @@ static void check_idem(struct ccan_file *f, struct score *score)
 }
 
 static void check_idempotent(struct manifest *m,
-			     unsigned int *timeleft, struct score *score)
+			     unsigned int *timeleft UNNEEDED,
+			     struct score *score)
 {
 	struct ccan_file *f;
 

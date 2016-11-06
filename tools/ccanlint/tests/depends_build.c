@@ -15,7 +15,7 @@
 #include <ctype.h>
 #include "build.h"
 
-static const char *can_build(struct manifest *m)
+static const char *can_build(struct manifest *m UNNEEDED)
 {
 	if (safe_mode)
 		return "Safe mode enabled";
@@ -76,7 +76,8 @@ char *build_submodule(struct manifest *m, const char *flags,
 }
 
 static void check_depends_built(struct manifest *m,
-				unsigned int *timeleft, struct score *score)
+				unsigned int *timeleft UNNEEDED,
+				struct score *score)
 {
 	struct list_head *list;
 

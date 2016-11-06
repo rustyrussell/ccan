@@ -14,7 +14,7 @@
 #include <string.h>
 #include <ctype.h>
 
-static const char *can_build(struct manifest *m)
+static const char *can_build(struct manifest *m UNNEEDED)
 {
 	if (safe_mode)
 		return "Safe mode enabled";
@@ -65,7 +65,8 @@ static char *lib_list(const struct manifest *m)
 }
 
 static void check_use_build(struct manifest *m,
-			    unsigned int *timeleft, struct score *score)
+			    unsigned int *timeleft UNNEEDED,
+			    struct score *score)
 {
 	char *contents;
 	char *tmpfile, *cmdout;

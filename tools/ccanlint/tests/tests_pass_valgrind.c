@@ -158,7 +158,7 @@ static const char *concat(struct score *score, char *bits[])
 
 /* FIXME: Run examples, too! */
 static void do_run_tests_vg(struct manifest *m,
-			    unsigned int *timeleft,
+			    unsigned int *timeleft UNNEEDED,
 			    struct score *score)
 {
 	struct ccan_file *i;
@@ -199,7 +199,7 @@ static void do_run_tests_vg(struct manifest *m,
 }
 
 static void do_leakcheck_vg(struct manifest *m,
-			    unsigned int *timeleft,
+			    unsigned int *timeleft UNNEEDED,
 			    struct score *score)
 {
 	struct ccan_file *i;

@@ -94,7 +94,8 @@ static void handle_license_link(struct manifest *m, struct score *score)
 extern struct ccanlint license_exists;
 
 static void check_has_license(struct manifest *m,
-			      unsigned int *timeleft, struct score *score)
+			      unsigned int *timeleft UNNEEDED,
+			      struct score *score)
 {
 	char buf[PATH_MAX];
 	ssize_t len;

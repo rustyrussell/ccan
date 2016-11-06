@@ -16,7 +16,7 @@
 #include "reduce_features.h"
 #include "build.h"
 
-static const char *can_build(struct manifest *m)
+static const char *can_build(struct manifest *m UNNEEDED)
 {
 	if (safe_mode)
 		return "Safe mode enabled";
@@ -24,7 +24,7 @@ static const char *can_build(struct manifest *m)
 }
 
 static void check_depends_built_without_features(struct manifest *m,
-						 unsigned int *timeleft,
+						 unsigned int *timeleft UNNEEDED,
 						 struct score *score)
 {
 	struct list_head *list;

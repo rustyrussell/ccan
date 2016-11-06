@@ -15,7 +15,7 @@
 #include <ctype.h>
 #include "build.h"
 
-static const char *can_build(struct manifest *m)
+static const char *can_build(struct manifest *m UNNEEDED)
 {
 	if (safe_mode)
 		return "Safe mode enabled";
@@ -42,7 +42,7 @@ char *build_module(struct manifest *m,
 }
 
 static void do_build(struct manifest *m,
-		     unsigned int *timeleft,
+		     unsigned int *timeleft UNNEEDED,
 		     struct score *score)
 {
 	char *errstr;

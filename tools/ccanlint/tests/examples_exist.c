@@ -62,7 +62,7 @@ static char *add_example(struct manifest *m, struct ccan_file *source,
 
 /* FIXME: We should have one example per function in header. */
 static void extract_examples(struct manifest *m,
-			     unsigned int *timeleft,
+			     unsigned int *timeleft UNNEEDED,
 			     struct score *score)
 {
 	struct ccan_file *f, *mainh = NULL; /* gcc complains uninitialized */

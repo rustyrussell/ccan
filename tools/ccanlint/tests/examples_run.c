@@ -188,7 +188,7 @@ static char *unexpected(struct ccan_file *i, const char *input,
 }
 
 static void run_examples(struct manifest *m,
-			 unsigned int *timeleft, struct score *score)
+			 unsigned int *timeleft UNNEEDED, struct score *score)
 {
 	struct ccan_file *i;
 	struct list_head *list;

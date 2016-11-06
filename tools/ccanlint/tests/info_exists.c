@@ -14,7 +14,7 @@
 #include <ccan/noerr/noerr.h>
 
 static void check_has_info(struct manifest *m,
-			   unsigned int *timeleft,
+			   unsigned int *timeleft UNNEEDED,
 			   struct score *score)
 {
 	if (m->info_file) {
@@ -57,7 +57,8 @@ static const char template[] =
 	"	return 1;\n"
 	"}\n";
 
-static void create_info_template(struct manifest *m, struct score *score)
+static void create_info_template(struct manifest *m,
+				 struct score *score UNNEEDED)
 {
 	FILE *info;
 	const char *filename;

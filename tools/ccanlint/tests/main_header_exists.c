@@ -14,7 +14,8 @@
 #include <ccan/noerr/noerr.h>
 
 static void check_has_main_header(struct manifest *m,
-				  unsigned int *timeleft, struct score *score)
+				  unsigned int *timeleft UNNEEDED,
+				  struct score *score)
 {
 	struct ccan_file *f;
 

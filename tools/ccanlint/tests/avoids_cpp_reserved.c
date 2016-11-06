@@ -13,7 +13,7 @@
 #include <string.h>
 #include <ctype.h>
 
-static const char *can_build(struct manifest *m)
+static const char *can_build(struct manifest *m UNNEEDED)
 {
 	if (safe_mode)
 		return "Safe mode enabled";
@@ -34,7 +34,8 @@ static struct ccan_file *main_header(struct manifest *m)
 }
 
 static void check_headers_no_cpp(struct manifest *m,
-				 unsigned int *timeleft, struct score *score)
+				 unsigned int *timeleft UNNEEDED,
+				 struct score *score)
 {
 	char *contents;
 	char *tmpsrc, *tmpobj, *cmdout;

@@ -16,7 +16,7 @@
 #include "reduce_features.h"
 #include "tests_compile.h"
 
-static const char *can_build(struct manifest *m)
+static const char *can_build(struct manifest *m UNNEEDED)
 {
 	if (safe_mode)
 		return "Safe mode enabled";
@@ -54,7 +54,7 @@ char *test_obj_list(const struct manifest *m, bool link_with_module,
 	return list;
 }
 
-char *test_lib_list(const struct manifest *m, enum compile_type ctype)
+char *test_lib_list(const struct manifest *m, enum compile_type ctype UNNEEDED)
 {
 	unsigned int i;
 	char **libs;
@@ -211,7 +211,7 @@ struct ccanlint tests_compile = {
 
 REGISTER_TEST(tests_compile);
 
-static const char *features_reduced(struct manifest *m)
+static const char *features_reduced(struct manifest *m UNNEEDED)
 {
 	if (features_were_reduced)
 		return NULL;

@@ -4,7 +4,7 @@
 #include <ccan/str/str.h>
 
 static void check_info_summary_single_line(struct manifest *m,
-					   unsigned int *timeleft,
+					   unsigned int *timeleft UNNEEDED,
 					   struct score *score)
 {
 	struct list_head *infodocs = get_ccan_file_docs(m->info_file);

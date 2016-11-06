@@ -11,7 +11,7 @@
 #include <err.h>
 
 static void check_license_depends_compat(struct manifest *m,
-					 unsigned int *timeleft,
+					 unsigned int *timeleft UNNEEDED,
 					 struct score *score)
 {
 	struct manifest *i;

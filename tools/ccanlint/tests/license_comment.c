@@ -36,7 +36,8 @@ static bool line_has_license_flavour(const char *line, const char *shortname)
 }
 
 static void check_license_comment(struct manifest *m,
-				  unsigned int *timeleft, struct score *score)
+				  unsigned int *timeleft UNNEEDED,
+				  struct score *score)
 {
 	struct list_head *list;
 

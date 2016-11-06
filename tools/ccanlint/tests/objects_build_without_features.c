@@ -4,7 +4,7 @@
 #include "build.h"
 
 static void check_objs_build_without_features(struct manifest *m,
-					      unsigned int *timeleft,
+					      unsigned int *timeleft UNNEEDED,
 					      struct score *score)
 {
 	const char *flags = tal_fmt(score, "%s %s",
