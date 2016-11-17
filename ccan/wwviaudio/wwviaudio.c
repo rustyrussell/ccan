@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
+#include <inttypes.h>
 
 #define WWVIAUDIO_DEFINE_GLOBALS
 #include "wwviaudio.h"
@@ -147,8 +148,8 @@ int wwviaudio_read_ogg_clip(int clipnum, char *filename)
 	rc = ogg_to_pcm(filebuf, &clip[clipnum].sample, &samplesize,
 		&sample_rate, &nchannels, &nframes);
 	if (clip[clipnum].sample == NULL) {
-		printf("Can't get memory for sound data for %llu frames in %s\n",
-			nframes, filebuf);
+		printf("Can't get memory for sound data for %"PRIu64
+		       " frames in %s\n", nframes, filebuf);
 		goto error;
 	}
 
