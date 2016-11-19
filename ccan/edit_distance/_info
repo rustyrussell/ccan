@@ -1,0 +1,89 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * edit_distance - calculate the edit distance between two strings
+ *
+ * The edit distance quantifies the similarity between two strings based on the
+ * number of modifications necessary to turn one string into the other.  There
+ * are several edit distance measures which differ in the operations which are
+ * permitted and the cost (aka weight) of the operations.  This module provides
+ * functions for calculating the Longest Common Subsequence (LCS), Levenshtein,
+ * and Damerau-Levenshtein (restricted and unrestricted) distances.  Weighted
+ * versions of these functions can be created by defining cost functions as
+ * preprocessor macros when compiling this module.  Distances over other array
+ * types (e.g. wide strings, integers, structs) can be accomplished by defining
+ * the element type and equality test macros.
+ *
+ * Example:
+ * #include <limits.h>	// UINT_MAX
+ * #include <stdio.h>	// fprintf, printf
+ * #include <stdlib.h>	// EXIT_*
+ * #include <string.h>	// strlen
+ *
+ * #include <ccan/edit_distance/edit_distance.h>
+ *
+ * const char *counties[] = {
+ *	"Anglesey",
+ *	"Brecknockshire",
+ *	"Cardiganshire",
+ *	"Carmarthenshire",
+ *	"Caernarfonshire",
+ *	"Denbighshire",
+ *	"Flintshire",
+ *	"Glamorgan",
+ *	"Merionethshire",
+ *	"Monmouthshire",
+ *	"Montgomeryshire",
+ *	"Pembrokeshire",
+ *	"Radnorshire",
+ *	NULL
+ * };
+ *
+ * int main(int argc, char *argv[])
+ * {
+ *	if (argc != 2) {
+ *		fprintf(stderr, "Usage: %s <guess>\n", argv[0]);
+ *		return EXIT_FAILURE;
+ *	}
+ *	const char *guess = argv[1];
+ *
+ *	unsigned int bestdist = UINT_MAX;
+ *	const char *bestcounty = NULL;
+ *	for (const char **pcounty = counties; *pcounty; ++pcounty) {
+ *		const char *county = *pcounty;
+ *		unsigned int dist = edit_distance(guess, strlen(guess),
+ *				county, strlen(county), EDIT_DISTANCE_RDL);
+ *		if (dist < bestdist) {
+ *			bestdist = dist;
+ *			bestcounty = county;
+ *		}
+ *	}
+ *
+ *	printf("You were probably trying to spell %s\n", bestcounty);
+ *	return EXIT_SUCCESS;
+ * }
+ * License: MIT
+ * Author: Kevin Locke <kevin@kevinlocke.name>
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2) {
+		return 1;
+        }
+
+	if (strcmp(argv[1], "depends") == 0) {
+		return 0;
+        }
+
+	if (strcmp(argv[1], "testdepends") == 0) {
+		printf("ccan/array_size\n");
+		printf("ccan/build_assert\n");
+		printf("ccan/tap\n");
+		return 0;
+	}
+
+	return 1;
+}
