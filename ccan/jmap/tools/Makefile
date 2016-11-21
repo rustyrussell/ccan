@@ -1,6 +1,6 @@
 CFLAGS=-Wall -Werror -O3 -I../../..
-LDFLAGS=-lJudy
+LDLIBS=-lJudy
 
 speed: speed.o
 
-speed.o: speed.c ../jmap.h ../jmap_type.h ../jmap.c
+speed.o: speed.c ../jmap.h

@@ -4,12 +4,12 @@
 #include <err.h>
 
 static unsigned int destroy_count = 0;
-static void destroy_obj(void *obj)
+static void destroy_obj(void *obj UNNEEDED)
 {
 	destroy_count++;
 }
 
-int main(int argc, char *argv[])
+int main(void)
 {
 	char *linkable, *p1, *p2, *p3;
 	void **voidpp;

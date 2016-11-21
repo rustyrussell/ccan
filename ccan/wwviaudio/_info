@@ -37,8 +37,8 @@
  *      wwviaudio_cancel_all_sounds();
  *      wwviaduio_stop_portaudio();
  *
+ * Ccanlint: examples_compile FAIL
  * License: GPL (v2 or any later version)
- *
  */
 int main(int argc, char *argv[])
 {

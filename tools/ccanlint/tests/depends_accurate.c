@@ -70,7 +70,8 @@ static bool check_dep_includes(struct manifest *m,
 }
 
 static void check_depends_accurate(struct manifest *m,
-				   unsigned int *timeleft, struct score *score)
+				   unsigned int *timeleft UNNEEDED,
+				   struct score *score)
 {
 	struct list_head *list;
 	unsigned int i, core_deps, test_deps;

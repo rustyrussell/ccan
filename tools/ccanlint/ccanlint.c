@@ -84,12 +84,12 @@ static bool skip_test(struct dgraph_node *node, const char *why)
 	return true;
 }
 
-static const char *dep_failed(struct manifest *m)
+static const char *dep_failed(struct manifest *m UNNEEDED)
 {
 	return "dependency couldn't run";
 }
 
-static bool cannot_run(struct dgraph_node *node, void *all)
+static bool cannot_run(struct dgraph_node *node, void *all UNNEEDED)
 {
 	struct ccanlint *c = container_of(node, struct ccanlint, node);
 	c->can_run = dep_failed;
@@ -98,7 +98,7 @@ static bool cannot_run(struct dgraph_node *node, void *all)
 }
 
 struct run_info {
-	bool quiet;
+	bool noninteractive;
 	unsigned int score, total;
 	struct manifest *m;
 	const char *prefix;
@@ -165,7 +165,7 @@ static bool run_test(struct dgraph_node *n, struct run_info *run)
 	}
 
 	assert(score->score <= score->total);
-	if ((!score->pass && !run->quiet)
+	if (!score->pass
 	    || (score->score < score->total && verbose)
 	    || verbose > 1) {
 		printf("%s%s (%s): %s",
@@ -176,13 +176,13 @@ static bool run_test(struct dgraph_node *n, struct run_info *run)
 		printf("\n");
 	}
 
-	if ((!run->quiet && !score->pass) || verbose) {
+	if (!score->pass || verbose) {
 		if (score->error) {
 			printf("%s%s", score->error,
 			       strends(score->error, "\n") ? "" : "\n");
 		}
 	}
-	if (!run->quiet && score->score < score->total && i->handle)
+	if (!run->noninteractive && score->score < score->total && i->handle)
 		i->handle(run->m, score);
 
 	if (!score->pass) {
@@ -215,7 +215,7 @@ static void register_test(struct ccanlint *test)
 	dgraph_init_node(&test->node);
 }
 
-static bool get_test(const char *member, struct ccanlint *i,
+static bool get_test(const char *member UNNEEDED, struct ccanlint *i,
 		     struct ccanlint **ret)
 {
 	if (tlist_empty(&i->node.edge[DGRAPH_TO])) {
@@ -252,7 +252,8 @@ bool is_excluded(const char *name)
 	return find_test(name)->skip != NULL;
 }
 
-static bool init_deps(const char *member, struct ccanlint *c, void *unused)
+static bool init_deps(const char *member UNNEEDED,
+		      struct ccanlint *c, void *unused UNNEEDED)
 {
 	char **deps = tal_strsplit(NULL, c->needs, " ", STR_EMPTY_OK);
 	unsigned int i;
@@ -270,7 +271,7 @@ static bool init_deps(const char *member, struct ccanlint *c, void *unused)
 	return true;
 }
 
-static bool check_names(const char *member, struct ccanlint *c,
+static bool check_names(const char *member UNNEEDED, struct ccanlint *c,
 			ccanlint_map_t *names)
 {
 	if (!strmap_add(names, c->name, c))
@@ -299,7 +300,7 @@ static void init_tests(void)
 	strmap_clear(&names);
 }
 
-static bool reset_test(struct dgraph_node *node, void *unused)
+static bool reset_test(struct dgraph_node *node, void *unused UNNEEDED)
 {
 	struct ccanlint *c = container_of(node, struct ccanlint, node);
 	c->skip = NULL;
@@ -312,7 +313,8 @@ static void reset_tests(struct dgraph_node *all)
 	dgraph_traverse_to(all, reset_test, NULL);
 }
 
-static bool print_deps(const char *member, struct ccanlint *c, void *unused)
+static bool print_deps(const char *member UNNEEDED,
+		       struct ccanlint *c, void *unused UNNEEDED)
 {
 	if (!tlist_empty(&c->node.edge[DGRAPH_FROM])) {
 		struct dgraph_edge *e;
@@ -341,7 +343,7 @@ static void show_tmpdir(const char *dir)
 	printf("You can find ccanlint working files in '%s'\n", dir);
 }
 
-static char *keep_tests(void *unused)
+static char *keep_tests(void *unused UNNEEDED)
 {
 	keep_results = true;
 
@@ -359,7 +361,7 @@ static bool remove_test(struct dgraph_node *node, const char *why)
 	return true;
 }
 
-static char *exclude_test(const char *testname, void *unused)
+static char *exclude_test(const char *testname, void *unused UNNEEDED)
 {
 	struct ccanlint *i = find_test(testname);
 	if (!i)
@@ -378,7 +380,7 @@ static void skip_test_and_deps(struct ccanlint *c, const char *why)
 	skip_test(&c->node, why);
 }
 
-static char *list_tests(void *arg)
+static char *list_tests(void *arg UNNEEDED)
 {
 	struct ccanlint *i;
 
@@ -392,7 +394,8 @@ static char *list_tests(void *arg)
 	exit(0);
 }
 
-static bool draw_test(const char *member, struct ccanlint *c, const char *style)
+static bool draw_test(const char *member UNNEEDED,
+		      struct ccanlint *c, const char *style)
 {
 	/*
 	 * todo: escape labels in case ccanlint test keys have
@@ -407,7 +410,8 @@ static void test_dgraph_vertices(const char *style)
 	strmap_iterate(&tests, draw_test, style);
 }
 
-static bool draw_edges(const char *member, struct ccanlint *c, void *unused)
+static bool draw_edges(const char *member UNNEEDED,
+		       struct ccanlint *c, void *unused UNNEEDED)
 {
 	struct dgraph_edge *e;
 
@@ -425,7 +429,7 @@ static void test_dgraph_edges(void)
 	strmap_iterate(&tests, draw_edges, NULL);
 }
 
-static char *test_dependency_graph(void *arg)
+static char *test_dependency_graph(void *arg UNNEEDED)
 {
 	puts("digraph G {");
 
@@ -563,7 +567,7 @@ static bool run_tests(struct dgraph_node *all,
 	struct run_info run;
 	const char *comment = "";
 
-	run.quiet = summary;
+	run.noninteractive = summary;
 	run.m = m;
 	run.prefix = prefix;
 	run.score = run.total = 0;
@@ -586,7 +590,7 @@ static bool run_tests(struct dgraph_node *all,
 	return run.pass;
 }
 
-static bool add_to_all(const char *member, struct ccanlint *c,
+static bool add_to_all(const char *member UNNEEDED, struct ccanlint *c,
 		       struct dgraph_node *all)
 {
 	/* If we're excluded on cmdline, don't add. */
@@ -614,7 +618,7 @@ static bool test_module(struct dgraph_node *all,
 int main(int argc, char *argv[])
 {
 	bool summary = false, pass = true, deps_fail_ignore = false;
-	unsigned int i;
+	int i;
 	const char *prefix = "";
 	char *cwd = path_cwd(NULL), *dir;
 	struct ccanlint top;  /* cannot_run may try to set ->can_run */
@@ -634,7 +638,7 @@ int main(int argc, char *argv[])
 	opt_register_noarg("-k|--keep", keep_tests, NULL,
 			 "do not delete ccanlint working files");
 	opt_register_noarg("--summary|-s", opt_set_bool, &summary,
-			   "simply give one line summary");
+			   "give results only, no interactive correction");
 	opt_register_arg("-x|--exclude <testname>", exclude_test, NULL, NULL,
 			 "exclude <testname> (can be used multiple times)");
 	opt_register_arg("--timeout <milleseconds>", opt_set_uintval,

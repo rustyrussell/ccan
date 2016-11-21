@@ -122,7 +122,10 @@ pid_t pipecmdarr(int *fd_fromchild, int *fd_tochild, int *fd_errfromchild,
 
 	child_errno_fail:
 		err = errno;
-		write(execfail[1], &err, sizeof(err));
+		/* Gcc's warn-unused-result fail. */
+		if (write(execfail[1], &err, sizeof(err))) {
+			;
+		}
 		exit(127);
 	}
 

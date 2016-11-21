@@ -27,8 +27,9 @@ static const char *can_build(struct manifest *m)
 	return tal_fmt(m, "'_info ported' says '%s'", msg);
 }
 
-static void check_info_ported(struct manifest *m,
-			      unsigned int *timeleft, struct score *score)
+static void check_info_ported(struct manifest *m UNNEEDED,
+			      unsigned int *timeleft UNNEEDED,
+			      struct score *score)
 {
 	score->pass = true;
 	score->score = 1;

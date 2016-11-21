@@ -241,9 +241,21 @@ static void test_shortcut2(void)
 	shortcut2_graph_init(&s2g);
 
 	ok1(aga_dijkstra_start(&s2g.sg.g, &s2g.sg.nodes[1]) == 0);
-	aga_dijkstra_all_paths(&s2g.sg.g);
+	aga_dijkstra_complete(&s2g.sg.g);
 	ok1(aga_error(&s2g.sg.g) == AGA_ERR_NEGATIVE_COST);
 	aga_finish(&s2g.sg.g);
+}
+
+static void test_negacycle(void)
+{
+	struct negacycle_graph ng;
+
+	negacycle_graph_init(&ng);
+
+	ok1(aga_dijkstra_start(&ng.sg.g, &ng.sg.nodes[1]) == 0);
+	aga_dijkstra_complete(&ng.sg.g);
+	ok1(aga_error(&ng.sg.g) == AGA_ERR_NEGATIVE_COST);
+	aga_finish(&ng.sg.g);
 }
 
 int main(void)
@@ -251,7 +263,7 @@ int main(void)
 	plan_tests(7 + 20
 		   + FULL_LEN * (1 + FULL_LEN*4)
 		   + CHAIN_LEN * (1 + CHAIN_LEN*2)
-		   + 12 + 32 + 7 + 2);
+		   + 12 + 32 + 7 + 2 + 2);
 
 	test_trivial();
 	test_parallel();
@@ -261,6 +273,7 @@ int main(void)
 	test_traversal1();
 	test_shortcut1();
 	test_shortcut2();
+	test_negacycle();
 	
 	return exit_status();
 }

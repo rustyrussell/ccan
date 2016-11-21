@@ -11,6 +11,7 @@ WARN_CFLAGS := -Wall -Wstrict-prototypes -Wold-style-definition -Wundef \
  -Wmissing-prototypes -Wmissing-declarations -Wpointer-arith -Wwrite-strings
 DEP_CFLAGS = -MMD -MP -MF$(@:%=%.d) -MT$@
 CCAN_CFLAGS := -g3 -ggdb $(WARN_CFLAGS) -DCCAN_STR_DEBUG=1 -I. $(CFLAGS)
+CFLAGS_FORCE_C_SOURCE := -x c
 
 # Anything with an _info file is a module ...
 INFO_SRCS := $(wildcard ccan/*/_info ccan/*/*/_info)
@@ -32,7 +33,7 @@ DEPS := $(OBJS:%=%.d)
 
 # _info files are compiled into executables and don't need dependencies
 %info : %_info config.h
-	$(PRE)$(CC) $(CCAN_CFLAGS) -I. -o $@ -x c $<
+	$(PRE)$(CC) $(CCAN_CFLAGS) -I. -o $@ $(CFLAGS_FORCE_C_SOURCE) $<
 
 # config.h is built by configurator which has no ccan dependencies
 CONFIGURATOR := tools/configurator/configurator

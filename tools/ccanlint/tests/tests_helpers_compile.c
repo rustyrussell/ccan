@@ -14,7 +14,7 @@
 #include <ctype.h>
 #include "reduce_features.h"
 
-static const char *can_run(struct manifest *m)
+static const char *can_run(struct manifest *m UNNEEDED)
 {
 	if (safe_mode)
 		return "Safe mode enabled";
@@ -33,7 +33,7 @@ static bool compile(struct manifest *m,
 }
 
 static void compile_test_helpers(struct manifest *m,
-				 unsigned int *timeleft,
+				 unsigned int *timeleft UNNEEDED,
 				 struct score *score,
 				 const char *flags,
 				 enum compile_type ctype)
@@ -83,7 +83,7 @@ struct ccanlint tests_helpers_compile = {
 
 REGISTER_TEST(tests_helpers_compile);
 
-static const char *features_reduced(struct manifest *m)
+static const char *features_reduced(struct manifest *m UNNEEDED)
 {
 	if (features_were_reduced)
 		return NULL;

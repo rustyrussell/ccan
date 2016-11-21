@@ -46,7 +46,8 @@ static bool add_dep(struct manifest *m,
 
 /* FIXME: check this is still true once we reduce features. */
 static void check_depends_exist(struct manifest *m,
-				unsigned int *timeleft, struct score *score)
+				unsigned int *timeleft UNNEEDED,
+				struct score *score)
 {
 	unsigned int i;
 	char **deps;
@@ -77,7 +78,7 @@ static void check_depends_exist(struct manifest *m,
 }
 
 static void check_test_depends_exist(struct manifest *m,
-				     unsigned int *timeleft,
+				     unsigned int *timeleft UNNEEDED,
 				     struct score *score)
 {
 	unsigned int i;

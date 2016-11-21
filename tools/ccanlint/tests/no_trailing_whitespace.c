@@ -21,7 +21,7 @@ static char *get_trailing_whitespace(const tal_t *ctx, const char *line)
 }
 
 static void check_trailing_whitespace(struct manifest *m,
-				      unsigned int *timeleft,
+				      unsigned int *timeleft UNNEEDED,
 				      struct score *score)
 {
 	struct list_head *list;

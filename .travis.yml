@@ -8,7 +8,11 @@ compiler:
 addons:
     apt:
         packages:
-            - libjudy-dev libvorbis-dev libportaudio-dev libtalloc-dev
+            - libjudy-dev
+            - libvorbis-dev
+            - libportaudio-dev
+            - libtalloc-dev
 
 script:
-        - make -j2 -k check quiet=1
+    - make -j2 -k quiet=1
+    - make -k check quiet=1

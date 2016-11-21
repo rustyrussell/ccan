@@ -44,7 +44,7 @@ static int count_iters(void)
 
 int main(void)
 {
-	int i, j, sum, max_iters;
+	int i, j, sum, max_iters = 0 /* keep gcc happy */;
 	const char *istr, *jstr;
 
 	plan_tests(13);

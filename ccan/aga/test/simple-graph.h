@@ -256,4 +256,23 @@ static const struct adjacency_list shortcut2_adjacency[] = {
 	{},
 };
 
+/* Negacycle graph
+ *
+ *  A <---- (-3) ----- C
+ *   \                 ^
+ *    (1)->  B -- (1)-/
+ *
+ * Graph with a negative length cycle, and so lacking well-defined shortest paths.
+ */
+struct negacycle_graph {
+	struct simple_graph sg;
+};
+void negacycle_graph_init(struct negacycle_graph *ng);
+static const struct adjacency_list negacycle_adjacency[] = {
+	{1, {2}},
+	{2, {3}},
+	{3, {1}},
+	{},
+};
+
 #endif /* _TEST_GRAPHS_H */

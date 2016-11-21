@@ -114,7 +114,7 @@ bool aga_dijkstra_path(struct aga_graph *g, struct aga_node *node,
 	return true;
 }
 
-void aga_dijkstra_all_paths(struct aga_graph *g)
+void aga_dijkstra_complete(struct aga_graph *g)
 {
 	if (!aga_check_state(g))
 		return;

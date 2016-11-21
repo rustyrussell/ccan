@@ -25,7 +25,8 @@ static struct ccanlint info_documentation_exists = {
 	.needs = "info_exists"
 };
 
-static void create_info_template_doc(struct manifest *m, struct score *score)
+static void create_info_template_doc(struct manifest *m,
+				     struct score *score UNNEEDED)
 {
 	int fd;
 	FILE *new;
@@ -71,7 +72,7 @@ static void create_info_template_doc(struct manifest *m, struct score *score)
 }
 
 static void check_info_documentation_exists(struct manifest *m,
-					    unsigned int *timeleft,
+					    unsigned int *timeleft UNNEEDED,
 					    struct score *score)
 {
 	struct list_head *infodocs = get_ccan_file_docs(m->info_file);

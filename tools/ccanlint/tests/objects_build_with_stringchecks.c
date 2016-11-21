@@ -92,7 +92,7 @@ static struct ccan_file *get_main_header(struct manifest *m)
 }
 
 static void build_objects_with_stringchecks(struct manifest *m,
-					    unsigned int *timeleft,
+					    unsigned int *timeleft UNNEEDED,
 					    struct score *score)
 {
 	struct ccan_file *i;

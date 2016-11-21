@@ -15,7 +15,7 @@
 #include <ctype.h>
 #include "build.h"
 
-static const char *can_build(struct manifest *m)
+static const char *can_build(struct manifest *m UNNEEDED)
 {
 	if (safe_mode)
 		return "Safe mode enabled";
@@ -74,7 +74,8 @@ void build_objects(struct manifest *m,
 }
 
 static void check_objs_build(struct manifest *m,
-			     unsigned int *timeleft, struct score *score)
+			     unsigned int *timeleft UNNEEDED,
+			     struct score *score)
 {
 	const char *flags;
 

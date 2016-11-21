@@ -22,7 +22,7 @@ static struct ccanlint tests_exist = {
 };
 REGISTER_TEST(tests_exist);
 
-static void handle_no_tests(struct manifest *m, struct score *score)
+static void handle_no_tests(struct manifest *m, struct score *score UNNEEDED)
 {
 	FILE *run;
 	struct ccan_file *i;
@@ -104,7 +104,8 @@ static void handle_no_tests(struct manifest *m, struct score *score)
 }
 
 static void check_tests_exist(struct manifest *m,
-			    unsigned int *timeleft, struct score *score)
+			      unsigned int *timeleft UNNEEDED,
+			      struct score *score)
 {
 	struct stat st;
 	char *test_dir = path_join(m, m->dir, "test");

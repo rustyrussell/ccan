@@ -237,7 +237,7 @@ cputype_t cpuid_get_cpu_type(void)
 		uint32_t i;
 
 		get_cpuid(CPUID_VENDORID, &i, &u.bufu32[0], &u.bufu32[2], &u.bufu32[1]);
-		for (i = 0; i < sizeof(c_cpunames) / sizeof(c_cpunames); ++i) {
+		for (i = 0; i < sizeof(c_cpunames) / sizeof(c_cpunames[0]); ++i) {
 			if (strncmp(c_cpunames[i], u.buf, 12) == 0) {
 				cputype = (cputype_t)i;
 				break;

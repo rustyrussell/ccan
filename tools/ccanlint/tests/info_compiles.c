@@ -16,7 +16,8 @@
 #include <ctype.h>
 
 static void check_info_compiles(struct manifest *m,
-				unsigned int *timeleft, struct score *score)
+				unsigned int *timeleft UNNEEDED,
+				struct score *score)
 {
 	char *info_c_file, *info, *output;
 	int fd;

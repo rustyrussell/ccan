@@ -1,0 +1,37 @@
+# AppVeyor CI Configuration
+#
+# Current build status can be viewed at
+# https://ci.appveyor.com/project/dgibson/ccan
+#
+# To build test a fork of this repository using AppVeyor:
+# 1. Visit appveyor.com and create a free account.
+# 2. On the Projects tab, select "New Project" then the project hosting site.
+# 3. Grant OAuth permissions to your project git host.
+# 4. Select the repository for your project fork.
+# 5. Review build results and push updates until the desired result is reached.
+
+version: 0.0.{build}
+
+platform:
+- x86
+- amd64
+
+build_script:
+# Reset %PATH% to avoid msys/cygwin DLL conflicts which cause
+# *** fatal error - cygheap base mismatch detected
+- set PATH=C:\Windows\System32;C:\Windows;C:\Windows\System32\Wbem;C:\msys64\usr\bin
+# Set environment variables for chosen compiler
+- "\"C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\vcvarsall.bat\" %Platform%"
+# Ensure config.h can be generated.
+# Note: Dash options avoid POSIX path conversion by msys
+- "make config.h CC=cl CCAN_CFLAGS=\"-nologo -Zi -FS -W4 -wd4200 -D_CRT_NONSTDC_NO_WARNINGS -D_CRT_SECURE_NO_WARNINGS\" CFLAGS_FORCE_C_SOURCE=-TC OUTPUT_OPTION=-Fo:$@ DEPGEN= LD=link SHELL=bash"
+# FIXME:  Work in progress.  Disabled due to unfixed compile errors.
+# FIXME:  -j%NUMBER_OF_PROCESSORS% won't work without DEPGEN for config.h
+#         It may be possible to generate .d from cl using /showIncludes
+#         See https://stackoverflow.com/q/37685069
+#- "make tools CC=cl CCAN_CFLAGS=\"-nologo -Zi -FS -W4 -wd4200 -D_CRT_NONSTDC_NO_WARNINGS -D_CRT_SECURE_NO_WARNINGS\" CFLAGS_FORCE_C_SOURCE=-TC OUTPUT_OPTION=-Fo:$@ DEPGEN= LD=link SHELL=bash"
+#- "make -k CC=cl CCAN_CFLAGS=\"-nologo -Zi -FS -W4 -wd4200 -D_CRT_NONSTDC_NO_WARNINGS -D_CRT_SECURE_NO_WARNINGS\" CFLAGS_FORCE_C_SOURCE=-TC OUTPUT_OPTION=-Fo:$@ DEPGEN= LD=link SHELL=bash"
+
+test_script:
+# FIXME:  Work in progress.  Disabled due to unfixed compile errors.
+#- "make -k check CC=cl CCAN_CFLAGS=\"-nologo -Zi -FS -W4 -wd4200 -D_CRT_NONSTDC_NO_WARNINGS -D_CRT_SECURE_NO_WARNINGS\" CFLAGS_FORCE_C_SOURCE=-TC OUTPUT_OPTION=-Fo:$@ DEPGEN= LD=link SHELL=bash"

@@ -84,6 +84,18 @@ bool agar_dijkstra_step(struct agar_state *sr, const void **nextr);
 bool agar_dijkstra_path(struct agar_state *sr, const void *destr,
 			aga_icost_t *total_cost,
 			const void **prevr, const void **prevedge);
-void agar_dijkstra_all_paths(struct agar_state *sr);
+void agar_dijkstra_complete(struct agar_state *sr);
+
+/*
+ * Bellman-Ford algorithm
+ */
+
+struct agar_state *agar_bellman_ford_new(void *ctx, struct agar_graph *gr,
+					 const void *nr);
+
+bool agar_bellman_ford_path(struct agar_state *sr, const void *destr,
+			    aga_icost_t *total_cost,
+			    const void **prevr, const void **prevedge);
+void agar_bellman_ford_complete(struct agar_state *sr);
 
 #endif /* CCAN_AGAR_H */

@@ -15,7 +15,7 @@ struct link {
 
 static void linkable_notifier(tal_t *linkable,
 			      enum tal_notify_type type,
-			      void *info)
+			      void *info UNNEEDED)
 {
 	struct linkable *l = tal_parent(linkable);
 	assert(type == TAL_NOTIFY_STEAL || type == TAL_NOTIFY_FREE);

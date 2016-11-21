@@ -11,6 +11,7 @@
 /* These are the defaults. */
 #define DEFAULT_CCAN_COMPILER "cc"
 #define DEFAULT_CCAN_CFLAGS "-g"
+#define DEFAULT_CCAN_OUTPUT_EXE_CFLAG "-o"
 
 #define IDENT_CHARS	"ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
 			"abcdefghijklmnopqrstuvwxyz" \
@@ -20,8 +21,9 @@
 
 #define COVERAGE_CFLAGS "-fprofile-arcs -ftest-coverage"
 
-/* Actual compiler and cflags (defaults to CCAN_COMPILER and CCAN_CFLAGS). */
-extern const char *compiler, *cflags;
+/* Actual compiler and cflags
+ * (defaults to CCAN_COMPILER, CCAN_CFLAGS, CCAN_OUTPUT_EXE_CFLAG). */
+extern const char *compiler, *cflags, *outexecflag;
 
 /* This compiles up the _info file into a temporary. */
 char *compile_info(const void *ctx, const char *dir);

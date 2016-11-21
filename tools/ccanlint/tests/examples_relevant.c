@@ -14,7 +14,7 @@
 #include <ctype.h>
 
 static void examples_relevant_check(struct manifest *m,
-				    unsigned int *timeleft,
+				    unsigned int *timeleft UNNEEDED,
 				    struct score *score)
 {
 	struct ccan_file *f;

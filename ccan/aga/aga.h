@@ -165,6 +165,12 @@ struct aga_node {
 			bool complete;
 			struct lpq_link pqlink;
 		} dijkstra;
+		struct {
+			aga_icost_t distance;
+			struct aga_node *prev;
+			const void *prevedge;
+			struct aga_node *list;
+		} bellman_ford;
 	} u;
 };
 
@@ -177,6 +183,11 @@ struct aga_graph {
 	aga_edge_info_fn edge_info;
 	union {
 		LPQ(struct aga_node, u.dijkstra.pqlink) dijkstra;
+		struct {
+			struct aga_node *nodelist;
+			int nnodes;
+			int npasses;
+		} bellman_ford;
 	} state;
 };
 
@@ -347,7 +358,7 @@ struct aga_node *aga_bfs_explore(struct aga_graph *g, struct aga_node *n);
  *
  * Performs a breadth first search.  The block following this macro is
  * executed with @_n set first to @_start, then to each node reachable
- * from @_start in depth first search order.
+ * from @_start in breadth-first search order.
  *
  * aga_bfs_start() must be called before this macro is used.
  */
@@ -416,15 +427,74 @@ bool aga_dijkstra_path(struct aga_graph *g, struct aga_node *dest,
 		       struct aga_node **prev, const void **prevedge);
 
 /**
- * aga_dijkstra_all_paths - Find shortest paths to all reachable nodes
+ * aga_dijkstra_complete - Find shortest paths to all reachable nodes
  * @g: graph
  *
  * Finds shortest paths from the source node (specified in
  * aga_dijkstra_start()) to all other reachable nodes in @g.  No
  * results are returned directly, but between calling
- * aga_dijkstra_all_paths() and aga_finish, aga_dijkstra_path() is
+ * aga_dijkstra_all_paths() and aga_finish(), aga_dijkstra_path() is
  * guaranteed to complete in O(1) time for all destinations.
  */
-void aga_dijkstra_all_paths(struct aga_graph *g);
+void aga_dijkstra_complete(struct aga_graph *g);
+
+/*
+ * Bellman-Ford algorithm
+ */
+
+/**
+ * aga_bellman_ford_start - Start Bellman-Ford algorithm
+ * @g: graph
+ * @source: source node
+ *
+ * Start's the Bellman-Ford algorithm on @g to find shortest paths
+ * from node @source, to other nodes in @g.
+ */
+int aga_bellman_ford_start(struct aga_graph *g, struct aga_node *source);
+
+/**
+ * aga_bellman_ford_path - Find the shortest path to a node
+ * @g: graph
+ * @dest: destination node
+ * @prev: Second last node in the path *output)
+ * @prevedge: Last edge in the path
+ *
+ * Finds the shortest path from the source node (specified in
+ * aga_bellman_ford_start() to @dest using Bellman_Ford's algorithm.
+ *
+ * If no path exists, return false.
+ *
+ * If a path does exist, returns true.  Additionally if @total_cost is
+ * non-NULL, store the total cost of the path in *@total_cost, if
+ * @prev is non-NULL, store the node in the path immediately before
+ * @dest in *@prev and if @prevedge is non-NULL stores the edge which
+ * leads from *@prev to @dest in *@prevedge.
+ *
+ * If @dest is the same as source, 0 will be stored in @cost, and NULL
+ * will be stored in *@prev and *@prevedge.
+ *
+ * The full path from source to @dest can be determined by repeatedly
+ * calling aga_bellman_ford_path() on *@prev.
+ *
+ * NOTE: Bellman_Ford's algorithm will not work correctly on a graph
+ * which contains a cycle with (total) negative cost.  If aga detects
+ * this case, it will set aga_error() to AGA_ERR_NEGATIVE_COST.
+ */
+bool aga_bellman_ford_path(struct aga_graph *g, struct aga_node *dest,
+			   aga_icost_t *total_cost,
+			   struct aga_node **prev, const void **prevedge);
+
+/**
+ * aga_bellman_ford_complete - Run Bellman-Ford algorithm to completion
+ * @g: graph
+ *
+ * Finds shortest paths from the source node (specified in
+ * aga_bellman_ford_start()) to all other reachable nodes in @g.  No
+ * results are returned directly, but between calling
+ * aga_bellman_ford_complete() and aga_finish(),
+ * aga_bellman_ford_path() is guaranteed to complete in O(1) time for
+ * all destinations.
+ */
+void aga_bellman_ford_complete(struct aga_graph *g);
 
 #endif /* CCAN_AGA_H */
