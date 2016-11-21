@@ -19,7 +19,7 @@ ALL_INFOS := $(INFO_SRCS:%_info=%info)
 ALL_MODULES := $(ALL_INFOS:%/info=%)
 
 # ... Except stuff that needs external dependencies, which we exclude
-EXCLUDE := altstack generator jmap jset nfs ogg_to_pcm tal/talloc wwviaudio
+EXCLUDE := altstack jmap jset nfs ogg_to_pcm tal/talloc wwviaudio
 MODULES:= $(filter-out $(EXCLUDE:%=ccan/%), $(ALL_MODULES))
 
 # Sources are C files in each module, objects the resulting .o files
