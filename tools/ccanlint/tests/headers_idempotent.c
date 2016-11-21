@@ -13,14 +13,6 @@
 #include <string.h>
 #include <ctype.h>
 
-static const char explain[] 
-= "Headers usually start with the C preprocessor lines to prevent multiple\n"
-  "inclusions.  These look like the following:\n"
-  "#ifndef CCAN_<MODNAME>_H\n"
-  "#define CCAN_<MODNAME>_H\n"
-  "...\n"
-  "#endif /* CCAN_<MODNAME>_H */\n";
-
 static void fix_name(char *name)
 {
 	unsigned int i;
