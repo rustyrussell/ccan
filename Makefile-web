@@ -1,5 +1,13 @@
+default: upload
+
+include Makefile
 # This can be overridden on cmdline to generate pages elsewhere.
 WEBDIR=/srv/www/ccodearchive.net
+PHP=php5
+
+MODS := $(ALL_MODULES:ccan/%=%)
+upload: fastcheck
+	git push
 
 ALL_PAGES=$(patsubst %, $(WEBDIR)/info/%.html, $(MODS))
 DIRECT_TARBALLS=$(patsubst %, $(WEBDIR)/tarballs/%.tar.bz2, $(MODS))
@@ -10,19 +18,13 @@ JUNKPAGES=$(JUNKDIRS:%=$(WEBDIR)/%.html)
 JUNKBALLS=$(JUNKDIRS:%=$(WEBDIR)/%.tar.bz2)
 PRETTIFY=$(WEBDIR)/prettify/src/run_prettify.js $(WEBDIR)/prettify/src/prettify.css
 
-upload: fastcheck modcheck
-	git push
-
-# Check MODS list in Makefile-ccan matches modules we find.
-modcheck:
-	@FOUND=$$(echo $$(find ccan -name _info | sed 's,ccan/\(.*\)/_info,\1,' | sort) ); LISTED=$$(echo $$(echo $(MODS) | tr ' ' '\012' | sort) ); if [ "$$FOUND" = "$$LISTED" ]; then exit 0; fi; while true; do a="$${FOUND%% *}"; b="$${LISTED%% *}"; if [ "$$a" != "$$b" ]; then echo "'$$a' found but '$$b' in MOD" >&2; exit 1; fi; FOUND="$${FOUND#* }"; LISTED="$${LISTED#* }"; done
 
 clean-tree:
 	[ "$(WEBDEV)" ] || ! git status --porcelain | grep .
 
-webpages: modcheck clean-tree webpages-unchecked
+webpages: clean-tree webpages-unchecked
 
-webpages-unchecked: $(WEB_SUBDIRS) $(PRETTIFY) $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.png $(WEBDIR)/ccan-bg.png $(WEBDIR)/ccan.css $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(WEBDIR)/Makefile-ccan $(ALL_PAGES) junkpages
+webpages-unchecked: $(WEB_SUBDIRS) $(PRETTIFY) $(WEBDIR)/index.html $(WEBDIR)/upload.html $(WEBDIR)/uploader.php $(WEBDIR)/example-config.h $(WEBDIR)/ccan.png $(WEBDIR)/ccan-bg.png $(WEBDIR)/ccan.css $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(ALL_PAGES) junkpages
 
 junkpages: $(WEBDIR)/list.html $(WEBDIR)/junkcode $(JUNKPAGES) $(JUNKBALLS)
 $(WEB_SUBDIRS): $(WEBDIR)
@@ -36,31 +38,28 @@ $(WEBDIR)/junkcode/%.tar.bz2: junkcode/% $(WEBDIR)/junkcode
 
 $(WEBDIR)/junkcode/%.html: $(WEBDIR)/junkcode/%.tar.bz2
 	cd $(WEBDIR) && tar xfj junkcode/$*.tar.bz2
-	URLPREFIX=../ php5 web/staticjunkcode.php junkcode/$* $* > $@
+	URLPREFIX=../ $(PHP) web/staticjunkcode.php junkcode/$* $* > $@
 
 # We want tarball to contain ccan/; we put junkcode in, but don't depend on it.
-$(WEBDIR)/ccan.tar.bz2: config.h Makefile Makefile-ccan $(shell git ls-files ccan tools licenses)
+$(WEBDIR)/ccan.tar.bz2: config.h Makefile $(shell git ls-files ccan tools licenses)
 	DIR=`pwd` && cd /tmp && ln -sf "$$DIR" ccan && tar cvfj $@ `for f in $^; do echo ccan/$$f; done` ccan/junkcode && rm ccan
 
 $(ALL_PAGES): tools/doc_extract web/staticmoduleinfo.php
 
 $(WEBDIR)/list.html: web/staticall.php tools/doc_extract $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(JUNKBALLS)
-	php5 web/staticall.php ccan/ junkcode/ $(WEBDIR) $(MODS) > $@
+	$(PHP) web/staticall.php ccan/ junkcode/ $(WEBDIR) $(MODS) > $@
 
 $(WEBDIR)/upload.html: web/staticupload.php
-	php5 web/staticupload.php > $@
+	$(PHP) web/staticupload.php > $@
 
 # cpp inserts gratuitous linebreaks at start of file, makes for php problems.
 $(WEBDIR)/uploader.php: web/uploader.php.cpp
 	cpp -w -C -P $< | grep . > $@
 
 $(WEBDIR)/index.html: web/staticindex.php
-	php5 web/staticindex.php > $@
+	$(PHP) web/staticindex.php > $@
 
 $(WEBDIR)/example-config.h: config.h
-	cp $< $@
-
-$(WEBDIR)/Makefile-ccan: Makefile-ccan
 	cp $< $@
 
 $(WEBDIR)/ccan.png: web/ccan.png
@@ -74,7 +73,7 @@ $(WEBDIR)/ccan.css: web/ccan.css
 
 $(WEBDIR)/info/%.html: $(WEBDIR)/tarballs/%.tar.bz2 $(WEBDIR)/tarballs/with-deps/%.tar.bz2
 	@mkdir -p `dirname $@`
-	URLPREFIX=../`echo $* | tr -dc '/' | sed s',/,../,g'` php5 web/staticmoduleinfo.php `pwd`/ccan/$* $* > $@
+	URLPREFIX=../`echo $* | tr -dc '/' | sed s',/,../,g'` $(PHP) web/staticmoduleinfo.php `pwd`/ccan/$* $* > $@
 
 $(WEBDIR)/tarballs/%.tar.bz2: ccan/%/_info clean-tree
 	@mkdir -p `dirname $@`
