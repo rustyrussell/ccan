@@ -21,7 +21,3 @@ deps=$(echo `$path/info testdepends` `$path/info depends` | tr ' ' '\n' | \
 echo "${module}_ok_deps := $test_srcs $module_objs $deps"
 echo "$path/.ok: \$(${module}_ok_deps)"
 echo "$path/.fast.ok: \$(${module}_ok_deps:%.ok=%.fast.ok)"
-echo "$path/.full.ok: \$(${module}_ok_deps:%.ok=%.full.ok)"
-echo "${module}.check: $path/.ok"
-echo "${module}.fastcheck: $path/.fast.ok"
-echo "${module}.fullcheck: $path/.full.ok"

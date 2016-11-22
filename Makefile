@@ -76,7 +76,6 @@ TEST_DEPS := $(MODULES:%=%/.d)
 
 check: $(MODULES:%=%/.ok)
 fastcheck: $(MODULES:%=%/.fast.ok)
-fullcheck: $(MODULES:%=%/.full.ok)
 
 ifeq ($(strip $(filter clean config.h, $(MAKECMDGOALS))),)
 -include $(DEPS) $(LINT_DEPS) $(TOOLS_DEPS) $(TEST_DEPS)
