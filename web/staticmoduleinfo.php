@@ -63,7 +63,7 @@ if ($extdepends) {
 <h3>External dependencies:</h3>
 <ul class='external-dependencies'>
 <?php
-	foreach (split("\n", $extdepends) as $dep) {
+	foreach (explode("\n", $extdepends) as $dep) {
 		$fields=preg_split("/\s+/", $dep);
 		echo "<li>" . $fields[0].' ';
 		if (count($fields) > 1)
