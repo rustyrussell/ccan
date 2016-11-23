@@ -5,6 +5,9 @@ compiler:
   - gcc
   - clang
 
+env:
+    - CFLAGS="-std=gnu99"
+
 script:
     - make -j2 -k quiet=1
     - make -k check quiet=1
