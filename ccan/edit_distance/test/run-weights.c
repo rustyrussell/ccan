@@ -224,14 +224,14 @@ static void test_dl(void)
 static void test_mem_use(void)
 {
 	char tgt[] = "BC";
-	char src[ED_STACK_ELEMS + 1];
-	for (size_t i = 0; i < ED_STACK_ELEMS; ++i) {
+	char src[ED_STACK_DIST_VALS + 1];
+	for (size_t i = 0; i < ED_STACK_DIST_VALS; ++i) {
 		src[i] = (char)('A' + (i % 26));
 	}
-	src[ED_STACK_ELEMS] = '\0';
+	src[ED_STACK_DIST_VALS] = '\0';
 
 	for (ed_size tlen = 1; tlen < 3; ++tlen) {
-		ed_size slen = ED_STACK_ELEMS;
+		ed_size slen = ED_STACK_DIST_VALS;
 		/* Above threshold, causes allocation */
 		ok(edit_distance_lcs(src, slen, tgt, tlen) == slen - tlen,
 		   "edit_distance_lcs(\"%.3s..., %u, \"%.*s\", %u) == %u",

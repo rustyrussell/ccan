@@ -16,10 +16,10 @@ ed_dist edit_distance_lcs(const ed_elem *src, ed_size slen,
 	/* Optimization: Avoid malloc when row of distance matrix can fit on
 	 * the stack.
 	 */
-	ed_dist stackdist[ED_STACK_ELEMS];
+	ed_dist stackdist[ED_STACK_DIST_VALS];
 
 	/* One row of the Wagner-Fischer distance matrix. */
-	ed_dist *dist = slen < ED_STACK_ELEMS ? stackdist :
+	ed_dist *dist = slen < ED_STACK_DIST_VALS ? stackdist :
 	    malloc((slen + 1) * sizeof(ed_dist));
 
 	/* Initialize row with cost to delete src[0..i-1] */

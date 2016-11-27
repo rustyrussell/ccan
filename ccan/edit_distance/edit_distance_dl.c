@@ -15,11 +15,11 @@ ed_dist edit_distance_dl(const ed_elem *src, ed_size slen,
 {
 	/* Optimization: Avoid malloc when distance matrix can fit on the stack.
 	 */
-	ed_dist stackdist[ED_STACK_ELEMS];
+	ed_dist stackdist[ED_STACK_DIST_VALS];
 
 	/* Lowrance-Wagner distance matrix, in row-major order. */
 	size_t matsize = ((size_t)slen + 2) * (tlen + 2);
-	ed_dist *distmem = matsize <= ED_STACK_ELEMS ? stackdist :
+	ed_dist *distmem = matsize <= ED_STACK_DIST_VALS ? stackdist :
 	    malloc(matsize * sizeof(ed_dist));
 	ed_dist *dist = distmem;
 

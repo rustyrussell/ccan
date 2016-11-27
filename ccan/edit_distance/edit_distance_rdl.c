@@ -16,11 +16,11 @@ ed_dist edit_distance_rdl(const ed_elem *src, ed_size slen,
 	/* Optimization: Avoid malloc when required rows of distance matrix can
 	 * fit on the stack.
 	 */
-	ed_dist stackdist[ED_STACK_ELEMS];
+	ed_dist stackdist[ED_STACK_DIST_VALS];
 
 	/* Two rows of the Wagner-Fischer distance matrix. */
 	ed_dist *distmem, *dist, *prevdist;
-	if (slen < ED_STACK_ELEMS / 2) {
+	if (slen < ED_STACK_DIST_VALS / 2) {
 		distmem = stackdist;
 		dist = distmem;
 		prevdist = distmem + slen + 1;

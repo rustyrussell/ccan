@@ -109,18 +109,39 @@
 # define ED_HASH_ELEM(e) ((unsigned char)e)
 /** Maximum value that can be returned from #ED_HASH_ELEM */
 # define ED_HASH_MAX UCHAR_MAX
-/** Can an array of #ED_HASH_MAX ::ed_dist values be stored on the stack? */
+/** Can an array of #ED_HASH_MAX ::ed_dist values be stored on the stack?
+ * @see #ED_STACK_DIST_VALS
+ */
 # define ED_HASH_ON_STACK
 #endif
 
-#ifndef ED_STACK_ELEMS
-/** Maximum number of elements that will be allocated on the stack.
+#ifndef ED_STACK_DIST_VALS
+/** Maximum number of ::ed_dist values that will be allocated on the stack.
  *
- * Note: The threshold does not need to be tight since with
- * <code>ED_STACK_ELEMS > ~100</code> algorithm cost will dominate @c malloc
+ * The edit distance algorithms which use a dynamic programming (all currently
+ * supported algorithms) can store intermediate values on the stack to avoid
+ * the overhead of calling @c malloc.  This macro defines the maximum number
+ * of intermediate distance values which can be stored on the stack for a
+ * single function call.  It should be large enough to cover common cases,
+ * where possible, and small enough to avoid overflowing the stack or frame
+ * size limits.  The algorithms have the following requirements:
+ *
+ * - ed_measure::EDIT_DISTANCE_LCS and ed_measure::EDIT_DISTANCE_LEV require
+ *   @c min(slen,tlen) values when #ED_COST_IS_SYMMETRIC is defined, @c slen
+ *   otherwise.
+ * - ed_measure::EDIT_DISTANCE_RDL requires @c 2*min(slen,tlen) values when
+ *   #ED_COST_IS_SYMMETRIC is defined, @c 2*slen otherwise.
+ * - ed_measure::EDIT_DISTANCE_DL requires @c slen*tlen values (in addition to
+ *   the #ED_HASH_MAX values stored on the stack if #ED_HASH_ON_STACK is
+ *   defined).
+ *
+ * This value does not need to be a tight bound, since when @c slen*tlen is
+ * greater than around 10,000 the algorithm cost will dominate the @c malloc
  * cost anyway.
+ *
+ * @see #ED_HASH_ON_STACK
  */
-# define ED_STACK_ELEMS 512
+# define ED_STACK_DIST_VALS 512
 #endif
 
 #endif
