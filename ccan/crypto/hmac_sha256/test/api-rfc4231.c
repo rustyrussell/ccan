@@ -129,11 +129,12 @@ int main(void)
 	size_t i;
 	struct hmac_sha256 hmac;
 
-	plan_tests(sizeof(tests) / sizeof(tests[0]));
+	plan_tests(sizeof(tests) / sizeof(tests[0]) * 2);
 
 	for (i = 0; i < sizeof(tests) / sizeof(tests[0]); i++) {
 		size_t ksize, dsize, hmacsize;
 		void *k, *d, *expect;
+		struct hmac_sha256_ctx ctx;
 
 		k = fromhex(tests[i].key, &ksize);
 		d = fromhex(tests[i].data, &dsize);
@@ -141,6 +142,14 @@ int main(void)
 		assert(hmacsize == sizeof(hmac));
 		hmac_sha256(&hmac, k, ksize, d, dsize);
 		ok1(memcmp(&hmac, expect, hmacsize) == 0);
+
+		/* Now test partial API. */
+		hmac_sha256_init(&ctx, k, ksize);
+		hmac_sha256_update(&ctx, d, dsize / 2);
+		hmac_sha256_update(&ctx, (char *)d + dsize/2, dsize - dsize/2);
+		hmac_sha256_done(&ctx, &hmac);
+		ok1(memcmp(&hmac, expect, hmacsize) == 0);
+
 		free(k);
 		free(d);
 		free(expect);

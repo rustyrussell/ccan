@@ -5,7 +5,7 @@
 #define IPAD 0x3636363636363636ULL
 #define OPAD 0x5C5C5C5C5C5C5C5CULL
 
-#define BLOCK_U64S (64 / sizeof(uint64_t))
+#define BLOCK_U64S (HMAC_SHA256_BLOCKSIZE / sizeof(uint64_t))
 
 static inline void xor_block(uint64_t block[BLOCK_U64S], uint64_t pad)
 {
@@ -15,17 +15,15 @@ static inline void xor_block(uint64_t block[BLOCK_U64S], uint64_t pad)
 		block[i] ^= pad;
 }
 
-#if 1
-void hmac_sha256(struct hmac_sha256 *hmac,
-		 const void *k, size_t ksize,
-		 const void *d, size_t dsize)
+void hmac_sha256_init(struct hmac_sha256_ctx *ctx,
+		      const void *k, size_t ksize)
 {
-	struct sha256_ctx shactx;
-	uint64_t block[BLOCK_U64S];
-	struct sha256 hash, hashed_key;
+	struct sha256 hashed_key;
+	/* We use k_opad as k_ipad temporarily. */
+	uint64_t *k_ipad = ctx->k_opad;
 
 	/* (keys longer than B bytes are first hashed using H) */
-	if (ksize > sizeof(block)) {
+	if (ksize > HMAC_SHA256_BLOCKSIZE) {
 		sha256(&hashed_key, k, ksize);
 		k = &hashed_key;
 		ksize = sizeof(hashed_key);
@@ -37,30 +35,48 @@ void hmac_sha256(struct hmac_sha256 *hmac,
 	 *  (e.g., if K is of length 20 bytes and B=64, then K will be
 	 *   appended with 44 zero bytes 0x00)
 	 */
-	memcpy(block, k, ksize);
-	memset((char *)block + ksize, 0, sizeof(block) - ksize);
+	memcpy(k_ipad, k, ksize);
+	memset((char *)k_ipad + ksize, 0, HMAC_SHA256_BLOCKSIZE - ksize);
 
 	/*
 	 * (2) XOR (bitwise exclusive-OR) the B byte string computed
 	 * in step (1) with ipad
 	 */
-	xor_block(block, IPAD);
+	xor_block(k_ipad, IPAD);
 
 	/*
+	 * We start (4) here, appending text later:
+	 *
 	 * (3) append the stream of data 'text' to the B byte string resulting
 	 * from step (2)
 	 * (4) apply H to the stream generated in step (3)
 	 */
-	sha256_init(&shactx);
-	sha256_update(&shactx, block, sizeof(block));
-	sha256_update(&shactx, d, dsize);
-	sha256_done(&shactx, &hash);
+	sha256_init(&ctx->sha);
+	sha256_update(&ctx->sha, k_ipad, HMAC_SHA256_BLOCKSIZE);
 
 	/*
 	 * (5) XOR (bitwise exclusive-OR) the B byte string computed in
 	 * step (1) with opad
 	 */
-	xor_block(block, IPAD^OPAD);
+	xor_block(ctx->k_opad, IPAD^OPAD);
+}
+
+void hmac_sha256_update(struct hmac_sha256_ctx *ctx, const void *p, size_t size)
+{
+	/* This is the appending-text part of this:
+	 *
+	 * (3) append the stream of data 'text' to the B byte string resulting
+	 * from step (2)
+	 * (4) apply H to the stream generated in step (3)
+	 */
+	sha256_update(&ctx->sha, p, size);
+}
+
+void hmac_sha256_done(struct hmac_sha256_ctx *ctx,
+		      struct hmac_sha256 *hmac)
+{
+	/* (4) apply H to the stream generated in step (3) */
+	sha256_done(&ctx->sha, &hmac->sha);
 
 	/*
 	 * (6) append the H result from step (4) to the B byte string
@@ -68,10 +84,22 @@ void hmac_sha256(struct hmac_sha256 *hmac,
 	 * (7) apply H to the stream generated in step (6) and output
 	 * the result
 	 */
-	sha256_init(&shactx);
-	sha256_update(&shactx, block, sizeof(block));
-	sha256_update(&shactx, &hash, sizeof(hash));
-	sha256_done(&shactx, &hmac->sha);
+	sha256_init(&ctx->sha);
+	sha256_update(&ctx->sha, ctx->k_opad, sizeof(ctx->k_opad));
+	sha256_update(&ctx->sha, &hmac->sha, sizeof(hmac->sha));
+	sha256_done(&ctx->sha, &hmac->sha);
+}
+
+#if 1
+void hmac_sha256(struct hmac_sha256 *hmac,
+		 const void *k, size_t ksize,
+		 const void *d, size_t dsize)
+{
+	struct hmac_sha256_ctx ctx;
+
+	hmac_sha256_init(&ctx, k, ksize);
+	hmac_sha256_update(&ctx, d, dsize);
+	hmac_sha256_done(&ctx, hmac);
 }
 #else
 /* Direct mapping from MD5 example in RFC2104 */
