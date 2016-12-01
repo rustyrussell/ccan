@@ -14,7 +14,7 @@ test_srcs=`ls $path/test/*.[ch] 2>/dev/null | tr '\n' ' '`
 module_objs=`ls $path/*.c 2>/dev/null | sed 's/.c$/.o/g' | tr '\n' ' '`
 
 # ... and on the modules this test uses having passed their tests
-deps=$(echo `$path/info testdepends` `$path/info depends` | tr ' ' '\n' | \
+deps=$(echo `$path/info depends` | tr ' ' '\n' | \
        sort | uniq | sed -e 's/$/\/.ok/g' -e '/^\/.ok$/d' | tr '\n' ' ')
 
 # Print the test targets and target aliases
