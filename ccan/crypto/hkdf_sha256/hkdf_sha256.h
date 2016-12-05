@@ -15,7 +15,7 @@
  * @info: pointer to info
  * @isize: the number of bytes pointed to by @info
  */
-void hkdf_sha256(unsigned char *okm, size_t okm_size,
+void hkdf_sha256(void *okm, size_t okm_size,
 		 const void *s, size_t ssize,
 		 const void *k, size_t ksize,
 		 const void *info, size_t isize);
