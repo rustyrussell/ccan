@@ -10,10 +10,18 @@
 #define DEFAULT_STATE_SIZE	8192
 #define STATE_ALIGN		ALIGNOF(struct generator_)
 
-void *generator_new_(generator_wrapper_ *fn, size_t retsize)
+static size_t generator_metasize(size_t retsize)
+{
+	retsize = (retsize + STATE_ALIGN) & ~(STATE_ALIGN - 1);
+	return sizeof(struct generator_) + retsize;
+}
+
+void *generator_new_(void (*fn)(void *), size_t retsize)
 {
 	char *base;
 	size_t size = DEFAULT_STATE_SIZE;
+	size_t metasize = generator_metasize(retsize);
+	struct coroutine_stack *stack;
 	void *ret;
 	struct generator_ *gen;
 
@@ -22,33 +30,26 @@ void *generator_new_(generator_wrapper_ *fn, size_t retsize)
 		abort();
 
 	retsize = (retsize + STATE_ALIGN) & ~(STATE_ALIGN - 1);
-	ret = base + size - retsize;
-	gen = (struct generator_ *)ret - 1;
+
+	stack = coroutine_stack_init(base, size, metasize);
+	gen = coroutine_stack_to_metadata(stack, metasize);
+	ret = gen + 1;
 
 	gen->base = base;
 	gen->complete = false;
 
-	getcontext(&gen->gen);
-
-	gen->gen.uc_stack.ss_sp = gen->base;
-	gen->gen.uc_stack.ss_size = (char *)gen - base;
-
-	if (HAVE_POINTER_SAFE_MAKECONTEXT) {
-		makecontext(&gen->gen, (void *)fn, 1, ret);
-	} else {
-		ptrdiff_t si = ptr2int(ret);
-		ptrdiff_t mask = (1UL << (sizeof(int) * 8)) - 1;
-		int lo = si & mask;
-		int hi = si >> (sizeof(int) * 8);
-
-		makecontext(&gen->gen, (void *)fn, 2, lo, hi);
-	}
+	coroutine_init(&gen->gen, fn, ret, stack);
 
 	return ret;
 }
 
-void generator_free_(void *ret)
+void generator_free_(void *ret, size_t retsize)
 {
 	struct generator_ *gen = generator_state_(ret);
+	size_t metasize = generator_metasize(retsize);
+	struct coroutine_stack *stack;
+
+	stack = coroutine_stack_from_metadata(gen, metasize);
+	coroutine_stack_release(stack, metasize);
 	free(gen->base);
 }

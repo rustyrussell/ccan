@@ -3,10 +3,6 @@
 #define CCAN_GENERATOR_H
 #include "config.h"
 
-#if !HAVE_UCONTEXT
-#error Generators require working ucontext.h functions
-#endif
-
 #if !HAVE_TYPEOF
 #error Generators require typeof
 #endif
@@ -18,20 +14,22 @@
 #include <assert.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include <ucontext.h>
 
-#include <ccan/ptrint/ptrint.h>
-#include <ccan/build_assert/build_assert.h>
 #include <ccan/cppmagic/cppmagic.h>
 #include <ccan/compiler/compiler.h>
+#include <ccan/coroutine/coroutine.h>
+
+#if !COROUTINE_AVAILABLE
+#error Generators require coroutines
+#endif
 
 /*
  * Internals - included just for the use of inlines and macros
  */
 
 struct generator_ {
-	ucontext_t gen;
-	ucontext_t caller;
+	struct coroutine_state gen;
+	struct coroutine_state caller;
 	bool complete;
 	void *base;
 };
@@ -51,15 +49,8 @@ struct generator_incomplete_;
 #define generator_rtype_(gen_)			\
 	typeof((*(gen_))((struct generator_incomplete_ *)NULL))
 
-#if HAVE_POINTER_SAFE_MAKECONTEXT
-#define generator_wrapper_args_()	void *ret
-#else
-#define generator_wrapper_args_()	int lo, int hi
-#endif
-typedef void generator_wrapper_(generator_wrapper_args_());
-
-void *generator_new_(generator_wrapper_ *fn, size_t retsize);
-void generator_free_(void *ret);
+void *generator_new_(void (*fn)(void *), size_t retsize);
+void generator_free_(void *ret, size_t retsize);
 
 /*
  * API
@@ -128,22 +119,15 @@ void generator_free_(void *ret);
 #define generator_def_(name_, rtype_, storage_, ...)			\
 	static void name_##_generator_(rtype_ *ret_			\
 				       generator_parms_inner_(__VA_ARGS__)); \
-	static void name_##_generator__(generator_wrapper_args_())	\
+	static void name_##_generator__(void *ret)			\
 	{								\
 		struct generator_ *gen;					\
 		UNNEEDED generator_argstruct_(__VA_ARGS__) *args;	\
-		CPPMAGIC_IFELSE(HAVE_POINTER_SAFE_MAKECONTEXT)		\
-			()						\
-			(ptrdiff_t hilo = ((ptrdiff_t)hi << (8*sizeof(int))) \
-			 	+ (ptrdiff_t)lo;			\
-			rtype_ *ret = (rtype_ *)int2ptr(hilo);		\
-			BUILD_ASSERT(sizeof(struct generator_ *)	\
-				     <= 2*sizeof(int));)		\
 		gen = generator_state_(ret);				\
 		args = generator_argp_(ret);				\
 		name_##_generator_(ret generator_args_unpack_(__VA_ARGS__)); \
 		gen->complete = true;					\
-		setcontext(&gen->caller);				\
+		coroutine_jump(&gen->caller);				\
 		assert(0);						\
 	}								\
 	storage_ generator_t(rtype_)					\
@@ -184,10 +168,8 @@ void generator_free_(void *ret);
 #define generator_yield(val_)						\
 	do {								\
 		struct generator_ *gen_ = generator_state_(ret_);	\
-		int rc;							\
 		*(ret_) = (val_);					\
-		rc = swapcontext(&gen_->gen, &gen_->caller);		\
-		assert(rc == 0);					\
+		coroutine_switch(&gen_->gen, &gen_->caller);		\
 	} while (0)
 
 /**
@@ -202,13 +184,11 @@ void generator_free_(void *ret);
 static inline void *generator_next_(void *ret_)
 {
 	struct generator_ *gen = generator_state_(ret_);
-	int rc;
 
 	if (gen->complete)
 		return NULL;
 
-	rc = swapcontext(&gen->caller, &gen->gen);
-	assert(rc == 0);
+	coroutine_switch(&gen->caller, &gen->gen);
 
 	return gen->complete ? NULL : ret_;
 }
@@ -234,6 +214,7 @@ static inline void *generator_next_(void *ret_)
 	})
 
 #define generator_free(gen_)					\
-	generator_free_((generator_rtype_(gen_) *)(gen_))
+	generator_free_((generator_rtype_(gen_) *)(gen_),	\
+			sizeof(generator_rtype_(gen_)))
 
 #endif /* CCAN_GENERATOR_H */

@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <ccan/coroutine/coroutine.h>
+
 /**
  * generator - generators for C
  *
@@ -55,19 +57,19 @@ int main(int argc, char *argv[])
 		return 1;
 
 	if (strcmp(argv[1], "depends") == 0) {
-		printf("ccan/build_assert\n");
-		printf("ccan/ptrint\n");
 		printf("ccan/alignof\n");
+		printf("ccan/coroutine\n");
 		printf("ccan/cppmagic\n");
 		printf("ccan/compiler\n");
 		return 0;
 	}
 
 	if (strcmp(argv[1], "ported") == 0) {
-#if HAVE_UCONTEXT
+#if COROUTINE_AVAILABLE
 		printf("\n");
+		return 1;
 #else
-		printf("Needs ucontext support\n");
+		printf("Needs coroutine support\n");
 #endif
 	}
 
