@@ -30,9 +30,10 @@ static void test_trivial(struct coroutine_stack *stack)
 }
 
 
+static char buf[COROUTINE_MIN_STKSZ + COROUTINE_STK_OVERHEAD];
+
 int main(void)
 {
-	char buf[COROUTINE_MIN_STKSZ + COROUTINE_STK_OVERHEAD];
 	struct coroutine_stack *stack;
 
 	/* This is how many tests you plan to run */

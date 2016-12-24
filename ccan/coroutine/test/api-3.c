@@ -64,16 +64,19 @@ static void test_metadata(struct coroutine_stack *stack)
 
 int main(void)
 {
-	char buf[BUFSIZE];
+	char *buf;
 	struct coroutine_stack *stack;
 
 	/* This is how many tests you plan to run */
-	plan_tests(9);
+	plan_tests(10);
 
 	/* Fix seed so we get consistent, though pseudo-random results */	
 	srandom(0);
 
-	stack = coroutine_stack_init(buf, sizeof(buf), sizeof(struct metadata));
+	buf = malloc(BUFSIZE);
+	ok1(buf != NULL);
+
+	stack = coroutine_stack_init(buf, BUFSIZE, sizeof(struct metadata));
 	ok1(stack != NULL);
 	ok1(coroutine_stack_check(stack, NULL) == stack);
 	ok1(coroutine_stack_size(stack)
@@ -82,6 +85,8 @@ int main(void)
 	test_metadata(stack);
 
 	coroutine_stack_release(stack, sizeof(struct metadata));
+
+	free(buf);
 
 	/* This exits depending on whether all tests passed */
 	return exit_status();
