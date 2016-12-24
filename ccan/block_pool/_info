@@ -38,9 +38,6 @@
  * Author: Joey Adams <joeyadams3.14159@gmail.com>
  * License: MIT
  * Version: 0.1
- * Ccanlint:
- *	// We actually depend on the LGPL talloc
- *	license_depends_compat FAIL
  */
 int main(int argc, char *argv[])
 {
@@ -50,6 +47,12 @@ int main(int argc, char *argv[])
 
 	if (strcmp(argv[1], "depends") == 0) {
 		printf("ccan/talloc\n");
+		return 0;
+	}
+
+	if (strcmp(argv[1], "ccanlint") == 0) {
+		/* We actually depend on the LGPL talloc */
+		printf("license_depends_compat FAIL\n");
 		return 0;
 	}
 

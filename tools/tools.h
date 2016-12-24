@@ -48,6 +48,9 @@ char **get_libs(const void *ctx, const char *dir, const char *style,
 char **get_cflags(const void *ctx, const char *dir,
 		char *(*get_info)(const void *ctx, const char *dir));
 
+char **get_ccanlint(const void *ctx, const char *dir,
+		    char *(*get_info)(const void *ctx, const char *dir));
+
 char *get_ported(const void *ctx, const char *dir, bool recurse,
 		 char *(*get_info)(const void *ctx, const char *dir));
 

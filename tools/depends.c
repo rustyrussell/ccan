@@ -253,6 +253,12 @@ static char **get_one_cflags(const void *ctx, const char *dir,
 	return get_one_prop(ctx, dir, "cflags", get_info);
 }
 
+static char **get_one_ccanlint(const void *ctx, const char *dir,
+			       char *(*get_info)(const void *ctx, const char *dir))
+{
+	return get_one_prop(ctx, dir, "ccanlint", get_info);
+}
+
 /* O(n^2) but n is small. */
 static char **add_deps(char **deps1, char **deps2)
 {
@@ -280,6 +286,18 @@ char **get_cflags(const void *ctx, const char *dir,
 	tal_resize(&flags, len + 1);
 	flags[len] = NULL;
 	return flags;
+}
+
+char **get_ccanlint(const void *ctx, const char *dir,
+		    char *(*get_info)(const void *ctx, const char *dir))
+{
+	char **ccanlint;
+	unsigned int len;
+	ccanlint = get_one_ccanlint(ctx, dir, get_info);
+	len = tal_count(ccanlint);
+	tal_resize(&ccanlint, len + 1);
+	ccanlint[len] = NULL;
+	return ccanlint;
 }
 
 static char *get_one_ported(const void *ctx, const char *dir,

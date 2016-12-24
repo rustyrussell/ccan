@@ -14,10 +14,6 @@
  *
  * Author: David Gibson <david@gibson.dropbear.id.au>
  * License: LGPL (v2.1 or any later version)
- *
- * Ccanlint:
- *	// Context switching really confuses valgrind
- *	tests_pass_valgrind FAIL
  */
 int main(int argc, char *argv[])
 {
@@ -37,6 +33,12 @@ int main(int argc, char *argv[])
 #if !HAVE_UCONTEXT
 		printf("Requires working ucontext.h\n");
 #endif
+		return 0;
+	}
+
+	if (strcmp(argv[1], "ccanlint") == 0) {
+		/* Context switching really confuses valgrind */
+		printf("tests_pass_valgrind FAIL\n");
 		return 0;
 	}
 

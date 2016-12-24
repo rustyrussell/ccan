@@ -71,9 +71,6 @@
  *
  * License: LGPL (v2.1 or any later version)
  * Author: Rusty Russell <rusty@rustcorp.com.au>
- * Ccanlint:
- *	// We actually depend on the GPL crc routines, so not really LGPL :(
- *	license_depends_compat FAIL
  */
 int main(int argc, char *argv[])
 {
@@ -86,6 +83,11 @@ int main(int argc, char *argv[])
 	}
 	if (strcmp(argv[1], "testdepends") == 0) {
 		printf("ccan/array_size\n");
+		return 0;
+	}
+	if (strcmp(argv[1], "ccanlint") == 0) {
+		/* We actually depend on the GPL crc routines, so not really LGPL :( */
+		printf("license_depends_compat FAIL\n");
 		return 0;
 	}
 

@@ -186,7 +186,7 @@ struct dependent {
 bool is_excluded(const char *name);
 
 /* Called to add options from _info, once it's located. */
-void add_info_options(struct ccan_file *info);
+void add_info_options(struct manifest *m);
 
 /* Are we happy to compile stuff, or just non-intrusive tests? */
 extern bool safe_mode;

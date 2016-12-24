@@ -456,50 +456,43 @@ static void add_options(struct ccanlint *test, char **options,
 	memcpy(&test->options[num], options, (num_options + 1)*sizeof(char *));
 }
 
-void add_info_options(struct ccan_file *info)
+void add_info_options(struct manifest *m)
 {
-	struct doc_section *d;
 	unsigned int i;
-	struct ccanlint *test;
+	char **info_options = get_ccanlint(m, m->dir, get_or_compile_info);
 
-	list_for_each(get_ccan_file_docs(info), d, list) {
-		if (!streq(d->type, "ccanlint"))
+	for (i = 0; info_options[i]; i++) {
+		char **words = tal_strsplit(m, info_options[i], " \t",
+					    STR_NO_EMPTY);
+		struct ccanlint *test;
+
+		if (!words[0])
 			continue;
 
-		for (i = 0; i < d->num_lines; i++) {
-			char **words = tal_strsplit(d, d->lines[i], " \t",
-						    STR_NO_EMPTY);
-			if (!words[0])
-				continue;
+		test = find_test(words[0]);
+		if (!test) {
+			warnx("%s: unknown ccanlint test '%s'",
+			      m->info_file->fullname, words[0]);
+			continue;
+		}
 
-			if (strncmp(words[0], "//", 2) == 0)
-				continue;
+		if (!words[1]) {
+			warnx("%s: no argument to test '%s'",
+			      m->info_file->fullname, words[0]);
+			continue;
+		}
 
-			test = find_test(words[0]);
-			if (!test) {
-				warnx("%s: unknown ccanlint test '%s'",
-				      info->fullname, words[0]);
-				continue;
-			}
-
-			if (!words[1]) {
-				warnx("%s: no argument to test '%s'",
-				      info->fullname, words[0]);
-				continue;
-			}
-
-			/* Known failure? */
-			if (strcasecmp(words[1], "FAIL") == 0) {
-				if (!targeting)
-					skip_test_and_deps(test,
-							   "excluded in _info"
-							   " file");
-			} else {
-				if (!test->takes_options)
-					warnx("%s: %s doesn't take options",
-					      info->fullname, words[0]);
-				add_options(test, words+1, tal_count(words)-1);
-			}
+		/* Known failure? */
+		if (strcasecmp(words[1], "FAIL") == 0) {
+			if (!targeting)
+				skip_test_and_deps(test,
+						   "excluded in _info"
+						   " file");
+		} else {
+			if (!test->takes_options)
+				warnx("%s: %s doesn't take options",
+				      m->info_file->fullname, words[0]);
+			add_options(test, words+1, tal_count(words)-1);
 		}
 	}
 }

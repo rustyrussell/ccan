@@ -26,10 +26,6 @@
  *
  * Author: David Gibson <david@gibson.dropbear.id.au>
  * License:  CC0 (Public domain)
- *
- * Ccanlint:
- *      // We need several gcc extensions
- *      tests_compile_without_features FAIL
  */
 int main(int argc, char *argv[])
 {
@@ -39,6 +35,12 @@ int main(int argc, char *argv[])
 
 	if (strcmp(argv[1], "depends") == 0) {
 		printf("ccan/build_assert\n");
+		return 0;
+	}
+
+	if (strcmp(argv[1], "ccanlint") == 0) {
+		/* We need several gcc extensions */
+		printf("tests_compile_without_features FAIL\n");
 		return 0;
 	}
 

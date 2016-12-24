@@ -122,12 +122,6 @@
  *
  * License: APACHE-2
  * Author: Dan Good <dan@dancancode.com>
- *
- * Ccanlint:
- *	// uses statement expressions
- *	// supported by gcc, clang, icc, and some others, but not msvc
- *	// (see https://gcc.gnu.org/onlinedocs/gcc/Statement-Exprs.html)
- *	objects_build_without_features FAIL
  */
 int main(int argc, char *argv[])
 {
@@ -139,6 +133,14 @@ int main(int argc, char *argv[])
 		return 0;
 	if (strcmp(argv[1], "testdepends") == 0) {
 		printf("ccan/failtest\n");
+		return 0;
+	}
+
+	if (strcmp(argv[1], "ccanlint") == 0) {
+		/* uses statement expressions
+		 * supported by gcc, clang, icc, and some others, but not msvc
+		 * (see https://gcc.gnu.org/onlinedocs/gcc/Statement-Exprs.html) */
+		printf("objects_build_without_features FAIL\n");
 		return 0;
 	}
 

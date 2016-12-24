@@ -82,12 +82,6 @@
  * }
  *
  * License: BSD (3 clause)
- *
- * Ccanlint:
- *	// We actually depend on the LGPL dependencies
- *	license_depends_compat FAIL
- *	// We don't put the license line in all files.
- *	license_comment FAIL
  */
 int main(int argc, char *argv[])
 {
@@ -98,6 +92,14 @@ int main(int argc, char *argv[])
 	if (strcmp(argv[1], "depends") == 0) {
 		printf("ccan/darray\n");
 		printf("ccan/talloc\n");
+		return 0;
+	}
+
+	if (strcmp(argv[1], "ccanlint") == 0) {
+		/* We actually depend on the LGPL dependencies */
+		printf("license_depends_compat FAIL\n");
+		/* We don't put the license line in all files. */
+		printf("license_comment FAIL\n");
 		return 0;
 	}
 

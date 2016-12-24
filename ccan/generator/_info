@@ -43,12 +43,6 @@
  *
  * Author: David Gibson <david@gibson.dropbear.id.au>
  * License: LGPL (v2.1 or any later version)
- *
- * Ccanlint:
- *      // We need several gcc extensions
- *	objects_build_without_features FAIL
- *      tests_compile_without_features FAIL
- *	tests_helpers_compile_without_features FAIL
  */
 int main(int argc, char *argv[])
 {
@@ -75,6 +69,14 @@ int main(int argc, char *argv[])
 
 	if (strcmp(argv[1], "testdepends") == 0) {
 		printf("ccan/str\n");
+		return 0;
+	}
+
+	if (strcmp(argv[1], "ccanlint") == 0) {
+		/* We need several gcc extensions */
+		printf("objects_build_without_features FAIL\n");
+		printf("tests_compile_without_features FAIL\n");
+		printf("tests_helpers_compile_without_features FAIL\n");
 		return 0;
 	}
 
