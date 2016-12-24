@@ -37,8 +37,11 @@ int main(int argc, char *argv[])
 	}
 
 	if (strcmp(argv[1], "ccanlint") == 0) {
-		/* Context switching really confuses valgrind */
+#if !HAVE_VALGRIND_MEMCHECK_H
+		/* valgrind needs extra information to cope with stack
+		 * switching */
 		printf("tests_pass_valgrind FAIL\n");
+#endif
 		return 0;
 	}
 

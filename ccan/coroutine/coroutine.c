@@ -14,11 +14,6 @@
  * Stack management
  */
 
-struct coroutine_stack {
-	uint64_t magic;
-	size_t size;
-};
-
 /* Returns lowest stack addres, regardless of growth direction */
 static UNNEEDED void *coroutine_stack_base(struct coroutine_stack *stack)
 {
@@ -29,12 +24,38 @@ static UNNEEDED void *coroutine_stack_base(struct coroutine_stack *stack)
 #endif
 }
 
+#if HAVE_VALGRIND_MEMCHECK_H
+#include <valgrind/memcheck.h>
+static void vg_register_stack(struct coroutine_stack *stack)
+{
+	char *base = coroutine_stack_base(stack);
+
+	VALGRIND_MAKE_MEM_UNDEFINED(base, stack->size);
+	stack->valgrind_id = VALGRIND_STACK_REGISTER(base,
+						     base + stack->size - 1);
+}
+
+static void vg_deregister_stack(struct coroutine_stack *stack)
+{
+	VALGRIND_MAKE_MEM_UNDEFINED(coroutine_stack_base(stack), stack->size);
+	VALGRIND_STACK_DEREGISTER(stack->valgrind_id);
+}
+static bool vg_addressable(void *p, size_t len)
+{
+	return !VALGRIND_CHECK_MEM_IS_ADDRESSABLE(p, len);
+}
+#else
+#define vg_register_stack(stack)		do { } while (0)
+#define vg_deregister_stack(stack)		do { } while (0)
+#define vg_addressable(p, len)			(true)
+#endif
+
 struct coroutine_stack *coroutine_stack_init(void *buf, size_t bufsize,
 					     size_t metasize)
 {
 	struct coroutine_stack *stack;
+	size_t size = bufsize - sizeof(*stack) - metasize;
 
-	BUILD_ASSERT(COROUTINE_STK_OVERHEAD == sizeof(*stack));
 #ifdef MINSIGSTKSZ
 	BUILD_ASSERT(COROUTINE_MIN_STKSZ >= MINSIGSTKSZ);
 #endif
@@ -50,20 +71,22 @@ struct coroutine_stack *coroutine_stack_init(void *buf, size_t bufsize,
 #endif
 
 	stack->magic = COROUTINE_STACK_MAGIC;
-	stack->size = bufsize - sizeof(*stack) - metasize;
-
+	stack->size = size;
+	vg_register_stack(stack);
 	return stack;
 }
 
 void coroutine_stack_release(struct coroutine_stack *stack, size_t metasize)
 {
+	vg_deregister_stack(stack);
 	memset(stack, 0, sizeof(*stack));
 }
 
 struct coroutine_stack *coroutine_stack_check(struct coroutine_stack *stack,
 					      const char *abortstr)
 {
-	if (stack && (stack->magic == COROUTINE_STACK_MAGIC)
+	if (stack && vg_addressable(stack, sizeof(*stack))
+	    && (stack->magic == COROUTINE_STACK_MAGIC)
 	    && (stack->size >= COROUTINE_MIN_STKSZ))
 		return stack;
 

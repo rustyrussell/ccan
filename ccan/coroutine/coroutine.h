@@ -18,7 +18,11 @@
  * Describes a stack suitable for executing a coroutine.  This
  * structure is always contained within the stack it describes.
  */
-struct coroutine_stack;
+struct coroutine_stack {
+	uint64_t magic;
+	size_t size;
+	int valgrind_id;
+};
 
 /**
  * struct coroutine_state
@@ -37,7 +41,7 @@ struct coroutine_state;
  * Number of bytes of a stack which coroutine needs for its own
  * tracking information.
  */
-#define COROUTINE_STK_OVERHEAD		(sizeof(uint64_t) + sizeof(size_t))
+#define COROUTINE_STK_OVERHEAD	sizeof(struct coroutine_stack)
 
 /**
  * COROUTINE_MIN_STKSZ - Minimum coroutine stack size
