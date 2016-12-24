@@ -71,7 +71,7 @@ $(LINT): $(LINT).c $(LINT_OBJS)
 TEST_DEPS := $(MODULES:%=%/.d)
 
 # We produce .ok files when the tests succeed
-%.ok: $(LINT)
+%.ok: $(LINT) %info
 	$(PRE)$(LINT) $(LINT_OPTS$(notdir $@)) --deps-fail-ignore $(LINTFLAGS) $(dir $*) && touch $@
 
 check: $(MODULES:%=%/.ok)
