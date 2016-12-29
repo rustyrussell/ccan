@@ -56,7 +56,8 @@ typedef void tal_t;
  * children (recursively) before finally freeing the memory.  It returns
  * NULL, for convenience.
  *
- * Note: errno is preserved by this call.
+ * Note: errno is preserved by this call, and also saved and restored
+ * for any destructors or notifiers.
  *
  * Example:
  *	p = tal_free(p);
@@ -194,6 +195,7 @@ enum tal_notify_type {
  * TAL_NOTIFY_FREE is called when @ptr is freed, either directly or
  * because an ancestor is freed: @info is the argument to tal_free().
  * It is exactly equivalent to a destructor, with more information.
+ * errno is set to the value it was at the call of tal_free().
  *
  * TAL_NOTIFY_STEAL is called when @ptr's parent changes: @info is the
  * new parent.

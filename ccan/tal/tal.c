@@ -203,7 +203,8 @@ static struct tal_hdr *debug_tal(struct tal_hdr *tal)
 #endif
 
 static void notify(const struct tal_hdr *ctx,
-		   enum tal_notify_type type, const void *info)
+		   enum tal_notify_type type, const void *info,
+		   int saved_errno)
 {
         const struct prop_hdr *p;
 
@@ -216,6 +217,7 @@ static void notify(const struct tal_hdr *ctx,
 			continue;
 		n = (struct notifier *)p;
 		if (n->types & type) {
+			errno = saved_errno;
 			if (n->types & NOTIFY_IS_DESTRUCTOR)
 				n->u.destroy(from_tal_hdr(ctx));
 			else
@@ -348,7 +350,7 @@ static bool add_child(struct tal_hdr *parent, struct tal_hdr *child)
 	return true;
 }
 
-static void del_tree(struct tal_hdr *t, const tal_t *orig)
+static void del_tree(struct tal_hdr *t, const tal_t *orig, int saved_errno)
 {
 	struct prop_hdr **prop, *p, *next;
 
@@ -359,7 +361,7 @@ static void del_tree(struct tal_hdr *t, const tal_t *orig)
         set_destroying_bit(&t->parent_child);
 
 	/* Call free notifiers. */
-	notify(t, TAL_NOTIFY_FREE, (tal_t *)orig);
+	notify(t, TAL_NOTIFY_FREE, (tal_t *)orig, saved_errno);
 
 	/* Now free children and groups. */
 	prop = find_property_ptr(t, CHILDREN);
@@ -369,7 +371,7 @@ static void del_tree(struct tal_hdr *t, const tal_t *orig)
 
 		while ((i = list_top(&c->children, struct tal_hdr, list))) {
 			list_del(&i->list);
-			del_tree(i, orig);
+			del_tree(i, orig, saved_errno);
 		}
 	}
 
@@ -426,7 +428,7 @@ void *tal_alloc_(const tal_t *ctx, size_t size,
 	}
 	debug_tal(parent);
 	if (notifiers)
-		notify(parent, TAL_NOTIFY_ADD_CHILD, from_tal_hdr(child));
+		notify(parent, TAL_NOTIFY_ADD_CHILD, from_tal_hdr(child), 0);
 	return from_tal_hdr(debug_tal(child));
 }
 
@@ -466,9 +468,9 @@ void *tal_free(const tal_t *ctx)
 		t = debug_tal(to_tal_hdr(ctx));
 		if (notifiers)
 			notify(ignore_destroying_bit(t->parent_child)->parent,
-			       TAL_NOTIFY_DEL_CHILD, ctx);
+			       TAL_NOTIFY_DEL_CHILD, ctx, saved_errno);
 		list_del(&t->list);
-		del_tree(t, ctx);
+		del_tree(t, ctx, saved_errno);
 		errno = saved_errno;
 	}
 	return NULL;
@@ -495,7 +497,7 @@ void *tal_steal_(const tal_t *new_parent, const tal_t *ctx)
 		}
 		debug_tal(newpar);
 		if (notifiers)
-			notify(t, TAL_NOTIFY_STEAL, new_parent);
+			notify(t, TAL_NOTIFY_STEAL, new_parent, 0);
         }
         return (void *)ctx;
 }
@@ -526,7 +528,7 @@ bool tal_add_notifier_(const tal_t *ctx, enum tal_notify_type types,
 		return false;
 
 	if (notifiers)
-		notify(t, TAL_NOTIFY_ADD_NOTIFIER, callback);
+		notify(t, TAL_NOTIFY_ADD_NOTIFIER, callback, 0);
 
 	n->types = types;
 	if (types != TAL_NOTIFY_FREE)
@@ -542,7 +544,7 @@ bool tal_del_notifier_(const tal_t *ctx,
 
         types = del_notifier_property(t, callback);
 	if (types) {
-		notify(t, TAL_NOTIFY_DEL_NOTIFIER, callback);
+		notify(t, TAL_NOTIFY_DEL_NOTIFIER, callback, 0);
 		if (types != TAL_NOTIFY_FREE)
 			notifiers--;
 		return true;
@@ -582,7 +584,7 @@ bool tal_set_name_(tal_t *ctx, const char *name, bool literal)
 
 	debug_tal(t);
 	if (notifiers)
-		notify(t, TAL_NOTIFY_RENAME, name);
+		notify(t, TAL_NOTIFY_RENAME, name, 0);
 	return true;
 }
 
@@ -720,10 +722,10 @@ bool tal_resize_(tal_t **ctxp, size_t size, size_t count, bool clear)
 		}
 		*ctxp = from_tal_hdr(debug_tal(t));
 		if (notifiers)
-			notify(t, TAL_NOTIFY_MOVE, from_tal_hdr(old_t));
+			notify(t, TAL_NOTIFY_MOVE, from_tal_hdr(old_t), 0);
 	}
 	if (notifiers)
-		notify(t, TAL_NOTIFY_RESIZE, (void *)size);
+		notify(t, TAL_NOTIFY_RESIZE, (void *)size, 0);
 
 	return true;
 }
