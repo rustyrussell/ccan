@@ -1,0 +1,44 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * tal/autoptr - automatic updates of pointers to tal objects.
+ *
+ * This code updates pointers when the pointed-to object is freed.
+ *
+ * Maintainer: Rusty Russell <rusty@rustcorp.com.au>
+ * License: BSD-MIT
+ * Example:
+ *	#include <ccan/tal/autoptr/autoptr.h>
+ *	#include <assert.h>
+ *
+ *	static void *p;
+ *
+ *	int main(void)
+ *	{
+ *		char *c = tal(NULL, char);
+ *
+ *		// Sets p to point to c.
+ *		autonull_set_ptr(NULL, &p, c);
+ *		assert(p == c);
+ *
+ *		// Automatically clears p.
+ *		tal_free(c);
+ *		assert(p == NULL);
+ *		return 0;
+ *	}
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/tal\n");
+		return 0;
+	}
+
+	return 1;
+}
