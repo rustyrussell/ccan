@@ -59,9 +59,6 @@ struct io_plan {
 /* One connection per client. */
 struct io_conn {
 	struct fd fd;
-	bool debug;
-	/* For duplex to save. */
-	bool debug_saved;
 
 	/* always and closing lists. */
 	struct list_node always, closing;

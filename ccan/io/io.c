@@ -94,7 +94,6 @@ struct io_conn *io_new_conn_(const tal_t *ctx, int fd,
 	conn->finish_arg = NULL;
 	list_node_init(&conn->always);
 	list_node_init(&conn->closing);
-	conn->debug = false;
 
 	if (!add_conn(conn))
 		return tal_free(conn);
@@ -443,34 +442,12 @@ int io_conn_fd(const struct io_conn *conn)
 	return conn->fd.fd;
 }
 
-void io_duplex_prepare(struct io_conn *conn)
+struct io_plan *io_duplex(struct io_conn *conn,
+			  struct io_plan *in_plan, struct io_plan *out_plan)
 {
-	assert(conn->plan[IO_IN].status == IO_UNSET);
-	assert(conn->plan[IO_OUT].status == IO_UNSET);
-
-	/* We can't sync debug until we've set both: io_wait() and io_always
-	 * can't handle it. */
-	conn->debug_saved = conn->debug;
-	io_set_debug(conn, false);
-}
-
-struct io_plan *io_duplex_(struct io_plan *in_plan, struct io_plan *out_plan)
-{
-	struct io_conn *conn;
-
+	assert(conn == container_of(in_plan, struct io_conn, plan[IO_IN]));
 	/* in_plan must be conn->plan[IO_IN], out_plan must be [IO_OUT] */
 	assert(out_plan == in_plan + 1);
-
-	/* Restore debug. */
-	conn = container_of(in_plan, struct io_conn, plan[IO_IN]);
-	io_set_debug(conn, conn->debug_saved);
-
-	/* Now set the plans again, to invoke sync debug. */
-	io_set_plan(conn, IO_OUT,
-		    out_plan->io, out_plan->next, out_plan->next_arg);
-	io_set_plan(conn, IO_IN,
-		    in_plan->io, in_plan->next, in_plan->next_arg);
-
 	return out_plan + 1;
 }
 
@@ -504,43 +481,5 @@ struct io_plan *io_set_plan(struct io_conn *conn, enum io_direction dir,
 	plan->next_arg = next_arg;
 	assert(plan->status == IO_CLOSING || next != NULL);
 
-	if (!conn->debug)
-		return plan;
-
-	if (io_loop_return) {
-		io_debug_complete(conn);
-		return plan;
-	}
-
-	switch (plan->status) {
-	case IO_POLLING:
-		while (do_plan(conn, plan) == 0);
-		break;
-	/* Shouldn't happen, since you said you did plan! */
-	case IO_UNSET:
-		abort();
-	case IO_ALWAYS:
-		/* If other one is ALWAYS, leave in list! */
-		if (conn->plan[!dir].status != IO_ALWAYS)
-			remove_from_always(conn);
-		next_plan(conn, plan);
-		break;
-	case IO_WAITING:
-	case IO_CLOSING:
-		io_debug_complete(conn);
-	}
-
 	return plan;
-}
-
-void io_set_debug(struct io_conn *conn, bool debug)
-{
-	conn->debug = debug;
-
-	/* Debugging means fds must block. */
-	set_blocking(io_conn_fd(conn), debug);
-}
-
-void io_debug_complete(struct io_conn *conn)
-{
 }
