@@ -27,8 +27,8 @@ static struct io_plan *init_conn(struct io_conn *conn, int *state)
 {
 	if (*state == 0) {
 		(*state)++;
-		errno = 100;
 		io_set_finish(conn, finish_100, state);
+		errno = 100;
 		return io_close(conn);
 	} else {
 		ok1(*state == 2);

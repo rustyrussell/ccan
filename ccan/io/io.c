@@ -14,6 +14,8 @@
 
 void *io_loop_return;
 
+struct io_plan io_conn_freed;
+
 struct io_listener *io_new_listener_(const tal_t *ctx, int fd,
 				     struct io_plan *(*init)(struct io_conn *,
 							     void *),
@@ -35,8 +37,6 @@ struct io_listener *io_new_listener_(const tal_t *ctx, int fd,
 
 void io_close_listener(struct io_listener *l)
 {
-	close(l->fd.fd);
-	del_listener(l);
 	tal_free(l);
 }
 
@@ -45,7 +45,8 @@ static struct io_plan *io_never_called(struct io_conn *conn, void *arg)
 	abort();
 }
 
-static void next_plan(struct io_conn *conn, struct io_plan *plan)
+/* Returns false if conn was freed. */
+static bool next_plan(struct io_conn *conn, struct io_plan *plan)
 {
 	struct io_plan *(*next)(struct io_conn *, void *arg);
 
@@ -57,6 +58,9 @@ static void next_plan(struct io_conn *conn, struct io_plan *plan)
 
 	plan = next(conn, plan->next_arg);
 
+	if (plan == &io_conn_freed)
+		return false;
+
 	/* It should have set a plan inside this conn (or duplex) */
 	assert(plan == &conn->plan[IO_IN]
 	       || plan == &conn->plan[IO_OUT]
@@ -65,6 +69,7 @@ static void next_plan(struct io_conn *conn, struct io_plan *plan)
 	       || conn->plan[IO_OUT].status != IO_UNSET);
 
 	backend_new_plan(conn);
+	return true;
 }
 
 static void set_blocking(int fd, bool block)
@@ -93,7 +98,6 @@ struct io_conn *io_new_conn_(const tal_t *ctx, int fd,
 	conn->finish = NULL;
 	conn->finish_arg = NULL;
 	list_node_init(&conn->always);
-	list_node_init(&conn->closing);
 
 	if (!add_conn(conn))
 		return tal_free(conn);
@@ -106,7 +110,8 @@ struct io_conn *io_new_conn_(const tal_t *ctx, int fd,
 
 	conn->plan[IO_IN].next = init;
 	conn->plan[IO_IN].next_arg = arg;
-	next_plan(conn, &conn->plan[IO_IN]);
+	if (!next_plan(conn, &conn->plan[IO_IN]))
+		return NULL;
 
 	return conn;
 }
@@ -355,24 +360,20 @@ void io_wake(const void *wait)
 	backend_wake(wait);
 }
 
-static int do_plan(struct io_conn *conn, struct io_plan *plan)
+/* Returns false if this has been freed. */
+static bool do_plan(struct io_conn *conn, struct io_plan *plan)
 {
-	/* Someone else might have called io_close() on us. */
-	if (plan->status == IO_CLOSING)
-		return -1;
-
 	/* We shouldn't have polled for this event if this wasn't true! */
 	assert(plan->status == IO_POLLING);
 
 	switch (plan->io(conn->fd.fd, &plan->arg)) {
 	case -1:
 		io_close(conn);
-		return -1;
+		return false;
 	case 0:
-		return 0;
+		return true;
 	case 1:
-		next_plan(conn, plan);
-		return 1;
+		return next_plan(conn, plan);
 	default:
 		/* IO should only return -1, 0 or 1 */
 		abort();
@@ -382,7 +383,8 @@ static int do_plan(struct io_conn *conn, struct io_plan *plan)
 void io_ready(struct io_conn *conn, int pollflags)
 {
 	if (pollflags & POLLIN)
-		do_plan(conn, &conn->plan[IO_IN]);
+		if (!do_plan(conn, &conn->plan[IO_IN]))
+			return;
 
 	if (pollflags & POLLOUT)
 		do_plan(conn, &conn->plan[IO_OUT]);
@@ -391,7 +393,8 @@ void io_ready(struct io_conn *conn, int pollflags)
 void io_do_always(struct io_conn *conn)
 {
 	if (conn->plan[IO_IN].status == IO_ALWAYS)
-		next_plan(conn, &conn->plan[IO_IN]);
+		if (!next_plan(conn, &conn->plan[IO_IN]))
+			return;
 
 	if (conn->plan[IO_OUT].status == IO_ALWAYS)
 		next_plan(conn, &conn->plan[IO_OUT]);
@@ -409,15 +412,8 @@ void io_do_wakeup(struct io_conn *conn, enum io_direction dir)
 /* Close the connection, we're done. */
 struct io_plan *io_close(struct io_conn *conn)
 {
-	/* Already closing?  Don't close twice. */
-	if (conn->plan[IO_IN].status == IO_CLOSING)
-		return &conn->plan[IO_IN];
-
-	conn->plan[IO_IN].status = conn->plan[IO_OUT].status = IO_CLOSING;
-	conn->plan[IO_IN].arg.u1.s = errno;
-	backend_new_closing(conn);
-
-	return io_set_plan(conn, IO_IN, NULL, NULL, NULL);
+	tal_free(conn);
+	return &io_conn_freed;
 }
 
 struct io_plan *io_close_cb(struct io_conn *conn, void *next_arg)
@@ -453,10 +449,6 @@ struct io_plan *io_duplex(struct io_conn *conn,
 
 struct io_plan *io_halfclose(struct io_conn *conn)
 {
-	/* Already closing?  Don't close twice. */
-	if (conn->plan[IO_IN].status == IO_CLOSING)
-		return &conn->plan[IO_IN];
-
 	/* Both unset?  OK. */
 	if (conn->plan[IO_IN].status == IO_UNSET
 	    && conn->plan[IO_OUT].status == IO_UNSET)
@@ -479,7 +471,7 @@ struct io_plan *io_set_plan(struct io_conn *conn, enum io_direction dir,
 	plan->io = io;
 	plan->next = next;
 	plan->next_arg = next_arg;
-	assert(plan->status == IO_CLOSING || next != NULL);
+	assert(next != NULL);
 
 	return plan;
 }
