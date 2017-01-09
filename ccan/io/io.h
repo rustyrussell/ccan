@@ -630,11 +630,13 @@ struct io_plan *io_close_cb(struct io_conn *, void *unused);
 
 /**
  * io_close_taken_fd - close a connection, but remove the filedescriptor first.
- * @conn: the connection to take the file descriptor from and close,
+ * @conn: the connection to take the file descriptor from and close.
  *
  * io_close closes the file descriptor underlying the io_conn; this version does
  * not.  Presumably you have used io_conn_fd() on it beforehand and will take
  * care of the fd yourself.
+ *
+ * Note that this also turns off O_NONBLOCK on the fd.
  *
  * Example:
  * static struct io_plan *steal_fd(struct io_conn *conn, int *fd)
@@ -664,7 +666,10 @@ void *io_loop(struct timers *timers, struct timer **expired);
  * io_conn_fd - get the fd from a connection.
  * @conn: the connection.
  *
- * Sometimes useful, eg for getsockname().
+ * Sometimes useful, eg for getsockname().  Note that the fd is O_NONBLOCK.
+ *
+ * See Also:
+ *	io_close_taken_fd
  */
 int io_conn_fd(const struct io_conn *conn);
 

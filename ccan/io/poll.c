@@ -187,11 +187,10 @@ bool add_conn(struct io_conn *c)
 	return true;
 }
 
-struct io_plan *io_close_taken_fd(struct io_conn *conn)
+void cleanup_conn_without_close(struct io_conn *conn)
 {
 	tal_del_destructor(conn, destroy_conn_close_fd);
 	destroy_conn(conn, false);
-	return io_close(conn);
 }
 
 static void accept_conn(struct io_listener *l)

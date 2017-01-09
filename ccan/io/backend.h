@@ -73,6 +73,7 @@ bool add_listener(struct io_listener *l);
 bool add_conn(struct io_conn *c);
 bool add_duplex(struct io_conn *c);
 void del_listener(struct io_listener *l);
+void cleanup_conn_without_close(struct io_conn *c);
 void backend_new_always(struct io_conn *conn);
 void backend_new_plan(struct io_conn *conn);
 void remove_from_always(struct io_conn *conn);
