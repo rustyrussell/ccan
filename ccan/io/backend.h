@@ -79,7 +79,6 @@ void remove_from_always(struct io_conn *conn);
 void backend_plan_done(struct io_conn *conn);
 
 void backend_wake(const void *wait);
-void backend_del_conn(struct io_conn *conn);
 
 void io_ready(struct io_conn *conn, int pollflags);
 void io_do_always(struct io_conn *conn);

@@ -628,6 +628,24 @@ struct io_plan *io_close(struct io_conn *conn);
 struct io_plan *io_close_cb(struct io_conn *, void *unused);
 
 /**
+ * io_close_taken_fd - close a connection, but remove the filedescriptor first.
+ * @conn: the connection to take the file descriptor from and close,
+ *
+ * io_close closes the file descriptor underlying the io_conn; this version does
+ * not.  Presumably you have used io_conn_fd() on it beforehand and will take
+ * care of the fd yourself.
+ *
+ * Example:
+ * static struct io_plan *steal_fd(struct io_conn *conn, int *fd)
+ * {
+ *	*fd = io_conn_fd(conn);
+ *	printf("stealing fd %i and closing\n", *fd);
+ *	return io_close_taken_fd(conn);
+ * }
+ */
+struct io_plan *io_close_taken_fd(struct io_conn *conn);
+
+/**
  * io_loop - process fds until all closed on io_break.
  * @timers - timers which are waiting to go off (or NULL for none)
  * @expired - an expired timer (can be NULL if @timers is)

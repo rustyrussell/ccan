@@ -157,11 +157,12 @@ void backend_wake(const void *wait)
 	}
 }
 
-static void destroy_conn(struct io_conn *conn)
+static void destroy_conn(struct io_conn *conn, bool close_fd)
 {
 	int saved_errno = errno;
 
-	close(conn->fd.fd);
+	if (close_fd)
+		close(conn->fd.fd);
 	del_fd(&conn->fd);
 	/* In case it's on always list, remove it. */
 	list_del_init(&conn->always);
@@ -173,12 +174,24 @@ static void destroy_conn(struct io_conn *conn)
 	}
 }
 
+static void destroy_conn_close_fd(struct io_conn *conn)
+{
+	destroy_conn(conn, true);
+}
+
 bool add_conn(struct io_conn *c)
 {
 	if (!add_fd(&c->fd, 0))
 		return false;
-	tal_add_destructor(c, destroy_conn);
+	tal_add_destructor(c, destroy_conn_close_fd);
 	return true;
+}
+
+struct io_plan *io_close_taken_fd(struct io_conn *conn)
+{
+	tal_del_destructor(conn, destroy_conn_close_fd);
+	destroy_conn(conn, false);
+	return io_close(conn);
 }
 
 static void accept_conn(struct io_listener *l)
