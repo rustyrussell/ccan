@@ -109,7 +109,8 @@ void io_set_finish_(struct io_conn *conn,
  * @arg: the argument to @init.
  *
  * When @fd becomes readable, we accept(), create a new connection,
- * (tal'ocated off @ctx) and pass that to init().
+ * (tal'ocated off @ctx) and pass that to init().  Note that if there is
+ * an error on this file descriptor, it will be freed.
  *
  * Returns NULL on error (and sets errno).
  *

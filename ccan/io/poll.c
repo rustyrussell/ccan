@@ -282,9 +282,14 @@ void *io_loop(struct timers *timers, struct timer **expired)
 				break;
 
 			if (fds[i]->listener) {
+				struct io_listener *l = (void *)fds[i];
 				if (events & POLLIN) {
-					accept_conn((void *)c);
+					accept_conn(l);
 					r--;
+				} else if (events & (POLLHUP|POLLNVAL|POLLERR)) {
+					r--;
+					errno = EBADF;
+					io_close_listener(l);
 				}
 			} else if (events & (POLLIN|POLLOUT)) {
 				r--;
