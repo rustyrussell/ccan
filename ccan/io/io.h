@@ -595,14 +595,16 @@ struct io_plan *io_never(struct io_conn *conn, void *unused);
 /* FIXME: io_recvfrom/io_sendto */
 
 /**
- * io_close - plan to close a connection.
+ * io_close - close a connection.
  * @conn: the connection to close.
  *
- * On return to io_loop, the connection will be closed.  It doesn't have
- * to be the current connection and it doesn't need to be idle.  No more
- * IO or callbacks will occur.
+ * The connection is immediately freed: it doesn't have to be the
+ * current connection and it doesn't need to be idle.  No more IO or
+ * callbacks will occur, but if a function was added by io_set_finish()
+ * it will be called with the current errno preserved.
  *
- * You can close a connection twice without harmful effects.
+ * This is equivalent to tal_free(io_conn), except it returns an io_plan
+ * for use in an io callback.
  *
  * Example:
  * static struct io_plan *close_on_timeout(struct io_conn *conn, const char *msg)
@@ -617,8 +619,8 @@ struct io_plan *io_close(struct io_conn *conn);
  * io_close_cb - helper callback to close a connection.
  * @conn: the connection.
  *
- * This schedules a connection to be closed; designed to be used as
- * a callback function.
+ * This is closes a connection; designed to be used as a callback
+ * function.
  *
  * Example:
  *	#define close_on_timeout io_close_cb
