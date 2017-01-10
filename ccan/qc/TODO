@@ -1,0 +1,5 @@
+ - Test for_all() over more types
+   - multiple strings
+   - nested integer arrays
+ - Improve syntax
+   - Abstract pointer arithmetic away from the framework user
