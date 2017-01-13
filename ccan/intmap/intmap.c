@@ -142,13 +142,13 @@ void *intmap_del_(struct intmap *map, intmap_index_t index)
 	return value;
 }
 
-intmap_index_t intmap_first_(const struct intmap *map)
+void *intmap_first_(const struct intmap *map, intmap_index_t *indexp)
 {
 	const struct intmap *n;
 
 	if (intmap_empty_(map)) {
 		errno = ENOENT;
-		return UINTMAP_NONE;
+		return NULL;
 	}
 	
 	n = map;
@@ -156,43 +156,45 @@ intmap_index_t intmap_first_(const struct intmap *map)
 	while (!n->v)
 		n = &n->u.n->child[0];
 	errno = 0;
-	return n->u.i;
+	*indexp = n->u.i;
+	return n->v;
 }
 		
-intmap_index_t intmap_after_(const struct intmap *map, intmap_index_t index)
+void *intmap_after_(const struct intmap *map, intmap_index_t *indexp)
 {
 	const struct intmap *n, *prev = NULL;
 
-	/* Special case of unincrementable value, or empty map */
-	if (index == UINTMAP_NONE || intmap_empty_(map)) {
+	/* Special case of empty map */
+	if (intmap_empty_(map)) {
 		errno = ENOENT;
-		return UINTMAP_NONE;
+		return NULL;
 	}
 
 	/* Follow down, track the last place where we could have set a bit
 	 * instead of clearing it: this is the higher alternative tree. */
 	n = map;
 	while (!n->v) {
-		u8 direction = (index >> n->u.n->bit_num) & 1;
+		u8 direction = (*indexp >> n->u.n->bit_num) & 1;
 		if (!direction)
 			prev = n;
 		n = &n->u.n->child[direction];
 	}
 
 	/* Found a successor? */
-	if (n->u.i > index) {
+	if (n->u.i > *indexp) {
 		errno = 0;
-		return n->u.i;
+		*indexp = n->u.i;
+		return n->v;
 	}
 
 	/* Nowhere to go back up to? */
 	if (!prev) {
 		errno = ENOENT;
-		return UINTMAP_NONE;
+		return NULL;
 	}
 
 	/* Get first one from that other branch. */
-	return intmap_first_(&prev->u.n->child[1]);
+	return intmap_first_(&prev->u.n->child[1], indexp);
 }
 
 static void clear(struct intmap n)

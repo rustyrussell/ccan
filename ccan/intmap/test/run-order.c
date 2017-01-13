@@ -10,14 +10,16 @@ typedef SINTMAP(int *) smap;
 static bool check_umap(const umap *map)
 {
 	/* This is a larger type than unsigned, and allows negative */
-	int64_t i, prev;
+	int64_t prev;
+	uint64_t i;
+	unsigned int *v;
 
 	/* Must be in order, must contain value. */
 	prev = -1;
-	for (i = uintmap_first(map); i != -1ULL; i = uintmap_after(map, i)) {
-		if (i <= prev)
+	for (v = uintmap_first(map, &i); v; v = uintmap_after(map, &i)) {
+		if ((int64_t)i <= prev)
 			return false;
-		if (*(unsigned int *)uintmap_get(map, i) != i)
+		if (*v != i)
 			return false;
 		prev = i;
 	}
@@ -27,16 +29,15 @@ static bool check_umap(const umap *map)
 static bool check_smap(const smap *map)
 {
 	/* This is a larger type than int, and allows negative */
-	int64_t i, prev;
+	int64_t prev, i;
+	int *v;
 
 	/* Must be in order, must contain value. */
 	prev = -0x80000001ULL;
-	for (i = sintmap_first(map);
-	     i != 0x7FFFFFFFFFFFFFFFLL;
-	     i = sintmap_after(map, i)) {
+	for (v = sintmap_first(map, &i); v; v = sintmap_after(map, &i)) {
 		if (i <= prev)
 			return false;
-		if (*(int *)sintmap_get(map, i) != i)
+		if (*v != i)
 			return false;
 		prev = i;
 	}

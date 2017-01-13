@@ -11,11 +11,8 @@
 /* Must be an unsigned type. */
 #ifndef intmap_index_t
 #define intmap_index_t uint64_t
+#define sintmap_index_t int64_t
 #endif
-
-/* Maximum possible values of each type */
-#define UINTMAP_NONE ((intmap_index_t)-1)
-#define SINTMAP_NONE (((intmap_index_t)1 << (sizeof(intmap_index_t)*8))-1)
 
 /**
  * struct intmap - representation of an integer map
@@ -261,52 +258,58 @@ void *intmap_del_(struct intmap *map, intmap_index_t index);
 void intmap_clear_(struct intmap *map);
 
 /**
- * uintmap_first - get first index in an unsigned intmap
+ * uintmap_first - get first value in an unsigned intmap
  * @umap: the typed intmap to iterate through.
+ * @indexp: a pointer to store the index.
  *
- * Returns UINTMAP_NONE and sets errno to ENOENT if it's empty.
- * Otherwise errno is set to 0.
+ * Returns NULL if the map is empty, otherwise populates *@indexp and
+ * returns the lowest entry.
  */
-#define uintmap_first(umap)			\
-	intmap_first_(uintmap_unwrap_(umap))
+#define uintmap_first(umap, indexp)					\
+	tcon_cast((umap), uintmap_canary,				\
+		  intmap_first_(uintmap_unwrap_(umap), (indexp)))
+
+void *intmap_first_(const struct intmap *map, intmap_index_t *indexp);
 
 /**
- * sintmap_first - get first index in a signed intmap
+ * sintmap_first - get first value in a signed intmap
  * @smap: the typed intmap to iterate through.
+ * @indexp: a pointer to store the index.
  *
- * Returns SINTMAP_NONE and sets errno to ENOENT if it's
- * empty.  Otherwise errno is set to 0.
+ * Returns NULL if the map is empty, otherwise populates *@indexp and
+ * returns the lowest entry.
  */
-#define sintmap_first(smap)					\
-	SINTMAP_UNOFF(intmap_first_(sintmap_unwrap_(smap)))
-
-intmap_index_t intmap_first_(const struct intmap *map);
+#define sintmap_first(smap, indexp)					\
+	tcon_cast((smap), sintmap_canary,				\
+		  sintmap_first_(sintmap_unwrap_(smap), (indexp)))
 
 /**
  * uintmap_after - get the closest following index in an unsigned intmap
  * @umap: the typed intmap to iterate through.
- * @i: the preceeding index (may not exist)
+ * @indexp: the preceeding index (may not exist)
  *
- * Returns UINTMAP_NONE and sets errno to ENOENT if there are no
- * others.  Otherwise errno is set to 0.
+ * Returns NULL if the there is no entry > @indexp, otherwise
+ * populates *@indexp and returns the lowest entry > @indexp.
  */
-#define uintmap_after(umap, i)				\
-	intmap_after_(uintmap_unwrap_(umap), (i))
+#define uintmap_after(umap, indexp)					\
+	tcon_cast((umap), uintmap_canary,				\
+		  intmap_after_(uintmap_unwrap_(umap), (indexp)))
+
+void *intmap_after_(const struct intmap *map, intmap_index_t *indexp);
 
 /**
  * sintmap_after - get the closest following index in a signed intmap
  * @smap: the typed intmap to iterate through.
- * @i: the preceeding index.
+ * @indexp: the preceeding index (may not exist)
  *
- * Returns SINTMAP_NONE and sets errno to ENOENT if there are no
- * others.  Otherwise errno is set to 0.
+ * Returns NULL if the there is no entry > @indexp, otherwise
+ * populates *@indexp and returns the lowest entry > @indexp.
  */
-#define sintmap_after(smap, i)						\
-	SINTMAP_UNOFF(intmap_after_(sintmap_unwrap_(smap), SINTMAP_OFF((i))))
+#define sintmap_after(smap, indexp)					\
+	tcon_cast((smap), sintmap_canary,				\
+		  sintmap_after_(sintmap_unwrap_(smap), (indexp)))
 
-intmap_index_t intmap_after_(const struct intmap *map, intmap_index_t i);
-
-/* TODO: We could implement intmap_prefix, intmap_iterate... */
+/* TODO: We could implement intmap_prefix. */
 
 /* These make sure it really is a uintmap/sintmap */
 #define uintmap_unwrap_(u) (tcon_unwrap(u) + 0*tcon_sizeof((u), uintmap_canary))
@@ -317,4 +320,23 @@ intmap_index_t intmap_after_(const struct intmap *map, intmap_index_t i);
 #define SINTMAP_OFF(index)	((intmap_index_t)(index) + SINTMAP_OFFSET)
 #define SINTMAP_UNOFF(index)	((intmap_index_t)(index) - SINTMAP_OFFSET)
 
+/* Due to multi-evaluation, these can't be macros */
+static inline void *sintmap_first_(const struct intmap *map,
+				   sintmap_index_t *indexp)
+{
+	intmap_index_t i;
+	void *ret = intmap_first_(map, &i);
+	*indexp = SINTMAP_UNOFF(i);
+	return ret;
+
+}
+
+static inline void *sintmap_after_(const struct intmap *map,
+				   sintmap_index_t *indexp)
+{
+	intmap_index_t i = SINTMAP_OFF(*indexp);
+	void *ret = intmap_after_(map, &i);
+	*indexp = SINTMAP_UNOFF(i);
+	return ret;
+}
 #endif /* CCAN_INTMAP_H */

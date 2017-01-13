@@ -1,4 +1,5 @@
 #define intmap_index_t uint8_t
+#define sintmap_index_t int8_t
 
 #include <ccan/intmap/intmap.c>
 #include <ccan/tap/tap.h>
@@ -12,16 +13,16 @@ typedef SINTMAP(int8_t *) smap;
 static bool check_umap(const umap *map)
 {
 	/* This is a larger type than unsigned, and allows negative */
-	int64_t i, prev;
+	int64_t prev;
+	intmap_index_t i;
+	uint8_t *v;
 
 	/* Must be in order, must contain value. */
 	prev = -1;
-	for (i = uintmap_first(map);
-	     i != UINTMAP_NONE || errno == 0;
-	     i = uintmap_after(map, i)) {
+	for (v = uintmap_first(map, &i); v; v = uintmap_after(map, &i)) {
 		if (i <= prev)
 			return false;
-		if (*(uint8_t *)uintmap_get(map, i) != i)
+		if (*v != i)
 			return false;
 		prev = i;
 	}
@@ -31,16 +32,16 @@ static bool check_umap(const umap *map)
 static bool check_smap(const smap *map)
 {
 	/* This is a larger type than int, and allows negative */
-	int64_t i, prev;
+	int64_t prev;
+	sintmap_index_t i;
+	int8_t *v;
 
 	/* Must be in order, must contain value. */
 	prev = -0x80000001ULL;
-	for (i = sintmap_first(map);
-	     i != 127 || errno == 0;
-	     i = sintmap_after(map, i)) {
+	for (v = sintmap_first(map, &i); v; v = sintmap_after(map, &i)) {
 		if (i <= prev)
 			return false;
-		if (*(int8_t *)sintmap_get(map, i) != i)
+		if (*v != i)
 			return false;
 		prev = i;
 	}
