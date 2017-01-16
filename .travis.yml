@@ -1,12 +1,11 @@
 language: c
 sudo: false
 
-compiler:
-  - gcc
-  - clang
-
-env:
-    - CFLAGS="-std=gnu99"
+matrix:
+  include:
+  - compiler: gcc
+    env: CFLAGS="-std=gnu99"
+  - compiler: clang
 
 script:
     - make -j2 -k quiet=1
