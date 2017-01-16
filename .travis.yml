@@ -6,7 +6,15 @@ matrix:
   - compiler: gcc
     env: CFLAGS="-std=gnu99"
   - compiler: clang
+    addons:
+      apt:
+        packages:
+          - valgrind
   - dist: trusty
+    addons:
+      apt:
+        packages:
+          - valgrind
     env: CFLAGS="-std=gnu99"
     compiler: gcc
 
