@@ -6,6 +6,9 @@ matrix:
   - compiler: gcc
     env: CFLAGS="-std=gnu99"
   - compiler: clang
+  - dist: trusty
+    env: CFLAGS="-std=gnu99"
+    compiler: gcc
 
 script:
     - make -j2 -k quiet=1
