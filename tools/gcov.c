@@ -13,7 +13,9 @@ bool run_gcov(const void *ctx, unsigned int *time_ms, char **output,
 	bool rc;
 
 	if (!gcov) {
-#ifdef __GNUC__
+#if defined(__clang__)
+		cmd = "llvm-cov gcov";
+#elif defined(__GNUC__)
 		cmd = "gcov";
 #endif
 	}
