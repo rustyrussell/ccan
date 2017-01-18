@@ -62,6 +62,9 @@ LINT_DEPS := $(LINT_SRCS:%.c=%.d) $(LINT).d
 LINT_CCAN_MODULES := asort autodata dgraph ilog lbalance ptr_valid strmap
 LINT_CCAN_SRCS := $(wildcard $(LINT_CCAN_MODULES:%=ccan/%/*.c))
 LINT_OBJS := $(LINT_SRCS:%.c=%.o) $(LINT_CCAN_SRCS:%.c=%.o) $(TOOLS_OBJS)
+ifneq ($(GCOV),)
+LINT_GCOV = --gcov="$(GCOV)"
+endif
 $(LINT): $(LINT).c $(LINT_OBJS)
 	$(PRE)$(CC) $(CCAN_CFLAGS) $(DEP_CFLAGS) $(LINT).c $(LINT_OBJS) -lm -o $@
 
@@ -72,7 +75,7 @@ TEST_DEPS := $(MODULES:%=%/.d)
 
 # We produce .ok files when the tests succeed
 %.ok: $(LINT) %info
-	$(PRE)$(LINT) $(LINT_OPTS$(notdir $@)) --deps-fail-ignore $(LINTFLAGS) $(dir $*) && touch $@
+	$(PRE)$(LINT) $(LINT_OPTS$(notdir $@)) --deps-fail-ignore $(LINT_GCOV) $(LINTFLAGS) $(dir $*) && touch $@
 
 check: $(MODULES:%=%/.ok)
 fastcheck: $(MODULES:%=%/.fast.ok)

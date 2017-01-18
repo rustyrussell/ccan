@@ -616,6 +616,7 @@ int main(int argc, char *argv[])
 	char *cwd = path_cwd(NULL), *dir;
 	struct ccanlint top;  /* cannot_run may try to set ->can_run */
 	const char *override_compiler = NULL, *override_cflags = NULL;
+	const char *override_gcov = NULL;
 	
 	/* Empty graph node to which we attach everything else. */
 	dgraph_init_node(&top.node);
@@ -644,6 +645,8 @@ int main(int argc, char *argv[])
 			 NULL, &override_compiler, "set the compiler");
 	opt_register_arg("--cflags <flags>", opt_set_const_charp,
 			 NULL, &override_cflags, "set the compiler flags");
+	opt_register_arg("--gcov <coverage tool>", opt_set_const_charp,
+			 NULL, &override_gcov, "set the coverage tool");
 	opt_register_noarg("--deps-fail-ignore", opt_set_bool,
 			   &deps_fail_ignore,
 			   "don't fail if external dependencies are missing");
@@ -688,6 +691,8 @@ int main(int argc, char *argv[])
 		cflags = override_cflags;
 	if (override_compiler)
 		compiler = override_compiler;
+	if (override_gcov)
+		gcov = override_gcov;
 
 	if (argc == 1)
 		pass = test_module(&top.node, cwd, "",

@@ -103,6 +103,7 @@ extern const unsigned int default_timeout_ms;
 const char *find_ccan_dir(const char *base);
 
 /* Run gcov coverage tool */
+extern const char *gcov;
 const char *gcov_unavailable(void *ctx);
 bool run_gcov(const void *ctx, unsigned int *time_ms, char **output,
 	      const char *fmt, ...);

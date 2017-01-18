@@ -2,16 +2,28 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
+const char *gcov; /* = NULL */
+
 bool run_gcov(const void *ctx, unsigned int *time_ms, char **output,
 	      const char *fmt, ...)
 {
+	const char *cmd = gcov;
 	char *args;
 	va_list ap;
 	bool rc;
 
+	if (!gcov) {
+#ifdef __GNUC__
+		cmd = "gcov";
+#endif
+	}
+
+	if (!cmd)
+		return false;
+
 	va_start(ap, fmt);
 	args = tal_vfmt(ctx, fmt, ap);
-	rc = run_command(ctx, time_ms, output, "gcov %s", args);
+	rc = run_command(ctx, time_ms, output, "%s %s", cmd, args);
 	tal_free(args);
 	return rc;
 }
@@ -19,6 +31,13 @@ bool run_gcov(const void *ctx, unsigned int *time_ms, char **output,
 const char *gcov_unavailable(void *ctx)
 {
 	const char *err = NULL;
+
+	/* 
+	 * If the user has specified a path, assume they know what
+	 * they're doing
+	 */
+	if (gcov)
+		return NULL;
 
 #ifdef __GNUC__
 	unsigned int timeleft = default_timeout_ms;
