@@ -19,16 +19,7 @@
 /* Note: we already test safe_mode in run_tests.c */
 static const char *can_run_coverage(struct manifest *m)
 {
-#ifdef __GNUC__
-	unsigned int timeleft = default_timeout_ms;
-	char *output;
-
-	if (!run_command(m, &timeleft, &output, "gcov -h"))
-		return tal_fmt(m, "No gcov support: %s", output);
-	return NULL;
-#else
-	return "No coverage support for this compiler";
-#endif
+	return gcov_unavailable(m);
 }
 
 static char *cflags_list(const struct manifest *m)

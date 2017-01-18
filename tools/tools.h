@@ -101,4 +101,10 @@ extern const unsigned int default_timeout_ms;
 
 /* Get ccan/ top dir, given a directory within it. */
 const char *find_ccan_dir(const char *base);
+
+/* Run gcov coverage tool */
+const char *gcov_unavailable(void *ctx);
+bool run_gcov(const void *ctx, unsigned int *time_ms, char **output,
+	      const char *fmt, ...);
+
 #endif /* CCAN_TOOLS_H */
