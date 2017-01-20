@@ -53,10 +53,16 @@ struct coroutine_state;
 #define COROUTINE_MIN_STKSZ		2048
 
 /**
- * COROUTINE_STACK_MAGIC - Magic number for coroutine stacks
+ * COROUTINE_STACK_MAGIC_BUF - Magic number for coroutine stacks in a user
+ *                             supplied buffer
  */
-#define COROUTINE_STACK_MAGIC		0xc040c040574c574c
+#define COROUTINE_STACK_MAGIC_BUF	0xc040c040574cb00f
 
+/**
+ * COROUTINE_STACK_MAGIC_ALLOC - Magic number for coroutine stacks
+ *                               allocated by this module
+ */
+#define COROUTINE_STACK_MAGIC_ALLOC	0xc040c040574ca110
 
 /**
  * coroutine_stack_init - Prepare a coroutine stack in an existing buffer
@@ -74,6 +80,23 @@ struct coroutine_state;
  */
 struct coroutine_stack *coroutine_stack_init(void *buf, size_t bufsize,
 					     size_t metasize);
+
+/**
+ * coroutine_stack_alloc - Allocate a coroutine stack
+ * @totalsize: total size to allocate
+ * @metasize: size of metadata to add to the stack (not including
+ *            coroutine internal overhead)
+ *
+ * Allocates a coroutine stack of size @totalsize, including both
+ * internal overhead (COROUTINE_STK_OVERHEAD) and metadata of size
+ * @metasize.  Where available this will also create a guard page, so
+ * that overruning the stack will result in an immediate crash, rather
+ * than data corruption.
+ *
+ * This will fail if the totalsize < (COROUTINE_MIN_STKSZ +
+ * COROUTINE_STK_OVERHEAD + metasize).
+ */
+struct coroutine_stack *coroutine_stack_alloc(size_t bufsize, size_t metasize);
 
 /**
  * coroutine_stack_release - Stop using a coroutine stack

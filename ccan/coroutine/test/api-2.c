@@ -59,20 +59,13 @@ static void f2(void *p)
 
 static void test1(size_t bufsz)
 {
-	void *buf1, *buf2;
 	struct coroutine_stack *stack1, *stack2;
 
-	buf1 = malloc(bufsz);
-	ok1(buf1 != NULL);
-	stack1 = coroutine_stack_init(buf1, bufsz, 0);
-	diag("buf1=%p stack1=%p bufsz=0x%zx overhead=0x%zx\n",
-	     buf1, stack1, bufsz, COROUTINE_STK_OVERHEAD);
+	stack1 = coroutine_stack_alloc(bufsz, 0);
 	ok1(coroutine_stack_check(stack1, NULL) == stack1);
 	ok1(coroutine_stack_size(stack1) == bufsz - COROUTINE_STK_OVERHEAD);
 
-	buf2 = malloc(bufsz);
-	ok1(buf2 != NULL);
-	stack2 = coroutine_stack_init(buf2, bufsz, 0);
+	stack2 = coroutine_stack_alloc(bufsz, 0);
 	ok1(coroutine_stack_check(stack2, NULL) == stack2);
 	ok1(coroutine_stack_size(stack2) == bufsz - COROUTINE_STK_OVERHEAD);
 
@@ -90,18 +83,14 @@ static void test1(size_t bufsz)
 	ok(1, "Completed test1");
 
 	coroutine_stack_release(stack1, 0);
-	ok1(coroutine_stack_check(stack1, NULL) == NULL);
-	free(buf1);
 	coroutine_stack_release(stack2, 0);
-	ok1(coroutine_stack_check(stack2, NULL) == NULL);
-	free(buf2);
 }
 
 
 int main(void)
 {
 	/* This is how many tests you plan to run */
-	plan_tests(14);
+	plan_tests(10);
 
 	test1(8192);
 

@@ -38,6 +38,11 @@ static void test_metadata(struct coroutine_stack *stack)
 {
 	struct metadata *meta;
 
+	ok1(stack != NULL);
+	ok1(coroutine_stack_check(stack, NULL) == stack);
+	ok1(coroutine_stack_size(stack)
+	    == BUFSIZE - COROUTINE_STK_OVERHEAD - sizeof(struct metadata));
+
 	meta = coroutine_stack_to_metadata(stack, sizeof(*meta));
 	ok1(coroutine_stack_from_metadata(meta, sizeof(*meta)) == stack);
 
@@ -68,22 +73,19 @@ int main(void)
 	struct coroutine_stack *stack;
 
 	/* This is how many tests you plan to run */
-	plan_tests(10);
+	plan_tests(1 + 2 * 9);
 
 	/* Fix seed so we get consistent, though pseudo-random results */	
 	srandom(0);
 
+	stack = coroutine_stack_alloc(BUFSIZE, sizeof(struct metadata));
+	test_metadata(stack);
+	coroutine_stack_release(stack, sizeof(struct metadata));
+
 	buf = malloc(BUFSIZE);
 	ok1(buf != NULL);
-
 	stack = coroutine_stack_init(buf, BUFSIZE, sizeof(struct metadata));
-	ok1(stack != NULL);
-	ok1(coroutine_stack_check(stack, NULL) == stack);
-	ok1(coroutine_stack_size(stack)
-	    == BUFSIZE - COROUTINE_STK_OVERHEAD - sizeof(struct metadata));
-
 	test_metadata(stack);
-
 	coroutine_stack_release(stack, sizeof(struct metadata));
 
 	free(buf);

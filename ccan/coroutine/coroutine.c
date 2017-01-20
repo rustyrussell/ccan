@@ -5,6 +5,9 @@
 #include <inttypes.h>
 #include <stdlib.h>
 
+#include <unistd.h>
+#include <sys/mman.h>
+
 #include <ccan/ptrint/ptrint.h>
 #include <ccan/compiler/compiler.h>
 #include <ccan/build_assert/build_assert.h>
@@ -70,23 +73,90 @@ struct coroutine_stack *coroutine_stack_init(void *buf, size_t bufsize,
 		((char *)buf + bufsize - metasize) - 1;
 #endif
 
-	stack->magic = COROUTINE_STACK_MAGIC;
+	stack->magic = COROUTINE_STACK_MAGIC_BUF;
 	stack->size = size;
 	vg_register_stack(stack);
 	return stack;
 }
 
+struct coroutine_stack *coroutine_stack_alloc(size_t totalsize, size_t metasize)
+{
+	struct coroutine_stack *stack;
+	size_t pgsz = getpagesize();
+	size_t mapsize;
+	char *map, *guard;
+	int rc;
+
+	mapsize = ((totalsize + (pgsz - 1)) & ~(pgsz - 1)) + pgsz;
+
+	map = mmap(NULL, mapsize, PROT_READ | PROT_WRITE,
+		   MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	if (map == MAP_FAILED)
+		return NULL;
+
+#if HAVE_STACK_GROWS_UPWARDS
+	guard = map + mapsize - pgsz;
+	stack = (struct coroutine_stack *)(guard - totalsize + metasize);
+#else
+	guard = map;
+	stack = (struct coroutine_stack *)(map + pgsz + totalsize - metasize)
+		- 1;
+#endif
+
+	rc = mprotect(guard, pgsz, PROT_NONE);
+	if (rc != 0) {
+		munmap(map, mapsize);
+		return NULL;
+	}
+
+	stack->magic = COROUTINE_STACK_MAGIC_ALLOC;
+	stack->size = totalsize - sizeof(*stack) - metasize;
+
+	vg_register_stack(stack);
+
+	return stack;
+}
+
+static void coroutine_stack_free(struct coroutine_stack *stack, size_t metasize)
+{
+	void *map;
+	size_t pgsz = getpagesize();
+	size_t totalsize = stack->size + sizeof(*stack) + metasize;
+	size_t mapsize = ((totalsize + (pgsz - 1)) & ~(pgsz - 1)) + pgsz;
+
+#if HAVE_STACK_GROWS_UPWARDS
+	map = (char *)(stack + 1) + stack->size + pgsz - mapsize;
+#else
+	map = (char *)stack - stack->size - pgsz;
+#endif
+
+	munmap(map, mapsize);
+}
+
 void coroutine_stack_release(struct coroutine_stack *stack, size_t metasize)
 {
 	vg_deregister_stack(stack);
-	memset(stack, 0, sizeof(*stack));
+
+	switch (stack->magic) {
+	case COROUTINE_STACK_MAGIC_BUF:
+		memset(stack, 0, sizeof(*stack));
+		break;
+
+	case COROUTINE_STACK_MAGIC_ALLOC:
+		coroutine_stack_free(stack, metasize);
+		break;
+
+	default:
+		abort();
+	}
 }
 
 struct coroutine_stack *coroutine_stack_check(struct coroutine_stack *stack,
 					      const char *abortstr)
 {
 	if (stack && vg_addressable(stack, sizeof(*stack))
-	    && (stack->magic == COROUTINE_STACK_MAGIC)
+	    && ((stack->magic == COROUTINE_STACK_MAGIC_BUF)
+		|| (stack->magic == COROUTINE_STACK_MAGIC_ALLOC))
 	    && (stack->size >= COROUTINE_MIN_STKSZ))
 		return stack;
 
