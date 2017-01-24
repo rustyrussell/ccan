@@ -306,7 +306,7 @@ static char *get_one_ported(const void *ctx, const char *dir,
 	char **ported = get_one_prop(ctx, dir, "ported", get_info);
 
 	/* No news is good news. */
-	if (!ported || tal_count(ported) == 0)
+	if (tal_count(ported) == 0)
 		return NULL;
 
 	if (tal_count(ported) != 1)
