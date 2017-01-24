@@ -27,7 +27,6 @@ static void clobber(void *p)
 		buf[i] = random() & 0xff;
 	}
 
-	s->total = 0;
 	for (i = 0; i < sizeof(buf); i++) {
 		s->total += buf[i];
 	}
@@ -48,6 +47,7 @@ static void test_metadata(struct coroutine_stack *stack)
 	if (COROUTINE_AVAILABLE) {
 		struct coroutine_state t;
 		struct state s = {
+			.total = 0,
 		};
 
 		coroutine_init(&t, clobber, &s, stack);
