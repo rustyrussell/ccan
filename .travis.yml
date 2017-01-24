@@ -53,6 +53,12 @@ matrix:
         packages:
           - gcc-6
           - valgrind
+  - dist: trusty
+    compiler: clang
+    addons:
+      apt:
+        packages:
+          - valgrind
 
 script:
     - make -j2 -k quiet=1
