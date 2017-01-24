@@ -27,8 +27,6 @@ static void clobber(void *p)
 		buf[i] = random() & 0xff;
 	}
 
-	diag("Wrote random to buffer\n");
-
 	s->total = 0;
 	for (i = 0; i < sizeof(buf); i++) {
 		s->total += buf[i];
