@@ -1,0 +1,41 @@
+#include <ccan/log/log.h>
+
+/**
+ * log - pretty-print logging information
+ *
+ * log is a set of functions and helper macros intended to make it easy to
+ * pretty-print log entries.
+ *
+ * Example:
+ * #include <ccan/log/log.h>
+ *
+ * int main(int argc, char *argv[])
+ * {
+ * 	print_log(LOG_INFO, "This is an info message.\n");
+ *	print_log(LOG_WARNING, "This is a warning message. It indicates that"
+ *			       " an operation encountered minor issues\n");
+ *	print_log(LOG_ERROR, "This is an error message. It indicates that the\n"
+ *			     "program could not complete an operation, but\n"
+ *			     "that the error was not fatal. It might have\n"
+ *			     "an error code, like so: %x\n", 0xDEADBEEF);
+ *	print_log(LOG_CRITICAL, "This is a critical message. It indicates\n"
+ *				"that the program had an unrecoverable error.\n");
+ *      set_log_mode(LOG_CONCISE);
+ *      print_log(LOG_INFO, "The symbol tags and information can be concise, as well.\n");
+ *      print_log(LOG_WARNING, "That was an info message. This is a warning message.\n");
+ *      print_log(LOG_ERROR, "And this is an error message.\n");
+ *      print_log(LOG_ERROR, "And this is a critical message.\n");
+ *      set_log_file("example.log");
+ *      print_log(LOG_INFO, "Logs can also be automatically printed to files.\n");
+ *
+ * Author: Henry Eshbaugh <henryeshbaugh@gmail.com>
+ * License: MIT
+ * Version: 1.0
+ */
+
+ int main(int argc, char *argv[])
+ {
+ 	if (argc != 2) return 1;
+	if (strcmp(argv[1], "depends") == 0) return 0;
+	return 1;
+ }
