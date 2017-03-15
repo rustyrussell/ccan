@@ -56,7 +56,7 @@ tools/% : tools/%.c $(TOOLS_OBJS)
 # ccanlint
 LINT := tools/ccanlint/ccanlint
 LINT_OPTS.ok := -s
-LINT_OPTS.fast.ok := -s -x tests_pass_valgrind -x tests_compile_coverage
+LINT_OPTS.fast-ok := -s -x tests_pass_valgrind -x tests_compile_coverage
 LINT_SRCS := $(filter-out $(LINT).c, $(wildcard tools/ccanlint/*.c tools/ccanlint/tests/*.c))
 LINT_DEPS := $(LINT_SRCS:%.c=%.d) $(LINT).d
 LINT_CCAN_MODULES := asort autodata dgraph ilog lbalance ptr_valid strmap
@@ -75,10 +75,13 @@ TEST_DEPS := $(MODULES:%=%/.d)
 
 # We produce .ok files when the tests succeed
 %.ok: $(LINT) %info
-	$(PRE)$(LINT) $(LINT_OPTS$(notdir $@)) --deps-fail-ignore $(LINT_GCOV) $(LINTFLAGS) $(dir $*) && touch $@
+	$(PRE)$(LINT) $(LINT_OPTS.ok) --deps-fail-ignore $(LINT_GCOV) $(LINTFLAGS) $(dir $*) && touch $@
+
+%.fast-ok: $(LINT) %info
+	$(PRE)$(LINT) $(LINT_OPTS.fast-ok) --deps-fail-ignore $(LINT_GCOV) $(LINTFLAGS) $(dir $*) && touch $@
 
 check: $(MODULES:%=%/.ok)
-fastcheck: $(MODULES:%=%/.fast.ok)
+fastcheck: $(MODULES:%=%/.fast-ok)
 
 ifeq ($(strip $(filter clean config.h, $(MAKECMDGOALS))),)
 -include $(DEPS) $(LINT_DEPS) $(TOOLS_DEPS) $(TEST_DEPS)
