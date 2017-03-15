@@ -53,6 +53,7 @@ int main(int argc, char *argv[])
 
 	if (strcmp(argv[1], "depends") == 0) {
 		printf("ccan/likely\n");
+		printf("ccan/str\n");
 		return 0;
 	}
 
