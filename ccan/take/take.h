@@ -12,6 +12,17 @@
 #endif
 
 /**
+ * TAKES - annotate a formal parameter as being take()-able
+ *
+ * This doesn't do anything, but useful for documentation.
+ *
+ * Example:
+ *	void print_string(const char *str TAKES);
+ *	
+ */
+#define TAKES
+
+/**
  * take - record a pointer to be consumed by the function its handed to.
  * @p: the pointer to mark, or NULL.
  *
@@ -31,7 +42,7 @@
  *
  * Example:
  *	// Silly routine to add 1
- *	static int *add_one(const int *num)
+ *	static int *add_one(const int *num TAKES)
  *	{
  *		int *ret;
  *		if (taken(num))

@@ -6,6 +6,7 @@
 #include <ccan/likely/likely.h>
 #include <ccan/typesafe_cb/typesafe_cb.h>
 #include <ccan/str/str.h>
+#include <ccan/take/take.h>
 #include <talloc.h>
 #include <stdlib.h>
 #include <stdbool.h>
