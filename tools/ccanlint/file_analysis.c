@@ -357,6 +357,7 @@ enum line_compiled get_ccan_line_pp(struct pp_conditions *cond,
 	}
 	ret = get_pp(cond, head);
 	tal_free(head);
+	va_end(ap);
 	return ret;
 }
 

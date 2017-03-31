@@ -27,6 +27,7 @@ bool run_gcov(const void *ctx, unsigned int *time_ms, char **output,
 	args = tal_vfmt(ctx, fmt, ap);
 	rc = run_command(ctx, time_ms, output, "%s %s", cmd, args);
 	tal_free(args);
+	va_end(ap);
 	return rc;
 }
 

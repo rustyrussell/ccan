@@ -1085,8 +1085,8 @@ int failtest_open(const char *pathname,
 	call.closed = false;
 	if (call.flags & O_CREAT) {
 		call.mode = va_arg(ap, int);
-		va_end(ap);
 	}
+	va_end(ap);
 	p = add_history(FAILTEST_OPEN, true, file, line, &call);
 	/* Avoid memory leak! */
 	if (p == &unrecorded_call)
