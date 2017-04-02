@@ -36,7 +36,9 @@ void hmac_sha256_init(struct hmac_sha256_ctx *ctx,
 	 *   appended with 44 zero bytes 0x00)
 	 */
 	memcpy(k_ipad, k, ksize);
-	memset((char *)k_ipad + ksize, 0, HMAC_SHA256_BLOCKSIZE - ksize);
+	if (ksize < HMAC_SHA256_BLOCKSIZE)
+		memset((char *)k_ipad + ksize, 0,
+		       HMAC_SHA256_BLOCKSIZE - ksize);
 
 	/*
 	 * (2) XOR (bitwise exclusive-OR) the B byte string computed
