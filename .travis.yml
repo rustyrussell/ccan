@@ -1,6 +1,21 @@
 language: c
 sudo: false
 
+# Coverity Scan uploads
+env:
+  global:
+  # COVERITY_SCAN_TOKEN
+  - secure: "RU+r62MYrhaUcFOiXykFt0lpFzQVL6f5gyAKOv39PpYK10rsI/cM6N8wOReH1EmI7ktn7M+g3Fs2jA+i+bZW4rZSfm379hzduWisEo0vEWNwyWiIrl1WjgGptFDwOCzMQHwo+u4zH6E+CAOWnje5Zw+elokVTfC1orLbuQHABG4="
+
+addons:
+  coverity_scan:
+    project:
+      name: CCAN
+      #description: CCAN
+    notification_email: ccan@lists.ozlabs.org
+    build_command: make
+    branch_pattern: coverity_scan
+
 matrix:
   include:
   - compiler: gcc
