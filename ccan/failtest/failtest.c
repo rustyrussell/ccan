@@ -613,8 +613,10 @@ static NORETURN void failtest_cleanup(bool forced_cleanup, int status)
 
 		/* But their program shouldn't leak, even on failure. */
 		if (!forced_cleanup && i->can_leak) {
+			char *p = failpath_string();
 			printf("Leak at %s:%u: --failpath=%s\n",
-			       i->file, i->line, failpath_string());
+			       i->file, i->line, p);
+			free(p);
 			status = 1;
 		}
 	}
