@@ -238,7 +238,9 @@ static int make_listen_fd(const struct addrinfo *addrinfo)
 	if (fd < 0)
 		return -1;
 
-	setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
+	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) != 0)
+		goto fail;
+
 	if (bind(fd, addrinfo->ai_addr, addrinfo->ai_addrlen) != 0)
 		goto fail;
 
