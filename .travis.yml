@@ -4,8 +4,10 @@ sudo: false
 # Coverity Scan uploads
 env:
   global:
-  # COVERITY_SCAN_TOKEN
+  # COVERITY_SCAN_TOKEN (rustyrussell/ccan)
   - secure: "RU+r62MYrhaUcFOiXykFt0lpFzQVL6f5gyAKOv39PpYK10rsI/cM6N8wOReH1EmI7ktn7M+g3Fs2jA+i+bZW4rZSfm379hzduWisEo0vEWNwyWiIrl1WjgGptFDwOCzMQHwo+u4zH6E+CAOWnje5Zw+elokVTfC1orLbuQHABG4="
+  # COVERITY_SCAN_TOKEN (dgibson/ccan)
+  - secure: "OL7OqYjQPE6rpHwujZbZt1gR5TNYn6Z0b1JxBaL1AG+iHlTbRrFGqec/VpYi2SAlqcDZK3x2lUzsF+hzx4pNBLFu8wvMtDKD4grlME5M+Bu3LT+YnmWSkaCw1/01n/SFyeRAkNDUJhnp0wS5oJ9sWx6trKWf9Xw9HpoKlwbFEGM="
 
 addons:
   coverity_scan:
