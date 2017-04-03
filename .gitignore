@@ -3,6 +3,7 @@ TAGS
 *.d
 *.o
 *.ok
+.fast-ok
 config.h
 config.h.tmp
 *~
