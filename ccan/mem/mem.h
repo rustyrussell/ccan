@@ -7,6 +7,7 @@
 
 #include <string.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 #if !HAVE_MEMMEM
 PURE_FUNCTION
@@ -292,4 +293,22 @@ static inline void *memcheck_(const void *data, size_t len)
  *	memtaint(somebytes, bytes_len);
  */
 void memtaint(void *data, size_t len);
+
+/**
+ * memdup - duplicate a memory region into a newly allocated memory region
+ * @data: start of region
+ * @len: length in bytes
+ *
+ * Returns a pointer to the newly allocated (allocated with malloc()) region on
+ * success, otherwise returns NULL.
+ */
+static inline void *memdup(const void *data, size_t len)
+{
+	void *n = malloc(len);
+	if (!n)
+		return NULL;
+	memcpy(n, data, len);
+	return n;
+}
+
 #endif /* CCAN_MEM_H */

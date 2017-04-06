@@ -86,6 +86,36 @@ static inline struct bytestring bytestring_from_string(const char *s)
 }
 
 /**
+ * bytestring_from_string_nul - construct a bytestring from a NUL terminated
+ *                              string, including the NUL
+ * @s: NUL-terminated string pointer
+ *
+ * Builds a new bytestring containing the given NUL-terminated string,
+ * up to and _including_ the terminating \0.
+ *
+ * Example:
+ *	assert(bytestring_from_string_nul("abc\0def").len == 4);
+ */
+static inline struct bytestring bytestring_from_string_nul(const char *s)
+{
+	if (!s)
+		return bytestring_NULL;
+	return bytestring(s, strlen(s) + 1);
+}
+
+/*
+ * bytestring_dup - duplicate a bytestring into malloc()ed memory
+ * @b: an existing bytestring
+ *
+ * Example:
+ *      assert(bytestring_dup(bytestring_from_string("abc")).len == 3);
+ */
+static inline struct bytestring bytestring_dup(struct bytestring b)
+{
+	return bytestring(memdup(b.ptr, b.len), b.len);
+}
+
+/**
  * bytestring_eq - test if bytestrings have identical content
  * @a, @b: bytestrings
  *
