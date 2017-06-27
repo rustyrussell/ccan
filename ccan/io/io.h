@@ -693,6 +693,16 @@ int io_conn_fd(const struct io_conn *conn);
 bool io_flush_sync(struct io_conn *conn);
 
 /**
+ * io_fd_block - helper to set an fd blocking/nonblocking.
+ * @fd: the file descriptor
+ * @block: true to set blocking, false to set non-blocking.
+ *
+ * Generally only fails is @fd isn't a valid file descriptor, otherwise
+ * returns true.
+ */
+bool io_fd_block(int fd, bool block);
+
+/**
  * io_time_override - override the normal call for time.
  * @nowfn: the function to call.
  *
