@@ -59,7 +59,7 @@ static struct aga_node *nr_to_n(struct agar_state *sr, const void *nr)
 		assert(rc);
 	}
 
-	return nn ? &nn->n : NULL;
+	return &nn->n;
 }
 
 static const void *n_to_nr(struct agar_state *sr, const struct aga_node *n)

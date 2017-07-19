@@ -1,15 +1,12 @@
 /* Licensed under GPLv3+ - see LICENSE file for details */
 #include <ccan/lbalance/lbalance.h>
-#include <ccan/tlist/tlist.h>
+#include <ccan/tlist2/tlist2.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <unistd.h>
 #include <errno.h>
 #include <assert.h>
 #include <stdlib.h>
-
-/* Define tlist_lbalance_task */
-TLIST_TYPE(lbalance_task, struct lbalance_task);
 
 struct stats {
 	/* How many stats of for this value do we have? */
@@ -18,8 +15,19 @@ struct stats {
 	float work_rate;
 };
 
+struct lbalance;
+
+struct lbalance_task {
+	struct lbalance *lb;
+	struct list_node list;
+
+	/* The time this task started */
+	struct timeval start;
+	float tasks_sum_start;
+};
+
 struct lbalance {
-	struct tlist_lbalance_task tasks;
+	TLIST2(struct lbalance_task, list) tasks;
 	unsigned int num_tasks;
 
 	/* We figured out how many we want to run. */
@@ -42,22 +50,13 @@ struct lbalance {
 	struct stats *stats;
 };
 
-struct lbalance_task {
-	struct lbalance *lb;
-	struct list_node list;
-
-	/* The time this task started */
-	struct timeval start;
-	float tasks_sum_start;
-};
-
 struct lbalance *lbalance_new(void)
 {
 	struct lbalance *lb = malloc(sizeof *lb);
 	if (!lb)
 		return NULL;
 
-	tlist_init(&lb->tasks);
+	tlist2_init(&lb->tasks);
 	lb->num_tasks = 0;
 	gettimeofday(&lb->prev_tasks_time, NULL);
 	lb->tasks_sum = 0.0;
@@ -140,7 +139,7 @@ struct lbalance_task *lbalance_task_new(struct lbalance *lb)
 	update_tasks_sum(lb, &task->start);
 
 	task->tasks_sum_start = lb->tasks_sum;
-	tlist_add_tail(&lb->tasks, task, list);
+	tlist2_add_tail(&lb->tasks, task);
 	lb->num_tasks++;
 
 	return task;
@@ -229,7 +228,7 @@ void lbalance_task_free(struct lbalance_task *task,
 	task->lb->target_uptodate = false;
 
 	/* Remove this task. */
-	tlist_del_from(&task->lb->tasks, task, list);
+	tlist2_del_from(&task->lb->tasks, task);
 	task->lb->num_tasks--;
 	free(task);
 }
@@ -314,9 +313,9 @@ void lbalance_free(struct lbalance *lb)
 {
 	struct lbalance_task *task;
 
-	while ((task = tlist_top(&lb->tasks, list))) {
+	while ((task = tlist2_top(&lb->tasks))) {
 		assert(task->lb == lb);
-		tlist_del_from(&lb->tasks, task, list);
+		tlist2_del_from(&lb->tasks, task);
 		lb->num_tasks--;
 		free(task);
 	}

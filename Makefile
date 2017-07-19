@@ -46,7 +46,7 @@ config.h: $(CONFIGURATOR) Makefile
 TOOLS := tools/ccan_depends tools/doc_extract tools/namespacize tools/modfiles
 TOOLS_SRCS := $(filter-out $(TOOLS:%=%.c), $(wildcard tools/*.c))
 TOOLS_DEPS := $(TOOLS_SRCS:%.c=%.d) $(TOOLS:%=%.d)
-TOOLS_CCAN_MODULES := err foreach hash htable list noerr opt rbuf \
+TOOLS_CCAN_MODULES := asort err foreach hash htable list noerr opt rbuf \
     read_write_all str take tal tal/grab_file tal/link tal/path tal/str time
 TOOLS_CCAN_SRCS := $(wildcard $(TOOLS_CCAN_MODULES:%=ccan/%/*.c))
 TOOLS_OBJS := $(TOOLS_SRCS:%.c=%.o) $(TOOLS_CCAN_SRCS:%.c=%.o)
@@ -56,7 +56,7 @@ tools/% : tools/%.c $(TOOLS_OBJS)
 # ccanlint
 LINT := tools/ccanlint/ccanlint
 LINT_OPTS.ok := -s
-LINT_OPTS.fast.ok := -s -x tests_pass_valgrind -x tests_compile_coverage
+LINT_OPTS.fast-ok := -s -x tests_pass_valgrind -x tests_compile_coverage
 LINT_SRCS := $(filter-out $(LINT).c, $(wildcard tools/ccanlint/*.c tools/ccanlint/tests/*.c))
 LINT_DEPS := $(LINT_SRCS:%.c=%.d) $(LINT).d
 LINT_CCAN_MODULES := asort autodata dgraph ilog lbalance ptr_valid strmap
@@ -75,10 +75,13 @@ TEST_DEPS := $(MODULES:%=%/.d)
 
 # We produce .ok files when the tests succeed
 %.ok: $(LINT) %info
-	$(PRE)$(LINT) $(LINT_OPTS$(notdir $@)) --deps-fail-ignore $(LINT_GCOV) $(LINTFLAGS) $(dir $*) && touch $@
+	$(PRE)$(LINT) $(LINT_OPTS.ok) --deps-fail-ignore $(LINT_GCOV) $(LINTFLAGS) $(dir $*) && touch $@
+
+%.fast-ok: $(LINT) %info
+	$(PRE)$(LINT) $(LINT_OPTS.fast-ok) --deps-fail-ignore $(LINT_GCOV) $(LINTFLAGS) $(dir $*) && touch $@
 
 check: $(MODULES:%=%/.ok)
-fastcheck: $(MODULES:%=%/.fast.ok)
+fastcheck: $(MODULES:%=%/.fast-ok)
 
 ifeq ($(strip $(filter clean config.h, $(MAKECMDGOALS))),)
 -include $(DEPS) $(LINT_DEPS) $(TOOLS_DEPS) $(TEST_DEPS)

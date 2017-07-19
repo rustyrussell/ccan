@@ -54,8 +54,10 @@ char *compile_info(const void *ctx, const char *dir)
 	fd = open(info_c_file, O_WRONLY|O_CREAT|O_EXCL, 0600);
 	if (fd < 0)
 		return NULL;
-	if (!write_all(fd, info, tal_count(info)-1))
+	if (!write_all(fd, info, tal_count(info)-1)) {
+		close(fd);
 		return NULL;
+	}
 
 	if (close(fd) != 0)
 		return NULL;

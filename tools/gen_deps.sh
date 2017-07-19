@@ -20,4 +20,4 @@ deps=$(echo `$path/info depends` | tr ' ' '\n' | \
 # Print the test targets and target aliases
 echo "${module}_ok_deps := $test_srcs $module_objs $deps"
 echo "$path/.ok: \$(${module}_ok_deps)"
-echo "$path/.fast.ok: \$(${module}_ok_deps:%.ok=%.fast.ok)"
+echo "$path/.fast-ok: \$(${module}_ok_deps:%.ok=%.fast-ok)"

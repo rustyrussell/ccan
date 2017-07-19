@@ -181,6 +181,7 @@ static void do_reduce_features(struct manifest *m,
 		err(1, "Creating reduced-features/config.h");
 	if (!write_all(fd, hdr, strlen(hdr)))
 		err(1, "Writing reduced-features/config.h");
+	htable_option_free(options);
 	close(fd);
 	features_were_reduced = true;
 }

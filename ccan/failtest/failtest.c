@@ -613,8 +613,10 @@ static NORETURN void failtest_cleanup(bool forced_cleanup, int status)
 
 		/* But their program shouldn't leak, even on failure. */
 		if (!forced_cleanup && i->can_leak) {
+			char *p = failpath_string();
 			printf("Leak at %s:%u: --failpath=%s\n",
-			       i->file, i->line, failpath_string());
+			       i->file, i->line, p);
+			free(p);
 			status = 1;
 		}
 	}
@@ -1085,8 +1087,8 @@ int failtest_open(const char *pathname,
 	call.closed = false;
 	if (call.flags & O_CREAT) {
 		call.mode = va_arg(ap, int);
-		va_end(ap);
 	}
+	va_end(ap);
 	p = add_history(FAILTEST_OPEN, true, file, line, &call);
 	/* Avoid memory leak! */
 	if (p == &unrecorded_call)

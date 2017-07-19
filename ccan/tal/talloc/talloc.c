@@ -1,6 +1,5 @@
 /* Licensed under LGPL - see LICENSE file for details */
 #include <ccan/tal/talloc/talloc.h>
-#include <ccan/take/take.h>
 #include <errno.h>
 #include <assert.h>
 
