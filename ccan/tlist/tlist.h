@@ -9,10 +9,10 @@
  * @suffix: the name to use (struct tlist_@suffix)
  * @type: the type the list will contain (void for any type)
  *
- * This declares a structure "struct tlist_@suffix" to use for
- * lists containing this type.  The actual list can be accessed using
- * ".raw" or tlist_raw().  For maximum portability, place tlists
- * embedded in structures as the last member.
+ * This declares a structure "struct tlist_@suffix" to use for lists
+ * containing this type.  The actual list can be accessed using
+ * tlist_raw().  For maximum portability, place tlists embedded in
+ * structures as the last member.
  *
  * Example:
  *	// Defines struct tlist_children
@@ -30,8 +30,7 @@
  */
 #define TLIST_TYPE(suffix, type)			\
 	struct tlist_##suffix {				\
-		struct list_head raw;			\
-		TCON(type *canary);			\
+		TCON_WRAP(struct list_head, type *canary);	\
 	}
 
 /**
@@ -46,7 +45,7 @@
  * Example:
  *	static struct tlist_children my_list = TLIST_INIT(my_list);
  */
-#define TLIST_INIT(name) { LIST_HEAD_INIT(name.raw) }
+#define TLIST_INIT(name) TCON_WRAP_INIT(LIST_HEAD_INIT(*tcon_unwrap(&name)))
 
 /**
  * tlist_check - check head of a list for consistency
@@ -75,7 +74,7 @@
  *	}
  */
 #define tlist_check(h, abortstr) \
-	list_check(&(h)->raw, (abortstr))
+	list_check(tcon_unwrap(h), (abortstr))
 
 /**
  * tlist_init - initialize a tlist
@@ -88,7 +87,7 @@
  *	tlist_init(&parent->children);
  *	parent->num_children = 0;
  */
-#define tlist_init(h) list_head_init(&(h)->raw)
+#define tlist_init(h) list_head_init(tcon_unwrap(h))
 
 /**
  * tlist_raw - unwrap the typed list and check the type
@@ -99,7 +98,7 @@
  * variable is of an unexpected type.  It is used internally where we
  * need to access the raw underlying list.
  */
-#define tlist_raw(h, expr) (&tcon_check((h), canary, (expr))->raw)
+#define tlist_raw(h, expr) tcon_unwrap(tcon_check((h), canary, (expr)))
 
 /**
  * tlist_add - add an entry at the start of a linked list.
@@ -174,7 +173,7 @@
  * Example:
  *	assert(tlist_empty(&parent->children) == (parent->num_children == 0));
  */
-#define tlist_empty(h) list_empty(&(h)->raw)
+#define tlist_empty(h) list_empty(tcon_unwrap(h))
 
 /**
  * tlist_top - get the first entry in a list
@@ -191,7 +190,7 @@
  */
 #define tlist_top(h, member)						\
 	((tcon_type((h), canary))					\
-	 list_top_(&(h)->raw,						\
+	 list_top_(tcon_unwrap((h)),					\
 		   (char *)(&(h)->_tcon[0].canary->member) -		\
 		   (char *)((h)->_tcon[0].canary)))
 
@@ -210,7 +209,7 @@
  */
 #define tlist_tail(h, member)						\
 	((tcon_type((h), canary))					\
-	 list_tail_(&(h)->raw,						\
+	 list_tail_(tcon_unwrap(h),					\
 		    (char *)(&(h)->_tcon[0].canary->member) -		\
 		    (char *)((h)->_tcon[0].canary)))
 

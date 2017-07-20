@@ -15,11 +15,7 @@
  *	#include <stdlib.h>
  *	#include <ccan/tlist/tlist.h>
  *
- *	// We could use TLIST_TYPE(children, struct child) to define this.
- *	struct tlist_children {
- *		struct list_head raw;
- *		TCON(struct child *canary);
- *	};
+ *	TLIST_TYPE(children, struct child);
  *	struct parent {
  *		const char *name;
  *		unsigned int num_children;
