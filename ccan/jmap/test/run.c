@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
 		jmap_add(map, (i << 4) + 1, (i << 5) + 1);
 
 	/* This only take 6.3MB on my 32-bit system. */
-	diag("%u bytes memory used\n", (unsigned)JudyLMemUsed(map->raw.judy));
+	diag("%u bytes memory used\n", (unsigned)JudyLMemUsed(jmap_raw_(map)));
 
 	ok1(jmap_get(map, 1) == 1);
 	ok1(jmap_get(map, (999999 << 4) + 1) == (999999 << 5) + 1);
@@ -102,13 +102,13 @@ int main(int argc, char *argv[])
 	jmap_putval(map, &value);
 
 	/* Test error handling */
-	JU_ERRNO(&map->raw.err) = 100;
-	JU_ERRID(&map->raw.err) = 991;
+	JU_ERRNO(&jmap_raw_(map)->err) = 100;
+	JU_ERRID(&jmap_raw_(map)->err) = 991;
 	err = jmap_error(map);
 	ok1(err);
 	ok1(strstr(err, "100"));
 	ok1(strstr(err, "991"));
-	ok1(err == map->raw.errstr);
+	ok1(err == jmap_raw_(map)->errstr);
 	jmap_free(map);
 
 	return exit_status();

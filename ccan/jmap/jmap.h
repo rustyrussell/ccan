@@ -41,8 +41,7 @@ struct jmap {
  *	};
  */
 #define JMAP_MEMBERS(itype, ctype)		\
-	struct jmap raw;			\
-	TCON(itype icanary; ctype ccanary)
+	TCON_WRAP(struct jmap, itype icanary; ctype ccanary) jmap_
 
 /**
  * jmap_new - create a new, empty jmap.
@@ -62,13 +61,19 @@ struct jmap {
 #define jmap_new(type) ((type *)jmap_new_(sizeof(type)))
 
 /**
+ * jmap_raw_ - unwrap the typed map (no type checking)
+ * @map: the typed jmap
+ */
+#define jmap_raw_(map)	tcon_unwrap(&(map)->jmap_)
+
+/**
  * jmap_free - destroy a jmap.
  * @map: the map returned from jmap_new.
  *
  * Example:
  *	jmap_free(map);
  */
-#define jmap_free(map) jmap_free_(&(map)->raw)
+#define jmap_free(map) jmap_free_(jmap_raw_(map))
 
 /**
  * jmap_error - test for an error in the a previous jmap_ operation.
@@ -88,7 +93,7 @@ struct jmap {
  *	if (errstr)
  *		errx(1, "Woah, error on newly created map?! %s", errstr);
  */
-#define jmap_error(map) jmap_error_(&(map)->raw)
+#define jmap_error(map) jmap_error_(jmap_raw_(map))
 
 /**
  * jmap_rawi - unwrap the typed map and check the index type
@@ -99,7 +104,8 @@ struct jmap {
  * variable is of an unexpected type.  It is used internally where we
  * need to access the raw underlying jmap.
  */
-#define jmap_rawi(map, expr) (&tcon_check((map), icanary, (expr))->raw)
+#define jmap_rawi(map, expr) \
+	tcon_unwrap(tcon_check(&(map)->jmap_, icanary, (expr)))
 
 /**
  * jmap_rawc - unwrap the typed map and check the contents type
@@ -110,7 +116,8 @@ struct jmap {
  * variable is of an unexpected type.  It is used internally where we
  * need to access the raw underlying jmap.
  */
-#define jmap_rawc(map, expr) (&tcon_check((map), ccanary, (expr))->raw)
+#define jmap_rawc(map, expr) \
+	tcon_unwrap(tcon_check(&(map)->jmap_, ccanary, (expr)))
 
 /**
  * jmap_rawci - unwrap the typed map and check the index and contents types
@@ -122,8 +129,9 @@ struct jmap {
  * variable is of an unexpected type.  It is used internally where we
  * need to access the raw underlying jmap.
  */
-#define jmap_rawci(map, iexpr, cexpr) \
-	(&tcon_check(tcon_check((map), ccanary, (cexpr)), icanary, (iexpr))->raw)
+#define jmap_rawci(map, iexpr, cexpr)				\
+	tcon_unwrap(tcon_check(tcon_check(&(map)->jmap_,\
+					  ccanary, (cexpr)), icanary, (iexpr)))
 
 /**
  * jmap_add - add or replace a value for a given index in the map.
@@ -199,7 +207,7 @@ struct jmap {
  *	jmap_getval()
  */
 #define jmap_get(map, index)						\
-	tcon_cast((map), ccanary,					\
+	tcon_cast(&(map)->jmap_, ccanary,				\
 		  jmap_get_(jmap_rawi((map), (index)), (unsigned long)(index)))
 
 /**
@@ -210,7 +218,7 @@ struct jmap {
  *	assert(jmap_count(map) < 1000);
  */
 #define jmap_count(map)				\
-	jmap_popcount_(&(map)->raw, 0, -1UL)
+	jmap_popcount_(jmap_raw_(map), 0, -1UL)
 
 /**
  * jmap_popcount - get population of (some part of) the map.
@@ -249,8 +257,8 @@ struct jmap {
  *	jmap_nthval();
  */
 #define jmap_nth(map, n, invalid)					\
-	tcon_cast((map), icanary,					\
-		  jmap_nth_(jmap_rawi((map), (invalid)),			\
+	tcon_cast(&(map)->jmap_, icanary,				\
+		  jmap_nth_(jmap_rawi((map), (invalid)),		\
 			    (n), (unsigned long)(invalid)))
 
 /**
@@ -270,7 +278,7 @@ struct jmap {
  *	jmap_firstval()
  */
 #define jmap_first(map)						\
-	tcon_cast((map), icanary, jmap_first_(&(map)->raw))
+	tcon_cast(&(map)->jmap_, icanary, jmap_first_(jmap_raw_(map)))
 
 /**
  * jmap_next - return the next index in the map.
@@ -282,8 +290,8 @@ struct jmap {
  *	jmap_nextval()
  */
 #define jmap_next(map, prev)						\
-	tcon_cast((map), icanary, jmap_next_(jmap_rawi((map), (prev)),	\
-					     (unsigned long)(prev)))
+	tcon_cast(&(map)->jmap_, icanary, jmap_next_(jmap_rawi((map), (prev)),	\
+						     (unsigned long)(prev)))
 
 /**
  * jmap_last - return the last index in the map.
@@ -301,7 +309,7 @@ struct jmap {
  *	jmap_lastval()
  */
 #define jmap_last(map)						\
-	tcon_cast((map), icanary, jmap_last_(&(map)->raw))
+	tcon_cast(&(map)->jmap_, icanary, jmap_last_(jmap_raw_(map)))
 
 /**
  * jmap_prev - return the previous index in the map (must not contain 0)
@@ -315,7 +323,8 @@ struct jmap {
  *	jmap_prevval()
  */
 #define jmap_prev(map, prev)						\
-	tcon_cast((map), icanary, jmap_prev_(jmap_rawi((map), (prev)), (prev)))
+	tcon_cast(&(map)->jmap_, icanary,				\
+		  jmap_prev_(jmap_rawi((map), (prev)), (prev)))
 
 /**
  * jmap_getval - access a value in-place for a given index.
@@ -346,7 +355,7 @@ struct jmap {
  *	jmap_putval(), jmap_firstval()
  */
 #define jmap_getval(map, index)						\
-	tcon_cast_ptr((map), ccanary,					\
+	tcon_cast_ptr(&(map)->jmap_, ccanary,				\
 		      jmap_getval_(jmap_rawi((map), (index)),		\
 				   (unsigned long)(index)))
 
@@ -393,7 +402,7 @@ struct jmap {
  *	jmap_nth();
  */
 #define jmap_nthval(map, n, index)					\
-	tcon_cast_ptr((map), ccanary,					\
+	tcon_cast_ptr(&(map)->jmap_, ccanary,				\
 		      jmap_nthval_(jmap_rawi((map), *(index)), (n), (index)))
 
 /**
@@ -415,8 +424,8 @@ struct jmap {
  * See Also:
  *	jmap_first, jmap_nextval()
  */
-#define jmap_firstval(map, index)	      \
-	tcon_cast_ptr((map), ccanary,				\
+#define jmap_firstval(map, index)					\
+	tcon_cast_ptr(&(map)->jmap_, ccanary,				\
 		      jmap_firstval_(jmap_rawi((map), *(index)),	\
 				     (unsigned long *)(index)))
 
@@ -432,7 +441,7 @@ struct jmap {
  *	jmap_firstval(), jmap_putval()
  */
 #define jmap_nextval(map, index)				\
-	tcon_cast_ptr((map), ccanary,				\
+	tcon_cast_ptr(&(map)->jmap_, ccanary,			\
 		      jmap_nextval_(jmap_rawi((map), *(index)),	\
 				    (unsigned long *)(index)))
 
@@ -445,8 +454,8 @@ struct jmap {
  * See Also:
  *	jmap_last(), jmap_putval()
  */
-#define jmap_lastval(map, index)	      \
-	tcon_cast_ptr((map), ccanary,				\
+#define jmap_lastval(map, index)				\
+	tcon_cast_ptr(&(map)->jmap_, ccanary,			\
 		      jmap_lastval_(jmap_rawi((map), *(index)),	\
 				    (unsigned long *)(index)))
 
@@ -463,7 +472,7 @@ struct jmap {
  *	jmap_lastval(), jmap_putval()
  */
 #define jmap_prevval(map, index)				\
-	tcon_cast_ptr((map), ccanary,				\
+	tcon_cast_ptr(&(map)->jmap_, ccanary,			\
 		      jmap_prevval_(jmap_rawi((map), *(index)),	\
 				    (unsigned long *)(index)))
 
