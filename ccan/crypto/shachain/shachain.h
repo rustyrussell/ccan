@@ -6,13 +6,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-/* Useful for testing. */
-#ifndef shachain_index_t
-#define shachain_index_t uint64_t
-#endif
-
 #ifndef SHACHAIN_BITS
-#define SHACHAIN_BITS (sizeof(shachain_index_t) * 8)
+#define SHACHAIN_BITS (sizeof(uint64_t) * 8)
 #endif
 
 /**
@@ -42,7 +37,7 @@
  *	shachain_from_seed(&seed, index--, hash);
  * }
  */
-void shachain_from_seed(const struct sha256 *seed, shachain_index_t index,
+void shachain_from_seed(const struct sha256 *seed, uint64_t index,
 			struct sha256 *hash);
 
 /**
@@ -55,10 +50,10 @@ void shachain_from_seed(const struct sha256 *seed, shachain_index_t index,
  * added.
  */
 struct shachain {
-	shachain_index_t min_index;
+	uint64_t min_index;
 	unsigned int num_valid;
 	struct {
-		shachain_index_t index;
+		uint64_t index;
 		struct sha256 hash;
 	} known[SHACHAIN_BITS + 1];
 };
@@ -79,7 +74,7 @@ void shachain_init(struct shachain *chain);
  * initialized chain), or one less than the previously successfully
  * added value.
  */
-shachain_index_t shachain_next_index(const struct shachain *chain);
+uint64_t shachain_next_index(const struct shachain *chain);
 
 /**
  * shachain_add_hash - record the hash for the next index.
@@ -106,7 +101,7 @@ shachain_index_t shachain_next_index(const struct shachain *chain);
  * }
  */
 bool shachain_add_hash(struct shachain *chain,
-		       shachain_index_t index, const struct sha256 *hash);
+		       uint64_t index, const struct sha256 *hash);
 
 /**
  * shachain_get_hash - get the hash for a given index.
@@ -137,5 +132,5 @@ bool shachain_add_hash(struct shachain *chain,
  * }
  */
 bool shachain_get_hash(const struct shachain *chain,
-		       shachain_index_t index, struct sha256 *hash);
+		       uint64_t index, struct sha256 *hash);
 #endif /* CCAN_CRYPTO_SHACHAIN_H */
