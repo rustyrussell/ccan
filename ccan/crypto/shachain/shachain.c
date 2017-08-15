@@ -66,10 +66,16 @@ void shachain_from_seed(const struct sha256 *seed, shachain_index_t index,
 	derive(0, index, seed, hash);
 }
 
+shachain_index_t shachain_next_index(const struct shachain *chain)
+{
+	return chain->min_index - 1;
+}
+
 void shachain_init(struct shachain *chain)
 {
 	chain->num_valid = 0;
-	chain->min_index = 0;
+	/* This is 0 in the case where SHACHAIN_BITS is 64. */
+	chain->min_index = (shachain_index_t)((UINT64_MAX >> (64 - SHACHAIN_BITS)) + 1);
 }
 
 bool shachain_add_hash(struct shachain *chain,
@@ -78,9 +84,7 @@ bool shachain_add_hash(struct shachain *chain,
 	unsigned int i, pos;
 
 	/* You have to insert them in order! */
-	assert(index == chain->min_index - 1 ||
-	       (index == (shachain_index_t)(UINT64_MAX >> (64 - SHACHAIN_BITS))
-		&& chain->num_valid == 0));
+	assert(index == shachain_next_index(chain));
 
 	pos = count_trailing_zeroes(index);
 

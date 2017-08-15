@@ -72,19 +72,27 @@ struct shachain {
 void shachain_init(struct shachain *chain);
 
 /**
+ * shachain_next_index - what's the next index I can add to the shachain?
+ * @chain: the chain
+ *
+ * This returns 0xFFFFFFFFFFFFFFFF (for a freshly
+ * initialized chain), or one less than the previously successfully
+ * added value.
+ */
+shachain_index_t shachain_next_index(const struct shachain *chain);
+
+/**
  * shachain_add_hash - record the hash for the next index.
  * @chain: the chain to add to
  * @index: the index of the hash
  * @hash: the hash value.
  *
- * You can only add index 0xFFFFFFFFFFFFFFFF (for a freshly
- * initialized chain), or one less than the previously successfully
- * added value.
+ * You can only add shachain_next_index(@chain).
  *
  * This can fail (return false without altering @chain) if the hash
  * for this index isn't consistent with previous hashes (ie. wasn't
  * generated from the same seed), though it can't always detect that.
- * If the hash is inconsistent yet undetected, the next addition will
+ * If the hash is inconsistent yet undetected, a future addition will
  * fail.
  *
  * Example:
