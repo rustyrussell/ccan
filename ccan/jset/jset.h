@@ -30,8 +30,7 @@ struct jset {
  *	};
  */
 #define JSET_MEMBERS(type)			\
-	struct jset raw;			\
-	TCON(type canary)
+	TCON_WRAP(struct jset, type canary) jset_
 
 /**
  * jset_new - create a new, empty jset.
@@ -47,6 +46,14 @@ struct jset {
  */
 #define jset_new(type) ((type *)jset_new_(sizeof(type)))
 
+
+/**
+ * jset_raw_ - unwrap the typed set (without type checking)
+ * @set: the typed jset
+ */
+#define jset_raw_(set)	(tcon_unwrap(&(set)->jset_))
+
+
 /**
  * jset_free - destroy a jset.
  * @set: the set returned from jset_new.
@@ -54,7 +61,7 @@ struct jset {
  * Example:
  *	jset_free(set);
  */
-#define jset_free(set) jset_free_(&(set)->raw)
+#define jset_free(set) jset_free_(jset_raw_(set))
 
 /**
  * jset_error - test for an error in the a previous jset_ operation.
@@ -74,8 +81,8 @@ struct jset {
  *	if (errstr)
  *		errx(1, "Woah, error on newly created set?! %s", errstr);
  */
-#define jset_error(set) \
-	jset_error_(&(set)->raw)
+#define jset_error(set) jset_error_(jset_raw_(set))
+
 
 /**
  * jset_raw - unwrap the typed set and check the type
@@ -86,7 +93,9 @@ struct jset {
  * variable is of an unexpected type.  It is used internally where we
  * need to access the raw underlying jset.
  */
-#define jset_raw(set, expr) (&tcon_check((set), canary, (expr))->raw)
+#define jset_raw(set, expr) \
+	(tcon_unwrap(tcon_check(&(set)->jset_, canary, (expr))))
+
 
 /**
  * jset_test - test a bit in the bitset.
@@ -137,8 +146,8 @@ struct jset {
  *	// We expect 1000 entries.
  *	assert(jset_count(set) == 1000);
  */
-#define jset_count(set)				\
-	jset_popcount_(&(set)->raw, 0, -1UL)
+#define jset_count(set)	\
+	jset_popcount_(jset_raw_(set), 0, -1UL)
 
 /**
  * jset_popcount - get population of (some part of) bitset.
@@ -186,7 +195,7 @@ struct jset {
  *	}
  */
 #define jset_nth(set, n, invalid)					\
-	tcon_cast((set), canary,					\
+	tcon_cast(&(set)->jset_, canary,				\
 		  jset_nth_(jset_raw((set), (invalid)),			\
 			    (n), (unsigned long)(invalid)))
 
@@ -205,7 +214,7 @@ struct jset {
  *	printf("\n");
  */
 #define jset_first(set)						\
-	tcon_cast((set), canary, jset_first_(&(set)->raw))
+	tcon_cast(&(set)->jset_, canary, jset_first_(jset_raw_(set)))
 
 /**
  * jset_next - return the next bit which is set (must not contain 0).
@@ -216,7 +225,8 @@ struct jset {
  * jset_first.
  */
 #define jset_next(set, prev)						\
-	tcon_cast((set), canary, jset_next_(&(set)->raw, (unsigned long)(prev)))
+	tcon_cast(&(set)->jset_, canary,				\
+		  jset_next_(jset_raw_(set), (unsigned long)(prev)))
 
 /**
  * jset_last - return the last bit which is set (must not contain 0).
@@ -230,7 +240,7 @@ struct jset {
  *	printf("\n");
  */
 #define jset_last(set)						\
-	tcon_cast((set), canary, jset_last_(&(set)->raw))
+	tcon_cast(&(set)->jset_, canary, jset_last_(jset_raw_(set)))
 
 /**
  * jset_prev - return the previous bit which is set (must not contain 0).
@@ -241,7 +251,8 @@ struct jset {
  * jset_last.
  */
 #define jset_prev(set, prev)						\
-	tcon_cast((set), canary, jset_prev_(&(set)->raw, (unsigned long)(prev)))
+	tcon_cast(&(set)->jset_, canary,				\
+		  jset_prev_(jset_raw_(set), (unsigned long)(prev)))
 
 /**
  * jset_first_clear - return the first bit which is unset
@@ -251,17 +262,17 @@ struct jset {
  * set is full.
  */
 #define jset_first_clear(set)						\
-	tcon_cast((set), canary, jset_next_clear_(&(set)->raw, 0))
+	tcon_cast(&(set)->jset_, canary, jset_next_clear_(jset_raw_(set), 0))
 
 #define jset_next_clear(set, prev)					\
-	tcon_cast((set), canary, jset_next_clear_(&(set)->raw,		\
+	tcon_cast(&(set)->jset_, canary, jset_next_clear_(jset_raw_(set), \
 						  (unsigned long)(prev)))
 
 #define jset_last_clear(set)					\
-	tcon_cast((set), canary, jset_last_clear_(&(set)->raw))
+	tcon_cast(&(set)->jset_, canary, jset_last_clear_(jset_raw_(set)))
 
 #define jset_prev_clear(set, prev)					\
-	tcon_cast((set), canary, jset_prev_clear_(&(set)->raw,		\
+	tcon_cast(&(set)->jset_, canary, jset_prev_clear_(jset_raw_(set), \
 						  (unsigned long)(prev)))
 
 /* Raw functions */

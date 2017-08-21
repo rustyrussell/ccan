@@ -37,10 +37,10 @@ int main(int argc, char *argv[])
 	tlist_add(&parent.children, &c2, list);
 	/* Test tlist_add and !tlist_empty. */
 	ok1(!tlist_empty(&parent.children));
-	ok1(c2.list.next == &parent.children.raw.n);
-	ok1(c2.list.prev == &parent.children.raw.n);
-	ok1(parent.children.raw.n.next == &c2.list);
-	ok1(parent.children.raw.n.prev == &c2.list);
+	ok1(c2.list.next == &tcon_unwrap(&parent.children)->n);
+	ok1(c2.list.prev == &tcon_unwrap(&parent.children)->n);
+	ok1(tcon_unwrap(&parent.children)->n.next == &c2.list);
+	ok1(tcon_unwrap(&parent.children)->n.prev == &c2.list);
 	ok1(tlist_next(&parent.children, &c2, list) == NULL);
 	ok1(tlist_prev(&parent.children, &c2, list) == NULL);
 	/* Test tlist_check */
@@ -50,12 +50,12 @@ int main(int argc, char *argv[])
 	tlist_add(&parent.children, &c1, list);
 	/* Test list_add and !list_empty. */
 	ok1(!tlist_empty(&parent.children));
-	ok1(c2.list.next == &parent.children.raw.n);
+	ok1(c2.list.next == &tcon_unwrap(&parent.children)->n);
 	ok1(c2.list.prev == &c1.list);
-	ok1(parent.children.raw.n.next == &c1.list);
-	ok1(parent.children.raw.n.prev == &c2.list);
+	ok1(tcon_unwrap(&parent.children)->n.next == &c1.list);
+	ok1(tcon_unwrap(&parent.children)->n.prev == &c2.list);
 	ok1(c1.list.next == &c2.list);
-	ok1(c1.list.prev == &parent.children.raw.n);
+	ok1(c1.list.prev == &tcon_unwrap(&parent.children)->n);
 	ok1(tlist_next(&parent.children, &c1, list) == &c2);
 	ok1(tlist_next(&parent.children, &c2, list) == NULL);
 	ok1(tlist_prev(&parent.children, &c2, list) == &c1);
@@ -67,13 +67,13 @@ int main(int argc, char *argv[])
 	tlist_add_tail(&parent.children, &c3, list);
 	/* Test list_add_tail and !list_empty. */
 	ok1(!tlist_empty(&parent.children));
-	ok1(parent.children.raw.n.next == &c1.list);
-	ok1(parent.children.raw.n.prev == &c3.list);
+	ok1(tcon_unwrap(&parent.children)->n.next == &c1.list);
+	ok1(tcon_unwrap(&parent.children)->n.prev == &c3.list);
 	ok1(c1.list.next == &c2.list);
-	ok1(c1.list.prev == &parent.children.raw.n);
+	ok1(c1.list.prev == &tcon_unwrap(&parent.children)->n);
 	ok1(c2.list.next == &c3.list);
 	ok1(c2.list.prev == &c1.list);
-	ok1(c3.list.next == &parent.children.raw.n);
+	ok1(c3.list.next == &tcon_unwrap(&parent.children)->n);
 	ok1(c3.list.prev == &c2.list);
 	ok1(tlist_next(&parent.children, &c1, list) == &c2);
 	ok1(tlist_next(&parent.children, &c2, list) == &c3);

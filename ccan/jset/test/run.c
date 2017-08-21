@@ -34,7 +34,8 @@ int main(int argc, char *argv[])
 		jset_set(set, 1 + (i << 4));
 
 	/* This only take 1.7MB on my 32-bit system. */
-	diag("%u bytes memory used\n", (unsigned)Judy1MemUsed(set->raw.judy));
+	diag("%u bytes memory used\n",
+	     (unsigned)Judy1MemUsed(jset_raw_(set)->judy));
 
 	ok1(jset_popcount(set, 0, -1) == 1000000);
 	ok1(jset_nth(set, 0, -1) == 1);
@@ -53,13 +54,13 @@ int main(int argc, char *argv[])
 	ok1(jset_error(set) == NULL);
 
 	/* Test error handling */
-	JU_ERRNO(&set->raw.err) = 100;
-	JU_ERRID(&set->raw.err) = 991;
+	JU_ERRNO(&jset_raw_(set)->err) = 100;
+	JU_ERRID(&jset_raw_(set)->err) = 991;
 	err = jset_error(set);
 	ok1(err);
 	ok1(strstr(err, "100"));
 	ok1(strstr(err, "991"));
-	ok1(err == set->raw.errstr);
+	ok1(err == jset_raw_(set)->errstr);
 	jset_free(set);
 
 	return exit_status();

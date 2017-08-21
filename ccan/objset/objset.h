@@ -36,8 +36,10 @@ HTABLE_DEFINE_TYPE(void, objset_key_, objset_hashfn_, objset_eqfn_, objset_h);
  *	};
  */
 #define OBJSET_MEMBERS(type)			\
-	struct objset_h raw;			\
-	TCON(type canary)
+	TCON_WRAP(struct objset_h, type canary) objset_
+
+#define objset_raw(set)				\
+	tcon_unwrap(&(set)->objset_)
 
 /**
  * objset_init - initialize an empty objset
@@ -48,7 +50,7 @@ HTABLE_DEFINE_TYPE(void, objset_key_, objset_hashfn_, objset_eqfn_, objset_h);
  *
  *	objset_init(&set);
  */
-#define objset_init(set) objset_h_init(&(set)->raw)
+#define objset_init(set) objset_h_init(objset_raw(set))
 
 /**
  * objset_empty - is this set empty?
@@ -58,7 +60,7 @@ HTABLE_DEFINE_TYPE(void, objset_key_, objset_hashfn_, objset_eqfn_, objset_h);
  *	if (!objset_empty(&set))
  *		abort();
  */
-#define objset_empty(set) objset_empty_(&(set)->raw)
+#define objset_empty(set) objset_empty_(objset_raw(set))
 
 static inline bool objset_empty_(const struct objset_h *set)
 {
@@ -83,7 +85,7 @@ static inline bool objset_empty_(const struct objset_h *set)
  *		printf("Impossible: value was already in the set?\n");
  */
 #define objset_add(set, value)						\
-	objset_h_add(&tcon_check((set), canary, (value))->raw, (void *)(value))
+	objset_h_add(tcon_unwrap(tcon_check(&(set)->objset_, canary, (value))), (void *)(value))
 
 /**
  * objset_get - get a value from a set
@@ -96,8 +98,9 @@ static inline bool objset_empty_(const struct objset_h *set)
  *	if (objset_get(&set, val));
  *		printf("hello => %i\n", *val);
  */
-#define objset_get(set, member) \
-	tcon_cast((set), canary, objset_h_get(&(set)->raw, (member)))
+#define objset_get(set, member)					\
+	tcon_cast(&(set)->objset_, canary,			\
+		  objset_h_get(objset_raw(set), (member)))
 
 /**
  * objset_del - remove a member from the set.
@@ -112,7 +115,7 @@ static inline bool objset_empty_(const struct objset_h *set)
  *		printf("val was not in the set?\n");
  */
 #define objset_del(set, value)						\
-	objset_h_del(&tcon_check((set), canary, value)->raw,		\
+	objset_h_del(tcon_unwrap(tcon_check(&(set)->objset_, canary, value)), \
 		     (const void *)value)
 
 /**
@@ -124,7 +127,7 @@ static inline bool objset_empty_(const struct objset_h *set)
  * Example:
  *	objset_clear(&set);
  */
-#define objset_clear(set) objset_h_clear(&(set)->raw)
+#define objset_clear(set) objset_h_clear(objset_raw(set))
 
 /**
  * objset_iter - iterator reference.
@@ -149,8 +152,9 @@ struct objset_iter {
  *	if (v)
  *		printf("One value is %i\n", *v);
  */
-#define objset_first(set, i) \
-	tcon_cast((set), canary, objset_h_first(&(set)->raw, &(i)->iter))
+#define objset_first(set, i)					\
+	tcon_cast(&(set)->objset_, canary,			\
+		  objset_h_first(objset_raw(set), &(i)->iter))
 
 /**
  * objset_next - get the another element in the set
@@ -167,7 +171,8 @@ struct objset_iter {
  *			printf("Another value is %i\n", *v);
  *	}
  */
-#define objset_next(set, i) \
-	tcon_cast((set), canary, objset_h_next(&(set)->raw, &(i)->iter))
+#define objset_next(set, i)					\
+	tcon_cast(&(set)->objset_, canary,			\
+		  objset_h_next(objset_raw(set), &(i)->iter))
 
 #endif /* CCAN_OBJSET_H */
