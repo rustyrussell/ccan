@@ -8,6 +8,7 @@
 #include <limits.h>
 
 #include <ccan/endian/endian.h>
+#include <ccan/tal/tal.h>
 
 typedef unsigned long bitmap_word;
 
@@ -238,6 +239,49 @@ static inline bitmap *bitmap_realloc1(bitmap *bitmap,
 		bitmap_fill_range(bitmap, obits, nbits);
 
 	return bitmap;
+}
+
+static inline bitmap *bitmap_tal(const tal_t* ctx, unsigned long nbits)
+{
+    return tal_arr(ctx, bitmap, BITMAP_NWORDS(nbits));
+}
+
+static inline bitmap *bitmap_tal0(const tal_t* ctx, unsigned long nbits)
+{
+    return tal_arrz(ctx, bitmap, BITMAP_NWORDS(nbits));
+}
+
+static inline bitmap *bitmap_tal1(const tal_t* ctx, unsigned long nbits)
+{
+    bitmap *nbitmap = tal_arr(ctx, bitmap, BITMAP_NWORDS(nbits));
+
+    if (nbitmap)
+        bitmap_fill(nbitmap, nbits);
+    return nbitmap;
+}
+
+static inline bitmap *bitmap_tal_resize0(bitmap* obitmap, unsigned long obits,
+                                         unsigned long nbits)
+{
+    bitmap *nbitmap = obitmap;
+
+    tal_resize(&nbitmap, BITMAP_NWORDS(nbits));
+    if ((nbits > obits) && nbitmap)
+        bitmap_zero_range(nbitmap, obits, nbits);
+
+    return nbitmap;
+}
+
+static inline bitmap *bitmap_tal_resize1(bitmap* obitmap, unsigned long obits,
+                                         unsigned long nbits)
+{
+    bitmap *nbitmap = obitmap;
+
+    tal_resize(&nbitmap, BITMAP_NWORDS(nbits));
+    if ((nbits > obits) && nbitmap)
+        bitmap_fill_range(nbitmap, obits, nbits);
+
+    return nbitmap;
 }
 
 #endif /* CCAN_BITMAP_H_ */
