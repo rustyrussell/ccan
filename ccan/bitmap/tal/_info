@@ -1,0 +1,53 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * bitmap/tal - tal routines for bitmaps.
+ *
+ * This code contains extra bitmap routines which use the tal allocator.
+ *
+ * License: LGPL (v2.1 or any later version)
+ * Author: Ian Zimmerman
+ *
+ * Example:
+ *	#include <ccan/bitmap/tal/tal.h>
+ *	#include <stdio.h>
+ *
+ *	// Takes a commandline of bit numbers, prints the number set.
+ *	int main(int argc, char *argv[])
+ *	{
+ *		int i, bits = 0, total = 0;
+ *		bitmap *bmap = bitmap_talz(NULL, bits);
+ *
+ *		for (i = 1; i < argc; i++) {
+ *			int bit = atoi(argv[i]);
+ *			if (bit >= bits) {
+ *				bitmap_tal_resizez(&bmap, bits, bit+1);
+ *				bits = bit+1;
+ *			}
+ *			bitmap_set_bit(bmap, bit);
+ *		}
+ *		for (i = 0; i < bits; i++)
+ *			total += bitmap_test_bit(bmap, i);
+ *		printf("Total bits: %i\n", total);
+ *		return 0;
+ *	}
+ *	// Given "1" outputs Total bits: 1
+ *	// Given "1 1 1" outputs Total bits: 1
+ *	// Given "1 20" outputs Total bits: 2
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/bitmap\n");
+		printf("ccan/tal\n");
+		return 0;
+	}
+
+	return 1;
+}
