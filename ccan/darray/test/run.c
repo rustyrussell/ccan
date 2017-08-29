@@ -38,7 +38,7 @@ int main(void) {
 	trace("Generating amalgams (internal)");
 	generateAmalgams();
 	
-	plan_tests(41);
+	plan_tests(47);
 	
 	testLits();
 	
@@ -70,7 +70,25 @@ int main(void) {
 		ok1(darray_size(arr) == 0);
 	}
 	reset(arr);
-	
+
+	testing(darray_insert);
+	{
+		size_t middle_i;
+
+		for (i=0; i < ARRAY_SIZE(lotsOfNumbers); i++)
+			darray_insert(arr, i, lotsOfNumbers[i]);
+		ok1(darray_size(arr) == ARRAY_SIZE(lotsOfNumbers));
+		ok1(darray_alloc(arr) >= darray_size(arr));
+		ok1(!memcmp(arr.item, lotsOfNumbers, sizeof(lotsOfNumbers)));
+
+		middle_i = ARRAY_SIZE(lotsOfNumbers) / 2;
+		darray_insert(arr, middle_i, 42);
+		ok1(darray_size(arr) == ARRAY_SIZE(lotsOfNumbers) + 1);
+		ok1(arr.item[middle_i] == 42);
+		ok1(arr.item[middle_i + 1] == lotsOfNumbers[middle_i]);
+	}
+	reset(arr);
+
 	testing(darray_from_c, darray_foreach, darray_foreach_reverse);
 	{
 		long   *i;

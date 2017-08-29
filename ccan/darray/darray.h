@@ -56,6 +56,7 @@
  *
  *     void   darray_append(darray(T) arr, T item);
  *     void   darray_prepend(darray(T) arr, T item);
+ *     void   darray_insert(darray(T) arr, size_t index, T item);
  *     void   darray_push(darray(T) arr, T item); // same as darray_append
  *
  * Insertion (multiple items):
@@ -168,6 +169,12 @@ typedef darray(unsigned long)  darray_ulong;
 		darray_resize(arr, (arr).size+1); \
 		memmove((arr).item+1, (arr).item, ((arr).size-1)*sizeof(*(arr).item)); \
 		(arr).item[0] = (__VA_ARGS__); \
+	} while(0)
+#define darray_insert(arr, index, ...) do { \
+		size_t __index = index; \
+		darray_resize(arr, (arr).size+1); \
+		memmove((arr).item+__index+1, (arr).item+__index, ((arr).size-__index-1)*sizeof(*(arr).item)); \
+		(arr).item[__index] = (__VA_ARGS__); \
 	} while(0)
 #define darray_push(arr, ...) darray_append(arr, __VA_ARGS__)
 
