@@ -170,8 +170,8 @@ typedef darray(unsigned long)  darray_ulong;
 		memmove((arr).item+1, (arr).item, ((arr).size-1)*sizeof(*(arr).item)); \
 		(arr).item[0] = (__VA_ARGS__); \
 	} while(0)
-#define darray_insert(arr, index, ...) do { \
-		size_t index_ = index; \
+#define darray_insert(arr, i, ...) do { \
+		size_t index_ = (i); \
 		darray_resize(arr, (arr).size+1); \
 		memmove((arr).item+index_+1, (arr).item+index_, ((arr).size-index_-1)*sizeof(*(arr).item)); \
 		(arr).item[index_] = (__VA_ARGS__); \
@@ -230,9 +230,10 @@ typedef darray(unsigned long)  darray_ulong;
 #define darray_pop(arr) ((arr).item[--(arr).size])
 #define darray_pop_check(arr) ((arr).size ? darray_pop(arr) : NULL)
 /* Warning, slow: Requires copying all elements after removed item. */
-#define darray_remove(arr, index) do { \
-	if (index < arr.size-1)    \
-		memmove(&(arr).item[index], &(arr).item[index+1], ((arr).size-1-i)*sizeof(*(arr).item)); \
+#define darray_remove(arr, i) do { \
+	size_t index_ = (i); \
+	if (index_ < arr.size-1)    \
+		memmove(&(arr).item[index_], &(arr).item[index_+1], ((arr).size-1-index_)*sizeof(*(arr).item)); \
 	(arr).size--;  \
 	} while(0)
 
