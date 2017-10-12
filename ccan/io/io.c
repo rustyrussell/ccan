@@ -399,8 +399,7 @@ void io_ready(struct io_conn *conn, int pollflags)
 		/* If we're writing to a closed pipe, we need to wait for
 		 * read to fail if we're duplex: we want to drain it! */
 		do_plan(conn, &conn->plan[IO_OUT],
-			(conn->plan[IO_IN].status == IO_POLLING
-			 || conn->plan[IO_IN].status == IO_ALWAYS));
+			conn->plan[IO_IN].status == IO_POLLING);
 }
 
 void io_do_always(struct io_conn *conn)
