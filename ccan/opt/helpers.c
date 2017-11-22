@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <errno.h>
 #include <stdio.h>
 #include <limits.h>
@@ -116,6 +117,22 @@ char *opt_set_ulongval(const char *arg, unsigned long *ul)
 	return NULL;
 }
 
+char *opt_set_doubleval(const char *arg, double *d)
+{
+    char *endp;
+
+    /* This is how the manpage says to do it.  Yech. */
+    errno = 0;
+    /* Don't assume strtof */
+    *d = strtod(arg, &endp);
+    if (*endp || !arg[0])
+        return arg_bad("'%s' is not a number", arg);
+    if (errno)
+        return arg_bad("'%s' is out of range", arg);
+
+    return NULL;
+}
+
 char *opt_set_floatval(const char *arg, float *f)
 {
 	double d;
@@ -138,32 +155,17 @@ char *opt_set_floatval(const char *arg, float *f)
 	return NULL;
 }
 
+void opt_show_doubleval(char buf[OPT_SHOW_LEN], const double *d)
+{
+    snprintf(buf, OPT_SHOW_LEN, "%f", *d);
+}
+
 void opt_show_floatval(char buf[OPT_SHOW_LEN], const float *f)
 {
 	double d = *f;
 	opt_show_doubleval(buf, &d);
 }
 
-char *opt_set_doubleval(const char *arg, double *d)
-{
-	char *endp;
-
-	/* This is how the manpage says to do it.  Yech. */
-	errno = 0;
-	/* Don't assume strtof */
-	*d = strtod(arg, &endp);
-	if (*endp || !arg[0])
-		return arg_bad("'%s' is not a number", arg);
-	if (errno)
-		return arg_bad("'%s' is out of range", arg);
-
-	return NULL;
-}
-
-void opt_show_doubleval(char buf[OPT_SHOW_LEN], const double *d)
-{
-	snprintf(buf, OPT_SHOW_LEN, "%f", *d);
-}
 
 char *opt_inc_intval(int *i)
 {
