@@ -59,7 +59,7 @@ LINT_OPTS.ok := -s
 LINT_OPTS.fast-ok := -s -x tests_pass_valgrind -x tests_compile_coverage
 LINT_SRCS := $(filter-out $(LINT).c, $(wildcard tools/ccanlint/*.c tools/ccanlint/tests/*.c))
 LINT_DEPS := $(LINT_SRCS:%.c=%.d) $(LINT).d
-LINT_CCAN_MODULES := asort autodata dgraph ilog lbalance ptr_valid strmap
+LINT_CCAN_MODULES := autodata dgraph ilog lbalance ptr_valid strmap
 LINT_CCAN_SRCS := $(wildcard $(LINT_CCAN_MODULES:%=ccan/%/*.c))
 LINT_OBJS := $(LINT_SRCS:%.c=%.o) $(LINT_CCAN_SRCS:%.c=%.o) $(TOOLS_OBJS)
 ifneq ($(GCOV),)
