@@ -13,8 +13,8 @@
 struct node {
 	/* These point to strings or nodes. */
 	struct intmap child[2];
-	/* The bit where these children differ (0 == lsb) */
-	uint8_t bit_num;
+	/* Encoding both prefix and critbit: 1 is appended to prefix. */
+	intmap_index_t prefix_and_critbit;
 };
 
 static void update_span(const void *p, size_t s, uintptr_t *min, uintptr_t *max)
