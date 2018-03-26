@@ -264,3 +264,19 @@ void intmap_clear_(struct intmap *map)
 		clear(*map);
 	intmap_init_(map);
 }
+
+bool intmap_iterate_(const struct intmap *n,
+		     bool (*handle)(intmap_index_t, void *, void *),
+		     void *data,
+		     intmap_index_t offset)
+{
+	/* Can only happen at root */
+	if (intmap_empty_(n))
+		return true;
+
+	if (n->v)
+		return handle(n->u.i - offset, n->v, data);
+
+	return intmap_iterate_(&n->u.n->child[0], handle, data, offset)
+		&& intmap_iterate_(&n->u.n->child[1], handle, data, offset);
+}

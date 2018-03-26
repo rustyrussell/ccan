@@ -61,6 +61,13 @@ static bool eqfn(const struct htable_elem *elem, const uint64_t index)
 }
 HTABLE_DEFINE_TYPE(struct htable_elem, keyof, hashfn, eqfn, hash);
 
+static bool check_val(intmap_index_t i, uint64_t *v, uint64_t *expected)
+{
+	if (v != expected)
+		abort();
+	return true;
+}
+
 int main(int argc, char *argv[])
 {
 	uint64_t i, total = 0, seed, *v;
@@ -127,6 +134,12 @@ int main(int argc, char *argv[])
 	printf("%zu,critbit iteration (nsec),%"PRIu64"\n", max,
 	       time_to_nsec(time_divide(time_between(end, start), max)));
 
+	start = time_now();
+	uintmap_iterate(&map, check_val, &i);
+	end = time_now();
+	printf("%zu,critbit callback iteration (nsec),%"PRIu64"\n", max,
+	       time_to_nsec(time_divide(time_between(end, start), max)));
+
 	span_min = -1ULL;
 	span_max = 0;
 	getspan(uintmap_unwrap_(&map), &span_min, &span_max);
@@ -155,6 +168,12 @@ int main(int argc, char *argv[])
 	}
 	end = time_now();
 	printf("%zu,critbit consecutive iteration (nsec),%"PRIu64"\n", max,
+	       time_to_nsec(time_divide(time_between(end, start), max)));
+
+	start = time_now();
+	uintmap_iterate(&map, check_val, &i);
+	end = time_now();
+	printf("%zu,critbit consecutive callback iteration (nsec),%"PRIu64"\n", max,
 	       time_to_nsec(time_divide(time_between(end, start), max)));
 
 	sipseed.u.u64[0] = isaac64_next_uint64(&isaac);
