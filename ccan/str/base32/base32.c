@@ -4,6 +4,8 @@
 #include <ccan/endian/endian.h>
 #include <string.h> /* for memcpy, memset */
 
+const char *base32_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567=";
+
 /* RFC 4648:
  *
  * (1) The final quantum of encoding input is an integral multiple of 40
@@ -56,7 +58,7 @@ size_t base32_data_size(const char *str, size_t strlen)
 	size_t max = (strlen + 7) / 8 * 5, padding = 0;
 
 	/* Count trailing padding bytes. */
-	while (strlen && str[strlen-1] == '=' && padding < 6) {
+	while (strlen && str[strlen-1] == base32_chars[32] && padding < 6) {
 		strlen--;
 		padding++;
 	}
@@ -69,23 +71,21 @@ static bool decode_8_chars(const char c[8], beint64_t *res, int *bytes)
 	uint64_t acc = 0;
 	size_t num_pad = 0;
 	for (int i = 0; i < 8; i++) {
-		uint8_t val;
+		const char *p;
+
 		acc <<= 5;
-		if (c[i] >= 'a' && c[i] <= 'z')
-			val = c[i] - 'a';
-		else if (c[i] >= 'A' && c[i] <= 'Z')
-			val = c[i] - 'A';
-		else if (c[i] >= '2' && c[i] <= '7')
-			val = c[i] - '2' + 26;
-		else if (c[i] == '=') {
-			num_pad++;
-			continue;
-		} else
+		p = memchr(base32_chars, c[i], 32);
+		if (!p) {
+			if (c[i] == base32_chars[32]) {
+				num_pad++;
+				continue;
+			}
 			return false;
+		}
 		/* Can't have padding then non-pad */
 		if (num_pad)
 			return false;
-		acc |= val;
+		acc |= (p - base32_chars);
 	}
 	*res = cpu_to_be64(acc);
 
@@ -120,21 +120,20 @@ static void encode_8_chars(char *dest, const uint8_t *buf, int bytes)
 	beint64_t val = 0;
 	uint64_t res;
 	int bits = bytes * 8;
-	static const char enc[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
 	assert(bytes > 0 && bytes <= 5);
 	memcpy((char *)&val + 3, buf, bytes);
 	res = be64_to_cpu(val);
 
 	while (bits > 0) {
-		*dest = enc[(res >> 35) & 0x1F];
+		*dest = base32_chars[(res >> 35) & 0x1F];
 		dest++;
 		res <<= 5;
 		bits -= 5;
 	}
 
 	if (bytes != 5)
-		memset(dest, '=', padlen(bytes));
+		memset(dest, base32_chars[32], padlen(bytes));
 }
 
 bool base32_encode(const void *buf, size_t bufsize, char *dest, size_t destsize)

@@ -65,4 +65,13 @@ size_t base32_str_size(size_t bytes);
  *	base32_decode(str, strlen(str), buf, sizeof(buf));
  */
 size_t base32_data_size(const char *str, size_t strlen);
+
+/**
+ * base32_chars - the encoding/decoding array to use.
+ *
+ * It must be at least 33 characters long, representing 32 values and
+ * the pad value.  The default array is "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567=".
+ */
+extern const char *base32_chars;
+
 #endif /* CCAN_STR_BASE32_H */
