@@ -29,6 +29,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define MAX_DEPTH 100
+
 #define out_of_memory() do {                    \
 		fprintf(stderr, "Out of memory.\n");    \
 		exit(EXIT_FAILURE);                     \
@@ -625,7 +627,7 @@ static bool parse_value(const char **sp, JsonNode **out)
 	const char *s = *sp;
 	static int depth = 0;
 
-	if (depth > 100)
+	if (depth > MAX_DEPTH)
 		return false; // Prevent stack overflow
 	
 	switch (*s) {
