@@ -623,6 +623,10 @@ void json_remove_from_parent(JsonNode *node)
 static bool parse_value(const char **sp, JsonNode **out)
 {
 	const char *s = *sp;
+	static int depth = 0;
+
+	if (depth > 100)
+		return false; // Prevent stack overflow
 	
 	switch (*s) {
 		case 'n':
@@ -664,15 +668,19 @@ static bool parse_value(const char **sp, JsonNode **out)
 		}
 		
 		case '[':
+			depth++;
 			if (parse_array(&s, out)) {
 				*sp = s;
+				depth--;
 				return true;
 			}
 			return false;
 		
 		case '{':
+			depth++;
 			if (parse_object(&s, out)) {
 				*sp = s;
+				depth--;
 				return true;
 			}
 			return false;
