@@ -676,6 +676,7 @@ static bool parse_value(const char **sp, JsonNode **out)
 				depth--;
 				return true;
 			}
+			depth--;
 			return false;
 		
 		case '{':
@@ -685,6 +686,7 @@ static bool parse_value(const char **sp, JsonNode **out)
 				depth--;
 				return true;
 			}
+			depth--;
 			return false;
 		
 		default: {
