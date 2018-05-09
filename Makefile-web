@@ -3,7 +3,7 @@ default: upload
 include Makefile
 # This can be overridden on cmdline to generate pages elsewhere.
 WEBDIR=/srv/www/ccodearchive.net
-PHP=php5
+PHP=php
 
 MODS := $(ALL_MODULES:ccan/%=%)
 upload: fastcheck
