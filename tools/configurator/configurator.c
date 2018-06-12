@@ -32,6 +32,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #ifdef _MSC_VER
 #define popen _popen
@@ -65,6 +66,7 @@
 
 static const char *progname = "";
 static int verbose;
+static bool like_a_libtool = false;
 
 struct test {
 	const char *name;
@@ -437,6 +439,20 @@ static void c12r_errx(int eval, const char *fmt, ...)
 	exit(eval);
 }
 
+static void start_test(const char *what, const char *why)
+{
+	if (like_a_libtool) {
+		printf("%s%s... ", what, why);
+		fflush(stdout);
+	}
+}
+
+static void end_test(bool result)
+{
+	if (like_a_libtool)
+		printf("%s\n", result ? "yes" : "no");
+}
+
 static size_t fcopy(FILE *fsrc, FILE *fdst)
 {
 	char buffer[BUFSIZ];
@@ -634,6 +650,7 @@ static bool run_test(const char *cmd, struct test *test)
 			printf("Extra link line: %s", newcmd);
 	}
 
+	start_test("checking for ", test->name);
 	output = run(newcmd, &status);
 
 	free(newcmd);
@@ -666,6 +683,7 @@ static bool run_test(const char *cmd, struct test *test)
 		test->answer = (status == 0);
 	}
 	test->done = true;
+	end_test(test->answer);
 
 	if (test->answer && test->overrides) {
 		struct test *override = find_test(test->overrides);
@@ -691,7 +709,7 @@ int main(int argc, const char *argv[])
 
 	while (argc > 1) {
 		if (strcmp(argv[1], "--help") == 0) {
-			printf("Usage: configurator [-v] [--var-file=<filename>] [-O<outflag>] [--configurator-cc=<compiler-for-tests>] [<compiler> <flags>...]\n"
+			printf("Usage: configurator [-v] [--var-file=<filename>] [-O<outflag>] [--configurator-cc=<compiler-for-tests>] [--autotools-style] [<compiler> <flags>...]\n"
 			       "  <compiler> <flags> will have \"<outflag> <outfile> <infile.c>\" appended\n"
 			       "Default: %s %s %s\n",
 			       DEFAULT_COMPILER, DEFAULT_FLAGS,
@@ -724,6 +742,10 @@ int main(int argc, const char *argv[])
 			varfile = argv[1] + 11;
 			argc--;
 			argv++;
+		} else if (strcmp(argv[1], "--autotools-style") == 0) {
+			like_a_libtool = true;
+			argc--;
+			argv++;
 		} else {
 			break;
 		}
@@ -737,6 +759,11 @@ int main(int argc, const char *argv[])
 		argv[1] = configurator_cc;
 
 	cmd = connect_args(argv, outflag, OUTPUT_FILE " " INPUT_FILE);
+	if (like_a_libtool) {
+		start_test("Making autoconf users comfortable", "");
+		sleep(1);
+		end_test(1);
+	}
 	for (i = 0; i < sizeof(tests)/sizeof(tests[0]); i++)
 		run_test(cmd, &tests[i]);
 	free(cmd);
@@ -750,6 +777,7 @@ int main(int argc, const char *argv[])
 		if (strcmp(varfile, "-") == 0)
 			vars = stdout;
 		else {
+			start_test("Writing variables to ", varfile);
 			vars = fopen(varfile, "a");
 			if (!vars)
 				c12r_err(2, "Could not open %s", varfile);
@@ -759,6 +787,7 @@ int main(int argc, const char *argv[])
 		if (vars != stdout) {
 			if (fclose(vars) != 0)
 				c12r_err(2, "Closing %s", varfile);
+			end_test(1);
 		}
 	}
 
