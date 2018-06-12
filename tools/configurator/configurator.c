@@ -66,18 +66,28 @@
 static const char *progname = "";
 static int verbose;
 
-enum test_style {
-	OUTSIDE_MAIN		= 0x1,
-	DEFINES_FUNC		= 0x2,
-	INSIDE_MAIN		= 0x4,
-	DEFINES_EVERYTHING	= 0x8,
-	MAY_NOT_COMPILE		= 0x10,
-	EXECUTE			= 0x8000
-};
-
 struct test {
 	const char *name;
-	enum test_style style;
+	/*
+	 * Template style flags (pick one):
+	 * OUTSIDE_MAIN:
+	 * - put a simple boilerplate main below it.
+	 * DEFINES_FUNC:
+	 * - defines a static function called func; adds ref to avoid warnings
+	 * INSIDE_MAIN:
+	 * - put this inside main().
+	 * DEFINES_EVERYTHING:
+	 * - don't add any boilerplate at all.
+	 *
+	 * Execution flags:
+	 * EXECUTE:
+	 * - a runtime test; must compile, exit 0 means flag is set.
+	 * MAY_NOT_COMPILE:
+	 * - Only useful with EXECUTE: don't get upset if it doesn't compile.
+	 * <nothing>:
+	 * - a compile test, if it compiles must run and exit 0.
+	 */
+	const char *style;
 	const char *depends;
 	const char *link;
 	const char *fragment;
@@ -88,14 +98,14 @@ struct test {
 };
 
 static struct test tests[] = {
-	{ "HAVE_32BIT_OFF_T", DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE, NULL, NULL,
+	{ "HAVE_32BIT_OFF_T", "DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE", NULL, NULL,
 	  "#include <sys/types.h>\n"
 	  "int main(void) {\n"
 	  "	return sizeof(off_t) == 4 ? 0 : 1;\n"
 	  "}\n" },
-	{ "HAVE_ALIGNOF", INSIDE_MAIN, NULL, NULL,
+	{ "HAVE_ALIGNOF", "INSIDE_MAIN", NULL, NULL,
 	  "return __alignof__(double) > 0 ? 0 : 1;" },
-	{ "HAVE_ASPRINTF", DEFINES_FUNC, NULL, NULL,
+	{ "HAVE_ASPRINTF", "DEFINES_FUNC", NULL, NULL,
 	  "#ifndef _GNU_SOURCE\n"
 	  "#define _GNU_SOURCE\n"
 	  "#endif\n"
@@ -106,77 +116,77 @@ static struct test tests[] = {
 	  "		p = NULL;\n"
 	  "	return p;\n"
 	  "}" },
-	{ "HAVE_ATTRIBUTE_COLD", DEFINES_FUNC, NULL, NULL,
+	{ "HAVE_ATTRIBUTE_COLD", "DEFINES_FUNC", NULL, NULL,
 	  "static int __attribute__((cold)) func(int x) { return x; }" },
-	{ "HAVE_ATTRIBUTE_CONST", DEFINES_FUNC, NULL, NULL,
+	{ "HAVE_ATTRIBUTE_CONST", "DEFINES_FUNC", NULL, NULL,
 	  "static int __attribute__((const)) func(int x) { return x; }" },
-	{ "HAVE_ATTRIBUTE_PURE", DEFINES_FUNC, NULL, NULL,
+	{ "HAVE_ATTRIBUTE_PURE", "DEFINES_FUNC", NULL, NULL,
 	  "static int __attribute__((pure)) func(int x) { return x; }" },
-	{ "HAVE_ATTRIBUTE_MAY_ALIAS", OUTSIDE_MAIN, NULL, NULL,
+	{ "HAVE_ATTRIBUTE_MAY_ALIAS", "OUTSIDE_MAIN", NULL, NULL,
 	  "typedef short __attribute__((__may_alias__)) short_a;" },
-	{ "HAVE_ATTRIBUTE_NORETURN", DEFINES_FUNC, NULL, NULL,
+	{ "HAVE_ATTRIBUTE_NORETURN", "DEFINES_FUNC", NULL, NULL,
 	  "#include <stdlib.h>\n"
 	  "static void __attribute__((noreturn)) func(int x) { exit(x); }" },
-	{ "HAVE_ATTRIBUTE_PRINTF", DEFINES_FUNC, NULL, NULL,
+	{ "HAVE_ATTRIBUTE_PRINTF", "DEFINES_FUNC", NULL, NULL,
 	  "static void __attribute__((format(__printf__, 1, 2))) func(const char *fmt, ...) { (void)fmt; }" },
-	{ "HAVE_ATTRIBUTE_UNUSED", OUTSIDE_MAIN, NULL, NULL,
+	{ "HAVE_ATTRIBUTE_UNUSED", "OUTSIDE_MAIN", NULL, NULL,
 	  "static int __attribute__((unused)) func(int x) { return x; }" },
-	{ "HAVE_ATTRIBUTE_USED", OUTSIDE_MAIN, NULL, NULL,
+	{ "HAVE_ATTRIBUTE_USED", "OUTSIDE_MAIN", NULL, NULL,
 	  "static int __attribute__((used)) func(int x) { return x; }" },
-	{ "HAVE_BACKTRACE", DEFINES_FUNC, NULL, NULL,
+	{ "HAVE_BACKTRACE", "DEFINES_FUNC", NULL, NULL,
 	  "#include <execinfo.h>\n"
 	  "static int func(int x) {"
 	  "	void *bt[10];\n"
 	  "	return backtrace(bt, 10) < x;\n"
 	  "}" },
-	{ "HAVE_BIG_ENDIAN", INSIDE_MAIN|EXECUTE, NULL, NULL,
+	{ "HAVE_BIG_ENDIAN", "INSIDE_MAIN|EXECUTE", NULL, NULL,
 	  "union { int i; char c[sizeof(int)]; } u;\n"
 	  "u.i = 0x01020304;\n"
 	  "return u.c[0] == 0x01 && u.c[1] == 0x02 && u.c[2] == 0x03 && u.c[3] == 0x04 ? 0 : 1;" },
-	{ "HAVE_BSWAP_64", DEFINES_FUNC, "HAVE_BYTESWAP_H", NULL,
+	{ "HAVE_BSWAP_64", "DEFINES_FUNC", "HAVE_BYTESWAP_H", NULL,
 	  "#include <byteswap.h>\n"
 	  "static int func(int x) { return bswap_64(x); }" },
-	{ "HAVE_BUILTIN_CHOOSE_EXPR", INSIDE_MAIN, NULL, NULL,
+	{ "HAVE_BUILTIN_CHOOSE_EXPR", "INSIDE_MAIN", NULL, NULL,
 	  "return __builtin_choose_expr(1, 0, \"garbage\");" },
-	{ "HAVE_BUILTIN_CLZ", INSIDE_MAIN, NULL, NULL,
+	{ "HAVE_BUILTIN_CLZ", "INSIDE_MAIN", NULL, NULL,
 	  "return __builtin_clz(1) == (sizeof(int)*8 - 1) ? 0 : 1;" },
-	{ "HAVE_BUILTIN_CLZL", INSIDE_MAIN, NULL, NULL,
+	{ "HAVE_BUILTIN_CLZL", "INSIDE_MAIN", NULL, NULL,
 	  "return __builtin_clzl(1) == (sizeof(long)*8 - 1) ? 0 : 1;" },
-	{ "HAVE_BUILTIN_CLZLL", INSIDE_MAIN, NULL, NULL,
+	{ "HAVE_BUILTIN_CLZLL", "INSIDE_MAIN", NULL, NULL,
 	  "return __builtin_clzll(1) == (sizeof(long long)*8 - 1) ? 0 : 1;" },
-	{ "HAVE_BUILTIN_CTZ", INSIDE_MAIN, NULL, NULL,
+	{ "HAVE_BUILTIN_CTZ", "INSIDE_MAIN", NULL, NULL,
 	  "return __builtin_ctz(1 << (sizeof(int)*8 - 1)) == (sizeof(int)*8 - 1) ? 0 : 1;" },
-	{ "HAVE_BUILTIN_CTZL", INSIDE_MAIN, NULL, NULL,
+	{ "HAVE_BUILTIN_CTZL", "INSIDE_MAIN", NULL, NULL,
 	  "return __builtin_ctzl(1UL << (sizeof(long)*8 - 1)) == (sizeof(long)*8 - 1) ? 0 : 1;" },
-	{ "HAVE_BUILTIN_CTZLL", INSIDE_MAIN, NULL, NULL,
+	{ "HAVE_BUILTIN_CTZLL", "INSIDE_MAIN", NULL, NULL,
 	  "return __builtin_ctzll(1ULL << (sizeof(long long)*8 - 1)) == (sizeof(long long)*8 - 1) ? 0 : 1;" },
-	{ "HAVE_BUILTIN_CONSTANT_P", INSIDE_MAIN, NULL, NULL,
+	{ "HAVE_BUILTIN_CONSTANT_P", "INSIDE_MAIN", NULL, NULL,
 	  "return __builtin_constant_p(1) ? 0 : 1;" },
-	{ "HAVE_BUILTIN_EXPECT", INSIDE_MAIN, NULL, NULL,
+	{ "HAVE_BUILTIN_EXPECT", "INSIDE_MAIN", NULL, NULL,
 	  "return __builtin_expect(argc == 1, 1) ? 0 : 1;" },
-	{ "HAVE_BUILTIN_FFS", INSIDE_MAIN, NULL, NULL,
+	{ "HAVE_BUILTIN_FFS", "INSIDE_MAIN", NULL, NULL,
 	  "return __builtin_ffs(0) == 0 ? 0 : 1;" },
-	{ "HAVE_BUILTIN_FFSL", INSIDE_MAIN, NULL, NULL,
+	{ "HAVE_BUILTIN_FFSL", "INSIDE_MAIN", NULL, NULL,
 	  "return __builtin_ffsl(0L) == 0 ? 0 : 1;" },
-	{ "HAVE_BUILTIN_FFSLL", INSIDE_MAIN, NULL, NULL,
+	{ "HAVE_BUILTIN_FFSLL", "INSIDE_MAIN", NULL, NULL,
 	  "return __builtin_ffsll(0LL) == 0 ? 0 : 1;" },
-	{ "HAVE_BUILTIN_POPCOUNT", INSIDE_MAIN, NULL, NULL,
+	{ "HAVE_BUILTIN_POPCOUNT", "INSIDE_MAIN", NULL, NULL,
 	  "return __builtin_popcount(255) == 8 ? 0 : 1;" },
-	{ "HAVE_BUILTIN_POPCOUNTL", INSIDE_MAIN, NULL, NULL,
+	{ "HAVE_BUILTIN_POPCOUNTL", "INSIDE_MAIN", NULL, NULL,
 	  "return __builtin_popcountl(255L) == 8 ? 0 : 1;" },
-	{ "HAVE_BUILTIN_POPCOUNTLL", INSIDE_MAIN, NULL, NULL,
+	{ "HAVE_BUILTIN_POPCOUNTLL", "INSIDE_MAIN", NULL, NULL,
 	  "return __builtin_popcountll(255LL) == 8 ? 0 : 1;" },
-	{ "HAVE_BUILTIN_TYPES_COMPATIBLE_P", INSIDE_MAIN, NULL, NULL,
+	{ "HAVE_BUILTIN_TYPES_COMPATIBLE_P", "INSIDE_MAIN", NULL, NULL,
 	  "return __builtin_types_compatible_p(char *, int) ? 1 : 0;" },
-	{ "HAVE_ICCARM_INTRINSICS", DEFINES_FUNC, NULL, NULL,
+	{ "HAVE_ICCARM_INTRINSICS", "DEFINES_FUNC", NULL, NULL,
 	  "#include <intrinsics.h>\n"
 	  "int func(int v) {\n"
 	  "	return __CLZ(__RBIT(v));\n"
 	  "}" },
-	{ "HAVE_BYTESWAP_H", OUTSIDE_MAIN, NULL, NULL,
+	{ "HAVE_BYTESWAP_H", "OUTSIDE_MAIN", NULL, NULL,
 	  "#include <byteswap.h>\n" },
 	{ "HAVE_CLOCK_GETTIME",
-	  DEFINES_FUNC, "HAVE_STRUCT_TIMESPEC", NULL,
+	  "DEFINES_FUNC", "HAVE_STRUCT_TIMESPEC", NULL,
 	  "#include <time.h>\n"
 	  "static struct timespec func(void) {\n"
 	  "	struct timespec ts;\n"
@@ -184,7 +194,7 @@ static struct test tests[] = {
 	  "	return ts;\n"
 	  "}\n" },
 	{ "HAVE_CLOCK_GETTIME_IN_LIBRT",
-	  DEFINES_FUNC,
+	  "DEFINES_FUNC",
 	  "HAVE_STRUCT_TIMESPEC !HAVE_CLOCK_GETTIME",
 	  "-lrt",
 	  "#include <time.h>\n"
@@ -195,10 +205,10 @@ static struct test tests[] = {
 	  "}\n",
 	  /* This means HAVE_CLOCK_GETTIME, too */
 	  "HAVE_CLOCK_GETTIME" },
-	{ "HAVE_COMPOUND_LITERALS", INSIDE_MAIN, NULL, NULL,
+	{ "HAVE_COMPOUND_LITERALS", "INSIDE_MAIN", NULL, NULL,
 	  "int *foo = (int[]) { 1, 2, 3, 4 };\n"
 	  "return foo[0] ? 0 : 1;" },
-	{ "HAVE_FCHDIR", DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE, NULL, NULL,
+	{ "HAVE_FCHDIR", "DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE", NULL, NULL,
 	  "#include <sys/types.h>\n"
 	  "#include <sys/stat.h>\n"
 	  "#include <fcntl.h>\n"
@@ -207,7 +217,7 @@ static struct test tests[] = {
 	  "	int fd = open(\"..\", O_RDONLY);\n"
 	  "	return fchdir(fd) == 0 ? 0 : 1;\n"
 	  "}\n" },
-	{ "HAVE_ERR_H", DEFINES_FUNC, NULL, NULL,
+	{ "HAVE_ERR_H", "DEFINES_FUNC", NULL, NULL,
 	  "#include <err.h>\n"
 	  "static void func(int arg) {\n"
 	  "	if (arg == 0)\n"
@@ -219,33 +229,33 @@ static struct test tests[] = {
 	  "	if (arg == 4)\n"
 	  "		warnx(\"warn %u\", arg);\n"
 	  "}\n" },
-	{ "HAVE_FILE_OFFSET_BITS", DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE,
+	{ "HAVE_FILE_OFFSET_BITS", "DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE",
 	  "HAVE_32BIT_OFF_T", NULL,
 	  "#define _FILE_OFFSET_BITS 64\n"
 	  "#include <sys/types.h>\n"
 	  "int main(void) {\n"
 	  "	return sizeof(off_t) == 8 ? 0 : 1;\n"
 	  "}\n" },
-	{ "HAVE_FOR_LOOP_DECLARATION", INSIDE_MAIN, NULL, NULL,
+	{ "HAVE_FOR_LOOP_DECLARATION", "INSIDE_MAIN", NULL, NULL,
 	  "int ret = 1;\n"
 	  "for (int i = 0; i < argc; i++) { ret = 0; };\n"
 	  "return ret;" },
-	{ "HAVE_FLEXIBLE_ARRAY_MEMBER", OUTSIDE_MAIN, NULL, NULL,
+	{ "HAVE_FLEXIBLE_ARRAY_MEMBER", "OUTSIDE_MAIN", NULL, NULL,
 	  "struct foo { unsigned int x; int arr[]; };" },
-	{ "HAVE_GETPAGESIZE", DEFINES_FUNC, NULL, NULL,
+	{ "HAVE_GETPAGESIZE", "DEFINES_FUNC", NULL, NULL,
 	  "#include <unistd.h>\n"
 	  "static int func(void) { return getpagesize(); }" },
-	{ "HAVE_ISBLANK", DEFINES_FUNC, NULL, NULL,
+	{ "HAVE_ISBLANK", "DEFINES_FUNC", NULL, NULL,
 	  "#ifndef _GNU_SOURCE\n"
 	  "#define _GNU_SOURCE\n"
 	  "#endif\n"
 	  "#include <ctype.h>\n"
 	  "static int func(void) { return isblank(' '); }" },
-	{ "HAVE_LITTLE_ENDIAN", INSIDE_MAIN|EXECUTE, NULL, NULL,
+	{ "HAVE_LITTLE_ENDIAN", "INSIDE_MAIN|EXECUTE", NULL, NULL,
 	  "union { int i; char c[sizeof(int)]; } u;\n"
 	  "u.i = 0x01020304;\n"
 	  "return u.c[0] == 0x04 && u.c[1] == 0x03 && u.c[2] == 0x02 && u.c[3] == 0x01 ? 0 : 1;" },
-	{ "HAVE_MEMMEM", DEFINES_FUNC, NULL, NULL,
+	{ "HAVE_MEMMEM", "DEFINES_FUNC", NULL, NULL,
 	  "#ifndef _GNU_SOURCE\n"
 	  "#define _GNU_SOURCE\n"
 	  "#endif\n"
@@ -253,7 +263,7 @@ static struct test tests[] = {
 	  "static void *func(void *h, size_t hl, void *n, size_t nl) {\n"
 	  "return memmem(h, hl, n, nl);"
 	  "}\n", },
-	{ "HAVE_MEMRCHR", DEFINES_FUNC, NULL, NULL,
+	{ "HAVE_MEMRCHR", "DEFINES_FUNC", NULL, NULL,
 	  "#ifndef _GNU_SOURCE\n"
 	  "#define _GNU_SOURCE\n"
 	  "#endif\n"
@@ -261,12 +271,12 @@ static struct test tests[] = {
 	  "static void *func(void *s, int c, size_t n) {\n"
 	  "return memrchr(s, c, n);"
 	  "}\n", },
-	{ "HAVE_MMAP", DEFINES_FUNC, NULL, NULL,
+	{ "HAVE_MMAP", "DEFINES_FUNC", NULL, NULL,
 	  "#include <sys/mman.h>\n"
 	  "static void *func(int fd) {\n"
 	  "	return mmap(0, 65536, PROT_READ, MAP_SHARED, fd, 0);\n"
 	  "}" },
-	{ "HAVE_PROC_SELF_MAPS", DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE, NULL, NULL,
+	{ "HAVE_PROC_SELF_MAPS", "DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE", NULL, NULL,
 	  "#include <sys/types.h>\n"
 	  "#include <sys/stat.h>\n"
 	  "#include <fcntl.h>\n"
@@ -274,7 +284,7 @@ static struct test tests[] = {
 	  "	return open(\"/proc/self/maps\", O_RDONLY) != -1 ? 0 : 1;\n"
 	  "}\n" },
 	{ "HAVE_QSORT_R_PRIVATE_LAST",
-	  DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE, NULL, NULL,
+	  "DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE", NULL, NULL,
 	  "#ifndef _GNU_SOURCE\n"
 	  "#define _GNU_SOURCE\n"
 	  "#endif\n"
@@ -289,20 +299,20 @@ static struct test tests[] = {
 	  " return called && array[0] == 2 && array[1] == 5 && array[2] == 9 ? 0 : 1;\n"
 	  "}\n" },
 	{ "HAVE_STRUCT_TIMESPEC",
-	  DEFINES_FUNC, NULL, NULL,
+	  "DEFINES_FUNC", NULL, NULL,
 	  "#include <time.h>\n"
 	  "static void func(void) {\n"
 	  "	struct timespec ts;\n"
 	  "	ts.tv_sec = ts.tv_nsec = 1;\n"
 	  "}\n" },
 	{ "HAVE_SECTION_START_STOP",
-	  DEFINES_FUNC, NULL, NULL,
+	  "DEFINES_FUNC", NULL, NULL,
 	  "static void *__attribute__((__section__(\"mysec\"))) p = &p;\n"
 	  "static int func(void) {\n"
 	  "	extern void *__start_mysec[], *__stop_mysec[];\n"
 	  "	return __stop_mysec - __start_mysec;\n"
 	  "}\n" },
-	{ "HAVE_STACK_GROWS_UPWARDS", DEFINES_EVERYTHING|EXECUTE, NULL, NULL,
+	{ "HAVE_STACK_GROWS_UPWARDS", "DEFINES_EVERYTHING|EXECUTE", NULL, NULL,
 	  "#include <stddef.h>\n"
 	  "static ptrdiff_t nest(const void *base, unsigned int i)\n"
 	  "{\n"
@@ -314,17 +324,17 @@ static struct test tests[] = {
 	  "	(void)argv;\n"
 	  "	return (nest(&argc, argc) > 0) ? 0 : 1;\n"
 	  "}\n" },
-	{ "HAVE_STATEMENT_EXPR", INSIDE_MAIN, NULL, NULL,
+	{ "HAVE_STATEMENT_EXPR", "INSIDE_MAIN", NULL, NULL,
 	  "return ({ int x = argc; x == argc ? 0 : 1; });" },
-	{ "HAVE_SYS_FILIO_H", OUTSIDE_MAIN, NULL, NULL, /* Solaris needs this for FIONREAD */
+	{ "HAVE_SYS_FILIO_H", "OUTSIDE_MAIN", NULL, NULL, /* Solaris needs this for FIONREAD */
 	  "#include <sys/filio.h>\n" },
-	{ "HAVE_SYS_TERMIOS_H", OUTSIDE_MAIN, NULL, NULL,
+	{ "HAVE_SYS_TERMIOS_H", "OUTSIDE_MAIN", NULL, NULL,
 	  "#include <sys/termios.h>\n" },
-	{ "HAVE_SYS_UNISTD_H", OUTSIDE_MAIN, NULL, NULL,
+	{ "HAVE_SYS_UNISTD_H", "OUTSIDE_MAIN", NULL, NULL,
 	  "#include <sys/unistd.h>\n" },
-	{ "HAVE_TYPEOF", INSIDE_MAIN, NULL, NULL,
+	{ "HAVE_TYPEOF", "INSIDE_MAIN", NULL, NULL,
 	  "__typeof__(argc) i; i = argc; return i == argc ? 0 : 1;" },
-	{ "HAVE_UNALIGNED_ACCESS", DEFINES_EVERYTHING|EXECUTE, NULL, NULL,
+	{ "HAVE_UNALIGNED_ACCESS", "DEFINES_EVERYTHING|EXECUTE", NULL, NULL,
 	  "#include <string.h>\n"
 	  "int main(int argc, char *argv[]) {\n"
 	  "	(void)argc;\n"
@@ -333,28 +343,28 @@ static struct test tests[] = {
 	  "	int *x = (int *)pad, *y = (int *)(pad + 1);\n"
 	  "	return *x == *y;\n"
 	  "}\n" },
-	{ "HAVE_UTIME", DEFINES_FUNC, NULL, NULL,
+	{ "HAVE_UTIME", "DEFINES_FUNC", NULL, NULL,
 	  "#include <sys/types.h>\n"
 	  "#include <utime.h>\n"
 	  "static int func(const char *filename) {\n"
 	  "	struct utimbuf times = { 0 };\n"
 	  "	return utime(filename, &times);\n"
 	  "}" },
-	{ "HAVE_WARN_UNUSED_RESULT", DEFINES_FUNC, NULL, NULL,
+	{ "HAVE_WARN_UNUSED_RESULT", "DEFINES_FUNC", NULL, NULL,
 	  "#include <sys/types.h>\n"
 	  "#include <utime.h>\n"
 	  "static __attribute__((warn_unused_result)) int func(int i) {\n"
 	  "	return i + 1;\n"
 	  "}" },
-	{ "HAVE_OPENMP", INSIDE_MAIN, NULL, NULL,
+	{ "HAVE_OPENMP", "INSIDE_MAIN", NULL, NULL,
 	  "int i;\n"
 	  "#pragma omp parallel for\n"
 	  "for(i = 0; i < 0; i++) {};\n"
 	  "return 0;\n",
 	  "-Werror -fopenmp" },
-	{ "HAVE_VALGRIND_MEMCHECK_H", OUTSIDE_MAIN, NULL, NULL,
+	{ "HAVE_VALGRIND_MEMCHECK_H", "OUTSIDE_MAIN", NULL, NULL,
 	  "#include <valgrind/memcheck.h>\n" },
-	{ "HAVE_UCONTEXT", DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE,
+	{ "HAVE_UCONTEXT", "DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE",
 	  NULL, NULL,
 	  "#include <ucontext.h>\n"
 	  "static int x = 0;\n"
@@ -375,7 +385,7 @@ static struct test tests[] = {
 	  "	return (x == 3) ? 0 : 1;\n"
 	  "}\n"
 	},
-	{ "HAVE_POINTER_SAFE_MAKECONTEXT", DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE,
+	{ "HAVE_POINTER_SAFE_MAKECONTEXT", "DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE",
 	  "HAVE_UCONTEXT", NULL,
 	  "#include <stddef.h>\n"
 	  "#include <ucontext.h>\n"
@@ -575,32 +585,27 @@ static bool run_test(const char *cmd, struct test *test)
 		c12r_err(1, "creating %s", INPUT_FILE);
 
 	fprintf(outf, "%s", PRE_BOILERPLATE);
-	switch (test->style & ~(EXECUTE|MAY_NOT_COMPILE)) {
-	case INSIDE_MAIN:
+
+	if (strstr(test->style, "INSIDE_MAIN")) {
 		fprintf(outf, "%s", MAIN_START_BOILERPLATE);
 		fprintf(outf, "%s", test->fragment);
 		fprintf(outf, "%s", MAIN_END_BOILERPLATE);
-		break;
-	case OUTSIDE_MAIN:
+	} else if (strstr(test->style, "OUTSIDE_MAIN")) {
 		fprintf(outf, "%s", test->fragment);
 		fprintf(outf, "%s", MAIN_START_BOILERPLATE);
 		fprintf(outf, "%s", MAIN_BODY_BOILERPLATE);
 		fprintf(outf, "%s", MAIN_END_BOILERPLATE);
-		break;
-	case DEFINES_FUNC:
+	} else if (strstr(test->style, "DEFINES_FUNC")) {
 		fprintf(outf, "%s", test->fragment);
 		fprintf(outf, "%s", MAIN_START_BOILERPLATE);
 		fprintf(outf, "%s", USE_FUNC_BOILERPLATE);
 		fprintf(outf, "%s", MAIN_BODY_BOILERPLATE);
 		fprintf(outf, "%s", MAIN_END_BOILERPLATE);
-		break;
-	case DEFINES_EVERYTHING:
+	} else if (strstr(test->style, "DEFINES_EVERYTHING")) {
 		fprintf(outf, "%s", test->fragment);
-		break;
-	default:
-		abort();
-
-	}
+	} else
+		c12r_errx(2, "Unknown style for test %s: %s",
+			  test->name, test->style);
 
 	if (verbose > 1) {
 		fseek(outf, 0, SEEK_SET);
@@ -638,7 +643,8 @@ static bool run_test(const char *cmd, struct test *test)
 			printf("Compile %s for %s, status %i: %s\n",
 			       status ? "fail" : "warning",
 			       test->name, status, output);
-		if ((test->style & EXECUTE) && !(test->style & MAY_NOT_COMPILE))
+		if (strstr(test->style, "EXECUTE")
+		    && !strstr(test->style, "MAY_NOT_COMPILE"))
 			c12r_errx(1, "Test for %s did not compile:\n%s",
 				  test->name, output);
 		test->answer = false;
@@ -647,9 +653,10 @@ static bool run_test(const char *cmd, struct test *test)
 		/* Compile succeeded. */
 		free(output);
 		/* We run INSIDE_MAIN tests for sanity checking. */
-		if ((test->style & EXECUTE) || (test->style & INSIDE_MAIN)) {
+		if (strstr(test->style, "EXECUTE")
+		    || strstr(test->style, "INSIDE_MAIN")) {
 			output = run("." DIR_SEP OUTPUT_FILE, &status);
-			if (!(test->style & EXECUTE) && status != 0)
+			if (!strstr(test->style, "EXECUTE") && status != 0)
 				c12r_errx(1, "Test for %s failed with %i:\n%s",
 					  test->name, status, output);
 			if (verbose && status)
