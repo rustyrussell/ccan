@@ -100,7 +100,10 @@ struct test {
 	bool answer;
 };
 
-static struct test tests[] = {
+/* Terminated by a NULL name */
+static struct test *tests;
+
+static const struct test base_tests[] = {
 	{ "HAVE_32BIT_OFF_T", "off_t is 32 bits",
 	  "DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE", NULL, NULL,
 	  "#include <sys/types.h>\n"
@@ -598,10 +601,11 @@ static struct test *find_test(const char *name)
 {
 	unsigned int i;
 
-	for (i = 0; i < sizeof(tests)/sizeof(tests[0]); i++) {
+	for (i = 0; tests[i].name; i++) {
 		if (strcmp(tests[i].name, name) == 0)
 			return &tests[i];
 	}
+	c12r_errx(2, "Unknown test %s", name);
 	abort();
 }
 
@@ -823,6 +827,11 @@ int main(int argc, const char *argv[])
 	if (argc == 1)
 		argv = default_args;
 
+	/* Copy with NULL entry at end */
+	tests = calloc(sizeof(base_tests)/sizeof(base_tests[0]) + 1,
+		       sizeof(base_tests[0]));
+	memcpy(tests, base_tests, sizeof(base_tests));
+
 	orig_cc = argv[1];
 	if (configurator_cc)
 		argv[1] = configurator_cc;
@@ -833,7 +842,7 @@ int main(int argc, const char *argv[])
 		sleep(1);
 		end_test(1);
 	}
-	for (i = 0; i < sizeof(tests)/sizeof(tests[0]); i++)
+	for (i = 0; tests[i].name; i++)
 		run_test(cmd, &tests[i]);
 	free(cmd);
 
@@ -851,7 +860,7 @@ int main(int argc, const char *argv[])
 			if (!vars)
 				c12r_err(2, "Could not open %s", varfile);
 		}
-		for (i = 0; i < sizeof(tests)/sizeof(tests[0]); i++)
+		for (i = 0; tests[i].name; i++)
 			fprintf(vars, "%s=%u\n", tests[i].name, tests[i].answer);
 		if (vars != stdout) {
 			if (fclose(vars) != 0)
@@ -881,7 +890,7 @@ int main(int argc, const char *argv[])
 	fprintf(outf, "#define CCAN_OUTPUT_EXE_CFLAG \"%s\"\n\n", outflag);
 	/* This one implies "#include <ccan/..." works, eg. for tdb2.h */
 	fprintf(outf, "#define HAVE_CCAN 1\n");
-	for (i = 0; i < sizeof(tests)/sizeof(tests[0]); i++)
+	for (i = 0; tests[i].name; i++)
 		fprintf(outf, "#define %s %u\n", tests[i].name, tests[i].answer);
 	fprintf(outf, "#endif /* CCAN_CONFIG_H */\n");
 
