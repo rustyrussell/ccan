@@ -756,6 +756,125 @@ static bool run_test(const char *cmd, struct test *test)
 	return test->answer;
 }
 
+static char *any_field(char **fieldname)
+{
+	char buf[1000];
+	for (;;) {
+		char *p, *eq;
+
+		if (!fgets(buf, sizeof(buf), stdin))
+			return NULL;
+
+		p = buf;
+		/* Ignore whitespace, lines starting with # */
+		while (*p == ' ' || *p == '\t')
+			p++;
+		if (*p == '#' || *p == '\n')
+			continue;
+
+		eq = strchr(p, '=');
+		if (!eq)
+			c12r_errx(2, "no = in line: %s", p);
+		*eq = '\0';
+		*fieldname = strdup(p);
+		p = eq + 1;
+		if (strlen(p) && p[strlen(p)-1] == '\n')
+			p[strlen(p)-1] = '\0';
+		return strdup(p);
+	}
+}
+
+static char *read_field(const char *name, bool compulsory)
+{
+	char *fieldname, *value;
+
+	value = any_field(&fieldname);
+	if (!value) {
+		if (!compulsory)
+			return NULL;
+		c12r_errx(2, "Could not read field %s", name);
+	}
+	if (strcmp(fieldname, name) != 0)
+		c12r_errx(2, "Expected field %s not %s", name, fieldname);
+	return value;
+}
+
+/* Test descriptions from stdin:
+ * Lines starting with # or whitespace-only are ignored.
+ *
+ * First three non-ignored lines must be:
+ *  var=<varname>
+ *  desc=<description-for-autotools-style>
+ *  style=OUTSIDE_MAIN DEFINES_FUNC INSIDE_MAIN DEFINES_EVERYTHING EXECUTE MAY_NOT_COMPILE
+ *
+ * Followed by optional lines:
+ *  depends=<space-separated-testnames, ! to invert>
+ *  link=<extra args for link line>
+ *  flags=<extra args for compile line>
+ *  overrides=<testname-to-force>
+ *
+ * Finally a code line, either:
+ *  code=<oneline> OR
+ *  code=
+ *  <lines of code>
+ *  <end-comment>
+ *
+ * And <end-comment> looks like this next comment: */
+/*END*/
+static bool read_test(struct test *test)
+{
+	char *field, *value;
+	char buf[1000];
+
+	memset(test, 0, sizeof(*test));
+	test->name = read_field("var", false);
+	if (!test->name)
+		return false;
+	test->desc = read_field("desc", true);
+	test->style = read_field("style", true);
+	/* Read any optional fields. */
+	while ((value = any_field(&field)) != NULL) {
+		if (strcmp(field, "depends") == 0)
+			test->depends = value;
+		else if (strcmp(field, "link") == 0)
+			test->link = value;
+		else if (strcmp(field, "flags") == 0)
+			test->flags = value;
+		else if (strcmp(field, "overrides") == 0)
+			test->overrides = value;
+		else if (strcmp(field, "code") == 0)
+			break;
+		else
+			c12r_errx(2, "Unknown field %s in %s",
+				  field, test->name);
+	}
+	if (!value)
+		c12r_errx(2, "Missing code in %s", test->name);
+
+	if (strlen(value) == 0) {
+		/* Multiline program, read to END comment */
+		while (fgets(buf, sizeof(buf), stdin) != 0) {
+			size_t n;
+			if (strncmp(buf, "/*END*/", 7) == 0)
+				break;
+			n = strlen(value);
+			value = realloc(value, n + strlen(buf) + 1);
+			strcpy(value + n, buf);
+			n += strlen(buf);
+		}
+	}
+	test->fragment = value;
+	return true;
+}
+
+static void read_tests(size_t num_tests)
+{
+	while (read_test(tests + num_tests)) {
+		num_tests++;
+		tests = realloc(tests, num_tests * sizeof(tests[0]));
+	}
+}
+
 int main(int argc, const char *argv[])
 {
 	char *cmd;
@@ -767,6 +886,7 @@ int main(int argc, const char *argv[])
 	const char *orig_cc;
 	const char *varfile = NULL;
 	const char *headerfile = NULL;
+	bool extra_tests = false;
 	FILE *outf;
 
 	if (argc > 0)
@@ -774,7 +894,7 @@ int main(int argc, const char *argv[])
 
 	while (argc > 1) {
 		if (strcmp(argv[1], "--help") == 0) {
-			printf("Usage: configurator [-v] [--var-file=<filename>] [-O<outflag>] [--configurator-cc=<compiler-for-tests>] [--autotools-style] [<compiler> <flags>...]\n"
+			printf("Usage: configurator [-v] [--var-file=<filename>] [-O<outflag>] [--configurator-cc=<compiler-for-tests>] [--autotools-style] [--extra-tests] [<compiler> <flags>...]\n"
 			       "  <compiler> <flags> will have \"<outflag> <outfile> <infile.c>\" appended\n"
 			       "Default: %s %s %s\n",
 			       DEFAULT_COMPILER, DEFAULT_FLAGS,
@@ -815,6 +935,10 @@ int main(int argc, const char *argv[])
 			headerfile = argv[1] + 14;
 			argc--;
 			argv++;
+		} else if (strcmp(argv[1], "--extra-tests") == 0) {
+			extra_tests = true;
+			argc--;
+			argv++;
 		} else if (strcmp(argv[1], "--") == 0) {
 			break;
 		} else if (argv[1][0] == '-') {
@@ -831,6 +955,9 @@ int main(int argc, const char *argv[])
 	tests = calloc(sizeof(base_tests)/sizeof(base_tests[0]) + 1,
 		       sizeof(base_tests[0]));
 	memcpy(tests, base_tests, sizeof(base_tests));
+
+	if (extra_tests)
+		read_tests(sizeof(base_tests)/sizeof(base_tests[0]));
 
 	orig_cc = argv[1];
 	if (configurator_cc)
