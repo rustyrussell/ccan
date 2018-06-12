@@ -1,0 +1,152 @@
+CONFIGURATOR(1)
+===============
+:doctype: manpage
+
+
+NAME
+----
+configurator - Generate a simple config.h or variable file
+
+
+SYNOPSIS
+--------
+*configurator* ['OPTIONS'] ['CC'] ['CFLAGS'...]
+
+DESCRIPTION
+-----------
+*configurator* is a standalone C program which evaluates the C
+environment using code snippets.
+
+The C compiler (and flags) can be provided on the command-line,
+otherwise built-in defaults are used.
+
+It has a builtin set of tests, to which more can be added.  By default
+it produces a C header file to standard output, but it can also
+produce a file containing simple "key=value" lines suitable for parsing
+by *sh* or *make*.
+
+OPTIONS
+-------
+*-v*::
+  Print out every test result; specified twice, print out each test too.
+
+*-vv*::
+  Shortcut for two *-v* options.
+
+*--var-file=<file>*::
+  Output results in format '<key>=<value>' to '<file>', or stdout if '<file>'
+  is '-'.  Default is not to output this.
+
+*--header-file=<file>*::
+  Output C-style header to '<file>' instead out stdout.
+
+*--autotools-style*::
+  Produce output to stdout like autotools' configure script.  This
+  usually means you want to use *--header-file* so that doesn't mix with stdout.
+
+*-O<outflag>*::
+  Override option to set compiler output file.
+
+*--configurator-cc=<command>*::
+  This gives the real compiler command to use for tests, instead of the first
+  commandline argument or the default.
+
+*--extra-tests*::
+  Read additional tests from stdin, see 'EXTRA TESTS' below.
+
+OUTPUT
+------
+
+The header output is '#ifndef/#define' idempotent-wrapped using
+'CCAN_CONFIG_H', and defines '_GNU_SOURCE'.  It also defines
+'CCAN_COMPILER', 'CCAN_CFLAGS' and 'CCAN_OUTPUT_EXE_CFLAG' as
+either the built-in definitions or those provided on the command line.
+The remainder is '#define' of the test names followed by a '0' or '1':
+note that this means you should use '#if' not '#ifdef' to test features
+in your C programs!
+
+The var-file output is simply the test names followed by '=1' or '=0'.
+
+EXTRA TESTS
+-----------
+Extra tests must be formatted as '<key>=<value>' pairs, with leading
+whitespace and '#' lines ignored.
+
+The first three lines are always the same:
+
+*var=<varname>*::
+   Define the variable set by the test, e.g. 'var=HAVE_FOO'.
+
+*desc=<description>*::
+   The description printed out with *--autotools-style*, e.g. 'foo support'.
+
+*style=<style>*::
+   The set of strings defining how to treat the code snippet.  It must
+   include one of 'OUTSIDE_MAIN', 'DEFINES_FUNC', 'INSIDE_MAIN' or
+   'DEFINES_EVERYTHING' which control the boilerplate to surround the
+   file, and may include 'EXECUTE' or both 'EXECUTE' and
+   'MAY_NOT_COMPILE'.  e.g. 'INSIDE_MAIN|EXECUTE'.
+
+The following styles are defined:
+
+*OUTSIDE_MAIN*::
+  means we put a simple boilerplate main below it.
+
+*DEFINES_FUNC*::
+  put a simple boilerplate main below it, which references 'func' (to
+  avoid any unused warnings).
+
+*INSIDE_MAIN*::
+  put this inside main().  This also means it must exit with status 0
+  if it compiles, unless *EXECUTE* is added.
+
+*DEFINES_EVERYTHING*::
+  don't add any boilerplate at all.
+
+*EXECUTE*::
+  this is an execution test; it must compile, but may not exit with
+  status 0 when run.
+
+*MAY_NOT_COMPILE*::
+  Only useful with EXECUTE: don't get upset if it doesn't compile.
+
+The following lines are optional, and may follow in any order:
+
+*depends=<varnames>*::
+  A space-separates set of vars which must pass to even try to pass this
+  one.  If the var begins with '!' then the dependency must fail to try
+  this one. e.g. 'depends=HAVE_UCONTEXT !HAVE_VALGRIND_MEMCHECK_H'.
+
+*link=<linkargs>*::
+  Extra arguments for linking with this test, e.g. 'link=-lrt'.
+
+*flags=<cflags>*::
+  Extra flags for compiling with this test, e.g. 'flags=-fopenmp'.
+
+*overrides=<varname>*::
+  Tests to force passing if this one passes. e.g. 'overrides=HAVE_SOME_FOO'.
+
+The final line is the code to test, itself, either as a single
+'code=<oneline>' or as multiple lines starting with 'code=' and ending
+with '/\*END*/' on a line by itself. e.g. 'code=return 0;'
+
+EXIT STATUS
+-----------
+It will exit with non-zero status if it has a problem.  *1* means bad
+commandline options. *2* means some operational problem creating and
+running tests. *3* means a bad test. *4* means failure to parse an
+extra test.
+
+AUTHOR
+------
+Rusty Russell wrote *configurator*.
+
+RESOURCES
+---------
+Main web site: http://ccodearchive.net/
+
+Wiki: https://github.com/rustyrussell/ccan/wiki/
+
+COPYING
+-------
+This program is under the MIT-style BSD license; see code for details.

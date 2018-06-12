@@ -26,6 +26,11 @@
  */
 #define _POSIX_C_SOURCE 200809L                /* For pclose, popen, strdup */
 
+#define EXIT_BAD_USAGE		  1
+#define EXIT_TROUBLE_RUNNING	  2
+#define EXIT_BAD_TEST		  3
+#define EXIT_BAD_INPUT		  4
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdarg.h>
@@ -544,7 +549,7 @@ static char *grab_stream(FILE *file)
 	}
 	size += ret;
 	if (ferror(file))
-		c12r_err(1, "reading from command");
+		c12r_err(EXIT_TROUBLE_RUNNING, "reading from command");
 	buffer[size] = '\0';
 	return buffer;
 }
@@ -564,7 +569,7 @@ static char *run(const char *cmd, int *exitstatus)
 
 	cmdout = popen(cmdredir, "r");
 	if (!cmdout)
-		c12r_err(1, "popen \"%s\"", cmdredir);
+		c12r_err(EXIT_TROUBLE_RUNNING, "popen \"%s\"", cmdredir);
 
 	free(cmdredir);
 
@@ -605,7 +610,7 @@ static struct test *find_test(const char *name)
 		if (strcmp(tests[i].name, name) == 0)
 			return &tests[i];
 	}
-	c12r_errx(2, "Unknown test %s", name);
+	c12r_errx(EXIT_BAD_TEST, "Unknown test %s", name);
 	abort();
 }
 
@@ -661,7 +666,7 @@ static bool run_test(const char *cmd, struct test *test)
 
 	outf = fopen(INPUT_FILE, verbose > 1 ? "w+" : "w");
 	if (!outf)
-		c12r_err(1, "creating %s", INPUT_FILE);
+		c12r_err(EXIT_TROUBLE_RUNNING, "creating %s", INPUT_FILE);
 
 	fprintf(outf, "%s", PRE_BOILERPLATE);
 
@@ -683,7 +688,7 @@ static bool run_test(const char *cmd, struct test *test)
 	} else if (strstr(test->style, "DEFINES_EVERYTHING")) {
 		fprintf(outf, "%s", test->fragment);
 	} else
-		c12r_errx(2, "Unknown style for test %s: %s",
+		c12r_errx(EXIT_BAD_TEST, "Unknown style for test %s: %s",
 			  test->name, test->style);
 
 	if (verbose > 1) {
@@ -725,7 +730,8 @@ static bool run_test(const char *cmd, struct test *test)
 			       test->name, status, output);
 		if (strstr(test->style, "EXECUTE")
 		    && !strstr(test->style, "MAY_NOT_COMPILE"))
-			c12r_errx(1, "Test for %s did not compile:\n%s",
+			c12r_errx(EXIT_BAD_TEST,
+				  "Test for %s did not compile:\n%s",
 				  test->name, output);
 		test->answer = false;
 		free(output);
@@ -737,7 +743,8 @@ static bool run_test(const char *cmd, struct test *test)
 		    || strstr(test->style, "INSIDE_MAIN")) {
 			output = run("." DIR_SEP OUTPUT_FILE, &status);
 			if (!strstr(test->style, "EXECUTE") && status != 0)
-				c12r_errx(1, "Test for %s failed with %i:\n%s",
+				c12r_errx(EXIT_BAD_TEST,
+					  "Test for %s failed with %i:\n%s",
 					  test->name, status, output);
 			if (verbose && status)
 				printf("%s exited %i\n", test->name, status);
@@ -774,7 +781,7 @@ static char *any_field(char **fieldname)
 
 		eq = strchr(p, '=');
 		if (!eq)
-			c12r_errx(2, "no = in line: %s", p);
+			c12r_errx(EXIT_BAD_INPUT, "no = in line: %s", p);
 		*eq = '\0';
 		*fieldname = strdup(p);
 		p = eq + 1;
@@ -792,10 +799,11 @@ static char *read_field(const char *name, bool compulsory)
 	if (!value) {
 		if (!compulsory)
 			return NULL;
-		c12r_errx(2, "Could not read field %s", name);
+		c12r_errx(EXIT_BAD_INPUT, "Could not read field %s", name);
 	}
 	if (strcmp(fieldname, name) != 0)
-		c12r_errx(2, "Expected field %s not %s", name, fieldname);
+		c12r_errx(EXIT_BAD_INPUT,
+			  "Expected field %s not %s", name, fieldname);
 	return value;
 }
 
@@ -845,11 +853,11 @@ static bool read_test(struct test *test)
 		else if (strcmp(field, "code") == 0)
 			break;
 		else
-			c12r_errx(2, "Unknown field %s in %s",
+			c12r_errx(EXIT_BAD_INPUT, "Unknown field %s in %s",
 				  field, test->name);
 	}
 	if (!value)
-		c12r_errx(2, "Missing code in %s", test->name);
+		c12r_errx(EXIT_BAD_INPUT, "Missing code in %s", test->name);
 
 	if (strlen(value) == 0) {
 		/* Multiline program, read to END comment */
@@ -909,7 +917,7 @@ int main(int argc, const char *argv[])
 				fprintf(stderr,
 					"%s: option requires an argument -- O\n",
 					argv[0]);
-				exit(1);
+				exit(EXIT_BAD_USAGE);
 			}
 		} else if (strcmp(argv[1], "-v") == 0) {
 			argc--;
@@ -942,7 +950,7 @@ int main(int argc, const char *argv[])
 		} else if (strcmp(argv[1], "--") == 0) {
 			break;
 		} else if (argv[1][0] == '-') {
-			c12r_errx(2, "Unknown option %s", argv[1]);
+			c12r_errx(EXIT_BAD_USAGE, "Unknown option %s", argv[1]);
 		} else {
 			break;
 		}
@@ -985,13 +993,15 @@ int main(int argc, const char *argv[])
 			start_test("Writing variables to ", varfile);
 			vars = fopen(varfile, "a");
 			if (!vars)
-				c12r_err(2, "Could not open %s", varfile);
+				c12r_err(EXIT_TROUBLE_RUNNING,
+					 "Could not open %s", varfile);
 		}
 		for (i = 0; tests[i].name; i++)
 			fprintf(vars, "%s=%u\n", tests[i].name, tests[i].answer);
 		if (vars != stdout) {
 			if (fclose(vars) != 0)
-				c12r_err(2, "Closing %s", varfile);
+				c12r_err(EXIT_TROUBLE_RUNNING,
+					 "Closing %s", varfile);
 			end_test(1);
 		}
 	}
@@ -1000,7 +1010,8 @@ int main(int argc, const char *argv[])
 		start_test("Writing header to ", headerfile);
 		outf = fopen(headerfile, "w");
 		if (!outf)
-			c12r_err(2, "Could not open %s", headerfile);
+			c12r_err(EXIT_TROUBLE_RUNNING,
+				 "Could not open %s", headerfile);
 	} else
 		outf = stdout;
 
@@ -1023,7 +1034,7 @@ int main(int argc, const char *argv[])
 
 	if (headerfile) {
 		if (fclose(outf) != 0)
-			c12r_err(2, "Closing %s", headerfile);
+			c12r_err(EXIT_TROUBLE_RUNNING, "Closing %s", headerfile);
 		end_test(1);
 	}
 
