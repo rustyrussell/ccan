@@ -752,6 +752,10 @@ int main(int argc, const char *argv[])
 			headerfile = argv[1] + 14;
 			argc--;
 			argv++;
+		} else if (strcmp(argv[1], "--") == 0) {
+			break;
+		} else if (argv[1][0] == '-') {
+			c12r_errx(2, "Unknown option %s", argv[1]);
 		} else {
 			break;
 		}
