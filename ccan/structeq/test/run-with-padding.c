@@ -1,11 +1,14 @@
 #include <ccan/structeq/structeq.h>
 #include <ccan/tap/tap.h>
 
+/* In theory, this could be generated without padding, if alignof(int) were 0,
+ * and test would fail.  Call me when that happens. */
 struct mydata {
-	int start, end;
+	char start;
+	int end;
 };
 
-STRUCTEQ_DEF(mydata, 0, start, end);
+STRUCTEQ_DEF(mydata, sizeof(int) - sizeof(char), start, end);
 
 int main(void)
 {
