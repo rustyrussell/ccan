@@ -54,7 +54,7 @@ int main(void)
 
 		p1 = tal(NULL, char);
 		ok1(p1);
-		ok1(tal_count(p1) == 0);
+		ok1(tal_count(p1) == 1);
 
 		p2 = tal_arr(p1, char, 1);
 		ok1(p2);
