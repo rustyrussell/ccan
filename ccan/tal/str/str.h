@@ -14,7 +14,8 @@
  * @ctx: NULL, or tal allocated object to be parent.
  * @p: the string to copy (can be take()).
  */
-char *tal_strdup(const tal_t *ctx, const char *p TAKES);
+#define tal_strdup(ctx, p) tal_strdup_(ctx, p, TAL_LABEL(char, "[]"))
+char *tal_strdup_(const tal_t *ctx, const char *p TAKES, const char *label);
 
 /**
  * tal_strndup - duplicate a limited amount of a string.
@@ -24,14 +25,19 @@ char *tal_strdup(const tal_t *ctx, const char *p TAKES);
  *
  * Always gives a nul-terminated string, with strlen() <= @n.
  */
-char *tal_strndup(const tal_t *ctx, const char *p TAKES, size_t n);
+#define tal_strndup(ctx, p, n) tal_strndup_(ctx, p, n, TAL_LABEL(char, "[]"))
+char *tal_strndup_(const tal_t *ctx, const char *p TAKES, size_t n,
+		   const char *label);
 
 /**
  * tal_fmt - allocate a formatted string
  * @ctx: NULL, or tal allocated object to be parent.
  * @fmt: the printf-style format (can be take()).
  */
-char *tal_fmt(const tal_t *ctx, const char *fmt TAKES, ...) PRINTF_FMT(2,3);
+#define tal_fmt(ctx, ...)				 \
+	tal_fmt_(ctx, TAL_LABEL(char, "[]"), __VA_ARGS__)
+char *tal_fmt_(const tal_t *ctx, const char *label, const char *fmt TAKES,
+	        ...) PRINTF_FMT(3,4);
 
 /**
  * tal_vfmt - allocate a formatted string (va_list version)
@@ -39,7 +45,10 @@ char *tal_fmt(const tal_t *ctx, const char *fmt TAKES, ...) PRINTF_FMT(2,3);
  * @fmt: the printf-style format (can be take()).
  * @va: the va_list containing the format args.
  */
-char *tal_vfmt(const tal_t *ctx, const char *fmt TAKES, va_list ap)
+#define tal_vfmt(ctx, fmt, va)				\
+	tal_vfmt_(ctx, fmt, va, TAL_LABEL(char, "[]"))
+char *tal_vfmt_(const tal_t *ctx, const char *fmt TAKES, va_list ap,
+		const char *label)
 	PRINTF_FMT(2,0);
 
 /**
@@ -67,7 +76,9 @@ bool tal_append_vfmt(char **baseptr, const char *fmt TAKES, va_list ap);
  * @s1: the first string (can be take()).
  * @s2: the second string (can be take()).
  */
-char *tal_strcat(const tal_t *ctx, const char *s1 TAKES, const char *s2 TAKES);
+#define tal_strcat(ctx, s1, s2) tal_strcat_(ctx, s1, s2, TAL_LABEL(char, "[]"))
+char *tal_strcat_(const tal_t *ctx, const char *s1 TAKES, const char *s2 TAKES,
+		  const char *label);
 
 enum strsplit {
 	STR_EMPTY_OK,
@@ -109,10 +120,13 @@ enum strsplit {
  *		return long_lines;
  *	}
  */
-char **tal_strsplit(const tal_t *ctx,
-		    const char *string TAKES,
-		    const char *delims TAKES,
-		    enum strsplit flag);
+#define tal_strsplit(ctx, string, delims, flag)	\
+	tal_strsplit_(ctx, string, delims, flag, TAL_LABEL(char *, "[]"))
+char **tal_strsplit_(const tal_t *ctx,
+		     const char *string TAKES,
+		     const char *delims TAKES,
+		     enum strsplit flag,
+		     const char *label);
 
 enum strjoin {
 	STR_TRAIL,
@@ -142,10 +156,13 @@ enum strjoin {
  *		return ret;
  *	}
  */
-char *tal_strjoin(const void *ctx,
-		  char *strings[] TAKES,
-		  const char *delim TAKES,
-		  enum strjoin flags);
+#define tal_strjoin(ctx, strings, delim, flags)				\
+	tal_strjoin_(ctx, strings, delim, flags, TAL_LABEL(char, "[]"))
+char *tal_strjoin_(const void *ctx,
+		   char *strings[] TAKES,
+		   const char *delim TAKES,
+		   enum strjoin flags,
+		   const char *label);
 
 /**
  * tal_strreg - match/extract from a string via (extended) regular expressions.
@@ -187,6 +204,8 @@ char *tal_strjoin(const void *ctx,
  *		return 0;
  *	}
  */
-bool tal_strreg(const void *ctx, const char *string TAKES,
-		const char *regex TAKES, ...);
+#define tal_strreg(ctx, string, ...)					\
+	tal_strreg_(ctx, string, TAL_LABEL(char, "[]"), __VA_ARGS__)
+bool tal_strreg_(const void *ctx, const char *string TAKES,
+		 const char *label, const char *regex, ...);
 #endif /* CCAN_STR_TAL_H */
