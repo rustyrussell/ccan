@@ -656,7 +656,7 @@ const char *tal_name(const tal_t *t)
 	return n->name;
 }
 
-size_t tal_len(const tal_t *ptr)
+size_t tal_bytelen(const tal_t *ptr)
 {
 	struct length *l;
 
