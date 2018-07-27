@@ -33,7 +33,7 @@ typedef void tal_t;
  *	*p = 1;
  */
 #define tal(ctx, type)							\
-	((type *)tal_alloc_((ctx), sizeof(type), false, false, TAL_LABEL(type, "")))
+	tal_label(ctx, type, TAL_LABEL(type, ""))
 
 /**
  * talz - zeroing allocator function
@@ -47,7 +47,7 @@ typedef void tal_t;
  *	assert(*p == 0);
  */
 #define talz(ctx, type)							\
-	((type *)tal_alloc_((ctx), sizeof(type), true, false, TAL_LABEL(type, "")))
+	talz_label(ctx, type, TAL_LABEL(type, ""))
 
 /**
  * tal_free - free a tal-allocated pointer.
@@ -80,8 +80,7 @@ void *tal_free(const tal_t *p);
  *	p[1] = 1;
  */
 #define tal_arr(ctx, type, count)					\
-	((type *)tal_alloc_arr_((ctx), sizeof(type), (count), false,	\
-				true, TAL_LABEL(type, "[]")))
+	tal_arr_label(ctx, type, count, TAL_LABEL(type, "[]"))
 
 /**
  * tal_arrz - allocate an array of zeroed objects.
@@ -97,8 +96,7 @@ void *tal_free(const tal_t *p);
  *	assert(p[0] == 0 && p[1] == 0);
  */
 #define tal_arrz(ctx, type, count) \
-	((type *)tal_alloc_arr_((ctx), sizeof(type), (count), true,	\
-				true, TAL_LABEL(type, "[]")))
+	tal_arrz_label(ctx, type, count, TAL_LABEL(type, "[]"))
 
 /**
  * tal_resize - enlarge or reduce a tal_arr[z].
@@ -353,9 +351,7 @@ tal_t *tal_parent(const tal_t *ctx);
  * @p: the object to copy (or reparented if take())
  */
 #define tal_dup(ctx, type, p)					\
-	((type *)tal_dup_((ctx), tal_typechk_(p, type *),	\
-			  sizeof(type), 1, 0,			\
-			  false, TAL_LABEL(type, "")))
+	tal_dup_label(ctx, type, p, TAL_LABEL(type, ""))
 
 /**
  * tal_dup_arr - duplicate an array.
@@ -366,10 +362,27 @@ tal_t *tal_parent(const tal_t *ctx);
  * @extra: the number of extra sizeof(type) entries to allocate.
  */
 #define tal_dup_arr(ctx, type, p, n, extra)			\
+	tal_dup_arr_label(ctx, type, p, n, extra, TAL_LABEL(type, "[]"))
+
+
+
+/* Lower-level interfaces, where you want to supply your own label string. */
+#define tal_label(ctx, type, label)						\
+	((type *)tal_alloc_((ctx), sizeof(type), false, false, label))
+#define talz_label(ctx, type, label)						\
+	((type *)tal_alloc_((ctx), sizeof(type), true, false, label))
+#define tal_arr_label(ctx, type, count, label)					\
+	((type *)tal_alloc_arr_((ctx), sizeof(type), (count), false, true, label))
+#define tal_arrz_label(ctx, type, count, label)					\
+	((type *)tal_alloc_arr_((ctx), sizeof(type), (count), true, true, label))
+#define tal_dup_label(ctx, type, p, label)			\
+	((type *)tal_dup_((ctx), tal_typechk_(p, type *),	\
+			  sizeof(type), 1, 0,			\
+			  false, label))
+#define tal_dup_arr_label(ctx, type, p, n, extra, label)	\
 	((type *)tal_dup_((ctx), tal_typechk_(p, type *),	\
 			  sizeof(type), (n), (extra),		\
-			  true, TAL_LABEL(type, "[]")))
-
+			  true, label))
 
 /**
  * tal_set_backend - set the allocation or error functions to use
