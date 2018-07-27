@@ -13,6 +13,8 @@
  * tal_strdup - duplicate a string
  * @ctx: NULL, or tal allocated object to be parent.
  * @p: the string to copy (can be take()).
+ *
+ * The returned string will have tal_count() == strlen() + 1.
  */
 #define tal_strdup(ctx, p) tal_strdup_(ctx, p, TAL_LABEL(char, "[]"))
 char *tal_strdup_(const tal_t *ctx, const char *p TAKES, const char *label);
@@ -24,6 +26,7 @@ char *tal_strdup_(const tal_t *ctx, const char *p TAKES, const char *label);
  * @n: the maximum length to copy.
  *
  * Always gives a nul-terminated string, with strlen() <= @n.
+ * The returned string will have tal_count() == strlen() + 1.
  */
 #define tal_strndup(ctx, p, n) tal_strndup_(ctx, p, n, TAL_LABEL(char, "[]"))
 char *tal_strndup_(const tal_t *ctx, const char *p TAKES, size_t n,
@@ -33,6 +36,8 @@ char *tal_strndup_(const tal_t *ctx, const char *p TAKES, size_t n,
  * tal_fmt - allocate a formatted string
  * @ctx: NULL, or tal allocated object to be parent.
  * @fmt: the printf-style format (can be take()).
+ *
+ * The returned string will have tal_count() == strlen() + 1.
  */
 #define tal_fmt(ctx, ...)				 \
 	tal_fmt_(ctx, TAL_LABEL(char, "[]"), __VA_ARGS__)
@@ -44,6 +49,8 @@ char *tal_fmt_(const tal_t *ctx, const char *label, const char *fmt TAKES,
  * @ctx: NULL, or tal allocated object to be parent.
  * @fmt: the printf-style format (can be take()).
  * @va: the va_list containing the format args.
+ *
+ * The returned string will have tal_count() == strlen() + 1.
  */
 #define tal_vfmt(ctx, fmt, va)				\
 	tal_vfmt_(ctx, fmt, va, TAL_LABEL(char, "[]"))
@@ -57,6 +64,7 @@ char *tal_vfmt_(const tal_t *ctx, const char *fmt TAKES, va_list ap,
  * @fmt: the printf-style format (can be take()).
  *
  * Returns false on allocation failure.
+ * Otherwise tal_count(*@baseptr) == strlen(*@baseptr) + 1.
  */
 bool tal_append_fmt(char **baseptr, const char *fmt TAKES, ...) PRINTF_FMT(2,3);
 
@@ -67,6 +75,7 @@ bool tal_append_fmt(char **baseptr, const char *fmt TAKES, ...) PRINTF_FMT(2,3);
  * @va: the va_list containing the format args.
  *
  * Returns false on allocation failure.
+ * Otherwise tal_count(*@baseptr) == strlen(*@baseptr) + 1.
  */
 bool tal_append_vfmt(char **baseptr, const char *fmt TAKES, va_list ap);
 
@@ -75,6 +84,8 @@ bool tal_append_vfmt(char **baseptr, const char *fmt TAKES, va_list ap);
  * @ctx: NULL, or tal allocated object to be parent.
  * @s1: the first string (can be take()).
  * @s2: the second string (can be take()).
+ *
+ * The returned string will have tal_count() == strlen() + 1.
  */
 #define tal_strcat(ctx, s1, s2) tal_strcat_(ctx, s1, s2, TAL_LABEL(char, "[]"))
 char *tal_strcat_(const tal_t *ctx, const char *s1 TAKES, const char *s2 TAKES,
@@ -144,6 +155,8 @@ enum strjoin {
  * return value is allocated using tal.  Each string in @strings is
  * followed by a copy of @delim.
  *
+ * The returned string will have tal_count() == strlen() + 1.
+ *
  * Example:
  *	// Append the string "--EOL" to each line.
  *	static char *append_to_all_lines(const char *string)
@@ -180,6 +193,7 @@ char *tal_strjoin_(const void *ctx,
  * non-existent matches (eg "([a-z]*)?") the pointer is set to NULL.
  *
  * Allocation failures or malformed regular expressions return false.
+ * The allocated strings will have tal_count() == strlen() + 1.
  *
  * See Also:
  *	regcomp(3), regex(3).

@@ -68,6 +68,8 @@ static bool do_vfmt(char **buf, size_t off, const char *fmt, va_list ap)
 
 		if (ret < max) {
 			ok = true;
+			/* Make sure tal_count() is correct! */
+			tal_resize(buf, off + ret + 1);
 			break;
 		}
 		max *= 2;
@@ -222,6 +224,8 @@ char *tal_strjoin_(const tal_t *ctx,
 		totlen += dlen;
 	}
 	ret[totlen] = '\0';
+	/* Make sure tal_count() is correct! */
+	tal_resize(&ret, totlen+1);
 out:
 	if (taken(strings))
 		tal_free(strings);
