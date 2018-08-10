@@ -621,7 +621,7 @@ static inline int talloc_unreference(const void *context, const void *ptr)
 
 /*
   remove a specific parent context from a pointer. This is a more
-  controlled varient of talloc_free()
+  controlled variant of talloc_free()
 */
 int talloc_unlink(const void *context, void *ptr)
 {

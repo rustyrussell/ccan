@@ -3,7 +3,7 @@
 #include <string.h>
 
 /**
- * tal/stack - stack of tal contextes (inspired by talloc_stack)
+ * tal/stack - stack of tal contexts (inspired by talloc_stack)
  *
  * Implement a stack of tal contexts. A new (empty) context is pushed on top
  * of the stack using tal_newframe and it is popped/freed using tal_free().

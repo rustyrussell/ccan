@@ -92,7 +92,7 @@ const struct license_info licenses[] = {
 	},
 };
 
-/* License compatibilty chart (simplified: we don't test that licenses between
+/* License compatibility chart (simplified: we don't test that licenses between
  * files are compatible). */
 #define O true
 #define X false
@@ -130,7 +130,7 @@ bool license_compatible[LICENSE_UNKNOWN+1][LICENSE_UNKNOWN] = {
 #undef O
 
 /* See GPLv2 and v2 (basically same wording) for interpreting versions:
- * the "any later version" means the recepient can choose. */
+ * the "any later version" means the recipient can choose. */
 enum license which_license(struct doc_section *d)
 {
 	if (!d)

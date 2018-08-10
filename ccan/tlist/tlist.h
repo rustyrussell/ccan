@@ -34,7 +34,7 @@
 	}
 
 /**
- * TLIST_INIT - initalizer for an empty tlist
+ * TLIST_INIT - initializer for an empty tlist
  * @name: the name of the list.
  *
  * Explicit initializer for an empty list.

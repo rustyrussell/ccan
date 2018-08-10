@@ -118,7 +118,7 @@ struct scsi_task *scsi_reportluns_cdb(int report_type, int alloc_len)
 }
 
 /*
- * parse the data in blob and calcualte the size of a full report luns datain structure
+ * parse the data in blob and calculate the size of a full report luns datain structure
  */
 static int scsi_reportluns_datain_getfullsize(struct scsi_task *task)
 {
@@ -198,7 +198,7 @@ struct scsi_task *scsi_cdb_readcapacity10(int lba, int pmi)
 }
 
 /*
- * parse the data in blob and calcualte the size of a full readcapacity10 datain structure
+ * parse the data in blob and calculate the size of a full readcapacity10 datain structure
  */
 static int scsi_readcapacity10_datain_getfullsize(struct scsi_task *task
 						  UNUSED)
@@ -268,7 +268,7 @@ struct scsi_task *scsi_cdb_inquiry(int evpd, int page_code, int alloc_len)
 }
 
 /*
- * parse the data in blob and calcualte the size of a full inquiry datain structure
+ * parse the data in blob and calculate the size of a full inquiry datain structure
  */
 static int scsi_inquiry_datain_getfullsize(struct scsi_task *task)
 {
@@ -412,7 +412,7 @@ struct scsi_task *scsi_cdb_modesense6(int dbd, enum scsi_modesense_page_control 
 }
 
 /*
- * parse the data in blob and calcualte the size of a full report luns datain structure
+ * parse the data in blob and calculate the size of a full report luns datain structure
  */
 static int scsi_modesense6_datain_getfullsize(struct scsi_task *task)
 {

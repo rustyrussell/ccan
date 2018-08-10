@@ -495,7 +495,7 @@ void *tal_steal_(const tal_t *new_parent, const tal_t *ctx)
 		old_parent = ignore_destroying_bit(t->parent_child)->parent;
 
                 if (unlikely(!add_child(newpar, t))) {
-			/* We can always add to old parent, becuase it has a
+			/* We can always add to old parent, because it has a
 			 * children property already. */
 			if (!add_child(old_parent, t))
 				abort();

@@ -9,7 +9,7 @@
  *
  * Allocates and push a new tal context on top of the stack.
  * The context must be freed using tal_free() which will also pop it
- * off the stack, which will also free all its nested contextes, if any.
+ * off the stack, which will also free all its nested contexts, if any.
  *
  * NOTE: this function is not threadsafe.
  *

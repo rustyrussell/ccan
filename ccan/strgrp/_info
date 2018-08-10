@@ -51,7 +51,7 @@
  * threshold. Two measurements are used as rejecting filters (i.e. a failure to
  * exceed the threshold prevents further measurements being made):
  *
- * 4a. Comparsion of string lengths: String lengths must be within given bounds
+ * 4a. Comparison of string lengths: String lengths must be within given bounds
  * to satisfy the user-supplied similarity constraint. A negative result avoids
  * invoking the O(m * n) behaviour of LCS at the cost of O(m + n) in the two
  * strlen() invocations.

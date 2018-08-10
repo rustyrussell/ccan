@@ -448,7 +448,7 @@ delete_node(trbt_node_t *node)
 	   predecessor instead.
 	   The predecessor is guaranteed to have at most one child
 	   node since its right arm must be NULL
-	   (It must be NULL since we are its sucessor and we are above
+	   (It must be NULL since we are its successor and we are above
 	    it in the tree)
 	 */
 	if (node->left != NULL && node->right != NULL) {

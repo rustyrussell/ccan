@@ -131,7 +131,7 @@ int xstrAddSubs(xstring *x, ...);
  * @x: pointer to xstring
  * @src: string to append
  *
- * Run xstrAdd. Reterminate at inital length if truncation occurs.
+ * Run xstrAdd. Reterminate at initial length if truncation occurs.
  *
  * Return: x->truncated
  */
@@ -141,7 +141,7 @@ int xstrAddSubs(xstring *x, ...);
  * @x: pointer to xstring
  * @...: one or more strings followed by NULL
  *
- * Run xstrCat. Reterminate at inital length if truncation occurs.
+ * Run xstrCat. Reterminate at initial length if truncation occurs.
  *
  * Return: x->truncated
  */
@@ -152,7 +152,7 @@ int xstrAddSubs(xstring *x, ...);
  * @sep: separator string
  * @...: one or more strings followed by NULL
  *
- * Run xstrJoin. Reterminate at inital length if truncation occurs.
+ * Run xstrJoin. Reterminate at initial length if truncation occurs.
  *
  * Return: x->truncated
  */
@@ -163,7 +163,7 @@ int xstrAddSubs(xstring *x, ...);
  * @x: pointer to xstring
  * @...: one or more pairs of string and length followed by NULL
  *
- * Run xstrAddSubs. Reterminate at inital length if truncation occurs.
+ * Run xstrAddSubs. Reterminate at initial length if truncation occurs.
  *
  * Return: x->truncated
  */

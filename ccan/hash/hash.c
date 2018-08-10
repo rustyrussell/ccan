@@ -281,7 +281,7 @@ static uint32_t hashlittle( const void *key, size_t length, uint32_t *val2 )
      * rest of the string.  Every machine with memory protection I've seen
      * does it on word boundaries, so is OK with this.  But VALGRIND will
      * still catch it and complain.  The masking trick does make the hash
-     * noticably faster for short strings (like English words).
+     * noticeably faster for short strings (like English words).
      *
      * Not on my testing with gcc 4.5 on an intel i5 CPU, at least --RR.
      */
@@ -458,7 +458,7 @@ static uint32_t hashbig( const void *key, size_t length, uint32_t *val2)
      * rest of the string.  Every machine with memory protection I've seen
      * does it on word boundaries, so is OK with this.  But VALGRIND will
      * still catch it and complain.  The masking trick does make the hash
-     * noticably faster for short strings (like English words).
+     * noticeably faster for short strings (like English words).
      *
      * Not on my testing with gcc 4.5 on an intel i5 CPU, at least --RR.
      */

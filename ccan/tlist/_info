@@ -6,7 +6,7 @@
  * tlist - typesafe double linked list routines
  *
  * The list header contains routines for manipulating double linked lists;
- * this extends it so you can create list head types which only accomodate
+ * this extends it so you can create list head types which only accommodate
  * a specific entry type.
  *
  * Example:

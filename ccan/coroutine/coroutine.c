@@ -17,7 +17,7 @@
  * Stack management
  */
 
-/* Returns lowest stack addres, regardless of growth direction */
+/* Returns lowest stack address, regardless of growth direction */
 static UNNEEDED void *coroutine_stack_base(struct coroutine_stack *stack)
 {
 #if HAVE_STACK_GROWS_UPWARDS

@@ -78,7 +78,7 @@ struct rfc822_msg *rfc822_start(const void *ctx, const char *p, size_t len);
  * rfc822_free - free an rfc822 message
  * @msg: message to free
  *
- * Frees an rfc822_msg context, including all subsiduary data
+ * Frees an rfc822_msg context, including all subsidiary data
  * structures.
  */
 void rfc822_free(struct rfc822_msg *msg);

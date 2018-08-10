@@ -31,7 +31,7 @@
 		TCON_CONTAINER(canary, etype, link))
 
 /**
- * TLIST2_INIT - initalizer for an empty tlist
+ * TLIST2_INIT - initializer for an empty tlist
  * @name: the name of the list.
  *
  * Explicit initializer for an empty list.
