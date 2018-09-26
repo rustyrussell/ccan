@@ -40,6 +40,7 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 	struct rbuf in;
 	int status, ms;
 	struct timeabs start;
+	const char *ret;
 
 	*ok = false;
 	if (pipe(p) != 0)
@@ -82,9 +83,10 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 	}
 
 	close(p[1]);
-	rbuf_init(&in, p[0], tal_arr(ctx, char, 4096), 4096);
-	if (!rbuf_read_str(&in, 0, do_tal_realloc) && errno)
-		in.buf = tal_free(in.buf);
+	rbuf_init(&in, p[0], tal_arr(ctx, char, 4096), 4096, membuf_tal_realloc);
+	ret = rbuf_read_str(&in, '\0');
+	if (!ret)
+		tal_free(rbuf_cleanup(&in));
 
 	/* This shouldn't fail... */
 	if (waitpid(pid, &status, 0) != pid)
@@ -97,14 +99,14 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 		*timeout_ms -= ms;
 	close(p[0]);
 	if (tools_verbose) {
-		printf("%s", in.buf);
+		printf("%s", ret);
 		printf("Finished: %u ms, %s %u\n", ms,
 		       WIFEXITED(status) ? "exit status" : "killed by signal",
 		       WIFEXITED(status) ? WEXITSTATUS(status)
 		       : WTERMSIG(status));
 	}
 	*ok = (WIFEXITED(status) && WEXITSTATUS(status) == 0);
-	return in.buf;
+	return ret;
 }
 
 /* Tals *output off ctx; return false if command fails. */
@@ -267,7 +269,7 @@ free:
 	return ret;
 }
 
-void *do_tal_realloc(void *p, size_t size)
+void *membuf_tal_realloc(struct membuf *mb, void *p, size_t size)
 {
 	tal_resize((char **)&p, size);
 	return p;

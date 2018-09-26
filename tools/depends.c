@@ -20,6 +20,7 @@ lines_from_cmd(const void *ctx, const char *format, ...)
 	char *cmd;
 	FILE *p;
 	struct rbuf in;
+	char *str;
 
 	va_start(ap, format);
 	cmd = tal_vfmt(ctx, format, ap);
@@ -30,12 +31,13 @@ lines_from_cmd(const void *ctx, const char *format, ...)
 		err(1, "Executing '%s'", cmd);
 
 	/* FIXME: Use rbuf_read_str(&in, '\n') rather than strsplit! */
-	rbuf_init(&in, fileno(p), tal_arr(ctx, char, 0), 0);
-	if (!rbuf_read_str(&in, 0, do_tal_realloc) && errno)
+	rbuf_init(&in, fileno(p), tal_arr(ctx, char, 0), 0, membuf_tal_realloc);
+	str = rbuf_read_str(&in, 0);
+	if (!str)
 		err(1, "Reading from '%s'", cmd);
 	pclose(p);
 
-	return tal_strsplit(ctx, in.buf, "\n", STR_EMPTY_OK);
+	return tal_strsplit(ctx, str, "\n", STR_EMPTY_OK);
 }
 
 /* Be careful about trying to compile over running programs (parallel make).

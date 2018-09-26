@@ -46,7 +46,7 @@ config.h: $(CONFIGURATOR) Makefile
 TOOLS := tools/ccan_depends tools/doc_extract tools/namespacize tools/modfiles
 TOOLS_SRCS := $(filter-out $(TOOLS:%=%.c), $(wildcard tools/*.c))
 TOOLS_DEPS := $(TOOLS_SRCS:%.c=%.d) $(TOOLS:%=%.d)
-TOOLS_CCAN_MODULES := asort err foreach hash htable list noerr opt rbuf \
+TOOLS_CCAN_MODULES := asort err foreach hash htable list membuf noerr opt rbuf \
     read_write_all str take tal tal/grab_file tal/link tal/path tal/str time
 TOOLS_CCAN_SRCS := $(wildcard $(TOOLS_CCAN_MODULES:%=ccan/%/*.c))
 TOOLS_OBJS := $(TOOLS_SRCS:%.c=%.o) $(TOOLS_CCAN_SRCS:%.c=%.o)
