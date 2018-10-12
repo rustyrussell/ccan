@@ -90,7 +90,7 @@ int main(void)
 
 	ok1(membuf_consume(&intbuf, 1));
 	ok1(membuf_num_elems(&intbuf) == 0);
-	
+
 	/* Force it to more-than-double; make sure that works! */
 	memset(membuf_add(&intbuf, 300), 0, 300*sizeof(int));
 	ok1(membuf_num_elems(&intbuf) == 300);

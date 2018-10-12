@@ -23,7 +23,7 @@ size_t membuf_prepare_space_(struct membuf *mb,
 	/* Always reset in the trivial empty case. */
 	if (mb->start == mb->end)
 		mb->start = mb->end = 0;
-	
+
 	if (membuf_num_space_(mb) >= num_extra)
 		return 0;
 

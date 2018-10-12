@@ -134,6 +134,20 @@ static inline void *membuf_space_(struct membuf *mb, size_t elemsize)
 }
 
 /**
+ * membuf_added - declare that we've added this many elements.
+ * @mb: the MEMBUF() declared membuf.
+ * @n: the number of elements we added (must be < membuf_num_space()).
+ */
+#define membuf_added(mb, num)						\
+	membuf_added_(tcon_unwrap(mb), (num))
+
+static inline void membuf_added_(struct membuf *mb, size_t num)
+{
+	assert(num <= membuf_num_space_(mb));
+	mb->end += num;
+}
+
+/**
  * membuf_prepare_space - internal routine to make sure we've got space.
  * @mb: the MEMBUF() declared membuf.
  * @num_extra: the minimum number of elements of space we need
@@ -181,10 +195,23 @@ static inline void *membuf_add_(struct membuf *mb, size_t num, size_t elemsize)
 
 	oldend = membuf_space_(mb, elemsize);
 	/* We assume expandfn succeeded. */
-	assert(num <= membuf_num_space_(mb));
-	mb->end += num;
+	membuf_added_(mb, num);
 
 	return oldend;
+}
+
+/**
+ * membuf_unadd - remove this many added elements.
+ * @mb: the MEMBUF() declared membuf.
+ * @n: the number of elements we want to "unadd" (must be < membuf_num_elems()).
+ */
+#define membuf_unadd(mb, num)						\
+	membuf_unadd_(tcon_unwrap(mb), (num))
+
+static inline void membuf_unadd_(struct membuf *mb, size_t num)
+{
+	assert(num <= membuf_num_elems_(mb));
+	mb->end -= num;
 }
 
 /**
