@@ -60,7 +60,7 @@ int main(void)
 	p = rbuf_read_str(&in, '\n');
 	ok1(errno == 0);
 	ok1(p == NULL);
-	free(membuf_cleanup(&in.m));
+	free(rbuf_cleanup(&in));
 
 	/* This exits depending on whether all tests passed */
 	return exit_status();

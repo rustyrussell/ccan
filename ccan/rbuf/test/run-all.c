@@ -54,7 +54,7 @@ int main(void)
 		}
 		rbuf_consume(&in, sizeof(buf));
 	}
-	free(membuf_cleanup(&in.m));
+	free(rbuf_cleanup(&in));
 
 	/* This exits depending on whether all tests passed */
 	return exit_status();

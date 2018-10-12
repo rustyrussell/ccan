@@ -67,7 +67,7 @@ const char *temp_dir(void);
 void keep_temp_dir(void);
 bool move_file(const char *oldname, const char *newname);
 
-void *membuf_tal_realloc(struct membuf *mb, void *p, size_t size);
+void *tal_rbuf_enlarge(struct membuf *mb, void *p, size_t len);
 
 /* Freed on exit: a good parent for auto cleanup. */
 tal_t *autofree(void);

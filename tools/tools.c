@@ -40,7 +40,7 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 	struct rbuf in;
 	int status, ms;
 	struct timeabs start;
-	const char *ret;
+	char *ret;
 
 	*ok = false;
 	if (pipe(p) != 0)
@@ -83,10 +83,8 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 	}
 
 	close(p[1]);
-	rbuf_init(&in, p[0], tal_arr(ctx, char, 4096), 4096, membuf_tal_realloc);
-	ret = rbuf_read_str(&in, '\0');
-	if (!ret)
-		tal_free(rbuf_cleanup(&in));
+	rbuf_init(&in, p[0], tal_arr(ctx, char, 4096), 4096, tal_rbuf_enlarge);
+	ret = rbuf_read_str(&in, 0);
 
 	/* This shouldn't fail... */
 	if (waitpid(pid, &status, 0) != pid)
@@ -269,7 +267,7 @@ free:
 	return ret;
 }
 
-void *membuf_tal_realloc(struct membuf *mb, void *p, size_t size)
+void *tal_rbuf_enlarge(struct membuf *mb, void *p, size_t size)
 {
 	tal_resize((char **)&p, size);
 	return p;

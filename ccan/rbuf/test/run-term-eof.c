@@ -59,6 +59,6 @@ int main(void)
 	ok1(p);
 	ok1(rbuf_start(&in) == p + strlen(p) + 1);
 	free(rbuf_cleanup(&in));
-	
+
 	return exit_status();
 }
