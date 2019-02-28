@@ -11,11 +11,10 @@
 #include <ccan/time/time.h>
 #include <ccan/timer/timer.h>
 
-static size_t num_fds = 0, max_fds = 0, num_waiting = 0;
+static size_t num_fds = 0, max_fds = 0, num_waiting = 0, num_always = 0, max_always = 0;
 static struct pollfd *pollfds = NULL;
 static struct fd **fds = NULL;
-static LIST_HEAD(closing);
-static LIST_HEAD(always);
+static struct io_plan **always = NULL;
 static struct timemono (*nowfn)(void) = time_mono;
 static int (*pollfn)(struct pollfd *fds, nfds_t nfds, int timeout) = poll;
 
@@ -110,16 +109,52 @@ bool add_listener(struct io_listener *l)
 	return true;
 }
 
-void remove_from_always(struct io_conn *conn)
+static int find_always(const struct io_plan *plan)
 {
-	list_del_init(&conn->always);
+	for (size_t i = 0; i < num_always; i++)
+		if (always[i] == plan)
+			return i;
+	return -1;
 }
 
-void backend_new_always(struct io_conn *conn)
+static void remove_from_always(const struct io_plan *plan)
 {
-	/* In case it's already in always list. */
-	list_del(&conn->always);
-	list_add_tail(&always, &conn->always);
+	int pos;
+
+	if (plan->status != IO_ALWAYS)
+		return;
+
+	pos = find_always(plan);
+	assert(pos >= 0);
+
+	/* Move last one down if we made a hole */
+	if (pos != num_always-1)
+		always[pos] = always[num_always-1];
+	num_always--;
+}
+
+bool backend_new_always(struct io_plan *plan)
+{
+	assert(find_always(plan) == -1);
+
+	if (!max_always) {
+		assert(num_always == 0);
+		always = tal_arr(NULL, struct io_plan *, 8);
+		if (!always)
+			return false;
+		max_always = 8;
+	}
+
+	if (num_always + 1 > max_always) {
+		size_t num = max_always * 2;
+
+		if (!tal_resize(&always, num))
+			return false;
+		max_always = num;
+	}
+
+	always[num_always++] = plan;
+	return true;
 }
 
 void backend_new_plan(struct io_conn *conn)
@@ -174,8 +209,9 @@ static void destroy_conn(struct io_conn *conn, bool close_fd)
 	if (close_fd)
 		close(conn->fd.fd);
 	del_fd(&conn->fd);
-	/* In case it's on always list, remove it. */
-	list_del_init(&conn->always);
+
+	remove_from_always(&conn->plan[IO_IN]);
+	remove_from_always(&conn->plan[IO_OUT]);
 
 	/* errno saved/restored by tal_free itself. */
 	if (conn->finish) {
@@ -217,15 +253,12 @@ static void accept_conn(struct io_listener *l)
 static bool handle_always(void)
 {
 	bool ret = false;
-	struct io_conn *conn;
 
-	while ((conn = list_pop(&always, struct io_conn, always)) != NULL) {
-		assert(conn->plan[IO_IN].status == IO_ALWAYS
-		       || conn->plan[IO_OUT].status == IO_ALWAYS);
-
-		/* Re-initialize, for next time. */
-		list_node_init(&conn->always);
-		io_do_always(conn);
+	while (num_always > 0) {
+		/* Remove first: it might re-add */
+		struct io_plan *plan = always[num_always-1];
+		num_always--;
+		io_do_always(plan);
 		ret = true;
 	}
 	return ret;

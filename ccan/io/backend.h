@@ -60,9 +60,6 @@ struct io_plan {
 struct io_conn {
 	struct fd fd;
 
-	/* always list. */
-	struct list_node always;
-
 	void (*finish)(struct io_conn *, void *arg);
 	void *finish_arg;
 
@@ -76,15 +73,14 @@ bool add_conn(struct io_conn *c);
 bool add_duplex(struct io_conn *c);
 void del_listener(struct io_listener *l);
 void cleanup_conn_without_close(struct io_conn *c);
-void backend_new_always(struct io_conn *conn);
+bool backend_new_always(struct io_plan *plan);
 void backend_new_plan(struct io_conn *conn);
-void remove_from_always(struct io_conn *conn);
 void backend_plan_done(struct io_conn *conn);
 
 void backend_wake(const void *wait);
 
 void io_ready(struct io_conn *conn, int pollflags);
-void io_do_always(struct io_conn *conn);
+void io_do_always(struct io_plan *conn);
 void io_do_wakeup(struct io_conn *conn, enum io_direction dir);
 void *do_io_loop(struct io_conn **ready);
 #endif /* CCAN_IO_BACKEND_H */
