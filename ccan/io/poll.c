@@ -58,7 +58,7 @@ static bool add_fd(struct fd *fd, short events)
 	pollfds[num_fds].events = events;
 	/* In case it's idle. */
 	if (!events)
-		pollfds[num_fds].fd = -fd->fd;
+		pollfds[num_fds].fd = -fd->fd - 1;
 	else
 		pollfds[num_fds].fd = fd->fd;
 	pollfds[num_fds].revents = 0; /* In case we're iterating now */
@@ -176,7 +176,7 @@ void backend_new_plan(struct io_conn *conn)
 		num_waiting++;
 		pfd->fd = conn->fd.fd;
 	} else {
-		pfd->fd = -conn->fd.fd;
+		pfd->fd = -conn->fd.fd - 1;
 	}
 }
 
