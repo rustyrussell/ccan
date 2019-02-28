@@ -61,10 +61,7 @@ static bool next_plan(struct io_conn *conn, struct io_plan *plan)
 	if (plan == &io_conn_freed)
 		return false;
 
-	/* It should have set a plan inside this conn (or duplex) */
-	assert(plan == &conn->plan[IO_IN]
-	       || plan == &conn->plan[IO_OUT]
-	       || plan == &conn->plan[2]);
+	assert(plan == &conn->plan[plan->dir]);
 	assert(conn->plan[IO_IN].status != IO_UNSET
 	       || conn->plan[IO_OUT].status != IO_UNSET);
 
@@ -107,6 +104,10 @@ struct io_conn *io_new_conn_(const tal_t *ctx, int fd,
 
 	/* Keep our I/O async. */
 	io_fd_block(fd, false);
+
+	/* So we can get back from plan -> conn later */
+	conn->plan[IO_OUT].dir = IO_OUT;
+	conn->plan[IO_IN].dir = IO_IN;
 
 	/* We start with out doing nothing, and in doing our init. */
 	conn->plan[IO_OUT].status = IO_UNSET;
@@ -488,7 +489,7 @@ struct io_plan *io_duplex(struct io_conn *conn,
 	assert(conn == container_of(in_plan, struct io_conn, plan[IO_IN]));
 	/* in_plan must be conn->plan[IO_IN], out_plan must be [IO_OUT] */
 	assert(out_plan == in_plan + 1);
-	return out_plan + 1;
+	return in_plan;
 }
 
 struct io_plan *io_halfclose(struct io_conn *conn)

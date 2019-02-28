@@ -37,6 +37,7 @@ enum io_plan_status {
 /**
  * struct io_plan - one half of I/O to do
  * @status: the status of this plan.
+ * @dir: are we plan[0] or plan[1] inside io_conn?
  * @io: function to call when fd becomes read/writable, returns 0 to be
  *      called again, 1 if it's finished, and -1 on error (fd will be closed)
  * @next: the next function which is called if io returns 1.
@@ -45,6 +46,7 @@ enum io_plan_status {
  */
 struct io_plan {
 	enum io_plan_status status;
+	enum io_direction dir;
 
 	int (*io)(int fd, struct io_plan_arg *arg);
 
