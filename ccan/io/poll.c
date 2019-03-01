@@ -11,7 +11,7 @@
 #include <ccan/time/time.h>
 #include <ccan/timer/timer.h>
 
-static size_t num_fds = 0, max_fds = 0, num_waiting = 0, num_always = 0, max_always = 0;
+static size_t num_fds = 0, max_fds = 0, num_waiting = 0, num_always = 0, max_always = 0, num_exclusive = 0;
 static struct pollfd *pollfds = NULL;
 static struct fd **fds = NULL;
 static struct io_plan **always = NULL;
@@ -64,6 +64,7 @@ static bool add_fd(struct fd *fd, short events)
 	pollfds[num_fds].revents = 0; /* In case we're iterating now */
 	fds[num_fds] = fd;
 	fd->backend_info = num_fds;
+	fd->exclusive[0] = fd->exclusive[1] = false;
 	num_fds++;
 	if (events)
 		num_waiting++;
@@ -93,6 +94,11 @@ static void del_fd(struct fd *fd)
 	}
 	num_fds--;
 	fd->backend_info = -1;
+
+	if (fd->exclusive[IO_IN])
+		num_exclusive--;
+	if (fd->exclusive[IO_OUT])
+		num_exclusive--;
 }
 
 static void destroy_listener(struct io_listener *l)
@@ -157,12 +163,9 @@ bool backend_new_always(struct io_plan *plan)
 	return true;
 }
 
-void backend_new_plan(struct io_conn *conn)
+static void setup_pfd(struct io_conn *conn, struct pollfd *pfd)
 {
-	struct pollfd *pfd = &pollfds[conn->fd.backend_info];
-
-	if (pfd->events)
-		num_waiting--;
+	assert(pfd == &pollfds[conn->fd.backend_info]);
 
 	pfd->events = 0;
 	if (conn->plan[IO_IN].status == IO_POLLING_NOTSTARTED
@@ -173,11 +176,23 @@ void backend_new_plan(struct io_conn *conn)
 		pfd->events |= POLLOUT;
 
 	if (pfd->events) {
-		num_waiting++;
 		pfd->fd = conn->fd.fd;
 	} else {
 		pfd->fd = -conn->fd.fd - 1;
 	}
+}
+
+void backend_new_plan(struct io_conn *conn)
+{
+	struct pollfd *pfd = &pollfds[conn->fd.backend_info];
+
+	if (pfd->events)
+		num_waiting--;
+
+	setup_pfd(conn, pfd);
+
+	if (pfd->events)
+		num_waiting++;
 }
 
 void backend_wake(const void *wait)
@@ -250,18 +265,88 @@ static void accept_conn(struct io_listener *l)
 	io_new_conn(l->ctx, fd, l->init, l->arg);
 }
 
+/* Return pointer to exclusive flag for this plan. */
+static bool *exclusive(struct io_plan *plan)
+{
+	struct io_conn *conn;
+
+	conn = container_of(plan, struct io_conn, plan[plan->dir]);
+	return &conn->fd.exclusive[plan->dir];
+}
+
+/* For simplicity, we do one always at a time */
 static bool handle_always(void)
 {
-	bool ret = false;
+	/* Backwards is simple easier to remove entries */
+	for (int i = num_always - 1; i >= 0; i--) {
+		struct io_plan *plan = always[i];
 
-	while (num_always > 0) {
+		if (num_exclusive && !*exclusive(plan))
+			continue;
 		/* Remove first: it might re-add */
-		struct io_plan *plan = always[num_always-1];
+		if (i != num_always-1)
+			always[i] = always[num_always-1];
 		num_always--;
 		io_do_always(plan);
-		ret = true;
+		return true;
 	}
-	return ret;
+
+	return false;
+}
+
+bool backend_set_exclusive(struct io_plan *plan, bool excl)
+{
+	bool *excl_ptr = exclusive(plan);
+
+	if (excl != *excl_ptr) {
+		*excl_ptr = excl;
+		if (!excl)
+			num_exclusive--;
+		else
+			num_exclusive++;
+	}
+
+	return num_exclusive != 0;
+}
+
+/* FIXME: We could do this once at set_exclusive time, and catch everywhere
+ * else that we manipulate events. */
+static void exclude_pollfds(void)
+{
+	if (num_exclusive == 0)
+		return;
+
+	for (size_t i = 0; i < num_fds; i++) {
+		struct pollfd *pfd = &pollfds[fds[i]->backend_info];
+
+		if (!fds[i]->exclusive[IO_IN])
+			pfd->events &= ~POLLIN;
+		if (!fds[i]->exclusive[IO_OUT])
+			pfd->events &= ~POLLOUT;
+
+		/* If we're not listening, we don't want error events
+		 * either. */
+		if (!pfd->events)
+			pfd->fd = -fds[i]->fd - 1;
+	}
+}
+
+static void restore_pollfds(void)
+{
+	if (num_exclusive == 0)
+		return;
+
+	for (size_t i = 0; i < num_fds; i++) {
+		struct pollfd *pfd = &pollfds[fds[i]->backend_info];
+
+		if (fds[i]->listener) {
+			pfd->events = POLLIN;
+			pfd->fd = fds[i]->fd;
+		} else {
+			struct io_conn *conn = (void *)fds[i];
+			setup_pfd(conn, pfd);
+		}
+	}
 }
 
 /* This is the main loop. */
@@ -312,7 +397,11 @@ void *io_loop(struct timers *timers, struct timer **expired)
 			}
 		}
 
+		/* We do this temporarily, assuming exclusive is unusual */
+		exclude_pollfds();
 		r = pollfn(pollfds, num_fds, ms_timeout);
+		restore_pollfds();
+
 		if (r < 0) {
 			/* Signals shouldn't break us, unless they set
 			 * io_loop_return. */
@@ -324,6 +413,9 @@ void *io_loop(struct timers *timers, struct timer **expired)
 		for (i = 0; i < num_fds && !io_loop_return; i++) {
 			struct io_conn *c = (void *)fds[i];
 			int events = pollfds[i].revents;
+
+			/* Clear so we don't get confused if exclusive next time */
+			pollfds[i].revents = 0;
 
 			if (r == 0)
 				break;

@@ -8,6 +8,8 @@
 struct fd {
 	int fd;
 	bool listener;
+	/* We could put these in io_plan, but they pack nicely here */
+	bool exclusive[2];
 	size_t backend_info;
 };
 
@@ -76,6 +78,7 @@ void cleanup_conn_without_close(struct io_conn *c);
 bool backend_new_always(struct io_plan *plan);
 void backend_new_plan(struct io_conn *conn);
 void backend_plan_done(struct io_conn *conn);
+bool backend_set_exclusive(struct io_plan *plan, bool exclusive);
 
 void backend_wake(const void *wait);
 

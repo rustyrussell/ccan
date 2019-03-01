@@ -119,6 +119,16 @@ struct io_conn *io_new_conn_(const tal_t *ctx, int fd,
 	return conn;
 }
 
+bool io_conn_exclusive(struct io_conn *conn, bool exclusive)
+{
+	return backend_set_exclusive(&conn->plan[IO_IN], exclusive);
+}
+
+bool io_conn_out_exclusive(struct io_conn *conn, bool exclusive)
+{
+	return backend_set_exclusive(&conn->plan[IO_OUT], exclusive);
+}
+
 void io_set_finish_(struct io_conn *conn,
 		    void (*finish)(struct io_conn *, void *),
 		    void *arg)
