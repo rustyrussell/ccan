@@ -11,6 +11,33 @@ struct timer_level {
 	struct list_head list[PER_LEVEL];
 };
 
+static void *timer_default_alloc(size_t len, void *arg)
+{
+	return malloc(len);
+}
+
+static void timer_default_free(const void *p, void *arg)
+{
+	free((void *)p);
+}
+
+static void *(*timer_alloc)(size_t, void *) = timer_default_alloc;
+static void (*timer_free)(const void *, void *) = timer_default_free;
+static void *timer_arg;
+
+void timers_set_allocator(void *(*alloc)(size_t len, void *arg),
+			  void (*free)(const void *p, void *arg),
+			  void *arg)
+{
+	if (!alloc)
+		alloc = timer_default_alloc;
+	if (!free)
+		free = timer_default_free;
+	timer_alloc = alloc;
+	timer_free = free;
+	timer_arg = arg;
+}
+
 static uint64_t time_to_grains(struct timemono t)
 {
 	return t.ts.tv_sec * ((uint64_t)1000000000 / TIMER_GRANULARITY)
@@ -139,7 +166,7 @@ static void add_level(struct timers *timers, unsigned int level)
 	unsigned int i;
 	struct list_head from_far;
 
-	l = malloc(sizeof(*l));
+	l = timer_alloc(sizeof(*l), timer_arg);
 	if (!l)
 		return;
 
@@ -520,5 +547,5 @@ void timers_cleanup(struct timers *timers)
 	unsigned int l;
 
 	for (l = 0; l < ARRAY_SIZE(timers->level); l++)
-		free(timers->level[l]);
+		timer_free(timers->level[l], timer_arg);
 }

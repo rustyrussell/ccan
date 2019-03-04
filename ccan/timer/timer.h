@@ -162,6 +162,19 @@ struct timer *timers_expire(struct timers *timers, struct timemono expire);
  */
 struct timers *timers_check(const struct timers *t, const char *abortstr);
 
+/**
+ * timers_set_allocator - set malloc/free functions.
+ * @alloc: allocator to use
+ * @free: unallocator to use (@p is NULL or a return from @alloc)
+ * @arg: argument to pass.
+ *
+ * This replaces the underlying malloc/free with these allocators.
+ * Setting either one to NULL restores the default allocators.
+ */
+void timers_set_allocator(void *(*alloc)(size_t len, void *arg),
+			  void (*free)(const void *p, void *arg),
+			  void *arg);
+
 #ifdef CCAN_TIMER_DEBUG
 #include <stdio.h>
 
