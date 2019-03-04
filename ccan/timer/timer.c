@@ -11,23 +11,21 @@ struct timer_level {
 	struct list_head list[PER_LEVEL];
 };
 
-static void *timer_default_alloc(size_t len, void *arg)
+static void *timer_default_alloc(struct timers *timers, size_t len)
 {
 	return malloc(len);
 }
 
-static void timer_default_free(const void *p, void *arg)
+static void timer_default_free(struct timers *timers, void *p)
 {
-	free((void *)p);
+	free(p);
 }
 
-static void *(*timer_alloc)(size_t, void *) = timer_default_alloc;
-static void (*timer_free)(const void *, void *) = timer_default_free;
-static void *timer_arg;
+static void *(*timer_alloc)(struct timers *, size_t) = timer_default_alloc;
+static void (*timer_free)(struct timers *, void *) = timer_default_free;
 
-void timers_set_allocator(void *(*alloc)(size_t len, void *arg),
-			  void (*free)(const void *p, void *arg),
-			  void *arg)
+void timers_set_allocator(void *(*alloc)(struct timers *, size_t len),
+			  void (*free)(struct timers *, void *p))
 {
 	if (!alloc)
 		alloc = timer_default_alloc;
@@ -35,7 +33,6 @@ void timers_set_allocator(void *(*alloc)(size_t len, void *arg),
 		free = timer_default_free;
 	timer_alloc = alloc;
 	timer_free = free;
-	timer_arg = arg;
 }
 
 static uint64_t time_to_grains(struct timemono t)
@@ -166,7 +163,7 @@ static void add_level(struct timers *timers, unsigned int level)
 	unsigned int i;
 	struct list_head from_far;
 
-	l = timer_alloc(sizeof(*l), timer_arg);
+	l = timer_alloc(timers, sizeof(*l));
 	if (!l)
 		return;
 
@@ -547,5 +544,5 @@ void timers_cleanup(struct timers *timers)
 	unsigned int l;
 
 	for (l = 0; l < ARRAY_SIZE(timers->level); l++)
-		timer_free(timers->level[l], timer_arg);
+		timer_free(timers, timers->level[l]);
 }

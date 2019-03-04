@@ -3,17 +3,23 @@
 #include <ccan/timer/timer.c>
 #include <ccan/tap/tap.h>
 
-static void *test_alloc(size_t len, void *arg)
+struct timers_with_counters {
+	struct timers timers;
+	size_t num_alloc, num_free;
+};
+
+
+static void *test_alloc(struct timers *timers, size_t len)
 {
-	(*(size_t *)arg)++;
+	((struct timers_with_counters *)timers)->num_alloc++;
 	return malloc(len);
 }
 
-static void test_free(const void *p, void *arg)
+static void test_free(struct timers *timers, void *p)
 {
 	if (p) {
-		(*(size_t *)arg)--;
-		free((void *)p);
+		((struct timers_with_counters *)timers)->num_free++;
+		free(p);
 	}
 }
 
@@ -25,37 +31,42 @@ static struct timemono timemono_from_nsec(unsigned long long nsec)
 
 int main(void)
 {
-	struct timers timers;
+	struct timers_with_counters tc;
 	struct timer t[64];
-	size_t num_allocs = 0;
 	const struct timemono epoch = { { 0, 0 } };
 
-	plan_tests(7);
+	tc.num_alloc = tc.num_free = 0;
+	plan_tests(12);
 
-	timers_set_allocator(test_alloc, test_free, &num_allocs);
-	timers_init(&timers, epoch);
+	timers_set_allocator(test_alloc, test_free);
+	timers_init(&tc.timers, epoch);
 	timer_init(&t[0]);
 
-	timer_addmono(&timers, &t[0],
+	timer_addmono(&tc.timers, &t[0],
 		      timemono_from_nsec(TIMER_GRANULARITY << TIMER_LEVEL_BITS));
-	timers_expire(&timers, timemono_from_nsec(1));
-	ok1(num_allocs == 1);
-	timer_del(&timers, &t[0]);
-	ok1(num_allocs == 1);
-	timers_cleanup(&timers);
-	ok1(num_allocs == 0);
+	timers_expire(&tc.timers, timemono_from_nsec(1));
+	ok1(tc.num_alloc == 1);
+	ok1(tc.num_free == 0);
+	timer_del(&tc.timers, &t[0]);
+	ok1(tc.num_alloc == 1);
+	ok1(tc.num_free == 0);
+	timers_cleanup(&tc.timers);
+	ok1(tc.num_alloc == 1);
+	ok1(tc.num_free == 1);
 
 	/* Should restore defaults */
-	timers_set_allocator(NULL, NULL, NULL);
+	timers_set_allocator(NULL, NULL);
 	ok1(timer_alloc == timer_default_alloc);
 	ok1(timer_free == timer_default_free);
 
-	timers_init(&timers, epoch);
-	timer_addmono(&timers, &t[0],
+	timers_init(&tc.timers, epoch);
+	timer_addmono(&tc.timers, &t[0],
 		      timemono_from_nsec(TIMER_GRANULARITY << TIMER_LEVEL_BITS));
-	ok1(num_allocs == 0);
-	timers_cleanup(&timers);
-	ok1(num_allocs == 0);
+	ok1(tc.num_alloc == 1);
+	ok1(tc.num_free == 1);
+	timers_cleanup(&tc.timers);
+	ok1(tc.num_alloc == 1);
+	ok1(tc.num_free == 1);
 
 	/* This exits depending on whether all tests passed */
 	return exit_status();
