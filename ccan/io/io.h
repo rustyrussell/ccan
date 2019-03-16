@@ -734,9 +734,9 @@ bool io_flush_sync(struct io_conn *conn);
  *
  * This allows you to temporarily service only one (or several) fds.
  * For example, you might want to flush out one io_conn and not
- * receive any new connections or read any otherninput.
+ * receive any new connections or read any other input.
  *
- * Returns true of there any exclusive io_conn remain, otherwise false.
+ * Returns true if any exclusive io_conn remain, otherwise false.
  * (This is useful for checking your own logic: dangling exclusive io_conn
  * are dangerous!).
  */
