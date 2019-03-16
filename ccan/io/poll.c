@@ -91,6 +91,10 @@ static void del_fd(struct fd *fd)
 		pollfds = tal_free(pollfds);
 		fds = NULL;
 		max_fds = 0;
+		if (num_always == 0) {
+			always = tal_free(always);
+			max_always = 0;
+		}
 	}
 	num_fds--;
 	fd->backend_info = -1;
@@ -140,7 +144,7 @@ static void remove_from_always(const struct io_plan *plan)
 
 	/* Only free if no fds left either. */
 	if (num_always == 0 && max_fds == 0) {
-		tal_free(always);
+		always = tal_free(always);
 		max_always = 0;
 	}
 }
