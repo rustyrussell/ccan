@@ -121,7 +121,7 @@ int main(void)
 	dne = i;
 
 	htable_init(&ht, hash, NULL);
-	ok1(ht.max == 0);
+	ok1(ht_max(&ht) == 0);
 	ok1(ht.bits == 0);
 
 	/* We cannot find an entry which doesn't exist. */
@@ -130,7 +130,7 @@ int main(void)
 	/* This should increase it once. */
 	add_vals(&ht, val, 0, 1);
 	ok1(ht.bits == 1);
-	ok1(ht.max == 1);
+	ok1(ht_max(&ht) == 1);
 	weight = 0;
 	for (i = 0; i < sizeof(ht.common_mask) * CHAR_BIT; i++) {
 		if (ht.common_mask & ((uintptr_t)1 << i)) {
@@ -146,7 +146,7 @@ int main(void)
 	/* This should increase it again. */
 	add_vals(&ht, val, 1, 1);
 	ok1(ht.bits == 2);
-	ok1(ht.max == 3);
+	ok1(ht_max(&ht) == 3);
 
 	/* Mask should be set. */
 	ok1(ht.common_mask != 0);
@@ -208,15 +208,15 @@ int main(void)
 	htable_clear(&ht);
 
 	ok1(htable_init_sized(&ht, hash, NULL, 1024));
-	ok1(ht.max >= 1024);
+	ok1(ht_max(&ht) >= 1024);
 	htable_clear(&ht);
 
 	ok1(htable_init_sized(&ht, hash, NULL, 1023));
-	ok1(ht.max >= 1023);
+	ok1(ht_max(&ht) >= 1023);
 	htable_clear(&ht);
 
 	ok1(htable_init_sized(&ht, hash, NULL, 1025));
-	ok1(ht.max >= 1025);
+	ok1(ht_max(&ht) >= 1025);
 	htable_clear(&ht);
 	
 	return exit_status();

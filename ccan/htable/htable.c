@@ -78,11 +78,14 @@ void htable_init(struct htable *ht,
 	ht->table = &ht->perfect_bit;
 }
 
-/* We've changed ht->bits, update ht->max and ht->max_with_deleted */
-static void htable_adjust_capacity(struct htable *ht)
+static inline size_t ht_max(const struct htable *ht)
 {
-	ht->max = ((size_t)3 << ht->bits) / 4;
-	ht->max_with_deleted = ((size_t)9 << ht->bits) / 10;
+	return ((size_t)3 << ht->bits) / 4;
+}
+
+static inline size_t ht_max_with_deleted(const struct htable *ht)
+{
+	return ((size_t)9 << ht->bits) / 10;
 }
 
 bool htable_init_sized(struct htable *ht,
@@ -102,7 +105,6 @@ bool htable_init_sized(struct htable *ht,
 		ht->table = &ht->perfect_bit;
 		return false;
 	}
-	htable_adjust_capacity(ht);
 	(void)htable_debug(ht, HTABLE_LOC);
 	return true;
 }
@@ -219,7 +221,6 @@ static COLD bool double_table(struct htable *ht)
 		return false;
 	}
 	ht->bits++;
-	htable_adjust_capacity(ht);
 
 	/* If we lost our "perfect bit", get it back now. */
 	if (!ht->perfect_bit && ht->common_mask) {
@@ -318,9 +319,9 @@ static COLD void update_common(struct htable *ht, const void *p)
 
 bool htable_add_(struct htable *ht, size_t hash, const void *p)
 {
-	if (ht->elems+1 > ht->max && !double_table(ht))
+	if (ht->elems+1 > ht_max(ht) && !double_table(ht))
 		return false;
-	if (ht->elems+1 + ht->deleted > ht->max_with_deleted)
+	if (ht->elems+1 + ht->deleted > ht_max_with_deleted(ht))
 		rehash_table(ht);
 	assert(p);
 	if (((uintptr_t)p & ht->common_mask) != ht->common_bits)
