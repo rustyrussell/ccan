@@ -194,17 +194,17 @@ int main(void)
 	/* Corner cases: wipe out the perfect bit using bogus pointer. */
 	htable_clear(&ht);
 	htable_add(&ht, hash(&val[NUM_VALS-1], NULL), &val[NUM_VALS-1]);
-	ok1(ht.perfect_bit);
-	perfect_bit = ht.perfect_bit;
+	ok1(ht_perfect_mask(&ht));
+	perfect_bit = ht_perfect_mask(&ht);
 	bad_pointer = (void *)((uintptr_t)&val[NUM_VALS-1] | perfect_bit);
 	htable_add(&ht, 0, bad_pointer);
-	ok1(ht.perfect_bit == 0);
+	ok1(ht_perfect_mask(&ht) == 0);
 	htable_del(&ht, 0, bad_pointer);
 
 	/* Enlarging should restore it... */
 	add_vals(&ht, val, 0, NUM_VALS-1);
 
-	ok1(ht.perfect_bit != 0);
+	ok1(ht_perfect_mask(&ht) != 0);
 	htable_clear(&ht);
 
 	ok1(htable_init_sized(&ht, hash, NULL, 1024));
