@@ -19,6 +19,18 @@ bool json_escape_eq(const struct json_escape *a, const struct json_escape *b)
 	return streq(a->s, b->s);
 }
 
+bool json_escape_needed(const char *str, size_t len)
+{
+	for (size_t i = 0; i < len; i++) {
+		if ((unsigned)str[i] < ' '
+		    || str[i] == 127
+		    || str[i] == '"'
+		    || str[i] == '\\')
+			return true;
+	}
+	return false;
+}
+
 static struct json_escape *escape(const tal_t *ctx,
 				  const char *str TAKES,
 				  size_t len,
@@ -26,6 +38,16 @@ static struct json_escape *escape(const tal_t *ctx,
 {
 	struct json_escape *esc;
 	size_t i, n;
+
+	/* Fast path: can steal, and nothing to escape. */
+	if (is_taken(str)
+	    && tal_count(str) > len
+	    && !json_escape_needed(str, len)) {
+		taken(str);
+		esc = (struct json_escape *)tal_steal(ctx, str);
+		esc->s[len] = '\0';
+		return esc;
+	}
 
 	/* Worst case: all \uXXXX */
 	esc = (struct json_escape *)tal_arr(ctx, char, len * 6 + 1);
