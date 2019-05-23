@@ -11,6 +11,8 @@ struct json_out;
 /**
  * json_out_new - allocate a json_out stream.
  * @ctx: the tal_context to allocate from, or NULL
+ *
+ * Returns NULL if tal allocation fails.
  */
 struct json_out *json_out_new(const tal_t *ctx);
 
@@ -50,20 +52,23 @@ struct json_out *json_out_dup(const tal_t *ctx, const struct json_out *src);
  * @fieldname: the fieldname, if inside an object, or NULL if inside an array.
  * @type: '[' or '{' to start an array or object, respectively.
  *
+ * Returns true unless tal_resize() fails.
  * Literally writes '"@fieldname": @type' or '@type ' if fieldname is NULL.
  * @fieldname must not need JSON escaping.
  */
-void json_out_start(struct json_out *jout, const char *fieldname, char type);
+bool json_out_start(struct json_out *jout, const char *fieldname, char type);
 
 /**
  * json_out_end - end an array or object.
  * @jout: the json_out object to write into.
  * @type: '}' or ']' to end an array or object, respectively.
  *
+ * Returns true unless tal_resize() fails.
+ *
  * Literally writes ']' or '}', keeping track of whether we need to append
  * a comma.
  */
-void json_out_end(struct json_out *jout, char type);
+bool json_out_end(struct json_out *jout, char type);
 
 /**
  * json_out_add - add a formatted member.
@@ -72,15 +77,18 @@ void json_out_end(struct json_out *jout, char type);
  * @quote: if true, surround fmt by " and ".
  * @fmt...: the printf-style format
  *
+ * Returns true unless tal_resize() fails.
+ *
  * If you're in an array, @fieldname must be NULL.  If you're in an
  * object, @fieldname must be non-NULL.  This is checked if
  * CCAN_JSON_OUT_DEBUG is defined.
  * @fieldname must not need JSON escaping.
  *
- * If the resulting string requires escaping, we call json_escape().
+ * If the resulting string requires escaping, and @quote is true, we
+ * call json_escape().
  */
 PRINTF_FMT(4,5)
-void json_out_add(struct json_out *jout,
+bool json_out_add(struct json_out *jout,
 		  const char *fieldname,
 		  bool quote,
 		  const char *fmt, ...);
@@ -95,7 +103,7 @@ void json_out_add(struct json_out *jout,
  *
  * See json_out_add() above.
  */
-void json_out_addv(struct json_out *jout,
+bool json_out_addv(struct json_out *jout,
 		   const char *fieldname,
 		   bool quote,
 		   const char *fmt,
@@ -109,7 +117,7 @@ void json_out_addv(struct json_out *jout,
  *
  * Equivalent to json_out_add(@jout, @fieldname, true, "%s", @str);
  */
-void json_out_addstr(struct json_out *jout,
+bool json_out_addstr(struct json_out *jout,
 		     const char *fieldname,
 		     const char *str);
 
@@ -120,7 +128,7 @@ void json_out_addstr(struct json_out *jout,
  * @extra: how many bytes to allocate.
  *
  * @fieldname must not need JSON escaping.  Returns a direct pointer into
- * the @extra bytes.
+ * the @extra bytes, or NULL if tal_resize() fails.
  *
  * This allows you to write your own efficient type-specific helpers.
  */
@@ -135,7 +143,8 @@ char *json_out_member_direct(struct json_out *jout,
  * This lets you access the json_out stream directly, to save a copy,
  * if you know exactly how much you will write.
  *
- * Returns a pointer to @len bytes at the end of @jout.
+ * Returns a pointer to @len bytes at the end of @jout, or NULL if
+ * tal_resize() fails.
  *
  * This is dangerous, since it doesn't automatically prepend a ","
  * like the internal logic does, but can be used (carefully) to add
@@ -156,8 +165,10 @@ char *json_out_direct(struct json_out *jout, size_t extra);
  *
  * Note that it will call json_out_contents(@src), so it expects that
  * object to be unconsumed.
+ *
+ * Returns false if tal_resize() fails.
  */
-void json_out_add_splice(struct json_out *jout,
+bool json_out_add_splice(struct json_out *jout,
 			 const char *fieldname,
 			 const struct json_out *src);
 
