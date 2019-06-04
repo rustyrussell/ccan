@@ -79,7 +79,7 @@ bool        json_validate       (const char *json);
 /*** Lookup and traversal ***/
 
 JsonNode   *json_find_element   (JsonNode *array, int index);
-JsonNode   *json_find_member    (JsonNode *object, const char *key);
+JsonNode   *json_find_member    (JsonNode *object, const char *name);
 
 JsonNode   *json_first_child    (const JsonNode *node);
 
