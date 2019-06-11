@@ -16,7 +16,7 @@
  *	#include <stdio.h>
  *	#include <stdlib.h>
  *
- *	// Given "IHATEMATH" outputs 0x98a3b8df
+ *	// Given "IHATEMATH" outputs 0x35c6ad5a
  *	int main(int argc, char *argv[])
  *	{
  *		if (argc != 2) {
@@ -24,7 +24,7 @@
  *				"Prints 32 bit CRC of the string\n", argv[0]);
  *			exit(1);
  *		}
- *		printf("0x%08x\n", crc32c(0, argv[1], strlen(argv[1])));
+ *		printf("0x%08x\n", crc32_ieee(0, argv[1], strlen(argv[1])));
  *		exit(0);
  *	}
  *
