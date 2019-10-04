@@ -29,7 +29,7 @@ int main(void)
 	}
 	/* Check it is read-write. */
 	ok1(write(fd, buf, strlen(buf)) == strlen(buf));
-	lseek(fd, SEEK_SET, 0);
+	lseek(fd, 0, SEEK_SET);
 	ok1(read(fd, buf, strlen("Hello world!")) == strlen("Hello world!"));
 	ok1(strcmp(buf, "Hello world!") == 0);
 
