@@ -9,10 +9,12 @@ bool write_all(int fd, const void *data, size_t size)
 		ssize_t done;
 
 		done = write(fd, data, size);
-		if (done < 0 && errno == EINTR)
-			continue;
-		if (done <= 0)
+		if (done < 0) {
+			if (errno == EINTR) {
+				continue;
+			}
 			return false;
+		}
 		data = (const char *)data + done;
 		size -= done;
 	}

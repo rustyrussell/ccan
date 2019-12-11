@@ -4,6 +4,12 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+/**
+ * Write `size` bytes from `data` to the file descriptor `fd`, retrying on
+ * transient errors.
+ * If the data cannot be fully written, then false is returned and errno is set
+ * to indicate the error.
+ */
 bool write_all(int fd, const void *data, size_t size);
 
 /**
