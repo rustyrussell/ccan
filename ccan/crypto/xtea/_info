@@ -1,0 +1,25 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * crypto/xtea - implementation of xtea algorithm.
+ *
+ * This code is an implementation of the simple xtea encryption/decryption
+ * algorithm.  You probably don't want to use this; try AES or chacha20
+ * from libsodium for modern encryption routines.
+ *
+ * License: CC0 (Public Domain)
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		return 0;
+	}
+
+	return 1;
+}
