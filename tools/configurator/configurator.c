@@ -639,7 +639,7 @@ static struct test *find_test(const char *name)
 #define MAIN_BODY_BOILERPLATE "return 0;\n"
 #define MAIN_END_BOILERPLATE "}\n"
 
-static bool run_test(const char *cmd, const char* wrapper, struct test *test)
+static bool run_test(const char *cmd, const char *wrapper, struct test *test)
 {
 	char *output, *newcmd;
 	FILE *outf;
@@ -757,17 +757,10 @@ static bool run_test(const char *cmd, const char* wrapper, struct test *test)
 		/* We run INSIDE_MAIN tests for sanity checking. */
 		if (strstr(test->style, "EXECUTE")
 		    || strstr(test->style, "INSIDE_MAIN")) {
-			char* cmd = "." DIR_SEP OUTPUT_FILE;
-			if(wrapper) {
-				// string length and null terminator.
-				size_t size = strlen(wrapper) + strlen(" ") + strlen(cmd) + 1;
-				char* newcmd = malloc(size);
-				memset(newcmd, '\0', size);
-				strcat(newcmd, wrapper);
-				strcat(newcmd, " ");
-				strcat(newcmd, cmd);
-				cmd = newcmd;
-			}
+			char *cmd = malloc(strlen(wrapper) + strlen(" ." DIR_SEP OUTPUT_FILE) + 1);
+
+			strcpy(cmd, wrapper);
+			strcat(cmd, " ." DIR_SEP OUTPUT_FILE);
 			output = run(cmd, &status);
 			if (wrapper) {
 				free(cmd);
@@ -922,7 +915,7 @@ int main(int argc, const char *argv[])
 		= { "", DEFAULT_COMPILER, DEFAULT_FLAGS, NULL };
 	const char *outflag = DEFAULT_OUTPUT_EXE_FLAG;
 	const char *configurator_cc = NULL;
-	const char *wrapper = NULL;
+	const char *wrapper = "";
 	const char *orig_cc;
 	const char *varfile = NULL;
 	const char *headerfile = NULL;
