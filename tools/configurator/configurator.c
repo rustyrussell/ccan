@@ -765,9 +765,7 @@ static bool run_test(const char *cmd, const char *wrapper, struct test *test)
 			strcpy(cmd, wrapper);
 			strcat(cmd, " ." DIR_SEP OUTPUT_FILE);
 			output = run(cmd, &status);
-			if (wrapper) {
-				free(cmd);
-			}
+			free(cmd);
 			if (!strstr(test->style, "EXECUTE") && status != 0)
 				c12r_errx(EXIT_BAD_TEST,
 					  "Test for %s failed with %i:\n%s",
