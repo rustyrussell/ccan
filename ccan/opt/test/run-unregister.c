@@ -10,11 +10,10 @@ int main(int argc, char *argv[])
 {
 	const char *myname = argv[0];
 
-	plan_tests(14);
+	plan_tests(15);
 
-	/* Simple short arg.*/
 	opt_register_noarg("--aaa|-a", test_noarg, NULL, "AAAAAAll");
-	opt_register_noarg("-b", test_noarg, NULL, "AAAAAAll");
+	opt_register_arg("-b", test_arg, NULL, "bbb", "b");
 
 	/* We can't unregister wrong ones, but can unregister correct one */
 	ok1(!opt_unregister("--aaa"));
@@ -22,7 +21,7 @@ int main(int argc, char *argv[])
 	ok1(opt_unregister("--aaa|-a"));
 
 	/* Arg parsing works as if we'd never registered it */
-	ok1(parse_args(&argc, &argv, "-b", NULL));
+	ok1(parse_args(&argc, &argv, "-bbbb", NULL));
 	ok1(argc == 1);
 	ok1(argv[0] == myname);
 	ok1(argv[1] == NULL);
