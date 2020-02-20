@@ -35,6 +35,9 @@
  *	bool <name>_del(struct <name> *ht, const <type> *e);
  *	bool <name>_delkey(struct <name> *ht, const <keytype> *k);
  *
+ * Delete by iterator:
+ *	bool <name>_delval(struct <name> *ht, struct <name>_iter *i);
+ *
  * Find and return the (first) matching element, or NULL:
  *	type *<name>_get(const struct @name *ht, const <keytype> *k);
  *
@@ -146,6 +149,11 @@
 		if (elem)						\
 			return name##_del(ht, elem);			\
 		return false;						\
+	}								\
+	static inline UNNEEDED void name##_delval(struct name *ht,	\
+						  struct name##_iter *iter) \
+	{								\
+		htable_delval(&ht->raw, &iter->i);			\
 	}								\
 	static inline UNNEEDED type *name##_pick(const struct name *ht,	\
 						size_t seed,		\
