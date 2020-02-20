@@ -147,7 +147,7 @@
 			return name##_del(ht, elem);			\
 		return false;						\
 	}								\
-	static inline UNNEEDED bool name##_pick(const struct name *ht,	\
+	static inline UNNEEDED type *name##_pick(const struct name *ht,	\
 						size_t seed,		\
 						struct name##_iter *iter) \
 	{								\
