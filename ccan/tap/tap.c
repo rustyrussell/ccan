@@ -43,6 +43,7 @@ static const char *todo_msg_fixed = "libtap malloc issue";
 static int todo = 0;
 static int test_died = 0;
 static int test_pid;
+void (*tap_fail_callback)(void) = NULL;
 
 /* Encapsulate the pthread code in a conditional.  In the absence of
    libpthread the code does nothing.

@@ -30,7 +30,7 @@ struct license_info {
 };
 
 /* Is [project license][file license] compatible? */
-bool license_compatible[LICENSE_UNKNOWN+1][LICENSE_UNKNOWN];
+extern bool license_compatible[LICENSE_UNKNOWN+1][LICENSE_UNKNOWN];
 
 extern const struct license_info licenses[];
 
