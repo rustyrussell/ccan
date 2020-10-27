@@ -6,7 +6,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-/* This code is based on Stevens Advanced Programming in the UNIX
+/* This code is based on Stevens' Advanced Programming in the UNIX
  * Environment. */
 bool daemonize(void)
 {
