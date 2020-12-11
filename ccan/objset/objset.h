@@ -132,7 +132,7 @@ static inline bool objset_empty_(const struct objset_h *set)
 /**
  * objset_iter - iterator reference.
  *
- * This is valid for a particular set as long as the contents remain unchaged,
+ * This is valid for a particular set as long as the contents remain unchanged,
  * otherwise the effect is undefined.
  */
 struct objset_iter {
