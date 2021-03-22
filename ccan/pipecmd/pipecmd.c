@@ -115,7 +115,8 @@ pid_t pipecmdarr(int *fd_tochild, int *fd_fromchild, int *fd_errfromchild,
 		goto fail;
 
 	if (childpid == 0) {
-		for (int i = 0; i < num_child_close; i++)
+		int i;
+		for (i = 0; i < num_child_close; i++)
 			close(child_close[i]);
 
 		// Child runs command.
@@ -140,7 +141,7 @@ pid_t pipecmdarr(int *fd_tochild, int *fd_fromchild, int *fd_errfromchild,
 
 		/* Make (fairly!) sure all other fds are closed. */
 		int max = sysconf(_SC_OPEN_MAX);
-		for (int i = 3; i < max; i++)
+		for (i = 3; i < max; i++)
 			if (i != execfail[1])
 				close(i);
 
@@ -155,7 +156,8 @@ pid_t pipecmdarr(int *fd_tochild, int *fd_fromchild, int *fd_errfromchild,
 		exit(127);
 	}
 
-	for (int i = 0; i < num_par_close; i++)
+	int i;
+	for (i = 0; i < num_par_close; i++)
 		close(par_close[i]);
 
 	/* Child will close this without writing on successful exec. */
@@ -175,7 +177,7 @@ pid_t pipecmdarr(int *fd_tochild, int *fd_fromchild, int *fd_errfromchild,
 	return childpid;
 
 fail:
-	for (int i = 0; i < num_par_close; i++)
+	for (i = 0; i < num_par_close; i++)
 		close_noerr(par_close[i]);
 	return -1;
 }
