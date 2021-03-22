@@ -41,10 +41,11 @@ ed_dist edit_distance_dl(const ed_elem *src, ed_size slen,
 	ed_dist *delcost = malloc(ED_TMAT_SIZE(slen + 1) * sizeof(ed_dist));
 	ed_dist *delcostitr = delcost;
 	ed_dist *delcostprevitr = delcost;
+	ed_size i2, i1;
 	*delcostitr++ = 0;
-	for (ed_size i2 = 1; i2 <= slen; ++i2) {
+	for (i2 = 1; i2 <= slen; ++i2) {
 		ed_dist costi2 = ED_DEL_COST(src[i2 - 1]);
-		for (ed_size i1 = 0; i1 < i2; ++i1) {
+		for (i1 = 0; i1 < i2; ++i1) {
 			*delcostitr++ = *delcostprevitr++ + costi2;
 		}
 		*delcostitr++ = 0;
@@ -61,10 +62,11 @@ ed_dist edit_distance_dl(const ed_elem *src, ed_size slen,
 	ed_dist *inscost = malloc(ED_TMAT_SIZE(tlen + 1) * sizeof(ed_dist));
 	ed_dist *inscostitr = inscost;
 	ed_dist *inscostprevitr = inscost;
+	ed_size j2, j1;
 	*inscostitr++ = 0;
-	for (ed_size j2 = 1; j2 <= tlen; ++j2) {
+	for (j2 = 1; j2 <= tlen; ++j2) {
 		ed_dist costj2 = ED_INS_COST(tgt[j2 - 1]);
-		for (ed_size j1 = 0; j1 < j2; ++j1) {
+		for (j1 = 0; j1 < j2; ++j1) {
 			*inscostitr++ = *inscostprevitr++ + costj2;
 		}
 		*inscostitr++ = 0;
@@ -73,7 +75,8 @@ ed_dist edit_distance_dl(const ed_elem *src, ed_size slen,
 #endif
 
 	/* Initialize first row with maximal cost */
-	for (ed_size i = 0; i < slen + 2; ++i) {
+	ed_size i, j;
+	for (i = 0; i < slen + 2; ++i) {
 		dist[i] = maxdist;
 	}
 
@@ -83,11 +86,11 @@ ed_dist edit_distance_dl(const ed_elem *src, ed_size slen,
 	/* Initialize row with cost to delete src[0..i-1] */
 	dist[-1] = maxdist;
 	dist[0] = 0;
-	for (ed_size i = 1; i <= slen; ++i) {
+	for (i = 1; i <= slen; ++i) {
 		dist[i] = dist[i - 1] + ED_DEL_COST(src[i - 1]);
 	}
 
-	for (ed_size j = 1; j <= tlen; ++j) {
+	for (j = 1; j <= tlen; ++j) {
 		/* Largest y < i such that src[y] = tgt[j] */
 		ed_size lastsrc = 0;
 		ed_dist *prevdist = dist;
@@ -101,7 +104,8 @@ ed_dist edit_distance_dl(const ed_elem *src, ed_size slen,
 		 * Loop invariant: lasttgt[ED_HASH_ELEM(c)] holds the largest
 		 * x < j such that tgt[x-1] = c or 0 if no such x exists.
 		 */
-		for (ed_size i = 1; i <= slen; ++i) {
+		ed_size i;
+		for (i = 1; i <= slen; ++i) {
 			ed_size i1 = lastsrc;
 			ed_size j1 = lasttgt[ED_HASH_ELEM(src[i - 1])];
 
