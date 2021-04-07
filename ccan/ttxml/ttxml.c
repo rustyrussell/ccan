@@ -393,6 +393,7 @@ xml_load_fail_malloc_buf:
 XmlNode * xml_find(XmlNode *xml, const char *name)
 {
 	XmlNode * ret;
+	if(!xml) return NULL;
 	if(xml->name)if(!strcmp(xml->name, name))return xml;
 	if(xml->child)
 	{
