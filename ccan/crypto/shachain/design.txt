@@ -1,5 +1,5 @@
-Efficient Chains Of Unpredictable Numbers
-=========================================
+Efficient Chains Of Unpredictable Number
+========================================
 
 The Problem
 -----------
