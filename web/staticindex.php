@@ -21,7 +21,7 @@ for Perl code development and sharing.
 <h2>Get The Code</h2>
 
 <p> You can get each module as a tarball (<a href="list.html">see
-list</a>), get a tarball of <a href="ccan.tar.bz2">the whole repository</a> with tools,
+list</a>), get a tarball of <a href="<?=$argv[1]?>">the whole repository</a> with tools,
 or clone our <a href="http://git.ozlabs.org/?p=ccan">git repository</a> (<tt>git clone git://git.ozlabs.org/~ccan/ccan</tt>) or the one on <a href="http://github.com/rustyrussell/ccan/">github</a>.
 </p>
 

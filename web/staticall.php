@@ -4,7 +4,7 @@ include('logo.html');
 include('menulist.html');
 include('static-configuration');
 
-$tarballsize=round((filesize($argv[3]."/ccan.tar.bz2") + 1023) / 1024);
+$tarballsize=round((filesize($argv[3]."/".$argv[4]) + 1023) / 1024);
 ?>
 <div class='content'>
 <h1> List of all CCAN modules: </h1>
@@ -16,7 +16,7 @@ download.
 </p>
 
 <p>
-Or you can just download the <a href="ccan.tar.bz2">tarball of everything including CCAN tools (<?=$tarballsize?>K)</a>.
+Or you can just download the <a href="<?=$argv[4]?>">tarball of everything including CCAN tools (<?=$tarballsize?>K)</a>.
 </p>
 
 <table align="center" cellpadding="3" cellspacing="1">
@@ -25,7 +25,7 @@ Or you can just download the <a href="ccan.tar.bz2">tarball of everything includ
 <th align="right">Download</th>
 
 <?php 
-$modules = array_slice($argv, 4);
+$modules = array_slice($argv, 5);
 sort($modules);
 
 foreach ($modules as $module) {

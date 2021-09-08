@@ -18,6 +18,7 @@ JUNKPAGES=$(JUNKDIRS:%=$(WEBDIR)/%.html)
 JUNKBALLS=$(JUNKDIRS:%=$(WEBDIR)/%.tar.bz2)
 PRETTIFY=$(WEBDIR)/prettify/src/run_prettify.js $(WEBDIR)/prettify/src/prettify.css
 
+VERSION_NUM := $(shell git describe | cut -d- -f2)
 
 clean-tree:
 	[ "$(WEBDEV)" ] || ! git status --porcelain | grep .
@@ -40,14 +41,17 @@ $(WEBDIR)/junkcode/%.html: $(WEBDIR)/junkcode/%.tar.bz2
 	cd $(WEBDIR) && tar xfj junkcode/$*.tar.bz2
 	URLPREFIX=../ $(PHP) web/staticjunkcode.php junkcode/$* $* > $@
 
+$(WEBDIR)/ccan.tar.bz2: $(WEBDIR)/ccan-$(VERSION_NUM).tar.bz2
+	ln -sf ccan-$(VERSION_NUM).tar.bz2 ccan.tar.bz2
+
 # We want tarball to contain ccan/; we put junkcode in, but don't depend on it.
-$(WEBDIR)/ccan.tar.bz2: config.h Makefile $(shell git ls-files ccan tools licenses)
+$(WEBDIR)/ccan-$(VERSION_NUM).tar.bz2: config.h Makefile $(shell git ls-files ccan tools licenses)
 	DIR=`pwd` && cd /tmp && ln -sf "$$DIR" ccan && tar cvfj $@ `for f in $^; do echo ccan/$$f; done` ccan/junkcode && rm ccan
 
 $(ALL_PAGES): tools/doc_extract web/staticmoduleinfo.php
 
 $(WEBDIR)/list.html: web/staticall.php tools/doc_extract $(DIRECT_TARBALLS) $(DEPEND_TARBALLS) $(WEBDIR)/ccan.tar.bz2 $(JUNKBALLS)
-	$(PHP) web/staticall.php ccan/ junkcode/ $(WEBDIR) $(MODS) > $@
+	$(PHP) web/staticall.php ccan/ junkcode/ $(WEBDIR) ccan-$(VERSION_NUM).tar.bz2 $(MODS) > $@
 
 $(WEBDIR)/upload.html: web/staticupload.php
 	$(PHP) web/staticupload.php > $@
@@ -57,7 +61,7 @@ $(WEBDIR)/uploader.php: web/uploader.php.cpp
 	cpp -w -C -P $< | grep . > $@
 
 $(WEBDIR)/index.html: web/staticindex.php
-	$(PHP) web/staticindex.php > $@
+	$(PHP) web/staticindex.php ccan-$(VERSION_NUM).tar.bz2 > $@
 
 $(WEBDIR)/example-config.h: config.h
 	cp $< $@
