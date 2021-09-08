@@ -1,4 +1,4 @@
-
+/* MIT (BSD) license - see LICENSE file for details */
 #include "graphql.h"
 
 #include "ccan/tal/str/str.h"
@@ -22,6 +22,8 @@
 #define NAME_START(c) (((c) >= 0x61 && (c) <= 0x7A) || ((c) >= 0x41 && (c) <= 0x5A) || (c) == 0x5F)
 #define NAME_CONTINUE(c) (NAME_START(c) || DIGIT(c))
 
+// Safe copy helper
+#define cpystr(d,s) { char *cpystr_p; char *cpystr_q; for(cpystr_p = (s), cpystr_q = (d); *cpystr_p;) *cpystr_q++ = *cpystr_p++; *cpystr_q++ = *cpystr_p++; }
 
 // Parser shorthands
 
@@ -33,12 +35,14 @@
 	struct graphql_##type *obj = tal(tokens, struct graphql_##type); memset(obj, 0, sizeof(struct graphql_##type)); \
 
 #define EXIT \
+	goto exit_label; \
 	exit_label: \
+	rollback_top = rollback_top; \
 	if (*err) obj = tal_free(obj); \
 	return obj; \
 
-#define CONSUME_ONE { list_add(used, list_pop(tokens, struct graphql_token, list)); }
-#define RESTORE_ONE { list_add(tokens, list_pop(used, struct graphql_token, list)); }
+#define CONSUME_ONE { list_add(used, (struct list_node *)list_pop(tokens, struct graphql_token, list)); }
+#define RESTORE_ONE { list_add(tokens, (struct list_node *)list_pop(used, struct graphql_token, list)); }
 #define ROLLBACK(args) { while (list_top(tokens, struct graphql_token, list) != rollback_top) { RESTORE_ONE; } }
 #define OR if (!*err) goto exit_label; *err = NULL;
 #define REQ if (*err) { ROLLBACK(args); goto exit_label; }
@@ -152,8 +156,7 @@ const char *graphql_parse(struct list_head *tokens, struct graphql_executable_do
 	struct list_head used = LIST_HEAD_INIT(used);
 	const char *err = NULL;
 	*doc = parse_executable_document(tokens, &used, &err);
-	if (err)
-		return err;
+	return err;
 }
 
 /* The following parser functions follow special rules:
@@ -545,12 +548,12 @@ RET parse_directive(PARAMS) {
 RET parse_keyword(PARAMS, const char *keyword, const char *errmsg) {
 	struct graphql_token *tok = list_top(tokens, struct graphql_token, list);
 	if (!tok || tok->token_type != 'a') {
-		*err = errmsg; return;
+		*err = errmsg; return NULL;
 	}
 	if (!streq(tok->token_string, keyword)) {
-		*err = errmsg; return;
+		*err = errmsg; return NULL;
 	}
-	CONSUME_ONE(ARGS);
+	CONSUME_ONE;
 	return tok;
 }
 
@@ -563,45 +566,45 @@ RET parse_punct(PARAMS, int punct) {
 			sprintf(punctbuf, "expected: '...'");
 		else
 			sprintf(punctbuf, "expected: '%c'", punct);
-		*err = punctbuf; return;
+		*err = punctbuf; return NULL;
 	}
-	CONSUME_ONE(ARGS);
+	CONSUME_ONE;
 	return tok;
 }
 
 RET parse_name(PARAMS) {
 	struct graphql_token *tok = list_top(tokens, struct graphql_token, list);
 	if (!tok || tok->token_type != 'a') {
-		*err = "name expected"; return 0;
+		*err = "name expected"; return NULL;
 	}
-	CONSUME_ONE(ARGS);
+	CONSUME_ONE;
 	return tok;
 }
 
 RET parse_int(PARAMS) {
 	struct graphql_token *tok = list_top(tokens, struct graphql_token, list);
 	if (!tok || tok->token_type != 'i') {
-		*err = "integer expected"; return;
+		*err = "integer expected"; return NULL;
 	}
-	CONSUME_ONE(ARGS);
+	CONSUME_ONE;
 	return tok;
 }
 
 RET parse_float(PARAMS) {
 	struct graphql_token *tok = list_top(tokens, struct graphql_token, list);
 	if (!tok || tok->token_type != 'f') {
-		*err = "float expected"; return;
+		*err = "float expected"; return NULL;
 	}
-	CONSUME_ONE(ARGS);
+	CONSUME_ONE;
 	return tok;
 }
 
 RET parse_string(PARAMS) {
 	struct graphql_token *tok = list_top(tokens, struct graphql_token, list);
 	if (!tok || tok->token_type != 's') {
-		*err = "string expected"; return;
+		*err = "string expected"; return NULL;
 	}
-	CONSUME_ONE(ARGS);
+	CONSUME_ONE;
 	return tok;
 }
 
@@ -673,7 +676,7 @@ newchar:
 			}
 
 			tok = tal(tok_list, struct graphql_token);
-			list_add_tail(tok_list, tok);
+			list_add_tail(tok_list, &tok->list);
 			tok->token_type = c;
 			tok->token_specific = c;
 			tok->token_string = NULL;
@@ -685,7 +688,7 @@ newchar:
 
 			// Name/identifier tokens.
 			tok = tal(tok_list, struct graphql_token);
-			list_add_tail(tok_list, tok);
+			list_add_tail(tok_list, &tok->list);
 			tok->token_type = 'a';
 			tok->token_specific = 'a';
 			// tok->token_string updated below.
@@ -763,7 +766,7 @@ newchar:
 			int num_len = num_end - num_start;
 
 			tok = tal(tok_list, struct graphql_token);
-			list_add_tail(tok_list, tok);
+			list_add_tail(tok_list, &tok->list);
 			tok->token_type = type;
 			tok->token_string = tal_strndup(tok, num_start, num_len);
 			tok->source_line = line_num;
@@ -845,7 +848,7 @@ newchar:
 			int str_len = str_end - str_begin;
 
 			tok = tal(tok_list, struct graphql_token);
-			list_add_tail(tok_list, tok);
+			list_add_tail(tok_list, &tok->list);
 			tok->token_type = 's';
 			tok->token_specific = 's';
 			tok->token_string = tal_strndup(tok, str_begin, str_len);
@@ -858,13 +861,13 @@ newchar:
 			char *q = tok->token_string;
 			char *rewrite_dest;
 			int quotes = 0;
-			while (d = *q++) {
+			while ((d = *q++)) {
 				if (str_block) {
 					if (d == '\"') quotes++; else quotes = 0;
 					if (quotes == 3 && *(q-4) == '\\') {
 						quotes = 0;
 						rewrite_dest = q - 4;
-						strcpy(rewrite_dest, q - 3);
+						cpystr(rewrite_dest, q - 3);
 					}
 				} else {
 					if (d == '\\') {
@@ -873,27 +876,27 @@ newchar:
 						switch (d) {
 						case '\"':
 							*rewrite_dest++ = '\"';
-							strcpy(rewrite_dest, q--);
+							cpystr(rewrite_dest, q--);
 							break;
 						case 'b':
 							*rewrite_dest++ = '\b';
-							strcpy(rewrite_dest, q--);
+							cpystr(rewrite_dest, q--);
 							break;
 						case 'f':
 							*rewrite_dest++ = '\f';
-							strcpy(rewrite_dest, q--);
+							cpystr(rewrite_dest, q--);
 							break;
 						case 'n':
 							*rewrite_dest++ = '\n';
-							strcpy(rewrite_dest, q--);
+							cpystr(rewrite_dest, q--);
 							break;
 						case 'r':
 							*rewrite_dest++ = '\r';
-							strcpy(rewrite_dest, q--);
+							cpystr(rewrite_dest, q--);
 							break;
 						case 't':
 							*rewrite_dest++ = '\t';
-							strcpy(rewrite_dest, q--);
+							cpystr(rewrite_dest, q--);
 							break;
 						case 'u': {
 								// Insert escaped character using UTF-8 multi-byte encoding.
@@ -901,11 +904,11 @@ newchar:
 								int code_point = strtol(buf, 0, 16);
 								int bytes = utf8_encode(code_point, rewrite_dest);
 								rewrite_dest += bytes;
-								strcpy(rewrite_dest, q--);
+								cpystr(rewrite_dest, q--);
 							}
 							break;
 						default:
-							strcpy(rewrite_dest, --q);
+							cpystr(rewrite_dest, --q);
 						}
 					}
 				}
@@ -920,7 +923,7 @@ newchar:
 					if (LINE_TERMINATOR(d)) {
 						while (LINE_TERMINATOR(d))
 							d = *q++;
-						strcpy(tok->token_string, q - 1);
+						cpystr(tok->token_string, q - 1);
 						q = tok->token_string;
 					} else
 						break;
@@ -1001,7 +1004,7 @@ newchar:
 							d = *q++;
 						--q;
 
-						strcpy(this_indent_start, this_indent_start + common_indent_len);
+						cpystr(this_indent_start, this_indent_start + common_indent_len);
 						q -= common_indent_len;
 						d = *q++;
 

@@ -1,4 +1,5 @@
-#include "ccan/graphql/graphql.h"
+/* Include the C files directly. */
+#include "ccan/graphql/graphql.c"
 #include "ccan/str/str.h"
 
 /* TEST POINT MACROS
@@ -32,6 +33,7 @@ int pass = 0, fail = 0;
 bool mute = 1;
 
 // Helper function.
+int listlen(struct list_head *tokens);
 int listlen(struct list_head *tokens) {
 	struct graphql_token *tok;
 	int n=0;
@@ -41,15 +43,47 @@ int listlen(struct list_head *tokens) {
 	return n;
 }
 
+/* Test case function prototypes */
+
+void check_example_3(const char *source);
+void check_example_5(char *source);
+void check_example_6(char *source);
+void check_example_7(char *source);
+void check_example_8(char *source);
+void check_example_9(char *source);
+void check_example_10(char *source);
+void check_example_11(char *source);
+void check_example_12_and_13(const char *source);
+void check_example_14(char *source);
+void check_example_16(char *source);
+void check_example_18(char *source);
+void check_example_19(char *source);
+void check_example_20(char *source);
+void check_example_21(char *source);
+void check_example_23(char *source);
+void check_example_24(char *source);
+void check_int_value(char *source, int int_value);
+void check_invalid_int_values(char *source);
+void check_float_value(char *source, float float_value, const char *format);
+void check_valid_float_values(char *source);
+void check_invalid_float_values(char *source);
+void check_boolean_values(char *source);
+void check_string_value(char *source, const char *test_value, const char *expected_result);
+void check_example_25_and_26(const char *source);
+void check_example_29(char *source);
+void check_example_30_and_31(const char *source);
+void check_example_32(char *source);
+void check_example_34(char *source);
+void check_example_35(char *source);
+
 /* Test case functions begin here, called by main().
  * Note: Memory should be freed correctly in the success case, but if there
  * are errors, all bets are off.
  */
 
-int check_example_3(const char *source) {
+void check_example_3(const char *source) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Example No. 3\n");
 
@@ -170,10 +204,9 @@ int check_example_3(const char *source) {
 	tokens = tal_free(tokens);
 }
 
-int check_example_5(char *source) {
+void check_example_5(char *source) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Example No. 5\n");
 
@@ -308,10 +341,9 @@ mutation {\n\
 	tokens = tal_free(tokens);
 }
 
-int check_example_6(char *source) {
+void check_example_6(char *source) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Example No. 6\n");
 
@@ -367,10 +399,9 @@ int check_example_6(char *source) {
 	tokens = tal_free(tokens);
 }
 
-int check_example_7(char *source) {
+void check_example_7(char *source) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Example No. 7\n");
 
@@ -462,10 +493,9 @@ int check_example_7(char *source) {
 	tokens = tal_free(tokens);
 }
 
-int check_example_8(char *source) {
+void check_example_8(char *source) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Example No. 8\n");
 
@@ -632,10 +662,9 @@ int check_example_8(char *source) {
 	tokens = tal_free(tokens);
 }
 
-int check_example_9(char *source) {
+void check_example_9(char *source) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Example No. 9\n");
 
@@ -770,10 +799,9 @@ int check_example_9(char *source) {
 	tokens = tal_free(tokens);
 }
 
-int check_example_10(char *source) {
+void check_example_10(char *source) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Example No. 10\n");
 
@@ -902,10 +930,9 @@ int check_example_10(char *source) {
 	tokens = tal_free(tokens);
 }
 
-int check_example_11(char *source) {
+void check_example_11(char *source) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Example No. 11\n");
 
@@ -1048,10 +1075,9 @@ int check_example_11(char *source) {
 	tokens = tal_free(tokens);
 }
 
-int check_example_12_and_13(const char *source) {
+void check_example_12_and_13(const char *source) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Example Nos. 12 and 13\n");
 
@@ -1133,10 +1159,9 @@ int check_example_12_and_13(const char *source) {
 	tokens = tal_free(tokens);
 }
 
-int check_example_14(char *source) {
+void check_example_14(char *source) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Example No. 14\n");
 
@@ -1308,10 +1333,9 @@ int check_example_14(char *source) {
 	tokens = tal_free(tokens);
 }
 
-int check_example_16(char *source) {
+void check_example_16(char *source) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Example No. 16\n");
 
@@ -1415,10 +1439,8 @@ int check_example_16(char *source) {
 	tokens = tal_free(tokens);
 }
 
-int check_example_18(char *source) {
+void check_example_18(char *source) {
 	struct list_head *tokens;
-	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Example No. 18\n");
 
@@ -1474,10 +1496,9 @@ query noFragments {\n\
 	tokens = tal_free(tokens);
 }
 
-int check_example_19(char *source) {
+void check_example_19(char *source) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Example No. 19\n");
 
@@ -1581,10 +1602,9 @@ fragment friendFields on User {\n\
 	tokens = tal_free(tokens);
 }
 
-int check_example_20(char *source) {
+void check_example_20(char *source) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Example No. 20\n");
 
@@ -1717,10 +1737,9 @@ fragment standardProfilePic on User {\n\
 	tokens = tal_free(tokens);
 }
 
-int check_example_21(char *source) {
+void check_example_21(char *source) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Example No. 21\n");
 
@@ -1846,10 +1865,9 @@ fragment pageFragment on Page {\n\
 	tokens = tal_free(tokens);
 }
 
-int check_example_23(char *source) {
+void check_example_23(char *source) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Example No. 23\n");
 
@@ -1950,10 +1968,9 @@ query inlineFragmentTyping {\n\
 	tokens = tal_free(tokens);
 }
 
-int check_example_24(char *source) {
+void check_example_24(char *source) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Example No. 24\n");
 
@@ -2090,10 +2107,9 @@ query inlineFragmentNoType($expandedInfo: Boolean) {\n\
 	tokens = tal_free(tokens);
 }
 
-int check_int_value(char *source, int int_value) {
+void check_int_value(char *source, int int_value) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Int Value Range Check on %d\n", int_value);
 
@@ -2160,14 +2176,12 @@ int check_int_value(char *source, int int_value) {
 	tokens = tal_free(tokens);
 }
 
-int check_invalid_int_values(char *source) {
+void check_invalid_int_values(char *source) {
 	struct list_head *tokens;
-	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Invalid Int Values\n");
 
-	char *bad_values[] = {"00", "-00", "+1", "1.", "1a", "1e", "0x123", "123L", 0};
+	const char *bad_values[] = {"00", "-00", "+1", "1.", "1a", "1e", "0x123", "123L", 0};
 
 	for (int i=0; bad_values[i]; i++) {
 		sprintf(source, "\
@@ -2187,10 +2201,9 @@ int check_invalid_int_values(char *source) {
 	}
 }
 
-int check_float_value(char *source, float float_value, const char *format) {
+void check_float_value(char *source, float float_value, const char *format) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Float Value Range Check on %f\n", float_value);
 
@@ -2257,14 +2270,13 @@ int check_float_value(char *source, float float_value, const char *format) {
 	tokens = tal_free(tokens);
 }
 
-int check_valid_float_values(char *source) {
+void check_valid_float_values(char *source) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Valid Float Values\n");
 
-	char *good_values[] = {"1.0", "1e50", "6.0221413e23", "1.23", 0};
+	const char *good_values[] = {"1.0", "1e50", "6.0221413e23", "1.23", 0};
 
 	for (int i=0; good_values[i]; i++) {
 		sprintf(source, "\
@@ -2328,14 +2340,12 @@ int check_valid_float_values(char *source) {
 	}
 }
 
-int check_invalid_float_values(char *source) {
+void check_invalid_float_values(char *source) {
 	struct list_head *tokens;
-	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Invalid Float Values\n");
 
-	char *bad_values[] = {"00.0", "-00.0", "00e1", "1.23.4", "0x1.2p3", 0};
+	const char *bad_values[] = {"00.0", "-00.0", "00e1", "1.23.4", "0x1.2p3", 0};
 
 	for (int i=0; bad_values[i]; i++) {
 		sprintf(source, "\
@@ -2355,14 +2365,12 @@ int check_invalid_float_values(char *source) {
 	}
 }
 
-int check_boolean_values(char *source) {
+void check_boolean_values(char *source) {
 	struct list_head *tokens;
-	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Boolean Values\n");
 
-	char *good_values[] = {"true", "false", 0};
+	const char *good_values[] = {"true", "false", 0};
 
 	for (int i=0; good_values[i]; i++) {
 		sprintf(source, "\
@@ -2406,7 +2414,7 @@ int check_boolean_values(char *source) {
 		tokens = tal_free(tokens);
 	}
 
-	char *bad_values[] = {"True", "False", "TRUE", "FALSE", 0};
+	const char *bad_values[] = {"True", "False", "TRUE", "FALSE", 0};
 
 	for (int i=0; bad_values[i]; i++) {
 		sprintf(source, "\
@@ -2459,10 +2467,9 @@ int check_boolean_values(char *source) {
 	}
 }
 
-int check_string_value(char *source, const char *test_value, const char *expected_result) {
+void check_string_value(char *source, const char *test_value, const char *expected_result) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// String Value Test: %s\n", test_value);
 
@@ -2539,10 +2546,9 @@ int check_string_value(char *source, const char *test_value, const char *expecte
 	}
 }
 
-int check_example_25_and_26(const char *source) {
+void check_example_25_and_26(const char *source) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Example No. 25 and 26\n");
 
@@ -2562,10 +2568,9 @@ int check_example_25_and_26(const char *source) {
 	tokens = tal_free(tokens);
 }
 
-int check_example_29(char *source) {
+void check_example_29(char *source) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Example No. 29\n");
 
@@ -2647,10 +2652,9 @@ int check_example_29(char *source) {
 	tokens = tal_free(tokens);
 }
 
-int check_example_30_and_31(const char *source) {
+void check_example_30_and_31(const char *source) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Example No. 30 and 31\n");
 
@@ -2678,7 +2682,6 @@ int check_example_30_and_31(const char *source) {
 	tokens = tal_free(tokens);
 
 	// Test the parser.
-	struct graphql_argument *arg;
 	struct graphql_executable_document *doc;
 	const char *e;
 	TEST_CONT(graphql_lex(source, NULL, &tokens) == NULL);
@@ -2739,10 +2742,9 @@ int check_example_30_and_31(const char *source) {
 	tokens = tal_free(tokens);
 }
 
-int check_example_32(char *source) {
+void check_example_32(char *source) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Example No. 32\n");
 
@@ -2892,10 +2894,9 @@ query getZuckProfile($devicePicSize: Int) {\n\
 	tokens = tal_free(tokens);
 }
 
-int check_example_34(char *source) {
+void check_example_34(char *source) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Example No. 34\n");
 
@@ -2944,10 +2945,9 @@ type Person\n\
 	tokens = tal_free(tokens);
 }
 
-int check_example_35(char *source) {
+void check_example_35(char *source) {
 	struct list_head *tokens;
 	struct graphql_token *tok;
-	const char *err;
 
 	if (!mute) printf("// Example No. 35\n");
 
@@ -3007,10 +3007,10 @@ int main(void)
 	int prev_fail; // Used by RUNx macros.
 
 	// Check the lexer with all valid line terminators.
-	char *new_line = "\n";
-	char *carriage_return = "\r";
-	char *carriage_return_new_line = "\r\n";
-	char *line_terminators[] = { new_line, carriage_return, carriage_return_new_line };
+	const char *new_line = "\n";
+	const char *carriage_return = "\r";
+	const char *carriage_return_new_line = "\r\n";
+	const char *line_terminators[] = { new_line, carriage_return, carriage_return_new_line };
 	for (int i=0; i<3; i++) {
 		sprintf(source, "\
 {%s\

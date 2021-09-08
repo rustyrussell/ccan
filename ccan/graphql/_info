@@ -13,10 +13,8 @@
  *    <https://github.com/rl-d/ccan>
  * 
  * Example:
- *	#include <stdio.h>
- *	#include "ccan/graphql/graphql.h"
  *	
- *	int main(int argc, char *argv[])
+ *	int main(int argc, char *argv[]) {
  *	
  *		const char *input_string = "{ fieldName }";
  *		struct list_head *output_tokens;
@@ -56,7 +54,7 @@ int main(int argc, char *argv[])
 
 	if (strcmp(argv[1], "depends") == 0) {
 		printf("ccan/list\n");
-		printf("ccan/take\n");
+		printf("ccan/str\n");
 		printf("ccan/tal\n");
 		printf("ccan/tal/str\n");
 		printf("ccan/utf8\n");

@@ -1,3 +1,4 @@
+/* MIT (BSD) license - see LICENSE file for details */
 #ifndef __GRAPHQL_H__
 #define __GRAPHQL_H__ 1
 
