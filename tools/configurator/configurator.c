@@ -498,6 +498,43 @@ static const struct test base_tests[] = {
 	  "	return __builtin_cpu_supports(\"mmx\");\n"
 	  "}"
 	},
+	{ "HAVE_CLOSEFROM", "closefrom() offered by system",
+	  "DEFINES_EVERYTHING", NULL, NULL,
+	  "#include <stdlib.h>\n"
+	  "#include <unistd.h>\n"
+	  "int main(void) {\n"
+	  "    closefrom(STDERR_FILENO + 1);\n"
+	  "    return 0;\n"
+	  "}\n"
+	},
+	{ "HAVE_F_CLOSEM", "F_CLOSEM defined for fctnl.",
+	  "DEFINES_EVERYTHING", NULL, NULL,
+	  "#include <fcntl.h>\n"
+	  "#include <unistd.h>\n"
+	  "int main(void) {\n"
+	  "    int res = fcntl(STDERR_FILENO + 1, F_CLOSEM, 0);\n"
+	  "    return res < 0;\n"
+	  "}\n"
+	},
+	{ "HAVE_NR_CLOSE_RANGE", "close_range syscall available as __NR_close_range.",
+	  "DEFINES_EVERYTHING", NULL, NULL,
+	  "#include <limits.h>\n"
+	  "#include <sys/syscall.h>\n"
+	  "#include <unistd.h>\n"
+	  "int main(void) {\n"
+	  "    int res = syscall(__NR_close_range, STDERR_FILENO + 1, INT_MAX, 0);\n"
+	  "    return res < 0;\n"
+	  "}\n"
+	},
+	{ "HAVE_F_MAXFD", "F_MAXFD defined for fcntl.",
+	  "DEFINES_EVERYTHING", NULL, NULL,
+	  "#include <fcntl.h>\n"
+	  "#include <unistd.h>\n"
+	  "int main(void) {\n"
+	  "    int res = fcntl(0, F_MAXFD);\n"
+	  "    return res < 0;\n"
+	  "}\n"
+	},
 };
 
 static void c12r_err(int eval, const char *fmt, ...)
