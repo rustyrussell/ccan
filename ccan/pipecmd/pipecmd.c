@@ -1,4 +1,5 @@
 /* CC0 license (public domain) - see LICENSE file for details */
+#include <ccan/closefrom/closefrom.h>
 #include <ccan/pipecmd/pipecmd.h>
 #include <ccan/noerr/noerr.h>
 #include <stdlib.h>
@@ -139,11 +140,21 @@ pid_t pipecmdarr(int *fd_tochild, int *fd_fromchild, int *fd_errfromchild,
 			close(errfromchild[1]);
 		}
 
+		/* Map execfail[1] to fd 3.  */
+		if (execfail[1] != 3) {
+			if (dup2(execfail[1], 3) == -1)
+				goto child_errno_fail;
+			/* CLOEXEC is not shared by dup2, so copy the flags
+			 * from execfail[1] to 3.
+			 */
+			if (fcntl(3, F_SETFD, fcntl(execfail[1], F_GETFD)) < 0)
+				goto child_errno_fail;
+			close(execfail[1]);
+			execfail[1] = 3;
+		}
+
 		/* Make (fairly!) sure all other fds are closed. */
-		int max = sysconf(_SC_OPEN_MAX);
-		for (i = 3; i < max; i++)
-			if (i != execfail[1])
-				close(i);
+		closefrom(4);
 
 		execvp(arr[0], arr);
 
