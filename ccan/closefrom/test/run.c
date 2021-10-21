@@ -87,7 +87,7 @@ int fork_close(void)
  * child to parent, check.
  */
 static
-int fork_communicate()
+int fork_communicate(void)
 {
 	int fds[2];
 	pid_t child;

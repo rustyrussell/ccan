@@ -37,7 +37,7 @@
  *
  *	// If we limited, we can query this so we can
  *	// print it in debug logs or something.
- *	if (close_from_may_be_slow())
+ *	if (closefrom_may_be_slow())
  *		printf("we limited ourselves to 4096 fds.\n");
  *
  *	child = fork();
