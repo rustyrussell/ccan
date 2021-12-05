@@ -161,6 +161,7 @@ static void add_opt(const struct opt_table *entry)
 void _opt_register(const char *names, enum opt_type type,
 		   char *(*cb)(void *arg),
 		   char *(*cb_arg)(const char *optarg, void *arg),
+		   int  (*cb_exitcode)(void *arg, char **err_msg),
 		   void (*show)(char buf[OPT_SHOW_LEN], const void *arg),
 		   const void *arg, const char *desc)
 {
@@ -168,6 +169,7 @@ void _opt_register(const char *names, enum opt_type type,
 	opt.names = names;
 	opt.type = type;
 	opt.cb = cb;
+	opt.cb_exitcode =  cb_exitcode;
 	opt.cb_arg = cb_arg;
 	opt.show = show;
 	opt.u.carg = arg;

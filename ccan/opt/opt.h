@@ -75,8 +75,8 @@ struct opt_table;
  */
 #define OPT_SUBTABLE(table, desc)					\
 	{ (const char *)(table), OPT_SUBTABLE,				\
-	  sizeof(_check_is_entry(table)) ? NULL : NULL, NULL, NULL,	\
-	  { NULL }, (desc) }
+	  sizeof(_check_is_entry(table)) ? NULL : NULL, NULL, NULL,     \
+          NULL , { NULL }, (desc) }
 
 /**
  * OPT_EARLY_WITHOUT_ARG() - macro for a early opt_table entry (without arg)
@@ -163,6 +163,27 @@ void opt_register_table(const struct opt_table *table, const char *desc);
  */
 #define opt_register_noarg(names, cb, arg, desc)			\
 	_opt_register((names), OPT_CB_NOARG((cb), 0, (arg)), (arg), (desc))
+
+/**
+ * opt_register_noarg_with_exit_code - register an option with no arguments
+ * @names: the names of the option eg. "--foo", "-f" or "--foo|-f|--foobar".
+ * @cb: the callback when the option is found.
+ * @arg: the argument to hand to @cb.
+ * @desc: the verbose description of the option (for opt_usage()), or NULL.
+ *
+ * This is used for registering a single commandline option which takes
+ * no argument, and return a custom exit code.
+ *
+ * The callback is of type "int cb(type *, char **err_msg)", "int cb(const type *, char **err_msg)"
+ * or "int cb(void *, char **err_msg)", where "type" is the type of the @arg
+ * argument.
+ *
+ * If the @cb returns no 0 value, opt_parse() will stop parsing, and use the
+ * err_msg string to form an error message for errlog(), free() the
+ * string (or see opt_set_alloc) and return false.
+ */
+#define opt_register_noarg_with_exit_code(names, cb, arg, desc)			\
+	_opt_register((names), OPT_CB_NOARG_WITH_EXIT_CODE((cb), 0, (arg)), (arg), (desc))
 
 /**
  * opt_register_arg - register an option with an arguments
@@ -524,6 +545,7 @@ struct opt_table {
 	const char *names; /* pipe-separated names, --longopt or -s */
 	enum opt_type type;
 	char *(*cb)(void *arg); /* OPT_NOARG */
+	int (*cb_exitcode)(void *arg, char **err_msg); /*OPT_NOARG_WITH_EXIT_CODE*/
 	char *(*cb_arg)(const char *optarg, void *arg); /* OPT_HASARG */
 	void (*show)(char buf[OPT_SHOW_LEN], const void *arg);
 	union {
@@ -535,29 +557,40 @@ struct opt_table {
 };
 
 /* Resolves to the four parameters for non-arg callbacks. */
-#define OPT_CB_NOARG(cb, pre, arg)			\
-	OPT_NOARG|(pre),				\
-	typesafe_cb_cast3(char *(*)(void *),	\
-			  char *(*)(typeof(*(arg))*),	\
-			  char *(*)(const typeof(*(arg))*),	\
-			  char *(*)(const void *), (cb)),	\
-	NULL, NULL
+#define OPT_CB_NOARG(cb, pre, arg)			    \
+	OPT_NOARG|(pre),				    \
+	typesafe_cb_cast3(char *(*)(void *),	            \
+			  char *(*)(typeof(*(arg))*),	    \
+			  char *(*)(const typeof(*(arg))*), \
+			  char *(*)(const void *), (cb)),   \
+	NULL, NULL, NULL
+
+/* Resolves to the four parameters for non-arg callbacks. */
+#define OPT_CB_NOARG_WITH_EXIT_CODE(cb, pre, arg)		        \
+	OPT_NOARG|(pre), NULL, NULL,					\
+	typesafe_cb_cast3(int (*)(void *, char **),			\
+			  int (*)(typeof(*(arg))*, char **),		\
+			  int (*)(const typeof(*(arg))*, char **),	\
+			  int (*)(const void *), (cb)),			\
+	NULL
 
 /* Resolves to the four parameters for arg callbacks. */
 #define OPT_CB_ARG(cb, pre, show, arg)					\
 	OPT_HASARG|(pre), NULL,						\
-	typesafe_cb_cast3(char *(*)(const char *,void *),	\
-			  char *(*)(const char *, typeof(*(arg))*),	\
-			  char *(*)(const char *, const typeof(*(arg))*), \
-			  char *(*)(const char *, const void *),	\
-			  (cb)),					\
-	typesafe_cb_cast(void (*)(char buf[], const void *),		\
+	typesafe_cb_cast3(char *(*)(const char *, void *),	\
+			  char *(*)(const char *, typeof(*(arg))*),      \
+			  char *(*)(const char *, const typeof(*(arg))*),\
+			  char *(*)(const char *, const void *),	 \
+			  (cb)), NULL,					\
+	typesafe_cb_cast(void (*)(char buf[], const void *),	\
 			 void (*)(char buf[], const typeof(*(arg))*), (show))
+
 
 /* Non-typesafe register function. */
 void _opt_register(const char *names, enum opt_type type,
 		   char *(*cb)(void *arg),
 		   char *(*cb_arg)(const char *optarg, void *arg),
+		   int  (*cb_exitcode)(void *arg, char **err_msg),
 		   void (*show)(char buf[OPT_SHOW_LEN], const void *arg),
 		   const void *arg, const char *desc);
 

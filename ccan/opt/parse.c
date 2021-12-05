@@ -15,11 +15,12 @@
 */
 static int parse_err(void (*errlog)(const char *fmt, ...),
 		     const char *argv0, const char *arg, unsigned len,
-		     const char *problem)
+		     const char *problem, int exit_code)
 {
 	errlog("%s: %.*s: %s", argv0, len, arg, problem);
-	return -1;
+	return exit_code;
 }
+
 
 static void consume_option(int *argc, char *argv[], unsigned optnum)
 {
@@ -35,6 +36,7 @@ int parse_one(int *argc, char *argv[], enum opt_type is_early, unsigned *offset,
 	unsigned i, arg, len;
 	const char *o, *optarg = NULL;
 	char *problem = NULL;
+	int exit_code = 0;
 
 	if (getenv("POSIXLY_CORRECT")) {
 		/* Don't find options after non-options. */
@@ -72,7 +74,7 @@ int parse_one(int *argc, char *argv[], enum opt_type is_early, unsigned *offset,
 				goto ok;
 			return parse_err(errlog, argv[0],
 					 argv[arg], strlen(argv[arg]),
-					 "unrecognized option");
+					 "unrecognized option", 1);
 		}
 		/* For error messages, we include the leading '--' */
 		o -= 2;
@@ -92,7 +94,7 @@ int parse_one(int *argc, char *argv[], enum opt_type is_early, unsigned *offset,
 			}
 			return parse_err(errlog, argv[0],
 					 argv[arg], strlen(argv[arg]),
-					 "unrecognized option");
+					 "unrecognized option", 1);
 		}
 		/* For error messages, we include the leading '-' */
 		o--;
@@ -102,9 +104,13 @@ int parse_one(int *argc, char *argv[], enum opt_type is_early, unsigned *offset,
 	if ((opt_table[i].type & ~OPT_EARLY) == OPT_NOARG) {
 		if (optarg)
 			return parse_err(errlog, argv[0], o, len,
-					 "doesn't allow an argument");
-		if ((opt_table[i].type & OPT_EARLY) == is_early)
-			problem = opt_table[i].cb(opt_table[i].u.arg);
+					 "doesn't allow an argument", 1);
+		if ((opt_table[i].type & OPT_EARLY) == is_early) {
+			if (opt_table[i].cb)
+				problem = opt_table[i].cb(opt_table[i].u.arg);
+			else
+				exit_code = opt_table[i].cb_exitcode(opt_table[i].u.arg, &problem);
+		}
 	} else {
 		if (!optarg) {
 			/* Swallow any short options as optarg, eg -afile */
@@ -116,16 +122,18 @@ int parse_one(int *argc, char *argv[], enum opt_type is_early, unsigned *offset,
 		}
 		if (!optarg)
 			return parse_err(errlog, argv[0], o, len,
-					 "requires an argument");
+					 "requires an argument", 1);
 		if ((opt_table[i].type & OPT_EARLY) == is_early)
+			//FIXME: Support the vesion with exit code.
 			problem = opt_table[i].cb_arg(optarg,
 						      opt_table[i].u.arg);
 	}
 
-	if (problem) {
-		parse_err(errlog, argv[0], o, len, problem);
+	if (problem || exit_code > 0) {
+		exit_code = exit_code == 0 ? 1 : exit_code;
+		parse_err(errlog, argv[0], o, len, problem, exit_code);
 		opt_alloc.free(problem);
-		return -1;
+	        return -1;
 	}
 
 ok:
@@ -139,5 +147,5 @@ ok:
 		if (optarg && optarg == argv[arg])
 			consume_option(argc, argv, arg);
 	}
-	return 1;
+	return 1; // Consume and continue to parsing.
 }
