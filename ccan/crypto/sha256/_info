@@ -17,7 +17,7 @@
  *	#include <stdio.h>
  *	#include <string.h>
  *
- *	// Simple demonstration: idential strings will have the same hash, but
+ *	// Simple demonstration: identical strings will have the same hash, but
  *	// two different strings will not.
  *	int main(int argc, char *argv[])
  *	{

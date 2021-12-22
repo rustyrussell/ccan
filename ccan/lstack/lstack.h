@@ -10,7 +10,7 @@
 
 /**
  * struct lstack_link - a stack link
- * @down: immedately lower entry in the stack, or NULL if this is the bottom.
+ * @down: immediately lower entry in the stack, or NULL if this is the bottom.
  *
  * This is used as an entry in a stack.
  *

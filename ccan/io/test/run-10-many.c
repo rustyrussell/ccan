@@ -92,7 +92,7 @@ int main(void)
 	if (!ok1(i == NUM))
 		exit(exit_status());
 
-	/* Last one completes the cirle. */
+	/* Last one completes the circle. */
 	i = 0;
 	sprintf(buf[i].buf, "%i-%i", i, i);
 	buf[i].reader = io_new_conn(NULL, last_read, setup_reader, &buf[i]);

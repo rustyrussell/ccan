@@ -227,7 +227,7 @@ int iscsi_nop_out_async(struct iscsi_context *iscsi, iscsi_command_cb cb, unsign
  * The content of command_data depends on the status type.
  *
  * status :
- *   ISCSI_STATUS_GOOD the scsi command completed successfullt on the target.
+ *   ISCSI_STATUS_GOOD the scsi command completed successfully on the target.
  *   If this scsi command returns DATA-IN, that data is stored in an scsi_task structure
  *   returned in the command_data parameter. This buffer will be automatically freed once the callback
  *   returns.

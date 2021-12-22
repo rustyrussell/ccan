@@ -61,7 +61,7 @@ void *trbt_insert32(trbt_tree_t *tree, uint32_t key, void *data);
      tree.
    If a node already exists for this key then:
      callback is called with data==existing data and param=param
-     the returned calue is talloc_stolen and inserted in the tree
+     the returned value is talloc_stolen and inserted in the tree
 */
 void trbt_insert32_callback(trbt_tree_t *tree, uint32_t key, void *(*callback)(void *param, void *data), void *param);
 
