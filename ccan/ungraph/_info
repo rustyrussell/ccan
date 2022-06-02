@@ -1,0 +1,77 @@
+#include "config.h"
+#include <stdio.h>
+#include <string.h>
+
+/**
+ * ungraph - extract a graph from an ASCII diagram.
+ *
+ * This code takes an ASCII diagram and converts it to a graph.
+ * The following things are assumed:
+ * 1. The input consists of \n-terminated lines
+ * 2. /-\|+ are used for edges.
+ * 3. <^>v are used for arrowheads.
+ * 4. + can be used to cross-over.
+ * 5. No arrowheads or both-ended arrowheads are shortcuts for "both ways".
+ * 6. Edges can turn with or without a +, by up to 90 degrees.
+ * 7. Edges must go from one node name to another.
+ * 8. Any other text is an edge label which must be next to an edge or
+ *    another label.
+ *
+ * License: BSD-MIT
+ * Example:
+ * // Convert an ASCII graph to Graphviz dot format
+ * #include <ccan/err/err.h>
+ * #include <ccan/grab_file/grab_file.h>
+ * #include <ccan/ungraph/ungraph.h>
+ *
+ * // Just return the name as our node.
+ * static void *add_node(const tal_t *ctx,
+ *                       const char *name,
+ *                       const char **errstr,
+ *                       void *unused)
+ * {
+ *         return (void *)name;
+ * }
+ *
+ * static const char *add_edge(const tal_t *ctx,
+ *                             void *source_node,
+ *                             void *dest_node,
+ *                             bool bidir,
+ *                             const char **labels,
+ *                             void *arg)
+ * {
+ *         printf("%s -> %s;\n", 
+ *                (char *)source_node, (char *)dest_node);
+ *         if (bidir)
+ *                 printf("%s -> %s;\n", 
+ *                        (char *)dest_node, (char *)source_node);
+ *         return NULL;
+ * }
+ *
+ * int main(int argc, char *argv[])
+ * {
+ *         const char *graph = grab_file(NULL, argv[1], NULL), *errmsg;
+ *	   printf("digraph %s {\n", argv[1] ? argv[1] : "stdin");
+ *         errmsg = ungraph(NULL, graph, add_node, add_edge, NULL);
+ *         if (errmsg)
+ *                 errx(1, "%s", errmsg);
+ *         printf("}");
+ * }
+ *
+ * Author: Rusty Russell <rusty@rustcorp.com.au>
+ */
+int main(int argc, char *argv[])
+{
+	/* Expect exactly one argument */
+	if (argc != 2)
+		return 1;
+
+	if (strcmp(argv[1], "depends") == 0) {
+		printf("ccan/tal\n");
+		printf("ccan/tal/str\n");
+		printf("ccan/typesafe_cb\n");
+		return 0;
+	}
+
+	return 1;
+}
