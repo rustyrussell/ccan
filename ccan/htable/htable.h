@@ -22,12 +22,12 @@
  * supply inline functions.
  */
 struct htable {
+	/* These are the bits which are the same in all pointers. */
+	uintptr_t common_bits, common_mask;
 	size_t (*rehash)(const void *elem, void *priv);
 	void *priv;
 	unsigned int bits, perfect_bitnum;
 	size_t elems, deleted;
-	/* These are the bits which are the same in all pointers. */
-	uintptr_t common_mask, common_bits;
 	uintptr_t *table;
 };
 
@@ -49,7 +49,7 @@ struct htable {
  *	static struct htable ht = HTABLE_INITIALIZER(ht, rehash, NULL);
  */
 #define HTABLE_INITIALIZER(name, rehash, priv)				\
-	{ rehash, priv, 0, 0, 0, 0, -1, 0, &name.common_bits }
+	{ 0, -1, rehash, priv, 0, 0, 0, 0, &name.common_bits }
 
 /**
  * htable_init - initialize an empty hash table.
