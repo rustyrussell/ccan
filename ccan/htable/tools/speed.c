@@ -70,7 +70,7 @@ static size_t perfect(const struct htable *ht)
 	size_t i, placed_perfect = 0;
 
 	for (i = 0; i < ((size_t)1 << ht->bits); i++) {
-		if (!entry_is_valid(ht->table[i]))
+		if (!entry_is_valid(ht, i))
 			continue;
 		if (hash_bucket(ht, ht->rehash(get_raw_ptr(ht, ht->table[i]),
 					       ht->priv)) == i) {
@@ -87,7 +87,7 @@ static size_t count_deleted(const struct htable *ht)
 	size_t i, delete_markers = 0;
 
 	for (i = 0; i < ((size_t)1 << ht->bits); i++) {
-		if (ht->table[i] == HTABLE_DELETED)
+		if (entry_is_deleted(ht, i))
 			delete_markers++;
 	}
 	return delete_markers;
