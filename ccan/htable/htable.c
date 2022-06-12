@@ -1,6 +1,5 @@
 /* Licensed under LGPLv2+ - see LICENSE file for details */
 #include <ccan/htable/htable.h>
-#include <ccan/likely/likely.h>
 #include <ccan/compiler/compiler.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -67,8 +66,9 @@ static inline uintptr_t *actually_valid_pair(const struct htable *ht)
 static inline bool entry_actually_valid(const struct htable *ht, size_t off)
 {
 	const uintptr_t *valid = actually_valid_pair(ht);
-	/* In the empty case, these are "common_mask" and "rehash"
-	 * which cannot be 0 */
+	/* Empty table looks like this! */
+	if (valid == &ht->common_bits + 1)
+		return false;
 	return valid[0] == off || valid[1] == off;
 }
 
@@ -113,6 +113,11 @@ static inline bool entry_is_valid(const struct htable *ht, size_t off)
 	if (!entry_looks_invalid(ht, off))
 		return true;
 	return entry_actually_valid(ht, off);
+}
+
+static inline bool entry_is_deleted(const struct htable *ht, size_t off)
+{
+	return ht->table[off] == HTABLE_DELETED && !entry_actually_valid(ht, off);
 }
 
 static inline uintptr_t ht_perfect_mask(const struct htable *ht)
@@ -207,14 +212,11 @@ static void *htable_val(const struct htable *ht,
 			struct htable_iter *i, size_t hash, uintptr_t perfect)
 {
 	uintptr_t h2 = get_hash_ptr_bits(ht, hash) | perfect;
-	const uintptr_t *valid = actually_valid_pair(ht);
 
-	while (ht->table[i->off] || valid[0] == i->off || valid[1] == i->off) {
-		uintptr_t e = ht->table[i->off];
-		if (e != HTABLE_DELETED || valid[0] == i->off || valid[1] == i->off) {
-			if (get_extra_ptr_bits(ht, e) == h2) {
-				return get_raw_ptr(ht, e);
-			}
+	while (ht->table[i->off] || entry_actually_valid(ht, i->off)) {
+		if (!entry_is_deleted(ht, i->off)) {
+			if (get_extra_ptr_bits(ht, ht->table[i->off]) == h2)
+				return get_raw_ptr(ht, ht->table[i->off]);
 		}
 		i->off = (i->off + 1) & ((1 << ht->bits)-1);
 		h2 &= ~perfect;
