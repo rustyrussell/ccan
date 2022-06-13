@@ -24,6 +24,7 @@ int main(void)
 			htable_add(&ht, hash((void *)i, NULL), (void *)i);
 			htable_add(&ht, hash((void *)j, NULL), (void *)j);
 			ok1(htable_check(&ht, "test"));
+			htable_clear(&ht);
 		}
 	}
 	return exit_status();
