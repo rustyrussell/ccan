@@ -56,68 +56,9 @@ static inline uintptr_t make_hval(const struct htable *ht,
 	return ((uintptr_t)p & ~ht->common_mask) | bits;
 }
 
-static inline uintptr_t *actually_valid_pair(const struct htable *ht)
+static inline bool entry_is_valid(uintptr_t e)
 {
-	return ht->table + ((size_t)1 << ht->bits);
-}
-
-/* We have have two entries which look deleted, but we remember
- * they are not! */
-static inline bool entry_actually_valid(const struct htable *ht, size_t off)
-{
-	const uintptr_t *valid = actually_valid_pair(ht);
-	/* Empty table looks like this! */
-	if (valid == &ht->common_bits + 1)
-		return false;
-	return valid[0] == off || valid[1] == off;
-}
-
-/* Initialize the "actually valid" pair. */
-static inline void init_actually_valid(struct htable *ht)
-{
-	uintptr_t *valid = actually_valid_pair(ht);
-	valid[0] = valid[1] = ((size_t)1 << ht->bits);
-}
-
-/* Add to the "actually valid" pair: there can only ever be two! */
-static COLD void add_actually_valid(struct htable *ht, size_t off)
-{
-	uintptr_t *valid = actually_valid_pair(ht);
-	if (valid[0] == ((size_t)1 << ht->bits))
-		valid[0] = off;
-	else {
-		assert(valid[1] == ((size_t)1 << ht->bits));
-		valid[1] = off;
-	}
-}
-
-static COLD void del_actually_valid(struct htable *ht, size_t off)
-{
-	uintptr_t *validpair = actually_valid_pair(ht);
-	if (validpair[0] == off)
-		validpair[0] = ((size_t)1 << ht->bits);
-	else {
-		assert(validpair[1] == off);
-		validpair[1] = ((size_t)1 << ht->bits);
-	}
-}
-
-/* If this entry looks invalid, check entry_actually_valid! */
-static inline bool entry_looks_invalid(const struct htable *ht, size_t off)
-{
-	return ht->table[off] <= HTABLE_DELETED;
-}
-
-static inline bool entry_is_valid(const struct htable *ht, size_t off)
-{
-	if (!entry_looks_invalid(ht, off))
-		return true;
-	return entry_actually_valid(ht, off);
-}
-
-static inline bool entry_is_deleted(const struct htable *ht, size_t off)
-{
-	return ht->table[off] == HTABLE_DELETED && !entry_actually_valid(ht, off);
+	return e > HTABLE_DELETED;
 }
 
 static inline uintptr_t ht_perfect_mask(const struct htable *ht)
@@ -155,12 +96,6 @@ static inline size_t ht_max_with_deleted(const struct htable *ht)
 	return ((size_t)9 << ht->bits) / 10;
 }
 
-/* Includes the two trailing "not-deleted" entries */
-static size_t htable_alloc_size(size_t bits)
-{
-	return (sizeof(size_t) << bits) + 2 * sizeof(size_t);
-}
-
 bool htable_init_sized(struct htable *ht,
 		       size_t (*rehash)(const void *, void *),
 		       void *priv, size_t expect)
@@ -173,12 +108,11 @@ bool htable_init_sized(struct htable *ht,
 			break;
 	}
 
-	ht->table = htable_alloc(ht, htable_alloc_size(ht->bits));
+	ht->table = htable_alloc(ht, sizeof(size_t) << ht->bits);
 	if (!ht->table) {
 		ht->table = &ht->common_bits;
 		return false;
 	}
-	init_actually_valid(ht);
 	(void)htable_debug(ht, HTABLE_LOC);
 	return true;
 }
@@ -192,14 +126,14 @@ void htable_clear(struct htable *ht)
 
 bool htable_copy_(struct htable *dst, const struct htable *src)
 {
-	uintptr_t *htable = htable_alloc(dst, htable_alloc_size(src->bits));
+	uintptr_t *htable = htable_alloc(dst, sizeof(size_t) << src->bits);
 
 	if (!htable)
 		return false;
 
 	*dst = *src;
 	dst->table = htable;
-	memcpy(dst->table, src->table, htable_alloc_size(src->bits));
+	memcpy(dst->table, src->table, sizeof(size_t) << src->bits);
 	return true;
 }
 
@@ -213,8 +147,8 @@ static void *htable_val(const struct htable *ht,
 {
 	uintptr_t h2 = get_hash_ptr_bits(ht, hash) | perfect;
 
-	while (ht->table[i->off] || entry_actually_valid(ht, i->off)) {
-		if (!entry_is_deleted(ht, i->off)) {
+	while (ht->table[i->off]) {
+		if (ht->table[i->off] != HTABLE_DELETED) {
 			if (get_extra_ptr_bits(ht, ht->table[i->off]) == h2)
 				return get_raw_ptr(ht, ht->table[i->off]);
 		}
@@ -241,7 +175,7 @@ void *htable_nextval_(const struct htable *ht,
 void *htable_first_(const struct htable *ht, struct htable_iter *i)
 {
 	for (i->off = 0; i->off < (size_t)1 << ht->bits; i->off++) {
-		if (entry_is_valid(ht, i->off))
+		if (entry_is_valid(ht->table[i->off]))
 			return get_raw_ptr(ht, ht->table[i->off]);
 	}
 	return NULL;
@@ -250,7 +184,7 @@ void *htable_first_(const struct htable *ht, struct htable_iter *i)
 void *htable_next_(const struct htable *ht, struct htable_iter *i)
 {
 	for (i->off++; i->off < (size_t)1 << ht->bits; i->off++) {
-		if (entry_is_valid(ht, i->off))
+		if (entry_is_valid(ht->table[i->off]))
 			return get_raw_ptr(ht, ht->table[i->off]);
 	}
 	return NULL;
@@ -262,7 +196,7 @@ void *htable_prev_(const struct htable *ht, struct htable_iter *i)
 		if (!i->off)
 			return NULL;
 		i->off--;
-		if (entry_is_valid(ht, i->off))
+		if (entry_is_valid(ht->table[i->off]))
 			return get_raw_ptr(ht, ht->table[i->off]);
 	}
 }
@@ -275,29 +209,26 @@ static void ht_add(struct htable *ht, const void *new, size_t h)
 
 	i = hash_bucket(ht, h);
 
-	while (entry_is_valid(ht, i)) {
+	while (entry_is_valid(ht->table[i])) {
 		perfect = 0;
 		i = (i + 1) & ((1 << ht->bits)-1);
 	}
 	ht->table[i] = make_hval(ht, new, get_hash_ptr_bits(ht, h)|perfect);
-
-	/* If it looks invalid, add it to exceptions */
-	if (ht->table[i] <= HTABLE_DELETED)
-		add_actually_valid(ht, i);
 }
 
 static COLD bool double_table(struct htable *ht)
 {
-	size_t i;
-	struct htable oldht = *ht;
+	unsigned int i;
+	size_t oldnum = (size_t)1 << ht->bits;
+	uintptr_t *oldtable, e;
 
-	ht->table = htable_alloc(ht, htable_alloc_size(ht->bits+1));
+	oldtable = ht->table;
+	ht->table = htable_alloc(ht, sizeof(size_t) << (ht->bits+1));
 	if (!ht->table) {
-		ht->table = oldht.table;
+		ht->table = oldtable;
 		return false;
 	}
 	ht->bits++;
-	init_actually_valid(ht);
 
 	/* If we lost our "perfect bit", get it back now. */
 	if (ht->perfect_bitnum == NO_PERFECT_BIT && ht->common_mask) {
@@ -309,15 +240,14 @@ static COLD bool double_table(struct htable *ht)
 		}
 	}
 
-	if (oldht.table != &ht->common_bits) {
-		for (i = 0; i < (size_t)1 << oldht.bits; i++) {
-			if (entry_is_valid(&oldht, i)) {
-				void *p = get_raw_ptr(&oldht, oldht.table[i]);
+	if (oldtable != &ht->common_bits) {
+		for (i = 0; i < oldnum; i++) {
+			if (entry_is_valid(e = oldtable[i])) {
+				void *p = get_raw_ptr(ht, e);
 				ht_add(ht, p, ht->rehash(p, ht->priv));
 			}
 		}
-		/* Pass ht here to callback: oldht is an internal figment */
-		htable_free(ht, oldht.table);
+		htable_free(ht, oldtable);
 	}
 	ht->deleted = 0;
 
@@ -329,33 +259,20 @@ static COLD void rehash_table(struct htable *ht)
 {
 	size_t start, i;
 	uintptr_t e, perfect = ht_perfect_mask(ht);
-	uintptr_t *validpair = actually_valid_pair(ht);
 
 	/* Beware wrap cases: we need to start from first empty bucket. */
 	for (start = 0; ht->table[start]; start++);
 
 	for (i = 0; i < (size_t)1 << ht->bits; i++) {
 		size_t h = (i + start) & ((1 << ht->bits)-1);
-		uintptr_t *actually = NULL;
 		e = ht->table[h];
-		if (e <= HTABLE_DELETED) {
-			/* If it's actually valid, remember in case we move it! */
-			if (validpair[0] == h) {
-				actually = &validpair[0];
-			} else if (validpair[1] == h) {
-				actually = &validpair[1];
-			} else {
-				ht->table[h] = 0;
-				continue;
-			}
-		}
-
-		if (!(e & perfect)) {
+		if (!e)
+			continue;
+		if (e == HTABLE_DELETED)
+			ht->table[h] = 0;
+		else if (!(e & perfect)) {
 			void *p = get_raw_ptr(ht, e);
 			ht->table[h] = 0;
-			/* Clear actuallyvalid, let ht_add refill */
-			if (actually)
-				*actually = ((size_t)1 << ht->bits);
 			ht_add(ht, p, ht->rehash(p, ht->priv));
 		}
 	}
@@ -384,16 +301,12 @@ static COLD void update_common(struct htable *ht, const void *p)
 	bitsdiff = ht->common_bits & maskdiff;
 
 	for (i = 0; i < (size_t)1 << ht->bits; i++) {
-		if (!entry_is_valid(ht, i))
+		if (!entry_is_valid(ht->table[i]))
 			continue;
 		/* Clear the bits no longer in the mask, set them as
 		 * expected. */
 		ht->table[i] &= ~maskdiff;
 		ht->table[i] |= bitsdiff;
-
-		/* Make sure it's not newly falsely invalid */
-		if (ht->table[i] <= HTABLE_DELETED && !entry_actually_valid(ht, i))
-			add_actually_valid(ht, i);
 	}
 
 	/* Take away those bits from our mask, bits and perfect bit. */
@@ -436,9 +349,7 @@ bool htable_del_(struct htable *ht, size_t h, const void *p)
 void htable_delval_(struct htable *ht, struct htable_iter *i)
 {
 	assert(i->off < (size_t)1 << ht->bits);
-
-	if (entry_looks_invalid(ht, i->off))
-		del_actually_valid(ht, i->off);
+	assert(entry_is_valid(ht->table[i->off]));
 
 	ht->elems--;
 	ht->table[i->off] = HTABLE_DELETED;
@@ -464,7 +375,6 @@ struct htable *htable_check(const struct htable *ht, const char *abortstr)
 	void *p;
 	struct htable_iter i;
 	size_t n = 0;
-	const uintptr_t *validpair = actually_valid_pair(ht);
 
 	/* Use non-DEBUG versions here, to avoid infinite recursion with
 	 * CCAN_HTABLE_DEBUG! */
@@ -505,36 +415,6 @@ struct htable *htable_check(const struct htable *ht, const char *abortstr)
 			abort();
 		}
 		return NULL;
-	}
-
-	/* Check validpair does actually override invalid-looking entries! */
-	if (ht->table != &ht->common_bits) {
-		size_t i;
-		for (i = 0; i < 2; i++) {
-			if (validpair[i] == ((size_t)1 << ht->bits))
-				continue;
-			if (validpair[i] > ((size_t)1 << ht->bits)) {
-				if (abortstr) {
-					fprintf(stderr,
-						"%s: validpair[%zu] points at %zu"
-						" which is out of bounds\n",
-						abortstr, i, validpair[i]);
-					abort();
-				}
-				return NULL;
-			}
-			if (entry_looks_invalid(ht, validpair[i]))
-				continue;
-
-			if (abortstr) {
-				fprintf(stderr,
-					"%s: validpair[%zu] points at %zu"
-					" which seems valid\n",
-					abortstr, i, validpair[i]);
-				abort();
-			}
-			return NULL;
-		}
 	}
 
 	return (struct htable *)ht;
