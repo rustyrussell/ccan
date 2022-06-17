@@ -418,8 +418,12 @@ void htable_delval_(struct htable *ht, struct htable_iter *i)
 	assert(entry_is_valid(ht->table[i->off]));
 
 	ht->elems--;
-	ht->table[i->off] = HTABLE_DELETED;
-	ht->deleted++;
+	/* Cheap test: if the next bucket is empty, don't need delete marker */
+	if (ht->table[hash_bucket(ht, i->off+1)] != 0) {
+		ht->table[i->off] = HTABLE_DELETED;
+		ht->deleted++;
+	} else
+		ht->table[i->off] = 0;
 }
 
 void *htable_pick_(const struct htable *ht, size_t seed, struct htable_iter *i)
