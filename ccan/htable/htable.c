@@ -86,14 +86,16 @@ void htable_init(struct htable *ht,
 	ht->table = &ht->common_bits;
 }
 
+/* Fill to 87.5% */
 static inline size_t ht_max(const struct htable *ht)
 {
-	return ((size_t)3 << ht->bits) / 4;
+	return ((size_t)7 << ht->bits) / 8;
 }
 
-static inline size_t ht_max_with_deleted(const struct htable *ht)
+/* Clean deleted if we're full, and more than 12.5% deleted */
+static inline size_t ht_max_deleted(const struct htable *ht)
 {
-	return ((size_t)9 << ht->bits) / 10;
+	return ((size_t)1 << ht->bits) / 8;
 }
 
 bool htable_init_sized(struct htable *ht,
@@ -103,7 +105,7 @@ bool htable_init_sized(struct htable *ht,
 	htable_init(ht, rehash, priv);
 
 	/* Don't go insane with sizing. */
-	for (ht->bits = 1; ((size_t)3 << ht->bits) / 4 < expect; ht->bits++) {
+	for (ht->bits = 1; ht_max(ht) < expect; ht->bits++) {
 		if (ht->bits == 30)
 			break;
 	}
@@ -379,10 +381,15 @@ bool htable_add_(struct htable *ht, size_t hash, const void *p)
 	assert(p);
 	assert(entry_is_valid((uintptr_t)p));
 
-	if (ht->elems+1 > ht_max(ht) && !double_table(ht))
-		return false;
-	if (ht->elems+1 + ht->deleted > ht_max_with_deleted(ht))
-		rehash_table(ht);
+	/* Getting too full? */
+	if (ht->elems+1 + ht->deleted > ht_max(ht)) {
+		/* If we're more than 1/8 deleted, clean those,
+		 * otherwise double table size. */
+		if (ht->deleted > ht_max_deleted(ht))
+			rehash_table(ht);
+		else if (!double_table(ht))
+			return false;
+	}
 	if (((uintptr_t)p & ht->common_mask) != ht->common_bits)
 		update_common(ht, p);
 
