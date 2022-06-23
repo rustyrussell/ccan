@@ -416,7 +416,6 @@ struct io_plan *io_out_always_(struct io_conn *conn,
  *    // Freed if conn closes normally.
  *    timeout = tal(conn, struct timeout_timer);
  *    timeout->conn = conn;
- *    timeout->t = conn;
  *    timer_addrel(&timers, &timeout->t, time_from_sec(5));
  *    return io_sock_shutdown(conn);
  * }
