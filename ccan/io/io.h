@@ -814,4 +814,13 @@ struct timemono (*io_time_override(struct timemono (*now)(void)))(void);
  */
 int (*io_poll_override(int (*poll)(struct pollfd *fds, nfds_t nfds, int timeout)))(struct pollfd *, nfds_t, int);
 
+/**
+ * io_have_fd - do we own this file descriptor?
+ * @fd: the file descriptor.
+ * @listener: if non-NULL, set to true if it's a listening socket (io_listener).
+ *
+ * Returns NULL if we don't own it, otherwise a struct io_conn * or struct io_listener *.
+ */
+const void *io_have_fd(int fd, bool *listener);
+
 #endif /* CCAN_IO_H */
