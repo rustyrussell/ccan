@@ -66,7 +66,7 @@ struct rune *rune_dup(const tal_t *ctx, const struct rune *rune TAKES)
 	struct rune *dup;
 
 	if (taken(rune))
-		return (struct rune *)rune;
+		return tal_steal(ctx, (struct rune *)rune);
 
 	dup = tal_dup(ctx, struct rune, rune);
 	dup->restrs = tal_arr(dup, struct rune_restr *, tal_count(rune->restrs));
@@ -86,7 +86,7 @@ struct rune *rune_derive_start(const tal_t *ctx,
         /* If they provide a unique_id, it goes first. */
 	if (unique_id) {
 		if (taken(unique_id))
-			rune->unique_id = unique_id;
+			rune->unique_id = tal_steal(rune, unique_id);
 		else
 			rune->unique_id = tal_strdup(rune, unique_id);
 		
@@ -117,7 +117,7 @@ struct rune_altern *rune_altern_dup(const tal_t *ctx,
 	struct rune_altern *dup;
 
 	if (taken(altern))
-		return (struct rune_altern *)altern;;
+		return tal_steal(ctx, (struct rune_altern *)altern);
 	dup = tal(ctx, struct rune_altern);
 	dup->condition = altern->condition;
 	dup->fieldname = tal_strdup(dup, altern->fieldname);
@@ -132,7 +132,7 @@ struct rune_restr *rune_restr_dup(const tal_t *ctx,
 	size_t num_altern;
 
 	if (taken(restr))
-		return (struct rune_restr *)restr;
+		return tal_steal(ctx, (struct rune_restr *)restr);
 
 	num_altern = tal_count(restr->alterns);
 	dup = tal(ctx, struct rune_restr);
