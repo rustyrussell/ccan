@@ -40,16 +40,14 @@
  * 	// t= means current time, in seconds, as integer
  * 	if (streq(alt->fieldname, "t")) {
  * 		struct timeval now;
- * 		s64 t;
  * 		gettimeofday(&now, NULL);
- * 		t = now.tv_sec;
- * 		return rune_alt_single(ctx, alt, NULL, &t);
+ * 		return rune_alt_single_int(ctx, alt, now.tv_sec);
  * 	}
  * 	if (streq(alt->fieldname, "uid")) {
- * 		return rune_alt_single(ctx, alt, uid, NULL);
+ * 		return rune_alt_single_str(ctx, alt, uid, strlen(uid));
  * 	}
  * 	// Otherwise, field is missing
- * 	return rune_alt_single(ctx, alt, NULL, NULL);
+ * 	return rune_alt_single_missing(ctx, alt);
  * }
  * 
  * int main(int argc, char *argv[])
@@ -115,6 +113,7 @@ int main(int argc, char *argv[])
 		printf("ccan/base64\n");
 		printf("ccan/crypto/sha256\n");
 		printf("ccan/endian\n");
+		printf("ccan/mem\n");
 		printf("ccan/short_types\n");
 		printf("ccan/str/hex\n");
 		printf("ccan/tal/str\n");

@@ -215,19 +215,38 @@ bool rune_restr_eq(const struct rune_restr *rest1,
 bool rune_eq(const struct rune *rune1, const struct rune *rune2);
 
 /**
- * rune_alt_single - helper to implement check().
+ * rune_alt_single_str - helper to implement check().
  * @ctx: context to allocate any error return from.
  * @alt: alternative to test.
  * @fieldval_str: field value as a string.
- * @fieldval_int: field value as an integer.
- *
- * If the field value is missing, set neither fieldval_str nor fieldval_int,
- * otherwise you must set exactly one.
+ * @fieldval_strlen: length of @fieldval_str
  */
-const char *rune_alt_single(const tal_t *ctx,
-			    const struct rune_altern *alt,
-			    const char *fieldval_str,
-			    const s64 *fieldval_int);
+const char *rune_alt_single_str(const tal_t *ctx,
+				const struct rune_altern *alt,
+				const char *fieldval_str,
+				size_t fieldval_strlen);
+
+/**
+ * rune_alt_single_int - helper to implement check().
+ * @ctx: context to allocate any error return from.
+ * @alt: alternative to test.
+ * @fieldval_int: field value as an integer.
+ */
+const char *rune_alt_single_int(const tal_t *ctx,
+				const struct rune_altern *alt,
+				s64 fieldval_int);
+
+/**
+ * rune_alt_single_missing - helper to implement check().
+ * @ctx: context to allocate any error return from.
+ * @alt: alternative to test.
+ *
+ * Use this if alt->fieldname is unknown (it could still pass, if
+ * the test is that the fieldname is missing).
+ */
+const char *rune_alt_single_missing(const tal_t *ctx,
+				    const struct rune_altern *alt);
+
 
 /**
  * rune_is_derived - is a rune derived from this other rune?

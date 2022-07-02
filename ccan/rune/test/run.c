@@ -22,10 +22,10 @@ static const char *check(const tal_t *ctx,
 		char *endp;
 		s64 v = strtol(val, &endp, 10);
 		if (*endp == '\0' && endp != val)
-			return rune_alt_single(ctx, alt, NULL, &v);
+			return rune_alt_single_int(ctx, alt, v);
+		return rune_alt_single_str(ctx, alt, val, strlen(val));
 	}
-
-	return rune_alt_single(ctx, alt, val, NULL);
+	return rune_alt_single_missing(ctx, alt);
 }
 
 int main(void)

@@ -5,6 +5,7 @@
 #include <inttypes.h>
 #include <stdio.h>
 #include <ccan/endian/endian.h>
+#include <ccan/mem/mem.h>
 #include <ccan/tal/str/str.h>
 #include <ccan/rune/rune.h>
 #include <ccan/rune/internal.h>
@@ -282,20 +283,34 @@ static const char *integer_compare_valid(const tal_t *ctx,
 	return NULL;
 }
 
-const char *rune_alt_single(const tal_t *ctx,
-			    const struct rune_altern *alt,
-			    const char *fieldval_str,
-			    const s64 *fieldval_int)
+static int lexo_order(const char *fieldval_str,
+		      size_t fieldval_strlen,
+		      const char *alt)
+{
+	int ret = strncmp(fieldval_str, alt, fieldval_strlen);
+
+	/* If alt is same but longer, fieldval is < */
+	if (ret == 0 && strlen(alt) > fieldval_strlen)
+		ret = -1;
+	return ret;
+}
+
+static const char *rune_alt_single(const tal_t *ctx,
+				   const struct rune_altern *alt,
+				   const char *fieldval_str,
+				   size_t fieldval_strlen,
+				   const s64 *fieldval_int)
 {
 	char strfield[STR_MAX_CHARS(s64) + 1];
 	s64 runeval_int;
 	const char *err;
-	
+
 	/* Caller can't set both! */
 	if (fieldval_int) {
 		assert(!fieldval_str);
 		sprintf(strfield, "%"PRIi64, *fieldval_int);
 		fieldval_str = strfield;
+		fieldval_strlen = strlen(strfield);
 	}
 
 	switch (alt->condition) {
@@ -307,27 +322,28 @@ const char *rune_alt_single(const tal_t *ctx,
 		if (!fieldval_str)
 			return tal_fmt(ctx, "%s not present", alt->fieldname);
 		return cond_test(ctx, alt, "is not equal to",
-				 streq(fieldval_str, alt->value));
+				 memeqstr(fieldval_str, fieldval_strlen, alt->value));
 	case RUNE_COND_NOT_EQUAL:
 		if (!fieldval_str)
 			return tal_fmt(ctx, "%s not present", alt->fieldname);
 		return cond_test(ctx, alt, "is equal to",
-				 !streq(fieldval_str, alt->value));
+				 !memeqstr(fieldval_str, fieldval_strlen, alt->value));
 	case RUNE_COND_BEGINS:
 		if (!fieldval_str)
 			return tal_fmt(ctx, "%s not present", alt->fieldname);
 		return cond_test(ctx, alt, "does not start with",
-				 strstarts(fieldval_str, alt->value));
+				 memstarts_str(fieldval_str, fieldval_strlen, alt->value));
 	case RUNE_COND_ENDS:
 		if (!fieldval_str)
 			return tal_fmt(ctx, "%s not present", alt->fieldname);
 		return cond_test(ctx, alt, "does not end with",
-				 strends(fieldval_str, alt->value));
+				 memends_str(fieldval_str, fieldval_strlen, alt->value));
 	case RUNE_COND_CONTAINS:
 		if (!fieldval_str)
 			return tal_fmt(ctx, "%s not present", alt->fieldname);
 		return cond_test(ctx, alt, "does not contain",
-				 strstr(fieldval_str, alt->value));
+				 memmem(fieldval_str, fieldval_strlen,
+					alt->value, strlen(alt->value)));
 	case RUNE_COND_INT_LESS:
 		err = integer_compare_valid(ctx, fieldval_int,
 					    alt, &runeval_int);
@@ -346,17 +362,38 @@ const char *rune_alt_single(const tal_t *ctx,
 		if (!fieldval_str)
 			return tal_fmt(ctx, "%s not present", alt->fieldname);
 		return cond_test(ctx, alt, "is equal to or ordered after",
-				 strcmp(fieldval_str, alt->value) < 0);
+				 lexo_order(fieldval_str, fieldval_strlen, alt->value) < 0);
 	case RUNE_COND_LEXO_AFTER:
 		if (!fieldval_str)
 			return tal_fmt(ctx, "%s not present", alt->fieldname);
 		return cond_test(ctx, alt, "is equal to or ordered before",
-				 strcmp(fieldval_str, alt->value) > 0);
+				 lexo_order(fieldval_str, fieldval_strlen, alt->value) > 0);
 	case RUNE_COND_COMMENT:
 		return NULL;
 	}
 	/* We should never create any other values! */
 	abort();
+}
+
+const char *rune_alt_single_str(const tal_t *ctx,
+				const struct rune_altern *alt,
+				const char *fieldval_str,
+				size_t fieldval_strlen)
+{
+	return rune_alt_single(ctx, alt, fieldval_str, fieldval_strlen, NULL);
+}
+
+const char *rune_alt_single_int(const tal_t *ctx,
+				const struct rune_altern *alt,
+				s64 fieldval_int)
+{
+	return rune_alt_single(ctx, alt, NULL, 0, &fieldval_int);
+}
+
+const char *rune_alt_single_missing(const tal_t *ctx,
+				    const struct rune_altern *alt)
+{
+	return rune_alt_single(ctx, alt, NULL, 0, NULL);
 }
 
 const char *rune_meets_criteria_(const tal_t *ctx,
