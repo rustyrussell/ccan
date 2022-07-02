@@ -306,9 +306,9 @@ static struct rune *from_string(const tal_t *ctx,
 }
 
 struct rune_restr *rune_restr_from_string(const tal_t *ctx,
-					  const char *str)
+					  const char *str,
+					  size_t len)
 {
-	size_t len = strlen(str);
 	struct rune_restr *restr;
 
 	restr = rune_restr_decode(NULL, &str, &len);
@@ -334,26 +334,26 @@ static void to_string(struct wbuf *wbuf, const struct rune *rune, u8 *hash32)
 	to_wbuf("", 1, wbuf);
 }
 
-struct rune *rune_from_base64(const tal_t *ctx, const char *str)
+struct rune *rune_from_base64n(const tal_t *ctx, const char *str, size_t len)
 {
-	size_t len;
+	size_t blen;
 	u8 *data;
 	struct rune *rune;
 
-	data = tal_arr(NULL, u8, base64_decoded_length(strlen(str)) + 1);
+	data = tal_arr(NULL, u8, base64_decoded_length(len) + 1);
 
-	len = base64_decode_using_maps(&base64_maps_urlsafe,
+	blen = base64_decode_using_maps(&base64_maps_urlsafe,
 				       (char *)data, tal_bytelen(data),
-				       str, strlen(str));
-	if (len == -1)
-		goto fail;
-			
-	if (len < 32)
+				       str, len);
+	if (blen == -1)
 		goto fail;
 
-	data[len] = '\0';
+	if (blen < 32)
+		goto fail;
+
+	data[blen] = '\0';
 	/* Sanity check that it's a valid string! */
-	if (strlen((char *)data + 32) != len - 32)
+	if (strlen((char *)data + 32) != blen - 32)
 		goto fail;
 
 	rune = from_string(ctx, (const char *)data + 32, data);
@@ -363,6 +363,11 @@ struct rune *rune_from_base64(const tal_t *ctx, const char *str)
 fail:
 	tal_free(data);
 	return NULL;
+}
+
+struct rune *rune_from_base64(const tal_t *ctx, const char *str)
+{
+	return rune_from_base64n(ctx, str, strlen(str));
 }
 
 char *rune_to_base64(const tal_t *ctx, const struct rune *rune)

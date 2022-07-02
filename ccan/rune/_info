@@ -73,7 +73,7 @@
  * 		rune = rune_from_base64(NULL, argv[2]);
  * 		if (!rune)
  * 			errx(1, "Bad rune");
- * 		restr = rune_restr_from_string(NULL, argv[3]);
+ * 		restr = rune_restr_from_string(NULL, argv[3], strlen(argv[3]));
  * 		if (!restr)
  * 			errx(1, "Bad restriction string");
  * 		rune_add_restr(rune, restr);

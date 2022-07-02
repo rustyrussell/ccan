@@ -322,6 +322,16 @@ const char *rune_test_(const tal_t *ctx,
 struct rune *rune_from_base64(const tal_t *ctx, const char *str);
 
 /**
+ * rune_from_base64n - convert base64 string to rune.
+ * @ctx: context to allocate rune off.
+ * @str: base64 string.
+ * @len: length of @str.
+ *
+ * Returns NULL if it's malformed.
+ */
+struct rune *rune_from_base64n(const tal_t *ctx, const char *str, size_t len);
+
+/**
  * rune_to_base64 - convert run to base64 string.
  * @ctx: context to allocate rune off.
  * @rune: the rune.
@@ -340,10 +350,11 @@ char *rune_to_string(const tal_t *ctx, const struct rune *rune);
  * rune_restr_from_string - convenience routine to parse a single restriction.
  * @ctx: context to allocate rune off.
  * @str: the string of form "<field><cond><val>[|<field><cond><val>]*"
+ * @len: the length of @str.
  *
- * This is really an internal routine, exposed for simple examples.
+ * This is useful for writing simple tests and making simple runes.
  */
 struct rune_restr *rune_restr_from_string(const tal_t *ctx,
-					  const char *str);
-
+					  const char *str,
+					  size_t len);
 #endif /* CCAN_RUNE_RUNE_H */
