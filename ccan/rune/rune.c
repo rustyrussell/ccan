@@ -302,7 +302,7 @@ static const char *rune_alt_single(const tal_t *ctx,
 				   const s64 *fieldval_int)
 {
 	char strfield[STR_MAX_CHARS(s64) + 1];
-	s64 runeval_int;
+	s64 runeval_int = 0 /* gcc v9.4.0 gets upset with uninitiaized var at -O3 */;
 	const char *err;
 
 	/* Caller can't set both! */
