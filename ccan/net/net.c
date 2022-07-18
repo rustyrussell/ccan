@@ -75,7 +75,7 @@ close:
 }
 
 
-int net_connect_async(const struct addrinfo *addrinfo, struct pollfd pfds[2])
+int net_connect_async(const struct addrinfo *addrinfo, struct pollfd *pfds)
 {
 	const struct addrinfo *addr[2] = { NULL, NULL };
 	unsigned int i;
@@ -122,7 +122,7 @@ int net_connect_async(const struct addrinfo *addrinfo, struct pollfd pfds[2])
 	return -1;
 }
 
-void net_connect_abort(struct pollfd pfds[2])
+void net_connect_abort(struct pollfd *pfds)
 {
 	unsigned int i;
 
@@ -133,7 +133,7 @@ void net_connect_abort(struct pollfd pfds[2])
 	}
 }
 
-int net_connect_complete(struct pollfd pfds[2])
+int net_connect_complete(struct pollfd *pfds)
 {
 	unsigned int i;
 
