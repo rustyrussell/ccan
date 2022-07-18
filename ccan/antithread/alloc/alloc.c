@@ -728,8 +728,6 @@ void *alloc_get(void *pool, unsigned long poolsize,
 	bs = &head->bs[bucket];
 
 	if (!bs->page_list) {
-		struct page_header *ph;
-
 		if (large_page_bucket(bucket, sp_bits))
 			bs->page_list = get_large_page(head, poolsize,
 						       sp_bits);
