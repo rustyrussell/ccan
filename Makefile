@@ -8,7 +8,7 @@ all::
 
 # Our flags for building
 WARN_CFLAGS := -Wall -Wstrict-prototypes -Wold-style-definition -Wundef \
- -Wmissing-prototypes -Wmissing-declarations -Wpointer-arith -Wwrite-strings
+ -Wmissing-prototypes -Wmissing-declarations -Wpointer-arith -Wwrite-strings -Wshadow=local
 DEP_CFLAGS = -MMD -MP -MF$(@:%=%.d) -MT$@
 CCAN_CFLAGS := -g3 -ggdb $(WARN_CFLAGS) -DCCAN_STR_DEBUG=1 -I. $(CFLAGS)
 CFLAGS_FORCE_C_SOURCE := -x c
