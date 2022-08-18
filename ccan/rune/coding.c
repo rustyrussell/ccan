@@ -98,7 +98,7 @@ static void rune_altern_encode(const struct rune_altern *altern,
 			break;
 		esc[1] = p[len];
 		cb(esc, 2, arg);
-		p++;
+		p += len + 1;
 	}
 }
 
