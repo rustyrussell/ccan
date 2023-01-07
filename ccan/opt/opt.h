@@ -430,7 +430,7 @@ void opt_usage_exit_fail(const char *msg, ...) NORETURN;
 extern const char opt_hidden[];
 
 /* Maximum length of arg to show in opt_usage */
-#define OPT_SHOW_LEN 80
+#define OPT_SHOW_LEN 100
 
 /* Standard helpers.  You can write your own: */
 /* Sets the @b to true. */
