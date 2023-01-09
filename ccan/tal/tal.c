@@ -803,7 +803,7 @@ void *tal_dup_(const tal_t *ctx, const void *p, size_t size,
 	}
 
 	ret = tal_alloc_arr_(ctx, size, n + extra, false, label);
-	if (ret)
+	if (ret && p)
 		memcpy(ret, p, nbytes);
 	return ret;
 }

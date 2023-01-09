@@ -203,8 +203,13 @@ static inline const char *bytestring_rindex(struct bytestring haystack,
 static inline struct bytestring bytestring_bytestring(struct bytestring haystack,
 						      struct bytestring needle)
 {
-	const char *p = memmem(haystack.ptr, haystack.len,
-			       needle.ptr, needle.len);
+	const char *p;
+
+	/* Allow needle.ptr == NULL, without memmem sanitizer complaining */
+	if (needle.len == 0)
+		return bytestring(haystack.ptr, 0);
+
+	p = memmem(haystack.ptr, haystack.len, needle.ptr, needle.len);
 	if (p)
 		return bytestring(p, needle.len);
 	else

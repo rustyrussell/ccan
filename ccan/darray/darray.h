@@ -183,15 +183,21 @@ typedef darray(unsigned long)  darray_ulong;
 
 #define darray_append_items(arr, items, count) do { \
 		size_t count_ = (count), oldSize_ = (arr).size; \
-		darray_resize(arr, oldSize_ + count_); \
-		memcpy((arr).item + oldSize_, items, count_ * sizeof(*(arr).item)); \
+		/* Don't memcpy NULL! */			\
+		if (count_) {					\
+			darray_resize(arr, oldSize_ + count_);		\
+			memcpy((arr).item + oldSize_, items, count_ * sizeof(*(arr).item)); \
+		}							\
 	} while(0)
 
 #define darray_prepend_items(arr, items, count) do { \
 		size_t count_ = (count), oldSize_ = (arr).size; \
 		darray_resize(arr, count_ + oldSize_); \
-		memmove((arr).item + count_, (arr).item, oldSize_ * sizeof(*(arr).item)); \
-		memcpy((arr).item, items, count_ * sizeof(*(arr).item)); \
+		/* Don't memcpy NULL! */			\
+		if (count_) {					\
+			memmove((arr).item + count_, (arr).item, oldSize_ * sizeof(*(arr).item)); \
+			memcpy((arr).item, items, count_ * sizeof(*(arr).item)); \
+		}							\
 	} while(0)
 
 #define darray_append_items_nullterminate(arr, items, count) do { \
