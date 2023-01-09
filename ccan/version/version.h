@@ -55,7 +55,7 @@ static inline uint16_t version_minor(const struct version v) {
  */
 static inline struct version version(uint16_t major, uint16_t minor)
 {
-	struct version v = { ._v = major << 16 | minor };
+	struct version v = { ._v = (uint32_t)major << 16 | minor };
 	return v;
 }
 
