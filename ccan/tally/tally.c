@@ -56,7 +56,7 @@ static unsigned bucket_of(ssize_t min, unsigned step_bits, ssize_t val)
 		return 0;
 	}
 	assert(step_bits < SIZET_BITS);
-	return (size_t)(val - min) >> step_bits;
+	return ((size_t)val - (size_t)min) >> step_bits;
 }
 
 /* Return the min value in bucket b. */
@@ -67,7 +67,7 @@ static ssize_t bucket_min(ssize_t min, unsigned step_bits, unsigned b)
 		return min;
 	}
 	assert(step_bits < SIZET_BITS);
-	return min + ((ssize_t)b << step_bits);
+	return min + ((size_t)b << step_bits);
 }
 
 /* Does shifting by this many bits truncate the number? */
@@ -75,6 +75,9 @@ static bool shift_overflows(size_t num, unsigned bits)
 {
 	if (bits == 0) {
 		return false;
+	}
+	if (bits >= SIZET_BITS) {
+		return true;
 	}
 
 	return ((num << bits) >> 1) != (num << (bits - 1));
@@ -94,7 +97,7 @@ static void renormalize(struct tally *tally,
 
 	/* If we don't have sufficient range, increase step bits until
 	 * buckets cover entire range of ssize_t anyway. */
-	range = (new_max - new_min) + 1;
+	range = ((size_t)new_max - (size_t)new_min) + 1;
 	while (!shift_overflows(tally->buckets, tally->step_bits)
 	       && range > ((size_t)tally->buckets << tally->step_bits)) {
 		/* Collapse down. */
@@ -113,11 +116,13 @@ static void renormalize(struct tally *tally,
 	memset(tally->counts, 0, sizeof(tally->counts[0]) * old_min);
 
 	/* If we moved boundaries, adjust buckets to that ratio. */
-	spill = (tally->min - new_min) % (1 << tally->step_bits);
-	for (i = 0; i < tally->buckets-1; i++) {
-		size_t adjust = (tally->counts[i] >> tally->step_bits) * spill;
-		tally->counts[i] -= adjust;
-		tally->counts[i+1] += adjust;
+	if (tally->step_bits < SIZET_BITS) {
+		spill = (tally->min - new_min) % ((size_t)1 << tally->step_bits);
+		for (i = 0; i < tally->buckets-1; i++) {
+			size_t adjust = (tally->counts[i] >> tally->step_bits) * spill;
+			tally->counts[i] -= adjust;
+			tally->counts[i+1] += adjust;
+		}
 	}
 
 update:
