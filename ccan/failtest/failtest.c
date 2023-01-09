@@ -179,7 +179,8 @@ static struct failtest_call *add_history_(enum failtest_call_type type,
 	call->line = line;
 	call->cleanup = NULL;
 	call->backtrace = get_backtrace(&call->backtrace_num);
-	memcpy(&call->u, elem, elem_size);
+	if (elem_size != 0)
+		memcpy(&call->u, elem, elem_size);
 	tlist_add_tail(&history, call, list);
 	return call;
 }
@@ -1202,9 +1203,8 @@ static void cleanup_pipe(struct pipe_call *call, bool restore)
 int failtest_pipe(int pipefd[2], const char *file, unsigned line)
 {
 	struct failtest_call *p;
-	struct pipe_call call;
 
-	p = add_history(FAILTEST_PIPE, true, file, line, &call);
+	p = add_history_(FAILTEST_PIPE, true, file, line, NULL, 0);
 	if (should_fail(p)) {
 		p->u.open.ret = -1;
 		/* FIXME: Play with error codes? */
