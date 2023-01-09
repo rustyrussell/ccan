@@ -151,11 +151,12 @@ static void reap_output(void)
 			int old_len, len;
 			/* This length includes nul terminator! */
 			old_len = tal_count(c->output);
-			tal_resize(&c->output, old_len + 1024);
-			len = read(c->output_fd, c->output + old_len - 1, 1024);
+			tal_resize(&c->output, old_len + 65536);
+			len = read(c->output_fd, c->output + old_len - 1, 65536);
 			if (len < 0)
 				err(1, "Reading from async command");
-			tal_resize(&c->output, old_len + len);
+			if (len != 65536)
+				tal_resize(&c->output, old_len + len);
 			c->output[old_len + len - 1] = '\0';
 			if (len == 0) {
 				struct rusage ru;
