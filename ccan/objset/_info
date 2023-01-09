@@ -39,6 +39,8 @@
  *					printf("%i,", i);
  *			printf("\n");
  *		}
+ *		// Keep -fsanitize=address leak detection happy.
+ *		objset_clear(&args);
  *		return 0;
  *	}
  *	// Given "a b c" outputs No arguments start with -.
