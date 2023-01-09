@@ -96,10 +96,11 @@ char *read_config_header(const char *ccan_dir, bool verbose)
 	char *config_header;
 
 	config_header = grab_file(NULL, fname);
-	tal_free(fname);
 
-	if (!config_header)
+	if (!config_header) {
+		tal_free(fname);
 		return NULL;
+	}
 
 	lines = tal_strsplit(config_header, config_header, "\n", STR_EMPTY_OK);
 	for (i = 0; i < tal_count(lines) - 1; i++) {
@@ -129,5 +130,6 @@ char *read_config_header(const char *ccan_dir, bool verbose)
 				       fname, cflags);
 		}
 	}
+	tal_free(fname);
 	return config_header;
 }
