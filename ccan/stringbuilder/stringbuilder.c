@@ -22,7 +22,8 @@ static int stringbuilder_cpy(
 	if (*str != s) {
 		if (!s_len)
 			s_len = strlen(s);
-		if (s_len > *str_sz)
+		/* Include nul term! */
+		if (s_len >= *str_sz)
 			return EMSGSIZE;
 		strcpy(*str, s);
 	}
