@@ -353,7 +353,8 @@ bool tiny_alloc_check(void *pool, unsigned long poolsize)
 	unsigned long arrsize = free_array_size(poolsize);
 	unsigned char *arr = pool;
 	unsigned long len, off, hdrlen;
-	unsigned long i, freearr[arrsize], num_freearr = 0;
+	/* Don't have sanitizer complain here if arrsize is 0! */
+	unsigned long i, freearr[arrsize ? arrsize : 1], num_freearr = 0;
 	bool free;
 
 	if (poolsize < MIN_BLOCK_SIZE)
