@@ -6,7 +6,7 @@
  * talloc - tree allocator routines
  *
  * Talloc is a hierarchical memory pool system with destructors: you keep your
- * objects in heirarchies reflecting their lifetime.  Every pointer returned
+ * objects in hierarchies reflecting their lifetime.  Every pointer returned
  * from talloc() is itself a valid talloc context, from which other talloc()s
  * can be attached.  This means you can do this:
  *

@@ -226,7 +226,7 @@ int nfs_close_sync(struct nfs_context *nfs, struct nfsfh *nfsfh);
  *
  * When the callback is invoked, status indicates the result:
  *    >=0 : Success.
- *          status is numer of bytes read.
+ *          status is number of bytes read.
  *          data is a pointer to the returned data.
  * -errno : An error occurred.
  *          data is the error string.
@@ -235,7 +235,7 @@ int nfs_pread_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offs
 /*
  * Sync pread()
  * Function returns
- *    >=0 : numer of bytes read.
+ *    >=0 : number of bytes read.
  * -errno : An error occurred.
  */
 int nfs_pread_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offset, size_t count, char *buf);
@@ -254,7 +254,7 @@ int nfs_pread_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offse
  *
  * When the callback is invoked, status indicates the result:
  *    >=0 : Success.
- *          status is numer of bytes read.
+ *          status is number of bytes read.
  *          data is a pointer to the returned data.
  * -errno : An error occurred.
  *          data is the error string.
@@ -263,7 +263,7 @@ int nfs_read_async(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, n
 /*
  * Sync read()
  * Function returns
- *    >=0 : numer of bytes read.
+ *    >=0 : number of bytes read.
  * -errno : An error occurred.
  */
 int nfs_read_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *buf);
@@ -283,7 +283,7 @@ int nfs_read_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, ch
  *
  * When the callback is invoked, status indicates the result:
  *    >=0 : Success.
- *          status is numer of bytes written.
+ *          status is number of bytes written.
  * -errno : An error occurred.
  *          data is the error string.
  */
@@ -291,7 +291,7 @@ int nfs_pwrite_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t off
 /*
  * Sync pwrite()
  * Function returns
- *    >=0 : numer of bytes written.
+ *    >=0 : number of bytes written.
  * -errno : An error occurred.
  */
 int nfs_pwrite_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offset, size_t count, char *buf);
@@ -309,7 +309,7 @@ int nfs_pwrite_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offs
  *
  * When the callback is invoked, status indicates the result:
  *    >=0 : Success.
- *          status is numer of bytes written.
+ *          status is number of bytes written.
  * -errno : An error occurred.
  *          data is the error string.
  */
@@ -317,7 +317,7 @@ int nfs_write_async(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, 
 /*
  * Sync write()
  * Function returns
- *    >=0 : numer of bytes written.
+ *    >=0 : number of bytes written.
  * -errno : An error occurred.
  */
 int nfs_write_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, size_t count, char *buf);
@@ -343,7 +343,7 @@ int nfs_lseek_async(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offs
 /*
  * Sync lseek()
  * Function returns
- *    >=0 : numer of bytes read.
+ *    >=0 : number of bytes read.
  * -errno : An error occurred.
  */
 int nfs_lseek_sync(struct nfs_context *nfs, struct nfsfh *nfsfh, nfs_off_t offset, int whence, nfs_off_t *current_offset);
