@@ -151,20 +151,20 @@ static char *add_desc(char *base, size_t *len, size_t *max,
 	if (opt->show) {
 		char buf[OPT_SHOW_LEN + sizeof("...")];
 		strcpy(buf + OPT_SHOW_LEN, "...");
-		opt->show(buf, OPT_SHOW_LEN, opt->u.arg);
+		if (opt->show(buf, OPT_SHOW_LEN, opt->u.arg)) {
+			/* If it doesn't fit on this line, indent. */
+			if (off + strlen(" (default: ") + strlen(buf) + strlen(")")
+			    > width) {
+				base = add_indent(base, len, max, indent);
+			} else {
+				/* Remove \n. */
+				(*len)--;
+			}
 
-		/* If it doesn't fit on this line, indent. */
-		if (off + strlen(" (default: ") + strlen(buf) + strlen(")")
-		    > width) {
-			base = add_indent(base, len, max, indent);
-		} else {
-			/* Remove \n. */
-			(*len)--;
+			base = add_str(base, len, max, " (default: ");
+			base = add_str(base, len, max, buf);
+			base = add_str(base, len, max, ")\n");
 		}
-
-		base = add_str(base, len, max, " (default: ");
-		base = add_str(base, len, max, buf);
-		base = add_str(base, len, max, ")\n");
 	}
 	return base;
 }

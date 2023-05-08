@@ -21,9 +21,10 @@ char *test_arg(const char *optarg, const char *arg)
 	return NULL;
 }
 
-void show_arg(char *buf, size_t len, const char *arg)
+bool show_arg(char *buf, size_t len, const char *arg)
 {
 	strncpy(buf, arg, len);
+	return true;
 }
 
 char *err_output = NULL;

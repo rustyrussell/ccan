@@ -162,7 +162,7 @@ static void add_opt(const struct opt_table *entry)
 void _opt_register(const char *names, enum opt_type type,
 		   char *(*cb)(void *arg),
 		   char *(*cb_arg)(const char *optarg, void *arg),
-		   void (*show)(char *buf, size_t len, const void *arg),
+		   bool (*show)(char *buf, size_t len, const void *arg),
 		   const void *arg, const char *desc)
 {
 	struct opt_table opt;
