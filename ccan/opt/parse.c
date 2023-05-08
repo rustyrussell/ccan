@@ -140,7 +140,7 @@ int parse_one(int *argc, char *argv[], enum opt_type is_early, unsigned *offset,
 		len = 2;
 	}
 
-	if ((ot->type & ~OPT_EARLY) == OPT_NOARG) {
+	if (ot->type & OPT_NOARG) {
 		if (optarg)
 			return parse_err(errlog, argv[0], o, len,
 					 "doesn't allow an argument");

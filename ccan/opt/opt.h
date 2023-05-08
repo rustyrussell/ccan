@@ -527,6 +527,12 @@ struct opt_table *opt_find_long(const char *arg, const char **optarg);
  */
 struct opt_table *opt_find_short(char arg);
 
+/* opt_type bits reserved for users to play with (ignored!).
+ * You can set bits in type e.g. (1<<OPT_USER_START) to (1<<OPT_USER_END)
+ * when calling _opt_register. */
+#define OPT_USER_START 8
+#define OPT_USER_END 15
+
 /* Below here are private declarations. */
 /* You can use this directly to build tables, but the macros will ensure
  * consistency and type safety. */
@@ -536,6 +542,11 @@ enum opt_type {
 	OPT_SUBTABLE = 4,	/* Actually, longopt points to a subtable... */
 	OPT_EARLY = 8,		/* Parse this from opt_early_parse() only. */
 	OPT_END = 16,		/* End of the table. */
+
+	/* Make sure no compiler will assume we never have large
+	 * values in the enum! */
+	OPT_USER_MIN = (1 << OPT_USER_START),
+	OPT_USER_MAX = (1 << OPT_USER_END),
 };
 
 struct opt_table {

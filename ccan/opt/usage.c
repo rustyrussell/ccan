@@ -182,10 +182,10 @@ char *opt_usage(const char *argv0, const char *extra)
 		size_t l;
 		if (opt_table[i].desc == opt_hidden)
 			continue;
-		if (opt_table[i].type == OPT_SUBTABLE)
+		if (opt_table[i].type & OPT_SUBTABLE)
 			continue;
 		l = strlen(opt_table[i].names);
-		if (opt_table[i].type == OPT_HASARG
+		if ((opt_table[i].type & OPT_HASARG)
 		    && !strchr(opt_table[i].names, ' ')
 		    && !strchr(opt_table[i].names, '='))
 			l += strlen(" <arg>");
@@ -221,7 +221,7 @@ char *opt_usage(const char *argv0, const char *extra)
 	for (i = 0; i < opt_count; i++) {
 		if (opt_table[i].desc == opt_hidden)
 			continue;
-		if (opt_table[i].type == OPT_SUBTABLE) {
+		if (opt_table[i].type & OPT_SUBTABLE) {
 			ret = add_str(ret, &len, &max, opt_table[i].desc);
 			ret = add_str(ret, &len, &max, ":\n");
 			continue;
