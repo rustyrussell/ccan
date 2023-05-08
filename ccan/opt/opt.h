@@ -509,6 +509,24 @@ char *opt_version_and_exit(const char *version);
 /* Display usage string to stdout, exit(0). */
 char *opt_usage_and_exit(const char *extra);
 
+/**
+ * opt_find_long: low-level access to the parser
+ * @arg: string of form 'arg' or 'arg=val'.
+ * @optarg: set to `val` of present in arg, otherwise NULL.  Can be NULL.
+ *
+ * Returns NULL if option is unknown.  Sets *@optarg to NULL if
+ * there's no '='.
+ */
+struct opt_table *opt_find_long(const char *arg, const char **optarg);
+
+/**
+ * opt_find_short: low-level access to the parser
+ * @arg: character representing short option
+ *
+ * Returns NULL if option is unknown.
+ */
+struct opt_table *opt_find_short(char arg);
+
 /* Below here are private declarations. */
 /* You can use this directly to build tables, but the macros will ensure
  * consistency and type safety. */
