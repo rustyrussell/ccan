@@ -47,10 +47,10 @@ struct opt_table;
  * where "type" is the type of the @arg argument.  The first argument to the
  * @cb is the argument found on the commandline.
  *
- * Similarly, if @show is not NULL, it should be of type "void *show(char *,
- * const type *)".  It should write up to OPT_SHOW_LEN bytes into the first
- * argument; unless it uses the entire OPT_SHOW_LEN bytes it should
- * nul-terminate that buffer.
+ * Similarly, if @show is not NULL, it should be of type "void show(char *,
+ * size_t len, const type *)".  It should write up to len bytes into the first
+ * argument; unless it uses the entire len bytes it should nul-terminate that
+ * buffer.
  *
  * Any number of equivalent short or long options can be listed in @names,
  * separated by '|'.  Short options are a single hyphen followed by a single
@@ -429,40 +429,37 @@ void opt_usage_exit_fail(const char *msg, ...) NORETURN;
  */
 extern const char opt_hidden[];
 
-/* Maximum length of arg to show in opt_usage */
-#define OPT_SHOW_LEN 80
-
 /* Standard helpers.  You can write your own: */
 /* Sets the @b to true. */
 char *opt_set_bool(bool *b);
 /* Sets @b based on arg: (yes/no/true/false). */
 char *opt_set_bool_arg(const char *arg, bool *b);
-void opt_show_bool(char buf[OPT_SHOW_LEN], const bool *b);
+void opt_show_bool(char *buf, size_t len, const bool *b);
 /* The inverse */
 char *opt_set_invbool(bool *b);
-void opt_show_invbool(char buf[OPT_SHOW_LEN], const bool *b);
+void opt_show_invbool(char *buf, size_t len, const bool *b);
 /* Sets @b based on !arg: (yes/no/true/false). */
 char *opt_set_invbool_arg(const char *arg, bool *b);
 
 /* Set a char *. */
 char *opt_set_charp(const char *arg, char **p);
-void opt_show_charp(char buf[OPT_SHOW_LEN], char *const *p);
+void opt_show_charp(char *buf, size_t len, char *const *p);
 
 /* Set an integer value, various forms.  Sets to 1 on arg == NULL. */
 char *opt_set_intval(const char *arg, int *i);
-void opt_show_intval(char buf[OPT_SHOW_LEN], const int *i);
+void opt_show_intval(char *buf, size_t len, const int *i);
 char *opt_set_uintval(const char *arg, unsigned int *ui);
-void opt_show_uintval(char buf[OPT_SHOW_LEN], const unsigned int *ui);
+void opt_show_uintval(char *buf, size_t len, const unsigned int *ui);
 char *opt_set_longval(const char *arg, long *l);
-void opt_show_longval(char buf[OPT_SHOW_LEN], const long *l);
+void opt_show_longval(char *buf, size_t len, const long *l);
 char *opt_set_ulongval(const char *arg, unsigned long *ul);
-void opt_show_ulongval(char buf[OPT_SHOW_LEN], const unsigned long *ul);
+void opt_show_ulongval(char *buf, size_t len, const unsigned long *ul);
 
 /* Set an floating point value, various forms. */
 char *opt_set_floatval(const char *arg, float *f);
-void opt_show_floatval(char buf[OPT_SHOW_LEN], const float *f);
+void opt_show_floatval(char *buf, size_t len, const float *f);
 char *opt_set_doubleval(const char *arg, double *d);
-void opt_show_doubleval(char buf[OPT_SHOW_LEN], const double *d);
+void opt_show_doubleval(char *buf, size_t len, const double *d);
 
 /* the following setting functions accept k, M, G, T, P, or E suffixes, which
    multiplies the numeric value by the corresponding power of 1000 or 1024
@@ -482,19 +479,19 @@ char *opt_set_ulonglongval_bi(const char *arg, unsigned long long *ll);
 char *opt_set_ulonglongval_si(const char *arg, unsigned long long *ll);
 
 
-void opt_show_intval_bi(char buf[OPT_SHOW_LEN], const int *x);
-void opt_show_longval_bi(char buf[OPT_SHOW_LEN], const long *x);
-void opt_show_longlongval_bi(char buf[OPT_SHOW_LEN], const long long *x);
-void opt_show_uintval_bi(char buf[OPT_SHOW_LEN], const unsigned int *x);
-void opt_show_ulongval_bi(char buf[OPT_SHOW_LEN], const unsigned long *x);
-void opt_show_ulonglongval_bi(char buf[OPT_SHOW_LEN], const unsigned long long *x);
+void opt_show_intval_bi(char *buf, size_t len, const int *x);
+void opt_show_longval_bi(char *buf, size_t len, const long *x);
+void opt_show_longlongval_bi(char *buf, size_t len, const long long *x);
+void opt_show_uintval_bi(char *buf, size_t len, const unsigned int *x);
+void opt_show_ulongval_bi(char *buf, size_t len, const unsigned long *x);
+void opt_show_ulonglongval_bi(char *buf, size_t len, const unsigned long long *x);
 
-void opt_show_intval_si(char buf[OPT_SHOW_LEN], const int *x);
-void opt_show_longval_si(char buf[OPT_SHOW_LEN], const long *x);
-void opt_show_longlongval_si(char buf[OPT_SHOW_LEN], const long long *x);
-void opt_show_uintval_si(char buf[OPT_SHOW_LEN], const unsigned int *x);
-void opt_show_ulongval_si(char buf[OPT_SHOW_LEN], const unsigned long *x);
-void opt_show_ulonglongval_si(char buf[OPT_SHOW_LEN], const unsigned long long *x);
+void opt_show_intval_si(char *buf, size_t len, const int *x);
+void opt_show_longval_si(char *buf, size_t len, const long *x);
+void opt_show_longlongval_si(char *buf, size_t len, const long long *x);
+void opt_show_uintval_si(char *buf, size_t len, const unsigned int *x);
+void opt_show_ulongval_si(char *buf, size_t len, const unsigned long *x);
+void opt_show_ulonglongval_si(char *buf, size_t len, const unsigned long long *x);
 
 
 
@@ -554,7 +551,7 @@ struct opt_table {
 	enum opt_type type;
 	char *(*cb)(void *arg); /* OPT_NOARG */
 	char *(*cb_arg)(const char *optarg, void *arg); /* OPT_HASARG */
-	void (*show)(char buf[OPT_SHOW_LEN], const void *arg);
+	void (*show)(char *buf, size_t len, const void *arg);
 	union {
 		const void *carg;
 		void *arg;
@@ -580,14 +577,14 @@ struct opt_table {
 			  char *(*)(const char *, const typeof(*(arg))*), \
 			  char *(*)(const char *, const void *),	\
 			  (cb)),					\
-	typesafe_cb_cast(void (*)(char buf[], const void *),		\
-			 void (*)(char buf[], const typeof(*(arg))*), (show))
+	typesafe_cb_cast(void (*)(char *buf, size_t, const void *), \
+			 void (*)(char *buf, size_t, const typeof(*(arg))*), (show))
 
 /* Non-typesafe register function. */
 void _opt_register(const char *names, enum opt_type type,
 		   char *(*cb)(void *arg),
 		   char *(*cb_arg)(const char *optarg, void *arg),
-		   void (*show)(char buf[OPT_SHOW_LEN], const void *arg),
+		   void (*show)(char *buf, size_t len, const void *arg),
 		   const void *arg, const char *desc);
 
 /* We use this to get typechecking for OPT_SUBTABLE */

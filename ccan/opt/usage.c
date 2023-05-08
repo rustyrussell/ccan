@@ -20,6 +20,9 @@ const char opt_hidden[1];
 #define MIN_DESC_WIDTH 40
 #define MIN_TOTAL_WIDTH 50
 
+/* Maximum length of arg to show in opt_usage */
+#define OPT_SHOW_LEN 80
+
 static unsigned int get_columns(void)
 {
 	int ws_col = 0;
@@ -148,7 +151,7 @@ static char *add_desc(char *base, size_t *len, size_t *max,
 	if (opt->show) {
 		char buf[OPT_SHOW_LEN + sizeof("...")];
 		strcpy(buf + OPT_SHOW_LEN, "...");
-		opt->show(buf, opt->u.arg);
+		opt->show(buf, OPT_SHOW_LEN, opt->u.arg);
 
 		/* If it doesn't fit on this line, indent. */
 		if (off + strlen(" (default: ") + strlen(buf) + strlen(")")
