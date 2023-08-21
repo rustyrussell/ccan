@@ -90,6 +90,9 @@ endif
 # Default target: object files, info files and tools
 all:: $(OBJS) $(ALL_INFOS) $(CONFIGURATOR) $(LINT) $(TOOLS)
 
+libccan.a: $(OBJS)
+	$(AR) r $@ $(OBJS)
+
 .PHONY: clean TAGS
 clean:
 	$(PRE)find . -name "*.d" -o -name "*.o" -o -name "*.ok" | xargs -n 256 rm -f
