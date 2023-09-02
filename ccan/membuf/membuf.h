@@ -38,7 +38,7 @@ struct membuf {
 	TCON_WRAP(struct membuf, membertype canary)
 
 /**
- * membuf_init - initialize a type-specfic membuf.
+ * membuf_init - initialize a type-specific membuf.
  * @mb: the MEMBUF() declared membuf.
  * @elems: the initial buffer, if any.
  * @max_elems: the initial space @elems, in number of elements.

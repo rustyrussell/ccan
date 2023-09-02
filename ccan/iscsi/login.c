@@ -280,7 +280,7 @@ int iscsi_process_logout_reply(struct iscsi_context *iscsi, struct iscsi_pdu *pd
 int iscsi_set_session_type(struct iscsi_context *iscsi, enum iscsi_session_type session_type)
 {
 	if (iscsi == NULL) {
-		printf("Trying to set sesssion type on NULL context\n");
+		printf("Trying to set session type on NULL context\n");
 		return -1;
 	}
 	if (iscsi->is_loggedin) {

@@ -82,8 +82,8 @@ void ripemd160_init(struct ripemd160_ctx *ctx);
 /**
  * RIPEMD160_INIT - initializer for an RIPEMD160 context.
  *
- * This can be used to staticly initialize an RIPEMD160 context (instead
- * of ripemd160_init()).
+ * This can be used to statically initialize an RIPEMD160 context
+ * (instead of ripemd160_init()).
  *
  * Example:
  * static void hash_all(const char **arr, struct ripemd160 *hash)

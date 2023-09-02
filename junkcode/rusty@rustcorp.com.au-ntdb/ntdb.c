@@ -328,7 +328,7 @@ static bool inside_transaction(const struct ntdb_context *ntdb)
 	return ntdb->transaction != NULL;
 }
 
-static bool readonly_changable(struct ntdb_context *ntdb, const char *caller)
+static bool readonly_changeable(struct ntdb_context *ntdb, const char *caller)
 {
 	if (inside_transaction(ntdb)) {
 		ntdb_logerr(ntdb, NTDB_ERR_EINVAL, NTDB_LOG_USE_ERROR,
@@ -373,7 +373,7 @@ _PUBLIC_ void ntdb_add_flag(struct ntdb_context *ntdb, unsigned flag)
 		ntdb->flags |= NTDB_ALLOW_NESTING;
 		break;
 	case NTDB_RDONLY:
-		if (readonly_changable(ntdb, "ntdb_add_flag"))
+		if (readonly_changeable(ntdb, "ntdb_add_flag"))
 			ntdb->flags |= NTDB_RDONLY;
 		break;
 	default:
@@ -417,7 +417,7 @@ _PUBLIC_ void ntdb_remove_flag(struct ntdb_context *ntdb, unsigned flag)
 				    " opened with O_RDONLY");
 			break;
 		}
-		if (readonly_changable(ntdb, "ntdb_remove_flag"))
+		if (readonly_changeable(ntdb, "ntdb_remove_flag"))
 			ntdb->flags &= ~NTDB_RDONLY;
 		break;
 	default:

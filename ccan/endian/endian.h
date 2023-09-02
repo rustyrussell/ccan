@@ -233,7 +233,7 @@ typedef uint16_t ENDIAN_TYPE beint16_t;
 #define BE64_TO_CPU(le_val) BSWAP_64((ENDIAN_CAST uint64_t)le_val)
 #define BE32_TO_CPU(le_val) BSWAP_32((ENDIAN_CAST uint32_t)le_val)
 #define BE16_TO_CPU(le_val) BSWAP_16((ENDIAN_CAST uint16_t)le_val)
-#endif /* HAVE_LITTE_ENDIAN */
+#endif /* HAVE_LITTLE_ENDIAN */
 
 
 /**
