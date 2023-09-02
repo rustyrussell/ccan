@@ -83,7 +83,7 @@ void read10_cb(struct iscsi_context *iscsi, int status, void *command_data, void
 	}
 	printf("...\n");
 
-	printf("Finished,   wont try to write data since that will likely destroy your LUN :-(\n");
+	printf("Finished,   won't try to write data since that will likely destroy your LUN :-(\n");
 	printf("Send NOP-OUT\n");
 	if (iscsi_nop_out_async(iscsi, nop_out_cb, "Ping!", 6, private_data) != 0) {
 		printf("failed to send nop-out\n");
