@@ -35,7 +35,7 @@
  *	#include <stdio.h>
  *	#include <string.h>
  *
- *	// Simple demonstration: idential strings will have the same hash, but
+ *	// Simple demonstration: identical strings will have the same hash, but
  *	// two different strings will probably not.
  *	int main(int argc, char *argv[])
  *	{
@@ -164,7 +164,7 @@ static inline uint32_t hash_string(const char *string)
  *	#include <stdio.h>
  *	#include <string.h>
  *
- *	// Simple demonstration: idential strings will have the same hash, but
+ *	// Simple demonstration: identical strings will have the same hash, but
  *	// two different strings will probably not.
  *	int main(int argc, char *argv[])
  *	{

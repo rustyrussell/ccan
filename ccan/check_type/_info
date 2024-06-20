@@ -11,7 +11,7 @@
  * a precise type isn't used.
  *
  * On compilers which don't support typeof() these routines are less effective,
- * since they have to use sizeof() which can only distiguish between types of
+ * since they have to use sizeof() which can only distinguish between types of
  * different size.
  *
  * License: CC0 (Public domain)

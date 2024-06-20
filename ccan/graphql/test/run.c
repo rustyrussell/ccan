@@ -3105,7 +3105,7 @@ int main(void)
 	RUN2(check_string_value, "\"te\\tst\"",              "te\tst"     ); // Check escape sequence.
 	RUN2(check_string_value, "\"te\\vst\"",              NULL         ); // Invalid escape sequence.
 	RUN2(check_string_value, "\"te\\033st\"",            NULL         ); // Invalid escape sequence.
-	// Note: Unicode excape sequence is tested below.
+	// Note: Unicode escape sequence is tested below.
 
 	// This block string and this string should result in identical tokens.
 	sprintf(source, "\

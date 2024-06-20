@@ -87,7 +87,7 @@ static void *(*allocfn)(size_t size) = malloc;
 static void *(*resizefn)(void *, size_t size) = realloc;
 static void (*freefn)(void *) = free;
 static void (*errorfn)(const char *msg) = (void *)abort;
-/* Count on non-destrutor notifiers; often stays zero. */
+/* Count on non-destructor notifiers; often stays zero. */
 static size_t notifiers = 0;
 
 static inline void COLD call_error(const char *msg)

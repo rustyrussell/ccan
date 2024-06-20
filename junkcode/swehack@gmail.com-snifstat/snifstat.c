@@ -58,7 +58,7 @@ int main(int argc, char **argv) {
 
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t *pcap = NULL;
-	struct bpf_program filterd;
+	struct bpf_program filtered;
 	bpf_u_int32 netp, netmask;
 	char *filter = NULL;
 	const u_char *packet = NULL;
@@ -130,12 +130,12 @@ int main(int argc, char **argv) {
 		exit(-1);
 	}
 
-	if(pcap_compile(pcap, &filterd, filter, 1, netmask) == -1) {
+	if(pcap_compile(pcap, &filtered, filter, 1, netmask) == -1) {
 		fprintf(stderr, "pcap_compile: %s\n", pcap_geterr(pcap));
 		exit(-1);
 	}
 
-	if(pcap_setfilter(pcap, &filterd) == -1) {
+	if(pcap_setfilter(pcap, &filtered) == -1) {
 		fprintf(stderr, "pcap_setfilter: %s\n", pcap_geterr(pcap));
 		exit(-1);
 	}

@@ -484,7 +484,7 @@ static void restore_contents(struct failtest_call *opener,
 	}
 }
 
-/* We save/restore most things on demand, but always do mmaped files. */
+/* We save/restore most things on demand, but always do mmapped files. */
 static void save_mmapped_files(void)
 {
 	struct failtest_call *i;
@@ -622,7 +622,7 @@ static NORETURN void failtest_cleanup(bool forced_cleanup, int status)
 		}
 	}
 
-	/* Put back mmaped files the way our parent (if any) expects. */
+	/* Put back mmapped files the way our parent (if any) expects. */
 	free_mmapped_files(true);
 
 	free_everything();

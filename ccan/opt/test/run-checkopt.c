@@ -120,7 +120,7 @@ int main(void)
 
 	exitval = setjmp(exited);
 	if (exitval == 0) {
-		/* Documentation for non-optios. */
+		/* Documentation for non-options. */
 		opt_register_noarg("--a foo", test_noarg, "", "");
 		fail("_opt_register returned?");
 	} else {
@@ -132,7 +132,7 @@ int main(void)
 
 	exitval = setjmp(exited);
 	if (exitval == 0) {
-		/* Documentation for non-optios. */
+		/* Documentation for non-options. */
 		opt_register_noarg("--a=foo", test_noarg, "", "");
 		fail("_opt_register returned?");
 	} else {
