@@ -37,8 +37,8 @@ static bool dir_cmp(const struct manifest *m, const char *dir)
 	return strcmp(m->dir, dir) == 0;
 }
 
-HTABLE_DEFINE_TYPE(struct manifest, manifest_name, dir_hash, dir_cmp,
-		   htable_manifest);
+HTABLE_DEFINE_NODUPS_TYPE(struct manifest, manifest_name, dir_hash, dir_cmp,
+			  htable_manifest);
 static struct htable_manifest *manifests;
 
 const char *get_ccan_file_contents(struct ccan_file *f)

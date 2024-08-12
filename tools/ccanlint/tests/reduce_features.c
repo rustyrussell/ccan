@@ -37,7 +37,8 @@ static bool option_cmp(const char *name1, const char *name2)
 	return streq(name1, name2);
 }
 
-HTABLE_DEFINE_TYPE(char, option_name, option_hash, option_cmp, htable_option);
+HTABLE_DEFINE_NODUPS_TYPE(char, option_name, option_hash, option_cmp,
+			  htable_option);
 
 static struct htable_option *htable_option_new(void)
 {

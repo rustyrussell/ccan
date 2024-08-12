@@ -79,8 +79,8 @@ static bool call_eq(const struct failtest_call *call1,
 }
 
 /* Defines struct failtable. */
-HTABLE_DEFINE_TYPE(struct failtest_call, (struct failtest_call *), hash_call,
-		   call_eq, failtable);
+HTABLE_DEFINE_NODUPS_TYPE(struct failtest_call, (struct failtest_call *), hash_call,
+			  call_eq, failtable);
 
 bool (*failtest_exit_check)(struct tlist_calls *history);
 

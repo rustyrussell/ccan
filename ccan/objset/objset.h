@@ -20,7 +20,7 @@ static inline bool objset_eqfn_(const void *e1, const void *e2)
 {
 	return e1 == e2;
 }
-HTABLE_DEFINE_TYPE(void, objset_key_, objset_hashfn_, objset_eqfn_, objset_h);
+HTABLE_DEFINE_NODUPS_TYPE(void, objset_key_, objset_hashfn_, objset_eqfn_, objset_h);
 
 /**
  * OBJSET_MEMBERS - declare members for a type-specific unordered objset.
