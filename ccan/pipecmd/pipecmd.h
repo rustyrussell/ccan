@@ -36,7 +36,7 @@ pid_t pipecmd(int *infd, int *outfd, int *errfd, const char *cmd, ...);
 pid_t pipecmdv(int *infd, int *outfd, int *errfd, const char *cmd, va_list ap);
 
 /**
- * pipecmdarr - run a command, optionally connect pipes (char arry version)
+ * pipecmdarr - run a command, optionally connect pipes (char array version)
  * @infd: input fd to write to child (if non-NULL)
  * @outfd: output fd to read from child (if non-NULL)
  * @errfd: error-output fd to read from child (if non-NULL)
