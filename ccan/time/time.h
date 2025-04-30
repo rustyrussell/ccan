@@ -221,6 +221,23 @@ static inline bool time_before(struct timeabs a, struct timeabs b)
 }
 
 /**
+ * timemono_before - is a before b?
+ * @a: one monotonic time.
+ * @b: another monotonic time.
+ *
+ * Example:
+ *	static bool still_valid(const struct timemono *start)
+ *	{
+ *	#define TIMEOUT time_from_msec(1000)
+ *		return timemono_before(time_mono(), timemono_add(*start, TIMEOUT));
+ *	}
+ */
+static inline bool timemono_before(struct timemono a, struct timemono b)
+{
+	return time_less_(a.ts, b.ts);
+}
+
+/**
  * time_less - is a before b?
  * @a: one relative time.
  * @b: another relative time.
@@ -403,6 +420,29 @@ static inline struct timeabs timeabs_sub(struct timeabs abs, struct timerel rel)
 	t.ts = time_sub_(abs.ts, rel.ts);
 	return t;
 }
+
+/**
+ * timemono_sub - subtract a relative time from a monotonic time
+ * @mono: the monotonic time.
+ * @rel: the relative time.
+ *
+ * This returns a well formed struct timemono of @mono - @rel.
+ *
+ * Example:
+ *	// We do one every second.
+ *	static struct timemono previous_time(void)
+ *	{
+ *		return timemono_sub(time_mono(), time_from_msec(1000));
+ *	}
+ */
+static inline struct timemono timemono_sub(struct timemono mono, struct timerel rel)
+{
+	struct timemono t;
+
+	t.ts = time_sub_(mono.ts, rel.ts);
+	return t;
+}
+
 
 static inline struct timespec time_add_(struct timespec a, struct timespec b)
 {
