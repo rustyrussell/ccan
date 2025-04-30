@@ -7,7 +7,7 @@ int main(void)
 	struct timemono t1, t2;
 	struct timerel t3;
 
-	plan_tests(7);
+	plan_tests(10);
 
 	/* Test time_mono */
 	t1 = time_mono();
@@ -26,6 +26,9 @@ int main(void)
 
 	ok1(timemono_sub(timemono_add(t1, t3), t3).ts.tv_sec == t1.ts.tv_sec);
 	ok1(timemono_sub(timemono_add(t1, t3), t3).ts.tv_nsec == t1.ts.tv_nsec);
-	
+
+	ok1(timemono_after(timemono_add(t1, t3), t1));
+	ok1(!timemono_after(t1, timemono_add(t1, t3)));
+	ok1(!timemono_after(t1, t1));
 	return exit_status();
 }

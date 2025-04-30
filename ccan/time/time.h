@@ -193,6 +193,23 @@ static inline bool time_greater(struct timerel a, struct timerel b)
 	return time_greater_(a.ts, b.ts);
 }
 
+/**
+ * timemono_after - is a after b?
+ * @a: one monotonic time.
+ * @b: another monotonic time.
+ *
+ * Example:
+ *	static bool timed_out(const struct timemono *start)
+ *	{
+ *	#define TIMEOUT time_from_msec(1000)
+ *		return timemono_after(time_mono(), timemono_add(*start, TIMEOUT));
+ *	}
+ */
+static inline bool timemono_after(struct timemono a, struct timemono b)
+{
+	return time_greater_(a.ts, b.ts);
+}
+
 static inline bool time_less_(struct timespec a, struct timespec b)
 {
 	if (TIME_CHECK(a).tv_sec < TIME_CHECK(b).tv_sec)
@@ -528,6 +545,8 @@ static inline struct timerel timerel_add(struct timerel a, struct timerel b)
  * @div: number to divide it by.
  *
  * Example:
+ *	#include <sys/wait.h>
+ *
  *	// How long does it take to do a fork?
  *	static struct timerel forking_time(void)
  *	{
