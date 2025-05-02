@@ -11,7 +11,7 @@
  * alignment may cause performance loss or even program failure (eg. a
  * bus signal).
  *
- * There are times which it's useful to be able to programatically
+ * There are times which it's useful to be able to programmatically
  * access these requirements, such as for dynamic allocators.
  *
  * Example:
