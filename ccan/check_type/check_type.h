@@ -49,8 +49,12 @@
 #define check_type(expr, type)			\
 	((typeof(expr) *)0 != (type *)0)
 
-#define check_types_match(expr1, expr2)		\
+#define _check_types_match(expr1, expr2)		\
 	((typeof(expr1) *)0 != (typeof(expr2) *)0)
+
+#define check_types_match(expr1, expr2)                         \
+	_check_types_match((const typeof(expr1) *)0,            \
+			   (const typeof(expr2) *)0)
 #else
 #include <ccan/build_assert/build_assert.h>
 /* Without typeof, we can only test the sizes. */
