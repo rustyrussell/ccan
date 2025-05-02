@@ -461,7 +461,7 @@ static void show_llong_with_suffix(char *buf, size_t len, long long ll,
 				   const long long base)
 {
 	const char *suffixes = "kMGTPE";
-	int i;
+	size_t i;
 	if (ll == 0){
 		/*zero is special because everything divides it (you'd get "0E")*/
 		snprintf(buf, len, "0");
@@ -484,7 +484,7 @@ static void show_ullong_with_suffix(char *buf, size_t len,
 				    const unsigned base)
 {
 	const char *suffixes = "kMGTPE";
-	int i;
+	size_t i;
 	if (ull == 0){
 		/*zero is special because everything divides it (you'd get "0E")*/
 		snprintf(buf, len, "0");
