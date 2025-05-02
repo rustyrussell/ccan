@@ -379,7 +379,7 @@ dictionary *ciniparser_load(const char *ininame)
 	char line[ASCIILINESZ+1];
 	char section[ASCIILINESZ+1];
 	char key[ASCIILINESZ+1];
-	char tmp[ASCIILINESZ+1];
+	char tmp[2*ASCIILINESZ+2];
 	char val[ASCIILINESZ+1];
 	int  last = 0, len, lineno = 0, errs = 0;
 	dictionary *dict;
@@ -439,7 +439,7 @@ dictionary *ciniparser_load(const char *ininame)
 			break;
 
 		case LINE_VALUE:
-			snprintf(tmp, ASCIILINESZ + 1, "%s:%s", section, key);
+			snprintf(tmp, sizeof(tmp), "%s:%s", section, key);
 			errs = dictionary_set(dict, tmp, val);
 			break;
 
