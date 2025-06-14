@@ -3,7 +3,7 @@
 $tempfolder = "/home/ccan/upload-temp/";
 
 //location of upload script (for posting uploads)
-$uploadscript = "http://ccodearchive.net/uploader.php";
+//$uploadscript = XXX;
 
 //ccan admin
 $ccanadmin = "rusty@rustcorp.com.au";
