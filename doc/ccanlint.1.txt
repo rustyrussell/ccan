@@ -261,7 +261,7 @@ Rusty Russell wrote *ccanlint*. Helping others, but most break Rusty.
 
 RESOURCES
 ---------
-Main web site: http://ccodearchive.net/
+Main web site: http://github.com/rustyrussell/ccan
 
 Wiki: https://github.com/rustyrussell/ccan/wiki/
 

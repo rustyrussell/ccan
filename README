@@ -1,4 +1,8 @@
-The C Code Archive Network: http://ccodearchive.net
+The C Code Archive Network
+
+WARNING: The previous website (ccodearchive dot net) has, alas, been
+taken over by domain squatters who have an out of date copy of the
+site with sneaky ad links added.
 
 You can find a set of helper utilities under tools/ and the modules
 under ccan/.  The recommended way to add ccan modules to your project

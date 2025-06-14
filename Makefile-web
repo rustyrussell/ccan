@@ -2,7 +2,7 @@ default: upload
 
 include Makefile
 # This can be overridden on cmdline to generate pages elsewhere.
-WEBDIR=/srv/www/ccodearchive.net
+WEBDIR=
 PHP=php
 
 MODS := $(ALL_MODULES:ccan/%=%)
