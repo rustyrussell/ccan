@@ -179,7 +179,8 @@ void _opt_register(const char *names, enum opt_type type,
 
 bool opt_unregister(const char *names)
 {
-	int found = -1, i;
+	int found = -1;
+	unsigned int i;
 
 	for (i = 0; i < opt_count; i++) {
 		if (opt_table[i].type & OPT_SUBTABLE)
