@@ -152,7 +152,7 @@ static void talloc_unlock(void)
 /* We add 16MB to size.  This compensates for address randomization. */
 #define PADDING (16 * 1024 * 1024)
 
-/* Create a new sharable pool. */
+/* Create a new shareable pool. */
 struct at_pool *at_pool(unsigned long size)
 {
 	int fd;

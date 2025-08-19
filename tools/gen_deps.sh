@@ -10,7 +10,7 @@ module=`echo $path | sed 's/^ccan\///g'`
 test_srcs=`ls $path/test/*.[ch] 2>/dev/null | tr '\n' ' '`
 
 # ... and the object files of our module (rather than the sources, so
-#     that we pick up the resursive dependencies for the objects)
+#     that we pick up the recursive dependencies for the objects)
 module_objs=`ls $path/*.c 2>/dev/null | sed 's/.c$/.o/g' | tr '\n' ' '`
 
 # ... and on the modules this test uses having passed their tests

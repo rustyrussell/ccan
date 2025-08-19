@@ -58,7 +58,7 @@ static void iscsi_scsi_response_cb(struct iscsi_context *iscsi, int status, void
 		scsi_cbdata->callback(iscsi, ISCSI_STATUS_GOOD, task, scsi_cbdata->private_data);
 		return;
 	default:
-		printf("Cant handle  scsi status %d yet\n", status);
+		printf("Can't handle  scsi status %d yet\n", status);
 		scsi_cbdata->callback(iscsi, ISCSI_STATUS_ERROR, task, scsi_cbdata->private_data);
 	}
 }
