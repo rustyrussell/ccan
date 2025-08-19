@@ -531,11 +531,12 @@ bool tal_set_name_(tal_t *ctx, const char *name, bool literal);
 #endif
 
 void *tal_alloc_(const tal_t *ctx, size_t bytes, bool clear, const char *label)
-	TAL_RETURN_PTR;
+	TAL_RETURN_PTR RETURNS_UNALIASED;
 void *tal_alloc_arr_(const tal_t *ctx, size_t bytes, size_t count, bool clear,
 		     const char *label)
-	TAL_RETURN_PTR;
+	TAL_RETURN_PTR RETURNS_UNALIASED;
 
+/* Cannot be RETURNS_UNALIASED because may return argument. */
 void *tal_dup_(const tal_t *ctx, const void *p TAKES, size_t size,
 	       size_t n, size_t extra, bool nullok, const char *label);
 void *tal_dup_talarr_(const tal_t *ctx, const tal_t *src TAKES,
