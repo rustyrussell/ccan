@@ -584,11 +584,8 @@ struct io_plan *io_sock_shutdown(struct io_conn *conn)
 		return io_close(conn);
 
 	/* We need to make sure we don't try to write again, so
-	 * "wait" on something which will never be woken.
-	 *
-	 * In the duplex case, we can call io_sock_shutdown on the
-	 * input side, while io_write is going on on the output side.
-	 * Then we will try to write, fail, and immediately close. */
+	 * "wait" on something which will never be woken: otherwise
+	 * we will try to write, fail, and immediately close. */
 	return io_wait_dir(conn, io_sock_shutdown, IO_OUT, io_never, NULL);
 }
 
