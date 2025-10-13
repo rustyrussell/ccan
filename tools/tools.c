@@ -140,7 +140,7 @@ bool run_command(const void *ctx, unsigned int *time_ms, char **output,
 static void unlink_all(const char *dir)
 {
 	char cmd[strlen(dir) + sizeof("rm -rf ")];
-	sprintf(cmd, "rm -rf %s", dir);
+	snprintf(cmd, sizeof(cmd), "rm -rf %s", dir);
 	if (tools_verbose)
 		printf("Running: %s\n", cmd);
 	if (system(cmd) != 0)

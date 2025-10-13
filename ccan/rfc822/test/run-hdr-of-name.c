@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
 			size_t len;
 			char exname[256];
 
-			sprintf(exname, "%s[%s]", e->name, NLT(crlf));
+			snprintf(exname, sizeof(exname), "%s[%s]", e->name, NLT(crlf));
 
 			buf = assemble_msg(e, &len, crlf);
 			ok((buf), "assembled %s", exname);
