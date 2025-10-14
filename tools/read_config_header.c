@@ -95,7 +95,7 @@ char *read_config_header(const char *ccan_dir, bool verbose)
 	unsigned int i;
 	char *config_header;
 
-	config_header = grab_file(NULL, fname);
+	config_header = grab_file_str(NULL, fname);
 
 	if (!config_header) {
 		tal_free(fname);

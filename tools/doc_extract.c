@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
 		struct list_head *list;
 		struct doc_section *d;
 
-		file = grab_file(NULL, argv[i]);
+		file = grab_file_str(NULL, argv[i]);
 		if (!file)
 			err(1, "Reading file %s", argv[i]);
 		lines = tal_strsplit(file, file, "\n", STR_EMPTY_OK);

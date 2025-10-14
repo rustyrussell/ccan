@@ -52,7 +52,7 @@ static void create_info_template_doc(struct manifest *m,
 		err(1, "Writing to _info.new to insert documentation");
 	}
 
-	oldcontents = grab_file(m, m->info_file->fullname);
+	oldcontents = grab_file_str(m, m->info_file->fullname);
 	if (!oldcontents) {
 		unlink_noerr("_info.new");
 		err(1, "Reading %s", m->info_file->fullname);

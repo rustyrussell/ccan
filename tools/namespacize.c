@@ -252,7 +252,7 @@ static void analyze_headers(const char *dir, struct replace **repl)
 	hdr = tal_fmt(dir, "%s.h",
 		      path_join(NULL, dir, take(path_basename(NULL, dir))));
 
-	contents = grab_file(dir, hdr);
+	contents = grab_file_str(dir, hdr);
 	if (!contents)
 		err(1, "Reading %s", hdr);
 
@@ -327,7 +327,7 @@ static const char *rewrite_file(const char *filename,
 	int fd;
 
 	verbose("Rewriting %s\n", filename);
-	file = grab_file(filename, filename);
+	file = grab_file_str(filename, filename);
 	if (!file)
 		err(1, "Reading file %s", filename);
 
@@ -424,7 +424,7 @@ static struct replace *read_replacement_file(const char *depdir)
 	char *replname = path_join(depdir, depdir, ".namespacize");
 	char *file, **line;
 
-	file = grab_file(replname, replname);
+	file = grab_file_str(replname, replname);
 	if (!file) {
 		if (errno != ENOENT)
 			err(1, "Opening %s", replname);

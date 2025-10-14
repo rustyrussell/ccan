@@ -31,7 +31,7 @@ static void check_info_compiles(struct manifest *m,
 	}
 
 	/* Copy it to a file with proper .c suffix. */
-	info = grab_file(score, m->info_file->fullname);
+	info = grab_file_str(score, m->info_file->fullname);
 	if (!info) {
 		score_file_error(score, m->info_file, 0,
 				 "could not be read: %s", strerror(errno));

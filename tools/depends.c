@@ -49,7 +49,7 @@ char *compile_info(const void *ctx, const char *dir)
 	int fd;
 
 	/* Copy it to a file with proper .c suffix. */
-	info = grab_file(ctx, tal_fmt(ctx, "%s/_info", dir));
+	info = grab_file_str(ctx, tal_fmt(ctx, "%s/_info", dir));
 	if (!info)
 		return NULL;
 
@@ -131,7 +131,7 @@ static char **get_one_safe_deps(const void *ctx,
 	bool correct_style = false;
 
 	fname = path_join(ctx, dir, "_info");
-	raw = grab_file(fname, fname);
+	raw = grab_file_str(fname, fname);
 	if (!raw)
 		errx(1, "Could not open %s", fname);
 

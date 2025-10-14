@@ -52,7 +52,7 @@ static void setup_words(void)
 	char *wordfile;
 
 	/* read in the words */
-	wordfile = grab_file(NULL, "test/api-lazytrie-words.txt");
+	wordfile = grab_file_str(NULL, "test/api-lazytrie-words.txt");
 	ok1(wordfile);
 	wordarray = tal_strsplit(NULL, take(wordfile), "\n", STR_NO_EMPTY);
 	ok1(wordarray);

@@ -38,7 +38,7 @@
  *			errx(1, "Usage: %s <blocksize> <file> <crc>...\n"
  *			     "OR: %s <blocksize> <file>", argv[0], argv[0]);
  *	
- *		file = grab_file(NULL, argv[2]);
+ *		file = grab_file_str(NULL, argv[2]);
  *		if (!file)
  *			err(1, "Opening file %s", argv[2]);
  *		len = tal_count(file) - 1;

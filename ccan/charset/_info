@@ -25,7 +25,7 @@
  *	{
  *		char *input;
  *	
- *		input = grab_file(NULL, NULL);
+ *		input = grab_file_str(NULL, NULL);
  *		if (!input)
  *			err(1, "Error reading input");
  *		if (!utf8_validate(input, tal_count(input)-1)) {

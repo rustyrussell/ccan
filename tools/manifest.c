@@ -44,10 +44,10 @@ static struct htable_manifest *manifests;
 const char *get_ccan_file_contents(struct ccan_file *f)
 {
 	if (!f->contents) {
-		f->contents = grab_file(f, f->fullname);
+		f->contents = grab_file_str(f, f->fullname);
 		if (!f->contents)
 			err(1, "Reading file %s", f->fullname);
-		f->contents_size = tal_count(f->contents) - 1;
+		f->contents_size = tal_count(f->contents);
 	}
 	return f->contents;
 }

@@ -50,7 +50,7 @@
  *
  * int main(int argc, char *argv[])
  * {
- *         const char *graph = grab_file(NULL, argv[1], NULL), *errmsg;
+ *         const char *graph = grab_file_str(NULL, argv[1], NULL), *errmsg;
  *	   printf("digraph %s {\n", argv[1] ? argv[1] : "stdin");
  *         errmsg = ungraph(NULL, graph, add_node, add_edge, NULL);
  *         if (errmsg)

@@ -58,7 +58,7 @@
  * 		fprintf(stderr, "Usage: %s source_file\n", argv[0]);
  * 		return 1;
  * 	}
- * 	file = grab_file(NULL, argv[1]);
+ * 	file = grab_file_str(NULL, argv[1]);
  * 	if (!file)
  * 		err(1, "Could not read file %s", argv[1]);
  *

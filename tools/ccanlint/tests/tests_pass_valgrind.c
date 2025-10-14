@@ -181,7 +181,7 @@ static void do_run_tests_vg(struct manifest *m,
 				continue;
 			}
 
-			output = grab_file(i, i->valgrind_log);
+			output = grab_file_str(i, i->valgrind_log);
 			/* No valgrind errors? */
 			if (!output || output[0] == '\0') {
 				err = NULL;

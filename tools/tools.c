@@ -233,7 +233,7 @@ bool move_file(const char *oldname, const char *newname)
 	}
 
 	/* Try copy and delete: not atomic! */
-	contents = grab_file(NULL, oldname);
+	contents = grab_file_str(NULL, oldname);
 	if (!contents) {
 		if (tools_verbose)
 			printf("read failed: %s\n", strerror(errno));

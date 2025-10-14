@@ -18,7 +18,7 @@ static void process_file(const char *name)
 	struct rfc822_msg *msg;
 	struct rfc822_header *hdr;
 
-	buf = grab_file(ctx, name, &size);
+	buf = grab_file_str(ctx, name, &size);
 
 	msg = rfc822_start(ctx, buf, size);
 

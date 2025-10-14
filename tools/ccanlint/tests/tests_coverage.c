@@ -100,7 +100,7 @@ static void analyze_coverage(struct manifest *m, bool full_gcov,
 			apostrophe = strchr(filename, '\'');
 			*apostrophe = '\0';
 			if (lines_matter) {
-				file = grab_file(score, filename);
+				file = grab_file_str(score, filename);
 				if (!file) {
 					score->error = tal_fmt(score,
 							       "Reading %s",
