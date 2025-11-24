@@ -10,6 +10,8 @@
  * Environment. */
 bool daemonize(void)
 {
+	const char *dev_null = "/dev/null";
+	int fd;
 	pid_t pid;
 
 	/* Separate from our parent via fork, so init inherits us. */
@@ -26,11 +28,21 @@ bool daemonize(void)
 
 	/* Many routines write to stderr; that can cause chaos if used
 	 * for something else, so set it here. */
-	if (open("/dev/null", O_WRONLY) != 0)
+	/* reopen STDIN */
+	if ((fd = open(dev_null, O_RDONLY)) == -1)
 		return false;
-	if (dup2(0, STDERR_FILENO) != STDERR_FILENO)
-		return false;
-	close(0);
+	if (dup2(fd, STDIN_FILENO) != STDIN_FILENO)
+	        return false;
+	if (fd > STDERR_FILENO) close(fd);
+	/* reopen STDOUT */
+	if ((fd = open(dev_null, O_WRONLY)) == -1)
+ 		return false;
+	if (dup2(fd, STDOUT_FILENO) != STDOUT_FILENO)
+	        return false;
+	/* reopen STDERR */
+	if (dup2(fd, STDERR_FILENO) != STDERR_FILENO)
+ 		return false;
+	if (fd > STDERR_FILENO) close(fd);
 
 	/* Session leader so ^C doesn't whack us. */
 	if (setsid() == (pid_t)-1)
