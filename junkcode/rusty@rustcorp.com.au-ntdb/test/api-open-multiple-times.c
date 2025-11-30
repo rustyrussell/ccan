@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
 		ok1(ntdb_chainlock(ntdb, key) == NTDB_ERR_LOCK);
 		ok1(tap_log_messages == 4);
 
-		/* Transaciton should work as normal. */
+		/* Transaction should work as normal. */
 		ok1(ntdb_store(ntdb2, key, data, NTDB_REPLACE) == NTDB_SUCCESS);
 
 		/* Now... try closing with locks held. */

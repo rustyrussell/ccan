@@ -173,7 +173,7 @@ coroutine_stack_from_metadata(void *metadata, size_t metasize)
  * @stack: coroutine stack
  *
  * Returns the size of the coroutine stack @stack.  This does not
- * include the overhead of struct coroutine_stack or metdata.
+ * include the overhead of struct coroutine_stack or metadata.
  */
 size_t coroutine_stack_size(const struct coroutine_stack *stack);
 

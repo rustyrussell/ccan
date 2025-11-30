@@ -394,7 +394,7 @@ tal_t *tal_parent(const tal_t *ctx);
  * @type: the type (should match type of @p!)
  * @p: the tal array to copy (or resized & reparented if take())
  *
- * The comon case of duplicating an entire tal array.
+ * The common case of duplicating an entire tal array.
  */
 #define tal_dup_talarr(ctx, type, p)					\
 	((type *)tal_dup_talarr_((ctx), tal_typechk_(p, type *),	\

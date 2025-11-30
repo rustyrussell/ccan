@@ -81,7 +81,7 @@ int main(void)
     PolyAdt *deriv, *integral;
     
     deriv = derivative(p);
-    printf("The derivitive of p = ");
+    printf("The derivative of p = ");
     display_poly(deriv);
     integral = integrate(q);
     
