@@ -12,6 +12,8 @@
  *	For functions which take printf-style parameters.
  * - CONST_FUNCTION
  *	For functions which return the same value for same parameters.
+ * - RETURNS_UNALIASED
+ *	For malloc-like functions that never return an aliased pointer.
  * - NEEDED
  *	For functions and variables which must be emitted even if unused.
  * - UNNEEDED
