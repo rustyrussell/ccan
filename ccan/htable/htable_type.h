@@ -91,6 +91,14 @@
 	{								\
 		return htable_count(&ht->raw);				\
 	}								\
+	static inline void name##_lock(struct name *ht)			\
+	{								\
+		htable_lock(&ht->raw);						\
+	}								\
+	static inline void name##_unlock(struct name *ht)		\
+	{								\
+		htable_unlock(&ht->raw);				\
+	}								\
 	static inline UNNEEDED void name##_clear(struct name *ht)	\
 	{								\
 		htable_clear(&ht->raw);					\
@@ -166,14 +174,6 @@
 									\
 		v = htable_firstval(&ht->raw, &i, h);			\
 		return name##_getmatch_(ht, k, h, v, &i);			\
-	}								\
-	static inline void name##_lock(struct name *ht)			\
-	{								\
-	htable_lock(&ht->raw);						\
-	}								\
-	static inline void name##_unlock(struct name *ht)		\
-	{								\
-		htable_unlock(&ht->raw);				\
 	}								\
 	static inline bool name##_add(struct name *ht, const type *elem) \
 	{								\
