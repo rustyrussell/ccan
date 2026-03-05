@@ -32,6 +32,10 @@
  * Count entries:
  *	size_t <name>_count(const struct <name> *ht);
  *
+ * Lock and unlock (to prevent adds):
+ *	void <name>_lock(struct <name> *ht);
+ *	void <name>_unlock(struct <name> *ht);
+ *
  * Add function only fails if we run out of memory:
  *	bool <name>_add(struct <name> *ht, const <type> *e);
  *
@@ -162,6 +166,14 @@
 									\
 		v = htable_firstval(&ht->raw, &i, h);			\
 		return name##_getmatch_(ht, k, h, v, &i);			\
+	}								\
+	static inline void name##_lock(struct name *ht)			\
+	{								\
+	htable_lock(&ht->raw);						\
+	}								\
+	static inline void name##_unlock(struct name *ht)		\
+	{								\
+		htable_unlock(&ht->raw);				\
 	}								\
 	static inline bool name##_add(struct name *ht, const type *elem) \
 	{								\
