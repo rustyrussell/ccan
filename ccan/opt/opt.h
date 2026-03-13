@@ -362,7 +362,7 @@ void opt_log_stderr(const char *fmt, ...);
  * when handed to opt_parse, opt_parse will never return false.
  *
  * Example:
- *	// This never returns false; just exits if there's an erorr.
+ *	// This never returns false; just exits if there's an error.
  *	opt_parse(&argc, argv, opt_log_stderr_exit);
  */
 void opt_log_stderr_exit(const char *fmt, ...);

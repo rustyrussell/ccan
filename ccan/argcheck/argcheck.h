@@ -171,7 +171,7 @@ argcheck_log_(const char *file, int line, const char *func,
 
 /*
 
-   below is the actual implemenation. do not use it directly, use the macros
+   below is the actual implementation. do not use it directly, use the macros
    above instead
 
  */
