@@ -40,55 +40,6 @@ char *tal_fmt_(const tal_t *ctx, const char *label, const char *fmt, ...)
 	return ret;
 }
 
-static bool do_vfmt(char **buf, size_t off, const char *fmt, va_list ap)
-{
-	/* A decent guess to start. */
-	size_t max = strlen(fmt) * 2 + 1;
-	bool ok;
-
-	for (;;) {
-		va_list ap2;
-		int ret;
-
-		if (!tal_resize(buf, off + max)) {
-			ok = false;
-			break;
-		}
-
-		va_copy(ap2, ap);
-		ret = vsnprintf(*buf + off, max, fmt, ap2);
-		va_end(ap2);
-
-		if (ret < max) {
-			ok = true;
-			/* Make sure tal_count() is correct! */
-			tal_resize(buf, off + ret + 1);
-			break;
-		}
-		max *= 2;
-	}
-
-	if (taken(fmt))
-		tal_free(fmt);
-	return ok;
-}
-
-char *tal_vfmt_(const tal_t *ctx, const char *fmt, va_list ap, const char *label)
-{
-	char *buf;
-
-	/* A decent guess to start. */
-	buf = tal_arr_label(ctx, char, strlen(fmt) * 2, label);
-	if (!do_vfmt(&buf, 0, fmt, ap))
-		buf = tal_free(buf);
-	return buf;
-}
-
-bool tal_append_vfmt(char **baseptr, const char *fmt, va_list ap)
-{
-	return do_vfmt(baseptr, strlen(*baseptr), fmt, ap);
-}
-
 bool tal_append_fmt(char **baseptr, const char *fmt, ...)
 {
 	va_list ap;
@@ -99,6 +50,43 @@ bool tal_append_fmt(char **baseptr, const char *fmt, ...)
 	va_end(ap);
 
 	return ret;
+}
+
+char *tal_vfmt_(const tal_t *ctx, const char *fmt, va_list ap, const char *label)
+{
+	va_list ap2;
+	size_t len;
+	char *buf;
+
+	va_copy(ap2, ap);
+	len = vsnprintf(NULL, 0, fmt, ap2);
+	va_end(ap2);
+
+	buf = tal_arr_label(ctx, char, len + 1, label);
+	vsnprintf(buf, len + 1, fmt, ap);
+
+	if (taken(fmt))
+		tal_free(fmt);
+	return buf;
+}
+
+bool tal_append_vfmt(char **baseptr, const char *fmt, va_list ap)
+{
+	va_list ap2;
+	size_t len, off;
+	bool ok;
+
+	va_copy(ap2, ap);
+	len = vsnprintf(NULL, 0, fmt, ap2);
+	va_end(ap2);
+
+	off = strlen(*baseptr);
+	if (ok = tal_resize(baseptr, off + len + 1))
+		vsnprintf(*baseptr + off, len + 1, fmt, ap);
+
+	if (taken(fmt))
+		tal_free(fmt);
+	return ok;
 }
 
 char *tal_strcat_(const tal_t *ctx, const char *s1, const char *s2,
