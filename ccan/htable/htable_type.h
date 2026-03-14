@@ -91,11 +91,11 @@
 	{								\
 		return htable_count(&ht->raw);				\
 	}								\
-	static inline void name##_lock(struct name *ht)			\
+	static inline UNNEEDED void name##_lock(struct name *ht)	\
 	{								\
-		htable_lock(&ht->raw);						\
+		htable_lock(&ht->raw);					\
 	}								\
-	static inline void name##_unlock(struct name *ht)		\
+	static inline UNNEEDED void name##_unlock(struct name *ht)	\
 	{								\
 		htable_unlock(&ht->raw);				\
 	}								\
