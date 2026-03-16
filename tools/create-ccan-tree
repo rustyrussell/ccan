@@ -109,7 +109,7 @@ copy_ccan_module() {
 	# Copy license
 	license="$module_srcdir/LICENSE"
 	[ -e "$license" ] && cp -a "$license" "$module_destdir"
-	for f in $("$modfiles" $MODULES_ARGS --no-license --git-only "$module_dir"); do
+	for f in $("$modfiles" $MODULES_ARGS --no-license --git-only "$module_srcdir"); do
 	    mkdir -p $(dirname "$module_destdir"/"$f")
 	    cp "$module_srcdir"/$f "$module_destdir"/$f
 	done
