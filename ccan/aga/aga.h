@@ -68,7 +68,7 @@
  *   callback itself.  If the latter, it MUST have been initialized
  *   with aga_node_init() before the edge callback returns.
  *
- * - If a node is contructed by the edge callback, any subsequent
+ * - If a node is constructed by the edge callback, any subsequent
  *   reference to that node by the edge callback for *any* node and
  *   index MUST use the same pointer.
  *
@@ -107,7 +107,7 @@
  * - After an error is encountered aga_error() will return a non-zero
  *   value.  Negative values are reserved for errors reported by the
  *   user supplied edge callback.  Positive values are reserved for
- *   errors detected interally by aga.
+ *   errors detected internally by aga.
  *
  * - Errors are cleared on aga_finish().
  */
@@ -245,7 +245,7 @@ enum aga_error {
  *
  * Returns 0 if the graph is not in an error state, negative values
  * for error states reported by one of the edge callbacks and
- * postitive values for errors detected by aga itself.
+ * positive values for errors detected by aga itself.
  */
 int aga_error(const struct aga_graph *g);
 

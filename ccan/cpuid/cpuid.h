@@ -59,7 +59,7 @@
  * 	Extended L2 Cache features.
  *
  * %CPUID_ADV_POWER_MGT_INFO:
- * 	Advaned power management information.
+ * 	Advanced power management information.
  *
  * %CPUID_VIRT_PHYS_ADDR_SIZES:
  * 	Virtual and physical address sizes.

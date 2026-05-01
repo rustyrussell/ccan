@@ -120,7 +120,7 @@ int rpc_get_pdu_size(char *buf)
 	size = ntohl(*(uint32_t *)buf);
 
 	if ((size & 0x80000000) == 0) {
-		printf("cant handle oncrpc fragments\n");
+		printf("can't handle oncrpc fragments\n");
 		return -1;
 	}
 

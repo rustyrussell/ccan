@@ -128,7 +128,7 @@ static void paint_triangle(struct image *image, const struct triangle *tri)
         x1 = tri->coord[i1].x, y1 = tri->coord[i1].y;
         x2 = tri->coord[i2].x, y2 = tri->coord[i2].y;
         
-        // test for easy cases, else split triangle in two and render both halfs
+        // test for easy cases, else split triangle in two and render both halves
         if (y1 == y2) {
  		if (x1 > x2) swap(&x1, &x2);
 		add_flat_triangle(image, x1, y1, x2, y2, x0, y0,

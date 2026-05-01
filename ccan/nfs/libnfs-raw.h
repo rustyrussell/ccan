@@ -57,7 +57,7 @@ typedef void (*rpc_cb)(struct rpc_context *rpc, int status, void *data, void *pr
  * RPC_STATUS_SUCCESS : The tcp connection was successfully established.
  *                      data is NULL.
  * RPC_STATUS_ERROR   : The connection failed to establish.
- *                      data is the erro string.
+ *                      data is the error string.
  * RPC_STATUS_CANCEL  : The connection attempt was aborted before it could complete.
  *                    : data is NULL.
  */

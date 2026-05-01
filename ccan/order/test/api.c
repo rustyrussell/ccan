@@ -20,7 +20,7 @@
 		t arr1[num], arr2[num];					\
 		int i;							\
 									\
-		/* Intialize arr1 in reverse order */			\
+		/* Initialize arr1 in reverse order */			\
 		for (i = 0; i < num; i++)				\
 			arr1[i] = arr0[num-i-1];			\
 									\
@@ -41,7 +41,7 @@
 		t arr1[num], arr2[num];					\
 		int i;							\
 									\
-		/* Intialize arr1 in reverse order */			\
+		/* Initialize arr1 in reverse order */			\
 		for (i = 0; i < num; i++)				\
 			arr1[i] = arr0[num-i-1];			\
 									\
@@ -78,7 +78,7 @@
 			arr0[i].val = arrbase[i];			\
 		}							\
 									\
-		/* Intialize arr1 in reverse order */			\
+		/* Initialize arr1 in reverse order */			\
 		for (i = 0; i < num; i++)				\
 			arr1[i] = arr0[num-i-1];			\
 									\

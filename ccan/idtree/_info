@@ -18,7 +18,7 @@
  *	#include <stdlib.h>
  *	#include <stdio.h>
  *
- *	// Silly example which puts args in the idtree and retreives them
+ *	// Silly example which puts args in the idtree and retrieves them
  *	int main(int argc, char *argv[])
  *	{
  *		struct idtree *idtree = idtree_new(NULL);

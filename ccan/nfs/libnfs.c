@@ -440,7 +440,7 @@ static void nfs_mount_1_cb(struct rpc_context *rpc, int status, void *command_da
 }
 
 /*
- * Async call for mounting an nfs share and geting the root filehandle
+ * Async call for mounting an nfs share and getting the root filehandle
  */
 int nfs_mount_async(struct nfs_context *nfs, const char *server, const char *export, nfs_cb cb, void *private_data)
 {
@@ -554,7 +554,7 @@ static int nfs_lookuppath_async(struct nfs_context *nfs, const char *path, nfs_c
 	struct nfs_cb_data *data;
 
 	if (path[0] != '/') {
-		rpc_set_error(nfs->rpc, "Pathname is not absulute %s", path);
+		rpc_set_error(nfs->rpc, "Pathname is not absolute %s", path);
 		return -1;
 	}
 

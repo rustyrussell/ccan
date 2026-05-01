@@ -168,7 +168,7 @@ int iscsi_process_pdu(struct iscsi_context *iscsi, const unsigned char *hdr, int
 	itt = ntohl(*(uint32_t *)&hdr[16]);
 
 	if (ahslen != 0) {
-		printf("cant handle expanded headers yet\n");
+		printf("can't handle expanded headers yet\n");
 		return -1;
 	}
 

@@ -600,7 +600,7 @@ tdb_open() to provide an alternate allocation mechanism,
 specifically for talloc but usable by any other allocator (which
 would ignore the“context” argument).
 
-This would form a talloc heirarchy as expected, but the caller
+This would form a talloc hierarchy as expected, but the caller
 would still have to attach a destructor to the tdb context
 returned from tdb_open to close it. All TDB_DATA fields would be
 children of the tdb_context, and the caller would still have to
@@ -735,7 +735,7 @@ invalid.
 3.4.2 Status
 
 Ignore. Scaling the hash automatically proved inefficient at
-small hash sizes; we default to a 8192-element hash (changable
+small hash sizes; we default to a 8192-element hash (changeable
 via NTDB_ATTRIBUTE_HASHSIZE), and when buckets clash we expand to
 an array of hash entries. This scales slightly better than the
 tdb chain (due to the 8 top bits containing extra hash).
@@ -786,7 +786,7 @@ Deleting a record occurs as follows:
   from the free list. This was disabled, as removal from the free
   list was O(entries-in-free-list).
 
-6. Examine the preceeding block to see if it is free: for this
+6. Examine the preceding block to see if it is free: for this
   reason, each block has a 32-bit tailer which indicates its
   length. If it is free, expand it to cover our new block and
   return.

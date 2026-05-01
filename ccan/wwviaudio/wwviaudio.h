@@ -101,7 +101,7 @@ GLOBAL void wwviaudio_silence_music(void);
 /* Unsilence the music channel */
 GLOBAL void wwviaudio_resume_music(void);
 
-/* Silence or unsilence the music channe. */
+/* Silence or unsilence the music channel. */
 GLOBAL void wwviaudio_toggle_music(void);
 
 /* Stop playing the playing buffer from the music channel */
