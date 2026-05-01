@@ -151,6 +151,10 @@ static const struct test base_tests[] = {
 	{ "HAVE_ATTRIBUTE_PURE", "__attribute__((pure)) support",
 	  "DEFINES_FUNC", NULL, NULL,
 	  "static int __attribute__((pure)) func(int x) { return x; }" },
+	{ "HAVE_ATTRIBUTE_MALLOC", "__attribute__((malloc)) support",
+	  "DEFINES_FUNC", NULL, NULL,
+	  "#include <stdlib.h>\n"
+	  "static void * __attribute__((__malloc__)) func(size_t n) { return malloc(n); }" },
 	{ "HAVE_ATTRIBUTE_MAY_ALIAS", "__attribute__((may_alias)) support",
 	  "OUTSIDE_MAIN", NULL, NULL,
 	  "typedef short __attribute__((__may_alias__)) short_a;" },
