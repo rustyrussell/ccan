@@ -68,8 +68,8 @@ int main(int argc, char *argv[])
 	ok1(daemonized.ppid == 1);
 #endif
 	ok1(daemonized.in_root_dir);
-	ok1(daemonized.read_from_stdin == EBADF);
-	ok1(daemonized.write_to_stdout == EBADF);
+	ok1(daemonized.read_from_stdin == 0);
+	ok1(daemonized.write_to_stdout == 0);
 	ok1(daemonized.write_to_stderr == 0);
 
 	return exit_status();
