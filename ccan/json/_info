@@ -27,6 +27,12 @@
  *             "likes_pizza":  true
  *         }
  *     ]
+ * 
+ * The JSON standard supports null characters in strings, due to
+ * difficulties in handling nulls in C strings this is not supported by
+ * this library, json_decode() will return NULL.
+ *
+ * There is also a depth limit of 100 to prevent runaway recursion.
  *
  * Example:
  *	#include <ccan/json/json.h>

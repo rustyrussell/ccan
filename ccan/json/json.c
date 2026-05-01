@@ -29,6 +29,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define MAX_DEPTH 100
+
 #define out_of_memory() do {                    \
 		fprintf(stderr, "Out of memory.\n");    \
 		exit(EXIT_FAILURE);                     \
@@ -623,6 +625,10 @@ void json_remove_from_parent(JsonNode *node)
 static bool parse_value(const char **sp, JsonNode **out)
 {
 	const char *s = *sp;
+	static int depth = 0;
+
+	if (depth > MAX_DEPTH)
+		return false; // Prevent stack overflow
 	
 	switch (*s) {
 		case 'n':
@@ -664,17 +670,23 @@ static bool parse_value(const char **sp, JsonNode **out)
 		}
 		
 		case '[':
+			depth++;
 			if (parse_array(&s, out)) {
 				*sp = s;
+				depth--;
 				return true;
 			}
+			depth--;
 			return false;
 		
 		case '{':
+			depth++;
 			if (parse_object(&s, out)) {
 				*sp = s;
+				depth--;
 				return true;
 			}
+			depth--;
 			return false;
 		
 		default: {
