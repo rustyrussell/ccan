@@ -505,6 +505,10 @@ static void node_insert(const void *x, struct btree_node *xr,
 			p->branch[i+1]->k = i+1;
 		}
 		p->branch[k] = xr;
+		if(!xr)
+		{
+			return;
+		}
 		xr->parent = p;
 		xr->k = k;
 	}
