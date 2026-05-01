@@ -2,6 +2,7 @@
 #include <ccan/daemonize/daemonize.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <signal.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -10,7 +11,17 @@
  * Environment. */
 bool daemonize(void)
 {
+        struct sigaction old_sa, sa;
 	pid_t pid;
+	int sa_rc;
+
+	/* SIGHUP may be thrown when the parent exits below.
+	   So, set to ignore it and save previous action.
+	 */
+        sigemptyset(&sa.sa_mask);
+	sa.sa_handler = SIG_IGN;
+	sa.sa_flags = 0;
+	sa_rc = sigaction(SIGHUP, &sa, &old_sa);
 
 	/* Separate from our parent via fork, so init inherits us. */
 	if ((pid = fork()) < 0)
@@ -18,6 +29,10 @@ bool daemonize(void)
 	/* use _exit() to avoid triggering atexit() processing */
 	if (pid != 0)
 		_exit(0);
+
+	/* Restore previous SIGHUP action. */
+        if (sa_rc != -1)
+	        sigaction(SIGHUP, &old_sa, NULL);
 
 	/* Don't hold files open. */
 	close(STDIN_FILENO);
