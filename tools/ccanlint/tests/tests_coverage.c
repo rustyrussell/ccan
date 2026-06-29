@@ -143,17 +143,39 @@ static void do_run_coverage_tests(struct manifest *m,
 	struct list_head *list;
 	bool ran_some = false;
 
-	/* This tells gcov where we put those .gcno files. */
 	outdir = path_dirname(score,
 			      m->info_file->compiled[COMPILE_NORMAL]);
-	covargs = tal_fmt(m, "%s -o %s", full_gcov ? "" : "-n", outdir);
+	covargs = tal_fmt(m, "%s", full_gcov ? "" : "-n");
 
 	/* Run them all. */
 	foreach_ptr(list, &m->run_tests, &m->api_tests) {
 		list_for_each(list, i, list) {
 			if (run_command(score, timeleft, &cmdout,
 					"%s", i->compiled[COMPILE_COVERAGE])) {
-				tal_append_fmt(&covargs, " %s", i->fullname);
+				/*
+				 * GCC 12+ names the .gcno file
+				 * <bin-stem>-<src-stem>.gcno when they
+				 * differ (e.g. because COMPILE_NORMAL
+				 * already used the source stem and
+				 * temp_file() appended "-1").  Pass the
+				 * .gcno path directly so gcov can find it.
+				 */
+				char *bin_stem, *src_stem, *gcno;
+				bin_stem = tal_strdup(score,
+					path_basename(score,
+						i->compiled[COMPILE_COVERAGE]));
+				src_stem = tal_strdup(score,
+					path_basename(score, i->fullname));
+				src_stem[path_ext_off(src_stem)] = '\0';
+				if (streq(bin_stem, src_stem))
+					gcno = tal_fmt(score, "%s/%s.gcno",
+						       outdir, src_stem);
+				else
+					gcno = tal_fmt(score,
+						       "%s/%s-%s.gcno",
+						       outdir, bin_stem,
+						       src_stem);
+				tal_append_fmt(&covargs, " %s", gcno);
 			} else {
 				score_file_error(score, i, 0,
 						 "Running test with coverage"
@@ -171,8 +193,11 @@ static void do_run_coverage_tests(struct manifest *m,
 		return;
 	}
 
-	/* Now run gcov: we want output even if it succeeds. */
-	if (!run_gcov(score, timeleft, &cmdout, "%s", covargs)) {
+	/* Run gcov.  Modern gcov can return non-zero on mere version-mismatch
+	 * warnings while still producing valid output, so only treat it as a
+	 * hard failure when there is no coverage data in the output. */
+	run_gcov(score, timeleft, &cmdout, "%s", covargs);
+	if (!strstr(cmdout, "Lines executed:")) {
 		score->error = tal_fmt(score, "Running gcov: %s", cmdout);
 		return;
 	}
