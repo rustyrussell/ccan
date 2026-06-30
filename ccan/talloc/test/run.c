@@ -936,10 +936,13 @@ static void *normal_realloc(const void *parent, void *ptr, size_t size)
 			abort();
 	}
 
-	allocations[i] = realloc(ptr, size);
 	/* Not guaranteed by realloc. */
-	if (!size)
+	if (!size) {
+		free(ptr);
 		allocations[i] = NULL;
+	} else {
+		allocations[i] = realloc(ptr, size);
+	}
 
 	return allocations[i];
 }
