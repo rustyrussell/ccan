@@ -12,8 +12,13 @@ static void *ext_realloc(const void *parent, void *ptr, size_t size)
 	ok1(parent == expected_parent);
 	if (ptr == NULL)
 		ext_alloc_count++;
-	if (size == 0)
+	if (size == 0) {
 		ext_free_count++;
+		/* Apparently realloc(non-null, 0) was always undefined, not
+		 * a synonym for free as glibc did! */
+		free(ptr);
+		return NULL;
+	}
 	if (ptr && size)
 		ext_realloc_count++;
 	return realloc(ptr, size);
