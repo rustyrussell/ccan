@@ -149,7 +149,10 @@ static char *unexpected(struct ccan_file *i, const char *input,
 	unsigned int default_time = default_timeout_ms;
 
 	if (input)
-		cmd = tal_fmt(i, "echo '%s' | %s %s",
+		/* Suppress echo's stderr: if program exits without reading
+		 * stdin, dash's echo builtin prints "I/O error" which
+		 * pollutes the captured output. */
+		cmd = tal_fmt(i, "{ echo '%s'; } 2>/dev/null | %s %s",
 			      input, i->compiled[COMPILE_NORMAL], input);
 	else
 		cmd = tal_fmt(i, "%s", i->compiled[COMPILE_NORMAL]);
