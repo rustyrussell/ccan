@@ -8,7 +8,11 @@ all::
 
 # Our flags for building
 WARN_CFLAGS := -Wall -Wstrict-prototypes -Wold-style-definition -Wundef \
- -Wmissing-prototypes -Wmissing-declarations -Wpointer-arith -Wwrite-strings -Wshadow=local
+ -Wmissing-prototypes -Wmissing-declarations -Wpointer-arith -Wwrite-strings
+# -Wshadow=local is GCC/LLVM only; Apple clang doesn't recognise it
+ifeq ($(shell echo 'int main(void){return 0;}' | $(CC) -Wshadow=local -x c -o /dev/null - 2>&1 | grep -c "shadow=local"),0)
+WARN_CFLAGS += -Wshadow=local
+endif
 DEP_CFLAGS = -MMD -MP -MF$(@:%=%.d) -MT$@
 CCAN_CFLAGS := -g3 -ggdb $(WARN_CFLAGS) -DCCAN_STR_DEBUG=1 -I. $(CFLAGS)
 CFLAGS_FORCE_C_SOURCE := -x c
