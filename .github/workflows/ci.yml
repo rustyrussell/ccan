@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  fastcheck:
+    name: Fast check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate config.h
+        run: make config.h
+
+      - name: Build tools and libraries
+        run: make -j$(nproc 2>/dev/null || sysctl -n hw.ncpu) all
+
+      - name: Run tests (no valgrind)
+        run: make fastcheck -k -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
+
+  valgrind:
+    name: Full check with valgrind
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install valgrind
+        run: sudo apt-get update && sudo apt-get install -y valgrind
+
+      - name: Generate config.h
+        run: make config.h
+
+      - name: Build tools and libraries
+        run: make -j$(nproc) all
+
+      - name: Run full tests
+        run: make check -k -j$(nproc)
