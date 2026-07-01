@@ -28,6 +28,10 @@ EXCLUDE := altstack jmap jset ogg_to_pcm tal/talloc wwviaudio
 ifeq ($(shell grep -s 'define HAVE_UCONTEXT 1' config.h),)
 EXCLUDE += coroutine generator
 endif
+# cpuid is x86/x86_64 only
+ifeq ($(shell $(CC) -x c -dM -E /dev/null 2>/dev/null | grep -c '__x86_64__\|__i386__'),0)
+EXCLUDE += cpuid
+endif
 MODULES:= $(filter-out $(EXCLUDE:%=ccan/%), $(ALL_MODULES))
 
 # Sources are C files in each module, objects the resulting .o files
