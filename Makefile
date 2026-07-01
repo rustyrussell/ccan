@@ -24,6 +24,10 @@ ALL_MODULES := $(ALL_INFOS:%/info=%)
 
 # ... Except stuff that needs external dependencies, which we exclude
 EXCLUDE := altstack jmap jset ogg_to_pcm tal/talloc wwviaudio
+# coroutine and generator require ucontext; exclude them if not available
+ifeq ($(shell grep -s 'define HAVE_UCONTEXT 1' config.h),)
+EXCLUDE += coroutine generator
+endif
 MODULES:= $(filter-out $(EXCLUDE:%=ccan/%), $(ALL_MODULES))
 
 # Sources are C files in each module, objects the resulting .o files
