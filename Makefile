@@ -32,6 +32,10 @@ endif
 ifeq ($(shell $(CC) -x c -dM -E /dev/null 2>/dev/null | grep -c '__x86_64__\|__i386__'),0)
 EXCLUDE += cpuid
 endif
+# rszshm uses /dev/shm which only exists on Linux
+ifneq ($(shell uname -s),Linux)
+EXCLUDE += rszshm
+endif
 MODULES:= $(filter-out $(EXCLUDE:%=ccan/%), $(ALL_MODULES))
 
 # Sources are C files in each module, objects the resulting .o files
