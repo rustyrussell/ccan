@@ -17,7 +17,23 @@ EOF
 # parse options, setting the following flags
 build_type=
 
-opts=$(getopt -o ab: --long copy-all,build-type: -n $progname -- "$@")
+# macOS ships BSD getopt which lacks --long; prefer GNU getopt if available
+if [ -x /opt/homebrew/opt/gnu-getopt/bin/getopt ]; then
+	GETOPT=/opt/homebrew/opt/gnu-getopt/bin/getopt
+elif [ -x /usr/local/opt/gnu-getopt/bin/getopt ]; then
+	GETOPT=/usr/local/opt/gnu-getopt/bin/getopt
+else
+	# GNU getopt returns 4 from --test; BSD getopt does not
+	getopt --test > /dev/null 2>&1
+	if [ $? -eq 4 ]; then
+		GETOPT=getopt
+	else
+		echo "$progname: GNU getopt required (on macOS: brew install gnu-getopt)" >&2
+		exit 1
+	fi
+fi
+
+opts=$("$GETOPT" -o ab: --long copy-all,build-type: -n $progname -- "$@")
 
 if [ $? != 0 ]
 then
