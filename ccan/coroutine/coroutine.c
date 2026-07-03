@@ -60,7 +60,14 @@ struct coroutine_stack *coroutine_stack_init(void *buf, size_t bufsize,
 	size_t size = bufsize - sizeof(*stack) - metasize;
 
 #ifdef MINSIGSTKSZ
+# if defined(__APPLE__)
+	/* MINSIGSTKSZ is a runtime value on macOS 14+, not a compile-time
+	 * constant, so it can't be used in BUILD_ASSERT; check at runtime. */
+	if (COROUTINE_MIN_STKSZ < (size_t)MINSIGSTKSZ)
+		return NULL;
+# else
 	BUILD_ASSERT(COROUTINE_MIN_STKSZ >= MINSIGSTKSZ);
+# endif
 #endif
 
 	if (bufsize < (COROUTINE_MIN_STKSZ + sizeof(*stack) + metasize))
