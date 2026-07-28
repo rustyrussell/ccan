@@ -147,6 +147,13 @@ int iscsi_process_text_reply(struct iscsi_context *iscsi, struct iscsi_pdu *pdu,
 			target->next = targets;
 			targets = target;
 		} else if (!strncmp((char *)hdr, "TargetAddress=", 14)) {
+			if(!targets)
+			{
+				printf("Failed to assign the value of targets.\n", hdr);
+				pdu->callback(iscsi, ISCSI_STATUS_ERROR, NULL, pdu->private_data);
+				iscsi_free_discovery_addresses(targets);
+				return -1;
+			}
 			targets->target_address = strdup((char *)hdr+14);
 			if (targets->target_address == NULL) {
 				printf("Failed to allocate data for new discovered target address\n");
