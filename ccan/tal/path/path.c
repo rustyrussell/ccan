@@ -393,8 +393,12 @@ char *path_simplify(const tal_t *ctx, const char *path)
 						j = sep - ret + 1;
 					else
 						j = 0;
+					continue;
 				}
-				continue;
+				/* Symlink or nonexistent: can't safely step
+				 * back, so keep the ".." literally. */
+				ret[j-1] = PATH_SEP;
+				goto copy;
 			} else if (start) {
 				/* /.. => / */
 				j = 1;
