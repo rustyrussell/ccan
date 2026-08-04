@@ -576,8 +576,11 @@ void *tal_steal_(const tal_t *new_parent, const tal_t *ctx)
 		if (unlikely(get_destroying_bit(newpar->parent_child)))
 			return NULL;
 
-                /* Unlink it from old parent. */
-		list_del(&t->list);
+                /* Unlink it from old parent (an object being destroyed
+		 * has already been unlinked: it can only be stolen as a
+		 * rescue from its destructor/notifier). */
+		if (!get_destroying_bit(t->parent_child))
+			list_del(&t->list);
 		old_parent = ignore_destroying_bit(t->parent_child)->parent;
 
                 if (unlikely(!add_child(newpar, t))) {
