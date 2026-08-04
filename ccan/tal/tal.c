@@ -822,6 +822,12 @@ bool tal_expand_(tal_t **ctxp, const void *src, size_t size, size_t count)
 
 	old_len = debug_tal(to_tal_hdr(*ctxp))->bytelen;
 
+	/* Check for multiplicative overflow */
+	if (size && unlikely(count * size / size != count)) {
+		call_error("dup size overflow");
+		goto out;
+	}
+
 	/* Check for additive overflow */
 	if (old_len + count * size < old_len) {
 		call_error("dup size overflow");
@@ -832,7 +838,9 @@ bool tal_expand_(tal_t **ctxp, const void *src, size_t size, size_t count)
 	assert(src < *ctxp
 	       || (char *)src >= (char *)(*ctxp) + old_len);
 
-	if (!tal_resize_(ctxp, size, old_len/size + count, false))
+	/* Resize by raw length, so excess bytes are preserved and
+	 * tal_count() grows by exactly count. */
+	if (!tal_resize_(ctxp, 1, old_len + count * size, false))
 		goto out;
 
 	memcpy((char *)*ctxp + old_len, src, count * size);
