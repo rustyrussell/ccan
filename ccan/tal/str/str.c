@@ -150,8 +150,11 @@ char **tal_strsplit_(const tal_t *ctx,
 		if (flags == STR_EMPTY_OK && dlen)
 			dlen = 1;
 		str += len + dlen;
-		if (++num == max && !tal_resize(&parts, max*=2 + 1))
-			goto fail;
+		if (++num == max) {
+			max = max * 2 + 1;
+			if (!tal_resize(&parts, max))
+				goto fail;
+		}
 	}
 	parts[num] = NULL;
 
