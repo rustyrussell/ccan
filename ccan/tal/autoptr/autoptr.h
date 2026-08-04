@@ -15,6 +15,10 @@ struct autonull;
  * be set to NULL.  Or, if the returned object is freed, the callback is
  * deactivated.
  *
+ * Returns the autonull object, or NULL iff a tal allocation fails (only
+ * possible with a custom backend whose error function returns: see
+ * tal_set_backend).  On failure *@pp is left unchanged.
+ *
  * Example:
  *	struct parent {
  *		struct child *c;
