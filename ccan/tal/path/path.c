@@ -321,7 +321,8 @@ fail_take_to:
 			break;
 		}
 
-		if (!tal_resize(&ret, maxlen *= 2 + 1))
+		maxlen = maxlen * 2 + 1;
+		if (!tal_resize(&ret, maxlen))
 			goto fail;
 	}
 
