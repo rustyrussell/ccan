@@ -423,18 +423,17 @@ static bool add_child(struct tal_hdr *parent, struct tal_hdr *child)
 	return true;
 }
 
-static void del_tree(struct tal_hdr *t, const tal_t *orig, int saved_errno)
+static void del_tree(struct tal_hdr *t, const tal_t *orig, int saved_errno);
+
+/* Free t's children, properties and t itself.  The destroying bit is
+ * already set (by del_tree() or tal_free()). */
+static void del_tree_inner(struct tal_hdr *t, const tal_t *orig,
+			   int saved_errno)
 {
 	struct prop_hdr *prop;
 	char *ptr, *next;
 
 	assert(!taken(from_tal_hdr(t)));
-
-        /* Already being destroyed?  Don't loop. */
-        if (unlikely(get_destroying_bit(t->parent_child)))
-                return;
-
-        set_destroying_bit(&t->parent_child);
 
 	/* Call free notifiers. */
 	notify(t, TAL_NOTIFY_FREE, (tal_t *)orig, saved_errno);
@@ -462,6 +461,16 @@ static void del_tree(struct tal_hdr *t, const tal_t *orig, int saved_errno)
 		freefn(ptr);
         }
         freefn(t);
+}
+
+static void del_tree(struct tal_hdr *t, const tal_t *orig, int saved_errno)
+{
+        /* Already being destroyed?  Don't loop. */
+        if (unlikely(get_destroying_bit(t->parent_child)))
+                return;
+
+        set_destroying_bit(&t->parent_child);
+	del_tree_inner(t, orig, saved_errno);
 }
 
 /* Don't have compiler complain we're returning NULL if we promised not to! */
@@ -533,11 +542,21 @@ void *tal_free(const tal_t *ctx)
 		t = debug_tal(to_tal_hdr(ctx));
 		if (unlikely(get_destroying_bit(t->parent_child)))
 			return NULL;
+		/* Unlink and mark destroying before notifying the parent:
+		 * a notifier which (recursively) calls tal_free() on ctx
+		 * is then a no-op rather than unbounded recursion. */
+		list_del(&t->list);
+		set_destroying_bit(&t->parent_child);
 		if (notifiers)
 			notify(ignore_destroying_bit(t->parent_child)->parent,
 			       TAL_NOTIFY_DEL_CHILD, ctx, saved_errno);
-		list_del(&t->list);
-		del_tree(t, ctx, saved_errno);
+		/* A notifier can rescue ctx by tal_steal()ing it elsewhere:
+		 * add_child() clears the destroying bit. */
+		if (!get_destroying_bit(t->parent_child)) {
+			errno = saved_errno;
+			return NULL;
+		}
+		del_tree_inner(t, ctx, saved_errno);
 		errno = saved_errno;
 	}
 	return NULL;

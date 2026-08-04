@@ -283,6 +283,17 @@ enum tal_notify_type {
  * not called when this context is tal_free()d: TAL_NOTIFY_FREE is
  * considered sufficient for that case.
  *
+ * For TAL_NOTIFY_ADD_CHILD, the callback must not tal_free() or
+ * tal_steal() the child: the allocating call will still return it to
+ * the caller, so this will crash or corrupt.
+ *
+ * For TAL_NOTIFY_DEL_CHILD, the child is already unlinked and marked
+ * destroying: calling tal_free() on it from the callback is a no-op,
+ * and tal_steal()ing it rescues it from destruction (aborting the
+ * free).
+ *
+ * In all cases, the callback must not tal_free() @ptr itself.
+ *
  * TAL_NOTIFY_ADD_NOTIFIER/TAL_NOTIFIER_DEL_NOTIFIER are called when a
  * notifier is added or removed (not for this notifier): @info is the
  * callback.  This is also called for tal_add_destructor and
