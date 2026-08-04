@@ -244,6 +244,9 @@ static void notify(const struct tal_hdr *ctx,
 						    EXTRA_ARG(n));
 				else
 					cb.destroy(from_tal_hdr(ctx));
+				/* Restore: object may have been rescued by a
+				 * tal_steal() from inside the destructor. */
+				n->u = cb;
 			} else
 				n->u.notifyfn(from_tal_hdr_or_null(ctx), type,
 					      (void *)info);
@@ -436,6 +439,11 @@ static void del_tree(struct tal_hdr *t, const tal_t *orig, int saved_errno)
 	/* Call free notifiers. */
 	notify(t, TAL_NOTIFY_FREE, (tal_t *)orig, saved_errno);
 
+	/* A destructor/notifier can rescue the object by tal_steal()ing
+	 * it elsewhere: add_child() clears the destroying bit. */
+	if (!get_destroying_bit(t->parent_child))
+		return;
+
 	/* Now free children and groups. */
 	prop = find_property(t, CHILDREN);
 	if (prop) {
@@ -543,11 +551,25 @@ void *tal_steal_(const tal_t *new_parent, const tal_t *ctx)
                 newpar = debug_tal(to_tal_hdr_or_null(new_parent));
                 t = debug_tal(to_tal_hdr(ctx));
 
+		/* Can't steal into a parent which is being destroyed:
+		 * we'd be linked into the list del_tree() is draining,
+		 * and freed (or looped on) anyway. */
+		if (unlikely(get_destroying_bit(newpar->parent_child)))
+			return NULL;
+
                 /* Unlink it from old parent. */
 		list_del(&t->list);
 		old_parent = ignore_destroying_bit(t->parent_child)->parent;
 
                 if (unlikely(!add_child(newpar, t))) {
+			/* No fallback for a rescue from a destructor:
+			 * re-linking into the old parent would silently
+			 * keep the object (its destructor saw NULL), and if
+			 * the old parent is mid-del_tree it would re-enter
+			 * the list being drained.  Leave it unlinked and
+			 * destroying; the free proceeds. */
+			if (get_destroying_bit(t->parent_child))
+				return NULL;
 			/* We can always add to old parent, because it has a
 			 * children property already. */
 			if (!add_child(old_parent, t))
