@@ -386,7 +386,7 @@ void *io_loop(struct timers *timers, struct timer **expired)
 {
 	void *ret;
 	/* This ensures we don't always service lower fds first */
-	static int fairness_counter;
+	static size_t fairness_counter;
 
 	/* if timers is NULL, expired must be.  If not, not. */
 	assert(!timers == !expired);
