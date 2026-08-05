@@ -125,7 +125,7 @@ _IDX_LIMIT_SIZE	equ 8
 _RSP_SIZE	equ 8
 
 ;; KTMSG must overlap TMSG such that the second 3/4 of KTMSG overlaps the
-;; first 3/4 of TMSG. (We onl need 16 words of TMSG at any time.)
+;; first 3/4 of TMSG. (We only need 16 words of TMSG at any time.)
 _KTMSG		equ              _EXTRA_SIZE
 _TMSG		equ _KTMSG     + _KTMSG_SIZE
 _XMM_SAVE	equ _TMSG      + _TMSG_SIZE

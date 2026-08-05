@@ -207,7 +207,7 @@ char *tal_strjoin_(const void *ctx,
  * Example:
  *	// Given "My name is Rusty" outputs "Hello Rusty!\n"
  *	// Given "my first name is Rusty Russell" outputs "Hello Rusty Russell!\n"
- *	// Given "My name isnt Rusty Russell" outputs "Hello there!\n"
+ *	// Given "My name isn't Rusty Russell" outputs "Hello there!\n"
  *	int main(int argc, char *argv[])
  *	{
  *		char *person, *input;

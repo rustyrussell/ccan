@@ -9,7 +9,7 @@
  * together at runtime to form tables.  This is often used in place of
  * having a central registration function or table.
  *
- * Note that this technique does not work in general for shared libaries,
+ * Note that this technique does not work in general for shared libraries,
  * only for code compiled into a binary.
  *
  * License: BSD-MIT

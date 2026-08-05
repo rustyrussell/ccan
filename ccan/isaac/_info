@@ -73,7 +73,7 @@
  * It is the fastest 32-bit generator among all of those that pass the
  * statistical tests in the recent survey
  * http://www.iro.umontreal.ca/~simardr/testu01/tu01.html, with the exception
- * of Marsa-LFIB4, and it is quite competitive on 64-bit archtectures.
+ * of Marsa-LFIB4, and it is quite competitive on 64-bit architectures.
  *
  * Unlike Marsa-LFIB4 (and all other LFib generators), there are no linear
  * dependencies between successive values, and unlike many generators found in

@@ -8,7 +8,7 @@ struct athread;
 
 /* Operations for the parent. */
 
-/* Create a new sharable pool. */
+/* Create a new shareable pool. */
 struct at_pool *at_pool(unsigned long size);
 
 /* Talloc off this to allocate from within the pool. */

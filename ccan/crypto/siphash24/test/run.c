@@ -98,7 +98,7 @@ int main(void)
 	/* This is how many tests you plan to run */
 	plan_tests(1 + MAXLEN * 2);
 
-	/* Initialzed an manually created should give same results. */
+	/* Initialized and manually created should give same results. */
 	for (i = 0; i < sizeof(seed.u.u8); i++)
 		seed.u.u8[i] = i;
 	siphash24_init(&ctx2, &seed);

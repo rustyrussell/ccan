@@ -59,7 +59,7 @@ PolyAdt *create_adt(int hp);
 
 /**
 * create_node - creates a Node (exponent, constant and next pointer) on the heap
-* @constant: the contant in the term
+* @constant: the constant in the term
 * @exp:      the exponent on the term
 * @next:     the next pointer to another term in the polynomial
 *

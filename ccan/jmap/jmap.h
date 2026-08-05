@@ -364,7 +364,7 @@ struct jmap {
  * @map: map from jmap_new
  * @p: the pointer to a pointer to the value
  *
- * @p is a pointer to the (successful) value retuned from one of the
+ * @p is a pointer to the (successful) value returned from one of the
  * jmap_*val functions (listed below).  After this, it will be invalid.
  *
  * Unless NDEBUG is defined, this will actually alter the value of p

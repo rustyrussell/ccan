@@ -381,7 +381,7 @@ static BDELTAcode build_triangle(
 	 *
 	 *  * Every V array is preserved per iteration of the outer loop.
 	 *    This is necessary so we can determine the actual patch, not just
-	 *    the length of the shortest edit string.  See the coment above
+	 *    the length of the shortest edit string.  See the comment above
 	 *    the definition of Triangle for an in-depth explanation.
 	 *
 	 *  * Array items are stored consecutively so as to not waste space.

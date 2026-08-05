@@ -1,4 +1,4 @@
-/* We save the locks so we can reaquire them. */
+/* We save the locks so we can reacquire them. */
 #include "../private.h" /* For NTDB_HASH_LOCK_START, etc. */
 #include <unistd.h>
 #include <fcntl.h>

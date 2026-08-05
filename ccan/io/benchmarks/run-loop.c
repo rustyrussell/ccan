@@ -78,7 +78,7 @@ int main(void)
 		last_read = fds[0];
 	}
 
-	/* Last one completes the cirle. */
+	/* Last one completes the circle. */
 	i = 0;
 	buf[i].iters = 0;
 	sprintf(buf[i].buf, "%i-%i", i, i);

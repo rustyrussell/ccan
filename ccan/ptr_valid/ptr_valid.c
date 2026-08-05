@@ -264,7 +264,7 @@ static bool check_with_child(struct ptr_valid_batch *batch,
 }
 
 /* msync seems most well-defined test, but page could be mapped with
- * no permissions, and can't distiguish readonly from writable. */
+ * no permissions, and can't distinguish readonly from writable. */
 bool ptr_valid_batch(struct ptr_valid_batch *batch,
 		     const void *p, size_t alignment, size_t size, bool write)
 {

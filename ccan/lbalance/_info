@@ -14,7 +14,7 @@
  *
  * Example:
  *	// Run 1000 of the given commandline at best-known parallel rate.
- *	// See tools/lbalance.c for a sligtly more serious example.
+ *	// See tools/lbalance.c for a slightly more serious example.
  *	#include <ccan/lbalance/lbalance.h>
  *      #include <sys/types.h>
  *      #include <sys/time.h>

@@ -11,7 +11,7 @@ enum dgraph_dir {
 	DGRAPH_TO
 };
 
-/* strust tlist_dgraph_edge: a list of edges */
+/* struct tlist_dgraph_edge: a list of edges */
 TLIST_TYPE(dgraph_edge, struct dgraph_edge);
 
 /**

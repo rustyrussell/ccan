@@ -1453,7 +1453,7 @@ context
 \end_layout
 
 \begin_layout Standard
-This would form a talloc heirarchy as expected, but the caller would still
+This would form a talloc hierarchy as expected, but the caller would still
  have to attach a destructor to the tdb context returned from tdb_open to
  close it.
  All TDB_DATA fields would be children of the tdb_context, and the caller
@@ -1695,7 +1695,7 @@ Status
 \begin_layout Standard
 Ignore.
  Scaling the hash automatically proved inefficient at small hash sizes;
- we default to a 8192-element hash (changable via NTDB_ATTRIBUTE_HASHSIZE),
+ we default to a 8192-element hash (changeable via NTDB_ATTRIBUTE_HASHSIZE),
  and when buckets clash we expand to an array of hash entries.
  This scales slightly better than the tdb chain (due to the 8 top bits containin
 g extra hash).
@@ -1795,7 +1795,7 @@ Examine the following block to see if it is free; if so, enlarge the current
 \end_layout
 
 \begin_layout Enumerate
-Examine the preceeding block to see if it is free: for this reason, each
+Examine the preceding block to see if it is free: for this reason, each
  block has a 32-bit tailer which indicates its length.
  If it is free, expand it to cover our new block and return.
 \end_layout
