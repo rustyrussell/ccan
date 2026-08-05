@@ -108,6 +108,9 @@ bool htable_init_sized(struct htable *ht,
 	for (ht->bits = 1; ht_max(ht) < expect; ht->bits++) {
 		if (ht->bits == 30)
 			break;
+		/* Stop before the allocation size wraps (eg. 32-bit). */
+		if ((sizeof(size_t) << (ht->bits + 1)) == 0)
+			break;
 	}
 
 	ht->table = htable_alloc(ht, sizeof(size_t) << ht->bits);
@@ -308,10 +311,15 @@ static COLD bool double_table(struct htable *ht)
 {
 	unsigned int i;
 	size_t oldnum = (size_t)1 << ht->bits;
+	size_t newsize = sizeof(size_t) << (ht->bits+1);
 	uintptr_t *oldtable, e;
 
+	/* 32-bit: doubling can wrap the allocation size to 0. */
+	if (newsize == 0)
+		return false;
+
 	oldtable = ht->table;
-	ht->table = htable_alloc(ht, sizeof(size_t) << (ht->bits+1));
+	ht->table = htable_alloc(ht, newsize);
 	if (!ht->table) {
 		ht->table = oldtable;
 		return false;
