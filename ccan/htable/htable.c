@@ -113,6 +113,7 @@ bool htable_init_sized(struct htable *ht,
 	ht->table = htable_alloc(ht, sizeof(size_t) << ht->bits);
 	if (!ht->table) {
 		ht->table = &ht->common_bits;
+		ht->bits = 0;
 		return false;
 	}
 	(void)htable_debug(ht, HTABLE_LOC);
