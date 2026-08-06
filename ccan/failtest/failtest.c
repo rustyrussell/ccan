@@ -178,6 +178,7 @@ static struct failtest_call *add_history_(enum failtest_call_type type,
 	call->file = file;
 	call->line = line;
 	call->cleanup = NULL;
+	call->error = 0;
 	call->backtrace = get_backtrace(&call->backtrace_num);
 	if (elem_size != 0)
 		memcpy(&call->u, elem, elem_size);
@@ -910,6 +911,7 @@ void *failtest_calloc(size_t nmemb, size_t size,
 		p->error = ENOMEM;
 	} else {
 		p->u.calloc.ret = calloc(nmemb, size);
+		p->error = errno;
 		set_cleanup(p, cleanup_calloc, struct calloc_call);
 	}
 	trace("calloc %zu x %zu %s:%u -> %p\n",
@@ -936,6 +938,7 @@ void *failtest_malloc(size_t size, const char *file, unsigned line)
 		p->error = ENOMEM;
 	} else {
 		p->u.malloc.ret = malloc(size);
+		p->error = errno;
 		set_cleanup(p, cleanup_malloc, struct malloc_call);
 	}
 	trace("malloc %zu %s:%u -> %p\n",
@@ -1008,6 +1011,7 @@ void *failtest_realloc(void *ptr, size_t size, const char *file, unsigned line)
 		p->u.realloc.ret = NULL;
 		fixup_ptr_history(ptr, "realloc");
 		p->u.realloc.ret = realloc(ptr, size);
+		p->error = errno;
 		set_cleanup(p, cleanup_realloc, struct realloc_call);
 	}
 	trace("realloc %p %s:%u -> %p\n",
@@ -1111,6 +1115,7 @@ int failtest_open(const char *pathname,
 		else
 			p->u.open.saved = NULL;
 		p->u.open.ret = open(pathname, call.flags, call.mode);
+		p->error = errno;
 		if (p->u.open.ret == -1) {
 			p->u.open.closed = true;
 			p->can_leak = false;
@@ -1164,6 +1169,7 @@ void *failtest_mmap(void *addr, size_t length, int prot, int flags,
 		p->error = ENOMEM;
 	} else {
 		p->u.mmap.ret = mmap(addr, length, prot, flags, fd, offset);
+		p->error = errno;
 		/* Save contents if we're writing to a normal file */
 		if (p->u.mmap.ret != MAP_FAILED
 		    && (prot & PROT_WRITE)
@@ -1211,6 +1217,7 @@ int failtest_pipe(int pipefd[2], const char *file, unsigned line)
 		p->error = EMFILE;
 	} else {
 		p->u.pipe.ret = pipe(p->u.pipe.fds);
+		p->error = errno;
 		p->u.pipe.closed[0] = p->u.pipe.closed[1] = false;
 		set_cleanup(p, cleanup_pipe, struct pipe_call);
 	}
@@ -1254,10 +1261,12 @@ static ssize_t failtest_add_read(int fd, void *buf, size_t count, off_t off,
 		p->u.read.ret = -1;
 		p->error = EIO;
 	} else {
-		if (is_pread)
+		if (is_pread) {
 			p->u.read.ret = pread(fd, buf, count, off);
-		else {
+			p->error = errno;
+		} else {
 			p->u.read.ret = read(fd, buf, count);
+			p->error = errno;
 			if (p->u.read.ret != -1)
 				set_cleanup(p, cleanup_read, struct read_call);
 		}
@@ -1363,6 +1372,7 @@ static ssize_t failtest_add_write(int fd, const void *buf,
 			p->u.write.ret = pwrite(fd, buf, count, off);
 		else
 			p->u.write.ret = write(fd, buf, count);
+		p->error = errno;
 	}
 	trace("%swrite %s:%i %zu@%llu on fd %i -> %zi\n",
 	      p->u.write.is_pwrite ? "p" : "",
