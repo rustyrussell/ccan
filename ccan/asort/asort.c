@@ -34,6 +34,10 @@
 #include <string.h>
 #include <stdbool.h>
 
+/* Vendored glibc code uses GNU void * arithmetic. */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpointer-arith"
+
 /* glibc-internal type, mapped to ccan's equivalent. */
 typedef _total_order_cb __compar_d_fn_t;
 
@@ -451,5 +455,7 @@ _asort (void *const pbase, size_t total_elems, size_t size,
 	heapsort_r (pbase, total_elems - 1, size, cmp, arg);
     }
 }
+
+#pragma GCC diagnostic pop
 
 #endif /* !HAVE_QSORT_R_PRIVATE_LAST */
