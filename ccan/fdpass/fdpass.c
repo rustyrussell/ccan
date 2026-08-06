@@ -89,7 +89,7 @@ int fdpass_recv(int sockin)
 			for (i = 0; i < nfds; i++)
 				close(fds[i]);
 		}
-		errno = -EINVAL;
+		errno = EINVAL;
 		return -1;
 	}
 
