@@ -308,6 +308,14 @@ plan_skip_all(const char *reason)
 
 	_tap_init();
 
+	if(have_plan != 0) {
+		fprintf(stderr, "You tried to plan twice!\n");
+		test_died = 1;
+		UNLOCK;
+		exit(255);
+	}
+
+	have_plan = 1;
 	skip_all = 1;
 
 	printf("1..0");
