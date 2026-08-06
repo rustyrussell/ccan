@@ -264,10 +264,11 @@ _tap_init(void)
 		test_pid = getpid();
 		atexit(_cleanup);
 
-		/* stdout needs to be unbuffered so that the output appears
-		   in the same place relative to stderr output as it does
-		   with Test::Harness */
-//		setbuf(stdout, 0);
+		/* stdout needs to be flushed per line so that the output
+		   appears in the same place relative to stderr output as it
+		   does with Test::Harness, and so forked children don't
+		   re-print buffered TAP lines. */
+		setvbuf(stdout, NULL, _IOLBF, 0);
 		run_once = 1;
 	}
 }
