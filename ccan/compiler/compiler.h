@@ -75,6 +75,7 @@
 #else
 #define CONST_FUNCTION
 #endif
+#endif
 
 #ifndef PURE_FUNCTION
 #if HAVE_ATTRIBUTE_PURE
@@ -87,7 +88,6 @@
 #define PURE_FUNCTION __attribute__((__pure__))
 #else
 #define PURE_FUNCTION
-#endif
 #endif
 #endif
 
