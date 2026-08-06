@@ -164,7 +164,9 @@ pid_t pipecmdarr(int *fd_tochild, int *fd_fromchild, int *fd_errfromchild,
 		if (write(execfail[1], &err, sizeof(err))) {
 			;
 		}
-		exit(127);
+		/* _exit: don't flush the parent's stdio buffers again,
+		 * nor run its atexit handlers. */
+		_exit(127);
 	}
 
 	int i;
