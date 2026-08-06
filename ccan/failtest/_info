@@ -17,6 +17,10 @@
  *
  * You can control what functions fail: see failtest_hook.
  *
+ * Note that undoing a child's file writes requires the file to be
+ * readable: the old contents are saved via the fd or a fresh O_RDONLY
+ * open, so writes to a file without read permission cannot be undone.
+ *
  * Example:
  *	#include <stdio.h>
  *	#include <stdlib.h>

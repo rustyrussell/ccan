@@ -422,6 +422,14 @@ static struct contents_saved *save_contents(const char *filename,
 
 	ret = pread(fd, s->contents, count, off);
 	if (ret < 0) {
+		/* fd may be write-only; read via a fresh open instead. */
+		int rfd = open(filename, O_RDONLY);
+		if (rfd >= 0) {
+			ret = pread(rfd, s->contents, count, off);
+			close(rfd);
+		}
+	}
+	if (ret < 0) {
 		fwarn("failtest_write: failed to save old contents!");
 		s->count = 0;
 	} else
