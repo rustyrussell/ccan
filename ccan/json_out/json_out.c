@@ -334,11 +334,15 @@ bool json_out_add_splice(struct json_out *jout,
 {
 	const char *p;
 	size_t len;
+	char *dst;
 
 	p = json_out_contents(src, &len);
 	if (!p)
 		return false;
-	memcpy(json_out_member_direct(jout, fieldname, len), p, len);
+	dst = json_out_member_direct(jout, fieldname, len);
+	if (!dst)
+		return false;
+	memcpy(dst, p, len);
 	return true;
 }
 
