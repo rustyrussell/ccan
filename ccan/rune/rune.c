@@ -70,6 +70,10 @@ struct rune *rune_dup(const tal_t *ctx, const struct rune *rune TAKES)
 		return tal_steal(ctx, (struct rune *)rune);
 
 	dup = tal_dup(ctx, struct rune, rune);
+	if (rune->unique_id)
+		dup->unique_id = tal_strdup(dup, rune->unique_id);
+	if (rune->version)
+		dup->version = tal_strdup(dup, rune->version);
 	dup->restrs = tal_arr(dup, struct rune_restr *, tal_count(rune->restrs));
 	for (size_t i = 0; i < tal_count(rune->restrs); i++) {
 		dup->restrs[i] = rune_restr_dup(dup->restrs,
