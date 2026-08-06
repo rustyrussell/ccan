@@ -183,7 +183,7 @@ _gen_result(int ok, const char *func, const char *file, unsigned int line,
 
 	UNLOCK;
 
-	if (!ok && tap_fail_callback)
+	if (!ok && !todo && tap_fail_callback)
 		tap_fail_callback();
 
 	/* We only care (when testing) that ok is positive, but here we
