@@ -291,11 +291,16 @@ static int lexo_order(const char *fieldval_str,
 		      size_t fieldval_strlen,
 		      const char *alt)
 {
-	int ret = strncmp(fieldval_str, alt, fieldval_strlen);
+	size_t altlen = strlen(alt);
+	size_t minlen = fieldval_strlen < altlen ? fieldval_strlen : altlen;
+	int ret = memcmp(fieldval_str, alt, minlen);
 
-	/* If alt is same but longer, fieldval is < */
-	if (ret == 0 && strlen(alt) > fieldval_strlen)
-		ret = -1;
+	if (ret == 0) {
+		if (fieldval_strlen < altlen)
+			ret = -1;
+		else if (fieldval_strlen > altlen)
+			ret = 1;
+	}
 	return ret;
 }
 
