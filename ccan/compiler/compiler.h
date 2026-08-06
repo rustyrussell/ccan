@@ -199,7 +199,7 @@
  *	// Use inline if compiler knows answer.  Otherwise call function
  *	// to avoid copies of the same code everywhere.
  *	#define greek_name(g)						\
- *		 (IS_COMPILE_CONSTANT(greek) ? _greek_name(g) : greek_name(g))
+ *		 (IS_COMPILE_CONSTANT(g) ? _greek_name(g) : greek_name(g))
  */
 #define IS_COMPILE_CONSTANT(expr) __builtin_constant_p(expr)
 #else
