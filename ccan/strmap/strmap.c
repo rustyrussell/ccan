@@ -2,6 +2,7 @@
 #include <ccan/strmap/strmap.h>
 #include <ccan/short_types/short_types.h>
 #include <ccan/str/str.h>
+#include <ccan/mem/mem.h>
 #include <ccan/ilog/ilog.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -42,7 +43,7 @@ void *strmap_getn_(const struct strmap *map,
 	/* Not empty map? */
 	if (map->u.n) {
 		n = closest((struct strmap *)map, member, memberlen);
-		if (!strncmp(member, n->u.s, memberlen) && !n->u.s[memberlen])
+		if (memeqstr(member, memberlen, n->u.s))
 			return n->v;
 	}
 	errno = ENOENT;
