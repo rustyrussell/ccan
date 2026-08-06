@@ -58,6 +58,11 @@ struct timerel time_divide(struct timerel t, unsigned long div)
 		/* FIXME: fp is cheating! */
 		double nsec = rem * 1000000000.0 + t.ts.tv_nsec;
 		res.ts.tv_nsec = nsec / div;
+		/* Rounding can give exactly 1e9; renormalize. */
+		if (res.ts.tv_nsec >= 1000000000) {
+			res.ts.tv_nsec -= 1000000000;
+			res.ts.tv_sec++;
+		}
 	} else {
 		ns = rem * 1000000000 + t.ts.tv_nsec;
 		res.ts.tv_nsec = ns / div;
