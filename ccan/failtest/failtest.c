@@ -306,6 +306,9 @@ static void child_fail(const char *out, size_t outlen, const char *fmt, ...)
 	fprintf(stderr, "%.*s", (int)outlen, out);
 	printf("To reproduce: --failpath=%s\n", path);
 	free(path);
+	/* Don't let buffered stdout die with us after the parent closes
+	 * the output pipe on FAILURE. */
+	fflush(NULL);
 	tell_parent(FAILURE);
 	exit(1);
 }
@@ -627,6 +630,9 @@ static NORETURN void failtest_cleanup(bool forced_cleanup, int status)
 	free_mmapped_files(true);
 
 	free_everything();
+	/* Flush before telling the parent: it stops reading our output
+	 * pipe as soon as it sees FAILURE. */
+	fflush(NULL);
 	if (status == 0)
 		tell_parent(SUCCESS);
 	else
