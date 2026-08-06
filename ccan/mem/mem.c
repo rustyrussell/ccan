@@ -33,7 +33,7 @@ void *memrchr(const void *s, int c, size_t n)
 	unsigned char *p = (unsigned char *)s;
 
 	while (n) {
-		if (p[n-1] == c)
+		if (p[n-1] == (unsigned char)c)
 			return p + n - 1;
 		n--;
 	}
