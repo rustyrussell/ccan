@@ -1612,13 +1612,16 @@ int failtest_fcntl(int fd, const char *file, unsigned line, int cmd, ...)
 	case F_GETFL:
 		trace("fcntl on fd %i F_GETFL/F_GETFD\n", fd);
 		return fcntl(fd, cmd);
-	case F_GETLK:
+	case F_GETLK: {
+		struct flock *fl;
+
 		trace("fcntl on fd %i F_GETLK\n", fd);
 		get_locks();
 		va_start(ap, cmd);
-		call.arg.fl = *va_arg(ap, struct flock *);
+		fl = va_arg(ap, struct flock *);
 		va_end(ap);
-		return fcntl(fd, cmd, &call.arg.fl);
+		return fcntl(fd, cmd, fl);
+	}
 	case F_SETLK:
 	case F_SETLKW:
 		trace("fcntl on fd %i F_SETLK%s\n",
