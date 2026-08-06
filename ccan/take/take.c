@@ -118,6 +118,7 @@ const char *taken_any(void)
 void take_cleanup(void)
 {
 	max_taken = num_taken = 0;
+	allocfail = 0;
 	free(takenarr);
 	takenarr = NULL;
 	free(labelarr);
