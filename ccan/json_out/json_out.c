@@ -224,6 +224,7 @@ bool json_out_addv(struct json_out *jout,
 	size_t fmtlen, avail;
 	va_list ap2;
 	char *dst;
+	int vsnprintf_ret;
 
 	if (!json_out_member_direct(jout, fieldname, 0))
 		return false;
@@ -242,7 +243,12 @@ bool json_out_addv(struct json_out *jout,
 
 	/* Try printing in place first. */
 	dst = membuf_space(&jout->outbuf);
-	fmtlen = vsnprintf(dst + quote, avail, fmt, ap);
+	vsnprintf_ret = vsnprintf(dst + quote, avail, fmt, ap);
+	if (vsnprintf_ret < 0) {
+		dst = NULL;
+		goto out;
+	}
+	fmtlen = vsnprintf_ret;
 
 	/* Horrible subtlety: vsnprintf *will* NUL terminate, even if it means
 	 * chopping off the last character.  So if fmtlen ==
