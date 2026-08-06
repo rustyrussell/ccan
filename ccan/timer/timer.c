@@ -360,6 +360,9 @@ struct timer *timers_expire(struct timers *timers, struct timemono expire)
 		if (list_empty(&timers->far))
 			return NULL;
 		add_level(timers, 0);
+		/* Allocation failure: timers wait safely on the far list. */
+		if (!timers->level[0])
+			return NULL;
 	}
 
 	do {
