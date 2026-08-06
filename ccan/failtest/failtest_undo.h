@@ -39,8 +39,16 @@
 #define lseek(fd, off, whence) \
 	failtest_lseek((fd), (off), (whence), NULL, 0)
 
+#undef pread
+#define pread(fd, buf, count, off)				\
+	failtest_pread((fd), (buf), (count), (off), NULL, 0)
+
+#undef pwrite
+#define pwrite(fd, buf, count, off)				\
+	failtest_pwrite((fd), (buf), (count), (off), NULL, 0)
+
 #undef close
-#define close(fd) failtest_close(fd)
+#define close(fd) failtest_close((fd), NULL, 0)
 
 #undef fcntl
 #define fcntl(fd, ...) \
