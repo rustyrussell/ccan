@@ -373,9 +373,9 @@ static off_t off_max(void)
 {
 	BUILD_ASSERT(sizeof(off_t) == 4 || sizeof(off_t) == 8);
 	if (sizeof(off_t) == 4)
-		return (off_t)0x7FFFFFF;
+		return (off_t)0x7FFFFFFF;
 	else
-		return (off_t)0x7FFFFFFFFFFFFFFULL;
+		return (off_t)0x7FFFFFFFFFFFFFFFULL;
 }
 
 static void get_locks(void)
