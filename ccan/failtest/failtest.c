@@ -1218,8 +1218,14 @@ int failtest_pipe(int pipefd[2], const char *file, unsigned line)
 	} else {
 		p->u.pipe.ret = pipe(p->u.pipe.fds);
 		p->error = errno;
-		p->u.pipe.closed[0] = p->u.pipe.closed[1] = false;
-		set_cleanup(p, cleanup_pipe, struct pipe_call);
+		if (p->u.pipe.ret == -1) {
+			/* Genuine failure: nothing to clean up or leak. */
+			p->u.pipe.closed[0] = p->u.pipe.closed[1] = true;
+			p->can_leak = false;
+		} else {
+			p->u.pipe.closed[0] = p->u.pipe.closed[1] = false;
+			set_cleanup(p, cleanup_pipe, struct pipe_call);
+		}
 	}
 
 	trace("pipe %s:%u -> %i,%i\n", file, line,
