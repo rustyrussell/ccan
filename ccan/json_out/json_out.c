@@ -115,13 +115,19 @@ static void unindent(struct json_out *jout, char type)
 	jout->empty = false;
 }
 
-/* Make sure jout->outbuf has room for len: return pointer */
+/* Make sure jout->outbuf has room for len: return pointer, or NULL
+ * if the allocation failed. */
 static char *mkroom(struct json_out *jout, size_t len)
 {
 	ptrdiff_t delta = membuf_prepare_space(&jout->outbuf, len);
 
 	if (delta && jout->move_cb)
 		jout->move_cb(jout, delta, jout->cb_arg);
+
+	/* membuf_prepare_space() documents checking membuf_num_space()
+	 * to detect allocation failure. */
+	if (membuf_num_space(&jout->outbuf) < len)
+		return NULL;
 
 	return membuf_space(&jout->outbuf);
 }
