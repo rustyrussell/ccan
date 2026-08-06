@@ -265,6 +265,10 @@ bool json_out_addv(struct json_out *jout,
 		if (json_escape_needed(dst + quote, fmtlen)) {
 			struct json_escape *e;
 			e = json_escape_len(NULL, dst + quote, fmtlen);
+			if (!e) {
+				dst = NULL;
+				goto out;
+			}
 			fmtlen = strlen(e->s);
 			dst = mkroom(jout, fmtlen + (int)quote*2);
 			if (!dst)
@@ -313,6 +317,8 @@ bool json_out_addstrn(struct json_out *jout,
 
 	if (json_escape_needed(str, len)) {
 		e = json_escape_len(NULL, str, len);
+		if (!e)
+			return false;
 		str = e->s;
 		len = strlen(str);
 	} else
