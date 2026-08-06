@@ -192,6 +192,8 @@ pid_t pipecmdarr(int *fd_tochild, int *fd_fromchild, int *fd_errfromchild,
 fail:
 	for (i = 0; i < num_par_close; i++)
 		close_noerr(par_close[i]);
+	for (i = 0; i < num_child_close; i++)
+		close_noerr(child_close[i]);
 	return -1;
 }
 
