@@ -46,7 +46,7 @@
  *	expands to '1' if @a is '0', otherwise expands to '0'.
  */
 #define _CPPMAGIC_ISPROBE(...)		CPPMAGIC_2ND(__VA_ARGS__, 0)
-#define _CPPMAGIC_PROBE()		$, 1
+#define _CPPMAGIC_PROBE()		_cppmagic_probe, 1
 #define _CPPMAGIC_ISZERO_0		_CPPMAGIC_PROBE()
 #define CPPMAGIC_ISZERO(a_)		\
 	_CPPMAGIC_ISPROBE(CPPMAGIC_GLUE2(_CPPMAGIC_ISZERO_, a_))
