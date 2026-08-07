@@ -276,8 +276,10 @@ bool ptr_valid_batch(struct ptr_valid_batch *batch,
 	char *start, *end;
 	bool ret;
 
-	if ((intptr_t)p & (alignment - 1))
+	if ((intptr_t)p & (alignment - 1)) {
+		errno = EFAULT;
 		return false;
+	}
 
 	start = (void *)((intptr_t)p & ~(getpagesize() - 1));
 	end = (void *)(((intptr_t)p + size - 1) & ~(getpagesize() - 1));
@@ -285,8 +287,11 @@ bool ptr_valid_batch(struct ptr_valid_batch *batch,
 	/* We cache single page hits. */
 	if (start == end) {
 		if (batch->last && batch->last == start
-		    && batch->last_write == write)
+		    && batch->last_write == write) {
+			if (!batch->last_ok)
+				errno = EFAULT;
 			return batch->last_ok;
+		}
 	}
 
 	if (batch->num_maps)
@@ -300,6 +305,8 @@ bool ptr_valid_batch(struct ptr_valid_batch *batch,
 		batch->last_write = write;
 	}
 
+	if (!ret)
+		errno = EFAULT;
 	return ret;
 }
 
