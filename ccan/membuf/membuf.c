@@ -51,6 +51,9 @@ size_t membuf_prepare_space_(struct membuf *mb,
 			mb->elems = expand;
 		}
 	}
+	/* Nothing moved if there was no old buffer. */
+	if (!oldstart)
+		return 0;
 	return (char *)membuf_elems_(mb, elemsize) - oldstart;
 }
 
