@@ -352,7 +352,12 @@ static bool tok_take_type(struct parse_state *ps, struct cdump_type **type)
 
 	/* Did we get some? */
 	if (ps->toks != types) {
-		name = string_of_toks(NULL, types, tok_peek(&ps->toks));
+		const struct token *until = tok_peek(&ps->toks);
+		if (!until) {
+			complain(ps, "EOF after type");
+			return false;
+		}
+		name = string_of_toks(NULL, types, until);
 		kind = CDUMP_UNKNOWN;
 	} else {
 		/* Try normal types (or simple typedefs, etc). */
