@@ -279,7 +279,8 @@ bool ptr_valid_batch(struct ptr_valid_batch *batch,
 
 	/* We cache single page hits. */
 	if (start == end) {
-		if (batch->last && batch->last == start)
+		if (batch->last && batch->last == start
+		    && batch->last_write == write)
 			return batch->last_ok;
 	}
 
@@ -291,6 +292,7 @@ bool ptr_valid_batch(struct ptr_valid_batch *batch,
 	if (start == end) {
 		batch->last = start;
 		batch->last_ok = ret;
+		batch->last_write = write;
 	}
 
 	return ret;
