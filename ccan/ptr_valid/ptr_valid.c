@@ -28,9 +28,10 @@ static char *grab(const char *filename)
 	while ((ret = read(fd, buffer + s, max - s)) > 0) {
 		s += ret;
 		if (s == max) {
-			buffer = realloc(buffer, max*2+1);
-			if (!buffer)
-				goto close;
+			char *nb = realloc(buffer, max*2+1);
+			if (!nb)
+				goto free;
+			buffer = nb;
 			max *= 2;
 		}
 	}
@@ -62,10 +63,14 @@ static struct ptr_valid_map *add_map(struct ptr_valid_map *map,
 				     unsigned long start, unsigned long end, bool is_write)
 {
 	if (*num == *max) {
+		struct ptr_valid_map *newmap;
 		*max *= 2;
-		map = realloc(map, sizeof(*map) * *max);
-		if (!map)
+		newmap = realloc(map, sizeof(*newmap) * *max);
+		if (!newmap) {
+			free(map);
 			return NULL;
+		}
+		map = newmap;
 	}
 	map[*num].start = (void *)start;
 	map[*num].end = (void *)end;
