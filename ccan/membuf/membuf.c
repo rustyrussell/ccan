@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 void membuf_init_(struct membuf *mb,
 		  void *elems, size_t num_elems, size_t elemsize,
@@ -41,6 +42,12 @@ size_t membuf_prepare_space_(struct membuf *mb,
 		/* Since we're going to expand, at least double. */
 		if (num_extra < mb->max_elems)
 			num_extra = mb->max_elems;
+
+		/* Don't let the allocation size wrap. */
+		if (num_extra > SIZE_MAX / elemsize - mb->max_elems) {
+			errno = ENOMEM;
+			return 0;
+		}
 
 		expand = mb->expandfn(mb, mb->elems,
 				      (mb->max_elems + num_extra) * elemsize);
