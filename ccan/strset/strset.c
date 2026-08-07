@@ -19,6 +19,7 @@
 #include <ccan/ilog/ilog.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
 #include <errno.h>
 
 struct node {
@@ -248,6 +249,115 @@ void strset_iterate_(const struct strset *set,
 		return;
 
 	iterate(*set, handle, data);
+}
+
+/* Defer child[1] of a node we're descending past. */
+static void iter_push(struct strset_iter *it, struct strset *slot)
+{
+	if (STRSET_NUM_ITER_PARENTS == 0) {
+		it->dropped = true;
+		return;
+	}
+	if (it->num_parents == STRSET_NUM_ITER_PARENTS) {
+		/* Full: drop the *shallowest* deferral (kept in-order by
+		 * the slow_mode path once the stack runs out). */
+		memmove(&it->parents[0], &it->parents[1],
+			sizeof(it->parents[0]) * (STRSET_NUM_ITER_PARENTS - 1));
+		it->num_parents--;
+		it->dropped = true;
+	}
+	it->parents[it->num_parents++] = slot;
+}
+
+/* Descend leftmost from *slot, deferring child[1]s, and yield the leaf. */
+static const char *iter_descend(struct strset_iter *it, struct strset *slot)
+{
+	while (!slot->u.s[0]) {
+		/* Empty-string node: the string is child[0]. */
+		if (unlikely(slot->u.n->byte_num == (size_t)-1)) {
+			slot = &slot->u.n->child[0];
+			break;
+		}
+		iter_push(it, &slot->u.n->child[1]);
+		slot = &slot->u.n->child[0];
+	}
+	return slot->u.s;
+}
+
+/* Successor of cur by value: O(depth), no stack. */
+static const char *iter_successor(const struct strset *set,
+				  const char *cur)
+{
+	size_t len = strlen(cur);
+	const u8 *bytes = (const u8 *)cur;
+	struct strset n, cand;
+	bool have_cand = false;
+
+	n = *(struct strset *)set;
+	while (!n.u.s[0]) {
+		u8 c = 0, direction;
+
+		/* Empty-string node: only holds "" in child[0]. */
+		if (unlikely(n.u.n->byte_num == (size_t)-1))
+			break;
+		if (n.u.n->byte_num < len)
+			c = bytes[n.u.n->byte_num];
+		direction = (c >> n.u.n->bit_num) & 1;
+		if (direction == 0) {
+			/* Everything in child[1] sorts after child[0]. */
+			cand = n.u.n->child[1];
+			have_cand = true;
+		}
+		n = n.u.n->child[direction];
+	}
+
+	if (!have_cand)
+		return NULL;
+
+	/* Leftmost member of the deepest candidate subtree. */
+	while (!cand.u.s[0]) {
+		if (unlikely(cand.u.n->byte_num == (size_t)-1)) {
+			cand = cand.u.n->child[0];
+			break;
+		}
+		cand = cand.u.n->child[0];
+	}
+	return cand.u.s;
+}
+
+const char *strset_iter_first(struct strset_iter *it,
+			      const struct strset *set)
+{
+	it->num_parents = 0;
+	it->dropped = false;
+	it->slow_mode = false;
+
+	if (!set->u.n)
+		return NULL;
+
+	return iter_descend(it, (struct strset *)set);
+}
+
+const char *strset_iter_next(struct strset_iter *it,
+			     const struct strset *set,
+			     const char *cur)
+{
+	struct strset *slot;
+
+	if (likely(!it->slow_mode)) {
+		if (it->num_parents != 0) {
+			slot = it->parents[--it->num_parents];
+			return iter_descend(it, slot);
+		}
+		if (!it->dropped)
+			return NULL;
+		/* We dropped deferrals past STRSET_NUM_ITER_PARENTS;
+		 * from here on, find successors by re-descent. */
+		it->dropped = false;
+		it->slow_mode = true;
+	}
+
+	return iter_successor(set, cur);
 }
 
 const struct strset *strset_prefix(const struct strset *set, const char *prefix)
