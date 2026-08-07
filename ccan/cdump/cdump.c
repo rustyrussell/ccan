@@ -97,6 +97,7 @@ struct parse_state {
 	const struct token *toks;
 	struct cdump_definitions *defs;
 	char *complaints;
+	unsigned int depth;
 };
 
 static const struct token *tok_peek(const struct token **toks)
@@ -282,17 +283,28 @@ static void tok_take_unknown_statement(struct parse_state *ps)
 
 static bool tok_take_expr(struct parse_state *ps, const char *term)
 {
+	/* Recursion is one frame per nested ( or [: bound it. */
+	if (ps->depth++ == 100) {
+		complain(ps, "Expression nested too deeply");
+		goto fail;
+	}
 	while (!tok_is(&ps->toks, term)) {
 		if (tok_take_if(&ps->toks, "(")) {
 			if (!tok_take_expr(ps, ")"))
-				return false;
+				goto fail;
 		} else if (tok_take_if(&ps->toks, "[")) {
 			if (!tok_take_expr(ps, "]"))
-				return false;
+				goto fail;
 		} else if (!tok_take(&ps->toks))
-			return false;
+			goto fail;
 	}
-	return tok_take(&ps->toks);
+	if (!tok_take(&ps->toks))
+		goto fail;
+	ps->depth--;
+	return true;
+fail:
+	ps->depth--;
+	return false;
 }
 
 static char *tok_take_expr_str(const tal_t *ctx,
@@ -664,6 +676,7 @@ struct cdump_definitions *cdump_extract(const tal_t *ctx, const char *code,
 	ps.defs = tal(ctx, struct cdump_definitions);
 	ps.complaints = tal_strdup(ctx, "");
 	ps.code = code;
+	ps.depth = 0;
 
 	strmap_init(&ps.defs->enums);
 	strmap_init(&ps.defs->structs);
