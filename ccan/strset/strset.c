@@ -392,6 +392,7 @@ const struct strset *strset_prefix(const struct strset *set, const char *prefix)
 	return top;
 }
 
+/* Recursive fallback for strset_clear's OOM path. */
 static void clear(struct strset n)
 {
 	if (!n.u.s[0]) {
@@ -405,7 +406,81 @@ static void clear(struct strset n)
 
 void strset_clear(struct strset *set)
 {
-	if (set->u.n)
-		clear(*set);
+	uintptr_t inline_stack[STRSET_NUM_ITER_PARENTS];
+	uintptr_t *stack = inline_stack;
+	size_t num = 0, max = STRSET_NUM_ITER_PARENTS;
+	uintptr_t cur;
+	bool have_cur;
+
+	if (!set->u.n)
+		return;
+
+	/* Post-order without recursion: slot pointers tagged in their
+	 * low bits (0 = visit child[0], 1 = visit child[1], 2 = free). */
+	cur = (uintptr_t)set;
+	have_cur = true;
+
+	while (have_cur || num) {
+		struct strset *slot;
+		unsigned int tag;
+
+		if (!have_cur)
+			cur = stack[--num];
+		have_cur = false;
+		slot = (struct strset *)(cur & ~(uintptr_t)3);
+		tag = cur & 3;
+
+		if (slot->u.s[0]) {
+			/* Leaf: caller-owned, keep. */
+			continue;
+		}
+		if (unlikely(slot->u.n->byte_num == (size_t)-1)) {
+			/* Empty-string node: child[0] is the caller-owned
+			 * string itself; child[1] is unused. */
+			free(slot->u.n);
+			continue;
+		}
+		if (tag == 2) {
+			free(slot->u.n);
+			continue;
+		}
+
+		/* tag 0 or 1: requeue for the next phase, then descend. */
+		{
+			struct strset *child = &slot->u.n->child[tag];
+
+			if (num == max) {
+				uintptr_t *ns;
+				size_t nmax = max ? max * 2 : 64;
+
+				if (stack == inline_stack) {
+					ns = malloc(nmax * sizeof(*ns));
+					if (ns)
+						memcpy(ns, stack,
+						       num * sizeof(*ns));
+				} else {
+					ns = realloc(stack, nmax * sizeof(*ns));
+				}
+				if (ns) {
+					stack = ns;
+					max = nmax;
+				} else {
+					/* OOM: finish this subtree
+					 * recursively. */
+					clear(*child);
+					if (tag == 0)
+						clear(slot->u.n->child[1]);
+					free(slot->u.n);
+					continue;
+				}
+			}
+			stack[num++] = (uintptr_t)slot | (tag + 1);
+			cur = (uintptr_t)child;
+			have_cur = true;
+		}
+	}
+
+	if (stack != inline_stack)
+		free(stack);
 	set->u.n = NULL;
 }

@@ -93,9 +93,7 @@ int main(void)
 	if (waitpid(pid, &status, 0) != pid)
 		abort();
 
-	todo_start("strset_iterate_/strset_clear recursion (audit F1) unresolved");
 	ok1(WIFEXITED(status) && WEXITSTATUS(status) == 0);
-	todo_end();
 
 	return exit_status();
 }
