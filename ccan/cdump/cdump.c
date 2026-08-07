@@ -48,9 +48,10 @@ static struct token *tokenize(const void *ctx, const char *code)
 		} else if (code[i] == '/' && code[i+1] == '*') {
 			/* Multi-line comment. */
 			const char *end = strstr(code+i+2, "*/");
-			len = (end + 2) - (code + i);
 			if (!end)
 				len = strlen(code + i);
+			else
+				len = (end + 2) - (code + i);
 			if (tok_start != -1U) {
 				add_token(&toks, code+tok_start, i - tok_start);
 				tok_start = -1U;
@@ -81,6 +82,10 @@ static struct token *tokenize(const void *ctx, const char *code)
 		else if (!cisspace(code[i]))
 			start_of_line = false;
 	}
+
+	/* A trailing identifier running to EOF is still a token. */
+	if (tok_start != -1U)
+		add_token(&toks, code+tok_start, i - tok_start);
 
 	/* Add terminating NULL. */
 	tal_resizez(&toks, tal_count(toks) + 1);
