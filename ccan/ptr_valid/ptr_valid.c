@@ -187,9 +187,9 @@ static void run_child(int infd, int outfd)
 
 		/* This is weird. */
 		if (read(infd, &size, sizeof(size)) != sizeof(size))
-			exit(1);
+			_exit(1);
 		if (read(infd, &is_write, sizeof(is_write)) != sizeof(is_write))
-			exit(2);
+			_exit(2);
 
 		for (i = 0; i < size; i++) {
 			ret = p[i];
@@ -199,9 +199,9 @@ static void run_child(int infd, int outfd)
 
 		/* If we're still here, the answer is "yes". */
 		if (write(outfd, &ret, 1) != 1)
-			exit(3);
+			_exit(3);
 	}
-	exit(0);
+	_exit(0);
 }
 
 static bool create_child(struct ptr_valid_batch *batch)
