@@ -229,26 +229,18 @@ char *strset_del(struct strset *set, const char *member)
 	return (char *)ret;
 }
 
-static bool iterate(struct strset n,
-		    bool (*handle)(const char *, void *), const void *data)
-{
-	if (n.u.s[0])
-		return handle(n.u.s, (void *)data);
-	if (unlikely(n.u.n->byte_num == (size_t)-1))
-		return handle(n.u.n->child[0].u.s, (void *)data);
-
-	return iterate(n.u.n->child[0], handle, data)
-		&& iterate(n.u.n->child[1], handle, data);
-}
-
 void strset_iterate_(const struct strset *set,
 		     bool (*handle)(const char *, void *), const void *data)
 {
-	/* Empty set? */
-	if (!set->u.n)
-		return;
+	struct strset_iter it;
+	const char *m;
 
-	iterate(*set, handle, data);
+	for (m = strset_iter_first(&it, set);
+	     m;
+	     m = strset_iter_next(&it, set, m)) {
+		if (!handle(m, (void *)data))
+			break;
+	}
 }
 
 /* Defer child[1] of a node we're descending past. */
