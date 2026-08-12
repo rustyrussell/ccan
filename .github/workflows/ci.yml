@@ -27,6 +27,25 @@ jobs:
       - name: Run tests (no valgrind)
         run: make fastcheck -k -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
 
+  fastcheck-32bit:
+    name: Fast check (ubuntu-latest, 32-bit)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install 32-bit toolchain
+        run: sudo apt-get update && sudo apt-get install -y gcc-multilib g++-multilib libc6-dev-i386
+
+      - name: Generate config.h
+        run: make CFLAGS=-m32 config.h
+
+      - name: Build tools and libraries
+        run: make CFLAGS=-m32 -j$(nproc) all
+
+      - name: Run tests (no valgrind)
+        run: make CFLAGS=-m32 fastcheck -k -j$(nproc)
+
   valgrind:
     name: Full check with valgrind
     runs-on: ubuntu-latest
