@@ -13,6 +13,7 @@
  * uninitialized state, simulating many first-use races.  Fails against
  * the current code (a child is killed by SIGTRAP, usually in round 0).
  * Must pass after repair. */
+#include <unistd.h>
 #include <ccan/breakpoint/breakpoint.h>
 #include <ccan/breakpoint/breakpoint.c>
 #include <ccan/tap/tap.h>
