@@ -34,7 +34,8 @@ void *at_read(struct athread *at);
 void at_tell(struct athread *at, const void *status);
 
 /* Operations for the children */
-/* For child to grab arguments from command line (removes them) */
+/* For child to grab arguments from command line (removes them).  If we're
+ * not a child, returns NULL with errno EINVAL. */
 struct at_pool *at_get_pool(int *argc, char *argv[], void **arg);
 
 /* Say something to our parent (async). */

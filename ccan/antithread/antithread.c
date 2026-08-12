@@ -429,6 +429,9 @@ struct at_pool *at_get_pool(int *argc, char *argv[], void **arg)
 		goto fail;
 	}
 
+	/* Remove argv[1] now we know it's a genuine AT: marker. */
+	memmove(&argv[1], &argv[2], --(*argc) * sizeof(argv[0]));
+
 	/* FIXME: To try to adjust for address space randomization, we
 	 * could re-exec a few times. */
 	map = mmap(p->pool, p->poolsize, PROT_READ|PROT_WRITE, MAP_SHARED,
@@ -455,9 +458,6 @@ struct at_pool *at_get_pool(int *argc, char *argv[], void **arg)
 		errno = EBADF;
 		goto fail;
 	}
-
-	/* Delete AT arg. */
-	memmove(&argv[1], &argv[2], --(*argc));
 
 	return atp;
 
