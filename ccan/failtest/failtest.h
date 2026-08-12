@@ -252,7 +252,10 @@ extern bool failtest_has_failed(void);
 /**
  * failtest_timeout_ms - how long to wait before killing child.
  *
- * Default is 20,000 (20 seconds).
+ * Default is 20,000 (20 seconds); 10x under valgrind (see
+ * mem_under_valgrind()).  Override with the FAILTEST_TIMEOUT_MS environment
+ * variable or a --failtest-timeout=<ms> argument (highest priority)
+ * to failtest_init(), e.g. for slow/nested CI environments.
  */
 extern unsigned int failtest_timeout_ms;
 #endif /* CCAN_FAILTEST_H */

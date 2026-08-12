@@ -1,5 +1,6 @@
 /* Licensed under LGPL - see LICENSE file for details */
 #include <ccan/failtest/failtest.h>
+#include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 #include <stdio.h>
@@ -23,6 +24,7 @@
 #include <ccan/build_assert/build_assert.h>
 #include <ccan/hash/hash.h>
 #include <ccan/htable/htable_type.h>
+#include <ccan/mem/mem.h>
 #include <ccan/str/str.h>
 #include <ccan/compiler/compiler.h>
 
@@ -1735,6 +1737,14 @@ void failtest_init(int argc, char *argv[])
 
 	orig_pid = getpid();
 
+	/* Valgrind's overhead can easily blow our 20s child timeout on
+	 * a deeply-recursive test, causing spurious "Timed out"
+	 * failures. */
+	if (mem_under_valgrind())
+		failtest_timeout_ms *= 10;
+	if (getenv("FAILTEST_TIMEOUT_MS"))
+		failtest_timeout_ms = atoi(getenv("FAILTEST_TIMEOUT_MS"));
+
 	warnf = fdopen(move_fd_to_high(dup(STDERR_FILENO)), "w");
 	for (i = 1; i < argc; i++) {
 		if (!strncmp(argv[i], "--failpath=", strlen("--failpath="))) {
@@ -1745,6 +1755,10 @@ void failtest_init(int argc, char *argv[])
 		} else if (!strncmp(argv[i], "--debugpath=",
 				    strlen("--debugpath="))) {
 			debugpath = argv[i] + strlen("--debugpath=");
+		} else if (!strncmp(argv[i], "--failtest-timeout=",
+				    strlen("--failtest-timeout="))) {
+			failtest_timeout_ms = atoi(argv[i]
+						   + strlen("--failtest-timeout="));
 		}
 	}
 	failtable_init(&failtable);
