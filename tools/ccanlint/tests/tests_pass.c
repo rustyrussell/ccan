@@ -75,8 +75,11 @@ static void run_test(void *ctx,
 					  "%s.valgrind-log",
 					  i->compiled[COMPILE_NORMAL]);
 
+			/* RUNNING_ON_VALGRIND=1: a portable signal for
+			 * the test itself, independent of whether it
+			 * was built with valgrind headers available. */
 			run_command_async(i, *timeleft,
-					  "valgrind -q"
+					  "RUNNING_ON_VALGRIND=1 valgrind -q"
 					  " --leak-check=full"
 					  " --log-fd=3 %s %s %s"
 					  " 3> %s",
