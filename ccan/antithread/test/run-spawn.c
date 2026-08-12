@@ -1,5 +1,6 @@
 #include <ccan/antithread/antithread.c>
 #include <assert.h>
+#include <unistd.h>
 #include <ccan/tap/tap.h>
 
 int main(int argc, char *argv[])
@@ -16,9 +17,14 @@ int main(int argc, char *argv[])
 		at_tell_parent(atp, arg);
 		exit(0);
 	}
+	err = errno;
 	assert(!argv[1]);
 
-	err = errno;
+	/* err != EINVAL: we were spawned but setup failed.  Bail, don't
+	 * re-run the whole test as a fresh invocation. */
+	if (err != EINVAL)
+		_exit(1);
+
 	plan_tests(7);
 	ok1(err == EINVAL);
 
