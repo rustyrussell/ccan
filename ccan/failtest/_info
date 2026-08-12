@@ -73,6 +73,7 @@ int main(int argc, char *argv[])
 		printf("ccan/err\n");
 		printf("ccan/hash\n");
 		printf("ccan/htable\n");
+		printf("ccan/mem\n");
 		printf("ccan/read_write_all\n");
 		printf("ccan/str\n");
 		printf("ccan/time\n");
