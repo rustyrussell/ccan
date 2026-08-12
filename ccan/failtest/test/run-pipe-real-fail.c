@@ -13,6 +13,7 @@
  *
  * Temporary auditor-added test; no production files modified.
  */
+#include <unistd.h>
 #include <ccan/failtest/failtest.c>
 #include <stdio.h>
 #include <sys/resource.h>
