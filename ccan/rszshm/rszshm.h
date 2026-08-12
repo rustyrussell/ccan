@@ -117,7 +117,11 @@ struct rszshm {
  *		err(1, "rszshm_mk");
  *	// map at 0x3f0000000000
  *
+ *#ifdef __x86_64__
  *	if (!rszshm_mk(&t, 4*MiB, NULL, ((struct rszshm_scan) { (void *) (48*TiB), 4*GiB, 1*TiB, 10 })))
+ *#else
+ *	if (!rszshm_mk(&t, 4*MiB, NULL, ((struct rszshm_scan) { (void *) (768*MiB), 128*MiB, 128*MiB, 10 })))
+ *#endif
  *		err(1, "rszshm_mk");
  *	// map at 0x300000000000
  *

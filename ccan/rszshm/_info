@@ -36,7 +36,7 @@
  * 	#include <unistd.h>
  * 	#include <ccan/rszshm/rszshm.h>
  *
- * 	#define ok(x) ({ int n = (x); if (n == -1) err(1, "%s", #x); n; })
+ * 	#define ok(x) ({ int ok_ret = (x); if (ok_ret == -1) err(1, "%s", #x); ok_ret; })
  *
  * 	int main(int argc, char *argv[]) {
  * 		int pidcnt, stopval, n, i;
