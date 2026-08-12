@@ -25,7 +25,12 @@ char *link_objects(const void *ctx, const char *basename,
 	if (compile_verbose)
 		printf("Linking objects into %s\n", file);
 
-	if (run_command(ctx, NULL, errmsg, "ld -r -o %s %s", file, objs))
+	/* Link via the compiler driver, not ld directly: it knows how
+	 * to pick the right output format (e.g. from -m32 or --target=
+	 * in cflags), where bare "ld -r" would just use the host's
+	 * native default and mismatch cross/multilib object files. */
+	if (run_command(ctx, NULL, errmsg, "%s %s -r -o %s %s",
+			 compiler, cflags, file, objs))
 		return file;
 
 	tal_free(file);
