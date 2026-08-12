@@ -151,16 +151,13 @@ bool cpuid_test_feature(cpuid_t feature)
 	return (feature <= cpuid_highest_ext_func_supported());
 }
 
-#if defined(__GNUC__) || defined(__clang__)
+/* Route through get_cpuid(), which already handles 32bit PIC's ebx. */
 static uint32_t fetch_ecx(uint32_t what)
 {
 	static uint32_t ecx;
 	if (ecx == 0) {
-		asm volatile(
-			"cpuid\n\t"
-			: "=c" (ecx)
-			: "a" (what)
-		);
+		uint32_t eax, ebx, edx;
+		get_cpuid(what, &eax, &ebx, &ecx, &edx);
 	}
 
 	return ecx;
@@ -170,44 +167,12 @@ static uint32_t fetch_edx(uint32_t what)
 {
 	static uint32_t edx;
 	if (edx == 0) {
-		asm volatile(
-			"cpuid\n\t"
-			: "=d" (edx)
-			: "a" (what)
-		);
+		uint32_t eax, ebx, ecx;
+		get_cpuid(what, &eax, &ebx, &ecx, &edx);
 	}
 
 	return edx;
 }
-#elif defined(_MSC_VER)
-static uint32_t fetch_ecx(uint32_t what)
-{
-	static uint32_t _ecx;
-	if (_ecx == 0) {
-		__asm {
-			mov eax, what
-			cpuid
-			mov _ecx, ecx
-		};
-	}
-
-	return _ecx;
-}
-
-static uint32_t fetch_edx(uint32_t what)
-{
-	static uint32_t _edx;
-	if (_edx == 0) {
-		__asm {
-			mov eax, what
-			cpuid
-			mov _edx, edx
-		};
-	}
-
-	return _edx;
-}
-#endif
 
 #define DEFINE_FEATURE_FUNC(NAME, REGISTER, TYPE) \
 	bool cpuid_has_##NAME(int feature) \
@@ -253,19 +218,9 @@ uint32_t cpuid_highest_ext_func_supported(void)
 	static uint32_t highest;
 
 	if (!highest) {
-#if defined(__GNUC__) || defined(__clang__)
-		asm volatile(
-			"cpuid\n\t"
-			: "=a" (highest)
-			: "a" (CPUID_HIGHEST_EXTENDED_FUNCTION_SUPPORTED)
-		);
-#elif defined _MSC_VER
-		__asm {
-			mov eax, CPUID_HIGHEST_EXTENDED_FUNCTION_SUPPORTED
-			cpuid
-			mov highest, eax
-		};
-#endif
+		uint32_t ebx, ecx, edx;
+		get_cpuid(CPUID_HIGHEST_EXTENDED_FUNCTION_SUPPORTED,
+			  &highest, &ebx, &ecx, &edx);
 	}
 
 	return highest;
