@@ -14,7 +14,6 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/mman.h>
-#include <sys/resource.h>
 #include <signal.h>
 #include <assert.h>
 #include <ccan/err/err.h>
@@ -195,31 +194,17 @@ static struct failtest_call *add_history_(enum failtest_call_type type,
 #define set_cleanup(call, clean, type)			\
 	(call)->cleanup = (void *)((void)sizeof(clean((type *)NULL, false),1), (clean))
 
-/* Dup the fd to a high value (out of the way I hope!), and close the old fd. */
+/* Dup the fd to a high value (out of the way I hope!), and close the old fd.
+ * F_DUPFD gives the lowest free fd >= 1024, not exactly 1024. */
 static int move_fd_to_high(int fd)
 {
-	int i;
-	struct rlimit lim;
-	int max;
-
-	if (getrlimit(RLIMIT_NOFILE, &lim) == 0) {
-		max = lim.rlim_cur;
-		printf("Max is %i\n", max);
-	} else
-		max = FD_SETSIZE;
-
-	for (i = max - 1; i > fd; i--) {
-		if (fcntl(i, F_GETFL) == -1 && errno == EBADF) {
-			if (dup2(fd, i) == -1) {
-				warn("Failed to dup fd %i to %i", fd, i);
-				continue;
-			}
-			close(fd);
-			return i;
-		}
+	int i = fcntl(fd, F_DUPFD, 1024);
+	if (i == -1) {
+		warn("Failed to dup fd %i to high", fd);
+		return fd;
 	}
-	/* Nothing?  Really?  Er... ok? */
-	return fd;
+	close(fd);
+	return i;
 }
 
 static bool read_write_info(int fd)

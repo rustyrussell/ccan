@@ -2,6 +2,7 @@
 #include <ccan/failtest/failtest.c>
 #include <stdlib.h>
 #include <err.h>
+#include <sys/resource.h>
 #include <ccan/tap/tap.h>
 
 int main(void)
