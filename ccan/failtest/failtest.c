@@ -860,6 +860,11 @@ static bool should_fail(struct failtest_call *call)
 
 			out = realloc(out, outlen + 8192);
 			len = read(output[0], out + outlen, 8192);
+			/* 0 is EOF: pipe closed, same as POLLHUP.  Needed
+			 * since POLLIN can stay set alongside POLLHUP once
+			 * at EOF, and POLLIN is checked first. */
+			if (len <= 0)
+				break;
 			outlen += len;
 		} else if (type != SUCCESS && (pfd[1].revents & POLLIN)) {
 			if (read_all(control[0], &type, sizeof(type))) {
