@@ -440,6 +440,10 @@ struct at_pool *at_get_pool(int *argc, char *argv[], void **arg)
 		fprintf(stderr, "Mapping %lu bytes @%p gave %p\n",
 			p->poolsize, p->pool, map);
 		errno = ENOMEM;
+		/* Tell parent why, so at_spawn() reports this properly
+		 * instead of just seeing us hang up on it (EOF -> ECHILD). */
+		err = errno;
+		write_all(p->parent_wfd, &err, sizeof(err));
 		goto fail;
 	}
 
