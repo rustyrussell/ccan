@@ -1,5 +1,6 @@
 /* Licensed under GPLv3+ - see LICENSE file for details */
 #include <stdlib.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdbool.h>
@@ -152,6 +153,17 @@ static void talloc_unlock(void)
 /* We add 16MB to size.  This compensates for address randomization. */
 #define PADDING (16 * 1024 * 1024)
 
+#if (defined(__APPLE__) || defined(__FreeBSD__)) && UINTPTR_MAX > 0xffffffffUL
+/* On these 64-bit platforms, an unhinted mmap() tends to land low, in
+ * the same crowded neighbourhood as the dyld shared cache / early
+ * process setup, which is often already occupied by something else in
+ * the freshly-exec'd child that at_get_pool() needs this exact address
+ * to be free at. Ask for a hint far away from all of that instead. */
+#define AT_POOL_HINT ((void *)0x0000700000000000UL)
+#else
+#define AT_POOL_HINT NULL
+#endif
+
 /* Create a new sharable pool. */
 struct at_pool *at_pool(unsigned long size)
 {
@@ -188,8 +200,8 @@ struct at_pool *at_pool(unsigned long size)
 		goto fail_free;
 
 	/* First map gets a nice big area. */
-	p->pool = mmap(NULL, size+PADDING, PROT_READ|PROT_WRITE, MAP_SHARED, fd,
-		       0);
+	p->pool = mmap(AT_POOL_HINT, size+PADDING, PROT_READ|PROT_WRITE,
+		       MAP_SHARED, fd, 0);
 	if (p->pool == MAP_FAILED)
 		goto fail_free;
 
