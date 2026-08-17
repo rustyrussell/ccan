@@ -212,6 +212,16 @@ static void strip_leading_whitespace(char **lines)
 			lines[i] += min_span;
 }
 
+/* Is there a second identifier (the function name) after the first
+ * (the return type), e.g. "int main(" or "char *foo("?  This
+ * distinguishes a function definition from a single-identifier
+ * macro or function call followed by a block, e.g. "foreach_ptr(p, ...) {" */
+static bool looks_like_funcdef(const char *line, unsigned len)
+{
+	const char *p = line + len + strspn(line + len, " \t*");
+	return cisalpha(*p) || *p == '_';
+}
+
 static bool looks_internal(char **lines, char **why)
 {
 	unsigned int i;
@@ -262,6 +272,13 @@ static bool looks_internal(char **lines, char **why)
 			if (strends(line, ")")) {
 				*why = cast_const(char *,
 						  "contains ( and ends with )");
+				return false;
+			}
+			/* e.g. "int main(int argc, char *argv[]) {" but
+			 * not e.g. "foreach_ptr(p, ...) {" */
+			if (strends(line, "{") && looks_like_funcdef(line, len)) {
+				*why = cast_const(char *,
+						  "contains ( and ends with {");
 				return false;
 			}
 		}
