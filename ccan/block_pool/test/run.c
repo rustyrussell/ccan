@@ -9,10 +9,19 @@ struct alloc_record {
 
 static int compar_alloc_record_by_ptr(const void *ap, const void *bp) {
 	const struct alloc_record *a=ap, *b=bp;
-	
+
 	if (a->ptr < b->ptr)
 		return -1;
 	else if (a->ptr > b->ptr)
+		return 1;
+	/* A 0-byte allocation doesn't advance the block, so it can
+	 * legitimately share its address with the very next allocation.
+	 * qsort() isn't guaranteed stable, so without this tiebreak,
+	 * platform-dependent sort order could place the larger one
+	 * first and make the overlap check below see a false positive. */
+	else if (a->size < b->size)
+		return -1;
+	else if (a->size > b->size)
 		return 1;
 	else
 		return 0;
