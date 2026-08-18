@@ -473,7 +473,19 @@ void *io_loop(struct timers *timers, struct timer **expired)
 				if (events & POLLIN) {
 					accept_conn(l);
 					r--;
-				} else if (events & (POLLHUP|POLLNVAL|POLLERR)) {
+				} else if (events) {
+					/* We only ever ask for POLLIN here.
+					 * POLLHUP/POLLNVAL/POLLERR cover
+					 * Linux's hangup-on-shutdown case
+					 * (see run-22-POLLHUP-on-listening-
+					 * socket.c), but as with the
+					 * non-listener case below, macOS's
+					 * exact revents combination for
+					 * socket errors/shutdown is known to
+					 * differ from Linux's; don't risk
+					 * falling through both branches (and
+					 * thus never closing the listener) on
+					 * a combination we didn't predict. */
 					r--;
 					errno = EBADF;
 					io_close_listener(l);
