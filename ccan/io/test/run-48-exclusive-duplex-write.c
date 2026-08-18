@@ -4,6 +4,7 @@
 #include <ccan/io/io.c>
 #include <ccan/tap/tap.h>
 #include <sys/wait.h>
+#include <sys/socket.h>
 #include <stdio.h>
 
 #define PORT "65048"
@@ -95,8 +96,21 @@ static struct io_plan *write_priority_init(struct io_conn *conn, struct data *d)
 
 static struct io_plan *init_conn(struct io_conn *conn, struct data *d)
 {
+	int sndbuf = 1024;
+
 	/* Free listener so when conns close we exit io_loop */
 	io_close_listener(d->l);
+
+	/* We write 1 byte at a time in an exclusive (uninterruptible) loop
+	 * until the peer's close is noticed -- the peer here never reads,
+	 * so that only happens once the send buffer fills and write()
+	 * returns EAGAIN/EPIPE. Default buffer sizes vary a lot across
+	 * platforms/kernel versions (observed to be large enough on some
+	 * macOS configurations that this loop takes an unpredictably long
+	 * time -- not blocked, just very slow -- to naturally get there).
+	 * Force it small so this is fast and deterministic everywhere. */
+	setsockopt(io_conn_fd(conn), SOL_SOCKET, SO_SNDBUF,
+		  &sndbuf, sizeof(sndbuf));
 
 	return io_duplex(conn, read_more(conn, d), write_priority_init(conn, d));
 }
