@@ -63,6 +63,9 @@ char *run_with_timeout(const void *ctx, const char *cmd,
 	if (pid == 0) {
 		struct itimerval itim;
 
+		/* Our own process group, so system() etc all killed together */
+		setpgid(0, 0);
+
 		if (dup2(p[1], STDOUT_FILENO) != STDOUT_FILENO
 		    || dup2(p[1], STDERR_FILENO) != STDERR_FILENO
 		    || close(p[0]) != 0
