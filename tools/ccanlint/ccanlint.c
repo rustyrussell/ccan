@@ -635,7 +635,7 @@ int main(int argc, char *argv[])
 			   "give results only, no interactive correction");
 	opt_register_arg("-x|--exclude <testname>", exclude_test, NULL, NULL,
 			 "exclude <testname> (can be used multiple times)");
-	opt_register_arg("--timeout <milleseconds>", opt_set_uintval,
+	opt_register_arg("--timeout <milliseconds>", opt_set_uintval,
 			 NULL, &timeout,
 			 "ignore (terminate) tests that are slower than this");
 	opt_register_arg("-t|--target <testname>", opt_set_target, NULL,
