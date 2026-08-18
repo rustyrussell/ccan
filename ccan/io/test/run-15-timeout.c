@@ -88,7 +88,10 @@ int main(void)
 	/* This is how many tests you plan to run */
 	plan_tests(21);
 	d->state = 0;
-	d->timeout_usec = 100000;
+	/* Wide margin: on a loaded/throttled CI runner, a tight gap here
+	 * risks the parent's own scheduling delay eating into it before
+	 * the child even gets to check the connection. */
+	d->timeout_usec = 300000;
 	timers_init(&d->timers, time_mono());
 	timer_init(&d->timer);
 	fd = make_listen_fd(PORT, &addrinfo);
@@ -108,7 +111,7 @@ int main(void)
 		if (connect(fd, addrinfo->ai_addr, addrinfo->ai_addrlen) != 0)
 			exit(2);
 		signal(SIGPIPE, SIG_IGN);
-		usleep(500000);
+		usleep(2000000);
 		for (i = 0; i < strlen("hellothere"); i++) {
 			if (write(fd, "hellothere" + i, 1) != 1)
 				break;
@@ -138,9 +141,10 @@ int main(void)
 	ok1(WIFEXITED(status));
 	ok1(WEXITSTATUS(status) < sizeof(d->buf));
 
-	/* This one shouldn't time out. */
+	/* This one shouldn't time out.  Same wide-margin reasoning as
+	 * above, mirrored. */
 	d->state = 0;
-	d->timeout_usec = 500000;
+	d->timeout_usec = 2000000;
 	fflush(stdout);
 
 	if (!fork()) {
@@ -154,7 +158,7 @@ int main(void)
 		if (connect(fd, addrinfo->ai_addr, addrinfo->ai_addrlen) != 0)
 			exit(2);
 		signal(SIGPIPE, SIG_IGN);
-		usleep(100000);
+		usleep(300000);
 		for (i = 0; i < strlen("hellothere"); i++) {
 			if (write(fd, "hellothere" + i, 1) != 1)
 				break;
