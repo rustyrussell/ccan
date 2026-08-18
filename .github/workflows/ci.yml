@@ -10,6 +10,7 @@ jobs:
   fastcheck:
     name: Fast check (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
@@ -30,6 +31,7 @@ jobs:
   fastcheck-32bit:
     name: Fast check (ubuntu-latest, 32-bit)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@v4
@@ -49,6 +51,7 @@ jobs:
   valgrind:
     name: Full check with valgrind
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: github.ref == 'refs/heads/master'
 
     steps:
