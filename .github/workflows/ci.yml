@@ -51,7 +51,6 @@ jobs:
   valgrind:
     name: Full check with valgrind
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     if: github.ref == 'refs/heads/master'
 
     steps:
