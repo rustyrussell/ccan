@@ -79,21 +79,21 @@ struct test {
 	/*
 	 * Template style flags (pick one):
 	 * OUTSIDE_MAIN:
-	 * - put a simple boilerplate main below it.
+	 * - put a simple boilerplate main() below fragment.
 	 * DEFINES_FUNC:
 	 * - defines a static function called func; adds ref to avoid warnings
 	 * INSIDE_MAIN:
-	 * - put this inside main().
+	 * - put fragment inside main(); implies EXECUTE.
 	 * DEFINES_EVERYTHING:
 	 * - don't add any boilerplate at all.
 	 *
 	 * Execution flags:
 	 * EXECUTE:
-	 * - a runtime test; must compile, exit 0 means flag is set.
+	 * - a runtime test; must compile, link, run, and exit 0 to pass.
 	 * MAY_NOT_COMPILE:
-	 * - Only useful with EXECUTE: don't get upset if it doesn't compile.
+	 * - Only useful with EXECUTE: don't abort if it doesn't compile.
 	 * <nothing>:
-	 * - a compile test, if it compiles must run and exit 0.
+	 * - a compile test; must compile to pass.
 	 */
 	const char *style;
 	const char *depends;
