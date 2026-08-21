@@ -259,7 +259,7 @@ static const struct test base_tests[] = {
 	  "	return ts;\n"
 	  "}\n",
 	  /* This means HAVE_CLOCK_GETTIME, too */
-	  "HAVE_CLOCK_GETTIME" },
+	  NULL, "HAVE_CLOCK_GETTIME" },
 	{ "HAVE_COMPOUND_LITERALS", "compound literal support",
 	  "INSIDE_MAIN", NULL, NULL,
 	  "int *foo = (int[]) { 1, 2, 3, 4 };\n"
