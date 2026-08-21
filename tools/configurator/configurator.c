@@ -956,7 +956,7 @@ int main(int argc, const char *argv[])
 	if (argc > 0)
 		progname = argv[0];
 
-	while (argc > 1) {
+	for (; argc > 1; ++argv, --argc) {
 		if (strcmp(argv[1], "--help") == 0) {
 			printf("Usage: configurator [-v] [--var-file=<filename>] [-O<outflag>] [--configurator-cc=<compiler-for-tests>] [--wrapper=<wrapper-for-tests>] [--autotools-style] [--extra-tests] [<compiler> <flags>...]\n"
 			       "  <compiler> <flags> will have \"<outflag> <outfile> <infile.c>\" appended\n"
@@ -966,47 +966,29 @@ int main(int argc, const char *argv[])
 			exit(0);
 		}
 		if (strncmp(argv[1], "-O", 2) == 0) {
-			argc--;
-			argv++;
-			outflag = argv[1] + 2;
-			if (!*outflag) {
+			if (!argv[1][2]) {
 				fprintf(stderr,
 					"%s: option requires an argument -- O\n",
-					argv[0]);
+					argv[1]);
 				exit(EXIT_BAD_USAGE);
 			}
+			outflag = argv[1] + 2;
 		} else if (strcmp(argv[1], "-v") == 0) {
-			argc--;
-			argv++;
 			verbose++;
 		} else if (strcmp(argv[1], "-vv") == 0) {
-			argc--;
-			argv++;
 			verbose += 2;
 		} else if (strncmp(argv[1], "--configurator-cc=", 18) == 0) {
 			configurator_cc = argv[1] + 18;
-			argc--;
-			argv++;
 		} else if (strncmp(argv[1], "--wrapper=", 10) == 0) {
 			wrapper = argv[1] + 10;
-			argc--;
-			argv++;
 		} else if (strncmp(argv[1], "--var-file=", 11) == 0) {
 			varfile = argv[1] + 11;
-			argc--;
-			argv++;
 		} else if (strcmp(argv[1], "--autotools-style") == 0) {
 			like_a_libtool = true;
-			argc--;
-			argv++;
 		} else if (strncmp(argv[1], "--header-file=", 14) == 0) {
 			headerfile = argv[1] + 14;
-			argc--;
-			argv++;
 		} else if (strcmp(argv[1], "--extra-tests") == 0) {
 			extra_tests = true;
-			argc--;
-			argv++;
 		} else if (strcmp(argv[1], "--") == 0) {
 			break;
 		} else if (argv[1][0] == '-') {
