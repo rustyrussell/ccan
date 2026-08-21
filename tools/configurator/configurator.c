@@ -364,18 +364,10 @@ static const struct test base_tests[] = {
 	  "	return __stop_mysec - __start_mysec;\n"
 	  "}\n" },
 	{ "HAVE_STACK_GROWS_UPWARDS", "stack grows upwards",
-	  "DEFINES_EVERYTHING|EXECUTE", NULL, NULL,
-	  "#include <stddef.h>\n"
-	  "static ptrdiff_t nest(const void *base, unsigned int i)\n"
-	  "{\n"
-	  "	if (i == 0)\n"
-	  "		return (const char *)&i - (const char *)base;\n"
-	  "	return nest(base, i-1);\n"
-	  "}\n"
-	  "int main(int argc, char *argv[]) {\n"
-	  "	(void)argv;\n"
-	  "	return (nest(&argc, argc) > 0) ? 0 : 1;\n"
-	  "}\n" },
+	  "DEFINES_EVERYTHING", NULL, NULL,
+	  "#if !defined(__hppa)\n"
+	  "# error\n"
+	  "#endif\n" },
 	{ "HAVE_STATEMENT_EXPR", "statement expression support",
 	  "DEFINES_FUNC", NULL, NULL,
 	  "static int func(void) { return ({ int x = 0; x == 0 ? 0 : 1; }); }\n" },
