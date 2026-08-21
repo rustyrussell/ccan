@@ -350,14 +350,6 @@ static const struct test base_tests[] = {
 	  "static void *func(int fd) {\n"
 	  "	return mmap(0, 65536, PROT_READ, MAP_SHARED, fd, 0);\n"
 	  "}" },
-	{ "HAVE_PROC_SELF_MAPS", "/proc/self/maps exists",
-	  "DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE", NULL, NULL,
-	  "#include <sys/types.h>\n"
-	  "#include <sys/stat.h>\n"
-	  "#include <fcntl.h>\n"
-	  "int main(void) {\n"
-	  "	return open(\"/proc/self/maps\", O_RDONLY) != -1 ? 0 : 1;\n"
-	  "}\n" },
 	{ "HAVE_QSORT_R_PRIVATE_LAST", "qsort_r cmp takes trailing arg",
 	  "DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE", NULL, NULL,
 	  "#ifndef _GNU_SOURCE\n"
