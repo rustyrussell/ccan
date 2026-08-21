@@ -54,10 +54,12 @@
 #define DEFAULT_FLAGS "-nologo -Zi -W4 -wd4200 " \
 	"-D_CRT_NONSTDC_NO_WARNINGS -D_CRT_SECURE_NO_WARNINGS"
 #define DEFAULT_OUTPUT_EXE_FLAG "-Fe:"
+#define DEFAULT_OUTPUT_OBJ_FLAG "-c -Fo:"
 #else
 #define DEFAULT_COMPILER "cc"
 #define DEFAULT_FLAGS "-g3 -ggdb -Wall -Wundef -Wmissing-prototypes -Wmissing-declarations -Wstrict-prototypes -Wold-style-definition"
 #define DEFAULT_OUTPUT_EXE_FLAG "-o"
+#define DEFAULT_OUTPUT_OBJ_FLAG "-c -o"
 #endif
 
 #define OUTPUT_FILE "configurator.out"
@@ -74,7 +76,8 @@ static int verbose;
 static bool like_a_libtool = false;
 static const char *compiler = DEFAULT_COMPILER;
 static const char *flags = DEFAULT_FLAGS;
-static const char *outflag = DEFAULT_OUTPUT_EXE_FLAG;
+static const char *output_exe_flag = DEFAULT_OUTPUT_EXE_FLAG;
+static const char *output_obj_flag = DEFAULT_OUTPUT_OBJ_FLAG;
 static const char *wrapper;
 
 struct test {
@@ -734,6 +737,8 @@ static bool run_test(struct test *test)
 		}
 	}
 
+	bool need_run = strstr(test->style, "EXECUTE");
+
 	outf = fopen(INPUT_FILE, verbose > 1 ? "w+" : "w");
 	if (!outf)
 		c12r_err(EXIT_TROUBLE_RUNNING, "creating %s", INPUT_FILE);
@@ -744,6 +749,8 @@ static bool run_test(struct test *test)
 		fprintf(outf, "%s", MAIN_START_BOILERPLATE);
 		fprintf(outf, "%s", test->fragment);
 		fprintf(outf, "%s", MAIN_END_BOILERPLATE);
+		/* We run INSIDE_MAIN tests for sanity checking. */
+		need_run = true;
 	} else if (strstr(test->style, "OUTSIDE_MAIN")) {
 		fprintf(outf, "%s", test->fragment);
 		fprintf(outf, "%s", MAIN_START_BOILERPLATE);
@@ -778,8 +785,12 @@ static bool run_test(struct test *test)
 		*arg++ = test->link;
 		if (verbose > 1)
 			printf("Extra linker flags: %s\n", test->link);
+		*arg++ = output_exe_flag;
+	} else if (need_run) {
+		*arg++ = output_exe_flag;
+	} else {
+		*arg++ = output_obj_flag;
 	}
-	*arg++ = outflag;
 
 	*arg = NULL;
 	newcmd = concat(' ', (const char *[]) { compiler, flags, NULL }, args,
@@ -807,8 +818,7 @@ static bool run_test(struct test *test)
 		/* Compile succeeded. */
 		free(output);
 		/* We run INSIDE_MAIN tests for sanity checking. */
-		if (strstr(test->style, "EXECUTE")
-		    || strstr(test->style, "INSIDE_MAIN")) {
+		if (need_run) {
 			if (wrapper) {
 				char *runcmd = malloc(strlen(wrapper) +
 					strlen(" ." DIR_SEP OUTPUT_FILE) + 1);
@@ -976,25 +986,32 @@ int main(int argc, const char *argv[])
 
 	for (; argc > 0; ++argv, --argc) {
 		if (strcmp(argv[0], "--help") == 0) {
-			printf("Usage: configurator [-v] [--var-file=<filename>] [-O<outflag>] [--configurator-cc=<compiler-for-tests>] [--wrapper=<wrapper-for-tests>] [--autotools-style] [--extra-tests] [<compiler> <flags>...]\n"
+			printf("Usage: configurator [-v] [--var-file=<filename>] [--output-exe=<outflag>] [--output-obj=<outflag>] [--configurator-cc=<compiler-for-tests>] [--wrapper=<wrapper-for-tests>] [--autotools-style] [--extra-tests] [<compiler> <flags>...]\n"
 			       "  <compiler> <flags> will have \"<outflag> <outfile> <infile.c>\" appended\n"
-			       "Default: %s %s %s\n",
+			       "Default <compiler> <flags>: %s %s\n"
+			       "Default --output-exe=\"%s\"\n"
+			       "Default --output-obj=\"%s\"\n",
 			       DEFAULT_COMPILER, DEFAULT_FLAGS,
-			       DEFAULT_OUTPUT_EXE_FLAG);
+			       DEFAULT_OUTPUT_EXE_FLAG,
+			       DEFAULT_OUTPUT_OBJ_FLAG);
 			exit(0);
 		}
-		if (strncmp(argv[0], "-O", 2) == 0) {
+		if (strncmp(argv[0], "-O", 2) == 0) { /* legacy compatibility */
 			if (!argv[0][2]) {
 				fprintf(stderr,
 					"%s: option requires an argument -- O\n",
 					argv[0]);
 				exit(EXIT_BAD_USAGE);
 			}
-			outflag = argv[0] + 2;
+			output_exe_flag = argv[0] + 2;
 		} else if (strcmp(argv[0], "-v") == 0) {
 			verbose++;
 		} else if (strcmp(argv[0], "-vv") == 0) {
 			verbose += 2;
+		} else if (strncmp(argv[0], "--output-exe=", 13) == 0) {
+			output_exe_flag = argv[0] + 13;
+		} else if (strncmp(argv[0], "--output-obj=", 13) == 0) {
+			output_obj_flag = argv[0] + 13;
 		} else if (strncmp(argv[0], "--configurator-cc=", 18) == 0) {
 			configurator_cc = argv[0] + 18;
 		} else if (strncmp(argv[0], "--wrapper=", 10) == 0) {
@@ -1083,7 +1100,8 @@ int main(int argc, const char *argv[])
 	fprintf(outf, "#endif\n");
 	fprintf(outf, "#define CCAN_COMPILER \"%s\"\n", orig_cc);
 	fprintf(outf, "#define CCAN_CFLAGS \"%s\"\n", flags);
-	fprintf(outf, "#define CCAN_OUTPUT_EXE_CFLAG \"%s\"\n\n", outflag);
+	fprintf(outf, "#define CCAN_OUTPUT_EXE_CFLAG \"%s\"\n\n", output_exe_flag);
+	fprintf(outf, "#define CCAN_OUTPUT_OBJ_CFLAG \"%s\"\n\n", output_obj_flag);
 	/* This one implies "#include <ccan/..." works, eg. for tdb2.h */
 	fprintf(outf, "#define HAVE_CCAN 1\n");
 	for (i = 0; tests[i].name; i++)
