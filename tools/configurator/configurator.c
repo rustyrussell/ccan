@@ -644,12 +644,12 @@ static char *connect_args(const char *argv[], const char *outflag,
 	char *ret;
 	size_t len = strlen(outflag) + strlen(files) + 1;
 
-	for (i = 1; argv[i]; i++)
+	for (i = 0; argv[i]; i++)
 		len += 1 + strlen(argv[i]);
 
 	ret = malloc(len);
 	len = 0;
-	for (i = 1; argv[i]; i++) {
+	for (i = 0; argv[i]; i++) {
 		strcpy(ret + len, argv[i]);
 		len += strlen(argv[i]);
 		if (argv[i+1] || *outflag)
@@ -943,7 +943,7 @@ int main(int argc, const char *argv[])
 	char *cmd;
 	unsigned int i;
 	const char *default_args[]
-		= { "", DEFAULT_COMPILER, DEFAULT_FLAGS, NULL };
+		= { DEFAULT_COMPILER, DEFAULT_FLAGS, NULL };
 	const char *outflag = DEFAULT_OUTPUT_EXE_FLAG;
 	const char *configurator_cc = NULL;
 	const char *wrapper = "";
@@ -954,10 +954,10 @@ int main(int argc, const char *argv[])
 	FILE *outf;
 
 	if (argc > 0)
-		progname = argv[0];
+		progname = *argv++, --argc;
 
-	for (; argc > 1; ++argv, --argc) {
-		if (strcmp(argv[1], "--help") == 0) {
+	for (; argc > 0; ++argv, --argc) {
+		if (strcmp(argv[0], "--help") == 0) {
 			printf("Usage: configurator [-v] [--var-file=<filename>] [-O<outflag>] [--configurator-cc=<compiler-for-tests>] [--wrapper=<wrapper-for-tests>] [--autotools-style] [--extra-tests] [<compiler> <flags>...]\n"
 			       "  <compiler> <flags> will have \"<outflag> <outfile> <infile.c>\" appended\n"
 			       "Default: %s %s %s\n",
@@ -965,40 +965,40 @@ int main(int argc, const char *argv[])
 			       DEFAULT_OUTPUT_EXE_FLAG);
 			exit(0);
 		}
-		if (strncmp(argv[1], "-O", 2) == 0) {
-			if (!argv[1][2]) {
+		if (strncmp(argv[0], "-O", 2) == 0) {
+			if (!argv[0][2]) {
 				fprintf(stderr,
 					"%s: option requires an argument -- O\n",
-					argv[1]);
+					argv[0]);
 				exit(EXIT_BAD_USAGE);
 			}
-			outflag = argv[1] + 2;
-		} else if (strcmp(argv[1], "-v") == 0) {
+			outflag = argv[0] + 2;
+		} else if (strcmp(argv[0], "-v") == 0) {
 			verbose++;
-		} else if (strcmp(argv[1], "-vv") == 0) {
+		} else if (strcmp(argv[0], "-vv") == 0) {
 			verbose += 2;
-		} else if (strncmp(argv[1], "--configurator-cc=", 18) == 0) {
-			configurator_cc = argv[1] + 18;
-		} else if (strncmp(argv[1], "--wrapper=", 10) == 0) {
-			wrapper = argv[1] + 10;
-		} else if (strncmp(argv[1], "--var-file=", 11) == 0) {
-			varfile = argv[1] + 11;
-		} else if (strcmp(argv[1], "--autotools-style") == 0) {
+		} else if (strncmp(argv[0], "--configurator-cc=", 18) == 0) {
+			configurator_cc = argv[0] + 18;
+		} else if (strncmp(argv[0], "--wrapper=", 10) == 0) {
+			wrapper = argv[0] + 10;
+		} else if (strncmp(argv[0], "--var-file=", 11) == 0) {
+			varfile = argv[0] + 11;
+		} else if (strcmp(argv[0], "--autotools-style") == 0) {
 			like_a_libtool = true;
-		} else if (strncmp(argv[1], "--header-file=", 14) == 0) {
-			headerfile = argv[1] + 14;
-		} else if (strcmp(argv[1], "--extra-tests") == 0) {
+		} else if (strncmp(argv[0], "--header-file=", 14) == 0) {
+			headerfile = argv[0] + 14;
+		} else if (strcmp(argv[0], "--extra-tests") == 0) {
 			extra_tests = true;
-		} else if (strcmp(argv[1], "--") == 0) {
+		} else if (strcmp(argv[0], "--") == 0) {
 			break;
-		} else if (argv[1][0] == '-') {
-			c12r_errx(EXIT_BAD_USAGE, "Unknown option %s", argv[1]);
+		} else if (argv[0][0] == '-') {
+			c12r_errx(EXIT_BAD_USAGE, "Unknown option %s", argv[0]);
 		} else {
 			break;
 		}
 	}
 
-	if (argc == 1)
+	if (argc == 0)
 		argv = default_args;
 
 	/* Copy with NULL entry at end */
@@ -1009,9 +1009,9 @@ int main(int argc, const char *argv[])
 	if (extra_tests)
 		read_tests(sizeof(base_tests)/sizeof(base_tests[0]));
 
-	orig_cc = argv[1];
+	orig_cc = argv[0];
 	if (configurator_cc)
-		argv[1] = configurator_cc;
+		argv[0] = configurator_cc;
 
 	cmd = connect_args(argv, outflag, OUTPUT_FILE " " INPUT_FILE);
 	if (like_a_libtool) {
