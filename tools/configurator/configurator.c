@@ -126,17 +126,12 @@ static const struct test base_tests[] = {
 	  "STATIC_ASSERT", NULL, NULL,
 	  "__alignof__(double) > 0" },
 	{ "HAVE_ASPRINTF", "asprintf() declaration",
-	  "DEFINES_FUNC", NULL, NULL,
+	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#ifndef _GNU_SOURCE\n"
 	  "#define _GNU_SOURCE\n"
 	  "#endif\n"
 	  "#include <stdio.h>\n"
-	  "static char *func(int x) {"
-	  "	char *p;\n"
-	  "	if (asprintf(&p, \"%u\", x) == -1) \n"
-	  "		p = NULL;\n"
-	  "	return p;\n"
-	  "}" },
+	  "int (*func)(char **, const char *, ...) = &asprintf;\n" },
 	{ "HAVE_ATTRIBUTE_COLD", "__attribute__((cold)) support",
 	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "int __attribute__((cold)) func(int);\n" },
@@ -174,12 +169,9 @@ static const struct test base_tests[] = {
 	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "int __attribute__((used)) func(int);\n" },
 	{ "HAVE_BACKTRACE", "backtrace() in <execinfo.h>",
-	  "DEFINES_FUNC", NULL, NULL,
+	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#include <execinfo.h>\n"
-	  "static int func(int x) {"
-	  "	void *bt[10];\n"
-	  "	return backtrace(bt, 10) < x;\n"
-	  "}" },
+	  "int (*func)(void **, int) = &backtrace;\n" },
 	{ "HAVE_BIG_ENDIAN", "big endian",
 	  "INSIDE_MAIN|EXECUTE", NULL, NULL,
 	  "union { int i; char c[sizeof(int)]; } u;\n"
@@ -247,51 +239,31 @@ static const struct test base_tests[] = {
 	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#include <byteswap.h>\n" },
 	{ "HAVE_CLOCK_GETTIME", "clock_gettime() declaration",
-	  "DEFINES_FUNC", "HAVE_STRUCT_TIMESPEC", NULL,
+	  "DEFINES_EVERYTHING", "HAVE_STRUCT_TIMESPEC", NULL,
 	  "#include <time.h>\n"
-	  "static struct timespec func(void) {\n"
-	  "	struct timespec ts;\n"
-	  "	clock_gettime(CLOCK_REALTIME, &ts);\n"
-	  "	return ts;\n"
-	  "}\n" },
+	  "int (*func)(clockid_t, struct timespec *) = &clock_gettime;\n" },
 	{ "HAVE_CLOCK_GETTIME_IN_LIBRT", "clock_gettime() in librt",
-	  "DEFINES_FUNC",
+	  "DEFINES_EVERYTHING",
 	  "HAVE_STRUCT_TIMESPEC !HAVE_CLOCK_GETTIME",
 	  "-lrt",
 	  "#include <time.h>\n"
-	  "static struct timespec func(void) {\n"
-	  "	struct timespec ts;\n"
-	  "	clock_gettime(CLOCK_REALTIME, &ts);\n"
-	  "	return ts;\n"
-	  "}\n",
+	  "int (*func)(clockid_t, struct timespec *) = &clock_gettime;\n",
 	  /* This means HAVE_CLOCK_GETTIME, too */
 	  NULL, "HAVE_CLOCK_GETTIME" },
 	{ "HAVE_COMPOUND_LITERALS", "compound literal support",
 	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "const int *foo = (int[]) { 1, 2, 3, 4 };\n" },
-	{ "HAVE_FCHDIR", "fchdir support",
-	  "DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE", NULL, NULL,
-	  "#include <sys/types.h>\n"
-	  "#include <sys/stat.h>\n"
-	  "#include <fcntl.h>\n"
+	{ "HAVE_FCHDIR", "fchdir() declaration",
+	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#include <unistd.h>\n"
-	  "int main(void) {\n"
-	  "	int fd = open(\"..\", O_RDONLY);\n"
-	  "	return fchdir(fd) == 0 ? 0 : 1;\n"
-	  "}\n" },
+	  "int (*func)(int) = &fchdir;\n" },
 	{ "HAVE_ERR_H", "<err.h>",
-	  "DEFINES_FUNC", NULL, NULL,
+	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#include <err.h>\n"
-	  "static void func(int arg) {\n"
-	  "	if (arg == 0)\n"
-	  "		err(1, \"err %u\", arg);\n"
-	  "	if (arg == 1)\n"
-	  "		errx(1, \"err %u\", arg);\n"
-	  "	if (arg == 3)\n"
-	  "		warn(\"warn %u\", arg);\n"
-	  "	if (arg == 4)\n"
-	  "		warnx(\"warn %u\", arg);\n"
-	  "}\n" },
+	  "void (*func0)(int, const char *, ...) = &err;\n"
+	  "void (*func1)(int, const char *, ...) = &errx;\n"
+	  "void (*func2)(const char *, ...) = &warn;\n"
+	  "void (*func3)(const char *, ...) = &warnx;\n" },
 	{ "HAVE_FILE_OFFSET_BITS", "_FILE_OFFSET_BITS to get 64-bit offsets",
 	  "DEFINES_EVERYTHING", "HAVE_32BIT_OFF_T", NULL,
 	  "#define _FILE_OFFSET_BITS 64\n"
@@ -304,60 +276,46 @@ static const struct test base_tests[] = {
 	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "struct foo { unsigned int x; int arr[]; };" },
 	{ "HAVE_GETPAGESIZE", "getpagesize() in <unistd.h>",
-	  "DEFINES_FUNC", NULL, NULL,
+	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#include <unistd.h>\n"
-	  "static int func(void) { return getpagesize(); }" },
+	  "int (*func)(void) = &getpagesize;\n" },
 	{ "HAVE_ISBLANK", "isblank() in <ctype.h>",
-	  "DEFINES_FUNC", NULL, NULL,
+	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#ifndef _GNU_SOURCE\n"
 	  "#define _GNU_SOURCE\n"
 	  "#endif\n"
 	  "#include <ctype.h>\n"
-	  "static int func(void) { return isblank(' '); }" },
+	  "int (*func)(int) = &isblank;\n" },
 	{ "HAVE_LITTLE_ENDIAN", "little endian",
 	  "INSIDE_MAIN|EXECUTE", NULL, NULL,
 	  "union { int i; char c[sizeof(int)]; } u;\n"
 	  "u.i = 0x01020304;\n"
 	  "return u.c[0] == 0x04 && u.c[1] == 0x03 && u.c[2] == 0x02 && u.c[3] == 0x01 ? 0 : 1;" },
-	{ "HAVE_MEMMEM", "memmem in <string.h>",
-	  "DEFINES_FUNC", NULL, NULL,
+	{ "HAVE_MEMMEM", "memmem() in <string.h>",
+	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#ifndef _GNU_SOURCE\n"
 	  "#define _GNU_SOURCE\n"
 	  "#endif\n"
 	  "#include <string.h>\n"
-	  "static void *func(void *h, size_t hl, void *n, size_t nl) {\n"
-	  "return memmem(h, hl, n, nl);"
-	  "}\n", },
-	{ "HAVE_MEMRCHR", "memrchr in <string.h>",
-	  "DEFINES_FUNC", NULL, NULL,
+	  "void * (*func)(const void *, size_t, const void *, size_t) = &memmem;\n" },
+	{ "HAVE_MEMRCHR", "memrchr() in <string.h>",
+	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#ifndef _GNU_SOURCE\n"
 	  "#define _GNU_SOURCE\n"
 	  "#endif\n"
 	  "#include <string.h>\n"
-	  "static void *func(void *s, int c, size_t n) {\n"
-	  "return memrchr(s, c, n);"
-	  "}\n", },
+	  "void * (*func)(const void *, int, size_t) = &memrchr;\n" },
 	{ "HAVE_MMAP", "mmap() declaration",
-	  "DEFINES_FUNC", NULL, NULL,
+	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#include <sys/mman.h>\n"
-	  "static void *func(int fd) {\n"
-	  "	return mmap(0, 65536, PROT_READ, MAP_SHARED, fd, 0);\n"
-	  "}" },
+	  "void * (*func)(void *, size_t, int, int, int, off_t) = &mmap;\n" },
 	{ "HAVE_QSORT_R_PRIVATE_LAST", "qsort_r cmp takes trailing arg",
-	  "DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE", NULL, NULL,
+	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#ifndef _GNU_SOURCE\n"
 	  "#define _GNU_SOURCE\n"
 	  "#endif\n"
 	  "#include <stdlib.h>\n"
-	  "static int cmp(const void *lp, const void *rp, void *priv) {\n"
-	  " *(unsigned int *)priv = 1;\n"
-	  " return *(const int *)lp - *(const int *)rp; }\n"
-	  "int main(void) {\n"
-	  " int array[] = { 9, 2, 5 };\n"
-	  " unsigned int called = 0;\n"
-	  " qsort_r(array, 3, sizeof(int), cmp, &called);\n"
-	  " return called && array[0] == 2 && array[1] == 5 && array[2] == 9 ? 0 : 1;\n"
-	  "}\n" },
+	  "void (*func)(void *, size_t, size_t, int (*)(const void *, const void *, void *), void *) = &qsort_r;\n" },
 	{ "HAVE_STRUCT_TIMESPEC", "struct timespec declaration",
 	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#include <time.h>\n"
@@ -412,13 +370,10 @@ static const struct test base_tests[] = {
 	  "	return *x == *y;\n"
 	  "}\n" },
 	{ "HAVE_UTIME", "utime() declaration",
-	  "DEFINES_FUNC", NULL, NULL,
+	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#include <sys/types.h>\n"
 	  "#include <utime.h>\n"
-	  "static int func(const char *filename) {\n"
-	  "	struct utimbuf times = { 0 };\n"
-	  "	return utime(filename, &times);\n"
-	  "}" },
+	  "int (*func)(const char *, const struct utimbuf *) = &utime;\n" },
 	{ "HAVE_WARN_UNUSED_RESULT", "__attribute__((warn_unused_result))",
 	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#include <sys/types.h>\n"
@@ -435,28 +390,13 @@ static const struct test base_tests[] = {
 	{ "HAVE_VALGRIND_MEMCHECK_H", "<valgrind/memcheck.h>",
 	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#include <valgrind/memcheck.h>\n" },
-	{ "HAVE_UCONTEXT", "working <ucontext.h",
-	  "DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE",
-	  NULL, NULL,
+	{ "HAVE_UCONTEXT", "<ucontext.h>",
+	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#include <ucontext.h>\n"
-	  "static int x = 0;\n"
-	  "static char stack[2048];\n"
-	  "static ucontext_t a, b;\n"
-	  "static void fn(void) {\n"
-	  "	x |= 2;\n"
-	  "	setcontext(&b);\n"
-	  "	x |= 4;\n"
-	  "}\n"
-	  "int main(void) {\n"
-	  "	x |= 1;\n"
-	  "	getcontext(&a);\n"
-	  "	a.uc_stack.ss_sp = stack;\n"
-	  "	a.uc_stack.ss_size = sizeof(stack);\n"
-	  "	makecontext(&a, fn, 0);\n"
-	  "	swapcontext(&b, &a);\n"
-	  "	return (x == 3) ? 0 : 1;\n"
-	  "}\n"
-	},
+	  "int (*func0)(ucontext_t *) = &getcontext;\n"
+	  "int (*func1)(const ucontext_t *) = &setcontext;\n"
+	  "void (*func2)(ucontext_t *, void (*)(void), int, ...) = &makecontext;\n"
+	  "int (*func3)(ucontext_t *, const ucontext_t *) = &swapcontext;\n" },
 	{ "HAVE_POINTER_SAFE_MAKECONTEXT", "passing pointers via makecontext()",
 	  "DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE",
 	  "HAVE_UCONTEXT", NULL,
@@ -486,43 +426,33 @@ static const struct test base_tests[] = {
 	{ "HAVE_BUILTIN_CPU_SUPPORTS", "__builtin_cpu_supports support",
 	  "DEFINES_FUNC", NULL, NULL,
 	  "static int func(void) { return __builtin_cpu_supports(\"mmx\"); }\n" },
-	{ "HAVE_CLOSEFROM", "closefrom() offered by system",
+	{ "HAVE_CLOSEFROM", "closefrom() declaration",
 	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#include <stdlib.h>\n"
 	  "#include <unistd.h>\n"
-	  "int main(void) {\n"
-	  "    closefrom(STDERR_FILENO + 1);\n"
-	  "    return 0;\n"
-	  "}\n"
-	},
-	{ "HAVE_F_CLOSEM", "F_CLOSEM defined for fctnl.",
+	  "void (*func)(int) = &closefrom;\n" },
+	{ "HAVE_F_CLOSEM", "F_CLOSEM",
 	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#include <fcntl.h>\n"
 	  "#include <unistd.h>\n"
-	  "int main(void) {\n"
-	  "    int res = fcntl(STDERR_FILENO + 1, F_CLOSEM, 0);\n"
-	  "    return res < 0;\n"
-	  "}\n"
-	},
-	{ "HAVE_NR_CLOSE_RANGE", "close_range syscall available as __NR_close_range.",
+	  "enum { TEST = F_CLOSEM };\n" },
+	{ "HAVE_CLOSE_RANGE", "close_range() declaration",
 	  "DEFINES_EVERYTHING", NULL, NULL,
-	  "#include <limits.h>\n"
+	  "#ifndef _GNU_SOURCE\n"
+	  "#define _GNU_SOURCE\n"
+	  "#endif\n"
+	  "#include <unistd.h>\n"
+	  "int (*func)(unsigned, unsigned, int) = &close_range;\n" },
+	{ "HAVE_NR_CLOSE_RANGE", "__NR_close_range",
+	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#include <sys/syscall.h>\n"
 	  "#include <unistd.h>\n"
-	  "int main(void) {\n"
-	  "    int res = syscall(__NR_close_range, STDERR_FILENO + 1, INT_MAX, 0);\n"
-	  "    return res < 0;\n"
-	  "}\n"
-	},
-	{ "HAVE_F_MAXFD", "F_MAXFD defined for fcntl.",
+	  "enum { TEST = __NR_close_range };\n" },
+	{ "HAVE_F_MAXFD", "F_MAXFD",
 	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#include <fcntl.h>\n"
 	  "#include <unistd.h>\n"
-	  "int main(void) {\n"
-	  "    int res = fcntl(0, F_MAXFD);\n"
-	  "    return res < 0;\n"
-	  "}\n"
-	},
+	  "int test = F_MAXFD;\n" },
 };
 
 static void c12r_err(int eval, const char *fmt, ...)
