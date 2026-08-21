@@ -694,32 +694,22 @@ static bool run_test(const char *cmd, const char *wrapper, struct test *test)
 	if (test->depends) {
 		size_t len;
 		const char *deps = test->depends;
-		char *dep;
+		const char *dep;
 
 		/* Space-separated dependencies, could be ! for inverse. */
-		while ((len = strcspn(deps, " ")) != 0) {
-			bool positive = true;
-			if (deps[len]) {
-				dep = strdup(deps);
-				dep[len] = '\0';
-			} else {
-				dep = (char *)deps;
-			}
-
-			if (dep[0] == '!') {
-				dep++;
-				positive = false;
-			}
+		while ((len = strcspn(deps += strspn(deps, " "), " ")) != 0) {
+			bool positive = deps[0] != '!';
+			if (!positive)
+				++deps, --len;
+			dep = deps[len] ? strndup(deps, len) : deps;
 			if (run_test(cmd, wrapper, find_test(dep)) != positive) {
 				test->answer = false;
 				test->done = true;
 				return test->answer;
 			}
 			if (deps[len])
-				free(dep);
-
+				free((void *) dep);
 			deps += len;
-			deps += strspn(deps, " ");
 		}
 	}
 
