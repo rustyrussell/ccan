@@ -234,9 +234,9 @@ static const struct test base_tests[] = {
 	{ "HAVE_ICCARM_INTRINSICS", "<intrinsics.h>",
 	  "DEFINES_FUNC", NULL, NULL,
 	  "#include <intrinsics.h>\n"
-	  "int func(int v) {\n"
+	  "static int func(int v) {\n"
 	  "	return __CLZ(__RBIT(v));\n"
-	  "}" },
+	  "}\n" },
 	{ "HAVE_BYTESWAP_H", "<byteswap.h>",
 	  "OUTSIDE_MAIN", NULL, NULL,
 	  "#include <byteswap.h>\n" },
