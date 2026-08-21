@@ -85,6 +85,8 @@ struct test {
 	const char *desc;
 	/*
 	 * Template style flags (pick one):
+	 * STATIC_ASSERT:
+	 * - fragment is a compile-time constant expression that must be true.
 	 * OUTSIDE_MAIN:
 	 * - put a simple boilerplate main() below fragment.
 	 * DEFINES_FUNC:
@@ -117,14 +119,12 @@ static struct test *tests;
 
 static const struct test base_tests[] = {
 	{ "HAVE_32BIT_OFF_T", "off_t is 32 bits",
-	  "DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE", NULL, NULL,
+	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#include <sys/types.h>\n"
-	  "int main(void) {\n"
-	  "	return sizeof(off_t) == 4 ? 0 : 1;\n"
-	  "}\n" },
+	  "enum { TEST = 1/(sizeof(off_t) == 4) };\n" },
 	{ "HAVE_ALIGNOF", "__alignof__ support",
-	  "INSIDE_MAIN", NULL, NULL,
-	  "return __alignof__(double) > 0 ? 0 : 1;" },
+	  "STATIC_ASSERT", NULL, NULL,
+	  "__alignof__(double) > 0" },
 	{ "HAVE_ASPRINTF", "asprintf() declaration",
 	  "DEFINES_FUNC", NULL, NULL,
 	  "#ifndef _GNU_SOURCE\n"
@@ -191,53 +191,53 @@ static const struct test base_tests[] = {
 	  "#include <byteswap.h>\n"
 	  "static int func(int x) { return bswap_64(x); }" },
 	{ "HAVE_BUILTIN_CHOOSE_EXPR", "__builtin_choose_expr support",
-	  "INSIDE_MAIN", NULL, NULL,
-	  "return __builtin_choose_expr(1, 0, \"garbage\");" },
+	  "STATIC_ASSERT", NULL, NULL,
+	  "__builtin_choose_expr(1, 0, \"garbage\") == 0" },
 	{ "HAVE_BUILTIN_CLZ", "__builtin_clz support",
-	  "INSIDE_MAIN", NULL, NULL,
-	  "return __builtin_clz(1) == (sizeof(int)*8 - 1) ? 0 : 1;" },
+	  "STATIC_ASSERT", NULL, NULL,
+	  "__builtin_clz(1U)" },
 	{ "HAVE_BUILTIN_CLZL", "__builtin_clzl support",
-	  "INSIDE_MAIN", NULL, NULL,
-	  "return __builtin_clzl(1) == (sizeof(long)*8 - 1) ? 0 : 1;" },
+	  "STATIC_ASSERT", NULL, NULL,
+	  "__builtin_clzl(1UL)" },
 	{ "HAVE_BUILTIN_CLZLL", "__builtin_clzll support",
-	  "INSIDE_MAIN", NULL, NULL,
-	  "return __builtin_clzll(1) == (sizeof(long long)*8 - 1) ? 0 : 1;" },
+	  "STATIC_ASSERT", NULL, NULL,
+	  "__builtin_clzll(1ULL)" },
 	{ "HAVE_BUILTIN_CTZ", "__builtin_ctz support",
-	  "INSIDE_MAIN", NULL, NULL,
-	  "return __builtin_ctz(1U << (sizeof(int)*8 - 1)) == (sizeof(int)*8 - 1) ? 0 : 1;" },
+	  "STATIC_ASSERT", NULL, NULL,
+	  "!__builtin_ctz(1U)" },
 	{ "HAVE_BUILTIN_CTZL", "__builtin_ctzl support",
-	  "INSIDE_MAIN", NULL, NULL,
-	  "return __builtin_ctzl(1UL << (sizeof(long)*8 - 1)) == (sizeof(long)*8 - 1) ? 0 : 1;" },
+	  "STATIC_ASSERT", NULL, NULL,
+	  "!__builtin_ctzl(1UL)" },
 	{ "HAVE_BUILTIN_CTZLL", "__builtin_ctzll support",
-	  "INSIDE_MAIN", NULL, NULL,
-	  "return __builtin_ctzll(1ULL << (sizeof(long long)*8 - 1)) == (sizeof(long long)*8 - 1) ? 0 : 1;" },
+	  "STATIC_ASSERT", NULL, NULL,
+	  "!__builtin_ctzll(1ULL)" },
 	{ "HAVE_BUILTIN_CONSTANT_P", "__builtin_constant_p support",
-	  "INSIDE_MAIN", NULL, NULL,
-	  "return __builtin_constant_p(1) ? 0 : 1;" },
+	  "STATIC_ASSERT", NULL, NULL,
+	  "__builtin_constant_p(1)" },
 	{ "HAVE_BUILTIN_EXPECT", "__builtin_expect support",
-	  "INSIDE_MAIN", NULL, NULL,
-	  "return __builtin_expect(argc == 1, 1) ? 0 : 1;" },
+	  "STATIC_ASSERT", NULL, NULL,
+	  "__builtin_expect(sizeof(char) == 1, 1)" },
 	{ "HAVE_BUILTIN_FFS", "__builtin_ffs support",
-	  "INSIDE_MAIN", NULL, NULL,
-	  "return __builtin_ffs(0) == 0 ? 0 : 1;" },
+	  "STATIC_ASSERT", NULL, NULL,
+	  "!__builtin_ffs(0)" },
 	{ "HAVE_BUILTIN_FFSL", "__builtin_ffsl support",
-	  "INSIDE_MAIN", NULL, NULL,
-	  "return __builtin_ffsl(0L) == 0 ? 0 : 1;" },
+	  "STATIC_ASSERT", NULL, NULL,
+	  "!__builtin_ffsl(0L)" },
 	{ "HAVE_BUILTIN_FFSLL", "__builtin_ffsll support",
-	  "INSIDE_MAIN", NULL, NULL,
-	  "return __builtin_ffsll(0LL) == 0 ? 0 : 1;" },
+	  "STATIC_ASSERT", NULL, NULL,
+	  "!__builtin_ffsll(0LL)" },
 	{ "HAVE_BUILTIN_POPCOUNT", "__builtin_popcount support",
-	  "INSIDE_MAIN", NULL, NULL,
-	  "return __builtin_popcount(255) == 8 ? 0 : 1;" },
+	  "STATIC_ASSERT", NULL, NULL,
+	  "__builtin_popcount(255U) == 8" },
 	{ "HAVE_BUILTIN_POPCOUNTL",  "__builtin_popcountl support",
-	  "INSIDE_MAIN", NULL, NULL,
-	  "return __builtin_popcountl(255L) == 8 ? 0 : 1;" },
+	  "STATIC_ASSERT", NULL, NULL,
+	  "__builtin_popcountl(255UL) == 8" },
 	{ "HAVE_BUILTIN_POPCOUNTLL", "__builtin_popcountll support",
-	  "INSIDE_MAIN", NULL, NULL,
-	  "return __builtin_popcountll(255LL) == 8 ? 0 : 1;" },
+	  "STATIC_ASSERT", NULL, NULL,
+	  "__builtin_popcountll(255ULL) == 8" },
 	{ "HAVE_BUILTIN_TYPES_COMPATIBLE_P", "__builtin_types_compatible_p support",
-	  "INSIDE_MAIN", NULL, NULL,
-	  "return __builtin_types_compatible_p(char *, int) ? 1 : 0;" },
+	  "STATIC_ASSERT", NULL, NULL,
+	  "!__builtin_types_compatible_p(char *, int)" },
 	{ "HAVE_ICCARM_INTRINSICS", "<intrinsics.h>",
 	  "DEFINES_FUNC", NULL, NULL,
 	  "#include <intrinsics.h>\n"
@@ -295,13 +295,10 @@ static const struct test base_tests[] = {
 	  "		warnx(\"warn %u\", arg);\n"
 	  "}\n" },
 	{ "HAVE_FILE_OFFSET_BITS", "_FILE_OFFSET_BITS to get 64-bit offsets",
-	  "DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE",
-	  "HAVE_32BIT_OFF_T", NULL,
+	  "DEFINES_EVERYTHING", "HAVE_32BIT_OFF_T", NULL,
 	  "#define _FILE_OFFSET_BITS 64\n"
 	  "#include <sys/types.h>\n"
-	  "int main(void) {\n"
-	  "	return sizeof(off_t) == 8 ? 0 : 1;\n"
-	  "}\n" },
+	  "enum { TEST = 1/(sizeof(off_t) == 8) };\n" },
 	{ "HAVE_FOR_LOOP_DECLARATION", "for loop declaration support",
 	  "INSIDE_MAIN", NULL, NULL,
 	  "int ret = 1;\n"
@@ -689,6 +686,8 @@ static struct test *find_test(const char *name)
 }
 
 #define PRE_BOILERPLATE "/* Test program generated by configurator. */\n"
+#define STATIC_ASSERT_START_BOILERPLATE "enum { TEST = 1/!!("
+#define STATIC_ASSERT_END_BOILERPLATE ") };\n"
 #define MAIN_START_BOILERPLATE \
 	"int main(int argc, char *argv[]) {\n" \
 	"	(void)argc;\n" \
@@ -737,7 +736,11 @@ static bool run_test(struct test *test)
 
 	fputs(PRE_BOILERPLATE, outf);
 
-	if (strstr(test->style, "INSIDE_MAIN")) {
+	if (strstr(test->style, "STATIC_ASSERT")) {
+		fputs(STATIC_ASSERT_START_BOILERPLATE, outf);
+		fputs(test->fragment, outf);
+		fputs(STATIC_ASSERT_END_BOILERPLATE, outf);
+	} else if (strstr(test->style, "INSIDE_MAIN")) {
 		fputs(MAIN_START_BOILERPLATE, outf);
 		fputs(test->fragment, outf);
 		fputs(MAIN_END_BOILERPLATE, outf);
@@ -892,7 +895,7 @@ static char *read_field(const char *name, bool compulsory)
  * First three non-ignored lines must be:
  *  var=<varname>
  *  desc=<description-for-autotools-style>
- *  style=OUTSIDE_MAIN DEFINES_FUNC INSIDE_MAIN DEFINES_EVERYTHING EXECUTE MAY_NOT_COMPILE
+ *  style=STATIC_ASSERT OUTSIDE_MAIN DEFINES_FUNC INSIDE_MAIN DEFINES_EVERYTHING EXECUTE MAY_NOT_COMPILE
  *
  * Followed by optional lines:
  *  depends=<space-separated-testnames, ! to invert>
