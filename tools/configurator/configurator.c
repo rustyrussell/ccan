@@ -138,42 +138,41 @@ static const struct test base_tests[] = {
 	  "	return p;\n"
 	  "}" },
 	{ "HAVE_ATTRIBUTE_COLD", "__attribute__((cold)) support",
-	  "DEFINES_FUNC", NULL, NULL,
-	  "static int __attribute__((cold)) func(int x) { return x; }" },
+	  "DEFINES_EVERYTHING", NULL, NULL,
+	  "int __attribute__((cold)) func(int);\n" },
 	{ "HAVE_ATTRIBUTE_CONST", "__attribute__((const)) support",
-	  "DEFINES_FUNC", NULL, NULL,
-	  "static int __attribute__((const)) func(int x) { return x; }" },
+	  "DEFINES_EVERYTHING", NULL, NULL,
+	  "int __attribute__((const)) func(int);\n" },
 	{ "HAVE_ATTRIBUTE_DEPRECATED", "__attribute__((deprecated)) support",
-	  "OUTSIDE_MAIN", NULL, NULL,
-	  "int __attribute__((deprecated)) depr(int x);" },
+	  "DEFINES_EVERYTHING", NULL, NULL,
+	  "int __attribute__((deprecated)) func(int);\n" },
 	{ "HAVE_ATTRIBUTE_NONNULL", "__attribute__((nonnull)) support",
-	  "DEFINES_FUNC", NULL, NULL,
-	  "static char *__attribute__((nonnull)) func(char *p) { return p; }" },
+	  "DEFINES_EVERYTHING", NULL, NULL,
+	  "int __attribute__((nonnull)) func(char *);\n" },
 	{ "HAVE_ATTRIBUTE_RETURNS_NONNULL", "__attribute__((returns_nonnull)) support",
-	  "DEFINES_FUNC", NULL, NULL,
-	  "static const char *__attribute__((returns_nonnull)) func(void) { return \"hi\"; }" },
+	  "DEFINES_EVERYTHING", NULL, NULL,
+	  "const char * __attribute__((returns_nonnull)) func(void);\n" },
 	{ "HAVE_ATTRIBUTE_SENTINEL", "__attribute__((sentinel)) support",
-	  "DEFINES_FUNC", NULL, NULL,
-	  "static int __attribute__((sentinel)) func(int i, ...) { return i; }" },
+	  "DEFINES_EVERYTHING", NULL, NULL,
+	  "int __attribute__((sentinel)) func(int, ...);\n" },
 	{ "HAVE_ATTRIBUTE_PURE", "__attribute__((pure)) support",
-	  "DEFINES_FUNC", NULL, NULL,
-	  "static int __attribute__((pure)) func(int x) { return x; }" },
+	  "DEFINES_EVERYTHING", NULL, NULL,
+	  "int __attribute__((pure)) func(int);\n" },
 	{ "HAVE_ATTRIBUTE_MAY_ALIAS", "__attribute__((may_alias)) support",
-	  "OUTSIDE_MAIN", NULL, NULL,
-	  "typedef short __attribute__((__may_alias__)) short_a;" },
+	  "DEFINES_EVERYTHING", NULL, NULL,
+	  "typedef short __attribute__((__may_alias__)) short_a;\n" },
 	{ "HAVE_ATTRIBUTE_NORETURN", "__attribute__((noreturn)) support",
-	  "DEFINES_FUNC", NULL, NULL,
-	  "#include <stdlib.h>\n"
-	  "static void __attribute__((noreturn)) func(int x) { exit(x); }" },
+	  "DEFINES_EVERYTHING", NULL, NULL,
+	  "void __attribute__((noreturn)) func(void);\n" },
 	{ "HAVE_ATTRIBUTE_PRINTF", "__attribute__ format printf support",
-	  "DEFINES_FUNC", NULL, NULL,
-	  "static void __attribute__((format(__printf__, 1, 2))) func(const char *fmt, ...) { (void)fmt; }" },
+	  "DEFINES_EVERYTHING", NULL, NULL,
+	  "void __attribute__((format(__printf__, 1, 2))) func(const char *, ...);\n" },
 	{ "HAVE_ATTRIBUTE_UNUSED", "__attribute__((unused)) support",
-	  "OUTSIDE_MAIN", NULL, NULL,
-	  "static int __attribute__((unused)) func(int x) { return x; }" },
+	  "DEFINES_EVERYTHING", NULL, NULL,
+	  "int __attribute__((unused)) func(int);\n" },
 	{ "HAVE_ATTRIBUTE_USED", "__attribute__((used)) support",
-	  "OUTSIDE_MAIN", NULL, NULL,
-	  "static int __attribute__((used)) func(int x) { return x; }" },
+	  "DEFINES_EVERYTHING", NULL, NULL,
+	  "int __attribute__((used)) func(int);\n" },
 	{ "HAVE_BACKTRACE", "backtrace() in <execinfo.h>",
 	  "DEFINES_FUNC", NULL, NULL,
 	  "#include <execinfo.h>\n"
@@ -186,10 +185,10 @@ static const struct test base_tests[] = {
 	  "union { int i; char c[sizeof(int)]; } u;\n"
 	  "u.i = 0x01020304;\n"
 	  "return u.c[0] == 0x01 && u.c[1] == 0x02 && u.c[2] == 0x03 && u.c[3] == 0x04 ? 0 : 1;" },
-	{ "HAVE_BSWAP_64", "bswap64 in byteswap.h",
+	{ "HAVE_BSWAP_64", "bswap_64() in <byteswap.h>",
 	  "DEFINES_FUNC", "HAVE_BYTESWAP_H", NULL,
 	  "#include <byteswap.h>\n"
-	  "static int func(int x) { return bswap_64(x); }" },
+	  "static int func(int x) { return bswap_64(x); }\n" },
 	{ "HAVE_BUILTIN_CHOOSE_EXPR", "__builtin_choose_expr support",
 	  "STATIC_ASSERT", NULL, NULL,
 	  "__builtin_choose_expr(1, 0, \"garbage\") == 0" },
@@ -245,7 +244,7 @@ static const struct test base_tests[] = {
 	  "	return __CLZ(__RBIT(v));\n"
 	  "}\n" },
 	{ "HAVE_BYTESWAP_H", "<byteswap.h>",
-	  "OUTSIDE_MAIN", NULL, NULL,
+	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#include <byteswap.h>\n" },
 	{ "HAVE_CLOCK_GETTIME", "clock_gettime() declaration",
 	  "DEFINES_FUNC", "HAVE_STRUCT_TIMESPEC", NULL,
@@ -268,9 +267,8 @@ static const struct test base_tests[] = {
 	  /* This means HAVE_CLOCK_GETTIME, too */
 	  NULL, "HAVE_CLOCK_GETTIME" },
 	{ "HAVE_COMPOUND_LITERALS", "compound literal support",
-	  "INSIDE_MAIN", NULL, NULL,
-	  "int *foo = (int[]) { 1, 2, 3, 4 };\n"
-	  "return foo[0] ? 0 : 1;" },
+	  "DEFINES_EVERYTHING", NULL, NULL,
+	  "const int *foo = (int[]) { 1, 2, 3, 4 };\n" },
 	{ "HAVE_FCHDIR", "fchdir support",
 	  "DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE", NULL, NULL,
 	  "#include <sys/types.h>\n"
@@ -300,12 +298,10 @@ static const struct test base_tests[] = {
 	  "#include <sys/types.h>\n"
 	  "enum { TEST = 1/(sizeof(off_t) == 8) };\n" },
 	{ "HAVE_FOR_LOOP_DECLARATION", "for loop declaration support",
-	  "INSIDE_MAIN", NULL, NULL,
-	  "int ret = 1;\n"
-	  "for (int i = 0; i < argc; i++) { ret = 0; };\n"
-	  "return ret;" },
+	  "DEFINES_FUNC", NULL, NULL,
+	  "static void func(void) { for (int i = 0; i < 1; ++i); }\n" },
 	{ "HAVE_FLEXIBLE_ARRAY_MEMBER", "flexible array member support",
-	  "OUTSIDE_MAIN", NULL, NULL,
+	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "struct foo { unsigned int x; int arr[]; };" },
 	{ "HAVE_GETPAGESIZE", "getpagesize() in <unistd.h>",
 	  "DEFINES_FUNC", NULL, NULL,
@@ -363,12 +359,9 @@ static const struct test base_tests[] = {
 	  " return called && array[0] == 2 && array[1] == 5 && array[2] == 9 ? 0 : 1;\n"
 	  "}\n" },
 	{ "HAVE_STRUCT_TIMESPEC", "struct timespec declaration",
-	  "DEFINES_FUNC", NULL, NULL,
+	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#include <time.h>\n"
-	  "static void func(void) {\n"
-	  "	struct timespec ts;\n"
-	  "	ts.tv_sec = ts.tv_nsec = 1;\n"
-	  "}\n" },
+	  "const struct timespec ts = { .tv_sec = 1, .tv_nsec = 1 };\n" },
 	{ "HAVE_SECTION_START_STOP", "__attribute__((section)) and __start/__stop",
 	  "DEFINES_FUNC", NULL, NULL,
 	  "static void *__attribute__((__section__(\"mysec\"))) p = &p;\n"
@@ -390,23 +383,24 @@ static const struct test base_tests[] = {
 	  "	return (nest(&argc, argc) > 0) ? 0 : 1;\n"
 	  "}\n" },
 	{ "HAVE_STATEMENT_EXPR", "statement expression support",
-	  "INSIDE_MAIN", NULL, NULL,
-	  "return ({ int x = argc; x == argc ? 0 : 1; });" },
+	  "DEFINES_FUNC", NULL, NULL,
+	  "static int func(void) { return ({ int x = 0; x == 0 ? 0 : 1; }); }\n" },
 	{ "HAVE_STATIC_ASSERT", "_Static_assert support",
-	  "INSIDE_MAIN", NULL, NULL,
-	  "_Static_assert(1, \"OK\"); return 0;" },
+	  "DEFINES_EVERYTHING", NULL, NULL,
+	  "_Static_assert(1, \"OK\");\n" },
 	{ "HAVE_SYS_FILIO_H", "<sys/filio.h>",
-	  "OUTSIDE_MAIN", NULL, NULL, /* Solaris needs this for FIONREAD */
+	  "DEFINES_EVERYTHING", NULL, NULL, /* Solaris needs this for FIONREAD */
 	  "#include <sys/filio.h>\n" },
 	{ "HAVE_SYS_TERMIOS_H", "<sys/termios.h>",
-	  "OUTSIDE_MAIN", NULL, NULL,
+	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#include <sys/termios.h>\n" },
 	{ "HAVE_SYS_UNISTD_H", "<sys/unistd.h>",
-	  "OUTSIDE_MAIN", NULL, NULL,
+	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#include <sys/unistd.h>\n" },
 	{ "HAVE_TYPEOF", "__typeof__ support",
-	  "INSIDE_MAIN", NULL, NULL,
-	  "__typeof__(argc) i; i = argc; return i == argc ? 0 : 1;" },
+	  "DEFINES_EVERYTHING", NULL, NULL,
+	  "static int i;\n"
+	  "__typeof__(i) *p = &i;\n" },
 	{ "HAVE_UNALIGNED_ACCESS", "unaligned access to int",
 	  "DEFINES_EVERYTHING|EXECUTE", NULL, NULL,
 	  "#include <string.h>\n"
@@ -426,21 +420,20 @@ static const struct test base_tests[] = {
 	  "	return utime(filename, &times);\n"
 	  "}" },
 	{ "HAVE_WARN_UNUSED_RESULT", "__attribute__((warn_unused_result))",
-	  "DEFINES_FUNC", NULL, NULL,
+	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#include <sys/types.h>\n"
 	  "#include <utime.h>\n"
-	  "static __attribute__((warn_unused_result)) int func(int i) {\n"
-	  "	return i + 1;\n"
-	  "}" },
+	  "__attribute__((warn_unused_result)) int func(void);\n" },
 	{ "HAVE_OPENMP", "#pragma omp and -fopenmp support",
-	  "INSIDE_MAIN|EXECUTE|MAY_NOT_COMPILE", NULL, NULL,
-	  "int i;\n"
+	  "DEFINES_FUNC", NULL, NULL,
+	  "static void func(void) {\n"
+	  "	int i;\n"
 	  "#pragma omp parallel for\n"
-	  "for(i = 0; i < 0; i++) {};\n"
-	  "return 0;\n",
+	  "	for(i = 0; i < 0; ++i);\n"
+	  "}\n",
 	  "-Werror -fopenmp" },
 	{ "HAVE_VALGRIND_MEMCHECK_H", "<valgrind/memcheck.h>",
-	  "OUTSIDE_MAIN", NULL, NULL,
+	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#include <valgrind/memcheck.h>\n" },
 	{ "HAVE_UCONTEXT", "working <ucontext.h",
 	  "DEFINES_EVERYTHING|EXECUTE|MAY_NOT_COMPILE",
@@ -490,13 +483,9 @@ static const struct test base_tests[] = {
 	  "	return worked ? 0 : 1;\n"
 	  "}\n"
 	},
-	{ "HAVE_BUILTIN_CPU_SUPPORTS", "__builtin_cpu_supports()",
+	{ "HAVE_BUILTIN_CPU_SUPPORTS", "__builtin_cpu_supports support",
 	  "DEFINES_FUNC", NULL, NULL,
-	  "#include <stdbool.h>\n"
-	  "static bool func(void) {\n"
-	  "	return __builtin_cpu_supports(\"mmx\");\n"
-	  "}"
-	},
+	  "static int func(void) { return __builtin_cpu_supports(\"mmx\"); }\n" },
 	{ "HAVE_CLOSEFROM", "closefrom() offered by system",
 	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#include <stdlib.h>\n"
