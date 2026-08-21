@@ -173,10 +173,27 @@ static const struct test base_tests[] = {
 	  "#include <execinfo.h>\n"
 	  "int (*func)(void **, int) = &backtrace;\n" },
 	{ "HAVE_BIG_ENDIAN", "big endian",
-	  "INSIDE_MAIN|EXECUTE", NULL, NULL,
+	  "DEFINES_EVERYTHING", "!HAVE_LITTLE_ENDIAN", NULL,
+	  "#if defined(__BYTE_ORDER__)\n"
+	  "	enum { TEST = 1/(__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__) };\n"
+	  "#elif defined(__GLIBC__)\n"
+	  "#	include <endian.h>\n"
+	  "	enum { TEST = 1/(__BYTE_ORDER == __BIG_ENDIAN) };\n"
+	  "#elif !defined(_BIG_ENDIAN) && \\\n"
+	  "	!defined(__hppa) && !defined(__hppa__) && \\\n"
+	  "	!defined(__mips) && !defined(__mips__) && \\\n"
+	  "	!defined(_M_PPC) && !defined(__powerpc__) && !defined(__ppc__) && \\\n"
+	  "	!defined(__powerpc64__) && !defined(__ppc64__) && \\\n"
+	  "	!defined(__s390__) && !defined(__s390x__) \\\n"
+	  "	!defined(__sparc) && !defined(__sparc__)\n"
+	  "# error\n"
+	  "#endif\n" },
+	{ "HAVE_BIG_ENDIAN_RUNTIME", "big endian (runtime test)",
+	  "INSIDE_MAIN|EXECUTE", "!HAVE_BIG_ENDIAN !HAVE_LITTLE_ENDIAN", NULL,
 	  "union { int i; char c[sizeof(int)]; } u;\n"
 	  "u.i = 0x01020304;\n"
-	  "return u.c[0] == 0x01 && u.c[1] == 0x02 && u.c[2] == 0x03 && u.c[3] == 0x04 ? 0 : 1;" },
+	  "return u.c[0] == 0x01 && u.c[1] == 0x02 && u.c[2] == 0x03 && u.c[3] == 0x04 ? 0 : 1;",
+	  NULL, "HAVE_BIG_ENDIAN" },
 	{ "HAVE_BSWAP_64", "bswap_64() in <byteswap.h>",
 	  "DEFINES_FUNC", "HAVE_BYTESWAP_H", NULL,
 	  "#include <byteswap.h>\n"
@@ -287,10 +304,29 @@ static const struct test base_tests[] = {
 	  "#include <ctype.h>\n"
 	  "int (*func)(int) = &isblank;\n" },
 	{ "HAVE_LITTLE_ENDIAN", "little endian",
-	  "INSIDE_MAIN|EXECUTE", NULL, NULL,
+	  "DEFINES_EVERYTHING", NULL, NULL,
+	  "#if defined(__BYTE_ORDER__)\n"
+	  "	enum { TEST = 1/(__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__) };\n"
+	  "#elif defined(__GLIBC__)\n"
+	  "#	include <endian.h>\n"
+	  "	enum { TEST = 1/(__BYTE_ORDER == __LITTLE_ENDIAN) };\n"
+	  "#elif !defined(_LITTLE_ENDIAN) && \\\n"
+	  "	!defined(_M_ALPHA) && !defined(__alpha) && !defined(__alpha__) && \\\n"
+	  "	!defined(_M_AMD64) && !defined(__amd64) && !defined(__amd64__) && \\\n"
+	  "	!defined(_M_ARM) && !defined(__arm) && !defined(__arm__) && \\\n"
+	  "	!defined(_M_ARM64) && !defined(__aarch64) && !defined(__aarch64__) && \\\n"
+	  "	!defined(_M_IA64) && !defined(__ia64) && !defined(__ia64__) && \\\n"
+	  "	!defined(_M_IX86) && !defined(__i386) && !defined(__i386__) && \\\n"
+	  "	!defined(_M_X64) && !defined(__x86_64) && !defined(__x86_64__) && \\\n"
+	  "	!defined(__bfin) && !defined(__bfin__)\n"
+	  "# error\n"
+	  "#endif\n" },
+	{ "HAVE_LITTLE_ENDIAN_RUNTIME", "little endian (runtime test)",
+	  "INSIDE_MAIN|EXECUTE", "!HAVE_BIG_ENDIAN !HAVE_LITTLE_ENDIAN", NULL,
 	  "union { int i; char c[sizeof(int)]; } u;\n"
 	  "u.i = 0x01020304;\n"
-	  "return u.c[0] == 0x04 && u.c[1] == 0x03 && u.c[2] == 0x02 && u.c[3] == 0x01 ? 0 : 1;" },
+	  "return u.c[0] == 0x04 && u.c[1] == 0x03 && u.c[2] == 0x02 && u.c[3] == 0x01 ? 0 : 1;",
+	  NULL, "HAVE_LITTLE_ENDIAN" },
 	{ "HAVE_MEMMEM", "memmem() in <string.h>",
 	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "#ifndef _GNU_SOURCE\n"
