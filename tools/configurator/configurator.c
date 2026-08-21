@@ -72,6 +72,10 @@
 static const char *progname = "";
 static int verbose;
 static bool like_a_libtool = false;
+static const char *compiler = DEFAULT_COMPILER;
+static const char *flags = DEFAULT_FLAGS;
+static const char *outflag = DEFAULT_OUTPUT_EXE_FLAG;
+static const char *wrapper;
 
 struct test {
 	const char *name;
@@ -677,20 +681,6 @@ static char *concat(int glue, /* (const char *const *) */...)
 	return ret;
 }
 
-static char *connect_args(const char *argv[], const char *outflag,
-		const char *files)
-{
-	const char *args[3], *arg = args;
-
-	if (outflag)
-		*arg++ = outflag;
-	if (files)
-		*arg++ = files;
-	*arg = NULL;
-
-	return concat(' ', argv, args, NULL);
-}
-
 static struct test *find_test(const char *name)
 {
 	unsigned int i;
@@ -712,10 +702,11 @@ static struct test *find_test(const char *name)
 #define MAIN_BODY_BOILERPLATE "return 0;\n"
 #define MAIN_END_BOILERPLATE "}\n"
 
-static bool run_test(const char *cmd, const char *wrapper, struct test *test)
+static bool run_test(struct test *test)
 {
 	char *output, *newcmd;
 	FILE *outf;
+	const char *args[4], **arg = args;
 	int status;
 
 	if (test->done)
@@ -732,7 +723,7 @@ static bool run_test(const char *cmd, const char *wrapper, struct test *test)
 			if (!positive)
 				++deps, --len;
 			dep = deps[len] ? strndup(deps, len) : deps;
-			if (run_test(cmd, wrapper, find_test(dep)) != positive) {
+			if (run_test(find_test(dep)) != positive) {
 				test->answer = false;
 				test->done = true;
 				return test->answer;
@@ -777,25 +768,23 @@ static bool run_test(const char *cmd, const char *wrapper, struct test *test)
 
 	fclose(outf);
 
-	newcmd = strdup(cmd);
-
 	if (test->flags) {
-		newcmd = realloc(newcmd, strlen(newcmd) + strlen(" ")
-				+ strlen(test->flags) + 1);
-		strcat(newcmd, " ");
-		strcat(newcmd, test->flags);
+		*arg++ = test->flags;
 		if (verbose > 1)
-			printf("Extra flags line: %s", newcmd);
+			printf("Extra compiler flags: %s\n", test->flags);
 	}
 
 	if (test->link) {
-		newcmd = realloc(newcmd, strlen(newcmd) + strlen(" ")
-				+ strlen(test->link) + 1);
-		strcat(newcmd, " ");
-		strcat(newcmd, test->link);
+		*arg++ = test->link;
 		if (verbose > 1)
-			printf("Extra link line: %s", newcmd);
+			printf("Extra linker flags: %s\n", test->link);
 	}
+	*arg++ = outflag;
+
+	*arg = NULL;
+	newcmd = concat(' ', (const char *[]) { compiler, flags, NULL }, args,
+			(const char *[]) { OUTPUT_FILE, INPUT_FILE, NULL },
+			NULL);
 
 	start_test("checking for ", test->desc);
 	output = run(newcmd, &status);
@@ -820,12 +809,16 @@ static bool run_test(const char *cmd, const char *wrapper, struct test *test)
 		/* We run INSIDE_MAIN tests for sanity checking. */
 		if (strstr(test->style, "EXECUTE")
 		    || strstr(test->style, "INSIDE_MAIN")) {
-			char *runcmd = malloc(strlen(wrapper) + strlen(" ." DIR_SEP OUTPUT_FILE) + 1);
-
-			strcpy(runcmd, wrapper);
-			strcat(runcmd, " ." DIR_SEP OUTPUT_FILE);
-			output = run(runcmd, &status);
-			free(runcmd);
+			if (wrapper) {
+				char *runcmd = malloc(strlen(wrapper) +
+					strlen(" ." DIR_SEP OUTPUT_FILE) + 1);
+				strcpy(stpcpy(runcmd, wrapper),
+				       " ." DIR_SEP OUTPUT_FILE);
+				output = run(runcmd, &status);
+				free(runcmd);
+			} else {
+				output = run("." DIR_SEP OUTPUT_FILE, &status);
+			}
 			if (!strstr(test->style, "EXECUTE") && status != 0)
 				c12r_errx(EXIT_BAD_TEST,
 					  "Test for %s failed with %i:\n%s",
@@ -970,13 +963,8 @@ static void read_tests(size_t num_tests)
 
 int main(int argc, const char *argv[])
 {
-	char *cmd;
 	unsigned int i;
-	const char *default_args[]
-		= { DEFAULT_COMPILER, DEFAULT_FLAGS, NULL };
-	const char *outflag = DEFAULT_OUTPUT_EXE_FLAG;
 	const char *configurator_cc = NULL;
-	const char *wrapper = "";
 	const char *orig_cc;
 	const char *varfile = NULL;
 	const char *headerfile = NULL;
@@ -1028,8 +1016,10 @@ int main(int argc, const char *argv[])
 		}
 	}
 
-	if (argc == 0)
-		argv = default_args;
+	if (argc > 0)
+		compiler = *argv++, --argc;
+	if (argc > 0)
+		flags = concat(' ', argv, NULL);
 
 	/* Copy with NULL entry at end */
 	tests = calloc(sizeof(base_tests)/sizeof(base_tests[0]) + 1,
@@ -1039,19 +1029,17 @@ int main(int argc, const char *argv[])
 	if (extra_tests)
 		read_tests(sizeof(base_tests)/sizeof(base_tests[0]));
 
-	orig_cc = argv[0];
+	orig_cc = compiler;
 	if (configurator_cc)
-		argv[0] = configurator_cc;
+		compiler = configurator_cc;
 
-	cmd = connect_args(argv, outflag, OUTPUT_FILE " " INPUT_FILE);
 	if (like_a_libtool) {
 		start_test("Making autoconf users comfortable", "");
 		sleep(1);
 		end_test(1);
 	}
 	for (i = 0; tests[i].name; i++)
-		run_test(cmd, wrapper, &tests[i]);
-	free(cmd);
+		run_test(&tests[i]);
 
 	remove(OUTPUT_FILE);
 	remove(INPUT_FILE);
@@ -1094,9 +1082,7 @@ int main(int argc, const char *argv[])
 	fprintf(outf, "#define _GNU_SOURCE /* Always use GNU extensions. */\n");
 	fprintf(outf, "#endif\n");
 	fprintf(outf, "#define CCAN_COMPILER \"%s\"\n", orig_cc);
-	cmd = connect_args(argv + 1, "", "");
-	fprintf(outf, "#define CCAN_CFLAGS \"%s\"\n", cmd);
-	free(cmd);
+	fprintf(outf, "#define CCAN_CFLAGS \"%s\"\n", flags);
 	fprintf(outf, "#define CCAN_OUTPUT_EXE_CFLAG \"%s\"\n\n", outflag);
 	/* This one implies "#include <ccan/..." works, eg. for tdb2.h */
 	fprintf(outf, "#define HAVE_CCAN 1\n");
