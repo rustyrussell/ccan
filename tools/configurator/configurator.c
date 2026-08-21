@@ -637,28 +637,58 @@ static char *run(const char *cmd, int *exitstatus)
 	return ret;
 }
 
+/*
+ * Efficiently joins together an arbitrary number of strings using a glue char.
+ * The returned string must be freed when it is no longer needed.
+ * Each variadic argument is a pointer to an array of pointers to strings.
+ * The last element in each array must be NULL.
+ * The last argument must be NULL.
+ */
+static char *concat(int glue, /* (const char *const *) */...)
+{
+	va_list ap;
+	size_t len = 0;
+	const char *const *arg;
+	const char *s;
+	char *ret, *p;
+
+	va_start(ap, glue);
+	while ((arg = va_arg(ap, const char *const *))) {
+		while ((s = *arg++)) {
+			size_t n = strlen(s);
+			len += n + !!n;
+		}
+	}
+	va_end(ap);
+	if (!len)
+		return strdup("");
+
+	p = ret = malloc(len);
+	va_start(ap, glue);
+	while ((arg = va_arg(ap, const char *const *))) {
+		while ((s = *arg++)) {
+			p = stpcpy(p, s);
+			*p++ = (char) glue;
+		}
+	}
+	va_end(ap);
+	*--p = '\0';
+
+	return ret;
+}
+
 static char *connect_args(const char *argv[], const char *outflag,
 		const char *files)
 {
-	unsigned int i;
-	char *ret;
-	size_t len = strlen(outflag) + strlen(files) + 1;
+	const char *args[3], *arg = args;
 
-	for (i = 0; argv[i]; i++)
-		len += 1 + strlen(argv[i]);
+	if (outflag)
+		*arg++ = outflag;
+	if (files)
+		*arg++ = files;
+	*arg = NULL;
 
-	ret = malloc(len);
-	len = 0;
-	for (i = 0; argv[i]; i++) {
-		strcpy(ret + len, argv[i]);
-		len += strlen(argv[i]);
-		if (argv[i+1] || *outflag)
-			ret[len++] = ' ';
-	}
-	strcpy(ret + len, outflag);
-	len += strlen(outflag);
-	strcpy(ret + len, files);
-	return ret;
+	return concat(' ', argv, args, NULL);
 }
 
 static struct test *find_test(const char *name)
