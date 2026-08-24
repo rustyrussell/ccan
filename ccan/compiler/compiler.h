@@ -91,6 +91,25 @@
 #endif
 #endif
 
+#ifndef RETURNS_UNALIASED
+#if HAVE_ATTRIBUTE_MALLOC
+/**
+ * RETURNS_UNALIASED - a function never returns a pointer that is aliased
+ *
+ * This affords the optimizer the opportunity to assume that writes through the
+ * returned pointer cannot modify memory accessible via any other pointer and
+ * vice versa.
+ *
+ * Example:
+ *	// Returns a pointer to newly allocated memory.
+ *	static RETURNS_UNALIASED void *my_alloc(size_t);
+ */
+#define RETURNS_UNALIASED __attribute__((__malloc__))
+#else
+#define RETURNS_UNALIASED
+#endif
+#endif
+
 #if HAVE_ATTRIBUTE_UNUSED
 #ifndef UNNEEDED
 /**
