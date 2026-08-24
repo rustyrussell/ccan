@@ -38,7 +38,11 @@
 		_a > _b ? _a : _b; \
 	})
 
-#define clamp(v, f, c)	(max(min((v), (c)), (f)))
+#define clamp(v, f, c) \
+	({ \
+		typeof(v) _ceiling_clamped = min((v), (c)); \
+		(max(_ceiling_clamped, (f))); \
+	})
 
 
 #define min_t(t, a, b) \
