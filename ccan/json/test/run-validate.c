@@ -4,9 +4,9 @@ int main(void)
 {
 	const char *strings_file = "test/test-strings";
 	FILE *f;
-	char buffer[1024];
-	
-	plan_tests(224);
+	char buffer[250010];
+
+	plan_tests(226);
 	
 	f = fopen(strings_file, "rb");
 	if (f == NULL) {

@@ -5,7 +5,7 @@ int main(void)
 	const char *strings_file = "test/test-strings";
 	const char *strings_reencoded_file = "test/test-strings-reencoded";
 	FILE *f, *f2;
-	char buffer[1024], buffer2[1024];
+	char buffer[250010], buffer2[1024];
 	
 	plan_tests(90);
 	
@@ -24,6 +24,9 @@ int main(void)
 		const char *s = chomp(buffer);
 		bool valid;
 		JsonNode *node;
+
+		diag("HELLO");
+		fprintf(stderr, "#%d %d %s\n", sizeof(buffer), strlen(buffer), buffer);
 		
 		if (expect_literal(&s, "valid ")) {
 			valid = true;
