@@ -387,8 +387,30 @@ static const struct test base_tests[] = {
 	  "DEFINES_EVERYTHING", NULL, NULL,
 	  "static int i;\n"
 	  "__typeof__(i) *p = &i;\n" },
-	{ "HAVE_UNALIGNED_ACCESS", "unaligned access to int",
-	  "DEFINES_EVERYTHING|EXECUTE", NULL, NULL,
+	{ "HAVE_EFFICIENT_UNALIGNED_ACCESS", "efficient unaligned memory access",
+	  "DEFINES_EVERYTHING", NULL, NULL,
+	  "#if !defined(_M_AMD64) && !defined(__amd64) && !defined(__amd64__) && \\\n"
+	  "	!defined(__ARM_FEATURE_UNALIGNED) && \\\n"
+	  "	!defined(_M_ARM64) && !defined(__aarch64) && !defined(__aarch64__) && \\\n"
+	  "	!defined(_M_IX86) && !defined(__i386) && !defined(__i386__) && \\\n"
+	  "	!defined(_M_PPC) && !defined(__powerpc__) && !defined(__ppc__) && \\\n"
+	  "	!defined(__powerpc64__) && !defined(__ppc64__) && \\\n"
+	  "	!defined(__s390__) && !defined(__s390x__) \\\n"
+	  "	!defined(_M_X64) && !defined(__x86_64) && !defined(__x86_64__)\n"
+	  "# error\n"
+	  "#endif\n",
+	  NULL, "HAVE_UNALIGNED_ACCESS" },
+	{ "HAVE_NO_UNALIGNED_ACCESS", "known lack of unaligned memory access",
+	  "DEFINES_EVERYTHING", "!HAVE_EFFICIENT_UNALIGNED_ACCESS", NULL,
+	  "#if !defined(_M_ALPHA) && !defined(__alpha) && !defined(__alpha__) && \\\n"
+	  "	(!defined(_M_ARM) && !defined(__arm) && !defined(__arm__) || defined(__ARM_FEATURE_UNALIGNED)) && \\\n"
+	  "	!defined(__hppa) && !defined(__hppa__) && \\\n"
+	  "	!defined(__mips) && !defined(__mips__) && \\\n"
+	  "	!defined(__sparc) && !defined(__sparc__)\n"
+	  "# error\n"
+	  "#endif\n" },
+	{ "HAVE_UNALIGNED_ACCESS", "unaligned memory access (runtime test)",
+	  "DEFINES_EVERYTHING|EXECUTE", "!HAVE_NO_UNALIGNED_ACCESS", NULL,
 	  "#include <string.h>\n"
 	  "int main(int argc, char *argv[]) {\n"
 	  "	(void)argc;\n"
