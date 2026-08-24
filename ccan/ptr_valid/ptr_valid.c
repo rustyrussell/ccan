@@ -10,7 +10,7 @@
 #include <assert.h>
 #include <string.h>
 
-#if HAVE_PROC_SELF_MAPS
+#if !defined(HAVE_PROC_SELF_MAPS) || HAVE_PROC_SELF_MAPS
 static char *grab(const char *filename)
 {
 	int ret, fd;
