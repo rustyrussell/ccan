@@ -26,9 +26,12 @@ _asort((base), (num), sizeof(*(base)),					\
 /* qsort_r is only declared under _GNU_SOURCE, which must precede the
  * first libc include — we can't control our includers, so declare it
  * ourselves (the configurator only sets this where this GNU signature
- * was detected). */
+ * was detected).  FreeBSD 15 always declares it, and wraps it in a
+ * macro which would mangle our declaration. */
+#ifndef qsort_r
 void qsort_r(void *base, size_t nmemb, size_t size,
 	     int (*compar)(const void *, const void *, void *), void *arg);
+#endif
 #define _asort(b, n, s, cmp, ctx) qsort_r(b, n, s, cmp, ctx)
 #else
 void _asort(void *base, size_t nmemb, size_t size,
